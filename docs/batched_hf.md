@@ -31,7 +31,7 @@ shell-task and DF algorithms remain roadmap work.
 For the current small validation workloads, the CUDA path is a correctness and
 execution-architecture milestone rather than a speed claim. Published
 production performance claims require generated shell-quartet kernels,
-DF J/K, finer AO-level compaction, spherical performance artifacts, and larger
+DF J/K, finer AO-level compaction, broader spherical workloads, and larger
 realistic benchmark oracles. A device-only shell-quartet compaction pass is
 implemented and validated on allocated RHF/UHF workloads. The present policy
 retains

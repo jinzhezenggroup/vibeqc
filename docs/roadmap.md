@@ -55,8 +55,9 @@ and performance measurements pass.
   real-spherical s-p-d-f transforms and analytic gradients are implemented and
   validated against PySCF/libcint. Sparse CUDA spherical AO consumers are
   public and validated on an RTX 5090 for s/d RHF, s/f RHF, s/d UHF, warm
-  batches, and standard pure water/def2-SVP energy and forces. Publish
-  same-workload spherical throughput evidence next.
+  batches, and standard pure water/def2-SVP energy and forces. The published
+  pure water/def2-SVP batch-8 artifact records a 3.17x scoped warm speedup over
+  GPU4PySCF's sequential single-system interface.
 - Exact shell-class recurrence workspaces and the device-compacted active-task
   scheduler are implemented. Replace the remaining component loops and generic
   symmetry scatter with generated shell-class/Rys kernels where profiling
@@ -106,8 +107,8 @@ and performance measurements pass.
   ROHF, broader convergence controls, and production UHF performance tuning.
 - The cold/warm GPU4PySCF harness includes Cartesian and standard real
   spherical water/def2-SVP cases and publishes raw homogeneous-batch samples.
-  Record the spherical case under the same allocated accuracy/performance
-  gates before claiming its throughput.
+  The spherical batch-8 case now passes its allocated accuracy and 2.5x
+  minimum-speedup gates; extend the matrix to more molecules and basis sizes.
 
 ## M3: density fitting and fleet mode
 

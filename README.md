@@ -117,9 +117,8 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   dispatch 55 symmetry-reduced s/p/d/f shell classes inside 13 angular-order
   Graph nodes, canonicalize ERI arguments by pair symmetry, contract sparse
   real-spherical expansion terms, and size Hermite workspaces from the exact
-  shell pairs. Component-unrolled/Rys kernels, broader named-basis gates,
-  spherical performance artifacts, and DF J/K are still required before
-  making broad production performance claims.
+  shell pairs. Component-unrolled/Rys kernels, broader named-basis gates, and
+  DF J/K are still required before making broad production performance claims.
 
 UHF uses the same memory policy: small buckets retain ERIs, while larger
 buckets build spin-resolved Fock matrices directly from O(N^2) Schwarz data.
@@ -171,15 +170,17 @@ GPU object and warm density per system and executes them sequentially inside
 the same synchronized batch boundary. Reports must state this interface
 difference rather than presenting the result as two equivalent batch APIs.
 
-Three clean artifacts from the exact shell-class implementation establish
+Four clean artifacts from the exact shell-class implementation establish
 performance leadership for their exact homogeneous workloads on one RTX 5090.
 `sdf18-direct` at batch 16
 measured 67.709 ms for QCE versus 2499.369 ms for sequential GPU4PySCF
 (36.91x), with maximum energy/force differences of `6.35e-14`/`4.87e-14`.
 Cartesian water/def2-SVP at batch 8 measured 1202.903 ms versus 7300.320 ms
-(6.07x), with differences of `1.72e-12`/`5.29e-13`. Open-shell
-OH/def2-SVP UHF at batch 8 measured 571.419 ms versus 7244.466 ms (12.68x),
-with differences of `1.24e-12`/`2.11e-13`. See the raw
+(6.07x), with differences of `1.72e-12`/`5.29e-13`. Standard real-spherical
+water/def2-SVP at batch 8 measured 2313.694 ms versus 7331.882 ms (3.17x),
+with differences of `1.78e-12`/`4.24e-13`. Open-shell OH/def2-SVP UHF at
+batch 8 measured 571.419 ms versus 7244.466 ms (12.68x), with differences of
+`1.24e-12`/`2.11e-13`. See the raw
 [RTX 5090 benchmark artifacts](benchmarks/results/README.md) for samples,
 versions, device metadata, and reproduction commands. These results do not
 imply an equivalent native GPU4PySCF batch API or generalize beyond the named
