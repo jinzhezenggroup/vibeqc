@@ -314,10 +314,12 @@ def test_cuda_uhf_h2_plus_matches_pyscf_and_cpu_oracles():
         pytest.skip(f"CUDA device unavailable: {error}")
 
     assert gpu.executed_backend == "cuda"
-    assert gpu.energy == pytest.approx(-0.53851134755010321, abs=2.0e-10)
-    assert gpu.forces[0, 2] == pytest.approx(-0.19038408605055362,
+    # PySCF oracle uses the exact bundled BSE STO-3G coefficients rather than
+    # the historically rounded coefficients in the native smoke test.
+    assert gpu.energy == pytest.approx(-0.53851134832246783, abs=2.0e-10)
+    assert gpu.forces[0, 2] == pytest.approx(-0.19038408686848268,
                                              abs=3.0e-9)
-    assert gpu.forces[1, 2] == pytest.approx(0.19038408605055368,
+    assert gpu.forces[1, 2] == pytest.approx(0.19038408686848290,
                                              abs=3.0e-9)
     assert gpu.energy == pytest.approx(cpu.energy, abs=2.0e-10)
     assert np.allclose(gpu.forces, cpu.forces, atol=3.0e-9)

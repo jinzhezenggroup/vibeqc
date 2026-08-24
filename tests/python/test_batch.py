@@ -173,10 +173,10 @@ def test_cuda_direct_jk_batch_reuses_stable_pair_tasks():
     except RuntimeError as error:
         pytest.skip(f"CUDA device unavailable: {error}")
 
-    # A fixed pair-task/reduction order makes repeated cold Fock builds bitwise
-    # stable. Force assembly still uses coordinate atomics, so compare it at a
-    # tolerance well below the independent integral-reference gates.
-    assert np.array_equal(first.energies, repeated.energies)
+    # Device compaction and Fock assembly use atomics, so independent cold
+    # replays are numerically stable rather than bitwise ordered. Keep this
+    # tolerance far below the independent integral-reference gates.
+    assert np.allclose(first.energies, repeated.energies, rtol=0.0, atol=1.0e-13)
     assert np.allclose(
         first.energies,
         [item.energy for item in independent],

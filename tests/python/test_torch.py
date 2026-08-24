@@ -75,10 +75,10 @@ def test_cuda_uhf_torch_backward_uses_native_analytic_force():
     except RuntimeError as error:
         pytest.skip(f"CUDA device unavailable: {error}")
 
-    assert value.item() == pytest.approx(-0.53851134755010321, abs=2.0e-10)
+    assert value.item() == pytest.approx(-0.53851134832246783, abs=2.0e-10)
     assert coordinates.grad is not None
     assert coordinates.grad[1, 2].item() == pytest.approx(
-        -0.19038408605055368, abs=3.0e-9
+        -0.19038408686848290, abs=3.0e-9
     )
     assert torch.max(torch.abs(coordinates.grad.sum(dim=0))).item() < 3.0e-9
 
@@ -118,7 +118,7 @@ def test_cuda_uhf_batched_torch_backward_reuses_spin_warm_state():
     except RuntimeError as error:
         pytest.skip(f"CUDA device unavailable: {error}")
 
-    assert values[0].item() == pytest.approx(-0.53851134755010321, abs=2.0e-10)
+    assert values[0].item() == pytest.approx(-0.53851134832246783, abs=2.0e-10)
     assert first.grad is not None and second.grad is not None
     assert torch.max(torch.abs(first.grad.sum(dim=0))).item() < 3.0e-9
     assert torch.max(torch.abs(second.grad.sum(dim=0))).item() < 3.0e-9
