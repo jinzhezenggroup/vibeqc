@@ -24,6 +24,12 @@ scalar expression serving values and three-axis forward derivatives. The
 canonical total-order-2 `(d s | s s)`, `(p p | s s)`, and `(p s | p s)`
 classes similarly retain only their at most four nonzero pair terms and form
 the reachable Coulomb derivatives directly from the first three Boys values.
+For forces, the kernel differentiates the pair coefficients and Gaussian
+decay explicitly for all four centers, while coordinate derivatives of the
+Coulomb term raise the sparse Cartesian derivative state by one. This shares
+the primitive quartet's Boys values, pair centers, decay, and prefactor across
+all centers without carrying a general forward-derivative scalar through the
+recurrence.
 Total-order-3 shell pairs generate their exact 1/2/4/8 terms as subsets of
 their angular quanta; quanta sharing one Cartesian axis add the required
 Gaussian pair contractions without allocating recurrence arrays. The quartet

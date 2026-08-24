@@ -70,8 +70,14 @@ and performance measurements pass.
   from 576/680 bytes to 112/208 bytes. On the 96-AO WATER27 batch-1 profile,
   their kernels fall from 97.52/356.34 ms to 55.30/115.40 ms.
   The closed order-2 path reduces its Fock/force stacks from 1072/3184 bytes
-  to 464/888 bytes; order three falls from 1568/5200 bytes to 512/1256 bytes;
-  order four falls from 2488/8608 bytes to 752/2024 bytes.
+  to 464/888 bytes. Its explicit all-center force derivative further lowers
+  the force kernel from 254 registers and 888 stack bytes to 188 registers
+  and 864 stack bytes. Interleaved candidate/baseline/candidate WATER27
+  measurements reduce batch-1 from 2.743 s to 2.499--2.516 s and batch-4 from
+  10.698 s to 9.227--9.798 s. The 96-AO batch-1/batch-4 and 192-AO batch-1
+  accuracy checks remain within their explicit limits. Order three falls from
+  1568/5200 bytes to 512/1256 bytes; order four falls from 2488/8608 bytes to
+  752/2024 bytes.
   Clean RTX 5090
   artifacts validate energy, forces, and homogeneous-batch throughput for the
   exact `sdf18-direct`, Cartesian water/def2-SVP, and open-shell

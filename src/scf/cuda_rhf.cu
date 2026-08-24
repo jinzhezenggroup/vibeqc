@@ -2604,6 +2604,320 @@ contracted_eri_cartesian_source_order01_gradient(
   return result;
 }
 
+/** One order-two shell-pair term and its two-center coefficient gradient. */
+struct LowOrderPairGradientTerm {
+  unsigned derivative_state;
+  double coefficient;
+  double center[2][3];
+};
+
+struct LowOrderPairGradientExpansion {
+  LowOrderPairGradientTerm terms[4];
+  unsigned count;
+};
+
+/**
+ * Build the exact order-0/1/2 Hermite pair expansion and center gradients.
+ *
+ * Pair decay is handled once by the primitive quartet. The only
+ * coordinate-dependent pair coefficients are products of P-A/P-B shifts;
+ * 1/(2p) contraction corrections are coordinate independent.
+ */
+__device__ LowOrderPairGradientExpansion
+make_low_order_pair_gradient_expansion(
+    double alpha,
+    const Vec3<double>& first,
+    const Angular& angular_first,
+    double beta,
+    const Vec3<double>& second,
+    const Angular& angular_second) {
+  const double exponent = alpha + beta;
+  const Vec3<double> product =
+      product_center(alpha, first, beta, second);
+  const double inverse_two_exponent = 0.5 / exponent;
+  unsigned derivative_states[2]{};
+  double shifts[2]{};
+  double shift_gradients[2][2][3]{};
+  unsigned quantum_count = 0;
+  for (int axis = 0; axis < 3; ++axis) {
+    for (unsigned quantum = 0;
+         quantum < angular_axis(angular_first, axis); ++quantum) {
+      derivative_states[quantum_count] = low_order_derivative_state(axis);
+      shifts[quantum_count] =
+          vec_axis(product, axis) - vec_axis(first, axis);
+      shift_gradients[quantum_count][0][axis] = alpha / exponent - 1.0;
+      shift_gradients[quantum_count][1][axis] = beta / exponent;
+      ++quantum_count;
+    }
+    for (unsigned quantum = 0;
+         quantum < angular_axis(angular_second, axis); ++quantum) {
+      derivative_states[quantum_count] = low_order_derivative_state(axis);
+      shifts[quantum_count] =
+          vec_axis(product, axis) - vec_axis(second, axis);
+      shift_gradients[quantum_count][0][axis] = alpha / exponent;
+      shift_gradients[quantum_count][1][axis] = beta / exponent - 1.0;
+      ++quantum_count;
+    }
+  }
+
+  LowOrderPairGradientExpansion expansion{};
+  if (quantum_count == 0) {
+    expansion.count = 1;
+    expansion.terms[0].coefficient = 1.0;
+    return expansion;
+  }
+  if (quantum_count == 1) {
+    expansion.count = 2;
+    expansion.terms[0].coefficient = shifts[0];
+    expansion.terms[1].derivative_state = derivative_states[0];
+    expansion.terms[1].coefficient = inverse_two_exponent;
+    for (unsigned center = 0; center < 2; ++center) {
+      for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+        expansion.terms[0].center[center][coordinate] =
+            shift_gradients[0][center][coordinate];
+      }
+    }
+    return expansion;
+  }
+
+  expansion.count = 4;
+  expansion.terms[0].coefficient = shifts[0] * shifts[1] +
+      (derivative_states[0] == derivative_states[1]
+           ? inverse_two_exponent
+           : 0.0);
+  expansion.terms[1].derivative_state = derivative_states[0];
+  expansion.terms[1].coefficient = inverse_two_exponent * shifts[1];
+  expansion.terms[2].derivative_state = derivative_states[1];
+  expansion.terms[2].coefficient = inverse_two_exponent * shifts[0];
+  expansion.terms[3].derivative_state =
+      derivative_states[0] + derivative_states[1];
+  expansion.terms[3].coefficient =
+      inverse_two_exponent * inverse_two_exponent;
+  for (unsigned center = 0; center < 2; ++center) {
+    for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+      expansion.terms[0].center[center][coordinate] =
+          shift_gradients[0][center][coordinate] * shifts[1] +
+          shifts[0] * shift_gradients[1][center][coordinate];
+      expansion.terms[1].center[center][coordinate] =
+          inverse_two_exponent *
+          shift_gradients[1][center][coordinate];
+      expansion.terms[2].center[center][coordinate] =
+          inverse_two_exponent *
+          shift_gradients[0][center][coordinate];
+    }
+  }
+  return expansion;
+}
+
+/** Evaluate all center derivatives of one total-order-two primitive quartet. */
+__device__ void primitive_eri_order2_gradient(
+    double alpha,
+    const Vec3<double>& first,
+    const Angular& angular_first,
+    double beta,
+    const Vec3<double>& second,
+    const Angular& angular_second,
+    double gamma,
+    const Vec3<double>& third,
+    const Angular& angular_third,
+    double delta,
+    const Vec3<double>& fourth,
+    const Angular& angular_fourth,
+    double (&gradient)[4][3]) {
+  const double p = alpha + beta;
+  const double q = gamma + delta;
+  const double mu = alpha * beta / p;
+  const double nu = gamma * delta / q;
+  const double rho = p * q / (p + q);
+  const Vec3<double> product_p =
+      product_center(alpha, first, beta, second);
+  const Vec3<double> product_q =
+      product_center(gamma, third, delta, fourth);
+  const Vec3<double> product_difference{
+      product_p.x - product_q.x,
+      product_p.y - product_q.y,
+      product_p.z - product_q.z,
+  };
+  const LowOrderPairGradientExpansion first_expansion =
+      make_low_order_pair_gradient_expansion(
+          alpha, first, angular_first, beta, second, angular_second);
+  const LowOrderPairGradientExpansion second_expansion =
+      make_low_order_pair_gradient_expansion(
+          gamma, third, angular_third, delta, fourth, angular_fourth);
+  double boys[4];
+  boys_values<3>(rho * distance_squared(product_p, product_q), boys);
+  const double product_scales[4] = {
+      alpha / p, beta / p, -gamma / q, -delta / q};
+  double value = 0.0;
+  double value_gradient[4][3]{};
+  for (unsigned first_term = 0; first_term < first_expansion.count;
+       ++first_term) {
+    for (unsigned second_term = 0; second_term < second_expansion.count;
+         ++second_term) {
+      const LowOrderPairGradientTerm& first_item =
+          first_expansion.terms[first_term];
+      const LowOrderPairGradientTerm& second_item =
+          second_expansion.terms[second_term];
+      const double sign =
+          (low_order_derivative_total(second_item.derivative_state) & 1U) == 0
+          ? 1.0
+          : -1.0;
+      const unsigned derivative_state =
+          first_item.derivative_state + second_item.derivative_state;
+      const double coulomb = low_order_coulomb(
+          derivative_state, rho, product_difference, boys);
+      const double coefficient =
+          sign * first_item.coefficient * second_item.coefficient;
+      value += coefficient * coulomb;
+      for (unsigned center = 0; center < 4; ++center) {
+        for (int coordinate = 0; coordinate < 3; ++coordinate) {
+          double coefficient_derivative = 0.0;
+          if (center < 2) {
+            coefficient_derivative = sign *
+                first_item.center[center][coordinate] *
+                second_item.coefficient;
+          } else {
+            coefficient_derivative = sign * first_item.coefficient *
+                second_item.center[center - 2][coordinate];
+          }
+          const double coulomb_derivative = product_scales[center] *
+              third_order_coulomb(
+                  derivative_state +
+                      low_order_derivative_state(coordinate),
+                  rho, product_difference, boys);
+          value_gradient[center][coordinate] +=
+              coefficient_derivative * coulomb +
+              coefficient * coulomb_derivative;
+        }
+      }
+    }
+  }
+
+  const double pair_decay = exp(
+      -mu * distance_squared(first, second) -
+      nu * distance_squared(third, fourth));
+  const double prefactor =
+      2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q)) * pair_decay;
+  for (unsigned center = 0; center < 4; ++center) {
+    for (int coordinate = 0; coordinate < 3; ++coordinate) {
+      double decay_derivative = 0.0;
+      if (center < 2) {
+        const double difference =
+            vec_axis(first, coordinate) - vec_axis(second, coordinate);
+        decay_derivative =
+            (center == 0 ? -2.0 * mu : 2.0 * mu) * difference;
+      } else {
+        const double difference =
+            vec_axis(third, coordinate) - vec_axis(fourth, coordinate);
+        decay_derivative =
+            (center == 2 ? -2.0 * nu : 2.0 * nu) * difference;
+      }
+      gradient[center][coordinate] = prefactor *
+          (value_gradient[center][coordinate] + value * decay_derivative);
+    }
+  }
+}
+
+/** Canonicalize and contract all-center gradients for total angular order 2. */
+__device__ CartesianQuartetGradient
+contracted_eri_cartesian_source_order2_gradient(
+    const DeviceBatch& batch,
+    std::int32_t system,
+    std::int32_t i,
+    std::int32_t j,
+    std::int32_t k,
+    std::int32_t l) {
+  struct SourceSlot {
+    std::int64_t ao;
+    std::int32_t shell;
+    unsigned original;
+  };
+  const std::int64_t base =
+      static_cast<std::int64_t>(system) * batch.direct_nbf;
+  SourceSlot slots[4] = {
+      {base + i, batch.direct_ao_shells[base + i], 0},
+      {base + j, batch.direct_ao_shells[base + j], 1},
+      {base + k, batch.direct_ao_shells[base + k], 2},
+      {base + l, batch.direct_ao_shells[base + l], 3},
+  };
+  if (batch.shell_angular[slots[0].shell] <
+      batch.shell_angular[slots[1].shell]) {
+    const SourceSlot swap = slots[0];
+    slots[0] = slots[1];
+    slots[1] = swap;
+  }
+  if (batch.shell_angular[slots[2].shell] <
+      batch.shell_angular[slots[3].shell]) {
+    const SourceSlot swap = slots[2];
+    slots[2] = slots[3];
+    slots[3] = swap;
+  }
+  const unsigned first_pair_class = direct_shell_pair_class_cuda(
+      batch.shell_angular[slots[0].shell],
+      batch.shell_angular[slots[1].shell]);
+  const unsigned second_pair_class = direct_shell_pair_class_cuda(
+      batch.shell_angular[slots[2].shell],
+      batch.shell_angular[slots[3].shell]);
+  if (first_pair_class < second_pair_class) {
+    const SourceSlot first_swap = slots[0];
+    slots[0] = slots[2];
+    slots[2] = first_swap;
+    const SourceSlot second_swap = slots[1];
+    slots[1] = slots[3];
+    slots[3] = second_swap;
+  }
+
+  const Vec3<double> positions[4] = {
+      atom_position<double>(batch, batch.shell_atoms[slots[0].shell], -1),
+      atom_position<double>(batch, batch.shell_atoms[slots[1].shell], -1),
+      atom_position<double>(batch, batch.shell_atoms[slots[2].shell], -1),
+      atom_position<double>(batch, batch.shell_atoms[slots[3].shell], -1),
+  };
+  const Angular angular[4] = {
+      direct_ao_angular(batch, slots[0].ao),
+      direct_ao_angular(batch, slots[1].ao),
+      direct_ao_angular(batch, slots[2].ao),
+      direct_ao_angular(batch, slots[3].ao),
+  };
+  const double angular_coefficient =
+      batch.direct_ao_coefficients[slots[0].ao] *
+      batch.direct_ao_coefficients[slots[1].ao] *
+      batch.direct_ao_coefficients[slots[2].ao] *
+      batch.direct_ao_coefficients[slots[3].ao];
+  CartesianQuartetGradient result{};
+  for (std::int64_t a = batch.shell_primitive_offsets[slots[0].shell];
+       a < batch.shell_primitive_offsets[slots[0].shell + 1]; ++a) {
+    for (std::int64_t b = batch.shell_primitive_offsets[slots[1].shell];
+         b < batch.shell_primitive_offsets[slots[1].shell + 1]; ++b) {
+      for (std::int64_t c = batch.shell_primitive_offsets[slots[2].shell];
+           c < batch.shell_primitive_offsets[slots[2].shell + 1]; ++c) {
+        for (std::int64_t d = batch.shell_primitive_offsets[slots[3].shell];
+             d < batch.shell_primitive_offsets[slots[3].shell + 1]; ++d) {
+          const double weight = angular_coefficient *
+              batch.primitive_coefficients[a] *
+              batch.primitive_coefficients[b] *
+              batch.primitive_coefficients[c] *
+              batch.primitive_coefficients[d];
+          double primitive_gradient[4][3];
+          primitive_eri_order2_gradient(
+              batch.primitive_exponents[a], positions[0], angular[0],
+              batch.primitive_exponents[b], positions[1], angular[1],
+              batch.primitive_exponents[c], positions[2], angular[2],
+              batch.primitive_exponents[d], positions[3], angular[3],
+              primitive_gradient);
+          for (unsigned center = 0; center < 4; ++center) {
+            for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+              result.center[slots[center].original][coordinate] +=
+                  weight * primitive_gradient[center][coordinate];
+            }
+          }
+        }
+      }
+    }
+  }
+  return result;
+}
+
 /** Canonicalize one Cartesian source quartet to its exact shell class. */
 template <unsigned ShellClass, typename Scalar>
 __device__ Scalar contracted_eri_cartesian_source_shell_class(
@@ -5456,12 +5770,20 @@ __global__ void two_electron_force_quartet_kernel(
       }
     }
     double explicit_unique_gradient[4][3]{};
-    if constexpr (AngularOrder <= 1) {
-      const CartesianQuartetGradient explicit_gradient =
-          contracted_eri_cartesian_source_order01_gradient<AngularOrder>(
-              batch, system, static_cast<std::int32_t>(i),
-              static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
-              static_cast<std::int32_t>(l));
+    if constexpr (AngularOrder <= 2) {
+      CartesianQuartetGradient explicit_gradient{};
+      if constexpr (AngularOrder <= 1) {
+        explicit_gradient =
+            contracted_eri_cartesian_source_order01_gradient<AngularOrder>(
+                batch, system, static_cast<std::int32_t>(i),
+                static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
+                static_cast<std::int32_t>(l));
+      } else {
+        explicit_gradient = contracted_eri_cartesian_source_order2_gradient(
+            batch, system, static_cast<std::int32_t>(i),
+            static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
+            static_cast<std::int32_t>(l));
+      }
       for (unsigned center = 0; center < 4; ++center) {
         unsigned unique_center = 0;
         while (unique_center_atoms[unique_center] != center_atoms[center]) {
@@ -5482,7 +5804,7 @@ __global__ void two_electron_force_quartet_kernel(
       double derivative_x = 0.0;
       double derivative_y = 0.0;
       double derivative_z = 0.0;
-      if constexpr (AngularOrder <= 1) {
+      if constexpr (AngularOrder <= 2) {
         derivative_x = explicit_unique_gradient[center][0];
         derivative_y = explicit_unique_gradient[center][1];
         derivative_z = explicit_unique_gradient[center][2];
