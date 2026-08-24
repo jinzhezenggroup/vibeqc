@@ -153,6 +153,11 @@ from roughly 150 ms minimum to over 700 ms median across runs. These artificial
 cases verify execution regimes and startup behavior, not production UHF
 leadership.
 
+Named-basis UHF is available in matching Cartesian and standard pure forms as
+`--case oh-def2-svp-uhf` and `--case oh-def2-svp-spherical-uhf`. Both use the
+same OH doublet geometry and spin occupations; only the AO representation
+changes.
+
 The single-system cases above do not establish broad realistic basis-set
 leadership. GPU4PySCF already has mature higher-angular-momentum Rys kernels,
 screening, spherical basis support, and highly optimized shell-sorted direct

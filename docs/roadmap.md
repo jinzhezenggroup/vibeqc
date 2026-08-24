@@ -103,12 +103,15 @@ and performance measurements pass.
   minimum-speedup and maximum energy/force error gates, records failures in
   JSON, and returns a failing status after preserving the artifact. Expand the
   gated workload matrix and tune the cuBLAS crossover from measured profiles.
-- Core/SAD guesses, robust DIIS recovery, level shift, convergence diagnostics,
-  ROHF, broader convergence controls, and production UHF performance tuning.
+- Deterministic frontier mixing now keeps exact-symmetry open-shell core
+  guesses out of known higher-energy occupation fixed points. Add SAD/atomic
+  guesses, stability analysis, robust DIIS recovery, level shift, convergence
+  diagnostics, ROHF, broader controls, and production UHF performance tuning.
 - The cold/warm GPU4PySCF harness includes Cartesian and standard real
-  spherical water/def2-SVP cases and publishes raw homogeneous-batch samples.
-  The spherical batch-8 case now passes its allocated accuracy and 2.5x
-  minimum-speedup gates; extend the matrix to more molecules and basis sizes.
+  spherical water/def2-SVP cases plus matching Cartesian/spherical OH UHF
+  definitions, and publishes raw homogeneous-batch samples. The spherical RHF
+  batch-8 case passes its allocated accuracy and 2.5x minimum-speedup gates;
+  record the spherical UHF case next, then extend to more molecules and bases.
 
 ## M3: density fitting and fleet mode
 

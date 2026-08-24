@@ -103,6 +103,20 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
             multiplicity=2,
             method="uhf",
         ),
+        "oh-def2-svp-spherical-uhf": BenchmarkCase(
+            description=(
+                "OH, 19 real spherical AOs, def2-SVP direct UHF doublet"
+            ),
+            atoms=(
+                ("O", (0.0, 0.0, 0.0)),
+                ("H", (0.0, 0.0, 1.8323918340046244)),
+            ),
+            qce_basis="def2-svp",
+            pyscf_basis="def2-svp",
+            multiplicity=2,
+            method="uhf",
+            basis_representation="spherical",
+        ),
         "h2plus-uhf2": BenchmarkCase(
             description="H2+, 2 Cartesian s AOs, UHF doublet",
             atoms=sp_atoms,
