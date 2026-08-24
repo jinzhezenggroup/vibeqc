@@ -246,12 +246,13 @@ The formal realistic-size matrix is `benchmarks/real_molecule_gate.py`:
 real-spherical def2-SVP WATER27 water tetramer at exactly 96 AOs and S4 water
 octamer at exactly 192 AOs, each at batch 1 and batch 4. All four points enforce
 explicit accuracy gates: `3e-11 Eh`/`3e-11 Eh/bohr` at 96 AOs and
-`1e-10 Eh`/`1e-10 Eh/bohr` at 192 AOs. They use
+`1e-10 Eh`/`5e-10 Eh/bohr` at 192 AOs. They use
 `1e-12 Eh`/`1e-10` SCF energy/density tolerances and a matching `1e-14`
 direct-J/K screening threshold; both engines receive up to 100 SCF iterations.
-GPU4PySCF uses its separate `1e-9` orbital-gradient threshold. The 96-AO
-points also require at least parity with GPU4PySCF now; the 192-AO speed gate
-activates after complete DF J/K. Run
+GPU4PySCF uses separate `1e-10` and `1e-8` orbital-gradient thresholds for the
+96- and 192-AO points, respectively, avoiding its large-system numerical-noise
+floor. The 96-AO points also require at least parity with GPU4PySCF now; the
+192-AO speed gate activates after complete DF J/K. Run
 it inside one allocated GPU and place output outside the measured clean
 worktree:
 

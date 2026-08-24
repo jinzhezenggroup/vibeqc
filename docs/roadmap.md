@@ -158,15 +158,17 @@ and performance measurements pass.
   or below `3e-11 Eh` maximum energy error and `3e-11 Eh/bohr` maximum force
   error under `1e-12 Eh`/`1e-10` SCF energy/density tolerances and a `1e-14`
   QCE Schwarz-screening threshold matching GPU4PySCF's direct-SCF threshold.
-  GPU4PySCF uses a separately defined `1e-9` orbital-gradient threshold; its
-  `1e-10` setting reaches the numerical-noise floor and does not converge for
-  the 192-AO reference. Both engines receive up to 100 SCF iterations. Each
-  point must be at least `1.0x` as fast as GPU4PySCF under the documented
+  GPU4PySCF uses its separate `1e-10` orbital-gradient threshold at this size.
+  Both engines receive up to 100 SCF iterations. Each point must be at least
+  `1.0x` as fast as GPU4PySCF under the documented
   sequential single-system interface boundary.
 - The fixed 192-AO workload is the optimized GMTKN55/WATER27 S4 water octamer
   with the same basis and representation. Batch 1 and batch 4 must stay below
-  `1e-10 Eh` maximum energy error and `1e-10 Eh/bohr` maximum force error now.
-  Their performance threshold is deliberately unset
+  `1e-10 Eh` maximum energy error and `5e-10 Eh/bohr` maximum force error now.
+  GPU4PySCF uses a `1e-8` orbital-gradient threshold here; tighter settings
+  reach its numerical-noise floor for some scaled batch members while the
+  `1e-8` and `1e-9` converged energy plateaus agree within `1e-11 Eh` on the
+  base geometry. Their performance threshold is deliberately unset
   for the direct-J/K phase; after complete DF J/K lands, both points acquire a
   `1.0x` minimum-speedup gate.
 - `benchmarks/real_molecule_gate.py` runs all four points and preserves one

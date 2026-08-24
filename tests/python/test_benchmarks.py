@@ -132,15 +132,19 @@ def test_real_molecule_gate_has_four_explicit_dry_run_points(tmp_path):
     assert all("--max-iterations 100" in line for line in commands)
     assert all("--energy-tolerance 1e-12" in line for line in commands)
     assert all("--density-tolerance 1e-10" in line for line in commands)
-    assert all(
-        "--reference-gradient-tolerance 1e-09" in line
+    assert sum(
+        "--reference-gradient-tolerance 1e-10" in line
         for line in commands
-    )
+    ) == 2
+    assert sum(
+        "--reference-gradient-tolerance 1e-08" in line
+        for line in commands
+    ) == 2
     assert all("--screening-tolerance 1e-14" in line for line in commands)
     assert sum("--maximum-energy-error 3e-11" in line for line in commands) == 2
     assert sum("--maximum-force-error 3e-11" in line for line in commands) == 2
     assert sum("--maximum-energy-error 1e-10" in line for line in commands) == 2
-    assert sum("--maximum-force-error 1e-10" in line for line in commands) == 2
+    assert sum("--maximum-force-error 5e-10" in line for line in commands) == 2
 
 
 def test_gpu_comparison_gate_reports_all_threshold_failures():

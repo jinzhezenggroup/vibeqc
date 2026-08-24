@@ -25,7 +25,6 @@ from _cases import (
 
 _ENERGY_TOLERANCE = 1.0e-12
 _DENSITY_TOLERANCE = 1.0e-10
-_REFERENCE_GRADIENT_TOLERANCE = 1.0e-9
 _SCREENING_TOLERANCE = 1.0e-14
 _MAX_ITERATIONS = 100
 
@@ -54,7 +53,7 @@ def _point_command(
         "--density-tolerance",
         str(_DENSITY_TOLERANCE),
         "--reference-gradient-tolerance",
-        str(_REFERENCE_GRADIENT_TOLERANCE),
+        str(point.reference_gradient_tolerance),
         "--screening-tolerance",
         str(_SCREENING_TOLERANCE),
         "--maximum-energy-error",
@@ -132,6 +131,8 @@ def main() -> None:
             "ao_count": point.expected_ao_count,
             "batch_size": point.batch_size,
             "minimum_speedup": point.minimum_speedup,
+            "reference_gradient_tolerance":
+                point.reference_gradient_tolerance,
             "maximum_energy_error_hartree": point.maximum_energy_error,
             "maximum_force_error_hartree_per_bohr": point.maximum_force_error,
             "returncode": completed.returncode,
@@ -147,7 +148,6 @@ def main() -> None:
         "max_iterations": _MAX_ITERATIONS,
         "energy_tolerance": _ENERGY_TOLERANCE,
         "density_tolerance": _DENSITY_TOLERANCE,
-        "reference_gradient_tolerance": _REFERENCE_GRADIENT_TOLERANCE,
         "screening_tolerance": _SCREENING_TOLERANCE,
         "gpu4pyscf_interface": "sequential single-system objects",
         "points": results,

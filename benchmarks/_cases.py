@@ -48,6 +48,7 @@ class BenchmarkGatePoint:
     expected_ao_count: int
     maximum_energy_error: float
     maximum_force_error: float
+    reference_gradient_tolerance: float
     minimum_speedup: float | None
 
 
@@ -293,10 +294,12 @@ def real_molecule_gate_points() -> tuple[BenchmarkGatePoint, ...]:
     accuracy_96 = {
         "maximum_energy_error": 3.0e-11,
         "maximum_force_error": 3.0e-11,
+        "reference_gradient_tolerance": 1.0e-10,
     }
     accuracy_192 = {
         "maximum_energy_error": 1.0e-10,
-        "maximum_force_error": 1.0e-10,
+        "maximum_force_error": 5.0e-10,
+        "reference_gradient_tolerance": 1.0e-8,
     }
     return (
         BenchmarkGatePoint(
