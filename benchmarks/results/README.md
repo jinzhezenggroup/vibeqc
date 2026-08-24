@@ -16,7 +16,7 @@ batch timing boundary.
 | [`water-def2-svp`](rtx5090-8300dff-water-def2-svp-b8.json) | 8 | 1202.903 ms | 7300.320 ms | 6.07x | 1.72e-12 Eh | 5.29e-13 Eh/bohr |
 | [`water-def2-svp-spherical`](rtx5090-320ead9-water-def2-svp-spherical-b8.json) | 8 | 2313.694 ms | 7331.882 ms | 3.17x | 1.78e-12 Eh | 4.24e-13 Eh/bohr |
 | [`water-def2-tzvp`](rtx5090-e303ca4-water-def2-tzvp-b4.json) | 4 | 2069.985 ms | 12084.960 ms | 5.84x | 1.21e-12 Eh | 9.24e-13 Eh/bohr |
-| [`water-def2-tzvp-spherical`](rtx5090-f260de0-water-def2-tzvp-spherical-b4.json) | 4 | 1090.931 ms | 12137.277 ms | 11.13x | 9.38e-13 Eh | 8.95e-13 Eh/bohr |
+| [`water-def2-tzvp-spherical`](rtx5090-1041d86-water-def2-tzvp-spherical-b4.json) | 4 | 1027.326 ms | 12158.679 ms | 11.84x | 9.95e-13 Eh | 8.69e-13 Eh/bohr |
 | [`oh-def2-svp-uhf`](rtx5090-6d3b9ec-oh-def2-svp-uhf-b8.json) | 8 | 571.419 ms | 7244.466 ms | 12.68x | 1.24e-12 Eh | 2.11e-13 Eh/bohr |
 | [`oh-def2-svp-spherical-uhf`](rtx5090-f44fdf7-oh-def2-svp-spherical-uhf-b8.json) | 8 | 1369.543 ms | 7304.363 ms | 5.33x | 1.09e-12 Eh | 4.13e-11 Eh/bohr |
 
@@ -28,12 +28,23 @@ recorded from clean commit
 `320ead906eb0b0e3335aa1b9e2893f066dd02eee`. The real-spherical UHF artifact
 was recorded after the open-shell cold-guess fix at clean commit
 `f44fdf7d6d84e92ef7405e09643a69f78c627e52`. The current 43-AO def2-TZVP
-artifact was recorded after the closed order-1 recurrence at clean commit
-`f260de081a009f391537f6697b672aa9e98b6a87`. All were measured on 2026-08-24.
+artifact was recorded after the closed order-2 recurrence at clean commit
+`1041d865c0f995214baec917f8f3c725a25ac903`. All were measured on 2026-08-24.
 The matching Cartesian def2-TZVP artifact was recorded from clean commit
 `e303ca4aae9930dafd9f52bde813a030953a09cc`.
 They establish performance only for these exact homogeneous batch workloads;
 they are not a claim of broad QCE leadership.
+
+## Prior closed order-1 baseline
+
+| Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup |
+| --- | ---: | ---: | ---: | ---: |
+| [`water-def2-tzvp-spherical`](rtx5090-f260de0-water-def2-tzvp-spherical-b4.json) | 4 | 1090.931 ms | 12137.277 ms | 11.13x |
+
+The clean `f260de081a009f391537f6697b672aa9e98b6a87` baseline used the closed
+`(p s | s s)` recurrence but retained generic total-order-2 Hermite and
+Coulomb workspaces. Keeping it beside the closed order-2 artifact makes the
+5.8% QCE warm-time reduction independently auditable.
 
 ## Prior generic order-1 baseline
 
