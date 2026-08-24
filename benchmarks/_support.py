@@ -110,6 +110,43 @@ def cuda_accelerator_metadata(cupy_module: Any) -> dict[str, Any]:
     }
 
 
+def benchmark_gate_failures(
+    *,
+    speedup: float,
+    maximum_energy_error: float,
+    maximum_force_error: float,
+    minimum_speedup: float | None = None,
+    maximum_energy_error_limit: float | None = None,
+    maximum_force_error_limit: float | None = None,
+) -> list[str]:
+    """Return actionable failures for optional accuracy/performance gates."""
+
+    failures = []
+    if minimum_speedup is not None and speedup < minimum_speedup:
+        failures.append(
+            f"warm speedup {speedup:.6g}x is below {minimum_speedup:.6g}x"
+        )
+    if (
+        maximum_energy_error_limit is not None
+        and maximum_energy_error > maximum_energy_error_limit
+    ):
+        failures.append(
+            "maximum energy error "
+            f"{maximum_energy_error:.6g} Eh exceeds "
+            f"{maximum_energy_error_limit:.6g} Eh"
+        )
+    if (
+        maximum_force_error_limit is not None
+        and maximum_force_error > maximum_force_error_limit
+    ):
+        failures.append(
+            "maximum force error "
+            f"{maximum_force_error:.6g} Eh/bohr exceeds "
+            f"{maximum_force_error_limit:.6g} Eh/bohr"
+        )
+    return failures
+
+
 def write_result(path: str | Path, payload: dict[str, Any]) -> Path:
     """Write a stable, human-readable JSON benchmark artifact."""
 

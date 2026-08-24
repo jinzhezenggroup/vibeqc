@@ -47,9 +47,16 @@ uv run --isolated \
   --with gpu4pyscf-cuda12x==1.8.1 \
   --with pyscf==2.14.0 \
   python benchmarks/compare_gpu4pyscf_batch.py \
-  --case sdf18-direct --batch 16 --repeats 5 --output result.json
+  --case sdf18-direct --batch 16 --repeats 5 \
+  --minimum-speedup 30 \
+  --maximum-energy-error 3e-12 \
+  --maximum-force-error 3e-12 \
+  --output result.json
 ```
 
 Use `--case water-def2-svp --batch 8` or
-`--case oh-def2-svp-uhf --batch 8` for the named-basis workloads. On a Slurm
-cluster, run the command inside an allocation that owns exactly one GPU.
+`--case oh-def2-svp-uhf --batch 8` for the named-basis workloads, with
+conservative minimum speedups of 5x and 10x respectively. The harness records
+all gate thresholds and failures in the JSON before exiting with status 2 on a
+failed gate. On a Slurm cluster, run the command inside an allocation that owns
+exactly one GPU.

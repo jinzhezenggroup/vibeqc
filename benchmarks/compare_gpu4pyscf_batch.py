@@ -18,6 +18,7 @@ from qce import Calculator
 
 from _cases import benchmark_cases
 from _support import (
+    benchmark_gate_failures,
     cuda_accelerator_metadata,
     environment_metadata,
     write_result,
@@ -53,12 +54,36 @@ def main() -> None:
     parser.add_argument("--batch", type=int, default=16)
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument(
+        "--minimum-speedup",
+        type=float,
+        help="fail after recording results when warm speedup is below this",
+    )
+    parser.add_argument(
+        "--maximum-energy-error",
+        type=float,
+        help="fail after recording results when max error exceeds this Eh limit",
+    )
+    parser.add_argument(
+        "--maximum-force-error",
+        type=float,
+        help=(
+            "fail after recording results when max error exceeds this "
+            "Eh/bohr limit"
+        ),
+    )
+    parser.add_argument(
         "--output",
         help="optional JSON path for raw timings and reproducibility metadata",
     )
     args = parser.parse_args()
     if args.batch < 1 or args.repeats < 1:
         raise ValueError("--batch and --repeats must be positive")
+    if args.minimum_speedup is not None and args.minimum_speedup <= 0.0:
+        raise ValueError("--minimum-speedup must be positive")
+    if args.maximum_energy_error is not None and args.maximum_energy_error < 0.0:
+        raise ValueError("--maximum-energy-error must be non-negative")
+    if args.maximum_force_error is not None and args.maximum_force_error < 0.0:
+        raise ValueError("--maximum-force-error must be non-negative")
 
     # Import GPU packages only after argument parsing so workload construction
     # and --help remain usable on login nodes without an allocated device.
@@ -147,6 +172,15 @@ def main() -> None:
     maximum_force_error = float(np.max(np.abs(qce_forces - gpu_force_array)))
     qce_warm_median = statistics.median(qce_warm)
     gpu_warm_median = statistics.median(gpu_warm)
+    warm_speedup = gpu_warm_median / qce_warm_median
+    gate_failures = benchmark_gate_failures(
+        speedup=warm_speedup,
+        maximum_energy_error=maximum_energy_error,
+        maximum_force_error=maximum_force_error,
+        minimum_speedup=args.minimum_speedup,
+        maximum_energy_error_limit=args.maximum_energy_error,
+        maximum_force_error_limit=args.maximum_force_error,
+    )
 
     print(f"scope: {case.description}, homogeneous batch {args.batch}")
     print(f"maximum energy difference: {maximum_energy_error:.3e} Eh")
@@ -162,6 +196,7 @@ def main() -> None:
         "GPU4PySCF warm throughput: "
         f"{args.batch / gpu_warm_median:.2f} systems/s"
     )
+    print(f"scoped warm speedup: {warm_speedup:.2f}x")
     print("warning: GPU4PySCF is measured through its single-system interface")
 
     if args.output:
@@ -196,7 +231,15 @@ def main() -> None:
                 "density_tolerance": 1.0e-10,
                 "direct_scf_tolerance": 1.0e-14,
             },
-            "settings": {"repeats": args.repeats},
+            "settings": {
+                "repeats": args.repeats,
+                "gates": {
+                    "minimum_speedup": args.minimum_speedup,
+                    "maximum_energy_error_hartree": args.maximum_energy_error,
+                    "maximum_force_error_hartree_per_bohr":
+                        args.maximum_force_error,
+                },
+            },
             "accuracy": {
                 "maximum_energy_error_hartree": maximum_energy_error,
                 "maximum_force_error_hartree_per_bohr": maximum_force_error,
@@ -218,9 +261,18 @@ def main() -> None:
                 "warm_systems_per_second": args.batch / gpu_warm_median,
                 "interface": "sequential single-system objects",
             },
+            "gate": {
+                "passed": not gate_failures,
+                "failures": gate_failures,
+            },
         }
         destination = write_result(args.output, payload)
         print(f"JSON result: {destination}")
+
+    if gate_failures:
+        for failure in gate_failures:
+            print(f"gate failure: {failure}")
+        raise SystemExit(2)
 
 
 if __name__ == "__main__":

@@ -95,8 +95,10 @@ and performance measurements pass.
   now shows 36.91x warm throughput for `sdf18-direct` batch 16 and 6.07x for
   Cartesian water/def2-SVP batch 8 against sequential GPU4PySCF single-system
   execution. The named-basis OH/def2-SVP UHF batch reaches 12.68x under the
-  same interface boundary. Convert a broader workload matrix into allocated
-  performance gates and tune the cuBLAS crossover from measured profiles.
+  same interface boundary. The allocated comparison harness now accepts
+  minimum-speedup and maximum energy/force error gates, records failures in
+  JSON, and returns a failing status after preserving the artifact. Expand the
+  gated workload matrix and tune the cuBLAS crossover from measured profiles.
 - Core/SAD guesses, robust DIIS recovery, level shift, convergence diagnostics,
   ROHF, broader convergence controls, and production UHF performance tuning.
 - The cold/warm GPU4PySCF harness now includes Cartesian water/def2-SVP and

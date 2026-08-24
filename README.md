@@ -187,3 +187,10 @@ raw timing samples together with the Git commit and dirty state, Python and
 package versions, runtime library path, benchmark parameters, and (for the
 GPU4PySCF comparison) CUDA device properties. Performance claims should cite
 one of these artifacts rather than only a copied median.
+
+Allocated batch comparisons can also enforce regression gates with
+`--minimum-speedup`, `--maximum-energy-error`, and `--maximum-force-error`.
+The harness always writes the requested JSON first, including the thresholds
+and any failure messages, then exits with status 2 when a gate fails. This
+keeps failed measurements inspectable while making scheduler/CI jobs fail
+closed.
