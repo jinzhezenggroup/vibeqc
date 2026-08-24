@@ -8,6 +8,21 @@ homogeneous fixed-topology batch; GPU4PySCF 1.8.1 retains one warm object per
 system and invokes its single-system interface sequentially inside the same
 batch timing boundary.
 
+## Realistic 96-AO acceptance status
+
+| Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup | Max energy error | Max force error | Gate |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| [`WATER27 tetramer`](rtx5090-e6d94ee-water-tetramer-def2-svp-spherical-b1.json) | 1 | 3026.442 ms | 1375.529 ms | 0.455x | 3.18e-12 Eh | 2.69e-12 Eh/bohr | speed fails |
+| [`WATER27 tetramer`](rtx5090-e6d94ee-water-tetramer-def2-svp-spherical-b4.json) | 4 | 10128.779 ms | 5193.638 ms | 0.513x | 3.64e-12 Eh | 5.62e-12 Eh/bohr | speed fails |
+
+Both clean artifacts come from commit
+`e6d94ee76826f317027fdf8dbf56d88969657f34` on 2026-08-25. Every QCE and
+GPU4PySCF system converged, and both points pass the explicit `3e-11 Eh` and
+`3e-11 Eh/bohr` accuracy limits. They fail only the required `1.0x` minimum
+speedup, so the 96-AO milestone remains open. All three synchronized warm
+samples are retained because both engines show material timing variation at
+this size.
+
 ## Current exact shell-class results
 
 | Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup | Max energy error | Max force error |
