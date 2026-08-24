@@ -68,13 +68,16 @@ and performance measurements pass.
 ## M2: production RHF and UHF
 
 - Packed device matrices, device DIIS, a device-tail Graph, fixed-topology
-  replay, and small-matrix/cuSOLVER dispatch are implemented for s-p-d-f shells.
+  replay, small-matrix/cuSOLVER dispatch, and strided-batched cuBLAS matrix
+  transforms for direct-J/K AO sizes are implemented for s-p-d-f shells.
 - UHF alpha/beta occupations, persistent and screened-direct J/K, combined
   spin DIIS, warm starts, ragged batches, and analytic gradients are
   implemented on CPU and CUDA for the Cartesian s-p-d-f scope.
 - Stream-ordered CUDA memory-pool allocation, exact device shell/AO-tile
   compaction, and reproducible benchmark publication ledgers are implemented.
-  Add scalable BLAS-backed matrix transforms and allocated performance gates.
+  Small matrices retain the low-overhead native product kernel, and provider or
+  Graph-capture failures retry once through that path. Add allocated performance
+  gates and tune the cuBLAS crossover from measured profiles.
 - Core/SAD guesses, robust DIIS recovery, level shift, convergence diagnostics,
   ROHF, broader convergence controls, and production UHF performance tuning.
 - Extend the existing cold/warm GPU4PySCF s/p microbenchmark to realistic

@@ -52,7 +52,7 @@ if(QCE_ENABLE_CUDA)
     src/runtime/cuda_runtime.cu
     src/scf/cuda_rhf.cu
   )
-  target_link_libraries(qce PRIVATE CUDA::cudart CUDA::cusolver)
+  target_link_libraries(qce PRIVATE CUDA::cudart CUDA::cublas CUDA::cusolver)
   target_compile_definitions(qce PUBLIC QCE_HAS_CUDA=1)
   set_target_properties(qce PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 else()

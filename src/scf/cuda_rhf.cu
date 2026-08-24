@@ -3,6 +3,7 @@
 #include "molecule/basis.hpp"
 #include "scf/direct_task_layout.hpp"
 
+#include <cublas_v2.h>
 #include <cuda_runtime_api.h>
 #include <cusolverDn.h>
 #include <math_constants.h>
@@ -38,6 +39,9 @@ constexpr int kCoulombStateCount = 1820;
 // replaying them from the persistent arena. Larger AO spaces switch to fused
 // direct J/K so device memory remains O(N^2), not O(N^4).
 constexpr std::size_t kPersistentEriAoLimit = 16;
+// Below the persistent-ERI boundary, one lightweight kernel avoids cuBLAS
+// launch overhead. Production direct-J/K workloads use batched GEMM.
+constexpr std::size_t kCublasMatrixProductAoThreshold = 17;
 
 /** Geometry-dependent direct-J/K work emitted by shell-bound compaction. */
 struct ActiveShellQuartetTile {
@@ -3382,6 +3386,12 @@ qce_status solver_status(cusolverStatus_t status) {
                                                 : QCE_STATUS_CUDA_ERROR;
 }
 
+qce_status blas_status(cublasStatus_t status) {
+  if (status == CUBLAS_STATUS_SUCCESS) return QCE_STATUS_SUCCESS;
+  return status == CUBLAS_STATUS_ALLOC_FAILED ? QCE_STATUS_OUT_OF_MEMORY
+                                              : QCE_STATUS_CUDA_ERROR;
+}
+
 void fill_global_failure(std::vector<RhfBucketItem>& outputs, qce_status status) {
   for (RhfBucketItem& output : outputs) output.status = status;
 }
@@ -3396,6 +3406,7 @@ class CudaResources {
     if (iteration_graph_ != nullptr) (void)cudaGraphDestroy(iteration_graph_);
     if (jacobi_ != nullptr) (void)cusolverDnDestroySyevjInfo(jacobi_);
     if (solver_ != nullptr) (void)cusolverDnDestroy(solver_);
+    if (blas_ != nullptr) (void)cublasDestroy(blas_);
     if (stream_ != nullptr) {
       // Both allocations come from CUDA's stream-ordered device pool. Queue
       // their release on the owning bucket stream so destroying one plan does
@@ -3411,6 +3422,7 @@ class CudaResources {
 
   int device_id_{-1};
   cudaStream_t stream_{};
+  cublasHandle_t blas_{};
   cusolverDnHandle_t solver_{};
   syevjInfo_t jacobi_{};
   cudaGraph_t iteration_graph_{};
@@ -3426,6 +3438,97 @@ qce_status copy_to_device(void* destination,
   if (bytes == 0) return QCE_STATUS_SUCCESS;
   return cuda_status(cudaMemcpyAsync(destination, source, bytes,
                                      cudaMemcpyHostToDevice, stream));
+}
+
+qce_status launch_matrix_product(CudaResources& resources,
+                                 int batch_size,
+                                 int nbf,
+                                 const double* left,
+                                 bool transpose_left,
+                                 const double* right,
+                                 const std::uint8_t* active,
+                                 double* output,
+                                 bool use_cublas) {
+  const std::size_t matrix_size =
+      static_cast<std::size_t>(nbf) * static_cast<std::size_t>(nbf);
+  if (!use_cublas) {
+    const std::size_t elements =
+        static_cast<std::size_t>(batch_size) * matrix_size;
+    const unsigned blocks = static_cast<unsigned>(
+        (elements + detail::kDirectQuartetThreads - 1) /
+        detail::kDirectQuartetThreads);
+    matrix_product_kernel<<<blocks, detail::kDirectQuartetThreads, 0,
+                            resources.stream_>>>(
+        batch_size, nbf, left, transpose_left, right, active, output);
+    return cuda_status(cudaPeekAtLastError());
+  }
+
+  const double alpha = 1.0;
+  const double beta = 0.0;
+  const cublasOperation_t operation =
+      transpose_left ? CUBLAS_OP_T : CUBLAS_OP_N;
+  return blas_status(cublasDgemmStridedBatched(
+      resources.blas_, operation, CUBLAS_OP_N, nbf, nbf, nbf, &alpha,
+      left, nbf, static_cast<long long>(matrix_size), right, nbf,
+      static_cast<long long>(matrix_size), &beta, output, nbf,
+      static_cast<long long>(matrix_size), batch_size));
+}
+
+/**
+ * Multiply system-major spin matrices while broadcasting physical operands.
+ *
+ * A physical matrix repeats for alpha and beta, which is not one constant
+ * stride over the interleaved state array. One strided-batched GEMM per spin
+ * preserves the existing [system][spin][matrix] storage without pointer lists.
+ */
+qce_status launch_spin_matrix_product(CudaResources& resources,
+                                      int batch_size,
+                                      int spin_count,
+                                      int nbf,
+                                      const double* left,
+                                      bool left_is_spin,
+                                      bool transpose_left,
+                                      const double* right,
+                                      bool right_is_spin,
+                                      const std::uint8_t* active,
+                                      double* output,
+                                      bool use_cublas) {
+  const std::size_t matrix_size =
+      static_cast<std::size_t>(nbf) * static_cast<std::size_t>(nbf);
+  if (!use_cublas) {
+    const std::size_t elements = static_cast<std::size_t>(batch_size) *
+                                 static_cast<std::size_t>(spin_count) *
+                                 matrix_size;
+    const unsigned blocks = static_cast<unsigned>(
+        (elements + detail::kDirectQuartetThreads - 1) /
+        detail::kDirectQuartetThreads);
+    spin_matrix_product_kernel<<<blocks, detail::kDirectQuartetThreads, 0,
+                                 resources.stream_>>>(
+        batch_size, spin_count, nbf, left, left_is_spin, transpose_left,
+        right, right_is_spin, active, output);
+    return cuda_status(cudaPeekAtLastError());
+  }
+
+  const double alpha = 1.0;
+  const double beta = 0.0;
+  const cublasOperation_t operation =
+      transpose_left ? CUBLAS_OP_T : CUBLAS_OP_N;
+  const long long physical_stride = static_cast<long long>(matrix_size);
+  const long long spin_stride =
+      static_cast<long long>(matrix_size * static_cast<std::size_t>(spin_count));
+  for (int spin = 0; spin < spin_count; ++spin) {
+    const std::size_t spin_offset =
+        static_cast<std::size_t>(spin) * matrix_size;
+    const double* spin_left = left + (left_is_spin ? spin_offset : 0);
+    const double* spin_right = right + (right_is_spin ? spin_offset : 0);
+    const cublasStatus_t status = cublasDgemmStridedBatched(
+        resources.blas_, operation, CUBLAS_OP_N, nbf, nbf, nbf, &alpha,
+        spin_left, nbf, left_is_spin ? spin_stride : physical_stride,
+        spin_right, nbf, right_is_spin ? spin_stride : physical_stride,
+        &beta, output + spin_offset, nbf, spin_stride, batch_size);
+    if (status != CUBLAS_STATUS_SUCCESS) return blas_status(status);
+  }
+  return QCE_STATUS_SUCCESS;
 }
 
 qce_status launch_solver(CudaResources& resources,
@@ -3470,6 +3573,8 @@ struct CudaRhfBucketPlan {
   bool persistent_eri{};
   bool quartet_direct{};
   bool unrestricted{};
+  bool cublas_enabled{true};
+  bool retry_without_cublas{};
   bool initialized{};
 };
 
@@ -3662,11 +3767,14 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   const std::size_t launch_shell_quartet_tiles =
       plan.total_shell_quartet_tiles;
   const bool use_cusolver = nbf > static_cast<std::size_t>(kSmallEigensolverLimit);
+  const bool use_cublas = plan.cublas_enabled &&
+      nbf >= kCublasMatrixProductAoThreshold;
   cudaError_t cuda_error = cudaSetDevice(device_id);
   if (cuda_error != cudaSuccess) {
     fill_global_failure(outputs, cuda_status(cuda_error));
     return outputs;
   }
+  cublasStatus_t blas_error = CUBLAS_STATUS_SUCCESS;
   cusolverStatus_t solver_error = CUSOLVER_STATUS_SUCCESS;
   if (first_setup) {
     if ((cuda_error = cudaStreamCreateWithFlags(&resources.stream_,
@@ -3675,6 +3783,21 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
              &resources.arena_, layout.bytes, resources.stream_)) != cudaSuccess) {
       fill_global_failure(outputs, cuda_status(cuda_error));
       return outputs;
+    }
+    if (use_cublas) {
+      blas_error = cublasCreate(&resources.blas_);
+      if (blas_error == CUBLAS_STATUS_SUCCESS) {
+        blas_error = cublasSetStream(resources.blas_, resources.stream_);
+      }
+      if (blas_error == CUBLAS_STATUS_SUCCESS) {
+        blas_error = cublasSetPointerMode(
+            resources.blas_, CUBLAS_POINTER_MODE_HOST);
+      }
+      if (blas_error != CUBLAS_STATUS_SUCCESS) {
+        plan.retry_without_cublas = true;
+        fill_global_failure(outputs, blas_status(blas_error));
+        return outputs;
+      }
     }
     if (use_cusolver) {
       solver_error = cusolverDnCreate(&resources.solver_);
@@ -3922,6 +4045,33 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   const auto blocks_for = [](std::size_t elements) {
     return static_cast<unsigned>((elements + threads - 1) / threads);
   };
+  const auto multiply_matrices = [&](const double* left,
+                                     bool transpose_left,
+                                     const double* right,
+                                     double* output) {
+    const qce_status product_status = launch_matrix_product(
+        resources, static_cast<int>(batch_size), static_cast<int>(nbf),
+        left, transpose_left, right, active, output, use_cublas);
+    if (use_cublas && product_status != QCE_STATUS_SUCCESS) {
+      plan.retry_without_cublas = true;
+    }
+    return product_status;
+  };
+  const auto multiply_spin_matrices = [&](const double* left,
+                                          bool left_is_spin,
+                                          bool transpose_left,
+                                          const double* right,
+                                          bool right_is_spin,
+                                          double* output) {
+    const qce_status product_status = launch_spin_matrix_product(
+        resources, static_cast<int>(batch_size), 2, static_cast<int>(nbf),
+        left, left_is_spin, transpose_left, right, right_is_spin, active,
+        output, use_cublas);
+    if (use_cublas && product_status != QCE_STATUS_SUCCESS) {
+      plan.retry_without_cublas = true;
+    }
+    return product_status;
+  };
   const auto launch_fock_builder = [&](const double* density_input) {
     if (unrestricted && persistent_eri) {
       build_uhf_fock_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
@@ -4023,12 +4173,15 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
       eigensystem, eigenvalues, active, orthogonalizer, failed);
 
-  matrix_product_kernel<<<blocks_for(matrix_elements), threads, 0, resources.stream_>>>(
-      static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
-      hcore, false, orthogonalizer, active, temporary);
-  matrix_product_kernel<<<blocks_for(matrix_elements), threads, 0, resources.stream_>>>(
-      static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
-      orthogonalizer, true, temporary, active, eigensystem);
+  status = multiply_matrices(hcore, false, orthogonalizer, temporary);
+  if (status == QCE_STATUS_SUCCESS) {
+    status = multiply_matrices(
+        orthogonalizer, true, temporary, eigensystem);
+  }
+  if (status != QCE_STATUS_SUCCESS) {
+    fill_global_failure(outputs, status);
+    return outputs;
+  }
   status = launch_solver(resources, static_cast<int>(nbf),
                          static_cast<int>(batch_size), eigensystem,
                          eigenvalues, lwork, solver_info, active);
@@ -4039,10 +4192,12 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   inspect_solver_kernel<<<blocks_for(batch_size), threads, 0, resources.stream_>>>(
       static_cast<std::int32_t>(batch_size), solver_info, active, failed, converged);
   if (unrestricted) {
-    matrix_product_kernel<<<blocks_for(matrix_elements), threads, 0,
-                            resources.stream_>>>(
-        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
-        orthogonalizer, false, eigensystem, active, temporary);
+    status = multiply_matrices(
+        orthogonalizer, false, eigensystem, temporary);
+    if (status != QCE_STATUS_SUCCESS) {
+      fill_global_failure(outputs, status);
+      return outputs;
+    }
     broadcast_spin_matrix_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
                                    resources.stream_>>>(
         static_cast<std::int32_t>(batch_size), 2,
@@ -4056,10 +4211,12 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
         occupied, warm_mask, warm_density, overlap, density);
   } else {
-    matrix_product_kernel<<<blocks_for(matrix_elements), threads, 0,
-                            resources.stream_>>>(
-        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
-        orthogonalizer, false, eigensystem, active, coefficients);
+    status = multiply_matrices(
+        orthogonalizer, false, eigensystem, coefficients);
+    if (status != QCE_STATUS_SUCCESS) {
+      fill_global_failure(outputs, status);
+      return outputs;
+    }
     build_density_kernel<<<blocks_for(matrix_elements), threads, 0,
                            resources.stream_>>>(
         static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
@@ -4112,34 +4269,32 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         fock_history, residual_history, diis_linear_system, diis_coefficients,
         diis_count, diis_head, eigensystem);
     if (unrestricted) {
-      spin_matrix_product_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
-                                   resources.stream_>>>(
-          static_cast<std::int32_t>(batch_size), 2,
-          static_cast<std::int32_t>(nbf), eigensystem, true, false,
-          orthogonalizer, false, active, temporary);
-      spin_matrix_product_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
-                                   resources.stream_>>>(
-          static_cast<std::int32_t>(batch_size), 2,
-          static_cast<std::int32_t>(nbf), orthogonalizer, false, true,
-          temporary, true, active, eigensystem);
-      expand_spin_active_kernel<<<blocks_for(spin_batch_size), threads, 0,
-                                  resources.stream_>>>(
-          static_cast<std::int32_t>(batch_size), 2, active, spin_active);
-      status = launch_solver(resources, static_cast<int>(nbf),
-                             static_cast<int>(spin_batch_size), eigensystem,
-                             eigenvalues, lwork, solver_info, spin_active);
+      status = multiply_spin_matrices(
+          eigensystem, true, false, orthogonalizer, false, temporary);
+      if (status == QCE_STATUS_SUCCESS) {
+        status = multiply_spin_matrices(
+            orthogonalizer, false, true, temporary, true, eigensystem);
+      }
+      if (status == QCE_STATUS_SUCCESS) {
+        expand_spin_active_kernel<<<blocks_for(spin_batch_size), threads, 0,
+                                    resources.stream_>>>(
+            static_cast<std::int32_t>(batch_size), 2, active, spin_active);
+        status = launch_solver(resources, static_cast<int>(nbf),
+                               static_cast<int>(spin_batch_size), eigensystem,
+                               eigenvalues, lwork, solver_info, spin_active);
+      }
     } else {
-      matrix_product_kernel<<<blocks_for(matrix_elements), threads, 0,
-                              resources.stream_>>>(
-          static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
-          eigensystem, false, orthogonalizer, active, temporary);
-      matrix_product_kernel<<<blocks_for(matrix_elements), threads, 0,
-                              resources.stream_>>>(
-          static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
-          orthogonalizer, true, temporary, active, eigensystem);
-      status = launch_solver(resources, static_cast<int>(nbf),
-                             static_cast<int>(batch_size), eigensystem,
-                             eigenvalues, lwork, solver_info, active);
+      status = multiply_matrices(
+          eigensystem, false, orthogonalizer, temporary);
+      if (status == QCE_STATUS_SUCCESS) {
+        status = multiply_matrices(
+            orthogonalizer, true, temporary, eigensystem);
+      }
+      if (status == QCE_STATUS_SUCCESS) {
+        status = launch_solver(resources, static_cast<int>(nbf),
+                               static_cast<int>(batch_size), eigensystem,
+                               eigenvalues, lwork, solver_info, active);
+      }
     }
     if (status == QCE_STATUS_SUCCESS) {
       if (unrestricted) {
@@ -4147,49 +4302,54 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                                      resources.stream_>>>(
             static_cast<std::int32_t>(batch_size), 2, solver_info, active,
             failed, converged);
-        spin_matrix_product_kernel<<<blocks_for(spin_matrix_elements), threads,
-                                     0, resources.stream_>>>(
-            static_cast<std::int32_t>(batch_size), 2,
-            static_cast<std::int32_t>(nbf), orthogonalizer, false, false,
-            eigensystem, true, active, coefficients);
-        build_spin_density_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
-                                    resources.stream_>>>(
-            static_cast<std::int32_t>(batch_size), 2,
-            static_cast<std::int32_t>(nbf), occupied, coefficients, active,
-            next_density);
-        update_uhf_convergence_kernel<<<blocks_for(batch_size), threads, 0,
-                                        resources.stream_>>>(
-            static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
-            options.energy_tolerance, options.density_tolerance, energy,
-            previous_energy, next_density, density, active, converged,
-            iterations, energy_change, density_rms);
+        status = multiply_spin_matrices(
+            orthogonalizer, false, false, eigensystem, true, coefficients);
+        if (status == QCE_STATUS_SUCCESS) {
+          build_spin_density_kernel<<<blocks_for(spin_matrix_elements), threads,
+                                      0, resources.stream_>>>(
+              static_cast<std::int32_t>(batch_size), 2,
+              static_cast<std::int32_t>(nbf), occupied, coefficients, active,
+              next_density);
+          update_uhf_convergence_kernel<<<blocks_for(batch_size), threads, 0,
+                                          resources.stream_>>>(
+              static_cast<std::int32_t>(batch_size),
+              static_cast<std::int32_t>(nbf), options.energy_tolerance,
+              options.density_tolerance, energy, previous_energy,
+              next_density, density, active, converged, iterations,
+              energy_change, density_rms);
+        }
       } else {
         inspect_solver_kernel<<<blocks_for(batch_size), threads, 0,
                                 resources.stream_>>>(
             static_cast<std::int32_t>(batch_size), solver_info, active, failed,
             converged);
-        matrix_product_kernel<<<blocks_for(matrix_elements), threads, 0,
-                                resources.stream_>>>(
-            static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
-            orthogonalizer, false, eigensystem, active, coefficients);
-        build_density_kernel<<<blocks_for(matrix_elements), threads, 0,
-                               resources.stream_>>>(
-            static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
-            occupied, coefficients, active, next_density);
-        update_convergence_kernel<<<blocks_for(batch_size), threads, 0,
-                                    resources.stream_>>>(
-            static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
-            options.energy_tolerance, options.density_tolerance, energy,
-            previous_energy, next_density, density, active, converged,
-            iterations, energy_change, density_rms);
+        status = multiply_matrices(
+            orthogonalizer, false, eigensystem, coefficients);
+        if (status == QCE_STATUS_SUCCESS) {
+          build_density_kernel<<<blocks_for(matrix_elements), threads, 0,
+                                 resources.stream_>>>(
+              static_cast<std::int32_t>(batch_size),
+              static_cast<std::int32_t>(nbf), occupied, coefficients, active,
+              next_density);
+          update_convergence_kernel<<<blocks_for(batch_size), threads, 0,
+                                      resources.stream_>>>(
+              static_cast<std::int32_t>(batch_size),
+              static_cast<std::int32_t>(nbf), options.energy_tolerance,
+              options.density_tolerance, energy, previous_energy,
+              next_density, density, active, converged, iterations,
+              energy_change, density_rms);
+        }
       }
-      tail_rhf_loop_kernel<<<1, 1, 0, resources.stream_>>>(
-          static_cast<std::int32_t>(batch_size), options.max_iterations,
-          active, iterations);
+      if (status == QCE_STATUS_SUCCESS) {
+        tail_rhf_loop_kernel<<<1, 1, 0, resources.stream_>>>(
+            static_cast<std::int32_t>(batch_size), options.max_iterations,
+            active, iterations);
+      }
     }
     cuda_error = cudaStreamEndCapture(resources.stream_, &resources.iteration_graph_);
     if (status != QCE_STATUS_SUCCESS || cuda_error != cudaSuccess ||
         resources.iteration_graph_ == nullptr) {
+      if (use_cublas) plan.retry_without_cublas = true;
       fill_global_failure(outputs, status != QCE_STATUS_SUCCESS
                                        ? status
                                        : cuda_status(cuda_error));
@@ -4205,6 +4365,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       cuda_error = cudaStreamSynchronize(resources.stream_);
     }
     if (cuda_error != cudaSuccess) {
+      if (use_cublas) plan.retry_without_cublas = true;
       fill_global_failure(outputs, cuda_status(cuda_error));
       return outputs;
     }
@@ -4225,34 +4386,31 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       static_cast<std::int32_t>(batch_size), converged, failed, active);
   launch_fock_builder(density);
   if (unrestricted) {
-    spin_matrix_product_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
-                                 resources.stream_>>>(
-        static_cast<std::int32_t>(batch_size), 2,
-        static_cast<std::int32_t>(nbf), fock, true, false, orthogonalizer,
-        false, active, temporary);
-    spin_matrix_product_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
-                                 resources.stream_>>>(
-        static_cast<std::int32_t>(batch_size), 2,
-        static_cast<std::int32_t>(nbf), orthogonalizer, false, true, temporary,
-        true, active, eigensystem);
-    expand_spin_active_kernel<<<blocks_for(spin_batch_size), threads, 0,
-                                resources.stream_>>>(
-        static_cast<std::int32_t>(batch_size), 2, active, spin_active);
-    status = launch_solver(resources, static_cast<int>(nbf),
-                           static_cast<int>(spin_batch_size), eigensystem,
-                           eigenvalues, lwork, solver_info, spin_active);
+    status = multiply_spin_matrices(
+        fock, true, false, orthogonalizer, false, temporary);
+    if (status == QCE_STATUS_SUCCESS) {
+      status = multiply_spin_matrices(
+          orthogonalizer, false, true, temporary, true, eigensystem);
+    }
+    if (status == QCE_STATUS_SUCCESS) {
+      expand_spin_active_kernel<<<blocks_for(spin_batch_size), threads, 0,
+                                  resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size), 2, active, spin_active);
+      status = launch_solver(resources, static_cast<int>(nbf),
+                             static_cast<int>(spin_batch_size), eigensystem,
+                             eigenvalues, lwork, solver_info, spin_active);
+    }
   } else {
-    matrix_product_kernel<<<blocks_for(matrix_elements), threads, 0,
-                            resources.stream_>>>(
-        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
-        fock, false, orthogonalizer, active, temporary);
-    matrix_product_kernel<<<blocks_for(matrix_elements), threads, 0,
-                            resources.stream_>>>(
-        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
-        orthogonalizer, true, temporary, active, eigensystem);
-    status = launch_solver(resources, static_cast<int>(nbf),
-                           static_cast<int>(batch_size), eigensystem,
-                           eigenvalues, lwork, solver_info, active);
+    status = multiply_matrices(fock, false, orthogonalizer, temporary);
+    if (status == QCE_STATUS_SUCCESS) {
+      status = multiply_matrices(
+          orthogonalizer, true, temporary, eigensystem);
+    }
+    if (status == QCE_STATUS_SUCCESS) {
+      status = launch_solver(resources, static_cast<int>(nbf),
+                             static_cast<int>(batch_size), eigensystem,
+                             eigenvalues, lwork, solver_info, active);
+    }
   }
   if (status != QCE_STATUS_SUCCESS) {
     fill_global_failure(outputs, status);
@@ -4263,11 +4421,12 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                                  resources.stream_>>>(
         static_cast<std::int32_t>(batch_size), 2, solver_info, active, failed,
         converged);
-    spin_matrix_product_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
-                                 resources.stream_>>>(
-        static_cast<std::int32_t>(batch_size), 2,
-        static_cast<std::int32_t>(nbf), orthogonalizer, false, false,
-        eigensystem, true, active, coefficients);
+    status = multiply_spin_matrices(
+        orthogonalizer, false, false, eigensystem, true, coefficients);
+    if (status != QCE_STATUS_SUCCESS) {
+      fill_global_failure(outputs, status);
+      return outputs;
+    }
     build_spin_density_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
                                 resources.stream_>>>(
         static_cast<std::int32_t>(batch_size), 2,
@@ -4277,10 +4436,12 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                             resources.stream_>>>(
         static_cast<std::int32_t>(batch_size), solver_info, active, failed,
         converged);
-    matrix_product_kernel<<<blocks_for(matrix_elements), threads, 0,
-                            resources.stream_>>>(
-        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
-        orthogonalizer, false, eigensystem, active, coefficients);
+    status = multiply_matrices(
+        orthogonalizer, false, eigensystem, coefficients);
+    if (status != QCE_STATUS_SUCCESS) {
+      fill_global_failure(outputs, status);
+      return outputs;
+    }
     build_density_kernel<<<blocks_for(matrix_elements), threads, 0,
                            resources.stream_>>>(
         static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
@@ -4519,9 +4680,28 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
   }
   std::vector<RhfBucketItem> outputs = execute_hf_cuda_bucket(
       **plan, systems, options, initial_densities, device_id, unrestricted);
+  const bool retry_without_cublas =
+      !(*plan)->initialized && (*plan)->retry_without_cublas;
   if (!(*plan)->initialized) {
     delete *plan;
     *plan = nullptr;
+  }
+  if (retry_without_cublas) {
+    // Provider setup or graph capture can reject a cuBLAS implementation on a
+    // particular CUDA release. Rebuild once with the numerically identical
+    // native kernel so public CUDA execution remains available.
+    *plan = new (std::nothrow) CudaRhfBucketPlan{};
+    if (*plan == nullptr) {
+      fill_global_failure(outputs, QCE_STATUS_OUT_OF_MEMORY);
+      return outputs;
+    }
+    (*plan)->cublas_enabled = false;
+    outputs = execute_hf_cuda_bucket(
+        **plan, systems, options, initial_densities, device_id, unrestricted);
+    if (!(*plan)->initialized) {
+      delete *plan;
+      *plan = nullptr;
+    }
   }
   return outputs;
 }
