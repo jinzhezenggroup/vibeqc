@@ -97,6 +97,17 @@ and performance measurements pass.
   96-AO batch-4 candidate/baseline/candidate medians are 7.916/8.412/7.912 s,
   while the 192-AO batch-1/4 correctness checks remain below `5.6e-11` and
   `2.3e-10 Eh/bohr` maximum force error.
+  Total-order-4 then reuses the same exact subset/Wick derivative machinery
+  through Coulomb order five. Its RHF/UHF kernel falls from 255 registers and
+  2,024 stack bytes to 212 registers and 1,376 stack bytes, and its exact
+  96-AO force-pass profile falls from 146.7 ms to 86.7 ms. Interleaved
+  candidate/baseline/candidate batch-1 medians are 2.021/2.082/2.021 s;
+  batch-4 records 7.675/7.894/8.020 s, with the final candidate requiring one
+  additional SCF iteration for one system. The 192-AO batch-1/4 checks remain
+  below `1.2e-11 Eh` maximum energy error and `2.4e-10 Eh/bohr` maximum force
+  error. Dedicated analytic force formulas therefore cover every total
+  angular order from zero through five; order six and above remain on the
+  general three-component forward scalar.
   Clean RTX 5090
   artifacts validate energy, forces, and homogeneous-batch throughput for the
   exact `sdf18-direct`, Cartesian water/def2-SVP, and open-shell
