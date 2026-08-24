@@ -128,6 +128,10 @@ blocks while retaining O(N^2) numerical storage; empty tiles exit after
 decoding instead of requiring an O(N^4) descriptor array. Double
 atomics make this fast but not bitwise deterministic: a 50-replay 21-AO test
 showed about 1.5e-14 Eh energy span and 1.4e-12 Eh/bohr maximum force span.
+The ERI force kernel additionally uses translational invariance: derivatives
+over all unique basis centers sum to zero, so it evaluates only `N-1` centers
+and restores the final center from the negative sum. This halves two-center
+and removes one third of three-center Dual-integral work.
 Canonical AO-pair arrays remain
 resident for one-electron triangles and Schwarz bounds,
 following gpuxtb's immutable pair-metadata pattern. A geometry-dependent

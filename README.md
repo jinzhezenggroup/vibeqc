@@ -109,7 +109,9 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   topology-derived AO-quartet tile multiplicity exposes large d/f component
   groups across multiple blocks without storing an O(N^4) task array. The
   two-electron force contracts the same unique quartets and differentiates only
-  the four participating shell centers. Every bucket uploads one
+  the participating shell centers; ERI translational invariance evaluates only
+  `N_unique-1` centers and reconstructs the final derivative from their
+  negative sum. Every bucket uploads one
   fixed-topology packed AO-pair table; one-electron integrals and their force
   terms use only the triangle, and direct buckets reuse it for Schwarz bounds
   and the direct scheduler. Ragged canonical shell-pair and shell-quartet

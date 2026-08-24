@@ -33,7 +33,9 @@ and performance measurements pass.
   all J/K contributions. Fixed topology-derived AO-quartet tiling exposes
   large d/f groups across multiple blocks without an O(N^4) descriptor list;
   analytic two-electron forces use the same unique quartets and only the
-  participating shell centers. A geometry-dependent device compaction pass now
+  participating shell centers. Translational invariance now reduces their
+  derivative evaluations from N unique centers to N-1 and reconstructs the
+  final center exactly. A geometry-dependent device compaction pass now
   selects active shell quartets from those bounds without host readback and
   expands them into only their populated AO tiles. Direct Fock and force reuse
   those exact descriptors, avoiding global-maximum tile padding and repeated

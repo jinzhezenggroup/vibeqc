@@ -3847,28 +3847,44 @@ __global__ void two_electron_force_quartet_kernel(
     }
     if (coefficient == 0.0) return;
 
-    // Only the four basis centers can contribute to an ERI derivative. This
-    // avoids evaluating a formally zero Dual integral for every atom in the
-    // molecule, while duplicate centers are contracted exactly once.
+    // An ERI is invariant when all four basis centers translate together, so
+    // its derivatives over the unique participating atoms sum to zero. Build
+    // that unique list, evaluate only N-1 centers, and recover the final one
+    // from the negative sum. This halves two-center work and removes one third
+    // of three-center work without changing the analytic-gradient contract.
+    std::int32_t unique_center_atoms[4];
+    unsigned unique_center_count = 0;
     for (unsigned center = 0; center < 4; ++center) {
       bool duplicate_center = false;
-      for (unsigned previous = 0; previous < center; ++previous) {
+      for (unsigned previous = 0; previous < unique_center_count; ++previous) {
         duplicate_center = duplicate_center ||
-            center_atoms[center] == center_atoms[previous];
+            center_atoms[center] == unique_center_atoms[previous];
       }
-      if (duplicate_center) continue;
-      for (std::int64_t axis = 0; axis < 3; ++axis) {
+      if (!duplicate_center) {
+        unique_center_atoms[unique_center_count++] = center_atoms[center];
+      }
+    }
+    for (std::int64_t axis = 0; axis < 3; ++axis) {
+      double derivative_sum = 0.0;
+      for (unsigned center = 0; center + 1 < unique_center_count; ++center) {
         const std::int64_t coordinate =
-            static_cast<std::int64_t>(center_atoms[center]) * 3 + axis;
+            static_cast<std::int64_t>(unique_center_atoms[center]) * 3 + axis;
         const Dual derivative =
             dispatch_contracted_eri_shell_class<AngularOrder, Dual>(
                 shell_class, batch, system, static_cast<std::int32_t>(i),
                 static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
                 static_cast<std::int32_t>(l), coordinate);
+        derivative_sum += derivative.derivative;
         if (derivative.derivative != 0.0) {
           atomicAdd(forces + coordinate,
                     -coefficient * derivative.derivative);
         }
+      }
+      if (unique_center_count > 1 && derivative_sum != 0.0) {
+        const std::int64_t final_coordinate =
+            static_cast<std::int64_t>(
+                unique_center_atoms[unique_center_count - 1]) * 3 + axis;
+        atomicAdd(forces + final_coordinate, coefficient * derivative_sum);
       }
     }
   }

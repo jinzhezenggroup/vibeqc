@@ -46,5 +46,7 @@ logical AO-quartet tile evaluates each unique integral once and scatters all
 RHF/UHF J/K contributions. A fixed topology-derived tile multiplicity exposes
 large d/f groups across multiple blocks without per-quartet descriptors. The
 analytic-force pass contracts the same quartets and visits only their
-shell-center coordinates. Finer AO-level active compaction remains a later
-scheduler milestone.
+shell-center coordinates. ERI translational invariance evaluates `N-1` unique
+centers and reconstructs the last derivative, reducing force recurrence work
+without changing the stationary gradient. Finer AO-level active compaction
+remains a later scheduler milestone.
