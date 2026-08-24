@@ -252,7 +252,7 @@ explicit accuracy gates: `3e-11 Eh`/`3e-11 Eh/bohr` at 96 AOs and
 `1e-10 Eh`/`5e-10 Eh/bohr` at 192 AOs. They use
 `1e-12 Eh`/`1e-10` SCF energy/density tolerances and a matching `1e-14`
 direct-J/K screening threshold; both engines receive up to 100 SCF iterations.
-GPU4PySCF uses separate `1e-10` and `1e-8` orbital-gradient thresholds for the
+GPU4PySCF uses separate `1e-9` and `1e-8` orbital-gradient thresholds for the
 96- and 192-AO points, respectively, avoiding its large-system numerical-noise
 floor. The 96-AO points also require at least parity with GPU4PySCF now; the
 192-AO speed gate activates after complete DF J/K. Run

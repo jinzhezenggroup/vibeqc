@@ -133,7 +133,7 @@ def test_real_molecule_gate_has_four_explicit_dry_run_points(tmp_path):
     assert all("--energy-tolerance 1e-12" in line for line in commands)
     assert all("--density-tolerance 1e-10" in line for line in commands)
     assert sum(
-        "--reference-gradient-tolerance 1e-10" in line
+        "--reference-gradient-tolerance 1e-09" in line
         for line in commands
     ) == 2
     assert sum(

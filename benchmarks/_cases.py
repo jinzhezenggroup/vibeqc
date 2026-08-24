@@ -294,7 +294,11 @@ def real_molecule_gate_points() -> tuple[BenchmarkGatePoint, ...]:
     accuracy_96 = {
         "maximum_energy_error": 3.0e-11,
         "maximum_force_error": 3.0e-11,
-        "reference_gradient_tolerance": 1.0e-10,
+        # GPU4PySCF reaches a stable energy/force plateau here but can keep
+        # cycling above its 1e-10 gradient threshold for the scaled batch
+        # endpoints. The 1e-9 setting converges all four reference systems
+        # while remaining well inside the explicit QCE error gates.
+        "reference_gradient_tolerance": 1.0e-9,
     }
     accuracy_192 = {
         "maximum_energy_error": 1.0e-10,

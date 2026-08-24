@@ -163,7 +163,11 @@ and performance measurements pass.
   or below `3e-11 Eh` maximum energy error and `3e-11 Eh/bohr` maximum force
   error under `1e-12 Eh`/`1e-10` SCF energy/density tolerances and a `1e-14`
   QCE Schwarz-screening threshold matching GPU4PySCF's direct-SCF threshold.
-  GPU4PySCF uses its separate `1e-10` orbital-gradient threshold at this size.
+  GPU4PySCF uses its separate `1e-9` orbital-gradient threshold at this size;
+  `1e-10` can cycle at its numerical-noise floor for the scaled batch
+  endpoints. A full batch-4 replay at `1e-9` converged all reference systems
+  with `1.02e-12 Eh` maximum energy error and `1.81e-11 Eh/bohr` maximum force
+  error.
   Both engines receive up to 100 SCF iterations. Each point must be at least
   `1.0x` as fast as GPU4PySCF under the documented
   sequential single-system interface boundary.
