@@ -73,8 +73,9 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
 - Contracted `s`, `p`, `d`, and `f` shells are executable. The ABI carries an
   angular-momentum field and rejects `g` and higher shells. Both backends
   support CCA Cartesian and PySCF/libcint-ordered real spherical functions.
-  CUDA evaluates sparse spherical d/f expansions on device and never falls
-  back to the host.
+  CUDA keeps public spherical matrices on device, maps direct-J/K densities to
+  normalized Cartesian source AOs, and maps the resulting Fock matrices back
+  without a host fallback.
 - The Python package bundles data-only STO-3G, def2-SVP, and def2-TZVP packs
   for H-Ar, generated from the pinned Basis Set Exchange reference. Named basis
   calculations remain Cartesian by default for compatibility; pass
@@ -122,10 +123,12 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   allocated RTX 5090 energy/force and throughput validation for the exact
   `sdf18-direct` and Cartesian water/def2-SVP batch workloads. Direct consumers
   dispatch 55 symmetry-reduced s/p/d/f shell classes inside 13 angular-order
-  Graph nodes, canonicalize ERI arguments by pair symmetry, contract sparse
-  real-spherical expansion terms, and size Hermite workspaces from the exact
-  shell pairs. Component-unrolled/Rys kernels, broader named-basis gates, and
-  DF J/K are still required before making broad production performance claims.
+  Graph nodes, canonicalize ERI arguments by pair symmetry, and size Hermite
+  workspaces from the exact shell pairs. Real-spherical direct buckets apply
+  `C^T D C` before those Cartesian-source quartets and `C F C^T` afterwards,
+  eliminating repeated sparse term products from Fock and force recurrences.
+  Component-unrolled/Rys kernels, broader named-basis gates, and DF J/K are
+  still required before making broad production performance claims.
 
 UHF uses the same memory policy: small buckets retain ERIs, while larger
 buckets build spin-resolved Fock matrices directly from O(N^2) Schwarz data.

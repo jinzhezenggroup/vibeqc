@@ -47,9 +47,9 @@ and performance measurements pass.
   compaction writes screened tiles directly into those partitions, and direct
   RHF/UHF Fock and force launch separately compiled total-order kernels so
   lower-order tasks no longer inherit the ffff stack footprint. Exact
-  shell-class Hermite workspaces reduce Fock stack at orders 0/4/12 to
-  0/2440/21240 bytes. Three-component force propagation uses
-  112/8672/84448 bytes at those orders; its larger per-thread workspace is
+  Cartesian-source shell-class workspaces use Fock stack at orders 0/4/12 of
+  304/2488/21288 bytes. Three-component force propagation uses
+  576/8608/84384 bytes at those orders; its larger per-thread workspace is
   offset by evaluating each center once instead of once per Cartesian axis.
   Clean RTX 5090
   artifacts validate energy, forces, and homogeneous-batch throughput for the
@@ -69,11 +69,12 @@ and performance measurements pass.
   A larger 43-AO pure water/def2-TZVP batch-4 artifact records 2.82x after the
   Graph-native eigensolver, ERI force-center reduction, and three-component
   force propagation; the matching 48-AO Cartesian artifact records 5.84x.
-- Exact shell-class recurrence workspaces and the device-compacted active-task
-  scheduler are implemented. Replace the remaining component loops and generic
-  symmetry scatter with generated shell-class/Rys kernels where profiling
-  justifies them. Retain the present CPU code as an auditable oracle rather
-  than a hidden fallback.
+- Exact shell-class recurrence workspaces, Cartesian-source contraction for
+  public spherical direct J/K, and the device-compacted active-task scheduler
+  are implemented. Replace the remaining recurrence component loops and
+  generic symmetry scatter with generated shell-class/Rys kernels where
+  profiling justifies them. Retain the present CPU code as an auditable oracle
+  rather than a hidden fallback.
 
 ## M0.5: native fleet semantics — implemented
 
@@ -89,10 +90,11 @@ and performance measurements pass.
   real spherical s-p-d-f scope. Device DIIS, device-tail Graph control,
   persistent plan arenas,
   Schwarz screening, and a memory-bounded direct J/K fallback are implemented;
-  symmetry-reduced direct s/p/d/f quartets contract both Cartesian targets and
-  sparse multi-term real-spherical targets through exact shell-class
-  workspaces. Component-unrolled/Rys shell kernels, DF J/K, and broader active
-  compaction gates remain M1/M2 work and are not implied by the backend label.
+  symmetry-reduced direct s/p/d/f quartets use exact Cartesian-source
+  shell-class workspaces. Public real-spherical densities and Fock matrices
+  transform on device around those consumers. Component-unrolled/Rys shell
+  kernels, DF J/K, and broader active compaction gates remain M1/M2 work and
+  are not implied by the backend label.
 
 ## M2: production RHF and UHF
 

@@ -142,10 +142,13 @@ following gpuxtb's immutable pair-metadata pattern. A geometry-dependent
 device pass compacts shell quartets whose shell-level Schwarz product survives
 the current threshold; the SCF Graph and analytic-force pass consume the same
 list without host readback. Component-unrolled/Rys quartet kernels and finer
-AO-level task compaction remain subsequent scheduler work. The exact
-shell-class evaluator contracts every sparse real-spherical Cartesian term
-within the same symmetry-reduced task, so pure d/f targets do not fall back to
-the generic matrix-element direct kernel.
+AO-level task compaction remain subsequent scheduler work. Direct quartets
+always operate on normalized Cartesian source AOs. For a public real-spherical
+basis, capture-safe kernels form `D_cart = C^T D_spherical C`, run the same
+exact shell-class Fock and force consumers, and restore
+`F_spherical = C F_cart C^T`. This keeps DIIS, eigensolves, energies, warm
+states, and returned matrices in the public AO representation while removing
+repeated sparse spherical term products from the dominant ERI recurrences.
 
 The packed arena and optional cuSOLVER workspace use CUDA's stream-ordered
 memory pool. Allocation occurs before Graph capture and release is enqueued on

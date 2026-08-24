@@ -212,6 +212,9 @@ struct Vec3 {
 struct DeviceBatch {
   std::int32_t batch_size;
   std::int32_t nbf;
+  // Direct shell quartets always use normalized Cartesian source AOs. This
+  // equals nbf for Cartesian public bases and is larger for spherical d/f.
+  std::int32_t direct_nbf;
   std::int64_t total_atoms;
   std::int64_t total_shells;
   std::int64_t total_shell_pairs;
@@ -224,6 +227,7 @@ struct DeviceBatch {
   const std::int32_t* shell_atoms;
   const std::uint8_t* shell_angular;
   const std::int64_t* shell_ao_offsets;
+  const std::int64_t* shell_direct_ao_offsets;
   const std::int64_t* shell_primitive_offsets;
   const std::int64_t* system_shell_pair_offsets;
   const std::int64_t* system_shell_quartet_offsets;
@@ -237,6 +241,12 @@ struct DeviceBatch {
   const std::uint8_t* ao_term_counts;
   const std::uint8_t* ao_term_angular;
   const double* ao_term_coefficients;
+  const std::int32_t* direct_ao_shells;
+  const std::uint8_t* direct_ao_angular;
+  const double* direct_ao_coefficients;
+  // Column-major C with public AO rows and Cartesian source AO columns:
+  // phi_public = C * phi_cartesian.
+  const double* ao_to_direct_transform;
   const double* primitive_exponents;
   const double* primitive_coefficients;
   const std::int32_t* occupied;
@@ -289,11 +299,11 @@ __device__ std::size_t shell_ao_pair_count(const DeviceBatch& batch,
   const std::int32_t first_shell = batch.shell_pair_first[shell_pair];
   const std::int32_t second_shell = batch.shell_pair_second[shell_pair];
   const std::size_t first_count =
-      static_cast<std::size_t>(batch.shell_ao_offsets[first_shell + 1] -
-                               batch.shell_ao_offsets[first_shell]);
+      static_cast<std::size_t>(batch.shell_direct_ao_offsets[first_shell + 1] -
+                               batch.shell_direct_ao_offsets[first_shell]);
   const std::size_t second_count =
-      static_cast<std::size_t>(batch.shell_ao_offsets[second_shell + 1] -
-                               batch.shell_ao_offsets[second_shell]);
+      static_cast<std::size_t>(batch.shell_direct_ao_offsets[second_shell + 1] -
+                               batch.shell_direct_ao_offsets[second_shell]);
   return first_shell == second_shell
       ? first_count * (first_count + 1) / 2
       : first_count * second_count;
@@ -308,11 +318,11 @@ __device__ void decode_shell_ao_pair(const DeviceBatch& batch,
   const std::int32_t first_shell = batch.shell_pair_first[shell_pair];
   const std::int32_t second_shell = batch.shell_pair_second[shell_pair];
   const std::size_t first_begin =
-      static_cast<std::size_t>(batch.shell_ao_offsets[first_shell]);
+      static_cast<std::size_t>(batch.shell_direct_ao_offsets[first_shell]);
   const std::size_t second_begin =
-      static_cast<std::size_t>(batch.shell_ao_offsets[second_shell]);
+      static_cast<std::size_t>(batch.shell_direct_ao_offsets[second_shell]);
   const std::size_t second_count =
-      static_cast<std::size_t>(batch.shell_ao_offsets[second_shell + 1]) -
+      static_cast<std::size_t>(batch.shell_direct_ao_offsets[second_shell + 1]) -
       second_begin;
   std::size_t first_component = 0;
   std::size_t second_component = 0;
@@ -528,6 +538,13 @@ __device__ double ao_term_coefficient(const DeviceBatch& batch,
                                       unsigned term) {
   return batch.ao_term_coefficients[
       static_cast<std::size_t>(ao) * kMaximumAoExpansionTerms + term];
+}
+
+__device__ Angular direct_ao_angular(const DeviceBatch& batch,
+                                     std::int64_t ao) {
+  const std::size_t offset = static_cast<std::size_t>(ao) * 3;
+  return {batch.direct_ao_angular[offset], batch.direct_ao_angular[offset + 1],
+          batch.direct_ao_angular[offset + 2]};
 }
 
 template <typename Scalar>
@@ -1462,12 +1479,20 @@ __device__ Scalar contracted_eri(const DeviceBatch& batch,
   return scalar<Scalar>(0.0);
 }
 
+/**
+ * Contract one quartet of normalized Cartesian source AOs.
+ *
+ * Public spherical AOs are handled by transforming their density before this
+ * evaluator and their Fock matrix afterwards. Each source AO therefore has
+ * exactly one angular component, eliminating the sparse term-product loops
+ * from the dominant direct Fock and force recurrences.
+ */
 template <unsigned FirstShellAngular,
           unsigned SecondShellAngular,
           unsigned ThirdShellAngular,
           unsigned FourthShellAngular,
           typename Scalar>
-__device__ __noinline__ Scalar contracted_eri_cartesian_shell_class(
+__device__ __noinline__ Scalar contracted_eri_cartesian_source_shell_class(
     const DeviceBatch& batch,
     std::int64_t ao_i,
     std::int64_t ao_j,
@@ -1478,6 +1503,9 @@ __device__ __noinline__ Scalar contracted_eri_cartesian_shell_class(
     std::int32_t shell_k,
     std::int32_t shell_l,
     std::int64_t derivative_coordinate) {
+  constexpr unsigned MaximumAngular =
+      FirstShellAngular + SecondShellAngular + ThirdShellAngular +
+      FourthShellAngular;
   const Vec3<Scalar> first = atom_position<Scalar>(
       batch, batch.shell_atoms[shell_i], derivative_coordinate);
   const Vec3<Scalar> second = atom_position<Scalar>(
@@ -1486,60 +1514,45 @@ __device__ __noinline__ Scalar contracted_eri_cartesian_shell_class(
       batch, batch.shell_atoms[shell_k], derivative_coordinate);
   const Vec3<Scalar> fourth = atom_position<Scalar>(
       batch, batch.shell_atoms[shell_l], derivative_coordinate);
-  const unsigned first_terms = batch.ao_term_counts[ao_i];
-  const unsigned second_terms = batch.ao_term_counts[ao_j];
-  const unsigned third_terms = batch.ao_term_counts[ao_k];
-  const unsigned fourth_terms = batch.ao_term_counts[ao_l];
+  const Angular angular_first = direct_ao_angular(batch, ao_i);
+  const Angular angular_second = direct_ao_angular(batch, ao_j);
+  const Angular angular_third = direct_ao_angular(batch, ao_k);
+  const Angular angular_fourth = direct_ao_angular(batch, ao_l);
+  const double angular_coefficient =
+      batch.direct_ao_coefficients[ao_i] *
+      batch.direct_ao_coefficients[ao_j] *
+      batch.direct_ao_coefficients[ao_k] *
+      batch.direct_ao_coefficients[ao_l];
 
   Scalar result = scalar<Scalar>(0.0);
-  // Sparse spherical terms are geometry-independent. Keep their metadata
-  // outside the contracted-primitive loops so named bases do not reload the
-  // same AO expansion for every primitive quartet.
-  for (unsigned first_term = 0; first_term < first_terms; ++first_term) {
-    const Angular angular_first = ao_angular(batch, ao_i, first_term);
-    const double first_coefficient =
-        ao_term_coefficient(batch, ao_i, first_term);
-    for (unsigned second_term = 0; second_term < second_terms; ++second_term) {
-      const Angular angular_second = ao_angular(batch, ao_j, second_term);
-      const double second_coefficient =
-          ao_term_coefficient(batch, ao_j, second_term);
-      for (unsigned third_term = 0; third_term < third_terms; ++third_term) {
-        const Angular angular_third = ao_angular(batch, ao_k, third_term);
-        const double third_coefficient =
-            ao_term_coefficient(batch, ao_k, third_term);
-        for (unsigned fourth_term = 0; fourth_term < fourth_terms;
-             ++fourth_term) {
-          const Angular angular_fourth =
-              ao_angular(batch, ao_l, fourth_term);
-          const double angular_coefficient = first_coefficient *
-              second_coefficient * third_coefficient *
-              ao_term_coefficient(batch, ao_l, fourth_term);
-          for (std::int64_t a = batch.shell_primitive_offsets[shell_i];
-               a < batch.shell_primitive_offsets[shell_i + 1]; ++a) {
-            for (std::int64_t b = batch.shell_primitive_offsets[shell_j];
-                 b < batch.shell_primitive_offsets[shell_j + 1]; ++b) {
-              for (std::int64_t c = batch.shell_primitive_offsets[shell_k];
-                   c < batch.shell_primitive_offsets[shell_k + 1]; ++c) {
-                for (std::int64_t d =
-                         batch.shell_primitive_offsets[shell_l];
-                     d < batch.shell_primitive_offsets[shell_l + 1]; ++d) {
-                  const double weight = angular_coefficient *
-                      batch.primitive_coefficients[a] *
-                      batch.primitive_coefficients[b] *
-                      batch.primitive_coefficients[c] *
-                      batch.primitive_coefficients[d];
-                  result = result + weight *
-                      primitive_eri_cartesian_shell_class<
-                          FirstShellAngular, SecondShellAngular,
-                          ThirdShellAngular, FourthShellAngular>(
-                          batch.primitive_exponents[a], first, angular_first,
-                          batch.primitive_exponents[b], second,
-                          angular_second, batch.primitive_exponents[c], third,
-                          angular_third, batch.primitive_exponents[d], fourth,
-                          angular_fourth);
-                }
-              }
-            }
+  for (std::int64_t a = batch.shell_primitive_offsets[shell_i];
+       a < batch.shell_primitive_offsets[shell_i + 1]; ++a) {
+    for (std::int64_t b = batch.shell_primitive_offsets[shell_j];
+         b < batch.shell_primitive_offsets[shell_j + 1]; ++b) {
+      for (std::int64_t c = batch.shell_primitive_offsets[shell_k];
+           c < batch.shell_primitive_offsets[shell_k + 1]; ++c) {
+        for (std::int64_t d = batch.shell_primitive_offsets[shell_l];
+             d < batch.shell_primitive_offsets[shell_l + 1]; ++d) {
+          const double weight = angular_coefficient *
+              batch.primitive_coefficients[a] *
+              batch.primitive_coefficients[b] *
+              batch.primitive_coefficients[c] *
+              batch.primitive_coefficients[d];
+          if constexpr (MaximumAngular == 0) {
+            result = result + weight * primitive_eri(
+                batch.primitive_exponents[a], first,
+                batch.primitive_exponents[b], second,
+                batch.primitive_exponents[c], third,
+                batch.primitive_exponents[d], fourth);
+          } else {
+            result = result + weight *
+                primitive_eri_cartesian_shell_class<
+                    FirstShellAngular, SecondShellAngular,
+                    ThirdShellAngular, FourthShellAngular>(
+                    batch.primitive_exponents[a], first, angular_first,
+                    batch.primitive_exponents[b], second, angular_second,
+                    batch.primitive_exponents[c], third, angular_third,
+                    batch.primitive_exponents[d], fourth, angular_fourth);
           }
         }
       }
@@ -1548,15 +1561,9 @@ __device__ __noinline__ Scalar contracted_eri_cartesian_shell_class(
   return result;
 }
 
-/**
- * Canonicalize one AO quartet to the exact shell class selected by compaction.
- *
- * ERIs and their coordinate derivatives are invariant to swaps within either
- * pair and to pair exchange, so only the integral evaluator is reordered; the
- * Fock/force symmetry scatter continues to use the original AO indices.
- */
+/** Canonicalize one Cartesian source quartet to its exact shell class. */
 template <unsigned ShellClass, typename Scalar>
-__device__ Scalar contracted_eri_shell_class(
+__device__ Scalar contracted_eri_cartesian_source_shell_class(
     const DeviceBatch& batch,
     std::int32_t system,
     std::int32_t i,
@@ -1579,15 +1586,13 @@ __device__ Scalar contracted_eri_shell_class(
   constexpr unsigned FourthShellAngular =
       SecondPairClass -
       ThirdShellAngular * (ThirdShellAngular + 1) / 2;
-  constexpr unsigned MaximumAngular =
-      FirstShellAngular + SecondShellAngular + ThirdShellAngular +
-      FourthShellAngular;
 
-  const std::int64_t base = static_cast<std::int64_t>(system) * batch.nbf;
-  std::int32_t shell_i = batch.ao_shells[base + i];
-  std::int32_t shell_j = batch.ao_shells[base + j];
-  std::int32_t shell_k = batch.ao_shells[base + k];
-  std::int32_t shell_l = batch.ao_shells[base + l];
+  const std::int64_t base =
+      static_cast<std::int64_t>(system) * batch.direct_nbf;
+  std::int32_t shell_i = batch.direct_ao_shells[base + i];
+  std::int32_t shell_j = batch.direct_ao_shells[base + j];
+  std::int32_t shell_k = batch.direct_ao_shells[base + k];
+  std::int32_t shell_l = batch.direct_ao_shells[base + l];
   unsigned angular_i = batch.shell_angular[shell_i];
   unsigned angular_j = batch.shell_angular[shell_j];
   unsigned angular_k = batch.shell_angular[shell_k];
@@ -1632,32 +1637,18 @@ __device__ Scalar contracted_eri_shell_class(
     shell_j = shell_l;
     shell_k = first_shell;
     shell_l = second_shell;
-    const unsigned first_angular = angular_i;
-    const unsigned second_angular = angular_j;
-    angular_i = angular_k;
-    angular_j = angular_l;
-    angular_k = first_angular;
-    angular_l = second_angular;
   }
 
-  // Compaction uses the same shell metadata to choose ShellClass. Sparse real
-  // spherical expansion terms retain that shell angular momentum, so the
-  // exact Cartesian recurrence workspace remains valid for every term.
-  if constexpr (MaximumAngular == 0) {
-    return contracted_eri_order<0, Scalar>(
-        batch, system, i, j, k, l, derivative_coordinate);
-  } else {
-    return contracted_eri_cartesian_shell_class<
-        FirstShellAngular, SecondShellAngular, ThirdShellAngular,
-        FourthShellAngular, Scalar>(
-        batch, base + i, base + j, base + k, base + l,
-        shell_i, shell_j, shell_k, shell_l, derivative_coordinate);
-  }
+  return contracted_eri_cartesian_source_shell_class<
+      FirstShellAngular, SecondShellAngular, ThirdShellAngular,
+      FourthShellAngular, Scalar>(
+      batch, base + i, base + j, base + k, base + l,
+      shell_i, shell_j, shell_k, shell_l, derivative_coordinate);
 }
 
-/** Dispatch one angular-order task to its exact shell-class evaluator. */
+/** Dispatch one angular-order task to its Cartesian source evaluator. */
 template <unsigned AngularOrder, typename Scalar>
-__device__ Scalar dispatch_contracted_eri_shell_class(
+__device__ Scalar dispatch_contracted_eri_cartesian_source_shell_class(
     unsigned runtime_shell_class,
     const DeviceBatch& batch,
     std::int32_t system,
@@ -1667,76 +1658,119 @@ __device__ Scalar dispatch_contracted_eri_shell_class(
     std::int32_t l,
     std::int64_t derivative_coordinate) {
   static_assert(AngularOrder < detail::kDirectQuartetAngularOrderCount);
-  // The flat generated cases avoid a recursive device-call chain. The
-  // if-constexpr branch removes every class belonging to a different angular
-  // order, so an order-0 kernel references only ssss while preserving 13
-  // launches.
-#define QCE_DIRECT_SHELL_CLASS_CASE(ShellClass)                         \
+#define QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(ShellClass)                  \
   case ShellClass:                                                     \
     if constexpr (direct_shell_class_angular_order(ShellClass) ==      \
                   AngularOrder) {                                     \
-      return contracted_eri_shell_class<ShellClass, Scalar>(           \
-          batch, system, i, j, k, l, derivative_coordinate);          \
+      return contracted_eri_cartesian_source_shell_class<              \
+          ShellClass, Scalar>(batch, system, i, j, k, l,               \
+                              derivative_coordinate);                  \
     }                                                                 \
     break
   switch (runtime_shell_class) {
-    QCE_DIRECT_SHELL_CLASS_CASE(0);
-    QCE_DIRECT_SHELL_CLASS_CASE(1);
-    QCE_DIRECT_SHELL_CLASS_CASE(2);
-    QCE_DIRECT_SHELL_CLASS_CASE(3);
-    QCE_DIRECT_SHELL_CLASS_CASE(4);
-    QCE_DIRECT_SHELL_CLASS_CASE(5);
-    QCE_DIRECT_SHELL_CLASS_CASE(6);
-    QCE_DIRECT_SHELL_CLASS_CASE(7);
-    QCE_DIRECT_SHELL_CLASS_CASE(8);
-    QCE_DIRECT_SHELL_CLASS_CASE(9);
-    QCE_DIRECT_SHELL_CLASS_CASE(10);
-    QCE_DIRECT_SHELL_CLASS_CASE(11);
-    QCE_DIRECT_SHELL_CLASS_CASE(12);
-    QCE_DIRECT_SHELL_CLASS_CASE(13);
-    QCE_DIRECT_SHELL_CLASS_CASE(14);
-    QCE_DIRECT_SHELL_CLASS_CASE(15);
-    QCE_DIRECT_SHELL_CLASS_CASE(16);
-    QCE_DIRECT_SHELL_CLASS_CASE(17);
-    QCE_DIRECT_SHELL_CLASS_CASE(18);
-    QCE_DIRECT_SHELL_CLASS_CASE(19);
-    QCE_DIRECT_SHELL_CLASS_CASE(20);
-    QCE_DIRECT_SHELL_CLASS_CASE(21);
-    QCE_DIRECT_SHELL_CLASS_CASE(22);
-    QCE_DIRECT_SHELL_CLASS_CASE(23);
-    QCE_DIRECT_SHELL_CLASS_CASE(24);
-    QCE_DIRECT_SHELL_CLASS_CASE(25);
-    QCE_DIRECT_SHELL_CLASS_CASE(26);
-    QCE_DIRECT_SHELL_CLASS_CASE(27);
-    QCE_DIRECT_SHELL_CLASS_CASE(28);
-    QCE_DIRECT_SHELL_CLASS_CASE(29);
-    QCE_DIRECT_SHELL_CLASS_CASE(30);
-    QCE_DIRECT_SHELL_CLASS_CASE(31);
-    QCE_DIRECT_SHELL_CLASS_CASE(32);
-    QCE_DIRECT_SHELL_CLASS_CASE(33);
-    QCE_DIRECT_SHELL_CLASS_CASE(34);
-    QCE_DIRECT_SHELL_CLASS_CASE(35);
-    QCE_DIRECT_SHELL_CLASS_CASE(36);
-    QCE_DIRECT_SHELL_CLASS_CASE(37);
-    QCE_DIRECT_SHELL_CLASS_CASE(38);
-    QCE_DIRECT_SHELL_CLASS_CASE(39);
-    QCE_DIRECT_SHELL_CLASS_CASE(40);
-    QCE_DIRECT_SHELL_CLASS_CASE(41);
-    QCE_DIRECT_SHELL_CLASS_CASE(42);
-    QCE_DIRECT_SHELL_CLASS_CASE(43);
-    QCE_DIRECT_SHELL_CLASS_CASE(44);
-    QCE_DIRECT_SHELL_CLASS_CASE(45);
-    QCE_DIRECT_SHELL_CLASS_CASE(46);
-    QCE_DIRECT_SHELL_CLASS_CASE(47);
-    QCE_DIRECT_SHELL_CLASS_CASE(48);
-    QCE_DIRECT_SHELL_CLASS_CASE(49);
-    QCE_DIRECT_SHELL_CLASS_CASE(50);
-    QCE_DIRECT_SHELL_CLASS_CASE(51);
-    QCE_DIRECT_SHELL_CLASS_CASE(52);
-    QCE_DIRECT_SHELL_CLASS_CASE(53);
-    QCE_DIRECT_SHELL_CLASS_CASE(54);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(0);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(1);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(2);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(3);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(4);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(5);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(6);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(7);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(8);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(9);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(10);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(11);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(12);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(13);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(14);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(15);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(16);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(17);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(18);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(19);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(20);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(21);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(22);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(23);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(24);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(25);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(26);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(27);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(28);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(29);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(30);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(31);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(32);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(33);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(34);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(35);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(36);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(37);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(38);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(39);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(40);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(41);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(42);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(43);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(44);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(45);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(46);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(47);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(48);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(49);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(50);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(51);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(52);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(53);
+    QCE_DIRECT_SOURCE_SHELL_CLASS_CASE(54);
   }
-#undef QCE_DIRECT_SHELL_CLASS_CASE
+#undef QCE_DIRECT_SOURCE_SHELL_CLASS_CASE
+  return scalar<Scalar>(0.0);
+}
+
+template <typename Scalar>
+__device__ Scalar contracted_eri_cartesian_source(
+    const DeviceBatch& batch,
+    std::int32_t system,
+    std::int32_t i,
+    std::int32_t j,
+    std::int32_t k,
+    std::int32_t l,
+    std::int64_t derivative_coordinate) {
+  const std::int64_t base =
+      static_cast<std::int64_t>(system) * batch.direct_nbf;
+  const std::int32_t shell_i = batch.direct_ao_shells[base + i];
+  const std::int32_t shell_j = batch.direct_ao_shells[base + j];
+  const std::int32_t shell_k = batch.direct_ao_shells[base + k];
+  const std::int32_t shell_l = batch.direct_ao_shells[base + l];
+  const unsigned angular_order = batch.shell_angular[shell_i] +
+                                 batch.shell_angular[shell_j] +
+                                 batch.shell_angular[shell_k] +
+                                 batch.shell_angular[shell_l];
+  const unsigned shell_class = direct_quartet_shell_class_device(
+      batch.shell_angular[shell_i], batch.shell_angular[shell_j],
+      batch.shell_angular[shell_k], batch.shell_angular[shell_l]);
+#define QCE_DIRECT_SOURCE_ANGULAR_CASE(Order)                           \
+  case Order:                                                          \
+    return dispatch_contracted_eri_cartesian_source_shell_class<       \
+        Order, Scalar>(shell_class, batch, system, i, j, k, l,         \
+                       derivative_coordinate)
+  switch (angular_order) {
+    QCE_DIRECT_SOURCE_ANGULAR_CASE(0);
+    QCE_DIRECT_SOURCE_ANGULAR_CASE(1);
+    QCE_DIRECT_SOURCE_ANGULAR_CASE(2);
+    QCE_DIRECT_SOURCE_ANGULAR_CASE(3);
+    QCE_DIRECT_SOURCE_ANGULAR_CASE(4);
+    QCE_DIRECT_SOURCE_ANGULAR_CASE(5);
+    QCE_DIRECT_SOURCE_ANGULAR_CASE(6);
+    QCE_DIRECT_SOURCE_ANGULAR_CASE(7);
+    QCE_DIRECT_SOURCE_ANGULAR_CASE(8);
+    QCE_DIRECT_SOURCE_ANGULAR_CASE(9);
+    QCE_DIRECT_SOURCE_ANGULAR_CASE(10);
+    QCE_DIRECT_SOURCE_ANGULAR_CASE(11);
+    QCE_DIRECT_SOURCE_ANGULAR_CASE(12);
+  }
+#undef QCE_DIRECT_SOURCE_ANGULAR_CASE
   return scalar<Scalar>(0.0);
 }
 
@@ -2544,8 +2578,6 @@ __global__ void build_uhf_fock_kernel(std::int32_t batch_size,
 
 __global__ void build_schwarz_bounds_packed_kernel(
     DeviceBatch batch,
-    const std::int32_t* ao_pair_first,
-    const std::int32_t* ao_pair_second,
     std::size_t pair_count,
     double* schwarz_bounds) {
   const std::size_t element =
@@ -2556,12 +2588,13 @@ __global__ void build_schwarz_bounds_packed_kernel(
   const std::int32_t system =
       static_cast<std::int32_t>(element / pair_count);
   const std::size_t pair = element % pair_count;
-  const std::size_t i = static_cast<std::size_t>(ao_pair_first[pair]);
-  const std::size_t j = static_cast<std::size_t>(ao_pair_second[pair]);
-  const std::size_t n = static_cast<std::size_t>(batch.nbf);
+  std::size_t i = 0;
+  std::size_t j = 0;
+  decode_lower_triangle(pair, i, j);
+  const std::size_t n = static_cast<std::size_t>(batch.direct_nbf);
   const std::size_t matrix_offset =
       static_cast<std::size_t>(system) * n * n;
-  const double diagonal = contracted_eri<double>(
+  const double diagonal = contracted_eri_cartesian_source<double>(
       batch, system, static_cast<std::int32_t>(i),
       static_cast<std::int32_t>(j), static_cast<std::int32_t>(i),
       static_cast<std::int32_t>(j), -1);
@@ -2585,20 +2618,20 @@ __global__ void reduce_shell_pair_bounds_kernel(
   const std::int32_t first_shell = batch.shell_pair_first[shell_pair];
   const std::int32_t second_shell = batch.shell_pair_second[shell_pair];
   const std::size_t first_begin =
-      static_cast<std::size_t>(batch.shell_ao_offsets[first_shell]);
+      static_cast<std::size_t>(batch.shell_direct_ao_offsets[first_shell]);
   const std::size_t first_count =
-      static_cast<std::size_t>(batch.shell_ao_offsets[first_shell + 1]) -
+      static_cast<std::size_t>(batch.shell_direct_ao_offsets[first_shell + 1]) -
       first_begin;
   const std::size_t second_begin =
-      static_cast<std::size_t>(batch.shell_ao_offsets[second_shell]);
+      static_cast<std::size_t>(batch.shell_direct_ao_offsets[second_shell]);
   const std::size_t second_count =
-      static_cast<std::size_t>(batch.shell_ao_offsets[second_shell + 1]) -
+      static_cast<std::size_t>(batch.shell_direct_ao_offsets[second_shell + 1]) -
       second_begin;
   const bool same_shell = first_shell == second_shell;
   const std::size_t ao_pair_count = same_shell
       ? first_count * (first_count + 1) / 2
       : first_count * second_count;
-  const std::size_t n = static_cast<std::size_t>(batch.nbf);
+  const std::size_t n = static_cast<std::size_t>(batch.direct_nbf);
   const std::size_t matrix_offset = static_cast<std::size_t>(system) * n * n;
   const std::size_t system_ao_begin = static_cast<std::size_t>(system) * n;
 
@@ -2922,6 +2955,166 @@ __global__ void initialize_direct_fock_kernel(
   fock[element] = hcore[system * matrix_size + element % matrix_size];
 }
 
+__global__ void clear_active_matrices_kernel(
+    std::int32_t batch_size,
+    std::int32_t matrices_per_system,
+    std::int32_t nbf,
+    const std::uint8_t* active,
+    double* matrices) {
+  const std::size_t matrix_size = static_cast<std::size_t>(nbf) * nbf;
+  const std::size_t matrix_count =
+      static_cast<std::size_t>(batch_size) * matrices_per_system;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= matrix_count * matrix_size) return;
+  const std::size_t state = element / matrix_size;
+  const std::size_t system =
+      state / static_cast<std::size_t>(matrices_per_system);
+  if (active[system] != 0) matrices[element] = 0.0;
+}
+
+/** First stage of D_cart = C^T D_public C. */
+__global__ void transform_density_to_direct_right_kernel(
+    std::int32_t batch_size,
+    std::int32_t spin_count,
+    std::int32_t nbf,
+    std::int32_t direct_nbf,
+    const double* transform,
+    const double* density,
+    const std::uint8_t* active,
+    double* temporary) {
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t direct_n = static_cast<std::size_t>(direct_nbf);
+  const std::size_t rectangular_size = n * direct_n;
+  const std::size_t state_count =
+      static_cast<std::size_t>(batch_size) * spin_count;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= state_count * rectangular_size) return;
+  const std::size_t state = element / rectangular_size;
+  const std::size_t system = state / static_cast<std::size_t>(spin_count);
+  if (active[system] == 0) return;
+  const std::size_t local = element % rectangular_size;
+  const std::size_t row = local % n;
+  const std::size_t direct_column = local / n;
+  const std::size_t density_offset = state * n * n;
+  const std::size_t transform_offset = system * rectangular_size;
+  double value = 0.0;
+  for (std::size_t column = 0; column < n; ++column) {
+    value += density[density_offset + matrix_index(row, column, n)] *
+        transform[transform_offset + column + direct_column * n];
+  }
+  temporary[element] = value;
+}
+
+/** Second stage of D_cart = C^T (D_public C). */
+__global__ void transform_density_to_direct_left_kernel(
+    std::int32_t batch_size,
+    std::int32_t spin_count,
+    std::int32_t nbf,
+    std::int32_t direct_nbf,
+    const double* transform,
+    const double* temporary,
+    const std::uint8_t* active,
+    double* direct_density) {
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t direct_n = static_cast<std::size_t>(direct_nbf);
+  const std::size_t matrix_size = direct_n * direct_n;
+  const std::size_t rectangular_size = n * direct_n;
+  const std::size_t state_count =
+      static_cast<std::size_t>(batch_size) * spin_count;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= state_count * matrix_size) return;
+  const std::size_t state = element / matrix_size;
+  const std::size_t system = state / static_cast<std::size_t>(spin_count);
+  if (active[system] == 0) return;
+  const std::size_t local = element % matrix_size;
+  const std::size_t direct_row = local % direct_n;
+  const std::size_t direct_column = local / direct_n;
+  const std::size_t transform_offset = system * rectangular_size;
+  const std::size_t temporary_offset = state * rectangular_size;
+  double value = 0.0;
+  for (std::size_t row = 0; row < n; ++row) {
+    value += transform[transform_offset + row + direct_row * n] *
+        temporary[temporary_offset + row + direct_column * n];
+  }
+  direct_density[element] = value;
+}
+
+/** First stage of F_public = C F_cart C^T. */
+__global__ void transform_direct_fock_left_kernel(
+    std::int32_t batch_size,
+    std::int32_t spin_count,
+    std::int32_t nbf,
+    std::int32_t direct_nbf,
+    const double* transform,
+    const double* direct_fock,
+    const std::uint8_t* active,
+    double* temporary) {
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t direct_n = static_cast<std::size_t>(direct_nbf);
+  const std::size_t direct_matrix_size = direct_n * direct_n;
+  const std::size_t rectangular_size = n * direct_n;
+  const std::size_t state_count =
+      static_cast<std::size_t>(batch_size) * spin_count;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= state_count * rectangular_size) return;
+  const std::size_t state = element / rectangular_size;
+  const std::size_t system = state / static_cast<std::size_t>(spin_count);
+  if (active[system] == 0) return;
+  const std::size_t local = element % rectangular_size;
+  const std::size_t public_row = local % n;
+  const std::size_t direct_column = local / n;
+  const std::size_t transform_offset = system * rectangular_size;
+  const std::size_t direct_offset = state * direct_matrix_size;
+  double value = 0.0;
+  for (std::size_t direct_row = 0; direct_row < direct_n; ++direct_row) {
+    value += transform[transform_offset + public_row + direct_row * n] *
+        direct_fock[direct_offset +
+                    matrix_index(direct_row, direct_column, direct_n)];
+  }
+  temporary[element] = value;
+}
+
+/** Finish F_public = (C F_cart) C^T and restore the one-electron matrix. */
+__global__ void transform_direct_fock_right_kernel(
+    std::int32_t batch_size,
+    std::int32_t spin_count,
+    std::int32_t nbf,
+    std::int32_t direct_nbf,
+    const double* transform,
+    const double* temporary,
+    const double* hcore,
+    const std::uint8_t* active,
+    double* fock) {
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t direct_n = static_cast<std::size_t>(direct_nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t rectangular_size = n * direct_n;
+  const std::size_t state_count =
+      static_cast<std::size_t>(batch_size) * spin_count;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= state_count * matrix_size) return;
+  const std::size_t state = element / matrix_size;
+  const std::size_t system = state / static_cast<std::size_t>(spin_count);
+  if (active[system] == 0) return;
+  const std::size_t local = element % matrix_size;
+  const std::size_t public_row = local % n;
+  const std::size_t public_column = local / n;
+  const std::size_t transform_offset = system * rectangular_size;
+  const std::size_t temporary_offset = state * rectangular_size;
+  double value = hcore[system * matrix_size + local];
+  for (std::size_t direct_column = 0; direct_column < direct_n;
+       ++direct_column) {
+    value += temporary[temporary_offset + public_row + direct_column * n] *
+        transform[transform_offset + public_column + direct_column * n];
+  }
+  fock[element] = value;
+}
+
 template <bool Unrestricted, unsigned AngularOrder>
 __global__ void build_fock_direct_quartet_kernel(
     DeviceBatch batch,
@@ -2952,7 +3145,7 @@ __global__ void build_fock_direct_quartet_kernel(
       batch.shell_angular[first_shell], batch.shell_angular[second_shell],
       batch.shell_angular[third_shell], batch.shell_angular[fourth_shell]);
 
-  const std::size_t n = static_cast<std::size_t>(batch.nbf);
+  const std::size_t n = static_cast<std::size_t>(batch.direct_nbf);
   const std::size_t matrix_size = n * n;
   const std::size_t physical_offset =
       static_cast<std::size_t>(system) * matrix_size;
@@ -2992,7 +3185,8 @@ __global__ void build_fock_direct_quartet_kernel(
       return;
     }
     const double integral =
-        dispatch_contracted_eri_shell_class<AngularOrder, double>(
+        dispatch_contracted_eri_cartesian_source_shell_class<
+            AngularOrder, double>(
             shell_class, batch, system, static_cast<std::int32_t>(i),
             static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
             static_cast<std::int32_t>(l), -1);
@@ -3842,7 +4036,7 @@ __global__ void two_electron_force_quartet_kernel(
   const std::int32_t system = batch.shell_pair_systems[first_pair];
   if (active[system] == 0) return;
 
-  const std::size_t n = static_cast<std::size_t>(batch.nbf);
+  const std::size_t n = static_cast<std::size_t>(batch.direct_nbf);
   const std::size_t matrix_size = n * n;
   const std::size_t physical_offset =
       static_cast<std::size_t>(system) * matrix_size;
@@ -3952,7 +4146,8 @@ __global__ void two_electron_force_quartet_kernel(
       const std::int64_t coordinate =
           static_cast<std::int64_t>(unique_center_atoms[center]) * 3;
       const Dual3 derivative =
-          dispatch_contracted_eri_shell_class<AngularOrder, Dual3>(
+          dispatch_contracted_eri_cartesian_source_shell_class<
+              AngularOrder, Dual3>(
               shell_class, batch, system, static_cast<std::int32_t>(i),
               static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
               static_cast<std::int32_t>(l), coordinate);
@@ -4078,6 +4273,7 @@ struct ArenaLayout {
   std::size_t shell_atoms{};
   std::size_t shell_angular{};
   std::size_t shell_ao_offsets{};
+  std::size_t shell_direct_ao_offsets{};
   std::size_t shell_primitive_offsets{};
   std::size_t system_shell_pair_offsets{};
   std::size_t system_shell_quartet_offsets{};
@@ -4088,6 +4284,10 @@ struct ArenaLayout {
   std::size_t ao_term_counts{};
   std::size_t ao_term_angular{};
   std::size_t ao_term_coefficients{};
+  std::size_t direct_ao_shells{};
+  std::size_t direct_ao_angular{};
+  std::size_t direct_ao_coefficients{};
+  std::size_t ao_to_direct_transform{};
   std::size_t primitive_exponents{};
   std::size_t primitive_coefficients{};
   std::size_t occupied{};
@@ -4097,6 +4297,9 @@ struct ArenaLayout {
   std::size_t hcore{};
   std::size_t eri{};
   std::size_t schwarz_bounds{};
+  std::size_t direct_density{};
+  std::size_t direct_fock{};
+  std::size_t direct_transform_temporary{};
   std::size_t shell_pair_bounds{};
   std::size_t active_shell_quartet_tile_offsets{};
   std::size_t active_shell_quartet_tile_counts{};
@@ -4148,6 +4351,7 @@ bool append_array(std::size_t count, std::size_t& cursor, std::size_t& offset) {
 
 bool make_layout(std::size_t batch_size,
                  std::size_t nbf,
+                 std::size_t direct_nbf,
                  std::size_t atoms,
                  std::size_t shell_count,
                  std::size_t shell_pair_count,
@@ -4156,6 +4360,7 @@ bool make_layout(std::size_t batch_size,
                  std::size_t diis_history,
                  std::size_t spin_count,
                  bool persistent_eri,
+                 bool transformed_direct,
                  ArenaLayout& layout) {
   std::size_t matrix_size = 0;
   std::size_t eri_size = 0;
@@ -4163,6 +4368,12 @@ bool make_layout(std::size_t batch_size,
   std::size_t spin_matrices = 0;
   std::size_t eris = 0;
   std::size_t aos = 0;
+  std::size_t direct_aos = 0;
+  std::size_t direct_matrix_size = 0;
+  std::size_t direct_matrices = 0;
+  std::size_t direct_spin_matrices = 0;
+  std::size_t transform_elements = 0;
+  std::size_t transform_temporaries = 0;
   std::size_t nbf_plus_one = 0;
   std::size_t pair_product = 0;
   if (!checked_multiply(nbf, nbf, matrix_size) ||
@@ -4170,6 +4381,13 @@ bool make_layout(std::size_t batch_size,
       !checked_multiply(batch_size, matrix_size, matrices) ||
       !checked_multiply(matrices, spin_count, spin_matrices) ||
       !checked_multiply(batch_size, nbf, aos) ||
+      !checked_multiply(batch_size, direct_nbf, direct_aos) ||
+      !checked_multiply(direct_nbf, direct_nbf, direct_matrix_size) ||
+      !checked_multiply(batch_size, direct_matrix_size, direct_matrices) ||
+      !checked_multiply(direct_matrices, spin_count, direct_spin_matrices) ||
+      !checked_multiply(aos, direct_nbf, transform_elements) ||
+      !checked_multiply(transform_elements, spin_count,
+                        transform_temporaries) ||
       !checked_add(nbf, 1, nbf_plus_one) ||
       !checked_multiply(nbf, nbf_plus_one, pair_product)) return false;
   const std::size_t pair_count = pair_product / 2;
@@ -4197,6 +4415,8 @@ bool make_layout(std::size_t batch_size,
       !append_array<std::int64_t>(shell_count + 1, cursor,
                                   made.shell_ao_offsets) ||
       !append_array<std::int64_t>(shell_count + 1, cursor,
+                                  made.shell_direct_ao_offsets) ||
+      !append_array<std::int64_t>(shell_count + 1, cursor,
                                   made.shell_primitive_offsets) ||
       !append_array<std::int64_t>(batch_size + 1, cursor,
                                   made.system_shell_pair_offsets) ||
@@ -4215,6 +4435,14 @@ bool make_layout(std::size_t batch_size,
           made.ao_term_angular) ||
       !append_array<double>(aos * kMaximumAoExpansionTerms, cursor,
                             made.ao_term_coefficients) ||
+      !append_array<std::int32_t>(direct_aos, cursor,
+                                  made.direct_ao_shells) ||
+      !append_array<std::uint8_t>(direct_aos * 3, cursor,
+                                  made.direct_ao_angular) ||
+      !append_array<double>(direct_aos, cursor,
+                            made.direct_ao_coefficients) ||
+      !append_array<double>(transformed_direct ? transform_elements : 0,
+                            cursor, made.ao_to_direct_transform) ||
       !append_array<double>(primitives, cursor, made.primitive_exponents) ||
       !append_array<double>(primitives, cursor, made.primitive_coefficients) ||
       !append_array<std::int32_t>(batch_size * spin_count, cursor,
@@ -4224,8 +4452,17 @@ bool make_layout(std::size_t batch_size,
       !append_array<double>(matrices, cursor, made.overlap) ||
       !append_array<double>(matrices, cursor, made.hcore) ||
       !append_array<double>(eris, cursor, made.eri) ||
-      !append_array<double>(persistent_eri ? 0 : matrices, cursor,
+      !append_array<double>(
+          persistent_eri ? 0
+                         : (transformed_direct ? direct_matrices : matrices),
+          cursor,
                             made.schwarz_bounds) ||
+      !append_array<double>(transformed_direct ? direct_spin_matrices : 0,
+                            cursor, made.direct_density) ||
+      !append_array<double>(transformed_direct ? direct_spin_matrices : 0,
+                            cursor, made.direct_fock) ||
+      !append_array<double>(transformed_direct ? transform_temporaries : 0,
+                            cursor, made.direct_transform_temporary) ||
       !append_array<double>(persistent_eri ? 0 : shell_pair_count, cursor,
                             made.shell_pair_bounds) ||
       !append_array<std::uint32_t>(
@@ -4290,6 +4527,7 @@ T* arena_pointer(void* arena, std::size_t offset) {
 
 struct HostBatch {
   std::size_t nbf{};
+  std::size_t direct_nbf{};
   std::size_t spin_count{1};
   std::vector<std::int64_t> atom_offsets;
   std::vector<std::int32_t> atom_systems;
@@ -4299,6 +4537,7 @@ struct HostBatch {
   std::vector<std::int32_t> shell_atoms;
   std::vector<std::uint8_t> shell_angular;
   std::vector<std::int64_t> shell_ao_offsets;
+  std::vector<std::int64_t> shell_direct_ao_offsets;
   std::vector<std::int64_t> shell_primitive_offsets;
   std::vector<std::int64_t> system_shell_pair_offsets;
   std::vector<std::int64_t> system_shell_quartet_offsets;
@@ -4309,6 +4548,10 @@ struct HostBatch {
   std::vector<std::uint8_t> ao_term_counts;
   std::vector<std::uint8_t> ao_term_angular;
   std::vector<double> ao_term_coefficients;
+  std::vector<std::int32_t> direct_ao_shells;
+  std::vector<std::uint8_t> direct_ao_angular;
+  std::vector<double> direct_ao_coefficients;
+  std::vector<double> ao_to_direct_transform;
   std::vector<double> primitive_exponents;
   std::vector<double> primitive_coefficients;
   std::vector<std::int32_t> occupied;
@@ -4322,21 +4565,32 @@ bool pack_host_batch(const std::vector<core::System>& systems,
                      bool unrestricted = false) {
   if (systems.empty() || systems.size() != initial_densities.size()) return false;
   host.nbf = molecule::ao_count(systems.front());
+  host.direct_nbf = molecule::cartesian_ao_count(systems.front());
   host.spin_count = unrestricted ? 2 : 1;
-  if (host.nbf == 0 || host.nbf > static_cast<std::size_t>(std::numeric_limits<int>::max()) ||
+  if (host.nbf == 0 || host.direct_nbf == 0 ||
+      host.nbf > static_cast<std::size_t>(std::numeric_limits<int>::max()) ||
+      host.direct_nbf >
+          static_cast<std::size_t>(std::numeric_limits<int>::max()) ||
       systems.size() > static_cast<std::size_t>(std::numeric_limits<int>::max())) return false;
   const std::size_t matrix_size = host.nbf * host.nbf;
   host.atom_offsets.push_back(0);
   host.system_shell_offsets.push_back(0);
   host.shell_ao_offsets.push_back(0);
+  host.shell_direct_ao_offsets.push_back(0);
   host.shell_primitive_offsets.push_back(0);
   host.system_shell_pair_offsets.push_back(0);
   host.system_shell_quartet_offsets.push_back(0);
   host.warm_density.resize(
       systems.size() * host.spin_count * matrix_size, 0.0);
+  if (host.direct_nbf != host.nbf && host.nbf > kPersistentEriAoLimit) {
+    host.ao_to_direct_transform.resize(
+        systems.size() * host.nbf * host.direct_nbf, 0.0);
+  }
   for (std::size_t system_index = 0; system_index < systems.size(); ++system_index) {
     const core::System& system = systems[system_index];
-    if (molecule::ao_count(system) != host.nbf || system.electron_count <= 0) {
+    if (molecule::ao_count(system) != host.nbf ||
+        molecule::cartesian_ao_count(system) != host.direct_nbf ||
+        system.electron_count <= 0) {
       return false;
     }
     const int spin_excess = static_cast<int>(system.multiplicity) - 1;
@@ -4355,6 +4609,7 @@ bool pack_host_batch(const std::vector<core::System>& systems,
     }
     host.atom_offsets.push_back(static_cast<std::int64_t>(host.atomic_numbers.size()));
     const std::size_t system_ao_begin = host.ao_shells.size();
+    const std::size_t system_direct_ao_begin = host.direct_ao_shells.size();
     const std::size_t system_shell_begin = host.shell_atoms.size();
     for (const core::Shell& shell : system.shells) {
       if (shell.angular_momentum > kMaximumAngularMomentum ||
@@ -4375,12 +4630,32 @@ bool pack_host_batch(const std::vector<core::System>& systems,
       }
       host.shell_primitive_offsets.push_back(
           static_cast<std::int64_t>(host.primitive_exponents.size()));
+      const std::vector<molecule::CartesianComponent> cartesian_components =
+          molecule::cartesian_components(shell.angular_momentum);
+      const std::size_t direct_shell_begin =
+          host.direct_ao_shells.size() - system_direct_ao_begin;
+      for (const molecule::CartesianComponent& component :
+           cartesian_components) {
+        host.direct_ao_shells.push_back(shell_index);
+        host.direct_ao_angular.push_back(
+            static_cast<std::uint8_t>(component[0]));
+        host.direct_ao_angular.push_back(
+            static_cast<std::uint8_t>(component[1]));
+        host.direct_ao_angular.push_back(
+            static_cast<std::uint8_t>(component[2]));
+        host.direct_ao_coefficients.push_back(
+            molecule::cartesian_component_normalization(component));
+      }
+      host.shell_direct_ao_offsets.push_back(
+          static_cast<std::int64_t>(host.direct_ao_shells.size()));
       for (const molecule::AoExpansion& expansion : molecule::ao_expansions(
                shell.angular_momentum, system.basis_representation)) {
         if (expansion.empty() ||
             expansion.size() > kMaximumAoExpansionTerms) {
           return false;
         }
+        const std::size_t target_ao =
+            host.ao_shells.size() - system_ao_begin;
         host.ao_shells.push_back(shell_index);
         host.ao_term_counts.push_back(
             static_cast<std::uint8_t>(expansion.size()));
@@ -4398,6 +4673,20 @@ bool pack_host_batch(const std::vector<core::System>& systems,
             host.ao_term_coefficients.push_back(
                 term.coefficient *
                 molecule::cartesian_component_normalization(term.component));
+            if (!host.ao_to_direct_transform.empty()) {
+              const auto component = std::find(
+                  cartesian_components.begin(), cartesian_components.end(),
+                  term.component);
+              if (component == cartesian_components.end()) return false;
+              const std::size_t direct_ao = direct_shell_begin +
+                  static_cast<std::size_t>(
+                      component - cartesian_components.begin());
+              const std::size_t transform_offset =
+                  system_index * host.nbf * host.direct_nbf;
+              host.ao_to_direct_transform[
+                  transform_offset + target_ao + direct_ao * host.nbf] =
+                  term.coefficient;
+            }
           } else {
             host.ao_term_angular.insert(
                 host.ao_term_angular.end(), {0, 0, 0});
@@ -4408,7 +4697,11 @@ bool pack_host_batch(const std::vector<core::System>& systems,
       host.shell_ao_offsets.push_back(
           static_cast<std::int64_t>(host.ao_shells.size()));
     }
-    if (host.ao_shells.size() - system_ao_begin != host.nbf) return false;
+    if (host.ao_shells.size() - system_ao_begin != host.nbf ||
+        host.direct_ao_shells.size() - system_direct_ao_begin !=
+            host.direct_nbf) {
+      return false;
+    }
     host.system_shell_offsets.push_back(
         static_cast<std::int64_t>(host.shell_atoms.size()));
     for (std::size_t first = system_shell_begin;
@@ -4664,6 +4957,7 @@ struct CudaRhfBucketPlan {
   core::ScfOptions options;
   std::size_t batch_size{};
   std::size_t nbf{};
+  std::size_t direct_nbf{};
   std::size_t total_atoms{};
   std::size_t total_shells{};
   std::size_t total_shell_pairs{};
@@ -4678,6 +4972,7 @@ struct CudaRhfBucketPlan {
   int lwork{};
   bool persistent_eri{};
   bool quartet_direct{};
+  bool transformed_direct{};
   bool unrestricted{};
   bool cublas_enabled{true};
   bool retry_without_cublas{};
@@ -4687,7 +4982,9 @@ struct CudaRhfBucketPlan {
 namespace {
 
 bool same_topology(const HostBatch& first, const HostBatch& second) {
-  return first.nbf == second.nbf && first.spin_count == second.spin_count &&
+  return first.nbf == second.nbf &&
+         first.direct_nbf == second.direct_nbf &&
+         first.spin_count == second.spin_count &&
          first.atom_offsets == second.atom_offsets &&
          first.atom_systems == second.atom_systems &&
          first.atomic_numbers == second.atomic_numbers &&
@@ -4695,6 +4992,7 @@ bool same_topology(const HostBatch& first, const HostBatch& second) {
          first.shell_atoms == second.shell_atoms &&
          first.shell_angular == second.shell_angular &&
          first.shell_ao_offsets == second.shell_ao_offsets &&
+         first.shell_direct_ao_offsets == second.shell_direct_ao_offsets &&
          first.shell_primitive_offsets == second.shell_primitive_offsets &&
          first.system_shell_pair_offsets == second.system_shell_pair_offsets &&
          first.system_shell_quartet_offsets ==
@@ -4706,6 +5004,10 @@ bool same_topology(const HostBatch& first, const HostBatch& second) {
          first.ao_term_counts == second.ao_term_counts &&
          first.ao_term_angular == second.ao_term_angular &&
          first.ao_term_coefficients == second.ao_term_coefficients &&
+         first.direct_ao_shells == second.direct_ao_shells &&
+         first.direct_ao_angular == second.direct_ao_angular &&
+         first.direct_ao_coefficients == second.direct_ao_coefficients &&
+         first.ao_to_direct_transform == second.ao_to_direct_transform &&
          first.primitive_exponents == second.primitive_exponents &&
          first.primitive_coefficients == second.primitive_coefficients &&
          first.occupied == second.occupied;
@@ -4736,6 +5038,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
 
   const std::size_t batch_size = systems.size();
   const std::size_t nbf = host.nbf;
+  const std::size_t direct_nbf = host.direct_nbf;
   const std::size_t spin_count = host.spin_count;
   std::size_t spin_batch_size = 0;
   std::size_t matrix_size = 0;
@@ -4745,6 +5048,14 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   std::size_t eri_elements = 0;
   std::size_t nbf_plus_one = 0;
   std::size_t pair_product = 0;
+  std::size_t direct_matrix_size = 0;
+  std::size_t direct_matrix_elements = 0;
+  std::size_t direct_spin_matrix_elements = 0;
+  std::size_t direct_nbf_plus_one = 0;
+  std::size_t direct_pair_product = 0;
+  std::size_t public_ao_elements = 0;
+  std::size_t rectangular_matrix_elements = 0;
+  std::size_t spin_rectangular_matrix_elements = 0;
   if (!checked_multiply(nbf, nbf, matrix_size) ||
       !checked_multiply(matrix_size, matrix_size, eri_size) ||
       !checked_multiply(batch_size, matrix_size, matrix_elements) ||
@@ -4752,18 +5063,41 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       !checked_multiply(matrix_elements, spin_count, spin_matrix_elements) ||
       !checked_multiply(batch_size, eri_size, eri_elements) ||
       !checked_add(nbf, 1, nbf_plus_one) ||
-      !checked_multiply(nbf, nbf_plus_one, pair_product)) {
+      !checked_multiply(nbf, nbf_plus_one, pair_product) ||
+      !checked_multiply(direct_nbf, direct_nbf, direct_matrix_size) ||
+      !checked_multiply(batch_size, direct_matrix_size,
+                        direct_matrix_elements) ||
+      !checked_multiply(direct_matrix_elements, spin_count,
+                        direct_spin_matrix_elements) ||
+      !checked_add(direct_nbf, 1, direct_nbf_plus_one) ||
+      !checked_multiply(direct_nbf, direct_nbf_plus_one,
+                        direct_pair_product) ||
+      !checked_multiply(batch_size, nbf, public_ao_elements) ||
+      !checked_multiply(public_ao_elements, direct_nbf,
+                        rectangular_matrix_elements) ||
+      !checked_multiply(rectangular_matrix_elements, spin_count,
+                        spin_rectangular_matrix_elements)) {
     fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
     return outputs;
   }
   const std::size_t pair_count = pair_product / 2;
+  const std::size_t direct_pair_count = direct_pair_product / 2;
   std::size_t pair_elements = 0;
-  if (!checked_multiply(batch_size, pair_count, pair_elements)) {
+  std::size_t direct_pair_elements = 0;
+  if (!checked_multiply(batch_size, pair_count, pair_elements) ||
+      !checked_multiply(batch_size, direct_pair_count,
+                        direct_pair_elements)) {
     fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
     return outputs;
   }
   if (matrix_elements > std::numeric_limits<unsigned>::max() ||
       spin_matrix_elements > std::numeric_limits<unsigned>::max() ||
+      direct_matrix_elements > std::numeric_limits<unsigned>::max() ||
+      direct_spin_matrix_elements > std::numeric_limits<unsigned>::max() ||
+      rectangular_matrix_elements > std::numeric_limits<unsigned>::max() ||
+      spin_rectangular_matrix_elements >
+          std::numeric_limits<unsigned>::max() ||
+      direct_pair_elements > std::numeric_limits<unsigned>::max() ||
       spin_batch_size > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
     fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
     return outputs;
@@ -4783,11 +5117,13 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       !requested_persistent_eri &&
       std::all_of(host.shell_angular.begin(), host.shell_angular.end(),
                   [](std::uint8_t angular) { return angular <= 3; });
+  const bool requested_transformed_direct =
+      requested_quartet_direct && direct_nbf != nbf;
   detail::DirectQuartetTaskLayout direct_task_layout{};
   std::size_t total_shell_quartet_tiles = 0;
   if (requested_quartet_direct) {
     if (!detail::make_direct_quartet_task_layout(
-            host.shell_ao_offsets, host.shell_angular,
+            host.shell_direct_ao_offsets, host.shell_angular,
             host.system_shell_pair_offsets, host.shell_pair_first,
             host.shell_pair_second,
             direct_task_layout) ||
@@ -4837,17 +5173,19 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     return outputs;
   }
   if (first_setup) {
-    if (!make_layout(batch_size, nbf, total_atoms, total_shells,
+    if (!make_layout(batch_size, nbf, direct_nbf, total_atoms, total_shells,
                      total_shell_pairs, total_shell_quartet_tiles,
                      host.primitive_exponents.size(), diis_history,
                      host.spin_count,
                      requested_persistent_eri,
+                     requested_transformed_direct,
                      plan.layout)) {
       fill_global_failure(outputs, QCE_STATUS_OUT_OF_MEMORY);
       return outputs;
     }
     plan.batch_size = batch_size;
     plan.nbf = nbf;
+    plan.direct_nbf = direct_nbf;
     plan.total_atoms = total_atoms;
     plan.total_shells = total_shells;
     plan.total_shell_pairs = total_shell_pairs;
@@ -4865,6 +5203,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     plan.diis_history = diis_history;
     plan.persistent_eri = requested_persistent_eri;
     plan.quartet_direct = requested_quartet_direct;
+    plan.transformed_direct = requested_transformed_direct;
     plan.unrestricted = unrestricted;
     plan.options = options;
     plan.topology = host;
@@ -4879,6 +5218,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   CudaResources& resources = plan.resources;
   const bool persistent_eri = plan.persistent_eri;
   const bool quartet_direct = plan.quartet_direct;
+  const bool transformed_direct = plan.transformed_direct;
   const bool use_cusolver =
       nbf > static_cast<std::size_t>(kSmallEigensolverLimit) &&
       nbf <= static_cast<std::size_t>(kBatchedEigensolverLimit);
@@ -4944,6 +5284,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       arena_pointer<std::uint8_t>(resources.arena_, layout.shell_angular);
   auto shell_ao_offsets = arena_pointer<std::int64_t>(
       resources.arena_, layout.shell_ao_offsets);
+  auto shell_direct_ao_offsets = arena_pointer<std::int64_t>(
+      resources.arena_, layout.shell_direct_ao_offsets);
   auto shell_primitive_offsets = arena_pointer<std::int64_t>(
       resources.arena_, layout.shell_primitive_offsets);
   auto system_shell_pair_offsets = arena_pointer<std::int64_t>(
@@ -4964,6 +5306,14 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       arena_pointer<std::uint8_t>(resources.arena_, layout.ao_term_angular);
   auto ao_term_coefficients =
       arena_pointer<double>(resources.arena_, layout.ao_term_coefficients);
+  auto direct_ao_shells = arena_pointer<std::int32_t>(
+      resources.arena_, layout.direct_ao_shells);
+  auto direct_ao_angular = arena_pointer<std::uint8_t>(
+      resources.arena_, layout.direct_ao_angular);
+  auto direct_ao_coefficients = arena_pointer<double>(
+      resources.arena_, layout.direct_ao_coefficients);
+  auto ao_to_direct_transform = arena_pointer<double>(
+      resources.arena_, layout.ao_to_direct_transform);
   auto primitive_exponents =
       arena_pointer<double>(resources.arena_, layout.primitive_exponents);
   auto primitive_coefficients =
@@ -4976,6 +5326,12 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   auto eri = arena_pointer<double>(resources.arena_, layout.eri);
   auto schwarz_bounds =
       arena_pointer<double>(resources.arena_, layout.schwarz_bounds);
+  auto direct_density =
+      arena_pointer<double>(resources.arena_, layout.direct_density);
+  auto direct_fock =
+      arena_pointer<double>(resources.arena_, layout.direct_fock);
+  auto direct_transform_temporary = arena_pointer<double>(
+      resources.arena_, layout.direct_transform_temporary);
   auto shell_pair_bounds =
       arena_pointer<double>(resources.arena_, layout.shell_pair_bounds);
   auto active_shell_quartet_tile_offsets = arena_pointer<std::uint32_t>(
@@ -5063,6 +5419,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
        {shell_angular, host.shell_angular.size() * sizeof(std::uint8_t)}},
       {host.shell_ao_offsets.data(),
        {shell_ao_offsets, host.shell_ao_offsets.size() * sizeof(std::int64_t)}},
+      {host.shell_direct_ao_offsets.data(),
+       {shell_direct_ao_offsets,
+        host.shell_direct_ao_offsets.size() * sizeof(std::int64_t)}},
       {host.shell_primitive_offsets.data(),
        {shell_primitive_offsets,
         host.shell_primitive_offsets.size() * sizeof(std::int64_t)}},
@@ -5090,6 +5449,18 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       {host.ao_term_coefficients.data(),
        {ao_term_coefficients,
         host.ao_term_coefficients.size() * sizeof(double)}},
+      {host.direct_ao_shells.data(),
+       {direct_ao_shells,
+        host.direct_ao_shells.size() * sizeof(std::int32_t)}},
+      {host.direct_ao_angular.data(),
+       {direct_ao_angular,
+        host.direct_ao_angular.size() * sizeof(std::uint8_t)}},
+      {host.direct_ao_coefficients.data(),
+       {direct_ao_coefficients,
+        host.direct_ao_coefficients.size() * sizeof(double)}},
+      {host.ao_to_direct_transform.data(),
+       {ao_to_direct_transform,
+        host.ao_to_direct_transform.size() * sizeof(double)}},
       {host.primitive_exponents.data(), {primitive_exponents, host.primitive_exponents.size() * sizeof(double)}},
       {host.primitive_coefficients.data(), {primitive_coefficients, host.primitive_coefficients.size() * sizeof(double)}},
       {host.occupied.data(), {occupied, host.occupied.size() * sizeof(std::int32_t)}},
@@ -5128,16 +5499,19 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
 
   DeviceBatch device_batch{
       static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+      static_cast<std::int32_t>(direct_nbf),
       static_cast<std::int64_t>(total_atoms),
       static_cast<std::int64_t>(total_shells),
       static_cast<std::int64_t>(total_shell_pairs),
       static_cast<std::int64_t>(total_shell_quartets), atom_offsets,
       atom_systems, atomic_numbers, positions, system_shell_offsets,
-      shell_atoms, shell_angular, shell_ao_offsets,
+      shell_atoms, shell_angular, shell_ao_offsets, shell_direct_ao_offsets,
       shell_primitive_offsets, system_shell_pair_offsets,
       system_shell_quartet_offsets,
       shell_pair_systems, shell_pair_first, shell_pair_second, ao_shells,
       ao_term_counts, ao_term_angular, ao_term_coefficients,
+      direct_ao_shells, direct_ao_angular, direct_ao_coefficients,
+      ao_to_direct_transform,
       primitive_exponents,
       primitive_coefficients, occupied};
 
@@ -5195,22 +5569,52 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     return product_status;
   };
   const auto launch_fock_builder = [&](const double* density_input) {
+    const double* quartet_density = density_input;
+    double* quartet_fock = fock;
+    if (quartet_direct && transformed_direct) {
+      transform_density_to_direct_right_kernel<<<
+          blocks_for(spin_rectangular_matrix_elements), threads, 0,
+          resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size),
+          static_cast<std::int32_t>(spin_count),
+          static_cast<std::int32_t>(nbf),
+          static_cast<std::int32_t>(direct_nbf), ao_to_direct_transform,
+          density_input, active, direct_transform_temporary);
+      transform_density_to_direct_left_kernel<<<
+          blocks_for(direct_spin_matrix_elements), threads, 0,
+          resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size),
+          static_cast<std::int32_t>(spin_count),
+          static_cast<std::int32_t>(nbf),
+          static_cast<std::int32_t>(direct_nbf), ao_to_direct_transform,
+          direct_transform_temporary, active, direct_density);
+      clear_active_matrices_kernel<<<
+          blocks_for(direct_spin_matrix_elements), threads, 0,
+          resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size),
+          static_cast<std::int32_t>(spin_count),
+          static_cast<std::int32_t>(direct_nbf), active, direct_fock);
+      quartet_density = direct_density;
+      quartet_fock = direct_fock;
+    }
     if (unrestricted && persistent_eri) {
       build_uhf_fock_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
                               resources.stream_>>>(
           static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
           hcore, eri, density_input, active, fock);
     } else if (unrestricted && quartet_direct) {
-      initialize_direct_fock_kernel<<<blocks_for(spin_matrix_elements), threads,
-                                      0, resources.stream_>>>(
-          static_cast<std::int32_t>(batch_size), 2,
-          static_cast<std::int32_t>(nbf), hcore, active, fock);
+      if (!transformed_direct) {
+        initialize_direct_fock_kernel<<<blocks_for(spin_matrix_elements),
+                                        threads, 0, resources.stream_>>>(
+            static_cast<std::int32_t>(batch_size), 2,
+            static_cast<std::int32_t>(nbf), hcore, active, fock);
+      }
       launch_angular_fock_quartets<true>(
           resources.stream_, plan.shell_quartet_tile_capacities,
           plan.shell_quartet_tile_offsets, device_batch,
           active_shell_quartet_tile_counts, active_shell_quartet_tiles,
-          options.screening_tolerance, schwarz_bounds, density_input, active,
-          fock);
+          options.screening_tolerance, schwarz_bounds, quartet_density, active,
+          quartet_fock);
     } else if (unrestricted) {
       build_uhf_fock_direct_packed_kernel<<<
           static_cast<unsigned>(spin_matrix_elements), threads,
@@ -5224,16 +5628,18 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
           hcore, eri, density_input, active, fock);
     } else if (quartet_direct) {
-      initialize_direct_fock_kernel<<<blocks_for(matrix_elements), threads, 0,
-                                      resources.stream_>>>(
-          static_cast<std::int32_t>(batch_size), 1,
-          static_cast<std::int32_t>(nbf), hcore, active, fock);
+      if (!transformed_direct) {
+        initialize_direct_fock_kernel<<<blocks_for(matrix_elements), threads,
+                                        0, resources.stream_>>>(
+            static_cast<std::int32_t>(batch_size), 1,
+            static_cast<std::int32_t>(nbf), hcore, active, fock);
+      }
       launch_angular_fock_quartets<false>(
           resources.stream_, plan.shell_quartet_tile_capacities,
           plan.shell_quartet_tile_offsets, device_batch,
           active_shell_quartet_tile_counts, active_shell_quartet_tiles,
-          options.screening_tolerance, schwarz_bounds, density_input, active,
-          fock);
+          options.screening_tolerance, schwarz_bounds, quartet_density, active,
+          quartet_fock);
     } else {
       build_fock_direct_packed_kernel<<<
           static_cast<unsigned>(matrix_elements), threads,
@@ -5241,6 +5647,23 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           device_batch, options.screening_tolerance, hcore, ao_pair_first,
           ao_pair_second, pair_count, schwarz_bounds, density_input, active,
           fock);
+    }
+    if (quartet_direct && transformed_direct) {
+      transform_direct_fock_left_kernel<<<
+          blocks_for(spin_rectangular_matrix_elements), threads, 0,
+          resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size),
+          static_cast<std::int32_t>(spin_count),
+          static_cast<std::int32_t>(nbf),
+          static_cast<std::int32_t>(direct_nbf), ao_to_direct_transform,
+          direct_fock, active, direct_transform_temporary);
+      transform_direct_fock_right_kernel<<<
+          blocks_for(spin_matrix_elements), threads, 0, resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size),
+          static_cast<std::int32_t>(spin_count),
+          static_cast<std::int32_t>(nbf),
+          static_cast<std::int32_t>(direct_nbf), ao_to_direct_transform,
+          direct_transform_temporary, hcore, active, fock);
     }
   };
   initialize_state_kernel<<<blocks_for(batch_size), threads, 0, resources.stream_>>>(
@@ -5254,10 +5677,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     build_eri_kernel<<<blocks_for(eri_elements), threads, 0, resources.stream_>>>(
         device_batch, eri);
   } else {
-    build_schwarz_bounds_packed_kernel<<<blocks_for(pair_elements), threads,
+    build_schwarz_bounds_packed_kernel<<<blocks_for(direct_pair_elements),
+                                         threads,
                                          0, resources.stream_>>>(
-        device_batch, ao_pair_first, ao_pair_second, pair_count,
-        schwarz_bounds);
+        device_batch, direct_pair_count, schwarz_bounds);
     if (quartet_direct) {
       reduce_shell_pair_bounds_kernel<<<
           static_cast<unsigned>(total_shell_pairs), threads,
@@ -5632,7 +6055,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         resources.stream_, plan.shell_quartet_tile_capacities,
         plan.shell_quartet_tile_offsets, device_batch,
         active_shell_quartet_tile_counts, active_shell_quartet_tiles,
-        options.screening_tolerance, schwarz_bounds, density, active, forces);
+        options.screening_tolerance, schwarz_bounds,
+        transformed_direct ? direct_density : density, active, forces);
   } else if (unrestricted) {
     two_electron_uhf_force_direct_kernel<<<
         blocks_for(direct_force_elements), threads, 0, resources.stream_>>>(
@@ -5647,7 +6071,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         resources.stream_, plan.shell_quartet_tile_capacities,
         plan.shell_quartet_tile_offsets, device_batch,
         active_shell_quartet_tile_counts, active_shell_quartet_tiles,
-        options.screening_tolerance, schwarz_bounds, density, active, forces);
+        options.screening_tolerance, schwarz_bounds,
+        transformed_direct ? direct_density : density, active, forces);
   } else {
     two_electron_force_direct_kernel<<<
         blocks_for(direct_force_elements), threads, 0, resources.stream_>>>(
@@ -5750,6 +6175,7 @@ CudaRhfBasisLayoutStats inspect_rhf_cuda_basis_layout(
       host.shell_atoms.size() * sizeof(std::int32_t) +
       host.shell_angular.size() * sizeof(std::uint8_t) +
       host.shell_ao_offsets.size() * sizeof(std::int64_t) +
+      host.shell_direct_ao_offsets.size() * sizeof(std::int64_t) +
       host.shell_primitive_offsets.size() * sizeof(std::int64_t) +
       host.system_shell_pair_offsets.size() * sizeof(std::int64_t) +
       host.system_shell_quartet_offsets.size() * sizeof(std::int64_t) +
@@ -5760,6 +6186,10 @@ CudaRhfBasisLayoutStats inspect_rhf_cuda_basis_layout(
       host.ao_term_counts.size() * sizeof(std::uint8_t) +
       host.ao_term_angular.size() * sizeof(std::uint8_t) +
       host.ao_term_coefficients.size() * sizeof(double) +
+      host.direct_ao_shells.size() * sizeof(std::int32_t) +
+      host.direct_ao_angular.size() * sizeof(std::uint8_t) +
+      host.direct_ao_coefficients.size() * sizeof(double) +
+      host.ao_to_direct_transform.size() * sizeof(double) +
       host.primitive_exponents.size() * sizeof(double) +
       host.primitive_coefficients.size() * sizeof(double);
   return {

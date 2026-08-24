@@ -795,19 +795,26 @@ core::ScfResult run_uhf(const core::System& system,
 }
 
 #if !QCE_HAS_CUDA
+// Keep diagnostics identical to the CUDA backend's small persistent-ERI
+// policy without exposing an implementation tuning threshold through the ABI.
+constexpr std::size_t kDiagnosticPersistentEriAoLimit = 16;
+
 CudaRhfBasisLayoutStats inspect_rhf_cuda_basis_layout(
     const std::vector<core::System>& systems) {
   if (systems.empty()) {
     throw std::invalid_argument("a CUDA RHF basis layout requires systems");
   }
   const std::size_t nbf = molecule::ao_count(systems.front());
+  const std::size_t direct_nbf =
+      molecule::cartesian_ao_count(systems.front());
   std::size_t shell_count = 0;
   std::size_t shell_pair_count = 0;
   std::size_t shell_quartet_count = 0;
   std::size_t unique_primitives = 0;
   std::size_t expanded_primitives = 0;
   for (const core::System& system : systems) {
-    if (molecule::ao_count(system) != nbf) {
+    if (molecule::ao_count(system) != nbf ||
+        molecule::cartesian_ao_count(system) != direct_nbf) {
       throw std::invalid_argument("systems do not belong to one CUDA RHF bucket");
     }
     shell_count += system.shells.size();
@@ -823,16 +830,22 @@ CudaRhfBasisLayoutStats inspect_rhf_cuda_basis_layout(
     }
   }
   const std::size_t ao_count = systems.size() * nbf;
+  const std::size_t direct_ao_count = systems.size() * direct_nbf;
   const std::size_t device_basis_bytes =
       (systems.size() + 1) * sizeof(std::int64_t) +
       shell_count * (sizeof(std::int32_t) + sizeof(std::uint8_t)) +
-      2 * (shell_count + 1) * sizeof(std::int64_t) +
+      3 * (shell_count + 1) * sizeof(std::int64_t) +
       2 * (systems.size() + 1) * sizeof(std::int64_t) +
       shell_pair_count * 3 * sizeof(std::int32_t) +
       ao_count *
           (sizeof(std::int32_t) + sizeof(std::uint8_t) +
            3 * molecule::kMaximumAoExpansionTerms * sizeof(std::uint8_t) +
            molecule::kMaximumAoExpansionTerms * sizeof(double)) +
+      direct_ao_count *
+          (sizeof(std::int32_t) + 3 * sizeof(std::uint8_t) + sizeof(double)) +
+      (direct_nbf == nbf || nbf <= kDiagnosticPersistentEriAoLimit
+           ? 0
+           : systems.size() * nbf * direct_nbf * sizeof(double)) +
       unique_primitives * 2 * sizeof(double);
   return {systems.size(), shell_count, shell_pair_count, shell_quartet_count,
           ao_count, unique_primitives,

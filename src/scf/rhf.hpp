@@ -72,8 +72,8 @@ struct CudaRhfBasisLayoutStats {
  *
  * This is an internal diagnostic API, not part of the stable public C ABI.
  * It performs no GPU allocation and is used to prove that contracted
- * primitives are retained once per shell while Cartesian and real-spherical
- * AOs use bounded sparse component metadata.
+ * primitives are retained once per shell while public AOs use bounded sparse
+ * component metadata and direct J/K owns one Cartesian-source transform.
  */
 CudaRhfBasisLayoutStats inspect_rhf_cuda_basis_layout(
     const std::vector<core::System>& systems);

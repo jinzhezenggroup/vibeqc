@@ -39,8 +39,10 @@ retains
 ERIs for AO count <=16 and uses
 O(N^2)-memory screened direct J/K above that threshold. Direct buckets retain a
 canonical packed-pair table in their topology arena. For s/p/d/f topologies,
-the 55 exact shell-class evaluators contract Cartesian targets and sparse
-real-spherical expansion terms under the same symmetry-reduced scheduler.
+the 55 exact shell-class evaluators consume normalized Cartesian source AOs
+under the same symmetry-reduced scheduler. Public real-spherical densities are
+mapped with `C^T D C` before direct J/K, and the Cartesian Fock is restored with
+`C F C^T`; all transforms remain inside the device Graph.
 Fixed shell-pair-pair offsets define eightfold-symmetry-unique quartets; one
 logical AO-quartet tile evaluates each unique integral once and scatters all
 RHF/UHF J/K contributions. A fixed topology-derived tile multiplicity exposes

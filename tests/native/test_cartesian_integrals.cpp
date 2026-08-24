@@ -85,8 +85,7 @@ qce::scf::detail::DirectQuartetTaskLayout direct_task_layout(
         static_cast<std::uint8_t>(shell.angular_momentum));
     shell_ao_offsets.push_back(
         shell_ao_offsets.back() + static_cast<std::int64_t>(
-            qce::molecule::ao_expansions(
-                shell.angular_momentum, system.basis_representation).size()));
+            qce::molecule::cartesian_count(shell.angular_momentum)));
   }
   std::vector<std::int32_t> shell_pair_first;
   std::vector<std::int32_t> shell_pair_second;
@@ -137,7 +136,7 @@ int main() {
             "CUDA basis layout duplicated shell primitives");
     require(layout.expanded_primitive_references == 8,
             "expanded primitive diagnostic has the wrong Cartesian count");
-    require(layout.device_basis_bytes == 636,
+    require(layout.device_basis_bytes == 796,
             "CUDA basis topology payload changed unexpectedly");
     const qce::scf::CudaRhfBasisLayoutStats sdf_layout =
         qce::scf::inspect_rhf_cuda_basis_layout({helium_hydrogen_sdf()});
@@ -149,7 +148,7 @@ int main() {
     require(sdf_layout.unique_primitive_count == 4 &&
                 sdf_layout.expanded_primitive_references == 18,
             "s/d/f primitive storage was expanded per Cartesian component");
-    require(sdf_layout.device_basis_bytes == 1016,
+    require(sdf_layout.device_basis_bytes == 1326,
             "s/d/f CUDA basis topology payload changed unexpectedly");
     const qce::scf::detail::DirectQuartetTaskLayout sdf_tasks =
         direct_task_layout(helium_hydrogen_sdf());
@@ -198,22 +197,22 @@ int main() {
             "spherical s/d/f CUDA shell-to-AO topology is inconsistent");
     require(spherical_layout.unique_primitive_count == 4 &&
                 spherical_layout.expanded_primitive_references == 18 &&
-                spherical_layout.device_basis_bytes == 864,
+                spherical_layout.device_basis_bytes == 1174,
             "spherical CUDA basis metadata is not compact and shell-owned");
     const qce::scf::detail::DirectQuartetTaskLayout spherical_tasks =
         direct_task_layout(spherical_sdf);
     require(spherical_tasks.shell_quartet_count == 55 &&
-                spherical_tasks.exact_tile_count == 64 &&
-                spherical_tasks.maximum_tiles_per_shell_quartet == 5 &&
-                spherical_tasks.uniform_tile_count == 275,
-            "spherical s/d/f direct-J/K tile compaction is inconsistent");
+                spherical_tasks.exact_tile_count == 100 &&
+                spherical_tasks.maximum_tiles_per_shell_quartet == 15 &&
+                spherical_tasks.uniform_tile_count == 825,
+            "spherical Cartesian-source tile compaction is inconsistent");
     require(spherical_tasks.angular_order_tile_counts ==
                 std::array<std::size_t, 13>{6, 0, 6, 6, 6, 7, 8,
-                                            4, 5, 5, 5, 4, 2} &&
+                                            6, 11, 11, 13, 13, 7} &&
                 spherical_tasks.angular_order_tile_offsets ==
                 std::array<std::size_t, 14>{0, 6, 6, 12, 18, 24, 31,
-                                            39, 43, 48, 53, 58, 62, 64},
-            "spherical direct-J/K angular buckets are inconsistent");
+                                            39, 45, 56, 67, 80, 93, 100},
+            "spherical Cartesian-source angular buckets are inconsistent");
     std::array<std::size_t, 13> spherical_shell_class_orders{};
     for (std::size_t shell_class = 0;
          shell_class < qce::scf::detail::kDirectQuartetShellClassCount;
