@@ -3,9 +3,9 @@
 The ``sp8`` case measures tiny-system native-call and warm-plan overhead.  The
 ``sdf18-direct`` case crosses QCE's current persistent-ERI threshold and thus
 also exercises screened direct J/K.  ``he3-sd21-direct`` adds a somewhat larger
-direct workload.  ``water-def2-svp`` is the first named-basis molecular case.
-The first three use artificial Cartesian bases for which exact common-engine
-validation exists.
+direct workload.  The water/def2-SVP cases cover Cartesian and standard real
+spherical named-basis semantics.  The first three use artificial Cartesian
+bases for which exact common-engine validation exists.
 
 The UHF cases cover both persistent-ERI and screened-direct spin paths.
 
@@ -56,6 +56,7 @@ def main() -> None:
     calculator = Calculator(
         method=case.method,
         basis=case.qce_basis,
+        basis_representation=case.basis_representation,
         device="cuda",
         energy_tolerance=1.0e-12,
         density_tolerance=1.0e-10,
@@ -80,7 +81,7 @@ def main() -> None:
         unit="Bohr",
         charge=case.charge,
         spin=case.multiplicity - 1,
-        cart=True,
+        cart=case.basis_representation == "cartesian",
         basis=case.pyscf_basis,
         verbose=0,
     )
@@ -158,7 +159,7 @@ def main() -> None:
                 ],
                 "charge": case.charge,
                 "multiplicity": case.multiplicity,
-                "cartesian_basis": True,
+                "basis_representation": case.basis_representation,
                 "energy_tolerance": 1.0e-12,
                 "density_tolerance": 1.0e-10,
                 "direct_scf_tolerance": 1.0e-14,

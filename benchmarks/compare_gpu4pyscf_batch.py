@@ -96,6 +96,7 @@ def main() -> None:
     calculator = Calculator(
         method=case.method,
         basis=case.qce_basis,
+        basis_representation=case.basis_representation,
         device="cuda",
         energy_tolerance=1.0e-12,
         density_tolerance=1.0e-10,
@@ -126,7 +127,7 @@ def main() -> None:
             unit="Bohr",
             charge=case.charge,
             spin=case.multiplicity - 1,
-            cart=True,
+            cart=case.basis_representation == "cartesian",
             basis=case.pyscf_basis,
             verbose=0,
         )
@@ -226,7 +227,7 @@ def main() -> None:
                 ],
                 "charge": case.charge,
                 "multiplicity": case.multiplicity,
-                "cartesian_basis": True,
+                "basis_representation": case.basis_representation,
                 "energy_tolerance": 1.0e-12,
                 "density_tolerance": 1.0e-10,
                 "direct_scf_tolerance": 1.0e-14,

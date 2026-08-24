@@ -18,6 +18,7 @@ class BenchmarkCase:
     charge: int = 0
     multiplicity: int = 1
     method: str = "rhf"
+    basis_representation: str = "cartesian"
 
 
 def benchmark_cases() -> dict[str, BenchmarkCase]:
@@ -77,6 +78,17 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
             ),
             qce_basis="def2-svp",
             pyscf_basis="def2-svp",
+        ),
+        "water-def2-svp-spherical": BenchmarkCase(
+            description="H2O, 24 real spherical AOs, def2-SVP direct J/K",
+            atoms=(
+                ("O", (0.0, 0.0, 0.0)),
+                ("H", (0.0, -1.43233673, 1.10715266)),
+                ("H", (0.0, 1.43233673, 1.10715266)),
+            ),
+            qce_basis="def2-svp",
+            pyscf_basis="def2-svp",
+            basis_representation="spherical",
         ),
         "oh-def2-svp-uhf": BenchmarkCase(
             description=(

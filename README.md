@@ -141,6 +141,9 @@ the symmetry-reduced tiled-quartet path measured about 37.9 ms for QCE versus
 GPU4PySCF, can show substantial clock/dispatch variation. Run these
 explicitly with `--case sp8`, `--case sdf18-direct`, and
 `--case he3-sd21-direct`; use `--case water-def2-svp` for the named-basis case.
+The matching standard pure-basis workload is available as
+`--case water-def2-svp-spherical`; the harness sets QCE to real spherical AOs
+and PySCF/GPU4PySCF to `cart=False` from the same case metadata.
 
 The same harness also includes `h2plus-uhf2` and `heh-sdf18-uhf`. On the same
 RTX 5090, H2+ warm UHF energy+gradient replay measured about 7.0 ms for QCE;

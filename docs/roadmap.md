@@ -105,9 +105,10 @@ and performance measurements pass.
   gated workload matrix and tune the cuBLAS crossover from measured profiles.
 - Core/SAD guesses, robust DIIS recovery, level shift, convergence diagnostics,
   ROHF, broader convergence controls, and production UHF performance tuning.
-- The cold/warm GPU4PySCF harness now includes Cartesian water/def2-SVP and
-  publishes raw homogeneous-batch samples. Extend it now to standard spherical
-  named-basis workloads under the same allocated accuracy/performance gates.
+- The cold/warm GPU4PySCF harness includes Cartesian and standard real
+  spherical water/def2-SVP cases and publishes raw homogeneous-batch samples.
+  Record the spherical case under the same allocated accuracy/performance
+  gates before claiming its throughput.
 
 ## M3: density fitting and fleet mode
 
