@@ -1,0 +1,119 @@
+# Architecture decisions
+
+## HF-first boundary
+
+RHF and UHF are executable in the HF vertical prototype. `WB97M_V` and
+`RCCSD_T` have stable method identifiers for capability discovery but return
+`QCE_STATUS_NOT_IMPLEMENTED`. No DFT grid or coupled-cluster tensor framework
+is created before a real method requires it.
+
+## Derivative policy
+
+Nuclear forces are native analytic derivatives. The current reference engine
+uses forward derivative values inside the primitive integral formulas, then
+assembles the stationary RHF derivative from derivative integrals, the
+energy-weighted density matrix, and nuclear repulsion. This is deliberately
+different from differentiating the eigensolver, DIIS, or SCF iteration trace.
+
+The CUDA Cartesian s-p-d-f path evaluates one-coordinate dual forms directly in
+device kernels and contracts stationary RHF/UHF gradients on the GPU. Its Cartesian
+McMurchie-Davidson recurrence is shared mathematically with the CPU oracle but
+implemented independently in CUDA. Torch/JAX bindings call the native gradient
+as a custom backward; they do not define the scientific implementation.
+
+## ABI stability
+
+All public descriptors begin with `struct_size` and `abi_version`. ABI version
+0 is experimental: callers can detect compatibility, but semantic stability is
+not promised until a 1.0 release.
+
+## Runtime ownership
+
+Contexts own device selection and runtime resources. Systems and calculations
+are opaque handles. Caller-provided output storage remains caller-owned, and
+no hidden process-global calculation state is used.
+
+## Fixed-topology basis layout
+
+CUDA plans retain contracted primitives once per physical Gaussian shell.
+Ragged `system_shell_offsets`, `shell_ao_offsets`, and
+`shell_primitive_offsets` describe the unique shell storage. Canonical ragged
+`system_shell_pair_offsets` plus shell-pair system/first/second arrays retain
+consumer topology once per fixed plan. Each flattened Cartesian AO stores only
+its shell index, CCA powers, and component normalization. This follows gpuxtb's
+separation of immutable topology from expanded numerical consumers and avoids
+duplicating a primitive contraction for every d/f component.
+
+The internal `inspect_rhf_cuda_basis_layout` diagnostic makes this invariant
+testable without allocating a GPU plan. For the validated 18-AO s/d/f case,
+four unique primitive records replace 18 component-expanded references, and
+the complete device basis-topology payload, including ten shell pairs and 55
+unique shell-pair-pair quartets, is 602 bytes. Shell angular momenta,
+AO/primitive ranges, shell-pair bounds, and ragged per-system quartet offsets
+are resident in the fixed plan.
+
+## Fleet execution
+
+`qce_batch` is a persistent, non-reentrant fleet plan. It copies system
+topologies during preparation, so caller system handles can be released. Each
+execution optionally supplies new ragged coordinates without rebuilding basis
+metadata. Compatible systems are bucketed by AO count, occupied count, and
+primitive count; item results are restored to input order.
+
+Every item has an independent status, convergence diagnostics, force buffer,
+and retained AO density. A failed item leaves its previous warm state intact
+and does not stop other systems. Warm densities are symmetrized and rescaled to
+the correct electron trace under the new overlap before use; if the warm solve
+fails, the item retries from the cold core guess.
+
+The CPU reference backend uses a bounded native worker group within each
+bucket. A CUDA context builds overlap, core-Hamiltonian, ERI, and nuclear terms
+on the device, uses cuSOLVER batched Jacobi eigensolves, retains all SCF matrix
+and convergence state on the device, and assembles the analytic force without
+a scientific host fallback. The host submits a fixed maximum iteration chain;
+an active mask stops converged or failed systems while peers continue.
+Python never orchestrates per-system SCF loops.
+
+The current CUDA implementation is complete for the public executable scope
+(RHF/UHF with contracted Cartesian s-p-d-f shells), but is not yet the
+production spherical/direct-or-DF HF engine. Its SCF loop uses device DIIS and a
+device-tail-launched CUDA Graph.
+Each fixed-topology bucket owns and replays one packed arena and Graph, so warm
+executions do not recreate streams, provider handles, workspaces, or graph
+executables. AO buckets up to 16 functions use a specialized device Jacobi
+solver; larger buckets dispatch to cuSOLVER. Analytic forces are decomposed
+over coordinates and integral quartets rather than serializing one complete
+gradient behind each coordinate thread. Coulomb auxiliary states are stored in
+a four-dimensional simplex (1,820 states through f) rather than a dense 13^4
+thread-local array.
+
+J/K uses two runtime policies selected by fixed AO topology. Buckets through
+16 AOs compute ERIs once per geometry and retain them in the bucket arena,
+matching the persistent-cache strategy used successfully in GPUxtb. Larger
+buckets allocate no N^4 tensor: a device kernel builds O(N^2) Schwarz bounds,
+and a fused direct kernel screens and evaluates Coulomb/exchange integrals
+inside every SCF Graph iteration. The analytic two-electron force applies the
+same pair-symmetric screening decision, preserving its finite-difference
+relationship to the screened energy. For s/p/d/f topologies, direct Fock decodes
+only canonical shell-pair-pair and AO-pair-pair lower triangles. Each unique
+eightfold-symmetric ERI is evaluated once, then its distinct permutations
+scatter Coulomb and matching-spin exchange contributions into RHF or UHF Fock
+matrices. The force kernel contracts the identical unique integral set and
+differentiates only the at most four participating shell centers. A fixed
+topology-derived tile multiplicity stripes large d/f AO-quartet groups across
+blocks while retaining O(N^2) numerical storage; empty tiles exit after
+decoding instead of requiring an O(N^4) descriptor array. Double
+atomics make this fast but not bitwise deterministic: a 50-replay 21-AO test
+showed about 1.5e-14 Eh energy span and 1.4e-12 Eh/bohr maximum force span.
+Canonical AO-pair arrays remain
+resident for one-electron triangles and Schwarz bounds,
+following gpuxtb's immutable pair-metadata pattern. The next scheduler
+milestone is geometry-dependent active quartet compaction without host
+readback, followed by generated quartet kernels and spherical transforms.
+
+UHF reuses the same fixed topology and physical-system active mask while its
+matrix arena stores adjacent alpha/beta states. Coulomb kernels consume
+`D_alpha + D_beta`; exchange and its derivative consume only the matching spin.
+The two spin commutators are concatenated into one DIIS metric per physical
+system, so convergence and failure isolation remain molecular rather than
+being reported as unrelated spin jobs.

@@ -1,0 +1,83 @@
+# Reference repositories are cloned outside this source tree. Before any code
+# is adapted, fill in commit, license_spdx, and license_sha256 and preserve the
+# original copyright notices. Empty values mean "oracle/reference only".
+
+[[repository]]
+name = "gpu4pyscf"
+url = "https://github.com/pyscf/gpu4pyscf.git"
+purpose = "GPU integrals, J/K, gradients, screening, benchmark comparison"
+commit = "db6bb7f12bf4b6465b7c5ff0a9741bc2be08318d"
+license_spdx = "Apache-2.0"
+license_sha256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+
+[[repository]]
+name = "pyscf"
+url = "https://github.com/pyscf/pyscf.git"
+purpose = "Primary integral, SCF, and analytic-gradient oracle"
+commit = "94d4dc83a5dd6e64c48c553991b33a9c5ae7b522"
+license_spdx = "Apache-2.0"
+license_sha256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+
+[[repository]]
+name = "psi4"
+url = "https://github.com/psi4/psi4.git"
+purpose = "Independent SCF and analytic-gradient oracle"
+commit = "da94da4aed842269965d4e68e6558f44adbe2616"
+license_spdx = "LGPL-3.0-only"
+license_sha256 = "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768"
+
+[[repository]]
+name = "quick"
+url = "https://github.com/merzlab/QUICK.git"
+purpose = "Native CUDA integral and direct-SCF architecture"
+commit = "2cb6a3b2cf6ab498d8cb35607181d7b098d6ccad"
+license_spdx = "MPL-2.0"
+license_sha256 = "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5"
+
+[[repository]]
+name = "libcint"
+url = "https://github.com/sunqm/libcint.git"
+purpose = "Random-shell integral and derivative oracle"
+commit = "3d36c4f4e24ca5aaf91be7299f93dd541db0f50b"
+license_spdx = "Apache-2.0"
+license_sha256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+
+[[repository]]
+name = "libint"
+url = "https://github.com/evaleev/libint.git"
+purpose = "Gaussian recurrence and code-generation reference"
+commit = "f47820bd2b8eb1b71b3076249a8f516f1a5316e4"
+license_spdx = "GPL-3.0-only AND LGPL-3.0-only"
+license_sha256 = "a09ded3ff1f9d6dbab2ec43d79328853704bb94a34ec78665f2e34634b60c4ef"
+
+[[repository]]
+name = "basis_set_exchange"
+url = "https://github.com/MolSSI-BSE/basis_set_exchange.git"
+purpose = "Basis data and native basis-pack generation"
+commit = "4adaf1372c7101620ca1a9f3130be9ae97fb8f30"
+license_spdx = "BSD-3-Clause"
+license_sha256 = "14b5a1c21a9e0966e295b9e3d66c0cee9475ffe5931e74d063c3713e2ae9a496"
+
+[[repository]]
+name = "byteqc"
+url = "https://github.com/bytedance/byteqc.git"
+purpose = "Future GPU MP2 and CCSD(T) reference"
+commit = ""
+license_spdx = ""
+license_sha256 = ""
+
+[[repository]]
+name = "tamm"
+url = "https://github.com/NWChemEx-Project/TAMM.git"
+purpose = "Future distributed tensor DAG reference"
+commit = ""
+license_spdx = ""
+license_sha256 = ""
+
+[[repository]]
+name = "exachem"
+url = "https://github.com/ExaChem/exachem.git"
+purpose = "Future multi-GPU correlated-method reference"
+commit = ""
+license_spdx = ""
+license_sha256 = ""

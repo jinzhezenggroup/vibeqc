@@ -1,0 +1,103 @@
+cmake_minimum_required(VERSION 3.24)
+
+project(qce VERSION 0.1.0 LANGUAGES CXX)
+
+option(QCE_ENABLE_CUDA "Build the CUDA runtime backend" ON)
+option(QCE_BUILD_TESTS "Build native tests" ON)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+if(QCE_ENABLE_CUDA)
+  include(CheckLanguage)
+  check_language(CUDA)
+  if(CMAKE_CUDA_COMPILER)
+    enable_language(CUDA)
+    set(CMAKE_CUDA_STANDARD 20)
+    set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+    if(NOT CMAKE_CUDA_ARCHITECTURES)
+      set(CMAKE_CUDA_ARCHITECTURES 120)
+    endif()
+    find_package(CUDAToolkit REQUIRED)
+  else()
+    message(WARNING "CUDA compiler not found; building the CPU reference backend only")
+    set(QCE_ENABLE_CUDA OFF)
+  endif()
+endif()
+
+add_library(qce SHARED
+  src/api/c_api.cpp
+  src/integrals/s_integrals.cpp
+  src/molecule/basis.cpp
+  src/runtime/context.cpp
+  src/scf/fleet.cpp
+  src/scf/rhf.cpp
+)
+
+target_include_directories(qce
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_compile_definitions(qce PRIVATE QCE_BUILDING_LIBRARY=1)
+target_compile_options(qce PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Wpedantic>)
+
+if(QCE_ENABLE_CUDA)
+  target_sources(qce PRIVATE
+    src/runtime/cuda_runtime.cu
+    src/scf/cuda_rhf.cu
+  )
+  target_link_libraries(qce PRIVATE CUDA::cudart CUDA::cusolver)
+  target_compile_definitions(qce PUBLIC QCE_HAS_CUDA=1)
+  set_target_properties(qce PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+else()
+  target_compile_definitions(qce PUBLIC QCE_HAS_CUDA=0)
+endif()
+
+set_target_properties(qce PROPERTIES
+  VERSION ${PROJECT_VERSION}
+  SOVERSION 0
+  OUTPUT_NAME qce
+)
+
+if(QCE_BUILD_TESTS)
+  enable_testing()
+  add_executable(qce_native_tests tests/native/test_rhf.cpp)
+  target_link_libraries(qce_native_tests PRIVATE qce)
+  target_include_directories(qce_native_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  add_test(NAME qce_native_tests COMMAND qce_native_tests)
+
+  add_executable(qce_batch_tests tests/native/test_batch.cpp)
+  target_link_libraries(qce_batch_tests PRIVATE qce)
+  add_test(NAME qce_batch_tests COMMAND qce_batch_tests)
+
+  add_executable(qce_cpp_api_tests tests/native/test_cpp_batch.cpp)
+  target_link_libraries(qce_cpp_api_tests PRIVATE qce)
+  add_test(NAME qce_cpp_api_tests COMMAND qce_cpp_api_tests)
+
+  add_executable(qce_cartesian_integral_tests
+    tests/native/test_cartesian_integrals.cpp)
+  target_link_libraries(qce_cartesian_integral_tests PRIVATE qce)
+  target_include_directories(qce_cartesian_integral_tests
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  add_test(NAME qce_cartesian_integral_tests
+    COMMAND qce_cartesian_integral_tests)
+
+  add_executable(qce_uhf_tests tests/native/test_uhf.cpp)
+  target_link_libraries(qce_uhf_tests PRIVATE qce)
+  target_include_directories(qce_uhf_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  add_test(NAME qce_uhf_tests COMMAND qce_uhf_tests)
+endif()
+
+include(GNUInstallDirs)
+install(TARGETS qce
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})

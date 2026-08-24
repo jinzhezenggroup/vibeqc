@@ -1,0 +1,4450 @@
+#include "scf/rhf.hpp"
+
+#include "molecule/basis.hpp"
+
+#include <cuda_runtime_api.h>
+#include <cusolverDn.h>
+#include <math_constants.h>
+
+#include <algorithm>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <new>
+#include <stdexcept>
+#include <string>
+#include <type_traits>
+#include <utility>
+#include <vector>
+
+namespace qce::scf {
+namespace {
+
+constexpr double kPi = 3.141592653589793238462643383279502884;
+constexpr int kMaximumAngularMomentum = 3;
+constexpr int kHermiteIDimension = kMaximumAngularMomentum + 1;
+constexpr int kHermiteJDimension = kMaximumAngularMomentum + 3;
+constexpr int kHermiteTDimension = 2 * kMaximumAngularMomentum + 4;
+constexpr int kMaximumCoulombOrder = 4 * kMaximumAngularMomentum;
+// Number of non-negative (n,t,u,v) tuples with n+t+u+v <= 12.
+// A simplex layout uses 1,820 values instead of a dense 13^4 = 28,561,
+// which is critical because the buffer is thread-local in derivative kernels.
+constexpr int kCoulombStateCount = 1820;
+// Small fixed-topology fleet buckets benefit from evaluating ERIs once and
+// replaying them from the persistent arena. Larger AO spaces switch to fused
+// direct J/K so device memory remains O(N^2), not O(N^4).
+constexpr std::size_t kPersistentEriAoLimit = 16;
+constexpr std::size_t kDirectQuartetThreads = 256;
+
+struct Dual {
+  double value;
+  double derivative;
+};
+
+__device__ Dual operator+(Dual a, Dual b) {
+  return {a.value + b.value, a.derivative + b.derivative};
+}
+__device__ Dual operator-(Dual a, Dual b) {
+  return {a.value - b.value, a.derivative - b.derivative};
+}
+__device__ Dual operator*(Dual a, Dual b) {
+  return {a.value * b.value,
+          a.derivative * b.value + a.value * b.derivative};
+}
+__device__ Dual operator/(Dual a, Dual b) {
+  const double inverse_square = 1.0 / (b.value * b.value);
+  return {a.value / b.value,
+          (a.derivative * b.value - a.value * b.derivative) * inverse_square};
+}
+__device__ Dual operator-(double a, Dual b) { return Dual{a, 0.0} - b; }
+__device__ Dual operator*(double a, Dual b) { return Dual{a, 0.0} * b; }
+__device__ Dual operator/(Dual a, double b) { return a / Dual{b, 0.0}; }
+__device__ Dual operator/(double a, Dual b) { return Dual{a, 0.0} / b; }
+
+template <typename Scalar>
+__device__ Scalar scalar(double value, double derivative = 0.0) {
+  if constexpr (std::is_same_v<Scalar, Dual>) {
+    return {value, derivative};
+  } else {
+    (void)derivative;
+    return value;
+  }
+}
+
+template <typename Scalar>
+__device__ double scalar_value(Scalar value) {
+  if constexpr (std::is_same_v<Scalar, Dual>) {
+    return value.value;
+  } else {
+    return value;
+  }
+}
+
+template <typename Scalar>
+__device__ Scalar qexp(Scalar value) {
+  if constexpr (std::is_same_v<Scalar, Dual>) {
+    const double result = exp(value.value);
+    return {result, result * value.derivative};
+  } else {
+    return exp(value);
+  }
+}
+
+template <typename Scalar>
+__device__ Scalar qsqrt(Scalar value) {
+  if constexpr (std::is_same_v<Scalar, Dual>) {
+    const double result = sqrt(value.value);
+    return {result, 0.5 * value.derivative / result};
+  } else {
+    return sqrt(value);
+  }
+}
+
+template <typename Scalar>
+__device__ Scalar qerf(Scalar value) {
+  if constexpr (std::is_same_v<Scalar, Dual>) {
+    const double result = erf(value.value);
+    const double factor = 2.0 / sqrt(kPi) * exp(-value.value * value.value);
+    return {result, factor * value.derivative};
+  } else {
+    return erf(value);
+  }
+}
+
+template <typename Scalar>
+__device__ Scalar boys0(Scalar x) {
+  if (scalar_value(x) < 1.0e-8) {
+    const Scalar x2 = x * x;
+    const Scalar x3 = x2 * x;
+    const Scalar x4 = x3 * x;
+    return scalar<Scalar>(1.0) - x / 3.0 + x2 / 10.0 - x3 / 42.0 + x4 / 216.0;
+  }
+  return 0.5 * qsqrt(scalar<Scalar>(kPi) / x) * qerf(qsqrt(x));
+}
+
+template <typename Scalar>
+struct Vec3 {
+  Scalar x;
+  Scalar y;
+  Scalar z;
+};
+
+struct DeviceBatch {
+  std::int32_t batch_size;
+  std::int32_t nbf;
+  std::int64_t total_atoms;
+  std::int64_t total_shells;
+  std::int64_t total_shell_pairs;
+  std::int64_t total_shell_quartets;
+  const std::int64_t* atom_offsets;
+  const std::int32_t* atom_systems;
+  const std::int32_t* atomic_numbers;
+  const double* positions;
+  const std::int64_t* system_shell_offsets;
+  const std::int32_t* shell_atoms;
+  const std::uint8_t* shell_angular;
+  const std::int64_t* shell_ao_offsets;
+  const std::int64_t* shell_primitive_offsets;
+  const std::int64_t* system_shell_pair_offsets;
+  const std::int64_t* system_shell_quartet_offsets;
+  const std::int32_t* shell_pair_systems;
+  const std::int32_t* shell_pair_first;
+  const std::int32_t* shell_pair_second;
+  // Flattened Cartesian AOs refer back to unique shell storage. This avoids
+  // duplicating a contracted primitive list for every d/f component while
+  // preserving the CCA component order used by dense SCF matrices.
+  const std::int32_t* ao_shells;
+  const std::uint8_t* ao_angular;
+  const double* ao_normalization;
+  const double* primitive_exponents;
+  const double* primitive_coefficients;
+  const std::int32_t* occupied;
+};
+
+__device__ std::size_t matrix_index(std::size_t row,
+                                    std::size_t column,
+                                    std::size_t n) {
+  // CUDA dense matrices are column-major so they can be submitted directly to
+  // cuSOLVER without iteration-level transposes.
+  return row + column * n;
+}
+
+__device__ std::size_t eri_index(std::size_t i,
+                                 std::size_t j,
+                                 std::size_t k,
+                                 std::size_t l,
+                                 std::size_t n) {
+  return ((i * n + j) * n + k) * n + l;
+}
+
+__device__ void decode_lower_triangle(std::size_t packed,
+                                      std::size_t& first,
+                                      std::size_t& second) {
+  first = static_cast<std::size_t>(
+      0.5 * (sqrt(8.0 * static_cast<double>(packed) + 1.0) - 1.0));
+  while ((first + 1) * (first + 2) / 2 <= packed) ++first;
+  while (first * (first + 1) / 2 > packed) --first;
+  second = packed - first * (first + 1) / 2;
+}
+
+__device__ std::int32_t shell_quartet_system(const DeviceBatch& batch,
+                                             std::size_t quartet) {
+  std::int32_t lower = 0;
+  std::int32_t upper = batch.batch_size;
+  while (lower + 1 < upper) {
+    const std::int32_t middle = lower + (upper - lower) / 2;
+    if (static_cast<std::size_t>(batch.system_shell_quartet_offsets[middle]) <=
+        quartet) {
+      lower = middle;
+    } else {
+      upper = middle;
+    }
+  }
+  return lower;
+}
+
+__device__ std::size_t shell_ao_pair_count(const DeviceBatch& batch,
+                                           std::size_t shell_pair) {
+  const std::int32_t first_shell = batch.shell_pair_first[shell_pair];
+  const std::int32_t second_shell = batch.shell_pair_second[shell_pair];
+  const std::size_t first_count =
+      static_cast<std::size_t>(batch.shell_ao_offsets[first_shell + 1] -
+                               batch.shell_ao_offsets[first_shell]);
+  const std::size_t second_count =
+      static_cast<std::size_t>(batch.shell_ao_offsets[second_shell + 1] -
+                               batch.shell_ao_offsets[second_shell]);
+  return first_shell == second_shell
+      ? first_count * (first_count + 1) / 2
+      : first_count * second_count;
+}
+
+__device__ void decode_shell_ao_pair(const DeviceBatch& batch,
+                                     std::size_t shell_pair,
+                                     std::size_t ordinal,
+                                     std::size_t system_ao_begin,
+                                     std::size_t& first,
+                                     std::size_t& second) {
+  const std::int32_t first_shell = batch.shell_pair_first[shell_pair];
+  const std::int32_t second_shell = batch.shell_pair_second[shell_pair];
+  const std::size_t first_begin =
+      static_cast<std::size_t>(batch.shell_ao_offsets[first_shell]);
+  const std::size_t second_begin =
+      static_cast<std::size_t>(batch.shell_ao_offsets[second_shell]);
+  const std::size_t second_count =
+      static_cast<std::size_t>(batch.shell_ao_offsets[second_shell + 1]) -
+      second_begin;
+  std::size_t first_component = 0;
+  std::size_t second_component = 0;
+  if (first_shell == second_shell) {
+    decode_lower_triangle(ordinal, first_component, second_component);
+  } else {
+    first_component = ordinal / second_count;
+    second_component = ordinal % second_count;
+  }
+  first = first_begin + first_component - system_ao_begin;
+  second = second_begin + second_component - system_ao_begin;
+}
+
+template <typename Scalar>
+__device__ Vec3<Scalar> atom_position(const DeviceBatch& batch,
+                                      std::int64_t atom,
+                                      std::int64_t derivative_coordinate) {
+  const std::int64_t base = atom * 3;
+  return {
+      scalar<Scalar>(batch.positions[base], derivative_coordinate == base ? 1.0 : 0.0),
+      scalar<Scalar>(batch.positions[base + 1],
+                     derivative_coordinate == base + 1 ? 1.0 : 0.0),
+      scalar<Scalar>(batch.positions[base + 2],
+                     derivative_coordinate == base + 2 ? 1.0 : 0.0),
+  };
+}
+
+template <typename Scalar>
+__device__ Scalar distance_squared(const Vec3<Scalar>& first,
+                                   const Vec3<Scalar>& second) {
+  const Scalar dx = first.x - second.x;
+  const Scalar dy = first.y - second.y;
+  const Scalar dz = first.z - second.z;
+  return dx * dx + dy * dy + dz * dz;
+}
+
+template <typename Scalar>
+__device__ Vec3<Scalar> product_center(double alpha,
+                                      const Vec3<Scalar>& first,
+                                      double beta,
+                                      const Vec3<Scalar>& second) {
+  const double exponent = alpha + beta;
+  return {(alpha * first.x + beta * second.x) / exponent,
+          (alpha * first.y + beta * second.y) / exponent,
+          (alpha * first.z + beta * second.z) / exponent};
+}
+
+template <typename Scalar>
+__device__ Scalar primitive_overlap(double alpha,
+                                    const Vec3<Scalar>& first,
+                                    double beta,
+                                    const Vec3<Scalar>& second) {
+  const double exponent = alpha + beta;
+  const double reduced = alpha * beta / exponent;
+  return pow(kPi / exponent, 1.5) *
+         qexp(-reduced * distance_squared(first, second));
+}
+
+template <typename Scalar>
+__device__ Scalar primitive_kinetic(double alpha,
+                                    const Vec3<Scalar>& first,
+                                    double beta,
+                                    const Vec3<Scalar>& second) {
+  const double exponent = alpha + beta;
+  const double reduced = alpha * beta / exponent;
+  const Scalar squared_distance = distance_squared(first, second);
+  return reduced * (3.0 - 2.0 * reduced * squared_distance) *
+         primitive_overlap(alpha, first, beta, second);
+}
+
+template <typename Scalar>
+__device__ Scalar primitive_nuclear_attraction(
+    const DeviceBatch& batch,
+    std::int32_t system,
+    double alpha,
+    const Vec3<Scalar>& first,
+    double beta,
+    const Vec3<Scalar>& second,
+    std::int64_t derivative_coordinate) {
+  const double exponent = alpha + beta;
+  const double reduced = alpha * beta / exponent;
+  const Vec3<Scalar> center = product_center(alpha, first, beta, second);
+  const Scalar prefactor =
+      (2.0 * kPi / exponent) *
+      qexp(-reduced * distance_squared(first, second));
+  Scalar result = scalar<Scalar>(0.0);
+  for (std::int64_t atom = batch.atom_offsets[system];
+       atom < batch.atom_offsets[system + 1]; ++atom) {
+    const Scalar argument =
+        exponent * distance_squared(center, atom_position<Scalar>(
+                                                batch, atom, derivative_coordinate));
+    result = result - static_cast<double>(batch.atomic_numbers[atom]) *
+                          prefactor * boys0(argument);
+  }
+  return result;
+}
+
+template <typename Scalar>
+__device__ Scalar primitive_eri(double alpha,
+                                const Vec3<Scalar>& first,
+                                double beta,
+                                const Vec3<Scalar>& second,
+                                double gamma,
+                                const Vec3<Scalar>& third,
+                                double delta,
+                                const Vec3<Scalar>& fourth) {
+  const double p = alpha + beta;
+  const double q = gamma + delta;
+  const double mu = alpha * beta / p;
+  const double nu = gamma * delta / q;
+  const Vec3<Scalar> center_p = product_center(alpha, first, beta, second);
+  const Vec3<Scalar> center_q = product_center(gamma, third, delta, fourth);
+  const double rho = p * q / (p + q);
+  const double prefactor =
+      2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q));
+  return prefactor *
+         qexp(-mu * distance_squared(first, second) -
+              nu * distance_squared(third, fourth)) *
+         boys0(rho * distance_squared(center_p, center_q));
+}
+
+struct Angular {
+  unsigned x;
+  unsigned y;
+  unsigned z;
+};
+
+__device__ unsigned angular_axis(const Angular& angular, int axis) {
+  return axis == 0 ? angular.x : (axis == 1 ? angular.y : angular.z);
+}
+
+__device__ void add_angular_axis(Angular& angular, int axis, int delta) {
+  unsigned* value = axis == 0 ? &angular.x : (axis == 1 ? &angular.y : &angular.z);
+  *value = static_cast<unsigned>(static_cast<int>(*value) + delta);
+}
+
+__device__ unsigned angular_total(const Angular& angular) {
+  return angular.x + angular.y + angular.z;
+}
+
+__device__ bool is_s_function(const Angular& angular) {
+  return angular_total(angular) == 0;
+}
+
+__device__ Angular ao_angular(const DeviceBatch& batch, std::int64_t ao) {
+  const std::int64_t offset = ao * 3;
+  return {batch.ao_angular[offset], batch.ao_angular[offset + 1],
+          batch.ao_angular[offset + 2]};
+}
+
+template <typename Scalar>
+__device__ Scalar vec_axis(const Vec3<Scalar>& vector, int axis) {
+  return axis == 0 ? vector.x : (axis == 1 ? vector.y : vector.z);
+}
+
+template <typename Scalar>
+__device__ void boys_values(unsigned maximum_order,
+                            Scalar argument,
+                            Scalar* values) {
+  for (int order = 0; order <= kMaximumCoulombOrder; ++order) {
+    values[order] = scalar<Scalar>(0.0);
+  }
+  if (scalar_value(argument) < 6.0) {
+    for (unsigned order = 0; order <= maximum_order; ++order) {
+      Scalar term = scalar<Scalar>(1.0);
+      Scalar sum = scalar<Scalar>(0.0);
+      for (unsigned k = 0; k < 80; ++k) {
+        sum = sum + term / static_cast<double>(2 * order + 2 * k + 1);
+        term = term * (-1.0 * argument) / static_cast<double>(k + 1);
+        if (fabs(scalar_value(term)) < 1.0e-18) break;
+      }
+      values[order] = sum;
+    }
+    return;
+  }
+
+  values[0] = 0.5 * qsqrt(scalar<Scalar>(kPi) / argument) *
+              qerf(qsqrt(argument));
+  const Scalar exponential = qexp(-1.0 * argument);
+  for (unsigned order = 1; order <= maximum_order; ++order) {
+    values[order] =
+        ((2.0 * static_cast<double>(order) - 1.0) * values[order - 1] -
+         exponential) /
+        (2.0 * argument);
+  }
+}
+
+template <typename Scalar>
+struct HermiteCoefficients {
+  Scalar data[kHermiteIDimension * kHermiteJDimension * kHermiteTDimension];
+
+  __device__ Scalar& at(unsigned i, unsigned j, unsigned t) {
+    return data[(i * kHermiteJDimension + j) * kHermiteTDimension + t];
+  }
+  __device__ const Scalar& at(unsigned i, unsigned j, unsigned t) const {
+    return data[(i * kHermiteJDimension + j) * kHermiteTDimension + t];
+  }
+};
+
+template <typename Scalar>
+__device__ void fill_hermite(unsigned maximum_i,
+                             unsigned maximum_j,
+                             Scalar product,
+                             Scalar center_a,
+                             Scalar center_b,
+                             double alpha,
+                             double beta,
+                             HermiteCoefficients<Scalar>& coefficients) {
+  for (int item = 0;
+       item < kHermiteIDimension * kHermiteJDimension * kHermiteTDimension;
+       ++item) {
+    coefficients.data[item] = scalar<Scalar>(0.0);
+  }
+  const double p = alpha + beta;
+  const double mu = alpha * beta / p;
+  const Scalar ab = center_a - center_b;
+  coefficients.at(0, 0, 0) = qexp(-mu * ab * ab);
+  const Scalar pa = product - center_a;
+  const Scalar pb = product - center_b;
+  const double inverse_two_p = 0.5 / p;
+
+  for (unsigned i = 0; i <= maximum_i; ++i) {
+    for (unsigned j = 0; j <= maximum_j; ++j) {
+      if (i == 0 && j == 0) continue;
+      if (i > 0) {
+        coefficients.at(i, j, 0) =
+            pa * coefficients.at(i - 1, j, 0) +
+            coefficients.at(i - 1, j, 1);
+      } else {
+        coefficients.at(i, j, 0) =
+            pb * coefficients.at(i, j - 1, 0) +
+            coefficients.at(i, j - 1, 1);
+      }
+      for (unsigned t = 1; t <= i + j; ++t) {
+        if (i > 0) {
+          coefficients.at(i, j, t) =
+              pa * coefficients.at(i - 1, j, t) +
+              inverse_two_p * coefficients.at(i - 1, j, t - 1) +
+              static_cast<double>(t + 1) *
+                  coefficients.at(i - 1, j, t + 1);
+        } else {
+          coefficients.at(i, j, t) =
+              pb * coefficients.at(i, j - 1, t) +
+              inverse_two_p * coefficients.at(i, j - 1, t - 1) +
+              static_cast<double>(t + 1) *
+                  coefficients.at(i, j - 1, t + 1);
+        }
+      }
+    }
+  }
+}
+
+template <typename Scalar>
+struct CoulombAuxiliary {
+  unsigned maximum_angular;
+  Scalar data[kCoulombStateCount];
+
+  __device__ static unsigned choose3(unsigned value) {
+    return value < 3 ? 0 : value * (value - 1) * (value - 2) / 6;
+  }
+
+  __device__ static unsigned choose4(unsigned value) {
+    return value < 4 ? 0
+                     : value * (value - 1) * (value - 2) * (value - 3) / 24;
+  }
+
+  __device__ unsigned index(unsigned n,
+                            unsigned t,
+                            unsigned u,
+                            unsigned v) const {
+    const unsigned total = choose4(maximum_angular + 4);
+    const unsigned n_offset =
+        total - choose4(maximum_angular - n + 4);
+    const unsigned remaining_after_n = maximum_angular - n;
+    const unsigned t_offset =
+        choose3(remaining_after_n + 3) -
+        choose3(remaining_after_n - t + 3);
+    const unsigned remaining_after_t = remaining_after_n - t;
+    const unsigned u_offset =
+        u * (remaining_after_t + 1) - u * (u - 1) / 2;
+    return n_offset + t_offset + u_offset + v;
+  }
+
+  __device__ Scalar& at(unsigned n, unsigned t, unsigned u, unsigned v) {
+    return data[index(n, t, u, v)];
+  }
+  __device__ const Scalar& at(unsigned n,
+                              unsigned t,
+                              unsigned u,
+                              unsigned v) const {
+    return data[index(n, t, u, v)];
+  }
+};
+
+template <typename Scalar>
+__device__ void fill_coulomb(unsigned maximum_angular,
+                             double exponent,
+                             const Vec3<Scalar>& product,
+                             const Vec3<Scalar>& center,
+                             CoulombAuxiliary<Scalar>& auxiliary) {
+  auxiliary.maximum_angular = maximum_angular;
+  const unsigned state_count =
+      CoulombAuxiliary<Scalar>::choose4(maximum_angular + 4);
+  for (unsigned item = 0; item < state_count; ++item) {
+    auxiliary.data[item] = scalar<Scalar>(0.0);
+  }
+  const Vec3<Scalar> pc{product.x - center.x, product.y - center.y,
+                        product.z - center.z};
+  Scalar boys[kMaximumCoulombOrder + 1];
+  boys_values(maximum_angular,
+              exponent * distance_squared(product, center), boys);
+  double factor = 1.0;
+  for (unsigned n = 0; n <= maximum_angular; ++n) {
+    auxiliary.at(n, 0, 0, 0) = factor * boys[n];
+    factor *= -2.0 * exponent;
+  }
+
+  for (unsigned v = 1; v <= maximum_angular; ++v) {
+    for (unsigned n = 0; n + v <= maximum_angular; ++n) {
+      Scalar value = pc.z * auxiliary.at(n + 1, 0, 0, v - 1);
+      if (v > 1) {
+        value = value + static_cast<double>(v - 1) *
+                            auxiliary.at(n + 1, 0, 0, v - 2);
+      }
+      auxiliary.at(n, 0, 0, v) = value;
+    }
+  }
+  for (unsigned v = 0; v <= maximum_angular; ++v) {
+    for (unsigned u = 1; u + v <= maximum_angular; ++u) {
+      for (unsigned n = 0; n + u + v <= maximum_angular; ++n) {
+        Scalar value = pc.y * auxiliary.at(n + 1, 0, u - 1, v);
+        if (u > 1) {
+          value = value + static_cast<double>(u - 1) *
+                              auxiliary.at(n + 1, 0, u - 2, v);
+        }
+        auxiliary.at(n, 0, u, v) = value;
+      }
+    }
+  }
+  for (unsigned v = 0; v <= maximum_angular; ++v) {
+    for (unsigned u = 0; u + v <= maximum_angular; ++u) {
+      for (unsigned t = 1; t + u + v <= maximum_angular; ++t) {
+        for (unsigned n = 0; n + t + u + v <= maximum_angular; ++n) {
+          Scalar value = pc.x * auxiliary.at(n + 1, t - 1, u, v);
+          if (t > 1) {
+            value = value + static_cast<double>(t - 1) *
+                                auxiliary.at(n + 1, t - 2, u, v);
+          }
+          auxiliary.at(n, t, u, v) = value;
+        }
+      }
+    }
+  }
+}
+
+template <typename Scalar>
+__device__ Scalar primitive_overlap_cartesian(
+    double alpha,
+    const Vec3<Scalar>& first,
+    const Angular& angular_first,
+    double beta,
+    const Vec3<Scalar>& second,
+    const Angular& angular_second) {
+  const double p = alpha + beta;
+  const Vec3<Scalar> product = product_center(alpha, first, beta, second);
+  Scalar result = scalar<Scalar>(pow(kPi / p, 1.5));
+  for (int axis = 0; axis < 3; ++axis) {
+    HermiteCoefficients<Scalar> coefficients;
+    const unsigned first_power = angular_axis(angular_first, axis);
+    const unsigned second_power = angular_axis(angular_second, axis);
+    fill_hermite(first_power, second_power, vec_axis(product, axis),
+                 vec_axis(first, axis), vec_axis(second, axis), alpha, beta,
+                 coefficients);
+    result = result * coefficients.at(first_power, second_power, 0);
+  }
+  return result;
+}
+
+template <typename Scalar>
+__device__ Scalar primitive_kinetic_cartesian(
+    double alpha,
+    const Vec3<Scalar>& first,
+    const Angular& angular_first,
+    double beta,
+    const Vec3<Scalar>& second,
+    const Angular& angular_second) {
+  Scalar result = beta * (2.0 * static_cast<double>(angular_total(angular_second)) +
+                          3.0) *
+                  primitive_overlap_cartesian(alpha, first, angular_first,
+                                              beta, second, angular_second);
+  for (int axis = 0; axis < 3; ++axis) {
+    Angular raised = angular_second;
+    add_angular_axis(raised, axis, 2);
+    result = result - 2.0 * beta * beta *
+                          primitive_overlap_cartesian(
+                              alpha, first, angular_first, beta, second, raised);
+    const unsigned power = angular_axis(angular_second, axis);
+    if (power >= 2) {
+      Angular lowered = angular_second;
+      add_angular_axis(lowered, axis, -2);
+      result = result - 0.5 * static_cast<double>(power * (power - 1)) *
+                            primitive_overlap_cartesian(
+                                alpha, first, angular_first, beta, second,
+                                lowered);
+    }
+  }
+  return result;
+}
+
+template <typename Scalar>
+__device__ Scalar primitive_nuclear_attraction_cartesian(
+    const DeviceBatch& batch,
+    std::int32_t system,
+    double alpha,
+    const Vec3<Scalar>& first,
+    const Angular& angular_first,
+    double beta,
+    const Vec3<Scalar>& second,
+    const Angular& angular_second,
+    std::int64_t derivative_coordinate) {
+  const double p = alpha + beta;
+  const Vec3<Scalar> product = product_center(alpha, first, beta, second);
+  HermiteCoefficients<Scalar> coefficients[3];
+  for (int axis = 0; axis < 3; ++axis) {
+    fill_hermite(angular_axis(angular_first, axis),
+                 angular_axis(angular_second, axis), vec_axis(product, axis),
+                 vec_axis(first, axis), vec_axis(second, axis), alpha, beta,
+                 coefficients[axis]);
+  }
+  const unsigned maximum =
+      angular_total(angular_first) + angular_total(angular_second);
+  Scalar result = scalar<Scalar>(0.0);
+  for (std::int64_t atom = batch.atom_offsets[system];
+       atom < batch.atom_offsets[system + 1]; ++atom) {
+    CoulombAuxiliary<Scalar> auxiliary;
+    fill_coulomb(maximum, p, product,
+                 atom_position<Scalar>(batch, atom, derivative_coordinate),
+                 auxiliary);
+    Scalar value = scalar<Scalar>(0.0);
+    for (unsigned t = 0; t <= angular_first.x + angular_second.x; ++t) {
+      for (unsigned u = 0; u <= angular_first.y + angular_second.y; ++u) {
+        for (unsigned v = 0; v <= angular_first.z + angular_second.z; ++v) {
+          value = value +
+              coefficients[0].at(angular_first.x, angular_second.x, t) *
+              coefficients[1].at(angular_first.y, angular_second.y, u) *
+              coefficients[2].at(angular_first.z, angular_second.z, v) *
+              auxiliary.at(0, t, u, v);
+        }
+      }
+    }
+    result = result - static_cast<double>(batch.atomic_numbers[atom]) *
+                          (2.0 * kPi / p) * value;
+  }
+  return result;
+}
+
+template <typename Scalar>
+__device__ Scalar primitive_eri_cartesian(
+    double alpha,
+    const Vec3<Scalar>& first,
+    const Angular& angular_first,
+    double beta,
+    const Vec3<Scalar>& second,
+    const Angular& angular_second,
+    double gamma,
+    const Vec3<Scalar>& third,
+    const Angular& angular_third,
+    double delta,
+    const Vec3<Scalar>& fourth,
+    const Angular& angular_fourth) {
+  const double p = alpha + beta;
+  const double q = gamma + delta;
+  const double rho = p * q / (p + q);
+  const Vec3<Scalar> product_p = product_center(alpha, first, beta, second);
+  const Vec3<Scalar> product_q = product_center(gamma, third, delta, fourth);
+  HermiteCoefficients<Scalar> first_coefficients[3];
+  HermiteCoefficients<Scalar> second_coefficients[3];
+  for (int axis = 0; axis < 3; ++axis) {
+    fill_hermite(angular_axis(angular_first, axis),
+                 angular_axis(angular_second, axis), vec_axis(product_p, axis),
+                 vec_axis(first, axis), vec_axis(second, axis), alpha, beta,
+                 first_coefficients[axis]);
+    fill_hermite(angular_axis(angular_third, axis),
+                 angular_axis(angular_fourth, axis), vec_axis(product_q, axis),
+                 vec_axis(third, axis), vec_axis(fourth, axis), gamma, delta,
+                 second_coefficients[axis]);
+  }
+  const unsigned maximum = angular_total(angular_first) +
+                           angular_total(angular_second) +
+                           angular_total(angular_third) +
+                           angular_total(angular_fourth);
+  CoulombAuxiliary<Scalar> auxiliary;
+  fill_coulomb(maximum, rho, product_p, product_q, auxiliary);
+
+  Scalar value = scalar<Scalar>(0.0);
+  for (unsigned t = 0; t <= angular_first.x + angular_second.x; ++t) {
+    for (unsigned u = 0; u <= angular_first.y + angular_second.y; ++u) {
+      for (unsigned v = 0; v <= angular_first.z + angular_second.z; ++v) {
+        const Scalar first_value =
+            first_coefficients[0].at(angular_first.x, angular_second.x, t) *
+            first_coefficients[1].at(angular_first.y, angular_second.y, u) *
+            first_coefficients[2].at(angular_first.z, angular_second.z, v);
+        for (unsigned tau = 0; tau <= angular_third.x + angular_fourth.x;
+             ++tau) {
+          for (unsigned nu = 0; nu <= angular_third.y + angular_fourth.y;
+               ++nu) {
+            for (unsigned phi = 0;
+                 phi <= angular_third.z + angular_fourth.z; ++phi) {
+              const double sign = ((tau + nu + phi) & 1U) == 0 ? 1.0 : -1.0;
+              value = value + sign * first_value *
+                  second_coefficients[0].at(angular_third.x,
+                                            angular_fourth.x, tau) *
+                  second_coefficients[1].at(angular_third.y,
+                                            angular_fourth.y, nu) *
+                  second_coefficients[2].at(angular_third.z,
+                                            angular_fourth.z, phi) *
+                  auxiliary.at(0, t + tau, u + nu, v + phi);
+            }
+          }
+        }
+      }
+    }
+  }
+  return 2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q)) * value;
+}
+
+template <typename Scalar>
+__device__ Scalar contracted_overlap(const DeviceBatch& batch,
+                                     std::int32_t system,
+                                     std::int32_t i,
+                                     std::int32_t j,
+                                     std::int64_t derivative_coordinate) {
+  const std::int64_t ao_i = static_cast<std::int64_t>(system) * batch.nbf + i;
+  const std::int64_t ao_j = static_cast<std::int64_t>(system) * batch.nbf + j;
+  const std::int32_t shell_i = batch.ao_shells[ao_i];
+  const std::int32_t shell_j = batch.ao_shells[ao_j];
+  const Vec3<Scalar> first = atom_position<Scalar>(
+      batch, batch.shell_atoms[shell_i], derivative_coordinate);
+  const Vec3<Scalar> second = atom_position<Scalar>(
+      batch, batch.shell_atoms[shell_j], derivative_coordinate);
+  const Angular angular_first = ao_angular(batch, ao_i);
+  const Angular angular_second = ao_angular(batch, ao_j);
+  const bool all_s = is_s_function(angular_first) && is_s_function(angular_second);
+  Scalar result = scalar<Scalar>(0.0);
+  for (std::int64_t a = batch.shell_primitive_offsets[shell_i];
+       a < batch.shell_primitive_offsets[shell_i + 1]; ++a) {
+    for (std::int64_t b = batch.shell_primitive_offsets[shell_j];
+         b < batch.shell_primitive_offsets[shell_j + 1]; ++b) {
+      const Scalar primitive = all_s
+          ? primitive_overlap(batch.primitive_exponents[a], first,
+                              batch.primitive_exponents[b], second)
+          : primitive_overlap_cartesian(
+                batch.primitive_exponents[a], first, angular_first,
+                batch.primitive_exponents[b], second, angular_second);
+      result = result + batch.primitive_coefficients[a] *
+                            batch.primitive_coefficients[b] * primitive;
+    }
+  }
+  return batch.ao_normalization[ao_i] * batch.ao_normalization[ao_j] * result;
+}
+
+template <typename Scalar>
+__device__ Scalar contracted_hcore(const DeviceBatch& batch,
+                                   std::int32_t system,
+                                   std::int32_t i,
+                                   std::int32_t j,
+                                   std::int64_t derivative_coordinate) {
+  const std::int64_t ao_i = static_cast<std::int64_t>(system) * batch.nbf + i;
+  const std::int64_t ao_j = static_cast<std::int64_t>(system) * batch.nbf + j;
+  const std::int32_t shell_i = batch.ao_shells[ao_i];
+  const std::int32_t shell_j = batch.ao_shells[ao_j];
+  const Vec3<Scalar> first = atom_position<Scalar>(
+      batch, batch.shell_atoms[shell_i], derivative_coordinate);
+  const Vec3<Scalar> second = atom_position<Scalar>(
+      batch, batch.shell_atoms[shell_j], derivative_coordinate);
+  const Angular angular_first = ao_angular(batch, ao_i);
+  const Angular angular_second = ao_angular(batch, ao_j);
+  const bool all_s = is_s_function(angular_first) && is_s_function(angular_second);
+  Scalar result = scalar<Scalar>(0.0);
+  for (std::int64_t a = batch.shell_primitive_offsets[shell_i];
+       a < batch.shell_primitive_offsets[shell_i + 1]; ++a) {
+    for (std::int64_t b = batch.shell_primitive_offsets[shell_j];
+         b < batch.shell_primitive_offsets[shell_j + 1]; ++b) {
+      const double weight = batch.primitive_coefficients[a] *
+                            batch.primitive_coefficients[b];
+      if (all_s) {
+        result = result + weight *
+            (primitive_kinetic(batch.primitive_exponents[a], first,
+                               batch.primitive_exponents[b], second) +
+             primitive_nuclear_attraction(
+                 batch, system, batch.primitive_exponents[a], first,
+                 batch.primitive_exponents[b], second, derivative_coordinate));
+      } else {
+        result = result + weight *
+            (primitive_kinetic_cartesian(
+                 batch.primitive_exponents[a], first, angular_first,
+                 batch.primitive_exponents[b], second, angular_second) +
+             primitive_nuclear_attraction_cartesian(
+                 batch, system, batch.primitive_exponents[a], first,
+                 angular_first, batch.primitive_exponents[b], second,
+                 angular_second, derivative_coordinate));
+      }
+    }
+  }
+  return batch.ao_normalization[ao_i] * batch.ao_normalization[ao_j] * result;
+}
+
+template <typename Scalar>
+__device__ Scalar contracted_eri(const DeviceBatch& batch,
+                                 std::int32_t system,
+                                 std::int32_t i,
+                                 std::int32_t j,
+                                 std::int32_t k,
+                                 std::int32_t l,
+                                 std::int64_t derivative_coordinate) {
+  const std::int64_t base = static_cast<std::int64_t>(system) * batch.nbf;
+  const std::int64_t ao_i = base + i;
+  const std::int64_t ao_j = base + j;
+  const std::int64_t ao_k = base + k;
+  const std::int64_t ao_l = base + l;
+  const std::int32_t shell_i = batch.ao_shells[ao_i];
+  const std::int32_t shell_j = batch.ao_shells[ao_j];
+  const std::int32_t shell_k = batch.ao_shells[ao_k];
+  const std::int32_t shell_l = batch.ao_shells[ao_l];
+  const Vec3<Scalar> first = atom_position<Scalar>(
+      batch, batch.shell_atoms[shell_i], derivative_coordinate);
+  const Vec3<Scalar> second = atom_position<Scalar>(
+      batch, batch.shell_atoms[shell_j], derivative_coordinate);
+  const Vec3<Scalar> third = atom_position<Scalar>(
+      batch, batch.shell_atoms[shell_k], derivative_coordinate);
+  const Vec3<Scalar> fourth = atom_position<Scalar>(
+      batch, batch.shell_atoms[shell_l], derivative_coordinate);
+  const Angular angular_first = ao_angular(batch, ao_i);
+  const Angular angular_second = ao_angular(batch, ao_j);
+  const Angular angular_third = ao_angular(batch, ao_k);
+  const Angular angular_fourth = ao_angular(batch, ao_l);
+  const bool all_s = is_s_function(angular_first) &&
+                     is_s_function(angular_second) &&
+                     is_s_function(angular_third) &&
+                     is_s_function(angular_fourth);
+  Scalar result = scalar<Scalar>(0.0);
+  for (std::int64_t a = batch.shell_primitive_offsets[shell_i];
+       a < batch.shell_primitive_offsets[shell_i + 1]; ++a) {
+    for (std::int64_t b = batch.shell_primitive_offsets[shell_j];
+         b < batch.shell_primitive_offsets[shell_j + 1]; ++b) {
+      for (std::int64_t c = batch.shell_primitive_offsets[shell_k];
+           c < batch.shell_primitive_offsets[shell_k + 1]; ++c) {
+        for (std::int64_t d = batch.shell_primitive_offsets[shell_l];
+             d < batch.shell_primitive_offsets[shell_l + 1]; ++d) {
+          const double weight = batch.primitive_coefficients[a] *
+                                batch.primitive_coefficients[b] *
+                                batch.primitive_coefficients[c] *
+                                batch.primitive_coefficients[d];
+          const Scalar primitive = all_s
+              ? primitive_eri(batch.primitive_exponents[a], first,
+                              batch.primitive_exponents[b], second,
+                              batch.primitive_exponents[c], third,
+                              batch.primitive_exponents[d], fourth)
+              : primitive_eri_cartesian(
+                    batch.primitive_exponents[a], first, angular_first,
+                    batch.primitive_exponents[b], second, angular_second,
+                    batch.primitive_exponents[c], third, angular_third,
+                    batch.primitive_exponents[d], fourth, angular_fourth);
+          result = result + weight * primitive;
+        }
+      }
+    }
+  }
+  return batch.ao_normalization[ao_i] * batch.ao_normalization[ao_j] *
+         batch.ao_normalization[ao_k] * batch.ao_normalization[ao_l] * result;
+}
+
+__global__ void build_one_electron_integrals_kernel(DeviceBatch batch,
+                                                     const std::int32_t* pair_first,
+                                                     const std::int32_t* pair_second,
+                                                     std::size_t pair_count,
+                                                     double* overlap,
+                                                     double* hcore) {
+  const std::size_t n = static_cast<std::size_t>(batch.nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= static_cast<std::size_t>(batch.batch_size) * pair_count) return;
+  const std::int32_t system = static_cast<std::int32_t>(element / pair_count);
+  const std::size_t pair = element % pair_count;
+  const std::size_t row = static_cast<std::size_t>(pair_first[pair]);
+  const std::size_t column = static_cast<std::size_t>(pair_second[pair]);
+  const double overlap_value = contracted_overlap<double>(
+      batch, system, static_cast<std::int32_t>(row),
+      static_cast<std::int32_t>(column), -1);
+  const double hcore_value = contracted_hcore<double>(
+      batch, system, static_cast<std::int32_t>(row),
+      static_cast<std::int32_t>(column), -1);
+  const std::size_t matrix_offset = static_cast<std::size_t>(system) * matrix_size;
+  overlap[matrix_offset + matrix_index(row, column, n)] = overlap_value;
+  hcore[matrix_offset + matrix_index(row, column, n)] = hcore_value;
+  if (row != column) {
+    overlap[matrix_offset + matrix_index(column, row, n)] = overlap_value;
+    hcore[matrix_offset + matrix_index(column, row, n)] = hcore_value;
+  }
+}
+
+__global__ void build_eri_kernel(DeviceBatch batch, double* eri) {
+  const std::size_t n = static_cast<std::size_t>(batch.nbf);
+  const std::size_t eri_size = n * n * n * n;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= static_cast<std::size_t>(batch.batch_size) * eri_size) return;
+  const std::int32_t system = static_cast<std::int32_t>(element / eri_size);
+  std::size_t local = element % eri_size;
+  const std::int32_t l = static_cast<std::int32_t>(local % n);
+  local /= n;
+  const std::int32_t k = static_cast<std::int32_t>(local % n);
+  local /= n;
+  const std::int32_t j = static_cast<std::int32_t>(local % n);
+  const std::int32_t i = static_cast<std::int32_t>(local / n);
+  eri[element] = contracted_eri<double>(batch, system, i, j, k, l, -1);
+}
+
+__global__ void build_nuclear_repulsion_kernel(DeviceBatch batch,
+                                                double* nuclear_repulsion) {
+  const std::int32_t system = static_cast<std::int32_t>(
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x);
+  if (system >= batch.batch_size) return;
+  double result = 0.0;
+  for (std::int64_t first = batch.atom_offsets[system];
+       first < batch.atom_offsets[system + 1]; ++first) {
+    const Vec3<double> a = atom_position<double>(batch, first, -1);
+    for (std::int64_t second = batch.atom_offsets[system]; second < first; ++second) {
+      const Vec3<double> b = atom_position<double>(batch, second, -1);
+      result += static_cast<double>(batch.atomic_numbers[first] *
+                                    batch.atomic_numbers[second]) /
+                sqrt(distance_squared(a, b));
+    }
+  }
+  nuclear_repulsion[system] = result;
+}
+
+__global__ void initialize_state_kernel(std::int32_t batch_size,
+                                        std::uint8_t* active,
+                                        std::uint8_t* converged,
+                                        std::uint8_t* failed,
+                                        std::uint32_t* iterations,
+                                        double* previous_energy,
+                                        double* energy_change,
+                                        double* density_rms,
+                                        std::uint32_t* diis_count,
+                                        std::uint32_t* diis_head) {
+  const std::int32_t system = static_cast<std::int32_t>(
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x);
+  if (system >= batch_size) return;
+  active[system] = 1;
+  converged[system] = 0;
+  failed[system] = 0;
+  iterations[system] = 0;
+  previous_energy[system] = CUDART_INF;
+  energy_change[system] = CUDART_INF;
+  density_rms[system] = CUDART_INF;
+  diis_count[system] = 0;
+  diis_head[system] = 0;
+}
+
+__global__ void copy_matrix_kernel(std::size_t elements,
+                                   const double* source,
+                                   double* destination) {
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element < elements) destination[element] = source[element];
+}
+
+__global__ void inspect_solver_kernel(std::int32_t batch_size,
+                                      const int* info,
+                                      std::uint8_t* active,
+                                      std::uint8_t* failed,
+                                      std::uint8_t* converged) {
+  const std::int32_t system = static_cast<std::int32_t>(
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x);
+  if (system >= batch_size || info[system] == 0) return;
+  active[system] = 0;
+  failed[system] = 1;
+  converged[system] = 0;
+}
+
+__global__ void expand_spin_active_kernel(std::int32_t batch_size,
+                                          std::int32_t spin_count,
+                                          const std::uint8_t* active,
+                                          std::uint8_t* spin_active) {
+  const std::int32_t state = static_cast<std::int32_t>(
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x);
+  const std::int32_t state_count = batch_size * spin_count;
+  if (state < state_count) spin_active[state] = active[state / spin_count];
+}
+
+__global__ void inspect_spin_solver_kernel(std::int32_t batch_size,
+                                           std::int32_t spin_count,
+                                           const int* info,
+                                           std::uint8_t* active,
+                                           std::uint8_t* failed,
+                                           std::uint8_t* converged) {
+  const std::int32_t system = static_cast<std::int32_t>(
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x);
+  if (system >= batch_size) return;
+  for (std::int32_t spin = 0; spin < spin_count; ++spin) {
+    if (info[system * spin_count + spin] != 0) {
+      active[system] = 0;
+      failed[system] = 1;
+      converged[system] = 0;
+      return;
+    }
+  }
+}
+
+constexpr std::int32_t kSmallEigensolverLimit = 16;
+
+__global__ void symmetric_eigen_small_kernel(std::int32_t batch_size,
+                                             std::int32_t nbf,
+                                             double* matrices,
+                                             double* eigenvalues,
+                                             int* info,
+                                             const std::uint8_t* active) {
+  const std::int32_t system = static_cast<std::int32_t>(blockIdx.x);
+  if (system >= batch_size || threadIdx.x != 0) return;
+  info[system] = 0;
+  if (active != nullptr && active[system] == 0) return;
+  if (nbf <= 0 || nbf > kSmallEigensolverLimit) {
+    info[system] = -1;
+    return;
+  }
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t offset = static_cast<std::size_t>(system) * matrix_size;
+  double matrix[kSmallEigensolverLimit * kSmallEigensolverLimit];
+  double vectors[kSmallEigensolverLimit * kSmallEigensolverLimit];
+  for (std::size_t column = 0; column < n; ++column) {
+    for (std::size_t row = 0; row < n; ++row) {
+      matrix[matrix_index(row, column, n)] =
+          matrices[offset + matrix_index(row, column, n)];
+      vectors[matrix_index(row, column, n)] = row == column ? 1.0 : 0.0;
+    }
+  }
+
+  const std::size_t maximum_sweeps =
+      20 * matrix_size > 50 ? 20 * matrix_size : 50;
+  for (std::size_t sweep = 0; sweep < maximum_sweeps; ++sweep) {
+    std::size_t p = 0;
+    std::size_t q = 0;
+    double largest = 0.0;
+    for (std::size_t row = 0; row < n; ++row) {
+      for (std::size_t column = row + 1; column < n; ++column) {
+        const double candidate =
+            fabs(matrix[matrix_index(row, column, n)]);
+        if (candidate > largest) {
+          largest = candidate;
+          p = row;
+          q = column;
+        }
+      }
+    }
+    if (largest < 1.0e-14) break;
+    if (sweep + 1 == maximum_sweeps) info[system] = 1;
+
+    const double app = matrix[matrix_index(p, p, n)];
+    const double aqq = matrix[matrix_index(q, q, n)];
+    const double apq = matrix[matrix_index(p, q, n)];
+    const double angle = 0.5 * atan2(2.0 * apq, aqq - app);
+    const double cosine = cos(angle);
+    const double sine = sin(angle);
+    for (std::size_t k = 0; k < n; ++k) {
+      if (k == p || k == q) continue;
+      const double mkp = matrix[matrix_index(k, p, n)];
+      const double mkq = matrix[matrix_index(k, q, n)];
+      matrix[matrix_index(k, p, n)] =
+          matrix[matrix_index(p, k, n)] = cosine * mkp - sine * mkq;
+      matrix[matrix_index(k, q, n)] =
+          matrix[matrix_index(q, k, n)] = sine * mkp + cosine * mkq;
+    }
+    matrix[matrix_index(p, p, n)] =
+        cosine * cosine * app - 2.0 * sine * cosine * apq +
+        sine * sine * aqq;
+    matrix[matrix_index(q, q, n)] =
+        sine * sine * app + 2.0 * sine * cosine * apq +
+        cosine * cosine * aqq;
+    matrix[matrix_index(p, q, n)] = 0.0;
+    matrix[matrix_index(q, p, n)] = 0.0;
+    for (std::size_t row = 0; row < n; ++row) {
+      const double vkp = vectors[matrix_index(row, p, n)];
+      const double vkq = vectors[matrix_index(row, q, n)];
+      vectors[matrix_index(row, p, n)] = cosine * vkp - sine * vkq;
+      vectors[matrix_index(row, q, n)] = sine * vkp + cosine * vkq;
+    }
+  }
+
+  // Stable selection sort keeps the same ascending eigenpair convention used
+  // by the CPU oracle and cuSOLVER path.
+  for (std::size_t column = 0; column < n; ++column) {
+    std::size_t selected = column;
+    for (std::size_t candidate = column + 1; candidate < n; ++candidate) {
+      if (matrix[matrix_index(candidate, candidate, n)] <
+          matrix[matrix_index(selected, selected, n)]) {
+        selected = candidate;
+      }
+    }
+    if (selected != column) {
+      const double diagonal = matrix[matrix_index(column, column, n)];
+      matrix[matrix_index(column, column, n)] =
+          matrix[matrix_index(selected, selected, n)];
+      matrix[matrix_index(selected, selected, n)] = diagonal;
+      for (std::size_t row = 0; row < n; ++row) {
+        const double swap = vectors[matrix_index(row, column, n)];
+        vectors[matrix_index(row, column, n)] =
+            vectors[matrix_index(row, selected, n)];
+        vectors[matrix_index(row, selected, n)] = swap;
+      }
+    }
+    eigenvalues[static_cast<std::size_t>(system) * n + column] =
+        matrix[matrix_index(column, column, n)];
+  }
+  for (std::size_t element = 0; element < matrix_size; ++element) {
+    matrices[offset + element] = vectors[element];
+  }
+}
+
+__global__ void build_orthogonalizer_kernel(std::int32_t batch_size,
+                                            std::int32_t nbf,
+                                            const double* eigenvectors,
+                                            const double* eigenvalues,
+                                            const std::uint8_t* active,
+                                            double* orthogonalizer,
+                                            std::uint8_t* failed) {
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= static_cast<std::size_t>(batch_size) * matrix_size) return;
+  const std::int32_t system = static_cast<std::int32_t>(element / matrix_size);
+  if (active[system] == 0) return;
+  const std::size_t local = element % matrix_size;
+  const std::size_t row = local % n;
+  const std::size_t column = local / n;
+  const double* vectors = eigenvectors + static_cast<std::size_t>(system) * matrix_size;
+  const double* values = eigenvalues + static_cast<std::size_t>(system) * n;
+  double result = 0.0;
+  for (std::size_t orbital = 0; orbital < n; ++orbital) {
+    if (!(values[orbital] > 1.0e-10)) {
+      failed[system] = 1;
+      return;
+    }
+    result += vectors[matrix_index(row, orbital, n)] *
+              vectors[matrix_index(column, orbital, n)] /
+              sqrt(values[orbital]);
+  }
+  orthogonalizer[element] = result;
+}
+
+__global__ void matrix_product_kernel(std::int32_t batch_size,
+                                      std::int32_t nbf,
+                                      const double* left,
+                                      bool transpose_left,
+                                      const double* right,
+                                      const std::uint8_t* active,
+                                      double* output) {
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= static_cast<std::size_t>(batch_size) * matrix_size) return;
+  const std::int32_t system = static_cast<std::int32_t>(element / matrix_size);
+  if (active != nullptr && active[system] == 0) return;
+  const std::size_t local = element % matrix_size;
+  const std::size_t row = local % n;
+  const std::size_t column = local / n;
+  const std::size_t offset = static_cast<std::size_t>(system) * matrix_size;
+  double value = 0.0;
+  for (std::size_t k = 0; k < n; ++k) {
+    const std::size_t left_index = transpose_left
+        ? matrix_index(k, row, n)
+        : matrix_index(row, k, n);
+    value += left[offset + left_index] *
+             right[offset + matrix_index(k, column, n)];
+  }
+  output[element] = value;
+}
+
+__global__ void broadcast_spin_matrix_kernel(std::int32_t batch_size,
+                                             std::int32_t spin_count,
+                                             std::int32_t nbf,
+                                             const double* physical_matrices,
+                                             const std::uint8_t* active,
+                                             double* spin_matrices) {
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t spin_elements =
+      static_cast<std::size_t>(batch_size) * spin_count * matrix_size;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= spin_elements) return;
+  const std::size_t state = element / matrix_size;
+  const std::size_t system = state / static_cast<std::size_t>(spin_count);
+  if (active != nullptr && active[system] == 0) return;
+  spin_matrices[element] =
+      physical_matrices[system * matrix_size + element % matrix_size];
+}
+
+__global__ void spin_matrix_product_kernel(std::int32_t batch_size,
+                                           std::int32_t spin_count,
+                                           std::int32_t nbf,
+                                           const double* left,
+                                           bool left_is_spin,
+                                           bool transpose_left,
+                                           const double* right,
+                                           bool right_is_spin,
+                                           const std::uint8_t* active,
+                                           double* output) {
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t state_count =
+      static_cast<std::size_t>(batch_size) * spin_count;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= state_count * matrix_size) return;
+  const std::size_t state = element / matrix_size;
+  const std::size_t system = state / static_cast<std::size_t>(spin_count);
+  if (active != nullptr && active[system] == 0) return;
+  const std::size_t local = element % matrix_size;
+  const std::size_t row = local % n;
+  const std::size_t column = local / n;
+  const std::size_t left_offset =
+      (left_is_spin ? state : system) * matrix_size;
+  const std::size_t right_offset =
+      (right_is_spin ? state : system) * matrix_size;
+  double value = 0.0;
+  for (std::size_t k = 0; k < n; ++k) {
+    const std::size_t left_index = transpose_left
+        ? matrix_index(k, row, n)
+        : matrix_index(row, k, n);
+    value += left[left_offset + left_index] *
+             right[right_offset + matrix_index(k, column, n)];
+  }
+  output[element] = value;
+}
+
+__global__ void build_density_kernel(std::int32_t batch_size,
+                                     std::int32_t nbf,
+                                     const std::int32_t* occupied,
+                                     const double* coefficients,
+                                     const std::uint8_t* active,
+                                     double* density) {
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= static_cast<std::size_t>(batch_size) * matrix_size) return;
+  const std::int32_t system = static_cast<std::int32_t>(element / matrix_size);
+  if (active != nullptr && active[system] == 0) return;
+  const std::size_t local = element % matrix_size;
+  const std::size_t row = local % n;
+  const std::size_t column = local / n;
+  const std::size_t offset = static_cast<std::size_t>(system) * matrix_size;
+  double value = 0.0;
+  for (std::int32_t orbital = 0; orbital < occupied[system]; ++orbital) {
+    value += 2.0 * coefficients[offset + matrix_index(row, orbital, n)] *
+             coefficients[offset + matrix_index(column, orbital, n)];
+  }
+  density[element] = value;
+}
+
+__global__ void build_spin_density_kernel(std::int32_t batch_size,
+                                          std::int32_t spin_count,
+                                          std::int32_t nbf,
+                                          const std::int32_t* occupied,
+                                          const double* coefficients,
+                                          const std::uint8_t* active,
+                                          double* density) {
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t state_count =
+      static_cast<std::size_t>(batch_size) * spin_count;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= state_count * matrix_size) return;
+  const std::size_t state = element / matrix_size;
+  const std::size_t system = state / static_cast<std::size_t>(spin_count);
+  if (active != nullptr && active[system] == 0) return;
+  const std::size_t local = element % matrix_size;
+  const std::size_t row = local % n;
+  const std::size_t column = local / n;
+  const std::size_t offset = state * matrix_size;
+  double value = 0.0;
+  for (std::int32_t orbital = 0; orbital < occupied[state]; ++orbital) {
+    value += coefficients[offset + matrix_index(row, orbital, n)] *
+             coefficients[offset + matrix_index(column, orbital, n)];
+  }
+  density[element] = value;
+}
+
+__global__ void apply_warm_density_kernel(std::int32_t batch_size,
+                                          std::int32_t nbf,
+                                          const std::int32_t* occupied,
+                                          const std::uint8_t* warm_mask,
+                                          const double* warm_density,
+                                          const double* overlap,
+                                          double* density) {
+  const std::int32_t system = static_cast<std::int32_t>(blockIdx.x);
+  if (system >= batch_size || warm_mask[system] == 0 || threadIdx.x != 0) return;
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t offset = static_cast<std::size_t>(system) * matrix_size;
+  double trace = 0.0;
+  for (std::size_t row = 0; row < n; ++row) {
+    for (std::size_t column = 0; column < n; ++column) {
+      const double symmetric = 0.5 *
+          (warm_density[offset + matrix_index(row, column, n)] +
+           warm_density[offset + matrix_index(column, row, n)]);
+      density[offset + matrix_index(row, column, n)] = symmetric;
+      trace += symmetric * overlap[offset + matrix_index(column, row, n)];
+    }
+  }
+  const double target = 2.0 * occupied[system];
+  if (isfinite(trace) && fabs(trace) > 1.0e-14) {
+    const double scale = target / trace;
+    for (std::size_t element = 0; element < matrix_size; ++element) {
+      density[offset + element] *= scale;
+    }
+  }
+}
+
+__global__ void apply_uhf_warm_density_kernel(
+    std::int32_t batch_size,
+    std::int32_t nbf,
+    const std::int32_t* occupied,
+    const std::uint8_t* warm_mask,
+    const double* warm_density,
+    const double* overlap,
+    double* density) {
+  const std::int32_t system = static_cast<std::int32_t>(blockIdx.x);
+  if (system >= batch_size || warm_mask[system] == 0 || threadIdx.x != 0) return;
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t overlap_offset =
+      static_cast<std::size_t>(system) * matrix_size;
+  for (std::int32_t spin = 0; spin < 2; ++spin) {
+    const std::size_t state = static_cast<std::size_t>(system) * 2 + spin;
+    const std::size_t offset = state * matrix_size;
+    double trace = 0.0;
+    for (std::size_t row = 0; row < n; ++row) {
+      for (std::size_t column = 0; column < n; ++column) {
+        const double symmetric = 0.5 *
+            (warm_density[offset + matrix_index(row, column, n)] +
+             warm_density[offset + matrix_index(column, row, n)]);
+        density[offset + matrix_index(row, column, n)] = symmetric;
+        trace += symmetric *
+            overlap[overlap_offset + matrix_index(column, row, n)];
+      }
+    }
+    const double target = static_cast<double>(occupied[state]);
+    if (target == 0.0) {
+      for (std::size_t element = 0; element < matrix_size; ++element) {
+        density[offset + element] = 0.0;
+      }
+    } else if (isfinite(trace) && fabs(trace) > 1.0e-14) {
+      const double scale = target / trace;
+      for (std::size_t element = 0; element < matrix_size; ++element) {
+        density[offset + element] *= scale;
+      }
+    }
+  }
+}
+
+__global__ void build_fock_kernel(std::int32_t batch_size,
+                                  std::int32_t nbf,
+                                  const double* hcore,
+                                  const double* eri,
+                                  const double* density,
+                                  const std::uint8_t* active,
+                                  double* fock) {
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t eri_size = matrix_size * matrix_size;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= static_cast<std::size_t>(batch_size) * matrix_size) return;
+  const std::int32_t system = static_cast<std::int32_t>(element / matrix_size);
+  if (active != nullptr && active[system] == 0) return;
+  const std::size_t local = element % matrix_size;
+  const std::size_t i = local % n;
+  const std::size_t j = local / n;
+  const std::size_t matrix_offset = static_cast<std::size_t>(system) * matrix_size;
+  const std::size_t eri_offset = static_cast<std::size_t>(system) * eri_size;
+  double coulomb = 0.0;
+  double exchange = 0.0;
+  for (std::size_t k = 0; k < n; ++k) {
+    for (std::size_t l = 0; l < n; ++l) {
+      const double pkl = density[matrix_offset + matrix_index(k, l, n)];
+      coulomb += pkl * eri[eri_offset + eri_index(i, j, k, l, n)];
+      exchange += pkl * eri[eri_offset + eri_index(i, k, j, l, n)];
+    }
+  }
+  fock[element] = hcore[element] + coulomb - 0.5 * exchange;
+}
+
+__global__ void build_uhf_fock_kernel(std::int32_t batch_size,
+                                      std::int32_t nbf,
+                                      const double* hcore,
+                                      const double* eri,
+                                      const double* density,
+                                      const std::uint8_t* active,
+                                      double* fock) {
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t eri_size = matrix_size * matrix_size;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= static_cast<std::size_t>(batch_size) * 2 * matrix_size) return;
+  const std::size_t state = element / matrix_size;
+  const std::size_t system = state / 2;
+  if (active != nullptr && active[system] == 0) return;
+  const std::size_t spin = state % 2;
+  const std::size_t local = element % matrix_size;
+  const std::size_t i = local % n;
+  const std::size_t j = local / n;
+  const std::size_t physical_matrix_offset = system * matrix_size;
+  const std::size_t eri_offset = system * eri_size;
+  const std::size_t alpha_offset = system * 2 * matrix_size;
+  const std::size_t beta_offset = alpha_offset + matrix_size;
+  const std::size_t spin_offset = alpha_offset + spin * matrix_size;
+  double coulomb = 0.0;
+  double exchange = 0.0;
+  for (std::size_t k = 0; k < n; ++k) {
+    for (std::size_t l = 0; l < n; ++l) {
+      const std::size_t kl = matrix_index(k, l, n);
+      const double total = density[alpha_offset + kl] +
+                           density[beta_offset + kl];
+      coulomb += total * eri[eri_offset + eri_index(i, j, k, l, n)];
+      exchange += density[spin_offset + kl] *
+                  eri[eri_offset + eri_index(i, k, j, l, n)];
+    }
+  }
+  fock[element] = hcore[physical_matrix_offset + local] + coulomb - exchange;
+}
+
+__global__ void build_schwarz_bounds_packed_kernel(
+    DeviceBatch batch,
+    const std::int32_t* ao_pair_first,
+    const std::int32_t* ao_pair_second,
+    std::size_t pair_count,
+    double* schwarz_bounds) {
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= static_cast<std::size_t>(batch.batch_size) * pair_count) {
+    return;
+  }
+  const std::int32_t system =
+      static_cast<std::int32_t>(element / pair_count);
+  const std::size_t pair = element % pair_count;
+  const std::size_t i = static_cast<std::size_t>(ao_pair_first[pair]);
+  const std::size_t j = static_cast<std::size_t>(ao_pair_second[pair]);
+  const std::size_t n = static_cast<std::size_t>(batch.nbf);
+  const std::size_t matrix_offset =
+      static_cast<std::size_t>(system) * n * n;
+  const double diagonal = contracted_eri<double>(
+      batch, system, static_cast<std::int32_t>(i),
+      static_cast<std::int32_t>(j), static_cast<std::int32_t>(i),
+      static_cast<std::int32_t>(j), -1);
+  // fabs is conservative when roundoff makes a non-negative diagonal
+  // slightly negative; it never converts that noise into a false zero.
+  const double bound = sqrt(fabs(diagonal));
+  schwarz_bounds[matrix_offset + matrix_index(i, j, n)] = bound;
+  if (i != j) {
+    schwarz_bounds[matrix_offset + matrix_index(j, i, n)] = bound;
+  }
+}
+
+__global__ void reduce_shell_pair_bounds_kernel(
+    DeviceBatch batch,
+    const double* schwarz_bounds,
+    double* shell_pair_bounds) {
+  extern __shared__ double block_maxima[];
+  const std::size_t shell_pair = static_cast<std::size_t>(blockIdx.x);
+  if (shell_pair >= static_cast<std::size_t>(batch.total_shell_pairs)) return;
+  const std::int32_t system = batch.shell_pair_systems[shell_pair];
+  const std::int32_t first_shell = batch.shell_pair_first[shell_pair];
+  const std::int32_t second_shell = batch.shell_pair_second[shell_pair];
+  const std::size_t first_begin =
+      static_cast<std::size_t>(batch.shell_ao_offsets[first_shell]);
+  const std::size_t first_count =
+      static_cast<std::size_t>(batch.shell_ao_offsets[first_shell + 1]) -
+      first_begin;
+  const std::size_t second_begin =
+      static_cast<std::size_t>(batch.shell_ao_offsets[second_shell]);
+  const std::size_t second_count =
+      static_cast<std::size_t>(batch.shell_ao_offsets[second_shell + 1]) -
+      second_begin;
+  const bool same_shell = first_shell == second_shell;
+  const std::size_t ao_pair_count = same_shell
+      ? first_count * (first_count + 1) / 2
+      : first_count * second_count;
+  const std::size_t n = static_cast<std::size_t>(batch.nbf);
+  const std::size_t matrix_offset = static_cast<std::size_t>(system) * n * n;
+  const std::size_t system_ao_begin = static_cast<std::size_t>(system) * n;
+
+  double local_maximum = 0.0;
+  for (std::size_t ordinal = threadIdx.x; ordinal < ao_pair_count;
+       ordinal += blockDim.x) {
+    std::size_t first_component = 0;
+    std::size_t second_component = 0;
+    if (same_shell) {
+      decode_lower_triangle(ordinal, first_component, second_component);
+    } else {
+      first_component = ordinal / second_count;
+      second_component = ordinal % second_count;
+    }
+    const std::size_t i = first_begin + first_component - system_ao_begin;
+    const std::size_t j = second_begin + second_component - system_ao_begin;
+    local_maximum = fmax(
+        local_maximum,
+        schwarz_bounds[matrix_offset + matrix_index(i, j, n)]);
+  }
+
+  block_maxima[threadIdx.x] = local_maximum;
+  __syncthreads();
+  for (unsigned stride = blockDim.x / 2; stride != 0; stride /= 2) {
+    if (threadIdx.x < stride) {
+      block_maxima[threadIdx.x] =
+          fmax(block_maxima[threadIdx.x], block_maxima[threadIdx.x + stride]);
+    }
+    __syncthreads();
+  }
+  if (threadIdx.x == 0) shell_pair_bounds[shell_pair] = block_maxima[0];
+}
+
+__global__ void build_fock_direct_packed_kernel(
+    DeviceBatch batch,
+    double screening_tolerance,
+    const double* hcore,
+    const std::int32_t* ao_pair_first,
+    const std::int32_t* ao_pair_second,
+    std::size_t pair_count,
+    const double* schwarz_bounds,
+    const double* density,
+    const std::uint8_t* active,
+    double* fock) {
+  extern __shared__ double pair_sums[];
+  const std::size_t n = static_cast<std::size_t>(batch.nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t matrix_element = static_cast<std::size_t>(blockIdx.x);
+  if (matrix_element >=
+      static_cast<std::size_t>(batch.batch_size) * matrix_size) {
+    return;
+  }
+  const std::int32_t system =
+      static_cast<std::int32_t>(matrix_element / matrix_size);
+  if (active != nullptr && active[system] == 0) return;
+  const std::size_t local_matrix = matrix_element % matrix_size;
+  const std::size_t i = local_matrix % n;
+  const std::size_t j = local_matrix / n;
+  const std::size_t matrix_offset =
+      static_cast<std::size_t>(system) * matrix_size;
+  const double bound_ij =
+      schwarz_bounds[matrix_offset + matrix_index(i, j, n)];
+
+  double contribution = 0.0;
+  for (std::size_t pair = threadIdx.x; pair < pair_count;
+       pair += blockDim.x) {
+    const std::size_t k = static_cast<std::size_t>(ao_pair_first[pair]);
+    const std::size_t l = static_cast<std::size_t>(ao_pair_second[pair]);
+    const double pkl = density[matrix_offset + matrix_index(k, l, n)];
+    if (pkl == 0.0) continue;
+
+    if (bound_ij *
+            schwarz_bounds[matrix_offset + matrix_index(k, l, n)] >=
+        screening_tolerance) {
+      const double pair_weight = k == l ? pkl : 2.0 * pkl;
+      contribution += pair_weight * contracted_eri<double>(
+          batch, system, static_cast<std::int32_t>(i),
+          static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
+          static_cast<std::int32_t>(l), -1);
+    }
+    if (schwarz_bounds[matrix_offset + matrix_index(i, k, n)] *
+            schwarz_bounds[matrix_offset + matrix_index(j, l, n)] >=
+        screening_tolerance) {
+      contribution -= 0.5 * pkl * contracted_eri<double>(
+          batch, system, static_cast<std::int32_t>(i),
+          static_cast<std::int32_t>(k), static_cast<std::int32_t>(j),
+          static_cast<std::int32_t>(l), -1);
+    }
+    if (k != l &&
+        schwarz_bounds[matrix_offset + matrix_index(i, l, n)] *
+                schwarz_bounds[matrix_offset + matrix_index(j, k, n)] >=
+            screening_tolerance) {
+      contribution -= 0.5 * pkl * contracted_eri<double>(
+          batch, system, static_cast<std::int32_t>(i),
+          static_cast<std::int32_t>(l), static_cast<std::int32_t>(j),
+          static_cast<std::int32_t>(k), -1);
+    }
+  }
+
+  pair_sums[threadIdx.x] = contribution;
+  __syncthreads();
+  for (unsigned stride = blockDim.x / 2; stride != 0; stride /= 2) {
+    if (threadIdx.x < stride) {
+      pair_sums[threadIdx.x] += pair_sums[threadIdx.x + stride];
+    }
+    __syncthreads();
+  }
+  if (threadIdx.x == 0) {
+    fock[matrix_element] = hcore[matrix_element] + pair_sums[0];
+  }
+}
+
+__global__ void build_uhf_fock_direct_packed_kernel(
+    DeviceBatch batch,
+    double screening_tolerance,
+    const double* hcore,
+    const std::int32_t* ao_pair_first,
+    const std::int32_t* ao_pair_second,
+    std::size_t pair_count,
+    const double* schwarz_bounds,
+    const double* density,
+    const std::uint8_t* active,
+    double* fock) {
+  extern __shared__ double pair_sums[];
+  const std::size_t n = static_cast<std::size_t>(batch.nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t matrix_element = static_cast<std::size_t>(blockIdx.x);
+  if (matrix_element >=
+      static_cast<std::size_t>(batch.batch_size) * 2 * matrix_size) {
+    return;
+  }
+  const std::size_t state = matrix_element / matrix_size;
+  const std::size_t system = state / 2;
+  if (active != nullptr && active[system] == 0) return;
+  const std::size_t spin = state % 2;
+  const std::size_t local_matrix = matrix_element % matrix_size;
+  const std::size_t i = local_matrix % n;
+  const std::size_t j = local_matrix / n;
+  const std::size_t physical_offset = system * matrix_size;
+  const std::size_t alpha_offset = system * 2 * matrix_size;
+  const std::size_t beta_offset = alpha_offset + matrix_size;
+  const std::size_t spin_offset = alpha_offset + spin * matrix_size;
+  const double bound_ij =
+      schwarz_bounds[physical_offset + matrix_index(i, j, n)];
+
+  double contribution = 0.0;
+  for (std::size_t pair = threadIdx.x; pair < pair_count;
+       pair += blockDim.x) {
+    const std::size_t k = static_cast<std::size_t>(ao_pair_first[pair]);
+    const std::size_t l = static_cast<std::size_t>(ao_pair_second[pair]);
+    const std::size_t kl = matrix_index(k, l, n);
+    const double alpha = density[alpha_offset + kl];
+    const double beta = density[beta_offset + kl];
+    const double same_spin = density[spin_offset + kl];
+    const double total = alpha + beta;
+    if (total == 0.0 && same_spin == 0.0) continue;
+
+    if (total != 0.0 &&
+        bound_ij * schwarz_bounds[physical_offset + kl] >=
+            screening_tolerance) {
+      const double pair_weight = k == l ? total : 2.0 * total;
+      contribution += pair_weight * contracted_eri<double>(
+          batch, static_cast<std::int32_t>(system),
+          static_cast<std::int32_t>(i), static_cast<std::int32_t>(j),
+          static_cast<std::int32_t>(k), static_cast<std::int32_t>(l), -1);
+    }
+    if (same_spin != 0.0 &&
+        schwarz_bounds[physical_offset + matrix_index(i, k, n)] *
+                schwarz_bounds[physical_offset + matrix_index(j, l, n)] >=
+            screening_tolerance) {
+      contribution -= same_spin * contracted_eri<double>(
+          batch, static_cast<std::int32_t>(system),
+          static_cast<std::int32_t>(i), static_cast<std::int32_t>(k),
+          static_cast<std::int32_t>(j), static_cast<std::int32_t>(l), -1);
+    }
+    if (k != l && same_spin != 0.0 &&
+        schwarz_bounds[physical_offset + matrix_index(i, l, n)] *
+                schwarz_bounds[physical_offset + matrix_index(j, k, n)] >=
+            screening_tolerance) {
+      contribution -= same_spin * contracted_eri<double>(
+          batch, static_cast<std::int32_t>(system),
+          static_cast<std::int32_t>(i), static_cast<std::int32_t>(l),
+          static_cast<std::int32_t>(j), static_cast<std::int32_t>(k), -1);
+    }
+  }
+
+  pair_sums[threadIdx.x] = contribution;
+  __syncthreads();
+  for (unsigned stride = blockDim.x / 2; stride != 0; stride /= 2) {
+    if (threadIdx.x < stride) {
+      pair_sums[threadIdx.x] += pair_sums[threadIdx.x + stride];
+    }
+    __syncthreads();
+  }
+  if (threadIdx.x == 0) {
+    fock[matrix_element] = hcore[physical_offset + local_matrix] + pair_sums[0];
+  }
+}
+
+__device__ void eri_symmetry_permutation(unsigned permutation,
+                                         std::size_t i,
+                                         std::size_t j,
+                                         std::size_t k,
+                                         std::size_t l,
+                                         std::size_t& a,
+                                         std::size_t& b,
+                                         std::size_t& c,
+                                         std::size_t& d) {
+  switch (permutation) {
+    case 0: a = i; b = j; c = k; d = l; break;
+    case 1: a = j; b = i; c = k; d = l; break;
+    case 2: a = i; b = j; c = l; d = k; break;
+    case 3: a = j; b = i; c = l; d = k; break;
+    case 4: a = k; b = l; c = i; d = j; break;
+    case 5: a = l; b = k; c = i; d = j; break;
+    case 6: a = k; b = l; c = j; d = i; break;
+    default: a = l; b = k; c = j; d = i; break;
+  }
+}
+
+__device__ bool unique_eri_symmetry_permutation(unsigned permutation,
+                                                std::size_t i,
+                                                std::size_t j,
+                                                std::size_t k,
+                                                std::size_t l,
+                                                std::size_t a,
+                                                std::size_t b,
+                                                std::size_t c,
+                                                std::size_t d) {
+  for (unsigned previous = 0; previous < permutation; ++previous) {
+    std::size_t pa = 0;
+    std::size_t pb = 0;
+    std::size_t pc = 0;
+    std::size_t pd = 0;
+    eri_symmetry_permutation(previous, i, j, k, l, pa, pb, pc, pd);
+    if (a == pa && b == pb && c == pc && d == pd) return false;
+  }
+  return true;
+}
+
+__global__ void initialize_direct_fock_kernel(
+    std::int32_t batch_size,
+    std::int32_t matrices_per_system,
+    std::int32_t nbf,
+    const double* hcore,
+    const std::uint8_t* active,
+    double* fock) {
+  const std::size_t matrix_size = static_cast<std::size_t>(nbf) * nbf;
+  const std::size_t matrix_count =
+      static_cast<std::size_t>(batch_size) * matrices_per_system;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= matrix_count * matrix_size) return;
+  const std::size_t state = element / matrix_size;
+  const std::size_t system =
+      state / static_cast<std::size_t>(matrices_per_system);
+  if (active != nullptr && active[system] == 0) return;
+  fock[element] = hcore[system * matrix_size + element % matrix_size];
+}
+
+template <bool Unrestricted>
+__global__ void build_fock_direct_quartet_kernel(
+    DeviceBatch batch,
+    std::uint32_t tiles_per_shell_quartet,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* shell_pair_bounds,
+    const double* density,
+    const std::uint8_t* active,
+    double* fock) {
+  const std::size_t logical_tile = static_cast<std::size_t>(blockIdx.x);
+  // Every shell quartet owns the same topology-derived number of logical
+  // tiles. Large d/f component products are striped across blocks; tiles past
+  // a smaller quartet's AO count exit without any descriptor lookup.
+  const std::size_t shell_quartet =
+      logical_tile / tiles_per_shell_quartet;
+  const std::size_t tile = logical_tile % tiles_per_shell_quartet;
+  if (shell_quartet >=
+      static_cast<std::size_t>(batch.total_shell_quartets)) {
+    return;
+  }
+  const std::int32_t system = shell_quartet_system(batch, shell_quartet);
+  if (active != nullptr && active[system] == 0) return;
+  const std::size_t local_quartet = shell_quartet -
+      static_cast<std::size_t>(batch.system_shell_quartet_offsets[system]);
+  std::size_t first_pair_local = 0;
+  std::size_t second_pair_local = 0;
+  decode_lower_triangle(local_quartet, first_pair_local, second_pair_local);
+  const std::size_t pair_begin =
+      static_cast<std::size_t>(batch.system_shell_pair_offsets[system]);
+  const std::size_t first_pair = pair_begin + first_pair_local;
+  const std::size_t second_pair = pair_begin + second_pair_local;
+  if (shell_pair_bounds[first_pair] * shell_pair_bounds[second_pair] <
+      screening_tolerance) {
+    return;
+  }
+
+  const std::size_t n = static_cast<std::size_t>(batch.nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t physical_offset =
+      static_cast<std::size_t>(system) * matrix_size;
+  const std::size_t spin_offset =
+      static_cast<std::size_t>(system) * 2 * matrix_size;
+  const std::size_t system_ao_begin = static_cast<std::size_t>(system) * n;
+  const std::size_t first_ao_pair_count =
+      shell_ao_pair_count(batch, first_pair);
+  const std::size_t second_ao_pair_count =
+      shell_ao_pair_count(batch, second_pair);
+  const bool same_shell_pair = first_pair == second_pair;
+  const std::size_t ao_quartet_count = same_shell_pair
+      ? first_ao_pair_count * (first_ao_pair_count + 1) / 2
+      : first_ao_pair_count * second_ao_pair_count;
+
+  const std::size_t tile_stride =
+      static_cast<std::size_t>(blockDim.x) * tiles_per_shell_quartet;
+  for (std::size_t ordinal = tile * blockDim.x + threadIdx.x;
+       ordinal < ao_quartet_count; ordinal += tile_stride) {
+    std::size_t first_ao_pair = 0;
+    std::size_t second_ao_pair = 0;
+    if (same_shell_pair) {
+      decode_lower_triangle(ordinal, first_ao_pair, second_ao_pair);
+    } else {
+      first_ao_pair = ordinal / second_ao_pair_count;
+      second_ao_pair = ordinal % second_ao_pair_count;
+    }
+    std::size_t i = 0;
+    std::size_t j = 0;
+    std::size_t k = 0;
+    std::size_t l = 0;
+    decode_shell_ao_pair(batch, first_pair, first_ao_pair, system_ao_begin,
+                         i, j);
+    decode_shell_ao_pair(batch, second_pair, second_ao_pair, system_ao_begin,
+                         k, l);
+    if (schwarz_bounds[physical_offset + matrix_index(i, j, n)] *
+            schwarz_bounds[physical_offset + matrix_index(k, l, n)] <
+        screening_tolerance) {
+      continue;
+    }
+    const double integral = contracted_eri<double>(
+        batch, system, static_cast<std::int32_t>(i),
+        static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
+        static_cast<std::int32_t>(l), -1);
+    if (integral == 0.0) continue;
+
+    for (unsigned permutation = 0; permutation < 8; ++permutation) {
+      std::size_t a = 0;
+      std::size_t b = 0;
+      std::size_t c = 0;
+      std::size_t d = 0;
+      eri_symmetry_permutation(permutation, i, j, k, l, a, b, c, d);
+      if (!unique_eri_symmetry_permutation(
+              permutation, i, j, k, l, a, b, c, d)) {
+        continue;
+      }
+      const std::size_t ab = matrix_index(a, b, n);
+      const std::size_t ac = matrix_index(a, c, n);
+      const std::size_t cd = matrix_index(c, d, n);
+      const std::size_t bd = matrix_index(b, d, n);
+      if constexpr (Unrestricted) {
+        const double alpha_cd = density[spin_offset + cd];
+        const double beta_cd = density[spin_offset + matrix_size + cd];
+        const double total_cd = alpha_cd + beta_cd;
+        if (total_cd != 0.0) {
+          atomicAdd(fock + spin_offset + ab, total_cd * integral);
+          atomicAdd(fock + spin_offset + matrix_size + ab,
+                    total_cd * integral);
+        }
+        const double alpha_bd = density[spin_offset + bd];
+        const double beta_bd = density[spin_offset + matrix_size + bd];
+        if (alpha_bd != 0.0) {
+          atomicAdd(fock + spin_offset + ac, -alpha_bd * integral);
+        }
+        if (beta_bd != 0.0) {
+          atomicAdd(fock + spin_offset + matrix_size + ac,
+                    -beta_bd * integral);
+        }
+      } else {
+        const double density_cd = density[physical_offset + cd];
+        const double density_bd = density[physical_offset + bd];
+        if (density_cd != 0.0) {
+          atomicAdd(fock + physical_offset + ab, density_cd * integral);
+        }
+        if (density_bd != 0.0) {
+          atomicAdd(fock + physical_offset + ac,
+                    -0.5 * density_bd * integral);
+        }
+      }
+    }
+  }
+}
+
+__global__ void build_commutator_residual_kernel(
+    std::int32_t batch_size,
+    std::int32_t nbf,
+    const double* fock,
+    const double* density,
+    const double* overlap,
+    const std::uint8_t* active,
+    double* residual) {
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= static_cast<std::size_t>(batch_size) * matrix_size) return;
+  const std::int32_t system = static_cast<std::int32_t>(element / matrix_size);
+  if (active[system] == 0) return;
+  const std::size_t local = element % matrix_size;
+  const std::size_t row = local % n;
+  const std::size_t column = local / n;
+  const std::size_t offset = static_cast<std::size_t>(system) * matrix_size;
+  double fps = 0.0;
+  double spf = 0.0;
+  for (std::size_t first = 0; first < n; ++first) {
+    for (std::size_t second = 0; second < n; ++second) {
+      fps += fock[offset + matrix_index(row, first, n)] *
+             density[offset + matrix_index(first, second, n)] *
+             overlap[offset + matrix_index(second, column, n)];
+      spf += overlap[offset + matrix_index(row, first, n)] *
+             density[offset + matrix_index(first, second, n)] *
+             fock[offset + matrix_index(second, column, n)];
+    }
+  }
+  residual[element] = fps - spf;
+}
+
+__global__ void build_spin_commutator_residual_kernel(
+    std::int32_t batch_size,
+    std::int32_t spin_count,
+    std::int32_t nbf,
+    const double* fock,
+    const double* density,
+    const double* overlap,
+    const std::uint8_t* active,
+    double* residual) {
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t state_count =
+      static_cast<std::size_t>(batch_size) * spin_count;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= state_count * matrix_size) return;
+  const std::size_t state = element / matrix_size;
+  const std::size_t system = state / static_cast<std::size_t>(spin_count);
+  if (active[system] == 0) return;
+  const std::size_t local = element % matrix_size;
+  const std::size_t row = local % n;
+  const std::size_t column = local / n;
+  const std::size_t spin_offset = state * matrix_size;
+  const std::size_t overlap_offset = system * matrix_size;
+  double fps = 0.0;
+  double spf = 0.0;
+  for (std::size_t first = 0; first < n; ++first) {
+    for (std::size_t second = 0; second < n; ++second) {
+      fps += fock[spin_offset + matrix_index(row, first, n)] *
+             density[spin_offset + matrix_index(first, second, n)] *
+             overlap[overlap_offset + matrix_index(second, column, n)];
+      spf += overlap[overlap_offset + matrix_index(row, first, n)] *
+             density[spin_offset + matrix_index(first, second, n)] *
+             fock[spin_offset + matrix_index(second, column, n)];
+    }
+  }
+  residual[element] = fps - spf;
+}
+
+__global__ void update_diis_kernel(std::int32_t batch_size,
+                                   std::int32_t nbf,
+                                   std::int32_t matrices_per_system,
+                                   std::uint32_t history_capacity,
+                                   const double* fock,
+                                   const double* residual,
+                                   const std::uint8_t* active,
+                                   double* fock_history,
+                                   double* residual_history,
+                                   double* linear_system,
+                                   double* coefficients,
+                                   std::uint32_t* history_count,
+                                   std::uint32_t* history_head,
+                                   double* effective_fock) {
+  const std::int32_t system = static_cast<std::int32_t>(blockIdx.x);
+  if (system >= batch_size || active[system] == 0 || threadIdx.x != 0) return;
+  const std::size_t matrix_size = static_cast<std::size_t>(nbf) * nbf;
+  const std::size_t vector_size =
+      matrix_size * static_cast<std::size_t>(matrices_per_system);
+  const std::size_t matrix_offset = static_cast<std::size_t>(system) * vector_size;
+  if (history_capacity < 2) {
+    for (std::size_t element = 0; element < vector_size; ++element) {
+      effective_fock[matrix_offset + element] = fock[matrix_offset + element];
+    }
+    return;
+  }
+
+  const std::size_t history_stride =
+      static_cast<std::size_t>(history_capacity) * vector_size;
+  const std::uint32_t slot = history_head[system];
+  const std::size_t slot_offset =
+      static_cast<std::size_t>(system) * history_stride +
+      static_cast<std::size_t>(slot) * vector_size;
+  for (std::size_t element = 0; element < vector_size; ++element) {
+    fock_history[slot_offset + element] = fock[matrix_offset + element];
+    residual_history[slot_offset + element] = residual[matrix_offset + element];
+  }
+  const std::uint32_t count =
+      history_count[system] < history_capacity
+          ? history_count[system] + 1
+          : history_capacity;
+  history_count[system] = count;
+  history_head[system] = (slot + 1) % history_capacity;
+  if (count < 2) {
+    for (std::size_t element = 0; element < vector_size; ++element) {
+      effective_fock[matrix_offset + element] = fock[matrix_offset + element];
+    }
+    return;
+  }
+
+  const std::uint32_t dimension = count + 1;
+  const std::size_t system_stride =
+      static_cast<std::size_t>(history_capacity + 1) * (history_capacity + 1);
+  double* matrix = linear_system + static_cast<std::size_t>(system) * system_stride;
+  double* rhs = coefficients +
+      static_cast<std::size_t>(system) * (history_capacity + 1);
+  for (std::uint32_t row = 0; row < dimension; ++row) {
+    rhs[row] = row == count ? -1.0 : 0.0;
+    for (std::uint32_t column = 0; column < dimension; ++column) {
+      matrix[static_cast<std::size_t>(row) * dimension + column] = 0.0;
+    }
+  }
+  for (std::uint32_t row = 0; row < count; ++row) {
+    const std::size_t row_offset =
+        static_cast<std::size_t>(system) * history_stride +
+        static_cast<std::size_t>(row) * vector_size;
+    for (std::uint32_t column = 0; column < count; ++column) {
+      const std::size_t column_offset =
+          static_cast<std::size_t>(system) * history_stride +
+          static_cast<std::size_t>(column) * vector_size;
+      double dot = 0.0;
+      for (std::size_t element = 0; element < vector_size; ++element) {
+        dot += residual_history[row_offset + element] *
+               residual_history[column_offset + element];
+      }
+      matrix[static_cast<std::size_t>(row) * dimension + column] = dot;
+    }
+    matrix[static_cast<std::size_t>(row) * dimension + count] = -1.0;
+    matrix[static_cast<std::size_t>(count) * dimension + row] = -1.0;
+  }
+
+  bool nonsingular = true;
+  for (std::uint32_t column = 0; column < dimension; ++column) {
+    std::uint32_t pivot = column;
+    for (std::uint32_t row = column + 1; row < dimension; ++row) {
+      if (fabs(matrix[static_cast<std::size_t>(row) * dimension + column]) >
+          fabs(matrix[static_cast<std::size_t>(pivot) * dimension + column])) {
+        pivot = row;
+      }
+    }
+    const double diagonal =
+        matrix[static_cast<std::size_t>(pivot) * dimension + column];
+    if (fabs(diagonal) < 1.0e-14) {
+      nonsingular = false;
+      break;
+    }
+    if (pivot != column) {
+      for (std::uint32_t item = 0; item < dimension; ++item) {
+        const std::size_t first =
+            static_cast<std::size_t>(column) * dimension + item;
+        const std::size_t second =
+            static_cast<std::size_t>(pivot) * dimension + item;
+        const double swap = matrix[first];
+        matrix[first] = matrix[second];
+        matrix[second] = swap;
+      }
+      const double swap = rhs[column];
+      rhs[column] = rhs[pivot];
+      rhs[pivot] = swap;
+    }
+    const double scale =
+        matrix[static_cast<std::size_t>(column) * dimension + column];
+    for (std::uint32_t item = column; item < dimension; ++item) {
+      matrix[static_cast<std::size_t>(column) * dimension + item] /= scale;
+    }
+    rhs[column] /= scale;
+    for (std::uint32_t row = 0; row < dimension; ++row) {
+      if (row == column) continue;
+      const double factor =
+          matrix[static_cast<std::size_t>(row) * dimension + column];
+      for (std::uint32_t item = column; item < dimension; ++item) {
+        matrix[static_cast<std::size_t>(row) * dimension + item] -=
+            factor * matrix[static_cast<std::size_t>(column) * dimension + item];
+      }
+      rhs[row] -= factor * rhs[column];
+    }
+  }
+
+  for (std::size_t element = 0; element < vector_size; ++element) {
+    double value = fock[matrix_offset + element];
+    if (nonsingular) {
+      value = 0.0;
+      for (std::uint32_t item = 0; item < count; ++item) {
+        const std::size_t item_offset =
+            static_cast<std::size_t>(system) * history_stride +
+            static_cast<std::size_t>(item) * vector_size;
+        value += rhs[item] * fock_history[item_offset + element];
+      }
+    }
+    effective_fock[matrix_offset + element] = value;
+  }
+}
+
+__global__ void compute_energy_kernel(std::int32_t batch_size,
+                                      std::int32_t nbf,
+                                      const double* density,
+                                      const double* hcore,
+                                      const double* fock,
+                                      const double* nuclear_repulsion,
+                                      const std::uint8_t* active,
+                                      double* energy) {
+  const std::int32_t system = static_cast<std::int32_t>(
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x);
+  if (system >= batch_size || (active != nullptr && active[system] == 0)) return;
+  const std::size_t matrix_size = static_cast<std::size_t>(nbf) * nbf;
+  const std::size_t offset = static_cast<std::size_t>(system) * matrix_size;
+  double value = nuclear_repulsion[system];
+  for (std::size_t element = 0; element < matrix_size; ++element) {
+    value += 0.5 * density[offset + element] *
+             (hcore[offset + element] + fock[offset + element]);
+  }
+  energy[system] = value;
+}
+
+__global__ void compute_uhf_energy_kernel(std::int32_t batch_size,
+                                          std::int32_t nbf,
+                                          const double* density,
+                                          const double* hcore,
+                                          const double* fock,
+                                          const double* nuclear_repulsion,
+                                          const std::uint8_t* active,
+                                          double* energy) {
+  const std::int32_t system = static_cast<std::int32_t>(
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x);
+  if (system >= batch_size || (active != nullptr && active[system] == 0)) return;
+  const std::size_t matrix_size = static_cast<std::size_t>(nbf) * nbf;
+  const std::size_t physical_offset =
+      static_cast<std::size_t>(system) * matrix_size;
+  const std::size_t alpha_offset =
+      static_cast<std::size_t>(system) * 2 * matrix_size;
+  const std::size_t beta_offset = alpha_offset + matrix_size;
+  double value = nuclear_repulsion[system];
+  for (std::size_t element = 0; element < matrix_size; ++element) {
+    value += 0.5 * density[alpha_offset + element] *
+             (hcore[physical_offset + element] + fock[alpha_offset + element]);
+    value += 0.5 * density[beta_offset + element] *
+             (hcore[physical_offset + element] + fock[beta_offset + element]);
+  }
+  energy[system] = value;
+}
+
+__global__ void update_convergence_kernel(std::int32_t batch_size,
+                                          std::int32_t nbf,
+                                          double energy_tolerance,
+                                          double density_tolerance,
+                                          const double* energy,
+                                          double* previous_energy,
+                                          const double* next_density,
+                                          double* density,
+                                          std::uint8_t* active,
+                                          std::uint8_t* converged,
+                                          std::uint32_t* iterations,
+                                          double* energy_change,
+                                          double* density_rms) {
+  const std::int32_t system = static_cast<std::int32_t>(
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x);
+  if (system >= batch_size || active[system] == 0) return;
+  const std::size_t matrix_size = static_cast<std::size_t>(nbf) * nbf;
+  const std::size_t offset = static_cast<std::size_t>(system) * matrix_size;
+  const std::uint32_t iteration = iterations[system] + 1;
+  double square = 0.0;
+  for (std::size_t element = 0; element < matrix_size; ++element) {
+    const double delta = next_density[offset + element] - density[offset + element];
+    square += delta * delta;
+    density[offset + element] = next_density[offset + element];
+  }
+  const double change = isfinite(previous_energy[system])
+      ? fabs(energy[system] - previous_energy[system])
+      : CUDART_INF;
+  const double rms = sqrt(square / static_cast<double>(matrix_size));
+  iterations[system] = iteration;
+  energy_change[system] = change;
+  density_rms[system] = rms;
+  if (iteration > 1 && change < energy_tolerance && rms < density_tolerance) {
+    converged[system] = 1;
+    active[system] = 0;
+  } else {
+    previous_energy[system] = energy[system];
+  }
+}
+
+__global__ void update_uhf_convergence_kernel(
+    std::int32_t batch_size,
+    std::int32_t nbf,
+    double energy_tolerance,
+    double density_tolerance,
+    const double* energy,
+    double* previous_energy,
+    const double* next_density,
+    double* density,
+    std::uint8_t* active,
+    std::uint8_t* converged,
+    std::uint32_t* iterations,
+    double* energy_change,
+    double* density_rms) {
+  const std::int32_t system = static_cast<std::int32_t>(
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x);
+  if (system >= batch_size || active[system] == 0) return;
+  const std::size_t matrix_size = static_cast<std::size_t>(nbf) * nbf;
+  const std::size_t vector_size = 2 * matrix_size;
+  const std::size_t offset = static_cast<std::size_t>(system) * vector_size;
+  double square = 0.0;
+  for (std::size_t element = 0; element < vector_size; ++element) {
+    const double delta = next_density[offset + element] - density[offset + element];
+    square += delta * delta;
+    density[offset + element] = next_density[offset + element];
+  }
+  const double change = isfinite(previous_energy[system])
+      ? fabs(energy[system] - previous_energy[system])
+      : CUDART_INF;
+  const double rms = sqrt(square / static_cast<double>(vector_size));
+  previous_energy[system] = energy[system];
+  energy_change[system] = change;
+  density_rms[system] = rms;
+  ++iterations[system];
+  if (iterations[system] > 1 && change < energy_tolerance &&
+      rms < density_tolerance) {
+    converged[system] = 1;
+    active[system] = 0;
+  }
+}
+
+__global__ void tail_rhf_loop_kernel(std::int32_t batch_size,
+                                     std::uint32_t maximum_iterations,
+                                     const std::uint8_t* active,
+                                     const std::uint32_t* iterations) {
+  if (blockIdx.x != 0 || threadIdx.x != 0) return;
+  bool continue_loop = false;
+  for (std::int32_t system = 0; system < batch_size; ++system) {
+    continue_loop = continue_loop ||
+        (active[system] == 1 && iterations[system] < maximum_iterations);
+  }
+  if (!continue_loop) return;
+
+  // Re-launch the currently executing one-iteration Graph on its tail stream.
+  // This is the same device-resident early-stop pattern used by xTBloom: the
+  // host submits one Graph and never polls convergence between iterations.
+  const cudaGraphExec_t current = cudaGetCurrentGraphExec();
+  if (current != nullptr) {
+    (void)cudaGraphLaunch(current, cudaStreamGraphTailLaunch);
+  }
+}
+
+__global__ void select_converged_kernel(std::int32_t batch_size,
+                                        const std::uint8_t* converged,
+                                        const std::uint8_t* failed,
+                                        std::uint8_t* active) {
+  const std::int32_t system = static_cast<std::int32_t>(
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x);
+  if (system < batch_size) {
+    active[system] = converged[system] == 1 && failed[system] == 0 ? 1 : 0;
+  }
+}
+
+__global__ void build_weighted_density_kernel(std::int32_t batch_size,
+                                              std::int32_t nbf,
+                                              const std::int32_t* occupied,
+                                              const double* coefficients,
+                                              const double* orbital_energies,
+                                              const std::uint8_t* active,
+                                              double* weighted_density) {
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= static_cast<std::size_t>(batch_size) * matrix_size) return;
+  const std::int32_t system = static_cast<std::int32_t>(element / matrix_size);
+  if (active[system] == 0) return;
+  const std::size_t local = element % matrix_size;
+  const std::size_t row = local % n;
+  const std::size_t column = local / n;
+  const std::size_t offset = static_cast<std::size_t>(system) * matrix_size;
+  const std::size_t eigen_offset = static_cast<std::size_t>(system) * n;
+  double value = 0.0;
+  for (std::int32_t orbital = 0; orbital < occupied[system]; ++orbital) {
+    value += 2.0 * orbital_energies[eigen_offset + orbital] *
+             coefficients[offset + matrix_index(row, orbital, n)] *
+             coefficients[offset + matrix_index(column, orbital, n)];
+  }
+  weighted_density[element] = value;
+}
+
+__global__ void build_spin_weighted_density_kernel(
+    std::int32_t batch_size,
+    std::int32_t nbf,
+    const std::int32_t* occupied,
+    const double* coefficients,
+    const double* orbital_energies,
+    const std::uint8_t* active,
+    double* weighted_density) {
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t state_count = static_cast<std::size_t>(batch_size) * 2;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= state_count * matrix_size) return;
+  const std::size_t state = element / matrix_size;
+  const std::size_t system = state / 2;
+  if (active[system] == 0) return;
+  const std::size_t local = element % matrix_size;
+  const std::size_t row = local % n;
+  const std::size_t column = local / n;
+  const std::size_t offset = state * matrix_size;
+  const std::size_t eigen_offset = state * n;
+  double value = 0.0;
+  for (std::int32_t orbital = 0; orbital < occupied[state]; ++orbital) {
+    value += orbital_energies[eigen_offset + orbital] *
+             coefficients[offset + matrix_index(row, orbital, n)] *
+             coefficients[offset + matrix_index(column, orbital, n)];
+  }
+  weighted_density[element] = value;
+}
+
+__global__ void sum_uhf_spin_matrices_kernel(std::int32_t batch_size,
+                                             std::int32_t nbf,
+                                             const double* spin_matrices,
+                                             const std::uint8_t* active,
+                                             double* total_matrices) {
+  const std::size_t matrix_size = static_cast<std::size_t>(nbf) * nbf;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= static_cast<std::size_t>(batch_size) * matrix_size) return;
+  const std::size_t system = element / matrix_size;
+  if (active[system] == 0) return;
+  const std::size_t local = element % matrix_size;
+  const std::size_t alpha_offset = system * 2 * matrix_size;
+  total_matrices[element] = spin_matrices[alpha_offset + local] +
+                            spin_matrices[alpha_offset + matrix_size + local];
+}
+
+__global__ void nuclear_force_kernel(DeviceBatch batch,
+                                     const std::uint8_t* active,
+                                     double* forces) {
+  const std::int64_t coordinate =
+      static_cast<std::int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (coordinate >= batch.total_atoms * 3) return;
+  const std::int64_t atom = coordinate / 3;
+  const std::int32_t system = batch.atom_systems[atom];
+  if (active[system] == 0) return;
+  Dual derivative{0.0, 0.0};
+  for (std::int64_t first = batch.atom_offsets[system];
+       first < batch.atom_offsets[system + 1]; ++first) {
+    const Vec3<Dual> a = atom_position<Dual>(batch, first, coordinate);
+    for (std::int64_t second = batch.atom_offsets[system]; second < first; ++second) {
+      const Vec3<Dual> b = atom_position<Dual>(batch, second, coordinate);
+      derivative = derivative +
+          static_cast<double>(batch.atomic_numbers[first] *
+                              batch.atomic_numbers[second]) /
+          qsqrt(distance_squared(a, b));
+    }
+  }
+  forces[coordinate] = -derivative.derivative;
+}
+
+__global__ void one_electron_force_kernel(DeviceBatch batch,
+                                          const std::int32_t* pair_first,
+                                          const std::int32_t* pair_second,
+                                          std::size_t pair_count,
+                                          const double* density,
+                                          const double* weighted_density,
+                                          const std::uint8_t* active,
+                                          double* forces) {
+  const std::size_t n = static_cast<std::size_t>(batch.nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t work_per_coordinate = pair_count;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  const std::size_t coordinate_count =
+      static_cast<std::size_t>(batch.total_atoms) * 3;
+  if (element >= coordinate_count * work_per_coordinate) return;
+  const std::int64_t coordinate = static_cast<std::int64_t>(
+      element / work_per_coordinate);
+  const std::size_t local = element % work_per_coordinate;
+  const std::int64_t atom = coordinate / 3;
+  const std::int32_t system = batch.atom_systems[atom];
+  if (active[system] == 0) return;
+  const std::size_t i = static_cast<std::size_t>(pair_first[local]);
+  const std::size_t j = static_cast<std::size_t>(pair_second[local]);
+  const std::size_t matrix_offset = static_cast<std::size_t>(system) * matrix_size;
+  const double pij = density[matrix_offset + matrix_index(i, j, n)];
+  const double wij = weighted_density[matrix_offset + matrix_index(i, j, n)];
+  const Dual ds = contracted_overlap<Dual>(
+      batch, system, static_cast<std::int32_t>(i),
+      static_cast<std::int32_t>(j), coordinate);
+  const Dual dh = contracted_hcore<Dual>(
+      batch, system, static_cast<std::int32_t>(i),
+      static_cast<std::int32_t>(j), coordinate);
+  const double pair_weight = i == j ? 1.0 : 2.0;
+  atomicAdd(forces + coordinate,
+            -pair_weight * (pij * dh.derivative - wij * ds.derivative));
+}
+
+__global__ void two_electron_force_kernel(DeviceBatch batch,
+                                          const double* density,
+                                          const std::uint8_t* active,
+                                          double* forces) {
+  const std::size_t n = static_cast<std::size_t>(batch.nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t quartet_count = matrix_size * matrix_size;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  const std::size_t coordinate_count =
+      static_cast<std::size_t>(batch.total_atoms) * 3;
+  if (element >= coordinate_count * quartet_count) return;
+  const std::int64_t coordinate =
+      static_cast<std::int64_t>(element / quartet_count);
+  std::size_t local = element % quartet_count;
+  const std::size_t l = local % n;
+  local /= n;
+  const std::size_t k = local % n;
+  local /= n;
+  const std::size_t j = local % n;
+  const std::size_t i = local / n;
+  const std::int64_t atom = coordinate / 3;
+  const std::int32_t system = batch.atom_systems[atom];
+  if (active[system] == 0) return;
+  const std::size_t matrix_offset = static_cast<std::size_t>(system) * matrix_size;
+  const double coefficient =
+      0.5 * density[matrix_offset + matrix_index(i, j, n)] *
+                density[matrix_offset + matrix_index(k, l, n)] -
+      0.25 * density[matrix_offset + matrix_index(i, k, n)] *
+                 density[matrix_offset + matrix_index(j, l, n)];
+  if (coefficient == 0.0) return;
+  const Dual derivative = contracted_eri<Dual>(
+      batch, system, static_cast<std::int32_t>(i),
+      static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
+      static_cast<std::int32_t>(l), coordinate);
+  atomicAdd(forces + coordinate, -coefficient * derivative.derivative);
+}
+
+__global__ void two_electron_uhf_force_kernel(
+    DeviceBatch batch,
+    const double* spin_density,
+    const std::uint8_t* active,
+    double* forces) {
+  const std::size_t n = static_cast<std::size_t>(batch.nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t quartet_count = matrix_size * matrix_size;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  const std::size_t coordinate_count =
+      static_cast<std::size_t>(batch.total_atoms) * 3;
+  if (element >= coordinate_count * quartet_count) return;
+  const std::int64_t coordinate =
+      static_cast<std::int64_t>(element / quartet_count);
+  std::size_t local = element % quartet_count;
+  const std::size_t l = local % n;
+  local /= n;
+  const std::size_t k = local % n;
+  local /= n;
+  const std::size_t j = local % n;
+  const std::size_t i = local / n;
+  const std::int64_t atom = coordinate / 3;
+  const std::int32_t system = batch.atom_systems[atom];
+  if (active[system] == 0) return;
+  const std::size_t alpha_offset =
+      static_cast<std::size_t>(system) * 2 * matrix_size;
+  const std::size_t beta_offset = alpha_offset + matrix_size;
+  const std::size_t ij = matrix_index(i, j, n);
+  const std::size_t kl = matrix_index(k, l, n);
+  const double alpha_ij = spin_density[alpha_offset + ij];
+  const double beta_ij = spin_density[beta_offset + ij];
+  const double alpha_kl = spin_density[alpha_offset + kl];
+  const double beta_kl = spin_density[beta_offset + kl];
+  const double total_ij = alpha_ij + beta_ij;
+  const double total_kl = alpha_kl + beta_kl;
+  const double coefficient =
+      0.5 * total_ij * total_kl -
+      0.5 * spin_density[alpha_offset + matrix_index(i, k, n)] *
+            spin_density[alpha_offset + matrix_index(j, l, n)] -
+      0.5 * spin_density[beta_offset + matrix_index(i, k, n)] *
+            spin_density[beta_offset + matrix_index(j, l, n)];
+  if (coefficient == 0.0) return;
+  const Dual derivative = contracted_eri<Dual>(
+      batch, system, static_cast<std::int32_t>(i),
+      static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
+      static_cast<std::int32_t>(l), coordinate);
+  atomicAdd(forces + coordinate, -coefficient * derivative.derivative);
+}
+
+__global__ void two_electron_force_direct_kernel(
+    DeviceBatch batch,
+    double screening_tolerance,
+    const std::int32_t* pair_first,
+    const std::int32_t* pair_second,
+    std::size_t pair_count,
+    const double* schwarz_bounds,
+    const double* density,
+    const std::uint8_t* active,
+    double* forces) {
+  const std::size_t n = static_cast<std::size_t>(batch.nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t work_per_coordinate = matrix_size * pair_count;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  const std::size_t coordinate_count =
+      static_cast<std::size_t>(batch.total_atoms) * 3;
+  if (element >= coordinate_count * work_per_coordinate) return;
+  const std::int64_t coordinate =
+      static_cast<std::int64_t>(element / work_per_coordinate);
+  std::size_t local = element % work_per_coordinate;
+  const std::size_t packed_kl = local % pair_count;
+  local /= pair_count;
+  const std::size_t j = local % n;
+  const std::size_t i = local / n;
+  const std::size_t k =
+      static_cast<std::size_t>(pair_first[packed_kl]);
+  const std::size_t l =
+      static_cast<std::size_t>(pair_second[packed_kl]);
+  const std::int64_t atom = coordinate / 3;
+  const std::int32_t system = batch.atom_systems[atom];
+  if (active[system] == 0) return;
+  const std::size_t matrix_offset = static_cast<std::size_t>(system) * matrix_size;
+  const double pij = density[matrix_offset + matrix_index(i, j, n)];
+  const double pkl = density[matrix_offset + matrix_index(k, l, n)];
+  if (pij == 0.0 || pkl == 0.0) return;
+
+  double energy_derivative = 0.0;
+  const double coulomb_bound =
+      schwarz_bounds[matrix_offset + matrix_index(i, j, n)] *
+      schwarz_bounds[matrix_offset + matrix_index(k, l, n)];
+  if (coulomb_bound >= screening_tolerance) {
+    const Dual derivative = contracted_eri<Dual>(
+        batch, system, static_cast<std::int32_t>(i),
+        static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
+        static_cast<std::int32_t>(l), coordinate);
+    // The packed density pair represents both (k,l) and (l,k) when k != l.
+    const double coulomb_coefficient =
+        k == l ? 0.5 * pij * pkl : pij * pkl;
+    energy_derivative += coulomb_coefficient * derivative.derivative;
+  }
+
+  const double exchange_bound =
+      schwarz_bounds[matrix_offset + matrix_index(i, k, n)] *
+      schwarz_bounds[matrix_offset + matrix_index(j, l, n)];
+  if (exchange_bound >= screening_tolerance) {
+    const Dual derivative = contracted_eri<Dual>(
+        batch, system, static_cast<std::int32_t>(i),
+        static_cast<std::int32_t>(k), static_cast<std::int32_t>(j),
+        static_cast<std::int32_t>(l), coordinate);
+    energy_derivative -= 0.25 * pij * pkl * derivative.derivative;
+  }
+  if (k != l) {
+    // Packing (k,l) also represents the swapped density pair. Unlike the
+    // Coulomb term, exchange maps it to a distinct integral permutation.
+    const double transposed_exchange_bound =
+        schwarz_bounds[matrix_offset + matrix_index(i, l, n)] *
+        schwarz_bounds[matrix_offset + matrix_index(j, k, n)];
+    if (transposed_exchange_bound >= screening_tolerance) {
+      const Dual derivative = contracted_eri<Dual>(
+          batch, system, static_cast<std::int32_t>(i),
+          static_cast<std::int32_t>(l), static_cast<std::int32_t>(j),
+          static_cast<std::int32_t>(k), coordinate);
+      energy_derivative -= 0.25 * pij * pkl * derivative.derivative;
+    }
+  }
+  if (energy_derivative != 0.0) {
+    atomicAdd(forces + coordinate, -energy_derivative);
+  }
+}
+
+__global__ void two_electron_uhf_force_direct_kernel(
+    DeviceBatch batch,
+    double screening_tolerance,
+    const std::int32_t* pair_first,
+    const std::int32_t* pair_second,
+    std::size_t pair_count,
+    const double* schwarz_bounds,
+    const double* spin_density,
+    const std::uint8_t* active,
+    double* forces) {
+  const std::size_t n = static_cast<std::size_t>(batch.nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t work_per_coordinate = matrix_size * pair_count;
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  const std::size_t coordinate_count =
+      static_cast<std::size_t>(batch.total_atoms) * 3;
+  if (element >= coordinate_count * work_per_coordinate) return;
+  const std::int64_t coordinate =
+      static_cast<std::int64_t>(element / work_per_coordinate);
+  std::size_t local = element % work_per_coordinate;
+  const std::size_t packed_kl = local % pair_count;
+  local /= pair_count;
+  const std::size_t j = local % n;
+  const std::size_t i = local / n;
+  const std::size_t k = static_cast<std::size_t>(pair_first[packed_kl]);
+  const std::size_t l = static_cast<std::size_t>(pair_second[packed_kl]);
+  const std::int64_t atom = coordinate / 3;
+  const std::int32_t system = batch.atom_systems[atom];
+  if (active[system] == 0) return;
+  const std::size_t physical_offset =
+      static_cast<std::size_t>(system) * matrix_size;
+  const std::size_t alpha_offset =
+      static_cast<std::size_t>(system) * 2 * matrix_size;
+  const std::size_t beta_offset = alpha_offset + matrix_size;
+  const std::size_t ij = matrix_index(i, j, n);
+  const std::size_t kl = matrix_index(k, l, n);
+  const double alpha_ij = spin_density[alpha_offset + ij];
+  const double beta_ij = spin_density[beta_offset + ij];
+  const double alpha_kl = spin_density[alpha_offset + kl];
+  const double beta_kl = spin_density[beta_offset + kl];
+  const double total_ij = alpha_ij + beta_ij;
+  const double total_kl = alpha_kl + beta_kl;
+
+  double energy_derivative = 0.0;
+  const double coulomb_bound =
+      schwarz_bounds[physical_offset + ij] *
+      schwarz_bounds[physical_offset + kl];
+  if (total_ij != 0.0 && total_kl != 0.0 &&
+      coulomb_bound >= screening_tolerance) {
+    const Dual derivative = contracted_eri<Dual>(
+        batch, system, static_cast<std::int32_t>(i),
+        static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
+        static_cast<std::int32_t>(l), coordinate);
+    const double coefficient =
+        k == l ? 0.5 * total_ij * total_kl : total_ij * total_kl;
+    energy_derivative += coefficient * derivative.derivative;
+  }
+
+  const double exchange_pair =
+      alpha_ij * alpha_kl + beta_ij * beta_kl;
+  const double exchange_bound =
+      schwarz_bounds[physical_offset + matrix_index(i, k, n)] *
+      schwarz_bounds[physical_offset + matrix_index(j, l, n)];
+  if (exchange_pair != 0.0 && exchange_bound >= screening_tolerance) {
+    const Dual derivative = contracted_eri<Dual>(
+        batch, system, static_cast<std::int32_t>(i),
+        static_cast<std::int32_t>(k), static_cast<std::int32_t>(j),
+        static_cast<std::int32_t>(l), coordinate);
+    energy_derivative -= 0.5 * exchange_pair * derivative.derivative;
+  }
+  if (k != l && exchange_pair != 0.0) {
+    const double transposed_exchange_bound =
+        schwarz_bounds[physical_offset + matrix_index(i, l, n)] *
+        schwarz_bounds[physical_offset + matrix_index(j, k, n)];
+    if (transposed_exchange_bound >= screening_tolerance) {
+      const Dual derivative = contracted_eri<Dual>(
+          batch, system, static_cast<std::int32_t>(i),
+          static_cast<std::int32_t>(l), static_cast<std::int32_t>(j),
+          static_cast<std::int32_t>(k), coordinate);
+      energy_derivative -= 0.5 * exchange_pair * derivative.derivative;
+    }
+  }
+  if (energy_derivative != 0.0) {
+    atomicAdd(forces + coordinate, -energy_derivative);
+  }
+}
+
+template <bool Unrestricted>
+__global__ void two_electron_force_quartet_kernel(
+    DeviceBatch batch,
+    std::uint32_t tiles_per_shell_quartet,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* shell_pair_bounds,
+    const double* density,
+    const std::uint8_t* active,
+    double* forces) {
+  const std::size_t logical_tile = static_cast<std::size_t>(blockIdx.x);
+  // Use the identical fixed tiling as direct Fock so energy and derivative
+  // screening consume precisely the same unique AO-quartet domain.
+  const std::size_t shell_quartet =
+      logical_tile / tiles_per_shell_quartet;
+  const std::size_t tile = logical_tile % tiles_per_shell_quartet;
+  if (shell_quartet >=
+      static_cast<std::size_t>(batch.total_shell_quartets)) {
+    return;
+  }
+  const std::int32_t system = shell_quartet_system(batch, shell_quartet);
+  if (active[system] == 0) return;
+  const std::size_t local_quartet = shell_quartet -
+      static_cast<std::size_t>(batch.system_shell_quartet_offsets[system]);
+  std::size_t first_pair_local = 0;
+  std::size_t second_pair_local = 0;
+  decode_lower_triangle(local_quartet, first_pair_local, second_pair_local);
+  const std::size_t pair_begin =
+      static_cast<std::size_t>(batch.system_shell_pair_offsets[system]);
+  const std::size_t first_pair = pair_begin + first_pair_local;
+  const std::size_t second_pair = pair_begin + second_pair_local;
+  if (shell_pair_bounds[first_pair] * shell_pair_bounds[second_pair] <
+      screening_tolerance) {
+    return;
+  }
+
+  const std::size_t n = static_cast<std::size_t>(batch.nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t physical_offset =
+      static_cast<std::size_t>(system) * matrix_size;
+  const std::size_t spin_offset =
+      static_cast<std::size_t>(system) * 2 * matrix_size;
+  const std::size_t system_ao_begin = static_cast<std::size_t>(system) * n;
+  const std::size_t first_ao_pair_count =
+      shell_ao_pair_count(batch, first_pair);
+  const std::size_t second_ao_pair_count =
+      shell_ao_pair_count(batch, second_pair);
+  const bool same_shell_pair = first_pair == second_pair;
+  const std::size_t ao_quartet_count = same_shell_pair
+      ? first_ao_pair_count * (first_ao_pair_count + 1) / 2
+      : first_ao_pair_count * second_ao_pair_count;
+  const std::int32_t first_shell = batch.shell_pair_first[first_pair];
+  const std::int32_t second_shell = batch.shell_pair_second[first_pair];
+  const std::int32_t third_shell = batch.shell_pair_first[second_pair];
+  const std::int32_t fourth_shell = batch.shell_pair_second[second_pair];
+  const std::int32_t center_atoms[4] = {
+      batch.shell_atoms[first_shell], batch.shell_atoms[second_shell],
+      batch.shell_atoms[third_shell], batch.shell_atoms[fourth_shell]};
+
+  const std::size_t tile_stride =
+      static_cast<std::size_t>(blockDim.x) * tiles_per_shell_quartet;
+  for (std::size_t ordinal = tile * blockDim.x + threadIdx.x;
+       ordinal < ao_quartet_count; ordinal += tile_stride) {
+    std::size_t first_ao_pair = 0;
+    std::size_t second_ao_pair = 0;
+    if (same_shell_pair) {
+      decode_lower_triangle(ordinal, first_ao_pair, second_ao_pair);
+    } else {
+      first_ao_pair = ordinal / second_ao_pair_count;
+      second_ao_pair = ordinal % second_ao_pair_count;
+    }
+    std::size_t i = 0;
+    std::size_t j = 0;
+    std::size_t k = 0;
+    std::size_t l = 0;
+    decode_shell_ao_pair(batch, first_pair, first_ao_pair, system_ao_begin,
+                         i, j);
+    decode_shell_ao_pair(batch, second_pair, second_ao_pair, system_ao_begin,
+                         k, l);
+    if (schwarz_bounds[physical_offset + matrix_index(i, j, n)] *
+            schwarz_bounds[physical_offset + matrix_index(k, l, n)] <
+        screening_tolerance) {
+      continue;
+    }
+
+    double coefficient = 0.0;
+    for (unsigned permutation = 0; permutation < 8; ++permutation) {
+      std::size_t a = 0;
+      std::size_t b = 0;
+      std::size_t c = 0;
+      std::size_t d = 0;
+      eri_symmetry_permutation(permutation, i, j, k, l, a, b, c, d);
+      if (!unique_eri_symmetry_permutation(
+              permutation, i, j, k, l, a, b, c, d)) {
+        continue;
+      }
+      const std::size_t ab = matrix_index(a, b, n);
+      const std::size_t ac = matrix_index(a, c, n);
+      const std::size_t cd = matrix_index(c, d, n);
+      const std::size_t bd = matrix_index(b, d, n);
+      if constexpr (Unrestricted) {
+        const double total_ab = density[spin_offset + ab] +
+            density[spin_offset + matrix_size + ab];
+        const double total_cd = density[spin_offset + cd] +
+            density[spin_offset + matrix_size + cd];
+        coefficient += 0.5 * total_ab * total_cd;
+        coefficient -= 0.5 *
+            (density[spin_offset + ac] * density[spin_offset + bd] +
+             density[spin_offset + matrix_size + ac] *
+                 density[spin_offset + matrix_size + bd]);
+      } else {
+        coefficient +=
+            0.5 * density[physical_offset + ab] *
+                density[physical_offset + cd] -
+            0.25 * density[physical_offset + ac] *
+                density[physical_offset + bd];
+      }
+    }
+    if (coefficient == 0.0) continue;
+
+    // Only the four basis centers can contribute to an ERI derivative. This
+    // avoids evaluating a formally zero Dual integral for every atom in the
+    // molecule, while duplicate centers are contracted exactly once.
+    for (unsigned center = 0; center < 4; ++center) {
+      bool duplicate_center = false;
+      for (unsigned previous = 0; previous < center; ++previous) {
+        duplicate_center = duplicate_center ||
+            center_atoms[center] == center_atoms[previous];
+      }
+      if (duplicate_center) continue;
+      for (std::int64_t axis = 0; axis < 3; ++axis) {
+        const std::int64_t coordinate =
+            static_cast<std::int64_t>(center_atoms[center]) * 3 + axis;
+        const Dual derivative = contracted_eri<Dual>(
+            batch, system, static_cast<std::int32_t>(i),
+            static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
+            static_cast<std::int32_t>(l), coordinate);
+        if (derivative.derivative != 0.0) {
+          atomicAdd(forces + coordinate,
+                    -coefficient * derivative.derivative);
+        }
+      }
+    }
+  }
+}
+
+bool checked_multiply(std::size_t first,
+                      std::size_t second,
+                      std::size_t& result) {
+  if (first != 0 && second > std::numeric_limits<std::size_t>::max() / first) {
+    return false;
+  }
+  result = first * second;
+  return true;
+}
+
+bool checked_add(std::size_t first, std::size_t second, std::size_t& result) {
+  if (second > std::numeric_limits<std::size_t>::max() - first) return false;
+  result = first + second;
+  return true;
+}
+
+struct ArenaLayout {
+  std::size_t bytes{};
+  std::size_t atom_offsets{};
+  std::size_t atom_systems{};
+  std::size_t atomic_numbers{};
+  std::size_t positions{};
+  std::size_t system_shell_offsets{};
+  std::size_t shell_atoms{};
+  std::size_t shell_angular{};
+  std::size_t shell_ao_offsets{};
+  std::size_t shell_primitive_offsets{};
+  std::size_t system_shell_pair_offsets{};
+  std::size_t system_shell_quartet_offsets{};
+  std::size_t shell_pair_systems{};
+  std::size_t shell_pair_first{};
+  std::size_t shell_pair_second{};
+  std::size_t ao_shells{};
+  std::size_t ao_angular{};
+  std::size_t ao_normalization{};
+  std::size_t primitive_exponents{};
+  std::size_t primitive_coefficients{};
+  std::size_t occupied{};
+  std::size_t warm_mask{};
+  std::size_t warm_density{};
+  std::size_t overlap{};
+  std::size_t hcore{};
+  std::size_t eri{};
+  std::size_t schwarz_bounds{};
+  std::size_t shell_pair_bounds{};
+  std::size_t ao_pair_first{};
+  std::size_t ao_pair_second{};
+  std::size_t nuclear_repulsion{};
+  std::size_t orthogonalizer{};
+  std::size_t temporary{};
+  std::size_t eigensystem{};
+  std::size_t coefficients{};
+  std::size_t eigenvalues{};
+  std::size_t density{};
+  std::size_t next_density{};
+  std::size_t fock{};
+  std::size_t residual{};
+  std::size_t weighted_density{};
+  std::size_t total_density{};
+  std::size_t total_weighted_density{};
+  std::size_t fock_history{};
+  std::size_t residual_history{};
+  std::size_t diis_linear_system{};
+  std::size_t diis_coefficients{};
+  std::size_t diis_count{};
+  std::size_t diis_head{};
+  std::size_t energy{};
+  std::size_t previous_energy{};
+  std::size_t energy_change{};
+  std::size_t density_rms{};
+  std::size_t forces{};
+  std::size_t active{};
+  std::size_t converged{};
+  std::size_t failed{};
+  std::size_t spin_active{};
+  std::size_t iterations{};
+  std::size_t solver_info{};
+};
+
+template <typename T>
+bool append_array(std::size_t count, std::size_t& cursor, std::size_t& offset) {
+  const std::size_t remainder = cursor % alignof(T);
+  if (remainder != 0 &&
+      !checked_add(cursor, alignof(T) - remainder, cursor)) return false;
+  offset = cursor;
+  std::size_t bytes = 0;
+  return checked_multiply(count, sizeof(T), bytes) &&
+         checked_add(cursor, bytes, cursor);
+}
+
+bool make_layout(std::size_t batch_size,
+                 std::size_t nbf,
+                 std::size_t atoms,
+                 std::size_t shell_count,
+                 std::size_t shell_pair_count,
+                 std::size_t primitives,
+                 std::size_t diis_history,
+                 std::size_t spin_count,
+                 bool persistent_eri,
+                 ArenaLayout& layout) {
+  std::size_t matrix_size = 0;
+  std::size_t eri_size = 0;
+  std::size_t matrices = 0;
+  std::size_t spin_matrices = 0;
+  std::size_t eris = 0;
+  std::size_t aos = 0;
+  std::size_t nbf_plus_one = 0;
+  std::size_t pair_product = 0;
+  if (!checked_multiply(nbf, nbf, matrix_size) ||
+      !checked_multiply(matrix_size, matrix_size, eri_size) ||
+      !checked_multiply(batch_size, matrix_size, matrices) ||
+      !checked_multiply(matrices, spin_count, spin_matrices) ||
+      !checked_multiply(batch_size, nbf, aos) ||
+      !checked_add(nbf, 1, nbf_plus_one) ||
+      !checked_multiply(nbf, nbf_plus_one, pair_product)) return false;
+  const std::size_t pair_count = pair_product / 2;
+  if (persistent_eri && !checked_multiply(batch_size, eri_size, eris)) {
+    return false;
+  }
+  std::size_t history_matrices = 0;
+  std::size_t diis_dimension = 0;
+  std::size_t diis_linear_elements = 0;
+  if (!checked_multiply(spin_matrices, diis_history, history_matrices) ||
+      !checked_add(diis_history, 1, diis_dimension) ||
+      !checked_multiply(diis_dimension, diis_dimension, diis_linear_elements) ||
+      !checked_multiply(diis_linear_elements, batch_size,
+                        diis_linear_elements)) return false;
+  std::size_t cursor = 0;
+  ArenaLayout made{};
+  if (!append_array<std::int64_t>(batch_size + 1, cursor, made.atom_offsets) ||
+      !append_array<std::int32_t>(atoms, cursor, made.atom_systems) ||
+      !append_array<std::int32_t>(atoms, cursor, made.atomic_numbers) ||
+      !append_array<double>(atoms * 3, cursor, made.positions) ||
+      !append_array<std::int64_t>(batch_size + 1, cursor,
+                                  made.system_shell_offsets) ||
+      !append_array<std::int32_t>(shell_count, cursor, made.shell_atoms) ||
+      !append_array<std::uint8_t>(shell_count, cursor, made.shell_angular) ||
+      !append_array<std::int64_t>(shell_count + 1, cursor,
+                                  made.shell_ao_offsets) ||
+      !append_array<std::int64_t>(shell_count + 1, cursor,
+                                  made.shell_primitive_offsets) ||
+      !append_array<std::int64_t>(batch_size + 1, cursor,
+                                  made.system_shell_pair_offsets) ||
+      !append_array<std::int64_t>(batch_size + 1, cursor,
+                                  made.system_shell_quartet_offsets) ||
+      !append_array<std::int32_t>(shell_pair_count, cursor,
+                                  made.shell_pair_systems) ||
+      !append_array<std::int32_t>(shell_pair_count, cursor,
+                                  made.shell_pair_first) ||
+      !append_array<std::int32_t>(shell_pair_count, cursor,
+                                  made.shell_pair_second) ||
+      !append_array<std::int32_t>(aos, cursor, made.ao_shells) ||
+      !append_array<std::uint8_t>(aos * 3, cursor, made.ao_angular) ||
+      !append_array<double>(aos, cursor, made.ao_normalization) ||
+      !append_array<double>(primitives, cursor, made.primitive_exponents) ||
+      !append_array<double>(primitives, cursor, made.primitive_coefficients) ||
+      !append_array<std::int32_t>(batch_size * spin_count, cursor,
+                                  made.occupied) ||
+      !append_array<std::uint8_t>(batch_size, cursor, made.warm_mask) ||
+      !append_array<double>(spin_matrices, cursor, made.warm_density) ||
+      !append_array<double>(matrices, cursor, made.overlap) ||
+      !append_array<double>(matrices, cursor, made.hcore) ||
+      !append_array<double>(eris, cursor, made.eri) ||
+      !append_array<double>(persistent_eri ? 0 : matrices, cursor,
+                            made.schwarz_bounds) ||
+      !append_array<double>(persistent_eri ? 0 : shell_pair_count, cursor,
+                            made.shell_pair_bounds) ||
+      !append_array<std::int32_t>(pair_count, cursor,
+                                  made.ao_pair_first) ||
+      !append_array<std::int32_t>(pair_count, cursor,
+                                  made.ao_pair_second) ||
+      !append_array<double>(batch_size, cursor, made.nuclear_repulsion) ||
+      !append_array<double>(matrices, cursor, made.orthogonalizer) ||
+      !append_array<double>(spin_matrices, cursor, made.temporary) ||
+      !append_array<double>(spin_matrices, cursor, made.eigensystem) ||
+      !append_array<double>(spin_matrices, cursor, made.coefficients) ||
+      !append_array<double>(batch_size * spin_count * nbf, cursor,
+                            made.eigenvalues) ||
+      !append_array<double>(spin_matrices, cursor, made.density) ||
+      !append_array<double>(spin_matrices, cursor, made.next_density) ||
+      !append_array<double>(spin_matrices, cursor, made.fock) ||
+      !append_array<double>(spin_matrices, cursor, made.residual) ||
+      !append_array<double>(spin_matrices, cursor, made.weighted_density) ||
+      !append_array<double>(spin_count == 2 ? matrices : 0, cursor,
+                            made.total_density) ||
+      !append_array<double>(spin_count == 2 ? matrices : 0, cursor,
+                            made.total_weighted_density) ||
+      !append_array<double>(history_matrices, cursor, made.fock_history) ||
+      !append_array<double>(history_matrices, cursor, made.residual_history) ||
+      !append_array<double>(diis_linear_elements, cursor,
+                            made.diis_linear_system) ||
+      !append_array<double>(batch_size * diis_dimension, cursor,
+                            made.diis_coefficients) ||
+      !append_array<std::uint32_t>(batch_size, cursor, made.diis_count) ||
+      !append_array<std::uint32_t>(batch_size, cursor, made.diis_head) ||
+      !append_array<double>(batch_size, cursor, made.energy) ||
+      !append_array<double>(batch_size, cursor, made.previous_energy) ||
+      !append_array<double>(batch_size, cursor, made.energy_change) ||
+      !append_array<double>(batch_size, cursor, made.density_rms) ||
+      !append_array<double>(atoms * 3, cursor, made.forces) ||
+      !append_array<std::uint8_t>(batch_size, cursor, made.active) ||
+      !append_array<std::uint8_t>(batch_size, cursor, made.converged) ||
+      !append_array<std::uint8_t>(batch_size, cursor, made.failed) ||
+      !append_array<std::uint8_t>(batch_size * spin_count, cursor,
+                                  made.spin_active) ||
+      !append_array<std::uint32_t>(batch_size, cursor, made.iterations) ||
+      !append_array<int>(batch_size * spin_count, cursor,
+                         made.solver_info)) return false;
+  made.bytes = cursor;
+  layout = made;
+  return true;
+}
+
+template <typename T>
+T* arena_pointer(void* arena, std::size_t offset) {
+  return reinterpret_cast<T*>(static_cast<unsigned char*>(arena) + offset);
+}
+
+struct HostBatch {
+  std::size_t nbf{};
+  std::size_t spin_count{1};
+  std::vector<std::int64_t> atom_offsets;
+  std::vector<std::int32_t> atom_systems;
+  std::vector<std::int32_t> atomic_numbers;
+  std::vector<double> positions;
+  std::vector<std::int64_t> system_shell_offsets;
+  std::vector<std::int32_t> shell_atoms;
+  std::vector<std::uint8_t> shell_angular;
+  std::vector<std::int64_t> shell_ao_offsets;
+  std::vector<std::int64_t> shell_primitive_offsets;
+  std::vector<std::int64_t> system_shell_pair_offsets;
+  std::vector<std::int64_t> system_shell_quartet_offsets;
+  std::vector<std::int32_t> shell_pair_systems;
+  std::vector<std::int32_t> shell_pair_first;
+  std::vector<std::int32_t> shell_pair_second;
+  std::vector<std::int32_t> ao_shells;
+  std::vector<std::uint8_t> ao_angular;
+  std::vector<double> ao_normalization;
+  std::vector<double> primitive_exponents;
+  std::vector<double> primitive_coefficients;
+  std::vector<std::int32_t> occupied;
+  std::vector<std::uint8_t> warm_mask;
+  std::vector<double> warm_density;
+};
+
+bool pack_host_batch(const std::vector<core::System>& systems,
+                     const std::vector<const std::vector<double>*>& initial_densities,
+                     HostBatch& host,
+                     bool unrestricted = false) {
+  if (systems.empty() || systems.size() != initial_densities.size()) return false;
+  host.nbf = molecule::ao_count(systems.front());
+  host.spin_count = unrestricted ? 2 : 1;
+  if (host.nbf == 0 || host.nbf > static_cast<std::size_t>(std::numeric_limits<int>::max()) ||
+      systems.size() > static_cast<std::size_t>(std::numeric_limits<int>::max())) return false;
+  const std::size_t matrix_size = host.nbf * host.nbf;
+  host.atom_offsets.push_back(0);
+  host.system_shell_offsets.push_back(0);
+  host.shell_ao_offsets.push_back(0);
+  host.shell_primitive_offsets.push_back(0);
+  host.system_shell_pair_offsets.push_back(0);
+  host.system_shell_quartet_offsets.push_back(0);
+  host.warm_density.resize(
+      systems.size() * host.spin_count * matrix_size, 0.0);
+  for (std::size_t system_index = 0; system_index < systems.size(); ++system_index) {
+    const core::System& system = systems[system_index];
+    if (molecule::ao_count(system) != host.nbf || system.electron_count <= 0) {
+      return false;
+    }
+    const int spin_excess = static_cast<int>(system.multiplicity) - 1;
+    if ((!unrestricted &&
+         (system.electron_count % 2 != 0 || system.multiplicity != 1)) ||
+        (unrestricted &&
+         (spin_excess < 0 || spin_excess > system.electron_count ||
+          ((system.electron_count + spin_excess) & 1) != 0))) {
+      return false;
+    }
+    const std::int64_t atom_base = static_cast<std::int64_t>(host.atomic_numbers.size());
+    for (const core::Atom& atom : system.atoms) {
+      host.atom_systems.push_back(static_cast<std::int32_t>(system_index));
+      host.atomic_numbers.push_back(atom.atomic_number);
+      host.positions.insert(host.positions.end(), atom.position.begin(), atom.position.end());
+    }
+    host.atom_offsets.push_back(static_cast<std::int64_t>(host.atomic_numbers.size()));
+    const std::size_t system_ao_begin = host.ao_shells.size();
+    const std::size_t system_shell_begin = host.shell_atoms.size();
+    for (const core::Shell& shell : system.shells) {
+      if (shell.angular_momentum > kMaximumAngularMomentum ||
+          shell.atom_index >= system.atoms.size()) return false;
+      if (host.shell_atoms.size() >=
+          static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max())) {
+        return false;
+      }
+      const std::int32_t shell_index =
+          static_cast<std::int32_t>(host.shell_atoms.size());
+      host.shell_atoms.push_back(
+          atom_base + static_cast<std::int64_t>(shell.atom_index));
+      host.shell_angular.push_back(
+          static_cast<std::uint8_t>(shell.angular_momentum));
+      for (const core::Primitive& primitive : shell.primitives) {
+        host.primitive_exponents.push_back(primitive.exponent);
+        host.primitive_coefficients.push_back(primitive.coefficient);
+      }
+      host.shell_primitive_offsets.push_back(
+          static_cast<std::int64_t>(host.primitive_exponents.size()));
+      for (const molecule::CartesianComponent& component :
+           molecule::cartesian_components(shell.angular_momentum)) {
+        host.ao_shells.push_back(shell_index);
+        host.ao_angular.push_back(static_cast<std::uint8_t>(component[0]));
+        host.ao_angular.push_back(static_cast<std::uint8_t>(component[1]));
+        host.ao_angular.push_back(static_cast<std::uint8_t>(component[2]));
+        host.ao_normalization.push_back(
+            molecule::cartesian_component_normalization(component));
+      }
+      host.shell_ao_offsets.push_back(
+          static_cast<std::int64_t>(host.ao_shells.size()));
+    }
+    if (host.ao_shells.size() - system_ao_begin != host.nbf) return false;
+    host.system_shell_offsets.push_back(
+        static_cast<std::int64_t>(host.shell_atoms.size()));
+    for (std::size_t first = system_shell_begin;
+         first < host.shell_atoms.size(); ++first) {
+      for (std::size_t second = system_shell_begin; second <= first; ++second) {
+        host.shell_pair_systems.push_back(
+            static_cast<std::int32_t>(system_index));
+        host.shell_pair_first.push_back(static_cast<std::int32_t>(first));
+        host.shell_pair_second.push_back(static_cast<std::int32_t>(second));
+      }
+    }
+    const std::size_t system_shell_pair_end = host.shell_pair_first.size();
+    const std::size_t system_shell_pair_count =
+        system_shell_pair_end -
+        static_cast<std::size_t>(host.system_shell_pair_offsets.back());
+    host.system_shell_pair_offsets.push_back(
+        static_cast<std::int64_t>(system_shell_pair_end));
+    std::size_t system_shell_pair_plus_one = 0;
+    std::size_t system_shell_quartet_count = 0;
+    if (!checked_add(system_shell_pair_count, 1,
+                     system_shell_pair_plus_one) ||
+        !checked_multiply(system_shell_pair_count,
+                          system_shell_pair_plus_one,
+                          system_shell_quartet_count)) {
+      return false;
+    }
+    system_shell_quartet_count /= 2;
+    const std::int64_t previous_quartet_offset =
+        host.system_shell_quartet_offsets.back();
+    if (system_shell_quartet_count > static_cast<std::size_t>(
+            std::numeric_limits<std::int64_t>::max() -
+            previous_quartet_offset)) {
+      return false;
+    }
+    host.system_shell_quartet_offsets.push_back(
+        previous_quartet_offset +
+        static_cast<std::int64_t>(system_shell_quartet_count));
+    if (unrestricted) {
+      const int alpha = (system.electron_count + spin_excess) / 2;
+      host.occupied.push_back(alpha);
+      host.occupied.push_back(system.electron_count - alpha);
+    } else {
+      host.occupied.push_back(system.electron_count / 2);
+    }
+    const std::vector<double>* warm = initial_densities[system_index];
+    const std::size_t warm_size = host.spin_count * matrix_size;
+    const bool valid_warm = warm != nullptr && warm->size() == warm_size &&
+        std::all_of(warm->begin(), warm->end(),
+                    [](double value) { return std::isfinite(value); });
+    host.warm_mask.push_back(valid_warm ? 1 : 0);
+    if (valid_warm) {
+      std::copy(warm->begin(), warm->end(),
+                host.warm_density.begin() + system_index * warm_size);
+    }
+  }
+  return true;
+}
+
+qce_status cuda_status(cudaError_t status) {
+  if (status == cudaSuccess) return QCE_STATUS_SUCCESS;
+  return status == cudaErrorMemoryAllocation ? QCE_STATUS_OUT_OF_MEMORY
+                                              : QCE_STATUS_CUDA_ERROR;
+}
+
+qce_status solver_status(cusolverStatus_t status) {
+  if (status == CUSOLVER_STATUS_SUCCESS) return QCE_STATUS_SUCCESS;
+  return status == CUSOLVER_STATUS_ALLOC_FAILED ? QCE_STATUS_OUT_OF_MEMORY
+                                                : QCE_STATUS_CUDA_ERROR;
+}
+
+void fill_global_failure(std::vector<RhfBucketItem>& outputs, qce_status status) {
+  for (RhfBucketItem& output : outputs) output.status = status;
+}
+
+class CudaResources {
+ public:
+  ~CudaResources() {
+    if (device_id_ >= 0) (void)cudaSetDevice(device_id_);
+    if (iteration_graph_exec_ != nullptr) {
+      (void)cudaGraphExecDestroy(iteration_graph_exec_);
+    }
+    if (iteration_graph_ != nullptr) (void)cudaGraphDestroy(iteration_graph_);
+    if (solver_workspace_ != nullptr) (void)cudaFree(solver_workspace_);
+    if (arena_ != nullptr) (void)cudaFree(arena_);
+    if (jacobi_ != nullptr) (void)cusolverDnDestroySyevjInfo(jacobi_);
+    if (solver_ != nullptr) (void)cusolverDnDestroy(solver_);
+    if (stream_ != nullptr) (void)cudaStreamDestroy(stream_);
+  }
+
+  int device_id_{-1};
+  cudaStream_t stream_{};
+  cusolverDnHandle_t solver_{};
+  syevjInfo_t jacobi_{};
+  cudaGraph_t iteration_graph_{};
+  cudaGraphExec_t iteration_graph_exec_{};
+  void* arena_{};
+  double* solver_workspace_{};
+};
+
+qce_status copy_to_device(void* destination,
+                          const void* source,
+                          std::size_t bytes,
+                          cudaStream_t stream) {
+  if (bytes == 0) return QCE_STATUS_SUCCESS;
+  return cuda_status(cudaMemcpyAsync(destination, source, bytes,
+                                     cudaMemcpyHostToDevice, stream));
+}
+
+qce_status launch_solver(CudaResources& resources,
+                         int nbf,
+                         int batch_size,
+                         double* matrices,
+                         double* eigenvalues,
+                         int lwork,
+                         int* info,
+                         const std::uint8_t* active) {
+  if (nbf <= kSmallEigensolverLimit) {
+    symmetric_eigen_small_kernel<<<static_cast<unsigned>(batch_size), 1, 0,
+                                   resources.stream_>>>(
+        batch_size, nbf, matrices, eigenvalues, info, active);
+    return cuda_status(cudaPeekAtLastError());
+  }
+  const cusolverStatus_t status = cusolverDnDsyevjBatched(
+      resources.solver_, CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER,
+      nbf, matrices, nbf, eigenvalues, resources.solver_workspace_, lwork,
+      info, resources.jacobi_, batch_size);
+  return status == CUSOLVER_STATUS_SUCCESS ? QCE_STATUS_SUCCESS
+                                           : solver_status(status);
+}
+
+}  // namespace
+
+struct CudaRhfBucketPlan {
+  CudaResources resources;
+  ArenaLayout layout;
+  HostBatch topology;
+  core::ScfOptions options;
+  std::size_t batch_size{};
+  std::size_t nbf{};
+  std::size_t total_atoms{};
+  std::size_t total_shells{};
+  std::size_t total_shell_pairs{};
+  std::size_t total_shell_quartets{};
+  std::size_t total_shell_quartet_tiles{};
+  std::size_t quartet_tiles_per_shell_quartet{1};
+  std::size_t primitive_count{};
+  std::size_t diis_history{};
+  int lwork{};
+  bool persistent_eri{};
+  bool quartet_direct{};
+  bool unrestricted{};
+  bool initialized{};
+};
+
+namespace {
+
+bool same_topology(const HostBatch& first, const HostBatch& second) {
+  return first.nbf == second.nbf && first.spin_count == second.spin_count &&
+         first.atom_offsets == second.atom_offsets &&
+         first.atom_systems == second.atom_systems &&
+         first.atomic_numbers == second.atomic_numbers &&
+         first.system_shell_offsets == second.system_shell_offsets &&
+         first.shell_atoms == second.shell_atoms &&
+         first.shell_angular == second.shell_angular &&
+         first.shell_ao_offsets == second.shell_ao_offsets &&
+         first.shell_primitive_offsets == second.shell_primitive_offsets &&
+         first.system_shell_pair_offsets == second.system_shell_pair_offsets &&
+         first.system_shell_quartet_offsets ==
+             second.system_shell_quartet_offsets &&
+         first.shell_pair_systems == second.shell_pair_systems &&
+         first.shell_pair_first == second.shell_pair_first &&
+         first.shell_pair_second == second.shell_pair_second &&
+         first.ao_shells == second.ao_shells &&
+         first.ao_angular == second.ao_angular &&
+         first.ao_normalization == second.ao_normalization &&
+         first.primitive_exponents == second.primitive_exponents &&
+         first.primitive_coefficients == second.primitive_coefficients &&
+         first.occupied == second.occupied;
+}
+
+bool same_options(const core::ScfOptions& first,
+                  const core::ScfOptions& second) {
+  return first.max_iterations == second.max_iterations &&
+         first.diis_history == second.diis_history &&
+         first.energy_tolerance == second.energy_tolerance &&
+         first.density_tolerance == second.density_tolerance &&
+         first.screening_tolerance == second.screening_tolerance;
+}
+
+std::vector<RhfBucketItem> execute_hf_cuda_bucket(
+    CudaRhfBucketPlan& plan,
+    const std::vector<core::System>& systems,
+    const core::ScfOptions& options,
+    const std::vector<const std::vector<double>*>& initial_densities,
+    int device_id,
+    bool unrestricted) {
+  std::vector<RhfBucketItem> outputs(systems.size());
+  HostBatch host;
+  if (!pack_host_batch(systems, initial_densities, host, unrestricted)) {
+    fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
+    return outputs;
+  }
+
+  const std::size_t batch_size = systems.size();
+  const std::size_t nbf = host.nbf;
+  const std::size_t spin_count = host.spin_count;
+  std::size_t spin_batch_size = 0;
+  std::size_t matrix_size = 0;
+  std::size_t eri_size = 0;
+  std::size_t matrix_elements = 0;
+  std::size_t spin_matrix_elements = 0;
+  std::size_t eri_elements = 0;
+  std::size_t nbf_plus_one = 0;
+  std::size_t pair_product = 0;
+  if (!checked_multiply(nbf, nbf, matrix_size) ||
+      !checked_multiply(matrix_size, matrix_size, eri_size) ||
+      !checked_multiply(batch_size, matrix_size, matrix_elements) ||
+      !checked_multiply(batch_size, spin_count, spin_batch_size) ||
+      !checked_multiply(matrix_elements, spin_count, spin_matrix_elements) ||
+      !checked_multiply(batch_size, eri_size, eri_elements) ||
+      !checked_add(nbf, 1, nbf_plus_one) ||
+      !checked_multiply(nbf, nbf_plus_one, pair_product)) {
+    fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
+    return outputs;
+  }
+  const std::size_t pair_count = pair_product / 2;
+  std::size_t pair_elements = 0;
+  if (!checked_multiply(batch_size, pair_count, pair_elements)) {
+    fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
+    return outputs;
+  }
+  if (matrix_elements > std::numeric_limits<unsigned>::max() ||
+      spin_matrix_elements > std::numeric_limits<unsigned>::max() ||
+      spin_batch_size > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
+    fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
+    return outputs;
+  }
+  const std::size_t total_atoms = host.atomic_numbers.size();
+  const std::size_t total_shells = host.shell_atoms.size();
+  const std::size_t total_shell_pairs = host.shell_pair_first.size();
+  if (host.system_shell_quartet_offsets.size() != batch_size + 1 ||
+      host.system_shell_quartet_offsets.back() < 0) {
+    fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
+    return outputs;
+  }
+  const std::size_t total_shell_quartets =
+      static_cast<std::size_t>(host.system_shell_quartet_offsets.back());
+  std::size_t maximum_shell_ao_pairs = 0;
+  // One fixed tile multiplicity keeps the Graph topology immutable. It is
+  // chosen from the largest shell-pair component product in this ragged
+  // bucket and adds no per-quartet O(N^4) task metadata.
+  for (std::size_t pair = 0; pair < total_shell_pairs; ++pair) {
+    const std::int32_t first_shell = host.shell_pair_first[pair];
+    const std::int32_t second_shell = host.shell_pair_second[pair];
+    const std::size_t first_count = static_cast<std::size_t>(
+        host.shell_ao_offsets[first_shell + 1] -
+        host.shell_ao_offsets[first_shell]);
+    const std::size_t second_count = static_cast<std::size_t>(
+        host.shell_ao_offsets[second_shell + 1] -
+        host.shell_ao_offsets[second_shell]);
+    const std::size_t ao_pairs = first_shell == second_shell
+        ? first_count * (first_count + 1) / 2
+        : first_count * second_count;
+    maximum_shell_ao_pairs = std::max(maximum_shell_ao_pairs, ao_pairs);
+  }
+  std::size_t maximum_ao_quartets = 0;
+  std::size_t rounded_ao_quartets = 0;
+  if (!checked_multiply(maximum_shell_ao_pairs, maximum_shell_ao_pairs,
+                        maximum_ao_quartets) ||
+      !checked_add(maximum_ao_quartets, kDirectQuartetThreads - 1,
+                   rounded_ao_quartets)) {
+    fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
+    return outputs;
+  }
+  const std::size_t quartet_tiles_per_shell_quartet = std::max<std::size_t>(
+      1, rounded_ao_quartets / kDirectQuartetThreads);
+  std::size_t total_shell_quartet_tiles = 0;
+  if (!checked_multiply(total_shell_quartets,
+                        quartet_tiles_per_shell_quartet,
+                        total_shell_quartet_tiles)) {
+    fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
+    return outputs;
+  }
+  // Both direct-Fock matrix elements and shell-pair Schwarz tasks use a
+  // one-dimensional CUDA grid with one logical owner per block.
+  if (total_shell_pairs > std::numeric_limits<unsigned>::max() ||
+      total_shell_quartets > std::numeric_limits<unsigned>::max() ||
+      total_shell_quartet_tiles > std::numeric_limits<unsigned>::max() ||
+      quartet_tiles_per_shell_quartet >
+          std::numeric_limits<std::uint32_t>::max()) {
+    fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
+    return outputs;
+  }
+  std::size_t force_coordinate_count = 0;
+  std::size_t one_electron_force_elements = 0;
+  std::size_t force_matrix_elements = 0;
+  std::size_t persistent_force_elements = 0;
+  std::size_t direct_force_elements = 0;
+  if (!checked_multiply(total_atoms, 3, force_coordinate_count) ||
+      !checked_multiply(force_coordinate_count, pair_count,
+                        one_electron_force_elements) ||
+      !checked_multiply(force_coordinate_count, matrix_size,
+                        force_matrix_elements) ||
+      !checked_multiply(force_coordinate_count, eri_size,
+                        persistent_force_elements) ||
+      !checked_multiply(force_matrix_elements, pair_count,
+                        direct_force_elements)) {
+    fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
+    return outputs;
+  }
+  const std::size_t diis_history = std::max<std::size_t>(1, options.diis_history);
+  const bool requested_persistent_eri = nbf <= kPersistentEriAoLimit;
+  const bool requested_quartet_direct =
+      !requested_persistent_eri &&
+      std::all_of(host.shell_angular.begin(), host.shell_angular.end(),
+                  [](std::uint8_t angular) { return angular <= 3; });
+  if (diis_history > 64) {
+    fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
+    return outputs;
+  }
+  const bool first_setup = !plan.initialized;
+  if (!first_setup &&
+      (plan.resources.device_id_ != device_id ||
+       !same_topology(plan.topology, host) ||
+       !same_options(plan.options, options) ||
+       plan.unrestricted != unrestricted)) {
+    fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
+    return outputs;
+  }
+  if (first_setup) {
+    if (!make_layout(batch_size, nbf, total_atoms, total_shells,
+                     total_shell_pairs,
+                     host.primitive_exponents.size(), diis_history,
+                     host.spin_count,
+                     requested_persistent_eri,
+                     plan.layout)) {
+      fill_global_failure(outputs, QCE_STATUS_OUT_OF_MEMORY);
+      return outputs;
+    }
+    plan.batch_size = batch_size;
+    plan.nbf = nbf;
+    plan.total_atoms = total_atoms;
+    plan.total_shells = total_shells;
+    plan.total_shell_pairs = total_shell_pairs;
+    plan.total_shell_quartets = total_shell_quartets;
+    plan.total_shell_quartet_tiles = total_shell_quartet_tiles;
+    plan.quartet_tiles_per_shell_quartet =
+        quartet_tiles_per_shell_quartet;
+    plan.primitive_count = host.primitive_exponents.size();
+    plan.diis_history = diis_history;
+    plan.persistent_eri = requested_persistent_eri;
+    plan.quartet_direct = requested_quartet_direct;
+    plan.unrestricted = unrestricted;
+    plan.options = options;
+    plan.topology = host;
+    // Positions and warm guesses are dynamic execution inputs, not part of
+    // the immutable fixed-topology cache identity.
+    plan.topology.positions.clear();
+    plan.topology.warm_mask.clear();
+    plan.topology.warm_density.clear();
+    plan.resources.device_id_ = device_id;
+  }
+  ArenaLayout& layout = plan.layout;
+  CudaResources& resources = plan.resources;
+  const bool persistent_eri = plan.persistent_eri;
+  const bool quartet_direct = plan.quartet_direct;
+  const std::size_t launch_shell_quartet_tiles =
+      plan.total_shell_quartet_tiles;
+  const std::uint32_t launch_tiles_per_shell_quartet =
+      static_cast<std::uint32_t>(plan.quartet_tiles_per_shell_quartet);
+  const bool use_cusolver = nbf > static_cast<std::size_t>(kSmallEigensolverLimit);
+  cudaError_t cuda_error = cudaSetDevice(device_id);
+  if (cuda_error != cudaSuccess) {
+    fill_global_failure(outputs, cuda_status(cuda_error));
+    return outputs;
+  }
+  cusolverStatus_t solver_error = CUSOLVER_STATUS_SUCCESS;
+  if (first_setup) {
+    if ((cuda_error = cudaStreamCreateWithFlags(&resources.stream_,
+                                                 cudaStreamNonBlocking)) != cudaSuccess ||
+        (cuda_error = cudaMalloc(&resources.arena_, layout.bytes)) != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
+    if (use_cusolver) {
+      solver_error = cusolverDnCreate(&resources.solver_);
+      if (solver_error != CUSOLVER_STATUS_SUCCESS ||
+          (solver_error = cusolverDnSetStream(resources.solver_, resources.stream_)) !=
+              CUSOLVER_STATUS_SUCCESS ||
+          (solver_error = cusolverDnCreateSyevjInfo(&resources.jacobi_)) !=
+              CUSOLVER_STATUS_SUCCESS ||
+          (solver_error = cusolverDnXsyevjSetTolerance(resources.jacobi_, 1.0e-13)) !=
+              CUSOLVER_STATUS_SUCCESS ||
+          (solver_error = cusolverDnXsyevjSetMaxSweeps(resources.jacobi_, 100)) !=
+              CUSOLVER_STATUS_SUCCESS ||
+          (solver_error = cusolverDnXsyevjSetSortEig(resources.jacobi_, 1)) !=
+              CUSOLVER_STATUS_SUCCESS) {
+        fill_global_failure(outputs, solver_status(solver_error));
+        return outputs;
+      }
+    }
+  }
+
+  auto atom_offsets = arena_pointer<std::int64_t>(resources.arena_, layout.atom_offsets);
+  auto atom_systems = arena_pointer<std::int32_t>(resources.arena_, layout.atom_systems);
+  auto atomic_numbers = arena_pointer<std::int32_t>(resources.arena_, layout.atomic_numbers);
+  auto positions = arena_pointer<double>(resources.arena_, layout.positions);
+  auto system_shell_offsets = arena_pointer<std::int64_t>(
+      resources.arena_, layout.system_shell_offsets);
+  auto shell_atoms = arena_pointer<std::int32_t>(resources.arena_, layout.shell_atoms);
+  auto shell_angular =
+      arena_pointer<std::uint8_t>(resources.arena_, layout.shell_angular);
+  auto shell_ao_offsets = arena_pointer<std::int64_t>(
+      resources.arena_, layout.shell_ao_offsets);
+  auto shell_primitive_offsets = arena_pointer<std::int64_t>(
+      resources.arena_, layout.shell_primitive_offsets);
+  auto system_shell_pair_offsets = arena_pointer<std::int64_t>(
+      resources.arena_, layout.system_shell_pair_offsets);
+  auto system_shell_quartet_offsets = arena_pointer<std::int64_t>(
+      resources.arena_, layout.system_shell_quartet_offsets);
+  auto shell_pair_systems = arena_pointer<std::int32_t>(
+      resources.arena_, layout.shell_pair_systems);
+  auto shell_pair_first = arena_pointer<std::int32_t>(
+      resources.arena_, layout.shell_pair_first);
+  auto shell_pair_second = arena_pointer<std::int32_t>(
+      resources.arena_, layout.shell_pair_second);
+  auto ao_shells =
+      arena_pointer<std::int32_t>(resources.arena_, layout.ao_shells);
+  auto ao_angular =
+      arena_pointer<std::uint8_t>(resources.arena_, layout.ao_angular);
+  auto ao_normalization =
+      arena_pointer<double>(resources.arena_, layout.ao_normalization);
+  auto primitive_exponents =
+      arena_pointer<double>(resources.arena_, layout.primitive_exponents);
+  auto primitive_coefficients =
+      arena_pointer<double>(resources.arena_, layout.primitive_coefficients);
+  auto occupied = arena_pointer<std::int32_t>(resources.arena_, layout.occupied);
+  auto warm_mask = arena_pointer<std::uint8_t>(resources.arena_, layout.warm_mask);
+  auto warm_density = arena_pointer<double>(resources.arena_, layout.warm_density);
+  auto overlap = arena_pointer<double>(resources.arena_, layout.overlap);
+  auto hcore = arena_pointer<double>(resources.arena_, layout.hcore);
+  auto eri = arena_pointer<double>(resources.arena_, layout.eri);
+  auto schwarz_bounds =
+      arena_pointer<double>(resources.arena_, layout.schwarz_bounds);
+  auto shell_pair_bounds =
+      arena_pointer<double>(resources.arena_, layout.shell_pair_bounds);
+  auto ao_pair_first =
+      arena_pointer<std::int32_t>(resources.arena_, layout.ao_pair_first);
+  auto ao_pair_second =
+      arena_pointer<std::int32_t>(resources.arena_, layout.ao_pair_second);
+  auto nuclear_repulsion =
+      arena_pointer<double>(resources.arena_, layout.nuclear_repulsion);
+  auto orthogonalizer =
+      arena_pointer<double>(resources.arena_, layout.orthogonalizer);
+  auto temporary = arena_pointer<double>(resources.arena_, layout.temporary);
+  auto eigensystem = arena_pointer<double>(resources.arena_, layout.eigensystem);
+  auto coefficients = arena_pointer<double>(resources.arena_, layout.coefficients);
+  auto eigenvalues = arena_pointer<double>(resources.arena_, layout.eigenvalues);
+  auto density = arena_pointer<double>(resources.arena_, layout.density);
+  auto next_density = arena_pointer<double>(resources.arena_, layout.next_density);
+  auto fock = arena_pointer<double>(resources.arena_, layout.fock);
+  auto residual = arena_pointer<double>(resources.arena_, layout.residual);
+  auto weighted_density =
+      arena_pointer<double>(resources.arena_, layout.weighted_density);
+  auto total_density =
+      arena_pointer<double>(resources.arena_, layout.total_density);
+  auto total_weighted_density =
+      arena_pointer<double>(resources.arena_, layout.total_weighted_density);
+  auto fock_history =
+      arena_pointer<double>(resources.arena_, layout.fock_history);
+  auto residual_history =
+      arena_pointer<double>(resources.arena_, layout.residual_history);
+  auto diis_linear_system =
+      arena_pointer<double>(resources.arena_, layout.diis_linear_system);
+  auto diis_coefficients =
+      arena_pointer<double>(resources.arena_, layout.diis_coefficients);
+  auto diis_count =
+      arena_pointer<std::uint32_t>(resources.arena_, layout.diis_count);
+  auto diis_head =
+      arena_pointer<std::uint32_t>(resources.arena_, layout.diis_head);
+  auto energy = arena_pointer<double>(resources.arena_, layout.energy);
+  auto previous_energy =
+      arena_pointer<double>(resources.arena_, layout.previous_energy);
+  auto energy_change = arena_pointer<double>(resources.arena_, layout.energy_change);
+  auto density_rms = arena_pointer<double>(resources.arena_, layout.density_rms);
+  auto forces = arena_pointer<double>(resources.arena_, layout.forces);
+  auto active = arena_pointer<std::uint8_t>(resources.arena_, layout.active);
+  auto converged = arena_pointer<std::uint8_t>(resources.arena_, layout.converged);
+  auto failed = arena_pointer<std::uint8_t>(resources.arena_, layout.failed);
+  auto spin_active =
+      arena_pointer<std::uint8_t>(resources.arena_, layout.spin_active);
+  auto iterations = arena_pointer<std::uint32_t>(resources.arena_, layout.iterations);
+  auto solver_info = arena_pointer<int>(resources.arena_, layout.solver_info);
+
+  std::vector<std::int32_t> host_pair_first;
+  std::vector<std::int32_t> host_pair_second;
+  if (first_setup) {
+    host_pair_first.reserve(pair_count);
+    host_pair_second.reserve(pair_count);
+    // Canonical lower-triangle order is stable for the lifetime of a topology
+    // plan. Upload it once so one-electron and direct-J/K consumers reuse the
+    // same device metadata without rebuilding or decoding pair indices.
+    for (std::size_t first = 0; first < nbf; ++first) {
+      for (std::size_t second = 0; second <= first; ++second) {
+        host_pair_first.push_back(static_cast<std::int32_t>(first));
+        host_pair_second.push_back(static_cast<std::int32_t>(second));
+      }
+    }
+  }
+
+  const std::pair<const void*, std::pair<void*, std::size_t>> static_uploads[] = {
+      {host.atom_offsets.data(), {atom_offsets, host.atom_offsets.size() * sizeof(std::int64_t)}},
+      {host.atom_systems.data(), {atom_systems, host.atom_systems.size() * sizeof(std::int32_t)}},
+      {host.atomic_numbers.data(), {atomic_numbers, host.atomic_numbers.size() * sizeof(std::int32_t)}},
+      {host.system_shell_offsets.data(),
+       {system_shell_offsets,
+        host.system_shell_offsets.size() * sizeof(std::int64_t)}},
+      {host.shell_atoms.data(), {shell_atoms, host.shell_atoms.size() * sizeof(std::int32_t)}},
+      {host.shell_angular.data(),
+       {shell_angular, host.shell_angular.size() * sizeof(std::uint8_t)}},
+      {host.shell_ao_offsets.data(),
+       {shell_ao_offsets, host.shell_ao_offsets.size() * sizeof(std::int64_t)}},
+      {host.shell_primitive_offsets.data(),
+       {shell_primitive_offsets,
+        host.shell_primitive_offsets.size() * sizeof(std::int64_t)}},
+      {host.system_shell_pair_offsets.data(),
+       {system_shell_pair_offsets,
+        host.system_shell_pair_offsets.size() * sizeof(std::int64_t)}},
+      {host.system_shell_quartet_offsets.data(),
+       {system_shell_quartet_offsets,
+        host.system_shell_quartet_offsets.size() * sizeof(std::int64_t)}},
+      {host.shell_pair_systems.data(),
+       {shell_pair_systems,
+        host.shell_pair_systems.size() * sizeof(std::int32_t)}},
+      {host.shell_pair_first.data(),
+       {shell_pair_first, host.shell_pair_first.size() * sizeof(std::int32_t)}},
+      {host.shell_pair_second.data(),
+       {shell_pair_second,
+        host.shell_pair_second.size() * sizeof(std::int32_t)}},
+      {host.ao_shells.data(),
+       {ao_shells, host.ao_shells.size() * sizeof(std::int32_t)}},
+      {host.ao_angular.data(), {ao_angular, host.ao_angular.size() * sizeof(std::uint8_t)}},
+      {host.ao_normalization.data(),
+       {ao_normalization, host.ao_normalization.size() * sizeof(double)}},
+      {host.primitive_exponents.data(), {primitive_exponents, host.primitive_exponents.size() * sizeof(double)}},
+      {host.primitive_coefficients.data(), {primitive_coefficients, host.primitive_coefficients.size() * sizeof(double)}},
+      {host.occupied.data(), {occupied, host.occupied.size() * sizeof(std::int32_t)}},
+      {host_pair_first.data(),
+       {ao_pair_first, host_pair_first.size() * sizeof(std::int32_t)}},
+      {host_pair_second.data(),
+       {ao_pair_second, host_pair_second.size() * sizeof(std::int32_t)}},
+  };
+  const std::pair<const void*, std::pair<void*, std::size_t>> dynamic_uploads[] = {
+      {host.positions.data(), {positions, host.positions.size() * sizeof(double)}},
+      {host.warm_mask.data(), {warm_mask, host.warm_mask.size() * sizeof(std::uint8_t)}},
+      {host.warm_density.data(), {warm_density, host.warm_density.size() * sizeof(double)}},
+  };
+  if (first_setup) {
+    for (const auto& upload : static_uploads) {
+      const qce_status status = copy_to_device(
+          upload.second.first, upload.first, upload.second.second,
+          resources.stream_);
+      if (status != QCE_STATUS_SUCCESS) {
+        fill_global_failure(outputs, status);
+        return outputs;
+      }
+    }
+  }
+  for (const auto& upload : dynamic_uploads) {
+    const qce_status status = copy_to_device(
+        upload.second.first, upload.first, upload.second.second,
+        resources.stream_);
+    if (status != QCE_STATUS_SUCCESS) {
+      fill_global_failure(outputs, status);
+      return outputs;
+    }
+  }
+
+  DeviceBatch device_batch{
+      static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+      static_cast<std::int64_t>(total_atoms),
+      static_cast<std::int64_t>(total_shells),
+      static_cast<std::int64_t>(total_shell_pairs),
+      static_cast<std::int64_t>(total_shell_quartets), atom_offsets,
+      atom_systems, atomic_numbers, positions, system_shell_offsets,
+      shell_atoms, shell_angular, shell_ao_offsets,
+      shell_primitive_offsets, system_shell_pair_offsets,
+      system_shell_quartet_offsets,
+      shell_pair_systems, shell_pair_first, shell_pair_second, ao_shells,
+      ao_angular, ao_normalization, primitive_exponents,
+      primitive_coefficients, occupied};
+
+  if (first_setup && use_cusolver) {
+    solver_error = cusolverDnDsyevjBatched_bufferSize(
+        resources.solver_, CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER,
+        static_cast<int>(nbf), eigensystem, static_cast<int>(nbf), eigenvalues,
+        &plan.lwork, resources.jacobi_, static_cast<int>(spin_batch_size));
+    if (solver_error != CUSOLVER_STATUS_SUCCESS || plan.lwork <= 0) {
+      fill_global_failure(outputs, solver_status(solver_error));
+      return outputs;
+    }
+    if ((cuda_error = cudaMalloc(
+             reinterpret_cast<void**>(&resources.solver_workspace_),
+             static_cast<std::size_t>(plan.lwork) * sizeof(double))) != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
+  } else if (first_setup) {
+    plan.lwork = 0;
+  }
+  const int lwork = plan.lwork;
+
+  constexpr unsigned threads = 256;
+  const auto blocks_for = [](std::size_t elements) {
+    return static_cast<unsigned>((elements + threads - 1) / threads);
+  };
+  const auto launch_fock_builder = [&](const double* density_input) {
+    if (unrestricted && persistent_eri) {
+      build_uhf_fock_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
+                              resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+          hcore, eri, density_input, active, fock);
+    } else if (unrestricted && quartet_direct) {
+      initialize_direct_fock_kernel<<<blocks_for(spin_matrix_elements), threads,
+                                      0, resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size), 2,
+          static_cast<std::int32_t>(nbf), hcore, active, fock);
+      build_fock_direct_quartet_kernel<true><<<
+          static_cast<unsigned>(launch_shell_quartet_tiles), threads, 0,
+          resources.stream_>>>(
+          device_batch, launch_tiles_per_shell_quartet,
+          options.screening_tolerance, schwarz_bounds,
+          shell_pair_bounds, density_input, active, fock);
+    } else if (unrestricted) {
+      build_uhf_fock_direct_packed_kernel<<<
+          static_cast<unsigned>(spin_matrix_elements), threads,
+          threads * sizeof(double), resources.stream_>>>(
+          device_batch, options.screening_tolerance, hcore, ao_pair_first,
+          ao_pair_second, pair_count, schwarz_bounds, density_input, active,
+          fock);
+    } else if (persistent_eri) {
+      build_fock_kernel<<<blocks_for(matrix_elements), threads, 0,
+                          resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+          hcore, eri, density_input, active, fock);
+    } else if (quartet_direct) {
+      initialize_direct_fock_kernel<<<blocks_for(matrix_elements), threads, 0,
+                                      resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size), 1,
+          static_cast<std::int32_t>(nbf), hcore, active, fock);
+      build_fock_direct_quartet_kernel<false><<<
+          static_cast<unsigned>(launch_shell_quartet_tiles), threads, 0,
+          resources.stream_>>>(
+          device_batch, launch_tiles_per_shell_quartet,
+          options.screening_tolerance, schwarz_bounds,
+          shell_pair_bounds, density_input, active, fock);
+    } else {
+      build_fock_direct_packed_kernel<<<
+          static_cast<unsigned>(matrix_elements), threads,
+          threads * sizeof(double), resources.stream_>>>(
+          device_batch, options.screening_tolerance, hcore, ao_pair_first,
+          ao_pair_second, pair_count, schwarz_bounds, density_input, active,
+          fock);
+    }
+  };
+  initialize_state_kernel<<<blocks_for(batch_size), threads, 0, resources.stream_>>>(
+      static_cast<std::int32_t>(batch_size), active, converged, failed,
+      iterations, previous_energy, energy_change, density_rms,
+      diis_count, diis_head);
+  build_one_electron_integrals_kernel<<<blocks_for(pair_elements), threads, 0,
+                                        resources.stream_>>>(
+      device_batch, ao_pair_first, ao_pair_second, pair_count, overlap, hcore);
+  if (persistent_eri) {
+    build_eri_kernel<<<blocks_for(eri_elements), threads, 0, resources.stream_>>>(
+        device_batch, eri);
+  } else {
+    build_schwarz_bounds_packed_kernel<<<blocks_for(pair_elements), threads,
+                                         0, resources.stream_>>>(
+        device_batch, ao_pair_first, ao_pair_second, pair_count,
+        schwarz_bounds);
+    if (quartet_direct) {
+      reduce_shell_pair_bounds_kernel<<<
+          static_cast<unsigned>(total_shell_pairs), threads,
+          threads * sizeof(double), resources.stream_>>>(
+          device_batch, schwarz_bounds, shell_pair_bounds);
+    }
+  }
+  build_nuclear_repulsion_kernel<<<blocks_for(batch_size), threads, 0,
+                                    resources.stream_>>>(
+      device_batch, nuclear_repulsion);
+
+  copy_matrix_kernel<<<blocks_for(matrix_elements), threads, 0, resources.stream_>>>(
+      matrix_elements, overlap, eigensystem);
+  qce_status status = launch_solver(resources, static_cast<int>(nbf),
+                                    static_cast<int>(batch_size), eigensystem,
+                                    eigenvalues, lwork, solver_info, active);
+  if (status != QCE_STATUS_SUCCESS) {
+    fill_global_failure(outputs, status);
+    return outputs;
+  }
+  inspect_solver_kernel<<<blocks_for(batch_size), threads, 0, resources.stream_>>>(
+      static_cast<std::int32_t>(batch_size), solver_info, active, failed, converged);
+  build_orthogonalizer_kernel<<<blocks_for(matrix_elements), threads, 0,
+                                resources.stream_>>>(
+      static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+      eigensystem, eigenvalues, active, orthogonalizer, failed);
+
+  matrix_product_kernel<<<blocks_for(matrix_elements), threads, 0, resources.stream_>>>(
+      static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+      hcore, false, orthogonalizer, active, temporary);
+  matrix_product_kernel<<<blocks_for(matrix_elements), threads, 0, resources.stream_>>>(
+      static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+      orthogonalizer, true, temporary, active, eigensystem);
+  status = launch_solver(resources, static_cast<int>(nbf),
+                         static_cast<int>(batch_size), eigensystem,
+                         eigenvalues, lwork, solver_info, active);
+  if (status != QCE_STATUS_SUCCESS) {
+    fill_global_failure(outputs, status);
+    return outputs;
+  }
+  inspect_solver_kernel<<<blocks_for(batch_size), threads, 0, resources.stream_>>>(
+      static_cast<std::int32_t>(batch_size), solver_info, active, failed, converged);
+  if (unrestricted) {
+    matrix_product_kernel<<<blocks_for(matrix_elements), threads, 0,
+                            resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+        orthogonalizer, false, eigensystem, active, temporary);
+    broadcast_spin_matrix_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
+                                   resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), 2,
+        static_cast<std::int32_t>(nbf), temporary, active, coefficients);
+    build_spin_density_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
+                                resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), 2,
+        static_cast<std::int32_t>(nbf), occupied, coefficients, active, density);
+    apply_uhf_warm_density_kernel<<<static_cast<unsigned>(batch_size), 1, 0,
+                                    resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+        occupied, warm_mask, warm_density, overlap, density);
+  } else {
+    matrix_product_kernel<<<blocks_for(matrix_elements), threads, 0,
+                            resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+        orthogonalizer, false, eigensystem, active, coefficients);
+    build_density_kernel<<<blocks_for(matrix_elements), threads, 0,
+                           resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+        occupied, coefficients, active, density);
+    apply_warm_density_kernel<<<static_cast<unsigned>(batch_size), 1, 0,
+                                resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+        occupied, warm_mask, warm_density, overlap, density);
+  }
+
+  if (first_setup) {
+    // Graph construction is allocation-permitted setup work. Synchronize once
+    // so capture cannot race the initial guess; fixed-topology replays reuse
+    // this executable and do not repeat the fence or provider setup.
+    cuda_error = cudaStreamSynchronize(resources.stream_);
+    if (cuda_error == cudaSuccess) {
+      cuda_error = cudaStreamBeginCapture(resources.stream_,
+                                          cudaStreamCaptureModeThreadLocal);
+    }
+    if (cuda_error != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
+    launch_fock_builder(density);
+    if (unrestricted) {
+      compute_uhf_energy_kernel<<<blocks_for(batch_size), threads, 0,
+                                  resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+          density, hcore, fock, nuclear_repulsion, active, energy);
+      build_spin_commutator_residual_kernel<<<
+          blocks_for(spin_matrix_elements), threads, 0, resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size), 2,
+          static_cast<std::int32_t>(nbf), fock, density, overlap, active,
+          residual);
+    } else {
+      compute_energy_kernel<<<blocks_for(batch_size), threads, 0,
+                              resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+          density, hcore, fock, nuclear_repulsion, active, energy);
+      build_commutator_residual_kernel<<<blocks_for(matrix_elements), threads, 0,
+                                         resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+          fock, density, overlap, active, residual);
+    }
+    update_diis_kernel<<<static_cast<unsigned>(batch_size), 1, 0,
+                         resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+        unrestricted ? 2 : 1,
+        static_cast<std::uint32_t>(diis_history), fock, residual, active,
+        fock_history, residual_history, diis_linear_system, diis_coefficients,
+        diis_count, diis_head, eigensystem);
+    if (unrestricted) {
+      spin_matrix_product_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
+                                   resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size), 2,
+          static_cast<std::int32_t>(nbf), eigensystem, true, false,
+          orthogonalizer, false, active, temporary);
+      spin_matrix_product_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
+                                   resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size), 2,
+          static_cast<std::int32_t>(nbf), orthogonalizer, false, true,
+          temporary, true, active, eigensystem);
+      expand_spin_active_kernel<<<blocks_for(spin_batch_size), threads, 0,
+                                  resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size), 2, active, spin_active);
+      status = launch_solver(resources, static_cast<int>(nbf),
+                             static_cast<int>(spin_batch_size), eigensystem,
+                             eigenvalues, lwork, solver_info, spin_active);
+    } else {
+      matrix_product_kernel<<<blocks_for(matrix_elements), threads, 0,
+                              resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+          eigensystem, false, orthogonalizer, active, temporary);
+      matrix_product_kernel<<<blocks_for(matrix_elements), threads, 0,
+                              resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+          orthogonalizer, true, temporary, active, eigensystem);
+      status = launch_solver(resources, static_cast<int>(nbf),
+                             static_cast<int>(batch_size), eigensystem,
+                             eigenvalues, lwork, solver_info, active);
+    }
+    if (status == QCE_STATUS_SUCCESS) {
+      if (unrestricted) {
+        inspect_spin_solver_kernel<<<blocks_for(batch_size), threads, 0,
+                                     resources.stream_>>>(
+            static_cast<std::int32_t>(batch_size), 2, solver_info, active,
+            failed, converged);
+        spin_matrix_product_kernel<<<blocks_for(spin_matrix_elements), threads,
+                                     0, resources.stream_>>>(
+            static_cast<std::int32_t>(batch_size), 2,
+            static_cast<std::int32_t>(nbf), orthogonalizer, false, false,
+            eigensystem, true, active, coefficients);
+        build_spin_density_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
+                                    resources.stream_>>>(
+            static_cast<std::int32_t>(batch_size), 2,
+            static_cast<std::int32_t>(nbf), occupied, coefficients, active,
+            next_density);
+        update_uhf_convergence_kernel<<<blocks_for(batch_size), threads, 0,
+                                        resources.stream_>>>(
+            static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+            options.energy_tolerance, options.density_tolerance, energy,
+            previous_energy, next_density, density, active, converged,
+            iterations, energy_change, density_rms);
+      } else {
+        inspect_solver_kernel<<<blocks_for(batch_size), threads, 0,
+                                resources.stream_>>>(
+            static_cast<std::int32_t>(batch_size), solver_info, active, failed,
+            converged);
+        matrix_product_kernel<<<blocks_for(matrix_elements), threads, 0,
+                                resources.stream_>>>(
+            static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+            orthogonalizer, false, eigensystem, active, coefficients);
+        build_density_kernel<<<blocks_for(matrix_elements), threads, 0,
+                               resources.stream_>>>(
+            static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+            occupied, coefficients, active, next_density);
+        update_convergence_kernel<<<blocks_for(batch_size), threads, 0,
+                                    resources.stream_>>>(
+            static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+            options.energy_tolerance, options.density_tolerance, energy,
+            previous_energy, next_density, density, active, converged,
+            iterations, energy_change, density_rms);
+      }
+      tail_rhf_loop_kernel<<<1, 1, 0, resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size), options.max_iterations,
+          active, iterations);
+    }
+    cuda_error = cudaStreamEndCapture(resources.stream_, &resources.iteration_graph_);
+    if (status != QCE_STATUS_SUCCESS || cuda_error != cudaSuccess ||
+        resources.iteration_graph_ == nullptr) {
+      fill_global_failure(outputs, status != QCE_STATUS_SUCCESS
+                                       ? status
+                                       : cuda_status(cuda_error));
+      return outputs;
+    }
+    cuda_error = cudaGraphInstantiate(&resources.iteration_graph_exec_,
+                                      resources.iteration_graph_,
+                                      cudaGraphInstantiateFlagDeviceLaunch);
+    if (cuda_error == cudaSuccess) {
+      cuda_error = cudaGraphUpload(resources.iteration_graph_exec_, resources.stream_);
+    }
+    if (cuda_error == cudaSuccess) {
+      cuda_error = cudaStreamSynchronize(resources.stream_);
+    }
+    if (cuda_error != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
+    plan.initialized = true;
+  }
+  if (cuda_error == cudaSuccess) {
+    cuda_error = cudaGraphLaunch(resources.iteration_graph_exec_, resources.stream_);
+  }
+  if (cuda_error != cudaSuccess) {
+    fill_global_failure(outputs, cuda_status(cuda_error));
+    return outputs;
+  }
+
+  // Rebuild from the converged density and diagonalize the un-extrapolated
+  // Fock matrix. These orbitals define the energy-weighted density in the
+  // Pulay term, matching the CPU analytic-gradient oracle.
+  select_converged_kernel<<<blocks_for(batch_size), threads, 0, resources.stream_>>>(
+      static_cast<std::int32_t>(batch_size), converged, failed, active);
+  launch_fock_builder(density);
+  if (unrestricted) {
+    spin_matrix_product_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
+                                 resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), 2,
+        static_cast<std::int32_t>(nbf), fock, true, false, orthogonalizer,
+        false, active, temporary);
+    spin_matrix_product_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
+                                 resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), 2,
+        static_cast<std::int32_t>(nbf), orthogonalizer, false, true, temporary,
+        true, active, eigensystem);
+    expand_spin_active_kernel<<<blocks_for(spin_batch_size), threads, 0,
+                                resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), 2, active, spin_active);
+    status = launch_solver(resources, static_cast<int>(nbf),
+                           static_cast<int>(spin_batch_size), eigensystem,
+                           eigenvalues, lwork, solver_info, spin_active);
+  } else {
+    matrix_product_kernel<<<blocks_for(matrix_elements), threads, 0,
+                            resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+        fock, false, orthogonalizer, active, temporary);
+    matrix_product_kernel<<<blocks_for(matrix_elements), threads, 0,
+                            resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+        orthogonalizer, true, temporary, active, eigensystem);
+    status = launch_solver(resources, static_cast<int>(nbf),
+                           static_cast<int>(batch_size), eigensystem,
+                           eigenvalues, lwork, solver_info, active);
+  }
+  if (status != QCE_STATUS_SUCCESS) {
+    fill_global_failure(outputs, status);
+    return outputs;
+  }
+  if (unrestricted) {
+    inspect_spin_solver_kernel<<<blocks_for(batch_size), threads, 0,
+                                 resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), 2, solver_info, active, failed,
+        converged);
+    spin_matrix_product_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
+                                 resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), 2,
+        static_cast<std::int32_t>(nbf), orthogonalizer, false, false,
+        eigensystem, true, active, coefficients);
+    build_spin_density_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
+                                resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), 2,
+        static_cast<std::int32_t>(nbf), occupied, coefficients, active, density);
+  } else {
+    inspect_solver_kernel<<<blocks_for(batch_size), threads, 0,
+                            resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), solver_info, active, failed,
+        converged);
+    matrix_product_kernel<<<blocks_for(matrix_elements), threads, 0,
+                            resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+        orthogonalizer, false, eigensystem, active, coefficients);
+    build_density_kernel<<<blocks_for(matrix_elements), threads, 0,
+                           resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+        occupied, coefficients, active, density);
+  }
+  launch_fock_builder(density);
+  if (unrestricted) {
+    compute_uhf_energy_kernel<<<blocks_for(batch_size), threads, 0,
+                                resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+        density, hcore, fock, nuclear_repulsion, active, energy);
+    build_spin_weighted_density_kernel<<<blocks_for(spin_matrix_elements),
+                                         threads, 0, resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+        occupied, coefficients, eigenvalues, active, weighted_density);
+    sum_uhf_spin_matrices_kernel<<<blocks_for(matrix_elements), threads, 0,
+                                   resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+        density, active, total_density);
+    sum_uhf_spin_matrices_kernel<<<blocks_for(matrix_elements), threads, 0,
+                                   resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+        weighted_density, active, total_weighted_density);
+  } else {
+    compute_energy_kernel<<<blocks_for(batch_size), threads, 0,
+                            resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+        density, hcore, fock, nuclear_repulsion, active, energy);
+    build_weighted_density_kernel<<<blocks_for(matrix_elements), threads, 0,
+                                    resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+        occupied, coefficients, eigenvalues, active, weighted_density);
+  }
+  cuda_error = cudaMemsetAsync(forces, 0, total_atoms * 3 * sizeof(double),
+                               resources.stream_);
+  if (cuda_error != cudaSuccess) {
+    fill_global_failure(outputs, cuda_status(cuda_error));
+    return outputs;
+  }
+  nuclear_force_kernel<<<blocks_for(force_coordinate_count), threads, 0,
+                          resources.stream_>>>(
+      device_batch, active, forces);
+  one_electron_force_kernel<<<blocks_for(one_electron_force_elements), threads,
+                               0, resources.stream_>>>(
+      device_batch, ao_pair_first, ao_pair_second, pair_count,
+      unrestricted ? total_density : density,
+      unrestricted ? total_weighted_density : weighted_density, active, forces);
+  if (unrestricted && persistent_eri) {
+    two_electron_uhf_force_kernel<<<blocks_for(persistent_force_elements),
+                                    threads, 0, resources.stream_>>>(
+        device_batch, density, active, forces);
+  } else if (unrestricted && quartet_direct) {
+    two_electron_force_quartet_kernel<true><<<
+        static_cast<unsigned>(launch_shell_quartet_tiles), threads, 0,
+        resources.stream_>>>(
+        device_batch, launch_tiles_per_shell_quartet,
+        options.screening_tolerance, schwarz_bounds,
+        shell_pair_bounds, density, active, forces);
+  } else if (unrestricted) {
+    two_electron_uhf_force_direct_kernel<<<
+        blocks_for(direct_force_elements), threads, 0, resources.stream_>>>(
+        device_batch, options.screening_tolerance, ao_pair_first,
+        ao_pair_second, pair_count, schwarz_bounds, density, active, forces);
+  } else if (persistent_eri) {
+    two_electron_force_kernel<<<blocks_for(persistent_force_elements), threads,
+                                 0, resources.stream_>>>(
+        device_batch, density, active, forces);
+  } else if (quartet_direct) {
+    two_electron_force_quartet_kernel<false><<<
+        static_cast<unsigned>(launch_shell_quartet_tiles), threads, 0,
+        resources.stream_>>>(
+        device_batch, launch_tiles_per_shell_quartet,
+        options.screening_tolerance, schwarz_bounds,
+        shell_pair_bounds, density, active, forces);
+  } else {
+    two_electron_force_direct_kernel<<<
+        blocks_for(direct_force_elements), threads, 0, resources.stream_>>>(
+        device_batch, options.screening_tolerance, ao_pair_first,
+        ao_pair_second, pair_count, schwarz_bounds, density, active,
+        forces);
+  }
+
+  cuda_error = cudaGetLastError();
+  if (cuda_error != cudaSuccess) {
+    fill_global_failure(outputs, cuda_status(cuda_error));
+    return outputs;
+  }
+
+  std::vector<double> host_energy(batch_size);
+  std::vector<double> host_energy_change(batch_size);
+  std::vector<double> host_density_rms(batch_size);
+  std::vector<double> host_density(spin_matrix_elements);
+  std::vector<double> host_forces(total_atoms * 3);
+  std::vector<std::uint8_t> host_converged(batch_size);
+  std::vector<std::uint8_t> host_failed(batch_size);
+  std::vector<std::uint32_t> host_iterations(batch_size);
+  const struct Download {
+    void* host;
+    const void* device;
+    std::size_t bytes;
+  } downloads[] = {
+      {host_energy.data(), energy, batch_size * sizeof(double)},
+      {host_energy_change.data(), energy_change, batch_size * sizeof(double)},
+      {host_density_rms.data(), density_rms, batch_size * sizeof(double)},
+      {host_density.data(), density, spin_matrix_elements * sizeof(double)},
+      {host_forces.data(), forces, total_atoms * 3 * sizeof(double)},
+      {host_converged.data(), converged, batch_size * sizeof(std::uint8_t)},
+      {host_failed.data(), failed, batch_size * sizeof(std::uint8_t)},
+      {host_iterations.data(), iterations, batch_size * sizeof(std::uint32_t)},
+  };
+  for (const Download& download : downloads) {
+    cuda_error = cudaMemcpyAsync(download.host, download.device, download.bytes,
+                                 cudaMemcpyDeviceToHost, resources.stream_);
+    if (cuda_error != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
+  }
+  cuda_error = cudaStreamSynchronize(resources.stream_);
+  if (cuda_error != cudaSuccess) {
+    fill_global_failure(outputs, cuda_status(cuda_error));
+    return outputs;
+  }
+
+  for (std::size_t system = 0; system < batch_size; ++system) {
+    RhfBucketItem& output = outputs[system];
+    core::ScfResult& result = output.scf;
+    result.energy = host_energy[system];
+    result.iterations = host_iterations[system];
+    result.energy_change = host_energy_change[system];
+    result.density_rms = host_density_rms[system];
+    result.converged = host_converged[system] != 0 && host_failed[system] == 0;
+    result.initial_density_used = host.warm_mask[system] != 0;
+    const std::size_t density_stride = spin_count * matrix_size;
+    result.density.assign(host_density.begin() + system * density_stride,
+                          host_density.begin() + (system + 1) * density_stride);
+    const std::size_t atom_begin = static_cast<std::size_t>(host.atom_offsets[system]);
+    const std::size_t atom_end = static_cast<std::size_t>(host.atom_offsets[system + 1]);
+    result.forces.assign(host_forces.begin() + atom_begin * 3,
+                         host_forces.begin() + atom_end * 3);
+    output.status = host_failed[system] != 0
+        ? QCE_STATUS_NUMERICAL_FAILURE
+        : (result.converged ? QCE_STATUS_SUCCESS : QCE_STATUS_SCF_NOT_CONVERGED);
+  }
+  return outputs;
+}
+
+}  // namespace
+
+CudaRhfBasisLayoutStats inspect_rhf_cuda_basis_layout(
+    const std::vector<core::System>& systems) {
+  std::vector<const std::vector<double>*> initial_densities(systems.size(),
+                                                            nullptr);
+  HostBatch host;
+  if (!pack_host_batch(systems, initial_densities, host)) {
+    throw std::invalid_argument("systems cannot be represented by one CUDA RHF bucket");
+  }
+
+  std::size_t expanded_primitive_references = 0;
+  for (const core::System& system : systems) {
+    for (const core::Shell& shell : system.shells) {
+      std::size_t shell_references = 0;
+      if (!checked_multiply(molecule::cartesian_count(shell.angular_momentum),
+                            shell.primitives.size(), shell_references) ||
+          !checked_add(expanded_primitive_references, shell_references,
+                       expanded_primitive_references)) {
+        throw std::overflow_error("expanded CUDA primitive reference count overflowed");
+      }
+    }
+  }
+
+  const std::size_t device_basis_bytes =
+      host.system_shell_offsets.size() * sizeof(std::int64_t) +
+      host.shell_atoms.size() * sizeof(std::int32_t) +
+      host.shell_angular.size() * sizeof(std::uint8_t) +
+      host.shell_ao_offsets.size() * sizeof(std::int64_t) +
+      host.shell_primitive_offsets.size() * sizeof(std::int64_t) +
+      host.system_shell_pair_offsets.size() * sizeof(std::int64_t) +
+      host.system_shell_quartet_offsets.size() * sizeof(std::int64_t) +
+      host.shell_pair_systems.size() * sizeof(std::int32_t) +
+      host.shell_pair_first.size() * sizeof(std::int32_t) +
+      host.shell_pair_second.size() * sizeof(std::int32_t) +
+      host.ao_shells.size() * sizeof(std::int32_t) +
+      host.ao_angular.size() * sizeof(std::uint8_t) +
+      host.ao_normalization.size() * sizeof(double) +
+      host.primitive_exponents.size() * sizeof(double) +
+      host.primitive_coefficients.size() * sizeof(double);
+  return {
+      systems.size(),
+      host.shell_atoms.size(),
+      host.shell_pair_first.size(),
+      static_cast<std::size_t>(host.system_shell_quartet_offsets.back()),
+      host.ao_shells.size(),
+      host.primitive_exponents.size(),
+      expanded_primitive_references,
+      device_basis_bytes,
+  };
+}
+
+namespace {
+
+std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
+    CudaRhfBucketPlan** plan,
+    const std::vector<core::System>& systems,
+    const core::ScfOptions& options,
+    const std::vector<const std::vector<double>*>& initial_densities,
+    int device_id,
+    bool unrestricted) {
+  if (plan == nullptr) {
+    std::vector<RhfBucketItem> outputs(systems.size());
+    fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
+    return outputs;
+  }
+  HostBatch candidate;
+  if (!pack_host_batch(systems, initial_densities, candidate, unrestricted)) {
+    std::vector<RhfBucketItem> outputs(systems.size());
+    fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
+    return outputs;
+  }
+  if (*plan != nullptr && (*plan)->initialized &&
+      ((*plan)->resources.device_id_ != device_id ||
+       !same_topology((*plan)->topology, candidate) ||
+       !same_options((*plan)->options, options) ||
+       (*plan)->unrestricted != unrestricted)) {
+    delete *plan;
+    *plan = nullptr;
+  }
+  if (*plan == nullptr) {
+    *plan = new (std::nothrow) CudaRhfBucketPlan{};
+    if (*plan == nullptr) {
+      std::vector<RhfBucketItem> outputs(systems.size());
+      fill_global_failure(outputs, QCE_STATUS_OUT_OF_MEMORY);
+      return outputs;
+    }
+  }
+  std::vector<RhfBucketItem> outputs = execute_hf_cuda_bucket(
+      **plan, systems, options, initial_densities, device_id, unrestricted);
+  if (!(*plan)->initialized) {
+    delete *plan;
+    *plan = nullptr;
+  }
+  return outputs;
+}
+
+}  // namespace
+
+std::vector<RhfBucketItem> run_rhf_cuda_bucket_cached(
+    CudaRhfBucketPlan** plan,
+    const std::vector<core::System>& systems,
+    const core::ScfOptions& options,
+    const std::vector<const std::vector<double>*>& initial_densities,
+    int device_id) {
+  return run_hf_cuda_bucket_cached(
+      plan, systems, options, initial_densities, device_id, false);
+}
+
+std::vector<RhfBucketItem> run_uhf_cuda_bucket_cached(
+    CudaRhfBucketPlan** plan,
+    const std::vector<core::System>& systems,
+    const core::ScfOptions& options,
+    const std::vector<const std::vector<double>*>& initial_densities,
+    int device_id) {
+  return run_hf_cuda_bucket_cached(
+      plan, systems, options, initial_densities, device_id, true);
+}
+
+void destroy_rhf_cuda_bucket_plan(CudaRhfBucketPlan* plan) noexcept {
+  delete plan;
+}
+
+std::vector<RhfBucketItem> run_rhf_cuda_bucket(
+    const std::vector<core::System>& systems,
+    const core::ScfOptions& options,
+    const std::vector<const std::vector<double>*>& initial_densities,
+    int device_id) {
+  CudaRhfBucketPlan* plan = nullptr;
+  std::vector<RhfBucketItem> outputs = run_rhf_cuda_bucket_cached(
+      &plan, systems, options, initial_densities, device_id);
+  destroy_rhf_cuda_bucket_plan(plan);
+  return outputs;
+}
+
+std::vector<RhfBucketItem> run_uhf_cuda_bucket(
+    const std::vector<core::System>& systems,
+    const core::ScfOptions& options,
+    const std::vector<const std::vector<double>*>& initial_densities,
+    int device_id) {
+  CudaRhfBucketPlan* plan = nullptr;
+  std::vector<RhfBucketItem> outputs = run_uhf_cuda_bucket_cached(
+      &plan, systems, options, initial_densities, device_id);
+  destroy_rhf_cuda_bucket_plan(plan);
+  return outputs;
+}
+
+core::ScfResult run_rhf_cuda(const core::System& system,
+                             const core::ScfOptions& options,
+                             int device_id,
+                             const std::vector<double>* initial_density) {
+  const std::vector<core::System> systems{system};
+  const std::vector<const std::vector<double>*> initial_densities{initial_density};
+  std::vector<RhfBucketItem> result =
+      run_rhf_cuda_bucket(systems, options, initial_densities, device_id);
+  if (result.empty()) throw std::runtime_error("CUDA RHF returned no result");
+  if (result.front().status == QCE_STATUS_CUDA_ERROR ||
+      result.front().status == QCE_STATUS_OUT_OF_MEMORY) {
+    throw std::runtime_error("CUDA RHF execution failed");
+  }
+  return std::move(result.front().scf);
+}
+
+core::ScfResult run_uhf_cuda(const core::System& system,
+                             const core::ScfOptions& options,
+                             int device_id,
+                             const std::vector<double>* initial_density) {
+  const std::vector<core::System> systems{system};
+  const std::vector<const std::vector<double>*> initial_densities{initial_density};
+  std::vector<RhfBucketItem> result =
+      run_uhf_cuda_bucket(systems, options, initial_densities, device_id);
+  if (result.empty()) throw std::runtime_error("CUDA UHF returned no result");
+  if (result.front().status == QCE_STATUS_CUDA_ERROR ||
+      result.front().status == QCE_STATUS_OUT_OF_MEMORY) {
+    throw std::runtime_error("CUDA UHF execution failed");
+  }
+  return std::move(result.front().scf);
+}
+
+}  // namespace qce::scf

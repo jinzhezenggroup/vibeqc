@@ -1,0 +1,11 @@
+/build/
+/.cache/
+/.pytest_cache/
+__pycache__/
+*.py[cod]
+*.so
+*.dylib
+*.dll
+*.egg-info/
+/.venv/
+/_references/
