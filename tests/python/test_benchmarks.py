@@ -69,3 +69,4 @@ def test_gpu_comparison_help_does_not_require_an_allocated_device():
             text=True,
         )
         assert "--output" in completed.stdout
+        assert "oh-def2-svp-uhf" in completed.stdout
