@@ -52,6 +52,14 @@ struct ActiveShellQuartetTile {
 
 static_assert(sizeof(ActiveShellQuartetTile) == 3 * sizeof(std::uint32_t));
 
+/** Density magnitudes that can multiply one shell pair in direct J/K. */
+struct ShellPairDensityBounds {
+  double coulomb;
+  double exchange;
+};
+
+static_assert(sizeof(ShellPairDensityBounds) == 2 * sizeof(double));
+
 struct Dual {
   double value;
   double derivative;
@@ -337,6 +345,24 @@ __device__ void decode_shell_ao_pair(const DeviceBatch& batch,
   }
   first = first_begin + first_component - system_ao_begin;
   second = second_begin + second_component - system_ao_begin;
+}
+
+/** Return the packed lower-triangle index for two shells in one system. */
+__device__ std::size_t system_shell_pair_index(
+    const DeviceBatch& batch,
+    std::int32_t system,
+    std::int32_t first_shell,
+    std::int32_t second_shell) {
+  const std::size_t shell_begin =
+      static_cast<std::size_t>(batch.system_shell_offsets[system]);
+  const std::size_t first =
+      static_cast<std::size_t>(first_shell) - shell_begin;
+  const std::size_t second =
+      static_cast<std::size_t>(second_shell) - shell_begin;
+  const std::size_t high = first > second ? first : second;
+  const std::size_t low = first > second ? second : first;
+  return static_cast<std::size_t>(
+      batch.system_shell_pair_offsets[system]) + high * (high + 1) / 2 + low;
 }
 
 template <typename Scalar>
@@ -4285,10 +4311,106 @@ __global__ void reduce_shell_pair_bounds_kernel(
   if (threadIdx.x == 0) shell_pair_bounds[shell_pair] = block_maxima[0];
 }
 
+/**
+ * Reduce the current AO density to the shell-block magnitudes used by J/K.
+ *
+ * The direct quartet kernels scatter every ERI symmetry permutation, so a
+ * shell quartet can contribute through its two Coulomb density blocks or any
+ * of its four crossed exchange blocks. Keeping separate bounds preserves the
+ * RHF one-half exchange factor and the UHF same-spin contraction.
+ */
+template <bool Unrestricted>
+__global__ void reduce_shell_pair_density_bounds_kernel(
+    DeviceBatch batch,
+    const double* density,
+    const std::uint8_t* active,
+    ShellPairDensityBounds* shell_pair_density_bounds) {
+  extern __shared__ double block_maxima[];
+  double* coulomb_maxima = block_maxima;
+  double* exchange_maxima = block_maxima + blockDim.x;
+  const std::size_t shell_pair = static_cast<std::size_t>(blockIdx.x);
+  if (shell_pair >= static_cast<std::size_t>(batch.total_shell_pairs)) return;
+  const std::int32_t system = batch.shell_pair_systems[shell_pair];
+  const std::size_t n = static_cast<std::size_t>(batch.direct_nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t physical_offset =
+      static_cast<std::size_t>(system) * matrix_size;
+  const std::size_t spin_offset =
+      static_cast<std::size_t>(system) * 2 * matrix_size;
+  const std::size_t system_ao_begin = static_cast<std::size_t>(system) * n;
+  const std::size_t ao_pair_count = shell_ao_pair_count(batch, shell_pair);
+
+  double local_coulomb = 0.0;
+  double local_exchange = 0.0;
+  if (active == nullptr || active[system] != 0) {
+    for (std::size_t ordinal = threadIdx.x; ordinal < ao_pair_count;
+         ordinal += blockDim.x) {
+      std::size_t first = 0;
+      std::size_t second = 0;
+      decode_shell_ao_pair(batch, shell_pair, ordinal, system_ao_begin,
+                           first, second);
+      const std::size_t forward = matrix_index(first, second, n);
+      const std::size_t reverse = matrix_index(second, first, n);
+      if constexpr (Unrestricted) {
+        const double alpha_forward = density[spin_offset + forward];
+        const double beta_forward =
+            density[spin_offset + matrix_size + forward];
+        const double alpha_reverse = density[spin_offset + reverse];
+        const double beta_reverse =
+            density[spin_offset + matrix_size + reverse];
+        local_coulomb = fmax(
+            local_coulomb,
+            fmax(fabs(alpha_forward + beta_forward),
+                 fabs(alpha_reverse + beta_reverse)));
+        local_exchange = fmax(
+            local_exchange,
+            fmax(fmax(fabs(alpha_forward), fabs(beta_forward)),
+                 fmax(fabs(alpha_reverse), fabs(beta_reverse))));
+      } else {
+        const double magnitude = fmax(
+            fabs(density[physical_offset + forward]),
+            fabs(density[physical_offset + reverse]));
+        local_coulomb = fmax(local_coulomb, magnitude);
+        local_exchange = fmax(local_exchange, 0.5 * magnitude);
+      }
+    }
+  }
+
+  coulomb_maxima[threadIdx.x] = local_coulomb;
+  exchange_maxima[threadIdx.x] = local_exchange;
+  __syncthreads();
+  for (unsigned stride = blockDim.x / 2; stride != 0; stride /= 2) {
+    if (threadIdx.x < stride) {
+      coulomb_maxima[threadIdx.x] = fmax(
+          coulomb_maxima[threadIdx.x],
+          coulomb_maxima[threadIdx.x + stride]);
+      exchange_maxima[threadIdx.x] = fmax(
+          exchange_maxima[threadIdx.x],
+          exchange_maxima[threadIdx.x + stride]);
+    }
+    __syncthreads();
+  }
+  if (threadIdx.x == 0) {
+    shell_pair_density_bounds[shell_pair] = {
+        coulomb_maxima[0], exchange_maxima[0]};
+  }
+}
+
+__global__ void clear_active_shell_quartet_tile_counts_kernel(
+    std::uint32_t* active_shell_quartet_tile_counts) {
+  const std::size_t order =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (order < detail::kDirectQuartetAngularOrderCount) {
+    active_shell_quartet_tile_counts[order] = 0;
+  }
+}
+
 __global__ void compact_active_shell_quartet_tiles_kernel(
     DeviceBatch batch,
     double screening_tolerance,
     const double* shell_pair_bounds,
+    const ShellPairDensityBounds* shell_pair_density_bounds,
+    const std::uint8_t* active,
     const std::uint32_t* active_shell_quartet_tile_offsets,
     std::uint32_t* active_shell_quartet_tile_counts,
     ActiveShellQuartetTile* active_shell_quartet_tiles) {
@@ -4300,6 +4422,7 @@ __global__ void compact_active_shell_quartet_tiles_kernel(
   }
 
   const std::int32_t system = shell_quartet_system(batch, shell_quartet);
+  if (active != nullptr && active[system] == 0) return;
   const std::size_t local_quartet = shell_quartet -
       static_cast<std::size_t>(batch.system_shell_quartet_offsets[system]);
   std::size_t first_pair_local = 0;
@@ -4309,10 +4432,34 @@ __global__ void compact_active_shell_quartet_tiles_kernel(
       static_cast<std::size_t>(batch.system_shell_pair_offsets[system]);
   const std::size_t first_pair = pair_begin + first_pair_local;
   const std::size_t second_pair = pair_begin + second_pair_local;
-  if (shell_pair_bounds[first_pair] * shell_pair_bounds[second_pair] <
-      screening_tolerance) {
+  const double quartet_bound =
+      shell_pair_bounds[first_pair] * shell_pair_bounds[second_pair];
+  if (quartet_bound < screening_tolerance) {
     return;
   }
+
+  const std::int32_t first_shell = batch.shell_pair_first[first_pair];
+  const std::int32_t second_shell = batch.shell_pair_second[first_pair];
+  const std::int32_t third_shell = batch.shell_pair_first[second_pair];
+  const std::int32_t fourth_shell = batch.shell_pair_second[second_pair];
+  double density_bound = fmax(
+      shell_pair_density_bounds[first_pair].coulomb,
+      shell_pair_density_bounds[second_pair].coulomb);
+  const std::size_t crossed_pairs[4] = {
+      system_shell_pair_index(
+          batch, system, first_shell, third_shell),
+      system_shell_pair_index(
+          batch, system, first_shell, fourth_shell),
+      system_shell_pair_index(
+          batch, system, second_shell, third_shell),
+      system_shell_pair_index(
+          batch, system, second_shell, fourth_shell),
+  };
+  for (const std::size_t crossed_pair : crossed_pairs) {
+    density_bound = fmax(
+        density_bound, shell_pair_density_bounds[crossed_pair].exchange);
+  }
+  if (quartet_bound * density_bound < screening_tolerance) return;
 
   const std::size_t first_ao_pair_count =
       shell_ao_pair_count(batch, first_pair);
@@ -4324,10 +4471,6 @@ __global__ void compact_active_shell_quartet_tiles_kernel(
   const std::uint32_t tile_count = static_cast<std::uint32_t>(
       (ao_quartet_count + detail::kDirectQuartetTileSize - 1) /
       detail::kDirectQuartetTileSize);
-  const std::int32_t first_shell = batch.shell_pair_first[first_pair];
-  const std::int32_t second_shell = batch.shell_pair_second[first_pair];
-  const std::int32_t third_shell = batch.shell_pair_first[second_pair];
-  const std::int32_t fourth_shell = batch.shell_pair_second[second_pair];
   const unsigned angular_order = batch.shell_angular[first_shell] +
                                  batch.shell_angular[second_shell] +
                                  batch.shell_angular[third_shell] +
@@ -5973,6 +6116,7 @@ struct ArenaLayout {
   std::size_t direct_fock{};
   std::size_t direct_transform_temporary{};
   std::size_t shell_pair_bounds{};
+  std::size_t shell_pair_density_bounds{};
   std::size_t active_shell_quartet_tile_offsets{};
   std::size_t active_shell_quartet_tile_counts{};
   std::size_t active_shell_quartet_tiles{};
@@ -6137,6 +6281,9 @@ bool make_layout(std::size_t batch_size,
                             cursor, made.direct_transform_temporary) ||
       !append_array<double>(persistent_eri ? 0 : shell_pair_count, cursor,
                             made.shell_pair_bounds) ||
+      !append_array<ShellPairDensityBounds>(
+          shell_quartet_tile_count == 0 ? 0 : shell_pair_count, cursor,
+          made.shell_pair_density_bounds) ||
       !append_array<std::uint32_t>(
           persistent_eri ? 0 : detail::kDirectQuartetAngularOrderCount + 1,
           cursor, made.active_shell_quartet_tile_offsets) ||
@@ -7018,6 +7165,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       resources.arena_, layout.direct_transform_temporary);
   auto shell_pair_bounds =
       arena_pointer<double>(resources.arena_, layout.shell_pair_bounds);
+  auto shell_pair_density_bounds = arena_pointer<ShellPairDensityBounds>(
+      resources.arena_, layout.shell_pair_density_bounds);
   auto active_shell_quartet_tile_offsets = arena_pointer<std::uint32_t>(
       resources.arena_, layout.active_shell_quartet_tile_offsets);
   auto active_shell_quartet_tile_counts = arena_pointer<std::uint32_t>(
@@ -7281,6 +7430,30 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       quartet_density = direct_density;
       quartet_fock = direct_fock;
     }
+    if (quartet_direct) {
+      clear_active_shell_quartet_tile_counts_kernel<<<
+          blocks_for(detail::kDirectQuartetAngularOrderCount), threads, 0,
+          resources.stream_>>>(active_shell_quartet_tile_counts);
+      if (unrestricted) {
+        reduce_shell_pair_density_bounds_kernel<true><<<
+            static_cast<unsigned>(total_shell_pairs), threads,
+            2 * threads * sizeof(double), resources.stream_>>>(
+            device_batch, quartet_density, active,
+            shell_pair_density_bounds);
+      } else {
+        reduce_shell_pair_density_bounds_kernel<false><<<
+            static_cast<unsigned>(total_shell_pairs), threads,
+            2 * threads * sizeof(double), resources.stream_>>>(
+            device_batch, quartet_density, active,
+            shell_pair_density_bounds);
+      }
+      compact_active_shell_quartet_tiles_kernel<<<
+          blocks_for(total_shell_quartets), threads, 0, resources.stream_>>>(
+          device_batch, options.screening_tolerance, shell_pair_bounds,
+          shell_pair_density_bounds, active,
+          active_shell_quartet_tile_offsets,
+          active_shell_quartet_tile_counts, active_shell_quartet_tiles);
+    }
     if (unrestricted && persistent_eri) {
       build_uhf_fock_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
                               resources.stream_>>>(
@@ -7370,19 +7543,6 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           static_cast<unsigned>(total_shell_pairs), threads,
           threads * sizeof(double), resources.stream_>>>(
           device_batch, schwarz_bounds, shell_pair_bounds);
-      cuda_error = cudaMemsetAsync(
-          active_shell_quartet_tile_counts, 0,
-          detail::kDirectQuartetAngularOrderCount * sizeof(std::uint32_t),
-          resources.stream_);
-      if (cuda_error != cudaSuccess) {
-        fill_global_failure(outputs, cuda_status(cuda_error));
-        return outputs;
-      }
-      compact_active_shell_quartet_tiles_kernel<<<
-          blocks_for(total_shell_quartets), threads, 0, resources.stream_>>>(
-          device_batch, options.screening_tolerance, shell_pair_bounds,
-          active_shell_quartet_tile_offsets,
-          active_shell_quartet_tile_counts, active_shell_quartet_tiles);
     }
   }
   build_nuclear_repulsion_kernel<<<blocks_for(batch_size), threads, 0,

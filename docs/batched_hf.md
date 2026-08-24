@@ -49,8 +49,12 @@ RHF/UHF J/K contributions. A fixed topology-derived tile multiplicity exposes
 large d/f groups across one-warp blocks without per-quartet descriptors. Each
 256-quartet logical descriptor expands virtually into eight subtiles, keeping
 many high-register recurrence blocks independently schedulable without
-growing the descriptor arena or wasting sub-warp lanes. The analytic-force
-pass contracts the same quartets and visits only their shell-center
+growing the descriptor arena or wasting sub-warp lanes. Before every direct
+Fock build, device reductions form separate Coulomb and exchange density
+maxima for each shell pair. Graph-resident compaction combines those values
+with the Schwarz bounds, so SCF iterations avoid quartets that cannot
+materially update J or K at the requested threshold. The analytic-force pass
+contracts the final-density task list and visits only its shell-center
 coordinates. ERI translational invariance evaluates `N-1` unique
 centers and reconstructs the last derivative, reducing force recurrence work
 without changing the stationary gradient. For every remaining center, a

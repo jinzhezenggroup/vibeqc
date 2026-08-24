@@ -173,13 +173,19 @@ uses a force-only three-component forward scalar, seeding its Cartesian axes
 together and returning all three derivatives from one exact shell-class
 recurrence. This avoids repeating the geometry-independent ERI value path for
 x, y, and z while preserving the same screening and symmetry domain.
-Canonical AO-pair arrays remain
-resident for one-electron triangles and Schwarz bounds,
-following gpuxtb's immutable pair-metadata pattern. A geometry-dependent
-device pass compacts shell quartets whose shell-level Schwarz product survives
-the current threshold; the SCF Graph and analytic-force pass consume the same
-list without host readback. Component-unrolled/Rys quartet kernels and finer
-AO-level task compaction remain subsequent scheduler work. Direct quartets
+Canonical AO-pair arrays remain resident for one-electron triangles and
+Schwarz bounds, following gpuxtb's immutable pair-metadata pattern. Each Fock
+build reduces the current density to shell-pair absolute maxima before task
+generation. RHF keeps the full Coulomb magnitude and its one-half exchange
+magnitude separately; UHF keeps total-density Coulomb and maximum same-spin
+exchange magnitudes. A device pass then compacts only shell quartets whose
+shell-level Schwarz product survives both the configured threshold and at
+least one of the two Coulomb or four crossed exchange density blocks. This
+reduction and compaction are part of the captured SCF Graph. The final Fock
+rebuild regenerates the list from the converged density, and the
+analytic-force pass consumes that identical list without host readback.
+Component-unrolled/Rys quartet kernels and finer AO-level task compaction
+remain subsequent scheduler work. Direct quartets
 always operate on normalized Cartesian source AOs. For a public real-spherical
 basis, capture-safe kernels form `D_cart = C^T D_spherical C`, run the same
 exact shell-class Fock and force consumers, and restore

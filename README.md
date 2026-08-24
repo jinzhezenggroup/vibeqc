@@ -124,8 +124,12 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   one fixed-topology packed AO-pair table; one-electron integrals and their
   force terms use only the triangle, and direct buckets reuse it for Schwarz
   bounds and the direct scheduler. Ragged canonical shell-pair and shell-quartet
-  topology plus shell-level Schwarz maxima are resident. Geometry-dependent
-  shell-quartet compaction is implemented fully on device and has passed
+  topology plus shell-level Schwarz maxima are resident. Every direct Fock
+  build also reduces the current density into separate shell-pair Coulomb and
+  exchange maxima, then combines them with the Schwarz product while
+  compacting shell quartets inside the CUDA Graph. The final force consumes
+  the task domain generated from the final density. This density-conditioned
+  compaction is implemented fully on device and has passed
   allocated RTX 5090 energy/force and throughput validation for the exact
   `sdf18-direct` and Cartesian water/def2-SVP batch workloads. Direct consumers
   dispatch 55 symmetry-reduced s/p/d/f shell classes inside 13 angular-order

@@ -49,9 +49,11 @@ and performance measurements pass.
   derivative evaluations from N unique centers to N-1 and reconstructs the
   final center exactly. The remaining x/y/z derivatives for each center now
   propagate through one force-only three-component scalar, avoiding three
-  repetitions of the shell-class value recurrence. A geometry-dependent
-  device compaction pass now selects active shell quartets from those bounds
-  without host readback and expands them into only their populated AO tiles.
+  repetitions of the shell-class value recurrence. Each Graph Fock build now
+  reduces the current RHF/UHF density to separate shell-pair Coulomb/exchange
+  maxima. A device compaction pass combines them with the geometry-dependent
+  Schwarz bounds without host readback and expands only surviving shell
+  quartets into their populated AO tiles.
   Direct Fock and force reuse those exact descriptors, avoiding global-maximum
   tile padding and repeated system/pair decoding. Fixed topology now also
   records exact tile capacities and prefix offsets for every total angular
@@ -77,7 +79,12 @@ and performance measurements pass.
   10.698 s to 9.227--9.798 s. The 96-AO batch-1/batch-4 and 192-AO batch-1
   accuracy checks remain within their explicit limits. Order three falls from
   1568/5200 bytes to 512/1256 bytes; order four falls from 2488/8608 bytes to
-  752/2024 bytes.
+  752/2024 bytes. Density-conditioned task generation then reduces an
+  interleaved 96-AO baseline of 2.509/9.873 s at batch 1/4 to
+  2.365--2.382/9.240--9.605 s. The 192-AO batch-1 warm time falls from
+  36.110 s to 19.980 s. Formal candidate checks retain 96-AO batch-1/4 errors
+  below `4.5e-12 Eh` and `2.6e-12 Eh/bohr`; 192-AO batch-1/4 remain below
+  `1.9e-11 Eh` and `2.5e-10 Eh/bohr`.
   Clean RTX 5090
   artifacts validate energy, forces, and homogeneous-batch throughput for the
   exact `sdf18-direct`, Cartesian water/def2-SVP, and open-shell
