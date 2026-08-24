@@ -16,7 +16,7 @@ batch timing boundary.
 | [`water-def2-svp`](rtx5090-8300dff-water-def2-svp-b8.json) | 8 | 1202.903 ms | 7300.320 ms | 6.07x | 1.72e-12 Eh | 5.29e-13 Eh/bohr |
 | [`water-def2-svp-spherical`](rtx5090-320ead9-water-def2-svp-spherical-b8.json) | 8 | 2313.694 ms | 7331.882 ms | 3.17x | 1.78e-12 Eh | 4.24e-13 Eh/bohr |
 | [`water-def2-tzvp`](rtx5090-e303ca4-water-def2-tzvp-b4.json) | 4 | 2069.985 ms | 12084.960 ms | 5.84x | 1.21e-12 Eh | 9.24e-13 Eh/bohr |
-| [`water-def2-tzvp-spherical`](rtx5090-b4a13fa-water-def2-tzvp-spherical-b4.json) | 4 | 1561.725 ms | 12136.266 ms | 7.77x | 8.38e-13 Eh | 8.99e-13 Eh/bohr |
+| [`water-def2-tzvp-spherical`](rtx5090-f644916-water-def2-tzvp-spherical-b4.json) | 4 | 1137.845 ms | 12106.988 ms | 10.64x | 9.52e-13 Eh | 9.07e-13 Eh/bohr |
 | [`oh-def2-svp-uhf`](rtx5090-6d3b9ec-oh-def2-svp-uhf-b8.json) | 8 | 571.419 ms | 7244.466 ms | 12.68x | 1.24e-12 Eh | 2.11e-13 Eh/bohr |
 | [`oh-def2-svp-spherical-uhf`](rtx5090-f44fdf7-oh-def2-svp-spherical-uhf-b8.json) | 8 | 1369.543 ms | 7304.363 ms | 5.33x | 1.09e-12 Eh | 4.13e-11 Eh/bohr |
 
@@ -28,12 +28,23 @@ recorded from clean commit
 `320ead906eb0b0e3335aa1b9e2893f066dd02eee`. The real-spherical UHF artifact
 was recorded after the open-shell cold-guess fix at clean commit
 `f44fdf7d6d84e92ef7405e09643a69f78c627e52`. The current 43-AO def2-TZVP
-artifact was recorded after Cartesian-source contraction at clean commit
-`b4a13fab29828429a92f224c1fe3ec98ddf27677`. All were measured on 2026-08-24.
+artifact was recorded after virtual one-warp direct tiling at clean commit
+`f644916918a946e24f869145244db16296d54628`. All were measured on 2026-08-24.
 The matching Cartesian def2-TZVP artifact was recorded from clean commit
 `e303ca4aae9930dafd9f52bde813a030953a09cc`.
 They establish performance only for these exact homogeneous batch workloads;
 they are not a claim of broad QCE leadership.
+
+## Prior 256-thread direct-tile baseline
+
+| Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup |
+| --- | ---: | ---: | ---: | ---: |
+| [`water-def2-tzvp-spherical`](rtx5090-b4a13fa-water-def2-tzvp-spherical-b4.json) | 4 | 1561.725 ms | 12136.266 ms | 7.77x |
+
+The clean `b4a13fab29828429a92f224c1fe3ec98ddf27677` baseline launched one
+256-thread block per compact descriptor. Keeping it beside the virtual
+one-warp artifact makes the 27.1% QCE warm-time reduction independently
+auditable.
 
 ## Prior sparse spherical contraction baseline
 
@@ -43,7 +54,7 @@ they are not a claim of broad QCE leadership.
 
 The clean `a057e82af019912818e26f91d0dfba1d9861e316` baseline contracted sparse
 real-spherical expansion terms inside every direct quartet. Keeping it beside
-the Cartesian-source artifact makes the 63.7% QCE warm-time reduction
+the `b4a13fa` Cartesian-source artifact makes the 63.7% QCE warm-time reduction
 independently auditable.
 
 ## Prior spherical force baseline
@@ -98,7 +109,7 @@ reduction-order variation. Its UHF counterpart uses
 `--case oh-def2-svp-spherical-uhf --batch 8`, a 4x gate, and a
 `3e-9 Eh/bohr` force gate that covers the arbitrary orientation of the
 degenerate pi hole; the recorded maximum error is `4.13e-11 Eh/bohr`. The
-larger pure workload uses `--case water-def2-tzvp-spherical --batch 4`, a 6x
+larger pure workload uses `--case water-def2-tzvp-spherical --batch 4`, a 9x
 gate, and `3e-12`/`3e-11` energy/force gates. Its Cartesian counterpart uses
 `--case water-def2-tzvp --batch 4` and a 5x minimum-speedup gate. The harness
 records all gate thresholds and failures in the JSON before exiting with
