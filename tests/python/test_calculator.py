@@ -158,6 +158,36 @@ def test_cuda_spherical_uhf_doublet_matches_pyscf():
     assert result.forces[1, 2] == pytest.approx(0.34919100072002696, abs=3.0e-8)
 
 
+def test_cuda_spherical_named_basis_uhf_breaks_excited_state_symmetry():
+    """Keep linear OH out of the high-energy sigma-hole UHF fixed point."""
+
+    atoms = [
+        ("O", (0.0, 0.0, 0.0)),
+        ("H", (0.0, 0.0, 1.8323918340046244)),
+    ]
+    try:
+        result = Calculator(
+            method="uhf",
+            basis="def2-svp",
+            basis_representation="spherical",
+            device="cuda",
+            energy_tolerance=1.0e-12,
+            density_tolerance=1.0e-10,
+        ).singlepoint(atoms, multiplicity=2)
+    except RuntimeError as error:
+        pytest.skip(f"CUDA device unavailable: {error}")
+
+    expected_forces = np.array(
+        [
+            [0.0, 0.0, 0.014500852953795551],
+            [0.0, 0.0, -0.014500852953795551],
+        ]
+    )
+    assert result.executed_backend == "cuda"
+    assert result.energy == pytest.approx(-75.32510951561675, abs=3.0e-9)
+    assert np.allclose(result.forces, expected_forces, atol=3.0e-8)
+
+
 def test_h3_plus_exercises_diis_and_force_invariants():
     coordinates = np.array([[-1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [1.0, 0.0, 0.0]])
     atoms = [("H", coordinate) for coordinate in coordinates]

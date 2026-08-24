@@ -168,6 +168,35 @@ Matrix density_from_orbitals(const Matrix& coefficients,
   return density;
 }
 
+void mix_open_shell_frontier_orbitals(Matrix& beta_coefficients,
+                                      std::size_t n,
+                                      std::size_t alpha_occupied,
+                                      std::size_t beta_occupied) {
+  if (alpha_occupied == beta_occupied || beta_occupied == 0 ||
+      beta_occupied >= n) {
+    return;
+  }
+  // Exact molecular symmetry can make a core-Hamiltonian UHF guess an
+  // excited-state fixed point (for example, the sigma-hole state of linear
+  // OH). A 45-degree orthogonal HOMO/LUMO rotation preserves electron count
+  // and S-orthonormality while moving the seed outside that excited state's
+  // basin. The converged orbitals, not this seed angle, define the result.
+  constexpr double cosine = 0.7071067811865476;
+  constexpr double sine = 0.7071067811865476;
+  const std::size_t occupied_orbital = beta_occupied - 1;
+  const std::size_t virtual_orbital = beta_occupied;
+  for (std::size_t row = 0; row < n; ++row) {
+    const double occupied_value =
+        beta_coefficients[index(row, occupied_orbital, n)];
+    const double virtual_value =
+        beta_coefficients[index(row, virtual_orbital, n)];
+    beta_coefficients[index(row, occupied_orbital, n)] =
+        cosine * occupied_value + sine * virtual_value;
+    beta_coefficients[index(row, virtual_orbital, n)] =
+        -sine * occupied_value + cosine * virtual_value;
+  }
+}
+
 std::pair<std::size_t, std::size_t> spin_occupations(
     const core::System& system) {
   const std::size_t electrons = static_cast<std::size_t>(system.electron_count);
@@ -223,6 +252,8 @@ std::pair<Matrix, Matrix> prepare_initial_uhf_density(
   alpha_orbitals = generalized_eigen(ints.hcore, orthogonalizer, n);
   beta_orbitals = alpha_orbitals;
   if (initial_density == nullptr) {
+    mix_open_shell_frontier_orbitals(
+        beta_orbitals.vectors, n, alpha_occupied, beta_occupied);
     return {
         density_from_orbitals(alpha_orbitals.vectors, n, alpha_occupied, 1.0),
         density_from_orbitals(beta_orbitals.vectors, n, beta_occupied, 1.0),

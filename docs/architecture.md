@@ -76,6 +76,13 @@ and does not stop other systems. Warm densities are symmetrized and rescaled to
 the correct electron trace under the new overlap before use; if the warm solve
 fails, the item retries from the cold core guess.
 
+Open-shell cold starts apply a deterministic 45-degree rotation between the
+minority-spin frontier occupied and virtual core orbitals before constructing
+the density. The rotation preserves electron count and orbital orthogonality
+but prevents exact molecular symmetry from trapping UHF in a higher-energy
+occupation fixed point, as occurs for the sigma-hole state of linear OH. Warm
+densities bypass this seed and retain their converged state.
+
 The CPU reference backend uses a bounded native worker group within each
 bucket. A CUDA context builds overlap, core-Hamiltonian, ERI, and nuclear terms
 on the device, uses cuSOLVER batched Jacobi eigensolves, retains all SCF matrix

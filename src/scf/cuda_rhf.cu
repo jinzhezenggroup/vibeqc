@@ -2082,6 +2082,45 @@ __global__ void build_spin_density_kernel(std::int32_t batch_size,
   density[element] = value;
 }
 
+__global__ void mix_open_shell_guess_kernel(std::int32_t batch_size,
+                                            std::int32_t nbf,
+                                            const std::int32_t* occupied,
+                                            const std::uint8_t* active,
+                                            double* coefficients) {
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t element =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= static_cast<std::size_t>(batch_size) * n) return;
+  const std::size_t system = element / n;
+  if (active != nullptr && active[system] == 0) return;
+  const std::size_t row = element % n;
+  const std::int32_t alpha_occupied = occupied[system * 2];
+  const std::int32_t beta_occupied = occupied[system * 2 + 1];
+  if (alpha_occupied == beta_occupied || beta_occupied <= 0 ||
+      beta_occupied >= nbf) {
+    return;
+  }
+
+  // Match the CPU open-shell cold guess: preserve the beta orbital metric
+  // while breaking exact spatial symmetry between its frontier orbitals.
+  constexpr double cosine = 0.7071067811865476;
+  constexpr double sine = 0.7071067811865476;
+  const std::size_t matrix_size = n * n;
+  const std::size_t offset = (system * 2 + 1) * matrix_size;
+  const std::size_t occupied_orbital =
+      static_cast<std::size_t>(beta_occupied - 1);
+  const std::size_t virtual_orbital =
+      static_cast<std::size_t>(beta_occupied);
+  const double occupied_value =
+      coefficients[offset + matrix_index(row, occupied_orbital, n)];
+  const double virtual_value =
+      coefficients[offset + matrix_index(row, virtual_orbital, n)];
+  coefficients[offset + matrix_index(row, occupied_orbital, n)] =
+      cosine * occupied_value + sine * virtual_value;
+  coefficients[offset + matrix_index(row, virtual_orbital, n)] =
+      -sine * occupied_value + cosine * virtual_value;
+}
+
 __global__ void apply_warm_density_kernel(std::int32_t batch_size,
                                           std::int32_t nbf,
                                           const std::int32_t* occupied,
@@ -4964,6 +5003,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                                    resources.stream_>>>(
         static_cast<std::int32_t>(batch_size), 2,
         static_cast<std::int32_t>(nbf), temporary, active, coefficients);
+    mix_open_shell_guess_kernel<<<blocks_for(batch_size * nbf), threads, 0,
+                                  resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
+        occupied, active, coefficients);
     build_spin_density_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
                                 resources.stream_>>>(
         static_cast<std::int32_t>(batch_size), 2,
