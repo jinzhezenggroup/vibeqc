@@ -175,7 +175,7 @@ GPU object and warm density per system and executes them sequentially inside
 the same synchronized batch boundary. Reports must state this interface
 difference rather than presenting the result as two equivalent batch APIs.
 
-Four clean artifacts from the exact shell-class implementation establish
+Five clean artifacts from the exact shell-class implementation establish
 performance leadership for their exact homogeneous workloads on one RTX 5090.
 `sdf18-direct` at batch 16
 measured 67.709 ms for QCE versus 2499.369 ms for sequential GPU4PySCF
@@ -185,7 +185,9 @@ Cartesian water/def2-SVP at batch 8 measured 1202.903 ms versus 7300.320 ms
 water/def2-SVP at batch 8 measured 2313.694 ms versus 7331.882 ms (3.17x),
 with differences of `1.78e-12`/`4.24e-13`. Open-shell OH/def2-SVP UHF at
 batch 8 measured 571.419 ms versus 7244.466 ms (12.68x), with differences of
-`1.24e-12`/`2.11e-13`. See the raw
+`1.24e-12`/`2.11e-13`. Its standard real-spherical counterpart measured
+1369.543 ms versus 7304.363 ms (5.33x), with differences of
+`1.09e-12`/`4.13e-11`. See the raw
 [RTX 5090 benchmark artifacts](benchmarks/results/README.md) for samples,
 versions, device metadata, and reproduction commands. These results do not
 imply an equivalent native GPU4PySCF batch API or generalize beyond the named
