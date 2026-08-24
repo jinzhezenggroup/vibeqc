@@ -17,6 +17,51 @@ inline constexpr std::size_t kDirectQuartetThreads = 256;
 inline constexpr std::size_t kDirectQuartetAngularOrderCount = 13;
 inline constexpr std::uint8_t kDirectQuartetMaximumShellAngular = 3;
 
+/** Canonical unordered shell-pair and pair-of-pairs classes for s/p/d/f. */
+inline constexpr std::size_t kDirectShellPairClassCount = 10;
+inline constexpr std::size_t kDirectQuartetShellClassCount = 55;
+
+/** Encode an unordered angular pair as ss, ps, pp, ds, ..., ff. */
+inline constexpr std::size_t direct_shell_pair_class(
+    std::uint8_t first,
+    std::uint8_t second) noexcept {
+  const std::size_t high = std::max(first, second);
+  const std::size_t low = std::min(first, second);
+  return high * (high + 1) / 2 + low;
+}
+
+/** Encode an ERI shell class after applying pair and pair-exchange symmetry. */
+inline constexpr std::size_t direct_quartet_shell_class(
+    std::uint8_t first,
+    std::uint8_t second,
+    std::uint8_t third,
+    std::uint8_t fourth) noexcept {
+  const std::size_t first_pair = direct_shell_pair_class(first, second);
+  const std::size_t second_pair = direct_shell_pair_class(third, fourth);
+  const std::size_t high = std::max(first_pair, second_pair);
+  const std::size_t low = std::min(first_pair, second_pair);
+  return high * (high + 1) / 2 + low;
+}
+
+/** Decode a triangular class index into its canonical high/low members. */
+inline constexpr std::array<std::size_t, 2> decode_direct_triangular_class(
+    std::size_t index) noexcept {
+  std::size_t high = 0;
+  while ((high + 1) * (high + 2) / 2 <= index) ++high;
+  return {high, index - high * (high + 1) / 2};
+}
+
+/** Return the total angular order represented by a canonical shell class. */
+inline constexpr std::size_t direct_quartet_shell_class_angular_order(
+    std::size_t shell_class) noexcept {
+  const auto pair_classes = decode_direct_triangular_class(shell_class);
+  const auto first_pair =
+      decode_direct_triangular_class(pair_classes[0]);
+  const auto second_pair =
+      decode_direct_triangular_class(pair_classes[1]);
+  return first_pair[0] + first_pair[1] + second_pair[0] + second_pair[1];
+}
+
 /** Fixed-topology capacity required by geometry-dependent tile compaction. */
 struct DirectQuartetTaskLayout {
   std::size_t shell_quartet_count{};
@@ -27,6 +72,11 @@ struct DirectQuartetTaskLayout {
       angular_order_tile_counts{};
   std::array<std::size_t, kDirectQuartetAngularOrderCount + 1>
       angular_order_tile_offsets{};
+  // Finer fixed partitions used by generated exact shell-class consumers.
+  std::array<std::size_t, kDirectQuartetShellClassCount>
+      shell_class_tile_counts{};
+  std::array<std::size_t, kDirectQuartetShellClassCount + 1>
+      shell_class_tile_offsets{};
   // Previous padding multiplier derived from max(shell-pair AOs)^2.
   std::size_t maximum_tiles_per_shell_quartet{};
   std::size_t uniform_tile_count{};
@@ -80,6 +130,7 @@ inline bool make_direct_quartet_task_layout(
   std::vector<std::size_t> shell_pair_ao_counts(shell_pair_first.size());
   std::vector<std::size_t> shell_pair_angular_orders(
       shell_pair_first.size());
+  std::vector<std::size_t> shell_pair_classes(shell_pair_first.size());
   std::size_t maximum_shell_pair_ao_count = 0;
   for (std::size_t pair = 0; pair < shell_pair_first.size(); ++pair) {
     const std::int32_t first_shell = shell_pair_first[pair];
@@ -126,6 +177,8 @@ inline bool make_direct_quartet_task_layout(
     }
     shell_pair_ao_counts[pair] = ao_pair_count;
     shell_pair_angular_orders[pair] = pair_angular_order;
+    shell_pair_classes[pair] = direct_shell_pair_class(
+        shell_angular[first_shell], shell_angular[second_shell]);
     maximum_shell_pair_ao_count =
         std::max(maximum_shell_pair_ao_count, ao_pair_count);
   }
@@ -167,10 +220,22 @@ inline bool make_direct_quartet_task_layout(
         const std::size_t angular_order =
             shell_pair_angular_orders[first_pair] +
             shell_pair_angular_orders[second_pair];
+        const std::size_t high_pair_class =
+            std::max(shell_pair_classes[first_pair],
+                     shell_pair_classes[second_pair]);
+        const std::size_t low_pair_class =
+            std::min(shell_pair_classes[first_pair],
+                     shell_pair_classes[second_pair]);
+        const std::size_t shell_class =
+            high_pair_class * (high_pair_class + 1) / 2 + low_pair_class;
         if (angular_order >= kDirectQuartetAngularOrderCount ||
+            shell_class >= kDirectQuartetShellClassCount ||
             !checked_task_add(
                 made.angular_order_tile_counts[angular_order], tile_count,
-                made.angular_order_tile_counts[angular_order])) {
+                made.angular_order_tile_counts[angular_order]) ||
+            !checked_task_add(
+                made.shell_class_tile_counts[shell_class], tile_count,
+                made.shell_class_tile_counts[shell_class])) {
           return false;
         }
         if (!checked_task_add(made.shell_quartet_count, 1,
@@ -193,6 +258,19 @@ inline bool make_direct_quartet_task_layout(
     }
   }
   if (made.angular_order_tile_offsets.back() != made.exact_tile_count) {
+    return false;
+  }
+  for (std::size_t shell_class = 0;
+       shell_class < kDirectQuartetShellClassCount; ++shell_class) {
+    made.shell_class_tile_offsets[shell_class + 1] =
+        made.shell_class_tile_offsets[shell_class];
+    if (!checked_task_add(made.shell_class_tile_offsets[shell_class + 1],
+                          made.shell_class_tile_counts[shell_class],
+                          made.shell_class_tile_offsets[shell_class + 1])) {
+      return false;
+    }
+  }
+  if (made.shell_class_tile_offsets.back() != made.exact_tile_count) {
     return false;
   }
   std::size_t maximum_uniform_ao_quartets = 0;

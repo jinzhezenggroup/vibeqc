@@ -165,6 +165,28 @@ int main() {
                 std::array<std::size_t, 14>{0, 6, 6, 12, 18, 24, 31,
                                             39, 45, 56, 67, 80, 93, 100},
             "Cartesian direct-J/K angular buckets are inconsistent");
+    std::array<std::size_t, 13> sdf_shell_class_orders{};
+    for (std::size_t shell_class = 0;
+         shell_class < qce::scf::detail::kDirectQuartetShellClassCount;
+         ++shell_class) {
+      const std::size_t order =
+          qce::scf::detail::direct_quartet_shell_class_angular_order(
+              shell_class);
+      require(order < sdf_shell_class_orders.size(),
+              "direct-J/K shell class decoded an invalid angular order");
+      sdf_shell_class_orders[order] +=
+          sdf_tasks.shell_class_tile_counts[shell_class];
+    }
+    require(sdf_tasks.shell_class_tile_offsets.back() ==
+                sdf_tasks.exact_tile_count &&
+                sdf_shell_class_orders == sdf_tasks.angular_order_tile_counts &&
+                sdf_tasks.shell_class_tile_counts[
+                    qce::scf::detail::direct_quartet_shell_class(0, 0, 0, 0)] ==
+                    6 &&
+                sdf_tasks.shell_class_tile_counts[
+                    qce::scf::detail::direct_quartet_shell_class(3, 3, 3, 3)] ==
+                    7,
+            "Cartesian exact shell-class partitions are inconsistent");
     qce::core::System spherical_sdf = helium_hydrogen_sdf();
     spherical_sdf.basis_representation = QCE_BASIS_SPHERICAL;
     const qce::scf::CudaRhfBasisLayoutStats spherical_layout =
@@ -192,6 +214,20 @@ int main() {
                 std::array<std::size_t, 14>{0, 6, 6, 12, 18, 24, 31,
                                             39, 43, 48, 53, 58, 62, 64},
             "spherical direct-J/K angular buckets are inconsistent");
+    std::array<std::size_t, 13> spherical_shell_class_orders{};
+    for (std::size_t shell_class = 0;
+         shell_class < qce::scf::detail::kDirectQuartetShellClassCount;
+         ++shell_class) {
+      spherical_shell_class_orders[
+          qce::scf::detail::direct_quartet_shell_class_angular_order(
+              shell_class)] +=
+          spherical_tasks.shell_class_tile_counts[shell_class];
+    }
+    require(spherical_tasks.shell_class_tile_offsets.back() ==
+                spherical_tasks.exact_tile_count &&
+                spherical_shell_class_orders ==
+                    spherical_tasks.angular_order_tile_counts,
+            "spherical exact shell-class partitions are inconsistent");
     const qce::integrals::IntegralData integrals =
         qce::integrals::build_cartesian_integrals(system);
     require(integrals.nbf == 8, "integral engine reported the wrong AO count");
