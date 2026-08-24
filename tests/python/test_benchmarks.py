@@ -84,6 +84,8 @@ def test_gpu_comparison_help_does_not_require_an_allocated_device():
         assert "oh-def2-svp-uhf" in completed.stdout
         assert "oh-def2-svp-spherical-uhf" in completed.stdout
         assert "water-def2-svp-spherical" in completed.stdout
+        assert "water-def2-tzvp" in completed.stdout
+        assert "water-def2-tzvp-spherical" in completed.stdout
         if script == "compare_gpu4pyscf_batch.py":
             assert "--minimum-speedup" in completed.stdout
             assert "--maximum-energy-error" in completed.stdout

@@ -90,6 +90,27 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
             pyscf_basis="def2-svp",
             basis_representation="spherical",
         ),
+        "water-def2-tzvp": BenchmarkCase(
+            description="H2O, 48 Cartesian AOs, def2-TZVP direct J/K",
+            atoms=(
+                ("O", (0.0, 0.0, 0.0)),
+                ("H", (0.0, -1.43233673, 1.10715266)),
+                ("H", (0.0, 1.43233673, 1.10715266)),
+            ),
+            qce_basis="def2-tzvp",
+            pyscf_basis="def2-tzvp",
+        ),
+        "water-def2-tzvp-spherical": BenchmarkCase(
+            description="H2O, 43 real spherical AOs, def2-TZVP direct J/K",
+            atoms=(
+                ("O", (0.0, 0.0, 0.0)),
+                ("H", (0.0, -1.43233673, 1.10715266)),
+                ("H", (0.0, 1.43233673, 1.10715266)),
+            ),
+            qce_basis="def2-tzvp",
+            pyscf_basis="def2-tzvp",
+            basis_representation="spherical",
+        ),
         "oh-def2-svp-uhf": BenchmarkCase(
             description=(
                 "OH, 20 Cartesian AOs, def2-SVP direct UHF doublet"

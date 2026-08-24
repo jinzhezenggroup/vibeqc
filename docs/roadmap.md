@@ -110,8 +110,9 @@ and performance measurements pass.
 - The cold/warm GPU4PySCF harness includes Cartesian and standard real
   spherical water/def2-SVP cases plus matching Cartesian/spherical OH UHF
   definitions, and publishes raw homogeneous-batch samples. The spherical RHF
-  and UHF batch-8 cases pass their allocated accuracy and minimum-speedup gates;
-  extend the matrix to more molecules and basis sizes.
+  and UHF batch-8 cases pass their allocated accuracy and minimum-speedup gates.
+  Water/def2-TZVP Cartesian and spherical definitions now provide the next
+  larger-basis profiling and allocated-gate targets.
 
 ## M3: density fitting and fleet mode
 

@@ -144,6 +144,9 @@ explicitly with `--case sp8`, `--case sdf18-direct`, and
 The matching standard pure-basis workload is available as
 `--case water-def2-svp-spherical`; the harness sets QCE to real spherical AOs
 and PySCF/GPU4PySCF to `cart=False` from the same case metadata.
+Larger primitive and angular workloads are available as
+`--case water-def2-tzvp` and `--case water-def2-tzvp-spherical`; these are
+profiling and regression targets until clean allocated artifacts are published.
 
 The same harness also includes `h2plus-uhf2` and `heh-sdf18-uhf`. On the same
 RTX 5090, H2+ warm UHF energy+gradient replay measured about 7.0 ms for QCE;
