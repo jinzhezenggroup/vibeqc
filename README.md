@@ -90,7 +90,10 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   explicitly requested.
 - The current CUDA SCF includes device DIIS and a device-tail-launched CUDA
   Graph loop. Fixed-topology plans retain their arena, Graph, stream, and
-  eigensolver state; small AO buckets use a specialized device Jacobi solver.
+  eigensolver state. AO matrices through 16 use a low-overhead serial device
+  Jacobi solver, sizes 17--32 use batched cuSOLVER, and larger matrices use a
+  cooperative Graph-native Jacobi kernel. The 48-AO Cartesian
+  water/def2-TZVP path is numerically validated against PySCF.
   UHF stores alpha/beta matrices adjacently per system, solves both spin Fock
   matrices on device, and applies one combined DIIS residual per physical
   system.

@@ -1800,6 +1800,8 @@ __global__ void inspect_spin_solver_kernel(std::int32_t batch_size,
 }
 
 constexpr std::int32_t kSmallEigensolverLimit = 16;
+constexpr std::int32_t kBatchedEigensolverLimit = 32;
+constexpr unsigned kGraphEigensolverThreads = 64;
 
 __global__ void symmetric_eigen_small_kernel(std::int32_t batch_size,
                                              std::int32_t nbf,
@@ -1906,6 +1908,199 @@ __global__ void symmetric_eigen_small_kernel(std::int32_t batch_size,
   }
   for (std::size_t element = 0; element < matrix_size; ++element) {
     matrices[offset + element] = vectors[element];
+  }
+}
+
+/**
+ * Graph-capture-safe Jacobi eigensolver for AO matrices above the provider's
+ * small batched range.
+ *
+ * One block owns one physical or spin state. Threads cooperatively select the
+ * largest off-diagonal element and apply its row/column rotation, while a
+ * separate arena matrix retains eigenvectors. This keeps the device-tail SCF
+ * loop intact for realistic named bases without cuSOLVER's capture-time host
+ * synchronization or a fixed compile-time AO limit.
+ */
+__global__ void symmetric_eigen_graph_kernel(
+    std::int32_t batch_size,
+    std::int32_t nbf,
+    double* matrices,
+    double* eigenvectors,
+    double* eigenvalues,
+    int* info,
+    const std::uint8_t* active) {
+  static_assert(kGraphEigensolverThreads > 0 &&
+                (kGraphEigensolverThreads &
+                 (kGraphEigensolverThreads - 1)) == 0);
+  const std::int32_t state = static_cast<std::int32_t>(blockIdx.x);
+  if (state >= batch_size) return;
+  if (active != nullptr && active[state] == 0) {
+    if (threadIdx.x == 0) info[state] = 0;
+    return;
+  }
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t matrix_offset =
+      static_cast<std::size_t>(state) * matrix_size;
+  const std::size_t eigenvalue_offset = static_cast<std::size_t>(state) * n;
+
+  __shared__ double block_maximum[kGraphEigensolverThreads];
+  __shared__ std::size_t block_index[kGraphEigensolverThreads];
+  __shared__ std::size_t pivot_p;
+  __shared__ std::size_t pivot_q;
+  __shared__ double pivot_cosine;
+  __shared__ double pivot_sine;
+  __shared__ int converged;
+
+  for (std::size_t element = threadIdx.x; element < matrix_size;
+       element += blockDim.x) {
+    const std::size_t row = element / n;
+    const std::size_t column = element % n;
+    eigenvectors[matrix_offset + element] = row == column ? 1.0 : 0.0;
+  }
+  if (threadIdx.x == 0) {
+    info[state] = 1;
+    converged = 0;
+  }
+  __syncthreads();
+
+  const std::size_t maximum_rotations =
+      20 * matrix_size > 50 ? 20 * matrix_size : 50;
+  for (std::size_t rotation = 0; rotation < maximum_rotations; ++rotation) {
+    double local_maximum = 0.0;
+    std::size_t local_index = 0;
+    for (std::size_t element = threadIdx.x; element < matrix_size;
+         element += blockDim.x) {
+      const std::size_t row = element / n;
+      const std::size_t column = element % n;
+      if (row >= column) continue;
+      const double candidate = fabs(matrices[matrix_offset + element]);
+      if (candidate > local_maximum) {
+        local_maximum = candidate;
+        local_index = element;
+      }
+    }
+    block_maximum[threadIdx.x] = local_maximum;
+    block_index[threadIdx.x] = local_index;
+    __syncthreads();
+    for (unsigned stride = blockDim.x / 2; stride > 0; stride /= 2) {
+      if (threadIdx.x < stride &&
+          block_maximum[threadIdx.x + stride] >
+              block_maximum[threadIdx.x]) {
+        block_maximum[threadIdx.x] =
+            block_maximum[threadIdx.x + stride];
+        block_index[threadIdx.x] = block_index[threadIdx.x + stride];
+      }
+      __syncthreads();
+    }
+    if (threadIdx.x == 0) {
+      if (block_maximum[0] < 1.0e-14) {
+        converged = 1;
+        info[state] = 0;
+      } else {
+        pivot_p = block_index[0] / n;
+        pivot_q = block_index[0] % n;
+        const double app =
+            matrices[matrix_offset + matrix_index(pivot_p, pivot_p, n)];
+        const double aqq =
+            matrices[matrix_offset + matrix_index(pivot_q, pivot_q, n)];
+        const double apq =
+            matrices[matrix_offset + matrix_index(pivot_p, pivot_q, n)];
+        const double angle = 0.5 * atan2(2.0 * apq, aqq - app);
+        pivot_cosine = cos(angle);
+        pivot_sine = sin(angle);
+      }
+    }
+    __syncthreads();
+    if (converged != 0) break;
+
+    for (std::size_t k = threadIdx.x; k < n; k += blockDim.x) {
+      if (k != pivot_p && k != pivot_q) {
+        const double mkp =
+            matrices[matrix_offset + matrix_index(k, pivot_p, n)];
+        const double mkq =
+            matrices[matrix_offset + matrix_index(k, pivot_q, n)];
+        const double next_p = pivot_cosine * mkp - pivot_sine * mkq;
+        const double next_q = pivot_sine * mkp + pivot_cosine * mkq;
+        matrices[matrix_offset + matrix_index(k, pivot_p, n)] = next_p;
+        matrices[matrix_offset + matrix_index(pivot_p, k, n)] = next_p;
+        matrices[matrix_offset + matrix_index(k, pivot_q, n)] = next_q;
+        matrices[matrix_offset + matrix_index(pivot_q, k, n)] = next_q;
+      }
+      const double vkp =
+          eigenvectors[matrix_offset + matrix_index(k, pivot_p, n)];
+      const double vkq =
+          eigenvectors[matrix_offset + matrix_index(k, pivot_q, n)];
+      eigenvectors[matrix_offset + matrix_index(k, pivot_p, n)] =
+          pivot_cosine * vkp - pivot_sine * vkq;
+      eigenvectors[matrix_offset + matrix_index(k, pivot_q, n)] =
+          pivot_sine * vkp + pivot_cosine * vkq;
+    }
+    __syncthreads();
+    if (threadIdx.x == 0) {
+      const double app =
+          matrices[matrix_offset + matrix_index(pivot_p, pivot_p, n)];
+      const double aqq =
+          matrices[matrix_offset + matrix_index(pivot_q, pivot_q, n)];
+      const double apq =
+          matrices[matrix_offset + matrix_index(pivot_p, pivot_q, n)];
+      matrices[matrix_offset + matrix_index(pivot_p, pivot_p, n)] =
+          pivot_cosine * pivot_cosine * app -
+          2.0 * pivot_sine * pivot_cosine * apq +
+          pivot_sine * pivot_sine * aqq;
+      matrices[matrix_offset + matrix_index(pivot_q, pivot_q, n)] =
+          pivot_sine * pivot_sine * app +
+          2.0 * pivot_sine * pivot_cosine * apq +
+          pivot_cosine * pivot_cosine * aqq;
+      matrices[matrix_offset + matrix_index(pivot_p, pivot_q, n)] = 0.0;
+      matrices[matrix_offset + matrix_index(pivot_q, pivot_p, n)] = 0.0;
+    }
+    __syncthreads();
+  }
+
+  // Stable selection sort preserves the ascending eigenpair convention of
+  // both the CPU oracle and the two smaller CUDA solver paths.
+  for (std::size_t column = 0; column < n; ++column) {
+    if (threadIdx.x == 0) {
+      std::size_t selected = column;
+      for (std::size_t candidate = column + 1; candidate < n; ++candidate) {
+        if (matrices[matrix_offset + matrix_index(candidate, candidate, n)] <
+            matrices[matrix_offset + matrix_index(selected, selected, n)]) {
+          selected = candidate;
+        }
+      }
+      block_index[0] = selected;
+      if (selected != column) {
+        const double diagonal =
+            matrices[matrix_offset + matrix_index(column, column, n)];
+        matrices[matrix_offset + matrix_index(column, column, n)] =
+            matrices[matrix_offset + matrix_index(selected, selected, n)];
+        matrices[matrix_offset + matrix_index(selected, selected, n)] =
+            diagonal;
+      }
+    }
+    __syncthreads();
+    const std::size_t selected = block_index[0];
+    if (selected != column) {
+      for (std::size_t row = threadIdx.x; row < n; row += blockDim.x) {
+        const double swap =
+            eigenvectors[matrix_offset + matrix_index(row, column, n)];
+        eigenvectors[matrix_offset + matrix_index(row, column, n)] =
+            eigenvectors[matrix_offset + matrix_index(row, selected, n)];
+        eigenvectors[matrix_offset + matrix_index(row, selected, n)] = swap;
+      }
+    }
+    __syncthreads();
+  }
+  for (std::size_t column = threadIdx.x; column < n; column += blockDim.x) {
+    eigenvalues[eigenvalue_offset + column] =
+        matrices[matrix_offset + matrix_index(column, column, n)];
+  }
+  __syncthreads();
+  for (std::size_t element = threadIdx.x; element < matrix_size;
+       element += blockDim.x) {
+    matrices[matrix_offset + element] =
+        eigenvectors[matrix_offset + element];
   }
 }
 
@@ -4315,6 +4510,7 @@ qce_status launch_solver(CudaResources& resources,
                          int nbf,
                          int batch_size,
                          double* matrices,
+                         double* eigenvector_workspace,
                          double* eigenvalues,
                          int lwork,
                          int* info,
@@ -4325,12 +4521,20 @@ qce_status launch_solver(CudaResources& resources,
         batch_size, nbf, matrices, eigenvalues, info, active);
     return cuda_status(cudaPeekAtLastError());
   }
-  const cusolverStatus_t status = cusolverDnDsyevjBatched(
-      resources.solver_, CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER,
-      nbf, matrices, nbf, eigenvalues, resources.solver_workspace_, lwork,
-      info, resources.jacobi_, batch_size);
-  return status == CUSOLVER_STATUS_SUCCESS ? QCE_STATUS_SUCCESS
-                                           : solver_status(status);
+  if (nbf <= kBatchedEigensolverLimit) {
+    const cusolverStatus_t status = cusolverDnDsyevjBatched(
+        resources.solver_, CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER,
+        nbf, matrices, nbf, eigenvalues, resources.solver_workspace_, lwork,
+        info, resources.jacobi_, batch_size);
+    return status == CUSOLVER_STATUS_SUCCESS ? QCE_STATUS_SUCCESS
+                                             : solver_status(status);
+  }
+  symmetric_eigen_graph_kernel<<<static_cast<unsigned>(batch_size),
+                                 kGraphEigensolverThreads, 0,
+                                 resources.stream_>>>(
+      batch_size, nbf, matrices, eigenvector_workspace, eigenvalues, info,
+      active);
+  return cuda_status(cudaPeekAtLastError());
 }
 
 }  // namespace
@@ -4557,7 +4761,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   CudaResources& resources = plan.resources;
   const bool persistent_eri = plan.persistent_eri;
   const bool quartet_direct = plan.quartet_direct;
-  const bool use_cusolver = nbf > static_cast<std::size_t>(kSmallEigensolverLimit);
+  const bool use_cusolver =
+      nbf > static_cast<std::size_t>(kSmallEigensolverLimit) &&
+      nbf <= static_cast<std::size_t>(kBatchedEigensolverLimit);
   const bool use_cublas = plan.cublas_enabled &&
       nbf >= kCublasMatrixProductAoThreshold;
   cudaError_t cuda_error = cudaSetDevice(device_id);
@@ -4962,7 +5168,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       matrix_elements, overlap, eigensystem);
   qce_status status = launch_solver(resources, static_cast<int>(nbf),
                                     static_cast<int>(batch_size), eigensystem,
-                                    eigenvalues, lwork, solver_info, active);
+                                    temporary, eigenvalues, lwork, solver_info,
+                                    active);
   if (status != QCE_STATUS_SUCCESS) {
     fill_global_failure(outputs, status);
     return outputs;
@@ -4985,7 +5192,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   }
   status = launch_solver(resources, static_cast<int>(nbf),
                          static_cast<int>(batch_size), eigensystem,
-                         eigenvalues, lwork, solver_info, active);
+                         temporary, eigenvalues, lwork, solver_info, active);
   if (status != QCE_STATUS_SUCCESS) {
     fill_global_failure(outputs, status);
     return outputs;
@@ -5086,7 +5293,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
             static_cast<std::int32_t>(batch_size), 2, active, spin_active);
         status = launch_solver(resources, static_cast<int>(nbf),
                                static_cast<int>(spin_batch_size), eigensystem,
-                               eigenvalues, lwork, solver_info, spin_active);
+                               temporary, eigenvalues, lwork, solver_info,
+                               spin_active);
       }
     } else {
       status = multiply_matrices(
@@ -5098,7 +5306,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       if (status == QCE_STATUS_SUCCESS) {
         status = launch_solver(resources, static_cast<int>(nbf),
                                static_cast<int>(batch_size), eigensystem,
-                               eigenvalues, lwork, solver_info, active);
+                               temporary, eigenvalues, lwork, solver_info,
+                               active);
       }
     }
     if (status == QCE_STATUS_SUCCESS) {
@@ -5203,7 +5412,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           static_cast<std::int32_t>(batch_size), 2, active, spin_active);
       status = launch_solver(resources, static_cast<int>(nbf),
                              static_cast<int>(spin_batch_size), eigensystem,
-                             eigenvalues, lwork, solver_info, spin_active);
+                             temporary, eigenvalues, lwork, solver_info,
+                             spin_active);
     }
   } else {
     status = multiply_matrices(fock, false, orthogonalizer, temporary);
@@ -5214,7 +5424,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     if (status == QCE_STATUS_SUCCESS) {
       status = launch_solver(resources, static_cast<int>(nbf),
                              static_cast<int>(batch_size), eigensystem,
-                             eigenvalues, lwork, solver_info, active);
+                             temporary, eigenvalues, lwork, solver_info,
+                             active);
     }
   }
   if (status != QCE_STATUS_SUCCESS) {

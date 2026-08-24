@@ -95,10 +95,16 @@ The current CUDA implementation is complete for the public executable scope
 (RHF/UHF with contracted Cartesian or real spherical s-p-d-f shells), but is
 not yet a component-unrolled/Rys or DF HF engine. Its SCF loop uses device DIIS
 and a device-tail-launched CUDA Graph.
+AO matrices up to 16 use the low-overhead serial device Jacobi kernel, sizes
+17--32 use cuSOLVER's batched Jacobi provider, and larger matrices use a
+Graph-native cooperative Jacobi kernel with one 64-thread block per physical
+or spin state. The large path reuses the plan's temporary matrix for
+eigenvectors, has no compile-time AO-count limit, and avoids provider routines
+that synchronize the host and invalidate stream capture above their small
+batched range.
 Each fixed-topology bucket owns and replays one packed arena and Graph, so warm
 executions do not recreate streams, provider handles, workspaces, or graph
-executables. AO buckets up to 16 functions use a specialized device Jacobi
-solver; larger buckets dispatch to cuSOLVER. Analytic forces are decomposed
+executables. Analytic forces are decomposed
 over coordinates and integral quartets rather than serializing one complete
 gradient behind each coordinate thread. Coulomb auxiliary states are stored in
 a four-dimensional simplex (1,820 states through f) rather than a dense 13^4

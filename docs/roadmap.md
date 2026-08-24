@@ -86,8 +86,11 @@ and performance measurements pass.
 ## M2: production RHF and UHF
 
 - Packed device matrices, device DIIS, a device-tail Graph, fixed-topology
-  replay, small-matrix/cuSOLVER dispatch, and strided-batched cuBLAS matrix
-  transforms for direct-J/K AO sizes are implemented for s-p-d-f shells.
+  replay, small-matrix/cuSOLVER/Graph-native Jacobi dispatch, and
+  strided-batched cuBLAS matrix transforms for direct-J/K AO sizes are
+  implemented for s-p-d-f shells. The cooperative Jacobi path removes the
+  provider capture failure above 32 AOs and is validated at 48 AOs with
+  water/def2-TZVP energy and forces.
 - UHF alpha/beta occupations, persistent and screened-direct J/K, combined
   spin DIIS, warm starts, ragged batches, and analytic gradients are
   implemented on CPU and CUDA for the Cartesian and real spherical s-p-d-f

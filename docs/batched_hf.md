@@ -9,7 +9,8 @@ shell-task and DF algorithms remain roadmap work.
 | --- | --- | --- |
 | Native ragged systems | `qce_batch` stores independent `System` objects and force buffers; no padded molecule tensor exists | Mixed He/H2/H3+/H4 C and Python tests assert exact per-item force shapes |
 | Batch scheduler | `FleetPlan` sorts by `(nbf, nocc, primitive_count)` and restores input order | Bucket IDs and independent-energy ordering are tested |
-| Compatible-work parallelism | CPU buckets use bounded native worker groups; CUDA buckets use batched integral/matrix kernels and cuSOLVER eigensolves with a device active mask | 64-system repeated stress test and CUDA same-bucket comparison |
+| Compatible-work parallelism | CPU buckets use bounded native worker groups; CUDA buckets use batched integral/matrix kernels and device eigensolves with an active mask | 64-system repeated stress test and CUDA same-bucket comparison |
+| Large eigensolves | Above the 32-AO cuSOLVER batched range, one cooperative Graph-native Jacobi block owns each state and reuses arena workspace | 48-AO water/def2-TZVP energy and forces match PySCF on an allocated RTX 5090 |
 | Per-system convergence | Every item owns status, iteration count, residuals, and convergence flag | H2 succeeds while H3+ intentionally fails with `max_iterations=2` |
 | Failure isolation | Invalid coordinates and nonconvergence do not abort structurally valid neighbors | Native and Python isolation tests |
 | Fixed-topology plans | Prepared systems own reusable CUDA arenas, solver state, and Graph executables; subsequent calls replace dynamic coordinates/warm guesses only | Coordinate-update energy is compared with an independent calculation |
@@ -24,7 +25,7 @@ shell-task and DF algorithms remain roadmap work.
 - `hybrid_cuda`: retained as an ABI value for older prototypes; current code
   does not report it.
 - `cuda`: overlap, core Hamiltonian, ERI, nuclear repulsion, SCF matrices,
-  cuSOLVER eigensolves, convergence state, final energy, and analytic forces
+  device eigensolves, convergence state, final energy, and analytic forces
   execute on the GPU for the supported RHF/UHF contracted Cartesian or real
   spherical s-p-d-f basis scope.
 

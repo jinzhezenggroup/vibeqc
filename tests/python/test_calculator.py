@@ -131,6 +131,36 @@ def test_cuda_spherical_def2_svp_water_matches_pyscf():
     assert np.allclose(result.forces, expected_forces, atol=3.0e-8)
 
 
+def test_cuda_def2_tzvp_water_uses_graph_native_eigensolver():
+    """Validate the capture-safe eigensolver above cuSOLVER's batched range."""
+
+    atoms = [
+        ("O", (0.0, 0.0, 0.0)),
+        ("H", (0.0, -1.43233673, 1.10715266)),
+        ("H", (0.0, 1.43233673, 1.10715266)),
+    ]
+    try:
+        result = Calculator(
+            basis="def2-tzvp",
+            device="cuda",
+            energy_tolerance=1.0e-12,
+            density_tolerance=1.0e-10,
+        ).singlepoint(atoms)
+    except RuntimeError as error:
+        pytest.skip(f"CUDA device unavailable: {error}")
+
+    expected_forces = np.array(
+        [
+            [0.0, 0.0, 0.024987059842175086],
+            [0.0, 0.012545806964672668, -0.012493529921093316],
+            [0.0, -0.012545806964674444, -0.012493529921094648],
+        ]
+    )
+    assert result.executed_backend == "cuda"
+    assert result.energy == pytest.approx(-76.0594049849294, abs=3.0e-9)
+    assert np.allclose(result.forces, expected_forces, atol=3.0e-8)
+
+
 def test_cuda_spherical_uhf_doublet_matches_pyscf():
     """Exercise public CUDA UHF with a multi-term real-spherical d shell."""
 
