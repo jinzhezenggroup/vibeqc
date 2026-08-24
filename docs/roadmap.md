@@ -40,8 +40,10 @@ and performance measurements pass.
   and prefix offsets for every total angular order from 0 through 12. Device
   compaction writes screened tiles directly into those partitions, and direct
   RHF/UHF Fock and force launch separately compiled total-order kernels so
-  lower-order tasks no longer inherit the ffff stack footprint. Exact shell
-  class generation and allocated-GPU regression/performance validation remain.
+  lower-order tasks no longer inherit the ffff stack footprint. Clean RTX 5090
+  artifacts validate energy, forces, and homogeneous-batch throughput for the
+  exact `sdf18-direct` and Cartesian water/def2-SVP cases. Exact shell-class
+  generation and broader allocated-GPU regression/performance gates remain.
 - Compare random values and derivatives against libcint/PySCF before enabling
   each angular-momentum quartet.
 - Bundled, reproducible STO-3G/def2-SVP/def2-TZVP Cartesian basis packs for
@@ -83,13 +85,17 @@ and performance measurements pass.
 - Stream-ordered CUDA memory-pool allocation, exact device shell/AO-tile
   compaction, and reproducible benchmark publication ledgers are implemented.
   Small matrices retain the low-overhead native product kernel, and provider or
-  Graph-capture failures retry once through that path. Add allocated performance
+  Graph-capture failures retry once through that path. Clean RTX 5090 evidence
+  now shows 31.95x warm throughput for `sdf18-direct` batch 16 and 4.78x for
+  Cartesian water/def2-SVP batch 8 against sequential GPU4PySCF single-system
+  execution. Convert a broader workload matrix into allocated performance
   gates and tune the cuBLAS crossover from measured profiles.
 - Core/SAD guesses, robust DIIS recovery, level shift, convergence diagnostics,
   ROHF, broader convergence controls, and production UHF performance tuning.
-- Extend the existing cold/warm GPU4PySCF s/p microbenchmark to realistic
-  common basis sets after CUDA spherical consumers and generated shell-task
-  direct J/K are validated.
+- The cold/warm GPU4PySCF harness now includes Cartesian water/def2-SVP and
+  publishes raw homogeneous-batch samples. Extend it to standard spherical
+  named-basis workloads after CUDA spherical consumers and generated
+  shell-class direct J/K are validated.
 
 ## M3: density fitting and fleet mode
 

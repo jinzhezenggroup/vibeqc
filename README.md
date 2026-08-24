@@ -112,10 +112,11 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   terms use only the triangle, and direct buckets reuse it for Schwarz bounds
   and the direct scheduler. Ragged canonical shell-pair and shell-quartet
   topology plus shell-level Schwarz maxima are resident. Geometry-dependent
-  shell-quartet compaction is implemented fully on device and awaits allocated
-  GPU regression/performance validation. Generated quartet specialization,
-  CUDA spherical consumers, and DF J/K are still required before making
-  production performance claims.
+  shell-quartet compaction is implemented fully on device and has passed
+  allocated RTX 5090 energy/force and throughput validation for the exact
+  `sdf18-direct` and Cartesian water/def2-SVP batch workloads. Generated shell
+  classes, broader named-basis gates, CUDA spherical consumers, and DF J/K are
+  still required before making broad production performance claims.
 
 UHF uses the same memory policy: small buckets retain ERIs, while larger
 buckets build spin-resolved Fock matrices directly from O(N^2) Schwarz data.
@@ -147,16 +148,14 @@ from roughly 150 ms minimum to over 700 ms median across runs. These artificial
 cases verify execution regimes and startup behavior, not production UHF
 leadership.
 
-None of these cases establishes realistic basis-set leadership. GPU4PySCF
-already has mature higher-angular-momentum Rys kernels, screening, spherical
-basis support, and highly optimized shell-sorted direct J/K. QCE now switches
-larger AO buckets to an O(N^2)-memory screened direct path, but that path still
-lacks GPU4PySCF's generated Rys kernels, mature AO-level active-task
-compaction, CUDA spherical consumers, and standard spherical named-def2 GPU
-execution.
-No broad performance claim is valid until both engines run the same realistic
-molecules, basis, precision, convergence, and energy/gradient workload on the
-same allocated GPU.
+The single-system cases above do not establish broad realistic basis-set
+leadership. GPU4PySCF already has mature higher-angular-momentum Rys kernels,
+screening, spherical basis support, and highly optimized shell-sorted direct
+J/K. QCE now switches larger AO buckets to an O(N^2)-memory screened direct
+path with device-compacted angular-order partitions, but it still lacks
+generated shell-class kernels, CUDA spherical consumers, and standard
+spherical named-def2 GPU execution. Broad claims require more molecules,
+bases, batch shapes, and convergence regimes on the same allocated GPU.
 
 `benchmarks/compare_gpu4pyscf_batch.py` measures homogeneous fixed-topology
 batches at configurable sizes. QCE submits one native bucket; because
@@ -164,6 +163,17 @@ GPU4PySCF currently exposes a single-molecule SCF API, the harness retains one
 GPU object and warm density per system and executes them sequentially inside
 the same synchronized batch boundary. Reports must state this interface
 difference rather than presenting the result as two equivalent batch APIs.
+
+Two clean artifacts from commit `b042488` establish performance leadership for
+their exact homogeneous workloads on one RTX 5090. `sdf18-direct` at batch 16
+measured 78.346 ms for QCE versus 2503.287 ms for sequential GPU4PySCF
+(31.95x), with maximum energy/force differences of `7.59e-14`/`4.91e-14`.
+Cartesian water/def2-SVP at batch 8 measured 1536.982 ms versus 7340.873 ms
+(4.78x), with differences of `1.65e-12`/`5.36e-13`. See the raw
+[RTX 5090 benchmark artifacts](benchmarks/results/README.md) for samples,
+versions, device metadata, and reproduction commands. These results do not
+imply an equivalent native GPU4PySCF batch API or generalize beyond the named
+workloads.
 
 Pass `--output path/to/result.json` to any script in `benchmarks/` to retain
 raw timing samples together with the Git commit and dirty state, Python and
