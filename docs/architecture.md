@@ -25,11 +25,16 @@ canonical total-order-2 `(d s | s s)`, `(p p | s s)`, and `(p s | p s)`
 classes similarly retain only their at most four nonzero pair terms and form
 the reachable Coulomb derivatives directly from the first three Boys values.
 For forces, the kernel differentiates the pair coefficients and Gaussian
-decay explicitly for all four centers, while coordinate derivatives of the
-Coulomb term raise the sparse Cartesian derivative state by one. This shares
+decay explicitly for participating centers, while coordinate derivatives of
+the Coulomb term raise the sparse Cartesian derivative state by one. This shares
 the primitive quartet's Boys values, pair centers, decay, and prefactor across
 all centers without carrying a general forward-derivative scalar through the
-recurrence.
+recurrence. Total-order-3 force quartets use the same subset/Wick pair
+representation with a three-bit derivative state, evaluate each raised
+Coulomb derivative once per Cartesian axis, and reconstruct the fourth basis
+center from translational invariance. Orders four and above retain the general
+three-component forward scalar until their dedicated derivative recurrences
+land.
 Total-order-3 shell pairs generate their exact 1/2/4/8 terms as subsets of
 their angular quanta; quanta sharing one Cartesian axis add the required
 Gaussian pair contractions without allocating recurrence arrays. The quartet
@@ -132,12 +137,12 @@ that synchronize the host and invalidate stream capture above their small
 batched range.
 Each fixed-topology bucket owns and replays one packed arena and Graph, so warm
 executions do not recreate streams, provider handles, workspaces, or graph
-executables. Analytic forces are decomposed
-over coordinates and integral quartets rather than serializing one complete
-gradient behind each coordinate thread. The closed `ssss` and `psss` force
-paths compute all center derivatives from one shared set of Gaussian product
-and Boys values, then recover the final unique atom from translational
-invariance; higher orders retain the general three-component Dual path.
+executables. Analytic forces are decomposed over coordinates and integral
+quartets rather than serializing one complete gradient behind each coordinate
+thread. The dedicated force paths through total angular order three compute
+all center derivatives from one shared set of Gaussian product and Boys
+values, then recover omitted centers from translational invariance; higher
+orders retain the general three-component Dual path.
 Coulomb auxiliary states are stored in
 a four-dimensional simplex (1,820 states through f) rather than a dense 13^4
 thread-local array.
@@ -168,11 +173,14 @@ showed about 1.5e-14 Eh energy span and 1.4e-12 Eh/bohr maximum force span.
 The ERI force kernel additionally uses translational invariance: derivatives
 over all unique basis centers sum to zero, so it evaluates only `N-1` centers
 and restores the final center from the negative sum. This halves two-center
-and removes one third of three-center derivative work. Each evaluated center
-uses a force-only three-component forward scalar, seeding its Cartesian axes
-together and returning all three derivatives from one exact shell-class
-recurrence. This avoids repeating the geometry-independent ERI value path for
-x, y, and z while preserving the same screening and symmetry domain.
+and removes one third of three-center derivative work. Total angular orders
+zero through three use dedicated all-center derivative formulas; the
+order-three path also evaluates each raised Coulomb state once per axis and
+recovers its fourth basis center by translation. Remaining higher-order
+centers use a force-only three-component forward scalar, seeding its Cartesian
+axes together and returning all three derivatives from one exact shell-class
+recurrence. Both paths avoid repeating the geometry-independent ERI value
+work for x, y, and z while preserving the same screening and symmetry domain.
 Canonical AO-pair arrays remain resident for one-electron triangles and
 Schwarz bounds, following gpuxtb's immutable pair-metadata pattern. Each Fock
 build reduces the current density to shell-pair absolute maxima before task
