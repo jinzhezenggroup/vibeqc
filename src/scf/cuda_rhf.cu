@@ -1563,6 +1563,41 @@ __global__ void reduce_shell_pair_bounds_kernel(
   if (threadIdx.x == 0) shell_pair_bounds[shell_pair] = block_maxima[0];
 }
 
+__global__ void compact_active_shell_quartets_kernel(
+    DeviceBatch batch,
+    double screening_tolerance,
+    const double* shell_pair_bounds,
+    std::uint32_t* active_shell_quartet_count,
+    std::uint32_t* active_shell_quartets) {
+  const std::size_t shell_quartet =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (shell_quartet >=
+      static_cast<std::size_t>(batch.total_shell_quartets)) {
+    return;
+  }
+
+  const std::int32_t system = shell_quartet_system(batch, shell_quartet);
+  const std::size_t local_quartet = shell_quartet -
+      static_cast<std::size_t>(batch.system_shell_quartet_offsets[system]);
+  std::size_t first_pair_local = 0;
+  std::size_t second_pair_local = 0;
+  decode_lower_triangle(local_quartet, first_pair_local, second_pair_local);
+  const std::size_t pair_begin =
+      static_cast<std::size_t>(batch.system_shell_pair_offsets[system]);
+  const std::size_t first_pair = pair_begin + first_pair_local;
+  const std::size_t second_pair = pair_begin + second_pair_local;
+  if (shell_pair_bounds[first_pair] * shell_pair_bounds[second_pair] <
+      screening_tolerance) {
+    return;
+  }
+
+  // Compaction stays entirely on device. The resulting order need not be
+  // stable because direct Fock and force accumulation already use double
+  // atomics and promise numerical, rather than bitwise, reproducibility.
+  const std::uint32_t slot = atomicAdd(active_shell_quartet_count, 1U);
+  active_shell_quartets[slot] = static_cast<std::uint32_t>(shell_quartet);
+}
+
 __global__ void build_fock_direct_packed_kernel(
     DeviceBatch batch,
     double screening_tolerance,
@@ -1794,6 +1829,8 @@ template <bool Unrestricted>
 __global__ void build_fock_direct_quartet_kernel(
     DeviceBatch batch,
     std::uint32_t tiles_per_shell_quartet,
+    const std::uint32_t* active_shell_quartet_count,
+    const std::uint32_t* active_shell_quartets,
     double screening_tolerance,
     const double* schwarz_bounds,
     const double* shell_pair_bounds,
@@ -1804,13 +1841,14 @@ __global__ void build_fock_direct_quartet_kernel(
   // Every shell quartet owns the same topology-derived number of logical
   // tiles. Large d/f component products are striped across blocks; tiles past
   // a smaller quartet's AO count exit without any descriptor lookup.
-  const std::size_t shell_quartet =
+  const std::size_t active_quartet =
       logical_tile / tiles_per_shell_quartet;
   const std::size_t tile = logical_tile % tiles_per_shell_quartet;
-  if (shell_quartet >=
-      static_cast<std::size_t>(batch.total_shell_quartets)) {
+  if (active_quartet >=
+      static_cast<std::size_t>(*active_shell_quartet_count)) {
     return;
   }
+  const std::size_t shell_quartet = active_shell_quartets[active_quartet];
   const std::int32_t system = shell_quartet_system(batch, shell_quartet);
   if (active != nullptr && active[system] == 0) return;
   const std::size_t local_quartet = shell_quartet -
@@ -2697,6 +2735,8 @@ template <bool Unrestricted>
 __global__ void two_electron_force_quartet_kernel(
     DeviceBatch batch,
     std::uint32_t tiles_per_shell_quartet,
+    const std::uint32_t* active_shell_quartet_count,
+    const std::uint32_t* active_shell_quartets,
     double screening_tolerance,
     const double* schwarz_bounds,
     const double* shell_pair_bounds,
@@ -2706,13 +2746,14 @@ __global__ void two_electron_force_quartet_kernel(
   const std::size_t logical_tile = static_cast<std::size_t>(blockIdx.x);
   // Use the identical fixed tiling as direct Fock so energy and derivative
   // screening consume precisely the same unique AO-quartet domain.
-  const std::size_t shell_quartet =
+  const std::size_t active_quartet =
       logical_tile / tiles_per_shell_quartet;
   const std::size_t tile = logical_tile % tiles_per_shell_quartet;
-  if (shell_quartet >=
-      static_cast<std::size_t>(batch.total_shell_quartets)) {
+  if (active_quartet >=
+      static_cast<std::size_t>(*active_shell_quartet_count)) {
     return;
   }
+  const std::size_t shell_quartet = active_shell_quartets[active_quartet];
   const std::int32_t system = shell_quartet_system(batch, shell_quartet);
   if (active[system] == 0) return;
   const std::size_t local_quartet = shell_quartet -
@@ -2884,6 +2925,8 @@ struct ArenaLayout {
   std::size_t eri{};
   std::size_t schwarz_bounds{};
   std::size_t shell_pair_bounds{};
+  std::size_t active_shell_quartet_count{};
+  std::size_t active_shell_quartets{};
   std::size_t ao_pair_first{};
   std::size_t ao_pair_second{};
   std::size_t nuclear_repulsion{};
@@ -2934,6 +2977,7 @@ bool make_layout(std::size_t batch_size,
                  std::size_t atoms,
                  std::size_t shell_count,
                  std::size_t shell_pair_count,
+                 std::size_t shell_quartet_count,
                  std::size_t primitives,
                  std::size_t diis_history,
                  std::size_t spin_count,
@@ -3006,6 +3050,11 @@ bool make_layout(std::size_t batch_size,
                             made.schwarz_bounds) ||
       !append_array<double>(persistent_eri ? 0 : shell_pair_count, cursor,
                             made.shell_pair_bounds) ||
+      !append_array<std::uint32_t>(persistent_eri ? 0 : 1, cursor,
+                                   made.active_shell_quartet_count) ||
+      !append_array<std::uint32_t>(
+          persistent_eri ? 0 : shell_quartet_count, cursor,
+          made.active_shell_quartets) ||
       !append_array<std::int32_t>(pair_count, cursor,
                                   made.ao_pair_first) ||
       !append_array<std::int32_t>(pair_count, cursor,
@@ -3487,7 +3536,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   }
   if (first_setup) {
     if (!make_layout(batch_size, nbf, total_atoms, total_shells,
-                     total_shell_pairs,
+                     total_shell_pairs, total_shell_quartets,
                      host.primitive_exponents.size(), diis_history,
                      host.spin_count,
                      requested_persistent_eri,
@@ -3602,6 +3651,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       arena_pointer<double>(resources.arena_, layout.schwarz_bounds);
   auto shell_pair_bounds =
       arena_pointer<double>(resources.arena_, layout.shell_pair_bounds);
+  auto active_shell_quartet_count = arena_pointer<std::uint32_t>(
+      resources.arena_, layout.active_shell_quartet_count);
+  auto active_shell_quartets = arena_pointer<std::uint32_t>(
+      resources.arena_, layout.active_shell_quartets);
   auto ao_pair_first =
       arena_pointer<std::int32_t>(resources.arena_, layout.ao_pair_first);
   auto ao_pair_second =
@@ -3787,6 +3840,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           static_cast<unsigned>(launch_shell_quartet_tiles), threads, 0,
           resources.stream_>>>(
           device_batch, launch_tiles_per_shell_quartet,
+          active_shell_quartet_count, active_shell_quartets,
           options.screening_tolerance, schwarz_bounds,
           shell_pair_bounds, density_input, active, fock);
     } else if (unrestricted) {
@@ -3810,6 +3864,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           static_cast<unsigned>(launch_shell_quartet_tiles), threads, 0,
           resources.stream_>>>(
           device_batch, launch_tiles_per_shell_quartet,
+          active_shell_quartet_count, active_shell_quartets,
           options.screening_tolerance, schwarz_bounds,
           shell_pair_bounds, density_input, active, fock);
     } else {
@@ -3841,6 +3896,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           static_cast<unsigned>(total_shell_pairs), threads,
           threads * sizeof(double), resources.stream_>>>(
           device_batch, schwarz_bounds, shell_pair_bounds);
+      cuda_error = cudaMemsetAsync(active_shell_quartet_count, 0,
+                                   sizeof(std::uint32_t), resources.stream_);
+      if (cuda_error != cudaSuccess) {
+        fill_global_failure(outputs, cuda_status(cuda_error));
+        return outputs;
+      }
+      compact_active_shell_quartets_kernel<<<
+          blocks_for(total_shell_quartets), threads, 0, resources.stream_>>>(
+          device_batch, options.screening_tolerance, shell_pair_bounds,
+          active_shell_quartet_count, active_shell_quartets);
     }
   }
   build_nuclear_repulsion_kernel<<<blocks_for(batch_size), threads, 0,
@@ -4177,6 +4242,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         static_cast<unsigned>(launch_shell_quartet_tiles), threads, 0,
         resources.stream_>>>(
         device_batch, launch_tiles_per_shell_quartet,
+        active_shell_quartet_count, active_shell_quartets,
         options.screening_tolerance, schwarz_bounds,
         shell_pair_bounds, density, active, forces);
   } else if (unrestricted) {
@@ -4193,6 +4259,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         static_cast<unsigned>(launch_shell_quartet_tiles), threads, 0,
         resources.stream_>>>(
         device_batch, launch_tiles_per_shell_quartet,
+        active_shell_quartet_count, active_shell_quartets,
         options.screening_tolerance, schwarz_bounds,
         shell_pair_bounds, density, active, forces);
   } else {
