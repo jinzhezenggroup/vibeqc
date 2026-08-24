@@ -39,8 +39,9 @@ and performance measurements pass.
 - Bundled, reproducible STO-3G/def2-SVP/def2-TZVP Cartesian basis packs for
   H-Ar are generated from the pinned Basis Set Exchange revision. CPU
   real-spherical s-p-d-f transforms and analytic gradients are implemented and
-  validated against PySCF/libcint; CUDA spherical consumers remain before
-  standard named-basis GPU semantics are complete.
+  validated against PySCF/libcint. Sparse CUDA spherical AO consumers are now
+  implemented behind the public backend guard; allocated-GPU energy/force
+  validation remains before standard named-basis GPU semantics are complete.
 - Replace the generic quartet recurrence/scatter with generated shell-class
   kernels and a production active-task scheduler. Retain the present CPU code
   as an auditable oracle rather than a hidden fallback.
@@ -58,9 +59,10 @@ and performance measurements pass.
 - The full CUDA path currently covers the executable contracted Cartesian
   s-p-d-f scope. Device DIIS, device-tail Graph control, persistent plan arenas,
   Schwarz screening, and a memory-bounded direct J/K fallback are implemented;
-  symmetry-reduced direct s/p/d quartets are also implemented. Spherical
-  transforms, generated shell kernels, DF J/K, and active compaction remain
-  M1/M2 work and are not implied by the backend label.
+  symmetry-reduced direct s/p/d quartets are also implemented. Spherical AO
+  consumers remain publicly guarded pending allocated-GPU validation;
+  generated shell kernels, DF J/K, and finer active compaction remain M1/M2
+  work and are not implied by the backend label.
 
 ## M2: production RHF and UHF
 

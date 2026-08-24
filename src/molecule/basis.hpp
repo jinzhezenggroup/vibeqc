@@ -21,6 +21,9 @@ struct CartesianExpansionTerm {
 
 using AoExpansion = std::vector<CartesianExpansionTerm>;
 
+/** Maximum sparse Cartesian terms needed by any supported s-p-d-f AO. */
+inline constexpr std::size_t kMaximumAoExpansionTerms = 3;
+
 /** Number of Cartesian functions in a shell of angular momentum `l`. */
 [[nodiscard]] constexpr std::size_t cartesian_count(unsigned l) noexcept {
   return static_cast<std::size_t>((l + 1) * (l + 2) / 2);

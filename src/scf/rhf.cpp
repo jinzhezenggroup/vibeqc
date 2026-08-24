@@ -769,23 +769,22 @@ CudaRhfBasisLayoutStats inspect_rhf_cuda_basis_layout(
   if (systems.empty()) {
     throw std::invalid_argument("a CUDA RHF basis layout requires systems");
   }
-  if (systems.front().basis_representation != QCE_BASIS_CARTESIAN) {
-    throw std::invalid_argument(
-        "the CUDA RHF basis layout currently requires Cartesian AOs");
-  }
   const std::size_t nbf = molecule::ao_count(systems.front());
   std::size_t shell_count = 0;
   std::size_t shell_pair_count = 0;
+  std::size_t shell_quartet_count = 0;
   std::size_t unique_primitives = 0;
   std::size_t expanded_primitives = 0;
   for (const core::System& system : systems) {
-    if (system.basis_representation != QCE_BASIS_CARTESIAN ||
-        molecule::ao_count(system) != nbf) {
+    if (molecule::ao_count(system) != nbf) {
       throw std::invalid_argument("systems do not belong to one CUDA RHF bucket");
     }
     shell_count += system.shells.size();
-    shell_pair_count +=
+    const std::size_t system_shell_pairs =
         system.shells.size() * (system.shells.size() + 1) / 2;
+    shell_pair_count += system_shell_pairs;
+    shell_quartet_count +=
+        system_shell_pairs * (system_shell_pairs + 1) / 2;
     for (const core::Shell& shell : system.shells) {
       unique_primitives += shell.primitives.size();
       expanded_primitives += molecule::cartesian_count(shell.angular_momentum) *
@@ -797,13 +796,15 @@ CudaRhfBasisLayoutStats inspect_rhf_cuda_basis_layout(
       (systems.size() + 1) * sizeof(std::int64_t) +
       shell_count * (sizeof(std::int32_t) + sizeof(std::uint8_t)) +
       2 * (shell_count + 1) * sizeof(std::int64_t) +
-      (systems.size() + 1) * sizeof(std::int64_t) +
+      2 * (systems.size() + 1) * sizeof(std::int64_t) +
       shell_pair_count * 3 * sizeof(std::int32_t) +
-      ao_count * (sizeof(std::int32_t) + 3 * sizeof(std::uint8_t) +
-                  sizeof(double)) +
+      ao_count *
+          (sizeof(std::int32_t) + sizeof(std::uint8_t) +
+           3 * molecule::kMaximumAoExpansionTerms * sizeof(std::uint8_t) +
+           molecule::kMaximumAoExpansionTerms * sizeof(double)) +
       unique_primitives * 2 * sizeof(double);
-  return {systems.size(), shell_count, shell_pair_count, ao_count,
-          unique_primitives,
+  return {systems.size(), shell_count, shell_pair_count, shell_quartet_count,
+          ao_count, unique_primitives,
           expanded_primitives, device_basis_bytes};
 }
 

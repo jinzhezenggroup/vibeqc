@@ -23,6 +23,8 @@ namespace {
 
 constexpr double kPi = 3.141592653589793238462643383279502884;
 constexpr int kMaximumAngularMomentum = 3;
+constexpr std::size_t kMaximumAoExpansionTerms =
+    molecule::kMaximumAoExpansionTerms;
 constexpr int kHermiteIDimension = kMaximumAngularMomentum + 1;
 constexpr int kHermiteJDimension = kMaximumAngularMomentum + 3;
 constexpr int kHermiteTDimension = 2 * kMaximumAngularMomentum + 4;
@@ -151,12 +153,13 @@ struct DeviceBatch {
   const std::int32_t* shell_pair_systems;
   const std::int32_t* shell_pair_first;
   const std::int32_t* shell_pair_second;
-  // Flattened Cartesian AOs refer back to unique shell storage. This avoids
-  // duplicating a contracted primitive list for every d/f component while
-  // preserving the CCA component order used by dense SCF matrices.
+  // Every target AO refers back to one physical shell and carries up to three
+  // normalized Cartesian expansion terms. Cartesian AOs use one term; real
+  // spherical d/f AOs use the sparse solid-harmonic combinations.
   const std::int32_t* ao_shells;
-  const std::uint8_t* ao_angular;
-  const double* ao_normalization;
+  const std::uint8_t* ao_term_counts;
+  const std::uint8_t* ao_term_angular;
+  const double* ao_term_coefficients;
   const double* primitive_exponents;
   const double* primitive_coefficients;
   const std::int32_t* occupied;
@@ -377,10 +380,20 @@ __device__ bool is_s_function(const Angular& angular) {
   return angular_total(angular) == 0;
 }
 
-__device__ Angular ao_angular(const DeviceBatch& batch, std::int64_t ao) {
-  const std::int64_t offset = ao * 3;
-  return {batch.ao_angular[offset], batch.ao_angular[offset + 1],
-          batch.ao_angular[offset + 2]};
+__device__ Angular ao_angular(const DeviceBatch& batch,
+                              std::int64_t ao,
+                              unsigned term = 0) {
+  const std::size_t offset =
+      (static_cast<std::size_t>(ao) * kMaximumAoExpansionTerms + term) * 3;
+  return {batch.ao_term_angular[offset], batch.ao_term_angular[offset + 1],
+          batch.ao_term_angular[offset + 2]};
+}
+
+__device__ double ao_term_coefficient(const DeviceBatch& batch,
+                                      std::int64_t ao,
+                                      unsigned term) {
+  return batch.ao_term_coefficients[
+      static_cast<std::size_t>(ao) * kMaximumAoExpansionTerms + term];
 }
 
 template <typename Scalar>
@@ -773,25 +786,46 @@ __device__ Scalar contracted_overlap(const DeviceBatch& batch,
       batch, batch.shell_atoms[shell_i], derivative_coordinate);
   const Vec3<Scalar> second = atom_position<Scalar>(
       batch, batch.shell_atoms[shell_j], derivative_coordinate);
-  const Angular angular_first = ao_angular(batch, ao_i);
-  const Angular angular_second = ao_angular(batch, ao_j);
-  const bool all_s = is_s_function(angular_first) && is_s_function(angular_second);
+  const unsigned first_terms = batch.ao_term_counts[ao_i];
+  const unsigned second_terms = batch.ao_term_counts[ao_j];
+  const Angular angular_first = ao_angular(batch, ao_i, 0);
+  const Angular angular_second = ao_angular(batch, ao_j, 0);
+  const bool all_s = first_terms == 1 && second_terms == 1 &&
+                     is_s_function(angular_first) &&
+                     is_s_function(angular_second);
   Scalar result = scalar<Scalar>(0.0);
   for (std::int64_t a = batch.shell_primitive_offsets[shell_i];
        a < batch.shell_primitive_offsets[shell_i + 1]; ++a) {
     for (std::int64_t b = batch.shell_primitive_offsets[shell_j];
          b < batch.shell_primitive_offsets[shell_j + 1]; ++b) {
-      const Scalar primitive = all_s
-          ? primitive_overlap(batch.primitive_exponents[a], first,
-                              batch.primitive_exponents[b], second)
-          : primitive_overlap_cartesian(
-                batch.primitive_exponents[a], first, angular_first,
-                batch.primitive_exponents[b], second, angular_second);
-      result = result + batch.primitive_coefficients[a] *
-                            batch.primitive_coefficients[b] * primitive;
+      const double primitive_weight = batch.primitive_coefficients[a] *
+                                      batch.primitive_coefficients[b];
+      if (all_s) {
+        result = result + primitive_weight *
+            ao_term_coefficient(batch, ao_i, 0) *
+            ao_term_coefficient(batch, ao_j, 0) *
+            primitive_overlap(batch.primitive_exponents[a], first,
+                              batch.primitive_exponents[b], second);
+      } else {
+        for (unsigned first_term = 0; first_term < first_terms; ++first_term) {
+          const Angular first_angular =
+              ao_angular(batch, ao_i, first_term);
+          const double first_coefficient =
+              ao_term_coefficient(batch, ao_i, first_term);
+          for (unsigned second_term = 0; second_term < second_terms;
+               ++second_term) {
+            result = result + primitive_weight * first_coefficient *
+                ao_term_coefficient(batch, ao_j, second_term) *
+                primitive_overlap_cartesian(
+                    batch.primitive_exponents[a], first, first_angular,
+                    batch.primitive_exponents[b], second,
+                    ao_angular(batch, ao_j, second_term));
+          }
+        }
+      }
     }
   }
-  return batch.ao_normalization[ao_i] * batch.ao_normalization[ao_j] * result;
+  return result;
 }
 
 template <typename Scalar>
@@ -808,9 +842,13 @@ __device__ Scalar contracted_hcore(const DeviceBatch& batch,
       batch, batch.shell_atoms[shell_i], derivative_coordinate);
   const Vec3<Scalar> second = atom_position<Scalar>(
       batch, batch.shell_atoms[shell_j], derivative_coordinate);
-  const Angular angular_first = ao_angular(batch, ao_i);
-  const Angular angular_second = ao_angular(batch, ao_j);
-  const bool all_s = is_s_function(angular_first) && is_s_function(angular_second);
+  const unsigned first_terms = batch.ao_term_counts[ao_i];
+  const unsigned second_terms = batch.ao_term_counts[ao_j];
+  const Angular angular_first = ao_angular(batch, ao_i, 0);
+  const Angular angular_second = ao_angular(batch, ao_j, 0);
+  const bool all_s = first_terms == 1 && second_terms == 1 &&
+                     is_s_function(angular_first) &&
+                     is_s_function(angular_second);
   Scalar result = scalar<Scalar>(0.0);
   for (std::int64_t a = batch.shell_primitive_offsets[shell_i];
        a < batch.shell_primitive_offsets[shell_i + 1]; ++a) {
@@ -819,25 +857,38 @@ __device__ Scalar contracted_hcore(const DeviceBatch& batch,
       const double weight = batch.primitive_coefficients[a] *
                             batch.primitive_coefficients[b];
       if (all_s) {
-        result = result + weight *
+        result = result + weight * ao_term_coefficient(batch, ao_i, 0) *
+            ao_term_coefficient(batch, ao_j, 0) *
             (primitive_kinetic(batch.primitive_exponents[a], first,
                                batch.primitive_exponents[b], second) +
              primitive_nuclear_attraction(
                  batch, system, batch.primitive_exponents[a], first,
                  batch.primitive_exponents[b], second, derivative_coordinate));
       } else {
-        result = result + weight *
-            (primitive_kinetic_cartesian(
-                 batch.primitive_exponents[a], first, angular_first,
-                 batch.primitive_exponents[b], second, angular_second) +
-             primitive_nuclear_attraction_cartesian(
-                 batch, system, batch.primitive_exponents[a], first,
-                 angular_first, batch.primitive_exponents[b], second,
-                 angular_second, derivative_coordinate));
+        for (unsigned first_term = 0; first_term < first_terms; ++first_term) {
+          const Angular first_angular =
+              ao_angular(batch, ao_i, first_term);
+          const double first_coefficient =
+              ao_term_coefficient(batch, ao_i, first_term);
+          for (unsigned second_term = 0; second_term < second_terms;
+               ++second_term) {
+            const Angular second_angular =
+                ao_angular(batch, ao_j, second_term);
+            result = result + weight * first_coefficient *
+                ao_term_coefficient(batch, ao_j, second_term) *
+                (primitive_kinetic_cartesian(
+                     batch.primitive_exponents[a], first, first_angular,
+                     batch.primitive_exponents[b], second, second_angular) +
+                 primitive_nuclear_attraction_cartesian(
+                     batch, system, batch.primitive_exponents[a], first,
+                     first_angular, batch.primitive_exponents[b], second,
+                     second_angular, derivative_coordinate));
+          }
+        }
       }
     }
   }
-  return batch.ao_normalization[ao_i] * batch.ao_normalization[ao_j] * result;
+  return result;
 }
 
 template <typename Scalar>
@@ -865,11 +916,17 @@ __device__ Scalar contracted_eri(const DeviceBatch& batch,
       batch, batch.shell_atoms[shell_k], derivative_coordinate);
   const Vec3<Scalar> fourth = atom_position<Scalar>(
       batch, batch.shell_atoms[shell_l], derivative_coordinate);
-  const Angular angular_first = ao_angular(batch, ao_i);
-  const Angular angular_second = ao_angular(batch, ao_j);
-  const Angular angular_third = ao_angular(batch, ao_k);
-  const Angular angular_fourth = ao_angular(batch, ao_l);
-  const bool all_s = is_s_function(angular_first) &&
+  const unsigned first_terms = batch.ao_term_counts[ao_i];
+  const unsigned second_terms = batch.ao_term_counts[ao_j];
+  const unsigned third_terms = batch.ao_term_counts[ao_k];
+  const unsigned fourth_terms = batch.ao_term_counts[ao_l];
+  const Angular angular_first = ao_angular(batch, ao_i, 0);
+  const Angular angular_second = ao_angular(batch, ao_j, 0);
+  const Angular angular_third = ao_angular(batch, ao_k, 0);
+  const Angular angular_fourth = ao_angular(batch, ao_l, 0);
+  const bool all_s = first_terms == 1 && second_terms == 1 &&
+                     third_terms == 1 && fourth_terms == 1 &&
+                     is_s_function(angular_first) &&
                      is_s_function(angular_second) &&
                      is_s_function(angular_third) &&
                      is_s_function(angular_fourth);
@@ -886,23 +943,57 @@ __device__ Scalar contracted_eri(const DeviceBatch& batch,
                                 batch.primitive_coefficients[b] *
                                 batch.primitive_coefficients[c] *
                                 batch.primitive_coefficients[d];
-          const Scalar primitive = all_s
-              ? primitive_eri(batch.primitive_exponents[a], first,
+          if (all_s) {
+            result = result + weight *
+                ao_term_coefficient(batch, ao_i, 0) *
+                ao_term_coefficient(batch, ao_j, 0) *
+                ao_term_coefficient(batch, ao_k, 0) *
+                ao_term_coefficient(batch, ao_l, 0) *
+                primitive_eri(batch.primitive_exponents[a], first,
                               batch.primitive_exponents[b], second,
                               batch.primitive_exponents[c], third,
-                              batch.primitive_exponents[d], fourth)
-              : primitive_eri_cartesian(
-                    batch.primitive_exponents[a], first, angular_first,
-                    batch.primitive_exponents[b], second, angular_second,
-                    batch.primitive_exponents[c], third, angular_third,
-                    batch.primitive_exponents[d], fourth, angular_fourth);
-          result = result + weight * primitive;
+                              batch.primitive_exponents[d], fourth);
+          } else {
+            for (unsigned first_term = 0; first_term < first_terms;
+                 ++first_term) {
+              const Angular first_angular =
+                  ao_angular(batch, ao_i, first_term);
+              const double first_coefficient =
+                  ao_term_coefficient(batch, ao_i, first_term);
+              for (unsigned second_term = 0; second_term < second_terms;
+                   ++second_term) {
+                const Angular second_angular =
+                    ao_angular(batch, ao_j, second_term);
+                const double second_coefficient =
+                    ao_term_coefficient(batch, ao_j, second_term);
+                for (unsigned third_term = 0; third_term < third_terms;
+                     ++third_term) {
+                  const Angular third_angular =
+                      ao_angular(batch, ao_k, third_term);
+                  const double third_coefficient =
+                      ao_term_coefficient(batch, ao_k, third_term);
+                  for (unsigned fourth_term = 0; fourth_term < fourth_terms;
+                       ++fourth_term) {
+                    result = result + weight * first_coefficient *
+                        second_coefficient * third_coefficient *
+                        ao_term_coefficient(batch, ao_l, fourth_term) *
+                        primitive_eri_cartesian(
+                            batch.primitive_exponents[a], first,
+                            first_angular, batch.primitive_exponents[b],
+                            second, second_angular,
+                            batch.primitive_exponents[c], third,
+                            third_angular, batch.primitive_exponents[d],
+                            fourth, ao_angular(batch, ao_l, fourth_term));
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
   }
-  return batch.ao_normalization[ao_i] * batch.ao_normalization[ao_j] *
-         batch.ao_normalization[ao_k] * batch.ao_normalization[ao_l] * result;
+  return result;
 }
 
 __global__ void build_one_electron_integrals_kernel(DeviceBatch batch,
@@ -2913,8 +3004,9 @@ struct ArenaLayout {
   std::size_t shell_pair_first{};
   std::size_t shell_pair_second{};
   std::size_t ao_shells{};
-  std::size_t ao_angular{};
-  std::size_t ao_normalization{};
+  std::size_t ao_term_counts{};
+  std::size_t ao_term_angular{};
+  std::size_t ao_term_coefficients{};
   std::size_t primitive_exponents{};
   std::size_t primitive_coefficients{};
   std::size_t occupied{};
@@ -3035,8 +3127,12 @@ bool make_layout(std::size_t batch_size,
       !append_array<std::int32_t>(shell_pair_count, cursor,
                                   made.shell_pair_second) ||
       !append_array<std::int32_t>(aos, cursor, made.ao_shells) ||
-      !append_array<std::uint8_t>(aos * 3, cursor, made.ao_angular) ||
-      !append_array<double>(aos, cursor, made.ao_normalization) ||
+      !append_array<std::uint8_t>(aos, cursor, made.ao_term_counts) ||
+      !append_array<std::uint8_t>(
+          aos * kMaximumAoExpansionTerms * 3, cursor,
+          made.ao_term_angular) ||
+      !append_array<double>(aos * kMaximumAoExpansionTerms, cursor,
+                            made.ao_term_coefficients) ||
       !append_array<double>(primitives, cursor, made.primitive_exponents) ||
       !append_array<double>(primitives, cursor, made.primitive_coefficients) ||
       !append_array<std::int32_t>(batch_size * spin_count, cursor,
@@ -3124,8 +3220,9 @@ struct HostBatch {
   std::vector<std::int32_t> shell_pair_first;
   std::vector<std::int32_t> shell_pair_second;
   std::vector<std::int32_t> ao_shells;
-  std::vector<std::uint8_t> ao_angular;
-  std::vector<double> ao_normalization;
+  std::vector<std::uint8_t> ao_term_counts;
+  std::vector<std::uint8_t> ao_term_angular;
+  std::vector<double> ao_term_coefficients;
   std::vector<double> primitive_exponents;
   std::vector<double> primitive_coefficients;
   std::vector<std::int32_t> occupied;
@@ -3138,7 +3235,6 @@ bool pack_host_batch(const std::vector<core::System>& systems,
                      HostBatch& host,
                      bool unrestricted = false) {
   if (systems.empty() || systems.size() != initial_densities.size()) return false;
-  if (systems.front().basis_representation != QCE_BASIS_CARTESIAN) return false;
   host.nbf = molecule::ao_count(systems.front());
   host.spin_count = unrestricted ? 2 : 1;
   if (host.nbf == 0 || host.nbf > static_cast<std::size_t>(std::numeric_limits<int>::max()) ||
@@ -3154,8 +3250,7 @@ bool pack_host_batch(const std::vector<core::System>& systems,
       systems.size() * host.spin_count * matrix_size, 0.0);
   for (std::size_t system_index = 0; system_index < systems.size(); ++system_index) {
     const core::System& system = systems[system_index];
-    if (system.basis_representation != QCE_BASIS_CARTESIAN ||
-        molecule::ao_count(system) != host.nbf || system.electron_count <= 0) {
+    if (molecule::ao_count(system) != host.nbf || system.electron_count <= 0) {
       return false;
     }
     const int spin_excess = static_cast<int>(system.multiplicity) - 1;
@@ -3194,14 +3289,35 @@ bool pack_host_batch(const std::vector<core::System>& systems,
       }
       host.shell_primitive_offsets.push_back(
           static_cast<std::int64_t>(host.primitive_exponents.size()));
-      for (const molecule::CartesianComponent& component :
-           molecule::cartesian_components(shell.angular_momentum)) {
+      for (const molecule::AoExpansion& expansion : molecule::ao_expansions(
+               shell.angular_momentum, system.basis_representation)) {
+        if (expansion.empty() ||
+            expansion.size() > kMaximumAoExpansionTerms) {
+          return false;
+        }
         host.ao_shells.push_back(shell_index);
-        host.ao_angular.push_back(static_cast<std::uint8_t>(component[0]));
-        host.ao_angular.push_back(static_cast<std::uint8_t>(component[1]));
-        host.ao_angular.push_back(static_cast<std::uint8_t>(component[2]));
-        host.ao_normalization.push_back(
-            molecule::cartesian_component_normalization(component));
+        host.ao_term_counts.push_back(
+            static_cast<std::uint8_t>(expansion.size()));
+        for (std::size_t term_index = 0;
+             term_index < kMaximumAoExpansionTerms; ++term_index) {
+          if (term_index < expansion.size()) {
+            const molecule::CartesianExpansionTerm& term =
+                expansion[term_index];
+            host.ao_term_angular.push_back(
+                static_cast<std::uint8_t>(term.component[0]));
+            host.ao_term_angular.push_back(
+                static_cast<std::uint8_t>(term.component[1]));
+            host.ao_term_angular.push_back(
+                static_cast<std::uint8_t>(term.component[2]));
+            host.ao_term_coefficients.push_back(
+                term.coefficient *
+                molecule::cartesian_component_normalization(term.component));
+          } else {
+            host.ao_term_angular.insert(
+                host.ao_term_angular.end(), {0, 0, 0});
+            host.ao_term_coefficients.push_back(0.0);
+          }
+        }
       }
       host.shell_ao_offsets.push_back(
           static_cast<std::int64_t>(host.ao_shells.size()));
@@ -3388,8 +3504,9 @@ bool same_topology(const HostBatch& first, const HostBatch& second) {
          first.shell_pair_first == second.shell_pair_first &&
          first.shell_pair_second == second.shell_pair_second &&
          first.ao_shells == second.ao_shells &&
-         first.ao_angular == second.ao_angular &&
-         first.ao_normalization == second.ao_normalization &&
+         first.ao_term_counts == second.ao_term_counts &&
+         first.ao_term_angular == second.ao_term_angular &&
+         first.ao_term_coefficients == second.ao_term_coefficients &&
          first.primitive_exponents == second.primitive_exponents &&
          first.primitive_coefficients == second.primitive_coefficients &&
          first.occupied == second.occupied;
@@ -3644,10 +3761,12 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       resources.arena_, layout.shell_pair_second);
   auto ao_shells =
       arena_pointer<std::int32_t>(resources.arena_, layout.ao_shells);
-  auto ao_angular =
-      arena_pointer<std::uint8_t>(resources.arena_, layout.ao_angular);
-  auto ao_normalization =
-      arena_pointer<double>(resources.arena_, layout.ao_normalization);
+  auto ao_term_counts =
+      arena_pointer<std::uint8_t>(resources.arena_, layout.ao_term_counts);
+  auto ao_term_angular =
+      arena_pointer<std::uint8_t>(resources.arena_, layout.ao_term_angular);
+  auto ao_term_coefficients =
+      arena_pointer<double>(resources.arena_, layout.ao_term_coefficients);
   auto primitive_exponents =
       arena_pointer<double>(resources.arena_, layout.primitive_exponents);
   auto primitive_coefficients =
@@ -3761,9 +3880,14 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         host.shell_pair_second.size() * sizeof(std::int32_t)}},
       {host.ao_shells.data(),
        {ao_shells, host.ao_shells.size() * sizeof(std::int32_t)}},
-      {host.ao_angular.data(), {ao_angular, host.ao_angular.size() * sizeof(std::uint8_t)}},
-      {host.ao_normalization.data(),
-       {ao_normalization, host.ao_normalization.size() * sizeof(double)}},
+      {host.ao_term_counts.data(),
+       {ao_term_counts, host.ao_term_counts.size() * sizeof(std::uint8_t)}},
+      {host.ao_term_angular.data(),
+       {ao_term_angular,
+        host.ao_term_angular.size() * sizeof(std::uint8_t)}},
+      {host.ao_term_coefficients.data(),
+       {ao_term_coefficients,
+        host.ao_term_coefficients.size() * sizeof(double)}},
       {host.primitive_exponents.data(), {primitive_exponents, host.primitive_exponents.size() * sizeof(double)}},
       {host.primitive_coefficients.data(), {primitive_coefficients, host.primitive_coefficients.size() * sizeof(double)}},
       {host.occupied.data(), {occupied, host.occupied.size() * sizeof(std::int32_t)}},
@@ -3809,7 +3933,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       shell_primitive_offsets, system_shell_pair_offsets,
       system_shell_quartet_offsets,
       shell_pair_systems, shell_pair_first, shell_pair_second, ao_shells,
-      ao_angular, ao_normalization, primitive_exponents,
+      ao_term_counts, ao_term_angular, ao_term_coefficients,
+      primitive_exponents,
       primitive_coefficients, occupied};
 
   if (first_setup && use_cusolver) {
@@ -4383,8 +4508,9 @@ CudaRhfBasisLayoutStats inspect_rhf_cuda_basis_layout(
       host.shell_pair_first.size() * sizeof(std::int32_t) +
       host.shell_pair_second.size() * sizeof(std::int32_t) +
       host.ao_shells.size() * sizeof(std::int32_t) +
-      host.ao_angular.size() * sizeof(std::uint8_t) +
-      host.ao_normalization.size() * sizeof(double) +
+      host.ao_term_counts.size() * sizeof(std::uint8_t) +
+      host.ao_term_angular.size() * sizeof(std::uint8_t) +
+      host.ao_term_coefficients.size() * sizeof(double) +
       host.primitive_exponents.size() * sizeof(double) +
       host.primitive_coefficients.size() * sizeof(double);
   return {

@@ -89,7 +89,7 @@ int main() {
             "CUDA basis layout duplicated shell primitives");
     require(layout.expanded_primitive_references == 8,
             "expanded primitive diagnostic has the wrong Cartesian count");
-    require(layout.device_basis_bytes == 452,
+    require(layout.device_basis_bytes == 636,
             "CUDA basis topology payload changed unexpectedly");
     const qce::scf::CudaRhfBasisLayoutStats sdf_layout =
         qce::scf::inspect_rhf_cuda_basis_layout({helium_hydrogen_sdf()});
@@ -101,8 +101,21 @@ int main() {
     require(sdf_layout.unique_primitive_count == 4 &&
                 sdf_layout.expanded_primitive_references == 18,
             "s/d/f primitive storage was expanded per Cartesian component");
-    require(sdf_layout.device_basis_bytes == 602,
+    require(sdf_layout.device_basis_bytes == 1016,
             "s/d/f CUDA basis topology payload changed unexpectedly");
+    qce::core::System spherical_sdf = helium_hydrogen_sdf();
+    spherical_sdf.basis_representation = QCE_BASIS_SPHERICAL;
+    const qce::scf::CudaRhfBasisLayoutStats spherical_layout =
+        qce::scf::inspect_rhf_cuda_basis_layout({spherical_sdf});
+    require(spherical_layout.shell_count == 4 &&
+                spherical_layout.shell_pair_count == 10 &&
+                spherical_layout.shell_quartet_count == 55 &&
+                spherical_layout.ao_count == 14,
+            "spherical s/d/f CUDA shell-to-AO topology is inconsistent");
+    require(spherical_layout.unique_primitive_count == 4 &&
+                spherical_layout.expanded_primitive_references == 18 &&
+                spherical_layout.device_basis_bytes == 864,
+            "spherical CUDA basis metadata is not compact and shell-owned");
     const qce::integrals::IntegralData integrals =
         qce::integrals::build_cartesian_integrals(system);
     require(integrals.nbf == 8, "integral engine reported the wrong AO count");
