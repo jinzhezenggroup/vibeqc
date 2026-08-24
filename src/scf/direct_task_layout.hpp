@@ -2,6 +2,7 @@
 #define QCE_SCF_DIRECT_TASK_LAYOUT_HPP
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -12,11 +13,20 @@ namespace qce::scf::detail {
 /** Threads assigned to one symmetry-unique direct-J/K AO-quartet tile. */
 inline constexpr std::size_t kDirectQuartetThreads = 256;
 
+/** Total shell angular orders from ssss (0) through ffff (12). */
+inline constexpr std::size_t kDirectQuartetAngularOrderCount = 13;
+inline constexpr std::uint8_t kDirectQuartetMaximumShellAngular = 3;
+
 /** Fixed-topology capacity required by geometry-dependent tile compaction. */
 struct DirectQuartetTaskLayout {
   std::size_t shell_quartet_count{};
   // Sum of ceil(unique AO quartets / threads) for every shell quartet.
   std::size_t exact_tile_count{};
+  // Fixed topology partitions used by angular-specialized CUDA consumers.
+  std::array<std::size_t, kDirectQuartetAngularOrderCount>
+      angular_order_tile_counts{};
+  std::array<std::size_t, kDirectQuartetAngularOrderCount + 1>
+      angular_order_tile_offsets{};
   // Previous padding multiplier derived from max(shell-pair AOs)^2.
   std::size_t maximum_tiles_per_shell_quartet{};
   std::size_t uniform_tile_count{};
@@ -50,11 +60,14 @@ inline bool checked_task_multiply(std::size_t first,
  */
 inline bool make_direct_quartet_task_layout(
     const std::vector<std::int64_t>& shell_ao_offsets,
+    const std::vector<std::uint8_t>& shell_angular,
     const std::vector<std::int64_t>& system_shell_pair_offsets,
     const std::vector<std::int32_t>& shell_pair_first,
     const std::vector<std::int32_t>& shell_pair_second,
     DirectQuartetTaskLayout& layout) {
-  if (shell_ao_offsets.empty() || system_shell_pair_offsets.empty() ||
+  if (shell_ao_offsets.empty() ||
+      shell_angular.size() != shell_ao_offsets.size() - 1 ||
+      system_shell_pair_offsets.empty() ||
       shell_pair_first.empty() ||
       shell_pair_first.size() != shell_pair_second.size() ||
       system_shell_pair_offsets.front() != 0 ||
@@ -65,6 +78,8 @@ inline bool make_direct_quartet_task_layout(
   }
 
   std::vector<std::size_t> shell_pair_ao_counts(shell_pair_first.size());
+  std::vector<std::size_t> shell_pair_angular_orders(
+      shell_pair_first.size());
   std::size_t maximum_shell_pair_ao_count = 0;
   for (std::size_t pair = 0; pair < shell_pair_first.size(); ++pair) {
     const std::int32_t first_shell = shell_pair_first[pair];
@@ -76,6 +91,14 @@ inline bool make_direct_quartet_task_layout(
             shell_ao_offsets.size()) {
       return false;
     }
+    if (shell_angular[first_shell] > kDirectQuartetMaximumShellAngular ||
+        shell_angular[second_shell] > kDirectQuartetMaximumShellAngular) {
+      return false;
+    }
+    const std::size_t pair_angular_order =
+        static_cast<std::size_t>(shell_angular[first_shell]) +
+        static_cast<std::size_t>(shell_angular[second_shell]);
+    if (pair_angular_order >= kDirectQuartetAngularOrderCount) return false;
     const std::int64_t first_begin = shell_ao_offsets[first_shell];
     const std::int64_t first_end = shell_ao_offsets[first_shell + 1];
     const std::int64_t second_begin = shell_ao_offsets[second_shell];
@@ -102,6 +125,7 @@ inline bool make_direct_quartet_task_layout(
       return false;
     }
     shell_pair_ao_counts[pair] = ao_pair_count;
+    shell_pair_angular_orders[pair] = pair_angular_order;
     maximum_shell_pair_ao_count =
         std::max(maximum_shell_pair_ao_count, ao_pair_count);
   }
@@ -140,6 +164,15 @@ inline bool make_direct_quartet_task_layout(
           return false;
         }
         const std::size_t tile_count = rounded / kDirectQuartetThreads;
+        const std::size_t angular_order =
+            shell_pair_angular_orders[first_pair] +
+            shell_pair_angular_orders[second_pair];
+        if (angular_order >= kDirectQuartetAngularOrderCount ||
+            !checked_task_add(
+                made.angular_order_tile_counts[angular_order], tile_count,
+                made.angular_order_tile_counts[angular_order])) {
+          return false;
+        }
         if (!checked_task_add(made.shell_quartet_count, 1,
                               made.shell_quartet_count) ||
             !checked_task_add(made.exact_tile_count, tile_count,
@@ -148,6 +181,19 @@ inline bool make_direct_quartet_task_layout(
         }
       }
     }
+  }
+  for (std::size_t order = 0; order < kDirectQuartetAngularOrderCount;
+       ++order) {
+    made.angular_order_tile_offsets[order + 1] =
+        made.angular_order_tile_offsets[order];
+    if (!checked_task_add(made.angular_order_tile_offsets[order + 1],
+                          made.angular_order_tile_counts[order],
+                          made.angular_order_tile_offsets[order + 1])) {
+      return false;
+    }
+  }
+  if (made.angular_order_tile_offsets.back() != made.exact_tile_count) {
+    return false;
   }
   std::size_t maximum_uniform_ao_quartets = 0;
   std::size_t rounded_uniform_ao_quartets = 0;

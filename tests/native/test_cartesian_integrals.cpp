@@ -4,6 +4,7 @@
 #include "scf/direct_task_layout.hpp"
 #include "scf/rhf.hpp"
 
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -78,7 +79,10 @@ qce::core::System helium_hydrogen_sdf() {
 qce::scf::detail::DirectQuartetTaskLayout direct_task_layout(
     const qce::core::System& system) {
   std::vector<std::int64_t> shell_ao_offsets{0};
+  std::vector<std::uint8_t> shell_angular;
   for (const qce::core::Shell& shell : system.shells) {
+    shell_angular.push_back(
+        static_cast<std::uint8_t>(shell.angular_momentum));
     shell_ao_offsets.push_back(
         shell_ao_offsets.back() + static_cast<std::int64_t>(
             qce::molecule::ao_expansions(
@@ -96,8 +100,8 @@ qce::scf::detail::DirectQuartetTaskLayout direct_task_layout(
       0, static_cast<std::int64_t>(shell_pair_first.size())};
   qce::scf::detail::DirectQuartetTaskLayout layout;
   require(qce::scf::detail::make_direct_quartet_task_layout(
-              shell_ao_offsets, system_shell_pair_offsets, shell_pair_first,
-              shell_pair_second, layout),
+              shell_ao_offsets, shell_angular, system_shell_pair_offsets,
+              shell_pair_first, shell_pair_second, layout),
           "direct-J/K task layout rejected a valid shell topology");
   return layout;
 }
@@ -106,6 +110,20 @@ qce::scf::detail::DirectQuartetTaskLayout direct_task_layout(
 
 int main() {
   try {
+    {
+      const std::vector<std::int64_t> shell_ao_offsets{0, 1};
+      const std::vector<std::int64_t> system_pair_offsets{0, 1};
+      const std::vector<std::int32_t> shell_pair{0};
+      qce::scf::detail::DirectQuartetTaskLayout invalid_layout;
+      require(!qce::scf::detail::make_direct_quartet_task_layout(
+                  shell_ao_offsets, {4}, system_pair_offsets, shell_pair,
+                  shell_pair, invalid_layout),
+              "direct-J/K task layout accepted angular momentum above f");
+      require(!qce::scf::detail::make_direct_quartet_task_layout(
+                  shell_ao_offsets, {}, system_pair_offsets, shell_pair,
+                  shell_pair, invalid_layout),
+              "direct-J/K task layout accepted missing shell angular data");
+    }
     const qce::core::System system = hydrogen_sp_dimer();
     require(qce::molecule::ao_count(system) == 8,
             "s/p shell expansion produced the wrong AO count");
@@ -140,6 +158,13 @@ int main() {
                 sdf_tasks.maximum_tiles_per_shell_quartet == 15 &&
                 sdf_tasks.uniform_tile_count == 825,
             "Cartesian s/d/f direct-J/K tile compaction is inconsistent");
+    require(sdf_tasks.angular_order_tile_counts ==
+                std::array<std::size_t, 13>{6, 0, 6, 6, 6, 7, 8,
+                                            6, 11, 11, 13, 13, 7} &&
+                sdf_tasks.angular_order_tile_offsets ==
+                std::array<std::size_t, 14>{0, 6, 6, 12, 18, 24, 31,
+                                            39, 45, 56, 67, 80, 93, 100},
+            "Cartesian direct-J/K angular buckets are inconsistent");
     qce::core::System spherical_sdf = helium_hydrogen_sdf();
     spherical_sdf.basis_representation = QCE_BASIS_SPHERICAL;
     const qce::scf::CudaRhfBasisLayoutStats spherical_layout =
@@ -160,6 +185,13 @@ int main() {
                 spherical_tasks.maximum_tiles_per_shell_quartet == 5 &&
                 spherical_tasks.uniform_tile_count == 275,
             "spherical s/d/f direct-J/K tile compaction is inconsistent");
+    require(spherical_tasks.angular_order_tile_counts ==
+                std::array<std::size_t, 13>{6, 0, 6, 6, 6, 7, 8,
+                                            4, 5, 5, 5, 4, 2} &&
+                spherical_tasks.angular_order_tile_offsets ==
+                std::array<std::size_t, 14>{0, 6, 6, 12, 18, 24, 31,
+                                            39, 43, 48, 53, 58, 62, 64},
+            "spherical direct-J/K angular buckets are inconsistent");
     const qce::integrals::IntegralData integrals =
         qce::integrals::build_cartesian_integrals(system);
     require(integrals.nbf == 8, "integral engine reported the wrong AO count");

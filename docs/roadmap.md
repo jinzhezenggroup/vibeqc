@@ -36,8 +36,11 @@ and performance measurements pass.
   selects active shell quartets from those bounds without host readback and
   expands them into only their populated AO tiles. Direct Fock and force reuse
   those exact descriptors, avoiding global-maximum tile padding and repeated
-  system/pair decoding; GPU regression/performance validation remains. Consume
-  the compacted list next in generated angular-specialized quartet kernels.
+  system/pair decoding. Fixed topology now also records exact tile capacities
+  and prefix offsets for every total angular order from 0 through 12; device
+  compaction and consumers still need to use those partitions. GPU
+  regression/performance validation remains. Consume the partitioned lists
+  next in generated angular-specialized quartet kernels.
 - Compare random values and derivatives against libcint/PySCF before enabling
   each angular-momentum quartet.
 - Bundled, reproducible STO-3G/def2-SVP/def2-TZVP Cartesian basis packs for

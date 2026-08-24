@@ -3873,8 +3873,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   if (requested_quartet_direct) {
     detail::DirectQuartetTaskLayout direct_task_layout;
     if (!detail::make_direct_quartet_task_layout(
-            host.shell_ao_offsets, host.system_shell_pair_offsets,
-            host.shell_pair_first, host.shell_pair_second,
+            host.shell_ao_offsets, host.shell_angular,
+            host.system_shell_pair_offsets, host.shell_pair_first,
+            host.shell_pair_second,
             direct_task_layout) ||
         direct_task_layout.shell_quartet_count != total_shell_quartets) {
       fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
