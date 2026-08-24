@@ -123,7 +123,10 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   allocated RTX 5090 energy/force and throughput validation for the exact
   `sdf18-direct` and Cartesian water/def2-SVP batch workloads. Direct consumers
   dispatch 55 symmetry-reduced s/p/d/f shell classes inside 13 angular-order
-  Graph nodes, canonicalize ERI arguments by pair symmetry, and size Hermite
+  Graph nodes. Compact 256-quartet descriptors expand virtually into eight
+  one-warp subtiles, exposing independent blocks despite the recurrence
+  kernels' high register footprint without multiplying arena metadata.
+  Consumers canonicalize ERI arguments by pair symmetry and size Hermite
   workspaces from the exact shell pairs. Real-spherical direct buckets apply
   `C^T D C` before those Cartesian-source quartets and `C F C^T` afterwards,
   eliminating repeated sparse term products from Fock and force recurrences.

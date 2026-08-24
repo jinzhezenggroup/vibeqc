@@ -39,6 +39,9 @@ constexpr std::size_t kPersistentEriAoLimit = 16;
 // Below the persistent-ERI boundary, one lightweight kernel avoids cuBLAS
 // launch overhead. Production direct-J/K workloads use batched GEMM.
 constexpr std::size_t kCublasMatrixProductAoThreshold = 17;
+// Capture-safe scalar kernels are small or register-heavy and use one warp per
+// block. Direct quartets keep their separately documented virtual tiling.
+constexpr unsigned kCaptureSafeKernelThreads = 32;
 
 /** Geometry-dependent direct-J/K work emitted by shell-bound compaction. */
 struct ActiveShellQuartetTile {
@@ -2702,8 +2705,8 @@ __global__ void compact_active_shell_quartet_tiles_kernel(
       ? first_ao_pair_count * (first_ao_pair_count + 1) / 2
       : first_ao_pair_count * second_ao_pair_count;
   const std::uint32_t tile_count = static_cast<std::uint32_t>(
-      (ao_quartet_count + detail::kDirectQuartetThreads - 1) /
-      detail::kDirectQuartetThreads);
+      (ao_quartet_count + detail::kDirectQuartetTileSize - 1) /
+      detail::kDirectQuartetTileSize);
   const std::int32_t first_shell = batch.shell_pair_first[first_pair];
   const std::int32_t second_shell = batch.shell_pair_second[first_pair];
   const std::int32_t third_shell = batch.shell_pair_first[second_pair];
@@ -3126,11 +3129,15 @@ __global__ void build_fock_direct_quartet_kernel(
     const std::uint8_t* active,
     double* fock) {
   static_assert(AngularOrder < detail::kDirectQuartetAngularOrderCount);
-  const std::size_t active_tile = static_cast<std::size_t>(blockIdx.x);
+  const std::size_t active_subtile = static_cast<std::size_t>(blockIdx.x);
+  const std::size_t active_tile =
+      active_subtile / detail::kDirectQuartetSubtilesPerTile;
   if (active_tile >=
       static_cast<std::size_t>(*active_shell_quartet_tile_count)) {
     return;
   }
+  const std::size_t subtile =
+      active_subtile % detail::kDirectQuartetSubtilesPerTile;
   const ActiveShellQuartetTile task =
       active_shell_quartet_tiles[active_tile];
   const std::size_t first_pair = task.first_pair;
@@ -3161,7 +3168,8 @@ __global__ void build_fock_direct_quartet_kernel(
       ? first_ao_pair_count * (first_ao_pair_count + 1) / 2
       : first_ao_pair_count * second_ao_pair_count;
   const std::size_t ordinal =
-      static_cast<std::size_t>(task.tile) * blockDim.x + threadIdx.x;
+      static_cast<std::size_t>(task.tile) * detail::kDirectQuartetTileSize +
+      subtile * blockDim.x + threadIdx.x;
   if (ordinal < ao_quartet_count) {
     std::size_t first_ao_pair = 0;
     std::size_t second_ao_pair = 0;
@@ -4022,13 +4030,17 @@ __global__ void two_electron_force_quartet_kernel(
     const std::uint8_t* active,
     double* forces) {
   static_assert(AngularOrder < detail::kDirectQuartetAngularOrderCount);
-  const std::size_t active_tile = static_cast<std::size_t>(blockIdx.x);
+  const std::size_t active_subtile = static_cast<std::size_t>(blockIdx.x);
+  const std::size_t active_tile =
+      active_subtile / detail::kDirectQuartetSubtilesPerTile;
   // Consume the identical compact tile list as direct Fock so energy and
   // derivative screening cover precisely the same AO-quartet domain.
   if (active_tile >=
       static_cast<std::size_t>(*active_shell_quartet_tile_count)) {
     return;
   }
+  const std::size_t subtile =
+      active_subtile % detail::kDirectQuartetSubtilesPerTile;
   const ActiveShellQuartetTile task =
       active_shell_quartet_tiles[active_tile];
   const std::size_t first_pair = task.first_pair;
@@ -4063,7 +4075,8 @@ __global__ void two_electron_force_quartet_kernel(
       batch.shell_angular[third_shell], batch.shell_angular[fourth_shell]);
 
   const std::size_t ordinal =
-      static_cast<std::size_t>(task.tile) * blockDim.x + threadIdx.x;
+      static_cast<std::size_t>(task.tile) * detail::kDirectQuartetTileSize +
+      subtile * blockDim.x + threadIdx.x;
   if (ordinal < ao_quartet_count) {
     std::size_t first_ao_pair = 0;
     std::size_t second_ao_pair = 0;
@@ -4205,7 +4218,9 @@ void launch_angular_fock_quartets(
   if constexpr (AngularOrder < detail::kDirectQuartetAngularOrderCount) {
     if (capacities[AngularOrder] != 0) {
       build_fock_direct_quartet_kernel<Unrestricted, AngularOrder><<<
-          static_cast<unsigned>(capacities[AngularOrder]),
+          static_cast<unsigned>(
+              capacities[AngularOrder] *
+              detail::kDirectQuartetSubtilesPerTile),
           detail::kDirectQuartetThreads, 0, stream>>>(
           batch, active_tile_counts + AngularOrder,
           active_tiles + offsets[AngularOrder], screening_tolerance,
@@ -4235,7 +4250,9 @@ void launch_angular_force_quartets(
   if constexpr (AngularOrder < detail::kDirectQuartetAngularOrderCount) {
     if (capacities[AngularOrder] != 0) {
       two_electron_force_quartet_kernel<Unrestricted, AngularOrder><<<
-          static_cast<unsigned>(capacities[AngularOrder]),
+          static_cast<unsigned>(
+              capacities[AngularOrder] *
+              detail::kDirectQuartetSubtilesPerTile),
           detail::kDirectQuartetThreads, 0, stream>>>(
           batch, active_tile_counts + AngularOrder,
           active_tiles + offsets[AngularOrder], screening_tolerance,
@@ -4841,9 +4858,9 @@ qce_status launch_matrix_product(CudaResources& resources,
     const std::size_t elements =
         static_cast<std::size_t>(batch_size) * matrix_size;
     const unsigned blocks = static_cast<unsigned>(
-        (elements + detail::kDirectQuartetThreads - 1) /
-        detail::kDirectQuartetThreads);
-    matrix_product_kernel<<<blocks, detail::kDirectQuartetThreads, 0,
+        (elements + kCaptureSafeKernelThreads - 1) /
+        kCaptureSafeKernelThreads);
+    matrix_product_kernel<<<blocks, kCaptureSafeKernelThreads, 0,
                             resources.stream_>>>(
         batch_size, nbf, left, transpose_left, right, active, output);
     return cuda_status(cudaPeekAtLastError());
@@ -4886,9 +4903,9 @@ qce_status launch_spin_matrix_product(CudaResources& resources,
                                  static_cast<std::size_t>(spin_count) *
                                  matrix_size;
     const unsigned blocks = static_cast<unsigned>(
-        (elements + detail::kDirectQuartetThreads - 1) /
-        detail::kDirectQuartetThreads);
-    spin_matrix_product_kernel<<<blocks, detail::kDirectQuartetThreads, 0,
+        (elements + kCaptureSafeKernelThreads - 1) /
+        kCaptureSafeKernelThreads);
+    spin_matrix_product_kernel<<<blocks, kCaptureSafeKernelThreads, 0,
                                  resources.stream_>>>(
         batch_size, spin_count, nbf, left, left_is_spin, transpose_left,
         right, right_is_spin, active, output);
@@ -5133,11 +5150,13 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     }
     total_shell_quartet_tiles = direct_task_layout.exact_tile_count;
   }
-  // Both direct-Fock matrix elements and shell-pair Schwarz tasks use a
-  // one-dimensional CUDA grid with one logical owner per block.
+  // Direct consumers expand each compact logical tile into one-warp blocks;
+  // validate the resulting fixed Graph grid before narrowing it to unsigned.
   if (total_shell_pairs > std::numeric_limits<unsigned>::max() ||
       total_shell_quartets > std::numeric_limits<unsigned>::max() ||
-      total_shell_quartet_tiles > std::numeric_limits<unsigned>::max()) {
+      total_shell_quartet_tiles >
+          std::numeric_limits<unsigned>::max() /
+              detail::kDirectQuartetSubtilesPerTile) {
     fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
     return outputs;
   }
@@ -5537,7 +5556,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   const int lwork = plan.lwork;
 
   constexpr unsigned threads =
-      static_cast<unsigned>(detail::kDirectQuartetThreads);
+      kCaptureSafeKernelThreads;
   const auto blocks_for = [](std::size_t elements) {
     return static_cast<unsigned>((elements + threads - 1) / threads);
   };

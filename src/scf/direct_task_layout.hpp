@@ -10,8 +10,21 @@
 
 namespace qce::scf::detail {
 
-/** Threads assigned to one symmetry-unique direct-J/K AO-quartet tile. */
-inline constexpr std::size_t kDirectQuartetThreads = 256;
+/**
+ * Threads assigned to one symmetry-unique direct-J/K AO-quartet subtile.
+ *
+ * Exact Fock and force consumers sit near the per-thread register ceiling.
+ * One full warp per block exposes independent work for latency hiding;
+ * smaller sub-warp blocks waste execution lanes. A compact descriptor still
+ * covers 256 quartets and expands virtually into eight blocks at launch, so
+ * this scheduling choice does not multiply fixed-topology arena metadata.
+ */
+inline constexpr std::size_t kDirectQuartetThreads = 32;
+inline constexpr std::size_t kDirectQuartetTileSize = 256;
+inline constexpr std::size_t kDirectQuartetSubtilesPerTile =
+    kDirectQuartetTileSize / kDirectQuartetThreads;
+
+static_assert(kDirectQuartetTileSize % kDirectQuartetThreads == 0);
 
 /** Total shell angular orders from ssss (0) through ffff (12). */
 inline constexpr std::size_t kDirectQuartetAngularOrderCount = 13;
@@ -65,7 +78,7 @@ inline constexpr std::size_t direct_quartet_shell_class_angular_order(
 /** Fixed-topology capacity required by geometry-dependent tile compaction. */
 struct DirectQuartetTaskLayout {
   std::size_t shell_quartet_count{};
-  // Sum of ceil(unique AO quartets / threads) for every shell quartet.
+  // Sum of ceil(unique AO quartets / logical tile size) for every quartet.
   std::size_t exact_tile_count{};
   // Fixed topology partitions used by angular-specialized CUDA consumers.
   std::array<std::size_t, kDirectQuartetAngularOrderCount>
@@ -213,10 +226,10 @@ inline bool make_direct_quartet_task_layout(
         std::size_t rounded = 0;
         if (ao_quartet_count == 0 ||
             !checked_task_add(ao_quartet_count,
-                              kDirectQuartetThreads - 1, rounded)) {
+                              kDirectQuartetTileSize - 1, rounded)) {
           return false;
         }
-        const std::size_t tile_count = rounded / kDirectQuartetThreads;
+        const std::size_t tile_count = rounded / kDirectQuartetTileSize;
         const std::size_t angular_order =
             shell_pair_angular_orders[first_pair] +
             shell_pair_angular_orders[second_pair];
@@ -279,12 +292,12 @@ inline bool make_direct_quartet_task_layout(
                              maximum_shell_pair_ao_count,
                              maximum_uniform_ao_quartets) ||
       !checked_task_add(maximum_uniform_ao_quartets,
-                        kDirectQuartetThreads - 1,
+                        kDirectQuartetTileSize - 1,
                         rounded_uniform_ao_quartets)) {
     return false;
   }
   made.maximum_tiles_per_shell_quartet =
-      rounded_uniform_ao_quartets / kDirectQuartetThreads;
+      rounded_uniform_ao_quartets / kDirectQuartetTileSize;
   if (!checked_task_multiply(made.shell_quartet_count,
                              made.maximum_tiles_per_shell_quartet,
                              made.uniform_tile_count)) {

@@ -46,8 +46,11 @@ and performance measurements pass.
   order from 0 through 12. Device
   compaction writes screened tiles directly into those partitions, and direct
   RHF/UHF Fock and force launch separately compiled total-order kernels so
-  lower-order tasks no longer inherit the ffff stack footprint. Exact
-  Cartesian-source shell-class workspaces use Fock stack at orders 0/4/12 of
+  lower-order tasks no longer inherit the ffff stack footprint. Each compact
+  256-quartet descriptor expands virtually into eight one-warp subtiles,
+  exposing independent blocks for these high-register consumers without
+  growing fixed-topology metadata or wasting sub-warp lanes. Cartesian-source
+  shell-class workspaces use Fock stack at orders 0/4/12 of
   304/2488/21288 bytes. Three-component force propagation uses
   576/8608/84384 bytes at those orders; its larger per-thread workspace is
   offset by evaluating each center once instead of once per Cartesian axis.

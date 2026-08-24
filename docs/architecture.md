@@ -124,8 +124,13 @@ scatter Coulomb and matching-spin exchange contributions into RHF or UHF Fock
 matrices. The force kernel contracts the identical unique integral set and
 differentiates only the at most four participating shell centers. A fixed
 topology-derived tile multiplicity stripes large d/f AO-quartet groups across
-blocks while retaining O(N^2) numerical storage; empty tiles exit after
-decoding instead of requiring an O(N^4) descriptor array. Double
+one-warp blocks while retaining O(N^2) numerical storage. Each compact logical
+descriptor still covers 256 quartets and expands into eight virtual subtiles,
+so the finer execution grain does not multiply fixed-topology metadata. The
+one-warp block is important because exact Fock and force recurrences sit near
+the per-thread register ceiling: more independent blocks improve latency
+hiding without the inactive lanes of a sub-warp block. Empty subtiles exit
+after decoding instead of requiring a per-AO-quartet descriptor array. Double
 atomics make this fast but not bitwise deterministic: a 50-replay 21-AO test
 showed about 1.5e-14 Eh energy span and 1.4e-12 Eh/bohr maximum force span.
 The ERI force kernel additionally uses translational invariance: derivatives
