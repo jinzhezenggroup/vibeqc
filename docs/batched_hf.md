@@ -58,9 +58,10 @@ contracts the final-density task list and visits only its shell-center
 coordinates. ERI translational invariance evaluates `N-1` unique
 centers and reconstructs the last derivative, reducing force recurrence work
 without changing the stationary gradient. Dedicated analytic formulas handle
-total angular orders zero through three; the order-three formula shares each
-raised Coulomb state across all centers and reconstructs its fourth basis
-center from translational invariance. Higher orders use a force-only
-three-component forward scalar that propagates x/y/z together so the exact
-shell-class value recurrence executes once rather than three times.
+total angular orders zero through three and order five; their sparse
+high-order formulas share each raised Coulomb state across all centers and
+reconstruct the fourth basis center from translational invariance. Order four
+and orders six and above use a force-only three-component forward scalar that
+propagates x/y/z together so the exact shell-class value recurrence executes
+once rather than three times.
 Finer AO-level active compaction remains a later scheduler milestone.

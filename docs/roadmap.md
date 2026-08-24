@@ -85,6 +85,18 @@ and performance measurements pass.
   36.110 s to 19.980 s. Formal candidate checks retain 96-AO batch-1/4 errors
   below `4.5e-12 Eh` and `2.6e-12 Eh/bohr`; 192-AO batch-1/4 remain below
   `1.9e-11 Eh` and `2.5e-10 Eh/bohr`.
+  Explicit total-order-3 force derivatives subsequently reduce the RHF/UHF
+  kernel from 255 registers and 1,256 stack bytes to 180 registers and 672
+  stack bytes. Clean WATER27 medians improve to 2.206/8.407 s at 96 AO and
+  18.489/92.097 s at 192 AO for batch 1/4, with all four accuracy points
+  inside their explicit limits. A profile of the exact 96-AO batch-1 gate
+  then identifies total-order-5 force as the largest remaining quartet
+  kernel at 197.6 ms per force pass. Its dedicated subset/Wick derivative
+  path lowers that kernel to 71.8 ms and its resource use from 254 registers
+  and 13,296 stack bytes to 230 registers and 1,952 stack bytes. Interleaved
+  96-AO batch-4 candidate/baseline/candidate medians are 7.916/8.412/7.912 s,
+  while the 192-AO batch-1/4 correctness checks remain below `5.6e-11` and
+  `2.3e-10 Eh/bohr` maximum force error.
   Clean RTX 5090
   artifacts validate energy, forces, and homogeneous-batch throughput for the
   exact `sdf18-direct`, Cartesian water/def2-SVP, and open-shell

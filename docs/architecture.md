@@ -32,9 +32,11 @@ all centers without carrying a general forward-derivative scalar through the
 recurrence. Total-order-3 force quartets use the same subset/Wick pair
 representation with a three-bit derivative state, evaluate each raised
 Coulomb derivative once per Cartesian axis, and reconstruct the fourth basis
-center from translational invariance. Orders four and above retain the general
-three-component forward scalar until their dedicated derivative recurrences
-land.
+center from translational invariance. Total-order-5 force quartets enumerate
+all single and disjoint double Wick contractions of their surviving pair
+quanta and evaluate the required Cartesian Coulomb derivatives through order
+six. Orders four and six and above retain the general three-component forward
+scalar until their dedicated derivative recurrences land.
 Total-order-3 shell pairs generate their exact 1/2/4/8 terms as subsets of
 their angular quanta; quanta sharing one Cartesian axis add the required
 Gaussian pair contractions without allocating recurrence arrays. The quartet
@@ -139,10 +141,11 @@ Each fixed-topology bucket owns and replays one packed arena and Graph, so warm
 executions do not recreate streams, provider handles, workspaces, or graph
 executables. Analytic forces are decomposed over coordinates and integral
 quartets rather than serializing one complete gradient behind each coordinate
-thread. The dedicated force paths through total angular order three compute
-all center derivatives from one shared set of Gaussian product and Boys
-values, then recover omitted centers from translational invariance; higher
-orders retain the general three-component Dual path.
+thread. The dedicated force paths through total angular order three and at
+order five compute all center derivatives from one shared set of Gaussian
+product and Boys values, then recover omitted centers from translational
+invariance; order four and orders six and above retain the general
+three-component Dual path.
 Coulomb auxiliary states are stored in
 a four-dimensional simplex (1,820 states through f) rather than a dense 13^4
 thread-local array.
@@ -174,13 +177,14 @@ The ERI force kernel additionally uses translational invariance: derivatives
 over all unique basis centers sum to zero, so it evaluates only `N-1` centers
 and restores the final center from the negative sum. This halves two-center
 and removes one third of three-center derivative work. Total angular orders
-zero through three use dedicated all-center derivative formulas; the
-order-three path also evaluates each raised Coulomb state once per axis and
-recovers its fourth basis center by translation. Remaining higher-order
-centers use a force-only three-component forward scalar, seeding its Cartesian
-axes together and returning all three derivatives from one exact shell-class
-recurrence. Both paths avoid repeating the geometry-independent ERI value
-work for x, y, and z while preserving the same screening and symmetry domain.
+zero through three and order five use dedicated all-center derivative
+formulas; the sparse high-order paths evaluate each raised Coulomb state once
+per axis and recover their fourth basis center by translation. Order four and
+orders six and above use a force-only three-component forward scalar, seeding
+its Cartesian axes together and returning all three derivatives from one
+exact shell-class recurrence. Both paths avoid repeating the
+geometry-independent ERI value work for x, y, and z while preserving the same
+screening and symmetry domain.
 Canonical AO-pair arrays remain resident for one-electron triangles and
 Schwarz bounds, following gpuxtb's immutable pair-metadata pattern. Each Fock
 build reduces the current density to shell-pair absolute maxima before task
