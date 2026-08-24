@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import argparse
+import statistics
 import time
 
 from qce import Calculator
+
+from _support import environment_metadata, write_result
 
 
 def make_system(index: int):
@@ -27,7 +30,13 @@ def main() -> None:
     parser.add_argument("--batch", type=int, default=16)
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--device", choices=("cpu", "cuda"), default="cpu")
+    parser.add_argument(
+        "--output",
+        help="optional JSON path for raw timings and reproducibility metadata",
+    )
     args = parser.parse_args()
+    if args.batch < 1 or args.repeats < 1:
+        raise ValueError("--batch and --repeats must be positive")
 
     generated = [make_system(index) for index in range(args.batch)]
     systems = [item[0] for item in generated]
@@ -64,6 +73,36 @@ def main() -> None:
     print(f"native warm batch best: {best_warm * 1e3:.3f} ms")
     print(f"cold throughput: {args.batch / cold_time:.2f} systems/s")
     print(f"warm throughput: {args.batch / best_warm:.2f} systems/s")
+    if args.output:
+        payload = {
+            "schema_version": 1,
+            "benchmark": "batch_throughput",
+            "environment": environment_metadata(
+                distributions={"numpy": ("numpy",)}
+            ),
+            "settings": {
+                "batch_size": args.batch,
+                "repeats": args.repeats,
+                "requested_device": args.device,
+            },
+            "result": {
+                "executed_backend": cold.items[0].executed_backend,
+                "energies_hartree": [item.energy for item in cold.items],
+                "timings_seconds": {
+                    "independent_calls": independent_time,
+                    "cold_batch": cold_time,
+                    "warm_batches": warm_times,
+                },
+                "summary": {
+                    "warm_median_seconds": statistics.median(warm_times),
+                    "warm_minimum_seconds": best_warm,
+                    "cold_systems_per_second": args.batch / cold_time,
+                    "warm_systems_per_second": args.batch / best_warm,
+                },
+            },
+        }
+        destination = write_result(args.output, payload)
+        print(f"JSON result: {destination}")
 
 
 if __name__ == "__main__":

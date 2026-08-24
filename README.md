@@ -150,3 +150,9 @@ spherical transforms, and named def2 basis ingestion.
 No broad performance claim is valid until both engines run the same realistic
 molecules, basis, precision, convergence, and energy/gradient workload on the
 same allocated GPU.
+
+Pass `--output path/to/result.json` to any script in `benchmarks/` to retain
+raw timing samples together with the Git commit and dirty state, Python and
+package versions, runtime library path, benchmark parameters, and (for the
+GPU4PySCF comparison) CUDA device properties. Performance claims should cite
+one of these artifacts rather than only a copied median.

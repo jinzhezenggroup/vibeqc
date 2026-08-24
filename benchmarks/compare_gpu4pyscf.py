@@ -25,12 +25,15 @@ import argparse
 from dataclasses import dataclass
 import statistics
 import time
+from typing import Any
 
 import cupy as cp
 from pyscf import gto, scf
 from gpu4pyscf.scf import uhf as gpu_uhf
 
 from qce import Calculator, Primitive, Shell
+
+from _support import environment_metadata, write_result
 
 
 @dataclass(frozen=True)
@@ -164,11 +167,39 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
     }
 
 
+def accelerator_metadata() -> dict[str, Any]:
+    """Return the CUDA device properties relevant to performance comparisons."""
+
+    device_id = cp.cuda.Device().id
+    properties = cp.cuda.runtime.getDeviceProperties(device_id)
+    name = properties.get("name")
+    if isinstance(name, bytes):
+        name = name.decode("utf-8", errors="replace").rstrip("\x00")
+    return {
+        "backend": "cuda",
+        "device_id": device_id,
+        "name": name,
+        "compute_capability": [
+            properties.get("major"),
+            properties.get("minor"),
+        ],
+        "total_global_memory_bytes": properties.get("totalGlobalMem"),
+        "multiprocessor_count": properties.get("multiProcessorCount"),
+        "clock_rate_khz": properties.get("clockRate"),
+        "driver_version": cp.cuda.runtime.driverGetVersion(),
+        "runtime_version": cp.cuda.runtime.runtimeGetVersion(),
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repeats", type=int, default=9)
     cases = benchmark_cases()
     parser.add_argument("--case", choices=cases, default="sp8")
+    parser.add_argument(
+        "--output",
+        help="optional JSON path for raw timings and reproducibility metadata",
+    )
     args = parser.parse_args()
     if args.repeats < 1:
         raise ValueError("--repeats must be positive")
@@ -256,6 +287,54 @@ def main() -> None:
         f"{min(gpu4pyscf_warm) * 1.0e3:.3f} ms"
     )
     print("warning: this microbenchmark is not a realistic basis-set comparison")
+    if args.output:
+        payload = {
+            "schema_version": 1,
+            "benchmark": "compare_gpu4pyscf",
+            "environment": environment_metadata(
+                distributions={
+                    "cupy": ("cupy-cuda12x", "cupy"),
+                    "gpu4pyscf": ("gpu4pyscf-cuda12x", "gpu4pyscf"),
+                    "numpy": ("numpy",),
+                    "pyscf": ("pyscf",),
+                },
+                accelerator=accelerator_metadata(),
+            ),
+            "workload": {
+                "case": args.case,
+                "description": case.description,
+                "method": case.method,
+                "atoms": [
+                    {"element": element, "coordinates_bohr": list(coordinates)}
+                    for element, coordinates in case.atoms
+                ],
+                "charge": case.charge,
+                "multiplicity": case.multiplicity,
+                "cartesian_basis": True,
+                "energy_tolerance": 1.0e-12,
+                "density_tolerance": 1.0e-10,
+                "direct_scf_tolerance": 1.0e-14,
+            },
+            "settings": {"repeats": args.repeats},
+            "qce": {
+                "energy_hartree": qce_item.energy,
+                "forces_hartree_per_bohr": qce_item.forces.tolist(),
+                "cold_seconds": qce_cold,
+                "warm_seconds": qce_warm,
+                "warm_median_seconds": statistics.median(qce_warm),
+                "warm_minimum_seconds": min(qce_warm),
+            },
+            "gpu4pyscf": {
+                "energy_hartree": float(gpu4pyscf_energy),
+                "forces_hartree_per_bohr": (-gpu4pyscf_gradient).get().tolist(),
+                "cold_seconds": gpu4pyscf_cold,
+                "warm_seconds": gpu4pyscf_warm,
+                "warm_median_seconds": statistics.median(gpu4pyscf_warm),
+                "warm_minimum_seconds": min(gpu4pyscf_warm),
+            },
+        }
+        destination = write_result(args.output, payload)
+        print(f"JSON result: {destination}")
 
 
 if __name__ == "__main__":
