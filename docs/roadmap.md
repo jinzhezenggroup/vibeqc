@@ -66,6 +66,9 @@ and performance measurements pass.
   304/2488/21288 bytes. Three-component force propagation uses
   576/8608/84384 bytes at those orders; its larger per-thread workspace is
   offset by evaluating each center once instead of once per Cartesian axis.
+  Closed all-center derivatives further reduce order-0/order-1 force stacks
+  from 576/680 bytes to 112/208 bytes. On the 96-AO WATER27 batch-1 profile,
+  their kernels fall from 97.52/356.34 ms to 55.30/115.40 ms.
   The closed order-2 path reduces its Fock/force stacks from 1072/3184 bytes
   to 464/888 bytes; order three falls from 1568/5200 bytes to 512/1256 bytes;
   order four falls from 2488/8608 bytes to 752/2024 bytes.

@@ -128,7 +128,11 @@ Each fixed-topology bucket owns and replays one packed arena and Graph, so warm
 executions do not recreate streams, provider handles, workspaces, or graph
 executables. Analytic forces are decomposed
 over coordinates and integral quartets rather than serializing one complete
-gradient behind each coordinate thread. Coulomb auxiliary states are stored in
+gradient behind each coordinate thread. The closed `ssss` and `psss` force
+paths compute all center derivatives from one shared set of Gaussian product
+and Boys values, then recover the final unique atom from translational
+invariance; higher orders retain the general three-component Dual path.
+Coulomb auxiliary states are stored in
 a four-dimensional simplex (1,820 states through f) rather than a dense 13^4
 thread-local array.
 

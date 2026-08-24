@@ -98,6 +98,9 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   For 33--256 AOs, that Graph-native path uses parallel cyclic sweeps with
   disjoint round-robin rotations instead of rescanning the full matrix before
   every pivot; larger matrices retain the unbounded maximum-pivot fallback.
+  Direct `ssss` and `psss` force quartets use closed all-center derivatives,
+  sharing their Gaussian/Boys intermediates instead of replaying one Dual3
+  integral per independent atom.
   UHF stores alpha/beta matrices adjacently per system, solves both spin Fock
   matrices on device, and applies one combined DIIS residual per physical
   system.
