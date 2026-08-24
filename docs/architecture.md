@@ -131,7 +131,11 @@ showed about 1.5e-14 Eh energy span and 1.4e-12 Eh/bohr maximum force span.
 The ERI force kernel additionally uses translational invariance: derivatives
 over all unique basis centers sum to zero, so it evaluates only `N-1` centers
 and restores the final center from the negative sum. This halves two-center
-and removes one third of three-center Dual-integral work.
+and removes one third of three-center derivative work. Each evaluated center
+uses a force-only three-component forward scalar, seeding its Cartesian axes
+together and returning all three derivatives from one exact shell-class
+recurrence. This avoids repeating the geometry-independent ERI value path for
+x, y, and z while preserving the same screening and symmetry domain.
 Canonical AO-pair arrays remain
 resident for one-electron triangles and Schwarz bounds,
 following gpuxtb's immutable pair-metadata pattern. A geometry-dependent

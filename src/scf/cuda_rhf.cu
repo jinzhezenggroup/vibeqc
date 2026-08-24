@@ -54,6 +54,20 @@ struct Dual {
   double derivative;
 };
 
+/**
+ * Forward-mode scalar carrying all Cartesian derivatives of one atom.
+ *
+ * Two-electron force kernels differentiate the same shell quartet along x,
+ * y, and z. Propagating those components together avoids recomputing the
+ * geometry-independent value recurrence three times for every center.
+ */
+struct Dual3 {
+  double value;
+  double derivative_x;
+  double derivative_y;
+  double derivative_z;
+};
+
 __device__ Dual operator+(Dual a, Dual b) {
   return {a.value + b.value, a.derivative + b.derivative};
 }
@@ -74,10 +88,47 @@ __device__ Dual operator*(double a, Dual b) { return Dual{a, 0.0} * b; }
 __device__ Dual operator/(Dual a, double b) { return a / Dual{b, 0.0}; }
 __device__ Dual operator/(double a, Dual b) { return Dual{a, 0.0} / b; }
 
+__device__ Dual3 operator+(Dual3 a, Dual3 b) {
+  return {a.value + b.value, a.derivative_x + b.derivative_x,
+          a.derivative_y + b.derivative_y,
+          a.derivative_z + b.derivative_z};
+}
+__device__ Dual3 operator-(Dual3 a, Dual3 b) {
+  return {a.value - b.value, a.derivative_x - b.derivative_x,
+          a.derivative_y - b.derivative_y,
+          a.derivative_z - b.derivative_z};
+}
+__device__ Dual3 operator*(Dual3 a, Dual3 b) {
+  return {
+      a.value * b.value,
+      a.derivative_x * b.value + a.value * b.derivative_x,
+      a.derivative_y * b.value + a.value * b.derivative_y,
+      a.derivative_z * b.value + a.value * b.derivative_z,
+  };
+}
+__device__ Dual3 operator/(Dual3 a, Dual3 b) {
+  const double inverse_square = 1.0 / (b.value * b.value);
+  return {
+      a.value / b.value,
+      (a.derivative_x * b.value - a.value * b.derivative_x) * inverse_square,
+      (a.derivative_y * b.value - a.value * b.derivative_y) * inverse_square,
+      (a.derivative_z * b.value - a.value * b.derivative_z) * inverse_square,
+  };
+}
+__device__ Dual3 operator*(double a, Dual3 b) {
+  return Dual3{a, 0.0, 0.0, 0.0} * b;
+}
+__device__ Dual3 operator/(Dual3 a, double b) {
+  return a / Dual3{b, 0.0, 0.0, 0.0};
+}
+
 template <typename Scalar>
 __device__ Scalar scalar(double value, double derivative = 0.0) {
   if constexpr (std::is_same_v<Scalar, Dual>) {
     return {value, derivative};
+  } else if constexpr (std::is_same_v<Scalar, Dual3>) {
+    (void)derivative;
+    return {value, 0.0, 0.0, 0.0};
   } else {
     (void)derivative;
     return value;
@@ -87,6 +138,8 @@ __device__ Scalar scalar(double value, double derivative = 0.0) {
 template <typename Scalar>
 __device__ double scalar_value(Scalar value) {
   if constexpr (std::is_same_v<Scalar, Dual>) {
+    return value.value;
+  } else if constexpr (std::is_same_v<Scalar, Dual3>) {
     return value.value;
   } else {
     return value;
@@ -98,6 +151,10 @@ __device__ Scalar qexp(Scalar value) {
   if constexpr (std::is_same_v<Scalar, Dual>) {
     const double result = exp(value.value);
     return {result, result * value.derivative};
+  } else if constexpr (std::is_same_v<Scalar, Dual3>) {
+    const double result = exp(value.value);
+    return {result, result * value.derivative_x,
+            result * value.derivative_y, result * value.derivative_z};
   } else {
     return exp(value);
   }
@@ -108,6 +165,11 @@ __device__ Scalar qsqrt(Scalar value) {
   if constexpr (std::is_same_v<Scalar, Dual>) {
     const double result = sqrt(value.value);
     return {result, 0.5 * value.derivative / result};
+  } else if constexpr (std::is_same_v<Scalar, Dual3>) {
+    const double result = sqrt(value.value);
+    const double scale = 0.5 / result;
+    return {result, scale * value.derivative_x,
+            scale * value.derivative_y, scale * value.derivative_z};
   } else {
     return sqrt(value);
   }
@@ -119,6 +181,11 @@ __device__ Scalar qerf(Scalar value) {
     const double result = erf(value.value);
     const double factor = 2.0 / sqrt(kPi) * exp(-value.value * value.value);
     return {result, factor * value.derivative};
+  } else if constexpr (std::is_same_v<Scalar, Dual3>) {
+    const double result = erf(value.value);
+    const double factor = 2.0 / sqrt(kPi) * exp(-value.value * value.value);
+    return {result, factor * value.derivative_x,
+            factor * value.derivative_y, factor * value.derivative_z};
   } else {
     return erf(value);
   }
@@ -264,13 +331,27 @@ __device__ Vec3<Scalar> atom_position(const DeviceBatch& batch,
                                       std::int64_t atom,
                                       std::int64_t derivative_coordinate) {
   const std::int64_t base = atom * 3;
-  return {
-      scalar<Scalar>(batch.positions[base], derivative_coordinate == base ? 1.0 : 0.0),
-      scalar<Scalar>(batch.positions[base + 1],
-                     derivative_coordinate == base + 1 ? 1.0 : 0.0),
-      scalar<Scalar>(batch.positions[base + 2],
-                     derivative_coordinate == base + 2 ? 1.0 : 0.0),
-  };
+  if constexpr (std::is_same_v<Scalar, Dual3>) {
+    // Any coordinate belonging to the requested atom denotes the combined
+    // x/y/z seed. Negative coordinates continue to mean value-only mode.
+    const bool differentiated = derivative_coordinate >= 0 &&
+        derivative_coordinate / 3 == atom;
+    return {
+        {batch.positions[base], differentiated ? 1.0 : 0.0, 0.0, 0.0},
+        {batch.positions[base + 1], 0.0, differentiated ? 1.0 : 0.0, 0.0},
+        {batch.positions[base + 2], 0.0, 0.0,
+         differentiated ? 1.0 : 0.0},
+    };
+  } else {
+    return {
+        scalar<Scalar>(batch.positions[base],
+                       derivative_coordinate == base ? 1.0 : 0.0),
+        scalar<Scalar>(batch.positions[base + 1],
+                       derivative_coordinate == base + 1 ? 1.0 : 0.0),
+        scalar<Scalar>(batch.positions[base + 2],
+                       derivative_coordinate == base + 2 ? 1.0 : 0.0),
+    };
+  }
 }
 
 template <typename Scalar>
@@ -3864,27 +3945,48 @@ __global__ void two_electron_force_quartet_kernel(
         unique_center_atoms[unique_center_count++] = center_atoms[center];
       }
     }
-    for (std::int64_t axis = 0; axis < 3; ++axis) {
-      double derivative_sum = 0.0;
-      for (unsigned center = 0; center + 1 < unique_center_count; ++center) {
-        const std::int64_t coordinate =
-            static_cast<std::int64_t>(unique_center_atoms[center]) * 3 + axis;
-        const Dual derivative =
-            dispatch_contracted_eri_shell_class<AngularOrder, Dual>(
-                shell_class, batch, system, static_cast<std::int32_t>(i),
-                static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
-                static_cast<std::int32_t>(l), coordinate);
-        derivative_sum += derivative.derivative;
-        if (derivative.derivative != 0.0) {
-          atomicAdd(forces + coordinate,
-                    -coefficient * derivative.derivative);
-        }
+    double derivative_sum_x = 0.0;
+    double derivative_sum_y = 0.0;
+    double derivative_sum_z = 0.0;
+    for (unsigned center = 0; center + 1 < unique_center_count; ++center) {
+      const std::int64_t coordinate =
+          static_cast<std::int64_t>(unique_center_atoms[center]) * 3;
+      const Dual3 derivative =
+          dispatch_contracted_eri_shell_class<AngularOrder, Dual3>(
+              shell_class, batch, system, static_cast<std::int32_t>(i),
+              static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
+              static_cast<std::int32_t>(l), coordinate);
+      derivative_sum_x += derivative.derivative_x;
+      derivative_sum_y += derivative.derivative_y;
+      derivative_sum_z += derivative.derivative_z;
+      if (derivative.derivative_x != 0.0) {
+        atomicAdd(forces + coordinate,
+                  -coefficient * derivative.derivative_x);
       }
-      if (unique_center_count > 1 && derivative_sum != 0.0) {
-        const std::int64_t final_coordinate =
-            static_cast<std::int64_t>(
-                unique_center_atoms[unique_center_count - 1]) * 3 + axis;
-        atomicAdd(forces + final_coordinate, coefficient * derivative_sum);
+      if (derivative.derivative_y != 0.0) {
+        atomicAdd(forces + coordinate + 1,
+                  -coefficient * derivative.derivative_y);
+      }
+      if (derivative.derivative_z != 0.0) {
+        atomicAdd(forces + coordinate + 2,
+                  -coefficient * derivative.derivative_z);
+      }
+    }
+    if (unique_center_count > 1) {
+      const std::int64_t final_coordinate =
+          static_cast<std::int64_t>(
+              unique_center_atoms[unique_center_count - 1]) * 3;
+      if (derivative_sum_x != 0.0) {
+        atomicAdd(forces + final_coordinate,
+                  coefficient * derivative_sum_x);
+      }
+      if (derivative_sum_y != 0.0) {
+        atomicAdd(forces + final_coordinate + 1,
+                  coefficient * derivative_sum_y);
+      }
+      if (derivative_sum_z != 0.0) {
+        atomicAdd(forces + final_coordinate + 2,
+                  coefficient * derivative_sum_z);
       }
     }
   }

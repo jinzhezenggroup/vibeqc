@@ -48,5 +48,7 @@ large d/f groups across multiple blocks without per-quartet descriptors. The
 analytic-force pass contracts the same quartets and visits only their
 shell-center coordinates. ERI translational invariance evaluates `N-1` unique
 centers and reconstructs the last derivative, reducing force recurrence work
-without changing the stationary gradient. Finer AO-level active compaction
-remains a later scheduler milestone.
+without changing the stationary gradient. For every remaining center, a
+force-only three-component forward scalar propagates x/y/z together so the
+exact shell-class value recurrence executes once rather than three times.
+Finer AO-level active compaction remains a later scheduler milestone.

@@ -35,17 +35,23 @@ and performance measurements pass.
   analytic two-electron forces use the same unique quartets and only the
   participating shell centers. Translational invariance now reduces their
   derivative evaluations from N unique centers to N-1 and reconstructs the
-  final center exactly. A geometry-dependent device compaction pass now
-  selects active shell quartets from those bounds without host readback and
-  expands them into only their populated AO tiles. Direct Fock and force reuse
-  those exact descriptors, avoiding global-maximum tile padding and repeated
-  system/pair decoding. Fixed topology now also records exact tile capacities
-  and prefix offsets for every total angular order from 0 through 12. Device
+  final center exactly. The remaining x/y/z derivatives for each center now
+  propagate through one force-only three-component scalar, avoiding three
+  repetitions of the shell-class value recurrence. A geometry-dependent
+  device compaction pass now selects active shell quartets from those bounds
+  without host readback and expands them into only their populated AO tiles.
+  Direct Fock and force reuse those exact descriptors, avoiding global-maximum
+  tile padding and repeated system/pair decoding. Fixed topology now also
+  records exact tile capacities and prefix offsets for every total angular
+  order from 0 through 12. Device
   compaction writes screened tiles directly into those partitions, and direct
   RHF/UHF Fock and force launch separately compiled total-order kernels so
   lower-order tasks no longer inherit the ffff stack footprint. Exact
   shell-class Hermite workspaces reduce Fock stack at orders 0/4/12 to
-  0/2440/21240 bytes and force stack to 16/4544/42400 bytes. Clean RTX 5090
+  0/2440/21240 bytes. Three-component force propagation uses
+  112/8672/84448 bytes at those orders; its larger per-thread workspace is
+  offset by evaluating each center once instead of once per Cartesian axis.
+  Clean RTX 5090
   artifacts validate energy, forces, and homogeneous-batch throughput for the
   exact `sdf18-direct`, Cartesian water/def2-SVP, and open-shell
   OH/def2-SVP UHF cases. Broader allocated-GPU regression/performance gates

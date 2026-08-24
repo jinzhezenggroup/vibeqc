@@ -111,10 +111,12 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   two-electron force contracts the same unique quartets and differentiates only
   the participating shell centers; ERI translational invariance evaluates only
   `N_unique-1` centers and reconstructs the final derivative from their
-  negative sum. Every bucket uploads one
-  fixed-topology packed AO-pair table; one-electron integrals and their force
-  terms use only the triangle, and direct buckets reuse it for Schwarz bounds
-  and the direct scheduler. Ragged canonical shell-pair and shell-quartet
+  negative sum. A force-only three-component forward scalar carries x/y/z
+  derivatives through one recurrence per evaluated center instead of
+  repeating the complete ERI value path for every axis. Every bucket uploads
+  one fixed-topology packed AO-pair table; one-electron integrals and their
+  force terms use only the triangle, and direct buckets reuse it for Schwarz
+  bounds and the direct scheduler. Ragged canonical shell-pair and shell-quartet
   topology plus shell-level Schwarz maxima are resident. Geometry-dependent
   shell-quartet compaction is implemented fully on device and has passed
   allocated RTX 5090 energy/force and throughput validation for the exact
