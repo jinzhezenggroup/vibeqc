@@ -216,8 +216,8 @@ Cartesian water/def2-SVP at batch 8 measured 1202.903 ms versus 7300.320 ms
 (6.07x), with differences of `1.72e-12`/`5.29e-13`. Standard real-spherical
 water/def2-SVP at batch 8 measured 2313.694 ms versus 7331.882 ms (3.17x),
 with differences of `1.78e-12`/`4.24e-13`. Standard real-spherical
-water/def2-TZVP at batch 4 measured 963.050 ms versus 12123.476 ms (12.59x),
-with differences of `8.81e-13`/`8.71e-13`; its 48-AO Cartesian counterpart
+water/def2-TZVP at batch 4 measured 911.532 ms versus 12099.769 ms (13.27x),
+with differences of `1.01e-12`/`8.81e-13`; its 48-AO Cartesian counterpart
 measured 2069.985 ms versus 12084.960 ms (5.84x), with differences of
 `1.21e-12`/`9.24e-13`. Open-shell OH/def2-SVP UHF at
 batch 8 measured 571.419 ms versus 7244.466 ms (12.68x), with differences of
