@@ -15,6 +15,7 @@ batch timing boundary.
 | [`sdf18-direct`](rtx5090-8300dff-sdf18-direct-b16.json) | 16 | 67.709 ms | 2499.369 ms | 36.91x | 6.35e-14 Eh | 4.87e-14 Eh/bohr |
 | [`water-def2-svp`](rtx5090-8300dff-water-def2-svp-b8.json) | 8 | 1202.903 ms | 7300.320 ms | 6.07x | 1.72e-12 Eh | 5.29e-13 Eh/bohr |
 | [`water-def2-svp-spherical`](rtx5090-320ead9-water-def2-svp-spherical-b8.json) | 8 | 2313.694 ms | 7331.882 ms | 3.17x | 1.78e-12 Eh | 4.24e-13 Eh/bohr |
+| [`water-def2-tzvp-spherical`](rtx5090-40cef2f-water-def2-tzvp-spherical-b4.json) | 4 | 5644.454 ms | 12095.489 ms | 2.14x | 8.53e-13 Eh | 9.42e-13 Eh/bohr |
 | [`oh-def2-svp-uhf`](rtx5090-6d3b9ec-oh-def2-svp-uhf-b8.json) | 8 | 571.419 ms | 7244.466 ms | 12.68x | 1.24e-12 Eh | 2.11e-13 Eh/bohr |
 | [`oh-def2-svp-spherical-uhf`](rtx5090-f44fdf7-oh-def2-svp-spherical-uhf-b8.json) | 8 | 1369.543 ms | 7304.363 ms | 5.33x | 1.09e-12 Eh | 4.13e-11 Eh/bohr |
 
@@ -25,7 +26,10 @@ recorded after adding its workload at clean commit
 recorded from clean commit
 `320ead906eb0b0e3335aa1b9e2893f066dd02eee`. The real-spherical UHF artifact
 was recorded after the open-shell cold-guess fix at clean commit
-`f44fdf7d6d84e92ef7405e09643a69f78c627e52`. All were measured on 2026-08-24.
+`f44fdf7d6d84e92ef7405e09643a69f78c627e52`. The 43-AO def2-TZVP artifact
+was recorded after the Graph-native eigensolver and ERI force-center reduction
+at clean commit `40cef2f1f06d812b401993e1da2f3dceb8b3167a`. All were measured on
+2026-08-24.
 They establish performance only for these exact homogeneous batch workloads;
 they are not a claim of broad QCE leadership.
 
@@ -70,6 +74,8 @@ reduction-order variation. Its UHF counterpart uses
 `--case oh-def2-svp-spherical-uhf --batch 8`, a 4x gate, and a
 `3e-9 Eh/bohr` force gate that covers the arbitrary orientation of the
 degenerate pi hole; the recorded maximum error is `4.13e-11 Eh/bohr`. The
-harness records all gate thresholds and failures in the JSON before exiting
-with status 2 on a failed gate. On a Slurm cluster, run the command inside an
-allocation that owns exactly one GPU.
+larger pure workload uses `--case water-def2-tzvp-spherical --batch 4`, a 1.8x
+gate, and `3e-12`/`3e-11` energy/force gates. The harness records all gate
+thresholds and failures in the JSON before exiting with status 2 on a failed
+gate. On a Slurm cluster, run the command inside an allocation that owns
+exactly one GPU.

@@ -60,6 +60,8 @@ and performance measurements pass.
   batches, standard pure water/def2-SVP RHF, and standard pure OH/def2-SVP UHF
   energy and forces. Their published batch-8 artifacts record 3.17x and 5.33x
   scoped warm speedups over GPU4PySCF's sequential single-system interface.
+  A larger 43-AO pure water/def2-TZVP batch-4 artifact records 2.14x after the
+  Graph-native eigensolver and ERI force-center reduction.
 - Exact shell-class recurrence workspaces and the device-compacted active-task
   scheduler are implemented. Replace the remaining component loops and generic
   symmetry scatter with generated shell-class/Rys kernels where profiling
@@ -116,8 +118,8 @@ and performance measurements pass.
   spherical water/def2-SVP cases plus matching Cartesian/spherical OH UHF
   definitions, and publishes raw homogeneous-batch samples. The spherical RHF
   and UHF batch-8 cases pass their allocated accuracy and minimum-speedup gates.
-  Water/def2-TZVP Cartesian and spherical definitions now provide the next
-  larger-basis profiling and allocated-gate targets.
+  Water/def2-TZVP spherical batch 4 also passes; publish the matching Cartesian
+  case and then extend to more molecular topologies.
 
 ## M3: density fitting and fleet mode
 

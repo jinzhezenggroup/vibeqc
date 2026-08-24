@@ -151,7 +151,8 @@ The matching standard pure-basis workload is available as
 and PySCF/GPU4PySCF to `cart=False` from the same case metadata.
 Larger primitive and angular workloads are available as
 `--case water-def2-tzvp` and `--case water-def2-tzvp-spherical`; these are
-profiling and regression targets until clean allocated artifacts are published.
+profiling and regression targets. The spherical case now has a clean allocated
+artifact; the Cartesian case remains to be published.
 
 The same harness also includes `h2plus-uhf2` and `heh-sdf18-uhf`. On the same
 RTX 5090, H2+ warm UHF energy+gradient replay measured about 7.0 ms for QCE;
@@ -183,7 +184,7 @@ GPU object and warm density per system and executes them sequentially inside
 the same synchronized batch boundary. Reports must state this interface
 difference rather than presenting the result as two equivalent batch APIs.
 
-Five clean artifacts from the exact shell-class implementation establish
+Six clean artifacts from the exact shell-class implementation establish
 performance leadership for their exact homogeneous workloads on one RTX 5090.
 `sdf18-direct` at batch 16
 measured 67.709 ms for QCE versus 2499.369 ms for sequential GPU4PySCF
@@ -191,7 +192,9 @@ measured 67.709 ms for QCE versus 2499.369 ms for sequential GPU4PySCF
 Cartesian water/def2-SVP at batch 8 measured 1202.903 ms versus 7300.320 ms
 (6.07x), with differences of `1.72e-12`/`5.29e-13`. Standard real-spherical
 water/def2-SVP at batch 8 measured 2313.694 ms versus 7331.882 ms (3.17x),
-with differences of `1.78e-12`/`4.24e-13`. Open-shell OH/def2-SVP UHF at
+with differences of `1.78e-12`/`4.24e-13`. Standard real-spherical
+water/def2-TZVP at batch 4 measured 5644.454 ms versus 12095.489 ms (2.14x),
+with differences of `8.53e-13`/`9.42e-13`. Open-shell OH/def2-SVP UHF at
 batch 8 measured 571.419 ms versus 7244.466 ms (12.68x), with differences of
 `1.24e-12`/`2.11e-13`. Its standard real-spherical counterpart measured
 1369.543 ms versus 7304.363 ms (5.33x), with differences of
