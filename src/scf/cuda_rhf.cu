@@ -386,6 +386,49 @@ __device__ unsigned angular_total(const Angular& angular) {
   return angular.x + angular.y + angular.z;
 }
 
+/** Match the host planner's symmetry-reduced s/p/d/f shell-class encoding. */
+__host__ __device__ constexpr unsigned direct_triangular_class_high(
+    unsigned index) {
+  unsigned high = 0;
+  while ((high + 1) * (high + 2) / 2 <= index) ++high;
+  return high;
+}
+
+/** Resolve one class template to its exact Coulomb recurrence order. */
+__host__ __device__ constexpr unsigned direct_shell_class_angular_order(
+    unsigned shell_class) {
+  const unsigned first_pair = direct_triangular_class_high(shell_class);
+  const unsigned second_pair =
+      shell_class - first_pair * (first_pair + 1) / 2;
+  const unsigned first_high = direct_triangular_class_high(first_pair);
+  const unsigned first_low =
+      first_pair - first_high * (first_high + 1) / 2;
+  const unsigned second_high = direct_triangular_class_high(second_pair);
+  const unsigned second_low =
+      second_pair - second_high * (second_high + 1) / 2;
+  return first_high + first_low + second_high + second_low;
+}
+
+__host__ __device__ constexpr unsigned direct_shell_pair_class_cuda(
+    unsigned first,
+    unsigned second) {
+  const unsigned high = first > second ? first : second;
+  const unsigned low = first > second ? second : first;
+  return high * (high + 1) / 2 + low;
+}
+
+__device__ unsigned direct_quartet_shell_class_device(
+    unsigned first,
+    unsigned second,
+    unsigned third,
+    unsigned fourth) {
+  const unsigned first_pair = direct_shell_pair_class_cuda(first, second);
+  const unsigned second_pair = direct_shell_pair_class_cuda(third, fourth);
+  const unsigned high_pair = max(first_pair, second_pair);
+  const unsigned low_pair = min(first_pair, second_pair);
+  return high_pair * (high_pair + 1) / 2 + low_pair;
+}
+
 __device__ bool is_s_function(const Angular& angular) {
   return angular_total(angular) == 0;
 }
@@ -465,6 +508,86 @@ __device__ void fill_hermite(unsigned maximum_i,
                              HermiteCoefficients<Scalar>& coefficients) {
   for (int item = 0;
        item < kHermiteIDimension * kHermiteJDimension * kHermiteTDimension;
+       ++item) {
+    coefficients.data[item] = scalar<Scalar>(0.0);
+  }
+  const double p = alpha + beta;
+  const double mu = alpha * beta / p;
+  const Scalar ab = center_a - center_b;
+  coefficients.at(0, 0, 0) = qexp(-mu * ab * ab);
+  const Scalar pa = product - center_a;
+  const Scalar pb = product - center_b;
+  const double inverse_two_p = 0.5 / p;
+
+  for (unsigned i = 0; i <= maximum_i; ++i) {
+    for (unsigned j = 0; j <= maximum_j; ++j) {
+      if (i == 0 && j == 0) continue;
+      if (i > 0) {
+        coefficients.at(i, j, 0) =
+            pa * coefficients.at(i - 1, j, 0) +
+            coefficients.at(i - 1, j, 1);
+      } else {
+        coefficients.at(i, j, 0) =
+            pb * coefficients.at(i, j - 1, 0) +
+            coefficients.at(i, j - 1, 1);
+      }
+      for (unsigned t = 1; t <= i + j; ++t) {
+        if (i > 0) {
+          coefficients.at(i, j, t) =
+              pa * coefficients.at(i - 1, j, t) +
+              inverse_two_p * coefficients.at(i - 1, j, t - 1) +
+              static_cast<double>(t + 1) *
+                  coefficients.at(i - 1, j, t + 1);
+        } else {
+          coefficients.at(i, j, t) =
+              pb * coefficients.at(i, j - 1, t) +
+              inverse_two_p * coefficients.at(i, j - 1, t - 1) +
+              static_cast<double>(t + 1) *
+                  coefficients.at(i, j - 1, t + 1);
+        }
+      }
+    }
+  }
+}
+
+/** Hermite workspace bounded by one exact shell-pair class. */
+template <typename Scalar, unsigned FirstAngular, unsigned SecondAngular>
+struct ShellPairHermiteCoefficients {
+  static constexpr unsigned kIDimension = FirstAngular + 1;
+  static constexpr unsigned kJDimension = SecondAngular + 1;
+  // One zero boundary element is required because the recurrence reads t+1.
+  static constexpr unsigned kTDimension =
+      FirstAngular + SecondAngular + 2;
+  Scalar data[kIDimension * kJDimension * kTDimension];
+
+  __device__ Scalar& at(unsigned i, unsigned j, unsigned t) {
+    return data[(i * kJDimension + j) * kTDimension + t];
+  }
+  __device__ const Scalar& at(unsigned i, unsigned j, unsigned t) const {
+    return data[(i * kJDimension + j) * kTDimension + t];
+  }
+};
+
+template <unsigned FirstAngular, unsigned SecondAngular, typename Scalar>
+__device__ void fill_shell_pair_hermite(
+    unsigned maximum_i,
+    unsigned maximum_j,
+    Scalar product,
+    Scalar center_a,
+    Scalar center_b,
+    double alpha,
+    double beta,
+    ShellPairHermiteCoefficients<Scalar, FirstAngular, SecondAngular>&
+        coefficients) {
+  static_assert(FirstAngular <= kMaximumAngularMomentum);
+  static_assert(SecondAngular <= kMaximumAngularMomentum);
+  for (unsigned item = 0;
+       item < ShellPairHermiteCoefficients<
+                  Scalar, FirstAngular, SecondAngular>::kIDimension *
+              ShellPairHermiteCoefficients<
+                  Scalar, FirstAngular, SecondAngular>::kJDimension *
+              ShellPairHermiteCoefficients<
+                  Scalar, FirstAngular, SecondAngular>::kTDimension;
        ++item) {
     coefficients.data[item] = scalar<Scalar>(0.0);
   }
@@ -735,7 +858,10 @@ __device__ Scalar primitive_nuclear_attraction_cartesian(
       coefficients, derivative_coordinate);
 }
 
-template <unsigned MaximumAngular, typename Scalar>
+template <unsigned MaximumAngular,
+          typename Scalar,
+          typename FirstCoefficients,
+          typename SecondCoefficients>
 __device__ __noinline__ Scalar eri_cartesian_value(
     double p,
     double q,
@@ -746,8 +872,8 @@ __device__ __noinline__ Scalar eri_cartesian_value(
     const Angular& angular_second,
     const Angular& angular_third,
     const Angular& angular_fourth,
-    const HermiteCoefficients<Scalar>* first_coefficients,
-    const HermiteCoefficients<Scalar>* second_coefficients) {
+    const FirstCoefficients* first_coefficients,
+    const SecondCoefficients* second_coefficients) {
   static_assert(MaximumAngular <= kMaximumCoulombOrder);
   CoulombAuxiliary<Scalar, MaximumAngular> auxiliary;
   fill_coulomb<MaximumAngular>(rho, product_p, product_q, auxiliary);
@@ -816,6 +942,63 @@ __device__ Scalar primitive_eri_cartesian(
                  second_coefficients[axis]);
   }
   static_assert(MaximumAngular <= kMaximumCoulombOrder);
+  return eri_cartesian_value<MaximumAngular>(
+      p, q, rho, product_p, product_q, angular_first, angular_second,
+      angular_third, angular_fourth, first_coefficients, second_coefficients);
+}
+
+/**
+ * Evaluate one Cartesian primitive quartet with exact shell-pair workspaces.
+ *
+ * Axis powers remain AO-component data, while the enclosing shell angular
+ * momenta bound every Hermite dimension at compile time. This avoids charging
+ * an s/p/d task for the generic f/f pair workspace.
+ */
+template <unsigned FirstShellAngular,
+          unsigned SecondShellAngular,
+          unsigned ThirdShellAngular,
+          unsigned FourthShellAngular,
+          typename Scalar>
+__device__ Scalar primitive_eri_cartesian_shell_class(
+    double alpha,
+    const Vec3<Scalar>& first,
+    const Angular& angular_first,
+    double beta,
+    const Vec3<Scalar>& second,
+    const Angular& angular_second,
+    double gamma,
+    const Vec3<Scalar>& third,
+    const Angular& angular_third,
+    double delta,
+    const Vec3<Scalar>& fourth,
+    const Angular& angular_fourth) {
+  constexpr unsigned MaximumAngular =
+      FirstShellAngular + SecondShellAngular + ThirdShellAngular +
+      FourthShellAngular;
+  static_assert(MaximumAngular <= kMaximumCoulombOrder);
+  const double p = alpha + beta;
+  const double q = gamma + delta;
+  const double rho = p * q / (p + q);
+  const Vec3<Scalar> product_p = product_center(alpha, first, beta, second);
+  const Vec3<Scalar> product_q = product_center(gamma, third, delta, fourth);
+  ShellPairHermiteCoefficients<
+      Scalar, FirstShellAngular, SecondShellAngular>
+      first_coefficients[3];
+  ShellPairHermiteCoefficients<
+      Scalar, ThirdShellAngular, FourthShellAngular>
+      second_coefficients[3];
+  for (int axis = 0; axis < 3; ++axis) {
+    fill_shell_pair_hermite<FirstShellAngular, SecondShellAngular>(
+        angular_axis(angular_first, axis),
+        angular_axis(angular_second, axis), vec_axis(product_p, axis),
+        vec_axis(first, axis), vec_axis(second, axis), alpha, beta,
+        first_coefficients[axis]);
+    fill_shell_pair_hermite<ThirdShellAngular, FourthShellAngular>(
+        angular_axis(angular_third, axis),
+        angular_axis(angular_fourth, axis), vec_axis(product_q, axis),
+        vec_axis(third, axis), vec_axis(fourth, axis), gamma, delta,
+        second_coefficients[axis]);
+  }
   return eri_cartesian_value<MaximumAngular>(
       p, q, rho, product_p, product_q, angular_first, angular_second,
       angular_third, angular_fourth, first_coefficients, second_coefficients);
@@ -1195,6 +1378,262 @@ __device__ Scalar contracted_eri(const DeviceBatch& batch,
       return contracted_eri_order<12, Scalar>(
           batch, system, i, j, k, l, derivative_coordinate);
   }
+  return scalar<Scalar>(0.0);
+}
+
+template <unsigned FirstShellAngular,
+          unsigned SecondShellAngular,
+          unsigned ThirdShellAngular,
+          unsigned FourthShellAngular,
+          typename Scalar>
+__device__ __noinline__ Scalar contracted_eri_cartesian_shell_class(
+    const DeviceBatch& batch,
+    std::int64_t ao_i,
+    std::int64_t ao_j,
+    std::int64_t ao_k,
+    std::int64_t ao_l,
+    std::int32_t shell_i,
+    std::int32_t shell_j,
+    std::int32_t shell_k,
+    std::int32_t shell_l,
+    std::int64_t derivative_coordinate) {
+  const Vec3<Scalar> first = atom_position<Scalar>(
+      batch, batch.shell_atoms[shell_i], derivative_coordinate);
+  const Vec3<Scalar> second = atom_position<Scalar>(
+      batch, batch.shell_atoms[shell_j], derivative_coordinate);
+  const Vec3<Scalar> third = atom_position<Scalar>(
+      batch, batch.shell_atoms[shell_k], derivative_coordinate);
+  const Vec3<Scalar> fourth = atom_position<Scalar>(
+      batch, batch.shell_atoms[shell_l], derivative_coordinate);
+  const Angular angular_first = ao_angular(batch, ao_i, 0);
+  const Angular angular_second = ao_angular(batch, ao_j, 0);
+  const Angular angular_third = ao_angular(batch, ao_k, 0);
+  const Angular angular_fourth = ao_angular(batch, ao_l, 0);
+  const double angular_coefficient =
+      ao_term_coefficient(batch, ao_i, 0) *
+      ao_term_coefficient(batch, ao_j, 0) *
+      ao_term_coefficient(batch, ao_k, 0) *
+      ao_term_coefficient(batch, ao_l, 0);
+
+  Scalar result = scalar<Scalar>(0.0);
+  for (std::int64_t a = batch.shell_primitive_offsets[shell_i];
+       a < batch.shell_primitive_offsets[shell_i + 1]; ++a) {
+    for (std::int64_t b = batch.shell_primitive_offsets[shell_j];
+         b < batch.shell_primitive_offsets[shell_j + 1]; ++b) {
+      for (std::int64_t c = batch.shell_primitive_offsets[shell_k];
+           c < batch.shell_primitive_offsets[shell_k + 1]; ++c) {
+        for (std::int64_t d = batch.shell_primitive_offsets[shell_l];
+             d < batch.shell_primitive_offsets[shell_l + 1]; ++d) {
+          const double weight = angular_coefficient *
+              batch.primitive_coefficients[a] *
+              batch.primitive_coefficients[b] *
+              batch.primitive_coefficients[c] *
+              batch.primitive_coefficients[d];
+          result = result + weight *
+              primitive_eri_cartesian_shell_class<
+                  FirstShellAngular, SecondShellAngular, ThirdShellAngular,
+                  FourthShellAngular>(
+                  batch.primitive_exponents[a], first, angular_first,
+                  batch.primitive_exponents[b], second, angular_second,
+                  batch.primitive_exponents[c], third, angular_third,
+                  batch.primitive_exponents[d], fourth, angular_fourth);
+        }
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * Canonicalize one AO quartet to the exact shell class selected by compaction.
+ *
+ * ERIs and their coordinate derivatives are invariant to swaps within either
+ * pair and to pair exchange, so only the integral evaluator is reordered; the
+ * Fock/force symmetry scatter continues to use the original AO indices.
+ */
+template <unsigned ShellClass, typename Scalar>
+__device__ Scalar contracted_eri_shell_class(
+    const DeviceBatch& batch,
+    std::int32_t system,
+    std::int32_t i,
+    std::int32_t j,
+    std::int32_t k,
+    std::int32_t l,
+    std::int64_t derivative_coordinate) {
+  static_assert(ShellClass < detail::kDirectQuartetShellClassCount);
+  constexpr unsigned FirstPairClass =
+      direct_triangular_class_high(ShellClass);
+  constexpr unsigned SecondPairClass =
+      ShellClass - FirstPairClass * (FirstPairClass + 1) / 2;
+  constexpr unsigned FirstShellAngular =
+      direct_triangular_class_high(FirstPairClass);
+  constexpr unsigned SecondShellAngular =
+      FirstPairClass -
+      FirstShellAngular * (FirstShellAngular + 1) / 2;
+  constexpr unsigned ThirdShellAngular =
+      direct_triangular_class_high(SecondPairClass);
+  constexpr unsigned FourthShellAngular =
+      SecondPairClass -
+      ThirdShellAngular * (ThirdShellAngular + 1) / 2;
+  constexpr unsigned MaximumAngular =
+      FirstShellAngular + SecondShellAngular + ThirdShellAngular +
+      FourthShellAngular;
+
+  const std::int64_t base = static_cast<std::int64_t>(system) * batch.nbf;
+  std::int32_t shell_i = batch.ao_shells[base + i];
+  std::int32_t shell_j = batch.ao_shells[base + j];
+  std::int32_t shell_k = batch.ao_shells[base + k];
+  std::int32_t shell_l = batch.ao_shells[base + l];
+  unsigned angular_i = batch.shell_angular[shell_i];
+  unsigned angular_j = batch.shell_angular[shell_j];
+  unsigned angular_k = batch.shell_angular[shell_k];
+  unsigned angular_l = batch.shell_angular[shell_l];
+
+  if (angular_i < angular_j) {
+    const std::int32_t ao = i;
+    i = j;
+    j = ao;
+    const std::int32_t shell = shell_i;
+    shell_i = shell_j;
+    shell_j = shell;
+    const unsigned angular = angular_i;
+    angular_i = angular_j;
+    angular_j = angular;
+  }
+  if (angular_k < angular_l) {
+    const std::int32_t ao = k;
+    k = l;
+    l = ao;
+    const std::int32_t shell = shell_k;
+    shell_k = shell_l;
+    shell_l = shell;
+    const unsigned angular = angular_k;
+    angular_k = angular_l;
+    angular_l = angular;
+  }
+  const unsigned first_pair_class =
+      direct_shell_pair_class_cuda(angular_i, angular_j);
+  const unsigned second_pair_class =
+      direct_shell_pair_class_cuda(angular_k, angular_l);
+  if (first_pair_class < second_pair_class) {
+    const std::int32_t first_ao = i;
+    const std::int32_t second_ao = j;
+    i = k;
+    j = l;
+    k = first_ao;
+    l = second_ao;
+    const std::int32_t first_shell = shell_i;
+    const std::int32_t second_shell = shell_j;
+    shell_i = shell_k;
+    shell_j = shell_l;
+    shell_k = first_shell;
+    shell_l = second_shell;
+    const unsigned first_angular = angular_i;
+    const unsigned second_angular = angular_j;
+    angular_i = angular_k;
+    angular_j = angular_l;
+    angular_k = first_angular;
+    angular_l = second_angular;
+  }
+
+  // The host selects quartet-direct only for single-term Cartesian AOs, and
+  // compaction uses the same shell metadata to choose ShellClass. Keeping
+  // those invariants outside this hot path prevents every low-order kernel
+  // from inheriting the generic ffff fallback stack.
+  if constexpr (MaximumAngular == 0) {
+    return contracted_eri_order<0, Scalar>(
+        batch, system, i, j, k, l, derivative_coordinate);
+  } else {
+    return contracted_eri_cartesian_shell_class<
+        FirstShellAngular, SecondShellAngular, ThirdShellAngular,
+        FourthShellAngular, Scalar>(
+        batch, base + i, base + j, base + k, base + l,
+        shell_i, shell_j, shell_k, shell_l, derivative_coordinate);
+  }
+}
+
+/** Dispatch one angular-order task to its exact shell-class evaluator. */
+template <unsigned AngularOrder, typename Scalar>
+__device__ Scalar dispatch_contracted_eri_shell_class(
+    unsigned runtime_shell_class,
+    const DeviceBatch& batch,
+    std::int32_t system,
+    std::int32_t i,
+    std::int32_t j,
+    std::int32_t k,
+    std::int32_t l,
+    std::int64_t derivative_coordinate) {
+  static_assert(AngularOrder < detail::kDirectQuartetAngularOrderCount);
+  // The flat generated cases avoid a recursive device-call chain. The
+  // if-constexpr branch removes every class belonging to a different angular
+  // order, so an order-0 kernel references only ssss while preserving 13
+  // launches.
+#define QCE_DIRECT_SHELL_CLASS_CASE(ShellClass)                         \
+  case ShellClass:                                                     \
+    if constexpr (direct_shell_class_angular_order(ShellClass) ==      \
+                  AngularOrder) {                                     \
+      return contracted_eri_shell_class<ShellClass, Scalar>(           \
+          batch, system, i, j, k, l, derivative_coordinate);          \
+    }                                                                 \
+    break
+  switch (runtime_shell_class) {
+    QCE_DIRECT_SHELL_CLASS_CASE(0);
+    QCE_DIRECT_SHELL_CLASS_CASE(1);
+    QCE_DIRECT_SHELL_CLASS_CASE(2);
+    QCE_DIRECT_SHELL_CLASS_CASE(3);
+    QCE_DIRECT_SHELL_CLASS_CASE(4);
+    QCE_DIRECT_SHELL_CLASS_CASE(5);
+    QCE_DIRECT_SHELL_CLASS_CASE(6);
+    QCE_DIRECT_SHELL_CLASS_CASE(7);
+    QCE_DIRECT_SHELL_CLASS_CASE(8);
+    QCE_DIRECT_SHELL_CLASS_CASE(9);
+    QCE_DIRECT_SHELL_CLASS_CASE(10);
+    QCE_DIRECT_SHELL_CLASS_CASE(11);
+    QCE_DIRECT_SHELL_CLASS_CASE(12);
+    QCE_DIRECT_SHELL_CLASS_CASE(13);
+    QCE_DIRECT_SHELL_CLASS_CASE(14);
+    QCE_DIRECT_SHELL_CLASS_CASE(15);
+    QCE_DIRECT_SHELL_CLASS_CASE(16);
+    QCE_DIRECT_SHELL_CLASS_CASE(17);
+    QCE_DIRECT_SHELL_CLASS_CASE(18);
+    QCE_DIRECT_SHELL_CLASS_CASE(19);
+    QCE_DIRECT_SHELL_CLASS_CASE(20);
+    QCE_DIRECT_SHELL_CLASS_CASE(21);
+    QCE_DIRECT_SHELL_CLASS_CASE(22);
+    QCE_DIRECT_SHELL_CLASS_CASE(23);
+    QCE_DIRECT_SHELL_CLASS_CASE(24);
+    QCE_DIRECT_SHELL_CLASS_CASE(25);
+    QCE_DIRECT_SHELL_CLASS_CASE(26);
+    QCE_DIRECT_SHELL_CLASS_CASE(27);
+    QCE_DIRECT_SHELL_CLASS_CASE(28);
+    QCE_DIRECT_SHELL_CLASS_CASE(29);
+    QCE_DIRECT_SHELL_CLASS_CASE(30);
+    QCE_DIRECT_SHELL_CLASS_CASE(31);
+    QCE_DIRECT_SHELL_CLASS_CASE(32);
+    QCE_DIRECT_SHELL_CLASS_CASE(33);
+    QCE_DIRECT_SHELL_CLASS_CASE(34);
+    QCE_DIRECT_SHELL_CLASS_CASE(35);
+    QCE_DIRECT_SHELL_CLASS_CASE(36);
+    QCE_DIRECT_SHELL_CLASS_CASE(37);
+    QCE_DIRECT_SHELL_CLASS_CASE(38);
+    QCE_DIRECT_SHELL_CLASS_CASE(39);
+    QCE_DIRECT_SHELL_CLASS_CASE(40);
+    QCE_DIRECT_SHELL_CLASS_CASE(41);
+    QCE_DIRECT_SHELL_CLASS_CASE(42);
+    QCE_DIRECT_SHELL_CLASS_CASE(43);
+    QCE_DIRECT_SHELL_CLASS_CASE(44);
+    QCE_DIRECT_SHELL_CLASS_CASE(45);
+    QCE_DIRECT_SHELL_CLASS_CASE(46);
+    QCE_DIRECT_SHELL_CLASS_CASE(47);
+    QCE_DIRECT_SHELL_CLASS_CASE(48);
+    QCE_DIRECT_SHELL_CLASS_CASE(49);
+    QCE_DIRECT_SHELL_CLASS_CASE(50);
+    QCE_DIRECT_SHELL_CLASS_CASE(51);
+    QCE_DIRECT_SHELL_CLASS_CASE(52);
+    QCE_DIRECT_SHELL_CLASS_CASE(53);
+    QCE_DIRECT_SHELL_CLASS_CASE(54);
+  }
+#undef QCE_DIRECT_SHELL_CLASS_CASE
   return scalar<Scalar>(0.0);
 }
 
@@ -1906,9 +2345,10 @@ __global__ void compact_active_shell_quartet_tiles_kernel(
   if (angular_order >= detail::kDirectQuartetAngularOrderCount) return;
 
   // Compaction expands each active shell quartet into only its populated AO
-  // tiles inside a fixed angular-order partition. Order within one partition
-  // need not be stable because consumers use double atomics and promise
-  // numerical, rather than bitwise, replay.
+  // tiles inside a fixed angular-order partition. Exact shell-class dispatch
+  // happens inside the consumer so Graph replay retains only 13 launch nodes.
+  // Order within one partition need not be stable because consumers use
+  // double atomics and promise numerical, rather than bitwise, replay.
   const std::uint32_t slot = active_shell_quartet_tile_offsets[angular_order] +
       atomicAdd(active_shell_quartet_tile_counts + angular_order, tile_count);
   for (std::uint32_t tile = 0; tile < tile_count; ++tile) {
@@ -2145,7 +2585,7 @@ __global__ void initialize_direct_fock_kernel(
   fock[element] = hcore[system * matrix_size + element % matrix_size];
 }
 
-template <bool Unrestricted, unsigned MaximumAngular>
+template <bool Unrestricted, unsigned AngularOrder>
 __global__ void build_fock_direct_quartet_kernel(
     DeviceBatch batch,
     const std::uint32_t* active_shell_quartet_tile_count,
@@ -2155,6 +2595,7 @@ __global__ void build_fock_direct_quartet_kernel(
     const double* density,
     const std::uint8_t* active,
     double* fock) {
+  static_assert(AngularOrder < detail::kDirectQuartetAngularOrderCount);
   const std::size_t active_tile = static_cast<std::size_t>(blockIdx.x);
   if (active_tile >=
       static_cast<std::size_t>(*active_shell_quartet_tile_count)) {
@@ -2166,6 +2607,13 @@ __global__ void build_fock_direct_quartet_kernel(
   const std::size_t second_pair = task.second_pair;
   const std::int32_t system = batch.shell_pair_systems[first_pair];
   if (active != nullptr && active[system] == 0) return;
+  const std::int32_t first_shell = batch.shell_pair_first[first_pair];
+  const std::int32_t second_shell = batch.shell_pair_second[first_pair];
+  const std::int32_t third_shell = batch.shell_pair_first[second_pair];
+  const std::int32_t fourth_shell = batch.shell_pair_second[second_pair];
+  const unsigned shell_class = direct_quartet_shell_class_device(
+      batch.shell_angular[first_shell], batch.shell_angular[second_shell],
+      batch.shell_angular[third_shell], batch.shell_angular[fourth_shell]);
 
   const std::size_t n = static_cast<std::size_t>(batch.nbf);
   const std::size_t matrix_size = n * n;
@@ -2206,10 +2654,11 @@ __global__ void build_fock_direct_quartet_kernel(
         screening_tolerance) {
       return;
     }
-    const double integral = contracted_eri_order<MaximumAngular, double>(
-        batch, system, static_cast<std::int32_t>(i),
-        static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
-        static_cast<std::int32_t>(l), -1);
+    const double integral =
+        dispatch_contracted_eri_shell_class<AngularOrder, double>(
+            shell_class, batch, system, static_cast<std::int32_t>(i),
+            static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
+            static_cast<std::int32_t>(l), -1);
     if (integral == 0.0) return;
 
     for (unsigned permutation = 0; permutation < 8; ++permutation) {
@@ -3031,7 +3480,7 @@ __global__ void two_electron_uhf_force_direct_kernel(
   }
 }
 
-template <bool Unrestricted, unsigned MaximumAngular>
+template <bool Unrestricted, unsigned AngularOrder>
 __global__ void two_electron_force_quartet_kernel(
     DeviceBatch batch,
     const std::uint32_t* active_shell_quartet_tile_count,
@@ -3041,6 +3490,7 @@ __global__ void two_electron_force_quartet_kernel(
     const double* density,
     const std::uint8_t* active,
     double* forces) {
+  static_assert(AngularOrder < detail::kDirectQuartetAngularOrderCount);
   const std::size_t active_tile = static_cast<std::size_t>(blockIdx.x);
   // Consume the identical compact tile list as direct Fock so energy and
   // derivative screening cover precisely the same AO-quartet domain.
@@ -3077,6 +3527,9 @@ __global__ void two_electron_force_quartet_kernel(
   const std::int32_t center_atoms[4] = {
       batch.shell_atoms[first_shell], batch.shell_atoms[second_shell],
       batch.shell_atoms[third_shell], batch.shell_atoms[fourth_shell]};
+  const unsigned shell_class = direct_quartet_shell_class_device(
+      batch.shell_angular[first_shell], batch.shell_angular[second_shell],
+      batch.shell_angular[third_shell], batch.shell_angular[fourth_shell]);
 
   const std::size_t ordinal =
       static_cast<std::size_t>(task.tile) * blockDim.x + threadIdx.x;
@@ -3151,10 +3604,11 @@ __global__ void two_electron_force_quartet_kernel(
       for (std::int64_t axis = 0; axis < 3; ++axis) {
         const std::int64_t coordinate =
             static_cast<std::int64_t>(center_atoms[center]) * 3 + axis;
-        const Dual derivative = contracted_eri_order<MaximumAngular, Dual>(
-            batch, system, static_cast<std::int32_t>(i),
-            static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
-            static_cast<std::int32_t>(l), coordinate);
+        const Dual derivative =
+            dispatch_contracted_eri_shell_class<AngularOrder, Dual>(
+                shell_class, batch, system, static_cast<std::int32_t>(i),
+                static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
+                static_cast<std::int32_t>(l), coordinate);
         if (derivative.derivative != 0.0) {
           atomicAdd(forces + coordinate,
                     -coefficient * derivative.derivative);
@@ -3945,7 +4399,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   const bool requested_quartet_direct =
       !requested_persistent_eri &&
       std::all_of(host.shell_angular.begin(), host.shell_angular.end(),
-                  [](std::uint8_t angular) { return angular <= 3; });
+                  [](std::uint8_t angular) { return angular <= 3; }) &&
+      std::all_of(host.ao_term_counts.begin(), host.ao_term_counts.end(),
+                  [](std::uint8_t terms) { return terms == 1; });
   detail::DirectQuartetTaskLayout direct_task_layout{};
   std::size_t total_shell_quartet_tiles = 0;
   if (requested_quartet_direct) {
