@@ -45,8 +45,9 @@ and performance measurements pass.
   shell-class Hermite workspaces reduce Fock stack at orders 0/4/12 to
   0/2440/21240 bytes and force stack to 16/4544/42400 bytes. Clean RTX 5090
   artifacts validate energy, forces, and homogeneous-batch throughput for the
-  exact `sdf18-direct` and Cartesian water/def2-SVP cases. Broader allocated-GPU
-  regression/performance gates remain.
+  exact `sdf18-direct`, Cartesian water/def2-SVP, and open-shell
+  OH/def2-SVP UHF cases. Broader allocated-GPU regression/performance gates
+  remain.
 - Compare random values and derivatives against libcint/PySCF before enabling
   each angular-momentum quartet.
 - Bundled, reproducible STO-3G/def2-SVP/def2-TZVP Cartesian basis packs for
@@ -93,8 +94,9 @@ and performance measurements pass.
   Graph-capture failures retry once through that path. Clean RTX 5090 evidence
   now shows 36.91x warm throughput for `sdf18-direct` batch 16 and 6.07x for
   Cartesian water/def2-SVP batch 8 against sequential GPU4PySCF single-system
-  execution. Convert a broader workload matrix into allocated performance
-  gates and tune the cuBLAS crossover from measured profiles.
+  execution. The named-basis OH/def2-SVP UHF batch reaches 12.68x under the
+  same interface boundary. Convert a broader workload matrix into allocated
+  performance gates and tune the cuBLAS crossover from measured profiles.
 - Core/SAD guesses, robust DIIS recovery, level shift, convergence diagnostics,
   ROHF, broader convergence controls, and production UHF performance tuning.
 - The cold/warm GPU4PySCF harness now includes Cartesian water/def2-SVP and

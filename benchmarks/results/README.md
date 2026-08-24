@@ -13,11 +13,14 @@ single-system interface sequentially inside the same batch timing boundary.
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | [`sdf18-direct`](rtx5090-8300dff-sdf18-direct-b16.json) | 16 | 67.709 ms | 2499.369 ms | 36.91x | 6.35e-14 Eh | 4.87e-14 Eh/bohr |
 | [`water-def2-svp`](rtx5090-8300dff-water-def2-svp-b8.json) | 8 | 1202.903 ms | 7300.320 ms | 6.07x | 1.72e-12 Eh | 5.29e-13 Eh/bohr |
+| [`oh-def2-svp-uhf`](rtx5090-6d3b9ec-oh-def2-svp-uhf-b8.json) | 8 | 571.419 ms | 7244.466 ms | 12.68x | 1.24e-12 Eh | 2.11e-13 Eh/bohr |
 
-Both current artifacts were recorded from clean commit
-`8300dff71090c8ef705532f964c58f14a7e4b0cb` on 2026-08-24. They establish
-performance only for these exact homogeneous batch workloads; they are not a
-claim of broad GPU4PySCF leadership.
+The RHF artifacts were recorded from clean commit
+`8300dff71090c8ef705532f964c58f14a7e4b0cb`; the named-basis UHF artifact was
+recorded after adding its workload at clean commit
+`6d3b9eccd812421098d73c80ca704d13dbbd4884`. All were measured on 2026-08-24.
+They establish performance only for these exact homogeneous batch workloads;
+they are not a claim of broad GPU4PySCF leadership.
 
 ## Prior angular-order baseline
 
@@ -47,5 +50,6 @@ uv run --isolated \
   --case sdf18-direct --batch 16 --repeats 5 --output result.json
 ```
 
-Use `--case water-def2-svp --batch 8` for the second workload. On a Slurm
+Use `--case water-def2-svp --batch 8` or
+`--case oh-def2-svp-uhf --batch 8` for the named-basis workloads. On a Slurm
 cluster, run the command inside an allocation that owns exactly one GPU.
