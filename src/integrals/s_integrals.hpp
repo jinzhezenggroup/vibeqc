@@ -23,17 +23,22 @@ struct IntegralData {
 };
 
 /**
- * Evaluate normalized, contracted Cartesian Gaussian molecular integrals.
+ * Evaluate normalized, contracted Cartesian or real-spherical integrals.
  *
  * This implementation is the independent CPU oracle. Production CUDA
  * execution evaluates the same formulas on device and does not call this
  * routine or copy these integral tensors to the GPU.
  */
-IntegralData build_cartesian_integrals(const core::System& system);
+IntegralData build_integrals(const core::System& system);
+
+/** Compatibility name retained for callers that explicitly request Cartesian. */
+inline IntegralData build_cartesian_integrals(const core::System& system) {
+  return build_integrals(system);
+}
 
 /** Backward-compatible name retained for the original s-shell test helpers. */
 inline IntegralData build_s_integrals(const core::System& system) {
-  return build_cartesian_integrals(system);
+  return build_integrals(system);
 }
 
 }  // namespace qce::integrals

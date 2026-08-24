@@ -165,7 +165,8 @@ qce_status qce_system_create(qce_context* context,
   }
   *system = nullptr;
   if (descriptor->abi_version != QCE_ABI_VERSION ||
-      descriptor->struct_size < sizeof(qce_system_descriptor)) {
+      descriptor->struct_size <
+          offsetof(qce_system_descriptor, basis_representation)) {
     return QCE_STATUS_ABI_MISMATCH;
   }
   if (descriptor->atoms == nullptr || descriptor->shells == nullptr ||
@@ -177,6 +178,10 @@ qce_status qce_system_create(qce_context* context,
     auto candidate = std::make_unique<qce_system>();
     candidate->data.charge = descriptor->charge;
     candidate->data.multiplicity = descriptor->multiplicity;
+    candidate->data.basis_representation =
+        descriptor->struct_size >= sizeof(qce_system_descriptor)
+        ? descriptor->basis_representation
+        : QCE_BASIS_CARTESIAN;
     candidate->data.atoms.reserve(descriptor->atom_count);
     for (std::uint32_t i = 0; i < descriptor->atom_count; ++i) {
       const qce_atom& atom = descriptor->atoms[i];
@@ -242,6 +247,12 @@ qce_status qce_calculation_prepare(qce_context* context,
         ? "UHF requires electron count and multiplicity to define integral spin occupations"
         : "RHF requires an even electron count and spin multiplicity 1";
     return QCE_STATUS_INVALID_ARGUMENT;
+  }
+  if (context->state.requested_backend == QCE_BACKEND_CUDA &&
+      system->data.basis_representation == QCE_BASIS_SPHERICAL) {
+    context->last_detail =
+        "CUDA spherical transforms are not implemented yet";
+    return QCE_STATUS_NOT_IMPLEMENTED;
   }
   try {
     auto candidate = std::make_unique<qce_calculation>();
@@ -332,6 +343,10 @@ qce_status qce_batch_prepare(qce_context* context,
           validate_hf_system(descriptor->method, systems[i]->data) !=
               QCE_STATUS_SUCCESS) {
         return QCE_STATUS_INVALID_ARGUMENT;
+      }
+      if (context->state.requested_backend == QCE_BACKEND_CUDA &&
+          systems[i]->data.basis_representation == QCE_BASIS_SPHERICAL) {
+        return QCE_STATUS_NOT_IMPLEMENTED;
       }
       native_systems.push_back(systems[i]->data);
       atom_counts.push_back(static_cast<std::uint32_t>(systems[i]->data.atoms.size()));

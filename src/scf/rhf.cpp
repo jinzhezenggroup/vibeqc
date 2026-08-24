@@ -769,13 +769,18 @@ CudaRhfBasisLayoutStats inspect_rhf_cuda_basis_layout(
   if (systems.empty()) {
     throw std::invalid_argument("a CUDA RHF basis layout requires systems");
   }
+  if (systems.front().basis_representation != QCE_BASIS_CARTESIAN) {
+    throw std::invalid_argument(
+        "the CUDA RHF basis layout currently requires Cartesian AOs");
+  }
   const std::size_t nbf = molecule::ao_count(systems.front());
   std::size_t shell_count = 0;
   std::size_t shell_pair_count = 0;
   std::size_t unique_primitives = 0;
   std::size_t expanded_primitives = 0;
   for (const core::System& system : systems) {
-    if (molecule::ao_count(system) != nbf) {
+    if (system.basis_representation != QCE_BASIS_CARTESIAN ||
+        molecule::ao_count(system) != nbf) {
       throw std::invalid_argument("systems do not belong to one CUDA RHF bucket");
     }
     shell_count += system.shells.size();

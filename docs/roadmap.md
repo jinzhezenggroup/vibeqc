@@ -29,14 +29,18 @@ and performance measurements pass.
   all J/K contributions. Fixed topology-derived AO-quartet tiling exposes
   large d/f groups across multiple blocks without an O(N^4) descriptor list;
   analytic two-electron forces use the same unique quartets and only the
-  participating shell centers. Consume this next
-  in geometry-dependent active compaction, generated angular-specialized
-  quartet kernels, and spherical transforms.
+  participating shell centers. A geometry-dependent device compaction pass now
+  selects active shell quartets from those bounds without host readback; GPU
+  regression/performance validation remains. Consume the compacted list next
+  in generated angular-specialized quartet kernels, finer AO-level scheduling,
+  and CUDA spherical transforms.
 - Compare random values and derivatives against libcint/PySCF before enabling
   each angular-momentum quartet.
 - Bundled, reproducible STO-3G/def2-SVP/def2-TZVP Cartesian basis packs for
-  H-Ar are generated from the pinned Basis Set Exchange revision. Extend the
-  pack only after pure transforms define standard named-basis semantics.
+  H-Ar are generated from the pinned Basis Set Exchange revision. CPU
+  real-spherical s-p-d-f transforms and analytic gradients are implemented and
+  validated against PySCF/libcint; CUDA spherical consumers remain before
+  standard named-basis GPU semantics are complete.
 - Replace the generic quartet recurrence/scatter with generated shell-class
   kernels and a production active-task scheduler. Retain the present CPU code
   as an auditable oracle rather than a hidden fallback.
@@ -70,8 +74,8 @@ and performance measurements pass.
 - Core/SAD guesses, robust DIIS recovery, level shift, convergence diagnostics,
   ROHF, broader convergence controls, and production UHF performance tuning.
 - Extend the existing cold/warm GPU4PySCF s/p microbenchmark to realistic
-  common basis sets after spherical transforms and shell-task direct J/K are
-  validated.
+  common basis sets after CUDA spherical consumers and generated shell-task
+  direct J/K are validated.
 
 ## M3: density fitting and fleet mode
 

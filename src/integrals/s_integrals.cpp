@@ -2,9 +2,11 @@
 
 #include "molecule/basis.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <numbers>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -458,9 +460,9 @@ struct AoView {
   double component_normalization{};
 };
 
-std::vector<AoView> expand_aos(const core::System& system) {
+std::vector<AoView> expand_cartesian_aos(const core::System& system) {
   std::vector<AoView> aos;
-  aos.reserve(molecule::ao_count(system));
+  aos.reserve(molecule::cartesian_ao_count(system));
   for (const core::Shell& shell : system.shells) {
     for (const molecule::CartesianComponent& component :
          molecule::cartesian_components(shell.angular_momentum)) {
@@ -470,6 +472,45 @@ std::vector<AoView> expand_aos(const core::System& system) {
     }
   }
   return aos;
+}
+
+struct GlobalExpansionTerm {
+  std::size_t cartesian_ao{};
+  double coefficient{};
+};
+
+using GlobalAoExpansion = std::vector<GlobalExpansionTerm>;
+
+std::vector<GlobalAoExpansion> spherical_expansions(
+    const core::System& system) {
+  std::vector<GlobalAoExpansion> expansions;
+  expansions.reserve(molecule::ao_count(system));
+  std::size_t cartesian_offset = 0;
+  for (const core::Shell& shell : system.shells) {
+    const std::vector<molecule::CartesianComponent> components =
+        molecule::cartesian_components(shell.angular_momentum);
+    for (const molecule::AoExpansion& shell_expansion :
+         molecule::ao_expansions(
+             shell.angular_momentum, QCE_BASIS_SPHERICAL)) {
+      GlobalAoExpansion expansion;
+      expansion.reserve(shell_expansion.size());
+      for (const molecule::CartesianExpansionTerm& term : shell_expansion) {
+        const auto component = std::find(
+            components.begin(), components.end(), term.component);
+        if (component == components.end()) {
+          throw std::logic_error(
+              "spherical expansion references an unknown Cartesian AO");
+        }
+        expansion.push_back(
+            {cartesian_offset +
+                 static_cast<std::size_t>(component - components.begin()),
+             term.coefficient});
+      }
+      expansions.push_back(std::move(expansion));
+    }
+    cartesian_offset += components.size();
+  }
+  return expansions;
 }
 
 std::size_t matrix_index(std::size_t i, std::size_t j, std::size_t n) {
@@ -499,14 +540,70 @@ void unpack_jets(const std::vector<Jet>& source,
   }
 }
 
+std::vector<double> transform_matrix(
+    const double* source,
+    std::size_t cartesian_count,
+    const std::vector<GlobalAoExpansion>& target_aos) {
+  const std::size_t target_count = target_aos.size();
+  std::vector<double> transformed(target_count * target_count, 0.0);
+  for (std::size_t p = 0; p < target_count; ++p) {
+    for (std::size_t q = 0; q < target_count; ++q) {
+      double value = 0.0;
+      for (const GlobalExpansionTerm& i : target_aos[p]) {
+        for (const GlobalExpansionTerm& j : target_aos[q]) {
+          value += i.coefficient * j.coefficient *
+                   source[matrix_index(
+                       i.cartesian_ao, j.cartesian_ao, cartesian_count)];
+        }
+      }
+      transformed[matrix_index(p, q, target_count)] = value;
+    }
+  }
+  return transformed;
+}
+
+std::vector<double> transform_eri(
+    const double* source,
+    std::size_t cartesian_count,
+    const std::vector<GlobalAoExpansion>& target_aos) {
+  const std::size_t target_count = target_aos.size();
+  std::vector<double> transformed(
+      target_count * target_count * target_count * target_count, 0.0);
+  for (std::size_t p = 0; p < target_count; ++p) {
+    for (std::size_t q = 0; q < target_count; ++q) {
+      for (std::size_t r = 0; r < target_count; ++r) {
+        for (std::size_t s = 0; s < target_count; ++s) {
+          double value = 0.0;
+          for (const GlobalExpansionTerm& i : target_aos[p]) {
+            for (const GlobalExpansionTerm& j : target_aos[q]) {
+              for (const GlobalExpansionTerm& k : target_aos[r]) {
+                for (const GlobalExpansionTerm& l : target_aos[s]) {
+                  value += i.coefficient * j.coefficient * k.coefficient *
+                           l.coefficient *
+                           source[eri_index(
+                               i.cartesian_ao, j.cartesian_ao,
+                               k.cartesian_ao, l.cartesian_ao,
+                               cartesian_count)];
+                }
+              }
+            }
+          }
+          transformed[eri_index(p, q, r, s, target_count)] = value;
+        }
+      }
+    }
+  }
+  return transformed;
+}
+
 }  // namespace
 
-IntegralData build_cartesian_integrals(const core::System& system) {
+IntegralData build_integrals(const core::System& system) {
   IntegralData out;
-  out.nbf = molecule::ao_count(system);
+  out.nbf = molecule::cartesian_ao_count(system);
   out.ncoord = system.atoms.size() * 3;
   const std::size_t n = out.nbf;
-  const std::vector<AoView> aos = expand_aos(system);
+  const std::vector<AoView> aos = expand_cartesian_aos(system);
 
   std::vector<Vec3> atom_coordinates;
   atom_coordinates.reserve(system.atoms.size());
@@ -535,15 +632,18 @@ IntegralData build_cartesian_integrals(const core::System& system) {
           ao_i.component_normalization * ao_j.component_normalization;
       for (const core::Primitive& pi : ao_i.shell->primitives) {
         for (const core::Primitive& pj : ao_j.shell->primitives) {
-          const double weight = component_factor * pi.coefficient * pj.coefficient;
+          const double weight =
+              component_factor * pi.coefficient * pj.coefficient;
           sij = sij + weight * primitive_overlap_cartesian(
                                    pi.exponent, a, ao_i.angular,
                                    pj.exponent, b, ao_j.angular);
           hij = hij + weight *
-              (primitive_kinetic_cartesian(pi.exponent, a, ao_i.angular,
-                                           pj.exponent, b, ao_j.angular) +
+              (primitive_kinetic_cartesian(
+                   pi.exponent, a, ao_i.angular,
+                   pj.exponent, b, ao_j.angular) +
                primitive_nuclear_attraction_cartesian(
-                   pi.exponent, a, ao_i.angular, pj.exponent, b, ao_j.angular,
+                   pi.exponent, a, ao_i.angular,
+                   pj.exponent, b, ao_j.angular,
                    atom_coordinates, system));
         }
       }
@@ -605,6 +705,55 @@ IntegralData build_cartesian_integrals(const core::System& system) {
   unpack_jets(eri, out.eri, out.eri_derivative, out.ncoord);
   out.nuclear_repulsion = nuclear_repulsion.value;
   out.nuclear_repulsion_derivative = std::move(nuclear_repulsion.derivative);
+  if (system.basis_representation == QCE_BASIS_SPHERICAL) {
+    const std::vector<GlobalAoExpansion> target_aos =
+        spherical_expansions(system);
+    IntegralData spherical;
+    spherical.nbf = target_aos.size();
+    spherical.ncoord = out.ncoord;
+    spherical.overlap = transform_matrix(
+        out.overlap.data(), out.nbf, target_aos);
+    spherical.hcore = transform_matrix(
+        out.hcore.data(), out.nbf, target_aos);
+    spherical.eri = transform_eri(out.eri.data(), out.nbf, target_aos);
+    const std::size_t cartesian_matrix_size = out.nbf * out.nbf;
+    const std::size_t cartesian_eri_size =
+        cartesian_matrix_size * cartesian_matrix_size;
+    const std::size_t spherical_matrix_size = spherical.nbf * spherical.nbf;
+    const std::size_t spherical_eri_size =
+        spherical_matrix_size * spherical_matrix_size;
+    spherical.overlap_derivative.reserve(
+        spherical.ncoord * spherical_matrix_size);
+    spherical.hcore_derivative.reserve(
+        spherical.ncoord * spherical_matrix_size);
+    spherical.eri_derivative.reserve(
+        spherical.ncoord * spherical_eri_size);
+    for (std::size_t coordinate = 0; coordinate < spherical.ncoord;
+         ++coordinate) {
+      std::vector<double> overlap_derivative = transform_matrix(
+          out.overlap_derivative.data() + coordinate * cartesian_matrix_size,
+          out.nbf, target_aos);
+      std::vector<double> hcore_derivative = transform_matrix(
+          out.hcore_derivative.data() + coordinate * cartesian_matrix_size,
+          out.nbf, target_aos);
+      std::vector<double> eri_derivative = transform_eri(
+          out.eri_derivative.data() + coordinate * cartesian_eri_size,
+          out.nbf, target_aos);
+      spherical.overlap_derivative.insert(
+          spherical.overlap_derivative.end(), overlap_derivative.begin(),
+          overlap_derivative.end());
+      spherical.hcore_derivative.insert(
+          spherical.hcore_derivative.end(), hcore_derivative.begin(),
+          hcore_derivative.end());
+      spherical.eri_derivative.insert(
+          spherical.eri_derivative.end(), eri_derivative.begin(),
+          eri_derivative.end());
+    }
+    spherical.nuclear_repulsion = out.nuclear_repulsion;
+    spherical.nuclear_repulsion_derivative =
+        std::move(out.nuclear_repulsion_derivative);
+    return spherical;
+  }
   return out;
 }
 

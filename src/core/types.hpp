@@ -32,6 +32,7 @@ struct System {
   int charge{};
   unsigned multiplicity{1};
   int electron_count{};
+  qce_basis_representation basis_representation{QCE_BASIS_CARTESIAN};
 };
 
 struct ScfOptions {

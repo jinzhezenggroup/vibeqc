@@ -92,6 +92,12 @@ if(QCE_BUILD_TESTS)
   target_link_libraries(qce_uhf_tests PRIVATE qce)
   target_include_directories(qce_uhf_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
   add_test(NAME qce_uhf_tests COMMAND qce_uhf_tests)
+
+  add_executable(qce_spherical_tests tests/native/test_spherical.cpp)
+  target_link_libraries(qce_spherical_tests PRIVATE qce)
+  target_include_directories(qce_spherical_tests
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  add_test(NAME qce_spherical_tests COMMAND qce_spherical_tests)
 endif()
 
 include(GNUInstallDirs)

@@ -77,6 +77,45 @@ def test_nonconverged_item_does_not_abort_converged_neighbor():
     assert result.failure_indices == (1,)
 
 
+def test_real_spherical_batch_reuses_fixed_topology_plan():
+    """Keep spherical transforms compatible with native batch warm starts."""
+
+    basis = (
+        Shell(0, 0, (Primitive(1.5, 1.0),)),
+        Shell(0, 2, (Primitive(0.8, 1.0),)),
+        Shell(1, 0, (Primitive(1.2, 1.0),)),
+    )
+    systems = [
+        [("He", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))],
+        [("He", (0.0, 0.0, -0.8)), ("H", (0.0, 0.0, 0.8))],
+    ]
+    calculator = Calculator(
+        basis=basis,
+        basis_representation="spherical",
+        device="cpu",
+        energy_tolerance=1.0e-12,
+        density_tolerance=1.0e-10,
+    )
+    independent = [
+        calculator.singlepoint(system, charge=1) for system in systems
+    ]
+    with calculator.prepare_batch(systems, charges=[1, 1]) as prepared:
+        cold = prepared.execute(strict=True)
+        warm = prepared.execute(strict=True)
+
+    assert np.allclose(
+        cold.energies,
+        [result.energy for result in independent],
+        atol=3.0e-12,
+    )
+    assert all(item.executed_backend == "cpu_reference" for item in cold.items)
+    assert all(item.warm_start_used for item in warm.items)
+    assert all(
+        warm.items[index].iterations <= cold.items[index].iterations
+        for index in range(len(systems))
+    )
+
+
 def test_device_resident_cuda_rhf_matches_reference_when_device_is_available():
     batch_systems = [systems()[0], systems()[2], systems()[0], systems()[2]]
     reference = Calculator(device="cpu").batch_singlepoint(

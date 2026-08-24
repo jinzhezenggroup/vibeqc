@@ -5,13 +5,14 @@ naming prefix is intentionally provisional until the final project name is
 chosen.
 
 The current vertical prototype implements RHF and UHF energies and analytic
-nuclear gradients for all-electron contracted Cartesian **s through f**
-Gaussian bases. It includes a versioned C ABI, a C++ core, Python bindings
-through `ctypes`, native ragged fleet batches, and device-resident CUDA RHF/UHF
-paths for that validated s-p-d-f scope. ROHF, density fitting, spherical
-transforms, and generated angular-momentum-specialized quartet kernels remain
-explicit roadmap items rather than silently falling back to an unvalidated
-implementation.
+nuclear gradients for all-electron contracted **s through f** Gaussian bases.
+The independent CPU oracle accepts CCA Cartesian or real spherical AOs; the
+device-resident CUDA RHF/UHF path currently covers the validated Cartesian
+s-p-d-f scope. It includes a versioned C ABI, a C++ core, Python bindings
+through `ctypes`, and native ragged fleet batches. CUDA spherical execution,
+ROHF, density fitting, and generated angular-momentum-specialized quartet
+kernels remain explicit roadmap items rather than silently falling back to an
+unvalidated implementation.
 
 ## Build
 
@@ -70,13 +71,16 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
 
 - RHF requires an even electron count and multiplicity 1. UHF derives
   integral alpha/beta occupations from electron count and multiplicity.
-- Contracted Cartesian `s`, `p`, `d`, and `f` shells are executable. The ABI
-  carries an angular-momentum field and rejects `g` and higher shells. Pure
-  spherical transforms are not implemented yet.
+- Contracted `s`, `p`, `d`, and `f` shells are executable. The ABI carries an
+  angular-momentum field and rejects `g` and higher shells. The CPU reference
+  supports CCA Cartesian and PySCF/libcint-ordered real spherical functions;
+  CUDA currently requires Cartesian AOs and reports spherical execution as
+  unavailable instead of falling back to the host.
 - The Python package bundles data-only STO-3G, def2-SVP, and def2-TZVP packs
-  for H-Ar, generated from the pinned Basis Set Exchange reference. Until pure
-  transforms land, named def2 calculations are explicitly Cartesian and must
-  be compared with references configured with `cart=True`.
+  for H-Ar, generated from the pinned Basis Set Exchange reference. Named basis
+  calculations remain Cartesian by default for compatibility; pass
+  `basis_representation="spherical"` on the CPU reference for standard pure
+  def2 semantics.
 - No ECP, symmetry, finite-temperature occupations, DFT, or post-HF methods.
 - The analytic gradient differentiates integral formulas analytically and
   assembles variational RHF/UHF gradients with their Pulay terms. It does not
@@ -107,9 +111,11 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   fixed-topology packed AO-pair table; one-electron integrals and their force
   terms use only the triangle, and direct buckets reuse it for Schwarz bounds
   and the direct scheduler. Ragged canonical shell-pair and shell-quartet
-  topology plus shell-level Schwarz maxima are resident. Generated quartet
-  specialization, geometry-dependent active compaction, spherical transforms,
-  and DF J/K are still required before making production performance claims.
+  topology plus shell-level Schwarz maxima are resident. Geometry-dependent
+  shell-quartet compaction is implemented fully on device and awaits allocated
+  GPU regression/performance validation. Generated quartet specialization,
+  CUDA spherical consumers, and DF J/K are still required before making
+  production performance claims.
 
 UHF uses the same memory policy: small buckets retain ERIs, while larger
 buckets build spin-resolved Fock matrices directly from O(N^2) Schwarz data.
@@ -145,8 +151,9 @@ None of these cases establishes realistic basis-set leadership. GPU4PySCF
 already has mature higher-angular-momentum Rys kernels, screening, spherical
 basis support, and highly optimized shell-sorted direct J/K. QCE now switches
 larger AO buckets to an O(N^2)-memory screened direct path, but that path still
-lacks GPU4PySCF's generated Rys kernels, mature active-task compaction, pure
-spherical transforms, and named def2 basis ingestion.
+lacks GPU4PySCF's generated Rys kernels, mature AO-level active-task
+compaction, CUDA spherical consumers, and standard spherical named-def2 GPU
+execution.
 No broad performance claim is valid until both engines run the same realistic
 molecules, basis, precision, convergence, and energy/gradient workload on the
 same allocated GPU.

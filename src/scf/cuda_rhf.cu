@@ -3138,6 +3138,7 @@ bool pack_host_batch(const std::vector<core::System>& systems,
                      HostBatch& host,
                      bool unrestricted = false) {
   if (systems.empty() || systems.size() != initial_densities.size()) return false;
+  if (systems.front().basis_representation != QCE_BASIS_CARTESIAN) return false;
   host.nbf = molecule::ao_count(systems.front());
   host.spin_count = unrestricted ? 2 : 1;
   if (host.nbf == 0 || host.nbf > static_cast<std::size_t>(std::numeric_limits<int>::max()) ||
@@ -3153,7 +3154,8 @@ bool pack_host_batch(const std::vector<core::System>& systems,
       systems.size() * host.spin_count * matrix_size, 0.0);
   for (std::size_t system_index = 0; system_index < systems.size(); ++system_index) {
     const core::System& system = systems[system_index];
-    if (molecule::ao_count(system) != host.nbf || system.electron_count <= 0) {
+    if (system.basis_representation != QCE_BASIS_CARTESIAN ||
+        molecule::ao_count(system) != host.nbf || system.electron_count <= 0) {
       return false;
     }
     const int spin_excess = static_cast<int>(system.multiplicity) - 1;

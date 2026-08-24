@@ -31,8 +31,10 @@ shell-task/DF algorithms remain roadmap work.
 For the current small validation workloads, the CUDA path is a correctness and
 execution-architecture milestone rather than a speed claim. Published
 production performance claims require generated shell-quartet kernels,
-DF J/K, active compaction, pure spherical bases, and larger realistic
-benchmark oracles. The present policy retains ERIs for AO count <=16 and uses
+DF J/K, finer AO-level compaction, CUDA spherical bases, and larger realistic
+benchmark oracles. A device-only shell-quartet compaction pass is implemented
+but still awaits allocated performance validation. The present policy retains
+ERIs for AO count <=16 and uses
 O(N^2)-memory screened direct J/K above that threshold. Direct buckets retain a
 canonical packed-pair table in their topology arena. For s/p/d/f topologies,
 fixed shell-pair-pair offsets define eightfold-symmetry-unique quartets; one

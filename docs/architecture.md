@@ -21,6 +21,14 @@ McMurchie-Davidson recurrence is shared mathematically with the CPU oracle but
 implemented independently in CUDA. Torch/JAX bindings call the native gradient
 as a custom backward; they do not define the scientific implementation.
 
+The CPU oracle first evaluates normalized Cartesian integrals and their forward
+derivatives, then applies sparse, geometry-independent real-solid-harmonic
+transforms to every AO index. The d/f matrices use the CCA Cartesian order and
+PySCF/libcint real-spherical order. Transforming derivative tensors with the
+same matrices preserves the analytic-gradient variational relationship. CUDA
+spherical execution remains a separate production kernel milestone; requesting
+it currently returns `NOT_IMPLEMENTED` and never triggers a host fallback.
+
 ## ABI stability
 
 All public descriptors begin with `struct_size` and `abi_version`. ABI version
@@ -107,9 +115,11 @@ atomics make this fast but not bitwise deterministic: a 50-replay 21-AO test
 showed about 1.5e-14 Eh energy span and 1.4e-12 Eh/bohr maximum force span.
 Canonical AO-pair arrays remain
 resident for one-electron triangles and Schwarz bounds,
-following gpuxtb's immutable pair-metadata pattern. The next scheduler
-milestone is geometry-dependent active quartet compaction without host
-readback, followed by generated quartet kernels and spherical transforms.
+following gpuxtb's immutable pair-metadata pattern. A geometry-dependent
+device pass compacts shell quartets whose shell-level Schwarz product survives
+the current threshold; the SCF Graph and analytic-force pass consume the same
+list without host readback. Generated quartet kernels, finer AO-level task
+compaction, and CUDA spherical consumers remain subsequent scheduler work.
 
 UHF reuses the same fixed topology and physical-system active mask while its
 matrix arena stores adjacent alpha/beta states. Coulomb kernels consume

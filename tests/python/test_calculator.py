@@ -52,6 +52,28 @@ def test_bundled_def2_tzvp_h2_cpu_reference():
     assert result.forces[1, 2] == pytest.approx(-0.00427329, abs=2.0e-8)
 
 
+def test_real_spherical_d_energy_and_force_match_pyscf():
+    """Validate the Python/ABI path for normalized real spherical AOs."""
+
+    atoms = [("He", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
+    basis = (
+        Shell(0, 0, (Primitive(1.5, 1.0),)),
+        Shell(0, 2, (Primitive(0.8, 1.0),)),
+        Shell(1, 0, (Primitive(1.2, 1.0),)),
+    )
+    result = Calculator(
+        basis=basis,
+        basis_representation="spherical",
+        device="cpu",
+        energy_tolerance=1.0e-12,
+        density_tolerance=1.0e-10,
+    ).singlepoint(atoms, charge=1)
+
+    assert result.energy == pytest.approx(-2.3341870407859284, abs=3.0e-12)
+    assert result.forces[0, 2] == pytest.approx(0.3502792384052442, abs=8.0e-12)
+    assert result.forces[1, 2] == pytest.approx(-0.3502792384052438, abs=8.0e-12)
+
+
 def test_h3_plus_exercises_diis_and_force_invariants():
     coordinates = np.array([[-1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [1.0, 0.0, 0.0]])
     atoms = [("H", coordinate) for coordinate in coordinates]

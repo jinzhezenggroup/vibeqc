@@ -49,6 +49,14 @@ enum {
   QCE_BACKEND_HYBRID_CUDA = 2
 };
 
+typedef int32_t qce_basis_representation;
+enum {
+  /** CCA-ordered Cartesian functions: 1, 3, 6, and 10 AOs for s-p-d-f. */
+  QCE_BASIS_CARTESIAN = 0,
+  /** Real spherical functions in PySCF/libcint order: 1, 3, 5, and 7 AOs. */
+  QCE_BASIS_SPHERICAL = 1
+};
+
 typedef struct qce_context qce_context;
 typedef struct qce_system qce_system;
 typedef struct qce_calculation qce_calculation;
@@ -97,6 +105,8 @@ typedef struct qce_system_descriptor {
   uint32_t primitive_count;
   int32_t charge;
   uint32_t multiplicity;
+  /** Optional in older ABI-0 descriptors; absent fields imply Cartesian. */
+  qce_basis_representation basis_representation;
 } qce_system_descriptor;
 
 typedef struct qce_method_descriptor {

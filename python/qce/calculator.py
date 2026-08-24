@@ -129,7 +129,8 @@ class Calculator:
 
     Coordinates are in Bohr. The current implementation accepts RHF or UHF and
     a bundled Cartesian STO-3G/def2-SVP/def2-TZVP basis for H-Ar, or explicit
-    Cartesian `Shell` objects.
+    `Shell` objects. The CPU reference supports Cartesian or real spherical
+    AOs; the CUDA backend currently accepts Cartesian AOs only.
     """
 
     def __init__(
@@ -138,6 +139,7 @@ class Calculator:
         basis: str | Sequence[Shell] = "sto-3g",
         device: str = "cpu",
         device_id: int = 0,
+        basis_representation: str = "cartesian",
         *,
         max_iterations: int = 100,
         energy_tolerance: float = 1.0e-10,
@@ -155,8 +157,17 @@ class Calculator:
             raise ValueError(f"unknown method {method!r}")
         if device not in {"cpu", "cuda"}:
             raise ValueError("device must be 'cpu' or 'cuda'")
+        representations = {
+            "cartesian": _native.BASIS_CARTESIAN,
+            "spherical": _native.BASIS_SPHERICAL,
+        }
+        if basis_representation not in representations:
+            raise ValueError(
+                "basis_representation must be 'cartesian' or 'spherical'"
+            )
         self._method = methods[method.lower()]
         self._basis = basis
+        self._basis_representation = representations[basis_representation]
         self._backend = (
             _native.BACKEND_CUDA if device == "cuda" else _native.BACKEND_CPU_REFERENCE
         )
@@ -250,6 +261,7 @@ class Calculator:
             len(primitive_array),
             int(charge),
             int(multiplicity),
+            self._basis_representation,
         )
         system = ctypes.c_void_p()
         _native.check(

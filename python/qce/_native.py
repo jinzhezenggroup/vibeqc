@@ -23,6 +23,8 @@ METHOD_RCCSD_T = 4
 BACKEND_CPU_REFERENCE = 0
 BACKEND_CUDA = 1
 BACKEND_HYBRID_CUDA = 2
+BASIS_CARTESIAN = 0
+BASIS_SPHERICAL = 1
 BATCH_ENABLE_WARM_STARTS = 1 << 0
 
 
@@ -69,6 +71,7 @@ class SystemDescriptor(ctypes.Structure):
         ("primitive_count", ctypes.c_uint32),
         ("charge", ctypes.c_int32),
         ("multiplicity", ctypes.c_uint32),
+        ("basis_representation", ctypes.c_int32),
     ]
 
 
@@ -208,4 +211,6 @@ def load_library() -> ctypes.CDLL:
 def check(library: ctypes.CDLL, status: int) -> None:
     if status != STATUS_SUCCESS:
         message = library.qce_status_message(status).decode("utf-8")
+        if status == STATUS_NOT_IMPLEMENTED:
+            raise NotImplementedError(f"QCE error {status}: {message}")
         raise RuntimeError(f"QCE error {status}: {message}")
