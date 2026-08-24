@@ -3289,11 +3289,19 @@ class CudaResources {
       (void)cudaGraphExecDestroy(iteration_graph_exec_);
     }
     if (iteration_graph_ != nullptr) (void)cudaGraphDestroy(iteration_graph_);
-    if (solver_workspace_ != nullptr) (void)cudaFree(solver_workspace_);
-    if (arena_ != nullptr) (void)cudaFree(arena_);
     if (jacobi_ != nullptr) (void)cusolverDnDestroySyevjInfo(jacobi_);
     if (solver_ != nullptr) (void)cusolverDnDestroy(solver_);
-    if (stream_ != nullptr) (void)cudaStreamDestroy(stream_);
+    if (stream_ != nullptr) {
+      // Both allocations come from CUDA's stream-ordered device pool. Queue
+      // their release on the owning bucket stream so destroying one plan does
+      // not impose a device-wide synchronization on unrelated workloads.
+      if (solver_workspace_ != nullptr) {
+        (void)cudaFreeAsync(solver_workspace_, stream_);
+      }
+      if (arena_ != nullptr) (void)cudaFreeAsync(arena_, stream_);
+      (void)cudaStreamSynchronize(stream_);
+      (void)cudaStreamDestroy(stream_);
+    }
   }
 
   int device_id_{-1};
@@ -3587,7 +3595,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   if (first_setup) {
     if ((cuda_error = cudaStreamCreateWithFlags(&resources.stream_,
                                                  cudaStreamNonBlocking)) != cudaSuccess ||
-        (cuda_error = cudaMalloc(&resources.arena_, layout.bytes)) != cudaSuccess) {
+        (cuda_error = cudaMallocAsync(
+             &resources.arena_, layout.bytes, resources.stream_)) != cudaSuccess) {
       fill_global_failure(outputs, cuda_status(cuda_error));
       return outputs;
     }
@@ -3812,9 +3821,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       fill_global_failure(outputs, solver_status(solver_error));
       return outputs;
     }
-    if ((cuda_error = cudaMalloc(
+    if ((cuda_error = cudaMallocAsync(
              reinterpret_cast<void**>(&resources.solver_workspace_),
-             static_cast<std::size_t>(plan.lwork) * sizeof(double))) != cudaSuccess) {
+             static_cast<std::size_t>(plan.lwork) * sizeof(double),
+             resources.stream_)) != cudaSuccess) {
       fill_global_failure(outputs, cuda_status(cuda_error));
       return outputs;
     }

@@ -121,6 +121,11 @@ the current threshold; the SCF Graph and analytic-force pass consume the same
 list without host readback. Generated quartet kernels, finer AO-level task
 compaction, and CUDA spherical consumers remain subsequent scheduler work.
 
+The packed arena and optional cuSOLVER workspace use CUDA's stream-ordered
+memory pool. Allocation occurs before Graph capture and release is enqueued on
+the owning bucket stream, so plan construction and destruction do not require
+legacy device-wide `cudaMalloc`/`cudaFree` synchronization.
+
 UHF reuses the same fixed topology and physical-system active mask while its
 matrix arena stores adjacent alpha/beta states. Coulomb kernels consume
 `D_alpha + D_beta`; exchange and its derivative consume only the matching spin.

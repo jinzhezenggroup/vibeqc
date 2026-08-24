@@ -69,8 +69,10 @@ and performance measurements pass.
 - UHF alpha/beta occupations, persistent and screened-direct J/K, combined
   spin DIIS, warm starts, ragged batches, and analytic gradients are
   implemented on CPU and CUDA for the Cartesian s-p-d-f scope.
-- Add a CUDA memory pool, active compaction, scalable BLAS-backed matrix
-  transforms, and production error/publication ledgers.
+- Stream-ordered CUDA memory-pool allocation, device shell-quartet compaction,
+  and reproducible benchmark publication ledgers are implemented. Add scalable
+  BLAS-backed matrix transforms, finer AO-level compaction, and allocated
+  performance gates.
 - Core/SAD guesses, robust DIIS recovery, level shift, convergence diagnostics,
   ROHF, broader convergence controls, and production UHF performance tuning.
 - Extend the existing cold/warm GPU4PySCF s/p microbenchmark to realistic
