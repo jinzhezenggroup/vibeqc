@@ -707,7 +707,7 @@ __device__ __noinline__ Scalar nuclear_attraction_cartesian_value(
   return result;
 }
 
-template <typename Scalar>
+template <unsigned MaximumAngular, typename Scalar>
 __device__ Scalar primitive_nuclear_attraction_cartesian(
     const DeviceBatch& batch,
     std::int32_t system,
@@ -728,41 +728,10 @@ __device__ Scalar primitive_nuclear_attraction_cartesian(
                  coefficients[axis]);
   }
 
-  // The dispatch makes the Boys order and Coulomb simplex size compile-time
-  // constants while retaining one shared, validated recurrence formula.
-  const unsigned maximum =
-      angular_total(angular_first) + angular_total(angular_second);
-  switch (maximum) {
-    case 0:
-      return nuclear_attraction_cartesian_value<0>(
-          batch, system, exponent, product, angular_first, angular_second,
-          coefficients, derivative_coordinate);
-    case 1:
-      return nuclear_attraction_cartesian_value<1>(
-          batch, system, exponent, product, angular_first, angular_second,
-          coefficients, derivative_coordinate);
-    case 2:
-      return nuclear_attraction_cartesian_value<2>(
-          batch, system, exponent, product, angular_first, angular_second,
-          coefficients, derivative_coordinate);
-    case 3:
-      return nuclear_attraction_cartesian_value<3>(
-          batch, system, exponent, product, angular_first, angular_second,
-          coefficients, derivative_coordinate);
-    case 4:
-      return nuclear_attraction_cartesian_value<4>(
-          batch, system, exponent, product, angular_first, angular_second,
-          coefficients, derivative_coordinate);
-    case 5:
-      return nuclear_attraction_cartesian_value<5>(
-          batch, system, exponent, product, angular_first, angular_second,
-          coefficients, derivative_coordinate);
-    case 6:
-      return nuclear_attraction_cartesian_value<6>(
-          batch, system, exponent, product, angular_first, angular_second,
-          coefficients, derivative_coordinate);
-  }
-  return scalar<Scalar>(0.0);
+  static_assert(MaximumAngular <= 2 * kMaximumAngularMomentum);
+  return nuclear_attraction_cartesian_value<MaximumAngular>(
+      batch, system, exponent, product, angular_first, angular_second,
+      coefficients, derivative_coordinate);
 }
 
 template <unsigned MaximumAngular, typename Scalar>
@@ -814,7 +783,7 @@ __device__ __noinline__ Scalar eri_cartesian_value(
   return 2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q)) * value;
 }
 
-template <typename Scalar>
+template <unsigned MaximumAngular, typename Scalar>
 __device__ Scalar primitive_eri_cartesian(
     double alpha,
     const Vec3<Scalar>& first,
@@ -845,78 +814,10 @@ __device__ Scalar primitive_eri_cartesian(
                  vec_axis(third, axis), vec_axis(fourth, axis), gamma, delta,
                  second_coefficients[axis]);
   }
-  const unsigned maximum = angular_total(angular_first) +
-                           angular_total(angular_second) +
-                           angular_total(angular_third) +
-                           angular_total(angular_fourth);
-  switch (maximum) {
-    case 0:
-      return eri_cartesian_value<0>(
-          p, q, rho, product_p, product_q, angular_first, angular_second,
-          angular_third, angular_fourth, first_coefficients,
-          second_coefficients);
-    case 1:
-      return eri_cartesian_value<1>(
-          p, q, rho, product_p, product_q, angular_first, angular_second,
-          angular_third, angular_fourth, first_coefficients,
-          second_coefficients);
-    case 2:
-      return eri_cartesian_value<2>(
-          p, q, rho, product_p, product_q, angular_first, angular_second,
-          angular_third, angular_fourth, first_coefficients,
-          second_coefficients);
-    case 3:
-      return eri_cartesian_value<3>(
-          p, q, rho, product_p, product_q, angular_first, angular_second,
-          angular_third, angular_fourth, first_coefficients,
-          second_coefficients);
-    case 4:
-      return eri_cartesian_value<4>(
-          p, q, rho, product_p, product_q, angular_first, angular_second,
-          angular_third, angular_fourth, first_coefficients,
-          second_coefficients);
-    case 5:
-      return eri_cartesian_value<5>(
-          p, q, rho, product_p, product_q, angular_first, angular_second,
-          angular_third, angular_fourth, first_coefficients,
-          second_coefficients);
-    case 6:
-      return eri_cartesian_value<6>(
-          p, q, rho, product_p, product_q, angular_first, angular_second,
-          angular_third, angular_fourth, first_coefficients,
-          second_coefficients);
-    case 7:
-      return eri_cartesian_value<7>(
-          p, q, rho, product_p, product_q, angular_first, angular_second,
-          angular_third, angular_fourth, first_coefficients,
-          second_coefficients);
-    case 8:
-      return eri_cartesian_value<8>(
-          p, q, rho, product_p, product_q, angular_first, angular_second,
-          angular_third, angular_fourth, first_coefficients,
-          second_coefficients);
-    case 9:
-      return eri_cartesian_value<9>(
-          p, q, rho, product_p, product_q, angular_first, angular_second,
-          angular_third, angular_fourth, first_coefficients,
-          second_coefficients);
-    case 10:
-      return eri_cartesian_value<10>(
-          p, q, rho, product_p, product_q, angular_first, angular_second,
-          angular_third, angular_fourth, first_coefficients,
-          second_coefficients);
-    case 11:
-      return eri_cartesian_value<11>(
-          p, q, rho, product_p, product_q, angular_first, angular_second,
-          angular_third, angular_fourth, first_coefficients,
-          second_coefficients);
-    case 12:
-      return eri_cartesian_value<12>(
-          p, q, rho, product_p, product_q, angular_first, angular_second,
-          angular_third, angular_fourth, first_coefficients,
-          second_coefficients);
-  }
-  return scalar<Scalar>(0.0);
+  static_assert(MaximumAngular <= kMaximumCoulombOrder);
+  return eri_cartesian_value<MaximumAngular>(
+      p, q, rho, product_p, product_q, angular_first, angular_second,
+      angular_third, angular_fourth, first_coefficients, second_coefficients);
 }
 
 template <typename Scalar>
@@ -975,6 +876,51 @@ __device__ Scalar contracted_overlap(const DeviceBatch& batch,
   return result;
 }
 
+template <unsigned MaximumAngular, typename Scalar>
+__device__ __noinline__ Scalar contracted_hcore_cartesian(
+    const DeviceBatch& batch,
+    std::int32_t system,
+    std::int64_t ao_i,
+    std::int64_t ao_j,
+    std::int32_t shell_i,
+    std::int32_t shell_j,
+    const Vec3<Scalar>& first,
+    const Vec3<Scalar>& second,
+    unsigned first_terms,
+    unsigned second_terms,
+    std::int64_t derivative_coordinate) {
+  static_assert(MaximumAngular <= 2 * kMaximumAngularMomentum);
+  Scalar result = scalar<Scalar>(0.0);
+  for (std::int64_t a = batch.shell_primitive_offsets[shell_i];
+       a < batch.shell_primitive_offsets[shell_i + 1]; ++a) {
+    for (std::int64_t b = batch.shell_primitive_offsets[shell_j];
+         b < batch.shell_primitive_offsets[shell_j + 1]; ++b) {
+      const double weight = batch.primitive_coefficients[a] *
+                            batch.primitive_coefficients[b];
+      for (unsigned first_term = 0; first_term < first_terms; ++first_term) {
+        const Angular first_angular = ao_angular(batch, ao_i, first_term);
+        const double first_coefficient =
+            ao_term_coefficient(batch, ao_i, first_term);
+        for (unsigned second_term = 0; second_term < second_terms;
+             ++second_term) {
+          const Angular second_angular =
+              ao_angular(batch, ao_j, second_term);
+          result = result + weight * first_coefficient *
+              ao_term_coefficient(batch, ao_j, second_term) *
+              (primitive_kinetic_cartesian(
+                   batch.primitive_exponents[a], first, first_angular,
+                   batch.primitive_exponents[b], second, second_angular) +
+               primitive_nuclear_attraction_cartesian<MaximumAngular>(
+                   batch, system, batch.primitive_exponents[a], first,
+                   first_angular, batch.primitive_exponents[b], second,
+                   second_angular, derivative_coordinate));
+        }
+      }
+    }
+  }
+  return result;
+}
+
 template <typename Scalar>
 __device__ Scalar contracted_hcore(const DeviceBatch& batch,
                                    std::int32_t system,
@@ -996,14 +942,14 @@ __device__ Scalar contracted_hcore(const DeviceBatch& batch,
   const bool all_s = first_terms == 1 && second_terms == 1 &&
                      is_s_function(angular_first) &&
                      is_s_function(angular_second);
-  Scalar result = scalar<Scalar>(0.0);
-  for (std::int64_t a = batch.shell_primitive_offsets[shell_i];
-       a < batch.shell_primitive_offsets[shell_i + 1]; ++a) {
-    for (std::int64_t b = batch.shell_primitive_offsets[shell_j];
-         b < batch.shell_primitive_offsets[shell_j + 1]; ++b) {
-      const double weight = batch.primitive_coefficients[a] *
-                            batch.primitive_coefficients[b];
-      if (all_s) {
+  if (all_s) {
+    Scalar result = scalar<Scalar>(0.0);
+    for (std::int64_t a = batch.shell_primitive_offsets[shell_i];
+         a < batch.shell_primitive_offsets[shell_i + 1]; ++a) {
+      for (std::int64_t b = batch.shell_primitive_offsets[shell_j];
+           b < batch.shell_primitive_offsets[shell_j + 1]; ++b) {
+        const double weight = batch.primitive_coefficients[a] *
+                              batch.primitive_coefficients[b];
         result = result + weight * ao_term_coefficient(batch, ao_i, 0) *
             ao_term_coefficient(batch, ao_j, 0) *
             (primitive_kinetic(batch.primitive_exponents[a], first,
@@ -1011,25 +957,113 @@ __device__ Scalar contracted_hcore(const DeviceBatch& batch,
              primitive_nuclear_attraction(
                  batch, system, batch.primitive_exponents[a], first,
                  batch.primitive_exponents[b], second, derivative_coordinate));
-      } else {
-        for (unsigned first_term = 0; first_term < first_terms; ++first_term) {
-          const Angular first_angular =
-              ao_angular(batch, ao_i, first_term);
-          const double first_coefficient =
-              ao_term_coefficient(batch, ao_i, first_term);
-          for (unsigned second_term = 0; second_term < second_terms;
-               ++second_term) {
-            const Angular second_angular =
-                ao_angular(batch, ao_j, second_term);
-            result = result + weight * first_coefficient *
-                ao_term_coefficient(batch, ao_j, second_term) *
-                (primitive_kinetic_cartesian(
-                     batch.primitive_exponents[a], first, first_angular,
-                     batch.primitive_exponents[b], second, second_angular) +
-                 primitive_nuclear_attraction_cartesian(
-                     batch, system, batch.primitive_exponents[a], first,
-                     first_angular, batch.primitive_exponents[b], second,
-                     second_angular, derivative_coordinate));
+      }
+    }
+    return result;
+  }
+
+  const unsigned maximum = batch.shell_angular[shell_i] +
+                           batch.shell_angular[shell_j];
+  switch (maximum) {
+    case 1:
+      return contracted_hcore_cartesian<1>(
+          batch, system, ao_i, ao_j, shell_i, shell_j, first, second,
+          first_terms, second_terms, derivative_coordinate);
+    case 2:
+      return contracted_hcore_cartesian<2>(
+          batch, system, ao_i, ao_j, shell_i, shell_j, first, second,
+          first_terms, second_terms, derivative_coordinate);
+    case 3:
+      return contracted_hcore_cartesian<3>(
+          batch, system, ao_i, ao_j, shell_i, shell_j, first, second,
+          first_terms, second_terms, derivative_coordinate);
+    case 4:
+      return contracted_hcore_cartesian<4>(
+          batch, system, ao_i, ao_j, shell_i, shell_j, first, second,
+          first_terms, second_terms, derivative_coordinate);
+    case 5:
+      return contracted_hcore_cartesian<5>(
+          batch, system, ao_i, ao_j, shell_i, shell_j, first, second,
+          first_terms, second_terms, derivative_coordinate);
+    case 6:
+      return contracted_hcore_cartesian<6>(
+          batch, system, ao_i, ao_j, shell_i, shell_j, first, second,
+          first_terms, second_terms, derivative_coordinate);
+  }
+  return scalar<Scalar>(0.0);
+}
+
+template <unsigned MaximumAngular, typename Scalar>
+__device__ __noinline__ Scalar contracted_eri_cartesian(
+    const DeviceBatch& batch,
+    std::int64_t ao_i,
+    std::int64_t ao_j,
+    std::int64_t ao_k,
+    std::int64_t ao_l,
+    std::int32_t shell_i,
+    std::int32_t shell_j,
+    std::int32_t shell_k,
+    std::int32_t shell_l,
+    std::int64_t derivative_coordinate) {
+  static_assert(MaximumAngular <= kMaximumCoulombOrder);
+  const Vec3<Scalar> first = atom_position<Scalar>(
+      batch, batch.shell_atoms[shell_i], derivative_coordinate);
+  const Vec3<Scalar> second = atom_position<Scalar>(
+      batch, batch.shell_atoms[shell_j], derivative_coordinate);
+  const Vec3<Scalar> third = atom_position<Scalar>(
+      batch, batch.shell_atoms[shell_k], derivative_coordinate);
+  const Vec3<Scalar> fourth = atom_position<Scalar>(
+      batch, batch.shell_atoms[shell_l], derivative_coordinate);
+  const unsigned first_terms = batch.ao_term_counts[ao_i];
+  const unsigned second_terms = batch.ao_term_counts[ao_j];
+  const unsigned third_terms = batch.ao_term_counts[ao_k];
+  const unsigned fourth_terms = batch.ao_term_counts[ao_l];
+
+  Scalar result = scalar<Scalar>(0.0);
+  for (std::int64_t a = batch.shell_primitive_offsets[shell_i];
+       a < batch.shell_primitive_offsets[shell_i + 1]; ++a) {
+    for (std::int64_t b = batch.shell_primitive_offsets[shell_j];
+         b < batch.shell_primitive_offsets[shell_j + 1]; ++b) {
+      for (std::int64_t c = batch.shell_primitive_offsets[shell_k];
+           c < batch.shell_primitive_offsets[shell_k + 1]; ++c) {
+        for (std::int64_t d = batch.shell_primitive_offsets[shell_l];
+             d < batch.shell_primitive_offsets[shell_l + 1]; ++d) {
+          const double weight = batch.primitive_coefficients[a] *
+                                batch.primitive_coefficients[b] *
+                                batch.primitive_coefficients[c] *
+                                batch.primitive_coefficients[d];
+          for (unsigned first_term = 0; first_term < first_terms;
+               ++first_term) {
+            const Angular first_angular =
+                ao_angular(batch, ao_i, first_term);
+            const double first_coefficient =
+                ao_term_coefficient(batch, ao_i, first_term);
+            for (unsigned second_term = 0; second_term < second_terms;
+                 ++second_term) {
+              const Angular second_angular =
+                  ao_angular(batch, ao_j, second_term);
+              const double second_coefficient =
+                  ao_term_coefficient(batch, ao_j, second_term);
+              for (unsigned third_term = 0; third_term < third_terms;
+                   ++third_term) {
+                const Angular third_angular =
+                    ao_angular(batch, ao_k, third_term);
+                const double third_coefficient =
+                    ao_term_coefficient(batch, ao_k, third_term);
+                for (unsigned fourth_term = 0; fourth_term < fourth_terms;
+                     ++fourth_term) {
+                  result = result + weight * first_coefficient *
+                      second_coefficient * third_coefficient *
+                      ao_term_coefficient(batch, ao_l, fourth_term) *
+                      primitive_eri_cartesian<MaximumAngular>(
+                          batch.primitive_exponents[a], first, first_angular,
+                          batch.primitive_exponents[b], second,
+                          second_angular, batch.primitive_exponents[c], third,
+                          third_angular, batch.primitive_exponents[d], fourth,
+                          ao_angular(batch, ao_l, fourth_term));
+                }
+              }
+            }
           }
         }
       }
@@ -1077,20 +1111,20 @@ __device__ Scalar contracted_eri(const DeviceBatch& batch,
                      is_s_function(angular_second) &&
                      is_s_function(angular_third) &&
                      is_s_function(angular_fourth);
-  Scalar result = scalar<Scalar>(0.0);
-  for (std::int64_t a = batch.shell_primitive_offsets[shell_i];
-       a < batch.shell_primitive_offsets[shell_i + 1]; ++a) {
-    for (std::int64_t b = batch.shell_primitive_offsets[shell_j];
-         b < batch.shell_primitive_offsets[shell_j + 1]; ++b) {
-      for (std::int64_t c = batch.shell_primitive_offsets[shell_k];
-           c < batch.shell_primitive_offsets[shell_k + 1]; ++c) {
-        for (std::int64_t d = batch.shell_primitive_offsets[shell_l];
-             d < batch.shell_primitive_offsets[shell_l + 1]; ++d) {
-          const double weight = batch.primitive_coefficients[a] *
-                                batch.primitive_coefficients[b] *
-                                batch.primitive_coefficients[c] *
-                                batch.primitive_coefficients[d];
-          if (all_s) {
+  if (all_s) {
+    Scalar result = scalar<Scalar>(0.0);
+    for (std::int64_t a = batch.shell_primitive_offsets[shell_i];
+         a < batch.shell_primitive_offsets[shell_i + 1]; ++a) {
+      for (std::int64_t b = batch.shell_primitive_offsets[shell_j];
+           b < batch.shell_primitive_offsets[shell_j + 1]; ++b) {
+        for (std::int64_t c = batch.shell_primitive_offsets[shell_k];
+             c < batch.shell_primitive_offsets[shell_k + 1]; ++c) {
+          for (std::int64_t d = batch.shell_primitive_offsets[shell_l];
+               d < batch.shell_primitive_offsets[shell_l + 1]; ++d) {
+            const double weight = batch.primitive_coefficients[a] *
+                                  batch.primitive_coefficients[b] *
+                                  batch.primitive_coefficients[c] *
+                                  batch.primitive_coefficients[d];
             result = result + weight *
                 ao_term_coefficient(batch, ao_i, 0) *
                 ao_term_coefficient(batch, ao_j, 0) *
@@ -1100,47 +1134,71 @@ __device__ Scalar contracted_eri(const DeviceBatch& batch,
                               batch.primitive_exponents[b], second,
                               batch.primitive_exponents[c], third,
                               batch.primitive_exponents[d], fourth);
-          } else {
-            for (unsigned first_term = 0; first_term < first_terms;
-                 ++first_term) {
-              const Angular first_angular =
-                  ao_angular(batch, ao_i, first_term);
-              const double first_coefficient =
-                  ao_term_coefficient(batch, ao_i, first_term);
-              for (unsigned second_term = 0; second_term < second_terms;
-                   ++second_term) {
-                const Angular second_angular =
-                    ao_angular(batch, ao_j, second_term);
-                const double second_coefficient =
-                    ao_term_coefficient(batch, ao_j, second_term);
-                for (unsigned third_term = 0; third_term < third_terms;
-                     ++third_term) {
-                  const Angular third_angular =
-                      ao_angular(batch, ao_k, third_term);
-                  const double third_coefficient =
-                      ao_term_coefficient(batch, ao_k, third_term);
-                  for (unsigned fourth_term = 0; fourth_term < fourth_terms;
-                       ++fourth_term) {
-                    result = result + weight * first_coefficient *
-                        second_coefficient * third_coefficient *
-                        ao_term_coefficient(batch, ao_l, fourth_term) *
-                        primitive_eri_cartesian(
-                            batch.primitive_exponents[a], first,
-                            first_angular, batch.primitive_exponents[b],
-                            second, second_angular,
-                            batch.primitive_exponents[c], third,
-                            third_angular, batch.primitive_exponents[d],
-                            fourth, ao_angular(batch, ao_l, fourth_term));
-                  }
-                }
-              }
-            }
           }
         }
       }
     }
+    return result;
   }
-  return result;
+
+  // Shell angular momentum is invariant across Cartesian expansion terms, so
+  // one contracted-quartet dispatch covers every primitive and sparse
+  // spherical term below it.
+  const unsigned maximum = batch.shell_angular[shell_i] +
+                           batch.shell_angular[shell_j] +
+                           batch.shell_angular[shell_k] +
+                           batch.shell_angular[shell_l];
+  switch (maximum) {
+    case 1:
+      return contracted_eri_cartesian<1, Scalar>(
+          batch, ao_i, ao_j, ao_k, ao_l, shell_i, shell_j, shell_k,
+          shell_l, derivative_coordinate);
+    case 2:
+      return contracted_eri_cartesian<2, Scalar>(
+          batch, ao_i, ao_j, ao_k, ao_l, shell_i, shell_j, shell_k,
+          shell_l, derivative_coordinate);
+    case 3:
+      return contracted_eri_cartesian<3, Scalar>(
+          batch, ao_i, ao_j, ao_k, ao_l, shell_i, shell_j, shell_k,
+          shell_l, derivative_coordinate);
+    case 4:
+      return contracted_eri_cartesian<4, Scalar>(
+          batch, ao_i, ao_j, ao_k, ao_l, shell_i, shell_j, shell_k,
+          shell_l, derivative_coordinate);
+    case 5:
+      return contracted_eri_cartesian<5, Scalar>(
+          batch, ao_i, ao_j, ao_k, ao_l, shell_i, shell_j, shell_k,
+          shell_l, derivative_coordinate);
+    case 6:
+      return contracted_eri_cartesian<6, Scalar>(
+          batch, ao_i, ao_j, ao_k, ao_l, shell_i, shell_j, shell_k,
+          shell_l, derivative_coordinate);
+    case 7:
+      return contracted_eri_cartesian<7, Scalar>(
+          batch, ao_i, ao_j, ao_k, ao_l, shell_i, shell_j, shell_k,
+          shell_l, derivative_coordinate);
+    case 8:
+      return contracted_eri_cartesian<8, Scalar>(
+          batch, ao_i, ao_j, ao_k, ao_l, shell_i, shell_j, shell_k,
+          shell_l, derivative_coordinate);
+    case 9:
+      return contracted_eri_cartesian<9, Scalar>(
+          batch, ao_i, ao_j, ao_k, ao_l, shell_i, shell_j, shell_k,
+          shell_l, derivative_coordinate);
+    case 10:
+      return contracted_eri_cartesian<10, Scalar>(
+          batch, ao_i, ao_j, ao_k, ao_l, shell_i, shell_j, shell_k,
+          shell_l, derivative_coordinate);
+    case 11:
+      return contracted_eri_cartesian<11, Scalar>(
+          batch, ao_i, ao_j, ao_k, ao_l, shell_i, shell_j, shell_k,
+          shell_l, derivative_coordinate);
+    case 12:
+      return contracted_eri_cartesian<12, Scalar>(
+          batch, ao_i, ao_j, ao_k, ao_l, shell_i, shell_j, shell_k,
+          shell_l, derivative_coordinate);
+  }
+  return scalar<Scalar>(0.0);
 }
 
 __global__ void build_one_electron_integrals_kernel(DeviceBatch batch,
