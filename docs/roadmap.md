@@ -150,6 +150,30 @@ and performance measurements pass.
   Water/def2-TZVP Cartesian and spherical batch-4 cases also pass; extend the
   matrix to more molecular topologies.
 
+### Explicit realistic scale gates
+
+- The fixed 96-AO workload is the optimized GMTKN55/WATER27 hydrogen-bonded
+  water tetramer with the standard real-spherical def2-SVP basis. Batch 1 and
+  batch 4 must each stay at
+  or below `3e-11 Eh` maximum energy error and `3e-11 Eh/bohr` maximum force
+  error under `1e-12 Eh`/`1e-10` SCF energy/density tolerances and a `1e-14`
+  QCE Schwarz-screening threshold matching GPU4PySCF's direct-SCF threshold.
+  GPU4PySCF uses a separately defined `1e-9` orbital-gradient threshold; its
+  `1e-10` setting reaches the numerical-noise floor and does not converge for
+  the 192-AO reference. Both engines receive up to 100 SCF iterations. Each
+  point must be at least `1.0x` as fast as GPU4PySCF under the documented
+  sequential single-system interface boundary.
+- The fixed 192-AO workload is the optimized GMTKN55/WATER27 S4 water octamer
+  with the same basis and representation. Batch 1 and batch 4 must stay below
+  `1e-10 Eh` maximum energy error and `1e-10 Eh/bohr` maximum force error now.
+  Their performance threshold is deliberately unset
+  for the direct-J/K phase; after complete DF J/K lands, both points acquire a
+  `1.0x` minimum-speedup gate.
+- `benchmarks/real_molecule_gate.py` runs all four points and preserves one
+  child artifact per point plus an aggregate summary. Replicated or separated
+  water grids remain useful scaling diagnostics but do not satisfy this
+  acceptance gate.
+
 ## M3: density fitting and fleet mode
 
 - Two- and three-center integral kernels, Coulomb metric factorization, DF J/K,

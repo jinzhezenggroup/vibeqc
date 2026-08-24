@@ -115,6 +115,8 @@ def benchmark_gate_failures(
     speedup: float,
     maximum_energy_error: float,
     maximum_force_error: float,
+    qce_converged: bool = True,
+    reference_converged: bool = True,
     minimum_speedup: float | None = None,
     maximum_energy_error_limit: float | None = None,
     maximum_force_error_limit: float | None = None,
@@ -122,6 +124,10 @@ def benchmark_gate_failures(
     """Return actionable failures for optional accuracy/performance gates."""
 
     failures = []
+    if not qce_converged:
+        failures.append("one or more QCE systems did not converge")
+    if not reference_converged:
+        failures.append("one or more GPU4PySCF reference systems did not converge")
     if minimum_speedup is not None and speedup < minimum_speedup:
         failures.append(
             f"warm speedup {speedup:.6g}x is below {minimum_speedup:.6g}x"

@@ -86,10 +86,61 @@ def test_gpu_comparison_help_does_not_require_an_allocated_device():
         assert "water-def2-svp-spherical" in completed.stdout
         assert "water-def2-tzvp" in completed.stdout
         assert "water-def2-tzvp-spherical" in completed.stdout
+        assert "water-tetramer-def2-svp-spherical" in completed.stdout
+        assert "water-octamer-s4-def2-svp-spherical" in completed.stdout
         if script == "compare_gpu4pyscf_batch.py":
             assert "--minimum-speedup" in completed.stdout
             assert "--maximum-energy-error" in completed.stdout
             assert "--maximum-force-error" in completed.stdout
+            assert "--energy-tolerance" in completed.stdout
+            assert "--density-tolerance" in completed.stdout
+            assert "--reference-gradient-tolerance" in completed.stdout
+            assert "--screening-tolerance" in completed.stdout
+            assert "--max-iterations" in completed.stdout
+
+
+def test_real_molecule_gate_has_four_explicit_dry_run_points(tmp_path):
+    """Lock the 96/192-AO, batch-1/batch-4 acceptance matrix in CI."""
+
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = os.pathsep.join((
+        str(REPOSITORY_ROOT / "python"),
+        str(REPOSITORY_ROOT / "benchmarks"),
+    ))
+    completed = subprocess.run(
+        (
+            sys.executable,
+            str(REPOSITORY_ROOT / "benchmarks" / "real_molecule_gate.py"),
+            "--dry-run",
+            "--output-directory",
+            str(tmp_path),
+        ),
+        cwd=REPOSITORY_ROOT,
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    commands = completed.stdout.splitlines()
+    assert len(commands) == 4
+    assert sum("water-tetramer-def2-svp-spherical" in line for line in commands) == 2
+    assert sum("water-octamer-s4-def2-svp-spherical" in line for line in commands) == 2
+    assert sum("--batch 1" in line for line in commands) == 2
+    assert sum("--batch 4" in line for line in commands) == 2
+    assert sum("--minimum-speedup 1.0" in line for line in commands) == 2
+    assert all("--max-iterations 100" in line for line in commands)
+    assert all("--energy-tolerance 1e-12" in line for line in commands)
+    assert all("--density-tolerance 1e-10" in line for line in commands)
+    assert all(
+        "--reference-gradient-tolerance 1e-09" in line
+        for line in commands
+    )
+    assert all("--screening-tolerance 1e-14" in line for line in commands)
+    assert sum("--maximum-energy-error 3e-11" in line for line in commands) == 2
+    assert sum("--maximum-force-error 3e-11" in line for line in commands) == 2
+    assert sum("--maximum-energy-error 1e-10" in line for line in commands) == 2
+    assert sum("--maximum-force-error 1e-10" in line for line in commands) == 2
 
 
 def test_gpu_comparison_gate_reports_all_threshold_failures():
@@ -116,3 +167,15 @@ def test_gpu_comparison_gate_reports_all_threshold_failures():
         maximum_energy_error_limit=2.0e-12,
         maximum_force_error_limit=3.0e-12,
     ) == []
+
+    convergence_failures = support.benchmark_gate_failures(
+        speedup=4.0,
+        maximum_energy_error=2.0e-12,
+        maximum_force_error=3.0e-12,
+        qce_converged=False,
+        reference_converged=False,
+    )
+    assert convergence_failures == [
+        "one or more QCE systems did not converge",
+        "one or more GPU4PySCF reference systems did not converge",
+    ]

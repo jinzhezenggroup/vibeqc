@@ -53,6 +53,16 @@ def main() -> None:
     parser.add_argument("--case", choices=cases, default="sp8")
     parser.add_argument("--batch", type=int, default=16)
     parser.add_argument("--repeats", type=int, default=5)
+    parser.add_argument("--max-iterations", type=int, default=100)
+    parser.add_argument("--energy-tolerance", type=float, default=1.0e-12)
+    parser.add_argument("--density-tolerance", type=float, default=1.0e-10)
+    parser.add_argument(
+        "--reference-gradient-tolerance",
+        type=float,
+        default=1.0e-10,
+        help="GPU4PySCF orbital-gradient convergence threshold",
+    )
+    parser.add_argument("--screening-tolerance", type=float, default=1.0e-12)
     parser.add_argument(
         "--minimum-speedup",
         type=float,
@@ -76,8 +86,15 @@ def main() -> None:
         help="optional JSON path for raw timings and reproducibility metadata",
     )
     args = parser.parse_args()
-    if args.batch < 1 or args.repeats < 1:
-        raise ValueError("--batch and --repeats must be positive")
+    if args.batch < 1 or args.repeats < 1 or args.max_iterations < 1:
+        raise ValueError("--batch, --repeats, and --max-iterations must be positive")
+    if (
+        args.energy_tolerance <= 0.0
+        or args.density_tolerance <= 0.0
+        or args.reference_gradient_tolerance <= 0.0
+        or args.screening_tolerance <= 0.0
+    ):
+        raise ValueError("SCF tolerances must be positive")
     if args.minimum_speedup is not None and args.minimum_speedup <= 0.0:
         raise ValueError("--minimum-speedup must be positive")
     if args.maximum_energy_error is not None and args.maximum_energy_error < 0.0:
@@ -93,13 +110,33 @@ def main() -> None:
 
     case = cases[args.case]
     systems = scaled_geometries(case.atoms, args.batch)
+    reference_molecule = gto.M(
+        atom=systems[0],
+        unit="Bohr",
+        charge=case.charge,
+        spin=case.multiplicity - 1,
+        cart=case.basis_representation == "cartesian",
+        basis=case.pyscf_basis,
+        verbose=0,
+    )
+    ao_count = int(reference_molecule.nao_nr())
+    if (
+        case.expected_ao_count is not None
+        and ao_count != case.expected_ao_count
+    ):
+        raise ValueError(
+            f"{args.case} expected {case.expected_ao_count} AOs, "
+            f"but PySCF constructed {ao_count}"
+        )
     calculator = Calculator(
         method=case.method,
         basis=case.qce_basis,
         basis_representation=case.basis_representation,
         device="cuda",
-        energy_tolerance=1.0e-12,
-        density_tolerance=1.0e-10,
+        max_iterations=args.max_iterations,
+        energy_tolerance=args.energy_tolerance,
+        density_tolerance=args.density_tolerance,
+        screening_tolerance=args.screening_tolerance,
     )
     with calculator.prepare_batch(
         systems,
@@ -131,14 +168,17 @@ def main() -> None:
             basis=case.pyscf_basis,
             verbose=0,
         )
+        if molecule.nao_nr() != ao_count:
+            raise ValueError("scaled fixed-topology geometry changed AO count")
         engine = (
             gpu_uhf.UHF(molecule)
             if case.method == "uhf"
             else scf.RHF(molecule).to_gpu()
         )
-        engine.conv_tol = 1.0e-12
-        engine.conv_tol_grad = 1.0e-10
+        engine.conv_tol = args.energy_tolerance
+        engine.conv_tol_grad = args.reference_gradient_tolerance
         engine.direct_scf_tol = 1.0e-14
+        engine.max_cycle = args.max_iterations
         gpu_objects.append(engine)
 
     cp.cuda.Stream.null.synchronize()
@@ -174,18 +214,30 @@ def main() -> None:
     qce_warm_median = statistics.median(qce_warm)
     gpu_warm_median = statistics.median(gpu_warm)
     warm_speedup = gpu_warm_median / qce_warm_median
+    qce_converged = all(item.converged for item in qce_result.items)
+    reference_converged = all(engine.converged for engine in gpu_objects)
     gate_failures = benchmark_gate_failures(
         speedup=warm_speedup,
         maximum_energy_error=maximum_energy_error,
         maximum_force_error=maximum_force_error,
+        qce_converged=qce_converged,
+        reference_converged=reference_converged,
         minimum_speedup=args.minimum_speedup,
         maximum_energy_error_limit=args.maximum_energy_error,
         maximum_force_error_limit=args.maximum_force_error,
     )
 
-    print(f"scope: {case.description}, homogeneous batch {args.batch}")
+    print(
+        f"scope: {case.description}, {ao_count} AOs, "
+        f"homogeneous batch {args.batch}"
+    )
     print(f"maximum energy difference: {maximum_energy_error:.3e} Eh")
     print(f"maximum force difference: {maximum_force_error:.3e} Eh/bohr")
+    print(
+        "QCE final max density RMS: "
+        f"{max(item.density_rms for item in qce_result.items):.3e}"
+    )
+    print(f"QCE/reference converged: {qce_converged}/{reference_converged}")
     print(f"QCE cold batch: {qce_cold * 1e3:.3f} ms")
     print(f"QCE warm median/min: {qce_warm_median * 1e3:.3f}/"
           f"{min(qce_warm) * 1e3:.3f} ms")
@@ -217,6 +269,7 @@ def main() -> None:
                 "case": args.case,
                 "description": case.description,
                 "method": case.method,
+                "ao_count": ao_count,
                 "batch_size": args.batch,
                 "geometries": [
                     [
@@ -228,8 +281,12 @@ def main() -> None:
                 "charge": case.charge,
                 "multiplicity": case.multiplicity,
                 "basis_representation": case.basis_representation,
-                "energy_tolerance": 1.0e-12,
-                "density_tolerance": 1.0e-10,
+                "energy_tolerance": args.energy_tolerance,
+                "density_tolerance": args.density_tolerance,
+                "reference_gradient_tolerance":
+                    args.reference_gradient_tolerance,
+                "max_iterations": args.max_iterations,
+                "qce_screening_tolerance": args.screening_tolerance,
                 "direct_scf_tolerance": 1.0e-14,
             },
             "settings": {
@@ -248,6 +305,17 @@ def main() -> None:
             "qce": {
                 "energies_hartree": qce_energies.tolist(),
                 "forces_hartree_per_bohr": qce_forces.tolist(),
+                "convergence": [
+                    {
+                        "converged": item.converged,
+                        "iterations": item.iterations,
+                        "energy_change_hartree": item.energy_change,
+                        "density_rms": item.density_rms,
+                        "warm_start_used": item.warm_start_used,
+                        "warm_start_fallback": item.warm_start_fallback,
+                    }
+                    for item in qce_result.items
+                ],
                 "cold_seconds": qce_cold,
                 "warm_seconds": qce_warm,
                 "warm_median_seconds": qce_warm_median,
@@ -260,6 +328,7 @@ def main() -> None:
                 "warm_seconds": gpu_warm,
                 "warm_median_seconds": gpu_warm_median,
                 "warm_systems_per_second": args.batch / gpu_warm_median,
+                "converged": [bool(engine.converged) for engine in gpu_objects],
                 "interface": "sequential single-system objects",
             },
             "gate": {
