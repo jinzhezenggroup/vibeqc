@@ -18,7 +18,10 @@ and performance measurements pass.
 
 - Specialize/generate the validated McMurchie-Davidson s-p-d-f recurrence by
   shell quartet; evaluate a Rys path where its root formulation improves GPU
-  throughput.
+  throughput. The generic CUDA Cartesian path now dispatches nuclear-attraction
+  and ERI Coulomb/Boys work by exact total angular order (0-6 and 0-12), with
+  separately compiled fixed-simplex recurrence bodies. Full shell-quartet
+  generation and allocated-GPU profiling remain.
 - GPU Schwarz bounds and an O(N^2)-memory fused direct J/K fallback are
   implemented. Every topology retains packed AO-pair metadata used by
   one-electron values/forces; direct buckets also use it for Schwarz bounds.

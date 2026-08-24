@@ -31,10 +31,6 @@ constexpr int kHermiteIDimension = kMaximumAngularMomentum + 1;
 constexpr int kHermiteJDimension = kMaximumAngularMomentum + 3;
 constexpr int kHermiteTDimension = 2 * kMaximumAngularMomentum + 4;
 constexpr int kMaximumCoulombOrder = 4 * kMaximumAngularMomentum;
-// Number of non-negative (n,t,u,v) tuples with n+t+u+v <= 12.
-// A simplex layout uses 1,820 values instead of a dense 13^4 = 28,561,
-// which is critical because the buffer is thread-local in derivative kernels.
-constexpr int kCoulombStateCount = 1820;
 // Small fixed-topology fleet buckets benefit from evaluating ERIs once and
 // replaying them from the persistent arena. Larger AO spaces switch to fused
 // direct J/K so device memory remains O(N^2), not O(N^4).
@@ -414,15 +410,14 @@ __device__ Scalar vec_axis(const Vec3<Scalar>& vector, int axis) {
   return axis == 0 ? vector.x : (axis == 1 ? vector.y : vector.z);
 }
 
-template <typename Scalar>
-__device__ void boys_values(unsigned maximum_order,
-                            Scalar argument,
-                            Scalar* values) {
-  for (int order = 0; order <= kMaximumCoulombOrder; ++order) {
+template <unsigned MaximumOrder, typename Scalar>
+__device__ void boys_values(Scalar argument, Scalar* values) {
+  static_assert(MaximumOrder <= kMaximumCoulombOrder);
+  for (unsigned order = 0; order <= MaximumOrder; ++order) {
     values[order] = scalar<Scalar>(0.0);
   }
   if (scalar_value(argument) < 6.0) {
-    for (unsigned order = 0; order <= maximum_order; ++order) {
+    for (unsigned order = 0; order <= MaximumOrder; ++order) {
       Scalar term = scalar<Scalar>(1.0);
       Scalar sum = scalar<Scalar>(0.0);
       for (unsigned k = 0; k < 80; ++k) {
@@ -438,7 +433,7 @@ __device__ void boys_values(unsigned maximum_order,
   values[0] = 0.5 * qsqrt(scalar<Scalar>(kPi) / argument) *
               qerf(qsqrt(argument));
   const Scalar exponential = qexp(-1.0 * argument);
-  for (unsigned order = 1; order <= maximum_order; ++order) {
+  for (unsigned order = 1; order <= MaximumOrder; ++order) {
     values[order] =
         ((2.0 * static_cast<double>(order) - 1.0) * values[order - 1] -
          exponential) /
@@ -511,28 +506,30 @@ __device__ void fill_hermite(unsigned maximum_i,
   }
 }
 
-template <typename Scalar>
+template <typename Scalar, unsigned MaximumAngular>
 struct CoulombAuxiliary {
-  unsigned maximum_angular;
-  Scalar data[kCoulombStateCount];
+  static_assert(MaximumAngular <= kMaximumCoulombOrder);
 
-  __device__ static unsigned choose3(unsigned value) {
+  __host__ __device__ static constexpr unsigned choose3(unsigned value) {
     return value < 3 ? 0 : value * (value - 1) * (value - 2) / 6;
   }
 
-  __device__ static unsigned choose4(unsigned value) {
+  __host__ __device__ static constexpr unsigned choose4(unsigned value) {
     return value < 4 ? 0
                      : value * (value - 1) * (value - 2) * (value - 3) / 24;
   }
+
+  static constexpr unsigned kStateCount = choose4(MaximumAngular + 4);
+  Scalar data[kStateCount];
 
   __device__ unsigned index(unsigned n,
                             unsigned t,
                             unsigned u,
                             unsigned v) const {
-    const unsigned total = choose4(maximum_angular + 4);
+    const unsigned total = choose4(MaximumAngular + 4);
     const unsigned n_offset =
-        total - choose4(maximum_angular - n + 4);
-    const unsigned remaining_after_n = maximum_angular - n;
+        total - choose4(MaximumAngular - n + 4);
+    const unsigned remaining_after_n = MaximumAngular - n;
     const unsigned t_offset =
         choose3(remaining_after_n + 3) -
         choose3(remaining_after_n - t + 3);
@@ -553,31 +550,37 @@ struct CoulombAuxiliary {
   }
 };
 
-template <typename Scalar>
-__device__ void fill_coulomb(unsigned maximum_angular,
-                             double exponent,
+// Keep each angular specialization at the exact simplex size so lower-order
+// work initializes and indexes only the states its recurrence can reach.
+static_assert(CoulombAuxiliary<double, 0>::kStateCount == 1);
+static_assert(CoulombAuxiliary<double, 1>::kStateCount == 5);
+static_assert(CoulombAuxiliary<double, 2>::kStateCount == 15);
+static_assert(CoulombAuxiliary<double, 6>::kStateCount == 210);
+static_assert(CoulombAuxiliary<double, 12>::kStateCount == 1820);
+
+template <unsigned MaximumAngular, typename Scalar>
+__device__ void fill_coulomb(double exponent,
                              const Vec3<Scalar>& product,
                              const Vec3<Scalar>& center,
-                             CoulombAuxiliary<Scalar>& auxiliary) {
-  auxiliary.maximum_angular = maximum_angular;
-  const unsigned state_count =
-      CoulombAuxiliary<Scalar>::choose4(maximum_angular + 4);
-  for (unsigned item = 0; item < state_count; ++item) {
+                             CoulombAuxiliary<Scalar, MaximumAngular>&
+                                 auxiliary) {
+  for (unsigned item = 0;
+       item < CoulombAuxiliary<Scalar, MaximumAngular>::kStateCount; ++item) {
     auxiliary.data[item] = scalar<Scalar>(0.0);
   }
   const Vec3<Scalar> pc{product.x - center.x, product.y - center.y,
                         product.z - center.z};
-  Scalar boys[kMaximumCoulombOrder + 1];
-  boys_values(maximum_angular,
-              exponent * distance_squared(product, center), boys);
+  Scalar boys[MaximumAngular + 1];
+  boys_values<MaximumAngular>(
+      exponent * distance_squared(product, center), boys);
   double factor = 1.0;
-  for (unsigned n = 0; n <= maximum_angular; ++n) {
+  for (unsigned n = 0; n <= MaximumAngular; ++n) {
     auxiliary.at(n, 0, 0, 0) = factor * boys[n];
     factor *= -2.0 * exponent;
   }
 
-  for (unsigned v = 1; v <= maximum_angular; ++v) {
-    for (unsigned n = 0; n + v <= maximum_angular; ++n) {
+  for (unsigned v = 1; v <= MaximumAngular; ++v) {
+    for (unsigned n = 0; n + v <= MaximumAngular; ++n) {
       Scalar value = pc.z * auxiliary.at(n + 1, 0, 0, v - 1);
       if (v > 1) {
         value = value + static_cast<double>(v - 1) *
@@ -586,9 +589,9 @@ __device__ void fill_coulomb(unsigned maximum_angular,
       auxiliary.at(n, 0, 0, v) = value;
     }
   }
-  for (unsigned v = 0; v <= maximum_angular; ++v) {
-    for (unsigned u = 1; u + v <= maximum_angular; ++u) {
-      for (unsigned n = 0; n + u + v <= maximum_angular; ++n) {
+  for (unsigned v = 0; v <= MaximumAngular; ++v) {
+    for (unsigned u = 1; u + v <= MaximumAngular; ++u) {
+      for (unsigned n = 0; n + u + v <= MaximumAngular; ++n) {
         Scalar value = pc.y * auxiliary.at(n + 1, 0, u - 1, v);
         if (u > 1) {
           value = value + static_cast<double>(u - 1) *
@@ -598,10 +601,10 @@ __device__ void fill_coulomb(unsigned maximum_angular,
       }
     }
   }
-  for (unsigned v = 0; v <= maximum_angular; ++v) {
-    for (unsigned u = 0; u + v <= maximum_angular; ++u) {
-      for (unsigned t = 1; t + u + v <= maximum_angular; ++t) {
-        for (unsigned n = 0; n + t + u + v <= maximum_angular; ++n) {
+  for (unsigned v = 0; v <= MaximumAngular; ++v) {
+    for (unsigned u = 0; u + v <= MaximumAngular; ++u) {
+      for (unsigned t = 1; t + u + v <= MaximumAngular; ++t) {
+        for (unsigned n = 0; n + t + u + v <= MaximumAngular; ++n) {
           Scalar value = pc.x * auxiliary.at(n + 1, t - 1, u, v);
           if (t > 1) {
             value = value + static_cast<double>(t - 1) *
@@ -668,35 +671,24 @@ __device__ Scalar primitive_kinetic_cartesian(
   return result;
 }
 
-template <typename Scalar>
-__device__ Scalar primitive_nuclear_attraction_cartesian(
+template <unsigned MaximumAngular, typename Scalar>
+__device__ __noinline__ Scalar nuclear_attraction_cartesian_value(
     const DeviceBatch& batch,
     std::int32_t system,
-    double alpha,
-    const Vec3<Scalar>& first,
+    double exponent,
+    const Vec3<Scalar>& product,
     const Angular& angular_first,
-    double beta,
-    const Vec3<Scalar>& second,
     const Angular& angular_second,
+    const HermiteCoefficients<Scalar>* coefficients,
     std::int64_t derivative_coordinate) {
-  const double p = alpha + beta;
-  const Vec3<Scalar> product = product_center(alpha, first, beta, second);
-  HermiteCoefficients<Scalar> coefficients[3];
-  for (int axis = 0; axis < 3; ++axis) {
-    fill_hermite(angular_axis(angular_first, axis),
-                 angular_axis(angular_second, axis), vec_axis(product, axis),
-                 vec_axis(first, axis), vec_axis(second, axis), alpha, beta,
-                 coefficients[axis]);
-  }
-  const unsigned maximum =
-      angular_total(angular_first) + angular_total(angular_second);
+  static_assert(MaximumAngular <= 2 * kMaximumAngularMomentum);
   Scalar result = scalar<Scalar>(0.0);
   for (std::int64_t atom = batch.atom_offsets[system];
        atom < batch.atom_offsets[system + 1]; ++atom) {
-    CoulombAuxiliary<Scalar> auxiliary;
-    fill_coulomb(maximum, p, product,
-                 atom_position<Scalar>(batch, atom, derivative_coordinate),
-                 auxiliary);
+    CoulombAuxiliary<Scalar, MaximumAngular> auxiliary;
+    fill_coulomb<MaximumAngular>(
+        exponent, product,
+        atom_position<Scalar>(batch, atom, derivative_coordinate), auxiliary);
     Scalar value = scalar<Scalar>(0.0);
     for (unsigned t = 0; t <= angular_first.x + angular_second.x; ++t) {
       for (unsigned u = 0; u <= angular_first.y + angular_second.y; ++u) {
@@ -710,9 +702,116 @@ __device__ Scalar primitive_nuclear_attraction_cartesian(
       }
     }
     result = result - static_cast<double>(batch.atomic_numbers[atom]) *
-                          (2.0 * kPi / p) * value;
+                          (2.0 * kPi / exponent) * value;
   }
   return result;
+}
+
+template <typename Scalar>
+__device__ Scalar primitive_nuclear_attraction_cartesian(
+    const DeviceBatch& batch,
+    std::int32_t system,
+    double alpha,
+    const Vec3<Scalar>& first,
+    const Angular& angular_first,
+    double beta,
+    const Vec3<Scalar>& second,
+    const Angular& angular_second,
+    std::int64_t derivative_coordinate) {
+  const double exponent = alpha + beta;
+  const Vec3<Scalar> product = product_center(alpha, first, beta, second);
+  HermiteCoefficients<Scalar> coefficients[3];
+  for (int axis = 0; axis < 3; ++axis) {
+    fill_hermite(angular_axis(angular_first, axis),
+                 angular_axis(angular_second, axis), vec_axis(product, axis),
+                 vec_axis(first, axis), vec_axis(second, axis), alpha, beta,
+                 coefficients[axis]);
+  }
+
+  // The dispatch makes the Boys order and Coulomb simplex size compile-time
+  // constants while retaining one shared, validated recurrence formula.
+  const unsigned maximum =
+      angular_total(angular_first) + angular_total(angular_second);
+  switch (maximum) {
+    case 0:
+      return nuclear_attraction_cartesian_value<0>(
+          batch, system, exponent, product, angular_first, angular_second,
+          coefficients, derivative_coordinate);
+    case 1:
+      return nuclear_attraction_cartesian_value<1>(
+          batch, system, exponent, product, angular_first, angular_second,
+          coefficients, derivative_coordinate);
+    case 2:
+      return nuclear_attraction_cartesian_value<2>(
+          batch, system, exponent, product, angular_first, angular_second,
+          coefficients, derivative_coordinate);
+    case 3:
+      return nuclear_attraction_cartesian_value<3>(
+          batch, system, exponent, product, angular_first, angular_second,
+          coefficients, derivative_coordinate);
+    case 4:
+      return nuclear_attraction_cartesian_value<4>(
+          batch, system, exponent, product, angular_first, angular_second,
+          coefficients, derivative_coordinate);
+    case 5:
+      return nuclear_attraction_cartesian_value<5>(
+          batch, system, exponent, product, angular_first, angular_second,
+          coefficients, derivative_coordinate);
+    case 6:
+      return nuclear_attraction_cartesian_value<6>(
+          batch, system, exponent, product, angular_first, angular_second,
+          coefficients, derivative_coordinate);
+  }
+  return scalar<Scalar>(0.0);
+}
+
+template <unsigned MaximumAngular, typename Scalar>
+__device__ __noinline__ Scalar eri_cartesian_value(
+    double p,
+    double q,
+    double rho,
+    const Vec3<Scalar>& product_p,
+    const Vec3<Scalar>& product_q,
+    const Angular& angular_first,
+    const Angular& angular_second,
+    const Angular& angular_third,
+    const Angular& angular_fourth,
+    const HermiteCoefficients<Scalar>* first_coefficients,
+    const HermiteCoefficients<Scalar>* second_coefficients) {
+  static_assert(MaximumAngular <= kMaximumCoulombOrder);
+  CoulombAuxiliary<Scalar, MaximumAngular> auxiliary;
+  fill_coulomb<MaximumAngular>(rho, product_p, product_q, auxiliary);
+
+  Scalar value = scalar<Scalar>(0.0);
+  for (unsigned t = 0; t <= angular_first.x + angular_second.x; ++t) {
+    for (unsigned u = 0; u <= angular_first.y + angular_second.y; ++u) {
+      for (unsigned v = 0; v <= angular_first.z + angular_second.z; ++v) {
+        const Scalar first_value =
+            first_coefficients[0].at(angular_first.x, angular_second.x, t) *
+            first_coefficients[1].at(angular_first.y, angular_second.y, u) *
+            first_coefficients[2].at(angular_first.z, angular_second.z, v);
+        for (unsigned tau = 0; tau <= angular_third.x + angular_fourth.x;
+             ++tau) {
+          for (unsigned nu = 0; nu <= angular_third.y + angular_fourth.y;
+               ++nu) {
+            for (unsigned phi = 0;
+                 phi <= angular_third.z + angular_fourth.z; ++phi) {
+              const double sign = ((tau + nu + phi) & 1U) == 0 ? 1.0 : -1.0;
+              value = value + sign * first_value *
+                  second_coefficients[0].at(angular_third.x,
+                                            angular_fourth.x, tau) *
+                  second_coefficients[1].at(angular_third.y,
+                                            angular_fourth.y, nu) *
+                  second_coefficients[2].at(angular_third.z,
+                                            angular_fourth.z, phi) *
+                  auxiliary.at(0, t + tau, u + nu, v + phi);
+            }
+          }
+        }
+      }
+    }
+  }
+  return 2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q)) * value;
 }
 
 template <typename Scalar>
@@ -750,39 +849,74 @@ __device__ Scalar primitive_eri_cartesian(
                            angular_total(angular_second) +
                            angular_total(angular_third) +
                            angular_total(angular_fourth);
-  CoulombAuxiliary<Scalar> auxiliary;
-  fill_coulomb(maximum, rho, product_p, product_q, auxiliary);
-
-  Scalar value = scalar<Scalar>(0.0);
-  for (unsigned t = 0; t <= angular_first.x + angular_second.x; ++t) {
-    for (unsigned u = 0; u <= angular_first.y + angular_second.y; ++u) {
-      for (unsigned v = 0; v <= angular_first.z + angular_second.z; ++v) {
-        const Scalar first_value =
-            first_coefficients[0].at(angular_first.x, angular_second.x, t) *
-            first_coefficients[1].at(angular_first.y, angular_second.y, u) *
-            first_coefficients[2].at(angular_first.z, angular_second.z, v);
-        for (unsigned tau = 0; tau <= angular_third.x + angular_fourth.x;
-             ++tau) {
-          for (unsigned nu = 0; nu <= angular_third.y + angular_fourth.y;
-               ++nu) {
-            for (unsigned phi = 0;
-                 phi <= angular_third.z + angular_fourth.z; ++phi) {
-              const double sign = ((tau + nu + phi) & 1U) == 0 ? 1.0 : -1.0;
-              value = value + sign * first_value *
-                  second_coefficients[0].at(angular_third.x,
-                                            angular_fourth.x, tau) *
-                  second_coefficients[1].at(angular_third.y,
-                                            angular_fourth.y, nu) *
-                  second_coefficients[2].at(angular_third.z,
-                                            angular_fourth.z, phi) *
-                  auxiliary.at(0, t + tau, u + nu, v + phi);
-            }
-          }
-        }
-      }
-    }
+  switch (maximum) {
+    case 0:
+      return eri_cartesian_value<0>(
+          p, q, rho, product_p, product_q, angular_first, angular_second,
+          angular_third, angular_fourth, first_coefficients,
+          second_coefficients);
+    case 1:
+      return eri_cartesian_value<1>(
+          p, q, rho, product_p, product_q, angular_first, angular_second,
+          angular_third, angular_fourth, first_coefficients,
+          second_coefficients);
+    case 2:
+      return eri_cartesian_value<2>(
+          p, q, rho, product_p, product_q, angular_first, angular_second,
+          angular_third, angular_fourth, first_coefficients,
+          second_coefficients);
+    case 3:
+      return eri_cartesian_value<3>(
+          p, q, rho, product_p, product_q, angular_first, angular_second,
+          angular_third, angular_fourth, first_coefficients,
+          second_coefficients);
+    case 4:
+      return eri_cartesian_value<4>(
+          p, q, rho, product_p, product_q, angular_first, angular_second,
+          angular_third, angular_fourth, first_coefficients,
+          second_coefficients);
+    case 5:
+      return eri_cartesian_value<5>(
+          p, q, rho, product_p, product_q, angular_first, angular_second,
+          angular_third, angular_fourth, first_coefficients,
+          second_coefficients);
+    case 6:
+      return eri_cartesian_value<6>(
+          p, q, rho, product_p, product_q, angular_first, angular_second,
+          angular_third, angular_fourth, first_coefficients,
+          second_coefficients);
+    case 7:
+      return eri_cartesian_value<7>(
+          p, q, rho, product_p, product_q, angular_first, angular_second,
+          angular_third, angular_fourth, first_coefficients,
+          second_coefficients);
+    case 8:
+      return eri_cartesian_value<8>(
+          p, q, rho, product_p, product_q, angular_first, angular_second,
+          angular_third, angular_fourth, first_coefficients,
+          second_coefficients);
+    case 9:
+      return eri_cartesian_value<9>(
+          p, q, rho, product_p, product_q, angular_first, angular_second,
+          angular_third, angular_fourth, first_coefficients,
+          second_coefficients);
+    case 10:
+      return eri_cartesian_value<10>(
+          p, q, rho, product_p, product_q, angular_first, angular_second,
+          angular_third, angular_fourth, first_coefficients,
+          second_coefficients);
+    case 11:
+      return eri_cartesian_value<11>(
+          p, q, rho, product_p, product_q, angular_first, angular_second,
+          angular_third, angular_fourth, first_coefficients,
+          second_coefficients);
+    case 12:
+      return eri_cartesian_value<12>(
+          p, q, rho, product_p, product_q, angular_first, angular_second,
+          angular_third, angular_fourth, first_coefficients,
+          second_coefficients);
   }
-  return 2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q)) * value;
+  return scalar<Scalar>(0.0);
 }
 
 template <typename Scalar>
