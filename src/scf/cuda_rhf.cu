@@ -1084,6 +1084,220 @@ __device__ Scalar primitive_eri_psss(
   return 2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q)) * pair_decay * value;
 }
 
+/** One nonzero three-dimensional Hermite coefficient through order two. */
+template <typename Scalar>
+struct LowOrderHermiteTerm {
+  // Each Cartesian derivative occupies two bits. Adding two states therefore
+  // combines pair derivatives without carrying between x, y, and z.
+  unsigned derivative_state;
+  Scalar coefficient;
+};
+
+/** Compact shell-pair expansion; total order two reaches at most four terms. */
+template <typename Scalar>
+struct LowOrderPairExpansion {
+  LowOrderHermiteTerm<Scalar> terms[4];
+};
+
+__device__ unsigned low_order_derivative_state(int axis) {
+  return 1U << (2 * axis);
+}
+
+__device__ unsigned low_order_derivative_total(unsigned state) {
+  return (state & 3U) + ((state >> 2U) & 3U) + ((state >> 4U) & 3U);
+}
+
+/**
+ * Generate only the nonzero Hermite terms of one order-0/1/2 shell pair.
+ *
+ * The Gaussian pair decay is deliberately excluded and applied once by the
+ * primitive quartet. At order two, retaining duplicate first-derivative terms
+ * for a repeated axis keeps one runtime component path for d and p-p AOs while
+ * still bounding the expansion at four entries.
+ */
+template <unsigned FirstShellAngular,
+          unsigned SecondShellAngular,
+          typename Scalar>
+__device__ LowOrderPairExpansion<Scalar> make_low_order_pair_expansion(
+    double exponent,
+    const Vec3<Scalar>& product,
+    const Vec3<Scalar>& first,
+    const Angular& angular_first,
+    const Vec3<Scalar>& second,
+    const Angular& angular_second) {
+  constexpr unsigned PairOrder = FirstShellAngular + SecondShellAngular;
+  static_assert(PairOrder <= 2);
+  LowOrderPairExpansion<Scalar> expansion;
+  const double inverse_two_exponent = 0.5 / exponent;
+
+  if constexpr (PairOrder == 0) {
+    expansion.terms[0] = {0U, scalar<Scalar>(1.0)};
+  } else {
+    unsigned derivative_states[2];
+    Scalar shifts[2];
+    unsigned quantum_count = 0;
+    for (int axis = 0; axis < 3; ++axis) {
+      const unsigned state = low_order_derivative_state(axis);
+      for (unsigned quantum = 0;
+           quantum < angular_axis(angular_first, axis); ++quantum) {
+        derivative_states[quantum_count] = state;
+        shifts[quantum_count] =
+            vec_axis(product, axis) - vec_axis(first, axis);
+        ++quantum_count;
+      }
+      for (unsigned quantum = 0;
+           quantum < angular_axis(angular_second, axis); ++quantum) {
+        derivative_states[quantum_count] = state;
+        shifts[quantum_count] =
+            vec_axis(product, axis) - vec_axis(second, axis);
+        ++quantum_count;
+      }
+    }
+
+    expansion.terms[0] = {0U, shifts[0]};
+    expansion.terms[1] = {
+        derivative_states[0], scalar<Scalar>(inverse_two_exponent)};
+    if constexpr (PairOrder == 2) {
+      // A repeated Cartesian axis contributes the recurrence's +1/(2p)
+      // correction. The two first-derivative entries then share a state and
+      // sum to the exact E1 coefficient during contraction.
+      const double repeated_axis_correction =
+          derivative_states[0] == derivative_states[1]
+          ? inverse_two_exponent
+          : 0.0;
+      expansion.terms[0].coefficient =
+          shifts[0] * shifts[1] +
+          scalar<Scalar>(repeated_axis_correction);
+      expansion.terms[1].coefficient =
+          inverse_two_exponent * shifts[1];
+      expansion.terms[2] = {
+          derivative_states[1], inverse_two_exponent * shifts[0]};
+      expansion.terms[3] = {
+          derivative_states[0] + derivative_states[1],
+          scalar<Scalar>(inverse_two_exponent * inverse_two_exponent)};
+    }
+  }
+  return expansion;
+}
+
+/** Evaluate a Cartesian Coulomb derivative of total order at most two. */
+template <typename Scalar>
+__device__ Scalar low_order_coulomb(
+    unsigned derivative_state,
+    double rho,
+    const Vec3<Scalar>& product_difference,
+    const Scalar* boys) {
+  const unsigned x_order = derivative_state & 3U;
+  const unsigned y_order = (derivative_state >> 2U) & 3U;
+  const unsigned z_order = (derivative_state >> 4U) & 3U;
+  const unsigned total_order = x_order + y_order + z_order;
+  if (total_order == 0) return boys[0];
+
+  if (total_order == 1) {
+    const Scalar coordinate =
+        x_order != 0 ? product_difference.x
+                     : (y_order != 0 ? product_difference.y
+                                     : product_difference.z);
+    return (-2.0 * rho) * coordinate * boys[1];
+  }
+
+  const double second_order_factor = 4.0 * rho * rho;
+  if (x_order == 2 || y_order == 2 || z_order == 2) {
+    const Scalar coordinate =
+        x_order == 2 ? product_difference.x
+                     : (y_order == 2 ? product_difference.y
+                                     : product_difference.z);
+    return second_order_factor * coordinate * coordinate * boys[2] -
+           (2.0 * rho) * boys[1];
+  }
+
+  Scalar coordinate_product = scalar<Scalar>(1.0);
+  if (x_order != 0) coordinate_product = coordinate_product * product_difference.x;
+  if (y_order != 0) coordinate_product = coordinate_product * product_difference.y;
+  if (z_order != 0) coordinate_product = coordinate_product * product_difference.z;
+  return second_order_factor * coordinate_product * boys[2];
+}
+
+/**
+ * Closed order-2 contraction for canonical (d s|s s), (p p|s s), and
+ * (p s|p s) primitive quartets.
+ */
+template <unsigned FirstShellAngular,
+          unsigned SecondShellAngular,
+          unsigned ThirdShellAngular,
+          unsigned FourthShellAngular,
+          typename Scalar>
+__device__ Scalar primitive_eri_order2(
+    double alpha,
+    const Vec3<Scalar>& first,
+    const Angular& angular_first,
+    double beta,
+    const Vec3<Scalar>& second,
+    const Angular& angular_second,
+    double gamma,
+    const Vec3<Scalar>& third,
+    const Angular& angular_third,
+    double delta,
+    const Vec3<Scalar>& fourth,
+    const Angular& angular_fourth) {
+  constexpr unsigned FirstPairOrder =
+      FirstShellAngular + SecondShellAngular;
+  constexpr unsigned SecondPairOrder =
+      ThirdShellAngular + FourthShellAngular;
+  static_assert(FirstPairOrder + SecondPairOrder == 2);
+  static_assert(FirstPairOrder <= 2 && SecondPairOrder <= 2);
+  constexpr unsigned FirstTermCount =
+      FirstPairOrder == 0 ? 1 : (FirstPairOrder == 1 ? 2 : 4);
+  constexpr unsigned SecondTermCount =
+      SecondPairOrder == 0 ? 1 : (SecondPairOrder == 1 ? 2 : 4);
+
+  const double p = alpha + beta;
+  const double q = gamma + delta;
+  const double mu = alpha * beta / p;
+  const double nu = gamma * delta / q;
+  const double rho = p * q / (p + q);
+  const Vec3<Scalar> product_p = product_center(alpha, first, beta, second);
+  const Vec3<Scalar> product_q = product_center(gamma, third, delta, fourth);
+  const LowOrderPairExpansion<Scalar> first_expansion =
+      make_low_order_pair_expansion<FirstShellAngular, SecondShellAngular>(
+          p, product_p, first, angular_first, second, angular_second);
+  const LowOrderPairExpansion<Scalar> second_expansion =
+      make_low_order_pair_expansion<ThirdShellAngular, FourthShellAngular>(
+          q, product_q, third, angular_third, fourth, angular_fourth);
+  Scalar boys[3];
+  boys_values<2>(rho * distance_squared(product_p, product_q), boys);
+  const Vec3<Scalar> product_difference{
+      product_p.x - product_q.x,
+      product_p.y - product_q.y,
+      product_p.z - product_q.z,
+  };
+
+  Scalar value = scalar<Scalar>(0.0);
+  for (unsigned first_term = 0; first_term < FirstTermCount; ++first_term) {
+    for (unsigned second_term = 0; second_term < SecondTermCount;
+         ++second_term) {
+      const LowOrderHermiteTerm<Scalar>& first_item =
+          first_expansion.terms[first_term];
+      const LowOrderHermiteTerm<Scalar>& second_item =
+          second_expansion.terms[second_term];
+      const double sign =
+          (low_order_derivative_total(second_item.derivative_state) & 1U) == 0
+          ? 1.0
+          : -1.0;
+      value = value +
+          sign * first_item.coefficient * second_item.coefficient *
+          low_order_coulomb(
+              first_item.derivative_state + second_item.derivative_state,
+              rho, product_difference, boys);
+    }
+  }
+
+  const Scalar pair_decay =
+      qexp(-mu * distance_squared(first, second) -
+           nu * distance_squared(third, fourth));
+  return 2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q)) * pair_decay * value;
+}
+
 /**
  * Evaluate one Cartesian primitive quartet with exact shell-pair workspaces.
  *
@@ -1118,6 +1332,12 @@ __device__ Scalar primitive_eri_cartesian_shell_class(
     const int axis = angular_first.x == 1 ? 0 : (angular_first.y == 1 ? 1 : 2);
     return primitive_eri_psss(
         axis, alpha, first, beta, second, gamma, third, delta, fourth);
+  } else if constexpr (MaximumAngular == 2) {
+    return primitive_eri_order2<
+        FirstShellAngular, SecondShellAngular,
+        ThirdShellAngular, FourthShellAngular>(
+        alpha, first, angular_first, beta, second, angular_second,
+        gamma, third, angular_third, delta, fourth, angular_fourth);
   } else {
     const double p = alpha + beta;
     const double q = gamma + delta;

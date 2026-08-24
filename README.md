@@ -129,7 +129,11 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   Consumers canonicalize ERI arguments by pair symmetry and size Hermite
   workspaces from the exact shell pairs; canonical `(p s | s s)` uses a
   closed two-term first-order contraction instead of generic coefficient
-  arrays. Real-spherical direct buckets apply
+  arrays. The total-order-2 `(d s | s s)`, `(p p | s s)`, and
+  `(p s | p s)` classes use at most four sparse Hermite terms per pair and
+  generate their Coulomb derivatives directly from `F0`/`F1`/`F2`. This
+  reduces their per-thread Fock/force stacks from 1,072/3,184 bytes to
+  464/888 bytes. Real-spherical direct buckets apply
   `C^T D C` before those Cartesian-source quartets and `C F C^T` afterwards,
   eliminating repeated sparse term products from Fock and force recurrences.
   Remaining component-unrolled/Rys kernels, broader named-basis gates, and

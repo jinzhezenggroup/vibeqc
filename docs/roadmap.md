@@ -23,8 +23,11 @@ and performance measurements pass.
   pair's Hermite workspace from its compile-time angular bounds. A 13-node
   total-order scheduler preserves low Graph overhead. The canonical
   `(p s | s s)` class now uses a closed two-term first-order contraction for
-  values and three-axis derivatives. Component-unrolled recurrence for the
-  remaining shell classes and Rys generation remain.
+  values and three-axis derivatives. The total-order-2 `(d s | s s)`,
+  `(p p | s s)`, and `(p s | p s)` classes use compact four-term pair
+  expansions and closed Coulomb derivatives for the same value/three-axis
+  scalar paths. Component-unrolled recurrence for order three and above and
+  Rys generation remain.
 - GPU Schwarz bounds and an O(N^2)-memory fused direct J/K fallback are
   implemented. Every topology retains packed AO-pair metadata used by
   one-electron values/forces; direct buckets also use it for Schwarz bounds.
@@ -56,6 +59,8 @@ and performance measurements pass.
   304/2488/21288 bytes. Three-component force propagation uses
   576/8608/84384 bytes at those orders; its larger per-thread workspace is
   offset by evaluating each center once instead of once per Cartesian axis.
+  The closed order-2 path reduces its Fock/force stacks from 1072/3184 bytes
+  to 464/888 bytes.
   Clean RTX 5090
   artifacts validate energy, forces, and homogeneous-batch throughput for the
   exact `sdf18-direct`, Cartesian water/def2-SVP, and open-shell

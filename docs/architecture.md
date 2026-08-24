@@ -20,9 +20,15 @@ kernels and contracts stationary RHF/UHF gradients on the GPU. Its Cartesian
 McMurchie-Davidson recurrence is shared mathematically with the CPU oracle but
 implemented independently in CUDA. The canonical first-order `(p s | s s)`
 class generates its two reachable Hermite terms in closed form, with the same
-scalar expression serving values and three-axis forward derivatives. Real
-spherical target AOs carry sparse, geometry-independent Cartesian expansion
-terms through the same device value and derivative consumers. Torch/JAX
+scalar expression serving values and three-axis forward derivatives. The
+canonical total-order-2 `(d s | s s)`, `(p p | s s)`, and `(p s | p s)`
+classes similarly retain only their at most four nonzero pair terms and form
+the reachable Coulomb derivatives directly from the first three Boys values.
+One runtime Cartesian-component path serves both double values and the
+three-axis forward scalar, avoiding component-dependent template divergence
+within a warp. Real spherical target AOs carry sparse, geometry-independent
+Cartesian expansion terms through the same device value and derivative
+consumers. Torch/JAX
 bindings call the native gradient as a custom backward; they do not define the
 scientific implementation.
 
