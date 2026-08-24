@@ -95,6 +95,9 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   Jacobi solver, sizes 17--32 use batched cuSOLVER, and larger matrices use a
   cooperative Graph-native Jacobi kernel. The 48-AO Cartesian
   water/def2-TZVP path is numerically validated against PySCF.
+  For 33--256 AOs, that Graph-native path uses parallel cyclic sweeps with
+  disjoint round-robin rotations instead of rescanning the full matrix before
+  every pivot; larger matrices retain the unbounded maximum-pivot fallback.
   UHF stores alpha/beta matrices adjacently per system, solves both spin Fock
   matrices on device, and applies one combined DIIS residual per physical
   system.

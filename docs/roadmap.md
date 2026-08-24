@@ -123,7 +123,12 @@ and performance measurements pass.
   strided-batched cuBLAS matrix transforms for direct-J/K AO sizes are
   implemented for s-p-d-f shells. The cooperative Jacobi path removes the
   provider capture failure above 32 AOs and is validated at 48 AOs with
-  water/def2-TZVP energy and forces.
+  water/def2-TZVP energy and forces. Its 33--256-AO range now uses parallel
+  cyclic sweeps over disjoint round-robin rotations; the prior unbounded
+  maximum-pivot kernel remains as the larger-matrix fallback. WATER27 checks
+  exercise the new path at 96 and 192 AOs: energies remain within
+  `5.2e-13 Eh` and `7.4e-12 Eh`, respectively, of the prior path, and the
+  192-AO batch-4 force arrays remain within `9.8e-11 Eh/bohr`.
 - UHF alpha/beta occupations, persistent and screened-direct J/K, combined
   spin DIIS, warm starts, ragged batches, and analytic gradients are
   implemented on CPU and CUDA for the Cartesian and real spherical s-p-d-f

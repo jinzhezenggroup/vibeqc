@@ -2755,6 +2755,8 @@ __global__ void inspect_spin_solver_kernel(std::int32_t batch_size,
 constexpr std::int32_t kSmallEigensolverLimit = 16;
 constexpr std::int32_t kBatchedEigensolverLimit = 32;
 constexpr unsigned kGraphEigensolverThreads = 64;
+constexpr unsigned kCyclicGraphEigensolverThreads = 256;
+constexpr std::int32_t kCyclicGraphEigensolverLimit = 256;
 
 __global__ void symmetric_eigen_small_kernel(std::int32_t batch_size,
                                              std::int32_t nbf,
@@ -2874,7 +2876,7 @@ __global__ void symmetric_eigen_small_kernel(std::int32_t batch_size,
  * loop intact for realistic named bases without cuSOLVER's capture-time host
  * synchronization or a fixed compile-time AO limit.
  */
-__global__ void symmetric_eigen_graph_kernel(
+__global__ void symmetric_eigen_graph_maximum_pivot_kernel(
     std::int32_t batch_size,
     std::int32_t nbf,
     double* matrices,
@@ -3041,6 +3043,267 @@ __global__ void symmetric_eigen_graph_kernel(
         eigenvectors[matrix_offset + matrix_index(row, column, n)] =
             eigenvectors[matrix_offset + matrix_index(row, selected, n)];
         eigenvectors[matrix_offset + matrix_index(row, selected, n)] = swap;
+      }
+    }
+    __syncthreads();
+  }
+  for (std::size_t column = threadIdx.x; column < n; column += blockDim.x) {
+    eigenvalues[eigenvalue_offset + column] =
+        matrices[matrix_offset + matrix_index(column, column, n)];
+  }
+  __syncthreads();
+  for (std::size_t element = threadIdx.x; element < matrix_size;
+       element += blockDim.x) {
+    matrices[matrix_offset + element] =
+        eigenvectors[matrix_offset + element];
+  }
+}
+
+/**
+ * Return one disjoint round-robin pair for a cyclic Jacobi sweep.
+ *
+ * Even dimensions keep the final orbital fixed while the other n-1 orbitals
+ * rotate around it. Odd dimensions use one implicit dummy orbital and omit
+ * its pair. Every off-diagonal pair appears exactly once per full sweep.
+ */
+__device__ void cyclic_jacobi_pair(std::size_t n,
+                                   std::size_t round,
+                                   std::size_t compact_pair,
+                                   std::size_t& first,
+                                   std::size_t& second) {
+  const bool odd = (n & 1U) != 0;
+  const std::size_t schedule_size = odd ? n + 1 : n;
+  const std::size_t rotating = schedule_size - 1;
+  const std::size_t pair = odd ? compact_pair + 1 : compact_pair;
+  if (pair == 0) {
+    first = schedule_size - 1;
+    second = round;
+    return;
+  }
+  first = (round + pair) % rotating;
+  second = (round + rotating - pair) % rotating;
+}
+
+/**
+ * Graph-capture-safe cyclic Jacobi eigensolver for realistic AO matrices.
+ *
+ * A sweep consists of n-1 round-robin rounds. Each round diagonalizes n/2
+ * disjoint 2x2 pivots simultaneously, then applies their block-diagonal
+ * rotation to matrix columns, matrix rows, and eigenvectors. This reduces a
+ * sweep to O(n^3) work, whereas selecting one global maximum before every
+ * rotation rescans O(n^2) entries and becomes O(n^4). One block still owns a
+ * complete state, preserving the device-tail Graph and per-system active mask.
+ */
+__global__ void symmetric_eigen_graph_cyclic_kernel(
+    std::int32_t batch_size,
+    std::int32_t nbf,
+    double* matrices,
+    double* eigenvectors,
+    double* eigenvalues,
+    int* info,
+    const std::uint8_t* active) {
+  static_assert(kCyclicGraphEigensolverThreads > 0 &&
+                (kCyclicGraphEigensolverThreads &
+                 (kCyclicGraphEigensolverThreads - 1)) == 0);
+  const std::int32_t state = static_cast<std::int32_t>(blockIdx.x);
+  if (state >= batch_size) return;
+  if (active != nullptr && active[state] == 0) {
+    if (threadIdx.x == 0) info[state] = 0;
+    return;
+  }
+
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t matrix_offset =
+      static_cast<std::size_t>(state) * matrix_size;
+  const std::size_t eigenvalue_offset = static_cast<std::size_t>(state) * n;
+  const std::size_t pair_count = n / 2;
+  const std::size_t round_count = (n & 1U) != 0 ? n : n - 1;
+
+  extern __shared__ double rotation_parameters[];
+  double* rotation_cosines = rotation_parameters;
+  double* rotation_sines = rotation_parameters + pair_count;
+  __shared__ double block_maximum[kCyclicGraphEigensolverThreads];
+  __shared__ std::size_t selected_column;
+  __shared__ int converged;
+
+  for (std::size_t element = threadIdx.x; element < matrix_size;
+       element += blockDim.x) {
+    const std::size_t row = element / n;
+    const std::size_t column = element % n;
+    eigenvectors[matrix_offset + element] = row == column ? 1.0 : 0.0;
+  }
+  if (threadIdx.x == 0) {
+    info[state] = 1;
+    converged = 0;
+  }
+  __syncthreads();
+
+  constexpr std::size_t maximum_sweeps = 50;
+  for (std::size_t sweep = 0; sweep < maximum_sweeps; ++sweep) {
+    for (std::size_t round = 0; round < round_count; ++round) {
+      for (std::size_t pair = threadIdx.x; pair < pair_count;
+           pair += blockDim.x) {
+        std::size_t first = 0;
+        std::size_t second = 0;
+        cyclic_jacobi_pair(n, round, pair, first, second);
+        const double first_diagonal =
+            matrices[matrix_offset + matrix_index(first, first, n)];
+        const double second_diagonal =
+            matrices[matrix_offset + matrix_index(second, second, n)];
+        const double off_diagonal =
+            matrices[matrix_offset + matrix_index(first, second, n)];
+        double angle = 0.5 * atan2(
+            2.0 * off_diagonal, second_diagonal - first_diagonal);
+        // The principal atan2 branch can choose an almost-pi/2 rotation that
+        // merely swaps diagonal entries. Maximum-pivot Jacobi tolerates that,
+        // but a parallel cyclic ordering can repeat the swaps indefinitely.
+        // The equivalent rotation in [-pi/4, pi/4] is the standard cyclic
+        // Jacobi choice and guarantees progress without changing eigenpairs.
+        if (angle > 0.25 * kPi) {
+          angle -= 0.5 * kPi;
+        } else if (angle < -0.25 * kPi) {
+          angle += 0.5 * kPi;
+        }
+        rotation_cosines[pair] = cos(angle);
+        rotation_sines[pair] = sin(angle);
+      }
+      __syncthreads();
+
+      // Right multiplication A <- A Q. Disjoint column pairs make every
+      // output element unique within this stage.
+      const std::size_t pair_elements = n * pair_count;
+      for (std::size_t task = threadIdx.x; task < pair_elements;
+           task += blockDim.x) {
+        const std::size_t row = task / pair_count;
+        const std::size_t pair = task % pair_count;
+        std::size_t first = 0;
+        std::size_t second = 0;
+        cyclic_jacobi_pair(n, round, pair, first, second);
+        const double first_value =
+            matrices[matrix_offset + matrix_index(row, first, n)];
+        const double second_value =
+            matrices[matrix_offset + matrix_index(row, second, n)];
+        const double cosine = rotation_cosines[pair];
+        const double sine = rotation_sines[pair];
+        matrices[matrix_offset + matrix_index(row, first, n)] =
+            cosine * first_value - sine * second_value;
+        matrices[matrix_offset + matrix_index(row, second, n)] =
+            sine * first_value + cosine * second_value;
+      }
+      __syncthreads();
+
+      // Left multiplication A <- Q^T A uses the same disjoint row pairs.
+      for (std::size_t task = threadIdx.x; task < pair_elements;
+           task += blockDim.x) {
+        const std::size_t column = task / pair_count;
+        const std::size_t pair = task % pair_count;
+        std::size_t first = 0;
+        std::size_t second = 0;
+        cyclic_jacobi_pair(n, round, pair, first, second);
+        const double first_value =
+            matrices[matrix_offset + matrix_index(first, column, n)];
+        const double second_value =
+            matrices[matrix_offset + matrix_index(second, column, n)];
+        const double cosine = rotation_cosines[pair];
+        const double sine = rotation_sines[pair];
+        matrices[matrix_offset + matrix_index(first, column, n)] =
+            cosine * first_value - sine * second_value;
+        matrices[matrix_offset + matrix_index(second, column, n)] =
+            sine * first_value + cosine * second_value;
+      }
+      __syncthreads();
+
+      for (std::size_t pair = threadIdx.x; pair < pair_count;
+           pair += blockDim.x) {
+        std::size_t first = 0;
+        std::size_t second = 0;
+        cyclic_jacobi_pair(n, round, pair, first, second);
+        matrices[matrix_offset + matrix_index(first, second, n)] = 0.0;
+        matrices[matrix_offset + matrix_index(second, first, n)] = 0.0;
+      }
+
+      // Accumulate V <- V Q after the matrix similarity transform.
+      for (std::size_t task = threadIdx.x; task < pair_elements;
+           task += blockDim.x) {
+        const std::size_t row = task / pair_count;
+        const std::size_t pair = task % pair_count;
+        std::size_t first = 0;
+        std::size_t second = 0;
+        cyclic_jacobi_pair(n, round, pair, first, second);
+        const double first_value =
+            eigenvectors[matrix_offset + matrix_index(row, first, n)];
+        const double second_value =
+            eigenvectors[matrix_offset + matrix_index(row, second, n)];
+        const double cosine = rotation_cosines[pair];
+        const double sine = rotation_sines[pair];
+        eigenvectors[matrix_offset + matrix_index(row, first, n)] =
+            cosine * first_value - sine * second_value;
+        eigenvectors[matrix_offset + matrix_index(row, second, n)] =
+            sine * first_value + cosine * second_value;
+      }
+      __syncthreads();
+    }
+
+    double local_maximum = 0.0;
+    for (std::size_t element = threadIdx.x; element < matrix_size;
+         element += blockDim.x) {
+      const std::size_t row = element / n;
+      const std::size_t column = element % n;
+      if (row < column) {
+        local_maximum = fmax(
+            local_maximum,
+            fabs(matrices[matrix_offset + element]));
+      }
+    }
+    block_maximum[threadIdx.x] = local_maximum;
+    __syncthreads();
+    for (unsigned stride = blockDim.x / 2; stride > 0; stride /= 2) {
+      if (threadIdx.x < stride) {
+        block_maximum[threadIdx.x] = fmax(
+            block_maximum[threadIdx.x],
+            block_maximum[threadIdx.x + stride]);
+      }
+      __syncthreads();
+    }
+    if (threadIdx.x == 0 && block_maximum[0] < 1.0e-13) {
+      converged = 1;
+      info[state] = 0;
+    }
+    __syncthreads();
+    if (converged != 0) break;
+  }
+  // Stable selection sort preserves the ascending eigenpair convention of
+  // the CPU oracle and cuSOLVER path.
+  for (std::size_t column = 0; column < n; ++column) {
+    if (threadIdx.x == 0) {
+      std::size_t selected = column;
+      for (std::size_t candidate = column + 1; candidate < n; ++candidate) {
+        if (matrices[matrix_offset + matrix_index(candidate, candidate, n)] <
+            matrices[matrix_offset + matrix_index(selected, selected, n)]) {
+          selected = candidate;
+        }
+      }
+      selected_column = selected;
+      if (selected != column) {
+        const double diagonal =
+            matrices[matrix_offset + matrix_index(column, column, n)];
+        matrices[matrix_offset + matrix_index(column, column, n)] =
+            matrices[matrix_offset + matrix_index(selected, selected, n)];
+        matrices[matrix_offset + matrix_index(selected, selected, n)] =
+            diagonal;
+      }
+    }
+    __syncthreads();
+    if (selected_column != column) {
+      for (std::size_t row = threadIdx.x; row < n; row += blockDim.x) {
+        const double swap =
+            eigenvectors[matrix_offset + matrix_index(row, column, n)];
+        eigenvectors[matrix_offset + matrix_index(row, column, n)] =
+            eigenvectors[matrix_offset +
+                         matrix_index(row, selected_column, n)];
+        eigenvectors[matrix_offset +
+                     matrix_index(row, selected_column, n)] = swap;
       }
     }
     __syncthreads();
@@ -5792,11 +6055,21 @@ qce_status launch_solver(CudaResources& resources,
     return status == CUSOLVER_STATUS_SUCCESS ? QCE_STATUS_SUCCESS
                                              : solver_status(status);
   }
-  symmetric_eigen_graph_kernel<<<static_cast<unsigned>(batch_size),
-                                 kGraphEigensolverThreads, 0,
-                                 resources.stream_>>>(
-      batch_size, nbf, matrices, eigenvector_workspace, eigenvalues, info,
-      active);
+  if (nbf <= kCyclicGraphEigensolverLimit) {
+    symmetric_eigen_graph_cyclic_kernel<<<
+        static_cast<unsigned>(batch_size), kCyclicGraphEigensolverThreads,
+        static_cast<std::size_t>(nbf) * sizeof(double), resources.stream_>>>(
+        batch_size, nbf, matrices, eigenvector_workspace, eigenvalues, info,
+        active);
+  } else {
+    // Retain the unbounded maximum-pivot implementation above the configured
+    // cyclic range instead of introducing a new AO-count limit.
+    symmetric_eigen_graph_maximum_pivot_kernel<<<
+        static_cast<unsigned>(batch_size), kGraphEigensolverThreads, 0,
+        resources.stream_>>>(
+        batch_size, nbf, matrices, eigenvector_workspace, eigenvalues, info,
+        active);
+  }
   return cuda_status(cudaPeekAtLastError());
 }
 

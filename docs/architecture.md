@@ -115,9 +115,13 @@ not yet a component-unrolled/Rys or DF HF engine. Its SCF loop uses device DIIS
 and a device-tail-launched CUDA Graph.
 AO matrices up to 16 use the low-overhead serial device Jacobi kernel, sizes
 17--32 use cuSOLVER's batched Jacobi provider, and larger matrices use a
-Graph-native cooperative Jacobi kernel with one 64-thread block per physical
-or spin state. The large path reuses the plan's temporary matrix for
-eigenvectors, has no compile-time AO-count limit, and avoids provider routines
+Graph-native cooperative Jacobi kernel with one block per physical or spin
+state. For 33--256 AOs, one 256-thread block applies disjoint
+round-robin rotations as parallel cyclic sweeps, reducing diagonalization from
+the maximum-pivot path's O(n^4) work to O(n^3). Larger matrices retain the
+unbounded 64-thread maximum-pivot fallback. Both paths reuse the plan's
+temporary matrix for eigenvectors, impose no public AO-count limit, and avoid
+provider routines
 that synchronize the host and invalidate stream capture above their small
 batched range.
 Each fixed-topology bucket owns and replays one packed arena and Graph, so warm
