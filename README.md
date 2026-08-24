@@ -158,6 +158,13 @@ No broad performance claim is valid until both engines run the same realistic
 molecules, basis, precision, convergence, and energy/gradient workload on the
 same allocated GPU.
 
+`benchmarks/compare_gpu4pyscf_batch.py` measures homogeneous fixed-topology
+batches at configurable sizes. QCE submits one native bucket; because
+GPU4PySCF currently exposes a single-molecule SCF API, the harness retains one
+GPU object and warm density per system and executes them sequentially inside
+the same synchronized batch boundary. Reports must state this interface
+difference rather than presenting the result as two equivalent batch APIs.
+
 Pass `--output path/to/result.json` to any script in `benchmarks/` to retain
 raw timing samples together with the Git commit and dirty state, Python and
 package versions, runtime library path, benchmark parameters, and (for the

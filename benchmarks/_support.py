@@ -86,6 +86,30 @@ def environment_metadata(
     }
 
 
+def cuda_accelerator_metadata(cupy_module: Any) -> dict[str, Any]:
+    """Return stable JSON fields for the CUDA device used by a benchmark."""
+
+    device_id = cupy_module.cuda.Device().id
+    properties = cupy_module.cuda.runtime.getDeviceProperties(device_id)
+    name = properties.get("name")
+    if isinstance(name, bytes):
+        name = name.decode("utf-8", errors="replace").rstrip("\x00")
+    return {
+        "backend": "cuda",
+        "device_id": device_id,
+        "name": name,
+        "compute_capability": [
+            properties.get("major"),
+            properties.get("minor"),
+        ],
+        "total_global_memory_bytes": properties.get("totalGlobalMem"),
+        "multiprocessor_count": properties.get("multiProcessorCount"),
+        "clock_rate_khz": properties.get("clockRate"),
+        "driver_version": cupy_module.cuda.runtime.driverGetVersion(),
+        "runtime_version": cupy_module.cuda.runtime.runtimeGetVersion(),
+    }
+
+
 def write_result(path: str | Path, payload: dict[str, Any]) -> Path:
     """Write a stable, human-readable JSON benchmark artifact."""
 
@@ -96,4 +120,3 @@ def write_result(path: str | Path, payload: dict[str, Any]) -> Path:
         encoding="utf-8",
     )
     return destination
-
