@@ -28,7 +28,12 @@ Total-order-3 shell pairs generate their exact 1/2/4/8 terms as subsets of
 their angular quanta; quanta sharing one Cartesian axis add the required
 Gaussian pair contractions without allocating recurrence arrays. The quartet
 then forms its reachable third-order Coulomb derivatives directly from the
-first four Boys values. One runtime Cartesian-component path serves both
+first four Boys values. Total-order-4 shell pairs use the same subset
+representation with a widened derivative-state encoding. All same-axis
+single Wick contractions and the three possible disjoint double contractions
+are accumulated into the fixed 16-term bound, and the quartet evaluates the
+reachable fourth-order Coulomb derivatives directly from the first five Boys
+values. One runtime Cartesian-component path serves both
 double values and the three-axis forward scalar, avoiding component-dependent
 template divergence within a warp. Real spherical target AOs carry sparse,
 geometry-independent Cartesian expansion terms through the same device value

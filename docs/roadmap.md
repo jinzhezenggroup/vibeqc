@@ -29,8 +29,12 @@ and performance measurements pass.
   scalar paths. Total-order-3 `(f s | s s)`, `(d p | s s)`,
   `(d s | p s)`, and `(p p | p s)` classes use exact eight-term quantum
   expansions with same-axis Gaussian contractions and closed third-order
-  Coulomb derivatives. Component-unrolled recurrence for order four and above
-  and Rys generation remain.
+  Coulomb derivatives. Total-order-4 `(f p | s s)`, `(d d | s s)`,
+  `(f s | p s)`, `(d p | p s)`, `(d s | d s)`, `(d s | p p)`, and
+  `(p p | p p)` classes extend that expansion through all same-axis single
+  and disjoint double Wick contractions and closed fourth-order Coulomb
+  derivatives. Component-unrolled recurrence for order five and above and Rys
+  generation remain.
 - GPU Schwarz bounds and an O(N^2)-memory fused direct J/K fallback are
   implemented. Every topology retains packed AO-pair metadata used by
   one-electron values/forces; direct buckets also use it for Schwarz bounds.
@@ -63,7 +67,8 @@ and performance measurements pass.
   576/8608/84384 bytes at those orders; its larger per-thread workspace is
   offset by evaluating each center once instead of once per Cartesian axis.
   The closed order-2 path reduces its Fock/force stacks from 1072/3184 bytes
-  to 464/888 bytes; order three falls from 1568/5200 bytes to 512/1256 bytes.
+  to 464/888 bytes; order three falls from 1568/5200 bytes to 512/1256 bytes;
+  order four falls from 2488/8608 bytes to 752/2024 bytes.
   Clean RTX 5090
   artifacts validate energy, forces, and homogeneous-batch throughput for the
   exact `sdf18-direct`, Cartesian water/def2-SVP, and open-shell

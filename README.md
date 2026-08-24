@@ -137,7 +137,12 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   `(d s | p s)`, and `(p p | p s)` quartets use exact 1/2/4/8-term quantum
   products plus same-axis Gaussian contractions and direct `F0`--`F3`
   Coulomb derivatives. Their Fock/force stacks fall from 1,568/5,200 bytes to
-  512/1,256 bytes. Real-spherical direct buckets apply
+  512/1,256 bytes. Total-order-4 `(f p | s s)`, `(d d | s s)`,
+  `(f s | p s)`, `(d p | p s)`, `(d s | d s)`, `(d s | p p)`, and
+  `(p p | p p)` quartets extend the same generated expansion with all
+  same-axis single and disjoint double Wick contractions plus direct
+  `F0`--`F4` Coulomb derivatives. Their Fock/force stacks fall from
+  2,488/8,608 bytes to 752/2,024 bytes. Real-spherical direct buckets apply
   `C^T D C` before those Cartesian-source quartets and `C F C^T` afterwards,
   eliminating repeated sparse term products from Fock and force recurrences.
   Remaining component-unrolled/Rys kernels, broader named-basis gates, and
