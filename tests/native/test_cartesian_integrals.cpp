@@ -1,14 +1,17 @@
 #include "core/types.hpp"
 #include "integrals/s_integrals.hpp"
 #include "molecule/basis.hpp"
+#include "scf/direct_task_layout.hpp"
 #include "scf/rhf.hpp"
 
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <numeric>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -72,6 +75,33 @@ qce::core::System helium_hydrogen_sdf() {
   return system;
 }
 
+qce::scf::detail::DirectQuartetTaskLayout direct_task_layout(
+    const qce::core::System& system) {
+  std::vector<std::int64_t> shell_ao_offsets{0};
+  for (const qce::core::Shell& shell : system.shells) {
+    shell_ao_offsets.push_back(
+        shell_ao_offsets.back() + static_cast<std::int64_t>(
+            qce::molecule::ao_expansions(
+                shell.angular_momentum, system.basis_representation).size()));
+  }
+  std::vector<std::int32_t> shell_pair_first;
+  std::vector<std::int32_t> shell_pair_second;
+  for (std::size_t first = 0; first < system.shells.size(); ++first) {
+    for (std::size_t second = 0; second <= first; ++second) {
+      shell_pair_first.push_back(static_cast<std::int32_t>(first));
+      shell_pair_second.push_back(static_cast<std::int32_t>(second));
+    }
+  }
+  const std::vector<std::int64_t> system_shell_pair_offsets{
+      0, static_cast<std::int64_t>(shell_pair_first.size())};
+  qce::scf::detail::DirectQuartetTaskLayout layout;
+  require(qce::scf::detail::make_direct_quartet_task_layout(
+              shell_ao_offsets, system_shell_pair_offsets, shell_pair_first,
+              shell_pair_second, layout),
+          "direct-J/K task layout rejected a valid shell topology");
+  return layout;
+}
+
 }  // namespace
 
 int main() {
@@ -103,6 +133,13 @@ int main() {
             "s/d/f primitive storage was expanded per Cartesian component");
     require(sdf_layout.device_basis_bytes == 1016,
             "s/d/f CUDA basis topology payload changed unexpectedly");
+    const qce::scf::detail::DirectQuartetTaskLayout sdf_tasks =
+        direct_task_layout(helium_hydrogen_sdf());
+    require(sdf_tasks.shell_quartet_count == 55 &&
+                sdf_tasks.exact_tile_count == 100 &&
+                sdf_tasks.maximum_tiles_per_shell_quartet == 15 &&
+                sdf_tasks.uniform_tile_count == 825,
+            "Cartesian s/d/f direct-J/K tile compaction is inconsistent");
     qce::core::System spherical_sdf = helium_hydrogen_sdf();
     spherical_sdf.basis_representation = QCE_BASIS_SPHERICAL;
     const qce::scf::CudaRhfBasisLayoutStats spherical_layout =
@@ -116,6 +153,13 @@ int main() {
                 spherical_layout.expanded_primitive_references == 18 &&
                 spherical_layout.device_basis_bytes == 864,
             "spherical CUDA basis metadata is not compact and shell-owned");
+    const qce::scf::detail::DirectQuartetTaskLayout spherical_tasks =
+        direct_task_layout(spherical_sdf);
+    require(spherical_tasks.shell_quartet_count == 55 &&
+                spherical_tasks.exact_tile_count == 64 &&
+                spherical_tasks.maximum_tiles_per_shell_quartet == 5 &&
+                spherical_tasks.uniform_tile_count == 275,
+            "spherical s/d/f direct-J/K tile compaction is inconsistent");
     const qce::integrals::IntegralData integrals =
         qce::integrals::build_cartesian_integrals(system);
     require(integrals.nbf == 8, "integral engine reported the wrong AO count");

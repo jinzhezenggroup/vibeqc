@@ -30,10 +30,11 @@ and performance measurements pass.
   large d/f groups across multiple blocks without an O(N^4) descriptor list;
   analytic two-electron forces use the same unique quartets and only the
   participating shell centers. A geometry-dependent device compaction pass now
-  selects active shell quartets from those bounds without host readback; GPU
-  regression/performance validation remains. Consume the compacted list next
-  in generated angular-specialized quartet kernels, finer AO-level scheduling,
-  and CUDA spherical transforms.
+  selects active shell quartets from those bounds without host readback and
+  expands them into only their populated AO tiles. Direct Fock and force reuse
+  those exact descriptors, avoiding global-maximum tile padding and repeated
+  system/pair decoding; GPU regression/performance validation remains. Consume
+  the compacted list next in generated angular-specialized quartet kernels.
 - Compare random values and derivatives against libcint/PySCF before enabling
   each angular-momentum quartet.
 - Bundled, reproducible STO-3G/def2-SVP/def2-TZVP Cartesian basis packs for
@@ -71,10 +72,9 @@ and performance measurements pass.
 - UHF alpha/beta occupations, persistent and screened-direct J/K, combined
   spin DIIS, warm starts, ragged batches, and analytic gradients are
   implemented on CPU and CUDA for the Cartesian s-p-d-f scope.
-- Stream-ordered CUDA memory-pool allocation, device shell-quartet compaction,
-  and reproducible benchmark publication ledgers are implemented. Add scalable
-  BLAS-backed matrix transforms, finer AO-level compaction, and allocated
-  performance gates.
+- Stream-ordered CUDA memory-pool allocation, exact device shell/AO-tile
+  compaction, and reproducible benchmark publication ledgers are implemented.
+  Add scalable BLAS-backed matrix transforms and allocated performance gates.
 - Core/SAD guesses, robust DIIS recovery, level shift, convergence diagnostics,
   ROHF, broader convergence controls, and production UHF performance tuning.
 - Extend the existing cold/warm GPU4PySCF s/p microbenchmark to realistic
