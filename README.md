@@ -133,7 +133,11 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   `(p s | p s)` classes use at most four sparse Hermite terms per pair and
   generate their Coulomb derivatives directly from `F0`/`F1`/`F2`. This
   reduces their per-thread Fock/force stacks from 1,072/3,184 bytes to
-  464/888 bytes. Real-spherical direct buckets apply
+  464/888 bytes. Total-order-3 `(f s | s s)`, `(d p | s s)`,
+  `(d s | p s)`, and `(p p | p s)` quartets use exact 1/2/4/8-term quantum
+  products plus same-axis Gaussian contractions and direct `F0`--`F3`
+  Coulomb derivatives. Their Fock/force stacks fall from 1,568/5,200 bytes to
+  512/1,256 bytes. Real-spherical direct buckets apply
   `C^T D C` before those Cartesian-source quartets and `C F C^T` afterwards,
   eliminating repeated sparse term products from Fock and force recurrences.
   Remaining component-unrolled/Rys kernels, broader named-basis gates, and

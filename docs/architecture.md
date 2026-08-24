@@ -24,11 +24,15 @@ scalar expression serving values and three-axis forward derivatives. The
 canonical total-order-2 `(d s | s s)`, `(p p | s s)`, and `(p s | p s)`
 classes similarly retain only their at most four nonzero pair terms and form
 the reachable Coulomb derivatives directly from the first three Boys values.
-One runtime Cartesian-component path serves both double values and the
-three-axis forward scalar, avoiding component-dependent template divergence
-within a warp. Real spherical target AOs carry sparse, geometry-independent
-Cartesian expansion terms through the same device value and derivative
-consumers. Torch/JAX
+Total-order-3 shell pairs generate their exact 1/2/4/8 terms as subsets of
+their angular quanta; quanta sharing one Cartesian axis add the required
+Gaussian pair contractions without allocating recurrence arrays. The quartet
+then forms its reachable third-order Coulomb derivatives directly from the
+first four Boys values. One runtime Cartesian-component path serves both
+double values and the three-axis forward scalar, avoiding component-dependent
+template divergence within a warp. Real spherical target AOs carry sparse,
+geometry-independent Cartesian expansion terms through the same device value
+and derivative consumers. Torch/JAX
 bindings call the native gradient as a custom backward; they do not define the
 scientific implementation.
 
