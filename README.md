@@ -6,13 +6,12 @@ chosen.
 
 The current vertical prototype implements RHF and UHF energies and analytic
 nuclear gradients for all-electron contracted **s through f** Gaussian bases.
-The independent CPU oracle accepts CCA Cartesian or real spherical AOs; the
-device-resident CUDA RHF/UHF path currently covers the validated Cartesian
-s-p-d-f scope. It includes a versioned C ABI, a C++ core, Python bindings
-through `ctypes`, and native ragged fleet batches. CUDA spherical execution,
-ROHF, density fitting, and generated angular-momentum-specialized quartet
-kernels remain explicit roadmap items rather than silently falling back to an
-unvalidated implementation.
+The independent CPU oracle and device-resident CUDA RHF/UHF path accept CCA
+Cartesian or PySCF/libcint-ordered real spherical AOs through the validated
+s-p-d-f scope. The project includes a versioned C ABI, a C++ core, Python
+bindings through `ctypes`, and native ragged fleet batches. ROHF, density
+fitting, and component-unrolled/Rys quartet kernels remain explicit roadmap
+items rather than silently falling back to an unvalidated implementation.
 
 ## Build
 
@@ -72,15 +71,15 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
 - RHF requires an even electron count and multiplicity 1. UHF derives
   integral alpha/beta occupations from electron count and multiplicity.
 - Contracted `s`, `p`, `d`, and `f` shells are executable. The ABI carries an
-  angular-momentum field and rejects `g` and higher shells. The CPU reference
-  supports CCA Cartesian and PySCF/libcint-ordered real spherical functions;
-  CUDA currently requires Cartesian AOs and reports spherical execution as
-  unavailable instead of falling back to the host.
+  angular-momentum field and rejects `g` and higher shells. Both backends
+  support CCA Cartesian and PySCF/libcint-ordered real spherical functions.
+  CUDA evaluates sparse spherical d/f expansions on device and never falls
+  back to the host.
 - The Python package bundles data-only STO-3G, def2-SVP, and def2-TZVP packs
   for H-Ar, generated from the pinned Basis Set Exchange reference. Named basis
   calculations remain Cartesian by default for compatibility; pass
-  `basis_representation="spherical"` on the CPU reference for standard pure
-  def2 semantics.
+  `basis_representation="spherical"` for standard pure def2 semantics on
+  either backend.
 - No ECP, symmetry, finite-temperature occupations, DFT, or post-HF methods.
 - The analytic gradient differentiates integral formulas analytically and
   assembles variational RHF/UHF gradients with their Pulay terms. It does not
@@ -118,8 +117,8 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   dispatch 55 symmetry-reduced s/p/d/f shell classes inside 13 angular-order
   Graph nodes, canonicalize ERI arguments by pair symmetry, and size Hermite
   workspaces from the exact shell pairs. Component-unrolled/Rys kernels,
-  broader named-basis gates, CUDA spherical consumers, and DF J/K are still
-  required before making broad production performance claims.
+  broader named-basis gates, spherical performance artifacts, and DF J/K are
+  still required before making broad production performance claims.
 
 UHF uses the same memory policy: small buckets retain ERIs, while larger
 buckets build spin-resolved Fock matrices directly from O(N^2) Schwarz data.
@@ -156,10 +155,10 @@ leadership. GPU4PySCF already has mature higher-angular-momentum Rys kernels,
 screening, spherical basis support, and highly optimized shell-sorted direct
 J/K. QCE now switches larger AO buckets to an O(N^2)-memory screened direct
 path with device-compacted angular-order partitions, but it still lacks
-component-unrolled or Rys shell kernels, CUDA spherical consumers, and
-standard spherical named-def2 GPU execution. Broad claims require more
-molecules, bases, batch shapes, and convergence regimes on the same allocated
-GPU.
+component-unrolled or Rys shell kernels and DF J/K. Standard spherical
+named-def2 GPU execution is numerically validated, but its performance has not
+yet been published. Broad claims require more molecules, bases, batch shapes,
+and convergence regimes on the same allocated GPU.
 
 `benchmarks/compare_gpu4pyscf_batch.py` measures homogeneous fixed-topology
 batches at configurable sizes. QCE submits one native bucket; because

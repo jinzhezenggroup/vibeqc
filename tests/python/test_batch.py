@@ -116,6 +116,47 @@ def test_real_spherical_batch_reuses_fixed_topology_plan():
     )
 
 
+def test_cuda_real_spherical_batch_reuses_fixed_topology_plan():
+    """Exercise public CUDA batching with sparse spherical AO expansions."""
+
+    basis = (
+        Shell(0, 0, (Primitive(1.5, 1.0),)),
+        Shell(0, 2, (Primitive(0.8, 1.0),)),
+        Shell(1, 0, (Primitive(1.2, 1.0),)),
+    )
+    systems = [
+        [("He", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))],
+        [("He", (0.0, 0.0, -0.8)), ("H", (0.0, 0.0, 0.8))],
+    ]
+    try:
+        calculator = Calculator(
+            basis=basis,
+            basis_representation="spherical",
+            device="cuda",
+            energy_tolerance=1.0e-12,
+            density_tolerance=1.0e-10,
+        )
+        with calculator.prepare_batch(
+            systems, charges=[1, 1], warm_start=True
+        ) as prepared:
+            cold = prepared.execute(strict=True)
+            warm = prepared.execute(strict=True)
+    except RuntimeError as error:
+        pytest.skip(f"CUDA device unavailable: {error}")
+
+    assert np.allclose(
+        cold.energies,
+        [-2.3341870407859284, -2.2509247051464096],
+        atol=3.0e-9,
+    )
+    assert all(item.executed_backend == "cuda" for item in cold.items)
+    assert all(item.warm_start_used for item in warm.items)
+    assert all(
+        warm.items[index].iterations <= cold.items[index].iterations
+        for index in range(len(systems))
+    )
+
+
 def test_device_resident_cuda_rhf_matches_reference_when_device_is_available():
     batch_systems = [systems()[0], systems()[2], systems()[0], systems()[2]]
     reference = Calculator(device="cpu").batch_singlepoint(

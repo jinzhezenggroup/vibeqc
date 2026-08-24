@@ -248,12 +248,6 @@ qce_status qce_calculation_prepare(qce_context* context,
         : "RHF requires an even electron count and spin multiplicity 1";
     return QCE_STATUS_INVALID_ARGUMENT;
   }
-  if (context->state.requested_backend == QCE_BACKEND_CUDA &&
-      system->data.basis_representation == QCE_BASIS_SPHERICAL) {
-    context->last_detail =
-        "CUDA spherical transforms are not implemented yet";
-    return QCE_STATUS_NOT_IMPLEMENTED;
-  }
   try {
     auto candidate = std::make_unique<qce_calculation>();
     candidate->context = context;
@@ -343,10 +337,6 @@ qce_status qce_batch_prepare(qce_context* context,
           validate_hf_system(descriptor->method, systems[i]->data) !=
               QCE_STATUS_SUCCESS) {
         return QCE_STATUS_INVALID_ARGUMENT;
-      }
-      if (context->state.requested_backend == QCE_BACKEND_CUDA &&
-          systems[i]->data.basis_representation == QCE_BASIS_SPHERICAL) {
-        return QCE_STATUS_NOT_IMPLEMENTED;
       }
       native_systems.push_back(systems[i]->data);
       atom_counts.push_back(static_cast<std::uint32_t>(systems[i]->data.atoms.size()));

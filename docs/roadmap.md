@@ -53,9 +53,10 @@ and performance measurements pass.
 - Bundled, reproducible STO-3G/def2-SVP/def2-TZVP Cartesian basis packs for
   H-Ar are generated from the pinned Basis Set Exchange revision. CPU
   real-spherical s-p-d-f transforms and analytic gradients are implemented and
-  validated against PySCF/libcint. Sparse CUDA spherical AO consumers are now
-  implemented behind the public backend guard; allocated-GPU energy/force
-  validation remains before standard named-basis GPU semantics are complete.
+  validated against PySCF/libcint. Sparse CUDA spherical AO consumers are
+  public and validated on an RTX 5090 for s/d RHF, s/f RHF, s/d UHF, warm
+  batches, and standard pure water/def2-SVP energy and forces. Publish
+  same-workload spherical throughput evidence next.
 - Exact shell-class recurrence workspaces and the device-compacted active-task
   scheduler are implemented. Replace the remaining component loops and generic
   symmetry scatter with generated shell-class/Rys kernels where profiling
@@ -72,13 +73,15 @@ and performance measurements pass.
 - Per-system convergence and failure isolation.
 - Topology-compatible density warm starts, coordinate updates, cold fallback,
   explicit state clearing, and ragged Torch analytic backward.
-- The full CUDA path currently covers the executable contracted Cartesian
-  s-p-d-f scope. Device DIIS, device-tail Graph control, persistent plan arenas,
+- The full CUDA path currently covers the executable contracted Cartesian and
+  real spherical s-p-d-f scope. Device DIIS, device-tail Graph control,
+  persistent plan arenas,
   Schwarz screening, and a memory-bounded direct J/K fallback are implemented;
-  symmetry-reduced direct s/p/d/f quartets are also implemented. Spherical AO
-  consumers remain publicly guarded pending allocated-GPU validation;
-  component-unrolled/Rys shell kernels, DF J/K, and broader active compaction
-  gates remain M1/M2 work and are not implied by the backend label.
+  symmetry-reduced direct s/p/d/f quartets are implemented for single-term
+  Cartesian targets, while sparse multi-term spherical targets use the generic
+  screened direct fallback. Component-unrolled/Rys shell kernels, DF J/K, and
+  broader active compaction gates remain M1/M2 work and are not implied by the
+  backend label.
 
 ## M2: production RHF and UHF
 
@@ -87,7 +90,8 @@ and performance measurements pass.
   transforms for direct-J/K AO sizes are implemented for s-p-d-f shells.
 - UHF alpha/beta occupations, persistent and screened-direct J/K, combined
   spin DIIS, warm starts, ragged batches, and analytic gradients are
-  implemented on CPU and CUDA for the Cartesian s-p-d-f scope.
+  implemented on CPU and CUDA for the Cartesian and real spherical s-p-d-f
+  scope.
 - Stream-ordered CUDA memory-pool allocation, exact device shell/AO-tile
   compaction, and reproducible benchmark publication ledgers are implemented.
   Small matrices retain the low-overhead native product kernel, and provider or
@@ -102,8 +106,8 @@ and performance measurements pass.
 - Core/SAD guesses, robust DIIS recovery, level shift, convergence diagnostics,
   ROHF, broader convergence controls, and production UHF performance tuning.
 - The cold/warm GPU4PySCF harness now includes Cartesian water/def2-SVP and
-  publishes raw homogeneous-batch samples. Extend it to standard spherical
-  named-basis workloads after CUDA spherical consumers are validated.
+  publishes raw homogeneous-batch samples. Extend it now to standard spherical
+  named-basis workloads under the same allocated accuracy/performance gates.
 
 ## M3: density fitting and fleet mode
 

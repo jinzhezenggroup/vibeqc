@@ -74,6 +74,90 @@ def test_real_spherical_d_energy_and_force_match_pyscf():
     assert result.forces[1, 2] == pytest.approx(-0.3502792384052438, abs=8.0e-12)
 
 
+def test_cuda_real_spherical_d_energy_and_force_match_pyscf():
+    """Expose the validated sparse d transform through the public CUDA ABI."""
+
+    atoms = [("He", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
+    basis = (
+        Shell(0, 0, (Primitive(1.5, 1.0),)),
+        Shell(0, 2, (Primitive(0.8, 1.0),)),
+        Shell(1, 0, (Primitive(1.2, 1.0),)),
+    )
+    try:
+        result = Calculator(
+            basis=basis,
+            basis_representation="spherical",
+            device="cuda",
+            energy_tolerance=1.0e-12,
+            density_tolerance=1.0e-10,
+        ).singlepoint(atoms, charge=1)
+    except RuntimeError as error:
+        pytest.skip(f"CUDA device unavailable: {error}")
+
+    assert result.executed_backend == "cuda"
+    assert result.energy == pytest.approx(-2.3341870407859284, abs=3.0e-9)
+    assert result.forces[0, 2] == pytest.approx(0.3502792384052442, abs=3.0e-8)
+    assert result.forces[1, 2] == pytest.approx(-0.3502792384052438, abs=3.0e-8)
+
+
+def test_cuda_spherical_def2_svp_water_matches_pyscf():
+    """Validate standard pure def2-SVP energy and force on the CUDA backend."""
+
+    atoms = [
+        ("O", (0.0, 0.0, 0.0)),
+        ("H", (0.0, -1.43233673, 1.10715266)),
+        ("H", (0.0, 1.43233673, 1.10715266)),
+    ]
+    try:
+        result = Calculator(
+            basis="def2-svp",
+            basis_representation="spherical",
+            device="cuda",
+            energy_tolerance=1.0e-12,
+            density_tolerance=1.0e-10,
+        ).singlepoint(atoms)
+    except RuntimeError as error:
+        pytest.skip(f"CUDA device unavailable: {error}")
+
+    expected_forces = np.array(
+        [
+            [0.0, 0.0, 0.018058935411787047],
+            [0.0, 0.011439597724475004, -0.009029467705892413],
+            [0.0, -0.011439597724475448, -0.009029467705893301],
+        ]
+    )
+    assert result.executed_backend == "cuda"
+    assert result.energy == pytest.approx(-75.96097281179767, abs=3.0e-9)
+    assert np.allclose(result.forces, expected_forces, atol=3.0e-8)
+
+
+def test_cuda_spherical_uhf_doublet_matches_pyscf():
+    """Exercise public CUDA UHF with a multi-term real-spherical d shell."""
+
+    atoms = [("He", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
+    basis = (
+        Shell(0, 0, (Primitive(1.5, 1.0),)),
+        Shell(0, 2, (Primitive(0.8, 1.0),)),
+        Shell(1, 0, (Primitive(1.2, 1.0),)),
+    )
+    try:
+        result = Calculator(
+            method="uhf",
+            basis=basis,
+            basis_representation="spherical",
+            device="cuda",
+            energy_tolerance=1.0e-12,
+            density_tolerance=1.0e-10,
+        ).singlepoint(atoms, charge=2, multiplicity=2)
+    except RuntimeError as error:
+        pytest.skip(f"CUDA device unavailable: {error}")
+
+    assert result.executed_backend == "cuda"
+    assert result.energy == pytest.approx(-1.0477980686214317, abs=3.0e-9)
+    assert result.forces[0, 2] == pytest.approx(-0.34919100072002696, abs=3.0e-8)
+    assert result.forces[1, 2] == pytest.approx(0.34919100072002696, abs=3.0e-8)
+
+
 def test_h3_plus_exercises_diis_and_force_invariants():
     coordinates = np.array([[-1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [1.0, 0.0, 0.0]])
     atoms = [("H", coordinate) for coordinate in coordinates]

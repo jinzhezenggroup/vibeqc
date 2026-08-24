@@ -15,19 +15,21 @@ assembles the stationary RHF derivative from derivative integrals, the
 energy-weighted density matrix, and nuclear repulsion. This is deliberately
 different from differentiating the eigensolver, DIIS, or SCF iteration trace.
 
-The CUDA Cartesian s-p-d-f path evaluates one-coordinate dual forms directly in
-device kernels and contracts stationary RHF/UHF gradients on the GPU. Its Cartesian
+The CUDA s-p-d-f path evaluates one-coordinate dual forms directly in device
+kernels and contracts stationary RHF/UHF gradients on the GPU. Its Cartesian
 McMurchie-Davidson recurrence is shared mathematically with the CPU oracle but
-implemented independently in CUDA. Torch/JAX bindings call the native gradient
-as a custom backward; they do not define the scientific implementation.
+implemented independently in CUDA. Real spherical target AOs carry sparse,
+geometry-independent Cartesian expansion terms through the same device value
+and derivative consumers. Torch/JAX bindings call the native gradient as a
+custom backward; they do not define the scientific implementation.
 
 The CPU oracle first evaluates normalized Cartesian integrals and their forward
 derivatives, then applies sparse, geometry-independent real-solid-harmonic
 transforms to every AO index. The d/f matrices use the CCA Cartesian order and
 PySCF/libcint real-spherical order. Transforming derivative tensors with the
 same matrices preserves the analytic-gradient variational relationship. CUDA
-spherical execution remains a separate production kernel milestone; requesting
-it currently returns `NOT_IMPLEMENTED` and never triggers a host fallback.
+spherical execution uses the identical sparse expansions in its device kernels
+and never triggers a host fallback.
 
 ## ABI stability
 
@@ -47,16 +49,16 @@ CUDA plans retain contracted primitives once per physical Gaussian shell.
 Ragged `system_shell_offsets`, `shell_ao_offsets`, and
 `shell_primitive_offsets` describe the unique shell storage. Canonical ragged
 `system_shell_pair_offsets` plus shell-pair system/first/second arrays retain
-consumer topology once per fixed plan. Each flattened Cartesian AO stores only
-its shell index, CCA powers, and component normalization. This follows gpuxtb's
-separation of immutable topology from expanded numerical consumers and avoids
-duplicating a primitive contraction for every d/f component.
+consumer topology once per fixed plan. Each target AO stores its shell index
+and up to three normalized CCA Cartesian expansion terms. This follows
+gpuxtb's separation of immutable topology from expanded numerical consumers
+and avoids duplicating a primitive contraction for every d/f component.
 
 The internal `inspect_rhf_cuda_basis_layout` diagnostic makes this invariant
 testable without allocating a GPU plan. For the validated 18-AO s/d/f case,
 four unique primitive records replace 18 component-expanded references, and
 the complete device basis-topology payload, including ten shell pairs and 55
-unique shell-pair-pair quartets, is 602 bytes. Shell angular momenta,
+unique shell-pair-pair quartets, is 1,016 bytes. Shell angular momenta,
 AO/primitive ranges, shell-pair bounds, and ragged per-system quartet offsets
 are resident in the fixed plan.
 
@@ -83,9 +85,9 @@ an active mask stops converged or failed systems while peers continue.
 Python never orchestrates per-system SCF loops.
 
 The current CUDA implementation is complete for the public executable scope
-(RHF/UHF with contracted Cartesian s-p-d-f shells), but is not yet the
-production spherical/direct-or-DF HF engine. Its SCF loop uses device DIIS and a
-device-tail-launched CUDA Graph.
+(RHF/UHF with contracted Cartesian or real spherical s-p-d-f shells), but is
+not yet a component-unrolled/Rys or DF HF engine. Its SCF loop uses device DIIS
+and a device-tail-launched CUDA Graph.
 Each fixed-topology bucket owns and replays one packed arena and Graph, so warm
 executions do not recreate streams, provider handles, workspaces, or graph
 executables. AO buckets up to 16 functions use a specialized device Jacobi
@@ -118,8 +120,8 @@ resident for one-electron triangles and Schwarz bounds,
 following gpuxtb's immutable pair-metadata pattern. A geometry-dependent
 device pass compacts shell quartets whose shell-level Schwarz product survives
 the current threshold; the SCF Graph and analytic-force pass consume the same
-list without host readback. Generated quartet kernels, finer AO-level task
-compaction, and CUDA spherical consumers remain subsequent scheduler work.
+list without host readback. Component-unrolled/Rys quartet kernels and finer
+AO-level task compaction remain subsequent scheduler work.
 
 The packed arena and optional cuSOLVER workspace use CUDA's stream-ordered
 memory pool. Allocation occurs before Graph capture and release is enqueued on

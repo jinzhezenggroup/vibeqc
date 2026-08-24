@@ -129,8 +129,8 @@ class Calculator:
 
     Coordinates are in Bohr. The current implementation accepts RHF or UHF and
     a bundled Cartesian STO-3G/def2-SVP/def2-TZVP basis for H-Ar, or explicit
-    `Shell` objects. The CPU reference supports Cartesian or real spherical
-    AOs; the CUDA backend currently accepts Cartesian AOs only.
+    `Shell` objects. Both the CPU reference and CUDA backend support Cartesian
+    or PySCF/libcint-ordered real spherical AOs through `f` shells.
     """
 
     def __init__(

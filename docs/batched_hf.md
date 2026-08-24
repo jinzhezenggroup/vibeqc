@@ -2,8 +2,8 @@
 
 This document defines what “batched HF” means for the current roadmap phase.
 The CUDA backend is device resident for the currently accepted RHF/UHF
-contracted Cartesian s-p-d-f scope; spherical transforms and production
-shell-task/DF algorithms remain roadmap work.
+contracted Cartesian and real spherical s-p-d-f scope; component-unrolled/Rys
+shell-task and DF algorithms remain roadmap work.
 
 | Requirement | Implementation | Verification |
 | --- | --- | --- |
@@ -25,15 +25,16 @@ shell-task/DF algorithms remain roadmap work.
   does not report it.
 - `cuda`: overlap, core Hamiltonian, ERI, nuclear repulsion, SCF matrices,
   cuSOLVER eigensolves, convergence state, final energy, and analytic forces
-  execute on the GPU for the supported RHF/UHF contracted Cartesian s-p-d-f
-  basis scope.
+  execute on the GPU for the supported RHF/UHF contracted Cartesian or real
+  spherical s-p-d-f basis scope.
 
 For the current small validation workloads, the CUDA path is a correctness and
 execution-architecture milestone rather than a speed claim. Published
 production performance claims require generated shell-quartet kernels,
-DF J/K, finer AO-level compaction, CUDA spherical bases, and larger realistic
-benchmark oracles. A device-only shell-quartet compaction pass is implemented
-but still awaits allocated performance validation. The present policy retains
+DF J/K, finer AO-level compaction, spherical performance artifacts, and larger
+realistic benchmark oracles. A device-only shell-quartet compaction pass is
+implemented and validated on allocated RHF/UHF workloads. The present policy
+retains
 ERIs for AO count <=16 and uses
 O(N^2)-memory screened direct J/K above that threshold. Direct buckets retain a
 canonical packed-pair table in their topology arena. For s/p/d/f topologies,
