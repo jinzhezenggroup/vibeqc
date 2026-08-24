@@ -21,8 +21,10 @@ and performance measurements pass.
   throughput. CUDA direct J/K now maps AO quartets into 55 symmetry-reduced
   exact shell classes, canonicalizes their ERI arguments, and allocates each
   pair's Hermite workspace from its compile-time angular bounds. A 13-node
-  total-order scheduler preserves low Graph overhead. Component-unrolled shell
-  recurrence and Rys generation remain.
+  total-order scheduler preserves low Graph overhead. The canonical
+  `(p s | s s)` class now uses a closed two-term first-order contraction for
+  values and three-axis derivatives. Component-unrolled recurrence for the
+  remaining shell classes and Rys generation remain.
 - GPU Schwarz bounds and an O(N^2)-memory fused direct J/K fallback are
   implemented. Every topology retains packed AO-pair metadata used by
   one-electron values/forces; direct buckets also use it for Schwarz bounds.

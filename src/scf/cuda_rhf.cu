@@ -1049,6 +1049,42 @@ __device__ Scalar primitive_eri_cartesian(
 }
 
 /**
+ * Closed first-order Hermite contraction for canonical (p s | s s).
+ *
+ * The exact order-1 shell class has only one Cartesian component on the first
+ * center. Generating its two reachable Hermite terms directly avoids all six
+ * coefficient workspaces and the generic six-deep component contraction.
+ */
+template <typename Scalar>
+__device__ Scalar primitive_eri_psss(
+    int axis,
+    double alpha,
+    const Vec3<Scalar>& first,
+    double beta,
+    const Vec3<Scalar>& second,
+    double gamma,
+    const Vec3<Scalar>& third,
+    double delta,
+    const Vec3<Scalar>& fourth) {
+  const double p = alpha + beta;
+  const double q = gamma + delta;
+  const double mu = alpha * beta / p;
+  const double nu = gamma * delta / q;
+  const double rho = p * q / (p + q);
+  const Vec3<Scalar> product_p = product_center(alpha, first, beta, second);
+  const Vec3<Scalar> product_q = product_center(gamma, third, delta, fourth);
+  Scalar boys[2];
+  boys_values<1>(rho * distance_squared(product_p, product_q), boys);
+  const Scalar pair_decay =
+      qexp(-mu * distance_squared(first, second) -
+           nu * distance_squared(third, fourth));
+  const Scalar pa = vec_axis(product_p, axis) - vec_axis(first, axis);
+  const Scalar pq = vec_axis(product_p, axis) - vec_axis(product_q, axis);
+  const Scalar value = pa * boys[0] - (rho / p) * pq * boys[1];
+  return 2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q)) * pair_decay * value;
+}
+
+/**
  * Evaluate one Cartesian primitive quartet with exact shell-pair workspaces.
  *
  * Axis powers remain AO-component data, while the enclosing shell angular
@@ -1077,32 +1113,40 @@ __device__ Scalar primitive_eri_cartesian_shell_class(
       FirstShellAngular + SecondShellAngular + ThirdShellAngular +
       FourthShellAngular;
   static_assert(MaximumAngular <= kMaximumCoulombOrder);
-  const double p = alpha + beta;
-  const double q = gamma + delta;
-  const double rho = p * q / (p + q);
-  const Vec3<Scalar> product_p = product_center(alpha, first, beta, second);
-  const Vec3<Scalar> product_q = product_center(gamma, third, delta, fourth);
-  ShellPairHermiteCoefficients<
-      Scalar, FirstShellAngular, SecondShellAngular>
-      first_coefficients[3];
-  ShellPairHermiteCoefficients<
-      Scalar, ThirdShellAngular, FourthShellAngular>
-      second_coefficients[3];
-  for (int axis = 0; axis < 3; ++axis) {
-    fill_shell_pair_hermite<FirstShellAngular, SecondShellAngular>(
-        angular_axis(angular_first, axis),
-        angular_axis(angular_second, axis), vec_axis(product_p, axis),
-        vec_axis(first, axis), vec_axis(second, axis), alpha, beta,
-        first_coefficients[axis]);
-    fill_shell_pair_hermite<ThirdShellAngular, FourthShellAngular>(
-        angular_axis(angular_third, axis),
-        angular_axis(angular_fourth, axis), vec_axis(product_q, axis),
-        vec_axis(third, axis), vec_axis(fourth, axis), gamma, delta,
-        second_coefficients[axis]);
+  if constexpr (FirstShellAngular == 1 && SecondShellAngular == 0 &&
+                ThirdShellAngular == 0 && FourthShellAngular == 0) {
+    const int axis = angular_first.x == 1 ? 0 : (angular_first.y == 1 ? 1 : 2);
+    return primitive_eri_psss(
+        axis, alpha, first, beta, second, gamma, third, delta, fourth);
+  } else {
+    const double p = alpha + beta;
+    const double q = gamma + delta;
+    const double rho = p * q / (p + q);
+    const Vec3<Scalar> product_p = product_center(alpha, first, beta, second);
+    const Vec3<Scalar> product_q = product_center(gamma, third, delta, fourth);
+    ShellPairHermiteCoefficients<
+        Scalar, FirstShellAngular, SecondShellAngular>
+        first_coefficients[3];
+    ShellPairHermiteCoefficients<
+        Scalar, ThirdShellAngular, FourthShellAngular>
+        second_coefficients[3];
+    for (int axis = 0; axis < 3; ++axis) {
+      fill_shell_pair_hermite<FirstShellAngular, SecondShellAngular>(
+          angular_axis(angular_first, axis),
+          angular_axis(angular_second, axis), vec_axis(product_p, axis),
+          vec_axis(first, axis), vec_axis(second, axis), alpha, beta,
+          first_coefficients[axis]);
+      fill_shell_pair_hermite<ThirdShellAngular, FourthShellAngular>(
+          angular_axis(angular_third, axis),
+          angular_axis(angular_fourth, axis), vec_axis(product_q, axis),
+          vec_axis(third, axis), vec_axis(fourth, axis), gamma, delta,
+          second_coefficients[axis]);
+    }
+    return eri_cartesian_value<MaximumAngular>(
+        p, q, rho, product_p, product_q, angular_first, angular_second,
+        angular_third, angular_fourth, first_coefficients,
+        second_coefficients);
   }
-  return eri_cartesian_value<MaximumAngular>(
-      p, q, rho, product_p, product_q, angular_first, angular_second,
-      angular_third, angular_fourth, first_coefficients, second_coefficients);
 }
 
 template <typename Scalar>

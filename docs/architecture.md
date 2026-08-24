@@ -18,10 +18,13 @@ different from differentiating the eigensolver, DIIS, or SCF iteration trace.
 The CUDA s-p-d-f path evaluates one-coordinate dual forms directly in device
 kernels and contracts stationary RHF/UHF gradients on the GPU. Its Cartesian
 McMurchie-Davidson recurrence is shared mathematically with the CPU oracle but
-implemented independently in CUDA. Real spherical target AOs carry sparse,
-geometry-independent Cartesian expansion terms through the same device value
-and derivative consumers. Torch/JAX bindings call the native gradient as a
-custom backward; they do not define the scientific implementation.
+implemented independently in CUDA. The canonical first-order `(p s | s s)`
+class generates its two reachable Hermite terms in closed form, with the same
+scalar expression serving values and three-axis forward derivatives. Real
+spherical target AOs carry sparse, geometry-independent Cartesian expansion
+terms through the same device value and derivative consumers. Torch/JAX
+bindings call the native gradient as a custom backward; they do not define the
+scientific implementation.
 
 The CPU oracle first evaluates normalized Cartesian integrals and their forward
 derivatives, then applies sparse, geometry-independent real-solid-harmonic

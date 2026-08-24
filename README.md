@@ -127,11 +127,13 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   one-warp subtiles, exposing independent blocks despite the recurrence
   kernels' high register footprint without multiplying arena metadata.
   Consumers canonicalize ERI arguments by pair symmetry and size Hermite
-  workspaces from the exact shell pairs. Real-spherical direct buckets apply
+  workspaces from the exact shell pairs; canonical `(p s | s s)` uses a
+  closed two-term first-order contraction instead of generic coefficient
+  arrays. Real-spherical direct buckets apply
   `C^T D C` before those Cartesian-source quartets and `C F C^T` afterwards,
   eliminating repeated sparse term products from Fock and force recurrences.
-  Component-unrolled/Rys kernels, broader named-basis gates, and DF J/K are
-  still required before making broad production performance claims.
+  Remaining component-unrolled/Rys kernels, broader named-basis gates, and
+  DF J/K are still required before making broad production performance claims.
 
 UHF uses the same memory policy: small buckets retain ERIs, while larger
 buckets build spin-resolved Fock matrices directly from O(N^2) Schwarz data.
