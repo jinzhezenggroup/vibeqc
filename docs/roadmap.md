@@ -66,9 +66,10 @@ and performance measurements pass.
   batches, standard pure water/def2-SVP RHF, and standard pure OH/def2-SVP UHF
   energy and forces. Their published batch-8 artifacts record 3.17x and 5.33x
   scoped warm speedups over GPU4PySCF's sequential single-system interface.
-  A larger 43-AO pure water/def2-TZVP batch-4 artifact records 2.82x after the
-  Graph-native eigensolver, ERI force-center reduction, and three-component
-  force propagation; the matching 48-AO Cartesian artifact records 5.84x.
+  A larger 43-AO pure water/def2-TZVP batch-4 artifact records 7.77x after
+  Cartesian-source contraction, the Graph-native eigensolver, ERI force-center
+  reduction, and three-component force propagation; the matching 48-AO
+  Cartesian artifact records 5.84x.
 - Exact shell-class recurrence workspaces, Cartesian-source contraction for
   public spherical direct J/K, and the device-compacted active-task scheduler
   are implemented. Replace the remaining recurrence component loops and
