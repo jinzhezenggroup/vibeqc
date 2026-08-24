@@ -12,29 +12,31 @@ batch timing boundary.
 
 | Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup | Max energy error | Max force error | Gate |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| [`WATER27 tetramer`](rtx5090-38a988e-water-tetramer-def2-svp-spherical-b1.json) | 1 | 2659.025 ms | 1363.912 ms | 0.513x | 2.90e-12 Eh | 2.03e-12 Eh/bohr | speed fails |
-| [`WATER27 tetramer`](rtx5090-38a988e-water-tetramer-def2-svp-spherical-b4.json) | 4 | 9046.562 ms | 5141.731 ms | 0.568x | 4.21e-12 Eh | 5.61e-12 Eh/bohr | speed fails |
+| [`WATER27 tetramer`](rtx5090-906f064-water-tetramer-def2-svp-spherical-b1.json) | 1 | 2206.405 ms | 1370.166 ms | 0.621x | 2.90e-12 Eh | 1.96e-12 Eh/bohr | speed fails |
+| [`WATER27 tetramer`](rtx5090-906f064-water-tetramer-def2-svp-spherical-b4.json) | 4 | 8407.090 ms | 5499.575 ms | 0.654x | 3.81e-12 Eh | 2.85e-12 Eh/bohr | speed fails |
 
 Both clean artifacts come from commit
-`38a988e06902ed714bfed81f15c36bb99e2c18e2` on 2026-08-25. Every QCE and
+`906f0641526a7a3384fab417e42e36ed0ec8cba6` on 2026-08-25. Every QCE and
 GPU4PySCF system converged, and both points pass the explicit `3e-11 Eh` and
 `3e-11 Eh/bohr` accuracy limits. They fail only the required `1.0x` minimum
 speedup, so the 96-AO milestone remains open. All three synchronized warm
 samples are retained because both engines show material timing variation at
-this size. The batch-1 QCE samples span 2.370--3.243 s; the batch-4 median is
-5.3% below the preceding `7ca4c51` artifact after density-conditioned task
-generation.
+this size. Specializing total-order-3 force derivatives reduces the QCE
+batch-1 and batch-4 medians by 17.0% and 7.1%, respectively, relative to the
+preceding clean `38a988e` density-screened artifacts.
 
 ## Realistic 192-AO correctness status
 
 | Artifact | Batch | QCE warm | GPU4PySCF warm | Informational speedup | Max energy error | Max force error | Gate |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| [`WATER27 S4 octamer`](rtx5090-38a988e-water-octamer-s4-def2-svp-spherical-b1.json) | 1 | 19990.902 ms | 2209.120 ms | 0.111x | 4.55e-12 Eh | 5.25e-11 Eh/bohr | passes |
-| [`WATER27 S4 octamer`](rtx5090-38a988e-water-octamer-s4-def2-svp-spherical-b4.json) | 4 | 106709.471 ms | 8164.416 ms | 0.077x | 9.21e-12 Eh | 2.22e-10 Eh/bohr | passes |
+| [`WATER27 S4 octamer`](rtx5090-906f064-water-octamer-s4-def2-svp-spherical-b1.json) | 1 | 18489.290 ms | 2225.081 ms | 0.120x | 3.30e-12 Eh | 5.57e-11 Eh/bohr | passes |
+| [`WATER27 S4 octamer`](rtx5090-906f064-water-octamer-s4-def2-svp-spherical-b4.json) | 4 | 92096.515 ms | 7457.298 ms | 0.081x | 9.09e-12 Eh | 2.31e-10 Eh/bohr | passes |
 
-These clean commit-`38a988e` artifacts use one synchronized warm replay per
+These clean commit-`906f064` artifacts use one synchronized warm replay per
 point because of the direct-J/K cost. Both satisfy the current `1e-10 Eh` and
-`5e-10 Eh/bohr` correctness limits. Their speedups are recorded for
+`5e-10 Eh/bohr` correctness limits. Order-3 analytic force specialization
+reduces the batch-1 and batch-4 QCE times by 7.5% and 13.7%, respectively,
+relative to the clean `38a988e` artifacts. Their speedups are recorded for
 transparency but are not acceptance criteria until complete DF J/K lands.
 
 ## Current exact shell-class results
