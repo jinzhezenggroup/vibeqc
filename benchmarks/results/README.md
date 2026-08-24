@@ -7,14 +7,28 @@ workload, and allocated RTX 5090. QCE submits one homogeneous fixed-topology
 batch; GPU4PySCF 1.8.1 retains one warm object per system and invokes its
 single-system interface sequentially inside the same batch timing boundary.
 
+## Current exact shell-class results
+
 | Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup | Max energy error | Max force error |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| [`sdf18-direct`](rtx5090-b042488-sdf18-direct-b16.json) | 16 | 78.346 ms | 2503.287 ms | 31.95x | 7.59e-14 Eh | 4.91e-14 Eh/bohr |
-| [`water-def2-svp`](rtx5090-b042488-water-def2-svp-b8.json) | 8 | 1536.982 ms | 7340.873 ms | 4.78x | 1.65e-12 Eh | 5.36e-13 Eh/bohr |
+| [`sdf18-direct`](rtx5090-8300dff-sdf18-direct-b16.json) | 16 | 67.709 ms | 2499.369 ms | 36.91x | 6.35e-14 Eh | 4.87e-14 Eh/bohr |
+| [`water-def2-svp`](rtx5090-8300dff-water-def2-svp-b8.json) | 8 | 1202.903 ms | 7300.320 ms | 6.07x | 1.72e-12 Eh | 5.29e-13 Eh/bohr |
 
-Both artifacts were recorded from clean commit `b04248846e1d5a4eafb481121cfca6b6160bd10f`
-on 2026-08-24. They establish performance only for these exact homogeneous
-batch workloads; they are not a claim of broad GPU4PySCF leadership.
+Both current artifacts were recorded from clean commit
+`8300dff71090c8ef705532f964c58f14a7e4b0cb` on 2026-08-24. They establish
+performance only for these exact homogeneous batch workloads; they are not a
+claim of broad GPU4PySCF leadership.
+
+## Prior angular-order baseline
+
+| Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup |
+| --- | ---: | ---: | ---: | ---: |
+| [`sdf18-direct`](rtx5090-b042488-sdf18-direct-b16.json) | 16 | 78.346 ms | 2503.287 ms | 31.95x |
+| [`water-def2-svp`](rtx5090-b042488-water-def2-svp-b8.json) | 8 | 1536.982 ms | 7340.873 ms | 4.78x |
+
+The baseline artifacts came from clean commit
+`b04248846e1d5a4eafb481121cfca6b6160bd10f`. Keeping both generations makes
+the exact shell-class improvement auditable from raw samples.
 
 Reproduce them from the repository root after building the CUDA library:
 

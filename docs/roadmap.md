@@ -18,10 +18,11 @@ and performance measurements pass.
 
 - Specialize/generate the validated McMurchie-Davidson s-p-d-f recurrence by
   shell quartet; evaluate a Rys path where its root formulation improves GPU
-  throughput. The generic CUDA Cartesian path now dispatches each contracted
-  nuclear-attraction AO pair and ERI AO quartet once by exact total angular
-  order (0-6 and 0-12), with separately compiled fixed-simplex recurrence
-  bodies. Full shell-quartet generation and allocated-GPU profiling remain.
+  throughput. CUDA direct J/K now maps AO quartets into 55 symmetry-reduced
+  exact shell classes, canonicalizes their ERI arguments, and allocates each
+  pair's Hermite workspace from its compile-time angular bounds. A 13-node
+  total-order scheduler preserves low Graph overhead. Component-unrolled shell
+  recurrence and Rys generation remain.
 - GPU Schwarz bounds and an O(N^2)-memory fused direct J/K fallback are
   implemented. Every topology retains packed AO-pair metadata used by
   one-electron values/forces; direct buckets also use it for Schwarz bounds.
@@ -40,10 +41,12 @@ and performance measurements pass.
   and prefix offsets for every total angular order from 0 through 12. Device
   compaction writes screened tiles directly into those partitions, and direct
   RHF/UHF Fock and force launch separately compiled total-order kernels so
-  lower-order tasks no longer inherit the ffff stack footprint. Clean RTX 5090
+  lower-order tasks no longer inherit the ffff stack footprint. Exact
+  shell-class Hermite workspaces reduce Fock stack at orders 0/4/12 to
+  0/2440/21240 bytes and force stack to 16/4544/42400 bytes. Clean RTX 5090
   artifacts validate energy, forces, and homogeneous-batch throughput for the
-  exact `sdf18-direct` and Cartesian water/def2-SVP cases. Exact shell-class
-  generation and broader allocated-GPU regression/performance gates remain.
+  exact `sdf18-direct` and Cartesian water/def2-SVP cases. Broader allocated-GPU
+  regression/performance gates remain.
 - Compare random values and derivatives against libcint/PySCF before enabling
   each angular-momentum quartet.
 - Bundled, reproducible STO-3G/def2-SVP/def2-TZVP Cartesian basis packs for
@@ -52,9 +55,11 @@ and performance measurements pass.
   validated against PySCF/libcint. Sparse CUDA spherical AO consumers are now
   implemented behind the public backend guard; allocated-GPU energy/force
   validation remains before standard named-basis GPU semantics are complete.
-- Replace the generic quartet recurrence/scatter with generated shell-class
-  kernels and a production active-task scheduler. Retain the present CPU code
-  as an auditable oracle rather than a hidden fallback.
+- Exact shell-class recurrence workspaces and the device-compacted active-task
+  scheduler are implemented. Replace the remaining component loops and generic
+  symmetry scatter with generated shell-class/Rys kernels where profiling
+  justifies them. Retain the present CPU code as an auditable oracle rather
+  than a hidden fallback.
 
 ## M0.5: native fleet semantics — implemented
 
@@ -69,10 +74,10 @@ and performance measurements pass.
 - The full CUDA path currently covers the executable contracted Cartesian
   s-p-d-f scope. Device DIIS, device-tail Graph control, persistent plan arenas,
   Schwarz screening, and a memory-bounded direct J/K fallback are implemented;
-  symmetry-reduced direct s/p/d quartets are also implemented. Spherical AO
+  symmetry-reduced direct s/p/d/f quartets are also implemented. Spherical AO
   consumers remain publicly guarded pending allocated-GPU validation;
-  generated shell kernels, DF J/K, and finer active compaction remain M1/M2
-  work and are not implied by the backend label.
+  component-unrolled/Rys shell kernels, DF J/K, and broader active compaction
+  gates remain M1/M2 work and are not implied by the backend label.
 
 ## M2: production RHF and UHF
 
@@ -86,7 +91,7 @@ and performance measurements pass.
   compaction, and reproducible benchmark publication ledgers are implemented.
   Small matrices retain the low-overhead native product kernel, and provider or
   Graph-capture failures retry once through that path. Clean RTX 5090 evidence
-  now shows 31.95x warm throughput for `sdf18-direct` batch 16 and 4.78x for
+  now shows 36.91x warm throughput for `sdf18-direct` batch 16 and 6.07x for
   Cartesian water/def2-SVP batch 8 against sequential GPU4PySCF single-system
   execution. Convert a broader workload matrix into allocated performance
   gates and tune the cuBLAS crossover from measured profiles.
@@ -94,8 +99,7 @@ and performance measurements pass.
   ROHF, broader convergence controls, and production UHF performance tuning.
 - The cold/warm GPU4PySCF harness now includes Cartesian water/def2-SVP and
   publishes raw homogeneous-batch samples. Extend it to standard spherical
-  named-basis workloads after CUDA spherical consumers and generated
-  shell-class direct J/K are validated.
+  named-basis workloads after CUDA spherical consumers are validated.
 
 ## M3: density fitting and fleet mode
 
