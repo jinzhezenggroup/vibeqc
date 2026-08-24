@@ -38,10 +38,12 @@ retains
 ERIs for AO count <=16 and uses
 O(N^2)-memory screened direct J/K above that threshold. Direct buckets retain a
 canonical packed-pair table in their topology arena. For s/p/d/f topologies,
-fixed shell-pair-pair offsets define eightfold-symmetry-unique quartets; one
+the 55 exact shell-class evaluators contract Cartesian targets and sparse
+real-spherical expansion terms under the same symmetry-reduced scheduler.
+Fixed shell-pair-pair offsets define eightfold-symmetry-unique quartets; one
 logical AO-quartet tile evaluates each unique integral once and scatters all
 RHF/UHF J/K contributions. A fixed topology-derived tile multiplicity exposes
 large d/f groups across multiple blocks without per-quartet descriptors. The
 analytic-force pass contracts the same quartets and visits only their
-shell-center coordinates. Geometry-dependent active compaction remains a later
+shell-center coordinates. Finer AO-level active compaction remains a later
 scheduler milestone.

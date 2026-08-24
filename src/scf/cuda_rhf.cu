@@ -1405,38 +1405,61 @@ __device__ __noinline__ Scalar contracted_eri_cartesian_shell_class(
       batch, batch.shell_atoms[shell_k], derivative_coordinate);
   const Vec3<Scalar> fourth = atom_position<Scalar>(
       batch, batch.shell_atoms[shell_l], derivative_coordinate);
-  const Angular angular_first = ao_angular(batch, ao_i, 0);
-  const Angular angular_second = ao_angular(batch, ao_j, 0);
-  const Angular angular_third = ao_angular(batch, ao_k, 0);
-  const Angular angular_fourth = ao_angular(batch, ao_l, 0);
-  const double angular_coefficient =
-      ao_term_coefficient(batch, ao_i, 0) *
-      ao_term_coefficient(batch, ao_j, 0) *
-      ao_term_coefficient(batch, ao_k, 0) *
-      ao_term_coefficient(batch, ao_l, 0);
+  const unsigned first_terms = batch.ao_term_counts[ao_i];
+  const unsigned second_terms = batch.ao_term_counts[ao_j];
+  const unsigned third_terms = batch.ao_term_counts[ao_k];
+  const unsigned fourth_terms = batch.ao_term_counts[ao_l];
 
   Scalar result = scalar<Scalar>(0.0);
-  for (std::int64_t a = batch.shell_primitive_offsets[shell_i];
-       a < batch.shell_primitive_offsets[shell_i + 1]; ++a) {
-    for (std::int64_t b = batch.shell_primitive_offsets[shell_j];
-         b < batch.shell_primitive_offsets[shell_j + 1]; ++b) {
-      for (std::int64_t c = batch.shell_primitive_offsets[shell_k];
-           c < batch.shell_primitive_offsets[shell_k + 1]; ++c) {
-        for (std::int64_t d = batch.shell_primitive_offsets[shell_l];
-             d < batch.shell_primitive_offsets[shell_l + 1]; ++d) {
-          const double weight = angular_coefficient *
-              batch.primitive_coefficients[a] *
-              batch.primitive_coefficients[b] *
-              batch.primitive_coefficients[c] *
-              batch.primitive_coefficients[d];
-          result = result + weight *
-              primitive_eri_cartesian_shell_class<
-                  FirstShellAngular, SecondShellAngular, ThirdShellAngular,
-                  FourthShellAngular>(
-                  batch.primitive_exponents[a], first, angular_first,
-                  batch.primitive_exponents[b], second, angular_second,
-                  batch.primitive_exponents[c], third, angular_third,
-                  batch.primitive_exponents[d], fourth, angular_fourth);
+  // Sparse spherical terms are geometry-independent. Keep their metadata
+  // outside the contracted-primitive loops so named bases do not reload the
+  // same AO expansion for every primitive quartet.
+  for (unsigned first_term = 0; first_term < first_terms; ++first_term) {
+    const Angular angular_first = ao_angular(batch, ao_i, first_term);
+    const double first_coefficient =
+        ao_term_coefficient(batch, ao_i, first_term);
+    for (unsigned second_term = 0; second_term < second_terms; ++second_term) {
+      const Angular angular_second = ao_angular(batch, ao_j, second_term);
+      const double second_coefficient =
+          ao_term_coefficient(batch, ao_j, second_term);
+      for (unsigned third_term = 0; third_term < third_terms; ++third_term) {
+        const Angular angular_third = ao_angular(batch, ao_k, third_term);
+        const double third_coefficient =
+            ao_term_coefficient(batch, ao_k, third_term);
+        for (unsigned fourth_term = 0; fourth_term < fourth_terms;
+             ++fourth_term) {
+          const Angular angular_fourth =
+              ao_angular(batch, ao_l, fourth_term);
+          const double angular_coefficient = first_coefficient *
+              second_coefficient * third_coefficient *
+              ao_term_coefficient(batch, ao_l, fourth_term);
+          for (std::int64_t a = batch.shell_primitive_offsets[shell_i];
+               a < batch.shell_primitive_offsets[shell_i + 1]; ++a) {
+            for (std::int64_t b = batch.shell_primitive_offsets[shell_j];
+                 b < batch.shell_primitive_offsets[shell_j + 1]; ++b) {
+              for (std::int64_t c = batch.shell_primitive_offsets[shell_k];
+                   c < batch.shell_primitive_offsets[shell_k + 1]; ++c) {
+                for (std::int64_t d =
+                         batch.shell_primitive_offsets[shell_l];
+                     d < batch.shell_primitive_offsets[shell_l + 1]; ++d) {
+                  const double weight = angular_coefficient *
+                      batch.primitive_coefficients[a] *
+                      batch.primitive_coefficients[b] *
+                      batch.primitive_coefficients[c] *
+                      batch.primitive_coefficients[d];
+                  result = result + weight *
+                      primitive_eri_cartesian_shell_class<
+                          FirstShellAngular, SecondShellAngular,
+                          ThirdShellAngular, FourthShellAngular>(
+                          batch.primitive_exponents[a], first, angular_first,
+                          batch.primitive_exponents[b], second,
+                          angular_second, batch.primitive_exponents[c], third,
+                          angular_third, batch.primitive_exponents[d], fourth,
+                          angular_fourth);
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -1536,10 +1559,9 @@ __device__ Scalar contracted_eri_shell_class(
     angular_l = second_angular;
   }
 
-  // The host selects quartet-direct only for single-term Cartesian AOs, and
-  // compaction uses the same shell metadata to choose ShellClass. Keeping
-  // those invariants outside this hot path prevents every low-order kernel
-  // from inheriting the generic ffff fallback stack.
+  // Compaction uses the same shell metadata to choose ShellClass. Sparse real
+  // spherical expansion terms retain that shell angular momentum, so the
+  // exact Cartesian recurrence workspace remains valid for every term.
   if constexpr (MaximumAngular == 0) {
     return contracted_eri_order<0, Scalar>(
         batch, system, i, j, k, l, derivative_coordinate);
@@ -4399,9 +4421,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   const bool requested_quartet_direct =
       !requested_persistent_eri &&
       std::all_of(host.shell_angular.begin(), host.shell_angular.end(),
-                  [](std::uint8_t angular) { return angular <= 3; }) &&
-      std::all_of(host.ao_term_counts.begin(), host.ao_term_counts.end(),
-                  [](std::uint8_t terms) { return terms == 1; });
+                  [](std::uint8_t angular) { return angular <= 3; });
   detail::DirectQuartetTaskLayout direct_task_layout{};
   std::size_t total_shell_quartet_tiles = 0;
   if (requested_quartet_direct) {

@@ -77,11 +77,10 @@ and performance measurements pass.
   real spherical s-p-d-f scope. Device DIIS, device-tail Graph control,
   persistent plan arenas,
   Schwarz screening, and a memory-bounded direct J/K fallback are implemented;
-  symmetry-reduced direct s/p/d/f quartets are implemented for single-term
-  Cartesian targets, while sparse multi-term spherical targets use the generic
-  screened direct fallback. Component-unrolled/Rys shell kernels, DF J/K, and
-  broader active compaction gates remain M1/M2 work and are not implied by the
-  backend label.
+  symmetry-reduced direct s/p/d/f quartets contract both Cartesian targets and
+  sparse multi-term real-spherical targets through exact shell-class
+  workspaces. Component-unrolled/Rys shell kernels, DF J/K, and broader active
+  compaction gates remain M1/M2 work and are not implied by the backend label.
 
 ## M2: production RHF and UHF
 

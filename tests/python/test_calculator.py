@@ -101,7 +101,7 @@ def test_cuda_real_spherical_d_energy_and_force_match_pyscf():
 
 
 def test_cuda_spherical_def2_svp_water_matches_pyscf():
-    """Validate standard pure def2-SVP energy and force on the CUDA backend."""
+    """Validate pure def2-SVP through CUDA's spherical direct-J/K path."""
 
     atoms = [
         ("O", (0.0, 0.0, 0.0)),

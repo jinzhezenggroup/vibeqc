@@ -115,10 +115,11 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   allocated RTX 5090 energy/force and throughput validation for the exact
   `sdf18-direct` and Cartesian water/def2-SVP batch workloads. Direct consumers
   dispatch 55 symmetry-reduced s/p/d/f shell classes inside 13 angular-order
-  Graph nodes, canonicalize ERI arguments by pair symmetry, and size Hermite
-  workspaces from the exact shell pairs. Component-unrolled/Rys kernels,
-  broader named-basis gates, spherical performance artifacts, and DF J/K are
-  still required before making broad production performance claims.
+  Graph nodes, canonicalize ERI arguments by pair symmetry, contract sparse
+  real-spherical expansion terms, and size Hermite workspaces from the exact
+  shell pairs. Component-unrolled/Rys kernels, broader named-basis gates,
+  spherical performance artifacts, and DF J/K are still required before
+  making broad production performance claims.
 
 UHF uses the same memory policy: small buckets retain ERIs, while larger
 buckets build spin-resolved Fock matrices directly from O(N^2) Schwarz data.

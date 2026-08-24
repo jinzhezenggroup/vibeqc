@@ -121,7 +121,10 @@ following gpuxtb's immutable pair-metadata pattern. A geometry-dependent
 device pass compacts shell quartets whose shell-level Schwarz product survives
 the current threshold; the SCF Graph and analytic-force pass consume the same
 list without host readback. Component-unrolled/Rys quartet kernels and finer
-AO-level task compaction remain subsequent scheduler work.
+AO-level task compaction remain subsequent scheduler work. The exact
+shell-class evaluator contracts every sparse real-spherical Cartesian term
+within the same symmetry-reduced task, so pure d/f targets do not fall back to
+the generic matrix-element direct kernel.
 
 The packed arena and optional cuSOLVER workspace use CUDA's stream-ordered
 memory pool. Allocation occurs before Graph capture and release is enqueued on
