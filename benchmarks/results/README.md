@@ -43,6 +43,35 @@ atomic reductions; the batch-4 artifact records 9/4/3/2 iterations across its
 four systems. Their speedups are retained for transparency but are not
 acceptance criteria until complete DF J/K lands.
 
+## 96-AO warm component profile
+
+One CUDA-profiler-range capture per engine isolates a warm batch-1
+energy-plus-force execution after the cold plan/object has already completed.
+The exact acceptance workload and tolerances are unchanged.
+
+| Component | QCE kernel time | GPU4PySCF kernel time | QCE minus GPU4PySCF |
+| --- | ---: | ---: | ---: |
+| Direct J/K | 491.196 ms | 501.613 ms | -10.417 ms |
+| Two-electron force | 729.763 ms | 311.187 ms | +418.575 ms |
+| Eigensolver | 104.806 ms | 5.823 ms | +98.984 ms |
+| One-electron force | 22.054 ms | 2.519 ms | +19.535 ms |
+| QCE one-electron values and Schwarz | 20.548 ms | n/a | n/a |
+
+QCE records 70 kernel launches and a 1.994 s wall time; GPU4PySCF records
+4,419 launches and a 1.517 s wall time. Launch count is therefore not the
+primary explanation for the gap. Direct J/K kernel time is already comparable
+on this point. The dominant deficit is the two-electron force, followed by the
+96-by-96 eigensolver. Within the force, total angular order two costs
+191.475 ms in QCE versus 57.084 ms in GPU4PySCF. Order one costs
+108.961 ms versus 36.363 ms. GPU4PySCF executes those classes through
+generated Rys `ip1` kernels with 256-thread cooperative workers, a persistent
+device task head, and shared bra primitive-pair intermediates; QCE still maps
+one warp to each virtually expanded AO-quartet subtile. The next architecture
+prototype therefore targets cooperative order-2 force contraction rather than
+further direct-J/K or one-electron tuning. See the
+[`c28b1e9` component artifact](rtx5090-c28b1e9-water-tetramer-warm-component-profile.json)
+for the per-order breakdown and capture metadata.
+
 ## Current exact shell-class results
 
 | Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup | Max energy error | Max force error |
