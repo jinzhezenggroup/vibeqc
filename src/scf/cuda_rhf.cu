@@ -3182,6 +3182,11 @@ struct PsssIntegralVector {
   double axis[3];
 };
 
+/** Density-weighted psss derivatives for the first three canonical centers. */
+struct PsssWeightedGradient {
+  double center[3][3];
+};
+
 /**
  * Contract all psss Cartesian outputs with one shared primitive traversal.
  *
@@ -3266,6 +3271,151 @@ contracted_eri_cartesian_source_psss(
           result.axis[2] += angular_coefficient[2] * common *
               ((product_p.z - first.z) * boys[0] -
                coulomb_scale * (product_p.z - product_q.z) * boys[1]);
+        }
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * Contract all three psss component gradients in one primitive traversal.
+ *
+ * `density_coefficient` already contains the exact eightfold RHF/UHF density
+ * contraction for each p axis. Linearity lets the three component gradients
+ * be combined before the primitive loops: PA, P-Q, and their coordinate
+ * derivatives become short weighted dot products, while product centers,
+ * decay, and Boys values are evaluated only once. The fourth-center gradient
+ * is intentionally omitted and restored from translation by the force task.
+ */
+__device__ __noinline__ PsssWeightedGradient
+contracted_eri_cartesian_source_psss_weighted_gradient(
+    const DeviceBatch& batch,
+    std::int32_t p_shell,
+    std::int32_t paired_s_shell,
+    std::int32_t third_shell,
+    std::int32_t fourth_shell,
+    const double (&density_coefficient)[3]) {
+  const Vec3<double> first = atom_position<double>(
+      batch, batch.shell_atoms[p_shell], -1);
+  const Vec3<double> second = atom_position<double>(
+      batch, batch.shell_atoms[paired_s_shell], -1);
+  const Vec3<double> third = atom_position<double>(
+      batch, batch.shell_atoms[third_shell], -1);
+  const Vec3<double> fourth = atom_position<double>(
+      batch, batch.shell_atoms[fourth_shell], -1);
+
+  const std::int64_t p_ao_begin = batch.shell_direct_ao_offsets[p_shell];
+  const double s_angular_coefficient =
+      batch.direct_ao_coefficients[
+          batch.shell_direct_ao_offsets[paired_s_shell]] *
+      batch.direct_ao_coefficients[
+          batch.shell_direct_ao_offsets[third_shell]] *
+      batch.direct_ao_coefficients[
+          batch.shell_direct_ao_offsets[fourth_shell]];
+  const double axis_weight[3] = {
+      density_coefficient[0] * s_angular_coefficient *
+          batch.direct_ao_coefficients[p_ao_begin],
+      density_coefficient[1] * s_angular_coefficient *
+          batch.direct_ao_coefficients[p_ao_begin + 1],
+      density_coefficient[2] * s_angular_coefficient *
+          batch.direct_ao_coefficients[p_ao_begin + 2],
+  };
+
+  PsssWeightedGradient result{};
+  for (std::int64_t a = batch.shell_primitive_offsets[p_shell];
+       a < batch.shell_primitive_offsets[p_shell + 1]; ++a) {
+    const double alpha = batch.primitive_exponents[a];
+    for (std::int64_t b = batch.shell_primitive_offsets[paired_s_shell];
+         b < batch.shell_primitive_offsets[paired_s_shell + 1]; ++b) {
+      const double beta = batch.primitive_exponents[b];
+      const double p = alpha + beta;
+      const double mu = alpha * beta / p;
+      const Vec3<double> product_p =
+          product_center(alpha, first, beta, second);
+      for (std::int64_t c = batch.shell_primitive_offsets[third_shell];
+           c < batch.shell_primitive_offsets[third_shell + 1]; ++c) {
+        const double gamma = batch.primitive_exponents[c];
+        for (std::int64_t d = batch.shell_primitive_offsets[fourth_shell];
+             d < batch.shell_primitive_offsets[fourth_shell + 1]; ++d) {
+          const double delta = batch.primitive_exponents[d];
+          const double q = gamma + delta;
+          const double nu = gamma * delta / q;
+          const double rho = p * q / (p + q);
+          const Vec3<double> product_q =
+              product_center(gamma, third, delta, fourth);
+          const Vec3<double> product_difference{
+              product_p.x - product_q.x,
+              product_p.y - product_q.y,
+              product_p.z - product_q.z,
+          };
+          const Vec3<double> pa{
+              product_p.x - first.x,
+              product_p.y - first.y,
+              product_p.z - first.z,
+          };
+          double boys[3];
+          boys_values<2>(
+              rho * distance_squared(product_p, product_q), boys);
+          const double pair_decay = exp(
+              -mu * distance_squared(first, second) -
+              nu * distance_squared(third, fourth));
+          const double primitive_coefficient =
+              batch.primitive_coefficients[a] *
+              batch.primitive_coefficients[b] *
+              batch.primitive_coefficients[c] *
+              batch.primitive_coefficients[d];
+          const double prefactor = primitive_coefficient *
+              2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q)) * pair_decay;
+          const double coulomb_scale = rho / p;
+          const double weighted_pa =
+              axis_weight[0] * pa.x + axis_weight[1] * pa.y +
+              axis_weight[2] * pa.z;
+          const double weighted_pq =
+              axis_weight[0] * product_difference.x +
+              axis_weight[1] * product_difference.y +
+              axis_weight[2] * product_difference.z;
+          const double weighted_value =
+              weighted_pa * boys[0] -
+              coulomb_scale * weighted_pq * boys[1];
+          const double product_scales[3] = {
+              alpha / p, beta / p, -gamma / q};
+
+#pragma unroll
+          for (unsigned center = 0; center < 3; ++center) {
+#pragma unroll
+            for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+              double decay_derivative = 0.0;
+              if (center < 2) {
+                const double difference =
+                    vec_axis(first, coordinate) -
+                    vec_axis(second, coordinate);
+                decay_derivative =
+                    (center == 0 ? -2.0 * mu : 2.0 * mu) * difference;
+              } else {
+                const double difference =
+                    vec_axis(third, coordinate) -
+                    vec_axis(fourth, coordinate);
+                decay_derivative = -2.0 * nu * difference;
+              }
+              const double argument_derivative =
+                  2.0 * rho * product_scales[center] *
+                  vec_axis(product_difference, coordinate);
+              const double pa_derivative = center == 0
+                  ? alpha / p - 1.0
+                  : (center == 1 ? beta / p : 0.0);
+              const double weighted_value_derivative =
+                  axis_weight[coordinate] * pa_derivative * boys[0] -
+                  weighted_pa * boys[1] * argument_derivative -
+                  coulomb_scale * axis_weight[coordinate] *
+                      product_scales[center] * boys[1] +
+                  coulomb_scale * weighted_pq * boys[2] *
+                      argument_derivative;
+              result.center[center][coordinate] += prefactor *
+                  (weighted_value_derivative +
+                   weighted_value * decay_derivative);
+            }
+          }
         }
       }
     }
@@ -8225,6 +8375,211 @@ __global__ void two_electron_uhf_force_direct_kernel(
   }
 }
 
+/** Exact symmetry-reduced density coefficient for one force AO quartet. */
+template <bool Unrestricted>
+__device__ __forceinline__ double direct_force_density_coefficient(
+    std::size_t n,
+    std::size_t physical_offset,
+    std::size_t spin_offset,
+    const double* density,
+    std::size_t i,
+    std::size_t j,
+    std::size_t k,
+    std::size_t l) {
+  const std::size_t matrix_size = n * n;
+  double coefficient = 0.0;
+  for (unsigned permutation = 0; permutation < 8; ++permutation) {
+    if (!unique_eri_symmetry_permutation(permutation, i, j, k, l)) {
+      continue;
+    }
+    std::size_t a = 0;
+    std::size_t b = 0;
+    std::size_t c = 0;
+    std::size_t d = 0;
+    eri_symmetry_permutation(permutation, i, j, k, l, a, b, c, d);
+    const std::size_t ab = matrix_index(a, b, n);
+    const std::size_t ac = matrix_index(a, c, n);
+    const std::size_t cd = matrix_index(c, d, n);
+    const std::size_t bd = matrix_index(b, d, n);
+    if constexpr (Unrestricted) {
+      const double total_ab = density[spin_offset + ab] +
+          density[spin_offset + matrix_size + ab];
+      const double total_cd = density[spin_offset + cd] +
+          density[spin_offset + matrix_size + cd];
+      coefficient += 0.5 * total_ab * total_cd;
+      coefficient -= 0.5 *
+          (density[spin_offset + ac] * density[spin_offset + bd] +
+           density[spin_offset + matrix_size + ac] *
+               density[spin_offset + matrix_size + bd]);
+    } else {
+      coefficient +=
+          0.5 * density[physical_offset + ab] *
+              density[physical_offset + cd] -
+          0.25 * density[physical_offset + ac] *
+              density[physical_offset + bd];
+    }
+  }
+  return coefficient;
+}
+
+/** Evaluate and write one complete density-weighted psss force shell task. */
+template <bool Unrestricted>
+__device__ __noinline__ void contract_two_electron_force_psss_task(
+    const DeviceBatch& batch,
+    ActiveShellQuartetTile task,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    const std::uint8_t* active,
+    double* forces,
+    std::uint64_t generated_shell_class_mask) {
+  if (task.tile != 0U) return;
+  const std::size_t first_pair = task.first_pair;
+  const std::size_t second_pair = task.second_pair;
+  const std::int32_t system = batch.shell_pair_systems[first_pair];
+  if (active[system] == 0) return;
+
+  const std::int32_t raw_shell[4] = {
+      batch.shell_pair_first[first_pair],
+      batch.shell_pair_second[first_pair],
+      batch.shell_pair_first[second_pair],
+      batch.shell_pair_second[second_pair],
+  };
+  const unsigned shell_class = direct_quartet_shell_class_device(
+      batch.shell_angular[raw_shell[0]], batch.shell_angular[raw_shell[1]],
+      batch.shell_angular[raw_shell[2]], batch.shell_angular[raw_shell[3]]);
+  if (shell_class < 64U &&
+      (generated_shell_class_mask & (std::uint64_t{1} << shell_class)) != 0U) {
+    return;
+  }
+  unsigned p_slot = 4;
+  unsigned p_count = 0;
+  for (unsigned slot = 0; slot < 4; ++slot) {
+    const unsigned angular = batch.shell_angular[raw_shell[slot]];
+    if (angular == 1) {
+      p_slot = slot;
+      ++p_count;
+    } else if (angular != 0) {
+      return;
+    }
+  }
+  if (p_count != 1) return;
+
+  const std::int32_t center_atoms[4] = {
+      batch.shell_atoms[raw_shell[0]], batch.shell_atoms[raw_shell[1]],
+      batch.shell_atoms[raw_shell[2]], batch.shell_atoms[raw_shell[3]],
+  };
+  std::int32_t unique_center_atoms[4];
+  unsigned unique_center_count = 0;
+  for (unsigned center = 0; center < 4; ++center) {
+    bool duplicate_center = false;
+    for (unsigned previous = 0; previous < unique_center_count; ++previous) {
+      duplicate_center = duplicate_center ||
+          center_atoms[center] == unique_center_atoms[previous];
+    }
+    if (!duplicate_center) {
+      unique_center_atoms[unique_center_count++] = center_atoms[center];
+    }
+  }
+  if (unique_center_count == 1) return;
+
+  const std::size_t n = static_cast<std::size_t>(batch.direct_nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t physical_offset =
+      static_cast<std::size_t>(system) * matrix_size;
+  const std::size_t spin_offset =
+      static_cast<std::size_t>(system) * 2 * matrix_size;
+  const std::size_t system_ao_begin = static_cast<std::size_t>(system) * n;
+  std::size_t raw_ao[4] = {
+      static_cast<std::size_t>(
+          batch.shell_direct_ao_offsets[raw_shell[0]]) - system_ao_begin,
+      static_cast<std::size_t>(
+          batch.shell_direct_ao_offsets[raw_shell[1]]) - system_ao_begin,
+      static_cast<std::size_t>(
+          batch.shell_direct_ao_offsets[raw_shell[2]]) - system_ao_begin,
+      static_cast<std::size_t>(
+          batch.shell_direct_ao_offsets[raw_shell[3]]) - system_ao_begin,
+  };
+  const std::size_t p_ao_begin = raw_ao[p_slot];
+  double density_coefficient[3]{};
+  for (unsigned axis = 0; axis < 3; ++axis) {
+    raw_ao[p_slot] = p_ao_begin + axis;
+    if (schwarz_bounds[
+            physical_offset + matrix_index(raw_ao[0], raw_ao[1], n)] *
+            schwarz_bounds[
+                physical_offset + matrix_index(raw_ao[2], raw_ao[3], n)] <
+        screening_tolerance) {
+      continue;
+    }
+    density_coefficient[axis] =
+        direct_force_density_coefficient<Unrestricted>(
+            n, physical_offset, spin_offset, density,
+            raw_ao[0], raw_ao[1], raw_ao[2], raw_ao[3]);
+  }
+  if (density_coefficient[0] == 0.0 &&
+      density_coefficient[1] == 0.0 &&
+      density_coefficient[2] == 0.0) {
+    return;
+  }
+
+  std::int32_t slots[4] = {
+      raw_shell[0], raw_shell[1], raw_shell[2], raw_shell[3]};
+  if (p_slot == 1) {
+    const std::int32_t swap = slots[0];
+    slots[0] = slots[1];
+    slots[1] = swap;
+  } else if (p_slot >= 2) {
+    if (p_slot == 3) {
+      const std::int32_t swap = slots[2];
+      slots[2] = slots[3];
+      slots[3] = swap;
+    }
+    const std::int32_t first_swap = slots[0];
+    slots[0] = slots[2];
+    slots[2] = first_swap;
+    const std::int32_t second_swap = slots[1];
+    slots[1] = slots[3];
+    slots[3] = second_swap;
+  }
+
+  const PsssWeightedGradient gradient =
+      contracted_eri_cartesian_source_psss_weighted_gradient(
+          batch, slots[0], slots[1], slots[2], slots[3],
+          density_coefficient);
+  double derivative_sum[3]{};
+  for (unsigned atom = 0; atom + 1 < unique_center_count; ++atom) {
+    const std::int64_t coordinate =
+        static_cast<std::int64_t>(unique_center_atoms[atom]) * 3;
+    for (unsigned axis = 0; axis < 3; ++axis) {
+      double derivative = 0.0;
+      double fourth_derivative = 0.0;
+      for (unsigned canonical = 0; canonical < 3; ++canonical) {
+        const double value = gradient.center[canonical][axis];
+        fourth_derivative -= value;
+        if (batch.shell_atoms[slots[canonical]] ==
+            unique_center_atoms[atom]) {
+          derivative += value;
+        }
+      }
+      if (batch.shell_atoms[slots[3]] == unique_center_atoms[atom]) {
+        derivative += fourth_derivative;
+      }
+      derivative_sum[axis] += derivative;
+      if (derivative != 0.0) {
+        atomicAdd(forces + coordinate + axis, -derivative);
+      }
+    }
+  }
+  const std::int64_t final_coordinate =
+      static_cast<std::int64_t>(
+          unique_center_atoms[unique_center_count - 1]) * 3;
+  for (unsigned axis = 0; axis < 3; ++axis) {
+    if (derivative_sum[axis] != 0.0) {
+      atomicAdd(forces + final_coordinate + axis, derivative_sum[axis]);
+    }
+  }
+}
+
 template <bool Unrestricted, unsigned AngularOrder>
 __device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
     DeviceBatch batch,
@@ -8317,38 +8672,8 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
       return;
     }
 
-    double coefficient = 0.0;
-    for (unsigned permutation = 0; permutation < 8; ++permutation) {
-      if (!unique_eri_symmetry_permutation(permutation, i, j, k, l)) {
-        continue;
-      }
-      std::size_t a = 0;
-      std::size_t b = 0;
-      std::size_t c = 0;
-      std::size_t d = 0;
-      eri_symmetry_permutation(permutation, i, j, k, l, a, b, c, d);
-      const std::size_t ab = matrix_index(a, b, n);
-      const std::size_t ac = matrix_index(a, c, n);
-      const std::size_t cd = matrix_index(c, d, n);
-      const std::size_t bd = matrix_index(b, d, n);
-      if constexpr (Unrestricted) {
-        const double total_ab = density[spin_offset + ab] +
-            density[spin_offset + matrix_size + ab];
-        const double total_cd = density[spin_offset + cd] +
-            density[spin_offset + matrix_size + cd];
-        coefficient += 0.5 * total_ab * total_cd;
-        coefficient -= 0.5 *
-            (density[spin_offset + ac] * density[spin_offset + bd] +
-             density[spin_offset + matrix_size + ac] *
-                 density[spin_offset + matrix_size + bd]);
-      } else {
-        coefficient +=
-            0.5 * density[physical_offset + ab] *
-                density[physical_offset + cd] -
-            0.25 * density[physical_offset + ac] *
-                density[physical_offset + bd];
-      }
-    }
+    const double coefficient = direct_force_density_coefficient<Unrestricted>(
+        n, physical_offset, spin_offset, density, i, j, k, l);
     if (coefficient == 0.0) return;
 
     // An ERI is invariant when all four basis centers translate together, so
@@ -8526,6 +8851,40 @@ __global__ void two_electron_force_quartet_packed_persistent_kernel(
           density, active, forces, generated_shell_class_mask, packed_item,
           0U);
     }
+  }
+}
+
+/** Consume complete density-weighted psss force tasks, one task per lane. */
+template <bool Unrestricted>
+__global__ void two_electron_force_psss_persistent_kernel(
+    DeviceBatch batch,
+    const std::uint32_t* active_shell_quartet_tile_count,
+    const ActiveShellQuartetTile* active_shell_quartet_tiles,
+    std::uint32_t* task_head,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    const std::uint8_t* active,
+    double* forces,
+    std::uint64_t generated_shell_class_mask) {
+  const unsigned lane = threadIdx.x;
+  const std::uint32_t work_count = *active_shell_quartet_tile_count;
+  while (true) {
+    std::uint32_t packed_begin = 0;
+    if (lane == 0) {
+      packed_begin = atomicAdd(
+          task_head, static_cast<std::uint32_t>(warpSize));
+    }
+    packed_begin = __shfl_sync(0xffffffffU, packed_begin, 0);
+    if (packed_begin >= work_count) return;
+    const std::uint32_t packed_item = packed_begin + lane;
+    if (packed_item < work_count) {
+      contract_two_electron_force_psss_task<Unrestricted>(
+          batch, active_shell_quartet_tiles[packed_item],
+          screening_tolerance, schwarz_bounds, density, active, forces,
+          generated_shell_class_mask);
+    }
+    // Keep tail lanes live through the next full-mask queue broadcast.
   }
 }
 
@@ -8772,6 +9131,17 @@ void launch_angular_force_quartets(
             Unrestricted, AngularOrder><<<
                 std::min(capacity_workers, persistent_worker_blocks),
                 detail::kDirectQuartetThreads, 0, stream>>>(
+            batch, order_tile_count, order_tiles,
+            persistent_task_heads + AngularOrder, screening_tolerance,
+            schwarz_bounds, density, active, forces,
+            generated_shell_class_mask);
+      } else if constexpr (AngularOrder == kFusedPsssAngularOrder) {
+        const unsigned capacity_workers = static_cast<unsigned>(
+            (capacities[AngularOrder] + detail::kDirectQuartetThreads - 1) /
+            detail::kDirectQuartetThreads);
+        two_electron_force_psss_persistent_kernel<Unrestricted><<<
+            std::min(capacity_workers, persistent_worker_blocks),
+            detail::kDirectQuartetThreads, 0, stream>>>(
             batch, order_tile_count, order_tiles,
             persistent_task_heads + AngularOrder, screening_tolerance,
             schwarz_bounds, density, active, forces,
