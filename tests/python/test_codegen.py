@@ -10,8 +10,20 @@ import sys
 
 import pytest
 
-from tools.qce_codegen import NvrtcCacheSpec, build_psss_kernel, nvrtc_cache_key
-from tools.qce_codegen.shell_class import AXES, CENTERS, emit_psss_cuda
+from tools.qce_codegen import (
+    NvrtcCacheSpec,
+    build_dppp_component_kernel,
+    build_dppp_contraction_kernel,
+    build_psss_kernel,
+    nvrtc_cache_key,
+)
+from tools.qce_codegen.shell_class import (
+    AXES,
+    CENTERS,
+    emit_dppp_component_cuda,
+    emit_dppp_contraction_cuda,
+    emit_psss_cuda,
+)
 
 
 def boys_values(argument: float, count: int = 3) -> list[float]:
@@ -56,9 +68,66 @@ def sample_variables() -> dict[str, float]:
     return values
 
 
-def evaluate_value(kernel, values: dict[str, float]) -> float:
+def factored_dppp_variables(values: dict[str, float]) -> dict[str, float]:
+    """Construct the common primitive geometry consumed by factored lowering."""
+
+    alpha = values["alpha"]
+    beta = values["beta"]
+    gamma = values["gamma"]
+    delta = values["delta"]
+    p = alpha + beta
+    q = gamma + delta
+    mu = alpha * beta / p
+    nu = gamma * delta / q
+    result = {
+        "inverse_two_p": 0.5 / p,
+        "inverse_two_q": 0.5 / q,
+        "rho": p * q / (p + q),
+        "first_product_scale": alpha / p,
+        "second_product_scale": beta / p,
+        "third_product_scale": gamma / q,
+    }
+    product_p = {}
+    product_q = {}
+    pair_distance_squared = 0.0
+    for axis in AXES:
+        first = values[f"first_{axis}"]
+        second = values[f"second_{axis}"]
+        third = values[f"third_{axis}"]
+        fourth = values[f"fourth_{axis}"]
+        product_p[axis] = (alpha * first + beta * second) / p
+        product_q[axis] = (gamma * third + delta * fourth) / q
+        result[f"pa_{axis}"] = product_p[axis] - first
+        result[f"pb_{axis}"] = product_p[axis] - second
+        result[f"qc_{axis}"] = product_q[axis] - third
+        result[f"qd_{axis}"] = product_q[axis] - fourth
+        result[f"difference_{axis}"] = product_p[axis] - product_q[axis]
+        first_difference = first - second
+        second_difference = third - fourth
+        pair_distance_squared += (
+            -mu * first_difference * first_difference
+            - nu * second_difference * second_difference
+        )
+        result[f"decay_first_{axis}"] = -2.0 * mu * first_difference
+        result[f"decay_second_{axis}"] = 2.0 * mu * first_difference
+        result[f"decay_third_{axis}"] = -2.0 * nu * second_difference
+    result["prefactor"] = (
+        2.0
+        * math.pi**2.5
+        / (p * q * math.sqrt(p + q))
+        * math.exp(pair_distance_squared)
+    )
+    argument = result["rho"] * sum(
+        result[f"difference_{axis}"] ** 2 for axis in AXES
+    )
+    for order, value in enumerate(boys_values(argument, 7)):
+        result[f"boys_{order}"] = value
+    return result
+
+
+def evaluate_value(kernel, values: dict[str, float], boys_count: int = 3) -> float:
     argument = kernel.graph.evaluate(kernel.boys_argument, values)
-    for order, value in enumerate(boys_values(argument)):
+    for order, value in enumerate(boys_values(argument, boys_count)):
         values[f"boys_{order}"] = value
     return kernel.graph.evaluate(kernel.value, values)
 
@@ -102,6 +171,99 @@ def test_psss_fourth_center_uses_exact_translation_recovery():
         assert total == pytest.approx(0.0, abs=2.0e-14)
 
 
+@pytest.mark.parametrize(
+    ("d_component", "p_components"),
+    (("xx", "xxx"), ("xy", "xyz"), ("zz", "zyx")),
+)
+def test_dppp_symbolic_gradients_match_finite_difference(
+    d_component: str, p_components: str
+):
+    kernel = build_dppp_component_kernel(d_component, tuple(p_components))
+    values = sample_variables()
+    argument = kernel.graph.evaluate(kernel.boys_argument, values)
+    for order, value in enumerate(boys_values(argument, 7)):
+        values[f"boys_{order}"] = value
+
+    step = 1.0e-6
+    for center_index, center in enumerate(CENTERS[:3]):
+        for axis_index, axis in enumerate(AXES):
+            variable = f"{center}_{axis}"
+            plus = dict(values)
+            minus = dict(values)
+            plus[variable] += step
+            minus[variable] -= step
+            numerical = (
+                evaluate_value(kernel, plus, 7)
+                - evaluate_value(kernel, minus, 7)
+            ) / (2.0 * step)
+            analytic = kernel.graph.evaluate(
+                kernel.gradients[center_index][axis_index], values
+            )
+            assert analytic == pytest.approx(numerical, rel=3.0e-7, abs=3.0e-8)
+
+
+def test_dppp_translation_and_ket_pair_permutation_invariants():
+    kernel = build_dppp_component_kernel("xy", tuple("xyz"))
+    values = sample_variables()
+    argument = kernel.graph.evaluate(kernel.boys_argument, values)
+    for order, value in enumerate(boys_values(argument, 7)):
+        values[f"boys_{order}"] = value
+    for axis in range(3):
+        total = sum(
+            kernel.graph.evaluate(kernel.gradients[center][axis], values)
+            for center in range(4)
+        )
+        assert total == pytest.approx(0.0, abs=2.0e-12)
+
+    swapped_kernel = build_dppp_component_kernel("xy", tuple("xzy"))
+    swapped_values = dict(values)
+    swapped_values["gamma"], swapped_values["delta"] = (
+        swapped_values["delta"],
+        swapped_values["gamma"],
+    )
+    for axis in AXES:
+        third = swapped_values[f"third_{axis}"]
+        swapped_values[f"third_{axis}"] = swapped_values[f"fourth_{axis}"]
+        swapped_values[f"fourth_{axis}"] = third
+    assert evaluate_value(kernel, dict(values), 7) == pytest.approx(
+        evaluate_value(swapped_kernel, swapped_values, 7),
+        rel=2.0e-13,
+        abs=2.0e-13,
+    )
+
+
+@pytest.mark.parametrize(
+    ("d_component", "p_components"),
+    (("xx", "xxx"), ("xy", "xyz"), ("zz", "zyx")),
+)
+def test_factored_dppp_lowering_matches_full_symbolic_kernel(
+    d_component: str, p_components: str
+):
+    full = build_dppp_component_kernel(d_component, tuple(p_components))
+    factored = build_dppp_contraction_kernel(d_component, tuple(p_components))
+    full_values = sample_variables()
+    argument = full.graph.evaluate(full.boys_argument, full_values)
+    for order, value in enumerate(boys_values(argument, 7)):
+        full_values[f"boys_{order}"] = value
+    factored_values = factored_dppp_variables(full_values)
+
+    full_value = full.graph.evaluate(full.value, full_values)
+    factored_value = (
+        factored_values["prefactor"]
+        * factored.graph.evaluate(factored.value, factored_values)
+    )
+    assert factored_value == pytest.approx(full_value, rel=3.0e-13, abs=3.0e-13)
+    for center in range(4):
+        for axis in range(3):
+            assert factored.graph.evaluate(
+                factored.gradients[center][axis], factored_values
+            ) == pytest.approx(
+                full.graph.evaluate(full.gradients[center][axis], full_values),
+                rel=2.0e-11,
+                abs=2.0e-11,
+            )
+
+
 def test_cuda_emission_is_deterministic_and_runtime_ad_free():
     first = emit_psss_cuda(build_psss_kernel("z"))
     second = emit_psss_cuda(build_psss_kernel("z"))
@@ -109,6 +271,26 @@ def test_cuda_emission_is_deterministic_and_runtime_ad_free():
     assert "boys_values<2>" in first
     assert "generated_psss_z_gradient" in first
     assert "Dual3" not in first
+
+
+def test_dppp_cuda_emission_is_deterministic_and_runtime_ad_free():
+    kernel = build_dppp_component_kernel("xy", tuple("xyz"))
+    first = emit_dppp_component_cuda(kernel)
+    second = emit_dppp_component_cuda(
+        build_dppp_component_kernel("xy", tuple("xyz"))
+    )
+    assert first == second
+    assert "boys_values<6>" in first
+    assert "generated_dppp_xy_xyz_gradient" in first
+    assert "Dual3" not in first
+
+    factored = emit_dppp_contraction_cuda(
+        build_dppp_contraction_kernel("xy", tuple("xyz"))
+    )
+    assert "GeneratedDpppGeometry" in factored
+    assert "generated_dppp_xy_xyz_factored_gradient" in factored
+    assert "boys_values" not in factored
+    assert "Dual3" not in factored
 
 
 def test_nvrtc_cache_key_covers_binary_compatibility_inputs():
@@ -148,3 +330,38 @@ def test_codegen_cli_writes_deterministic_aot_candidate(tmp_path: Path):
     subprocess.run(command, check=True)
     assert output.read_text(encoding="utf-8") == first
     assert "generated_psss_x_gradient" in first
+
+
+def test_codegen_cli_writes_dppp_component_candidate(tmp_path: Path):
+    output = tmp_path / "generated" / "dppp_xy_xyz.cuh"
+    command = [
+        sys.executable,
+        "tools/generate_shell_kernels.py",
+        "--shell-class",
+        "dppp",
+        "--d-component",
+        "xy",
+        "--p-components",
+        "xyz",
+        "--output",
+        str(output),
+    ]
+    subprocess.run(command, check=True)
+    first = output.read_text(encoding="utf-8")
+    subprocess.run(command, check=True)
+    assert output.read_text(encoding="utf-8") == first
+    assert "generated_dppp_xy_xyz_gradient" in first
+
+    factored_output = tmp_path / "generated" / "dppp_xy_xyz_factored.cuh"
+    factored_command = [
+        *command[:-2],
+        "--lowering",
+        "factored",
+        "--output",
+        str(factored_output),
+    ]
+    subprocess.run(factored_command, check=True)
+    factored = factored_output.read_text(encoding="utf-8")
+    subprocess.run(factored_command, check=True)
+    assert factored_output.read_text(encoding="utf-8") == factored
+    assert "generated_dppp_xy_xyz_factored_gradient" in factored

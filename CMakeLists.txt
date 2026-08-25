@@ -123,6 +123,22 @@ if(Python3_Interpreter_FOUND)
       VERBATIM)
     list(APPEND QCE_CODEGEN_PILOT_OUTPUTS "${output}")
   endforeach()
+  set(output
+      "${QCE_CODEGEN_PILOT_DIRECTORY}/eri_dppp_xy_xyz_factored_gradient.cuh")
+  add_custom_command(
+    OUTPUT "${output}"
+    COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_shell_kernels.py"
+            --shell-class dppp --d-component xy --p-components xyz
+            --lowering factored --output "${output}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_shell_kernels.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/cuda.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/expr.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/shell_class.py"
+    COMMENT "Generating factored symbolic/CSE dppp xy/xyz CUDA candidate"
+    VERBATIM)
+  list(APPEND QCE_CODEGEN_PILOT_OUTPUTS "${output}")
   add_custom_target(qce_codegen_pilot DEPENDS ${QCE_CODEGEN_PILOT_OUTPUTS})
 endif()
 
