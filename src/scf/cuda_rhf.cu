@@ -5294,11 +5294,21 @@ __global__ void symmetric_eigen_graph_cyclic_kernel(
   const std::size_t eigenvalue_offset = static_cast<std::size_t>(state) * n;
   const std::size_t pair_count = n / 2;
   const std::size_t round_count = (n & 1U) != 0 ? n : n - 1;
+  const std::size_t matrix_worker_groups = blockDim.x / pair_count;
+  const std::size_t matrix_worker_count =
+      matrix_worker_groups * pair_count;
+  const bool matrix_worker = threadIdx.x < matrix_worker_count;
+  const std::size_t matrix_worker_pair =
+      matrix_worker ? threadIdx.x % pair_count : 0;
+  const std::size_t matrix_worker_row =
+      matrix_worker ? threadIdx.x / pair_count : 0;
 
   extern __shared__ double rotation_parameters[];
   double* rotation_cosines = rotation_parameters;
   double* rotation_sines = rotation_parameters + pair_count;
   __shared__ double block_maximum[kCyclicGraphEigensolverThreads];
+  __shared__ std::uint16_t pair_first[kCyclicGraphEigensolverThreads / 2];
+  __shared__ std::uint16_t pair_second[kCyclicGraphEigensolverThreads / 2];
   __shared__ std::size_t selected_column;
   __shared__ int converged;
 
@@ -5322,6 +5332,11 @@ __global__ void symmetric_eigen_graph_cyclic_kernel(
         std::size_t first = 0;
         std::size_t second = 0;
         cyclic_jacobi_pair(n, round, pair, first, second);
+        // The same round-robin mapping is consumed by all three matrix
+        // transforms and the eigenvector update. Cache it once per round so
+        // those O(n^3) loops avoid repeated 64-bit modulo operations.
+        pair_first[pair] = static_cast<std::uint16_t>(first);
+        pair_second[pair] = static_cast<std::uint16_t>(second);
         const double first_diagonal =
             matrices[matrix_offset + matrix_index(first, first, n)];
         const double second_diagonal =
@@ -5347,14 +5362,11 @@ __global__ void symmetric_eigen_graph_cyclic_kernel(
 
       // Right multiplication A <- A Q. Disjoint column pairs make every
       // output element unique within this stage.
-      const std::size_t pair_elements = n * pair_count;
-      for (std::size_t task = threadIdx.x; task < pair_elements;
-           task += blockDim.x) {
-        const std::size_t row = task / pair_count;
-        const std::size_t pair = task % pair_count;
-        std::size_t first = 0;
-        std::size_t second = 0;
-        cyclic_jacobi_pair(n, round, pair, first, second);
+      for (std::size_t row = matrix_worker_row;
+           matrix_worker && row < n; row += matrix_worker_groups) {
+        const std::size_t pair = matrix_worker_pair;
+        const std::size_t first = pair_first[pair];
+        const std::size_t second = pair_second[pair];
         const double first_value =
             matrices[matrix_offset + matrix_index(row, first, n)];
         const double second_value =
@@ -5369,13 +5381,11 @@ __global__ void symmetric_eigen_graph_cyclic_kernel(
       __syncthreads();
 
       // Left multiplication A <- Q^T A uses the same disjoint row pairs.
-      for (std::size_t task = threadIdx.x; task < pair_elements;
-           task += blockDim.x) {
-        const std::size_t column = task / pair_count;
-        const std::size_t pair = task % pair_count;
-        std::size_t first = 0;
-        std::size_t second = 0;
-        cyclic_jacobi_pair(n, round, pair, first, second);
+      for (std::size_t column = matrix_worker_row;
+           matrix_worker && column < n; column += matrix_worker_groups) {
+        const std::size_t pair = matrix_worker_pair;
+        const std::size_t first = pair_first[pair];
+        const std::size_t second = pair_second[pair];
         const double first_value =
             matrices[matrix_offset + matrix_index(first, column, n)];
         const double second_value =
@@ -5391,21 +5401,18 @@ __global__ void symmetric_eigen_graph_cyclic_kernel(
 
       for (std::size_t pair = threadIdx.x; pair < pair_count;
            pair += blockDim.x) {
-        std::size_t first = 0;
-        std::size_t second = 0;
-        cyclic_jacobi_pair(n, round, pair, first, second);
+        const std::size_t first = pair_first[pair];
+        const std::size_t second = pair_second[pair];
         matrices[matrix_offset + matrix_index(first, second, n)] = 0.0;
         matrices[matrix_offset + matrix_index(second, first, n)] = 0.0;
       }
 
       // Accumulate V <- V Q after the matrix similarity transform.
-      for (std::size_t task = threadIdx.x; task < pair_elements;
-           task += blockDim.x) {
-        const std::size_t row = task / pair_count;
-        const std::size_t pair = task % pair_count;
-        std::size_t first = 0;
-        std::size_t second = 0;
-        cyclic_jacobi_pair(n, round, pair, first, second);
+      for (std::size_t row = matrix_worker_row;
+           matrix_worker && row < n; row += matrix_worker_groups) {
+        const std::size_t pair = matrix_worker_pair;
+        const std::size_t first = pair_first[pair];
+        const std::size_t second = pair_second[pair];
         const double first_value =
             eigenvectors[matrix_offset + matrix_index(row, first, n)];
         const double second_value =
