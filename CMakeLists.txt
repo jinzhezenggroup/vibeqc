@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.24)
 
 project(qce VERSION 0.1.0 LANGUAGES CXX)
 
+find_package(Python3 COMPONENTS Interpreter QUIET)
+
 option(QCE_ENABLE_CUDA "Build the CUDA runtime backend" ON)
 option(QCE_BUILD_TESTS "Build native tests" ON)
 
@@ -98,6 +100,30 @@ if(QCE_BUILD_TESTS)
   target_include_directories(qce_spherical_tests
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
   add_test(NAME qce_spherical_tests COMMAND qce_spherical_tests)
+endif()
+
+if(Python3_Interpreter_FOUND)
+  set(QCE_CODEGEN_PILOT_DIRECTORY
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/shell_kernels")
+  set(QCE_CODEGEN_PILOT_OUTPUTS)
+  foreach(axis x y z)
+    set(output
+        "${QCE_CODEGEN_PILOT_DIRECTORY}/eri_psss_${axis}_gradient.cuh")
+    add_custom_command(
+      OUTPUT "${output}"
+      COMMAND "${Python3_EXECUTABLE}"
+              "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_shell_kernels.py"
+              --shell-class psss --axis "${axis}" --output "${output}"
+      DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_shell_kernels.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/cuda.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/expr.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/shell_class.py"
+      COMMENT "Generating symbolic/CSE psss ${axis}-gradient CUDA pilot"
+      VERBATIM)
+    list(APPEND QCE_CODEGEN_PILOT_OUTPUTS "${output}")
+  endforeach()
+  add_custom_target(qce_codegen_pilot DEPENDS ${QCE_CODEGEN_PILOT_OUTPUTS})
 endif()
 
 include(GNUInstallDirs)
