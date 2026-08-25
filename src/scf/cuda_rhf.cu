@@ -65,6 +65,12 @@ constexpr unsigned kPersistentFockAngularOrderCount = 6;
 static_assert(
     kPersistentFockAngularOrderCount <=
     detail::kDirectQuartetAngularOrderCount);
+// An ssss shell quartet is exactly one Cartesian AO quartet. Assign one whole
+// shell task to each lane instead of leaving 31 lanes idle in the generic
+// one-tile-per-warp mapping. Higher classes require a genuinely shell-fused
+// contraction so their common primitive/root setup is not repeated per AO.
+constexpr unsigned kPackedSsssAngularOrderCount = 1;
+static_assert(detail::kDirectQuartetThreads == 32);
 // Generated order-five classes are removed from a compact generic fallback
 // queue. Keeping the order explicit avoids coupling runtime selection to one
 // generated shell class such as dppp.
@@ -6490,7 +6496,8 @@ __device__ __forceinline__ void contract_fock_direct_quartet_subtile(
     const double* density,
     const std::uint8_t* active,
     double* fock,
-    std::size_t active_subtile) {
+    std::size_t active_subtile,
+    unsigned ao_quartet_lane) {
   static_assert(AngularOrder < detail::kDirectQuartetAngularOrderCount);
   constexpr std::size_t subtiles_per_tile =
       detail::direct_quartet_subtiles_per_tile(AngularOrder);
@@ -6533,7 +6540,7 @@ __device__ __forceinline__ void contract_fock_direct_quartet_subtile(
       : first_ao_pair_count * second_ao_pair_count;
   const std::size_t ordinal =
       static_cast<std::size_t>(task.tile) * detail::kDirectQuartetTileSize +
-      subtile * blockDim.x + threadIdx.x;
+      subtile * blockDim.x + ao_quartet_lane;
   if (ordinal < ao_quartet_count) {
     std::size_t first_ao_pair = 0;
     std::size_t second_ao_pair = 0;
@@ -6624,7 +6631,42 @@ __global__ void build_fock_direct_quartet_kernel(
   contract_fock_direct_quartet_subtile<Unrestricted, AngularOrder>(
       batch, active_shell_quartet_tile_count, active_shell_quartet_tiles,
       screening_tolerance, schwarz_bounds, density, active, fock,
-      static_cast<std::size_t>(blockIdx.x));
+      static_cast<std::size_t>(blockIdx.x), threadIdx.x);
+}
+
+/** Pack exact ssss shell tasks across all lanes of one worker warp. */
+template <bool Unrestricted, unsigned AngularOrder>
+__global__ void build_fock_direct_quartet_packed_persistent_kernel(
+    DeviceBatch batch,
+    const std::uint32_t* active_shell_quartet_tile_count,
+    const ActiveShellQuartetTile* active_shell_quartet_tiles,
+    std::uint32_t* task_head,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    const std::uint8_t* active,
+  double* fock) {
+  static_assert(AngularOrder < kPackedSsssAngularOrderCount);
+  const unsigned lane = threadIdx.x;
+  const std::uint32_t work_count = *active_shell_quartet_tile_count;
+  while (true) {
+    std::uint32_t packed_begin = 0;
+    if (lane == 0) {
+      packed_begin = atomicAdd(
+          task_head, static_cast<std::uint32_t>(warpSize));
+    }
+    packed_begin = __shfl_sync(0xffffffffU, packed_begin, 0);
+    if (packed_begin >= work_count) return;
+    const std::uint32_t packed_item = packed_begin + lane;
+    if (packed_item < work_count) {
+      // Order zero has one subtile and one exact logical tile per shell
+      // quartet, so packed_item is also its compact subtile index.
+      contract_fock_direct_quartet_subtile<Unrestricted, AngularOrder>(
+          batch, active_shell_quartet_tile_count,
+          active_shell_quartet_tiles, screening_tolerance, schwarz_bounds,
+          density, active, fock, packed_item, 0U);
+    }
+  }
 }
 
 /** Consume only the active compacted Fock domain from a device queue. */
@@ -6653,7 +6695,7 @@ __global__ void build_fock_direct_quartet_persistent_kernel(
     contract_fock_direct_quartet_subtile<Unrestricted, AngularOrder>(
         batch, active_shell_quartet_tile_count, active_shell_quartet_tiles,
         screening_tolerance, schwarz_bounds, density, active, fock,
-        active_subtile);
+        active_subtile, threadIdx.x);
   }
 }
 
@@ -7472,7 +7514,8 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
     const std::uint8_t* active,
     double* forces,
     std::uint64_t generated_shell_class_mask,
-    std::size_t active_subtile) {
+    std::size_t active_subtile,
+    unsigned ao_quartet_lane) {
   static_assert(AngularOrder < detail::kDirectQuartetAngularOrderCount);
   constexpr std::size_t subtiles_per_tile =
       detail::direct_quartet_subtiles_per_tile(AngularOrder);
@@ -7528,7 +7571,7 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
 
   const std::size_t ordinal =
       static_cast<std::size_t>(task.tile) * detail::kDirectQuartetTileSize +
-      subtile * blockDim.x + threadIdx.x;
+      subtile * blockDim.x + ao_quartet_lane;
   if (ordinal < ao_quartet_count) {
     std::size_t first_ao_pair = 0;
     std::size_t second_ao_pair = 0;
@@ -7725,7 +7768,43 @@ __global__ void two_electron_force_quartet_kernel(
       batch, active_shell_quartet_tile_count, active_shell_quartet_tiles,
       screening_tolerance, schwarz_bounds, density, active, forces,
       generated_shell_class_mask,
-      static_cast<std::size_t>(blockIdx.x));
+      static_cast<std::size_t>(blockIdx.x), threadIdx.x);
+}
+
+/** Pack independent ssss derivative shell tasks across one worker warp. */
+template <bool Unrestricted, unsigned AngularOrder>
+__global__ void two_electron_force_quartet_packed_persistent_kernel(
+    DeviceBatch batch,
+    const std::uint32_t* active_shell_quartet_tile_count,
+    const ActiveShellQuartetTile* active_shell_quartet_tiles,
+    std::uint32_t* task_head,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    const std::uint8_t* active,
+    double* forces,
+    std::uint64_t generated_shell_class_mask) {
+  static_assert(AngularOrder < kPackedSsssAngularOrderCount);
+  const unsigned lane = threadIdx.x;
+  const std::uint32_t work_count = *active_shell_quartet_tile_count;
+  while (true) {
+    std::uint32_t packed_begin = 0;
+    if (lane == 0) {
+      packed_begin = atomicAdd(
+          task_head, static_cast<std::uint32_t>(warpSize));
+    }
+    packed_begin = __shfl_sync(0xffffffffU, packed_begin, 0);
+    if (packed_begin >= work_count) return;
+    const std::uint32_t packed_item = packed_begin + lane;
+    if (packed_item < work_count) {
+      contract_two_electron_force_quartet_subtile<
+          Unrestricted, AngularOrder>(
+          batch, active_shell_quartet_tile_count,
+          active_shell_quartet_tiles, screening_tolerance, schwarz_bounds,
+          density, active, forces, generated_shell_class_mask, packed_item,
+          0U);
+    }
+  }
 }
 
 /**
@@ -7763,7 +7842,7 @@ __global__ void two_electron_force_quartet_persistent_kernel(
         batch, active_shell_quartet_tile_count, active_shell_quartet_tiles,
         screening_tolerance, schwarz_bounds, density, active, forces,
         generated_shell_class_mask,
-        active_subtile);
+        active_subtile, threadIdx.x);
   }
 }
 
@@ -7866,7 +7945,20 @@ void launch_angular_fock_quartets(
     double* fock) {
   if constexpr (AngularOrder < detail::kDirectQuartetAngularOrderCount) {
     if (capacities[AngularOrder] != 0) {
-      if constexpr (AngularOrder < kPersistentFockAngularOrderCount) {
+      if constexpr (AngularOrder < kPackedSsssAngularOrderCount) {
+        const unsigned capacity_workers = static_cast<unsigned>(
+            (capacities[AngularOrder] + detail::kDirectQuartetThreads - 1) /
+            detail::kDirectQuartetThreads);
+        build_fock_direct_quartet_packed_persistent_kernel<
+            Unrestricted, AngularOrder><<<
+                std::min(capacity_workers, persistent_worker_blocks),
+                detail::kDirectQuartetThreads, 0, stream>>>(
+            batch, active_tile_counts + AngularOrder,
+            active_tiles + offsets[AngularOrder],
+            persistent_task_heads + AngularOrder, screening_tolerance,
+            schwarz_bounds, density, active, fock);
+      } else if constexpr (AngularOrder <
+                           kPersistentFockAngularOrderCount) {
         const unsigned capacity_blocks = static_cast<unsigned>(
             capacities[AngularOrder] *
             detail::direct_quartet_subtiles_per_tile(AngularOrder));
@@ -7928,7 +8020,20 @@ void launch_angular_force_quartets(
         order_tile_count = generic_order5_tile_count;
         order_tiles = generic_order5_tiles;
       }
-      if constexpr (AngularOrder < kPersistentForceAngularOrderCount) {
+      if constexpr (AngularOrder < kPackedSsssAngularOrderCount) {
+        const unsigned capacity_workers = static_cast<unsigned>(
+            (capacities[AngularOrder] + detail::kDirectQuartetThreads - 1) /
+            detail::kDirectQuartetThreads);
+        two_electron_force_quartet_packed_persistent_kernel<
+            Unrestricted, AngularOrder><<<
+                std::min(capacity_workers, persistent_worker_blocks),
+                detail::kDirectQuartetThreads, 0, stream>>>(
+            batch, order_tile_count, order_tiles,
+            persistent_task_heads + AngularOrder, screening_tolerance,
+            schwarz_bounds, density, active, forces,
+            generated_shell_class_mask);
+      } else if constexpr (AngularOrder <
+                           kPersistentForceAngularOrderCount) {
         const unsigned capacity_blocks = static_cast<unsigned>(
             capacities[AngularOrder] *
             detail::direct_quartet_subtiles_per_tile(AngularOrder));
