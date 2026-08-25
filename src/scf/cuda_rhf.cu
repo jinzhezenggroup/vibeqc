@@ -70,6 +70,10 @@ static_assert(
 // one-tile-per-warp mapping. Higher classes require a genuinely shell-fused
 // contraction so their common primitive/root setup is not repeated per AO.
 constexpr unsigned kPackedSsssAngularOrderCount = 1;
+// Total angular order one contains only psss. Its three Cartesian outputs
+// share every primitive-pair, product-center, Boys, and decay calculation, so
+// one lane should own the complete shell task instead of one AO component.
+constexpr unsigned kFusedPsssAngularOrder = 1;
 static_assert(detail::kDirectQuartetThreads == 32);
 // Generated order-five classes are removed from a compact generic fallback
 // queue. Keeping the order explicit avoids coupling runtime selection to one
@@ -2911,6 +2915,102 @@ __device__ __noinline__ Scalar contracted_eri_cartesian_source_shell_class(
                     batch.primitive_exponents[c], third, angular_third,
                     batch.primitive_exponents[d], fourth, angular_fourth);
           }
+        }
+      }
+    }
+  }
+  return result;
+}
+
+/** Three contracted Cartesian components of canonical (p s | s s). */
+struct PsssIntegralVector {
+  double axis[3];
+};
+
+/**
+ * Contract all psss Cartesian outputs with one shared primitive traversal.
+ *
+ * The p_x, p_y, and p_z values differ only in the final PA/PQ component of
+ * the closed order-one expression. Keeping the complete shell task in one
+ * lane removes threefold repetition of product centers, pair decay, and Boys
+ * values while retaining the established CCA x/y/z component order.
+ */
+__device__ __noinline__ PsssIntegralVector
+contracted_eri_cartesian_source_psss(
+    const DeviceBatch& batch,
+    std::int32_t p_shell,
+    std::int32_t paired_s_shell,
+    std::int32_t third_shell,
+    std::int32_t fourth_shell) {
+  const Vec3<double> first = atom_position<double>(
+      batch, batch.shell_atoms[p_shell], -1);
+  const Vec3<double> second = atom_position<double>(
+      batch, batch.shell_atoms[paired_s_shell], -1);
+  const Vec3<double> third = atom_position<double>(
+      batch, batch.shell_atoms[third_shell], -1);
+  const Vec3<double> fourth = atom_position<double>(
+      batch, batch.shell_atoms[fourth_shell], -1);
+
+  const std::int64_t p_ao_begin = batch.shell_direct_ao_offsets[p_shell];
+  const double s_angular_coefficient =
+      batch.direct_ao_coefficients[
+          batch.shell_direct_ao_offsets[paired_s_shell]] *
+      batch.direct_ao_coefficients[
+          batch.shell_direct_ao_offsets[third_shell]] *
+      batch.direct_ao_coefficients[
+          batch.shell_direct_ao_offsets[fourth_shell]];
+  const double angular_coefficient[3] = {
+      s_angular_coefficient * batch.direct_ao_coefficients[p_ao_begin],
+      s_angular_coefficient * batch.direct_ao_coefficients[p_ao_begin + 1],
+      s_angular_coefficient * batch.direct_ao_coefficients[p_ao_begin + 2],
+  };
+
+  PsssIntegralVector result{};
+  for (std::int64_t a = batch.shell_primitive_offsets[p_shell];
+       a < batch.shell_primitive_offsets[p_shell + 1]; ++a) {
+    const double alpha = batch.primitive_exponents[a];
+    for (std::int64_t b = batch.shell_primitive_offsets[paired_s_shell];
+         b < batch.shell_primitive_offsets[paired_s_shell + 1]; ++b) {
+      const double beta = batch.primitive_exponents[b];
+      const double p = alpha + beta;
+      const double mu = alpha * beta / p;
+      const Vec3<double> product_p =
+          product_center(alpha, first, beta, second);
+      for (std::int64_t c = batch.shell_primitive_offsets[third_shell];
+           c < batch.shell_primitive_offsets[third_shell + 1]; ++c) {
+        const double gamma = batch.primitive_exponents[c];
+        for (std::int64_t d = batch.shell_primitive_offsets[fourth_shell];
+             d < batch.shell_primitive_offsets[fourth_shell + 1]; ++d) {
+          const double delta = batch.primitive_exponents[d];
+          const double q = gamma + delta;
+          const double nu = gamma * delta / q;
+          const double rho = p * q / (p + q);
+          const Vec3<double> product_q =
+              product_center(gamma, third, delta, fourth);
+          double boys[2];
+          boys_values<1>(
+              rho * distance_squared(product_p, product_q), boys);
+          const double pair_decay = exp(
+              -mu * distance_squared(first, second) -
+              nu * distance_squared(third, fourth));
+          const double primitive_coefficient =
+              batch.primitive_coefficients[a] *
+              batch.primitive_coefficients[b] *
+              batch.primitive_coefficients[c] *
+              batch.primitive_coefficients[d];
+          const double prefactor =
+              2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q)) * pair_decay;
+          const double coulomb_scale = rho / p;
+          const double common = primitive_coefficient * prefactor;
+          result.axis[0] += angular_coefficient[0] * common *
+              ((product_p.x - first.x) * boys[0] -
+               coulomb_scale * (product_p.x - product_q.x) * boys[1]);
+          result.axis[1] += angular_coefficient[1] * common *
+              ((product_p.y - first.y) * boys[0] -
+               coulomb_scale * (product_p.y - product_q.y) * boys[1]);
+          result.axis[2] += angular_coefficient[2] * common *
+              ((product_p.z - first.z) * boys[0] -
+               coulomb_scale * (product_p.z - product_q.z) * boys[1]);
         }
       }
     }
@@ -6306,6 +6406,65 @@ __device__ bool unique_eri_symmetry_permutation(unsigned permutation,
   return !pair_swapped || i != k || j != l;
 }
 
+/** Scatter one symmetry-canonical ERI into the direct RHF/UHF Fock matrix. */
+template <bool Unrestricted>
+__device__ __forceinline__ void accumulate_direct_fock_integral(
+    std::size_t n,
+    std::size_t physical_offset,
+    std::size_t spin_offset,
+    const double* density,
+    double* fock,
+    std::size_t i,
+    std::size_t j,
+    std::size_t k,
+    std::size_t l,
+    double integral) {
+  const std::size_t matrix_size = n * n;
+  for (unsigned permutation = 0; permutation < 8; ++permutation) {
+    if (!unique_eri_symmetry_permutation(permutation, i, j, k, l)) {
+      continue;
+    }
+    std::size_t a = 0;
+    std::size_t b = 0;
+    std::size_t c = 0;
+    std::size_t d = 0;
+    eri_symmetry_permutation(permutation, i, j, k, l, a, b, c, d);
+    const std::size_t ab = matrix_index(a, b, n);
+    const std::size_t ac = matrix_index(a, c, n);
+    const std::size_t cd = matrix_index(c, d, n);
+    const std::size_t bd = matrix_index(b, d, n);
+    if constexpr (Unrestricted) {
+      const double alpha_cd = density[spin_offset + cd];
+      const double beta_cd = density[spin_offset + matrix_size + cd];
+      const double total_cd = alpha_cd + beta_cd;
+      if (total_cd != 0.0) {
+        atomicAdd(fock + spin_offset + ab, total_cd * integral);
+        atomicAdd(fock + spin_offset + matrix_size + ab,
+                  total_cd * integral);
+      }
+      const double alpha_bd = density[spin_offset + bd];
+      const double beta_bd = density[spin_offset + matrix_size + bd];
+      if (alpha_bd != 0.0) {
+        atomicAdd(fock + spin_offset + ac, -alpha_bd * integral);
+      }
+      if (beta_bd != 0.0) {
+        atomicAdd(fock + spin_offset + matrix_size + ac,
+                  -beta_bd * integral);
+      }
+    } else {
+      const double density_cd = density[physical_offset + cd];
+      const double density_bd = density[physical_offset + bd];
+      if (density_cd != 0.0) {
+        atomicAdd(fock + physical_offset + ab, density_cd * integral);
+      }
+      if (density_bd != 0.0) {
+        atomicAdd(fock + physical_offset + ac,
+                  -0.5 * density_bd * integral);
+      }
+    }
+  }
+}
+
 __global__ void initialize_direct_fock_kernel(
     std::int32_t batch_size,
     std::int32_t matrices_per_system,
@@ -6570,50 +6729,118 @@ __device__ __forceinline__ void contract_fock_direct_quartet_subtile(
             static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
             static_cast<std::int32_t>(l), -1);
     if (integral == 0.0) return;
+    accumulate_direct_fock_integral<Unrestricted>(
+        n, physical_offset, spin_offset, density, fock,
+        i, j, k, l, integral);
+  }
+}
 
-    for (unsigned permutation = 0; permutation < 8; ++permutation) {
-      if (!unique_eri_symmetry_permutation(permutation, i, j, k, l)) {
-        continue;
-      }
-      std::size_t a = 0;
-      std::size_t b = 0;
-      std::size_t c = 0;
-      std::size_t d = 0;
-      eri_symmetry_permutation(permutation, i, j, k, l, a, b, c, d);
-      const std::size_t ab = matrix_index(a, b, n);
-      const std::size_t ac = matrix_index(a, c, n);
-      const std::size_t cd = matrix_index(c, d, n);
-      const std::size_t bd = matrix_index(b, d, n);
-      if constexpr (Unrestricted) {
-        const double alpha_cd = density[spin_offset + cd];
-        const double beta_cd = density[spin_offset + matrix_size + cd];
-        const double total_cd = alpha_cd + beta_cd;
-        if (total_cd != 0.0) {
-          atomicAdd(fock + spin_offset + ab, total_cd * integral);
-          atomicAdd(fock + spin_offset + matrix_size + ab,
-                    total_cd * integral);
-        }
-        const double alpha_bd = density[spin_offset + bd];
-        const double beta_bd = density[spin_offset + matrix_size + bd];
-        if (alpha_bd != 0.0) {
-          atomicAdd(fock + spin_offset + ac, -alpha_bd * integral);
-        }
-        if (beta_bd != 0.0) {
-          atomicAdd(fock + spin_offset + matrix_size + ac,
-                    -beta_bd * integral);
-        }
-      } else {
-        const double density_cd = density[physical_offset + cd];
-        const double density_bd = density[physical_offset + bd];
-        if (density_cd != 0.0) {
-          atomicAdd(fock + physical_offset + ab, density_cd * integral);
-        }
-        if (density_bd != 0.0) {
-          atomicAdd(fock + physical_offset + ac,
-                    -0.5 * density_bd * integral);
-        }
-      }
+/**
+ * Evaluate and scatter one complete order-one shell task.
+ *
+ * Shell-pair topology is index-canonical rather than angular-canonical, so
+ * the p shell can occupy any input slot. Integral evaluation is reordered to
+ * canonical (p s|s s), while screening and Fock scatter keep the original AO
+ * slots to preserve the existing eightfold symmetry semantics.
+ */
+template <bool Unrestricted>
+__device__ __noinline__ void contract_fock_direct_psss_task(
+    const DeviceBatch& batch,
+    ActiveShellQuartetTile task,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    const std::uint8_t* active,
+    double* fock) {
+  // A psss shell quartet has three AO outputs and therefore exactly one tile.
+  if (task.tile != 0U) return;
+  const std::size_t first_pair = task.first_pair;
+  const std::size_t second_pair = task.second_pair;
+  const std::int32_t system = batch.shell_pair_systems[first_pair];
+  if (active != nullptr && active[system] == 0) return;
+
+  const std::int32_t raw_shell[4] = {
+      batch.shell_pair_first[first_pair],
+      batch.shell_pair_second[first_pair],
+      batch.shell_pair_first[second_pair],
+      batch.shell_pair_second[second_pair],
+  };
+  unsigned p_slot = 4;
+  unsigned p_count = 0;
+  for (unsigned slot = 0; slot < 4; ++slot) {
+    const unsigned angular = batch.shell_angular[raw_shell[slot]];
+    if (angular == 1) {
+      p_slot = slot;
+      ++p_count;
+    } else if (angular != 0) {
+      return;
     }
+  }
+  if (p_count != 1) return;
+
+  const std::size_t n = static_cast<std::size_t>(batch.direct_nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t physical_offset =
+      static_cast<std::size_t>(system) * matrix_size;
+  const std::size_t spin_offset =
+      static_cast<std::size_t>(system) * 2 * matrix_size;
+  const std::size_t system_ao_begin = static_cast<std::size_t>(system) * n;
+  std::size_t raw_ao[4] = {
+      static_cast<std::size_t>(
+          batch.shell_direct_ao_offsets[raw_shell[0]]) - system_ao_begin,
+      static_cast<std::size_t>(
+          batch.shell_direct_ao_offsets[raw_shell[1]]) - system_ao_begin,
+      static_cast<std::size_t>(
+          batch.shell_direct_ao_offsets[raw_shell[2]]) - system_ao_begin,
+      static_cast<std::size_t>(
+          batch.shell_direct_ao_offsets[raw_shell[3]]) - system_ao_begin,
+  };
+  const std::size_t p_ao_begin = raw_ao[p_slot];
+  unsigned active_axis_mask = 0;
+  for (unsigned axis = 0; axis < 3; ++axis) {
+    raw_ao[p_slot] = p_ao_begin + axis;
+    const double first_bound = schwarz_bounds[
+        physical_offset + matrix_index(raw_ao[0], raw_ao[1], n)];
+    const double second_bound = schwarz_bounds[
+        physical_offset + matrix_index(raw_ao[2], raw_ao[3], n)];
+    if (first_bound * second_bound >= screening_tolerance) {
+      active_axis_mask |= 1U << axis;
+    }
+  }
+  if (active_axis_mask == 0) return;
+
+  std::int32_t canonical_shell[4] = {
+      raw_shell[0], raw_shell[1], raw_shell[2], raw_shell[3]};
+  if (p_slot == 1) {
+    const std::int32_t swap = canonical_shell[0];
+    canonical_shell[0] = canonical_shell[1];
+    canonical_shell[1] = swap;
+  } else if (p_slot >= 2) {
+    if (p_slot == 3) {
+      const std::int32_t swap = canonical_shell[2];
+      canonical_shell[2] = canonical_shell[3];
+      canonical_shell[3] = swap;
+    }
+    const std::int32_t first_swap = canonical_shell[0];
+    canonical_shell[0] = canonical_shell[2];
+    canonical_shell[2] = first_swap;
+    const std::int32_t second_swap = canonical_shell[1];
+    canonical_shell[1] = canonical_shell[3];
+    canonical_shell[3] = second_swap;
+  }
+
+  const PsssIntegralVector integral = contracted_eri_cartesian_source_psss(
+      batch, canonical_shell[0], canonical_shell[1],
+      canonical_shell[2], canonical_shell[3]);
+  for (unsigned axis = 0; axis < 3; ++axis) {
+    if ((active_axis_mask & (1U << axis)) == 0 ||
+        integral.axis[axis] == 0.0) {
+      continue;
+    }
+    raw_ao[p_slot] = p_ao_begin + axis;
+    accumulate_direct_fock_integral<Unrestricted>(
+        n, physical_offset, spin_offset, density, fock,
+        raw_ao[0], raw_ao[1], raw_ao[2], raw_ao[3], integral.axis[axis]);
   }
 }
 
@@ -6666,6 +6893,39 @@ __global__ void build_fock_direct_quartet_packed_persistent_kernel(
           active_shell_quartet_tiles, screening_tolerance, schwarz_bounds,
           density, active, fock, packed_item, 0U);
     }
+  }
+}
+
+/** Consume complete psss shell tasks, one independent task per lane. */
+template <bool Unrestricted>
+__global__ void build_fock_direct_psss_persistent_kernel(
+    DeviceBatch batch,
+    const std::uint32_t* active_shell_quartet_tile_count,
+    const ActiveShellQuartetTile* active_shell_quartet_tiles,
+    std::uint32_t* task_head,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    const std::uint8_t* active,
+    double* fock) {
+  const unsigned lane = threadIdx.x;
+  const std::uint32_t work_count = *active_shell_quartet_tile_count;
+  while (true) {
+    std::uint32_t packed_begin = 0;
+    if (lane == 0) {
+      packed_begin = atomicAdd(
+          task_head, static_cast<std::uint32_t>(warpSize));
+    }
+    packed_begin = __shfl_sync(0xffffffffU, packed_begin, 0);
+    if (packed_begin >= work_count) return;
+    const std::uint32_t packed_item = packed_begin + lane;
+    if (packed_item < work_count) {
+      contract_fock_direct_psss_task<Unrestricted>(
+          batch, active_shell_quartet_tiles[packed_item],
+          screening_tolerance, schwarz_bounds, density, active, fock);
+    }
+    // Tail lanes must remain live until the next warp-uniform queue exit so
+    // the full-mask shuffle above is valid on every persistent iteration.
   }
 }
 
@@ -7953,6 +8213,17 @@ void launch_angular_fock_quartets(
             Unrestricted, AngularOrder><<<
                 std::min(capacity_workers, persistent_worker_blocks),
                 detail::kDirectQuartetThreads, 0, stream>>>(
+            batch, active_tile_counts + AngularOrder,
+            active_tiles + offsets[AngularOrder],
+            persistent_task_heads + AngularOrder, screening_tolerance,
+            schwarz_bounds, density, active, fock);
+      } else if constexpr (AngularOrder == kFusedPsssAngularOrder) {
+        const unsigned capacity_workers = static_cast<unsigned>(
+            (capacities[AngularOrder] + detail::kDirectQuartetThreads - 1) /
+            detail::kDirectQuartetThreads);
+        build_fock_direct_psss_persistent_kernel<Unrestricted><<<
+            std::min(capacity_workers, persistent_worker_blocks),
+            detail::kDirectQuartetThreads, 0, stream>>>(
             batch, active_tile_counts + AngularOrder,
             active_tiles + offsets[AngularOrder],
             persistent_task_heads + AngularOrder, screening_tolerance,
