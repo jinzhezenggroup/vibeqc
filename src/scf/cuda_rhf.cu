@@ -46,11 +46,11 @@ constexpr unsigned kCaptureSafeKernelThreads = 32;
 // resident workers per SM balance the high-register force kernels while
 // replacing topology-capacity grids with device-side work stealing.
 constexpr unsigned kPersistentForceWarpsPerMultiprocessor = 8;
-// Orders zero through five have dedicated analytic derivatives and enough
-// work to amortize the device queue. Higher generic Dual3 orders retain their
-// smaller fixed grids because queue state raises their already-maximal
-// register footprint without improving the 96-AO profile.
-constexpr unsigned kPersistentForceAngularOrderCount = 6;
+// Orders zero through six have dedicated analytic derivatives and enough work
+// to amortize the device queue. Higher generic Dual3 orders retain fixed grids
+// because queue state raises their already-maximal register footprint without
+// improving the 96-AO profile.
+constexpr unsigned kPersistentForceAngularOrderCount = 7;
 
 /** Geometry-dependent direct-J/K work emitted by shell-bound compaction. */
 struct ActiveShellQuartetTile {
@@ -3789,17 +3789,17 @@ contracted_eri_cartesian_source_order3_gradient(
   return result;
 }
 
-/** One sparse coefficient term in an order-five differentiated pair. */
-struct FifthOrderPairGradientTerm {
+/** One sparse coefficient term in a high-order differentiated pair. */
+struct HighOrderPairGradientTerm {
   unsigned derivative_state;
   double coefficient;
 };
 
 template <unsigned PairOrder>
-struct FifthOrderPairGradientExpansion {
-  static_assert(PairOrder <= 5);
+struct HighOrderPairGradientExpansion {
+  static_assert(PairOrder <= 6);
   static constexpr unsigned QuantumStorage = PairOrder == 0 ? 1 : PairOrder;
-  FifthOrderPairGradientTerm terms[1U << PairOrder];
+  HighOrderPairGradientTerm terms[1U << PairOrder];
   unsigned axes[QuantumStorage];
   double shifts[QuantumStorage];
   double first_center_shift_gradients[QuantumStorage];
@@ -3808,11 +3808,11 @@ struct FifthOrderPairGradientExpansion {
 
 /** Add one Wick matching and every derivative subset of its survivors. */
 template <unsigned PairOrder>
-__device__ void add_fifth_order_wick_matching(
-    FifthOrderPairGradientExpansion<PairOrder>& expansion,
+__device__ void add_high_order_wick_matching(
+    HighOrderPairGradientExpansion<PairOrder>& expansion,
     unsigned removed,
     unsigned contraction_count) {
-  static_assert(PairOrder <= 5);
+  static_assert(PairOrder <= 6);
   const unsigned all = (1U << PairOrder) - 1U;
   for (unsigned subset = 0; subset <= all; ++subset) {
     if ((subset & removed) != 0) continue;
@@ -3833,25 +3833,26 @@ __device__ void add_fifth_order_wick_matching(
 }
 
 /**
- * Generate the exact subset/Wick pair expansion through angular order five.
+ * Generate the exact subset/Wick pair expansion through angular order six.
  *
- * One contraction removes a same-axis quantum pair. Two disjoint
- * contractions are the highest possible matching at order five. Expanding
+ * One contraction removes a same-axis quantum pair. Three disjoint
+ * contractions are the highest possible matching at order six. Expanding
  * every surviving quantum into either its center shift or Hermite derivative
- * therefore covers the complete Gaussian product recurrence without a dense
- * coefficient workspace.
+ * covers the complete Gaussian product recurrence without a dense
+ * coefficient workspace. Pair masks are ordered to visit every disjoint Wick
+ * matching exactly once.
  */
 template <unsigned PairOrder>
-__device__ FifthOrderPairGradientExpansion<PairOrder>
-make_fifth_order_pair_gradient_expansion(
+__device__ HighOrderPairGradientExpansion<PairOrder>
+make_high_order_pair_gradient_expansion(
     double alpha,
     const Vec3<double>& first,
     const Angular& angular_first,
     double beta,
     const Vec3<double>& second,
     const Angular& angular_second) {
-  static_assert(PairOrder <= 5);
-  FifthOrderPairGradientExpansion<PairOrder> expansion{};
+  static_assert(PairOrder <= 6);
+  HighOrderPairGradientExpansion<PairOrder> expansion{};
   if constexpr (PairOrder == 0) {
     expansion.terms[0].coefficient = 1.0;
   } else {
@@ -3889,7 +3890,7 @@ make_fifth_order_pair_gradient_expansion(
         }
       }
     }
-    add_fifth_order_wick_matching(expansion, 0U, 0U);
+    add_high_order_wick_matching(expansion, 0U, 0U);
 
     for (unsigned first_quantum = 0; first_quantum < PairOrder;
          ++first_quantum) {
@@ -3901,7 +3902,7 @@ make_fifth_order_pair_gradient_expansion(
         }
         const unsigned first_pair =
             (1U << first_quantum) | (1U << second_quantum);
-        add_fifth_order_wick_matching(expansion, first_pair, 1U);
+        add_high_order_wick_matching(expansion, first_pair, 1U);
 
         for (unsigned third_quantum = 0; third_quantum < PairOrder;
              ++third_quantum) {
@@ -3915,8 +3916,27 @@ make_fifth_order_pair_gradient_expansion(
                     expansion.axes[fourth_quantum]) {
               continue;
             }
-            add_fifth_order_wick_matching(
+            add_high_order_wick_matching(
                 expansion, first_pair | second_pair, 2U);
+
+            if constexpr (PairOrder == 6) {
+              for (unsigned fifth_quantum = 0;
+                   fifth_quantum < PairOrder; ++fifth_quantum) {
+                for (unsigned sixth_quantum = fifth_quantum + 1;
+                     sixth_quantum < PairOrder; ++sixth_quantum) {
+                  const unsigned third_pair =
+                      (1U << fifth_quantum) | (1U << sixth_quantum);
+                  if (((first_pair | second_pair) & third_pair) != 0 ||
+                      second_pair >= third_pair ||
+                      expansion.axes[fifth_quantum] !=
+                          expansion.axes[sixth_quantum]) {
+                    continue;
+                  }
+                  add_high_order_wick_matching(
+                      expansion, first_pair | second_pair | third_pair, 3U);
+                }
+              }
+            }
           }
         }
       }
@@ -3927,8 +3947,8 @@ make_fifth_order_pair_gradient_expansion(
 
 /** Differentiate one surviving-product contribution of a Wick matching. */
 template <unsigned PairOrder>
-__device__ double fifth_order_wick_matching_gradient(
-    const FifthOrderPairGradientExpansion<PairOrder>& expansion,
+__device__ double high_order_wick_matching_gradient(
+    const HighOrderPairGradientExpansion<PairOrder>& expansion,
     unsigned subset,
     unsigned removed,
     unsigned contraction_count,
@@ -3963,16 +3983,16 @@ __device__ double fifth_order_wick_matching_gradient(
   return gradient;
 }
 
-/** Differentiate one order-five pair coefficient at its first center. */
+/** Differentiate one high-order pair coefficient at its first center. */
 template <unsigned PairOrder>
-__device__ double fifth_order_pair_first_center_gradient(
-    const FifthOrderPairGradientExpansion<PairOrder>& expansion,
+__device__ double high_order_pair_first_center_gradient(
+    const HighOrderPairGradientExpansion<PairOrder>& expansion,
     unsigned subset,
     unsigned coordinate) {
   if constexpr (PairOrder == 0) {
     return 0.0;
   } else {
-    double gradient = fifth_order_wick_matching_gradient(
+    double gradient = high_order_wick_matching_gradient(
         expansion, subset, 0U, 0U, coordinate);
     for (unsigned first_quantum = 0; first_quantum < PairOrder;
          ++first_quantum) {
@@ -3984,7 +4004,7 @@ __device__ double fifth_order_pair_first_center_gradient(
         }
         const unsigned first_pair =
             (1U << first_quantum) | (1U << second_quantum);
-        gradient += fifth_order_wick_matching_gradient(
+        gradient += high_order_wick_matching_gradient(
             expansion, subset, first_pair, 1U, coordinate);
         for (unsigned third_quantum = 0; third_quantum < PairOrder;
              ++third_quantum) {
@@ -3998,9 +4018,28 @@ __device__ double fifth_order_pair_first_center_gradient(
                     expansion.axes[fourth_quantum]) {
               continue;
             }
-            gradient += fifth_order_wick_matching_gradient(
+            gradient += high_order_wick_matching_gradient(
                 expansion, subset, first_pair | second_pair, 2U,
                 coordinate);
+            if constexpr (PairOrder == 6) {
+              for (unsigned fifth_quantum = 0;
+                   fifth_quantum < PairOrder; ++fifth_quantum) {
+                for (unsigned sixth_quantum = fifth_quantum + 1;
+                     sixth_quantum < PairOrder; ++sixth_quantum) {
+                  const unsigned third_pair =
+                      (1U << fifth_quantum) | (1U << sixth_quantum);
+                  if (((first_pair | second_pair) & third_pair) != 0 ||
+                      second_pair >= third_pair ||
+                      expansion.axes[fifth_quantum] !=
+                          expansion.axes[sixth_quantum]) {
+                    continue;
+                  }
+                  gradient += high_order_wick_matching_gradient(
+                      expansion, subset,
+                      first_pair | second_pair | third_pair, 3U, coordinate);
+                }
+              }
+            }
           }
         }
       }
@@ -4009,28 +4048,32 @@ __device__ double fifth_order_pair_first_center_gradient(
   }
 }
 
-/** Primitive-local powers reused by all fifth/sixth-order Coulomb states. */
-struct SixthOrderCoulombWorkspace {
+/** Primitive-local powers reused by one bounded high-order Coulomb recurrence. */
+template <unsigned MaximumOrder>
+struct HighOrderCoulombWorkspace {
+  static_assert(MaximumOrder >= 5 && MaximumOrder <= 7);
   Vec3<double> difference;
-  double coordinate_powers[3][7];
-  double negative_two_rho_powers[7];
+  double coordinate_powers[3][MaximumOrder + 1];
+  double negative_two_rho_powers[MaximumOrder + 1];
 };
 
-__device__ SixthOrderCoulombWorkspace make_sixth_order_coulomb_workspace(
+template <unsigned MaximumOrder>
+__device__ HighOrderCoulombWorkspace<MaximumOrder>
+make_high_order_coulomb_workspace(
     double rho,
     const Vec3<double>& difference) {
-  SixthOrderCoulombWorkspace workspace{};
+  HighOrderCoulombWorkspace<MaximumOrder> workspace{};
   workspace.difference = difference;
   for (unsigned axis = 0; axis < 3; ++axis) {
     workspace.coordinate_powers[axis][0] = 1.0;
-    for (unsigned power = 1; power <= 6; ++power) {
+    for (unsigned power = 1; power <= MaximumOrder; ++power) {
       workspace.coordinate_powers[axis][power] =
           workspace.coordinate_powers[axis][power - 1] *
           vec_axis(difference, static_cast<int>(axis));
     }
   }
   workspace.negative_two_rho_powers[0] = 1.0;
-  for (unsigned power = 1; power <= 6; ++power) {
+  for (unsigned power = 1; power <= MaximumOrder; ++power) {
     workspace.negative_two_rho_powers[power] =
         workspace.negative_two_rho_powers[power - 1] * (-2.0 * rho);
   }
@@ -4048,11 +4091,12 @@ __device__ unsigned axis_wick_multiplicity(unsigned order, unsigned pairs) {
       (order - 4U) * (order - 5U) / 48U;
 }
 
-/** Evaluate one Cartesian Coulomb derivative through total order six. */
-__device__ double sixth_order_coulomb(
+/** Evaluate one Cartesian Coulomb derivative through `MaximumOrder`. */
+template <unsigned MaximumOrder>
+__device__ double high_order_coulomb(
     unsigned derivative_state,
     double rho,
-    const SixthOrderCoulombWorkspace& workspace,
+    const HighOrderCoulombWorkspace<MaximumOrder>& workspace,
     const double* boys) {
   const unsigned x_order = derivative_state & 7U;
   const unsigned y_order = (derivative_state >> 3U) & 7U;
@@ -4085,9 +4129,9 @@ __device__ double sixth_order_coulomb(
   return value;
 }
 
-/** Evaluate all-center derivatives of one canonical order-four/five primitive. */
+/** Evaluate all-center derivatives of one canonical order-four to-six primitive. */
 template <unsigned FirstPairOrder, unsigned SecondPairOrder>
-__device__ void primitive_eri_order45_gradient(
+__device__ void primitive_eri_order456_gradient(
     double alpha,
     const Vec3<double>& first,
     const Angular& angular_first,
@@ -4102,7 +4146,9 @@ __device__ void primitive_eri_order45_gradient(
     const Angular& angular_fourth,
     double (&gradient)[4][3]) {
   constexpr unsigned AngularOrder = FirstPairOrder + SecondPairOrder;
-  static_assert(AngularOrder == 4 || AngularOrder == 5);
+  constexpr unsigned CoulombOrder = AngularOrder + 1;
+  static_assert(
+      AngularOrder == 4 || AngularOrder == 5 || AngularOrder == 6);
   const double p = alpha + beta;
   const double q = gamma + delta;
   const double mu = alpha * beta / p;
@@ -4117,17 +4163,18 @@ __device__ void primitive_eri_order45_gradient(
       product_p.y - product_q.y,
       product_p.z - product_q.z,
   };
-  const FifthOrderPairGradientExpansion<FirstPairOrder> first_expansion =
-      make_fifth_order_pair_gradient_expansion<FirstPairOrder>(
+  const HighOrderPairGradientExpansion<FirstPairOrder> first_expansion =
+      make_high_order_pair_gradient_expansion<FirstPairOrder>(
           alpha, first, angular_first, beta, second, angular_second);
-  const FifthOrderPairGradientExpansion<SecondPairOrder> second_expansion =
-      make_fifth_order_pair_gradient_expansion<SecondPairOrder>(
+  const HighOrderPairGradientExpansion<SecondPairOrder> second_expansion =
+      make_high_order_pair_gradient_expansion<SecondPairOrder>(
           gamma, third, angular_third, delta, fourth, angular_fourth);
   double boys[AngularOrder + 2];
   boys_values<AngularOrder + 1>(
       rho * distance_squared(product_p, product_q), boys);
-  const SixthOrderCoulombWorkspace coulomb_workspace =
-      make_sixth_order_coulomb_workspace(rho, product_difference);
+  const HighOrderCoulombWorkspace<CoulombOrder> coulomb_workspace =
+      make_high_order_coulomb_workspace<CoulombOrder>(
+          rho, product_difference);
   const double first_product_scale = alpha / p;
   const double second_product_scale = beta / p;
   const double third_product_scale = -gamma / q;
@@ -4137,9 +4184,9 @@ __device__ void primitive_eri_order45_gradient(
        ++first_term) {
     for (unsigned second_term = 0; second_term < (1U << SecondPairOrder);
          ++second_term) {
-      const FifthOrderPairGradientTerm& first_item =
+      const HighOrderPairGradientTerm& first_item =
           first_expansion.terms[first_term];
-      const FifthOrderPairGradientTerm& second_item =
+      const HighOrderPairGradientTerm& second_item =
           second_expansion.terms[second_term];
       const double sign =
           (fourth_order_derivative_total(second_item.derivative_state) & 1U)
@@ -4148,24 +4195,24 @@ __device__ void primitive_eri_order45_gradient(
           : -1.0;
       const unsigned derivative_state =
           first_item.derivative_state + second_item.derivative_state;
-      const double coulomb = sixth_order_coulomb(
+      const double coulomb = high_order_coulomb<CoulombOrder>(
           derivative_state, rho, coulomb_workspace, boys);
       const double coefficient =
           sign * first_item.coefficient * second_item.coefficient;
       value += coefficient * coulomb;
       for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
         const double first_pair_gradient =
-            fifth_order_pair_first_center_gradient(
+            high_order_pair_first_center_gradient(
                 first_expansion, first_term, coordinate);
         const double second_pair_gradient =
-            fifth_order_pair_first_center_gradient(
+            high_order_pair_first_center_gradient(
                 second_expansion, second_term, coordinate);
         const double first_coefficient_gradient =
             sign * first_pair_gradient * second_item.coefficient;
         const double second_coefficient_gradient =
             sign * first_item.coefficient * second_pair_gradient;
         const double scaled_coulomb_derivative = coefficient *
-            sixth_order_coulomb(
+            high_order_coulomb<CoulombOrder>(
                 derivative_state +
                     fourth_order_derivative_state(coordinate),
                 rho, coulomb_workspace, boys);
@@ -4296,21 +4343,21 @@ contracted_eri_cartesian_source_order4_gradient(
               batch.primitive_coefficients[d];
           double primitive_gradient[4][3];
           if (first_pair_order == 4) {
-            primitive_eri_order45_gradient<4, 0>(
+            primitive_eri_order456_gradient<4, 0>(
                 batch.primitive_exponents[a], positions[0], angular[0],
                 batch.primitive_exponents[b], positions[1], angular[1],
                 batch.primitive_exponents[c], positions[2], angular[2],
                 batch.primitive_exponents[d], positions[3], angular[3],
                 primitive_gradient);
           } else if (first_pair_order == 3) {
-            primitive_eri_order45_gradient<3, 1>(
+            primitive_eri_order456_gradient<3, 1>(
                 batch.primitive_exponents[a], positions[0], angular[0],
                 batch.primitive_exponents[b], positions[1], angular[1],
                 batch.primitive_exponents[c], positions[2], angular[2],
                 batch.primitive_exponents[d], positions[3], angular[3],
                 primitive_gradient);
           } else {
-            primitive_eri_order45_gradient<2, 2>(
+            primitive_eri_order456_gradient<2, 2>(
                 batch.primitive_exponents[a], positions[0], angular[0],
                 batch.primitive_exponents[b], positions[1], angular[1],
                 batch.primitive_exponents[c], positions[2], angular[2],
@@ -4415,21 +4462,147 @@ contracted_eri_cartesian_source_order5_gradient(
               batch.primitive_coefficients[d];
           double primitive_gradient[4][3];
           if (first_pair_order == 5) {
-            primitive_eri_order45_gradient<5, 0>(
+            primitive_eri_order456_gradient<5, 0>(
                 batch.primitive_exponents[a], positions[0], angular[0],
                 batch.primitive_exponents[b], positions[1], angular[1],
                 batch.primitive_exponents[c], positions[2], angular[2],
                 batch.primitive_exponents[d], positions[3], angular[3],
                 primitive_gradient);
           } else if (first_pair_order == 4) {
-            primitive_eri_order45_gradient<4, 1>(
+            primitive_eri_order456_gradient<4, 1>(
                 batch.primitive_exponents[a], positions[0], angular[0],
                 batch.primitive_exponents[b], positions[1], angular[1],
                 batch.primitive_exponents[c], positions[2], angular[2],
                 batch.primitive_exponents[d], positions[3], angular[3],
                 primitive_gradient);
           } else {
-            primitive_eri_order45_gradient<3, 2>(
+            primitive_eri_order456_gradient<3, 2>(
+                batch.primitive_exponents[a], positions[0], angular[0],
+                batch.primitive_exponents[b], positions[1], angular[1],
+                batch.primitive_exponents[c], positions[2], angular[2],
+                batch.primitive_exponents[d], positions[3], angular[3],
+                primitive_gradient);
+          }
+          for (unsigned center = 0; center < 4; ++center) {
+            for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+              result.center[slots[center].original][coordinate] +=
+                  weight * primitive_gradient[center][coordinate];
+            }
+          }
+        }
+      }
+    }
+  }
+  return result;
+}
+
+/** Canonicalize and contract all-center gradients for total angular order 6. */
+__device__ CartesianQuartetGradient
+contracted_eri_cartesian_source_order6_gradient(
+    const DeviceBatch& batch,
+    std::int32_t system,
+    std::int32_t i,
+    std::int32_t j,
+    std::int32_t k,
+    std::int32_t l) {
+  struct SourceSlot {
+    std::int64_t ao;
+    std::int32_t shell;
+    unsigned original;
+  };
+  const std::int64_t base =
+      static_cast<std::int64_t>(system) * batch.direct_nbf;
+  SourceSlot slots[4] = {
+      {base + i, batch.direct_ao_shells[base + i], 0},
+      {base + j, batch.direct_ao_shells[base + j], 1},
+      {base + k, batch.direct_ao_shells[base + k], 2},
+      {base + l, batch.direct_ao_shells[base + l], 3},
+  };
+  if (batch.shell_angular[slots[0].shell] <
+      batch.shell_angular[slots[1].shell]) {
+    const SourceSlot swap = slots[0];
+    slots[0] = slots[1];
+    slots[1] = swap;
+  }
+  if (batch.shell_angular[slots[2].shell] <
+      batch.shell_angular[slots[3].shell]) {
+    const SourceSlot swap = slots[2];
+    slots[2] = slots[3];
+    slots[3] = swap;
+  }
+  const unsigned first_pair_class = direct_shell_pair_class_cuda(
+      batch.shell_angular[slots[0].shell],
+      batch.shell_angular[slots[1].shell]);
+  const unsigned second_pair_class = direct_shell_pair_class_cuda(
+      batch.shell_angular[slots[2].shell],
+      batch.shell_angular[slots[3].shell]);
+  if (first_pair_class < second_pair_class) {
+    const SourceSlot first_swap = slots[0];
+    slots[0] = slots[2];
+    slots[2] = first_swap;
+    const SourceSlot second_swap = slots[1];
+    slots[1] = slots[3];
+    slots[3] = second_swap;
+  }
+
+  const Vec3<double> positions[4] = {
+      atom_position<double>(batch, batch.shell_atoms[slots[0].shell], -1),
+      atom_position<double>(batch, batch.shell_atoms[slots[1].shell], -1),
+      atom_position<double>(batch, batch.shell_atoms[slots[2].shell], -1),
+      atom_position<double>(batch, batch.shell_atoms[slots[3].shell], -1),
+  };
+  const Angular angular[4] = {
+      direct_ao_angular(batch, slots[0].ao),
+      direct_ao_angular(batch, slots[1].ao),
+      direct_ao_angular(batch, slots[2].ao),
+      direct_ao_angular(batch, slots[3].ao),
+  };
+  const double angular_coefficient =
+      batch.direct_ao_coefficients[slots[0].ao] *
+      batch.direct_ao_coefficients[slots[1].ao] *
+      batch.direct_ao_coefficients[slots[2].ao] *
+      batch.direct_ao_coefficients[slots[3].ao];
+  const unsigned first_pair_order =
+      batch.shell_angular[slots[0].shell] +
+      batch.shell_angular[slots[1].shell];
+  CartesianQuartetGradient result{};
+  for (std::int64_t a = batch.shell_primitive_offsets[slots[0].shell];
+       a < batch.shell_primitive_offsets[slots[0].shell + 1]; ++a) {
+    for (std::int64_t b = batch.shell_primitive_offsets[slots[1].shell];
+         b < batch.shell_primitive_offsets[slots[1].shell + 1]; ++b) {
+      for (std::int64_t c = batch.shell_primitive_offsets[slots[2].shell];
+           c < batch.shell_primitive_offsets[slots[2].shell + 1]; ++c) {
+        for (std::int64_t d = batch.shell_primitive_offsets[slots[3].shell];
+             d < batch.shell_primitive_offsets[slots[3].shell + 1]; ++d) {
+          const double weight = angular_coefficient *
+              batch.primitive_coefficients[a] *
+              batch.primitive_coefficients[b] *
+              batch.primitive_coefficients[c] *
+              batch.primitive_coefficients[d];
+          double primitive_gradient[4][3];
+          if (first_pair_order == 6) {
+            primitive_eri_order456_gradient<6, 0>(
+                batch.primitive_exponents[a], positions[0], angular[0],
+                batch.primitive_exponents[b], positions[1], angular[1],
+                batch.primitive_exponents[c], positions[2], angular[2],
+                batch.primitive_exponents[d], positions[3], angular[3],
+                primitive_gradient);
+          } else if (first_pair_order == 5) {
+            primitive_eri_order456_gradient<5, 1>(
+                batch.primitive_exponents[a], positions[0], angular[0],
+                batch.primitive_exponents[b], positions[1], angular[1],
+                batch.primitive_exponents[c], positions[2], angular[2],
+                batch.primitive_exponents[d], positions[3], angular[3],
+                primitive_gradient);
+          } else if (first_pair_order == 4) {
+            primitive_eri_order456_gradient<4, 2>(
+                batch.primitive_exponents[a], positions[0], angular[0],
+                batch.primitive_exponents[b], positions[1], angular[1],
+                batch.primitive_exponents[c], positions[2], angular[2],
+                batch.primitive_exponents[d], positions[3], angular[3],
+                primitive_gradient);
+          } else {
+            primitive_eri_order456_gradient<3, 3>(
                 batch.primitive_exponents[a], positions[0], angular[0],
                 batch.primitive_exponents[b], positions[1], angular[1],
                 batch.primitive_exponents[c], positions[2], angular[2],
@@ -7430,7 +7603,7 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
       }
     }
     double explicit_unique_gradient[4][3]{};
-    if constexpr (AngularOrder <= 5) {
+    if constexpr (AngularOrder <= 6) {
       CartesianQuartetGradient explicit_gradient{};
       if constexpr (AngularOrder <= 1) {
         explicit_gradient =
@@ -7453,8 +7626,13 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
             batch, system, static_cast<std::int32_t>(i),
             static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
             static_cast<std::int32_t>(l));
-      } else {
+      } else if constexpr (AngularOrder == 5) {
         explicit_gradient = contracted_eri_cartesian_source_order5_gradient(
+            batch, system, static_cast<std::int32_t>(i),
+            static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
+            static_cast<std::int32_t>(l));
+      } else {
+        explicit_gradient = contracted_eri_cartesian_source_order6_gradient(
             batch, system, static_cast<std::int32_t>(i),
             static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
             static_cast<std::int32_t>(l));
@@ -7479,7 +7657,7 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
       double derivative_x = 0.0;
       double derivative_y = 0.0;
       double derivative_z = 0.0;
-      if constexpr (AngularOrder <= 5) {
+      if constexpr (AngularOrder <= 6) {
         derivative_x = explicit_unique_gradient[center][0];
         derivative_y = explicit_unique_gradient[center][1];
         derivative_z = explicit_unique_gradient[center][2];
