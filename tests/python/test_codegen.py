@@ -62,22 +62,22 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 
 RTX5090_DPPP_RESOURCE_LIMITS = {
-    "generated_dppp_shell_class_force_rhf_kernel": (158, 40, 2064),
-    "generated_dppp_shell_class_force_uhf_kernel": (158, 40, 2064),
-    "generated_dppp_shell_class_force_rhf_persistent_kernel": (159, 40, 2072),
-    "generated_dppp_shell_class_force_uhf_persistent_kernel": (159, 40, 2072),
+    "generated_dppp_shell_class_force_rhf_kernel": (168, 40, 2072),
+    "generated_dppp_shell_class_force_uhf_kernel": (168, 40, 2072),
+    "generated_dppp_shell_class_force_rhf_persistent_kernel": (164, 40, 2080),
+    "generated_dppp_shell_class_force_uhf_persistent_kernel": (164, 40, 2080),
 }
 RTX5090_DPDS_RESOURCE_LIMITS = {
-    "generated_dpds_shell_class_force_rhf_kernel": (154, 40, 1872),
-    "generated_dpds_shell_class_force_uhf_kernel": (154, 40, 1872),
-    "generated_dpds_shell_class_force_rhf_persistent_kernel": (156, 40, 1880),
-    "generated_dpds_shell_class_force_uhf_persistent_kernel": (156, 40, 1880),
+    "generated_dpds_shell_class_force_rhf_kernel": (160, 40, 1880),
+    "generated_dpds_shell_class_force_uhf_kernel": (160, 40, 1880),
+    "generated_dpds_shell_class_force_rhf_persistent_kernel": (160, 40, 1888),
+    "generated_dpds_shell_class_force_uhf_persistent_kernel": (160, 40, 1888),
 }
 RTX5090_DDPS_RESOURCE_LIMITS = {
-    "generated_ddps_shell_class_force_rhf_kernel": (160, 64, 1872),
-    "generated_ddps_shell_class_force_uhf_kernel": (160, 64, 1872),
-    "generated_ddps_shell_class_force_rhf_persistent_kernel": (160, 64, 1880),
-    "generated_ddps_shell_class_force_uhf_persistent_kernel": (160, 64, 1880),
+    "generated_ddps_shell_class_force_rhf_kernel": (164, 64, 1880),
+    "generated_ddps_shell_class_force_uhf_kernel": (164, 64, 1880),
+    "generated_ddps_shell_class_force_rhf_persistent_kernel": (160, 64, 1888),
+    "generated_ddps_shell_class_force_uhf_persistent_kernel": (160, 64, 1888),
 }
 
 
@@ -537,6 +537,10 @@ def test_dppp_fused_cuda_emits_one_shared_shell_class_schedule():
     assert "generated_dppp_shell_class_force_uhf_kernel" in source
     assert "generated_dppp_shell_class_force_rhf_persistent_kernel" in source
     assert "generated_dppp_shell_class_force_uhf_persistent_kernel" in source
+    assert "GeneratedDpppPrimitivePairData" in source
+    assert "primitive_pair_offsets" in source
+    assert "reversed_shell_pair_mask" in source
+    assert "primitive_exponents" not in source
     assert "retained_by_schwarz" in source
     assert source.count("boys_values<6>") == 1
     assert "__noinline__" not in source
@@ -656,6 +660,16 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     assert '{"dpps", 11U, 4U, 64U}' in header
     assert "QCE_AOT_SHELL_CLASSES" in header
     assert "QCE_AOT_FOCK_SHELL_CLASSES" in header
+    shards = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in first
+        if "shard" in path.name
+    )
+    assert "offsetof(GeneratedDpppShellTask, shell_pair)" in shards
+    assert (
+        "offsetof(GeneratedDpppPrimitivePairData, product_center)"
+        in shards
+    )
 
 
 def test_batch_screening_ranks_real_profile_and_emits_one_process_driver():
@@ -750,6 +764,8 @@ def test_dppp_benchmark_compares_shared_and_recomputed_schedules():
     assert "generated_dppp_component_gradient<true>" in source
     assert "generated_dppp_component_gradient<false>" in source
     assert "generated_dppp_component_recompute_rhf_kernel" in source
+    assert "generated_dppp_make_primitive_geometry_uncached" in source
+    assert "device_primitive_pairs" in source
     assert '\\"speedup\\"' in source
 
 

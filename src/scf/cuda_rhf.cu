@@ -296,6 +296,10 @@ struct PrimitivePairData {
 };
 
 static_assert(sizeof(PrimitivePairData) == 8 * sizeof(double));
+static_assert(sizeof(PrimitivePairData) ==
+              sizeof(detail::GeneratedPrimitivePairData));
+static_assert(alignof(PrimitivePairData) ==
+              alignof(detail::GeneratedPrimitivePairData));
 
 struct DeviceBatch {
   std::int32_t batch_size;
@@ -7265,6 +7269,8 @@ __global__ void compact_generated_shell_tasks_kernel(
       batch.shell_pair_first[tile.second_pair],
       batch.shell_pair_second[tile.second_pair],
   };
+  std::uint32_t shell_pairs[2] = {tile.first_pair, tile.second_pair};
+  std::uint32_t reversed_shell_pair_mask = 0U;
   const unsigned shell_class = direct_quartet_shell_class_device(
       batch.shell_angular[shells[0]], batch.shell_angular[shells[1]],
       batch.shell_angular[shells[2]], batch.shell_angular[shells[3]]);
@@ -7277,11 +7283,13 @@ __global__ void compact_generated_shell_tasks_kernel(
     const std::int32_t swap = shells[0];
     shells[0] = shells[1];
     shells[1] = swap;
+    reversed_shell_pair_mask |= 1U;
   }
   if (batch.shell_angular[shells[2]] < batch.shell_angular[shells[3]]) {
     const std::int32_t swap = shells[2];
     shells[2] = shells[3];
     shells[3] = swap;
+    reversed_shell_pair_mask |= 2U;
   }
   const unsigned first_pair_class = direct_shell_pair_class_cuda(
       batch.shell_angular[shells[0]], batch.shell_angular[shells[1]]);
@@ -7294,6 +7302,12 @@ __global__ void compact_generated_shell_tasks_kernel(
     shells[1] = shells[3];
     shells[2] = first;
     shells[3] = second;
+    const std::uint32_t pair_swap = shell_pairs[0];
+    shell_pairs[0] = shell_pairs[1];
+    shell_pairs[1] = pair_swap;
+    reversed_shell_pair_mask =
+        ((reversed_shell_pair_mask & 1U) << 1U) |
+        ((reversed_shell_pair_mask & 2U) >> 1U);
   }
 
   const std::int32_t system = batch.shell_pair_systems[tile.first_pair];
@@ -7326,6 +7340,9 @@ __global__ void compact_generated_shell_tasks_kernel(
   task.spin_offset = static_cast<std::uint64_t>(
       static_cast<std::size_t>(system) * 2U * matrix_size);
   task.matrix_order = static_cast<std::uint32_t>(matrix_order);
+  task.shell_pair[0] = shell_pairs[0];
+  task.shell_pair[1] = shell_pairs[1];
+  task.reversed_shell_pair_mask = reversed_shell_pair_mask;
 }
 
 /**
@@ -10263,8 +10280,8 @@ cudaError_t launch_generated_shell_class_force(
       static_cast<unsigned>(capacity), persistent_worker_blocks);
   return generated::launch_shell_class(
       kernel.shell_class, stream, unrestricted, worker_blocks,
-      generated_tasks, batch.primitive_exponents,
-      batch.primitive_coefficients, batch.direct_ao_coefficients,
+      generated_tasks, batch.shell_pair_primitive_offsets,
+      batch.shell_primitive_pairs, batch.direct_ao_coefficients,
       batch.positions, screening_tolerance, schwarz_bounds, density, forces,
       generated_task_count, generated_task_head);
 }
@@ -10350,8 +10367,8 @@ cudaError_t launch_generated_shell_class_fock(
       static_cast<unsigned>(capacity), persistent_worker_blocks);
   return generated::launch_shell_class_fock(
       kernel.shell_class, stream, unrestricted, worker_blocks,
-      generated_tasks, batch.primitive_exponents,
-      batch.primitive_coefficients, batch.direct_ao_coefficients,
+      generated_tasks, batch.shell_pair_primitive_offsets,
+      batch.shell_primitive_pairs, batch.direct_ao_coefficients,
       batch.positions, screening_tolerance, schwarz_bounds, density, fock,
       generated_task_count, generated_task_head);
 }

@@ -111,11 +111,61 @@ static_assert(sizeof(Generated{class_name}ShellTask) ==
               sizeof(qce::scf::detail::GeneratedShellTask));
 static_assert(alignof(Generated{class_name}ShellTask) ==
               alignof(qce::scf::detail::GeneratedShellTask));
+static_assert(offsetof(Generated{class_name}ShellTask, primitive_begin) ==
+              offsetof(qce::scf::detail::GeneratedShellTask, primitive_begin));
+static_assert(offsetof(Generated{class_name}ShellTask, primitive_end) ==
+              offsetof(qce::scf::detail::GeneratedShellTask, primitive_end));
+static_assert(offsetof(Generated{class_name}ShellTask, ao_begin) ==
+              offsetof(qce::scf::detail::GeneratedShellTask, ao_begin));
+static_assert(offsetof(Generated{class_name}ShellTask, ao_coefficient_begin) ==
+              offsetof(qce::scf::detail::GeneratedShellTask,
+                       ao_coefficient_begin));
+static_assert(offsetof(Generated{class_name}ShellTask, density_offset) ==
+              offsetof(qce::scf::detail::GeneratedShellTask, density_offset));
+static_assert(offsetof(Generated{class_name}ShellTask, spin_offset) ==
+              offsetof(qce::scf::detail::GeneratedShellTask, spin_offset));
+static_assert(offsetof(Generated{class_name}ShellTask, matrix_order) ==
+              offsetof(qce::scf::detail::GeneratedShellTask, matrix_order));
+static_assert(offsetof(Generated{class_name}ShellTask, shell_pair) ==
+              offsetof(qce::scf::detail::GeneratedShellTask, shell_pair));
+static_assert(
+    offsetof(Generated{class_name}ShellTask, reversed_shell_pair_mask) ==
+    offsetof(qce::scf::detail::GeneratedShellTask,
+             reversed_shell_pair_mask));
+static_assert(offsetof(Generated{class_name}ShellTask, shell) ==
+              offsetof(qce::scf::detail::GeneratedShellTask, shell));
+static_assert(offsetof(Generated{class_name}ShellTask, atom) ==
+              offsetof(qce::scf::detail::GeneratedShellTask, atom));
+static_assert(sizeof(Generated{class_name}PrimitivePairData) ==
+              sizeof(qce::scf::detail::GeneratedPrimitivePairData));
+static_assert(alignof(Generated{class_name}PrimitivePairData) ==
+              alignof(qce::scf::detail::GeneratedPrimitivePairData));
+static_assert(
+    offsetof(Generated{class_name}PrimitivePairData, exponent_sum) ==
+    offsetof(qce::scf::detail::GeneratedPrimitivePairData, exponent_sum));
+static_assert(
+    offsetof(Generated{class_name}PrimitivePairData, reduced_exponent) ==
+    offsetof(qce::scf::detail::GeneratedPrimitivePairData, reduced_exponent));
+static_assert(
+    offsetof(Generated{class_name}PrimitivePairData, product_center) ==
+    offsetof(qce::scf::detail::GeneratedPrimitivePairData, product_center));
+static_assert(
+    offsetof(Generated{class_name}PrimitivePairData, weighted_coefficient) ==
+    offsetof(qce::scf::detail::GeneratedPrimitivePairData,
+             weighted_coefficient));
+static_assert(
+    offsetof(Generated{class_name}PrimitivePairData, first_product_scale) ==
+    offsetof(qce::scf::detail::GeneratedPrimitivePairData,
+             first_product_scale));
+static_assert(
+    offsetof(Generated{class_name}PrimitivePairData, second_product_scale) ==
+    offsetof(qce::scf::detail::GeneratedPrimitivePairData,
+             second_product_scale));
 
 extern "C" cudaError_t qce_launch_generated_{spec.name}(
     cudaStream_t stream, bool unrestricted, unsigned worker_blocks,
-    const void* tasks, const double* primitive_exponents,
-    const double* primitive_coefficients, const double* ao_coefficients,
+    const void* tasks, const std::int64_t* primitive_pair_offsets,
+    const void* primitive_pairs, const double* ao_coefficients,
     const void* atom_positions, double screening_tolerance,
     const double* schwarz_bounds, const double* density, double* forces,
     const std::uint32_t* task_count, std::uint32_t* task_head) {{
@@ -124,16 +174,19 @@ extern "C" cudaError_t qce_launch_generated_{spec.name}(
       static_cast<const Generated{class_name}ShellTask*>(tasks);
   const auto* typed_positions =
       static_cast<const Generated{class_name}Vec3*>(atom_positions);
+  const auto* typed_primitive_pairs =
+      static_cast<const Generated{class_name}PrimitivePairData*>(
+          primitive_pairs);
   if (unrestricted) {{
     generated_{spec.name}_shell_class_force_uhf_persistent_kernel<<<
         worker_blocks, kGenerated{class_name}BlockThreads, 0, stream>>>(
-        typed_tasks, primitive_exponents, primitive_coefficients,
+        typed_tasks, typed_primitive_pairs, primitive_pair_offsets,
         ao_coefficients, typed_positions, screening_tolerance, schwarz_bounds,
         density, forces, task_count, task_head);
   }} else {{
     generated_{spec.name}_shell_class_force_rhf_persistent_kernel<<<
         worker_blocks, kGenerated{class_name}BlockThreads, 0, stream>>>(
-        typed_tasks, primitive_exponents, primitive_coefficients,
+        typed_tasks, typed_primitive_pairs, primitive_pair_offsets,
         ao_coefficients, typed_positions, screening_tolerance, schwarz_bounds,
         density, forces, task_count, task_head);
   }}
@@ -149,8 +202,8 @@ def _fock_launch_wrapper(spec: ShellClassSpec) -> str:
     return f"""
 extern "C" cudaError_t qce_launch_generated_{spec.name}_fock(
     cudaStream_t stream, bool unrestricted, unsigned worker_blocks,
-    const void* tasks, const double* primitive_exponents,
-    const double* primitive_coefficients, const double* ao_coefficients,
+    const void* tasks, const std::int64_t* primitive_pair_offsets,
+    const void* primitive_pairs, const double* ao_coefficients,
     const void* atom_positions, double screening_tolerance,
     const double* schwarz_bounds, const double* density, double* fock,
     const std::uint32_t* task_count, std::uint32_t* task_head) {{
@@ -159,16 +212,19 @@ extern "C" cudaError_t qce_launch_generated_{spec.name}_fock(
       static_cast<const Generated{class_name}ShellTask*>(tasks);
   const auto* typed_positions =
       static_cast<const Generated{class_name}Vec3*>(atom_positions);
+  const auto* typed_primitive_pairs =
+      static_cast<const Generated{class_name}PrimitivePairData*>(
+          primitive_pairs);
   if (unrestricted) {{
     generated_{spec.name}_shell_class_fock_uhf_persistent_kernel<<<
         worker_blocks, kGenerated{class_name}FockBlockThreads, 0, stream>>>(
-        typed_tasks, primitive_exponents, primitive_coefficients,
+        typed_tasks, typed_primitive_pairs, primitive_pair_offsets,
         ao_coefficients, typed_positions, screening_tolerance, schwarz_bounds,
         density, fock, task_count, task_head);
   }} else {{
     generated_{spec.name}_shell_class_fock_rhf_persistent_kernel<<<
         worker_blocks, kGenerated{class_name}FockBlockThreads, 0, stream>>>(
-        typed_tasks, primitive_exponents, primitive_coefficients,
+        typed_tasks, typed_primitive_pairs, primitive_pair_offsets,
         ao_coefficients, typed_positions, screening_tolerance, schwarz_bounds,
         density, fock, task_count, task_head);
   }}
@@ -269,7 +325,7 @@ std::uint64_t enabled_fock_shell_class_mask() noexcept;
 cudaError_t launch_shell_class(
     unsigned shell_class, cudaStream_t stream, bool unrestricted,
     unsigned worker_blocks, const void* tasks,
-    const double* primitive_exponents, const double* primitive_coefficients,
+    const std::int64_t* primitive_pair_offsets, const void* primitive_pairs,
     const double* ao_coefficients, const void* atom_positions,
     double screening_tolerance, const double* schwarz_bounds,
     const double* density, double* forces, const std::uint32_t* task_count,
@@ -279,7 +335,7 @@ cudaError_t launch_shell_class(
 cudaError_t launch_shell_class_fock(
     unsigned shell_class, cudaStream_t stream, bool unrestricted,
     unsigned worker_blocks, const void* tasks,
-    const double* primitive_exponents, const double* primitive_coefficients,
+    const std::int64_t* primitive_pair_offsets, const void* primitive_pairs,
     const double* ao_coefficients, const void* atom_positions,
     double screening_tolerance, const double* schwarz_bounds,
     const double* density, double* fock, const std::uint32_t* task_count,
@@ -301,32 +357,34 @@ def emit_registry_source(
     fock_specs = tuple(fock_specifications)
     declarations = "\n".join(
         f"""extern "C" cudaError_t qce_launch_generated_{spec.name}(
-    cudaStream_t, bool, unsigned, const void*, const double*, const double*,
-    const double*, const void*, double, const double*, const double*, double*,
+    cudaStream_t, bool, unsigned, const void*, const std::int64_t*,
+    const void*, const double*, const void*, double, const double*,
+    const double*, double*,
     const std::uint32_t*, std::uint32_t*);"""
         for spec in specs
     )
     cases = "\n".join(
         f"""    case {shell_class_index(spec)}U:
       return qce_launch_generated_{spec.name}(
-          stream, unrestricted, worker_blocks, tasks, primitive_exponents,
-          primitive_coefficients, ao_coefficients, atom_positions,
+          stream, unrestricted, worker_blocks, tasks, primitive_pair_offsets,
+          primitive_pairs, ao_coefficients, atom_positions,
           screening_tolerance, schwarz_bounds, density, forces, task_count,
           task_head);"""
         for spec in specs
     )
     fock_declarations = "\n".join(
         f"""extern "C" cudaError_t qce_launch_generated_{spec.name}_fock(
-    cudaStream_t, bool, unsigned, const void*, const double*, const double*,
-    const double*, const void*, double, const double*, const double*, double*,
+    cudaStream_t, bool, unsigned, const void*, const std::int64_t*,
+    const void*, const double*, const void*, double, const double*,
+    const double*, double*,
     const std::uint32_t*, std::uint32_t*);"""
         for spec in fock_specs
     )
     fock_cases = "\n".join(
         f"""    case {shell_class_index(spec)}U:
       return qce_launch_generated_{spec.name}_fock(
-          stream, unrestricted, worker_blocks, tasks, primitive_exponents,
-          primitive_coefficients, ao_coefficients, atom_positions,
+          stream, unrestricted, worker_blocks, tasks, primitive_pair_offsets,
+          primitive_pairs, ao_coefficients, atom_positions,
           screening_tolerance, schwarz_bounds, density, fock, task_count,
           task_head);"""
         for spec in fock_specs
@@ -390,7 +448,7 @@ std::uint64_t enabled_fock_shell_class_mask() noexcept {{
 cudaError_t launch_shell_class(
     unsigned shell_class, cudaStream_t stream, bool unrestricted,
     unsigned worker_blocks, const void* tasks,
-    const double* primitive_exponents, const double* primitive_coefficients,
+    const std::int64_t* primitive_pair_offsets, const void* primitive_pairs,
     const double* ao_coefficients, const void* atom_positions,
     double screening_tolerance, const double* schwarz_bounds,
     const double* density, double* forces, const std::uint32_t* task_count,
@@ -404,7 +462,7 @@ cudaError_t launch_shell_class(
 cudaError_t launch_shell_class_fock(
     unsigned shell_class, cudaStream_t stream, bool unrestricted,
     unsigned worker_blocks, const void* tasks,
-    const double* primitive_exponents, const double* primitive_coefficients,
+    const std::int64_t* primitive_pair_offsets, const void* primitive_pairs,
     const double* ao_coefficients, const void* atom_positions,
     double screening_tolerance, const double* schwarz_bounds,
     const double* density, double* fock, const std::uint32_t* task_count,

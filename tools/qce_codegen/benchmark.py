@@ -26,6 +26,7 @@ from .dppp_dispatch import (
     _generic_task_component_setup,
     _specialize_dppp_identifiers,
     emit_shell_class_fused_cuda,
+    emit_uncached_primitive_geometry_cuda,
 )
 from .shell_spec import DDPS_SPEC, DPDS_SPEC, DPPP_SPEC, ShellClassSpec
 
@@ -121,7 +122,7 @@ QCE_ANGULAR_COEFFICIENT
           for (std::uint64_t d = shared.task.primitive_begin[3];
                d < shared.task.primitive_end[3]; ++d) {
             GeneratedDpppPrimitiveGeometry primitive;
-            generated_dppp_make_primitive_geometry(
+            generated_dppp_make_primitive_geometry_uncached(
                 primitive_exponents[a], shared.positions[0],
                 primitive_exponents[b], shared.positions[1],
                 primitive_exponents[c], shared.positions[2],
@@ -244,6 +245,59 @@ int main() {
   const GeneratedDpppVec3 base_positions[4] = {
       {0.1, -0.3, 0.2}, {-0.4, 0.2, 0.5},
       {0.6, -0.1, -0.2}, {-0.2, 0.4, -0.6}};
+  const std::size_t primitive_pairs_per_shell_pair =
+      kPrimitiveCount * kPrimitiveCount;
+  std::vector<std::int64_t> primitive_pair_offsets = {
+      0,
+      static_cast<std::int64_t>(primitive_pairs_per_shell_pair),
+      static_cast<std::int64_t>(2U * primitive_pairs_per_shell_pair),
+  };
+  std::vector<GeneratedDpppPrimitivePairData> primitive_pairs(
+      2U * primitive_pairs_per_shell_pair);
+  for (unsigned shell_pair = 0; shell_pair < 2U; ++shell_pair) {
+    const unsigned first_center = shell_pair * 2U;
+    const unsigned second_center = first_center + 1U;
+    for (unsigned first_primitive = 0; first_primitive < kPrimitiveCount;
+         ++first_primitive) {
+      for (unsigned second_primitive = 0; second_primitive < kPrimitiveCount;
+           ++second_primitive) {
+        const double alpha =
+            exponents[first_center * kPrimitiveCount + first_primitive];
+        const double beta =
+            exponents[second_center * kPrimitiveCount + second_primitive];
+        const double exponent_sum = alpha + beta;
+        const double reduced_exponent = alpha * beta / exponent_sum;
+        const double dx = base_positions[first_center].x -
+            base_positions[second_center].x;
+        const double dy = base_positions[first_center].y -
+            base_positions[second_center].y;
+        const double dz = base_positions[first_center].z -
+            base_positions[second_center].z;
+        const std::size_t ordinal =
+            shell_pair * primitive_pairs_per_shell_pair +
+            first_primitive * kPrimitiveCount + second_primitive;
+        GeneratedDpppPrimitivePairData& pair = primitive_pairs[ordinal];
+        pair.exponent_sum = exponent_sum;
+        pair.reduced_exponent = reduced_exponent;
+        pair.product_center = {
+            (alpha * base_positions[first_center].x +
+             beta * base_positions[second_center].x) / exponent_sum,
+            (alpha * base_positions[first_center].y +
+             beta * base_positions[second_center].y) / exponent_sum,
+            (alpha * base_positions[first_center].z +
+             beta * base_positions[second_center].z) / exponent_sum,
+        };
+        pair.weighted_coefficient =
+            primitive_coefficients[
+                first_center * kPrimitiveCount + first_primitive] *
+            primitive_coefficients[
+                second_center * kPrimitiveCount + second_primitive] *
+            exp(-reduced_exponent * (dx * dx + dy * dy + dz * dz));
+        pair.first_product_scale = alpha / exponent_sum;
+        pair.second_product_scale = beta / exponent_sum;
+      }
+    }
+  }
   for (unsigned task_index = 0; task_index < kTaskCount; ++task_index) {
     GeneratedDpppShellTask& task = tasks[task_index];
     for (unsigned center = 0; center < 4U; ++center) {
@@ -257,12 +311,17 @@ QCE_AO_OFFSETS
     task.density_offset = 0U;
     task.spin_offset = 0U;
     task.matrix_order = static_cast<std::uint32_t>(n);
+    task.shell_pair[0] = 0U;
+    task.shell_pair[1] = 1U;
+    task.reversed_shell_pair_mask = 0U;
   }
 
   GeneratedDpppShellTask* device_tasks = nullptr;
   GeneratedDpppVec3* device_positions = nullptr;
   double* device_exponents = nullptr;
   double* device_primitive_coefficients = nullptr;
+  std::int64_t* device_primitive_pair_offsets = nullptr;
+  GeneratedDpppPrimitivePairData* device_primitive_pairs = nullptr;
   double* device_ao_coefficients = nullptr;
   double* device_density = nullptr;
   double* device_forces = nullptr;
@@ -272,6 +331,12 @@ QCE_AO_OFFSETS
   QCE_CUDA_CHECK(cudaMalloc(&device_exponents, exponents.size() * sizeof(double)));
   QCE_CUDA_CHECK(cudaMalloc(&device_primitive_coefficients,
                             primitive_coefficients.size() * sizeof(double)));
+  QCE_CUDA_CHECK(cudaMalloc(
+      &device_primitive_pair_offsets,
+      primitive_pair_offsets.size() * sizeof(primitive_pair_offsets[0])));
+  QCE_CUDA_CHECK(cudaMalloc(
+      &device_primitive_pairs,
+      primitive_pairs.size() * sizeof(primitive_pairs[0])));
   QCE_CUDA_CHECK(cudaMalloc(&device_ao_coefficients,
                             ao_coefficients.size() * sizeof(double)));
   QCE_CUDA_CHECK(cudaMalloc(&device_density, density.size() * sizeof(double)));
@@ -286,6 +351,14 @@ QCE_AO_OFFSETS
                             primitive_coefficients.data(),
                             primitive_coefficients.size() * sizeof(double),
                             cudaMemcpyHostToDevice));
+  QCE_CUDA_CHECK(cudaMemcpy(
+      device_primitive_pair_offsets, primitive_pair_offsets.data(),
+      primitive_pair_offsets.size() * sizeof(primitive_pair_offsets[0]),
+      cudaMemcpyHostToDevice));
+  QCE_CUDA_CHECK(cudaMemcpy(
+      device_primitive_pairs, primitive_pairs.data(),
+      primitive_pairs.size() * sizeof(primitive_pairs[0]),
+      cudaMemcpyHostToDevice));
   QCE_CUDA_CHECK(cudaMemcpy(device_ao_coefficients, ao_coefficients.data(),
                             ao_coefficients.size() * sizeof(double), cudaMemcpyHostToDevice));
   QCE_CUDA_CHECK(cudaMemcpy(device_density, density.data(),
@@ -294,7 +367,7 @@ QCE_AO_OFFSETS
   auto launch_fused = [&]() {
     generated_dppp_shell_class_force_rhf_kernel<<<kTaskCount,
         kGeneratedDpppBlockThreads>>>(
-        device_tasks, device_exponents, device_primitive_coefficients,
+        device_tasks, device_primitive_pairs, device_primitive_pair_offsets,
         device_ao_coefficients, device_positions, 0.0, nullptr,
         device_density, device_forces, kTaskCount);
   };
@@ -343,6 +416,8 @@ QCE_AO_OFFSETS
   cudaFree(device_forces);
   cudaFree(device_density);
   cudaFree(device_ao_coefficients);
+  cudaFree(device_primitive_pairs);
+  cudaFree(device_primitive_pair_offsets);
   cudaFree(device_primitive_coefficients);
   cudaFree(device_exponents);
   cudaFree(device_positions);
@@ -416,6 +491,7 @@ def emit_shell_class_benchmark_cuda(
     return (
         _CUDA_PRELUDE
         + emit_shell_class_fused_cuda(spec)
+        + emit_uncached_primitive_geometry_cuda(spec)
         + _benchmark_unfused_kernel(spec)
         + host
     )

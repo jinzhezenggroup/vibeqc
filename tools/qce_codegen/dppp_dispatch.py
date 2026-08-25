@@ -565,8 +565,8 @@ __device__ __forceinline__ void generated_dppp_accumulate_fock_integral(
 template <bool Unrestricted>
 __device__ __forceinline__ void generated_dppp_shell_class_fock_task(
     const GeneratedDpppShellTask* tasks,
-    const double* primitive_exponents,
-    const double* primitive_coefficients,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
     const double* ao_coefficients,
     const GeneratedDpppVec3* atom_positions,
     double screening_tolerance,
@@ -614,39 +614,40 @@ __device__ __forceinline__ void generated_dppp_shell_class_fock_task(
       : 0.0;
   double component_integral = 0.0;
 
-  for (std::uint64_t a = shared.task.primitive_begin[0];
-       a < shared.task.primitive_end[0]; ++a) {{
-    for (std::uint64_t b = shared.task.primitive_begin[1];
-         b < shared.task.primitive_end[1]; ++b) {{
-      for (std::uint64_t c = shared.task.primitive_begin[2];
-           c < shared.task.primitive_end[2]; ++c) {{
-        for (std::uint64_t d = shared.task.primitive_begin[3];
-             d < shared.task.primitive_end[3]; ++d) {{
-          if (lane == 0U) {{
-            generated_dppp_make_primitive_geometry(
-                primitive_exponents[a], shared.positions[0],
-                primitive_exponents[b], shared.positions[1],
-                primitive_exponents[c], shared.positions[2],
-                primitive_exponents[d], shared.positions[3],
-                primitive_coefficients[a] * primitive_coefficients[b] *
-                    primitive_coefficients[c] * primitive_coefficients[d],
-                shared.primitive);
-          }}
-          {barrier}
-          if (lane < kGeneratedDpppFockCoulombStateCount) {{
-            shared.coulomb[lane] = generated_dppp_coulomb(
-                generated_dppp_coulomb_states[lane], shared.primitive);
-          }}
-          {barrier}
-          if (retained_by_schwarz) {{
-            component_integral += angular_coefficient *
-                shared.primitive.primitive_coefficient *
-                generated_dppp_component_value<true>(
-                    component, shared.primitive, shared.coulomb);
-          }}
-          {barrier}
-        }}
+  const std::int64_t first_pair_begin =
+      primitive_pair_offsets[shared.task.shell_pair[0]];
+  const std::int64_t first_pair_end =
+      primitive_pair_offsets[shared.task.shell_pair[0] + 1U];
+  const std::int64_t second_pair_begin =
+      primitive_pair_offsets[shared.task.shell_pair[1]];
+  const std::int64_t second_pair_end =
+      primitive_pair_offsets[shared.task.shell_pair[1] + 1U];
+  for (std::int64_t first_primitive = first_pair_begin;
+       first_primitive < first_pair_end; ++first_primitive) {{
+    for (std::int64_t second_primitive = second_pair_begin;
+         second_primitive < second_pair_end; ++second_primitive) {{
+      if (lane == 0U) {{
+        generated_dppp_make_primitive_geometry(
+            primitive_pairs[first_primitive],
+            primitive_pairs[second_primitive],
+            (shared.task.reversed_shell_pair_mask & 1U) != 0U,
+            (shared.task.reversed_shell_pair_mask & 2U) != 0U,
+            shared.positions[0], shared.positions[1],
+            shared.positions[2], shared.positions[3], shared.primitive);
       }}
+      {barrier}
+      if (lane < kGeneratedDpppFockCoulombStateCount) {{
+        shared.coulomb[lane] = generated_dppp_coulomb(
+            generated_dppp_coulomb_states[lane], shared.primitive);
+      }}
+      {barrier}
+      if (retained_by_schwarz) {{
+        component_integral += angular_coefficient *
+            shared.primitive.primitive_coefficient *
+            generated_dppp_component_value<true>(
+                component, shared.primitive, shared.coulomb);
+      }}
+      {barrier}
     }}
   }}
   if (retained_by_schwarz && component_integral != 0.0) {{
@@ -659,8 +660,8 @@ template <bool Unrestricted>
 __device__ __forceinline__ void
 generated_dppp_shell_class_fock_persistent(
     const GeneratedDpppShellTask* tasks,
-    const double* primitive_exponents,
-    const double* primitive_coefficients,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
     const double* ao_coefficients,
     const GeneratedDpppVec3* atom_positions,
     double screening_tolerance,
@@ -677,7 +678,7 @@ generated_dppp_shell_class_fock_persistent(
     const std::uint32_t task_index = shared_task_index;
     if (task_index >= *task_count) return;
     generated_dppp_shell_class_fock_task<Unrestricted>(
-        tasks, primitive_exponents, primitive_coefficients, ao_coefficients,
+        tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
         atom_positions, screening_tolerance, schwarz_bounds, density, fock,
         static_cast<std::size_t>(task_index));
     {barrier}
@@ -688,8 +689,8 @@ extern "C" __global__ __launch_bounds__(
     kGeneratedDpppFockBlockThreads, {minimum_blocks_per_sm})
 void generated_dppp_shell_class_fock_rhf_persistent_kernel(
     const GeneratedDpppShellTask* tasks,
-    const double* primitive_exponents,
-    const double* primitive_coefficients,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
     const double* ao_coefficients,
     const GeneratedDpppVec3* atom_positions,
     double screening_tolerance,
@@ -699,7 +700,7 @@ void generated_dppp_shell_class_fock_rhf_persistent_kernel(
     const std::uint32_t* task_count,
     std::uint32_t* task_head) {{
   generated_dppp_shell_class_fock_persistent<false>(
-      tasks, primitive_exponents, primitive_coefficients, ao_coefficients,
+      tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
       atom_positions, screening_tolerance, schwarz_bounds, density, fock,
       task_count, task_head);
 }}
@@ -708,8 +709,8 @@ extern "C" __global__ __launch_bounds__(
     kGeneratedDpppFockBlockThreads, {minimum_blocks_per_sm})
 void generated_dppp_shell_class_fock_uhf_persistent_kernel(
     const GeneratedDpppShellTask* tasks,
-    const double* primitive_exponents,
-    const double* primitive_coefficients,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
     const double* ao_coefficients,
     const GeneratedDpppVec3* atom_positions,
     double screening_tolerance,
@@ -719,7 +720,7 @@ void generated_dppp_shell_class_fock_uhf_persistent_kernel(
     const std::uint32_t* task_count,
     std::uint32_t* task_head) {{
   generated_dppp_shell_class_fock_persistent<true>(
-      tasks, primitive_exponents, primitive_coefficients, ao_coefficients,
+      tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
       atom_positions, screening_tolerance, schwarz_bounds, density, fock,
       task_count, task_head);
 }}
@@ -804,6 +805,16 @@ def emit_shell_class_fused_cuda(
 
 struct GeneratedDpppVec3 {{ double x; double y; double z; }};
 
+/** Geometry and contraction data reused by every quartet with one shell pair. */
+struct GeneratedDpppPrimitivePairData {{
+  double exponent_sum;
+  double reduced_exponent;
+  GeneratedDpppVec3 product_center;
+  double weighted_coefficient;
+  double first_product_scale;
+  double second_product_scale;
+}};
+
 /** Canonical task ABI kept independent of the production DeviceBatch layout. */
 struct GeneratedDpppShellTask {{
   std::uint64_t primitive_begin[4];
@@ -813,6 +824,8 @@ struct GeneratedDpppShellTask {{
   std::uint64_t density_offset;
   std::uint64_t spin_offset;
   std::uint32_t matrix_order;
+  std::uint32_t shell_pair[2];
+  std::uint32_t reversed_shell_pair_mask;
   std::uint32_t shell[4];
   std::uint32_t atom[4];
 }};
@@ -1138,7 +1151,327 @@ __device__ __forceinline__ double generated_dppp_density_coefficient(
   return coefficient;
 }}
 
+/** Combine two reusable shell-pair records into one primitive quartet. */
 __device__ __forceinline__ void generated_dppp_make_primitive_geometry(
+    const GeneratedDpppPrimitivePairData& first_pair,
+    const GeneratedDpppPrimitivePairData& second_pair,
+    bool first_pair_reversed,
+    bool second_pair_reversed,
+    const GeneratedDpppVec3& first,
+    const GeneratedDpppVec3& second,
+    const GeneratedDpppVec3& third,
+    const GeneratedDpppVec3& fourth,
+    GeneratedDpppPrimitiveGeometry& geometry) {{
+  const double p = first_pair.exponent_sum;
+  const double q = second_pair.exponent_sum;
+  geometry.rho = p * q / (p + q);
+  geometry.inverse_two_p = 0.5 / p;
+  geometry.inverse_two_q = 0.5 / q;
+  geometry.product_scales[0] = first_pair_reversed
+      ? first_pair.second_product_scale : first_pair.first_product_scale;
+  geometry.product_scales[1] = first_pair_reversed
+      ? first_pair.first_product_scale : first_pair.second_product_scale;
+  geometry.product_scales[2] = second_pair_reversed
+      ? second_pair.second_product_scale : second_pair.first_product_scale;
+  double argument_squared_distance = 0.0;
+#pragma unroll
+  for (unsigned axis = 0; axis < 3U; ++axis) {{
+    const double first_coordinate = generated_dppp_axis(first, axis);
+    const double second_coordinate = generated_dppp_axis(second, axis);
+    const double third_coordinate = generated_dppp_axis(third, axis);
+    const double fourth_coordinate = generated_dppp_axis(fourth, axis);
+    const double product_p =
+        generated_dppp_axis(first_pair.product_center, axis);
+    const double product_q =
+        generated_dppp_axis(second_pair.product_center, axis);
+    geometry.pair_shifts[0][axis] = product_p - first_coordinate;
+    geometry.pair_shifts[1][axis] = product_p - second_coordinate;
+    geometry.pair_shifts[2][axis] = product_q - third_coordinate;
+    geometry.pair_shifts[3][axis] = product_q - fourth_coordinate;
+    geometry.difference[axis] = product_p - product_q;
+    geometry.decay_gradients[0][axis] =
+        -2.0 * first_pair.reduced_exponent *
+        (first_coordinate - second_coordinate);
+    geometry.decay_gradients[1][axis] =
+        2.0 * first_pair.reduced_exponent *
+        (first_coordinate - second_coordinate);
+    geometry.decay_gradients[2][axis] =
+        -2.0 * second_pair.reduced_exponent *
+        (third_coordinate - fourth_coordinate);
+    argument_squared_distance +=
+        geometry.difference[axis] * geometry.difference[axis];
+    geometry.coordinate_powers[axis][0] = 1.0;
+#pragma unroll
+    for (unsigned power = 1; power <= {maximum_order}U; ++power) {{
+      geometry.coordinate_powers[axis][power] =
+          geometry.coordinate_powers[axis][power - 1U] *
+          geometry.difference[axis];
+    }}
+  }}
+  boys_values<{maximum_order}>(
+      geometry.rho * argument_squared_distance, geometry.boys);
+  geometry.negative_two_rho_powers[0] = 1.0;
+#pragma unroll
+  for (unsigned power = 1; power <= {maximum_order}U; ++power) {{
+    geometry.negative_two_rho_powers[power] =
+        geometry.negative_two_rho_powers[power - 1U] *
+        (-2.0 * geometry.rho);
+  }}
+  geometry.prefactor =
+      34.986836655249725 / (p * q * sqrt(p + q));
+  geometry.primitive_coefficient =
+      first_pair.weighted_coefficient * second_pair.weighted_coefficient;
+}}
+
+template <bool Unrestricted>
+__device__ __forceinline__ void generated_dppp_shell_class_force_task(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    std::size_t task_index) {{
+  struct Shared {{
+    GeneratedDpppShellTask task;
+    GeneratedDpppVec3 positions[4];
+    GeneratedDpppPrimitiveGeometry primitive;
+    double coulomb[kGeneratedDpppCoulombStateCount];
+    double warp_sums[kGeneratedDpppWarpCount][12];
+  }};
+  __shared__ Shared shared;
+  const unsigned lane = threadIdx.x;
+  if (blockDim.x != kGeneratedDpppBlockThreads) return;
+  if (lane == 0U) {{
+    shared.task = tasks[task_index];
+#pragma unroll
+    for (unsigned center = 0; center < 4U; ++center) {{
+      shared.positions[center] = atom_positions[shared.task.atom[center]];
+    }}
+  }}
+  __syncthreads();
+
+  const bool component_lane = lane < kGeneratedDpppComponentCount;
+  const unsigned component = component_lane ? lane : 0U;
+{task_component_setup}
+  const std::size_t matrix_order =
+      static_cast<std::size_t>(shared.task.matrix_order);
+  const bool retained_by_schwarz = schwarz_bounds == nullptr ||
+      schwarz_bounds[
+          shared.task.density_offset +
+          generated_dppp_matrix_index(i, j, matrix_order)] *
+          schwarz_bounds[
+              shared.task.density_offset +
+              generated_dppp_matrix_index(k, l, matrix_order)] >=
+          screening_tolerance;
+  const double density_coefficient =
+      component_lane && unique_ket_component && retained_by_schwarz
+      ? generated_dppp_density_coefficient<Unrestricted>(
+            shared.task, i, j, k, l, density)
+      : 0.0;
+  const double angular_coefficient = component_lane
+      ? ao_coefficients[shared.task.ao_coefficient_begin[0] + {component_names[0]}] *
+        ao_coefficients[shared.task.ao_coefficient_begin[1] + {component_names[1]}] *
+        ao_coefficients[shared.task.ao_coefficient_begin[2] + {component_names[2]}] *
+        ao_coefficients[shared.task.ao_coefficient_begin[3] + {component_names[3]}]
+      : 0.0;
+  double component_force[12]{{}};
+
+  const std::int64_t first_pair_begin =
+      primitive_pair_offsets[shared.task.shell_pair[0]];
+  const std::int64_t first_pair_end =
+      primitive_pair_offsets[shared.task.shell_pair[0] + 1U];
+  const std::int64_t second_pair_begin =
+      primitive_pair_offsets[shared.task.shell_pair[1]];
+  const std::int64_t second_pair_end =
+      primitive_pair_offsets[shared.task.shell_pair[1] + 1U];
+  for (std::int64_t first_primitive = first_pair_begin;
+       first_primitive < first_pair_end; ++first_primitive) {{
+    for (std::int64_t second_primitive = second_pair_begin;
+         second_primitive < second_pair_end; ++second_primitive) {{
+      if (lane == 0U) {{
+        generated_dppp_make_primitive_geometry(
+            primitive_pairs[first_primitive],
+            primitive_pairs[second_primitive],
+            (shared.task.reversed_shell_pair_mask & 1U) != 0U,
+            (shared.task.reversed_shell_pair_mask & 2U) != 0U,
+            shared.positions[0], shared.positions[1],
+            shared.positions[2], shared.positions[3], shared.primitive);
+      }}
+      __syncthreads();
+      if (lane < kGeneratedDpppCoulombStateCount) {{
+        shared.coulomb[lane] = generated_dppp_coulomb(
+            generated_dppp_coulomb_states[lane], shared.primitive);
+      }}
+      __syncthreads();
+      if (density_coefficient != 0.0) {{
+        double primitive_gradient[4][3];
+        generated_dppp_component_gradient<true>(
+            component, shared.primitive, shared.coulomb,
+            primitive_gradient);
+        const double scale = -density_coefficient * angular_coefficient *
+            shared.primitive.primitive_coefficient;
+#pragma unroll
+        for (unsigned center = 0; center < 4U; ++center) {{
+#pragma unroll
+          for (unsigned coordinate = 0; coordinate < 3U; ++coordinate) {{
+            component_force[center * 3U + coordinate] +=
+                scale * primitive_gradient[center][coordinate];
+          }}
+        }}
+      }}
+      __syncthreads();
+    }}
+  }}
+
+  const unsigned warp = lane / 32U;
+  const unsigned warp_lane = lane % 32U;
+#pragma unroll
+  for (unsigned slot = 0; slot < 12U; ++slot) {{
+    double value = component_force[slot];
+#pragma unroll
+    for (unsigned offset = 16U; offset != 0U; offset /= 2U) {{
+      value += __shfl_down_sync(0xffffffffU, value, offset);
+    }}
+    if (warp_lane == 0U) shared.warp_sums[warp][slot] = value;
+  }}
+  __syncthreads();
+  if (lane < 12U) {{
+    double value = 0.0;
+#pragma unroll
+    for (unsigned source_warp = 0; source_warp < kGeneratedDpppWarpCount;
+         ++source_warp) {{
+      value += shared.warp_sums[source_warp][lane];
+    }}
+    if (value != 0.0) {{
+      const unsigned center = lane / 3U;
+      const unsigned coordinate = lane % 3U;
+      atomicAdd(forces + static_cast<std::size_t>(shared.task.atom[center]) * 3U +
+                    coordinate,
+                value);
+    }}
+  }}
+}}
+
+extern "C" __global__ __launch_bounds__(kGeneratedDpppBlockThreads, {minimum_blocks_per_sm})
+void generated_dppp_shell_class_force_rhf_kernel(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    std::size_t task_count) {{
+  if (blockIdx.x >= task_count) return;
+  generated_dppp_shell_class_force_task<false>(
+      tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+      atom_positions, screening_tolerance, schwarz_bounds, density, forces,
+      static_cast<std::size_t>(blockIdx.x));
+}}
+
+extern "C" __global__ __launch_bounds__(kGeneratedDpppBlockThreads, {minimum_blocks_per_sm})
+void generated_dppp_shell_class_force_uhf_kernel(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    std::size_t task_count) {{
+  if (blockIdx.x >= task_count) return;
+  generated_dppp_shell_class_force_task<true>(
+      tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+      atom_positions, screening_tolerance, schwarz_bounds, density, forces,
+      static_cast<std::size_t>(blockIdx.x));
+}}
+
+/** Persistent workers avoid launching one block per topology-capacity slot. */
+template <bool Unrestricted>
+__device__ __forceinline__ void generated_dppp_shell_class_force_persistent(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    const std::uint32_t* task_count,
+    std::uint32_t* task_head) {{
+  const unsigned lane = threadIdx.x;
+  __shared__ std::uint32_t shared_task_index;
+  while (true) {{
+    if (lane == 0U) shared_task_index = atomicAdd(task_head, 1U);
+    __syncthreads();
+    const std::uint32_t task_index = shared_task_index;
+    if (task_index >= *task_count) return;
+    generated_dppp_shell_class_force_task<Unrestricted>(
+        tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+        atom_positions, screening_tolerance, schwarz_bounds, density, forces,
+        static_cast<std::size_t>(task_index));
+    __syncthreads();
+  }}
+}}
+
+extern "C" __global__ __launch_bounds__(kGeneratedDpppBlockThreads, {minimum_blocks_per_sm})
+void generated_dppp_shell_class_force_rhf_persistent_kernel(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    const std::uint32_t* task_count,
+    std::uint32_t* task_head) {{
+  generated_dppp_shell_class_force_persistent<false>(
+      tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+      atom_positions, screening_tolerance, schwarz_bounds, density, forces,
+      task_count, task_head);
+}}
+
+extern "C" __global__ __launch_bounds__(kGeneratedDpppBlockThreads, {minimum_blocks_per_sm})
+void generated_dppp_shell_class_force_uhf_persistent_kernel(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    const std::uint32_t* task_count,
+    std::uint32_t* task_head) {{
+  generated_dppp_shell_class_force_persistent<true>(
+      tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+      atom_positions, screening_tolerance, schwarz_bounds, density, forces,
+      task_count, task_head);
+}}
+"""
+    if include_fock:
+        source += _emit_shell_class_fock_cuda(spec, plan)
+    return _specialize_dppp_identifiers(source, spec)
+
+
+def emit_uncached_primitive_geometry_cuda(spec: ShellClassSpec) -> str:
+    """Emit the primitive-quartet setup retained by standalone baselines."""
+
+    maximum_order = spec.maximum_force_coulomb_order
+    source = f"""
+__device__ __forceinline__ void generated_dppp_make_primitive_geometry_uncached(
     double alpha, const GeneratedDpppVec3& first,
     double beta, const GeneratedDpppVec3& second,
     double gamma, const GeneratedDpppVec3& third,
@@ -1193,7 +1526,8 @@ __device__ __forceinline__ void generated_dppp_make_primitive_geometry(
           geometry.difference[axis];
     }}
   }}
-  boys_values<{maximum_order}>(geometry.rho * argument_squared_distance, geometry.boys);
+  boys_values<{maximum_order}>(
+      geometry.rho * argument_squared_distance, geometry.boys);
   geometry.negative_two_rho_powers[0] = 1.0;
 #pragma unroll
   for (unsigned power = 1; power <= {maximum_order}U; ++power) {{
@@ -1206,246 +1540,7 @@ __device__ __forceinline__ void generated_dppp_make_primitive_geometry(
       exp(pair_decay_exponent);
   geometry.primitive_coefficient = primitive_coefficient;
 }}
-
-template <bool Unrestricted>
-__device__ __forceinline__ void generated_dppp_shell_class_force_task(
-    const GeneratedDpppShellTask* tasks,
-    const double* primitive_exponents,
-    const double* primitive_coefficients,
-    const double* ao_coefficients,
-    const GeneratedDpppVec3* atom_positions,
-    double screening_tolerance,
-    const double* schwarz_bounds,
-    const double* density,
-    double* forces,
-    std::size_t task_index) {{
-  struct Shared {{
-    GeneratedDpppShellTask task;
-    GeneratedDpppVec3 positions[4];
-    GeneratedDpppPrimitiveGeometry primitive;
-    double coulomb[kGeneratedDpppCoulombStateCount];
-    double warp_sums[kGeneratedDpppWarpCount][12];
-  }};
-  __shared__ Shared shared;
-  const unsigned lane = threadIdx.x;
-  if (blockDim.x != kGeneratedDpppBlockThreads) return;
-  if (lane == 0U) {{
-    shared.task = tasks[task_index];
-#pragma unroll
-    for (unsigned center = 0; center < 4U; ++center) {{
-      shared.positions[center] = atom_positions[shared.task.atom[center]];
-    }}
-  }}
-  __syncthreads();
-
-  const bool component_lane = lane < kGeneratedDpppComponentCount;
-  const unsigned component = component_lane ? lane : 0U;
-{task_component_setup}
-  const std::size_t matrix_order =
-      static_cast<std::size_t>(shared.task.matrix_order);
-  const bool retained_by_schwarz = schwarz_bounds == nullptr ||
-      schwarz_bounds[
-          shared.task.density_offset +
-          generated_dppp_matrix_index(i, j, matrix_order)] *
-          schwarz_bounds[
-              shared.task.density_offset +
-              generated_dppp_matrix_index(k, l, matrix_order)] >=
-          screening_tolerance;
-  const double density_coefficient =
-      component_lane && unique_ket_component && retained_by_schwarz
-      ? generated_dppp_density_coefficient<Unrestricted>(
-            shared.task, i, j, k, l, density)
-      : 0.0;
-  const double angular_coefficient = component_lane
-      ? ao_coefficients[shared.task.ao_coefficient_begin[0] + {component_names[0]}] *
-        ao_coefficients[shared.task.ao_coefficient_begin[1] + {component_names[1]}] *
-        ao_coefficients[shared.task.ao_coefficient_begin[2] + {component_names[2]}] *
-        ao_coefficients[shared.task.ao_coefficient_begin[3] + {component_names[3]}]
-      : 0.0;
-  double component_force[12]{{}};
-
-  for (std::uint64_t a = shared.task.primitive_begin[0];
-       a < shared.task.primitive_end[0]; ++a) {{
-    for (std::uint64_t b = shared.task.primitive_begin[1];
-         b < shared.task.primitive_end[1]; ++b) {{
-      for (std::uint64_t c = shared.task.primitive_begin[2];
-           c < shared.task.primitive_end[2]; ++c) {{
-        for (std::uint64_t d = shared.task.primitive_begin[3];
-             d < shared.task.primitive_end[3]; ++d) {{
-          if (lane == 0U) {{
-            generated_dppp_make_primitive_geometry(
-                primitive_exponents[a], shared.positions[0],
-                primitive_exponents[b], shared.positions[1],
-                primitive_exponents[c], shared.positions[2],
-                primitive_exponents[d], shared.positions[3],
-                primitive_coefficients[a] * primitive_coefficients[b] *
-                    primitive_coefficients[c] * primitive_coefficients[d],
-                shared.primitive);
-          }}
-          __syncthreads();
-          if (lane < kGeneratedDpppCoulombStateCount) {{
-            shared.coulomb[lane] = generated_dppp_coulomb(
-                generated_dppp_coulomb_states[lane], shared.primitive);
-          }}
-          __syncthreads();
-          if (density_coefficient != 0.0) {{
-            double primitive_gradient[4][3];
-            generated_dppp_component_gradient<true>(
-                component, shared.primitive, shared.coulomb,
-                primitive_gradient);
-            const double scale = -density_coefficient * angular_coefficient *
-                shared.primitive.primitive_coefficient;
-#pragma unroll
-            for (unsigned center = 0; center < 4U; ++center) {{
-#pragma unroll
-              for (unsigned coordinate = 0; coordinate < 3U; ++coordinate) {{
-                component_force[center * 3U + coordinate] +=
-                    scale * primitive_gradient[center][coordinate];
-              }}
-            }}
-          }}
-          __syncthreads();
-        }}
-      }}
-    }}
-  }}
-
-  const unsigned warp = lane / 32U;
-  const unsigned warp_lane = lane % 32U;
-#pragma unroll
-  for (unsigned slot = 0; slot < 12U; ++slot) {{
-    double value = component_force[slot];
-#pragma unroll
-    for (unsigned offset = 16U; offset != 0U; offset /= 2U) {{
-      value += __shfl_down_sync(0xffffffffU, value, offset);
-    }}
-    if (warp_lane == 0U) shared.warp_sums[warp][slot] = value;
-  }}
-  __syncthreads();
-  if (lane < 12U) {{
-    double value = 0.0;
-#pragma unroll
-    for (unsigned source_warp = 0; source_warp < kGeneratedDpppWarpCount;
-         ++source_warp) {{
-      value += shared.warp_sums[source_warp][lane];
-    }}
-    if (value != 0.0) {{
-      const unsigned center = lane / 3U;
-      const unsigned coordinate = lane % 3U;
-      atomicAdd(forces + static_cast<std::size_t>(shared.task.atom[center]) * 3U +
-                    coordinate,
-                value);
-    }}
-  }}
-}}
-
-extern "C" __global__ __launch_bounds__(kGeneratedDpppBlockThreads, {minimum_blocks_per_sm})
-void generated_dppp_shell_class_force_rhf_kernel(
-    const GeneratedDpppShellTask* tasks,
-    const double* primitive_exponents,
-    const double* primitive_coefficients,
-    const double* ao_coefficients,
-    const GeneratedDpppVec3* atom_positions,
-    double screening_tolerance,
-    const double* schwarz_bounds,
-    const double* density,
-    double* forces,
-    std::size_t task_count) {{
-  if (blockIdx.x >= task_count) return;
-  generated_dppp_shell_class_force_task<false>(
-      tasks, primitive_exponents, primitive_coefficients, ao_coefficients,
-      atom_positions, screening_tolerance, schwarz_bounds, density, forces,
-      static_cast<std::size_t>(blockIdx.x));
-}}
-
-extern "C" __global__ __launch_bounds__(kGeneratedDpppBlockThreads, {minimum_blocks_per_sm})
-void generated_dppp_shell_class_force_uhf_kernel(
-    const GeneratedDpppShellTask* tasks,
-    const double* primitive_exponents,
-    const double* primitive_coefficients,
-    const double* ao_coefficients,
-    const GeneratedDpppVec3* atom_positions,
-    double screening_tolerance,
-    const double* schwarz_bounds,
-    const double* density,
-    double* forces,
-    std::size_t task_count) {{
-  if (blockIdx.x >= task_count) return;
-  generated_dppp_shell_class_force_task<true>(
-      tasks, primitive_exponents, primitive_coefficients, ao_coefficients,
-      atom_positions, screening_tolerance, schwarz_bounds, density, forces,
-      static_cast<std::size_t>(blockIdx.x));
-}}
-
-/** Persistent workers avoid launching one block per topology-capacity slot. */
-template <bool Unrestricted>
-__device__ __forceinline__ void generated_dppp_shell_class_force_persistent(
-    const GeneratedDpppShellTask* tasks,
-    const double* primitive_exponents,
-    const double* primitive_coefficients,
-    const double* ao_coefficients,
-    const GeneratedDpppVec3* atom_positions,
-    double screening_tolerance,
-    const double* schwarz_bounds,
-    const double* density,
-    double* forces,
-    const std::uint32_t* task_count,
-    std::uint32_t* task_head) {{
-  const unsigned lane = threadIdx.x;
-  __shared__ std::uint32_t shared_task_index;
-  while (true) {{
-    if (lane == 0U) shared_task_index = atomicAdd(task_head, 1U);
-    __syncthreads();
-    const std::uint32_t task_index = shared_task_index;
-    if (task_index >= *task_count) return;
-    generated_dppp_shell_class_force_task<Unrestricted>(
-        tasks, primitive_exponents, primitive_coefficients, ao_coefficients,
-        atom_positions, screening_tolerance, schwarz_bounds, density, forces,
-        static_cast<std::size_t>(task_index));
-    __syncthreads();
-  }}
-}}
-
-extern "C" __global__ __launch_bounds__(kGeneratedDpppBlockThreads, {minimum_blocks_per_sm})
-void generated_dppp_shell_class_force_rhf_persistent_kernel(
-    const GeneratedDpppShellTask* tasks,
-    const double* primitive_exponents,
-    const double* primitive_coefficients,
-    const double* ao_coefficients,
-    const GeneratedDpppVec3* atom_positions,
-    double screening_tolerance,
-    const double* schwarz_bounds,
-    const double* density,
-    double* forces,
-    const std::uint32_t* task_count,
-    std::uint32_t* task_head) {{
-  generated_dppp_shell_class_force_persistent<false>(
-      tasks, primitive_exponents, primitive_coefficients, ao_coefficients,
-      atom_positions, screening_tolerance, schwarz_bounds, density, forces,
-      task_count, task_head);
-}}
-
-extern "C" __global__ __launch_bounds__(kGeneratedDpppBlockThreads, {minimum_blocks_per_sm})
-void generated_dppp_shell_class_force_uhf_persistent_kernel(
-    const GeneratedDpppShellTask* tasks,
-    const double* primitive_exponents,
-    const double* primitive_coefficients,
-    const double* ao_coefficients,
-    const GeneratedDpppVec3* atom_positions,
-    double screening_tolerance,
-    const double* schwarz_bounds,
-    const double* density,
-    double* forces,
-    const std::uint32_t* task_count,
-    std::uint32_t* task_head) {{
-  generated_dppp_shell_class_force_persistent<true>(
-      tasks, primitive_exponents, primitive_coefficients, ao_coefficients,
-      atom_positions, screening_tolerance, schwarz_bounds, density, forces,
-      task_count, task_head);
-}}
 """
-    if include_fock:
-        source += _emit_shell_class_fock_cuda(spec, plan)
     return _specialize_dppp_identifiers(source, spec)
 
 
