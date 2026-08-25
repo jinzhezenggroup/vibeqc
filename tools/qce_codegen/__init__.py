@@ -8,6 +8,11 @@ from .dppp_dispatch import (
     emit_dppp_fused_cuda,
     evaluate_dppp_fused_component,
 )
+from .fused_schedule import (
+    FusedShellPlan,
+    build_fused_shell_plan,
+    evaluate_fused_shell_component,
+)
 from .shell_class import (
     DpppComponentKernel,
     DpppContractionKernel,
@@ -35,6 +40,7 @@ __all__ = [
     "DDPS_SPEC",
     "DPDS_SPEC",
     "DPPP_SPEC",
+    "FusedShellPlan",
     "NvrtcCacheSpec",
     "PsssKernel",
     "ShellClassComponentKernel",
@@ -43,6 +49,7 @@ __all__ = [
     "build_dppp_component_kernel",
     "build_dppp_contraction_kernel",
     "build_dppp_fused_plan",
+    "build_fused_shell_plan",
     "build_psss_kernel",
     "build_shell_class_component_kernel",
     "build_shell_class_contraction_kernel",
@@ -50,5 +57,6 @@ __all__ = [
     "dppp_components",
     "emit_dppp_fused_cuda",
     "evaluate_dppp_fused_component",
+    "evaluate_fused_shell_component",
     "nvrtc_cache_key",
 ]

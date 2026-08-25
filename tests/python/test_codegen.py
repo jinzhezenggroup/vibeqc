@@ -21,6 +21,7 @@ from tools.qce_codegen import (
     build_dppp_component_kernel,
     build_dppp_contraction_kernel,
     build_dppp_fused_plan,
+    build_fused_shell_plan,
     build_psss_kernel,
     build_shell_class_component_kernel,
     build_shell_class_contraction_kernel,
@@ -28,6 +29,7 @@ from tools.qce_codegen import (
     dppp_components,
     emit_dppp_fused_cuda,
     evaluate_dppp_fused_component,
+    evaluate_fused_shell_component,
     nvrtc_cache_key,
 )
 from tools.qce_codegen.benchmark import emit_dppp_benchmark_cuda
@@ -161,6 +163,31 @@ def test_generic_shell_ad_matches_factored_lowering(spec, component):
             assert actual == pytest.approx(
                 expected, rel=3.0e-11, abs=3.0e-11
             )
+
+
+@pytest.mark.parametrize("spec", (DPDS_SPEC, DDPS_SPEC))
+def test_generic_fused_schedule_preserves_every_component_gradient(spec):
+    """Audit generated lane schedules, including ddps double Wick matching."""
+
+    plan = build_fused_shell_plan(spec)
+    assert plan.components == spec.components
+    assert plan.block_threads == 128
+    assert plan.warp_count == 4
+    assert len(plan.coulomb_states) == 84
+    assert len(plan.coulomb_indices) == 7**3
+
+    values = factored_dppp_variables(sample_variables())
+    for component in plan.components:
+        direct = build_shell_class_contraction_kernel(spec, component)
+        fused = evaluate_fused_shell_component(spec, component, values)
+        for center in range(4):
+            for axis in range(3):
+                expected = direct.graph.evaluate(
+                    direct.gradients[center][axis], values
+                )
+                assert fused[center][axis] == pytest.approx(
+                    expected, rel=8.0e-12, abs=8.0e-12
+                )
 
 
 def boys_values(argument: float, count: int = 3) -> list[float]:

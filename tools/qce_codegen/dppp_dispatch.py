@@ -18,14 +18,16 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+from .fused_schedule import (
+    CoulombState,
+    build_fused_shell_plan,
+    evaluate_fused_shell_component,
+)
 from .shell_spec import AXES, DPPP_SPEC
 
 DpppComponent = tuple[str, str, str, str]
-CoulombState = tuple[int, int, int]
 _AXIS_INDEX = {axis: index for index, axis in enumerate(AXES)}
-_MAXIMUM_COULOMB_ORDER = DPPP_SPEC.maximum_force_coulomb_order
 _COMPONENT_COUNT = DPPP_SPEC.component_count
-_BLOCK_THREADS = 192
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,125 +61,17 @@ def build_dppp_fused_plan() -> DpppFusedPlan:
     retain ``-1`` so generator tests can audit the complete domain.
     """
 
-    states = tuple(
-        (x_order, y_order, total - x_order - y_order)
-        for total in range(_MAXIMUM_COULOMB_ORDER + 1)
-        for x_order in range(total + 1)
-        for y_order in range(total - x_order + 1)
-    )
-    state_indices = {state: index for index, state in enumerate(states)}
-    dense_indices = tuple(
-        state_indices.get((x_order, y_order, z_order), -1)
-        for x_order in range(_MAXIMUM_COULOMB_ORDER + 1)
-        for y_order in range(_MAXIMUM_COULOMB_ORDER + 1)
-        for z_order in range(_MAXIMUM_COULOMB_ORDER + 1)
-    )
-    components = dppp_components()
-    if len(components) != _COMPONENT_COUNT:
+    generic = build_fused_shell_plan(DPPP_SPEC)
+    if len(generic.components) != _COMPONENT_COUNT:
         raise RuntimeError("dppp component schedule has an unexpected size")
-    if len(states) != 84:
+    if len(generic.coulomb_states) != 84:
         raise RuntimeError("order-six Cartesian Coulomb schedule must have 84 states")
     return DpppFusedPlan(
-        components=components,
-        coulomb_states=states,
-        coulomb_indices=dense_indices,
-        block_threads=_BLOCK_THREADS,
+        components=generic.components,
+        coulomb_states=generic.coulomb_states,
+        coulomb_indices=generic.coulomb_indices,
+        block_threads=generic.block_threads,
     )
-
-
-def _axis_wick_multiplicity(order: int, pairs: int) -> int:
-    """Return the number of disjoint same-axis Wick contractions."""
-
-    numerator = 1
-    for value in range(order - 2 * pairs + 1, order + 1):
-        numerator *= value
-    denominator = 2**pairs
-    for value in range(2, pairs + 1):
-        denominator *= value
-    return numerator // denominator
-
-
-def _coulomb_value(state: CoulombState, variables: Mapping[str, float]) -> float:
-    """Evaluate one state exactly as the generated shared table does."""
-
-    x_order, y_order, z_order = state
-    total_order = sum(state)
-    rho = variables["rho"]
-    value = 0.0
-    for x_pairs in range(x_order // 2 + 1):
-        for y_pairs in range(y_order // 2 + 1):
-            for z_pairs in range(z_order // 2 + 1):
-                contraction_count = x_pairs + y_pairs + z_pairs
-                boys_order = total_order - contraction_count
-                multiplicity = (
-                    _axis_wick_multiplicity(x_order, x_pairs)
-                    * _axis_wick_multiplicity(y_order, y_pairs)
-                    * _axis_wick_multiplicity(z_order, z_pairs)
-                )
-                value += (
-                    multiplicity
-                    * (-2.0 * rho) ** boys_order
-                    * variables["difference_x"] ** (x_order - 2 * x_pairs)
-                    * variables["difference_y"] ** (y_order - 2 * y_pairs)
-                    * variables["difference_z"] ** (z_order - 2 * z_pairs)
-                    * variables[f"boys_{boys_order}"]
-                )
-    return value
-
-
-def _matching_masks(axes: Sequence[int]) -> tuple[tuple[int, int], ...]:
-    """Enumerate the no-pair and single-pair matchings needed for order 2/3."""
-
-    matchings = [(0, 0)]
-    for first in range(len(axes)):
-        for second in range(first + 1, len(axes)):
-            if axes[first] == axes[second]:
-                matchings.append(((1 << first) | (1 << second), 1))
-    return tuple(matchings)
-
-
-def _pair_terms(
-    axes: Sequence[int],
-    shifts: Sequence[float],
-    shift_gradients: Sequence[float],
-    inverse_two_exponent: float,
-) -> tuple[tuple[CoulombState, float, tuple[float, float, float]], ...]:
-    """Build the fixed order-two/three subset-Wick coefficient schedule."""
-
-    terms = []
-    for subset in range(1 << len(axes)):
-        state = tuple(
-            sum(
-                bool(subset & (1 << quantum)) and axes[quantum] == axis
-                for quantum in range(len(axes))
-            )
-            for axis in range(3)
-        )
-        coefficient = 0.0
-        gradient = [0.0, 0.0, 0.0]
-        for removed, contraction_count in _matching_masks(axes):
-            if subset & removed:
-                continue
-            inverse_factor = inverse_two_exponent ** (
-                subset.bit_count() + contraction_count
-            )
-            surviving = [
-                quantum
-                for quantum in range(len(axes))
-                if ((subset | removed) & (1 << quantum)) == 0
-            ]
-            matching_coefficient = inverse_factor
-            for quantum in surviving:
-                matching_coefficient *= shifts[quantum]
-            coefficient += matching_coefficient
-            for differentiated in surviving:
-                derivative = inverse_factor * shift_gradients[differentiated]
-                for quantum in surviving:
-                    if quantum != differentiated:
-                        derivative *= shifts[quantum]
-                gradient[axes[differentiated]] += derivative
-        terms.append((state, coefficient, tuple(gradient)))
-    return tuple(terms)
 
 
 def evaluate_dppp_fused_component(
@@ -192,94 +86,7 @@ def evaluate_dppp_fused_component(
     mapping mistakes before a generated kernel is considered for production.
     """
 
-    d_component, first_p, third_p, fourth_p = DPPP_SPEC.validate_component(
-        component
-    )
-
-    d_axes = tuple(_AXIS_INDEX[axis] for axis in d_component)
-    first_p_axis = _AXIS_INDEX[first_p]
-    third_p_axis = _AXIS_INDEX[third_p]
-    fourth_p_axis = _AXIS_INDEX[fourth_p]
-    first_scale = variables["first_product_scale"]
-    second_scale = variables["second_product_scale"]
-    third_scale = variables["third_product_scale"]
-    first_axes = (*d_axes, first_p_axis)
-    first_terms = _pair_terms(
-        first_axes,
-        (
-            variables[f"pa_{AXES[d_axes[0]]}"],
-            variables[f"pa_{AXES[d_axes[1]]}"],
-            variables[f"pb_{first_p}"],
-        ),
-        (first_scale - 1.0, first_scale - 1.0, first_scale),
-        variables["inverse_two_p"],
-    )
-    second_axes = (third_p_axis, fourth_p_axis)
-    second_terms = _pair_terms(
-        second_axes,
-        (variables[f"qc_{third_p}"], variables[f"qd_{fourth_p}"]),
-        (third_scale - 1.0, third_scale),
-        variables["inverse_two_q"],
-    )
-
-    coulomb = {
-        state: _coulomb_value(state, variables)
-        for state in build_dppp_fused_plan().coulomb_states
-    }
-    value = 0.0
-    value_gradients = [[0.0, 0.0, 0.0] for _ in range(3)]
-    for first_state, first_coefficient, first_gradient in first_terms:
-        for second_state, second_coefficient, second_gradient in second_terms:
-            sign = -1.0 if sum(second_state) % 2 else 1.0
-            state = tuple(
-                first_state[axis] + second_state[axis] for axis in range(3)
-            )
-            state_value = coulomb[state]
-            coefficient = sign * first_coefficient * second_coefficient
-            value += coefficient * state_value
-            for coordinate in range(3):
-                derivative_state = list(state)
-                derivative_state[coordinate] += 1
-                scaled_derivative = coefficient * coulomb[tuple(derivative_state)]
-                first_coefficient_gradient = (
-                    sign * first_gradient[coordinate] * second_coefficient
-                )
-                second_coefficient_gradient = (
-                    sign * first_coefficient * second_gradient[coordinate]
-                )
-                value_gradients[0][coordinate] += (
-                    first_coefficient_gradient * state_value
-                    + first_scale * scaled_derivative
-                )
-                value_gradients[1][coordinate] += (
-                    -first_coefficient_gradient * state_value
-                    + second_scale * scaled_derivative
-                )
-                value_gradients[2][coordinate] += (
-                    second_coefficient_gradient * state_value
-                    - third_scale * scaled_derivative
-                )
-
-    gradients = []
-    prefactor = variables["prefactor"]
-    for center_index, center in enumerate(("first", "second", "third")):
-        gradients.append(
-            tuple(
-                prefactor
-                * (
-                    value_gradients[center_index][coordinate]
-                    + value * variables[f"decay_{center}_{AXES[coordinate]}"]
-                )
-                for coordinate in range(3)
-            )
-        )
-    gradients.append(
-        tuple(
-            -sum(gradients[center][axis] for center in range(3))
-            for axis in range(3)
-        )
-    )
-    return tuple(gradients)
+    return evaluate_fused_shell_component(DPPP_SPEC, component, variables)
 
 
 def _format_cuda_array(values: Sequence[int], columns: int = 12) -> str:
