@@ -122,9 +122,15 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   derivatives through one recurrence per evaluated center instead of
   repeating the complete ERI value path for every axis. Every bucket uploads
   one fixed-topology packed AO-pair table; one-electron integrals and their
-  force terms use only the triangle, and direct buckets reuse it for Schwarz
-  bounds and the direct scheduler. Ragged canonical shell-pair and shell-quartet
-  topology plus shell-level Schwarz maxima are resident. Every direct Fock
+  force terms use only the triangle. The one-electron force assigns each
+  public AO pair to one worker, forms overlap and kinetic derivatives with
+  exact Gaussian raising/lowering identities, and shares one Hermite, Boys,
+  and Coulomb recurrence across all six basis-center attraction derivatives
+  for each nucleus. Translation supplies the nuclear-center derivative, so
+  the kernel no longer replays a complete dual recurrence per atom coordinate.
+  Direct buckets reuse the same pair table for Schwarz bounds and the direct
+  scheduler. Ragged canonical shell-pair and shell-quartet topology plus
+  shell-level Schwarz maxima are resident. Every direct Fock
   build also reduces the current density into separate shell-pair Coulomb and
   exchange maxima, then combines them with the Schwarz product while
   compacting shell quartets inside the CUDA Graph. The final force consumes
@@ -160,6 +166,9 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   2,488/8,608 bytes to 752/2,024 bytes. Real-spherical direct buckets apply
   `C^T D C` before those Cartesian-source quartets and `C F C^T` afterwards,
   eliminating repeated sparse term products from Fock and force recurrences.
+  The analytic one-electron force lowers its kernel from 254 registers and
+  23,208 stack bytes to 167 registers and 9,176 stack bytes; on the exact
+  96-AO batch-1 gate its force-pass profile falls from 109.0 ms to 22.1 ms.
   Remaining component-unrolled/Rys kernels, broader named-basis gates, and
   DF J/K are still required before making broad production performance claims.
 

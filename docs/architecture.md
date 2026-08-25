@@ -15,10 +15,15 @@ assembles the stationary RHF derivative from derivative integrals, the
 energy-weighted density matrix, and nuclear repulsion. This is deliberately
 different from differentiating the eigensolver, DIIS, or SCF iteration trace.
 
-The CUDA s-p-d-f path evaluates one-coordinate dual forms directly in device
-kernels and contracts stationary RHF/UHF gradients on the GPU. Its Cartesian
-McMurchie-Davidson recurrence is shared mathematically with the CPU oracle but
-implemented independently in CUDA. The canonical first-order `(p s | s s)`
+The CUDA s-p-d-f path contracts stationary RHF/UHF gradients on the GPU. Its
+one-electron force differentiates Cartesian Gaussians with exact raised/lowered
+angular-momentum identities. One AO-pair worker shares compact overlap and
+kinetic recurrences across both basis centers; each nuclear-attraction term
+shares one Hermite, Boys, and Coulomb recurrence across all six basis-center
+derivatives and recovers the nuclear-center derivative by translation. Its
+Cartesian McMurchie-Davidson recurrence is shared mathematically with the CPU
+oracle but implemented independently in CUDA. The canonical first-order
+`(p s | s s)`
 class generates its two reachable Hermite terms in closed form, with the same
 scalar expression serving values and three-axis forward derivatives. The
 canonical total-order-2 `(d s | s s)`, `(p p | s s)`, and `(p s | p s)`
@@ -146,6 +151,11 @@ thread. The dedicated force paths through total angular order five compute all
 center derivatives from one shared set of Gaussian product and Boys values,
 then recover omitted centers from translational invariance; orders six and
 above retain the general three-component Dual path.
+The one-electron force likewise assigns one public AO pair to each worker and
+accumulates overlap, kinetic, basis-center attraction, and per-nucleus
+attraction derivatives directly into the stationary force contraction. It no
+longer launches one complete automatic-differentiation recurrence per atom
+coordinate.
 Coulomb auxiliary states are stored in
 a four-dimensional simplex (1,820 states through f) rather than a dense 13^4
 thread-local array.
@@ -186,7 +196,10 @@ Both paths avoid repeating the
 geometry-independent ERI value work for x, y, and z while preserving the same
 screening and symmetry domain.
 Canonical AO-pair arrays remain resident for one-electron triangles and
-Schwarz bounds, following gpuxtb's immutable pair-metadata pattern. Each Fock
+Schwarz bounds, following gpuxtb's immutable pair-metadata pattern. Their
+one-electron force consumer evaluates every pair once, uses translation for
+overlap/kinetic center derivatives, and accumulates each nucleus after sharing
+its attraction recurrence across both basis centers. Each Fock
 build reduces the current density to shell-pair absolute maxima before task
 generation. RHF keeps the full Coulomb magnitude and its one-half exchange
 magnitude separately; UHF keeps total-density Coulomb and maximum same-spin

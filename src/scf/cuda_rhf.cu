@@ -94,7 +94,6 @@ __device__ Dual operator/(Dual a, Dual b) {
   return {a.value / b.value,
           (a.derivative * b.value - a.value * b.derivative) * inverse_square};
 }
-__device__ Dual operator-(double a, Dual b) { return Dual{a, 0.0} - b; }
 __device__ Dual operator*(double a, Dual b) { return Dual{a, 0.0} * b; }
 __device__ Dual operator/(Dual a, double b) { return a / Dual{b, 0.0}; }
 __device__ Dual operator/(double a, Dual b) { return Dual{a, 0.0} / b; }
@@ -922,6 +921,151 @@ __device__ Scalar primitive_kinetic_cartesian(
   return result;
 }
 
+/**
+ * Compact value-only overlap used by analytic one-electron derivatives.
+ *
+ * Center differentiation raises one basis function by one quantum, while the
+ * kinetic operator may raise that result by two more. The generic Hermite
+ * workspace is intentionally not enlarged for this force-only requirement;
+ * the separable Obara-Saika overlap recurrence needs only the final t=0
+ * integral for first-center order <=3 and second-center order <=6.
+ */
+__device__ double primitive_overlap_cartesian_compact(
+    double alpha,
+    const Vec3<double>& first,
+    const Angular& angular_first,
+    double beta,
+    const Vec3<double>& second,
+    const Angular& angular_second) {
+  constexpr unsigned FirstDimension = kMaximumAngularMomentum + 1;
+  constexpr unsigned SecondDimension = kMaximumAngularMomentum + 4;
+  const double exponent = alpha + beta;
+  const double reduced = alpha * beta / exponent;
+  const double inverse_two_exponent = 0.5 / exponent;
+  const Vec3<double> product = product_center(alpha, first, beta, second);
+  double result = 1.0;
+  for (int axis = 0; axis < 3; ++axis) {
+    const unsigned first_power = angular_axis(angular_first, axis);
+    const unsigned second_power = angular_axis(angular_second, axis);
+    double values[FirstDimension][SecondDimension]{};
+    const double first_coordinate = vec_axis(first, axis);
+    const double second_coordinate = vec_axis(second, axis);
+    const double difference = first_coordinate - second_coordinate;
+    values[0][0] = sqrt(kPi / exponent) *
+        exp(-reduced * difference * difference);
+    const double product_first =
+        vec_axis(product, axis) - first_coordinate;
+    const double product_second =
+        vec_axis(product, axis) - second_coordinate;
+    for (unsigned i = 1; i <= first_power; ++i) {
+      values[i][0] = product_first * values[i - 1][0];
+      if (i > 1) {
+        values[i][0] += static_cast<double>(i - 1) *
+            inverse_two_exponent * values[i - 2][0];
+      }
+    }
+    for (unsigned j = 1; j <= second_power; ++j) {
+      values[0][j] = product_second * values[0][j - 1];
+      if (j > 1) {
+        values[0][j] += static_cast<double>(j - 1) *
+            inverse_two_exponent * values[0][j - 2];
+      }
+      for (unsigned i = 1; i <= first_power; ++i) {
+        values[i][j] = product_first * values[i - 1][j] +
+            static_cast<double>(j) * inverse_two_exponent *
+                values[i - 1][j - 1];
+        if (i > 1) {
+          values[i][j] += static_cast<double>(i - 1) *
+              inverse_two_exponent * values[i - 2][j];
+        }
+      }
+    }
+    result *= values[first_power][second_power];
+  }
+  return result;
+}
+
+/** Value-only kinetic integral backed by the compact overlap recurrence. */
+__device__ double primitive_kinetic_cartesian_compact(
+    double alpha,
+    const Vec3<double>& first,
+    const Angular& angular_first,
+    double beta,
+    const Vec3<double>& second,
+    const Angular& angular_second) {
+  double result = beta *
+      (2.0 * static_cast<double>(angular_total(angular_second)) + 3.0) *
+      primitive_overlap_cartesian_compact(
+          alpha, first, angular_first, beta, second, angular_second);
+  for (int axis = 0; axis < 3; ++axis) {
+    Angular raised = angular_second;
+    add_angular_axis(raised, axis, 2);
+    result -= 2.0 * beta * beta * primitive_overlap_cartesian_compact(
+        alpha, first, angular_first, beta, second, raised);
+    const unsigned power = angular_axis(angular_second, axis);
+    if (power >= 2) {
+      Angular lowered = angular_second;
+      add_angular_axis(lowered, axis, -2);
+      result -= 0.5 * static_cast<double>(power * (power - 1)) *
+          primitive_overlap_cartesian_compact(
+              alpha, first, angular_first, beta, second, lowered);
+    }
+  }
+  return result;
+}
+
+/** Differentiate an overlap integral at its second Gaussian center. */
+__device__ void primitive_overlap_second_center_gradient(
+    double alpha,
+    const Vec3<double>& first,
+    const Angular& angular_first,
+    double beta,
+    const Vec3<double>& second,
+    const Angular& angular_second,
+    double (&gradient)[3]) {
+  for (int axis = 0; axis < 3; ++axis) {
+    Angular raised = angular_second;
+    add_angular_axis(raised, axis, 1);
+    double value = 2.0 * beta * primitive_overlap_cartesian_compact(
+        alpha, first, angular_first, beta, second, raised);
+    const unsigned power = angular_axis(angular_second, axis);
+    if (power > 0) {
+      Angular lowered = angular_second;
+      add_angular_axis(lowered, axis, -1);
+      value -= static_cast<double>(power) *
+          primitive_overlap_cartesian_compact(
+              alpha, first, angular_first, beta, second, lowered);
+    }
+    gradient[axis] = value;
+  }
+}
+
+/** Differentiate a kinetic integral at its second Gaussian center. */
+__device__ void primitive_kinetic_second_center_gradient(
+    double alpha,
+    const Vec3<double>& first,
+    const Angular& angular_first,
+    double beta,
+    const Vec3<double>& second,
+    const Angular& angular_second,
+    double (&gradient)[3]) {
+  for (int axis = 0; axis < 3; ++axis) {
+    Angular raised = angular_second;
+    add_angular_axis(raised, axis, 1);
+    double value = 2.0 * beta * primitive_kinetic_cartesian_compact(
+        alpha, first, angular_first, beta, second, raised);
+    const unsigned power = angular_axis(angular_second, axis);
+    if (power > 0) {
+      Angular lowered = angular_second;
+      add_angular_axis(lowered, axis, -1);
+      value -= static_cast<double>(power) *
+          primitive_kinetic_cartesian_compact(
+              alpha, first, angular_first, beta, second, lowered);
+    }
+    gradient[axis] = value;
+  }
+}
+
 template <unsigned MaximumAngular, typename Scalar>
 __device__ __noinline__ Scalar nuclear_attraction_cartesian_value(
     const DeviceBatch& batch,
@@ -983,6 +1127,163 @@ __device__ Scalar primitive_nuclear_attraction_cartesian(
   return nuclear_attraction_cartesian_value<MaximumAngular>(
       batch, system, exponent, product, angular_first, angular_second,
       coefficients, derivative_coordinate);
+}
+
+/** Compact Hermite workspace including one raised quantum on either center. */
+struct OneElectronDerivativeHermiteCoefficients {
+  static constexpr unsigned kIDimension = kMaximumAngularMomentum + 2;
+  static constexpr unsigned kJDimension = kMaximumAngularMomentum + 2;
+  static constexpr unsigned kTDimension = 2 * kMaximumAngularMomentum + 4;
+  double data[kIDimension * kJDimension * kTDimension];
+
+  __device__ double& at(unsigned i, unsigned j, unsigned t) {
+    return data[(i * kJDimension + j) * kTDimension + t];
+  }
+};
+
+/** Fill every coefficient required by first derivatives of one shell pair. */
+__device__ void fill_one_electron_derivative_hermite(
+    unsigned maximum_i,
+    unsigned maximum_j,
+    double product,
+    double center_a,
+    double center_b,
+    double alpha,
+    double beta,
+    OneElectronDerivativeHermiteCoefficients& coefficients) {
+  for (unsigned item = 0;
+       item < OneElectronDerivativeHermiteCoefficients::kIDimension *
+                  OneElectronDerivativeHermiteCoefficients::kJDimension *
+                  OneElectronDerivativeHermiteCoefficients::kTDimension;
+       ++item) {
+    coefficients.data[item] = 0.0;
+  }
+  const double exponent = alpha + beta;
+  const double reduced = alpha * beta / exponent;
+  const double difference = center_a - center_b;
+  coefficients.at(0, 0, 0) = exp(-reduced * difference * difference);
+  const double product_first = product - center_a;
+  const double product_second = product - center_b;
+  const double inverse_two_exponent = 0.5 / exponent;
+  for (unsigned i = 0; i <= maximum_i; ++i) {
+    for (unsigned j = 0; j <= maximum_j; ++j) {
+      if (i == 0 && j == 0) continue;
+      if (i > 0) {
+        coefficients.at(i, j, 0) =
+            product_first * coefficients.at(i - 1, j, 0) +
+            coefficients.at(i - 1, j, 1);
+      } else {
+        coefficients.at(i, j, 0) =
+            product_second * coefficients.at(i, j - 1, 0) +
+            coefficients.at(i, j - 1, 1);
+      }
+      for (unsigned t = 1; t <= i + j; ++t) {
+        if (i > 0) {
+          coefficients.at(i, j, t) =
+              product_first * coefficients.at(i - 1, j, t) +
+              inverse_two_exponent * coefficients.at(i - 1, j, t - 1) +
+              static_cast<double>(t + 1) *
+                  coefficients.at(i - 1, j, t + 1);
+        } else {
+          coefficients.at(i, j, t) =
+              product_second * coefficients.at(i, j - 1, t) +
+              inverse_two_exponent * coefficients.at(i, j - 1, t - 1) +
+              static_cast<double>(t + 1) *
+                  coefficients.at(i, j - 1, t + 1);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Evaluate both basis-center gradients of one nucleus's attraction integral.
+ *
+ * All raised/lowered Cartesian components share one Hermite workspace, one
+ * Boys sequence, and one Coulomb auxiliary recurrence.
+ */
+template <unsigned MaximumAngular>
+__device__ __noinline__ void
+primitive_nuclear_attraction_cartesian_atom_gradient(
+    const DeviceBatch& batch,
+    double alpha,
+    const Vec3<double>& first,
+    const Angular& angular_first,
+    double beta,
+    const Vec3<double>& second,
+    const Angular& angular_second,
+    std::int64_t atom,
+    double (&first_gradient)[3],
+    double (&second_gradient)[3]) {
+  static_assert(MaximumAngular <= 2 * kMaximumAngularMomentum + 1);
+  const double exponent = alpha + beta;
+  const Vec3<double> product = product_center(alpha, first, beta, second);
+  OneElectronDerivativeHermiteCoefficients coefficients[3];
+  for (int axis = 0; axis < 3; ++axis) {
+    fill_one_electron_derivative_hermite(
+        angular_axis(angular_first, axis) + 1,
+        angular_axis(angular_second, axis) + 1, vec_axis(product, axis),
+        vec_axis(first, axis), vec_axis(second, axis), alpha, beta,
+        coefficients[axis]);
+  }
+  CoulombAuxiliary<double, MaximumAngular> auxiliary;
+  fill_coulomb<MaximumAngular>(
+      exponent, product, atom_position<double>(batch, atom, -1), auxiliary);
+  for (unsigned axis = 0; axis < 3; ++axis) {
+    first_gradient[axis] = 0.0;
+    second_gradient[axis] = 0.0;
+  }
+  const unsigned x_limit = angular_first.x + angular_second.x + 1;
+  const unsigned y_limit = angular_first.y + angular_second.y + 1;
+  const unsigned z_limit = angular_first.z + angular_second.z + 1;
+  const double attraction_scale =
+      -static_cast<double>(batch.atomic_numbers[atom]) *
+      (2.0 * kPi / exponent);
+  for (unsigned t = 0; t <= x_limit; ++t) {
+    for (unsigned u = 0; u <= y_limit; ++u) {
+      for (unsigned v = 0; v <= z_limit; ++v) {
+        if (t + u + v > MaximumAngular) continue;
+        const unsigned orders[3] = {t, u, v};
+        double base[3];
+        double first_derivative[3];
+        double second_derivative[3];
+        for (int axis = 0; axis < 3; ++axis) {
+          const unsigned first_power = angular_axis(angular_first, axis);
+          const unsigned second_power = angular_axis(angular_second, axis);
+          const unsigned order = orders[axis];
+          base[axis] = coefficients[axis].at(
+              first_power, second_power, order);
+          first_derivative[axis] = 2.0 * alpha * coefficients[axis].at(
+              first_power + 1, second_power, order);
+          if (first_power > 0) {
+            first_derivative[axis] -= static_cast<double>(first_power) *
+                coefficients[axis].at(
+                    first_power - 1, second_power, order);
+          }
+          second_derivative[axis] = 2.0 * beta * coefficients[axis].at(
+              first_power, second_power + 1, order);
+          if (second_power > 0) {
+            second_derivative[axis] -= static_cast<double>(second_power) *
+                coefficients[axis].at(
+                    first_power, second_power - 1, order);
+          }
+        }
+        const double coulomb = attraction_scale * auxiliary.at(0, t, u, v);
+        first_gradient[0] +=
+            first_derivative[0] * base[1] * base[2] * coulomb;
+        first_gradient[1] +=
+            base[0] * first_derivative[1] * base[2] * coulomb;
+        first_gradient[2] +=
+            base[0] * base[1] * first_derivative[2] * coulomb;
+        second_gradient[0] +=
+            second_derivative[0] * base[1] * base[2] * coulomb;
+        second_gradient[1] +=
+            base[0] * second_derivative[1] * base[2] * coulomb;
+        second_gradient[2] +=
+            base[0] * base[1] * second_derivative[2] * coulomb;
+      }
+    }
+  }
 }
 
 template <unsigned MaximumAngular,
@@ -2137,6 +2438,145 @@ __device__ Scalar contracted_hcore(const DeviceBatch& batch,
           first_terms, second_terms, derivative_coordinate);
   }
   return scalar<Scalar>(0.0);
+}
+
+/**
+ * Contract exact all-center one-electron derivatives for one public AO pair.
+ *
+ * The Gaussian center identity
+ * `d_B g_b = 2 beta g_(b+1) - l_b g_(b-1)` converts derivatives into
+ * value-only integrals. Overlap and kinetic derivatives at the first center
+ * follow from translation. For each nuclear-attraction term, one shared
+ * Hermite/Coulomb recurrence forms both basis-center derivatives, and the
+ * nuclear-center derivative is their negative sum.
+ */
+template <unsigned MaximumAngular>
+__device__ void contracted_one_electron_force_pair(
+    const DeviceBatch& batch,
+    std::int32_t system,
+    std::int32_t i,
+    std::int32_t j,
+    double density,
+    double weighted_density,
+    double* forces) {
+  static_assert(MaximumAngular >= 1);
+  static_assert(MaximumAngular <= 2 * kMaximumAngularMomentum + 1);
+  const std::int64_t ao_i = static_cast<std::int64_t>(system) * batch.nbf + i;
+  const std::int64_t ao_j = static_cast<std::int64_t>(system) * batch.nbf + j;
+  const std::int32_t shell_i = batch.ao_shells[ao_i];
+  const std::int32_t shell_j = batch.ao_shells[ao_j];
+  const std::int64_t first_atom = batch.shell_atoms[shell_i];
+  const std::int64_t second_atom = batch.shell_atoms[shell_j];
+  const Vec3<double> first = atom_position<double>(batch, first_atom, -1);
+  const Vec3<double> second = atom_position<double>(batch, second_atom, -1);
+  const unsigned first_terms = batch.ao_term_counts[ao_i];
+  const unsigned second_terms = batch.ao_term_counts[ao_j];
+  const double pair_weight = i == j ? 1.0 : 2.0;
+  const double density_scale = -pair_weight * density;
+  const double overlap_scale = pair_weight * weighted_density;
+  double first_force[3]{};
+  double second_force[3]{};
+
+  // Overlap and kinetic operators are translation invariant, so the first
+  // basis-center derivatives are the negatives of the second-center values.
+  for (std::int64_t a = batch.shell_primitive_offsets[shell_i];
+       a < batch.shell_primitive_offsets[shell_i + 1]; ++a) {
+    for (std::int64_t b = batch.shell_primitive_offsets[shell_j];
+         b < batch.shell_primitive_offsets[shell_j + 1]; ++b) {
+      const double primitive_weight = batch.primitive_coefficients[a] *
+          batch.primitive_coefficients[b];
+      for (unsigned first_term = 0; first_term < first_terms; ++first_term) {
+        const Angular angular_first = ao_angular(batch, ao_i, first_term);
+        const double first_coefficient =
+            ao_term_coefficient(batch, ao_i, first_term);
+        for (unsigned second_term = 0; second_term < second_terms;
+             ++second_term) {
+          const Angular angular_second =
+              ao_angular(batch, ao_j, second_term);
+          const double weight = primitive_weight * first_coefficient *
+              ao_term_coefficient(batch, ao_j, second_term);
+          double overlap_gradient[3];
+          double kinetic_gradient[3];
+          primitive_overlap_second_center_gradient(
+              batch.primitive_exponents[a], first, angular_first,
+              batch.primitive_exponents[b], second, angular_second,
+              overlap_gradient);
+          primitive_kinetic_second_center_gradient(
+              batch.primitive_exponents[a], first, angular_first,
+              batch.primitive_exponents[b], second, angular_second,
+              kinetic_gradient);
+          for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+            const double contribution = weight *
+                (density_scale * kinetic_gradient[coordinate] +
+                 overlap_scale * overlap_gradient[coordinate]);
+            first_force[coordinate] -= contribution;
+            second_force[coordinate] += contribution;
+          }
+        }
+      }
+    }
+  }
+
+  // Keep one local accumulator per target nucleus. This preserves one atomic
+  // add per Cartesian component and AO pair instead of one per primitive.
+  for (std::int64_t atom = batch.atom_offsets[system];
+       atom < batch.atom_offsets[system + 1]; ++atom) {
+    double nuclear_force[3]{};
+    for (std::int64_t a = batch.shell_primitive_offsets[shell_i];
+         a < batch.shell_primitive_offsets[shell_i + 1]; ++a) {
+      for (std::int64_t b = batch.shell_primitive_offsets[shell_j];
+           b < batch.shell_primitive_offsets[shell_j + 1]; ++b) {
+        const double primitive_weight = batch.primitive_coefficients[a] *
+            batch.primitive_coefficients[b];
+        for (unsigned first_term = 0; first_term < first_terms;
+             ++first_term) {
+          const Angular angular_first = ao_angular(batch, ao_i, first_term);
+          const double first_coefficient =
+              ao_term_coefficient(batch, ao_i, first_term);
+          for (unsigned second_term = 0; second_term < second_terms;
+               ++second_term) {
+            const Angular angular_second =
+                ao_angular(batch, ao_j, second_term);
+            const double weight = density_scale * primitive_weight *
+                first_coefficient *
+                ao_term_coefficient(batch, ao_j, second_term);
+            double first_gradient[3];
+            double second_gradient[3];
+            primitive_nuclear_attraction_cartesian_atom_gradient<
+                MaximumAngular>(
+                batch, batch.primitive_exponents[a], first, angular_first,
+                batch.primitive_exponents[b], second, angular_second, atom,
+                first_gradient, second_gradient);
+            for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+              first_force[coordinate] += weight * first_gradient[coordinate];
+              second_force[coordinate] +=
+                  weight * second_gradient[coordinate];
+              nuclear_force[coordinate] -= weight *
+                  (first_gradient[coordinate] +
+                   second_gradient[coordinate]);
+            }
+          }
+        }
+      }
+    }
+    const std::int64_t coordinate = atom * 3;
+    for (unsigned axis = 0; axis < 3; ++axis) {
+      if (nuclear_force[axis] != 0.0) {
+        atomicAdd(forces + coordinate + axis, nuclear_force[axis]);
+      }
+    }
+  }
+
+  const std::int64_t first_coordinate = first_atom * 3;
+  const std::int64_t second_coordinate = second_atom * 3;
+  for (unsigned axis = 0; axis < 3; ++axis) {
+    if (first_force[axis] != 0.0) {
+      atomicAdd(forces + first_coordinate + axis, first_force[axis]);
+    }
+    if (second_force[axis] != 0.0) {
+      atomicAdd(forces + second_coordinate + axis, second_force[axis]);
+    }
+  }
 }
 
 template <unsigned MaximumAngular, typename Scalar>
@@ -6550,32 +6990,44 @@ __global__ void one_electron_force_kernel(DeviceBatch batch,
                                           double* forces) {
   const std::size_t n = static_cast<std::size_t>(batch.nbf);
   const std::size_t matrix_size = n * n;
-  const std::size_t work_per_coordinate = pair_count;
   const std::size_t element =
       static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  const std::size_t coordinate_count =
-      static_cast<std::size_t>(batch.total_atoms) * 3;
-  if (element >= coordinate_count * work_per_coordinate) return;
-  const std::int64_t coordinate = static_cast<std::int64_t>(
-      element / work_per_coordinate);
-  const std::size_t local = element % work_per_coordinate;
-  const std::int64_t atom = coordinate / 3;
-  const std::int32_t system = batch.atom_systems[atom];
+  if (element >= static_cast<std::size_t>(batch.batch_size) * pair_count) {
+    return;
+  }
+  const std::int32_t system =
+      static_cast<std::int32_t>(element / pair_count);
+  const std::size_t local = element % pair_count;
   if (active[system] == 0) return;
   const std::size_t i = static_cast<std::size_t>(pair_first[local]);
   const std::size_t j = static_cast<std::size_t>(pair_second[local]);
   const std::size_t matrix_offset = static_cast<std::size_t>(system) * matrix_size;
   const double pij = density[matrix_offset + matrix_index(i, j, n)];
   const double wij = weighted_density[matrix_offset + matrix_index(i, j, n)];
-  const Dual ds = contracted_overlap<Dual>(
-      batch, system, static_cast<std::int32_t>(i),
-      static_cast<std::int32_t>(j), coordinate);
-  const Dual dh = contracted_hcore<Dual>(
-      batch, system, static_cast<std::int32_t>(i),
-      static_cast<std::int32_t>(j), coordinate);
-  const double pair_weight = i == j ? 1.0 : 2.0;
-  atomicAdd(forces + coordinate,
-            -pair_weight * (pij * dh.derivative - wij * ds.derivative));
+  if (pij == 0.0 && wij == 0.0) return;
+  const std::int64_t ao_i = static_cast<std::int64_t>(system) * batch.nbf +
+      static_cast<std::int32_t>(i);
+  const std::int64_t ao_j = static_cast<std::int64_t>(system) * batch.nbf +
+      static_cast<std::int32_t>(j);
+  const unsigned maximum =
+      batch.shell_angular[batch.ao_shells[ao_i]] +
+      batch.shell_angular[batch.ao_shells[ao_j]] + 1U;
+#define QCE_ONE_ELECTRON_FORCE_CASE(Order)                              \
+  case Order:                                                          \
+    contracted_one_electron_force_pair<Order>(                         \
+        batch, system, static_cast<std::int32_t>(i),                    \
+        static_cast<std::int32_t>(j), pij, wij, forces);                \
+    break
+  switch (maximum) {
+    QCE_ONE_ELECTRON_FORCE_CASE(1);
+    QCE_ONE_ELECTRON_FORCE_CASE(2);
+    QCE_ONE_ELECTRON_FORCE_CASE(3);
+    QCE_ONE_ELECTRON_FORCE_CASE(4);
+    QCE_ONE_ELECTRON_FORCE_CASE(5);
+    QCE_ONE_ELECTRON_FORCE_CASE(6);
+    QCE_ONE_ELECTRON_FORCE_CASE(7);
+  }
+#undef QCE_ONE_ELECTRON_FORCE_CASE
 }
 
 __global__ void two_electron_force_kernel(DeviceBatch batch,
@@ -8049,7 +8501,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   std::size_t persistent_force_elements = 0;
   std::size_t direct_force_elements = 0;
   if (!checked_multiply(total_atoms, 3, force_coordinate_count) ||
-      !checked_multiply(force_coordinate_count, pair_count,
+      !checked_multiply(batch_size, pair_count,
                         one_electron_force_elements) ||
       !checked_multiply(force_coordinate_count, matrix_size,
                         force_matrix_elements) ||

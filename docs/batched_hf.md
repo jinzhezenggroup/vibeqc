@@ -57,7 +57,12 @@ materially update J or K at the requested threshold. The analytic-force pass
 contracts the final-density task list and visits only its shell-center
 coordinates. ERI translational invariance evaluates `N-1` unique
 centers and reconstructs the last derivative, reducing force recurrence work
-without changing the stationary gradient. Dedicated analytic formulas handle
+without changing the stationary gradient. The one-electron force assigns one
+worker to each public AO pair, forms exact raised/lowered overlap and kinetic
+derivatives, and shares each nucleus's Hermite/Boys/Coulomb recurrence across
+both basis-center gradients. The nuclear-center attraction derivative follows
+from translation, so this path does not replay a full dual recurrence for
+every atom coordinate. Dedicated analytic formulas handle
 total angular orders zero through five; their sparse high-order formulas share
 each raised Coulomb state across all centers and reconstruct the fourth basis
 center from translational invariance. Orders six and above use a force-only

@@ -108,6 +108,19 @@ and performance measurements pass.
   error. Dedicated analytic force formulas therefore cover every total
   angular order from zero through five; order six and above remain on the
   general three-component forward scalar.
+  The one-electron force now assigns one public AO pair to each worker and
+  uses exact Gaussian raising/lowering identities for overlap, kinetic, and
+  nuclear-attraction derivatives. Each nucleus shares one Hermite, Boys, and
+  Coulomb recurrence across all six basis-center attraction derivatives, with
+  its own center derivative recovered by translation. This reduces the
+  kernel from 254 registers and 23,208 stack bytes to 167 registers and 9,176
+  stack bytes, and the exact 96-AO batch-1 force-pass profile from 109.0 ms to
+  22.1 ms. Interleaved candidate/baseline/candidate endpoint medians are
+  1.936/2.023/1.936 s at batch 1 and 7.532/7.658/7.007 s at batch 4. The
+  batch-4 samples are SCF-branch-sensitive: the first candidate used
+  4/2/2/2 iterations while the baseline and final candidate used 2/2/2/2.
+  The 192-AO batch-1/4 correctness checks remain below `8.3e-12 Eh` maximum
+  energy error and `2.3e-10 Eh/bohr` maximum force error.
   Clean RTX 5090
   artifacts validate energy, forces, and homogeneous-batch throughput for the
   exact `sdf18-direct`, Cartesian water/def2-SVP, and open-shell
