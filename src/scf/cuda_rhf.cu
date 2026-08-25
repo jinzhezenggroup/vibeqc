@@ -81,6 +81,8 @@ constexpr unsigned kFusedOrderTwoAngularOrder = 2;
 // exact value next to the order-two dispatch because the fused force worker
 // must also mask this class out of the generic AO-component fallback.
 constexpr unsigned kPspsShellClass = 2;
+constexpr unsigned kPpssShellClass = 3;
+constexpr unsigned kDsssShellClass = 6;
 static_assert(detail::kDirectQuartetThreads == 32);
 // Generated order-five classes are removed from a compact generic fallback
 // queue. Keeping the order explicit avoids coupling runtime selection to one
@@ -2088,6 +2090,108 @@ __device__ Scalar third_order_coulomb(
          product_difference.z * boys[3];
 }
 
+/** Value and P-Q chain derivatives of a weighted order-two Hermite DAG. */
+struct WeightedOrder2Coulomb {
+  double c0;
+  double cx;
+  double cy;
+  double cz;
+  double value;
+  double chain[3];
+};
+
+/**
+ * Contract the ten order-zero-through-two Hermite coefficients with exactly
+ * twenty unique Cartesian Coulomb states. The returned chain is only the
+ * derivative through P-Q; shell-class helpers add their explicit PA/PB/QC
+ * coefficient derivatives and Gaussian-pair decay separately.
+ */
+__device__ __forceinline__ WeightedOrder2Coulomb
+contract_weighted_order2_coulomb(
+    double rho,
+    double x,
+    double y,
+    double z,
+    const double (&boys)[4],
+    double h0,
+    double hx,
+    double hy,
+    double hz,
+    double hxx,
+    double hxy,
+    double hxz,
+    double hyy,
+    double hyz,
+    double hzz) {
+  const double twice_rho = 2.0 * rho;
+  const double twice_rho_squared = twice_rho * twice_rho;
+  const double twice_rho_cubed = twice_rho_squared * twice_rho;
+  const double c0 = boys[0];
+  const double cx = -twice_rho * x * boys[1];
+  const double cy = -twice_rho * y * boys[1];
+  const double cz = -twice_rho * z * boys[1];
+  const double cxx =
+      twice_rho_squared * x * x * boys[2] - twice_rho * boys[1];
+  const double cxy = twice_rho_squared * x * y * boys[2];
+  const double cxz = twice_rho_squared * x * z * boys[2];
+  const double cyy =
+      twice_rho_squared * y * y * boys[2] - twice_rho * boys[1];
+  const double cyz = twice_rho_squared * y * z * boys[2];
+  const double czz =
+      twice_rho_squared * z * z * boys[2] - twice_rho * boys[1];
+  const double cxxx =
+      -twice_rho_cubed * x * x * x * boys[3] +
+      3.0 * twice_rho_squared * x * boys[2];
+  const double cxxy =
+      -twice_rho_cubed * x * x * y * boys[3] +
+      twice_rho_squared * y * boys[2];
+  const double cxxz =
+      -twice_rho_cubed * x * x * z * boys[3] +
+      twice_rho_squared * z * boys[2];
+  const double cxyy =
+      -twice_rho_cubed * x * y * y * boys[3] +
+      twice_rho_squared * x * boys[2];
+  const double cxyz = -twice_rho_cubed * x * y * z * boys[3];
+  const double cxzz =
+      -twice_rho_cubed * x * z * z * boys[3] +
+      twice_rho_squared * x * boys[2];
+  const double cyyy =
+      -twice_rho_cubed * y * y * y * boys[3] +
+      3.0 * twice_rho_squared * y * boys[2];
+  const double cyyz =
+      -twice_rho_cubed * y * y * z * boys[3] +
+      twice_rho_squared * z * boys[2];
+  const double cyzz =
+      -twice_rho_cubed * y * z * z * boys[3] +
+      twice_rho_squared * y * boys[2];
+  const double czzz =
+      -twice_rho_cubed * z * z * z * boys[3] +
+      3.0 * twice_rho_squared * z * boys[2];
+
+  WeightedOrder2Coulomb result{};
+  result.c0 = c0;
+  result.cx = cx;
+  result.cy = cy;
+  result.cz = cz;
+  result.value =
+      h0 * c0 + hx * cx + hy * cy + hz * cz +
+      hxx * cxx + hxy * cxy + hxz * cxz +
+      hyy * cyy + hyz * cyz + hzz * czz;
+  result.chain[0] =
+      h0 * cx + hx * cxx + hy * cxy + hz * cxz +
+      hxx * cxxx + hxy * cxxy + hxz * cxxz +
+      hyy * cxyy + hyz * cxyz + hzz * cxzz;
+  result.chain[1] =
+      h0 * cy + hx * cxy + hy * cyy + hz * cyz +
+      hxx * cxxy + hxy * cxyy + hxz * cxyz +
+      hyy * cyyy + hyz * cyyz + hzz * cyzz;
+  result.chain[2] =
+      h0 * cz + hx * cxz + hy * cyz + hz * czz +
+      hxx * cxxz + hxy * cxyz + hxz * cxzz +
+      hyy * cyyz + hyz * cyzz + hzz * czzz;
+  return result;
+}
+
 /**
  * Closed order-3 contraction for canonical (f s|s s), (d p|s s),
  * (d s|p s), and (p p|p s) primitive quartets.
@@ -3507,56 +3611,6 @@ contracted_eri_cartesian_source_psps_weighted_gradient(
           double boys[4];
           boys_values<3>(rho * (x * x + y * y + z * z), boys);
 
-          const double twice_rho = 2.0 * rho;
-          const double twice_rho_squared = twice_rho * twice_rho;
-          const double twice_rho_cubed =
-              twice_rho_squared * twice_rho;
-          const double c0 = boys[0];
-          const double cx = -twice_rho * x * boys[1];
-          const double cy = -twice_rho * y * boys[1];
-          const double cz = -twice_rho * z * boys[1];
-          const double cxx =
-              twice_rho_squared * x * x * boys[2] -
-              twice_rho * boys[1];
-          const double cxy = twice_rho_squared * x * y * boys[2];
-          const double cxz = twice_rho_squared * x * z * boys[2];
-          const double cyy =
-              twice_rho_squared * y * y * boys[2] -
-              twice_rho * boys[1];
-          const double cyz = twice_rho_squared * y * z * boys[2];
-          const double czz =
-              twice_rho_squared * z * z * boys[2] -
-              twice_rho * boys[1];
-          const double cxxx =
-              -twice_rho_cubed * x * x * x * boys[3] +
-              3.0 * twice_rho_squared * x * boys[2];
-          const double cxxy =
-              -twice_rho_cubed * x * x * y * boys[3] +
-              twice_rho_squared * y * boys[2];
-          const double cxxz =
-              -twice_rho_cubed * x * x * z * boys[3] +
-              twice_rho_squared * z * boys[2];
-          const double cxyy =
-              -twice_rho_cubed * x * y * y * boys[3] +
-              twice_rho_squared * x * boys[2];
-          const double cxyz =
-              -twice_rho_cubed * x * y * z * boys[3];
-          const double cxzz =
-              -twice_rho_cubed * x * z * z * boys[3] +
-              twice_rho_squared * x * boys[2];
-          const double cyyy =
-              -twice_rho_cubed * y * y * y * boys[3] +
-              3.0 * twice_rho_squared * y * boys[2];
-          const double cyyz =
-              -twice_rho_cubed * y * y * z * boys[3] +
-              twice_rho_squared * z * boys[2];
-          const double cyzz =
-              -twice_rho_cubed * y * z * z * boys[3] +
-              twice_rho_squared * y * boys[2];
-          const double czzz =
-              -twice_rho_cubed * z * z * z * boys[3] +
-              3.0 * twice_rho_squared * z * boys[2];
-
           const double row_x = component_weight[0] * qc.x +
               component_weight[1] * qc.y + component_weight[2] * qc.z;
           const double row_y = component_weight[3] * qc.x +
@@ -3587,53 +3641,39 @@ contracted_eri_cartesian_source_psps_weighted_gradient(
               (component_weight[5] + component_weight[7]);
           const double hzz = second_scale * component_weight[8];
 
-          const double weighted_value =
-              h0 * c0 + hx * cx + hy * cy + hz * cz +
-              hxx * cxx + hxy * cxy + hxz * cxz +
-              hyy * cyy + hyz * cyz + hzz * czz;
-          const double coulomb_chain_x =
-              h0 * cx + hx * cxx + hy * cxy + hz * cxz +
-              hxx * cxxx + hxy * cxxy + hxz * cxxz +
-              hyy * cxyy + hyz * cxyz + hzz * cxzz;
-          const double coulomb_chain_y =
-              h0 * cy + hx * cxy + hy * cyy + hz * cyz +
-              hxx * cxxy + hxy * cxyy + hxz * cxyz +
-              hyy * cyyy + hyz * cyyz + hzz * cyzz;
-          const double coulomb_chain_z =
-              h0 * cz + hx * cxz + hy * cyz + hz * czz +
-              hxx * cxxz + hxy * cxyz + hxz * cxzz +
-              hyy * cyyz + hyz * cyzz + hzz * czzz;
+          const WeightedOrder2Coulomb coulomb =
+              contract_weighted_order2_coulomb(
+                  rho, x, y, z, boys, h0, hx, hy, hz,
+                  hxx, hxy, hxz, hyy, hyz, hzz);
 
           const double first_explicit[3] = {
-              row_x * c0 - inverse_two_q *
-                  (component_weight[0] * cx +
-                   component_weight[1] * cy +
-                   component_weight[2] * cz),
-              row_y * c0 - inverse_two_q *
-                  (component_weight[3] * cx +
-                   component_weight[4] * cy +
-                   component_weight[5] * cz),
-              row_z * c0 - inverse_two_q *
-                  (component_weight[6] * cx +
-                   component_weight[7] * cy +
-                   component_weight[8] * cz),
+              row_x * coulomb.c0 - inverse_two_q *
+                  (component_weight[0] * coulomb.cx +
+                   component_weight[1] * coulomb.cy +
+                   component_weight[2] * coulomb.cz),
+              row_y * coulomb.c0 - inverse_two_q *
+                  (component_weight[3] * coulomb.cx +
+                   component_weight[4] * coulomb.cy +
+                   component_weight[5] * coulomb.cz),
+              row_z * coulomb.c0 - inverse_two_q *
+                  (component_weight[6] * coulomb.cx +
+                   component_weight[7] * coulomb.cy +
+                   component_weight[8] * coulomb.cz),
           };
           const double second_explicit[3] = {
-              column_x * c0 + inverse_two_p *
-                  (component_weight[0] * cx +
-                   component_weight[3] * cy +
-                   component_weight[6] * cz),
-              column_y * c0 + inverse_two_p *
-                  (component_weight[1] * cx +
-                   component_weight[4] * cy +
-                   component_weight[7] * cz),
-              column_z * c0 + inverse_two_p *
-                  (component_weight[2] * cx +
-                   component_weight[5] * cy +
-                   component_weight[8] * cz),
+              column_x * coulomb.c0 + inverse_two_p *
+                  (component_weight[0] * coulomb.cx +
+                   component_weight[3] * coulomb.cy +
+                   component_weight[6] * coulomb.cz),
+              column_y * coulomb.c0 + inverse_two_p *
+                  (component_weight[1] * coulomb.cx +
+                   component_weight[4] * coulomb.cy +
+                   component_weight[7] * coulomb.cz),
+              column_z * coulomb.c0 + inverse_two_p *
+                  (component_weight[2] * coulomb.cx +
+                   component_weight[5] * coulomb.cy +
+                   component_weight[8] * coulomb.cz),
           };
-          const double coulomb_chain[3] = {
-              coulomb_chain_x, coulomb_chain_y, coulomb_chain_z};
           const double product_scale[3] = {
               alpha / p, beta / p, -gamma / q};
           const double shift_scale[3] = {
@@ -3668,8 +3708,337 @@ contracted_eri_cartesian_source_psps_weighted_gradient(
               }
               result.center[center][coordinate] += prefactor *
                   (pair_coefficient_derivative +
-                   product_scale[center] * coulomb_chain[coordinate] +
-                   weighted_value * decay_derivative);
+                   product_scale[center] * coulomb.chain[coordinate] +
+                   coulomb.value * decay_derivative);
+            }
+          }
+        }
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * Contract canonical (p p | s s) through the shared order-two Coulomb DAG.
+ */
+__device__ __noinline__ PspsWeightedGradient
+contracted_eri_cartesian_source_ppss_weighted_gradient(
+    const DeviceBatch& batch,
+    std::int32_t first_p_shell,
+    std::int32_t second_p_shell,
+    std::int32_t third_s_shell,
+    std::int32_t fourth_s_shell,
+    const double (&component_weight)[9]) {
+  const Vec3<double> first = atom_position<double>(
+      batch, batch.shell_atoms[first_p_shell], -1);
+  const Vec3<double> second = atom_position<double>(
+      batch, batch.shell_atoms[second_p_shell], -1);
+  const Vec3<double> third = atom_position<double>(
+      batch, batch.shell_atoms[third_s_shell], -1);
+  const Vec3<double> fourth = atom_position<double>(
+      batch, batch.shell_atoms[fourth_s_shell], -1);
+  const double first_pair_distance = distance_squared(first, second);
+  const double second_pair_distance = distance_squared(third, fourth);
+
+  PspsWeightedGradient result{};
+  for (std::int64_t a = batch.shell_primitive_offsets[first_p_shell];
+       a < batch.shell_primitive_offsets[first_p_shell + 1]; ++a) {
+    const double alpha = batch.primitive_exponents[a];
+    const double coefficient_a = batch.primitive_coefficients[a];
+    for (std::int64_t b = batch.shell_primitive_offsets[second_p_shell];
+         b < batch.shell_primitive_offsets[second_p_shell + 1]; ++b) {
+      const double beta = batch.primitive_exponents[b];
+      const double p = alpha + beta;
+      const double mu = alpha * beta / p;
+      const double inverse_two_p = 0.5 / p;
+      const Vec3<double> product_p =
+          product_center(alpha, first, beta, second);
+      const Vec3<double> pa{
+          product_p.x - first.x,
+          product_p.y - first.y,
+          product_p.z - first.z,
+      };
+      const Vec3<double> pb{
+          product_p.x - second.x,
+          product_p.y - second.y,
+          product_p.z - second.z,
+      };
+      const double first_pair_coefficient =
+          coefficient_a * batch.primitive_coefficients[b];
+      for (std::int64_t c = batch.shell_primitive_offsets[third_s_shell];
+           c < batch.shell_primitive_offsets[third_s_shell + 1]; ++c) {
+        const double gamma = batch.primitive_exponents[c];
+        const double first_three_coefficient =
+            first_pair_coefficient * batch.primitive_coefficients[c];
+        for (std::int64_t d = batch.shell_primitive_offsets[fourth_s_shell];
+             d < batch.shell_primitive_offsets[fourth_s_shell + 1]; ++d) {
+          const double delta = batch.primitive_exponents[d];
+          const double q = gamma + delta;
+          const double nu = gamma * delta / q;
+          const double rho = p * q / (p + q);
+          const Vec3<double> product_q =
+              product_center(gamma, third, delta, fourth);
+          const double x = product_p.x - product_q.x;
+          const double y = product_p.y - product_q.y;
+          const double z = product_p.z - product_q.z;
+          double boys[4];
+          boys_values<3>(rho * (x * x + y * y + z * z), boys);
+
+          const double row_x = component_weight[0] * pb.x +
+              component_weight[1] * pb.y + component_weight[2] * pb.z;
+          const double row_y = component_weight[3] * pb.x +
+              component_weight[4] * pb.y + component_weight[5] * pb.z;
+          const double row_z = component_weight[6] * pb.x +
+              component_weight[7] * pb.y + component_weight[8] * pb.z;
+          const double column_x = component_weight[0] * pa.x +
+              component_weight[3] * pa.y + component_weight[6] * pa.z;
+          const double column_y = component_weight[1] * pa.x +
+              component_weight[4] * pa.y + component_weight[7] * pa.z;
+          const double column_z = component_weight[2] * pa.x +
+              component_weight[5] * pa.y + component_weight[8] * pa.z;
+          const double h0 = pa.x * row_x + pa.y * row_y + pa.z * row_z +
+              inverse_two_p * (component_weight[0] + component_weight[4] +
+                               component_weight[8]);
+          const double hx = inverse_two_p * (row_x + column_x);
+          const double hy = inverse_two_p * (row_y + column_y);
+          const double hz = inverse_two_p * (row_z + column_z);
+          const double second_scale = inverse_two_p * inverse_two_p;
+          const double hxx = second_scale * component_weight[0];
+          const double hxy = second_scale *
+              (component_weight[1] + component_weight[3]);
+          const double hxz = second_scale *
+              (component_weight[2] + component_weight[6]);
+          const double hyy = second_scale * component_weight[4];
+          const double hyz = second_scale *
+              (component_weight[5] + component_weight[7]);
+          const double hzz = second_scale * component_weight[8];
+          const WeightedOrder2Coulomb coulomb =
+              contract_weighted_order2_coulomb(
+                  rho, x, y, z, boys, h0, hx, hy, hz,
+                  hxx, hxy, hxz, hyy, hyz, hzz);
+
+          const double first_shift_scale = alpha / p - 1.0;
+          const double second_shift_scale = alpha / p;
+          const double explicit_first[3] = {
+              (first_shift_scale * row_x +
+               second_shift_scale * column_x) * coulomb.c0 +
+                  inverse_two_p *
+                      (first_shift_scale *
+                           (component_weight[0] * coulomb.cx +
+                            component_weight[1] * coulomb.cy +
+                            component_weight[2] * coulomb.cz) +
+                       second_shift_scale *
+                           (component_weight[0] * coulomb.cx +
+                            component_weight[3] * coulomb.cy +
+                            component_weight[6] * coulomb.cz)),
+              (first_shift_scale * row_y +
+               second_shift_scale * column_y) * coulomb.c0 +
+                  inverse_two_p *
+                      (first_shift_scale *
+                           (component_weight[3] * coulomb.cx +
+                            component_weight[4] * coulomb.cy +
+                            component_weight[5] * coulomb.cz) +
+                       second_shift_scale *
+                           (component_weight[1] * coulomb.cx +
+                            component_weight[4] * coulomb.cy +
+                            component_weight[7] * coulomb.cz)),
+              (first_shift_scale * row_z +
+               second_shift_scale * column_z) * coulomb.c0 +
+                  inverse_two_p *
+                      (first_shift_scale *
+                           (component_weight[6] * coulomb.cx +
+                            component_weight[7] * coulomb.cy +
+                            component_weight[8] * coulomb.cz) +
+                       second_shift_scale *
+                           (component_weight[2] * coulomb.cx +
+                            component_weight[5] * coulomb.cy +
+                            component_weight[8] * coulomb.cz)),
+          };
+          const double product_scale[3] = {
+              alpha / p, beta / p, -gamma / q};
+          const double pair_decay = exp(
+              -mu * first_pair_distance - nu * second_pair_distance);
+          const double primitive_coefficient =
+              first_three_coefficient * batch.primitive_coefficients[d];
+          const double prefactor = primitive_coefficient *
+              2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q)) * pair_decay;
+
+#pragma unroll
+          for (unsigned center = 0; center < 3; ++center) {
+#pragma unroll
+            for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+              const double pair_coefficient_derivative = center == 0
+                  ? explicit_first[coordinate]
+                  : (center == 1 ? -explicit_first[coordinate] : 0.0);
+              double decay_derivative = 0.0;
+              if (center < 2) {
+                const double difference =
+                    vec_axis(first, coordinate) -
+                    vec_axis(second, coordinate);
+                decay_derivative =
+                    (center == 0 ? -2.0 * mu : 2.0 * mu) * difference;
+              } else {
+                const double difference =
+                    vec_axis(third, coordinate) -
+                    vec_axis(fourth, coordinate);
+                decay_derivative = -2.0 * nu * difference;
+              }
+              result.center[center][coordinate] += prefactor *
+                  (pair_coefficient_derivative +
+                   product_scale[center] * coulomb.chain[coordinate] +
+                   coulomb.value * decay_derivative);
+            }
+          }
+        }
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * Contract canonical (d s | s s) in CCA xx,xy,xz,yy,yz,zz order.
+ */
+__device__ __noinline__ PspsWeightedGradient
+contracted_eri_cartesian_source_dsss_weighted_gradient(
+    const DeviceBatch& batch,
+    std::int32_t d_shell,
+    std::int32_t paired_s_shell,
+    std::int32_t third_s_shell,
+    std::int32_t fourth_s_shell,
+    const double* component_weight) {
+  const Vec3<double> first = atom_position<double>(
+      batch, batch.shell_atoms[d_shell], -1);
+  const Vec3<double> second = atom_position<double>(
+      batch, batch.shell_atoms[paired_s_shell], -1);
+  const Vec3<double> third = atom_position<double>(
+      batch, batch.shell_atoms[third_s_shell], -1);
+  const Vec3<double> fourth = atom_position<double>(
+      batch, batch.shell_atoms[fourth_s_shell], -1);
+  const double first_pair_distance = distance_squared(first, second);
+  const double second_pair_distance = distance_squared(third, fourth);
+
+  PspsWeightedGradient result{};
+  for (std::int64_t a = batch.shell_primitive_offsets[d_shell];
+       a < batch.shell_primitive_offsets[d_shell + 1]; ++a) {
+    const double alpha = batch.primitive_exponents[a];
+    const double coefficient_a = batch.primitive_coefficients[a];
+    for (std::int64_t b = batch.shell_primitive_offsets[paired_s_shell];
+         b < batch.shell_primitive_offsets[paired_s_shell + 1]; ++b) {
+      const double beta = batch.primitive_exponents[b];
+      const double p = alpha + beta;
+      const double mu = alpha * beta / p;
+      const double inverse_two_p = 0.5 / p;
+      const Vec3<double> product_p =
+          product_center(alpha, first, beta, second);
+      const Vec3<double> pa{
+          product_p.x - first.x,
+          product_p.y - first.y,
+          product_p.z - first.z,
+      };
+      const double first_pair_coefficient =
+          coefficient_a * batch.primitive_coefficients[b];
+      for (std::int64_t c = batch.shell_primitive_offsets[third_s_shell];
+           c < batch.shell_primitive_offsets[third_s_shell + 1]; ++c) {
+        const double gamma = batch.primitive_exponents[c];
+        const double first_three_coefficient =
+            first_pair_coefficient * batch.primitive_coefficients[c];
+        for (std::int64_t d = batch.shell_primitive_offsets[fourth_s_shell];
+             d < batch.shell_primitive_offsets[fourth_s_shell + 1]; ++d) {
+          const double delta = batch.primitive_exponents[d];
+          const double q = gamma + delta;
+          const double nu = gamma * delta / q;
+          const double rho = p * q / (p + q);
+          const Vec3<double> product_q =
+              product_center(gamma, third, delta, fourth);
+          const double x = product_p.x - product_q.x;
+          const double y = product_p.y - product_q.y;
+          const double z = product_p.z - product_q.z;
+          double boys[4];
+          boys_values<3>(rho * (x * x + y * y + z * z), boys);
+
+          const double gx = 2.0 * component_weight[0] * pa.x +
+              component_weight[1] * pa.y + component_weight[2] * pa.z;
+          const double gy = component_weight[1] * pa.x +
+              2.0 * component_weight[3] * pa.y +
+              component_weight[4] * pa.z;
+          const double gz = component_weight[2] * pa.x +
+              component_weight[4] * pa.y +
+              2.0 * component_weight[5] * pa.z;
+          const double h0 = component_weight[0] *
+                  (pa.x * pa.x + inverse_two_p) +
+              component_weight[1] * pa.x * pa.y +
+              component_weight[2] * pa.x * pa.z +
+              component_weight[3] *
+                  (pa.y * pa.y + inverse_two_p) +
+              component_weight[4] * pa.y * pa.z +
+              component_weight[5] *
+                  (pa.z * pa.z + inverse_two_p);
+          const double hx = inverse_two_p * gx;
+          const double hy = inverse_two_p * gy;
+          const double hz = inverse_two_p * gz;
+          const double second_scale = inverse_two_p * inverse_two_p;
+          const WeightedOrder2Coulomb coulomb =
+              contract_weighted_order2_coulomb(
+                  rho, x, y, z, boys, h0, hx, hy, hz,
+                  second_scale * component_weight[0],
+                  second_scale * component_weight[1],
+                  second_scale * component_weight[2],
+                  second_scale * component_weight[3],
+                  second_scale * component_weight[4],
+                  second_scale * component_weight[5]);
+          const double shift_scale = alpha / p - 1.0;
+          const double explicit_first[3] = {
+              shift_scale *
+                  (gx * coulomb.c0 + inverse_two_p *
+                      (2.0 * component_weight[0] * coulomb.cx +
+                       component_weight[1] * coulomb.cy +
+                       component_weight[2] * coulomb.cz)),
+              shift_scale *
+                  (gy * coulomb.c0 + inverse_two_p *
+                      (component_weight[1] * coulomb.cx +
+                       2.0 * component_weight[3] * coulomb.cy +
+                       component_weight[4] * coulomb.cz)),
+              shift_scale *
+                  (gz * coulomb.c0 + inverse_two_p *
+                      (component_weight[2] * coulomb.cx +
+                       component_weight[4] * coulomb.cy +
+                       2.0 * component_weight[5] * coulomb.cz)),
+          };
+          const double product_scale[3] = {
+              alpha / p, beta / p, -gamma / q};
+          const double pair_decay = exp(
+              -mu * first_pair_distance - nu * second_pair_distance);
+          const double primitive_coefficient =
+              first_three_coefficient * batch.primitive_coefficients[d];
+          const double prefactor = primitive_coefficient *
+              2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q)) * pair_decay;
+
+#pragma unroll
+          for (unsigned center = 0; center < 3; ++center) {
+#pragma unroll
+            for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+              const double pair_coefficient_derivative = center == 0
+                  ? explicit_first[coordinate]
+                  : (center == 1 ? -explicit_first[coordinate] : 0.0);
+              double decay_derivative = 0.0;
+              if (center < 2) {
+                const double difference =
+                    vec_axis(first, coordinate) -
+                    vec_axis(second, coordinate);
+                decay_derivative =
+                    (center == 0 ? -2.0 * mu : 2.0 * mu) * difference;
+              } else {
+                const double difference =
+                    vec_axis(third, coordinate) -
+                    vec_axis(fourth, coordinate);
+                decay_derivative = -2.0 * nu * difference;
+              }
+              result.center[center][coordinate] += prefactor *
+                  (pair_coefficient_derivative +
+                   product_scale[center] * coulomb.chain[coordinate] +
+                   coulomb.value * decay_derivative);
             }
           }
         }
@@ -9010,6 +9379,205 @@ __device__ __noinline__ void contract_two_electron_force_psps_task(
   }
 }
 
+/** Evaluate one closed ppss or dsss shell task over its exact AO domain. */
+template <bool Unrestricted, unsigned TargetShellClass>
+__device__ __noinline__ void contract_two_electron_force_pair_order2_task(
+    const DeviceBatch& batch,
+    ActiveShellQuartetTile task,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    const std::uint8_t* active,
+    double* forces,
+    std::uint64_t generated_shell_class_mask) {
+  static_assert(
+      TargetShellClass == kPpssShellClass ||
+      TargetShellClass == kDsssShellClass);
+  if (task.tile != 0U) return;
+  const std::size_t first_pair = task.first_pair;
+  const std::size_t second_pair = task.second_pair;
+  const std::int32_t system = batch.shell_pair_systems[first_pair];
+  if (active[system] == 0) return;
+
+  const std::int32_t raw_shell[4] = {
+      batch.shell_pair_first[first_pair],
+      batch.shell_pair_second[first_pair],
+      batch.shell_pair_first[second_pair],
+      batch.shell_pair_second[second_pair],
+  };
+  const unsigned shell_class = direct_quartet_shell_class_device(
+      batch.shell_angular[raw_shell[0]], batch.shell_angular[raw_shell[1]],
+      batch.shell_angular[raw_shell[2]], batch.shell_angular[raw_shell[3]]);
+  if (shell_class != TargetShellClass) return;
+  if ((generated_shell_class_mask &
+       (std::uint64_t{1} << TargetShellClass)) != 0U) {
+    return;
+  }
+
+  unsigned canonical_raw_slot[4];
+  if constexpr (TargetShellClass == kPpssShellClass) {
+    const bool first_pair_is_pp =
+        batch.shell_angular[raw_shell[0]] == 1U &&
+        batch.shell_angular[raw_shell[1]] == 1U;
+    const unsigned pair_begin = first_pair_is_pp ? 0U : 2U;
+    const unsigned other_pair_begin = first_pair_is_pp ? 2U : 0U;
+    canonical_raw_slot[0] = pair_begin;
+    canonical_raw_slot[1] = pair_begin + 1U;
+    canonical_raw_slot[2] = other_pair_begin;
+    canonical_raw_slot[3] = other_pair_begin + 1U;
+  } else {
+    unsigned d_slot = 4U;
+    for (unsigned slot = 0; slot < 4; ++slot) {
+      if (batch.shell_angular[raw_shell[slot]] == 2U) d_slot = slot;
+    }
+    if (d_slot >= 4U) return;
+    const unsigned pair_begin = d_slot < 2U ? 0U : 2U;
+    const unsigned other_pair_begin = pair_begin == 0U ? 2U : 0U;
+    canonical_raw_slot[0] = d_slot;
+    canonical_raw_slot[1] =
+        pair_begin + (d_slot == pair_begin ? 1U : 0U);
+    canonical_raw_slot[2] = other_pair_begin;
+    canonical_raw_slot[3] = other_pair_begin + 1U;
+  }
+  const std::int32_t canonical_shell[4] = {
+      raw_shell[canonical_raw_slot[0]], raw_shell[canonical_raw_slot[1]],
+      raw_shell[canonical_raw_slot[2]], raw_shell[canonical_raw_slot[3]],
+  };
+
+  std::int32_t unique_center_atoms[4];
+  unsigned unique_center_count = 0;
+  for (unsigned center = 0; center < 4; ++center) {
+    const std::int32_t atom = batch.shell_atoms[canonical_shell[center]];
+    bool duplicate_center = false;
+    for (unsigned previous = 0; previous < unique_center_count; ++previous) {
+      duplicate_center = duplicate_center ||
+          atom == unique_center_atoms[previous];
+    }
+    if (!duplicate_center) {
+      unique_center_atoms[unique_center_count++] = atom;
+    }
+  }
+  if (unique_center_count == 1) return;
+
+  const std::size_t n = static_cast<std::size_t>(batch.direct_nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t physical_offset =
+      static_cast<std::size_t>(system) * matrix_size;
+  const std::size_t spin_offset =
+      static_cast<std::size_t>(system) * 2 * matrix_size;
+  const std::size_t system_ao_begin = static_cast<std::size_t>(system) * n;
+  const std::size_t first_component_begin =
+      static_cast<std::size_t>(
+          batch.shell_direct_ao_offsets[canonical_shell[0]]) -
+      system_ao_begin;
+  const std::size_t second_component_begin =
+      static_cast<std::size_t>(
+          batch.shell_direct_ao_offsets[canonical_shell[1]]) -
+      system_ao_begin;
+  const std::size_t first_ao_pair_count =
+      shell_ao_pair_count(batch, first_pair);
+  const std::size_t second_ao_pair_count =
+      shell_ao_pair_count(batch, second_pair);
+  const bool same_shell_pair = first_pair == second_pair;
+  const std::size_t ao_quartet_count = same_shell_pair
+      ? first_ao_pair_count * (first_ao_pair_count + 1) / 2
+      : first_ao_pair_count * second_ao_pair_count;
+
+  double component_weight[9]{};
+  bool any_component = false;
+  for (std::size_t ordinal = 0; ordinal < ao_quartet_count; ++ordinal) {
+    std::size_t first_ao_pair = 0;
+    std::size_t second_ao_pair = 0;
+    if (same_shell_pair) {
+      decode_lower_triangle(ordinal, first_ao_pair, second_ao_pair);
+    } else {
+      first_ao_pair = ordinal / second_ao_pair_count;
+      second_ao_pair = ordinal % second_ao_pair_count;
+    }
+    std::size_t raw_ao[4];
+    decode_shell_ao_pair(batch, first_pair, first_ao_pair, system_ao_begin,
+                         raw_ao[0], raw_ao[1]);
+    decode_shell_ao_pair(batch, second_pair, second_ao_pair, system_ao_begin,
+                         raw_ao[2], raw_ao[3]);
+    if (schwarz_bounds[
+            physical_offset + matrix_index(raw_ao[0], raw_ao[1], n)] *
+            schwarz_bounds[
+                physical_offset + matrix_index(raw_ao[2], raw_ao[3], n)] <
+        screening_tolerance) {
+      continue;
+    }
+    const double density_coefficient =
+        direct_force_density_coefficient<Unrestricted>(
+            n, physical_offset, spin_offset, density,
+            raw_ao[0], raw_ao[1], raw_ao[2], raw_ao[3]);
+    if (density_coefficient == 0.0) continue;
+    const unsigned first_component = static_cast<unsigned>(
+        raw_ao[canonical_raw_slot[0]] - first_component_begin);
+    unsigned output = first_component;
+    if constexpr (TargetShellClass == kPpssShellClass) {
+      const unsigned second_component = static_cast<unsigned>(
+          raw_ao[canonical_raw_slot[1]] - second_component_begin);
+      if (first_component >= 3U || second_component >= 3U) return;
+      output = first_component * 3U + second_component;
+    } else if (first_component >= 6U) {
+      return;
+    }
+    const double angular_coefficient =
+        batch.direct_ao_coefficients[system_ao_begin + raw_ao[0]] *
+        batch.direct_ao_coefficients[system_ao_begin + raw_ao[1]] *
+        batch.direct_ao_coefficients[system_ao_begin + raw_ao[2]] *
+        batch.direct_ao_coefficients[system_ao_begin + raw_ao[3]];
+    component_weight[output] += density_coefficient * angular_coefficient;
+    any_component = true;
+  }
+  if (!any_component) return;
+
+  PspsWeightedGradient gradient{};
+  if constexpr (TargetShellClass == kPpssShellClass) {
+    gradient = contracted_eri_cartesian_source_ppss_weighted_gradient(
+        batch, canonical_shell[0], canonical_shell[1],
+        canonical_shell[2], canonical_shell[3], component_weight);
+  } else {
+    gradient = contracted_eri_cartesian_source_dsss_weighted_gradient(
+        batch, canonical_shell[0], canonical_shell[1],
+        canonical_shell[2], canonical_shell[3], component_weight);
+  }
+
+  double derivative_sum[3]{};
+  for (unsigned atom = 0; atom + 1 < unique_center_count; ++atom) {
+    const std::int64_t coordinate =
+        static_cast<std::int64_t>(unique_center_atoms[atom]) * 3;
+    for (unsigned axis = 0; axis < 3; ++axis) {
+      double derivative = 0.0;
+      double fourth_derivative = 0.0;
+      for (unsigned canonical = 0; canonical < 3; ++canonical) {
+        const double value = gradient.center[canonical][axis];
+        fourth_derivative -= value;
+        if (batch.shell_atoms[canonical_shell[canonical]] ==
+            unique_center_atoms[atom]) {
+          derivative += value;
+        }
+      }
+      if (batch.shell_atoms[canonical_shell[3]] ==
+          unique_center_atoms[atom]) {
+        derivative += fourth_derivative;
+      }
+      derivative_sum[axis] += derivative;
+      if (derivative != 0.0) {
+        atomicAdd(forces + coordinate + axis, -derivative);
+      }
+    }
+  }
+  const std::int64_t final_coordinate =
+      static_cast<std::int64_t>(
+          unique_center_atoms[unique_center_count - 1]) * 3;
+  for (unsigned axis = 0; axis < 3; ++axis) {
+    if (derivative_sum[axis] != 0.0) {
+      atomicAdd(forces + final_coordinate + axis, derivative_sum[axis]);
+    }
+  }
+}
+
 template <bool Unrestricted, unsigned AngularOrder>
 __device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
     DeviceBatch batch,
@@ -9341,6 +9909,33 @@ __global__ void two_electron_force_psps_grid_stride_kernel(
   }
 }
 
+/** Scan compact order-two tiles for one exact ppss or dsss class. */
+template <bool Unrestricted, unsigned TargetShellClass>
+__global__ void two_electron_force_pair_order2_grid_stride_kernel(
+    DeviceBatch batch,
+    const std::uint32_t* active_shell_quartet_tile_count,
+    const ActiveShellQuartetTile* active_shell_quartet_tiles,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    const std::uint8_t* active,
+    double* forces,
+    std::uint64_t generated_shell_class_mask) {
+  static_assert(
+      TargetShellClass == kPpssShellClass ||
+      TargetShellClass == kDsssShellClass);
+  const std::uint32_t work_count = *active_shell_quartet_tile_count;
+  const std::uint32_t stride = blockDim.x * gridDim.x;
+  for (std::uint32_t task_index = blockIdx.x * blockDim.x + threadIdx.x;
+       task_index < work_count; task_index += stride) {
+    contract_two_electron_force_pair_order2_task<
+        Unrestricted, TargetShellClass>(
+        batch, active_shell_quartet_tiles[task_index], screening_tolerance,
+        schwarz_bounds, density, active, forces,
+        generated_shell_class_mask);
+  }
+}
+
 /**
  * Persistent one-warp workers dynamically consume only compacted force work.
  *
@@ -9609,13 +10204,29 @@ void launch_angular_force_quartets(
             batch, order_tile_count, order_tiles, screening_tolerance,
             schwarz_bounds, density, active, forces,
             generated_shell_class_mask);
+        two_electron_force_pair_order2_grid_stride_kernel<
+            Unrestricted, kPpssShellClass><<<
+                std::min(capacity_workers, persistent_worker_blocks),
+                detail::kDirectQuartetThreads, 0, stream>>>(
+            batch, order_tile_count, order_tiles, screening_tolerance,
+            schwarz_bounds, density, active, forces,
+            generated_shell_class_mask);
+        two_electron_force_pair_order2_grid_stride_kernel<
+            Unrestricted, kDsssShellClass><<<
+                std::min(capacity_workers, persistent_worker_blocks),
+                detail::kDirectQuartetThreads, 0, stream>>>(
+            batch, order_tile_count, order_tiles, screening_tolerance,
+            schwarz_bounds, density, active, forces,
+            generated_shell_class_mask);
 
-        // The exact psps shell worker owns class two unless an enabled
-        // generated kernel already consumed it. All other order-two classes
-        // remain on the numerically established generic derivative path.
+        // Exact shell workers own all three order-two classes unless an
+        // enabled generated kernel already consumed one. The generic launch
+        // is retained as a guarded safety net for future class additions.
         const std::uint64_t generic_shell_class_mask =
             generated_shell_class_mask |
-            (std::uint64_t{1} << kPspsShellClass);
+            (std::uint64_t{1} << kPspsShellClass) |
+            (std::uint64_t{1} << kPpssShellClass) |
+            (std::uint64_t{1} << kDsssShellClass);
         const unsigned capacity_blocks = static_cast<unsigned>(
             capacities[AngularOrder] *
             detail::direct_quartet_subtiles_per_tile(AngularOrder));
