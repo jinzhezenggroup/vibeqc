@@ -12,37 +12,53 @@ batch timing boundary.
 
 | Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup | Max energy error | Max force error | Gate |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| [`WATER27 tetramer`](rtx5090-2c0ee1a-water-tetramer-def2-svp-spherical-b1.json) | 1 | 1492.812 ms | 1372.687 ms | 0.920x | 3.13e-12 Eh | 2.00e-12 Eh/bohr | speed fails |
-| [`WATER27 tetramer`](rtx5090-2c0ee1a-water-tetramer-def2-svp-spherical-b4.json) | 4 | 5447.831 ms | 5208.659 ms | 0.956x | 3.92e-12 Eh | 5.60e-12 Eh/bohr | speed fails |
+| [`WATER27 tetramer`](rtx5090-10d2b6f-water-tetramer-def2-svp-spherical-b1.json) | 1 | 1096.459 ms | 1354.249 ms | 1.235x | 2.56e-12 Eh | 2.16e-12 Eh/bohr | passes |
+| [`WATER27 tetramer`](rtx5090-10d2b6f-water-tetramer-def2-svp-spherical-b4.json) | 4 | 3894.213 ms | 5183.268 ms | 1.331x | 2.96e-12 Eh | 5.66e-12 Eh/bohr | passes |
 
 Both clean artifacts come from commit
-`2c0ee1aad974dbb9821124aec2d8aef7c00e066a` on 2026-08-25. Every QCE and
+`10d2b6f87654d3d77bb12108018005a0d5382dd7` on 2026-08-25. Every QCE and
 GPU4PySCF system converged, and both points pass the explicit `3e-11 Eh` and
-`3e-11 Eh/bohr` accuracy limits. They fail only the required `1.0x` minimum
-speedup, so the 96-AO milestone remains open. All three synchronized warm
-samples are retained because both engines show material timing variation at
-this size. The batch-1 GPU4PySCF samples descend from 1.707 s through 1.373 s
-to 1.077 s, while the batch-4 samples descend from 6.465 s through 5.209 s to
-4.292 s. QCE also changes SCF iteration count across repeated warm executions;
-the current harness records only the final repeat's two iterations at batch 1
-and `[2, 2, 2, 2]` at batch 4. These endpoint medians therefore establish only
-that accuracy passes and both speed gates remain open. The component profile
-below is the stronger evidence for the local order-2 optimization.
+`3e-11 Eh/bohr` accuracy limits plus the required `1.0x` minimum speedup. The
+explicit 96-AO direct-J/K milestone is therefore closed at both batch sizes.
+All three synchronized warm samples remain in the artifacts because both
+engines show material timing variation: QCE spans 0.910--1.097 s at batch 1
+and 3.370--4.284 s at batch 4, while GPU4PySCF spans 1.059--1.682 s and
+4.254--6.434 s respectively. The harness records only the final repeat's SCF
+iterations, which are three at batch 1 and `[2, 2, 2, 2]` at batch 4.
 
 ## Realistic 192-AO correctness status
 
 | Artifact | Batch | QCE warm | GPU4PySCF warm | Informational speedup | Max energy error | Max force error | Gate |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| [`WATER27 S4 octamer`](rtx5090-a4db5f3-water-octamer-s4-def2-svp-spherical-b1.json) | 1 | 13233.879 ms | 2245.000 ms | 0.170x | 2.16e-12 Eh | 5.60e-11 Eh/bohr | passes |
-| [`WATER27 S4 octamer`](rtx5090-a4db5f3-water-octamer-s4-def2-svp-spherical-b4.json) | 4 | 72096.300 ms | 7812.312 ms | 0.108x | 8.98e-12 Eh | 2.36e-10 Eh/bohr | passes |
+| [`WATER27 S4 octamer`](rtx5090-10d2b6f-water-octamer-s4-def2-svp-spherical-b1.json) | 1 | 8814.841 ms | 1482.881 ms | 0.168x | 5.12e-12 Eh | 2.25e-10 Eh/bohr | passes |
+| [`WATER27 S4 octamer`](rtx5090-10d2b6f-water-octamer-s4-def2-svp-spherical-b4.json) | 4 | 32146.584 ms | 9236.162 ms | 0.287x | 7.62e-12 Eh | 5.87e-11 Eh/bohr | passes |
 
-These clean commit-`a4db5f3` artifacts use one synchronized warm replay per
+These clean commit-`10d2b6f` artifacts use one synchronized warm replay per
 point because of the direct-J/K cost. Both satisfy the current `1e-10 Eh` and
 `5e-10 Eh/bohr` correctness limits. The recorded warm times remain sensitive
 to the number of SCF iterations reached after nondeterministic direct-J/K
-atomic reductions; the batch-1 artifact records two iterations and batch 4
-records 2/7/3/5 across its four systems. Their speedups are retained for
+atomic reductions; the batch-1 artifact records three iterations and batch 4
+records 2/2/3/3 across its four systems. Their speedups are retained for
 transparency but are not acceptance criteria until complete DF J/K lands.
+
+## Order-aware direct-Fock scheduling
+
+Commit `10d2b6f` launches only the virtual AO subtiles reachable by each total
+angular order: one for orders 0--3, three for order 4, six for order 5, and
+eight above it. The generic order-5 force queue is also compacted separately
+from the fused `dppp` AOT queue. On the 192-AO batch-1 component capture, the
+direct-Fock launch domain through order 8 falls from 87.25 million to 15.47
+million one-warp blocks. Summed direct-Fock kernel time falls from 1938.755 ms
+to 1442.984 ms, a 25.6% reduction. Force kernels are essentially unchanged,
+confirming that their persistent workers made empty queue claims cheap while
+the fixed-capacity Fock grids paid materially for virtual blocks.
+
+Final-density profiling still finds 9.87 million active-domain blocks inside
+the 15.47-million fixed Graph domain at 192 AOs, leaving a 36.2% capacity tail
+for a later persistent or device-indirect Fock scheduler. Low-order shell
+classes also use far fewer than 32 AO-component lanes per warp, so packed
+shell-class workers remain a larger follow-up opportunity than further queue
+claim micro-tuning.
 
 ## 96-AO warm component profile
 

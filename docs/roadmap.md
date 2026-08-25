@@ -206,6 +206,19 @@ and performance measurements pass.
   coverage stays limited to measured hot classes because generated expansion
   increases NVCC time, binary size, and instruction-cache pressure; the compact
   generic recurrence remains the oracle and long-tail fallback.
+  Order-aware virtual tiling now launches one subtile per active order-0--3
+  shell quartet, three for order 4, six for order 5, and the full eight only
+  for order 6 and above. The generic order-5 force queue is compacted away
+  from the fused `dppp` queue instead of merely claiming and rejecting those
+  tasks. On the 192-AO batch-1 capture, direct-Fock launch blocks through order
+  eight fall from 87.25 million to 15.47 million and summed kernel time falls
+  from 1938.755 to 1442.984 ms. Clean WATER27 artifacts pass all four accuracy
+  points and close the 96-AO performance gates at `1.235x`/`1.331x` for batch
+  1/4. The 192-AO speed observations remain informational at `0.168x`/`0.287x`
+  before DF J/K. Final-density profiling still exposes a 36.2% fixed-capacity
+  Fock tail, while order-0/1 shell quartets occupy only one/three lanes of the
+  current one-warp worker. Packed shell-class Fock/force workers and a stable
+  convergence-noise policy are therefore the next direct-path priorities.
   Clean RTX 5090
   artifacts validate energy, forces, and homogeneous-batch throughput for the
   exact `sdf18-direct`, Cartesian water/def2-SVP, and open-shell
