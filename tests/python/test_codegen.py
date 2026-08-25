@@ -16,6 +16,7 @@ from tools.qce_codegen import (
     DDPS_SPEC,
     DPDS_SPEC,
     DPPP_SPEC,
+    FUSED_SHELL_SPEC_BY_NAME,
     NvrtcCacheSpec,
     ShellClassSpec,
     build_dppp_component_kernel,
@@ -45,6 +46,7 @@ from tools.qce_codegen.benchmark import (
 )
 from tools.qce_codegen.production import (
     emit_registry_header,
+    load_production_fock_manifest,
     load_production_manifest,
     write_production_bundle,
 )
@@ -538,6 +540,52 @@ def test_ddps_fused_cuda_generates_order_four_double_matchings():
     assert "Dual3" not in source
 
 
+@pytest.mark.parametrize(
+    ("name", "component_count", "state_count", "block_threads"),
+    (
+        ("ppps", 27, 20, 32),
+        ("dpps", 54, 35, 64),
+        ("dsps", 18, 20, 32),
+    ),
+)
+def test_generated_fock_workers_use_value_only_shell_schedules(
+    name, component_count, state_count, block_threads
+):
+    """Keep force-only gradients out of the generated SCF hot path."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
+    source = emit_shell_class_fused_cuda(spec, include_fock=True)
+    class_name = name[0].upper() + name[1:]
+    assert (
+        f"kGenerated{class_name}ComponentCount = {component_count}U"
+        in source
+    )
+    assert (
+        f"kGenerated{class_name}FockCoulombStateCount =\n"
+        f"    {state_count}U"
+        in source
+    )
+    assert (
+        f"kGenerated{class_name}FockBlockThreads = {block_threads}U"
+        in source
+    )
+    assert f"Generated{class_name}ValueTerm" in source
+    assert f"generated_{name}_component_value" in source
+    assert (
+        f"generated_{name}_shell_class_fock_rhf_persistent_kernel"
+        in source
+    )
+    assert (
+        f"generated_{name}_shell_class_fock_uhf_persistent_kernel"
+        in source
+    )
+    fock_fragment = source.split(
+        "/** Coefficient-only pair term used by the SCF Fock recurrence. */",
+        maxsplit=1,
+    )[1]
+    assert f"generated_{name}_density_coefficient" not in fock_fragment
+
+
 def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path):
     """Keep machine CUDA out of Git while retaining deterministic builds."""
 
@@ -548,6 +596,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
         / "production_shell_classes.json"
     )
     specifications = load_production_manifest(manifest)
+    fock_specifications = load_production_fock_manifest(manifest)
     assert tuple(spec.name for spec in specifications) == (
         "dppp",
         "dpds",
@@ -555,6 +604,9 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
         "dpps",
         "dsps",
         "dspp",
+    )
+    assert tuple(spec.name for spec in fock_specifications) == (
+        "dpps",
     )
     first_directory = tmp_path / "first"
     second_directory = tmp_path / "second"
@@ -564,10 +616,12 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     for first_path, second_path in zip(first, second, strict=True):
         assert first_path.read_bytes() == second_path.read_bytes()
         assert b"\0" not in first_path.read_bytes()
-    header = emit_registry_header(specifications)
+    header = emit_registry_header(specifications, fock_specifications)
     assert '{"ppps", 4U, 3U, 64U}' in header
     assert '{"dspp", 8U, 4U, 64U}' in header
+    assert '{"dpps", 11U, 4U, 64U}' in header
     assert "QCE_AOT_SHELL_CLASSES" in header
+    assert "QCE_AOT_FOCK_SHELL_CLASSES" in header
 
 
 def test_batch_screening_ranks_real_profile_and_emits_one_process_driver():

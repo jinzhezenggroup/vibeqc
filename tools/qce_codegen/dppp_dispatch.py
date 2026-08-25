@@ -279,6 +279,39 @@ def _generic_component_gradient_setup(spec: ShellClassSpec) -> str:
     return "\n".join(lines)
 
 
+def _generic_component_value_setup(spec: ShellClassSpec) -> str:
+    """Generate lane decoding and coefficient-only pair recurrence inputs."""
+
+    names = _component_names(spec)
+    lines = list(_generic_component_decode(spec, include_s=False))
+    for centers, pair_name in (((0, 1), "first"), ((2, 3), "second")):
+        axes = []
+        shifts = []
+        for center in centers:
+            for quantum in range(spec.angular[center]):
+                axis = _component_axis_expression(
+                    spec, center, quantum, names[center]
+                )
+                axis_position = len(axes)
+                axes.append(axis)
+                shifts.append(
+                    f"geometry.pair_shifts[{center}]"
+                    f"[{pair_name}_axes[{axis_position}]]"
+                )
+        order = sum(spec.angular[center] for center in centers)
+        lines.extend(
+            _cuda_array_declaration(
+                f"const unsigned {pair_name}_axes[{order}]", axes
+            )
+        )
+        lines.extend(
+            _cuda_array_declaration(
+                f"const double {pair_name}_shifts[{order}]", shifts
+            )
+        )
+    return "\n".join(lines)
+
+
 def _generic_task_component_setup(spec: ShellClassSpec) -> str:
     """Generate AO/density routing for one automatically decoded lane."""
 
@@ -324,9 +357,380 @@ def _generic_task_component_setup(spec: ShellClassSpec) -> str:
     return "\n".join(lines)
 
 
+def _emit_shell_class_fock_cuda(
+    spec: ShellClassSpec, plan: FusedShellPlan
+) -> str:
+    """Emit coefficient-only Fock workers beside an accepted force kernel.
+
+    Fock construction reuses primitive geometry and the Cartesian Coulomb
+    table, but deliberately omits shift gradients and the raised derivative
+    order required only by analytic forces.
+    """
+
+    first_pair_order, second_pair_order = spec.pair_orders
+    supported_pair_orders = " || ".join(
+        f"PairOrder == {order}U" for order in sorted(set(spec.pair_orders))
+    )
+    maximum_order = sum(spec.angular)
+    coulomb_state_count = (
+        (maximum_order + 1) * (maximum_order + 2) * (maximum_order + 3) // 6
+    )
+    block_threads = (
+        (max(spec.component_count, coulomb_state_count) + 31) // 32
+    ) * 32
+    minimum_blocks_per_sm = (384 + block_threads - 1) // block_threads
+    barrier = "__syncwarp();" if block_threads == 32 else "__syncthreads();"
+    component_setup = _generic_component_value_setup(spec)
+    task_component_setup = _generic_task_component_setup(spec)
+    component_names = _emitted_component_names(spec)
+    double_pair_matchings = ""
+    if max(spec.pair_orders) >= 4:
+        double_pair_matchings = """  if constexpr (PairOrder >= 4U) {
+    for (unsigned first = 0; first < PairOrder; ++first) {
+      for (unsigned second = first + 1U; second < PairOrder; ++second) {
+        if (axes[first] != axes[second]) continue;
+        const unsigned first_removed = (1U << first) | (1U << second);
+        for (unsigned third = 0; third < PairOrder; ++third) {
+          for (unsigned fourth = third + 1U; fourth < PairOrder; ++fourth) {
+            if (axes[third] != axes[fourth]) continue;
+            const unsigned second_removed =
+                (1U << third) | (1U << fourth);
+            if (first_removed >= second_removed ||
+                (first_removed & second_removed) != 0U) continue;
+            generated_dppp_add_value_matching(
+                term, axes, shifts, inverse_two_exponent, subset,
+                first_removed | second_removed, 2U);
+          }
+        }
+      }
+    }
+  }
+"""
+    return f"""
+
+/** Coefficient-only pair term used by the SCF Fock recurrence. */
+struct GeneratedDpppValueTerm {{
+  unsigned derivative_state;
+  double coefficient;
+}};
+
+constexpr unsigned kGeneratedDpppFockCoulombStateCount =
+    {coulomb_state_count}U;
+constexpr unsigned kGeneratedDpppFockBlockThreads = {block_threads}U;
+
+template <unsigned PairOrder>
+__device__ __forceinline__ void generated_dppp_add_value_matching(
+    GeneratedDpppValueTerm& term,
+    const unsigned (&axes)[PairOrder],
+    const double (&shifts)[PairOrder],
+    double inverse_two_exponent,
+    unsigned subset,
+    unsigned removed,
+    unsigned contraction_count) {{
+  if ((subset & removed) != 0U) return;
+  double coefficient = 1.0;
+  const unsigned inverse_count = contraction_count + __popc(subset);
+  for (unsigned factor = 0; factor < inverse_count; ++factor) {{
+    coefficient *= inverse_two_exponent;
+  }}
+  for (unsigned quantum = 0; quantum < PairOrder; ++quantum) {{
+    if (((subset | removed) & (1U << quantum)) == 0U) {{
+      coefficient *= shifts[quantum];
+    }}
+  }}
+  term.coefficient += coefficient;
+}}
+
+template <unsigned PairOrder>
+__device__ __forceinline__ GeneratedDpppValueTerm
+generated_dppp_pair_value_term(
+    const unsigned (&axes)[PairOrder],
+    const double (&shifts)[PairOrder],
+    double inverse_two_exponent,
+    unsigned subset) {{
+  static_assert({supported_pair_orders});
+  GeneratedDpppValueTerm term{{}};
+  for (unsigned quantum = 0; quantum < PairOrder; ++quantum) {{
+    if ((subset & (1U << quantum)) != 0U) {{
+      term.derivative_state += 1U << (3U * axes[quantum]);
+    }}
+  }}
+  generated_dppp_add_value_matching(
+      term, axes, shifts, inverse_two_exponent, subset, 0U, 0U);
+  for (unsigned first = 0; first < PairOrder; ++first) {{
+    for (unsigned second = first + 1U; second < PairOrder; ++second) {{
+      if (axes[first] == axes[second]) {{
+        generated_dppp_add_value_matching(
+            term, axes, shifts, inverse_two_exponent, subset,
+            (1U << first) | (1U << second), 1U);
+      }}
+    }}
+  }}
+{double_pair_matchings}  return term;
+}}
+
+/** Evaluate one AO component without constructing force-only derivatives. */
+template <bool SharedCoulomb>
+__device__ __forceinline__ double generated_dppp_component_value(
+    unsigned component,
+    const GeneratedDpppPrimitiveGeometry& geometry,
+    const double* coulomb) {{
+{component_setup}
+
+  GeneratedDpppValueTerm second_terms[{1 << second_pair_order}];
+#pragma unroll
+  for (unsigned subset = 0; subset < {1 << second_pair_order}U; ++subset) {{
+    second_terms[subset] = generated_dppp_pair_value_term(
+        second_axes, second_shifts, geometry.inverse_two_q, subset);
+  }}
+  double value = 0.0;
+#pragma unroll
+  for (unsigned first_subset = 0;
+       first_subset < {1 << first_pair_order}U; ++first_subset) {{
+    const GeneratedDpppValueTerm first_term = generated_dppp_pair_value_term(
+        first_axes, first_shifts, geometry.inverse_two_p, first_subset);
+#pragma unroll
+    for (unsigned second_subset = 0;
+         second_subset < {1 << second_pair_order}U; ++second_subset) {{
+      const GeneratedDpppValueTerm& second_term = second_terms[second_subset];
+      const double sign =
+          (generated_dppp_state_total(second_term.derivative_state) & 1U)
+          == 0U ? 1.0 : -1.0;
+      const unsigned state =
+          first_term.derivative_state + second_term.derivative_state;
+      value += sign * first_term.coefficient * second_term.coefficient *
+          generated_dppp_component_coulomb<SharedCoulomb>(
+              geometry, coulomb, state);
+    }}
+  }}
+  return geometry.prefactor * value;
+}}
+
+/** Scatter one canonical integral using QCE's existing RHF/UHF convention. */
+template <bool Unrestricted>
+__device__ __forceinline__ void generated_dppp_accumulate_fock_integral(
+    const GeneratedDpppShellTask& task,
+    const double* density,
+    double* fock,
+    std::size_t i, std::size_t j, std::size_t k, std::size_t l,
+    double integral) {{
+  const std::size_t n = static_cast<std::size_t>(task.matrix_order);
+  const std::size_t matrix_size = n * n;
+#pragma unroll
+  for (unsigned permutation = 0; permutation < 8U; ++permutation) {{
+    std::size_t a = 0, b = 0, c = 0, d = 0;
+    generated_dppp_eri_permutation(
+        permutation, i, j, k, l, a, b, c, d);
+    if (!generated_dppp_unique_permutation(
+            permutation, i, j, k, l, a, b, c, d)) continue;
+    const std::size_t ab = generated_dppp_matrix_index(a, b, n);
+    const std::size_t ac = generated_dppp_matrix_index(a, c, n);
+    const std::size_t cd = generated_dppp_matrix_index(c, d, n);
+    const std::size_t bd = generated_dppp_matrix_index(b, d, n);
+    if constexpr (Unrestricted) {{
+      const double alpha_cd = density[task.spin_offset + cd];
+      const double beta_cd = density[task.spin_offset + matrix_size + cd];
+      const double total_cd = alpha_cd + beta_cd;
+      if (total_cd != 0.0) {{
+        atomicAdd(fock + task.spin_offset + ab, total_cd * integral);
+        atomicAdd(
+            fock + task.spin_offset + matrix_size + ab,
+            total_cd * integral);
+      }}
+      const double alpha_bd = density[task.spin_offset + bd];
+      const double beta_bd = density[task.spin_offset + matrix_size + bd];
+      if (alpha_bd != 0.0) {{
+        atomicAdd(fock + task.spin_offset + ac, -alpha_bd * integral);
+      }}
+      if (beta_bd != 0.0) {{
+        atomicAdd(
+            fock + task.spin_offset + matrix_size + ac,
+            -beta_bd * integral);
+      }}
+    }} else {{
+      const double density_cd = density[task.density_offset + cd];
+      const double density_bd = density[task.density_offset + bd];
+      if (density_cd != 0.0) {{
+        atomicAdd(fock + task.density_offset + ab, density_cd * integral);
+      }}
+      if (density_bd != 0.0) {{
+        atomicAdd(
+            fock + task.density_offset + ac,
+            -0.5 * density_bd * integral);
+      }}
+    }}
+  }}
+}}
+
+template <bool Unrestricted>
+__device__ __forceinline__ void generated_dppp_shell_class_fock_task(
+    const GeneratedDpppShellTask* tasks,
+    const double* primitive_exponents,
+    const double* primitive_coefficients,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* fock,
+    std::size_t task_index) {{
+  struct Shared {{
+    GeneratedDpppShellTask task;
+    GeneratedDpppVec3 positions[4];
+    GeneratedDpppPrimitiveGeometry primitive;
+    double coulomb[kGeneratedDpppFockCoulombStateCount];
+  }};
+  __shared__ Shared shared;
+  const unsigned lane = threadIdx.x;
+  if (blockDim.x != kGeneratedDpppFockBlockThreads) return;
+  if (lane == 0U) {{
+    shared.task = tasks[task_index];
+#pragma unroll
+    for (unsigned center = 0; center < 4U; ++center) {{
+      shared.positions[center] = atom_positions[shared.task.atom[center]];
+    }}
+  }}
+  {barrier}
+
+  const bool component_lane = lane < kGeneratedDpppComponentCount;
+  const unsigned component = component_lane ? lane : 0U;
+{task_component_setup}
+  const std::size_t matrix_order =
+      static_cast<std::size_t>(shared.task.matrix_order);
+  const bool retained_by_schwarz = component_lane && unique_ket_component &&
+      (schwarz_bounds == nullptr ||
+       schwarz_bounds[
+           shared.task.density_offset +
+           generated_dppp_matrix_index(i, j, matrix_order)] *
+           schwarz_bounds[
+               shared.task.density_offset +
+               generated_dppp_matrix_index(k, l, matrix_order)] >=
+           screening_tolerance);
+  const double angular_coefficient = retained_by_schwarz
+      ? ao_coefficients[shared.task.ao_coefficient_begin[0] + {component_names[0]}] *
+        ao_coefficients[shared.task.ao_coefficient_begin[1] + {component_names[1]}] *
+        ao_coefficients[shared.task.ao_coefficient_begin[2] + {component_names[2]}] *
+        ao_coefficients[shared.task.ao_coefficient_begin[3] + {component_names[3]}]
+      : 0.0;
+  double component_integral = 0.0;
+
+  for (std::uint64_t a = shared.task.primitive_begin[0];
+       a < shared.task.primitive_end[0]; ++a) {{
+    for (std::uint64_t b = shared.task.primitive_begin[1];
+         b < shared.task.primitive_end[1]; ++b) {{
+      for (std::uint64_t c = shared.task.primitive_begin[2];
+           c < shared.task.primitive_end[2]; ++c) {{
+        for (std::uint64_t d = shared.task.primitive_begin[3];
+             d < shared.task.primitive_end[3]; ++d) {{
+          if (lane == 0U) {{
+            generated_dppp_make_primitive_geometry(
+                primitive_exponents[a], shared.positions[0],
+                primitive_exponents[b], shared.positions[1],
+                primitive_exponents[c], shared.positions[2],
+                primitive_exponents[d], shared.positions[3],
+                primitive_coefficients[a] * primitive_coefficients[b] *
+                    primitive_coefficients[c] * primitive_coefficients[d],
+                shared.primitive);
+          }}
+          {barrier}
+          if (lane < kGeneratedDpppFockCoulombStateCount) {{
+            shared.coulomb[lane] = generated_dppp_coulomb(
+                generated_dppp_coulomb_states[lane], shared.primitive);
+          }}
+          {barrier}
+          if (retained_by_schwarz) {{
+            component_integral += angular_coefficient *
+                shared.primitive.primitive_coefficient *
+                generated_dppp_component_value<true>(
+                    component, shared.primitive, shared.coulomb);
+          }}
+          {barrier}
+        }}
+      }}
+    }}
+  }}
+  if (retained_by_schwarz && component_integral != 0.0) {{
+    generated_dppp_accumulate_fock_integral<Unrestricted>(
+        shared.task, density, fock, i, j, k, l, component_integral);
+  }}
+}}
+
+template <bool Unrestricted>
+__device__ __forceinline__ void
+generated_dppp_shell_class_fock_persistent(
+    const GeneratedDpppShellTask* tasks,
+    const double* primitive_exponents,
+    const double* primitive_coefficients,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* fock,
+    const std::uint32_t* task_count,
+    std::uint32_t* task_head) {{
+  const unsigned lane = threadIdx.x;
+  __shared__ std::uint32_t shared_task_index;
+  while (true) {{
+    if (lane == 0U) shared_task_index = atomicAdd(task_head, 1U);
+    {barrier}
+    const std::uint32_t task_index = shared_task_index;
+    if (task_index >= *task_count) return;
+    generated_dppp_shell_class_fock_task<Unrestricted>(
+        tasks, primitive_exponents, primitive_coefficients, ao_coefficients,
+        atom_positions, screening_tolerance, schwarz_bounds, density, fock,
+        static_cast<std::size_t>(task_index));
+    {barrier}
+  }}
+}}
+
+extern "C" __global__ __launch_bounds__(
+    kGeneratedDpppFockBlockThreads, {minimum_blocks_per_sm})
+void generated_dppp_shell_class_fock_rhf_persistent_kernel(
+    const GeneratedDpppShellTask* tasks,
+    const double* primitive_exponents,
+    const double* primitive_coefficients,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* fock,
+    const std::uint32_t* task_count,
+    std::uint32_t* task_head) {{
+  generated_dppp_shell_class_fock_persistent<false>(
+      tasks, primitive_exponents, primitive_coefficients, ao_coefficients,
+      atom_positions, screening_tolerance, schwarz_bounds, density, fock,
+      task_count, task_head);
+}}
+
+extern "C" __global__ __launch_bounds__(
+    kGeneratedDpppFockBlockThreads, {minimum_blocks_per_sm})
+void generated_dppp_shell_class_fock_uhf_persistent_kernel(
+    const GeneratedDpppShellTask* tasks,
+    const double* primitive_exponents,
+    const double* primitive_coefficients,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* fock,
+    const std::uint32_t* task_count,
+    std::uint32_t* task_head) {{
+  generated_dppp_shell_class_fock_persistent<true>(
+      tasks, primitive_exponents, primitive_coefficients, ao_coefficients,
+      atom_positions, screening_tolerance, schwarz_bounds, density, fock,
+      task_count, task_head);
+}}
+"""
+
+
 def emit_shell_class_fused_cuda(
     spec: ShellClassSpec,
     plan: FusedShellPlan | None = None,
+    *,
+    include_fock: bool = False,
 ) -> str:
     """Emit a complete cooperative force kernel from a shell specification.
 
@@ -1040,6 +1444,8 @@ void generated_dppp_shell_class_force_uhf_persistent_kernel(
       task_count, task_head);
 }}
 """
+    if include_fock:
+        source += _emit_shell_class_fock_cuda(spec, plan)
     return _specialize_dppp_identifiers(source, spec)
 
 

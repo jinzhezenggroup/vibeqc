@@ -76,6 +76,27 @@ def load_production_manifest(path: Path) -> tuple[ShellClassSpec, ...]:
     return tuple(specifications)
 
 
+def load_production_fock_manifest(path: Path) -> tuple[ShellClassSpec, ...]:
+    """Load the subset whose generated sources also provide Fock workers."""
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("schema_version") != 1:
+        raise ValueError("unsupported production shell manifest schema")
+    names = payload.get("fock_shell_classes", [])
+    if not isinstance(names, list):
+        raise ValueError("fock_shell_classes must be a list")
+    specifications = []
+    seen = set()
+    for name in names:
+        if not isinstance(name, str) or name not in FUSED_SHELL_SPEC_BY_NAME:
+            raise ValueError(f"unsupported production Fock shell class {name!r}")
+        if name in seen:
+            raise ValueError(f"duplicate production Fock shell class {name!r}")
+        specifications.append(FUSED_SHELL_SPEC_BY_NAME[name])
+        seen.add(name)
+    return tuple(specifications)
+
+
 def _launch_wrapper(spec: ShellClassSpec) -> str:
     """Emit a stable C ABI wrapper around one generated persistent kernel."""
 
@@ -116,23 +137,71 @@ extern "C" cudaError_t qce_launch_generated_{spec.name}(
 """
 
 
-def emit_production_shard(specifications: Iterable[ShellClassSpec]) -> str:
+def _fock_launch_wrapper(spec: ShellClassSpec) -> str:
+    """Emit the stable C ABI wrapper for one generated Fock worker."""
+
+    class_name = spec.name[0].upper() + spec.name[1:]
+    return f"""
+extern "C" cudaError_t qce_launch_generated_{spec.name}_fock(
+    cudaStream_t stream, bool unrestricted, unsigned worker_blocks,
+    const void* tasks, const double* primitive_exponents,
+    const double* primitive_coefficients, const double* ao_coefficients,
+    const void* atom_positions, double screening_tolerance,
+    const double* schwarz_bounds, const double* density, double* fock,
+    const std::uint32_t* task_count, std::uint32_t* task_head) {{
+  if (worker_blocks == 0U) return cudaSuccess;
+  const auto* typed_tasks =
+      static_cast<const Generated{class_name}ShellTask*>(tasks);
+  const auto* typed_positions =
+      static_cast<const Generated{class_name}Vec3*>(atom_positions);
+  if (unrestricted) {{
+    generated_{spec.name}_shell_class_fock_uhf_persistent_kernel<<<
+        worker_blocks, kGenerated{class_name}FockBlockThreads, 0, stream>>>(
+        typed_tasks, primitive_exponents, primitive_coefficients,
+        ao_coefficients, typed_positions, screening_tolerance, schwarz_bounds,
+        density, fock, task_count, task_head);
+  }} else {{
+    generated_{spec.name}_shell_class_fock_rhf_persistent_kernel<<<
+        worker_blocks, kGenerated{class_name}FockBlockThreads, 0, stream>>>(
+        typed_tasks, primitive_exponents, primitive_coefficients,
+        ao_coefficients, typed_positions, screening_tolerance, schwarz_bounds,
+        density, fock, task_count, task_head);
+  }}
+  return cudaPeekAtLastError();
+}}
+"""
+
+
+def emit_production_shard(
+    specifications: Iterable[ShellClassSpec],
+    fock_specifications: Iterable[ShellClassSpec] = (),
+) -> str:
     """Emit one CUDA TU containing a deterministic subset of accepted classes."""
 
     specs = tuple(specifications)
+    fock_names = {spec.name for spec in fock_specifications}
     body = [_PRODUCTION_PRELUDE]
     for spec in specs:
-        body.append(emit_shell_class_fused_cuda(spec))
+        include_fock = spec.name in fock_names
+        body.append(
+            emit_shell_class_fused_cuda(spec, include_fock=include_fock)
+        )
         body.append(_launch_wrapper(spec))
+        if include_fock:
+            body.append(_fock_launch_wrapper(spec))
     if not specs:
         body.append("// Empty deterministic shard reserved for stable CMake outputs.\n")
     return "".join(body)
 
 
-def emit_registry_header(specifications: Iterable[ShellClassSpec]) -> str:
+def emit_registry_header(
+    specifications: Iterable[ShellClassSpec],
+    fock_specifications: Iterable[ShellClassSpec] = (),
+) -> str:
     """Emit production metadata and the host launch API consumed by cuda_rhf."""
 
     specs = tuple(specifications)
+    fock_specs = tuple(fock_specifications)
     rows = []
     for spec in specs:
         plan = build_fused_shell_plan(spec)
@@ -140,11 +209,26 @@ def emit_registry_header(specifications: Iterable[ShellClassSpec]) -> str:
             f'    {{"{spec.name}", {shell_class_index(spec)}U, '
             f"{sum(spec.angular)}U, {plan.block_threads}U}},"
         )
+    fock_rows = []
+    for spec in fock_specs:
+        angular_order = sum(spec.angular)
+        value_state_count = (
+            (angular_order + 1) * (angular_order + 2) *
+            (angular_order + 3) // 6
+        )
+        block_threads = (
+            (max(spec.component_count, value_state_count) + 31) // 32
+        ) * 32
+        fock_rows.append(
+            f'    {{"{spec.name}", {shell_class_index(spec)}U, '
+            f"{angular_order}U, {block_threads}U}},"
+        )
     return f"""#ifndef QCE_GENERATED_SHELL_REGISTRY_HPP
 #define QCE_GENERATED_SHELL_REGISTRY_HPP
 
 #include <cuda_runtime_api.h>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 
@@ -163,8 +247,18 @@ inline constexpr ShellKernelMetadata kShellKernels[] = {{
 inline constexpr std::size_t kShellKernelCount =
     sizeof(kShellKernels) / sizeof(kShellKernels[0]);
 
+inline constexpr std::array<ShellKernelMetadata, {len(fock_specs)}>
+    kFockShellKernels{{{{
+{chr(10).join(fock_rows)}
+}}}};
+inline constexpr std::size_t kFockShellKernelCount =
+    kFockShellKernels.size();
+
 /** Return the exact-class bit mask selected by QCE_AOT_SHELL_CLASSES. */
 std::uint64_t enabled_shell_class_mask() noexcept;
+
+/** Return the Fock-class mask selected by QCE_AOT_FOCK_SHELL_CLASSES. */
+std::uint64_t enabled_fock_shell_class_mask() noexcept;
 
 /** Launch one generated persistent kernel selected by exact class index. */
 cudaError_t launch_shell_class(
@@ -176,16 +270,30 @@ cudaError_t launch_shell_class(
     const double* density, double* forces, const std::uint32_t* task_count,
     std::uint32_t* task_head) noexcept;
 
+/** Launch one generated coefficient-only Fock worker by exact class. */
+cudaError_t launch_shell_class_fock(
+    unsigned shell_class, cudaStream_t stream, bool unrestricted,
+    unsigned worker_blocks, const void* tasks,
+    const double* primitive_exponents, const double* primitive_coefficients,
+    const double* ao_coefficients, const void* atom_positions,
+    double screening_tolerance, const double* schwarz_bounds,
+    const double* density, double* fock, const std::uint32_t* task_count,
+    std::uint32_t* task_head) noexcept;
+
 }}  // namespace qce::scf::generated
 
 #endif
 """
 
 
-def emit_registry_source(specifications: Iterable[ShellClassSpec]) -> str:
+def emit_registry_source(
+    specifications: Iterable[ShellClassSpec],
+    fock_specifications: Iterable[ShellClassSpec] = (),
+) -> str:
     """Emit environment-controlled dispatch without handwritten class switches."""
 
     specs = tuple(specifications)
+    fock_specs = tuple(fock_specifications)
     declarations = "\n".join(
         f"""extern "C" cudaError_t qce_launch_generated_{spec.name}(
     cudaStream_t, bool, unsigned, const void*, const double*, const double*,
@@ -202,12 +310,29 @@ def emit_registry_source(specifications: Iterable[ShellClassSpec]) -> str:
           task_head);"""
         for spec in specs
     )
+    fock_declarations = "\n".join(
+        f"""extern "C" cudaError_t qce_launch_generated_{spec.name}_fock(
+    cudaStream_t, bool, unsigned, const void*, const double*, const double*,
+    const double*, const void*, double, const double*, const double*, double*,
+    const std::uint32_t*, std::uint32_t*);"""
+        for spec in fock_specs
+    )
+    fock_cases = "\n".join(
+        f"""    case {shell_class_index(spec)}U:
+      return qce_launch_generated_{spec.name}_fock(
+          stream, unrestricted, worker_blocks, tasks, primitive_exponents,
+          primitive_coefficients, ao_coefficients, atom_positions,
+          screening_tolerance, schwarz_bounds, density, fock, task_count,
+          task_head);"""
+        for spec in fock_specs
+    )
     return f"""#include "qce_generated_shell_registry.hpp"
 
 #include <cstdlib>
 #include <cstring>
 
 {declarations}
+{fock_declarations}
 
 namespace qce::scf::generated {{
 namespace {{
@@ -243,6 +368,20 @@ std::uint64_t enabled_shell_class_mask() noexcept {{
   return mask;
 }}
 
+std::uint64_t enabled_fock_shell_class_mask() noexcept {{
+  const char* selection = std::getenv("QCE_AOT_FOCK_SHELL_CLASSES");
+  const bool all = selection == nullptr || *selection == '\\0' ||
+                   std::strcmp(selection, "all") == 0;
+  if (!all && std::strcmp(selection, "none") == 0) return 0;
+  std::uint64_t mask = 0;
+  for (const ShellKernelMetadata& kernel : kFockShellKernels) {{
+    if (all || selected(selection, kernel.name)) {{
+      mask |= std::uint64_t{{1}} << kernel.shell_class;
+    }}
+  }}
+  return mask;
+}}
+
 cudaError_t launch_shell_class(
     unsigned shell_class, cudaStream_t stream, bool unrestricted,
     unsigned worker_blocks, const void* tasks,
@@ -253,6 +392,20 @@ cudaError_t launch_shell_class(
     std::uint32_t* task_head) noexcept {{
   switch (shell_class) {{
 {cases}
+    default: return cudaErrorInvalidValue;
+  }}
+}}
+
+cudaError_t launch_shell_class_fock(
+    unsigned shell_class, cudaStream_t stream, bool unrestricted,
+    unsigned worker_blocks, const void* tasks,
+    const double* primitive_exponents, const double* primitive_coefficients,
+    const double* ao_coefficients, const void* atom_positions,
+    double screening_tolerance, const double* schwarz_bounds,
+    const double* density, double* fock, const std::uint32_t* task_count,
+    std::uint32_t* task_head) noexcept {{
+  switch (shell_class) {{
+{fock_cases}
     default: return cudaErrorInvalidValue;
   }}
 }}
@@ -277,6 +430,17 @@ def write_production_bundle(
     if shard_count < 1:
         raise ValueError("production shard count must be positive")
     specifications = load_production_manifest(manifest)
+    fock_specifications = load_production_fock_manifest(manifest)
+    force_names = {spec.name for spec in specifications}
+    missing_force_sources = [
+        spec.name for spec in fock_specifications if spec.name not in force_names
+    ]
+    if missing_force_sources:
+        raise ValueError(
+            "Fock shell classes must also provide the shared force source: "
+            + ", ".join(missing_force_sources)
+        )
+    fock_names = {spec.name for spec in fock_specifications}
     shards = [[] for _ in range(shard_count)]
     for index, specification in enumerate(specifications):
         shards[index % shard_count].append(specification)
@@ -284,11 +448,16 @@ def write_production_bundle(
     outputs = []
     for index, shard in enumerate(shards):
         path = output_directory / f"qce_generated_shell_shard_{index}.cu"
-        _write_if_changed(path, emit_production_shard(shard))
+        shard_fock = [spec for spec in shard if spec.name in fock_names]
+        _write_if_changed(path, emit_production_shard(shard, shard_fock))
         outputs.append(path)
     header = output_directory / "qce_generated_shell_registry.hpp"
     source = output_directory / "qce_generated_shell_registry.cu"
-    _write_if_changed(header, emit_registry_header(specifications))
-    _write_if_changed(source, emit_registry_source(specifications))
+    _write_if_changed(
+        header, emit_registry_header(specifications, fock_specifications)
+    )
+    _write_if_changed(
+        source, emit_registry_source(specifications, fock_specifications)
+    )
     outputs.extend((header, source))
     return tuple(outputs)

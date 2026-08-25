@@ -8,6 +8,9 @@
     "dsps",
     "dspp"
   ],
+  "fock_shell_classes": [
+    "dpps"
+  ],
   "acceptance": {
     "architecture": "sm_120",
     "cuda_toolkit": "12.9.1",
@@ -17,5 +20,17 @@
     "batch_4_speedup": 1.1586077522017282,
     "maximum_energy_error_hartree": 1.0231815394945443e-12,
     "maximum_force_error_hartree_per_bohr": 6.839667721081355e-13
+  },
+  "fock_acceptance": {
+    "architecture": "sm_120",
+    "cuda_toolkit": "12.9.1",
+    "workload": "water-octamer-s4-def2-svp-spherical",
+    "shell_classes": ["dpps"],
+    "baseline_seconds": 4.596967296,
+    "candidate_seconds": 4.495852836,
+    "speedup": 1.0224906105,
+    "maximum_energy_error_hartree": 1.3642420526593924e-12,
+    "maximum_force_error_hartree_per_bohr": 4.584e-12,
+    "rejected_shell_classes": ["ppps", "dsps"]
   }
 }
