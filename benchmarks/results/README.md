@@ -12,31 +12,34 @@ batch timing boundary.
 
 | Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup | Max energy error | Max force error | Gate |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| [`WATER27 tetramer`](rtx5090-5c398b4-water-tetramer-def2-svp-spherical-b1.json) | 1 | 2023.756 ms | 1375.435 ms | 0.680x | 2.67e-12 Eh | 2.02e-12 Eh/bohr | speed fails |
-| [`WATER27 tetramer`](rtx5090-5c398b4-water-tetramer-def2-svp-spherical-b4.json) | 4 | 7697.435 ms | 5526.396 ms | 0.718x | 3.69e-12 Eh | 2.63e-12 Eh/bohr | speed fails |
+| [`WATER27 tetramer`](rtx5090-0e33f48-water-tetramer-def2-svp-spherical-b1.json) | 1 | 2221.007 ms | 1366.337 ms | 0.615x | 2.50e-12 Eh | 2.01e-12 Eh/bohr | speed fails |
+| [`WATER27 tetramer`](rtx5090-0e33f48-water-tetramer-def2-svp-spherical-b4.json) | 4 | 7854.238 ms | 5191.182 ms | 0.661x | 4.15e-12 Eh | 5.18e-12 Eh/bohr | speed fails |
 
 Both clean artifacts come from commit
-`5c398b440e74f78b1a8cc6fa6aba83a8b89c9596` on 2026-08-25. Every QCE and
+`0e33f48802f3b3b21a17fbc4f33ae892decd8fbc` on 2026-08-25. Every QCE and
 GPU4PySCF system converged, and both points pass the explicit `3e-11 Eh` and
 `3e-11 Eh/bohr` accuracy limits. They fail only the required `1.0x` minimum
 speedup, so the 96-AO milestone remains open. All three synchronized warm
 samples are retained because both engines show material timing variation at
-this size. Specializing total-order-4 force derivatives reduces the QCE
-batch-1 and batch-4 medians by 2.7% and 3.0%, respectively, relative to the
-preceding clean `ae6406f` order-5 artifacts.
+this size. The batch-4 QCE samples reached 4/3/2/2 SCF iterations. Although the
+analytic one-electron force materially improves its isolated kernel, these
+formal endpoint medians do not improve on the preceding clean `5c398b4`
+artifacts. The next optimization phase therefore targets the direct J/K and
+two-electron-force execution architecture rather than further one-electron
+specialization.
 
 ## Realistic 192-AO correctness status
 
 | Artifact | Batch | QCE warm | GPU4PySCF warm | Informational speedup | Max energy error | Max force error | Gate |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| [`WATER27 S4 octamer`](rtx5090-5c398b4-water-octamer-s4-def2-svp-spherical-b1.json) | 1 | 18950.978 ms | 2246.171 ms | 0.119x | 4.89e-12 Eh | 5.57e-11 Eh/bohr | passes |
-| [`WATER27 S4 octamer`](rtx5090-5c398b4-water-octamer-s4-def2-svp-spherical-b4.json) | 4 | 87232.725 ms | 7828.743 ms | 0.090x | 9.09e-12 Eh | 2.37e-10 Eh/bohr | passes |
+| [`WATER27 S4 octamer`](rtx5090-0e33f48-water-octamer-s4-def2-svp-spherical-b1.json) | 1 | 18513.703 ms | 2248.314 ms | 0.121x | 1.25e-12 Eh | 5.60e-11 Eh/bohr | passes |
+| [`WATER27 S4 octamer`](rtx5090-0e33f48-water-octamer-s4-def2-svp-spherical-b4.json) | 4 | 86667.525 ms | 8210.706 ms | 0.095x | 1.09e-11 Eh | 2.23e-10 Eh/bohr | passes |
 
-These clean commit-`5c398b4` artifacts use one synchronized warm replay per
+These clean commit-`0e33f48` artifacts use one synchronized warm replay per
 point because of the direct-J/K cost. Both satisfy the current `1e-10 Eh` and
 `5e-10 Eh/bohr` correctness limits. The recorded warm times remain sensitive
 to the number of SCF iterations reached after nondeterministic direct-J/K
-atomic reductions; the batch-4 artifact records 8/2/5/3 iterations across its
+atomic reductions; the batch-4 artifact records 9/4/3/2 iterations across its
 four systems. Their speedups are retained for transparency but are not
 acceptance criteria until complete DF J/K lands.
 
