@@ -144,6 +144,16 @@ and performance measurements pass.
   from 1.673/6.242 s to 1.596/6.170 s at batch 1/4, with 96-AO errors below
   `4.4e-12 Eh` and `2.6e-12 Eh/bohr`. The 192-AO batch-1/4 candidate remains
   below `1.1e-11 Eh` and `5.8e-11 Eh/bohr`.
+  Dedicated total-order-6 force derivatives now extend the sparse pair
+  expansion through three disjoint Wick contractions and canonical 6/0, 5/1,
+  4/2, and 3/3 pair splits. Order-specific Coulomb workspaces avoid charging
+  lower orders for the larger recurrence. On the clean 96-AO batch-1 profile,
+  order six falls from 87.429 to 44.045 ms and the complete two-electron force
+  from 465.236 to 423.957 ms. The clean acceptance observations reach
+  `0.893x` at batch 1 and an iteration-matched `0.969x` at batch 4, with errors
+  below `4.5e-12 Eh` and `2.7e-12 Eh/bohr`. Both required speed gates remain
+  open. Order five is now the largest isolated force gap against GPU4PySCF,
+  followed by order two and the combined order-6--8 fallback.
   Clean RTX 5090
   artifacts validate energy, forces, and homogeneous-batch throughput for the
   exact `sdf18-direct`, Cartesian water/def2-SVP, and open-shell
