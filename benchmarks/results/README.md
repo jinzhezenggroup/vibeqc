@@ -102,6 +102,48 @@ comparison. See the
 [`962f0bd` component artifact](rtx5090-962f0bd-water-tetramer-warm-component-profile.json)
 for resource usage, repeated component samples, and raw endpoint timings.
 
+Commit `32af069` replaces the realistic-size cyclic Jacobi path with FP64
+`cusolverDnXsyevBatched`. Device and host workspaces are fixed during setup,
+the device arena is also bound as the cuBLAS workspace, and the provider stays
+inside the device-launch/tail-launch SCF Graph. The superseded cyclic kernel
+was removed. A standalone Graph probe verified computed eigenvalues and a
+successful device-tail relaunch at all four acceptance sizes:
+
+| AO count | Batch | Xsyev Graph time | Device workspace | Host workspace |
+| ---: | ---: | ---: | ---: | ---: |
+| 96 | 1 | 2.744 ms | 1,335,960 B | 0 B |
+| 96 | 4 | 2.513 ms | 5,341,920 B | 0 B |
+| 192 | 1 | 4.170 ms | 2,589,336 B | 0 B |
+| 192 | 4 | 5.316 ms | 10,355,424 B | 0 B |
+
+On the production 96-AO batch-1 capture, cuSOLVER provider kernels sum to
+2.612 ms, down from the previous QCE cyclic kernel's 31.226 ms and below the
+matching GPU4PySCF eigensolver's 5.823 ms. The eigensolver gap is therefore
+closed. The formal end-to-end matrix still misses the 96-AO parity gate:
+
+| AO count | Batch | QCE warm | GPU4PySCF warm | Speedup | Max dE | Max dF | Gate |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 96 | 1 | 1397.063 ms | 1351.642 ms | 0.967x | 1.76e-12 Eh | 2.01e-12 Eh/bohr | accuracy pass, speed fail |
+| 96 | 4 | 5803.771 ms | 5421.947 ms | 0.934x | 3.47e-12 Eh | 2.82e-12 Eh/bohr | accuracy pass, speed fail |
+| 192 | 1 | 13475.169 ms | 2218.889 ms | 0.165x | 1.93e-12 Eh | 5.30e-11 Eh/bohr | accuracy pass; speed deferred |
+| 192 | 4 | 66719.807 ms | 7763.699 ms | 0.116x | 8.87e-12 Eh | 2.36e-10 Eh/bohr | accuracy pass; speed deferred |
+
+QCE-only repeated samples give 1.397 s at batch 1 (seven repeats) and
+5.605 s at batch 4 (five repeats). Remaining 96-AO work is now dominated by
+the two-electron and one-electron force paths rather than diagonalization.
+The concise raw summary is
+[`rtx5090-32af069-xsyev-provider-gates.json`](rtx5090-32af069-xsyev-provider-gates.json).
+
+A separate 192-AO batch-1 capture explains the large-size endpoint. Its
+2-iteration warm execution takes 11.320 s: the device-tail SCF Graph occupies
+4.179 s, the two post-SCF direct-J/K rebuilds sum to 4.045 s, and the
+two-electron force costs 2.976 s. One-electron force is 53.6 ms and Xsyev is
+only 3.90 ms. Relative to the 96-AO capture, visible direct J/K and
+two-electron force grow by 8.25x and 8.43x respectively when AO count doubles.
+The formal 192-AO batch-4 point is additionally branch-sensitive: its systems
+take 8/3/4/2 iterations, versus 3 iterations at batch 1. This is why complete
+DF J/K remains the prerequisite for activating the 192-AO speed gate.
+
 ## Current exact shell-class results
 
 | Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup | Max energy error | Max force error |
