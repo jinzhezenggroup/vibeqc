@@ -4149,6 +4149,7 @@ __device__ void primitive_eri_order456_gradient(
   constexpr unsigned CoulombOrder = AngularOrder + 1;
   static_assert(
       AngularOrder == 4 || AngularOrder == 5 || AngularOrder == 6);
+  static_assert(FirstPairOrder >= SecondPairOrder);
   const double p = alpha + beta;
   const double q = gamma + delta;
   const double mu = alpha * beta / p;
@@ -4180,9 +4181,32 @@ __device__ void primitive_eri_order456_gradient(
   const double third_product_scale = -gamma / q;
   double value = 0.0;
   double value_gradient[3][3]{};
-  for (unsigned first_term = 0; first_term < (1U << FirstPairOrder);
+  constexpr unsigned FirstTermCount = 1U << FirstPairOrder;
+  constexpr unsigned SecondTermCount = 1U << SecondPairOrder;
+  // Canonical pair ordering keeps the second expansion small (at most eight
+  // terms through total order six). Its coefficient gradients depend only on
+  // the second term, so compute them once instead of repeating the Wick walk
+  // for every first/second term product. The first gradient is similarly
+  // hoisted outside the inner contraction loop without adding a large
+  // first-pair cache to this already register-heavy kernel.
+  double second_pair_gradients[SecondTermCount][3];
+  for (unsigned second_term = 0; second_term < SecondTermCount;
+       ++second_term) {
+    for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+      second_pair_gradients[second_term][coordinate] =
+          high_order_pair_first_center_gradient(
+              second_expansion, second_term, coordinate);
+    }
+  }
+  for (unsigned first_term = 0; first_term < FirstTermCount;
        ++first_term) {
-    for (unsigned second_term = 0; second_term < (1U << SecondPairOrder);
+    double first_pair_gradient[3];
+    for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+      first_pair_gradient[coordinate] =
+          high_order_pair_first_center_gradient(
+              first_expansion, first_term, coordinate);
+    }
+    for (unsigned second_term = 0; second_term < SecondTermCount;
          ++second_term) {
       const HighOrderPairGradientTerm& first_item =
           first_expansion.terms[first_term];
@@ -4201,16 +4225,11 @@ __device__ void primitive_eri_order456_gradient(
           sign * first_item.coefficient * second_item.coefficient;
       value += coefficient * coulomb;
       for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
-        const double first_pair_gradient =
-            high_order_pair_first_center_gradient(
-                first_expansion, first_term, coordinate);
-        const double second_pair_gradient =
-            high_order_pair_first_center_gradient(
-                second_expansion, second_term, coordinate);
         const double first_coefficient_gradient =
-            sign * first_pair_gradient * second_item.coefficient;
+            sign * first_pair_gradient[coordinate] * second_item.coefficient;
         const double second_coefficient_gradient =
-            sign * first_item.coefficient * second_pair_gradient;
+            sign * first_item.coefficient *
+            second_pair_gradients[second_term][coordinate];
         const double scaled_coulomb_derivative = coefficient *
             high_order_coulomb<CoulombOrder>(
                 derivative_state +
