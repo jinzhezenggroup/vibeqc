@@ -50,12 +50,21 @@ constexpr unsigned kCaptureSafeKernelThreads = 32;
 // Persistent direct-force workers retain one AO-quartet warp per block. Eight
 // resident workers per SM balance the high-register force kernels while
 // replacing topology-capacity grids with device-side work stealing.
-constexpr unsigned kPersistentForceWarpsPerMultiprocessor = 8;
+// Fock, force, and generated-shell queues all launch one-warp workers and use
+// the same occupancy target. Keep one shared limit so their scheduling policy
+// cannot drift when the device SM count changes.
+constexpr unsigned kPersistentQuartetWarpsPerMultiprocessor = 8;
 // Orders zero through six have dedicated analytic derivatives and enough work
 // to amortize the device queue. Higher generic Dual3 orders retain fixed grids
 // because queue state raises their already-maximal register footprint without
 // improving the 96-AO profile.
 constexpr unsigned kPersistentForceAngularOrderCount = 7;
+// Fock orders zero through five stay below the worst high-order register
+// footprint and contain the largest topology-capacity tails at 192 AOs.
+constexpr unsigned kPersistentFockAngularOrderCount = 6;
+static_assert(
+    kPersistentFockAngularOrderCount <=
+    detail::kDirectQuartetAngularOrderCount);
 // Generated order-five classes are removed from a compact generic fallback
 // queue. Keeping the order explicit avoids coupling runtime selection to one
 // generated shell class such as dppp.
@@ -5797,11 +5806,17 @@ __global__ void reduce_shell_pair_density_bounds_kernel(
 }
 
 __global__ void clear_active_shell_quartet_tile_counts_kernel(
-    std::uint32_t* active_shell_quartet_tile_counts) {
+    std::uint32_t* active_shell_quartet_tile_counts,
+    std::uint32_t* persistent_fock_task_heads) {
   const std::size_t order =
       static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (order < detail::kDirectQuartetAngularOrderCount) {
     active_shell_quartet_tile_counts[order] = 0;
+  }
+  // Reset queue state in the same captured Graph node as the active counts.
+  // A separate tiny kernel here would be replayed for every SCF iteration.
+  if (order < kPersistentFockAngularOrderCount) {
+    persistent_fock_task_heads[order] = 0;
   }
 }
 
@@ -6466,7 +6481,7 @@ __global__ void transform_direct_fock_right_kernel(
 }
 
 template <bool Unrestricted, unsigned AngularOrder>
-__global__ void build_fock_direct_quartet_kernel(
+__device__ __forceinline__ void contract_fock_direct_quartet_subtile(
     DeviceBatch batch,
     const std::uint32_t* active_shell_quartet_tile_count,
     const ActiveShellQuartetTile* active_shell_quartet_tiles,
@@ -6474,9 +6489,9 @@ __global__ void build_fock_direct_quartet_kernel(
     const double* schwarz_bounds,
     const double* density,
     const std::uint8_t* active,
-    double* fock) {
+    double* fock,
+    std::size_t active_subtile) {
   static_assert(AngularOrder < detail::kDirectQuartetAngularOrderCount);
-  const std::size_t active_subtile = static_cast<std::size_t>(blockIdx.x);
   constexpr std::size_t subtiles_per_tile =
       detail::direct_quartet_subtiles_per_tile(AngularOrder);
   const std::size_t active_tile =
@@ -6592,6 +6607,53 @@ __global__ void build_fock_direct_quartet_kernel(
         }
       }
     }
+  }
+}
+
+/** Fixed-capacity wrapper retained for high-register angular orders. */
+template <bool Unrestricted, unsigned AngularOrder>
+__global__ void build_fock_direct_quartet_kernel(
+    DeviceBatch batch,
+    const std::uint32_t* active_shell_quartet_tile_count,
+    const ActiveShellQuartetTile* active_shell_quartet_tiles,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    const std::uint8_t* active,
+    double* fock) {
+  contract_fock_direct_quartet_subtile<Unrestricted, AngularOrder>(
+      batch, active_shell_quartet_tile_count, active_shell_quartet_tiles,
+      screening_tolerance, schwarz_bounds, density, active, fock,
+      static_cast<std::size_t>(blockIdx.x));
+}
+
+/** Consume only the active compacted Fock domain from a device queue. */
+template <bool Unrestricted, unsigned AngularOrder>
+__global__ void build_fock_direct_quartet_persistent_kernel(
+    DeviceBatch batch,
+    const std::uint32_t* active_shell_quartet_tile_count,
+    const ActiveShellQuartetTile* active_shell_quartet_tiles,
+    std::uint32_t* task_head,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    const std::uint8_t* active,
+    double* fock) {
+  static_assert(AngularOrder < detail::kDirectQuartetAngularOrderCount);
+  const unsigned lane = threadIdx.x % warpSize;
+  constexpr std::uint32_t subtiles_per_tile = static_cast<std::uint32_t>(
+      detail::direct_quartet_subtiles_per_tile(AngularOrder));
+  const std::uint32_t work_count =
+      *active_shell_quartet_tile_count * subtiles_per_tile;
+  while (true) {
+    std::uint32_t active_subtile = 0;
+    if (lane == 0) active_subtile = atomicAdd(task_head, 1U);
+    active_subtile = __shfl_sync(0xffffffffU, active_subtile, 0);
+    if (active_subtile >= work_count) return;
+    contract_fock_direct_quartet_subtile<Unrestricted, AngularOrder>(
+        batch, active_shell_quartet_tile_count, active_shell_quartet_tiles,
+        screening_tolerance, schwarz_bounds, density, active, fock,
+        active_subtile);
   }
 }
 
@@ -7795,6 +7857,8 @@ void launch_angular_fock_quartets(
     DeviceBatch batch,
     const std::uint32_t* active_tile_counts,
     const ActiveShellQuartetTile* active_tiles,
+    std::uint32_t* persistent_task_heads,
+    unsigned persistent_worker_blocks,
     double screening_tolerance,
     const double* schwarz_bounds,
     const double* density,
@@ -7802,17 +7866,32 @@ void launch_angular_fock_quartets(
     double* fock) {
   if constexpr (AngularOrder < detail::kDirectQuartetAngularOrderCount) {
     if (capacities[AngularOrder] != 0) {
-      build_fock_direct_quartet_kernel<Unrestricted, AngularOrder><<<
-          static_cast<unsigned>(
-              capacities[AngularOrder] *
-              detail::direct_quartet_subtiles_per_tile(AngularOrder)),
-          detail::kDirectQuartetThreads, 0, stream>>>(
-          batch, active_tile_counts + AngularOrder,
-          active_tiles + offsets[AngularOrder], screening_tolerance,
-          schwarz_bounds, density, active, fock);
+      if constexpr (AngularOrder < kPersistentFockAngularOrderCount) {
+        const unsigned capacity_blocks = static_cast<unsigned>(
+            capacities[AngularOrder] *
+            detail::direct_quartet_subtiles_per_tile(AngularOrder));
+        build_fock_direct_quartet_persistent_kernel<
+            Unrestricted, AngularOrder><<<
+                std::min(capacity_blocks, persistent_worker_blocks),
+                detail::kDirectQuartetThreads, 0, stream>>>(
+            batch, active_tile_counts + AngularOrder,
+            active_tiles + offsets[AngularOrder],
+            persistent_task_heads + AngularOrder, screening_tolerance,
+            schwarz_bounds, density, active, fock);
+      } else {
+        build_fock_direct_quartet_kernel<Unrestricted, AngularOrder><<<
+            static_cast<unsigned>(
+                capacities[AngularOrder] *
+                detail::direct_quartet_subtiles_per_tile(AngularOrder)),
+            detail::kDirectQuartetThreads, 0, stream>>>(
+            batch, active_tile_counts + AngularOrder,
+            active_tiles + offsets[AngularOrder], screening_tolerance,
+            schwarz_bounds, density, active, fock);
+      }
     }
     launch_angular_fock_quartets<Unrestricted, AngularOrder + 1>(
         stream, capacities, offsets, batch, active_tile_counts, active_tiles,
+        persistent_task_heads, persistent_worker_blocks,
         screening_tolerance, schwarz_bounds, density, active, fock);
   }
 }
@@ -7940,6 +8019,7 @@ struct ArenaLayout {
   std::size_t active_shell_quartet_tile_counts{};
   std::size_t active_shell_quartet_tiles{};
   std::size_t shell_class_profile{};
+  std::size_t persistent_fock_task_heads{};
   std::size_t persistent_force_task_heads{};
   std::size_t generated_shell_tasks{};
   std::size_t generated_shell_task_count{};
@@ -8125,6 +8205,11 @@ bool make_layout(std::size_t batch_size,
       !append_array<DeviceShellClassProfileEntry>(
           shell_class_profiling ? detail::kDirectQuartetShellClassCount : 0,
           cursor, made.shell_class_profile) ||
+      !append_array<std::uint32_t>(
+          shell_quartet_tile_count == 0
+              ? 0
+              : kPersistentFockAngularOrderCount,
+          cursor, made.persistent_fock_task_heads) ||
       !append_array<std::uint32_t>(
           shell_quartet_tile_count == 0
               ? 0
@@ -8663,7 +8748,7 @@ struct CudaRhfBucketPlan {
       shell_quartet_tile_capacities{};
   std::array<std::uint32_t, detail::kDirectQuartetAngularOrderCount + 1>
       shell_quartet_tile_offsets{};
-  unsigned persistent_force_worker_blocks{};
+  unsigned persistent_quartet_worker_blocks{};
   std::size_t primitive_count{};
   std::size_t diis_history{};
   int lwork{};
@@ -8963,16 +9048,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     if (cuda_error != cudaSuccess || multiprocessor_count <= 0 ||
         static_cast<unsigned>(multiprocessor_count) >
             std::numeric_limits<unsigned>::max() /
-                kPersistentForceWarpsPerMultiprocessor) {
+                kPersistentQuartetWarpsPerMultiprocessor) {
       fill_global_failure(
           outputs, cuda_error == cudaSuccess
               ? QCE_STATUS_INVALID_ARGUMENT
               : cuda_status(cuda_error));
       return outputs;
     }
-    plan.persistent_force_worker_blocks =
+    plan.persistent_quartet_worker_blocks =
         static_cast<unsigned>(multiprocessor_count) *
-        kPersistentForceWarpsPerMultiprocessor;
+        kPersistentQuartetWarpsPerMultiprocessor;
   }
   cublasStatus_t blas_error = CUBLAS_STATUS_SUCCESS;
   cusolverStatus_t solver_error = CUSOLVER_STATUS_SUCCESS;
@@ -9099,6 +9184,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       resources.arena_, layout.active_shell_quartet_tiles);
   auto shell_class_profile = arena_pointer<DeviceShellClassProfileEntry>(
       resources.arena_, layout.shell_class_profile);
+  auto persistent_fock_task_heads = arena_pointer<std::uint32_t>(
+      resources.arena_, layout.persistent_fock_task_heads);
   auto persistent_force_task_heads = arena_pointer<std::uint32_t>(
       resources.arena_, layout.persistent_force_task_heads);
   auto generated_shell_tasks = arena_pointer<GeneratedShellTask>(
@@ -9431,7 +9518,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     if (quartet_direct) {
       clear_active_shell_quartet_tile_counts_kernel<<<
           blocks_for(detail::kDirectQuartetAngularOrderCount), threads, 0,
-          resources.stream_>>>(active_shell_quartet_tile_counts);
+          resources.stream_>>>(active_shell_quartet_tile_counts,
+                               persistent_fock_task_heads);
       if (unrestricted) {
         reduce_shell_pair_density_bounds_kernel<true><<<
             static_cast<unsigned>(total_shell_pairs), threads,
@@ -9468,6 +9556,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           resources.stream_, plan.shell_quartet_tile_capacities,
           plan.shell_quartet_tile_offsets, device_batch,
           active_shell_quartet_tile_counts, active_shell_quartet_tiles,
+          persistent_fock_task_heads,
+          plan.persistent_quartet_worker_blocks,
           options.screening_tolerance, schwarz_bounds, quartet_density, active,
           quartet_fock);
     } else if (unrestricted) {
@@ -9493,6 +9583,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           resources.stream_, plan.shell_quartet_tile_capacities,
           plan.shell_quartet_tile_offsets, device_batch,
           active_shell_quartet_tile_counts, active_shell_quartet_tiles,
+          persistent_fock_task_heads,
+          plan.persistent_quartet_worker_blocks,
           options.screening_tolerance, schwarz_bounds, quartet_density, active,
           quartet_fock);
     } else {
@@ -9971,7 +10063,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         plan.shell_quartet_tile_offsets, device_batch,
         active_shell_quartet_tile_counts, active_shell_quartet_tiles,
         generated_shell_tasks, generated_shell_task_count,
-        generated_shell_task_head, plan.persistent_force_worker_blocks, true,
+        generated_shell_task_head, plan.persistent_quartet_worker_blocks, true,
         generated_shell_class_mask, options.screening_tolerance,
         schwarz_bounds, transformed_direct ? direct_density : density, forces);
     if (cuda_error != cudaSuccess) {
@@ -9983,7 +10075,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         plan.shell_quartet_tile_offsets, device_batch,
         active_shell_quartet_tile_counts, active_shell_quartet_tiles,
         generic_order5_tile_count, generic_order5_tiles,
-        persistent_force_task_heads, plan.persistent_force_worker_blocks,
+        persistent_force_task_heads, plan.persistent_quartet_worker_blocks,
         options.screening_tolerance, schwarz_bounds,
         transformed_direct ? direct_density : density, active, forces,
         generated_shell_class_mask);
@@ -10002,7 +10094,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         plan.shell_quartet_tile_offsets, device_batch,
         active_shell_quartet_tile_counts, active_shell_quartet_tiles,
         generated_shell_tasks, generated_shell_task_count,
-        generated_shell_task_head, plan.persistent_force_worker_blocks, false,
+        generated_shell_task_head, plan.persistent_quartet_worker_blocks, false,
         generated_shell_class_mask, options.screening_tolerance,
         schwarz_bounds, transformed_direct ? direct_density : density, forces);
     if (cuda_error != cudaSuccess) {
@@ -10014,7 +10106,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         plan.shell_quartet_tile_offsets, device_batch,
         active_shell_quartet_tile_counts, active_shell_quartet_tiles,
         generic_order5_tile_count, generic_order5_tiles,
-        persistent_force_task_heads, plan.persistent_force_worker_blocks,
+        persistent_force_task_heads, plan.persistent_quartet_worker_blocks,
         options.screening_tolerance, schwarz_bounds,
         transformed_direct ? direct_density : density, active, forces,
         generated_shell_class_mask);
