@@ -285,6 +285,18 @@ struct Vec3 {
   Scalar z;
 };
 
+/** Geometry and contraction data shared by every quartet using a shell pair. */
+struct PrimitivePairData {
+  double exponent_sum;
+  double reduced_exponent;
+  Vec3<double> product_center;
+  double weighted_coefficient;
+  double first_product_scale;
+  double second_product_scale;
+};
+
+static_assert(sizeof(PrimitivePairData) == 8 * sizeof(double));
+
 struct DeviceBatch {
   std::int32_t batch_size;
   std::int32_t nbf;
@@ -310,6 +322,8 @@ struct DeviceBatch {
   const std::int32_t* shell_pair_systems;
   const std::int32_t* shell_pair_first;
   const std::int32_t* shell_pair_second;
+  const std::int64_t* shell_pair_primitive_offsets;
+  const PrimitivePairData* shell_primitive_pairs;
   // Every target AO refers back to one physical shell and carries up to three
   // normalized Cartesian expansion terms. Cartesian AOs use one term; real
   // spherical d/f AOs use the sparse solid-harmonic combinations.
@@ -476,6 +490,53 @@ __device__ Vec3<Scalar> product_center(double alpha,
   return {(alpha * first.x + beta * second.x) / exponent,
           (alpha * first.y + beta * second.y) / exponent,
           (alpha * first.z + beta * second.z) / exponent};
+}
+
+/** Precompute geometry shared by every primitive quartet using a shell pair. */
+__global__ void build_shell_primitive_pair_cache_kernel(
+    DeviceBatch batch,
+    PrimitivePairData* shell_primitive_pairs) {
+  const std::size_t shell_pair = static_cast<std::size_t>(blockIdx.x);
+  if (shell_pair >= static_cast<std::size_t>(batch.total_shell_pairs)) return;
+  const std::int32_t first_shell = batch.shell_pair_first[shell_pair];
+  const std::int32_t second_shell = batch.shell_pair_second[shell_pair];
+  const std::int64_t first_begin =
+      batch.shell_primitive_offsets[first_shell];
+  const std::int64_t second_begin =
+      batch.shell_primitive_offsets[second_shell];
+  const std::size_t first_count = static_cast<std::size_t>(
+      batch.shell_primitive_offsets[first_shell + 1] - first_begin);
+  const std::size_t second_count = static_cast<std::size_t>(
+      batch.shell_primitive_offsets[second_shell + 1] - second_begin);
+  const std::size_t pair_count = first_count * second_count;
+  const Vec3<double> first = atom_position<double>(
+      batch, batch.shell_atoms[first_shell], -1);
+  const Vec3<double> second = atom_position<double>(
+      batch, batch.shell_atoms[second_shell], -1);
+  const double squared_distance = distance_squared(first, second);
+  const std::size_t output_begin = static_cast<std::size_t>(
+      batch.shell_pair_primitive_offsets[shell_pair]);
+  for (std::size_t ordinal = threadIdx.x; ordinal < pair_count;
+       ordinal += blockDim.x) {
+    const std::int64_t first_primitive = first_begin +
+        static_cast<std::int64_t>(ordinal / second_count);
+    const std::int64_t second_primitive = second_begin +
+        static_cast<std::int64_t>(ordinal % second_count);
+    const double alpha = batch.primitive_exponents[first_primitive];
+    const double beta = batch.primitive_exponents[second_primitive];
+    const double exponent_sum = alpha + beta;
+    const double reduced_exponent = alpha * beta / exponent_sum;
+    shell_primitive_pairs[output_begin + ordinal] = {
+        exponent_sum,
+        reduced_exponent,
+        product_center(alpha, first, beta, second),
+        batch.primitive_coefficients[first_primitive] *
+            batch.primitive_coefficients[second_primitive] *
+            exp(-reduced_exponent * squared_distance),
+        alpha / exponent_sum,
+        beta / exponent_sum,
+    };
+  }
 }
 
 template <typename Scalar>
@@ -3424,18 +3485,14 @@ struct PsssWeightedGradient {
 __device__ __noinline__ PsssIntegralVector
 contracted_eri_cartesian_source_psss(
     const DeviceBatch& batch,
+    std::size_t first_shell_pair,
+    std::size_t second_shell_pair,
     std::int32_t p_shell,
     std::int32_t paired_s_shell,
     std::int32_t third_shell,
     std::int32_t fourth_shell) {
   const Vec3<double> first = atom_position<double>(
       batch, batch.shell_atoms[p_shell], -1);
-  const Vec3<double> second = atom_position<double>(
-      batch, batch.shell_atoms[paired_s_shell], -1);
-  const Vec3<double> third = atom_position<double>(
-      batch, batch.shell_atoms[third_shell], -1);
-  const Vec3<double> fourth = atom_position<double>(
-      batch, batch.shell_atoms[fourth_shell], -1);
 
   const std::int64_t p_ao_begin = batch.shell_direct_ao_offsets[p_shell];
   const double s_angular_coefficient =
@@ -3452,53 +3509,44 @@ contracted_eri_cartesian_source_psss(
   };
 
   PsssIntegralVector result{};
-  for (std::int64_t a = batch.shell_primitive_offsets[p_shell];
-       a < batch.shell_primitive_offsets[p_shell + 1]; ++a) {
-    const double alpha = batch.primitive_exponents[a];
-    for (std::int64_t b = batch.shell_primitive_offsets[paired_s_shell];
-         b < batch.shell_primitive_offsets[paired_s_shell + 1]; ++b) {
-      const double beta = batch.primitive_exponents[b];
-      const double p = alpha + beta;
-      const double mu = alpha * beta / p;
-      const Vec3<double> product_p =
-          product_center(alpha, first, beta, second);
-      for (std::int64_t c = batch.shell_primitive_offsets[third_shell];
-           c < batch.shell_primitive_offsets[third_shell + 1]; ++c) {
-        const double gamma = batch.primitive_exponents[c];
-        for (std::int64_t d = batch.shell_primitive_offsets[fourth_shell];
-             d < batch.shell_primitive_offsets[fourth_shell + 1]; ++d) {
-          const double delta = batch.primitive_exponents[d];
-          const double q = gamma + delta;
-          const double nu = gamma * delta / q;
-          const double rho = p * q / (p + q);
-          const Vec3<double> product_q =
-              product_center(gamma, third, delta, fourth);
-          double boys[2];
-          boys_values<1>(
-              rho * distance_squared(product_p, product_q), boys);
-          const double pair_decay = exp(
-              -mu * distance_squared(first, second) -
-              nu * distance_squared(third, fourth));
-          const double primitive_coefficient =
-              batch.primitive_coefficients[a] *
-              batch.primitive_coefficients[b] *
-              batch.primitive_coefficients[c] *
-              batch.primitive_coefficients[d];
-          const double prefactor =
-              2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q)) * pair_decay;
-          const double coulomb_scale = rho / p;
-          const double common = primitive_coefficient * prefactor;
-          result.axis[0] += angular_coefficient[0] * common *
-              ((product_p.x - first.x) * boys[0] -
-               coulomb_scale * (product_p.x - product_q.x) * boys[1]);
-          result.axis[1] += angular_coefficient[1] * common *
-              ((product_p.y - first.y) * boys[0] -
-               coulomb_scale * (product_p.y - product_q.y) * boys[1]);
-          result.axis[2] += angular_coefficient[2] * common *
-              ((product_p.z - first.z) * boys[0] -
-               coulomb_scale * (product_p.z - product_q.z) * boys[1]);
-        }
-      }
+  const std::int64_t first_pair_begin =
+      batch.shell_pair_primitive_offsets[first_shell_pair];
+  const std::int64_t first_pair_end =
+      batch.shell_pair_primitive_offsets[first_shell_pair + 1];
+  const std::int64_t second_pair_begin =
+      batch.shell_pair_primitive_offsets[second_shell_pair];
+  const std::int64_t second_pair_end =
+      batch.shell_pair_primitive_offsets[second_shell_pair + 1];
+  for (std::int64_t first_primitive = first_pair_begin;
+       first_primitive < first_pair_end; ++first_primitive) {
+    const PrimitivePairData first_pair =
+        batch.shell_primitive_pairs[first_primitive];
+    const double p = first_pair.exponent_sum;
+    const Vec3<double> product_p = first_pair.product_center;
+    for (std::int64_t second_primitive = second_pair_begin;
+         second_primitive < second_pair_end; ++second_primitive) {
+      const PrimitivePairData second_pair =
+          batch.shell_primitive_pairs[second_primitive];
+      const double q = second_pair.exponent_sum;
+      const double rho = p * q / (p + q);
+      const Vec3<double> product_q = second_pair.product_center;
+      double boys[2];
+      boys_values<1>(
+          rho * distance_squared(product_p, product_q), boys);
+      const double prefactor =
+          first_pair.weighted_coefficient *
+          second_pair.weighted_coefficient *
+          2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q));
+      const double coulomb_scale = rho / p;
+      result.axis[0] += angular_coefficient[0] * prefactor *
+          ((product_p.x - first.x) * boys[0] -
+           coulomb_scale * (product_p.x - product_q.x) * boys[1]);
+      result.axis[1] += angular_coefficient[1] * prefactor *
+          ((product_p.y - first.y) * boys[0] -
+           coulomb_scale * (product_p.y - product_q.y) * boys[1]);
+      result.axis[2] += angular_coefficient[2] * prefactor *
+          ((product_p.z - first.z) * boys[0] -
+           coulomb_scale * (product_p.z - product_q.z) * boys[1]);
     }
   }
   return result;
@@ -3517,6 +3565,8 @@ contracted_eri_cartesian_source_psss(
 __device__ __noinline__ PsssWeightedGradient
 contracted_eri_cartesian_source_psss_weighted_gradient(
     const DeviceBatch& batch,
+    std::size_t first_shell_pair,
+    std::size_t second_shell_pair,
     std::int32_t p_shell,
     std::int32_t paired_s_shell,
     std::int32_t third_shell,
@@ -3549,99 +3599,108 @@ contracted_eri_cartesian_source_psss_weighted_gradient(
   };
 
   PsssWeightedGradient result{};
-  for (std::int64_t a = batch.shell_primitive_offsets[p_shell];
-       a < batch.shell_primitive_offsets[p_shell + 1]; ++a) {
-    const double alpha = batch.primitive_exponents[a];
-    for (std::int64_t b = batch.shell_primitive_offsets[paired_s_shell];
-         b < batch.shell_primitive_offsets[paired_s_shell + 1]; ++b) {
-      const double beta = batch.primitive_exponents[b];
-      const double p = alpha + beta;
-      const double mu = alpha * beta / p;
-      const Vec3<double> product_p =
-          product_center(alpha, first, beta, second);
-      for (std::int64_t c = batch.shell_primitive_offsets[third_shell];
-           c < batch.shell_primitive_offsets[third_shell + 1]; ++c) {
-        const double gamma = batch.primitive_exponents[c];
-        for (std::int64_t d = batch.shell_primitive_offsets[fourth_shell];
-             d < batch.shell_primitive_offsets[fourth_shell + 1]; ++d) {
-          const double delta = batch.primitive_exponents[d];
-          const double q = gamma + delta;
-          const double nu = gamma * delta / q;
-          const double rho = p * q / (p + q);
-          const Vec3<double> product_q =
-              product_center(gamma, third, delta, fourth);
-          const Vec3<double> product_difference{
-              product_p.x - product_q.x,
-              product_p.y - product_q.y,
-              product_p.z - product_q.z,
-          };
-          const Vec3<double> pa{
-              product_p.x - first.x,
-              product_p.y - first.y,
-              product_p.z - first.z,
-          };
-          double boys[3];
-          boys_values<2>(
-              rho * distance_squared(product_p, product_q), boys);
-          const double pair_decay = exp(
-              -mu * distance_squared(first, second) -
-              nu * distance_squared(third, fourth));
-          const double primitive_coefficient =
-              batch.primitive_coefficients[a] *
-              batch.primitive_coefficients[b] *
-              batch.primitive_coefficients[c] *
-              batch.primitive_coefficients[d];
-          const double prefactor = primitive_coefficient *
-              2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q)) * pair_decay;
-          const double coulomb_scale = rho / p;
-          const double weighted_pa =
-              axis_weight[0] * pa.x + axis_weight[1] * pa.y +
-              axis_weight[2] * pa.z;
-          const double weighted_pq =
-              axis_weight[0] * product_difference.x +
-              axis_weight[1] * product_difference.y +
-              axis_weight[2] * product_difference.z;
-          const double weighted_value =
-              weighted_pa * boys[0] -
-              coulomb_scale * weighted_pq * boys[1];
-          const double product_scales[3] = {
-              alpha / p, beta / p, -gamma / q};
+  const bool first_pair_matches_canonical_order =
+      batch.shell_pair_first[first_shell_pair] == p_shell;
+  const bool second_pair_matches_canonical_order =
+      batch.shell_pair_first[second_shell_pair] == third_shell;
+  const std::int64_t first_pair_begin =
+      batch.shell_pair_primitive_offsets[first_shell_pair];
+  const std::int64_t first_pair_end =
+      batch.shell_pair_primitive_offsets[first_shell_pair + 1];
+  const std::int64_t second_pair_begin =
+      batch.shell_pair_primitive_offsets[second_shell_pair];
+  const std::int64_t second_pair_end =
+      batch.shell_pair_primitive_offsets[second_shell_pair + 1];
+  for (std::int64_t first_primitive = first_pair_begin;
+       first_primitive < first_pair_end; ++first_primitive) {
+    const PrimitivePairData first_pair =
+        batch.shell_primitive_pairs[first_primitive];
+    const double p = first_pair.exponent_sum;
+    const double mu = first_pair.reduced_exponent;
+    const Vec3<double> product_p = first_pair.product_center;
+    const double first_product_scale = first_pair_matches_canonical_order
+        ? first_pair.first_product_scale
+        : first_pair.second_product_scale;
+    const double second_product_scale = first_pair_matches_canonical_order
+        ? first_pair.second_product_scale
+        : first_pair.first_product_scale;
+    for (std::int64_t second_primitive = second_pair_begin;
+         second_primitive < second_pair_end; ++second_primitive) {
+      const PrimitivePairData second_pair =
+          batch.shell_primitive_pairs[second_primitive];
+      const double q = second_pair.exponent_sum;
+      const double nu = second_pair.reduced_exponent;
+      const double rho = p * q / (p + q);
+      const Vec3<double> product_q = second_pair.product_center;
+      const Vec3<double> product_difference{
+          product_p.x - product_q.x,
+          product_p.y - product_q.y,
+          product_p.z - product_q.z,
+      };
+      const Vec3<double> pa{
+          product_p.x - first.x,
+          product_p.y - first.y,
+          product_p.z - first.z,
+      };
+      double boys[3];
+      boys_values<2>(
+          rho * distance_squared(product_p, product_q), boys);
+      const double prefactor =
+          first_pair.weighted_coefficient *
+          second_pair.weighted_coefficient *
+          2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q));
+      const double coulomb_scale = rho / p;
+      const double weighted_pa =
+          axis_weight[0] * pa.x + axis_weight[1] * pa.y +
+          axis_weight[2] * pa.z;
+      const double weighted_pq =
+          axis_weight[0] * product_difference.x +
+          axis_weight[1] * product_difference.y +
+          axis_weight[2] * product_difference.z;
+      const double weighted_value =
+          weighted_pa * boys[0] -
+          coulomb_scale * weighted_pq * boys[1];
+      const double third_product_scale =
+          second_pair_matches_canonical_order
+              ? second_pair.first_product_scale
+              : second_pair.second_product_scale;
+      const double product_scales[3] = {
+          first_product_scale, second_product_scale,
+          -third_product_scale};
 
 #pragma unroll
-          for (unsigned center = 0; center < 3; ++center) {
+      for (unsigned center = 0; center < 3; ++center) {
 #pragma unroll
-            for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
-              double decay_derivative = 0.0;
-              if (center < 2) {
-                const double difference =
-                    vec_axis(first, coordinate) -
-                    vec_axis(second, coordinate);
-                decay_derivative =
-                    (center == 0 ? -2.0 * mu : 2.0 * mu) * difference;
-              } else {
-                const double difference =
-                    vec_axis(third, coordinate) -
-                    vec_axis(fourth, coordinate);
-                decay_derivative = -2.0 * nu * difference;
-              }
-              const double argument_derivative =
-                  2.0 * rho * product_scales[center] *
-                  vec_axis(product_difference, coordinate);
-              const double pa_derivative = center == 0
-                  ? alpha / p - 1.0
-                  : (center == 1 ? beta / p : 0.0);
-              const double weighted_value_derivative =
-                  axis_weight[coordinate] * pa_derivative * boys[0] -
-                  weighted_pa * boys[1] * argument_derivative -
-                  coulomb_scale * axis_weight[coordinate] *
-                      product_scales[center] * boys[1] +
-                  coulomb_scale * weighted_pq * boys[2] *
-                      argument_derivative;
-              result.center[center][coordinate] += prefactor *
-                  (weighted_value_derivative +
-                   weighted_value * decay_derivative);
-            }
+        for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+          double decay_derivative = 0.0;
+          if (center < 2) {
+            const double difference =
+                vec_axis(first, coordinate) -
+                vec_axis(second, coordinate);
+            decay_derivative =
+                (center == 0 ? -2.0 * mu : 2.0 * mu) * difference;
+          } else {
+            const double difference =
+                vec_axis(third, coordinate) -
+                vec_axis(fourth, coordinate);
+            decay_derivative = -2.0 * nu * difference;
           }
+          const double argument_derivative =
+              2.0 * rho * product_scales[center] *
+              vec_axis(product_difference, coordinate);
+          const double pa_derivative = center == 0
+              ? first_product_scale - 1.0
+              : (center == 1 ? second_product_scale : 0.0);
+          const double weighted_value_derivative =
+              axis_weight[coordinate] * pa_derivative * boys[0] -
+              weighted_pa * boys[1] * argument_derivative -
+              coulomb_scale * axis_weight[coordinate] *
+                  product_scales[center] * boys[1] +
+              coulomb_scale * weighted_pq * boys[2] *
+                  argument_derivative;
+          result.center[center][coordinate] += prefactor *
+              (weighted_value_derivative +
+               weighted_value * decay_derivative);
         }
       }
     }
@@ -7971,6 +8030,7 @@ __device__ __noinline__ void contract_fock_direct_psss_task(
 
   std::int32_t canonical_shell[4] = {
       raw_shell[0], raw_shell[1], raw_shell[2], raw_shell[3]};
+  std::size_t canonical_pair[2] = {first_pair, second_pair};
   if (p_slot == 1) {
     const std::int32_t swap = canonical_shell[0];
     canonical_shell[0] = canonical_shell[1];
@@ -7987,10 +8047,14 @@ __device__ __noinline__ void contract_fock_direct_psss_task(
     const std::int32_t second_swap = canonical_shell[1];
     canonical_shell[1] = canonical_shell[3];
     canonical_shell[3] = second_swap;
+    const std::size_t pair_swap = canonical_pair[0];
+    canonical_pair[0] = canonical_pair[1];
+    canonical_pair[1] = pair_swap;
   }
 
   const PsssIntegralVector integral = contracted_eri_cartesian_source_psss(
-      batch, canonical_shell[0], canonical_shell[1],
+      batch, canonical_pair[0], canonical_pair[1],
+      canonical_shell[0], canonical_shell[1],
       canonical_shell[2], canonical_shell[3]);
   for (unsigned axis = 0; axis < 3; ++axis) {
     if ((active_axis_mask & (1U << axis)) == 0 ||
@@ -9283,6 +9347,7 @@ __device__ __noinline__ void contract_two_electron_force_psss_task(
 
   std::int32_t slots[4] = {
       raw_shell[0], raw_shell[1], raw_shell[2], raw_shell[3]};
+  std::size_t canonical_pair[2] = {first_pair, second_pair};
   if (p_slot == 1) {
     const std::int32_t swap = slots[0];
     slots[0] = slots[1];
@@ -9299,11 +9364,15 @@ __device__ __noinline__ void contract_two_electron_force_psss_task(
     const std::int32_t second_swap = slots[1];
     slots[1] = slots[3];
     slots[3] = second_swap;
+    const std::size_t pair_swap = canonical_pair[0];
+    canonical_pair[0] = canonical_pair[1];
+    canonical_pair[1] = pair_swap;
   }
 
   const PsssWeightedGradient gradient =
       contracted_eri_cartesian_source_psss_weighted_gradient(
-          batch, slots[0], slots[1], slots[2], slots[3],
+          batch, canonical_pair[0], canonical_pair[1],
+          slots[0], slots[1], slots[2], slots[3],
           density_coefficient);
   double derivative_sum[3]{};
   for (unsigned atom = 0; atom + 1 < unique_center_count; ++atom) {
@@ -10527,6 +10596,8 @@ struct ArenaLayout {
   std::size_t shell_pair_systems{};
   std::size_t shell_pair_first{};
   std::size_t shell_pair_second{};
+  std::size_t shell_pair_primitive_offsets{};
+  std::size_t shell_primitive_pairs{};
   std::size_t ao_shells{};
   std::size_t ao_term_counts{};
   std::size_t ao_term_angular{};
@@ -10612,6 +10683,7 @@ bool make_layout(std::size_t batch_size,
                  std::size_t atoms,
                  std::size_t shell_count,
                  std::size_t shell_pair_count,
+                 std::size_t shell_pair_primitive_count,
                  std::size_t shell_quartet_tile_count,
                  std::size_t generated_shell_task_capacity,
                  std::size_t generic_order5_tile_capacity,
@@ -10688,6 +10760,12 @@ bool make_layout(std::size_t batch_size,
                                   made.shell_pair_first) ||
       !append_array<std::int32_t>(shell_pair_count, cursor,
                                   made.shell_pair_second) ||
+      !append_array<std::int64_t>(
+          shell_quartet_tile_count == 0 ? 0 : shell_pair_count + 1,
+          cursor, made.shell_pair_primitive_offsets) ||
+      !append_array<PrimitivePairData>(
+          shell_quartet_tile_count == 0 ? 0 : shell_pair_primitive_count,
+          cursor, made.shell_primitive_pairs) ||
       !append_array<std::int32_t>(aos, cursor, made.ao_shells) ||
       !append_array<std::uint8_t>(aos, cursor, made.ao_term_counts) ||
       !append_array<std::uint8_t>(
@@ -10836,6 +10914,7 @@ struct HostBatch {
   std::vector<std::int32_t> shell_pair_systems;
   std::vector<std::int32_t> shell_pair_first;
   std::vector<std::int32_t> shell_pair_second;
+  std::vector<std::int64_t> shell_pair_primitive_offsets;
   std::vector<std::int32_t> ao_shells;
   std::vector<std::uint8_t> ao_term_counts;
   std::vector<std::uint8_t> ao_term_angular;
@@ -10872,6 +10951,7 @@ bool pack_host_batch(const std::vector<core::System>& systems,
   host.shell_primitive_offsets.push_back(0);
   host.system_shell_pair_offsets.push_back(0);
   host.system_shell_quartet_offsets.push_back(0);
+  host.shell_pair_primitive_offsets.push_back(0);
   host.warm_density.resize(
       systems.size() * host.spin_count * matrix_size, 0.0);
   if (host.direct_nbf != host.nbf && host.nbf > kPersistentEriAoLimit) {
@@ -11003,6 +11083,28 @@ bool pack_host_batch(const std::vector<core::System>& systems,
             static_cast<std::int32_t>(system_index));
         host.shell_pair_first.push_back(static_cast<std::int32_t>(first));
         host.shell_pair_second.push_back(static_cast<std::int32_t>(second));
+        const std::int64_t first_primitive_count =
+            host.shell_primitive_offsets[first + 1] -
+            host.shell_primitive_offsets[first];
+        const std::int64_t second_primitive_count =
+            host.shell_primitive_offsets[second + 1] -
+            host.shell_primitive_offsets[second];
+        if (first_primitive_count <= 0 || second_primitive_count <= 0 ||
+            first_primitive_count >
+                std::numeric_limits<std::int64_t>::max() /
+                    second_primitive_count) {
+          return false;
+        }
+        const std::int64_t pair_primitive_count =
+            first_primitive_count * second_primitive_count;
+        if (host.shell_pair_primitive_offsets.back() >
+            std::numeric_limits<std::int64_t>::max() -
+                pair_primitive_count) {
+          return false;
+        }
+        host.shell_pair_primitive_offsets.push_back(
+            host.shell_pair_primitive_offsets.back() +
+            pair_primitive_count);
       }
     }
     const std::size_t system_shell_pair_end = host.shell_pair_first.size();
@@ -11321,6 +11423,8 @@ bool same_topology(const HostBatch& first, const HostBatch& second) {
          first.shell_pair_systems == second.shell_pair_systems &&
          first.shell_pair_first == second.shell_pair_first &&
          first.shell_pair_second == second.shell_pair_second &&
+         first.shell_pair_primitive_offsets ==
+             second.shell_pair_primitive_offsets &&
          first.ao_shells == second.ao_shells &&
          first.ao_term_counts == second.ao_term_counts &&
          first.ao_term_angular == second.ao_term_angular &&
@@ -11428,6 +11532,13 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   const std::size_t total_atoms = host.atomic_numbers.size();
   const std::size_t total_shells = host.shell_atoms.size();
   const std::size_t total_shell_pairs = host.shell_pair_first.size();
+  if (host.shell_pair_primitive_offsets.size() != total_shell_pairs + 1 ||
+      host.shell_pair_primitive_offsets.back() < 0) {
+    fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
+    return outputs;
+  }
+  const std::size_t total_shell_pair_primitives =
+      static_cast<std::size_t>(host.shell_pair_primitive_offsets.back());
   if (host.system_shell_quartet_offsets.size() != batch_size + 1 ||
       host.system_shell_quartet_offsets.back() < 0) {
     fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
@@ -11519,7 +11630,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   }
   if (first_setup) {
     if (!make_layout(batch_size, nbf, direct_nbf, total_atoms, total_shells,
-                     total_shell_pairs, total_shell_quartet_tiles,
+                     total_shell_pairs, total_shell_pair_primitives,
+                     total_shell_quartet_tiles,
                      generated_shell_task_capacity,
                      generic_order5_tile_capacity,
                      host.primitive_exponents.size(), diis_history,
@@ -11682,6 +11794,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       resources.arena_, layout.shell_pair_first);
   auto shell_pair_second = arena_pointer<std::int32_t>(
       resources.arena_, layout.shell_pair_second);
+  auto shell_pair_primitive_offsets = arena_pointer<std::int64_t>(
+      resources.arena_, layout.shell_pair_primitive_offsets);
+  auto shell_primitive_pairs = arena_pointer<PrimitivePairData>(
+      resources.arena_, layout.shell_primitive_pairs);
   auto ao_shells =
       arena_pointer<std::int32_t>(resources.arena_, layout.ao_shells);
   auto ao_term_counts =
@@ -11843,6 +11959,12 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       {host.shell_pair_second.data(),
        {shell_pair_second,
         host.shell_pair_second.size() * sizeof(std::int32_t)}},
+      {host.shell_pair_primitive_offsets.data(),
+       {shell_pair_primitive_offsets,
+        quartet_direct
+            ? host.shell_pair_primitive_offsets.size() *
+                  sizeof(std::int64_t)
+            : 0}},
       {host.ao_shells.data(),
        {ao_shells, host.ao_shells.size() * sizeof(std::int32_t)}},
       {host.ao_term_counts.data(),
@@ -11928,12 +12050,25 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       shell_atoms, shell_angular, shell_ao_offsets, shell_direct_ao_offsets,
       shell_primitive_offsets, system_shell_pair_offsets,
       system_shell_quartet_offsets,
-      shell_pair_systems, shell_pair_first, shell_pair_second, ao_shells,
+      shell_pair_systems, shell_pair_first, shell_pair_second,
+      shell_pair_primitive_offsets, shell_primitive_pairs, ao_shells,
       ao_term_counts, ao_term_angular, ao_term_coefficients,
       direct_ao_shells, direct_ao_angular, direct_ao_coefficients,
       ao_to_direct_transform,
       primitive_exponents,
       primitive_coefficients, occupied};
+
+  if (quartet_direct && geometry_changed) {
+    build_shell_primitive_pair_cache_kernel<<<
+        static_cast<unsigned>(total_shell_pairs),
+        detail::kDirectQuartetThreads, 0, resources.stream_>>>(
+        device_batch, shell_primitive_pairs);
+    cuda_error = cudaPeekAtLastError();
+    if (cuda_error != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
+  }
 
   if (first_setup && use_cusolver) {
     if (use_jacobi) {
