@@ -633,10 +633,11 @@ __device__ void boys_values(Scalar argument, Scalar* values) {
   }
 }
 
-// Generated from tools/qce_codegen/dppp_dispatch.py. Keeping the complete
-// shell-class schedule in one checked-in header makes the production build
-// reproducible while leaving symbolic construction outside this CUDA TU.
+// Generated from the declarative shell-class compiler. Keeping complete
+// schedules in checked-in headers makes production builds reproducible while
+// leaving symbolic construction and build-time AD outside this CUDA TU.
 #include "generated/dppp_fused.cuh"
+#include "generated/dpds_fused.cuh"
 
 constexpr unsigned kGeneratedDpppShellClass =
     detail::direct_quartet_shell_class(2, 1, 1, 1);
@@ -644,6 +645,16 @@ constexpr unsigned kGeneratedDpppAngularOrder = 5;
 static_assert(kGeneratedDpppShellClass == 12);
 static_assert(kGeneratedDpppComponentCount <= detail::kDirectQuartetTileSize);
 static_assert(sizeof(GeneratedDpppVec3) == 3 * sizeof(double));
+
+constexpr unsigned kGeneratedDpdsShellClass =
+    detail::direct_quartet_shell_class(2, 1, 2, 0);
+constexpr unsigned kGeneratedDpdsAngularOrder = 5;
+static_assert(kGeneratedDpdsShellClass == 13);
+static_assert(kGeneratedDpdsComponentCount <= detail::kDirectQuartetTileSize);
+static_assert(sizeof(GeneratedDpdsVec3) == 3 * sizeof(double));
+static_assert(sizeof(GeneratedDpdsShellTask) == sizeof(GeneratedDpppShellTask));
+static_assert(alignof(GeneratedDpdsShellTask) ==
+              alignof(GeneratedDpppShellTask));
 
 template <typename Scalar>
 struct HermiteCoefficients {
@@ -5887,17 +5898,14 @@ __global__ void compact_active_shell_quartet_tiles_kernel(
   }
 }
 
-/**
- * Canonicalize active order-5 ``dppp`` shell quartets for the generated AOT
- * consumer. A dppp shell quartet has at most 162 Cartesian AO quartets, so its
- * compact descriptor always owns exactly one 256-element production tile.
- */
-__global__ void compact_generated_dppp_shell_tasks_kernel(
+/** Canonicalize one exact shell class for a generated fused AOT consumer. */
+template <unsigned TargetShellClass, typename GeneratedTask>
+__global__ void compact_generated_shell_tasks_kernel(
     DeviceBatch batch,
     const std::uint32_t* active_shell_quartet_tile_count,
     const ActiveShellQuartetTile* active_shell_quartet_tiles,
     std::uint32_t* generated_task_count,
-    GeneratedDpppShellTask* generated_tasks) {
+    GeneratedTask* generated_tasks) {
   const std::size_t active_tile =
       static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (active_tile >=
@@ -5917,11 +5925,11 @@ __global__ void compact_generated_dppp_shell_tasks_kernel(
   const unsigned shell_class = direct_quartet_shell_class_device(
       batch.shell_angular[shells[0]], batch.shell_angular[shells[1]],
       batch.shell_angular[shells[2]], batch.shell_angular[shells[3]]);
-  if (shell_class != kGeneratedDpppShellClass) return;
+  if (shell_class != TargetShellClass) return;
 
-  // Canonical dppp is ordered as (d p|p p). Preserve the resulting slot map
-  // in the task so the generated kernel accumulates each center derivative
-  // onto the atom that owned that slot before symmetry routing.
+  // Sort within each pair and then between pairs exactly as the shell-class
+  // encoding does. The task retains the resulting slot-to-atom map so the
+  // generated force is accumulated onto the original physical centers.
   if (batch.shell_angular[shells[0]] < batch.shell_angular[shells[1]]) {
     const std::int32_t swap = shells[0];
     shells[0] = shells[1];
@@ -5952,7 +5960,7 @@ __global__ void compact_generated_dppp_shell_tasks_kernel(
   const std::size_t system_ao_begin =
       static_cast<std::size_t>(system) * matrix_order;
   const std::uint32_t task_index = atomicAdd(generated_task_count, 1U);
-  GeneratedDpppShellTask& task = generated_tasks[task_index];
+  GeneratedTask& task = generated_tasks[task_index];
 #pragma unroll
   for (unsigned center = 0; center < 4U; ++center) {
     const std::int32_t shell = shells[center];
@@ -7397,8 +7405,9 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
       batch.shell_angular[third_shell], batch.shell_angular[fourth_shell]);
   if constexpr (AngularOrder == kGeneratedDpppAngularOrder) {
     // The generated cooperative kernel contracts every Cartesian component
-    // of this exact shell class once, including density and ERI symmetry.
-    if (shell_class == kGeneratedDpppShellClass) return;
+    // of these exact shell classes once, including density and ERI symmetry.
+    if (shell_class == kGeneratedDpppShellClass ||
+        shell_class == kGeneratedDpdsShellClass) return;
   }
 
   const std::size_t ordinal =
@@ -7637,15 +7646,15 @@ __global__ void two_electron_force_quartet_persistent_kernel(
   }
 }
 
-/** Prepare and consume the exact dppp shell-class queue on the force stream. */
-template <bool Unrestricted>
-void launch_generated_dppp_force(
+/** Prepare and consume one exact generated shell-class queue. */
+template <bool Unrestricted, unsigned TargetShellClass, typename GeneratedTask>
+cudaError_t launch_generated_shell_class_force(
     cudaStream_t stream,
     std::size_t capacity,
     DeviceBatch batch,
     const std::uint32_t* active_tile_count,
     const ActiveShellQuartetTile* active_tiles,
-    GeneratedDpppShellTask* generated_tasks,
+    GeneratedTask* generated_tasks,
     std::uint32_t* generated_task_count,
     std::uint32_t* generated_task_head,
     unsigned persistent_worker_blocks,
@@ -7653,34 +7662,64 @@ void launch_generated_dppp_force(
     const double* schwarz_bounds,
     const double* density,
     double* forces) {
-  if (capacity == 0) return;
+  if (capacity == 0) return cudaSuccess;
+  cudaError_t error = cudaMemsetAsync(
+      generated_task_count, 0, sizeof(std::uint32_t), stream);
+  if (error != cudaSuccess) return error;
+  error = cudaMemsetAsync(
+      generated_task_head, 0, sizeof(std::uint32_t), stream);
+  if (error != cudaSuccess) return error;
   constexpr unsigned preparation_threads = kCaptureSafeKernelThreads;
   const unsigned preparation_blocks = static_cast<unsigned>(
       (capacity + preparation_threads - 1) / preparation_threads);
-  compact_generated_dppp_shell_tasks_kernel<<<
+  compact_generated_shell_tasks_kernel<TargetShellClass><<<
       preparation_blocks, preparation_threads, 0, stream>>>(
       batch, active_tile_count, active_tiles, generated_task_count,
       generated_tasks);
+  error = cudaPeekAtLastError();
+  if (error != cudaSuccess) return error;
 
   const unsigned worker_blocks = std::min(
       static_cast<unsigned>(capacity), persistent_worker_blocks);
-  const auto* atom_positions =
-      reinterpret_cast<const GeneratedDpppVec3*>(batch.positions);
-  if constexpr (Unrestricted) {
-    generated_dppp_shell_class_force_uhf_persistent_kernel<<<
-        worker_blocks, kGeneratedDpppBlockThreads, 0, stream>>>(
-        generated_tasks, batch.primitive_exponents,
-        batch.primitive_coefficients, batch.direct_ao_coefficients,
-        atom_positions, screening_tolerance, schwarz_bounds, density, forces,
-        generated_task_count, generated_task_head);
+  if constexpr (TargetShellClass == kGeneratedDpppShellClass) {
+    const auto* atom_positions =
+        reinterpret_cast<const GeneratedDpppVec3*>(batch.positions);
+    if constexpr (Unrestricted) {
+      generated_dppp_shell_class_force_uhf_persistent_kernel<<<
+          worker_blocks, kGeneratedDpppBlockThreads, 0, stream>>>(
+          generated_tasks, batch.primitive_exponents,
+          batch.primitive_coefficients, batch.direct_ao_coefficients,
+          atom_positions, screening_tolerance, schwarz_bounds, density, forces,
+          generated_task_count, generated_task_head);
+    } else {
+      generated_dppp_shell_class_force_rhf_persistent_kernel<<<
+          worker_blocks, kGeneratedDpppBlockThreads, 0, stream>>>(
+          generated_tasks, batch.primitive_exponents,
+          batch.primitive_coefficients, batch.direct_ao_coefficients,
+          atom_positions, screening_tolerance, schwarz_bounds, density, forces,
+          generated_task_count, generated_task_head);
+    }
   } else {
-    generated_dppp_shell_class_force_rhf_persistent_kernel<<<
-        worker_blocks, kGeneratedDpppBlockThreads, 0, stream>>>(
-        generated_tasks, batch.primitive_exponents,
-        batch.primitive_coefficients, batch.direct_ao_coefficients,
-        atom_positions, screening_tolerance, schwarz_bounds, density, forces,
-        generated_task_count, generated_task_head);
+    static_assert(TargetShellClass == kGeneratedDpdsShellClass);
+    const auto* atom_positions =
+        reinterpret_cast<const GeneratedDpdsVec3*>(batch.positions);
+    if constexpr (Unrestricted) {
+      generated_dpds_shell_class_force_uhf_persistent_kernel<<<
+          worker_blocks, kGeneratedDpdsBlockThreads, 0, stream>>>(
+          generated_tasks, batch.primitive_exponents,
+          batch.primitive_coefficients, batch.direct_ao_coefficients,
+          atom_positions, screening_tolerance, schwarz_bounds, density, forces,
+          generated_task_count, generated_task_head);
+    } else {
+      generated_dpds_shell_class_force_rhf_persistent_kernel<<<
+          worker_blocks, kGeneratedDpdsBlockThreads, 0, stream>>>(
+          generated_tasks, batch.primitive_exponents,
+          batch.primitive_coefficients, batch.direct_ao_coefficients,
+          atom_positions, screening_tolerance, schwarz_bounds, density, forces,
+          generated_task_count, generated_task_head);
+    }
   }
+  return cudaPeekAtLastError();
 }
 
 template <bool Unrestricted, unsigned AngularOrder = 0>
@@ -9781,18 +9820,6 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         persistent_force_task_heads, 0,
         kPersistentForceAngularOrderCount * sizeof(std::uint32_t),
         resources.stream_);
-    if (cuda_error == cudaSuccess &&
-        plan.shell_quartet_tile_capacities[kGeneratedDpppAngularOrder] != 0) {
-      cuda_error = cudaMemsetAsync(
-          generated_dppp_task_count, 0, sizeof(std::uint32_t),
-          resources.stream_);
-    }
-    if (cuda_error == cudaSuccess &&
-        plan.shell_quartet_tile_capacities[kGeneratedDpppAngularOrder] != 0) {
-      cuda_error = cudaMemsetAsync(
-          generated_dppp_task_head, 0, sizeof(std::uint32_t),
-          resources.stream_);
-    }
     if (cuda_error != cudaSuccess) {
       fill_global_failure(outputs, cuda_status(cuda_error));
       return outputs;
@@ -9811,7 +9838,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                                     threads, 0, resources.stream_>>>(
         device_batch, density, active, forces);
   } else if (unrestricted && quartet_direct) {
-    launch_generated_dppp_force<true>(
+    cuda_error = launch_generated_shell_class_force<
+        true, kGeneratedDpppShellClass>(
         resources.stream_,
         plan.shell_quartet_tile_capacities[kGeneratedDpppAngularOrder],
         device_batch,
@@ -9822,6 +9850,25 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         generated_dppp_task_head, plan.persistent_force_worker_blocks,
         options.screening_tolerance, schwarz_bounds,
         transformed_direct ? direct_density : density, forces);
+    if (cuda_error == cudaSuccess) {
+      cuda_error = launch_generated_shell_class_force<
+          true, kGeneratedDpdsShellClass>(
+          resources.stream_,
+          plan.shell_quartet_tile_capacities[kGeneratedDpdsAngularOrder],
+          device_batch,
+          active_shell_quartet_tile_counts + kGeneratedDpdsAngularOrder,
+          active_shell_quartet_tiles +
+              plan.shell_quartet_tile_offsets[kGeneratedDpdsAngularOrder],
+          reinterpret_cast<GeneratedDpdsShellTask*>(generated_dppp_tasks),
+          generated_dppp_task_count, generated_dppp_task_head,
+          plan.persistent_force_worker_blocks, options.screening_tolerance,
+          schwarz_bounds, transformed_direct ? direct_density : density,
+          forces);
+    }
+    if (cuda_error != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
     launch_angular_force_quartets<true>(
         resources.stream_, plan.shell_quartet_tile_capacities,
         plan.shell_quartet_tile_offsets, device_batch,
@@ -9839,7 +9886,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                                  0, resources.stream_>>>(
         device_batch, density, active, forces);
   } else if (quartet_direct) {
-    launch_generated_dppp_force<false>(
+    cuda_error = launch_generated_shell_class_force<
+        false, kGeneratedDpppShellClass>(
         resources.stream_,
         plan.shell_quartet_tile_capacities[kGeneratedDpppAngularOrder],
         device_batch,
@@ -9850,6 +9898,25 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         generated_dppp_task_head, plan.persistent_force_worker_blocks,
         options.screening_tolerance, schwarz_bounds,
         transformed_direct ? direct_density : density, forces);
+    if (cuda_error == cudaSuccess) {
+      cuda_error = launch_generated_shell_class_force<
+          false, kGeneratedDpdsShellClass>(
+          resources.stream_,
+          plan.shell_quartet_tile_capacities[kGeneratedDpdsAngularOrder],
+          device_batch,
+          active_shell_quartet_tile_counts + kGeneratedDpdsAngularOrder,
+          active_shell_quartet_tiles +
+              plan.shell_quartet_tile_offsets[kGeneratedDpdsAngularOrder],
+          reinterpret_cast<GeneratedDpdsShellTask*>(generated_dppp_tasks),
+          generated_dppp_task_count, generated_dppp_task_head,
+          plan.persistent_force_worker_blocks, options.screening_tolerance,
+          schwarz_bounds, transformed_direct ? direct_density : density,
+          forces);
+    }
+    if (cuda_error != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
     launch_angular_force_quartets<false>(
         resources.stream_, plan.shell_quartet_tile_capacities,
         plan.shell_quartet_tile_offsets, device_batch,
