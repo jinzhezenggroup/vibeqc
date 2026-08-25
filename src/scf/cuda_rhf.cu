@@ -9536,10 +9536,6 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       fill_global_failure(outputs, status);
       return outputs;
     }
-    build_spin_density_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
-                                resources.stream_>>>(
-        static_cast<std::int32_t>(batch_size), 2,
-        static_cast<std::int32_t>(nbf), occupied, coefficients, active, density);
   } else {
     inspect_solver_kernel<<<blocks_for(batch_size), threads, 0,
                             resources.stream_>>>(
@@ -9551,11 +9547,14 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       fill_global_failure(outputs, status);
       return outputs;
     }
-    build_density_kernel<<<blocks_for(matrix_elements), threads, 0,
-                           resources.stream_>>>(
-        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
-        occupied, coefficients, active, density);
   }
+  // Keep the converged density paired with the un-extrapolated F(P) that was
+  // just diagonalized. The canonical coefficients and eigenvalues are needed
+  // for the Pulay weighted density, but replacing P with C_occ C_occ^T would
+  // require a second complete J/K rebuild before energy and force evaluation.
+  // The accepted density update has already passed the requested SCF density
+  // tolerance, so retaining P keeps all final energy/two-electron force terms
+  // evaluated consistently at the same P and F(P).
   if (shell_class_profiling && quartet_direct) {
     cuda_error = cudaMemsetAsync(
         shell_class_profile, 0,
@@ -9567,7 +9566,6 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       return outputs;
     }
   }
-  launch_fock_builder(density);
   if (shell_class_profiling && quartet_direct &&
       total_shell_quartet_tiles != 0) {
     profile_active_shell_quartet_tiles_kernel<<<
