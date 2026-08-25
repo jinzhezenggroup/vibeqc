@@ -1,0 +1,172 @@
+{
+  "benchmark": "warm_energy_force_component_profile",
+  "capture": {
+    "capture_range": "cudaProfilerApi",
+    "nsight_systems": "2025.2.1.0",
+    "qce_cuda_runtime_capture_span_seconds": 1.47138553,
+    "qce_iterations": 2,
+    "qce_wall_seconds": 1.47138553,
+    "sequence": "one uncaptured cold energy-plus-force execution followed by one captured warm execution",
+    "trace": "cuda,nvtx"
+  },
+  "environment": {
+    "cuda_runtime": "12.9",
+    "device": "NVIDIA GeForce RTX 5090",
+    "driver": "580.95.05",
+    "gpu4pyscf_commit": "db6bb7f12bf4b6465b7c5ff0a9741bc2be08318d",
+    "gpu4pyscf_version": "1.8.1",
+    "node": "node3",
+    "qce_commit": "962f0bdc08bb73ecf2274833deca43bcabae96b4",
+    "qce_dirty": false
+  },
+  "formal_96_ao_gate": {
+    "batch_1": {
+      "gpu4pyscf_warm_seconds": [
+        1.9636233220080612,
+        1.3553032150084618,
+        1.0526232080010232
+      ],
+      "maximum_energy_error_hartree": 2.2168933355715126e-12,
+      "maximum_force_error_hartree_per_bohr": 1.7212099800989478e-12,
+      "passed_accuracy": true,
+      "passed_speed": false,
+      "qce_final_iterations": [2],
+      "qce_warm_seconds": [
+        1.4861568980122684,
+        1.478704672990716,
+        1.4770276740018744
+      ],
+      "warm_speedup": 0.916548
+    },
+    "batch_4": {
+      "gpu4pyscf_warm_seconds": [
+        6.696697284001857,
+        5.436839131012675,
+        4.2241358699975535
+      ],
+      "maximum_energy_error_hartree": 3.922195901395753e-12,
+      "maximum_force_error_hartree_per_bohr": 2.629127818232213e-12,
+      "passed_accuracy": true,
+      "passed_speed": false,
+      "qce_final_iterations": [3, 3, 2, 2],
+      "qce_warm_seconds": [
+        6.4136134879954625,
+        5.729631554000662,
+        5.957363333000103
+      ],
+      "warm_speedup": 0.912625
+    },
+    "maximum_energy_error_hartree": 3e-11,
+    "maximum_force_error_hartree_per_bohr": 3e-11,
+    "minimum_speedup": 1.0,
+    "repeats": 3
+  },
+  "gpu4pyscf": {
+    "component_kernel_milliseconds": {
+      "direct_jk": 501.61271,
+      "eigensolver": 5.822565,
+      "one_electron_force": 2.519305,
+      "other": 4.338709,
+      "two_electron_force": 311.187256
+    },
+    "kernel_launches": 4419,
+    "kernel_span_milliseconds": 1515.173802,
+    "span_minus_summed_kernel_milliseconds": 689.693257,
+    "summed_kernel_milliseconds": 825.480545,
+    "two_electron_force_kernel_milliseconds_by_total_angular_order": {
+      "0": 23.574182,
+      "1": 36.362563,
+      "2": 57.083627,
+      "3": 80.068394,
+      "4": 46.403201,
+      "5": 26.380192,
+      "fallback_6_through_8": 41.315097
+    }
+  },
+  "methodology_notes": [
+    "Both engines use the exact 96-AO batch-1 acceptance workload and the acceptance SCF and screening tolerances.",
+    "The QCE profile and endpoint gates were captured from clean commit 962f0bd; the unchanged GPU4PySCF component values come from the matching clean 1.8.1 capture published with c28b1e9.",
+    "QCE evaluates three independent primitive center derivatives for order zero and one, then reconstructs the fourth from translational invariance.",
+    "Four pre-commit validation captures and the final clean capture all used the exact committed implementation; only two-iteration captures are included in the repeated component samples.",
+    "The batch-4 endpoint median is SCF-branch-sensitive because the final QCE batch contains 3/3/2/2 iterations across its systems.",
+    "Component values sum CUDA kernel durations by demangled kernel family; they do not include CPU work or idle gaps."
+  ],
+  "qce": {
+    "component_kernel_milliseconds": {
+      "direct_jk": 489.40645,
+      "eigensolver": 31.225549,
+      "one_electron_force": 22.043505,
+      "one_electron_values_and_schwarz": 0.0,
+      "other": 3.937562,
+      "two_electron_force": 353.017393
+    },
+    "kernel_launches": 56,
+    "kernel_span_milliseconds": 1467.735729,
+    "resource_usage": {
+      "order_0": {
+        "baseline_registers": 194,
+        "baseline_stack_bytes": 112,
+        "registers": 192,
+        "stack_bytes": 112
+      },
+      "order_1": {
+        "baseline_registers": 222,
+        "baseline_stack_bytes": 208,
+        "registers": 176,
+        "stack_bytes": 208
+      }
+    },
+    "span_minus_summed_kernel_milliseconds": 568.10527,
+    "summed_kernel_milliseconds": 899.630459,
+    "two_electron_force_kernel_milliseconds_by_total_angular_order": {
+      "0": 28.720253,
+      "1": 53.822178,
+      "2": 65.09438,
+      "3": 46.788852,
+      "4": 54.655751,
+      "5": 47.384407,
+      "6": 29.16864,
+      "7": 23.611419,
+      "8": 3.771513
+    },
+    "two_iteration_validation_samples_milliseconds": {
+      "order_0": [28.769748, 29.268542, 29.429542, 28.848677, 28.720253],
+      "order_1": [52.834858, 53.694844, 53.848842, 53.524879, 53.822178],
+      "summed_kernels": [
+        898.737613,
+        899.081415,
+        903.776993,
+        900.168819,
+        899.630459
+      ],
+      "two_electron_force": [
+        350.468493,
+        353.065874,
+        353.039175,
+        352.652271,
+        353.017393
+      ]
+    }
+  },
+  "qce_baseline": {
+    "commit": "93f6eee16cbdd35cebf58c471a00875120e46e65",
+    "order_0_force_kernel_milliseconds": 30.228127,
+    "order_1_force_kernel_milliseconds": 54.262768,
+    "summed_kernel_milliseconds": 900.362925,
+    "two_electron_force_kernel_milliseconds": 354.977409
+  },
+  "schema_version": 1,
+  "workload": {
+    "ao_count": 96,
+    "basis": "def2-SVP",
+    "basis_representation": "real spherical",
+    "batch_size": 1,
+    "case": "water-tetramer-def2-svp-spherical",
+    "density_tolerance": 1e-10,
+    "energy_tolerance_hartree": 1e-12,
+    "gpu4pyscf_gradient_tolerance": 1e-09,
+    "maximum_iterations": 100,
+    "molecule": "GMTKN55/WATER27 optimized water tetramer",
+    "screening_tolerance": 1e-14
+  }
+}

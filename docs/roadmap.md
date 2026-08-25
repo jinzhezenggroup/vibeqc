@@ -184,10 +184,18 @@ and performance measurements pass.
   clean complete two-electron force reaches 354.977 ms. A new formal
   three-repeat endpoint run remains accuracy-valid but records only
   `0.922x`/`0.949x` at batch 1/4, so neither required speed gate closes.
-  Eigensolver is now the largest system-level gap, followed by order five,
-  one-electron force, and order one. The next experimental branch will test
-  conservative FP32/log-domain screening metadata while retaining FP64 ERI,
-  J/K, force accumulation, SCF matrices, and eigensolver arithmetic.
+  A conservative FP32/log-domain screening experiment retained the same
+  active work and moved the same-day two-iteration kernel median from 905.9
+  to 908.8 ms, so it was discarded rather than committed. The closed
+  order-zero/one primitive derivative now evaluates only three independent
+  centers and reconstructs the fourth from translation. Order-one registers
+  fall from 222 to 176 at the same 208-byte stack footprint; order zero falls
+  from 194 to 192 registers. Five two-iteration captures span
+  52.835--53.849 ms for order one and 28.720--29.430 ms for order zero, while
+  the clean complete force pass reaches 353.017 ms. Clean formal accuracy
+  passes at batch 1/4, but variable SCF branches leave the speed observations
+  at only `0.917x`/`0.913x`. Eigensolver is still the largest system-level
+  gap, followed by order five, one-electron force, and order one.
   Clean RTX 5090
   artifacts validate energy, forces, and homogeneous-batch throughput for the
   exact `sdf18-direct`, Cartesian water/def2-SVP, and open-shell

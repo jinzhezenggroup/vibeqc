@@ -89,6 +89,19 @@ for the full per-order breakdown and capture metadata. Its QCE values come
 from clean `93f6eee`; the unchanged GPU4PySCF values come from the matching
 clean 1.8.1 capture previously published with `c28b1e9`.
 
+The closed order-zero/one primitive derivative now evaluates only three
+independent Gaussian centers and reconstructs the fourth from translational
+invariance. Order one falls from 222 to 176 registers at the same 208-byte
+stack footprint; order zero falls from 194 to 192 registers. Five
+two-iteration captures span 52.835--53.849 ms for order one and
+28.720--29.430 ms for order zero. The clean complete force pass reaches
+353.017 ms. Formal clean endpoint runs pass both accuracy limits but still
+miss parity at `0.917x` for batch 1 and `0.913x` for batch 4; the latter has a
+3/3/2/2 final SCF-iteration split and is not an iteration-matched speed
+comparison. See the
+[`962f0bd` component artifact](rtx5090-962f0bd-water-tetramer-warm-component-profile.json)
+for resource usage, repeated component samples, and raw endpoint timings.
+
 ## Current exact shell-class results
 
 | Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup | Max energy error | Max force error |
