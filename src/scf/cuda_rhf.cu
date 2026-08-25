@@ -3794,46 +3794,69 @@ contracted_eri_cartesian_source_order3_gradient(
   return result;
 }
 
-/** One sparse coefficient term in a high-order differentiated pair. */
+/** One sparse coefficient term and its first-center gradient. */
 struct HighOrderPairGradientTerm {
   unsigned derivative_state;
   double coefficient;
+  double first_center[3];
 };
 
 template <unsigned PairOrder>
-struct HighOrderPairGradientExpansion {
+struct HighOrderPairGradientGeometry {
   static_assert(PairOrder <= 6);
   static constexpr unsigned QuantumStorage = PairOrder == 0 ? 1 : PairOrder;
-  HighOrderPairGradientTerm terms[1U << PairOrder];
   unsigned axes[QuantumStorage];
   double shifts[QuantumStorage];
   double first_center_shift_gradients[QuantumStorage];
   double inverse_two_exponent;
 };
 
-/** Add one Wick matching and every derivative subset of its survivors. */
+/** Add one Wick matching to one derivative subset and its gradient. */
 template <unsigned PairOrder>
-__device__ void add_high_order_wick_matching(
-    HighOrderPairGradientExpansion<PairOrder>& expansion,
+__device__ void add_high_order_wick_matching_term(
+    HighOrderPairGradientTerm& term,
+    const HighOrderPairGradientGeometry<PairOrder>& geometry,
+    unsigned subset,
     unsigned removed,
     unsigned contraction_count) {
   static_assert(PairOrder <= 6);
-  const unsigned all = (1U << PairOrder) - 1U;
-  for (unsigned subset = 0; subset <= all; ++subset) {
-    if ((subset & removed) != 0) continue;
-    double coefficient = 1.0;
-    for (unsigned contraction = 0; contraction < contraction_count;
-         ++contraction) {
-      coefficient *= expansion.inverse_two_exponent;
+  if ((subset & removed) != 0) return;
+  double inverse_factor = 1.0;
+  const unsigned inverse_count =
+      contraction_count + static_cast<unsigned>(__popc(subset));
+  for (unsigned factor = 0; factor < inverse_count; ++factor) {
+    inverse_factor *= geometry.inverse_two_exponent;
+  }
+
+  double coefficient = inverse_factor;
+  for (unsigned quantum = 0; quantum < PairOrder; ++quantum) {
+    const unsigned bit = 1U << quantum;
+    if (((subset | removed) & bit) == 0) {
+      coefficient *= geometry.shifts[quantum];
     }
+  }
+  term.coefficient += coefficient;
+
+  // Differentiate the same surviving product while its factors are hot.
+  // The old path revisited every matching once for coefficients and three
+  // more times for Cartesian gradients. Accumulating by the differentiated
+  // quantum avoids that repeated combinatorial walk and keeps the gradient
+  // sparse in its quantum's Cartesian axis.
+  for (unsigned differentiated = 0; differentiated < PairOrder;
+       ++differentiated) {
+    const unsigned differentiated_bit = 1U << differentiated;
+    if (((subset | removed) & differentiated_bit) != 0) continue;
+    double derivative = inverse_factor *
+        geometry.first_center_shift_gradients[differentiated];
     for (unsigned quantum = 0; quantum < PairOrder; ++quantum) {
       const unsigned bit = 1U << quantum;
-      if ((removed & bit) != 0) continue;
-      coefficient *= (subset & bit) != 0
-          ? expansion.inverse_two_exponent
-          : expansion.shifts[quantum];
+      if (quantum == differentiated ||
+          ((subset | removed) & bit) != 0) {
+        continue;
+      }
+      derivative *= geometry.shifts[quantum];
     }
-    expansion.terms[subset].coefficient += coefficient;
+    term.first_center[geometry.axes[differentiated]] += derivative;
   }
 }
 
@@ -3848,8 +3871,8 @@ __device__ void add_high_order_wick_matching(
  * matching exactly once.
  */
 template <unsigned PairOrder>
-__device__ HighOrderPairGradientExpansion<PairOrder>
-make_high_order_pair_gradient_expansion(
+__device__ HighOrderPairGradientGeometry<PairOrder>
+make_high_order_pair_gradient_geometry(
     double alpha,
     const Vec3<double>& first,
     const Angular& angular_first,
@@ -3857,160 +3880,67 @@ make_high_order_pair_gradient_expansion(
     const Vec3<double>& second,
     const Angular& angular_second) {
   static_assert(PairOrder <= 6);
-  HighOrderPairGradientExpansion<PairOrder> expansion{};
-  if constexpr (PairOrder == 0) {
-    expansion.terms[0].coefficient = 1.0;
-  } else {
+  HighOrderPairGradientGeometry<PairOrder> geometry{};
+  if constexpr (PairOrder != 0) {
     const double exponent = alpha + beta;
     const Vec3<double> product = product_center(alpha, first, beta, second);
-    expansion.inverse_two_exponent = 0.5 / exponent;
+    geometry.inverse_two_exponent = 0.5 / exponent;
     unsigned quantum_count = 0;
     for (int axis = 0; axis < 3; ++axis) {
       for (unsigned quantum = 0; quantum < angular_axis(angular_first, axis);
            ++quantum) {
-        expansion.axes[quantum_count] = static_cast<unsigned>(axis);
-        expansion.shifts[quantum_count] =
+        geometry.axes[quantum_count] = static_cast<unsigned>(axis);
+        geometry.shifts[quantum_count] =
             vec_axis(product, axis) - vec_axis(first, axis);
-        expansion.first_center_shift_gradients[quantum_count] =
+        geometry.first_center_shift_gradients[quantum_count] =
             alpha / exponent - 1.0;
         ++quantum_count;
       }
       for (unsigned quantum = 0; quantum < angular_axis(angular_second, axis);
            ++quantum) {
-        expansion.axes[quantum_count] = static_cast<unsigned>(axis);
-        expansion.shifts[quantum_count] =
+        geometry.axes[quantum_count] = static_cast<unsigned>(axis);
+        geometry.shifts[quantum_count] =
             vec_axis(product, axis) - vec_axis(second, axis);
-        expansion.first_center_shift_gradients[quantum_count] =
+        geometry.first_center_shift_gradients[quantum_count] =
             alpha / exponent;
         ++quantum_count;
       }
     }
-
-    const unsigned all = (1U << PairOrder) - 1U;
-    for (unsigned subset = 0; subset <= all; ++subset) {
-      for (unsigned quantum = 0; quantum < PairOrder; ++quantum) {
-        if ((subset & (1U << quantum)) != 0) {
-          expansion.terms[subset].derivative_state +=
-              fourth_order_derivative_state(expansion.axes[quantum]);
-        }
-      }
-    }
-    add_high_order_wick_matching(expansion, 0U, 0U);
-
-    for (unsigned first_quantum = 0; first_quantum < PairOrder;
-         ++first_quantum) {
-      for (unsigned second_quantum = first_quantum + 1;
-           second_quantum < PairOrder; ++second_quantum) {
-        if (expansion.axes[first_quantum] !=
-            expansion.axes[second_quantum]) {
-          continue;
-        }
-        const unsigned first_pair =
-            (1U << first_quantum) | (1U << second_quantum);
-        add_high_order_wick_matching(expansion, first_pair, 1U);
-
-        for (unsigned third_quantum = 0; third_quantum < PairOrder;
-             ++third_quantum) {
-          for (unsigned fourth_quantum = third_quantum + 1;
-               fourth_quantum < PairOrder; ++fourth_quantum) {
-            const unsigned second_pair =
-                (1U << third_quantum) | (1U << fourth_quantum);
-            if ((first_pair & second_pair) != 0 ||
-                first_pair >= second_pair ||
-                expansion.axes[third_quantum] !=
-                    expansion.axes[fourth_quantum]) {
-              continue;
-            }
-            add_high_order_wick_matching(
-                expansion, first_pair | second_pair, 2U);
-
-            if constexpr (PairOrder == 6) {
-              for (unsigned fifth_quantum = 0;
-                   fifth_quantum < PairOrder; ++fifth_quantum) {
-                for (unsigned sixth_quantum = fifth_quantum + 1;
-                     sixth_quantum < PairOrder; ++sixth_quantum) {
-                  const unsigned third_pair =
-                      (1U << fifth_quantum) | (1U << sixth_quantum);
-                  if (((first_pair | second_pair) & third_pair) != 0 ||
-                      second_pair >= third_pair ||
-                      expansion.axes[fifth_quantum] !=
-                          expansion.axes[sixth_quantum]) {
-                    continue;
-                  }
-                  add_high_order_wick_matching(
-                      expansion, first_pair | second_pair | third_pair, 3U);
-                }
-              }
-            }
-          }
-        }
-      }
-    }
   }
-  return expansion;
+  return geometry;
 }
 
-/** Differentiate one surviving-product contribution of a Wick matching. */
+/** Generate one exact subset/Wick coefficient and its center gradient. */
 template <unsigned PairOrder>
-__device__ double high_order_wick_matching_gradient(
-    const HighOrderPairGradientExpansion<PairOrder>& expansion,
-    unsigned subset,
-    unsigned removed,
-    unsigned contraction_count,
-    unsigned coordinate) {
-  if ((subset & removed) != 0) return 0.0;
-  double inverse_factor = 1.0;
-  const unsigned inverse_count =
-      contraction_count + static_cast<unsigned>(__popc(subset));
-  for (unsigned factor = 0; factor < inverse_count; ++factor) {
-    inverse_factor *= expansion.inverse_two_exponent;
-  }
-
-  double gradient = 0.0;
-  for (unsigned differentiated = 0; differentiated < PairOrder;
-       ++differentiated) {
-    const unsigned differentiated_bit = 1U << differentiated;
-    if (((subset | removed) & differentiated_bit) != 0 ||
-        expansion.axes[differentiated] != coordinate) {
-      continue;
-    }
-    double derivative = inverse_factor *
-        expansion.first_center_shift_gradients[differentiated];
-    for (unsigned quantum = 0; quantum < PairOrder; ++quantum) {
-      const unsigned bit = 1U << quantum;
-      if (quantum == differentiated || ((subset | removed) & bit) != 0) {
-        continue;
-      }
-      derivative *= expansion.shifts[quantum];
-    }
-    gradient += derivative;
-  }
-  return gradient;
-}
-
-/** Differentiate one high-order pair coefficient at its first center. */
-template <unsigned PairOrder>
-__device__ double high_order_pair_first_center_gradient(
-    const HighOrderPairGradientExpansion<PairOrder>& expansion,
-    unsigned subset,
-    unsigned coordinate) {
+__device__ HighOrderPairGradientTerm make_high_order_pair_gradient_term(
+    const HighOrderPairGradientGeometry<PairOrder>& geometry,
+    unsigned subset) {
+  HighOrderPairGradientTerm term{};
   if constexpr (PairOrder == 0) {
-    return 0.0;
+    // The scalar pair has one unit term and no center derivative. Keeping it
+    // out of the combinatorial loops also avoids zero-trip unsigned-loop
+    // diagnostics in CUDA's template instantiation.
+    term.coefficient = 1.0;
   } else {
-    double gradient = high_order_wick_matching_gradient(
-        expansion, subset, 0U, 0U, coordinate);
+    for (unsigned quantum = 0; quantum < PairOrder; ++quantum) {
+      if ((subset & (1U << quantum)) != 0) {
+        term.derivative_state +=
+            fourth_order_derivative_state(geometry.axes[quantum]);
+      }
+    }
+    add_high_order_wick_matching_term(
+        term, geometry, subset, 0U, 0U);
     for (unsigned first_quantum = 0; first_quantum < PairOrder;
          ++first_quantum) {
       for (unsigned second_quantum = first_quantum + 1;
            second_quantum < PairOrder; ++second_quantum) {
-        if (expansion.axes[first_quantum] !=
-            expansion.axes[second_quantum]) {
+        if (geometry.axes[first_quantum] != geometry.axes[second_quantum]) {
           continue;
         }
         const unsigned first_pair =
             (1U << first_quantum) | (1U << second_quantum);
-        gradient += high_order_wick_matching_gradient(
-            expansion, subset, first_pair, 1U, coordinate);
+        add_high_order_wick_matching_term(
+            term, geometry, subset, first_pair, 1U);
         for (unsigned third_quantum = 0; third_quantum < PairOrder;
              ++third_quantum) {
           for (unsigned fourth_quantum = third_quantum + 1;
@@ -4019,13 +3949,12 @@ __device__ double high_order_pair_first_center_gradient(
                 (1U << third_quantum) | (1U << fourth_quantum);
             if ((first_pair & second_pair) != 0 ||
                 first_pair >= second_pair ||
-                expansion.axes[third_quantum] !=
-                    expansion.axes[fourth_quantum]) {
+                geometry.axes[third_quantum] !=
+                    geometry.axes[fourth_quantum]) {
               continue;
             }
-            gradient += high_order_wick_matching_gradient(
-                expansion, subset, first_pair | second_pair, 2U,
-                coordinate);
+            add_high_order_wick_matching_term(
+                term, geometry, subset, first_pair | second_pair, 2U);
             if constexpr (PairOrder == 6) {
               for (unsigned fifth_quantum = 0;
                    fifth_quantum < PairOrder; ++fifth_quantum) {
@@ -4035,13 +3964,13 @@ __device__ double high_order_pair_first_center_gradient(
                       (1U << fifth_quantum) | (1U << sixth_quantum);
                   if (((first_pair | second_pair) & third_pair) != 0 ||
                       second_pair >= third_pair ||
-                      expansion.axes[fifth_quantum] !=
-                          expansion.axes[sixth_quantum]) {
+                      geometry.axes[fifth_quantum] !=
+                          geometry.axes[sixth_quantum]) {
                     continue;
                   }
-                  gradient += high_order_wick_matching_gradient(
-                      expansion, subset,
-                      first_pair | second_pair | third_pair, 3U, coordinate);
+                  add_high_order_wick_matching_term(
+                      term, geometry, subset,
+                      first_pair | second_pair | third_pair, 3U);
                 }
               }
             }
@@ -4049,8 +3978,8 @@ __device__ double high_order_pair_first_center_gradient(
         }
       }
     }
-    return gradient;
   }
+  return term;
 }
 
 /** Primitive-local powers reused by one bounded high-order Coulomb recurrence. */
@@ -4169,11 +4098,11 @@ __device__ void primitive_eri_order456_gradient(
       product_p.y - product_q.y,
       product_p.z - product_q.z,
   };
-  const HighOrderPairGradientExpansion<FirstPairOrder> first_expansion =
-      make_high_order_pair_gradient_expansion<FirstPairOrder>(
+  const HighOrderPairGradientGeometry<FirstPairOrder> first_geometry =
+      make_high_order_pair_gradient_geometry<FirstPairOrder>(
           alpha, first, angular_first, beta, second, angular_second);
-  const HighOrderPairGradientExpansion<SecondPairOrder> second_expansion =
-      make_high_order_pair_gradient_expansion<SecondPairOrder>(
+  const HighOrderPairGradientGeometry<SecondPairOrder> second_geometry =
+      make_high_order_pair_gradient_geometry<SecondPairOrder>(
           gamma, third, angular_third, delta, fourth, angular_fourth);
   double boys[AngularOrder + 2];
   boys_values<AngularOrder + 1>(
@@ -4189,34 +4118,23 @@ __device__ void primitive_eri_order456_gradient(
   constexpr unsigned FirstTermCount = 1U << FirstPairOrder;
   constexpr unsigned SecondTermCount = 1U << SecondPairOrder;
   // Canonical pair ordering keeps the second expansion small (at most eight
-  // terms through total order six). Its coefficient gradients depend only on
-  // the second term, so compute them once instead of repeating the Wick walk
-  // for every first/second term product. The first gradient is similarly
-  // hoisted outside the inner contraction loop without adding a large
-  // first-pair cache to this already register-heavy kernel.
-  double second_pair_gradients[SecondTermCount][3];
+  // terms through total order six). Materialize those terms once; generate
+  // each larger first-pair term immediately before consuming it so its
+  // coefficient and gradient do not create another full local array.
+  HighOrderPairGradientTerm second_items[SecondTermCount];
   for (unsigned second_term = 0; second_term < SecondTermCount;
        ++second_term) {
-    for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
-      second_pair_gradients[second_term][coordinate] =
-          high_order_pair_first_center_gradient(
-              second_expansion, second_term, coordinate);
-    }
+    second_items[second_term] = make_high_order_pair_gradient_term(
+        second_geometry, second_term);
   }
   for (unsigned first_term = 0; first_term < FirstTermCount;
        ++first_term) {
-    double first_pair_gradient[3];
-    for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
-      first_pair_gradient[coordinate] =
-          high_order_pair_first_center_gradient(
-              first_expansion, first_term, coordinate);
-    }
+    const HighOrderPairGradientTerm first_item =
+        make_high_order_pair_gradient_term(first_geometry, first_term);
     for (unsigned second_term = 0; second_term < SecondTermCount;
          ++second_term) {
-      const HighOrderPairGradientTerm& first_item =
-          first_expansion.terms[first_term];
       const HighOrderPairGradientTerm& second_item =
-          second_expansion.terms[second_term];
+          second_items[second_term];
       const double sign =
           (fourth_order_derivative_total(second_item.derivative_state) & 1U)
               == 0
@@ -4231,10 +4149,11 @@ __device__ void primitive_eri_order456_gradient(
       value += coefficient * coulomb;
       for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
         const double first_coefficient_gradient =
-            sign * first_pair_gradient[coordinate] * second_item.coefficient;
+            sign * first_item.first_center[coordinate] *
+            second_item.coefficient;
         const double second_coefficient_gradient =
             sign * first_item.coefficient *
-            second_pair_gradients[second_term][coordinate];
+            second_item.first_center[coordinate];
         const double scaled_coulomb_derivative = coefficient *
             high_order_coulomb<CoulombOrder>(
                 derivative_state +
