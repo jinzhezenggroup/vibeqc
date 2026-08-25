@@ -3079,11 +3079,11 @@ contracted_eri_cartesian_source_order01_gradient(
   return result;
 }
 
-/** One order-two shell-pair term and its two-center coefficient gradient. */
+/** One order-two shell-pair term and its first-center coefficient gradient. */
 struct LowOrderPairGradientTerm {
   unsigned derivative_state;
   double coefficient;
-  double center[2][3];
+  double first_center[3];
 };
 
 struct LowOrderPairGradientExpansion {
@@ -3112,7 +3112,7 @@ make_low_order_pair_gradient_expansion(
   const double inverse_two_exponent = 0.5 / exponent;
   unsigned derivative_states[2]{};
   double shifts[2]{};
-  double shift_gradients[2][2][3]{};
+  double first_center_shift_gradients[2][3]{};
   unsigned quantum_count = 0;
   for (int axis = 0; axis < 3; ++axis) {
     for (unsigned quantum = 0;
@@ -3120,8 +3120,8 @@ make_low_order_pair_gradient_expansion(
       derivative_states[quantum_count] = low_order_derivative_state(axis);
       shifts[quantum_count] =
           vec_axis(product, axis) - vec_axis(first, axis);
-      shift_gradients[quantum_count][0][axis] = alpha / exponent - 1.0;
-      shift_gradients[quantum_count][1][axis] = beta / exponent;
+      first_center_shift_gradients[quantum_count][axis] =
+          alpha / exponent - 1.0;
       ++quantum_count;
     }
     for (unsigned quantum = 0;
@@ -3129,8 +3129,7 @@ make_low_order_pair_gradient_expansion(
       derivative_states[quantum_count] = low_order_derivative_state(axis);
       shifts[quantum_count] =
           vec_axis(product, axis) - vec_axis(second, axis);
-      shift_gradients[quantum_count][0][axis] = alpha / exponent;
-      shift_gradients[quantum_count][1][axis] = beta / exponent - 1.0;
+      first_center_shift_gradients[quantum_count][axis] = alpha / exponent;
       ++quantum_count;
     }
   }
@@ -3146,11 +3145,9 @@ make_low_order_pair_gradient_expansion(
     expansion.terms[0].coefficient = shifts[0];
     expansion.terms[1].derivative_state = derivative_states[0];
     expansion.terms[1].coefficient = inverse_two_exponent;
-    for (unsigned center = 0; center < 2; ++center) {
-      for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
-        expansion.terms[0].center[center][coordinate] =
-            shift_gradients[0][center][coordinate];
-      }
+    for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+      expansion.terms[0].first_center[coordinate] =
+          first_center_shift_gradients[0][coordinate];
     }
     return expansion;
   }
@@ -3168,18 +3165,16 @@ make_low_order_pair_gradient_expansion(
       derivative_states[0] + derivative_states[1];
   expansion.terms[3].coefficient =
       inverse_two_exponent * inverse_two_exponent;
-  for (unsigned center = 0; center < 2; ++center) {
-    for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
-      expansion.terms[0].center[center][coordinate] =
-          shift_gradients[0][center][coordinate] * shifts[1] +
-          shifts[0] * shift_gradients[1][center][coordinate];
-      expansion.terms[1].center[center][coordinate] =
-          inverse_two_exponent *
-          shift_gradients[1][center][coordinate];
-      expansion.terms[2].center[center][coordinate] =
-          inverse_two_exponent *
-          shift_gradients[0][center][coordinate];
-    }
+  for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+    expansion.terms[0].first_center[coordinate] =
+        first_center_shift_gradients[0][coordinate] * shifts[1] +
+        shifts[0] * first_center_shift_gradients[1][coordinate];
+    expansion.terms[1].first_center[coordinate] =
+        inverse_two_exponent *
+        first_center_shift_gradients[1][coordinate];
+    expansion.terms[2].first_center[coordinate] =
+        inverse_two_exponent *
+        first_center_shift_gradients[0][coordinate];
   }
   return expansion;
 }
@@ -3221,10 +3216,16 @@ __device__ void primitive_eri_order2_gradient(
           gamma, third, angular_third, delta, fourth, angular_fourth);
   double boys[4];
   boys_values<3>(rho * distance_squared(product_p, product_q), boys);
-  const double product_scales[4] = {
-      alpha / p, beta / p, -gamma / q, -delta / q};
+  const double first_product_scale = alpha / p;
+  const double second_product_scale = beta / p;
+  const double third_product_scale = -gamma / q;
   double value = 0.0;
-  double value_gradient[4][3]{};
+  // Pair coefficients are translation invariant within each pair, so the
+  // second-center coefficient derivative is the negative of the first. The
+  // fourth full-center derivative is restored below from total translation.
+  // Keeping only three accumulators also avoids spilling another vector in
+  // this order-two kernel, whose remaining gap is dominated by local state.
+  double value_gradient[3][3]{};
   for (unsigned first_term = 0; first_term < first_expansion.count;
        ++first_term) {
     for (unsigned second_term = 0; second_term < second_expansion.count;
@@ -3244,26 +3245,26 @@ __device__ void primitive_eri_order2_gradient(
       const double coefficient =
           sign * first_item.coefficient * second_item.coefficient;
       value += coefficient * coulomb;
-      for (unsigned center = 0; center < 4; ++center) {
-        for (int coordinate = 0; coordinate < 3; ++coordinate) {
-          double coefficient_derivative = 0.0;
-          if (center < 2) {
-            coefficient_derivative = sign *
-                first_item.center[center][coordinate] *
-                second_item.coefficient;
-          } else {
-            coefficient_derivative = sign * first_item.coefficient *
-                second_item.center[center - 2][coordinate];
-          }
-          const double coulomb_derivative = product_scales[center] *
-              third_order_coulomb(
-                  derivative_state +
-                      low_order_derivative_state(coordinate),
-                  rho, product_difference, boys);
-          value_gradient[center][coordinate] +=
-              coefficient_derivative * coulomb +
-              coefficient * coulomb_derivative;
-        }
+      for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+        const double first_pair_gradient = sign *
+            first_item.first_center[coordinate] * second_item.coefficient;
+        const double second_pair_gradient = sign * first_item.coefficient *
+            second_item.first_center[coordinate];
+        // The raised Coulomb state is shared by every center; only the
+        // product-center chain-rule scale differs.
+        const double scaled_coulomb_derivative = coefficient *
+            third_order_coulomb(
+                derivative_state + low_order_derivative_state(coordinate),
+                rho, product_difference, boys);
+        value_gradient[0][coordinate] +=
+            first_pair_gradient * coulomb +
+            first_product_scale * scaled_coulomb_derivative;
+        value_gradient[1][coordinate] +=
+            -first_pair_gradient * coulomb +
+            second_product_scale * scaled_coulomb_derivative;
+        value_gradient[2][coordinate] +=
+            second_pair_gradient * coulomb +
+            third_product_scale * scaled_coulomb_derivative;
       }
     }
   }
@@ -3273,7 +3274,7 @@ __device__ void primitive_eri_order2_gradient(
       nu * distance_squared(third, fourth));
   const double prefactor =
       2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q)) * pair_decay;
-  for (unsigned center = 0; center < 4; ++center) {
+  for (unsigned center = 0; center < 3; ++center) {
     for (int coordinate = 0; coordinate < 3; ++coordinate) {
       double decay_derivative = 0.0;
       if (center < 2) {
@@ -3284,12 +3285,16 @@ __device__ void primitive_eri_order2_gradient(
       } else {
         const double difference =
             vec_axis(third, coordinate) - vec_axis(fourth, coordinate);
-        decay_derivative =
-            (center == 2 ? -2.0 * nu : 2.0 * nu) * difference;
+        decay_derivative = -2.0 * nu * difference;
       }
       gradient[center][coordinate] = prefactor *
           (value_gradient[center][coordinate] + value * decay_derivative);
     }
+  }
+  for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+    gradient[3][coordinate] =
+        -gradient[0][coordinate] - gradient[1][coordinate] -
+        gradient[2][coordinate];
   }
 }
 
