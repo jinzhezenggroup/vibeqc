@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -210,3 +211,37 @@ def test_shell_class_histogram_matches_direct_pair_symmetry():
     assert {row["class"] for row in rows} == {"dppp", "dpds", "ddps"}
     assert sum(row["primitive_quartets"] for row in rows) > 0
     assert sum(row["primitive_work_fraction"] for row in rows) == pytest.approx(1.0)
+
+
+def test_active_shell_class_histogram_ranks_screened_primitive_work():
+    histogram = _shell_histogram_module()
+    entries = [
+        SimpleNamespace(
+            label="dppp",
+            shell_angular=(2, 1, 1, 1),
+            shell_quartets=3,
+            tiles=5,
+            ao_quartets=900,
+            primitive_quartets=1800,
+        ),
+        SimpleNamespace(
+            label="dpds",
+            shell_angular=(2, 1, 2, 0),
+            shell_quartets=2,
+            tiles=4,
+            ao_quartets=700,
+            primitive_quartets=2100,
+        ),
+        SimpleNamespace(
+            label="pppp",
+            shell_angular=(1, 1, 1, 1),
+            shell_quartets=10,
+            tiles=10,
+            ao_quartets=1000,
+            primitive_quartets=9000,
+        ),
+    ]
+    rows = histogram.summarize_active_shell_classes(entries, angular_order=5)
+    assert [row["class"] for row in rows] == ["dpds", "dppp"]
+    assert sum(row["primitive_work_fraction"] for row in rows) == pytest.approx(1.0)
+    assert sum(row["tile_fraction"] for row in rows) == pytest.approx(1.0)

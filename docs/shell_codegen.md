@@ -61,14 +61,37 @@ and derivative states across all Cartesian components handled by one worker.
 For the 96-AO WATER27 tetramer, the pre-screen direct topology contains three
 order-five classes. Weighting unique Cartesian AO quartets by primitive
 contractions gives `dppp` 54.9% of order-five primitive work, `dpds` 29.7%,
-and `ddps` 15.5%. Screening can change these fractions, so `dppp` is the first
-candidate rather than a performance conclusion. Reproduce the topology report
-with:
+and `ddps` 15.5%. An opt-in final-density profiler now measures the exact tile
+list retained after Schwarz and density screening without adding work to
+normal timing runs. At the formal `1e-14` screening threshold it records:
+
+| Gate point | `dppp` | `dpds` | `ddps` |
+| --- | ---: | ---: | ---: |
+| 96 AO, batch 1 | 58.85% | 26.83% | 14.32% |
+| 96 AO, batch 4 | 58.97% | 26.73% | 14.30% |
+| 192 AO, batch 1 | 60.13% | 26.60% | 13.27% |
+| 192 AO, batch 4 | 60.12% | 26.61% | 13.27% |
+
+These are fractions of active order-five primitive contractions, aggregated
+across each batch after the final converged-density Fock compaction. They
+confirm `dppp`, the canonical `(d p|p p)` class, as the first production
+generation target at both realistic sizes. Reproduce the topology and active
+reports with:
 
 ```bash
 PYTHONPATH=python:benchmarks build/gpu4pyscf-venv/bin/python \
   benchmarks/shell_class_histogram.py --angular-order 5
+
+env -u CUDA_VISIBLE_DEVICES PYTHONPATH=python:benchmarks \
+  build/gpu4pyscf-venv/bin/python benchmarks/shell_class_histogram.py \
+  --active --batch 1 --angular-order 5
 ```
+
+Generated AOT coverage is deliberately sparse. Specialization increases NVCC
+time, binary size, and instruction-cache pressure, and excessive unrolling can
+also increase registers or local stack. QCE therefore keeps one compact generic
+fallback/oracle and checks in only profile-backed classes that pass resource and
+endpoint gates; it does not AOT-expand all 55 s/p/d/f classes.
 
 ## NVRTC fallback and cache
 
@@ -89,12 +112,12 @@ kernel always takes precedence when both implementations exist.
 
 ## Next implementation slice
 
-1. Add a shell-quartet task histogram to the 96-AO component harness.
-2. Extend the DAG builder with Hermite/Rys recurrence primitives and generate
+1. Extend the DAG builder with Hermite/Rys recurrence primitives and generate
    the dominant order-five Cartesian shell class.
-3. Emit one cooperative contraction kernel rather than one scalar function per
-   AO quartet, so primitive bra-pair intermediates are reused across ket work.
-4. Compare generated code against the existing order-five analytic path and
+2. Emit one cooperative `dppp` contraction kernel rather than one scalar
+   function per AO quartet, so primitive bra-pair intermediates are reused
+   across ket work.
+3. Compare generated code against the existing order-five analytic path and
    retain it only if energy/force gates and resource/performance gates pass.
-5. Generalize the successful template to the remaining high-frequency classes,
+4. Generalize the successful template to the remaining high-frequency classes,
    then add NVRTC loading only for uncovered long-tail classes.

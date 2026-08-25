@@ -196,6 +196,16 @@ and performance measurements pass.
   passes at batch 1/4, but variable SCF branches leave the speed observations
   at only `0.917x`/`0.913x`. Eigensolver is still the largest system-level
   gap, followed by order five, one-electron force, and order one.
+  An opt-in CUDA diagnostic now profiles the exact shell-class tiles retained
+  by the final converged-density Schwarz/density compaction, while the default
+  endpoint path launches no profiling kernel. At the formal `1e-14` screening
+  threshold, canonical `(d p|p p)` accounts for 58.85%/58.97% of active
+  order-five primitive work at 96 AO batch 1/4 and 60.13%/60.12% at 192 AO
+  batch 1/4. The first production expression-DAG/CSE-generated force kernel is
+  therefore fixed to `dppp`; `dpds` and `ddps` remain later candidates. AOT
+  coverage stays limited to measured hot classes because generated expansion
+  increases NVCC time, binary size, and instruction-cache pressure; the compact
+  generic recurrence remains the oracle and long-tail fallback.
   Clean RTX 5090
   artifacts validate energy, forces, and homogeneous-batch throughput for the
   exact `sdf18-direct`, Cartesian water/def2-SVP, and open-shell

@@ -123,6 +123,72 @@ def summarize_shell_classes(
     return result
 
 
+def summarize_active_shell_classes(
+    entries: Iterable[object], angular_order: int
+) -> list[dict[str, int | float | str | list[int]]]:
+    """Format native final-density counters for one total angular order."""
+
+    selected = [
+        entry
+        for entry in entries
+        if sum(entry.shell_angular) == angular_order
+        and entry.primitive_quartets != 0
+    ]
+    primitive_total = sum(entry.primitive_quartets for entry in selected)
+    tile_total = sum(entry.tiles for entry in selected)
+    return [
+        {
+            "class": entry.label,
+            "shell_angular": list(entry.shell_angular),
+            "shell_quartets": entry.shell_quartets,
+            "unique_ao_quartets": entry.ao_quartets,
+            "primitive_quartets": entry.primitive_quartets,
+            "primitive_work_fraction": (
+                entry.primitive_quartets / primitive_total
+                if primitive_total
+                else 0.0
+            ),
+            "tiles": entry.tiles,
+            "tile_fraction": entry.tiles / tile_total if tile_total else 0.0,
+        }
+        for entry in sorted(
+            selected,
+            key=lambda item: item.primitive_quartets,
+            reverse=True,
+        )
+    ]
+
+
+def scaled_geometries(
+    atoms: tuple[tuple[str, tuple[float, float, float]], ...],
+    batch_size: int,
+) -> list[tuple[tuple[str, tuple[float, float, float]], ...]]:
+    """Match the fixed-topology geometry perturbations in the formal gate."""
+
+    centroid = tuple(
+        sum(position[axis] for _, position in atoms) / len(atoms)
+        for axis in range(3)
+    )
+    systems = []
+    for index in range(batch_size):
+        centered_index = index - 0.5 * (batch_size - 1)
+        scale = 1.0 + 0.002 * centered_index
+        systems.append(
+            tuple(
+                (
+                    element,
+                    tuple(
+                        centroid[axis]
+                        + scale * (position[axis] - centroid[axis])
+                        for axis in range(3)
+                    ),
+                )
+                for element, position in atoms
+            )
+        )
+    return systems
+
+
 def main() -> None:
     from _cases import benchmark_cases
 
@@ -133,8 +199,26 @@ def main() -> None:
         default="water-tetramer-def2-svp-spherical",
     )
     parser.add_argument("--angular-order", type=int, default=5)
+    parser.add_argument(
+        "--active",
+        action="store_true",
+        help="run QCE CUDA and report final-density screened work",
+    )
+    parser.add_argument("--batch", type=int, default=1)
+    parser.add_argument("--warm-repeats", type=int, default=1)
+    parser.add_argument("--max-iterations", type=int, default=100)
+    parser.add_argument("--energy-tolerance", type=float, default=1.0e-12)
+    parser.add_argument("--density-tolerance", type=float, default=1.0e-10)
+    parser.add_argument(
+        "--screening-tolerance",
+        type=float,
+        default=1.0e-14,
+        help="QCE direct-screening threshold; default matches the formal gate",
+    )
     parser.add_argument("--output", type=Path)
     arguments = parser.parse_args()
+    if arguments.batch < 1 or arguments.warm_repeats < 0:
+        raise ValueError("--batch must be positive and --warm-repeats non-negative")
 
     # PySCF is a benchmark-only dependency. Importing it here keeps --help and
     # the pure topology helpers usable in the normal QCE development venv.
@@ -160,20 +244,65 @@ def main() -> None:
                 primitive_count=molecule.bas_nprim(shell),
             )
         )
-    payload = {
+    payload: dict[str, object] = {
         "angular_order": arguments.angular_order,
         "basis": case.pyscf_basis,
         "case": arguments.case,
         "direct_cartesian_ao_count": molecule.nao_nr(cart=True),
-        "methodology": (
-            "QCE host-planner topology before Schwarz/density screening; "
-            "primitive work weights unique Cartesian AO quartets by the four "
-            "shell primitive counts"
-        ),
-        "shell_classes": summarize_shell_classes(
-            shells, arguments.angular_order
-        ),
     }
+    if arguments.active:
+        from qce import Calculator
+
+        systems = scaled_geometries(case.atoms, arguments.batch)
+        calculator = Calculator(
+            method=case.method,
+            basis=case.qce_basis,
+            basis_representation=case.basis_representation,
+            device="cuda",
+            max_iterations=arguments.max_iterations,
+            energy_tolerance=arguments.energy_tolerance,
+            density_tolerance=arguments.density_tolerance,
+            screening_tolerance=arguments.screening_tolerance,
+        )
+        with calculator.prepare_batch(
+            systems,
+            charges=[case.charge] * arguments.batch,
+            multiplicities=[case.multiplicity] * arguments.batch,
+            warm_start=True,
+            shell_class_profiling=True,
+        ) as batch:
+            result = batch.execute(strict=True)
+            for _ in range(arguments.warm_repeats):
+                result = batch.execute(strict=True)
+            profile = batch.last_shell_class_profile()
+        payload.update(
+            {
+                "batch_size": arguments.batch,
+                "iterations": [item.iterations for item in result.items],
+                "methodology": (
+                    "QCE final converged-density direct task compaction after "
+                    "Schwarz and density screening; counters aggregate the "
+                    "most recent execution across the native batch"
+                ),
+                "screening_tolerance": arguments.screening_tolerance,
+                "shell_classes": summarize_active_shell_classes(
+                    profile, arguments.angular_order
+                ),
+            }
+        )
+    else:
+        payload.update(
+            {
+                "methodology": (
+                    "QCE host-planner topology before Schwarz/density screening; "
+                    "primitive work weights unique Cartesian AO quartets by the "
+                    "four shell primitive counts"
+                ),
+                "shell_classes": summarize_shell_classes(
+                    shells, arguments.angular_order
+                ),
+            }
+        )
     output = json.dumps(payload, indent=2, sort_keys=True) + "\n"
     if arguments.output is None:
         print(output, end="")
