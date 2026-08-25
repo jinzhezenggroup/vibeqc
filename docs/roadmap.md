@@ -163,6 +163,18 @@ and performance measurements pass.
   faster GPU4PySCF samples leave the scoped speed gates at `0.812x`/`0.847x`,
   so the milestone remains open. Order two is now the largest isolated force
   deficit and becomes the next generated/cooperative contraction target.
+  The order-two force path now retains only the first-center gradient of each
+  pair coefficient, forms the first three full center derivatives with one
+  shared raised Coulomb value per coordinate, and reconstructs center four by
+  translational invariance. The RHF/UHF persistent kernel falls from 188
+  registers and 864 stack bytes to 169 registers and 624 stack bytes. Its
+  clean 96-AO force time falls from 88.488 to 65.231 ms; three additional
+  isolated captures span 64.708--65.402 ms. The complete two-electron force
+  reaches 364.973 ms. Clean endpoint observations pass both accuracy limits
+  but remain below parity at `0.920x`/`0.956x`; their raw timings also expose
+  repeat-to-repeat SCF-state sensitivity that the harness does not yet record
+  per repeat. Order five is now the largest isolated force deficit, while the
+  eigensolver and one-electron force are comparable system-level targets.
   Clean RTX 5090
   artifacts validate energy, forces, and homogeneous-batch throughput for the
   exact `sdf18-direct`, Cartesian water/def2-SVP, and open-shell

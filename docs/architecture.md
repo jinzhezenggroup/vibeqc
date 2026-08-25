@@ -210,9 +210,10 @@ The ERI force kernel additionally uses translational invariance: derivatives
 over all unique basis centers sum to zero, so it evaluates only `N-1` centers
 and restores the final center from the negative sum. This halves two-center
 and removes one third of three-center derivative work. Total angular orders
-zero through five use dedicated all-center derivative formulas; the sparse
-high-order paths evaluate each raised Coulomb state once per axis and recover
-their fourth basis center by translation. Orders six and above use a
+zero through six use dedicated all-center derivative formulas; the sparse
+order-two through order-six paths evaluate each raised Coulomb state once per
+axis and recover their fourth basis center by translation. Orders seven and
+above use a
 force-only three-component forward scalar, seeding its Cartesian axes together
 and returning all three derivatives from one exact shell-class recurrence.
 Both paths avoid repeating the

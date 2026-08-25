@@ -148,13 +148,14 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   arrays. The total-order-2 `(d s | s s)`, `(p p | s s)`, and
   `(p s | p s)` classes use at most four sparse Hermite terms per pair and
   generate their Coulomb derivatives directly from `F0`/`F1`/`F2`. Their
-  force path explicitly differentiates those sparse coefficients for all four
-  shell centers and raises the Cartesian Coulomb state once per coordinate,
+  force path explicitly differentiates those sparse coefficients for the
+  first three shell centers, raises the Cartesian Coulomb state once per
+  coordinate, and reconstructs center four through translational invariance,
   rather than propagating a three-component scalar through the recurrence.
   The closed value recurrence reduces the per-thread Fock/force stacks from
   1,072/3,184 bytes to 464/888 bytes; the all-center derivative then reduces
-  the force kernel from 254 registers and 888 stack bytes to 188 registers and
-  864 stack bytes. Total-order-3 `(f s | s s)`, `(d p | s s)`,
+  the force kernel from 254 registers and 888 stack bytes to 169 registers and
+  624 stack bytes. Total-order-3 `(f s | s s)`, `(d p | s s)`,
   `(d s | p s)`, and `(p p | p s)` quartets use exact 1/2/4/8-term quantum
   products plus same-axis Gaussian contractions and direct `F0`--`F3`
   Coulomb derivatives. Their Fock/force stacks fall from 1,568/5,200 bytes to
