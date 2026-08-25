@@ -7,6 +7,10 @@ import argparse
 import json
 from pathlib import Path
 
+from qce_codegen.dppp_dispatch import (
+    build_dppp_fused_plan,
+    emit_dppp_fused_cuda,
+)
 from qce_codegen.shell_class import (
     D_COMPONENTS,
     build_dppp_component_kernel,
@@ -30,9 +34,12 @@ def main() -> None:
     )
     parser.add_argument(
         "--lowering",
-        choices=("full", "factored"),
+        choices=("full", "factored", "fused"),
         default="full",
-        help="emit full primitive algebra or component algebra using shared geometry",
+        help=(
+            "emit full primitive algebra, one factored component, or a "
+            "complete cooperative shell-class force kernel"
+        ),
     )
     parser.add_argument(
         "--format", choices=("cuda", "stats"), default="cuda"
@@ -52,31 +59,57 @@ def main() -> None:
             axis not in "xyz" for axis in arguments.p_components
         ):
             parser.error("--p-components must contain exactly three x/y/z labels")
-        kernel = (
-            build_dppp_component_kernel(
+        if arguments.lowering == "full":
+            kernel = build_dppp_component_kernel(
                 arguments.d_component, tuple(arguments.p_components)
             )
-            if arguments.lowering == "full"
-            else build_dppp_contraction_kernel(
+        elif arguments.lowering == "factored":
+            kernel = build_dppp_contraction_kernel(
                 arguments.d_component, tuple(arguments.p_components)
             )
-        )
-        component_metadata = {
-            "d_component": arguments.d_component,
-            "lowering": arguments.lowering,
-            "p_components": arguments.p_components,
-        }
+        else:
+            kernel = None
+        component_metadata = {"lowering": arguments.lowering}
+        if arguments.lowering != "fused":
+            component_metadata.update(
+                {
+                    "d_component": arguments.d_component,
+                    "p_components": arguments.p_components,
+                }
+            )
     if arguments.format == "cuda":
-        output = (
-            emit_psss_cuda(kernel)
-            if arguments.shell_class == "psss"
-            else (
-                emit_dppp_component_cuda(kernel)
-                if arguments.lowering == "full"
-                else emit_dppp_contraction_cuda(kernel)
-            )
-        )
+        if arguments.shell_class == "psss":
+            output = emit_psss_cuda(kernel)
+        elif arguments.lowering == "full":
+            output = emit_dppp_component_cuda(kernel)
+        elif arguments.lowering == "factored":
+            output = emit_dppp_contraction_cuda(kernel)
+        else:
+            output = emit_dppp_fused_cuda()
     else:
+        if arguments.shell_class == "dppp" and arguments.lowering == "fused":
+            plan = build_dppp_fused_plan()
+            source = emit_dppp_fused_cuda(plan)
+            output = json.dumps(
+                {
+                    **component_metadata,
+                    "block_threads": plan.block_threads,
+                    "component_count": len(plan.components),
+                    "coulomb_state_count": len(plan.coulomb_states),
+                    "shell_class": arguments.shell_class,
+                    "source_bytes": len(source.encode("utf-8")),
+                    "source_lines": source.count("\n"),
+                    "warp_count": plan.warp_count,
+                },
+                indent=2,
+                sort_keys=True,
+            ) + "\n"
+            if arguments.output is None:
+                print(output, end="")
+            else:
+                arguments.output.parent.mkdir(parents=True, exist_ok=True)
+                arguments.output.write_text(output, encoding="utf-8")
+            return
         roots = [kernel.value]
         if hasattr(kernel, "boys_argument"):
             roots.append(kernel.boys_argument)
