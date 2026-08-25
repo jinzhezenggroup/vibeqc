@@ -35,6 +35,22 @@ def _shell_histogram_module():
     return module
 
 
+def _batch_comparison_module():
+    """Load pure batch-comparison helpers without importing CUDA packages."""
+
+    benchmark_directory = REPOSITORY_ROOT / "benchmarks"
+    path = benchmark_directory / "compare_gpu4pyscf_batch.py"
+    spec = importlib.util.spec_from_file_location("qce_batch_comparison", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.path.insert(0, str(benchmark_directory))
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.path.pop(0)
+    return module
+
+
 def test_batch_benchmark_writes_reproducible_json(tmp_path):
     """Keep benchmark artifacts tied to raw samples and exact source state."""
 
@@ -198,6 +214,35 @@ def test_gpu_comparison_gate_reports_all_threshold_failures():
         "one or more QCE systems did not converge",
         "one or more GPU4PySCF reference systems did not converge",
     ]
+
+
+def test_batch_comparison_pairs_each_timing_with_convergence_state():
+    """Preserve every replay's SCF diagnostics for straggler analysis."""
+
+    comparison = _batch_comparison_module()
+    result = SimpleNamespace(items=(
+        SimpleNamespace(
+            converged=True,
+            iterations=2,
+            energy_change=1.5e-12,
+            density_rms=2.0e-13,
+            warm_start_used=True,
+            warm_start_fallback=False,
+        ),
+        SimpleNamespace(
+            converged=True,
+            iterations=3,
+            energy_change=5.0e-13,
+            density_rms=4.0e-14,
+            warm_start_used=True,
+            warm_start_fallback=False,
+        ),
+    ))
+
+    payload = comparison.convergence_payload(result)
+    assert [item["iterations"] for item in payload] == [2, 3]
+    assert payload[0]["energy_change_hartree"] == 1.5e-12
+    assert payload[1]["density_rms"] == 4.0e-14
 
 
 def test_shell_class_histogram_matches_direct_pair_symmetry():

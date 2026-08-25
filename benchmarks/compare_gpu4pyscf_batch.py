@@ -25,6 +25,22 @@ from _support import (
 )
 
 
+def convergence_payload(result) -> list[dict[str, object]]:
+    """Serialize one QCE replay's per-system SCF convergence diagnostics."""
+
+    return [
+        {
+            "converged": item.converged,
+            "iterations": item.iterations,
+            "energy_change_hartree": item.energy_change,
+            "density_rms": item.density_rms,
+            "warm_start_used": item.warm_start_used,
+            "warm_start_fallback": item.warm_start_fallback,
+        }
+        for item in result.items
+    ]
+
+
 def scaled_geometries(atoms, batch_size: int):
     """Create nearby fixed-topology geometries without changing the centroid."""
 
@@ -150,12 +166,17 @@ def main() -> None:
         cp.cuda.Stream.null.synchronize()
         qce_cold = time.perf_counter() - start
         qce_warm = []
+        qce_warm_convergence = []
         for _ in range(args.repeats):
             cp.cuda.Stream.null.synchronize()
             start = time.perf_counter()
             qce_result = batch.execute(strict=True)
             cp.cuda.Stream.null.synchronize()
             qce_warm.append(time.perf_counter() - start)
+            # Keep timing and convergence state paired per replay. Direct-J/K
+            # atomic reduction order can move a system across a tight energy
+            # threshold, so retaining only the final repeat hides stragglers.
+            qce_warm_convergence.append(convergence_payload(qce_result))
 
     gpu_objects = []
     for atoms in systems:
@@ -241,6 +262,13 @@ def main() -> None:
     print(f"QCE cold batch: {qce_cold * 1e3:.3f} ms")
     print(f"QCE warm median/min: {qce_warm_median * 1e3:.3f}/"
           f"{min(qce_warm) * 1e3:.3f} ms")
+    print(
+        "QCE warm SCF iterations: "
+        + "; ".join(
+            ",".join(str(item["iterations"]) for item in replay)
+            for replay in qce_warm_convergence
+        )
+    )
     print(f"QCE warm throughput: {args.batch / qce_warm_median:.2f} systems/s")
     print(f"GPU4PySCF cold batch: {gpu_cold * 1e3:.3f} ms")
     print(f"GPU4PySCF warm median/min: {gpu_warm_median * 1e3:.3f}/"
@@ -305,17 +333,11 @@ def main() -> None:
             "qce": {
                 "energies_hartree": qce_energies.tolist(),
                 "forces_hartree_per_bohr": qce_forces.tolist(),
-                "convergence": [
-                    {
-                        "converged": item.converged,
-                        "iterations": item.iterations,
-                        "energy_change_hartree": item.energy_change,
-                        "density_rms": item.density_rms,
-                        "warm_start_used": item.warm_start_used,
-                        "warm_start_fallback": item.warm_start_fallback,
-                    }
-                    for item in qce_result.items
-                ],
+                # ``convergence`` remains the final replay for schema
+                # compatibility; ``warm_convergence`` pairs every raw timing
+                # sample with the state that produced it.
+                "convergence": convergence_payload(qce_result),
+                "warm_convergence": qce_warm_convergence,
                 "cold_seconds": qce_cold,
                 "warm_seconds": qce_warm,
                 "warm_median_seconds": qce_warm_median,

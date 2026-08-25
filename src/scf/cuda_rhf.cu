@@ -53,6 +53,13 @@ constexpr unsigned kPersistentForceWarpsPerMultiprocessor = 8;
 // because queue state raises their already-maximal register footprint without
 // improving the 96-AO profile.
 constexpr unsigned kPersistentForceAngularOrderCount = 7;
+// Direct J/K scatters millions of independently evaluated AO quartets through
+// FP64 atomics. Their nondeterministic accumulation order changes the total
+// energy by a small number of representable values even after the density is
+// stationary. Add only a machine-precision-scaled comparison guard; the
+// requested absolute tolerance remains the dominant term for ordinary cases.
+constexpr double kDirectFockEnergyRoundoffFactor = 16.0;
+constexpr double kDoubleMachineEpsilon = 2.2204460492503131e-16;
 
 /** Geometry-dependent direct-J/K work emitted by shell-bound compaction. */
 struct ActiveShellQuartetTile {
@@ -6830,10 +6837,23 @@ __global__ void compute_uhf_energy_kernel(std::int32_t batch_size,
   energy[system] = value;
 }
 
+/** Comparison guard for the nondeterministic FP64 direct-Fock reduction. */
+__device__ __forceinline__ double direct_fock_energy_roundoff_guard(
+    bool enabled,
+    double energy,
+    double previous_energy) {
+  if (!enabled || !isfinite(previous_energy)) return 0.0;
+  const double energy_scale =
+      fmax(1.0, fmax(fabs(energy), fabs(previous_energy)));
+  return kDirectFockEnergyRoundoffFactor * kDoubleMachineEpsilon *
+      energy_scale;
+}
+
 __global__ void update_convergence_kernel(std::int32_t batch_size,
                                           std::int32_t nbf,
                                           double energy_tolerance,
                                           double density_tolerance,
+                                          bool guard_direct_fock_roundoff,
                                           const double* energy,
                                           double* previous_energy,
                                           const double* next_density,
@@ -6858,11 +6878,14 @@ __global__ void update_convergence_kernel(std::int32_t batch_size,
   const double change = isfinite(previous_energy[system])
       ? fabs(energy[system] - previous_energy[system])
       : CUDART_INF;
+  const double roundoff_guard = direct_fock_energy_roundoff_guard(
+      guard_direct_fock_roundoff, energy[system], previous_energy[system]);
   const double rms = sqrt(square / static_cast<double>(matrix_size));
   iterations[system] = iteration;
   energy_change[system] = change;
   density_rms[system] = rms;
-  if (iteration > 1 && change < energy_tolerance && rms < density_tolerance) {
+  if (iteration > 1 && change < energy_tolerance + roundoff_guard &&
+      rms < density_tolerance) {
     converged[system] = 1;
     active[system] = 0;
   } else {
@@ -6875,6 +6898,7 @@ __global__ void update_uhf_convergence_kernel(
     std::int32_t nbf,
     double energy_tolerance,
     double density_tolerance,
+    bool guard_direct_fock_roundoff,
     const double* energy,
     double* previous_energy,
     const double* next_density,
@@ -6899,12 +6923,15 @@ __global__ void update_uhf_convergence_kernel(
   const double change = isfinite(previous_energy[system])
       ? fabs(energy[system] - previous_energy[system])
       : CUDART_INF;
+  const double roundoff_guard = direct_fock_energy_roundoff_guard(
+      guard_direct_fock_roundoff, energy[system], previous_energy[system]);
   const double rms = sqrt(square / static_cast<double>(vector_size));
   previous_energy[system] = energy[system];
   energy_change[system] = change;
   density_rms[system] = rms;
   ++iterations[system];
-  if (iterations[system] > 1 && change < energy_tolerance &&
+  if (iterations[system] > 1 &&
+      change < energy_tolerance + roundoff_guard &&
       rms < density_tolerance) {
     converged[system] = 1;
     active[system] = 0;
@@ -9624,7 +9651,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                                           resources.stream_>>>(
               static_cast<std::int32_t>(batch_size),
               static_cast<std::int32_t>(nbf), options.energy_tolerance,
-              options.density_tolerance, energy, previous_energy,
+              options.density_tolerance, quartet_direct, energy,
+              previous_energy,
               next_density, density, active, converged, iterations,
               energy_change, density_rms);
         }
@@ -9645,7 +9673,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                                       resources.stream_>>>(
               static_cast<std::int32_t>(batch_size),
               static_cast<std::int32_t>(nbf), options.energy_tolerance,
-              options.density_tolerance, energy, previous_energy,
+              options.density_tolerance, quartet_direct, energy,
+              previous_energy,
               next_density, density, active, converged, iterations,
               energy_change, density_rms);
         }
