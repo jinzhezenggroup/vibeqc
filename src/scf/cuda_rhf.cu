@@ -6133,24 +6133,18 @@ __device__ void eri_symmetry_permutation(unsigned permutation,
   }
 }
 
+/** Test uniqueness directly from the canonical pair symmetries. */
 __device__ bool unique_eri_symmetry_permutation(unsigned permutation,
                                                 std::size_t i,
                                                 std::size_t j,
                                                 std::size_t k,
-                                                std::size_t l,
-                                                std::size_t a,
-                                                std::size_t b,
-                                                std::size_t c,
-                                                std::size_t d) {
-  for (unsigned previous = 0; previous < permutation; ++previous) {
-    std::size_t pa = 0;
-    std::size_t pb = 0;
-    std::size_t pc = 0;
-    std::size_t pd = 0;
-    eri_symmetry_permutation(previous, i, j, k, l, pa, pb, pc, pd);
-    if (a == pa && b == pb && c == pc && d == pd) return false;
-  }
-  return true;
+                                                std::size_t l) {
+  const bool pair_swapped = permutation >= 4;
+  const bool first_pair_diagonal = pair_swapped ? k == l : i == j;
+  const bool second_pair_diagonal = pair_swapped ? i == j : k == l;
+  if ((permutation & 1U) != 0 && first_pair_diagonal) return false;
+  if ((permutation & 2U) != 0 && second_pair_diagonal) return false;
+  return !pair_swapped || i != k || j != l;
 }
 
 __global__ void initialize_direct_fock_kernel(
@@ -6416,15 +6410,14 @@ __global__ void build_fock_direct_quartet_kernel(
     if (integral == 0.0) return;
 
     for (unsigned permutation = 0; permutation < 8; ++permutation) {
+      if (!unique_eri_symmetry_permutation(permutation, i, j, k, l)) {
+        continue;
+      }
       std::size_t a = 0;
       std::size_t b = 0;
       std::size_t c = 0;
       std::size_t d = 0;
       eri_symmetry_permutation(permutation, i, j, k, l, a, b, c, d);
-      if (!unique_eri_symmetry_permutation(
-              permutation, i, j, k, l, a, b, c, d)) {
-        continue;
-      }
       const std::size_t ab = matrix_index(a, b, n);
       const std::size_t ac = matrix_index(a, c, n);
       const std::size_t cd = matrix_index(c, d, n);
@@ -7329,15 +7322,14 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
 
     double coefficient = 0.0;
     for (unsigned permutation = 0; permutation < 8; ++permutation) {
+      if (!unique_eri_symmetry_permutation(permutation, i, j, k, l)) {
+        continue;
+      }
       std::size_t a = 0;
       std::size_t b = 0;
       std::size_t c = 0;
       std::size_t d = 0;
       eri_symmetry_permutation(permutation, i, j, k, l, a, b, c, d);
-      if (!unique_eri_symmetry_permutation(
-              permutation, i, j, k, l, a, b, c, d)) {
-        continue;
-      }
       const std::size_t ab = matrix_index(a, b, n);
       const std::size_t ac = matrix_index(a, c, n);
       const std::size_t cd = matrix_index(c, d, n);
