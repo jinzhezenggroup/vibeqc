@@ -26,6 +26,8 @@ BACKEND_HYBRID_CUDA = 2
 BASIS_CARTESIAN = 0
 BASIS_SPHERICAL = 1
 BATCH_ENABLE_WARM_STARTS = 1 << 0
+BATCH_ENABLE_SHELL_CLASS_PROFILING = 1 << 1
+DIRECT_SHELL_CLASS_COUNT = 55
 
 
 class ContextDescriptor(ctypes.Structure):
@@ -131,6 +133,15 @@ class BatchItemResultDescriptor(ctypes.Structure):
     ]
 
 
+class ShellClassProfileEntry(ctypes.Structure):
+    _fields_ = [
+        ("shell_quartets", ctypes.c_uint64),
+        ("tiles", ctypes.c_uint64),
+        ("ao_quartets", ctypes.c_uint64),
+        ("primitive_quartets", ctypes.c_uint64),
+    ]
+
+
 def _candidate_paths() -> list[Path]:
     candidates: list[Path] = []
     if configured := os.environ.get("QCE_LIBRARY"):
@@ -193,6 +204,12 @@ def load_library() -> ctypes.CDLL:
     library.qce_batch_destroy.argtypes = [ctypes.c_void_p]
     library.qce_batch_get_system_count.argtypes = [ctypes.c_void_p]
     library.qce_batch_get_system_count.restype = ctypes.c_uint32
+    library.qce_batch_get_last_shell_class_profile.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(ShellClassProfileEntry),
+        ctypes.c_uint32,
+    ]
+    library.qce_batch_get_last_shell_class_profile.restype = ctypes.c_int
     library.qce_batch_clear_warm_starts.argtypes = [ctypes.c_void_p]
     library.qce_batch_clear_warm_starts.restype = ctypes.c_int
     library.qce_batch_execute.argtypes = [

@@ -2,6 +2,7 @@
 #define QCE_SCF_FLEET_HPP
 
 #include "core/types.hpp"
+#include "scf/rhf.hpp"
 
 #include <cstddef>
 #include <optional>
@@ -35,6 +36,7 @@ class FleetPlan {
             core::ScfOptions options,
             bool warm_starts_enabled,
             bool cuda_fock_enabled,
+            bool shell_class_profiling_enabled,
             int device_id);
   ~FleetPlan();
 
@@ -45,16 +47,24 @@ class FleetPlan {
 
   void clear_warm_starts();
 
+  /** Return the final-density profile from the most recent CUDA execution. */
+  [[nodiscard]] const std::optional<CudaRhfShellClassProfile>&
+  last_shell_class_profile() const noexcept {
+    return last_shell_class_profile_;
+  }
+
  private:
   std::vector<core::System> systems_;
   qce_method method_{QCE_METHOD_RHF};
   core::ScfOptions options_;
   bool warm_starts_enabled_{};
   bool cuda_fock_enabled_{};
+  bool shell_class_profiling_enabled_{};
   int device_id_{};
   std::vector<std::size_t> execution_order_;
   std::vector<std::size_t> bucket_ids_;
   std::vector<std::optional<std::vector<double>>> warm_densities_;
+  std::optional<CudaRhfShellClassProfile> last_shell_class_profile_;
   // One allocation/Graph owner per workload bucket. Raw opaque pointers keep
   // CUDA headers out of this public C++ translation unit; the destructor owns
   // them through the backend-specific destroy function.

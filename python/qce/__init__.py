@@ -1,7 +1,12 @@
 """Thin Python interface to the versioned native QCE ABI."""
 
 from .calculator import Atom, Calculator, Primitive, Result, Shell
-from .batch import BatchItemResult, BatchResult, PreparedBatch
+from .batch import (
+    BatchItemResult,
+    BatchResult,
+    PreparedBatch,
+    ShellClassProfileEntry,
+)
 
 __all__ = [
     "Atom",
@@ -12,5 +17,6 @@ __all__ = [
     "Primitive",
     "Result",
     "Shell",
+    "ShellClassProfileEntry",
 ]
 __version__ = "0.1.0"

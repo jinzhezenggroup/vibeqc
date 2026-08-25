@@ -324,7 +324,10 @@ qce_status qce_batch_prepare(qce_context* context,
     }
     return QCE_STATUS_NOT_IMPLEMENTED;
   }
-  if ((flags & ~QCE_BATCH_ENABLE_WARM_STARTS) != 0) {
+  constexpr qce_batch_flags supported_flags =
+      QCE_BATCH_ENABLE_WARM_STARTS |
+      QCE_BATCH_ENABLE_SHELL_CLASS_PROFILING;
+  if ((flags & ~supported_flags) != 0) {
     return QCE_STATUS_INVALID_ARGUMENT;
   }
   try {
@@ -348,6 +351,7 @@ qce_status qce_batch_prepare(qce_context* context,
         std::move(native_systems), descriptor->method, scf_options(*descriptor),
         (flags & QCE_BATCH_ENABLE_WARM_STARTS) != 0,
         context->state.requested_backend == QCE_BACKEND_CUDA,
+        (flags & QCE_BATCH_ENABLE_SHELL_CLASS_PROFILING) != 0,
         context->state.device_id);
     *batch = candidate.release();
     return QCE_STATUS_SUCCESS;
@@ -361,6 +365,30 @@ void qce_batch_destroy(qce_batch* batch) { delete batch; }
 uint32_t qce_batch_get_system_count(const qce_batch* batch) {
   if (batch == nullptr || batch->plan == nullptr) return 0;
   return static_cast<std::uint32_t>(batch->plan->size());
+}
+
+qce_status qce_batch_get_last_shell_class_profile(
+    const qce_batch* batch,
+    qce_shell_class_profile_entry* entries,
+    uint32_t entry_count) {
+  if (batch == nullptr || batch->plan == nullptr || entries == nullptr ||
+      entry_count < QCE_DIRECT_SHELL_CLASS_COUNT) {
+    return QCE_STATUS_INVALID_ARGUMENT;
+  }
+  const auto& profile = batch->plan->last_shell_class_profile();
+  if (!profile.has_value()) return QCE_STATUS_NOT_IMPLEMENTED;
+  static_assert(qce::scf::detail::kDirectQuartetShellClassCount ==
+                QCE_DIRECT_SHELL_CLASS_COUNT);
+  for (std::size_t shell_class = 0; shell_class < profile->size();
+       ++shell_class) {
+    entries[shell_class] = {
+        (*profile)[shell_class].shell_quartets,
+        (*profile)[shell_class].tiles,
+        (*profile)[shell_class].ao_quartets,
+        (*profile)[shell_class].primitive_quartets,
+    };
+  }
+  return QCE_STATUS_SUCCESS;
 }
 
 qce_status qce_batch_clear_warm_starts(qce_batch* batch) {

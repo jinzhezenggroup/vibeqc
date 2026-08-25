@@ -70,12 +70,14 @@ FleetPlan::FleetPlan(std::vector<core::System> systems,
                      core::ScfOptions options,
                      bool warm_starts_enabled,
                      bool cuda_fock_enabled,
+                     bool shell_class_profiling_enabled,
                      int device_id)
     : systems_(std::move(systems)),
       method_(method),
       options_(options),
       warm_starts_enabled_(warm_starts_enabled),
       cuda_fock_enabled_(cuda_fock_enabled),
+      shell_class_profiling_enabled_(shell_class_profiling_enabled),
       device_id_(device_id),
       execution_order_(systems_.size()),
       bucket_ids_(systems_.size()),
@@ -108,6 +110,7 @@ std::vector<FleetItemResult> FleetPlan::execute(
   if (!coordinates.empty() && coordinates.size() != systems_.size()) {
     throw std::invalid_argument("fleet coordinate list does not match system count");
   }
+  last_shell_class_profile_.reset();
   std::vector<FleetItemResult> results(systems_.size());
   const auto execute_one = [&](std::size_t system_index) {
     FleetItemResult& item = results[system_index];
@@ -213,10 +216,30 @@ std::vector<FleetItemResult> FleetPlan::execute(
         std::vector<RhfBucketItem> cuda_results = method_ == QCE_METHOD_UHF
             ? run_uhf_cuda_bucket_cached(
                   &cuda_bucket_plans_[bucket], cuda_systems, options_,
-                  initial_densities, device_id_)
+                  initial_densities, device_id_,
+                  shell_class_profiling_enabled_)
             : run_rhf_cuda_bucket_cached(
                   &cuda_bucket_plans_[bucket], cuda_systems, options_,
-                  initial_densities, device_id_);
+                  initial_densities, device_id_,
+                  shell_class_profiling_enabled_);
+        if (shell_class_profiling_enabled_) {
+          CudaRhfShellClassProfile bucket_profile{};
+          if (get_rhf_cuda_shell_class_profile(
+                  cuda_bucket_plans_[bucket], bucket_profile)) {
+            if (!last_shell_class_profile_.has_value()) {
+              last_shell_class_profile_.emplace();
+            }
+            for (std::size_t shell_class = 0;
+                 shell_class < bucket_profile.size(); ++shell_class) {
+              auto& aggregate = (*last_shell_class_profile_)[shell_class];
+              const auto& entry = bucket_profile[shell_class];
+              aggregate.shell_quartets += entry.shell_quartets;
+              aggregate.tiles += entry.tiles;
+              aggregate.ao_quartets += entry.ao_quartets;
+              aggregate.primitive_quartets += entry.primitive_quartets;
+            }
+          }
+        }
         for (std::size_t slot = 0; slot < cuda_results.size(); ++slot) {
           const std::size_t system_index = original_indices[slot];
           FleetItemResult& item = results[system_index];
@@ -232,9 +255,9 @@ std::vector<FleetItemResult> FleetPlan::execute(
             const std::vector<const std::vector<double>*> cold_density{nullptr};
             std::vector<RhfBucketItem> cold = method_ == QCE_METHOD_UHF
                 ? run_uhf_cuda_bucket(
-                      cold_system, options_, cold_density, device_id_)
+                      cold_system, options_, cold_density, device_id_, false)
                 : run_rhf_cuda_bucket(
-                      cold_system, options_, cold_density, device_id_);
+                      cold_system, options_, cold_density, device_id_, false);
             item.status = cold.front().status;
             item.scf = std::move(cold.front().scf);
           }

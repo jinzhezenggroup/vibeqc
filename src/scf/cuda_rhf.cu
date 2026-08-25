@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <limits>
 #include <new>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -60,6 +61,17 @@ struct ActiveShellQuartetTile {
 };
 
 static_assert(sizeof(ActiveShellQuartetTile) == 3 * sizeof(std::uint32_t));
+
+/** Optional final-density profiling counters; never touched in normal runs. */
+struct DeviceShellClassProfileEntry {
+  unsigned long long shell_quartets;
+  unsigned long long tiles;
+  unsigned long long ao_quartets;
+  unsigned long long primitive_quartets;
+};
+
+static_assert(sizeof(DeviceShellClassProfileEntry) ==
+              sizeof(CudaRhfShellClassProfileEntry));
 
 /** Density magnitudes that can multiply one shell pair in direct J/K. */
 struct ShellPairDensityBounds {
@@ -6128,6 +6140,77 @@ __global__ void compact_active_shell_quartet_tiles_kernel(
   }
 }
 
+/**
+ * Summarize the exact tile list consumed by the final Fock and force kernels.
+ *
+ * The fixed grid walks topology capacity, but only slots below each compacted
+ * angular partition's active count contribute. Profiling is opt-in, so these
+ * atomics and the partition lookup never enter production timing runs.
+ */
+__global__ void profile_active_shell_quartet_tiles_kernel(
+    DeviceBatch batch,
+    std::size_t total_tile_capacity,
+    const std::uint32_t* active_shell_quartet_tile_offsets,
+    const std::uint32_t* active_shell_quartet_tile_counts,
+    const ActiveShellQuartetTile* active_shell_quartet_tiles,
+    DeviceShellClassProfileEntry* profile) {
+  const std::size_t slot =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (slot >= total_tile_capacity) return;
+
+  unsigned angular_order = 0;
+  while (angular_order + 1 < detail::kDirectQuartetAngularOrderCount &&
+         slot >= active_shell_quartet_tile_offsets[angular_order + 1]) {
+    ++angular_order;
+  }
+  const std::size_t partition_begin =
+      active_shell_quartet_tile_offsets[angular_order];
+  if (slot - partition_begin >=
+      active_shell_quartet_tile_counts[angular_order]) {
+    return;
+  }
+
+  const ActiveShellQuartetTile task = active_shell_quartet_tiles[slot];
+  const std::int32_t first_shell = batch.shell_pair_first[task.first_pair];
+  const std::int32_t second_shell = batch.shell_pair_second[task.first_pair];
+  const std::int32_t third_shell = batch.shell_pair_first[task.second_pair];
+  const std::int32_t fourth_shell = batch.shell_pair_second[task.second_pair];
+  const unsigned shell_class = direct_quartet_shell_class_device(
+      batch.shell_angular[first_shell], batch.shell_angular[second_shell],
+      batch.shell_angular[third_shell], batch.shell_angular[fourth_shell]);
+  if (shell_class >= detail::kDirectQuartetShellClassCount) return;
+
+  const std::size_t first_ao_pair_count =
+      shell_ao_pair_count(batch, task.first_pair);
+  const std::size_t second_ao_pair_count =
+      shell_ao_pair_count(batch, task.second_pair);
+  const std::size_t ao_quartet_count = task.first_pair == task.second_pair
+      ? first_ao_pair_count * (first_ao_pair_count + 1) / 2
+      : first_ao_pair_count * second_ao_pair_count;
+  const std::size_t tile_begin =
+      static_cast<std::size_t>(task.tile) * detail::kDirectQuartetTileSize;
+  if (tile_begin >= ao_quartet_count) return;
+  const std::size_t tile_ao_quartets =
+      min(detail::kDirectQuartetTileSize, ao_quartet_count - tile_begin);
+
+  unsigned long long primitive_quartets =
+      static_cast<unsigned long long>(tile_ao_quartets);
+  const std::int32_t shells[4] = {
+      first_shell, second_shell, third_shell, fourth_shell};
+  for (const std::int32_t shell : shells) {
+    primitive_quartets *= static_cast<unsigned long long>(
+        batch.shell_primitive_offsets[shell + 1] -
+        batch.shell_primitive_offsets[shell]);
+  }
+
+  DeviceShellClassProfileEntry& entry = profile[shell_class];
+  if (task.tile == 0) atomicAdd(&entry.shell_quartets, 1ULL);
+  atomicAdd(&entry.tiles, 1ULL);
+  atomicAdd(&entry.ao_quartets,
+            static_cast<unsigned long long>(tile_ao_quartets));
+  atomicAdd(&entry.primitive_quartets, primitive_quartets);
+}
+
 __global__ void build_fock_direct_packed_kernel(
     DeviceBatch batch,
     double screening_tolerance,
@@ -7859,6 +7942,7 @@ struct ArenaLayout {
   std::size_t active_shell_quartet_tile_offsets{};
   std::size_t active_shell_quartet_tile_counts{};
   std::size_t active_shell_quartet_tiles{};
+  std::size_t shell_class_profile{};
   std::size_t persistent_force_task_heads{};
   std::size_t ao_pair_first{};
   std::size_t ao_pair_second{};
@@ -7917,6 +8001,7 @@ bool make_layout(std::size_t batch_size,
                  std::size_t spin_count,
                  bool persistent_eri,
                  bool transformed_direct,
+                 bool shell_class_profiling,
                  ArenaLayout& layout) {
   std::size_t matrix_size = 0;
   std::size_t eri_size = 0;
@@ -8033,6 +8118,9 @@ bool make_layout(std::size_t batch_size,
       !append_array<ActiveShellQuartetTile>(
           persistent_eri ? 0 : shell_quartet_tile_count, cursor,
           made.active_shell_quartet_tiles) ||
+      !append_array<DeviceShellClassProfileEntry>(
+          shell_class_profiling ? detail::kDirectQuartetShellClassCount : 0,
+          cursor, made.shell_class_profile) ||
       !append_array<std::uint32_t>(
           shell_quartet_tile_count == 0
               ? 0
@@ -8530,6 +8618,7 @@ struct CudaRhfBucketPlan {
   HostBatch topology;
   // Geometry-derived arena state is reusable until coordinates change.
   std::vector<double> cached_positions;
+  std::optional<CudaRhfShellClassProfile> last_shell_class_profile;
   core::ScfOptions options;
   std::size_t batch_size{};
   std::size_t nbf{};
@@ -8551,6 +8640,7 @@ struct CudaRhfBucketPlan {
   bool quartet_direct{};
   bool transformed_direct{};
   bool unrestricted{};
+  bool shell_class_profiling{};
   bool cublas_enabled{true};
   bool retry_without_cublas{};
   bool initialized{};
@@ -8605,8 +8695,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     const core::ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
-    bool unrestricted) {
+    bool unrestricted,
+    bool shell_class_profiling) {
   std::vector<RhfBucketItem> outputs(systems.size());
+  plan.last_shell_class_profile.reset();
   HostBatch host;
   if (!pack_host_batch(systems, initial_densities, host, unrestricted)) {
     fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
@@ -8747,7 +8839,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       (plan.resources.device_id_ != device_id ||
        !same_topology(plan.topology, host) ||
        !same_options(plan.options, options) ||
-       plan.unrestricted != unrestricted)) {
+       plan.unrestricted != unrestricted ||
+       plan.shell_class_profiling != shell_class_profiling)) {
     fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
     return outputs;
   }
@@ -8758,6 +8851,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                      host.spin_count,
                      requested_persistent_eri,
                      requested_transformed_direct,
+                     shell_class_profiling,
                      plan.layout)) {
       fill_global_failure(outputs, QCE_STATUS_OUT_OF_MEMORY);
       return outputs;
@@ -8784,6 +8878,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     plan.quartet_direct = requested_quartet_direct;
     plan.transformed_direct = requested_transformed_direct;
     plan.unrestricted = unrestricted;
+    plan.shell_class_profiling = shell_class_profiling;
     plan.options = options;
     plan.topology = host;
     // Positions and warm guesses are dynamic execution inputs, not part of
@@ -8944,6 +9039,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       resources.arena_, layout.active_shell_quartet_tile_counts);
   auto active_shell_quartet_tiles = arena_pointer<ActiveShellQuartetTile>(
       resources.arena_, layout.active_shell_quartet_tiles);
+  auto shell_class_profile = arena_pointer<DeviceShellClassProfileEntry>(
+      resources.arena_, layout.shell_class_profile);
   auto persistent_force_task_heads = arena_pointer<std::uint32_t>(
       resources.arena_, layout.persistent_force_task_heads);
   auto ao_pair_first =
@@ -9649,7 +9746,28 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
         occupied, coefficients, active, density);
   }
+  if (shell_class_profiling && quartet_direct) {
+    cuda_error = cudaMemsetAsync(
+        shell_class_profile, 0,
+        detail::kDirectQuartetShellClassCount *
+            sizeof(DeviceShellClassProfileEntry),
+        resources.stream_);
+    if (cuda_error != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
+  }
   launch_fock_builder(density);
+  if (shell_class_profiling && quartet_direct &&
+      total_shell_quartet_tiles != 0) {
+    profile_active_shell_quartet_tiles_kernel<<<
+        blocks_for(total_shell_quartet_tiles), threads, 0,
+        resources.stream_>>>(
+        device_batch, total_shell_quartet_tiles,
+        active_shell_quartet_tile_offsets,
+        active_shell_quartet_tile_counts, active_shell_quartet_tiles,
+        shell_class_profile);
+  }
   if (unrestricted) {
     compute_uhf_energy_kernel<<<blocks_for(batch_size), threads, 0,
                                 resources.stream_>>>(
@@ -9752,6 +9870,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   std::vector<std::uint8_t> host_converged(batch_size);
   std::vector<std::uint8_t> host_failed(batch_size);
   std::vector<std::uint32_t> host_iterations(batch_size);
+  CudaRhfShellClassProfile host_shell_class_profile{};
   const struct Download {
     void* host;
     const void* device;
@@ -9774,10 +9893,24 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       return outputs;
     }
   }
+  if (shell_class_profiling && quartet_direct) {
+    cuda_error = cudaMemcpyAsync(
+        host_shell_class_profile.data(), shell_class_profile,
+        host_shell_class_profile.size() *
+            sizeof(CudaRhfShellClassProfileEntry),
+        cudaMemcpyDeviceToHost, resources.stream_);
+    if (cuda_error != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
+  }
   cuda_error = cudaStreamSynchronize(resources.stream_);
   if (cuda_error != cudaSuccess) {
     fill_global_failure(outputs, cuda_status(cuda_error));
     return outputs;
+  }
+  if (shell_class_profiling && quartet_direct) {
+    plan.last_shell_class_profile = host_shell_class_profile;
   }
   if (std::none_of(host_failed.begin(), host_failed.end(),
                    [](std::uint8_t value) { return value != 0; })) {
@@ -9877,7 +10010,8 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
     const core::ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
-    bool unrestricted) {
+    bool unrestricted,
+    bool shell_class_profiling) {
   if (plan == nullptr) {
     std::vector<RhfBucketItem> outputs(systems.size());
     fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
@@ -9893,7 +10027,8 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
       ((*plan)->resources.device_id_ != device_id ||
        !same_topology((*plan)->topology, candidate) ||
        !same_options((*plan)->options, options) ||
-       (*plan)->unrestricted != unrestricted)) {
+       (*plan)->unrestricted != unrestricted ||
+       (*plan)->shell_class_profiling != shell_class_profiling)) {
     delete *plan;
     *plan = nullptr;
   }
@@ -9906,7 +10041,8 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
     }
   }
   std::vector<RhfBucketItem> outputs = execute_hf_cuda_bucket(
-      **plan, systems, options, initial_densities, device_id, unrestricted);
+      **plan, systems, options, initial_densities, device_id, unrestricted,
+      shell_class_profiling);
   const bool retry_without_cublas =
       !(*plan)->initialized && (*plan)->retry_without_cublas;
   if (!(*plan)->initialized) {
@@ -9924,7 +10060,8 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
     }
     (*plan)->cublas_enabled = false;
     outputs = execute_hf_cuda_bucket(
-        **plan, systems, options, initial_densities, device_id, unrestricted);
+        **plan, systems, options, initial_densities, device_id, unrestricted,
+        shell_class_profiling);
     if (!(*plan)->initialized) {
       delete *plan;
       *plan = nullptr;
@@ -9940,9 +10077,11 @@ std::vector<RhfBucketItem> run_rhf_cuda_bucket_cached(
     const std::vector<core::System>& systems,
     const core::ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
-    int device_id) {
+    int device_id,
+    bool shell_class_profiling) {
   return run_hf_cuda_bucket_cached(
-      plan, systems, options, initial_densities, device_id, false);
+      plan, systems, options, initial_densities, device_id, false,
+      shell_class_profiling);
 }
 
 std::vector<RhfBucketItem> run_uhf_cuda_bucket_cached(
@@ -9950,23 +10089,37 @@ std::vector<RhfBucketItem> run_uhf_cuda_bucket_cached(
     const std::vector<core::System>& systems,
     const core::ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
-    int device_id) {
+    int device_id,
+    bool shell_class_profiling) {
   return run_hf_cuda_bucket_cached(
-      plan, systems, options, initial_densities, device_id, true);
+      plan, systems, options, initial_densities, device_id, true,
+      shell_class_profiling);
 }
 
 void destroy_rhf_cuda_bucket_plan(CudaRhfBucketPlan* plan) noexcept {
   delete plan;
 }
 
+bool get_rhf_cuda_shell_class_profile(
+    const CudaRhfBucketPlan* plan,
+    CudaRhfShellClassProfile& profile) noexcept {
+  if (plan == nullptr || !plan->last_shell_class_profile.has_value()) {
+    return false;
+  }
+  profile = *plan->last_shell_class_profile;
+  return true;
+}
+
 std::vector<RhfBucketItem> run_rhf_cuda_bucket(
     const std::vector<core::System>& systems,
     const core::ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
-    int device_id) {
+    int device_id,
+    bool shell_class_profiling) {
   CudaRhfBucketPlan* plan = nullptr;
   std::vector<RhfBucketItem> outputs = run_rhf_cuda_bucket_cached(
-      &plan, systems, options, initial_densities, device_id);
+      &plan, systems, options, initial_densities, device_id,
+      shell_class_profiling);
   destroy_rhf_cuda_bucket_plan(plan);
   return outputs;
 }
@@ -9975,10 +10128,12 @@ std::vector<RhfBucketItem> run_uhf_cuda_bucket(
     const std::vector<core::System>& systems,
     const core::ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
-    int device_id) {
+    int device_id,
+    bool shell_class_profiling) {
   CudaRhfBucketPlan* plan = nullptr;
   std::vector<RhfBucketItem> outputs = run_uhf_cuda_bucket_cached(
-      &plan, systems, options, initial_densities, device_id);
+      &plan, systems, options, initial_densities, device_id,
+      shell_class_profiling);
   destroy_rhf_cuda_bucket_plan(plan);
   return outputs;
 }

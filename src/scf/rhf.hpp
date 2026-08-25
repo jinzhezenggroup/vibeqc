@@ -2,8 +2,11 @@
 #define QCE_SCF_RHF_HPP
 
 #include "core/types.hpp"
+#include "scf/direct_task_layout.hpp"
 
+#include <array>
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 namespace qce::scf {
@@ -55,6 +58,18 @@ struct RhfBucketItem {
 
 struct CudaRhfBucketPlan;
 
+/** Final-density work retained by CUDA direct screening for one shell class. */
+struct CudaRhfShellClassProfileEntry {
+  std::uint64_t shell_quartets{};
+  std::uint64_t tiles{};
+  std::uint64_t ao_quartets{};
+  std::uint64_t primitive_quartets{};
+};
+
+using CudaRhfShellClassProfile =
+    std::array<CudaRhfShellClassProfileEntry,
+               detail::kDirectQuartetShellClassCount>;
+
 /** Internal diagnostics for the immutable CUDA basis topology layout. */
 struct CudaRhfBasisLayoutStats {
   std::size_t system_count{};
@@ -87,7 +102,8 @@ std::vector<RhfBucketItem> run_rhf_cuda_bucket(
     const std::vector<core::System>& systems,
     const core::ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
-    int device_id);
+    int device_id,
+    bool shell_class_profiling = false);
 
 /** Execute through a reusable fixed-topology CUDA allocation/Graph owner. */
 std::vector<RhfBucketItem> run_rhf_cuda_bucket_cached(
@@ -95,20 +111,28 @@ std::vector<RhfBucketItem> run_rhf_cuda_bucket_cached(
     const std::vector<core::System>& systems,
     const core::ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
-    int device_id);
+    int device_id,
+    bool shell_class_profiling = false);
 
 std::vector<RhfBucketItem> run_uhf_cuda_bucket(
     const std::vector<core::System>& systems,
     const core::ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
-    int device_id);
+    int device_id,
+    bool shell_class_profiling = false);
 
 std::vector<RhfBucketItem> run_uhf_cuda_bucket_cached(
     CudaRhfBucketPlan** plan,
     const std::vector<core::System>& systems,
     const core::ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
-    int device_id);
+    int device_id,
+    bool shell_class_profiling = false);
+
+/** Copy the most recent profile owned by a reusable CUDA bucket plan. */
+bool get_rhf_cuda_shell_class_profile(
+    const CudaRhfBucketPlan* plan,
+    CudaRhfShellClassProfile& profile) noexcept;
 
 void destroy_rhf_cuda_bucket_plan(CudaRhfBucketPlan* plan) noexcept;
 

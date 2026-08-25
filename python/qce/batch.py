@@ -64,6 +64,34 @@ class BatchResult:
             raise RuntimeError("batched HF item failures: " + "; ".join(failures))
 
 
+def _decode_triangular_class(index: int) -> tuple[int, int]:
+    """Decode the scheduler's triangular high/low canonical class."""
+
+    high = 0
+    while (high + 1) * (high + 2) // 2 <= index:
+        high += 1
+    return high, index - high * (high + 1) // 2
+
+
+@dataclass(frozen=True)
+class ShellClassProfileEntry:
+    """Final-density direct work retained for one canonical shell class."""
+
+    shell_class: int
+    shell_angular: tuple[int, int, int, int]
+    shell_quartets: int
+    tiles: int
+    ao_quartets: int
+    primitive_quartets: int
+
+    @property
+    def label(self) -> str:
+        """Return the conventional canonical label, for example ``dppp``."""
+
+        angular_labels = "spdf"
+        return "".join(angular_labels[value] for value in self.shell_angular)
+
+
 class PreparedBatch:
     """Persistent topology-aware native fleet plan.
 
@@ -80,6 +108,7 @@ class PreparedBatch:
         charges: Sequence[int] | None = None,
         multiplicities: Sequence[int] | None = None,
         warm_start: bool = True,
+        shell_class_profiling: bool = False,
     ) -> None:
         if not systems:
             raise ValueError("a batch requires at least one system")
@@ -103,6 +132,7 @@ class PreparedBatch:
         )
         self._context = ctypes.c_void_p()
         self._batch = ctypes.c_void_p()
+        self._shell_class_profiling = shell_class_profiling
 
         _native.check(
             self._library,
@@ -125,6 +155,8 @@ class PreparedBatch:
             )
             method = calculator._method_descriptor()
             flags = _native.BATCH_ENABLE_WARM_STARTS if warm_start else 0
+            if shell_class_profiling:
+                flags |= _native.BATCH_ENABLE_SHELL_CLASS_PROFILING
             _native.check(
                 self._library,
                 self._library.qce_batch_prepare(
@@ -284,6 +316,51 @@ class PreparedBatch:
             self._library,
             self._library.qce_batch_clear_warm_starts(self._batch),
         )
+
+    def last_shell_class_profile(self) -> tuple[ShellClassProfileEntry, ...]:
+        """Return work surviving the most recent final-density CUDA screening.
+
+        Profiling is intentionally opt-in because collecting it adds a CUDA
+        reduction and device-to-host copy outside the normal hot path.
+        """
+
+        self._ensure_open()
+        if not self._shell_class_profiling:
+            raise RuntimeError(
+                "the batch was not prepared with shell_class_profiling=True"
+            )
+        native_entries = (
+            _native.ShellClassProfileEntry * _native.DIRECT_SHELL_CLASS_COUNT
+        )()
+        _native.check(
+            self._library,
+            self._library.qce_batch_get_last_shell_class_profile(
+                self._batch,
+                native_entries,
+                len(native_entries),
+            ),
+        )
+        result = []
+        for shell_class, native in enumerate(native_entries):
+            first_pair, second_pair = _decode_triangular_class(shell_class)
+            first_high, first_low = _decode_triangular_class(first_pair)
+            second_high, second_low = _decode_triangular_class(second_pair)
+            result.append(
+                ShellClassProfileEntry(
+                    shell_class=shell_class,
+                    shell_angular=(
+                        first_high,
+                        first_low,
+                        second_high,
+                        second_low,
+                    ),
+                    shell_quartets=int(native.shell_quartets),
+                    tiles=int(native.tiles),
+                    ao_quartets=int(native.ao_quartets),
+                    primitive_quartets=int(native.primitive_quartets),
+                )
+            )
+        return tuple(result)
 
     def close(self) -> None:
         if self._batch.value:

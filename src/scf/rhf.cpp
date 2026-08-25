@@ -870,7 +870,8 @@ std::vector<RhfBucketItem> run_rhf_cuda_bucket(
     const std::vector<core::System>& systems,
     const core::ScfOptions&,
     const std::vector<const std::vector<double>*>&,
-    int) {
+    int,
+    bool) {
   std::vector<RhfBucketItem> outputs(systems.size());
   for (RhfBucketItem& output : outputs) {
     output.status = QCE_STATUS_NOT_IMPLEMENTED;
@@ -883,7 +884,8 @@ std::vector<RhfBucketItem> run_rhf_cuda_bucket_cached(
     const std::vector<core::System>& systems,
     const core::ScfOptions&,
     const std::vector<const std::vector<double>*>&,
-    int) {
+    int,
+    bool) {
   std::vector<RhfBucketItem> outputs(systems.size());
   for (RhfBucketItem& output : outputs) {
     output.status = QCE_STATUS_NOT_IMPLEMENTED;
@@ -895,7 +897,8 @@ std::vector<RhfBucketItem> run_uhf_cuda_bucket(
     const std::vector<core::System>& systems,
     const core::ScfOptions&,
     const std::vector<const std::vector<double>*>&,
-    int) {
+    int,
+    bool) {
   std::vector<RhfBucketItem> outputs(systems.size());
   for (RhfBucketItem& output : outputs) {
     output.status = QCE_STATUS_NOT_IMPLEMENTED;
@@ -908,7 +911,8 @@ std::vector<RhfBucketItem> run_uhf_cuda_bucket_cached(
     const std::vector<core::System>& systems,
     const core::ScfOptions&,
     const std::vector<const std::vector<double>*>&,
-    int) {
+    int,
+    bool) {
   std::vector<RhfBucketItem> outputs(systems.size());
   for (RhfBucketItem& output : outputs) {
     output.status = QCE_STATUS_NOT_IMPLEMENTED;
@@ -917,6 +921,11 @@ std::vector<RhfBucketItem> run_uhf_cuda_bucket_cached(
 }
 
 void destroy_rhf_cuda_bucket_plan(CudaRhfBucketPlan*) noexcept {}
+
+bool get_rhf_cuda_shell_class_profile(
+    const CudaRhfBucketPlan*, CudaRhfShellClassProfile&) noexcept {
+  return false;
+}
 #endif
 
 }  // namespace qce::scf

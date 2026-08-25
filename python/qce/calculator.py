@@ -279,8 +279,13 @@ class Calculator:
         charges: Sequence[int] | None = None,
         multiplicities: Sequence[int] | None = None,
         warm_start: bool = True,
+        shell_class_profiling: bool = False,
     ):  # Return annotation is deferred to avoid an import cycle.
-        """Prepare a persistent native ragged batch for repeated execution."""
+        """Prepare a persistent native ragged batch for repeated execution.
+
+        ``shell_class_profiling`` is a CUDA performance diagnostic and should
+        remain disabled during normal endpoint timing.
+        """
 
         from .batch import PreparedBatch
 
@@ -290,6 +295,7 @@ class Calculator:
             charges=charges,
             multiplicities=multiplicities,
             warm_start=warm_start,
+            shell_class_profiling=shell_class_profiling,
         )
 
     def batch_singlepoint(

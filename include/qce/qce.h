@@ -65,8 +65,26 @@ typedef struct qce_batch qce_batch;
 typedef uint32_t qce_batch_flags;
 enum {
   /** Retain each converged AO density for the next execution of the plan. */
-  QCE_BATCH_ENABLE_WARM_STARTS = 1u << 0
+  QCE_BATCH_ENABLE_WARM_STARTS = 1u << 0,
+  /**
+   * Collect the final density-screened direct-J/K shell-class work profile.
+   *
+   * This diagnostic adds one untimed-by-default CUDA reduction after the
+   * final compaction pass. Leave it disabled for production timing runs.
+   */
+  QCE_BATCH_ENABLE_SHELL_CLASS_PROFILING = 1u << 1
 };
+
+/** Number of pair/pair-exchange-reduced s/p/d/f quartet shell classes. */
+#define QCE_DIRECT_SHELL_CLASS_COUNT 55u
+
+/** Work retained for one shell class after final-density screening. */
+typedef struct qce_shell_class_profile_entry {
+  uint64_t shell_quartets;
+  uint64_t tiles;
+  uint64_t ao_quartets;
+  uint64_t primitive_quartets;
+} qce_shell_class_profile_entry;
 
 typedef struct qce_context_descriptor {
   uint32_t struct_size;
@@ -209,6 +227,20 @@ QCE_API qce_status qce_batch_prepare(
 QCE_API void qce_batch_destroy(qce_batch* batch);
 
 QCE_API uint32_t qce_batch_get_system_count(const qce_batch* batch);
+
+/**
+ * Copy the most recent final-density shell-class profile.
+ *
+ * The batch must have been prepared with
+ * `QCE_BATCH_ENABLE_SHELL_CLASS_PROFILING`, executed through the CUDA direct
+ * J/K path, and `entry_count` must be at least
+ * `QCE_DIRECT_SHELL_CLASS_COUNT`. Entries use the canonical triangular class
+ * encoding documented by QCE's direct shell scheduler.
+ */
+QCE_API qce_status qce_batch_get_last_shell_class_profile(
+    const qce_batch* batch,
+    qce_shell_class_profile_entry* entries,
+    uint32_t entry_count);
 
 /** Discard all retained per-system converged-density warm starts. */
 QCE_API qce_status qce_batch_clear_warm_starts(qce_batch* batch);

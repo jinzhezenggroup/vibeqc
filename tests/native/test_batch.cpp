@@ -93,6 +93,12 @@ int main() {
     require(qce_batch_execute(batch, nullptr, 0, first.data(), first.size()) ==
                 QCE_STATUS_SUCCESS,
             "first batch execution failed structurally");
+    std::array<qce_shell_class_profile_entry,
+               QCE_DIRECT_SHELL_CLASS_COUNT> profile{};
+    require(qce_batch_get_last_shell_class_profile(
+                batch, profile.data(), profile.size()) ==
+                QCE_STATUS_NOT_IMPLEMENTED,
+            "a non-profiled batch unexpectedly published shell-class data");
     for (const auto& item : first) {
       require(item.status == QCE_STATUS_SUCCESS && item.converged == 1,
               "a valid first-run batch item failed");
