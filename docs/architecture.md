@@ -183,6 +183,18 @@ hiding without the inactive lanes of a sub-warp block. Empty subtiles exit
 after decoding instead of requiring a per-AO-quartet descriptor array. Double
 atomics make this fast but not bitwise deterministic: a 50-replay 21-AO test
 showed about 1.5e-14 Eh energy span and 1.4e-12 Eh/bohr maximum force span.
+The final analytic force is not part of the iterative SCF Graph, so it need
+not preserve the Graph's fixed topology-capacity launch dimensions. For total
+angular orders zero through five, one device-resident atomic task head feeds a
+persistent pool of one-warp blocks. The pool is capped at eight workers per
+multiprocessor: this fits the specialized kernels' measured register demand
+while dynamically balancing the irregular compacted AO-quartet derivatives.
+The host never reads the final active count. Orders six through twelve retain
+fixed-capacity grids because their general three-component derivative kernels
+already use 254 registers and the additional queue state reduced, rather than
+improved, throughput. Task heads are reset on the execution stream immediately
+before force assembly, so prepared-plan replay retains no queue state between
+calculations.
 The ERI force kernel additionally uses translational invariance: derivatives
 over all unique basis centers sum to zero, so it evaluates only `N-1` centers
 and restores the final center from the negative sum. This halves two-center

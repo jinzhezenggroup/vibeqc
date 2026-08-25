@@ -121,6 +121,18 @@ and performance measurements pass.
   4/2/2/2 iterations while the baseline and final candidate used 2/2/2/2.
   The 192-AO batch-1/4 correctness checks remain below `8.3e-12 Eh` maximum
   energy error and `2.3e-10 Eh/bohr` maximum force error.
+  The final analytic force now replaces topology-capacity launches for total
+  orders zero through five with device-resident persistent task queues. Eight
+  one-warp worker blocks per multiprocessor dynamically consume only the
+  compacted final-density subtiles; generic orders six through twelve retain
+  fixed grids because queue state regressed their 254-register kernels. On the
+  exact 96-AO batch-1 profile, the complete two-electron force pass falls from
+  729.8 ms to 466.6 ms. Iteration-matched endpoint A/B measurements improve
+  batch-1 from 1.930--1.940 s to 1.671--1.684 s and batch-4 from
+  7.326--7.334 s to 5.916--5.929 s. Candidate 96-AO comparisons remain inside
+  the energy/force limits but reach only `0.812x` and `0.923x` for batch 1/4,
+  so the explicit parity milestone is still open. The 192-AO batch-1/4
+  candidate errors remain below `9.7e-12 Eh` and `2.3e-10 Eh/bohr`.
   Clean RTX 5090
   artifacts validate energy, forces, and homogeneous-batch throughput for the
   exact `sdf18-direct`, Cartesian water/def2-SVP, and open-shell

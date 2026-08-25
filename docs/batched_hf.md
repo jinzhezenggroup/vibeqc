@@ -68,4 +68,12 @@ each raised Coulomb state across all centers and reconstruct the fourth basis
 center from translational invariance. Orders six and above use a force-only
 three-component forward scalar that propagates x/y/z together so the exact
 shell-class value recurrence executes once rather than three times.
+Because the force pass follows the final SCF Graph replay, orders zero through
+five consume their compacted partitions through persistent device task queues
+rather than fixed topology-capacity grids. One-warp blocks steal subtiles until
+the device count is exhausted, with eight worker blocks per multiprocessor.
+The generic orders six through twelve keep fixed grids to avoid increasing the
+resource pressure of their 254-register kernels. This scheduler changes only
+which worker consumes an already compacted quartet; screening, density
+contraction, integral formulas, and force accumulation are unchanged.
 Finer AO-level active compaction remains a later scheduler milestone.

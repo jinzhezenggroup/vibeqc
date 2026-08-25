@@ -169,6 +169,19 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   The analytic one-electron force lowers its kernel from 254 registers and
   23,208 stack bytes to 167 registers and 9,176 stack bytes; on the exact
   96-AO batch-1 gate its force-pass profile falls from 109.0 ms to 22.1 ms.
+  The final two-electron force executes after SCF Graph replay and therefore
+  uses one device task head per specialized angular order instead of launching
+  every topology-capacity subtile. Orders zero through five run persistent
+  one-warp workers, capped at eight blocks per multiprocessor, which steal only
+  the compacted final-density work. Orders six through twelve retain their
+  fixed grids because adding queue state to their 254-register generic
+  derivative kernels regressed the measured gate. On the exact 96-AO
+  batch-1 profile, persistent force scheduling reduces the complete
+  two-electron force pass from 729.8 ms to 466.6 ms. The corresponding
+  implementation candidate improves warm batch-1 from about 1.94 s to
+  1.68 s and batch-4 from about 7.33 s to 5.92 s while preserving the
+  explicit energy/force limits; the 96-AO parity gate nevertheless remains
+  open until both points reach at least `1.0x` versus GPU4PySCF.
   Remaining component-unrolled/Rys kernels, broader named-basis gates, and
   DF J/K are still required before making broad production performance claims.
 

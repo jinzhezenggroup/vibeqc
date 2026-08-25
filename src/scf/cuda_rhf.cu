@@ -42,6 +42,15 @@ constexpr std::size_t kCublasMatrixProductAoThreshold = 17;
 // Capture-safe scalar kernels are small or register-heavy and use one warp per
 // block. Direct quartets keep their separately documented virtual tiling.
 constexpr unsigned kCaptureSafeKernelThreads = 32;
+// Persistent direct-force workers retain one AO-quartet warp per block. Eight
+// resident workers per SM balance the high-register force kernels while
+// replacing topology-capacity grids with device-side work stealing.
+constexpr unsigned kPersistentForceWarpsPerMultiprocessor = 8;
+// Orders zero through five have dedicated analytic derivatives and enough
+// work to amortize the device queue. Higher generic Dual3 orders retain their
+// smaller fixed grids because queue state raises their already-maximal
+// register footprint without improving the 96-AO profile.
+constexpr unsigned kPersistentForceAngularOrderCount = 6;
 
 /** Geometry-dependent direct-J/K work emitted by shell-bound compaction. */
 struct ActiveShellQuartetTile {
@@ -7288,7 +7297,7 @@ __global__ void two_electron_uhf_force_direct_kernel(
 }
 
 template <bool Unrestricted, unsigned AngularOrder>
-__global__ void two_electron_force_quartet_kernel(
+__device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
     DeviceBatch batch,
     const std::uint32_t* active_shell_quartet_tile_count,
     const ActiveShellQuartetTile* active_shell_quartet_tiles,
@@ -7296,9 +7305,9 @@ __global__ void two_electron_force_quartet_kernel(
     const double* schwarz_bounds,
     const double* density,
     const std::uint8_t* active,
-    double* forces) {
+    double* forces,
+    std::size_t active_subtile) {
   static_assert(AngularOrder < detail::kDirectQuartetAngularOrderCount);
-  const std::size_t active_subtile = static_cast<std::size_t>(blockIdx.x);
   const std::size_t active_tile =
       active_subtile / detail::kDirectQuartetSubtilesPerTile;
   // Consume the identical compact tile list as direct Fock so energy and
@@ -7521,6 +7530,59 @@ __global__ void two_electron_force_quartet_kernel(
   }
 }
 
+/** Fixed-capacity wrapper for the small generic high-order force grids. */
+template <bool Unrestricted, unsigned AngularOrder>
+__global__ void two_electron_force_quartet_kernel(
+    DeviceBatch batch,
+    const std::uint32_t* active_shell_quartet_tile_count,
+    const ActiveShellQuartetTile* active_shell_quartet_tiles,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    const std::uint8_t* active,
+    double* forces) {
+  contract_two_electron_force_quartet_subtile<Unrestricted, AngularOrder>(
+      batch, active_shell_quartet_tile_count, active_shell_quartet_tiles,
+      screening_tolerance, schwarz_bounds, density, active, forces,
+      static_cast<std::size_t>(blockIdx.x));
+}
+
+/**
+ * Persistent one-warp workers dynamically consume only compacted force work.
+ *
+ * The topology-capacity launch remains useful for CUDA Graph Fock replay, but
+ * the final force executes outside that iterative Graph. A device task head
+ * therefore removes empty capacity blocks and balances irregular AO-quartet
+ * derivative cost without introducing a host readback of compacted counts.
+ */
+template <bool Unrestricted, unsigned AngularOrder>
+__global__ void two_electron_force_quartet_persistent_kernel(
+    DeviceBatch batch,
+    const std::uint32_t* active_shell_quartet_tile_count,
+    const ActiveShellQuartetTile* active_shell_quartet_tiles,
+    std::uint32_t* task_head,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    const std::uint8_t* active,
+    double* forces) {
+  static_assert(AngularOrder < detail::kDirectQuartetAngularOrderCount);
+  const unsigned lane = threadIdx.x % warpSize;
+  const std::uint32_t work_count =
+      *active_shell_quartet_tile_count *
+      static_cast<std::uint32_t>(detail::kDirectQuartetSubtilesPerTile);
+  while (true) {
+    std::uint32_t active_subtile = 0;
+    if (lane == 0) active_subtile = atomicAdd(task_head, 1U);
+    active_subtile = __shfl_sync(0xffffffffU, active_subtile, 0);
+    if (active_subtile >= work_count) return;
+    contract_two_electron_force_quartet_subtile<Unrestricted, AngularOrder>(
+        batch, active_shell_quartet_tile_count, active_shell_quartet_tiles,
+        screening_tolerance, schwarz_bounds, density, active, forces,
+        active_subtile);
+  }
+}
+
 template <bool Unrestricted, unsigned AngularOrder = 0>
 void launch_angular_fock_quartets(
     cudaStream_t stream,
@@ -7563,6 +7625,8 @@ void launch_angular_force_quartets(
     DeviceBatch batch,
     const std::uint32_t* active_tile_counts,
     const ActiveShellQuartetTile* active_tiles,
+    std::uint32_t* persistent_task_heads,
+    unsigned persistent_worker_blocks,
     double screening_tolerance,
     const double* schwarz_bounds,
     const double* density,
@@ -7570,18 +7634,33 @@ void launch_angular_force_quartets(
     double* forces) {
   if constexpr (AngularOrder < detail::kDirectQuartetAngularOrderCount) {
     if (capacities[AngularOrder] != 0) {
-      two_electron_force_quartet_kernel<Unrestricted, AngularOrder><<<
-          static_cast<unsigned>(
-              capacities[AngularOrder] *
-              detail::kDirectQuartetSubtilesPerTile),
-          detail::kDirectQuartetThreads, 0, stream>>>(
-          batch, active_tile_counts + AngularOrder,
-          active_tiles + offsets[AngularOrder], screening_tolerance,
-          schwarz_bounds, density, active, forces);
+      if constexpr (AngularOrder < kPersistentForceAngularOrderCount) {
+        const unsigned capacity_blocks = static_cast<unsigned>(
+            capacities[AngularOrder] *
+            detail::kDirectQuartetSubtilesPerTile);
+        two_electron_force_quartet_persistent_kernel<
+            Unrestricted, AngularOrder><<<
+                std::min(capacity_blocks, persistent_worker_blocks),
+                detail::kDirectQuartetThreads, 0, stream>>>(
+            batch, active_tile_counts + AngularOrder,
+            active_tiles + offsets[AngularOrder],
+            persistent_task_heads + AngularOrder, screening_tolerance,
+            schwarz_bounds, density, active, forces);
+      } else {
+        two_electron_force_quartet_kernel<Unrestricted, AngularOrder><<<
+            static_cast<unsigned>(
+                capacities[AngularOrder] *
+                detail::kDirectQuartetSubtilesPerTile),
+            detail::kDirectQuartetThreads, 0, stream>>>(
+            batch, active_tile_counts + AngularOrder,
+            active_tiles + offsets[AngularOrder], screening_tolerance,
+            schwarz_bounds, density, active, forces);
+      }
     }
     launch_angular_force_quartets<Unrestricted, AngularOrder + 1>(
         stream, capacities, offsets, batch, active_tile_counts, active_tiles,
-        screening_tolerance, schwarz_bounds, density, active, forces);
+        persistent_task_heads, persistent_worker_blocks, screening_tolerance,
+        schwarz_bounds, density, active, forces);
   }
 }
 
@@ -7643,6 +7722,7 @@ struct ArenaLayout {
   std::size_t active_shell_quartet_tile_offsets{};
   std::size_t active_shell_quartet_tile_counts{};
   std::size_t active_shell_quartet_tiles{};
+  std::size_t persistent_force_task_heads{};
   std::size_t ao_pair_first{};
   std::size_t ao_pair_second{};
   std::size_t nuclear_repulsion{};
@@ -7816,6 +7896,11 @@ bool make_layout(std::size_t batch_size,
       !append_array<ActiveShellQuartetTile>(
           persistent_eri ? 0 : shell_quartet_tile_count, cursor,
           made.active_shell_quartet_tiles) ||
+      !append_array<std::uint32_t>(
+          shell_quartet_tile_count == 0
+              ? 0
+              : kPersistentForceAngularOrderCount,
+          cursor, made.persistent_force_task_heads) ||
       !append_array<std::int32_t>(pair_count, cursor,
                                   made.ao_pair_first) ||
       !append_array<std::int32_t>(pair_count, cursor,
@@ -8319,6 +8404,7 @@ struct CudaRhfBucketPlan {
       shell_quartet_tile_capacities{};
   std::array<std::uint32_t, detail::kDirectQuartetAngularOrderCount + 1>
       shell_quartet_tile_offsets{};
+  unsigned persistent_force_worker_blocks{};
   std::size_t primitive_count{};
   std::size_t diis_history{};
   int lwork{};
@@ -8583,6 +8669,24 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     fill_global_failure(outputs, cuda_status(cuda_error));
     return outputs;
   }
+  if (first_setup && quartet_direct) {
+    int multiprocessor_count = 0;
+    cuda_error = cudaDeviceGetAttribute(
+        &multiprocessor_count, cudaDevAttrMultiProcessorCount, device_id);
+    if (cuda_error != cudaSuccess || multiprocessor_count <= 0 ||
+        static_cast<unsigned>(multiprocessor_count) >
+            std::numeric_limits<unsigned>::max() /
+                kPersistentForceWarpsPerMultiprocessor) {
+      fill_global_failure(
+          outputs, cuda_error == cudaSuccess
+              ? QCE_STATUS_INVALID_ARGUMENT
+              : cuda_status(cuda_error));
+      return outputs;
+    }
+    plan.persistent_force_worker_blocks =
+        static_cast<unsigned>(multiprocessor_count) *
+        kPersistentForceWarpsPerMultiprocessor;
+  }
   cublasStatus_t blas_error = CUBLAS_STATUS_SUCCESS;
   cusolverStatus_t solver_error = CUSOLVER_STATUS_SUCCESS;
   if (first_setup) {
@@ -8696,6 +8800,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       resources.arena_, layout.active_shell_quartet_tile_counts);
   auto active_shell_quartet_tiles = arena_pointer<ActiveShellQuartetTile>(
       resources.arena_, layout.active_shell_quartet_tiles);
+  auto persistent_force_task_heads = arena_pointer<std::uint32_t>(
+      resources.arena_, layout.persistent_force_task_heads);
   auto ao_pair_first =
       arena_pointer<std::int32_t>(resources.arena_, layout.ao_pair_first);
   auto ao_pair_second =
@@ -9405,6 +9511,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     fill_global_failure(outputs, cuda_status(cuda_error));
     return outputs;
   }
+  if (quartet_direct) {
+    cuda_error = cudaMemsetAsync(
+        persistent_force_task_heads, 0,
+        kPersistentForceAngularOrderCount * sizeof(std::uint32_t),
+        resources.stream_);
+    if (cuda_error != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
+  }
   nuclear_force_kernel<<<blocks_for(force_coordinate_count), threads, 0,
                           resources.stream_>>>(
       device_batch, active, forces);
@@ -9422,6 +9538,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         resources.stream_, plan.shell_quartet_tile_capacities,
         plan.shell_quartet_tile_offsets, device_batch,
         active_shell_quartet_tile_counts, active_shell_quartet_tiles,
+        persistent_force_task_heads, plan.persistent_force_worker_blocks,
         options.screening_tolerance, schwarz_bounds,
         transformed_direct ? direct_density : density, active, forces);
   } else if (unrestricted) {
@@ -9438,6 +9555,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         resources.stream_, plan.shell_quartet_tile_capacities,
         plan.shell_quartet_tile_offsets, device_batch,
         active_shell_quartet_tile_counts, active_shell_quartet_tiles,
+        persistent_force_task_heads, plan.persistent_force_worker_blocks,
         options.screening_tolerance, schwarz_bounds,
         transformed_direct ? direct_density : density, active, forces);
   } else {
