@@ -16,8 +16,9 @@ namespace qce::scf::detail {
  * Exact Fock and force consumers sit near the per-thread register ceiling.
  * One full warp per block exposes independent work for latency hiding;
  * smaller sub-warp blocks waste execution lanes. A compact descriptor still
- * covers 256 quartets and expands virtually into eight blocks at launch, so
- * this scheduling choice does not multiply fixed-topology arena metadata.
+ * covers 256 quartets. Consumers expand only the number of virtual subtiles
+ * reachable by each total angular order, avoiding empty low-order blocks
+ * without multiplying fixed-topology arena metadata.
  */
 inline constexpr std::size_t kDirectQuartetThreads = 32;
 inline constexpr std::size_t kDirectQuartetTileSize = 256;
@@ -25,6 +26,27 @@ inline constexpr std::size_t kDirectQuartetSubtilesPerTile =
     kDirectQuartetTileSize / kDirectQuartetThreads;
 
 static_assert(kDirectQuartetTileSize % kDirectQuartetThreads == 0);
+
+/** Maximum populated 32-thread subtiles for one tile at each total order. */
+#if defined(__CUDACC__)
+__host__ __device__
+#endif
+inline constexpr std::size_t direct_quartet_subtiles_per_tile(
+    std::size_t angular_order) noexcept {
+  // Cartesian component products reach at most 27 through order three,
+  // 81 at order four, and 162 at order five. Higher orders can fill all 256
+  // entries of a logical tile and therefore retain the full eight subtiles.
+  return angular_order <= 3 ? 1
+       : angular_order == 4 ? 3
+       : angular_order == 5 ? 6
+                            : kDirectQuartetSubtilesPerTile;
+}
+
+static_assert(direct_quartet_subtiles_per_tile(0) == 1);
+static_assert(direct_quartet_subtiles_per_tile(3) == 1);
+static_assert(direct_quartet_subtiles_per_tile(4) == 3);
+static_assert(direct_quartet_subtiles_per_tile(5) == 6);
+static_assert(direct_quartet_subtiles_per_tile(6) == 8);
 
 /** Total shell angular orders from ssss (0) through ffff (12). */
 inline constexpr std::size_t kDirectQuartetAngularOrderCount = 13;
@@ -233,6 +255,18 @@ inline bool make_direct_quartet_task_layout(
         const std::size_t angular_order =
             shell_pair_angular_orders[first_pair] +
             shell_pair_angular_orders[second_pair];
+        const std::size_t reachable_low_order_quartets =
+            direct_quartet_subtiles_per_tile(angular_order) *
+            kDirectQuartetThreads;
+        // Orders zero through five fit in one logical tile and have tighter
+        // Cartesian component maxima than its 256-entry storage capacity.
+        // Keep that scheduling invariant checked beside the authoritative
+        // topology counts so a future basis-layout change cannot drop work.
+        if (angular_order <= 5 &&
+            (tile_count != 1 ||
+             ao_quartet_count > reachable_low_order_quartets)) {
+          return false;
+        }
         const std::size_t high_pair_class =
             std::max(shell_pair_classes[first_pair],
                      shell_pair_classes[second_pair]);

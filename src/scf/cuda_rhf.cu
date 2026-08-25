@@ -5897,7 +5897,9 @@ __global__ void compact_generated_dppp_shell_tasks_kernel(
     const std::uint32_t* active_shell_quartet_tile_count,
     const ActiveShellQuartetTile* active_shell_quartet_tiles,
     std::uint32_t* generated_task_count,
-    GeneratedDpppShellTask* generated_tasks) {
+    GeneratedDpppShellTask* generated_tasks,
+    std::uint32_t* generic_order5_tile_count,
+    ActiveShellQuartetTile* generic_order5_tiles) {
   const std::size_t active_tile =
       static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (active_tile >=
@@ -5917,7 +5919,12 @@ __global__ void compact_generated_dppp_shell_tasks_kernel(
   const unsigned shell_class = direct_quartet_shell_class_device(
       batch.shell_angular[shells[0]], batch.shell_angular[shells[1]],
       batch.shell_angular[shells[2]], batch.shell_angular[shells[3]]);
-  if (shell_class != kGeneratedDpppShellClass) return;
+  if (shell_class != kGeneratedDpppShellClass) {
+    const std::uint32_t generic_slot =
+        atomicAdd(generic_order5_tile_count, 1U);
+    generic_order5_tiles[generic_slot] = tile;
+    return;
+  }
 
   // Canonical dppp is ordered as (d p|p p). Preserve the resulting slot map
   // in the task so the generated kernel accumulates each center derivative
@@ -6441,14 +6448,16 @@ __global__ void build_fock_direct_quartet_kernel(
     double* fock) {
   static_assert(AngularOrder < detail::kDirectQuartetAngularOrderCount);
   const std::size_t active_subtile = static_cast<std::size_t>(blockIdx.x);
+  constexpr std::size_t subtiles_per_tile =
+      detail::direct_quartet_subtiles_per_tile(AngularOrder);
   const std::size_t active_tile =
-      active_subtile / detail::kDirectQuartetSubtilesPerTile;
+      active_subtile / subtiles_per_tile;
   if (active_tile >=
       static_cast<std::size_t>(*active_shell_quartet_tile_count)) {
     return;
   }
   const std::size_t subtile =
-      active_subtile % detail::kDirectQuartetSubtilesPerTile;
+      active_subtile % subtiles_per_tile;
   const ActiveShellQuartetTile task =
       active_shell_quartet_tiles[active_tile];
   const std::size_t first_pair = task.first_pair;
@@ -7353,8 +7362,10 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
     double* forces,
     std::size_t active_subtile) {
   static_assert(AngularOrder < detail::kDirectQuartetAngularOrderCount);
+  constexpr std::size_t subtiles_per_tile =
+      detail::direct_quartet_subtiles_per_tile(AngularOrder);
   const std::size_t active_tile =
-      active_subtile / detail::kDirectQuartetSubtilesPerTile;
+      active_subtile / subtiles_per_tile;
   // Consume the identical compact tile list as direct Fock so energy and
   // derivative screening cover precisely the same AO-quartet domain.
   if (active_tile >=
@@ -7362,7 +7373,7 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
     return;
   }
   const std::size_t subtile =
-      active_subtile % detail::kDirectQuartetSubtilesPerTile;
+      active_subtile % subtiles_per_tile;
   const ActiveShellQuartetTile task =
       active_shell_quartet_tiles[active_tile];
   const std::size_t first_pair = task.first_pair;
@@ -7622,9 +7633,10 @@ __global__ void two_electron_force_quartet_persistent_kernel(
     double* forces) {
   static_assert(AngularOrder < detail::kDirectQuartetAngularOrderCount);
   const unsigned lane = threadIdx.x % warpSize;
+  constexpr std::uint32_t subtiles_per_tile = static_cast<std::uint32_t>(
+      detail::direct_quartet_subtiles_per_tile(AngularOrder));
   const std::uint32_t work_count =
-      *active_shell_quartet_tile_count *
-      static_cast<std::uint32_t>(detail::kDirectQuartetSubtilesPerTile);
+      *active_shell_quartet_tile_count * subtiles_per_tile;
   while (true) {
     std::uint32_t active_subtile = 0;
     if (lane == 0) active_subtile = atomicAdd(task_head, 1U);
@@ -7648,6 +7660,8 @@ void launch_generated_dppp_force(
     GeneratedDpppShellTask* generated_tasks,
     std::uint32_t* generated_task_count,
     std::uint32_t* generated_task_head,
+    std::uint32_t* generic_order5_tile_count,
+    ActiveShellQuartetTile* generic_order5_tiles,
     unsigned persistent_worker_blocks,
     double screening_tolerance,
     const double* schwarz_bounds,
@@ -7660,7 +7674,7 @@ void launch_generated_dppp_force(
   compact_generated_dppp_shell_tasks_kernel<<<
       preparation_blocks, preparation_threads, 0, stream>>>(
       batch, active_tile_count, active_tiles, generated_task_count,
-      generated_tasks);
+      generated_tasks, generic_order5_tile_count, generic_order5_tiles);
 
   const unsigned worker_blocks = std::min(
       static_cast<unsigned>(capacity), persistent_worker_blocks);
@@ -7703,7 +7717,7 @@ void launch_angular_fock_quartets(
       build_fock_direct_quartet_kernel<Unrestricted, AngularOrder><<<
           static_cast<unsigned>(
               capacities[AngularOrder] *
-              detail::kDirectQuartetSubtilesPerTile),
+              detail::direct_quartet_subtiles_per_tile(AngularOrder)),
           detail::kDirectQuartetThreads, 0, stream>>>(
           batch, active_tile_counts + AngularOrder,
           active_tiles + offsets[AngularOrder], screening_tolerance,
@@ -7725,6 +7739,8 @@ void launch_angular_force_quartets(
     DeviceBatch batch,
     const std::uint32_t* active_tile_counts,
     const ActiveShellQuartetTile* active_tiles,
+    const std::uint32_t* generic_order5_tile_count,
+    const ActiveShellQuartetTile* generic_order5_tiles,
     std::uint32_t* persistent_task_heads,
     unsigned persistent_worker_blocks,
     double screening_tolerance,
@@ -7734,31 +7750,40 @@ void launch_angular_force_quartets(
     double* forces) {
   if constexpr (AngularOrder < detail::kDirectQuartetAngularOrderCount) {
     if (capacities[AngularOrder] != 0) {
+      const std::uint32_t* order_tile_count =
+          active_tile_counts + AngularOrder;
+      const ActiveShellQuartetTile* order_tiles =
+          active_tiles + offsets[AngularOrder];
+      if constexpr (AngularOrder == kGeneratedDpppAngularOrder) {
+        // dppp is consumed by its fused AOT worker before this recursion.
+        // Feed the generic order-five queue only the compacted long tail.
+        order_tile_count = generic_order5_tile_count;
+        order_tiles = generic_order5_tiles;
+      }
       if constexpr (AngularOrder < kPersistentForceAngularOrderCount) {
         const unsigned capacity_blocks = static_cast<unsigned>(
             capacities[AngularOrder] *
-            detail::kDirectQuartetSubtilesPerTile);
+            detail::direct_quartet_subtiles_per_tile(AngularOrder));
         two_electron_force_quartet_persistent_kernel<
             Unrestricted, AngularOrder><<<
                 std::min(capacity_blocks, persistent_worker_blocks),
                 detail::kDirectQuartetThreads, 0, stream>>>(
-            batch, active_tile_counts + AngularOrder,
-            active_tiles + offsets[AngularOrder],
+            batch, order_tile_count, order_tiles,
             persistent_task_heads + AngularOrder, screening_tolerance,
             schwarz_bounds, density, active, forces);
       } else {
         two_electron_force_quartet_kernel<Unrestricted, AngularOrder><<<
             static_cast<unsigned>(
                 capacities[AngularOrder] *
-                detail::kDirectQuartetSubtilesPerTile),
+                detail::direct_quartet_subtiles_per_tile(AngularOrder)),
             detail::kDirectQuartetThreads, 0, stream>>>(
-            batch, active_tile_counts + AngularOrder,
-            active_tiles + offsets[AngularOrder], screening_tolerance,
+            batch, order_tile_count, order_tiles, screening_tolerance,
             schwarz_bounds, density, active, forces);
       }
     }
     launch_angular_force_quartets<Unrestricted, AngularOrder + 1>(
         stream, capacities, offsets, batch, active_tile_counts, active_tiles,
+        generic_order5_tile_count, generic_order5_tiles,
         persistent_task_heads, persistent_worker_blocks, screening_tolerance,
         schwarz_bounds, density, active, forces);
   }
@@ -7827,6 +7852,8 @@ struct ArenaLayout {
   std::size_t generated_dppp_tasks{};
   std::size_t generated_dppp_task_count{};
   std::size_t generated_dppp_task_head{};
+  std::size_t generic_order5_tiles{};
+  std::size_t generic_order5_tile_count{};
   std::size_t ao_pair_first{};
   std::size_t ao_pair_second{};
   std::size_t nuclear_repulsion{};
@@ -8018,6 +8045,11 @@ bool make_layout(std::size_t batch_size,
       !append_array<std::uint32_t>(
           generated_dppp_task_capacity == 0 ? 0 : 1,
           cursor, made.generated_dppp_task_head) ||
+      !append_array<ActiveShellQuartetTile>(
+          generated_dppp_task_capacity, cursor, made.generic_order5_tiles) ||
+      !append_array<std::uint32_t>(
+          generated_dppp_task_capacity == 0 ? 0 : 1,
+          cursor, made.generic_order5_tile_count) ||
       !append_array<std::int32_t>(pair_count, cursor,
                                   made.ao_pair_first) ||
       !append_array<std::int32_t>(pair_count, cursor,
@@ -8971,6 +9003,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       resources.arena_, layout.generated_dppp_task_count);
   auto generated_dppp_task_head = arena_pointer<std::uint32_t>(
       resources.arena_, layout.generated_dppp_task_head);
+  auto generic_order5_tiles = arena_pointer<ActiveShellQuartetTile>(
+      resources.arena_, layout.generic_order5_tiles);
+  auto generic_order5_tile_count = arena_pointer<std::uint32_t>(
+      resources.arena_, layout.generic_order5_tile_count);
   auto ao_pair_first =
       arena_pointer<std::int32_t>(resources.arena_, layout.ao_pair_first);
   auto ao_pair_second =
@@ -9793,6 +9829,12 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           generated_dppp_task_head, 0, sizeof(std::uint32_t),
           resources.stream_);
     }
+    if (cuda_error == cudaSuccess &&
+        plan.shell_quartet_tile_capacities[kGeneratedDpppAngularOrder] != 0) {
+      cuda_error = cudaMemsetAsync(
+          generic_order5_tile_count, 0, sizeof(std::uint32_t),
+          resources.stream_);
+    }
     if (cuda_error != cudaSuccess) {
       fill_global_failure(outputs, cuda_status(cuda_error));
       return outputs;
@@ -9819,13 +9861,15 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         active_shell_quartet_tiles +
             plan.shell_quartet_tile_offsets[kGeneratedDpppAngularOrder],
         generated_dppp_tasks, generated_dppp_task_count,
-        generated_dppp_task_head, plan.persistent_force_worker_blocks,
+        generated_dppp_task_head, generic_order5_tile_count,
+        generic_order5_tiles, plan.persistent_force_worker_blocks,
         options.screening_tolerance, schwarz_bounds,
         transformed_direct ? direct_density : density, forces);
     launch_angular_force_quartets<true>(
         resources.stream_, plan.shell_quartet_tile_capacities,
         plan.shell_quartet_tile_offsets, device_batch,
         active_shell_quartet_tile_counts, active_shell_quartet_tiles,
+        generic_order5_tile_count, generic_order5_tiles,
         persistent_force_task_heads, plan.persistent_force_worker_blocks,
         options.screening_tolerance, schwarz_bounds,
         transformed_direct ? direct_density : density, active, forces);
@@ -9847,13 +9891,15 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         active_shell_quartet_tiles +
             plan.shell_quartet_tile_offsets[kGeneratedDpppAngularOrder],
         generated_dppp_tasks, generated_dppp_task_count,
-        generated_dppp_task_head, plan.persistent_force_worker_blocks,
+        generated_dppp_task_head, generic_order5_tile_count,
+        generic_order5_tiles, plan.persistent_force_worker_blocks,
         options.screening_tolerance, schwarz_bounds,
         transformed_direct ? direct_density : density, forces);
     launch_angular_force_quartets<false>(
         resources.stream_, plan.shell_quartet_tile_capacities,
         plan.shell_quartet_tile_offsets, device_batch,
         active_shell_quartet_tile_counts, active_shell_quartet_tiles,
+        generic_order5_tile_count, generic_order5_tiles,
         persistent_force_task_heads, plan.persistent_force_worker_blocks,
         options.screening_tolerance, schwarz_bounds,
         transformed_direct ? direct_density : density, active, forces);
