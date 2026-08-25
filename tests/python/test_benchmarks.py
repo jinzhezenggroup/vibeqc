@@ -290,3 +290,11 @@ def test_active_shell_class_histogram_ranks_screened_primitive_work():
     assert [row["class"] for row in rows] == ["dpds", "dppp"]
     assert sum(row["primitive_work_fraction"] for row in rows) == pytest.approx(1.0)
     assert sum(row["tile_fraction"] for row in rows) == pytest.approx(1.0)
+
+    all_rows = histogram.summarize_active_shell_classes(
+        entries, angular_order=None
+    )
+    assert [row["class"] for row in all_rows] == ["pppp", "dpds", "dppp"]
+    assert sum(row["primitive_work_fraction"] for row in all_rows) == pytest.approx(
+        1.0
+    )

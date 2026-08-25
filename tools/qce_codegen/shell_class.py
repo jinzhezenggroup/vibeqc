@@ -13,11 +13,13 @@ from typing import Iterator, Mapping, Sequence
 
 from .cuda import CudaEmitter
 from .expr import Expr, Graph
+from .shell_spec import AXES, DPPP_SPEC, ShellClassSpec
 
 
-AXES = ("x", "y", "z")
 CENTERS = ("first", "second", "third", "fourth")
-D_COMPONENTS = ("xx", "xy", "xz", "yy", "yz", "zz")
+# Compatibility alias for the component-level dppp inspection CLI.  The
+# ordering itself is generated from the declarative shell specification.
+D_COMPONENTS = DPPP_SPEC.center_components[0]
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +54,31 @@ class DpppContractionKernel:
     graph: Graph
     d_component: str
     p_components: tuple[str, str, str]
+    variables: Mapping[str, Expr]
+    value: Expr
+    gradients: tuple[tuple[Expr, Expr, Expr], ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ShellClassComponentKernel:
+    """One component and its build-time symbolic all-center gradients."""
+
+    graph: Graph
+    spec: ShellClassSpec
+    component: tuple[str, str, str, str]
+    variables: Mapping[str, Expr]
+    boys_argument: Expr
+    value: Expr
+    gradients: tuple[tuple[Expr, Expr, Expr], ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ShellClassContractionKernel:
+    """One shell component lowered around shared primitive geometry."""
+
+    graph: Graph
+    spec: ShellClassSpec
+    component: tuple[str, str, str, str]
     variables: Mapping[str, Expr]
     value: Expr
     gradients: tuple[tuple[Expr, Expr, Expr], ...]
@@ -221,17 +248,13 @@ def _validated_dppp_components(
     """Validate and normalize one Cartesian component of canonical `dppp`."""
 
     normalized = tuple(p_components)
-    if d_component not in D_COMPONENTS:
-        raise ValueError(f"unsupported d component {d_component!r}")
-    if len(normalized) != 3 or any(axis not in AXES for axis in normalized):
-        raise ValueError("dppp requires exactly three x/y/z p components")
+    DPPP_SPEC.validate_component((d_component, *normalized))
     return normalized
 
 
-def _dppp_component_value(
+def _shell_component_value(
     graph: Graph,
-    d_component: str,
-    p_components: tuple[str, str, str],
+    component: tuple[str, str, str, str],
     shifts: Mapping[str, Mapping[str, Expr]],
     inverse_two_p: Expr,
     inverse_two_q: Expr,
@@ -239,19 +262,19 @@ def _dppp_component_value(
     difference: Mapping[str, Expr],
     boys: Sequence[Expr],
 ) -> Expr:
-    """Build the shared exact pair/Coulomb algebra used by both lowerings."""
+    """Build exact pair/Coulomb algebra for any four-center component."""
 
     first_expansion = _pair_expansion(
         graph,
         _component_quantums(
-            d_component, p_components[0], shifts["pa"], shifts["pb"]
+            component[0], component[1], shifts["pa"], shifts["pb"]
         ),
         inverse_two_p,
     )
     second_expansion = _pair_expansion(
         graph,
         _component_quantums(
-            p_components[1], p_components[2], shifts["qc"], shifts["qd"]
+            component[2], component[3], shifts["qc"], shifts["qd"]
         ),
         inverse_two_q,
     )
@@ -384,18 +407,20 @@ def build_psss_kernel(p_axis: str) -> PsssKernel:
     )
 
 
-def build_dppp_component_kernel(
-    d_component: str,
-    p_components: Sequence[str],
-) -> DpppComponentKernel:
-    """Build one canonical ``(d p|p p)`` component and symbolic derivatives.
+def build_shell_class_component_kernel(
+    spec: ShellClassSpec,
+    component: Sequence[str],
+) -> ShellClassComponentKernel:
+    """Build one shell component and its compile-time symbolic derivatives.
 
     The value expression follows the same subset/Wick pair expansion and
-    closed Cartesian Coulomb derivatives as the production order-five oracle.
-    Only generation uses AD; emitted CUDA contains scalar analytic formulas.
+    closed Cartesian Coulomb derivatives as the production oracle.  Automatic
+    differentiation runs only in Python; emitted CUDA remains scalar analytic
+    code with no runtime AD types or tape.
     """
 
-    p_components = _validated_dppp_components(d_component, p_components)
+    normalized = spec.validate_component(component)
+    maximum_order = spec.maximum_force_coulomb_order
 
     graph = Graph()
     alpha = graph.variable("alpha")
@@ -449,7 +474,9 @@ def build_dppp_component_kernel(
     boys_argument = rho * graph.sum(
         difference[axis].pow(2.0) for axis in AXES
     )
-    boys = tuple(graph.variable(f"boys_{order}") for order in range(7))
+    boys = tuple(
+        graph.variable(f"boys_{order}") for order in range(maximum_order + 1)
+    )
     shifts = {
         "pa": {
             axis: product_p[axis] - coordinates["first"][axis] for axis in AXES
@@ -464,10 +491,9 @@ def build_dppp_component_kernel(
             axis: product_q[axis] - coordinates["fourth"][axis] for axis in AXES
         },
     }
-    primitive_value = _dppp_component_value(
+    primitive_value = _shell_component_value(
         graph,
-        d_component,
-        p_components,
+        normalized,
         shifts,
         0.5 / p,
         0.5 / q,
@@ -491,7 +517,7 @@ def build_dppp_component_kernel(
             argument_derivative = graph.differentiate(boys_argument, variable)
             leaf_derivatives = {
                 f"boys_{order}": -boys[order + 1] * argument_derivative
-                for order in range(6)
+                for order in range(maximum_order)
             }
             center_gradients.append(
                 graph.differentiate(value, variable, leaf_derivatives)
@@ -502,10 +528,10 @@ def build_dppp_component_kernel(
         for axis in range(3)
     )
     gradients = tuple(independent_gradients) + (fourth_gradient,)
-    return DpppComponentKernel(
+    return ShellClassComponentKernel(
         graph=graph,
-        d_component=d_component,
-        p_components=p_components,
+        spec=spec,
+        component=normalized,
         variables=variables,
         boys_argument=boys_argument,
         value=value,
@@ -513,11 +539,32 @@ def build_dppp_component_kernel(
     )
 
 
-def build_dppp_contraction_kernel(
+def build_dppp_component_kernel(
     d_component: str,
     p_components: Sequence[str],
-) -> DpppContractionKernel:
-    """Lower one ``dppp`` component around shared primitive-shell geometry.
+) -> DpppComponentKernel:
+    """Build one canonical ``(d p|p p)`` component via the generic compiler."""
+
+    normalized = _validated_dppp_components(d_component, p_components)
+    kernel = build_shell_class_component_kernel(
+        DPPP_SPEC, (d_component, *normalized)
+    )
+    return DpppComponentKernel(
+        graph=kernel.graph,
+        d_component=d_component,
+        p_components=normalized,
+        variables=kernel.variables,
+        boys_argument=kernel.boys_argument,
+        value=kernel.value,
+        gradients=kernel.gradients,
+    )
+
+
+def build_shell_class_contraction_kernel(
+    spec: ShellClassSpec,
+    component: Sequence[str],
+) -> ShellClassContractionKernel:
+    """Lower one shell component around shared primitive-shell geometry.
 
     A cooperative shell-quartet worker can compute product centers, Boys
     values, the common prefactor, and decay derivatives once. This DAG then
@@ -525,7 +572,8 @@ def build_dppp_contraction_kernel(
     with respect to shared shifts and the product-center difference.
     """
 
-    p_components = _validated_dppp_components(d_component, p_components)
+    normalized = spec.validate_component(component)
+    maximum_order = spec.maximum_force_coulomb_order
 
     graph = Graph()
     inverse_two_p = graph.variable("inverse_two_p")
@@ -540,7 +588,9 @@ def build_dppp_contraction_kernel(
         }
         for prefix in ("pa", "pb", "qc", "qd")
     }
-    boys = tuple(graph.variable(f"boys_{order}") for order in range(7))
+    boys = tuple(
+        graph.variable(f"boys_{order}") for order in range(maximum_order + 1)
+    )
     first_product_scale = graph.variable("first_product_scale")
     second_product_scale = graph.variable("second_product_scale")
     third_product_scale = graph.variable("third_product_scale")
@@ -573,10 +623,9 @@ def build_dppp_contraction_kernel(
             }
         )
 
-    value = _dppp_component_value(
+    value = _shell_component_value(
         graph,
-        d_component,
-        p_components,
+        normalized,
         shifts,
         inverse_two_p,
         inverse_two_q,
@@ -592,7 +641,7 @@ def build_dppp_contraction_kernel(
             argument_derivative = 2.0 * rho * difference[axis]
             leaf_derivatives = {
                 f"boys_{order}": -boys[order + 1] * argument_derivative
-                for order in range(6)
+                for order in range(maximum_order)
             }
             difference_gradient = graph.differentiate(
                 value, difference[axis], leaf_derivatives
@@ -629,13 +678,33 @@ def build_dppp_contraction_kernel(
         for axis in range(3)
     )
     gradients = tuple(independent_gradients) + (fourth_gradient,)
-    return DpppContractionKernel(
+    return ShellClassContractionKernel(
         graph=graph,
-        d_component=d_component,
-        p_components=p_components,
+        spec=spec,
+        component=normalized,
         variables=variables,
         value=value,
         gradients=gradients,
+    )
+
+
+def build_dppp_contraction_kernel(
+    d_component: str,
+    p_components: Sequence[str],
+) -> DpppContractionKernel:
+    """Lower one ``dppp`` component via the generic shell-class compiler."""
+
+    normalized = _validated_dppp_components(d_component, p_components)
+    kernel = build_shell_class_contraction_kernel(
+        DPPP_SPEC, (d_component, *normalized)
+    )
+    return DpppContractionKernel(
+        graph=kernel.graph,
+        d_component=d_component,
+        p_components=normalized,
+        variables=kernel.variables,
+        value=kernel.value,
+        gradients=kernel.gradients,
     )
 
 

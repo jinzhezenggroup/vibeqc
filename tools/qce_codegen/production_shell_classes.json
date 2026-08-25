@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "shell_classes": [
+    "dppp",
+    "dpds",
+    "ppps",
+    "dpps",
+    "dsps",
+    "dspp"
+  ],
+  "acceptance": {
+    "architecture": "sm_120",
+    "cuda_toolkit": "12.9.1",
+    "workload": "water-tetramer-def2-svp-spherical",
+    "baseline_shell_classes": ["dppp", "dpds"],
+    "batch_1_speedup": 1.0120468152969344,
+    "batch_4_speedup": 1.1586077522017282,
+    "maximum_energy_error_hartree": 1.0231815394945443e-12,
+    "maximum_force_error_hartree_per_bohr": 6.839667721081355e-13
+  }
+}

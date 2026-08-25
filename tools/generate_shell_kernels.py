@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Generate or inspect shell-class-specific CUDA derivative kernels."""
 
 from __future__ import annotations
@@ -10,9 +9,11 @@ from pathlib import Path
 from qce_codegen.dppp_dispatch import (
     build_dppp_fused_plan,
     emit_dppp_fused_cuda,
+    emit_shell_class_fused_cuda,
 )
+from qce_codegen.fused_schedule import build_fused_shell_plan
+from qce_codegen.production import write_production_bundle
 from qce_codegen.shell_class import (
-    D_COMPONENTS,
     build_dppp_component_kernel,
     build_dppp_contraction_kernel,
     build_psss_kernel,
@@ -20,13 +21,24 @@ from qce_codegen.shell_class import (
     emit_dppp_contraction_cuda,
     emit_psss_cuda,
 )
+from qce_codegen.shell_spec import DDPS_SPEC, DPDS_SPEC, DPPP_SPEC
+
+FUSED_SPECS = {"dppp": DPPP_SPEC, "dpds": DPDS_SPEC, "ddps": DDPS_SPEC}
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--shell-class", choices=("psss", "dppp"), default="psss")
+    parser.add_argument(
+        "--shell-class",
+        choices=("psss", *FUSED_SPECS),
+        default="psss",
+    )
     parser.add_argument("--axis", choices=("x", "y", "z"), default="x")
-    parser.add_argument("--d-component", choices=D_COMPONENTS, default="xx")
+    parser.add_argument(
+        "--d-component",
+        choices=DPPP_SPEC.center_components[0],
+        default="xx",
+    )
     parser.add_argument(
         "--p-components",
         default="xxx",
@@ -49,12 +61,42 @@ def main() -> None:
         type=Path,
         help="write generated output to this path instead of standard output",
     )
+    parser.add_argument(
+        "--production-manifest",
+        type=Path,
+        help="generate production CUDA shards from an accepted-class manifest",
+    )
+    parser.add_argument(
+        "--output-directory",
+        type=Path,
+        help="build directory for --production-manifest artifacts",
+    )
+    parser.add_argument(
+        "--shards",
+        type=int,
+        default=4,
+        help="stable CUDA translation-unit count for production generation",
+    )
     arguments = parser.parse_args()
+
+    if arguments.production_manifest is not None:
+        if arguments.output_directory is None:
+            parser.error("--production-manifest requires --output-directory")
+        if arguments.output is not None:
+            parser.error("--output cannot be combined with --production-manifest")
+        write_production_bundle(
+            arguments.production_manifest,
+            arguments.output_directory,
+            arguments.shards,
+        )
+        return
+    if arguments.output_directory is not None:
+        parser.error("--output-directory requires --production-manifest")
 
     if arguments.shell_class == "psss":
         kernel = build_psss_kernel(arguments.axis)
         component_metadata = {"axis": arguments.axis}
-    else:
+    elif arguments.shell_class == "dppp":
         if len(arguments.p_components) != 3 or any(
             axis not in "xyz" for axis in arguments.p_components
         ):
@@ -77,6 +119,13 @@ def main() -> None:
                     "p_components": arguments.p_components,
                 }
             )
+    else:
+        if arguments.lowering != "fused":
+            parser.error(
+                f"{arguments.shell_class} currently supports only the fused lowering"
+            )
+        kernel = None
+        component_metadata = {"lowering": "fused"}
     if arguments.format == "cuda":
         if arguments.shell_class == "psss":
             output = emit_psss_cuda(kernel)
@@ -84,12 +133,23 @@ def main() -> None:
             output = emit_dppp_component_cuda(kernel)
         elif arguments.lowering == "factored":
             output = emit_dppp_contraction_cuda(kernel)
-        else:
+        elif arguments.shell_class == "dppp":
             output = emit_dppp_fused_cuda()
+        else:
+            output = emit_shell_class_fused_cuda(
+                FUSED_SPECS[arguments.shell_class]
+            )
     else:
-        if arguments.shell_class == "dppp" and arguments.lowering == "fused":
-            plan = build_dppp_fused_plan()
-            source = emit_dppp_fused_cuda(plan)
+        if arguments.lowering == "fused":
+            if arguments.shell_class == "dppp":
+                plan = build_dppp_fused_plan()
+                source = emit_dppp_fused_cuda(plan)
+            elif arguments.shell_class in FUSED_SPECS:
+                specification = FUSED_SPECS[arguments.shell_class]
+                plan = build_fused_shell_plan(specification)
+                source = emit_shell_class_fused_cuda(specification, plan)
+            else:
+                parser.error("psss does not support the fused lowering")
             output = json.dumps(
                 {
                     **component_metadata,
