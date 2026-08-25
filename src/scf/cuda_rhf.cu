@@ -1611,6 +1611,43 @@ __device__ Scalar low_order_coulomb(
   return second_order_factor * coordinate_product * boys[2];
 }
 
+/** Ten unique Cartesian Coulomb states through total order two. */
+struct Order2CoulombValues {
+  double c0;
+  double cx;
+  double cy;
+  double cz;
+  double cxx;
+  double cxy;
+  double cxz;
+  double cyy;
+  double cyz;
+  double czz;
+};
+
+/** Build the complete order-two Coulomb tensor once per primitive quartet. */
+__device__ __forceinline__ Order2CoulombValues order2_coulomb_values(
+    double rho,
+    double x,
+    double y,
+    double z,
+    const double (&boys)[3]) {
+  const double twice_rho = 2.0 * rho;
+  const double twice_rho_squared = twice_rho * twice_rho;
+  return {
+      boys[0],
+      -twice_rho * x * boys[1],
+      -twice_rho * y * boys[1],
+      -twice_rho * z * boys[1],
+      twice_rho_squared * x * x * boys[2] - twice_rho * boys[1],
+      twice_rho_squared * x * y * boys[2],
+      twice_rho_squared * x * z * boys[2],
+      twice_rho_squared * y * y * boys[2] - twice_rho * boys[1],
+      twice_rho_squared * y * z * boys[2],
+      twice_rho_squared * z * z * boys[2] - twice_rho * boys[1],
+  };
+}
+
 /**
  * Closed order-2 contraction for canonical (d s|s s), (p p|s s), and
  * (p s|p s) primitive quartets.
@@ -1721,74 +1758,6 @@ __device__ __forceinline__ Angular order2_shell_component(unsigned component) {
   }
 }
 
-/**
- * Evaluate one order-two AO component from shell-shared primitive data.
- *
- * Product centers, Boys values, decay, and the Coulomb prefactor are owned by
- * the enclosing shell contraction. This helper retains only the inexpensive
- * component-dependent pair expansions and Coulomb derivative contraction.
- */
-template <unsigned FirstShellAngular,
-          unsigned SecondShellAngular,
-          unsigned ThirdShellAngular,
-          unsigned FourthShellAngular>
-__device__ __forceinline__ double order2_component_value(
-    double p,
-    const Vec3<double>& product_p,
-    const Vec3<double>& first,
-    const Angular& angular_first,
-    const Vec3<double>& second,
-    const Angular& angular_second,
-    double q,
-    const Vec3<double>& product_q,
-    const Vec3<double>& third,
-    const Angular& angular_third,
-    const Vec3<double>& fourth,
-    const Angular& angular_fourth,
-    double rho,
-    const Vec3<double>& product_difference,
-    const double (&boys)[3]) {
-  constexpr unsigned FirstPairOrder =
-      FirstShellAngular + SecondShellAngular;
-  constexpr unsigned SecondPairOrder =
-      ThirdShellAngular + FourthShellAngular;
-  static_assert(FirstPairOrder + SecondPairOrder == 2);
-  constexpr unsigned FirstTermCount =
-      FirstPairOrder == 0 ? 1 : (FirstPairOrder == 1 ? 2 : 4);
-  constexpr unsigned SecondTermCount =
-      SecondPairOrder == 0 ? 1 : (SecondPairOrder == 1 ? 2 : 4);
-  const LowOrderPairExpansion<double> first_expansion =
-      make_low_order_pair_expansion<
-          FirstShellAngular, SecondShellAngular>(
-          p, product_p, first, angular_first, second, angular_second);
-  const LowOrderPairExpansion<double> second_expansion =
-      make_low_order_pair_expansion<
-          ThirdShellAngular, FourthShellAngular>(
-          q, product_q, third, angular_third, fourth, angular_fourth);
-
-  double value = 0.0;
-#pragma unroll
-  for (unsigned first_term = 0; first_term < FirstTermCount; ++first_term) {
-#pragma unroll
-    for (unsigned second_term = 0; second_term < SecondTermCount;
-         ++second_term) {
-      const LowOrderHermiteTerm<double>& first_item =
-          first_expansion.terms[first_term];
-      const LowOrderHermiteTerm<double>& second_item =
-          second_expansion.terms[second_term];
-      const double sign =
-          (low_order_derivative_total(second_item.derivative_state) & 1U) == 0
-          ? 1.0
-          : -1.0;
-      value += sign * first_item.coefficient * second_item.coefficient *
-          low_order_coulomb(
-              first_item.derivative_state + second_item.derivative_state,
-              rho, product_difference, boys);
-    }
-  }
-  return value;
-}
-
 /** Maximum full Cartesian output count among the three order-two classes. */
 struct Order2IntegralVector {
   double component[9];
@@ -1873,14 +1842,13 @@ contracted_eri_cartesian_source_order2_shell(
           const double rho = p * q / (p + q);
           const Vec3<double> product_q =
               product_center(gamma, positions[2], delta, positions[3]);
-          const Vec3<double> product_difference{
-              product_p.x - product_q.x,
-              product_p.y - product_q.y,
-              product_p.z - product_q.z,
-          };
+          const double x = product_p.x - product_q.x;
+          const double y = product_p.y - product_q.y;
+          const double z = product_p.z - product_q.z;
           double boys[3];
-          boys_values<2>(
-              rho * distance_squared(product_p, product_q), boys);
+          boys_values<2>(rho * (x * x + y * y + z * z), boys);
+          const Order2CoulombValues coulomb =
+              order2_coulomb_values(rho, x, y, z, boys);
           const double pair_decay = exp(
               -mu * first_pair_distance - nu * second_pair_distance);
           const double primitive_coefficient =
@@ -1888,54 +1856,196 @@ contracted_eri_cartesian_source_order2_shell(
           const double common = primitive_coefficient *
               2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q)) * pair_decay;
 
-          unsigned output = 0;
-#pragma unroll
-          for (unsigned first_component = 0;
-               first_component < FirstCount; ++first_component) {
-            const Angular angular_first =
-                order2_shell_component<FirstShellAngular>(first_component);
-#pragma unroll
-            for (unsigned second_component = 0;
-                 second_component < SecondCount; ++second_component) {
-              const Angular angular_second =
-                  order2_shell_component<SecondShellAngular>(second_component);
-#pragma unroll
-              for (unsigned third_component = 0;
-                   third_component < ThirdCount; ++third_component) {
-                const Angular angular_third =
-                    order2_shell_component<ThirdShellAngular>(third_component);
-#pragma unroll
-                for (unsigned fourth_component = 0;
-                     fourth_component < FourthCount; ++fourth_component,
-                         ++output) {
-                  if ((active_component_mask & (1U << output)) == 0) {
-                    continue;
-                  }
-                  const Angular angular_fourth =
-                      order2_shell_component<FourthShellAngular>(
-                          fourth_component);
-                  const double angular_coefficient =
-                      batch.direct_ao_coefficients[
-                          ao_begin[0] + first_component] *
-                      batch.direct_ao_coefficients[
-                          ao_begin[1] + second_component] *
-                      batch.direct_ao_coefficients[
-                          ao_begin[2] + third_component] *
-                      batch.direct_ao_coefficients[
-                          ao_begin[3] + fourth_component];
-                  result.component[output] += angular_coefficient * common *
-                      order2_component_value<
-                          FirstShellAngular, SecondShellAngular,
-                          ThirdShellAngular, FourthShellAngular>(
-                          p, product_p, positions[0], angular_first,
-                          positions[1], angular_second,
-                          q, product_q, positions[2], angular_third,
-                          positions[3], angular_fourth,
-                          rho, product_difference, boys);
-                }
-              }
+          if constexpr (FirstShellAngular == 1 &&
+                        SecondShellAngular == 0 &&
+                        ThirdShellAngular == 1 &&
+                        FourthShellAngular == 0) {
+            const double hp = 0.5 / p;
+            const double hq = 0.5 / q;
+            const double hpq = hp * hq;
+            const Vec3<double> pa{
+                product_p.x - positions[0].x,
+                product_p.y - positions[0].y,
+                product_p.z - positions[0].z};
+            const Vec3<double> qc{
+                product_q.x - positions[2].x,
+                product_q.y - positions[2].y,
+                product_q.z - positions[2].z};
+            if ((active_component_mask & (1U << 0)) != 0U) {
+              result.component[0] += common *
+                  (pa.x * qc.x * coulomb.c0 + hp * qc.x * coulomb.cx -
+                   hq * pa.x * coulomb.cx - hpq * coulomb.cxx);
+            }
+            if ((active_component_mask & (1U << 1)) != 0U) {
+              result.component[1] += common *
+                  (pa.x * qc.y * coulomb.c0 + hp * qc.y * coulomb.cx -
+                   hq * pa.x * coulomb.cy - hpq * coulomb.cxy);
+            }
+            if ((active_component_mask & (1U << 2)) != 0U) {
+              result.component[2] += common *
+                  (pa.x * qc.z * coulomb.c0 + hp * qc.z * coulomb.cx -
+                   hq * pa.x * coulomb.cz - hpq * coulomb.cxz);
+            }
+            if ((active_component_mask & (1U << 3)) != 0U) {
+              result.component[3] += common *
+                  (pa.y * qc.x * coulomb.c0 + hp * qc.x * coulomb.cy -
+                   hq * pa.y * coulomb.cx - hpq * coulomb.cxy);
+            }
+            if ((active_component_mask & (1U << 4)) != 0U) {
+              result.component[4] += common *
+                  (pa.y * qc.y * coulomb.c0 + hp * qc.y * coulomb.cy -
+                   hq * pa.y * coulomb.cy - hpq * coulomb.cyy);
+            }
+            if ((active_component_mask & (1U << 5)) != 0U) {
+              result.component[5] += common *
+                  (pa.y * qc.z * coulomb.c0 + hp * qc.z * coulomb.cy -
+                   hq * pa.y * coulomb.cz - hpq * coulomb.cyz);
+            }
+            if ((active_component_mask & (1U << 6)) != 0U) {
+              result.component[6] += common *
+                  (pa.z * qc.x * coulomb.c0 + hp * qc.x * coulomb.cz -
+                   hq * pa.z * coulomb.cx - hpq * coulomb.cxz);
+            }
+            if ((active_component_mask & (1U << 7)) != 0U) {
+              result.component[7] += common *
+                  (pa.z * qc.y * coulomb.c0 + hp * qc.y * coulomb.cz -
+                   hq * pa.z * coulomb.cy - hpq * coulomb.cyz);
+            }
+            if ((active_component_mask & (1U << 8)) != 0U) {
+              result.component[8] += common *
+                  (pa.z * qc.z * coulomb.c0 + hp * qc.z * coulomb.cz -
+                   hq * pa.z * coulomb.cz - hpq * coulomb.czz);
+            }
+          } else if constexpr (FirstShellAngular == 1 &&
+                               SecondShellAngular == 1) {
+            const double h = 0.5 / p;
+            const double h2 = h * h;
+            const Vec3<double> pa{
+                product_p.x - positions[0].x,
+                product_p.y - positions[0].y,
+                product_p.z - positions[0].z};
+            const Vec3<double> pb{
+                product_p.x - positions[1].x,
+                product_p.y - positions[1].y,
+                product_p.z - positions[1].z};
+            if ((active_component_mask & (1U << 0)) != 0U) {
+              result.component[0] += common *
+                  ((pa.x * pb.x + h) * coulomb.c0 +
+                   h * (pb.x + pa.x) * coulomb.cx + h2 * coulomb.cxx);
+            }
+            if ((active_component_mask & (1U << 1)) != 0U) {
+              result.component[1] += common *
+                  (pa.x * pb.y * coulomb.c0 + h * pb.y * coulomb.cx +
+                   h * pa.x * coulomb.cy + h2 * coulomb.cxy);
+            }
+            if ((active_component_mask & (1U << 2)) != 0U) {
+              result.component[2] += common *
+                  (pa.x * pb.z * coulomb.c0 + h * pb.z * coulomb.cx +
+                   h * pa.x * coulomb.cz + h2 * coulomb.cxz);
+            }
+            if ((active_component_mask & (1U << 3)) != 0U) {
+              result.component[3] += common *
+                  (pa.y * pb.x * coulomb.c0 + h * pb.x * coulomb.cy +
+                   h * pa.y * coulomb.cx + h2 * coulomb.cxy);
+            }
+            if ((active_component_mask & (1U << 4)) != 0U) {
+              result.component[4] += common *
+                  ((pa.y * pb.y + h) * coulomb.c0 +
+                   h * (pb.y + pa.y) * coulomb.cy + h2 * coulomb.cyy);
+            }
+            if ((active_component_mask & (1U << 5)) != 0U) {
+              result.component[5] += common *
+                  (pa.y * pb.z * coulomb.c0 + h * pb.z * coulomb.cy +
+                   h * pa.y * coulomb.cz + h2 * coulomb.cyz);
+            }
+            if ((active_component_mask & (1U << 6)) != 0U) {
+              result.component[6] += common *
+                  (pa.z * pb.x * coulomb.c0 + h * pb.x * coulomb.cz +
+                   h * pa.z * coulomb.cx + h2 * coulomb.cxz);
+            }
+            if ((active_component_mask & (1U << 7)) != 0U) {
+              result.component[7] += common *
+                  (pa.z * pb.y * coulomb.c0 + h * pb.y * coulomb.cz +
+                   h * pa.z * coulomb.cy + h2 * coulomb.cyz);
+            }
+            if ((active_component_mask & (1U << 8)) != 0U) {
+              result.component[8] += common *
+                  ((pa.z * pb.z + h) * coulomb.c0 +
+                   h * (pb.z + pa.z) * coulomb.cz + h2 * coulomb.czz);
+            }
+          } else {
+            static_assert(
+                FirstShellAngular == 2 && SecondShellAngular == 0 &&
+                ThirdShellAngular == 0 && FourthShellAngular == 0);
+            const double h = 0.5 / p;
+            const double h2 = h * h;
+            const Vec3<double> pa{
+                product_p.x - positions[0].x,
+                product_p.y - positions[0].y,
+                product_p.z - positions[0].z};
+            if ((active_component_mask & (1U << 0)) != 0U) {
+              result.component[0] += common *
+                  ((pa.x * pa.x + h) * coulomb.c0 +
+                   2.0 * h * pa.x * coulomb.cx + h2 * coulomb.cxx);
+            }
+            if ((active_component_mask & (1U << 1)) != 0U) {
+              result.component[1] += common *
+                  (pa.x * pa.y * coulomb.c0 + h * pa.y * coulomb.cx +
+                   h * pa.x * coulomb.cy + h2 * coulomb.cxy);
+            }
+            if ((active_component_mask & (1U << 2)) != 0U) {
+              result.component[2] += common *
+                  (pa.x * pa.z * coulomb.c0 + h * pa.z * coulomb.cx +
+                   h * pa.x * coulomb.cz + h2 * coulomb.cxz);
+            }
+            if ((active_component_mask & (1U << 3)) != 0U) {
+              result.component[3] += common *
+                  ((pa.y * pa.y + h) * coulomb.c0 +
+                   2.0 * h * pa.y * coulomb.cy + h2 * coulomb.cyy);
+            }
+            if ((active_component_mask & (1U << 4)) != 0U) {
+              result.component[4] += common *
+                  (pa.y * pa.z * coulomb.c0 + h * pa.z * coulomb.cy +
+                   h * pa.y * coulomb.cz + h2 * coulomb.cyz);
+            }
+            if ((active_component_mask & (1U << 5)) != 0U) {
+              result.component[5] += common *
+                  ((pa.z * pa.z + h) * coulomb.c0 +
+                   2.0 * h * pa.z * coulomb.cz + h2 * coulomb.czz);
             }
           }
+        }
+      }
+    }
+  }
+
+  // Cartesian normalization is primitive-independent. Applying it once after
+  // contraction avoids four coefficient loads for every component of every
+  // primitive quartet.
+  unsigned output = 0;
+#pragma unroll
+  for (unsigned first_component = 0;
+       first_component < FirstCount; ++first_component) {
+#pragma unroll
+    for (unsigned second_component = 0;
+         second_component < SecondCount; ++second_component) {
+#pragma unroll
+      for (unsigned third_component = 0;
+           third_component < ThirdCount; ++third_component) {
+#pragma unroll
+        for (unsigned fourth_component = 0;
+             fourth_component < FourthCount;
+             ++fourth_component, ++output) {
+          if ((active_component_mask & (1U << output)) == 0U) continue;
+          result.component[output] *=
+              batch.direct_ao_coefficients[
+                  ao_begin[0] + first_component] *
+              batch.direct_ao_coefficients[
+                  ao_begin[1] + second_component] *
+              batch.direct_ao_coefficients[
+                  ao_begin[2] + third_component] *
+              batch.direct_ao_coefficients[
+                  ao_begin[3] + fourth_component];
         }
       }
     }
