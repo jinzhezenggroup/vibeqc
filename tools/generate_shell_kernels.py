@@ -10,7 +10,9 @@ from pathlib import Path
 from qce_codegen.dppp_dispatch import (
     build_dppp_fused_plan,
     emit_dppp_fused_cuda,
+    emit_shell_class_fused_cuda,
 )
+from qce_codegen.fused_schedule import build_fused_shell_plan
 from qce_codegen.shell_class import (
     build_dppp_component_kernel,
     build_dppp_contraction_kernel,
@@ -19,12 +21,14 @@ from qce_codegen.shell_class import (
     emit_dppp_contraction_cuda,
     emit_psss_cuda,
 )
-from qce_codegen.shell_spec import DPPP_SPEC
+from qce_codegen.shell_spec import DPDS_SPEC, DPPP_SPEC
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--shell-class", choices=("psss", "dppp"), default="psss")
+    parser.add_argument(
+        "--shell-class", choices=("psss", "dppp", "dpds"), default="psss"
+    )
     parser.add_argument("--axis", choices=("x", "y", "z"), default="x")
     parser.add_argument(
         "--d-component",
@@ -58,7 +62,7 @@ def main() -> None:
     if arguments.shell_class == "psss":
         kernel = build_psss_kernel(arguments.axis)
         component_metadata = {"axis": arguments.axis}
-    else:
+    elif arguments.shell_class == "dppp":
         if len(arguments.p_components) != 3 or any(
             axis not in "xyz" for axis in arguments.p_components
         ):
@@ -81,6 +85,11 @@ def main() -> None:
                     "p_components": arguments.p_components,
                 }
             )
+    else:
+        if arguments.lowering != "fused":
+            parser.error("dpds currently supports only the fused lowering")
+        kernel = None
+        component_metadata = {"lowering": "fused"}
     if arguments.format == "cuda":
         if arguments.shell_class == "psss":
             output = emit_psss_cuda(kernel)
@@ -88,12 +97,20 @@ def main() -> None:
             output = emit_dppp_component_cuda(kernel)
         elif arguments.lowering == "factored":
             output = emit_dppp_contraction_cuda(kernel)
-        else:
+        elif arguments.shell_class == "dppp":
             output = emit_dppp_fused_cuda()
+        else:
+            output = emit_shell_class_fused_cuda(DPDS_SPEC)
     else:
-        if arguments.shell_class == "dppp" and arguments.lowering == "fused":
-            plan = build_dppp_fused_plan()
-            source = emit_dppp_fused_cuda(plan)
+        if arguments.lowering == "fused":
+            if arguments.shell_class == "dppp":
+                plan = build_dppp_fused_plan()
+                source = emit_dppp_fused_cuda(plan)
+            elif arguments.shell_class == "dpds":
+                plan = build_fused_shell_plan(DPDS_SPEC)
+                source = emit_shell_class_fused_cuda(DPDS_SPEC, plan)
+            else:
+                parser.error("psss does not support the fused lowering")
             output = json.dumps(
                 {
                     **component_metadata,

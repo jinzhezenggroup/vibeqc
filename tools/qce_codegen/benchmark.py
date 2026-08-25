@@ -21,7 +21,13 @@ import sys
 import tempfile
 from pathlib import Path
 
-from .dppp_dispatch import emit_dppp_fused_cuda
+from .dppp_dispatch import (
+    _emitted_component_names,
+    _generic_task_component_setup,
+    _specialize_dppp_identifiers,
+    emit_shell_class_fused_cuda,
+)
+from .shell_spec import DPDS_SPEC, DPPP_SPEC, ShellClassSpec
 
 _CUDA_PRELUDE = r"""
 #include <cuda_runtime.h>
@@ -91,28 +97,13 @@ void generated_dppp_component_recompute_rhf_kernel(
 
   const bool component_lane = lane < kGeneratedDpppComponentCount;
   const unsigned component = component_lane ? lane : 0U;
-  const unsigned d_component = component / 27U;
-  const unsigned p_components = component % 27U;
-  const unsigned first_p = p_components / 9U;
-  const unsigned third_p = (p_components / 3U) % 3U;
-  const unsigned fourth_p = p_components % 3U;
-  const bool unique_ket_component =
-      shared.task.shell[2] != shared.task.shell[3] || third_p >= fourth_p;
-  const std::size_t i = shared.task.ao_begin[0] + d_component;
-  const std::size_t j = shared.task.ao_begin[1] + first_p;
-  const std::size_t k = shared.task.ao_begin[2] + third_p;
-  const std::size_t l = shared.task.ao_begin[3] + fourth_p;
+QCE_COMPONENT_SETUP
   const double density_coefficient =
       component_lane && unique_ket_component
       ? generated_dppp_density_coefficient<false>(
             shared.task, i, j, k, l, density)
       : 0.0;
-  const double angular_coefficient = component_lane
-      ? ao_coefficients[shared.task.ao_coefficient_begin[0] + d_component] *
-        ao_coefficients[shared.task.ao_coefficient_begin[1] + first_p] *
-        ao_coefficients[shared.task.ao_coefficient_begin[2] + third_p] *
-        ao_coefficients[shared.task.ao_coefficient_begin[3] + fourth_p]
-      : 0.0;
+QCE_ANGULAR_COEFFICIENT
   double component_force[12]{};
 
   if (density_coefficient != 0.0) {
@@ -226,13 +217,13 @@ float benchmark_kernel(Launch launch, double* forces, std::size_t force_bytes) {
 }
 
 int main() {
-  constexpr std::size_t n = 15U;
+  constexpr std::size_t n = QCE_MATRIX_ORDER;
   constexpr std::size_t matrix_size = n * n;
   std::vector<GeneratedDpppShellTask> tasks(kTaskCount);
   std::vector<GeneratedDpppVec3> positions(kTaskCount * 4U);
   std::vector<double> exponents(kPrimitiveCount * 4U);
   std::vector<double> primitive_coefficients(kPrimitiveCount * 4U);
-  std::vector<double> ao_coefficients(15U, 1.0);
+  std::vector<double> ao_coefficients(QCE_AO_COUNT, 1.0);
   std::vector<double> density(matrix_size);
   for (unsigned primitive = 0; primitive < kPrimitiveCount * 4U; ++primitive) {
     exponents[primitive] = 0.45 + 0.07 * static_cast<double>(primitive % 7U);
@@ -257,14 +248,7 @@ int main() {
       task.shell[center] = task_index * 4U + center;
       positions[task.atom[center]] = base_positions[center];
     }
-    task.ao_begin[0] = 0U;
-    task.ao_begin[1] = 6U;
-    task.ao_begin[2] = 9U;
-    task.ao_begin[3] = 12U;
-    task.ao_coefficient_begin[0] = 0U;
-    task.ao_coefficient_begin[1] = 6U;
-    task.ao_coefficient_begin[2] = 9U;
-    task.ao_coefficient_begin[3] = 12U;
+QCE_AO_OFFSETS
     task.density_offset = 0U;
     task.spin_offset = 0U;
     task.matrix_order = static_cast<std::uint32_t>(n);
@@ -363,19 +347,58 @@ int main() {
 """
 
 
-def emit_dppp_benchmark_cuda(
+def _benchmark_unfused_kernel(spec: ShellClassSpec) -> str:
+    """Specialize the independent per-component baseline for one shell class."""
+
+    names = _emitted_component_names(spec)
+    angular_lines = [
+        "  const double angular_coefficient = component_lane",
+        f"      ? ao_coefficients[shared.task.ao_coefficient_begin[0] + {names[0]}] *",
+        f"        ao_coefficients[shared.task.ao_coefficient_begin[1] + {names[1]}] *",
+        f"        ao_coefficients[shared.task.ao_coefficient_begin[2] + {names[2]}] *",
+        f"        ao_coefficients[shared.task.ao_coefficient_begin[3] + {names[3]}]",
+        "      : 0.0;",
+    ]
+    source = _UNFUSED_KERNEL.replace(
+        "QCE_COMPONENT_SETUP", _generic_task_component_setup(spec)
+    ).replace("QCE_ANGULAR_COEFFICIENT", "\n".join(angular_lines))
+    return _specialize_dppp_identifiers(source, spec)
+
+
+def _benchmark_host_harness(spec: ShellClassSpec) -> str:
+    """Generate dense AO storage and offsets for a synthetic shell quartet."""
+
+    component_counts = tuple(map(len, spec.center_components))
+    offsets = tuple(
+        sum(component_counts[:center]) for center in range(4)
+    )
+    offset_lines = []
+    for field in ("ao_begin", "ao_coefficient_begin"):
+        offset_lines.extend(
+            f"    task.{field}[{center}] = {offset}U;"
+            for center, offset in enumerate(offsets)
+        )
+    ao_count = sum(component_counts)
+    source = _HOST_HARNESS.replace("QCE_MATRIX_ORDER", f"{ao_count}U")
+    source = source.replace("QCE_AO_COUNT", f"{ao_count}U")
+    source = source.replace("QCE_AO_OFFSETS", "\n".join(offset_lines))
+    return _specialize_dppp_identifiers(source, spec)
+
+
+def emit_shell_class_benchmark_cuda(
+    spec: ShellClassSpec,
     task_count: int,
     primitive_count: int,
     warmups: int,
     iterations: int,
     samples: int,
 ) -> str:
-    """Return a self-contained CUDA correctness and timing harness."""
+    """Return a self-contained fused-vs-recomputed shell benchmark."""
 
     positive_values = (task_count, primitive_count, iterations, samples)
     if any(value <= 0 for value in positive_values) or warmups < 0:
         raise ValueError("benchmark sizes must be positive and warmups non-negative")
-    host = _HOST_HARNESS
+    host = _benchmark_host_harness(spec)
     replacements = {
         "QCE_TASK_COUNT": str(task_count),
         "QCE_PRIMITIVE_COUNT": str(primitive_count),
@@ -385,7 +408,31 @@ def emit_dppp_benchmark_cuda(
     }
     for marker, value in replacements.items():
         host = host.replace(marker, value)
-    return _CUDA_PRELUDE + emit_dppp_fused_cuda() + _UNFUSED_KERNEL + host
+    return (
+        _CUDA_PRELUDE
+        + emit_shell_class_fused_cuda(spec)
+        + _benchmark_unfused_kernel(spec)
+        + host
+    )
+
+
+def emit_dppp_benchmark_cuda(
+    task_count: int,
+    primitive_count: int,
+    warmups: int,
+    iterations: int,
+    samples: int,
+) -> str:
+    """Return the production-golden dppp standalone benchmark."""
+
+    return emit_shell_class_benchmark_cuda(
+        DPPP_SPEC,
+        task_count,
+        primitive_count,
+        warmups,
+        iterations,
+        samples,
+    )
 
 
 def _runtime_environment(nvcc: Path) -> dict[str, str]:
@@ -412,6 +459,9 @@ def main() -> None:
     parser.add_argument("--srun", default="srun")
     parser.add_argument("--partition", default="main")
     parser.add_argument("--gres", default="gpu:5090:1")
+    parser.add_argument(
+        "--shell-class", choices=("dppp", "dpds"), default="dppp"
+    )
     parser.add_argument("--tasks", type=int, default=512)
     parser.add_argument("--primitives", type=int, default=2)
     parser.add_argument("--warmups", type=int, default=2)
@@ -423,7 +473,11 @@ def main() -> None:
         help="also write the generated standalone CUDA source to this path",
     )
     arguments = parser.parse_args()
-    source = emit_dppp_benchmark_cuda(
+    specification = {"dppp": DPPP_SPEC, "dpds": DPDS_SPEC}[
+        arguments.shell_class
+    ]
+    source = emit_shell_class_benchmark_cuda(
+        specification,
         arguments.tasks,
         arguments.primitives,
         arguments.warmups,

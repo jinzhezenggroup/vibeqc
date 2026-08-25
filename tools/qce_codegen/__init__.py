@@ -6,6 +6,7 @@ from .dppp_dispatch import (
     build_dppp_fused_plan,
     dppp_components,
     emit_dppp_fused_cuda,
+    emit_shell_class_fused_cuda,
     evaluate_dppp_fused_component,
 )
 from .fused_schedule import (
@@ -56,6 +57,7 @@ __all__ = [
     "cartesian_components",
     "dppp_components",
     "emit_dppp_fused_cuda",
+    "emit_shell_class_fused_cuda",
     "evaluate_dppp_fused_component",
     "evaluate_fused_shell_component",
     "nvrtc_cache_key",

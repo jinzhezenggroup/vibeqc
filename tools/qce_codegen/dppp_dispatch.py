@@ -20,10 +20,11 @@ from dataclasses import dataclass
 
 from .fused_schedule import (
     CoulombState,
+    FusedShellPlan,
     build_fused_shell_plan,
     evaluate_fused_shell_component,
 )
-from .shell_spec import AXES, DPPP_SPEC
+from .shell_spec import AXES, DPPP_SPEC, ShellClassSpec
 
 DpppComponent = tuple[str, str, str, str]
 _AXIS_INDEX = {axis: index for index, axis in enumerate(AXES)}
@@ -100,16 +101,243 @@ def _format_cuda_array(values: Sequence[int], columns: int = 12) -> str:
     return ",\n".join(rows)
 
 
-def emit_dppp_fused_cuda(plan: DpppFusedPlan | None = None) -> str:
-    """Emit a complete cooperative ``dppp`` force-contraction kernel.
+def _shell_letter(angular_momentum: int) -> str:
+    """Return conventional shell notation for the supported AOT range."""
+
+    labels = "spdfgh"
+    if not 0 <= angular_momentum < len(labels):
+        raise ValueError("fused CUDA emitter supports shell labels through h")
+    return labels[angular_momentum]
+
+
+def _component_names(spec: ShellClassSpec) -> tuple[str, str, str, str]:
+    """Create readable, unique CUDA names for decoded center components."""
+
+    ordinals = ("first", "second", "third", "fourth")
+    return tuple(
+        f"{ordinal}_{_shell_letter(order)}"
+        for ordinal, order in zip(ordinals, spec.angular, strict=True)
+    )
+
+
+def _emitted_component_names(
+    spec: ShellClassSpec,
+) -> tuple[str, str, str, str]:
+    """Return the actual scalar names present in specialized CUDA source."""
+
+    if spec == DPPP_SPEC:
+        return ("d_component", "first_p", "third_p", "fourth_p")
+    return _component_names(spec)
+
+
+def _specialize_dppp_identifiers(source: str, spec: ShellClassSpec) -> str:
+    """Rename the shared CUDA skeleton for a non-dppp shell class."""
+
+    if spec == DPPP_SPEC:
+        return source
+    notation = (
+        f"({_shell_letter(spec.angular[0])} "
+        f"{_shell_letter(spec.angular[1])}|"
+        f"{_shell_letter(spec.angular[2])} "
+        f"{_shell_letter(spec.angular[3])})"
+    )
+    class_name = spec.name[0].upper() + spec.name[1:]
+    source = source.replace("(d p|p p)", notation)
+    source = source.replace("Dppp", class_name)
+    source = source.replace("DPPP", spec.name.upper())
+    return source.replace("dppp", spec.name)
+
+
+def _generic_component_decode(
+    spec: ShellClassSpec, *, include_s: bool = True
+) -> tuple[str, ...]:
+    """Emit compile-time division/modulo lane decoding from spec strides."""
+
+    names = _component_names(spec)
+    counts = tuple(map(len, spec.center_components))
+    lines = []
+    for angular, name, count, stride in zip(
+        spec.angular, names, counts, spec.component_strides, strict=True
+    ):
+        if angular == 0 and not include_s:
+            continue
+        if count == 1:
+            expression = "0U"
+        else:
+            expression = "component"
+            if stride != 1:
+                expression = f"({expression} / {stride}U)"
+            expression = f"{expression} % {count}U"
+        lines.append(f"  const unsigned {name} = {expression};")
+    return tuple(lines)
+
+
+def _component_axis_expression(
+    spec: ShellClassSpec,
+    center: int,
+    quantum: int,
+    component_name: str,
+) -> str:
+    """Lower one component quantum without a runtime shell-class branch."""
+
+    angular_momentum = spec.angular[center]
+    if angular_momentum == 1:
+        return component_name
+    if angular_momentum == 2:
+        return f"generated_dppp_d_axes[{component_name}][{quantum}]"
+    raise ValueError(
+        "current fused CUDA candidate supports s, p, and d centers only"
+    )
+
+
+def _cuda_array_declaration(
+    declaration: str, values: Sequence[str]
+) -> list[str]:
+    """Format a small local CUDA initializer with stable indentation."""
+
+    if not values:
+        raise ValueError("CUDA local arrays cannot be empty")
+    lines = [f"  {declaration} = {{"]
+    lines.extend(
+        f"      {value}{',' if index + 1 < len(values) else ''}"
+        for index, value in enumerate(values)
+    )
+    lines[-1] += "};"
+    return lines
+
+
+def _generic_component_gradient_setup(spec: ShellClassSpec) -> str:
+    """Generate lane decoding and both Gaussian-pair recurrence inputs."""
+
+    if spec == DPPP_SPEC:
+        # Preserve the production golden source byte-for-byte while other
+        # shell classes use the fully generated center naming below.
+        return """  const unsigned d_component = component / 27U;
+  const unsigned p_components = component % 27U;
+  const unsigned first_p = p_components / 9U;
+  const unsigned third_p = (p_components / 3U) % 3U;
+  const unsigned fourth_p = p_components % 3U;
+  const unsigned first_axes[3] = {
+      generated_dppp_d_axes[d_component][0],
+      generated_dppp_d_axes[d_component][1],
+      first_p};
+  const double first_shifts[3] = {
+      geometry.pair_shifts[0][first_axes[0]],
+      geometry.pair_shifts[0][first_axes[1]],
+      geometry.pair_shifts[1][first_axes[2]]};
+  const double first_shift_gradients[3] = {
+      geometry.product_scales[0] - 1.0,
+      geometry.product_scales[0] - 1.0,
+      geometry.product_scales[0]};
+  const unsigned second_axes[2] = {third_p, fourth_p};
+  const double second_shifts[2] = {
+      geometry.pair_shifts[2][third_p],
+      geometry.pair_shifts[3][fourth_p]};
+  const double second_shift_gradients[2] = {
+      geometry.product_scales[2] - 1.0,
+      geometry.product_scales[2]};"""
+
+    names = _component_names(spec)
+    lines = list(_generic_component_decode(spec, include_s=False))
+    pair_definitions = (
+        ((0, 1), "first", "geometry.product_scales[0]"),
+        ((2, 3), "second", "geometry.product_scales[2]"),
+    )
+    for centers, pair_name, scale in pair_definitions:
+        axes = []
+        shifts = []
+        gradients = []
+        for pair_center, center in enumerate(centers):
+            for quantum in range(spec.angular[center]):
+                axis = _component_axis_expression(
+                    spec, center, quantum, names[center]
+                )
+                axis_position = len(axes)
+                axes.append(axis)
+                shifts.append(
+                    f"geometry.pair_shifts[{center}]"
+                    f"[{pair_name}_axes[{axis_position}]]"
+                )
+                gradients.append(f"{scale} - 1.0" if pair_center == 0 else scale)
+        order = sum(spec.angular[center] for center in centers)
+        lines.extend(
+            _cuda_array_declaration(
+                f"const unsigned {pair_name}_axes[{order}]", axes
+            )
+        )
+        lines.extend(
+            _cuda_array_declaration(
+                f"const double {pair_name}_shifts[{order}]", shifts
+            )
+        )
+        lines.extend(
+            _cuda_array_declaration(
+                f"const double {pair_name}_shift_gradients[{order}]",
+                gradients,
+            )
+        )
+    return "\n".join(lines)
+
+
+def _generic_task_component_setup(spec: ShellClassSpec) -> str:
+    """Generate AO/density routing for one automatically decoded lane."""
+
+    if spec == DPPP_SPEC:
+        return """  const unsigned d_component = component / 27U;
+  const unsigned p_components = component % 27U;
+  const unsigned first_p = p_components / 9U;
+  const unsigned third_p = (p_components / 3U) % 3U;
+  const unsigned fourth_p = p_components % 3U;
+  const bool unique_ket_component =
+      shared.task.shell[2] != shared.task.shell[3] || third_p >= fourth_p;
+  const std::size_t i = shared.task.ao_begin[0] + d_component;
+  const std::size_t j = shared.task.ao_begin[1] + first_p;
+  const std::size_t k = shared.task.ao_begin[2] + third_p;
+  const std::size_t l = shared.task.ao_begin[3] + fourth_p;"""
+
+    names = _component_names(spec)
+    lines = list(_generic_component_decode(spec))
+    if spec.angular[2] == spec.angular[3]:
+        lines.extend(
+            [
+                "  const bool unique_ket_component =",
+                "      shared.task.shell[2] != shared.task.shell[3] ||",
+                f"      {names[2]} >= {names[3]};",
+            ]
+        )
+    else:
+        lines.append("  constexpr bool unique_ket_component = true;")
+    for center, (ao_name, component_name) in enumerate(
+        zip(("i", "j", "k", "l"), names, strict=True)
+    ):
+        lines.append(
+            f"  const std::size_t {ao_name} = "
+            f"shared.task.ao_begin[{center}] + {component_name};"
+        )
+    return "\n".join(lines)
+
+
+def emit_shell_class_fused_cuda(
+    spec: ShellClassSpec,
+    plan: FusedShellPlan | None = None,
+) -> str:
+    """Emit a complete cooperative force kernel from a shell specification.
 
     The task queue is the outer symmetry/orbit boundary: every task is already
-    canonicalized to ``(d p|p p)`` and retains its canonical-slot-to-atom map.
+    canonicalized to the requested shell class and retains its slot-to-atom map.
     Consequently the primitive hot loop contains no shell-class, component,
     representative, or coordinate dispatch.
     """
 
-    plan = build_dppp_fused_plan() if plan is None else plan
+    plan = build_fused_shell_plan(spec) if plan is None else plan
+    if plan.spec != spec:
+        raise ValueError("fused plan and shell specification do not match")
+    if any(order == 0 or order > 3 for order in spec.pair_orders):
+        raise ValueError(
+            "current fused CUDA candidate supports pair orders one through three"
+        )
+    if any(order > 2 for order in spec.angular):
+        raise ValueError("current fused CUDA candidate supports s/p/d shells")
     packed_states = tuple(
         x_order | (y_order << 3) | (z_order << 6)
         for x_order, y_order, z_order in plan.coulomb_states
@@ -119,13 +347,18 @@ def emit_dppp_fused_cuda(plan: DpppFusedPlan | None = None) -> str:
         for component in DPPP_SPEC.center_components[0]
         for axis in component
     )
-    first_pair_order, second_pair_order = DPPP_SPEC.pair_orders
-    component_strides = DPPP_SPEC.component_strides
-    component_counts = tuple(map(len, DPPP_SPEC.center_components))
+    first_pair_order, second_pair_order = spec.pair_orders
+    component_counts = tuple(map(len, spec.center_components))
     supported_pair_orders = " || ".join(
-        f"PairOrder == {order}U" for order in sorted(DPPP_SPEC.pair_orders)
+        f"PairOrder == {order}U" for order in sorted(set(spec.pair_orders))
     )
-    return f"""/**
+    component_gradient_setup = _generic_component_gradient_setup(spec)
+    task_component_setup = _generic_task_component_setup(spec)
+    component_names = _emitted_component_names(spec)
+    maximum_order = spec.maximum_force_coulomb_order
+    side = maximum_order + 1
+    minimum_blocks_per_sm = (384 + plan.block_threads - 1) // plan.block_threads
+    source = f"""/**
  * Generated cooperative AOT candidate for canonical (d p|p p) forces.
  *
  * Launch exactly {plan.block_threads} threads per canonical shell-quartet task.
@@ -158,9 +391,9 @@ struct GeneratedDpppPrimitiveGeometry {{
   double pair_shifts[4][3];
   double difference[3];
   double decay_gradients[3][3];
-  double boys[7];
-  double coordinate_powers[3][7];
-  double negative_two_rho_powers[7];
+  double boys[{side}];
+  double coordinate_powers[3][{side}];
+  double negative_two_rho_powers[{side}];
   double prefactor;
   double primitive_coefficient;
 }};
@@ -171,7 +404,7 @@ struct GeneratedDpppPairTerm {{
   double first_center[3];
 }};
 
-constexpr unsigned kGeneratedDpppComponentCount = {_COMPONENT_COUNT}U;
+constexpr unsigned kGeneratedDpppComponentCount = {spec.component_count}U;
 constexpr unsigned kGeneratedDpppBlockThreads = {plan.block_threads}U;
 constexpr unsigned kGeneratedDpppCoulombStateCount = {len(plan.coulomb_states)}U;
 constexpr unsigned kGeneratedDpppWarpCount = {plan.warp_count}U;
@@ -181,7 +414,7 @@ __device__ __constant__ unsigned short generated_dppp_coulomb_states[
 {_format_cuda_array(packed_states)}
 }};
 
-__device__ __constant__ signed char generated_dppp_coulomb_indices[343] = {{
+__device__ __constant__ signed char generated_dppp_coulomb_indices[{side**3}] = {{
 {_format_cuda_array(plan.coulomb_indices)}
 }};
 
@@ -330,32 +563,9 @@ __device__ __forceinline__ void generated_dppp_component_gradient(
     const GeneratedDpppPrimitiveGeometry& geometry,
     const double* coulomb,
     double (&gradient)[4][3]) {{
-  const unsigned d_component = component / {component_strides[0]}U;
-  const unsigned p_components = component % {component_strides[0]}U;
-  const unsigned first_p = p_components / {component_strides[1]}U;
-  const unsigned third_p = (p_components / {component_strides[2]}U) % {component_counts[2]}U;
-  const unsigned fourth_p = p_components % {component_counts[3]}U;
-  const unsigned first_axes[{first_pair_order}] = {{
-      generated_dppp_d_axes[d_component][0],
-      generated_dppp_d_axes[d_component][1],
-      first_p}};
-  const double first_shifts[{first_pair_order}] = {{
-      geometry.pair_shifts[0][first_axes[0]],
-      geometry.pair_shifts[0][first_axes[1]],
-      geometry.pair_shifts[1][first_axes[2]]}};
-  const double first_shift_gradients[{first_pair_order}] = {{
-      geometry.product_scales[0] - 1.0,
-      geometry.product_scales[0] - 1.0,
-      geometry.product_scales[0]}};
-  const unsigned second_axes[{second_pair_order}] = {{third_p, fourth_p}};
-  const double second_shifts[{second_pair_order}] = {{
-      geometry.pair_shifts[2][third_p],
-      geometry.pair_shifts[3][fourth_p]}};
-  const double second_shift_gradients[{second_pair_order}] = {{
-      geometry.product_scales[2] - 1.0,
-      geometry.product_scales[2]}};
+{component_gradient_setup}
 
-  GeneratedDpppPairTerm second_terms[4];
+  GeneratedDpppPairTerm second_terms[{1 << second_pair_order}];
 #pragma unroll
   for (unsigned subset = 0; subset < {1 << second_pair_order}U; ++subset) {{
     second_terms[subset] = generated_dppp_pair_term(
@@ -543,16 +753,16 @@ __device__ __forceinline__ void generated_dppp_make_primitive_geometry(
         geometry.difference[axis] * geometry.difference[axis];
     geometry.coordinate_powers[axis][0] = 1.0;
 #pragma unroll
-    for (unsigned power = 1; power <= 6U; ++power) {{
+    for (unsigned power = 1; power <= {maximum_order}U; ++power) {{
       geometry.coordinate_powers[axis][power] =
           geometry.coordinate_powers[axis][power - 1U] *
           geometry.difference[axis];
     }}
   }}
-  boys_values<6>(geometry.rho * argument_squared_distance, geometry.boys);
+  boys_values<{maximum_order}>(geometry.rho * argument_squared_distance, geometry.boys);
   geometry.negative_two_rho_powers[0] = 1.0;
 #pragma unroll
-  for (unsigned power = 1; power <= 6U; ++power) {{
+  for (unsigned power = 1; power <= {maximum_order}U; ++power) {{
     geometry.negative_two_rho_powers[power] =
         geometry.negative_two_rho_powers[power - 1U] *
         (-2.0 * geometry.rho);
@@ -596,17 +806,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task(
 
   const bool component_lane = lane < kGeneratedDpppComponentCount;
   const unsigned component = component_lane ? lane : 0U;
-  const unsigned d_component = component / {component_strides[0]}U;
-  const unsigned p_components = component % {component_strides[0]}U;
-  const unsigned first_p = p_components / {component_strides[1]}U;
-  const unsigned third_p = (p_components / {component_strides[2]}U) % {component_counts[2]}U;
-  const unsigned fourth_p = p_components % {component_counts[3]}U;
-  const bool unique_ket_component =
-      shared.task.shell[2] != shared.task.shell[3] || third_p >= fourth_p;
-  const std::size_t i = shared.task.ao_begin[0] + d_component;
-  const std::size_t j = shared.task.ao_begin[1] + first_p;
-  const std::size_t k = shared.task.ao_begin[2] + third_p;
-  const std::size_t l = shared.task.ao_begin[3] + fourth_p;
+{task_component_setup}
   const std::size_t matrix_order =
       static_cast<std::size_t>(shared.task.matrix_order);
   const bool retained_by_schwarz = schwarz_bounds == nullptr ||
@@ -623,10 +823,10 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task(
             shared.task, i, j, k, l, density)
       : 0.0;
   const double angular_coefficient = component_lane
-      ? ao_coefficients[shared.task.ao_coefficient_begin[0] + d_component] *
-        ao_coefficients[shared.task.ao_coefficient_begin[1] + first_p] *
-        ao_coefficients[shared.task.ao_coefficient_begin[2] + third_p] *
-        ao_coefficients[shared.task.ao_coefficient_begin[3] + fourth_p]
+      ? ao_coefficients[shared.task.ao_coefficient_begin[0] + {component_names[0]}] *
+        ao_coefficients[shared.task.ao_coefficient_begin[1] + {component_names[1]}] *
+        ao_coefficients[shared.task.ao_coefficient_begin[2] + {component_names[2]}] *
+        ao_coefficients[shared.task.ao_coefficient_begin[3] + {component_names[3]}]
       : 0.0;
   double component_force[12]{{}};
 
@@ -705,7 +905,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task(
   }}
 }}
 
-extern "C" __global__ __launch_bounds__(kGeneratedDpppBlockThreads, 2)
+extern "C" __global__ __launch_bounds__(kGeneratedDpppBlockThreads, {minimum_blocks_per_sm})
 void generated_dppp_shell_class_force_rhf_kernel(
     const GeneratedDpppShellTask* tasks,
     const double* primitive_exponents,
@@ -724,7 +924,7 @@ void generated_dppp_shell_class_force_rhf_kernel(
       static_cast<std::size_t>(blockIdx.x));
 }}
 
-extern "C" __global__ __launch_bounds__(kGeneratedDpppBlockThreads, 2)
+extern "C" __global__ __launch_bounds__(kGeneratedDpppBlockThreads, {minimum_blocks_per_sm})
 void generated_dppp_shell_class_force_uhf_kernel(
     const GeneratedDpppShellTask* tasks,
     const double* primitive_exponents,
@@ -772,7 +972,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_persistent(
   }}
 }}
 
-extern "C" __global__ __launch_bounds__(kGeneratedDpppBlockThreads, 2)
+extern "C" __global__ __launch_bounds__(kGeneratedDpppBlockThreads, {minimum_blocks_per_sm})
 void generated_dppp_shell_class_force_rhf_persistent_kernel(
     const GeneratedDpppShellTask* tasks,
     const double* primitive_exponents,
@@ -791,7 +991,7 @@ void generated_dppp_shell_class_force_rhf_persistent_kernel(
       task_count, task_head);
 }}
 
-extern "C" __global__ __launch_bounds__(kGeneratedDpppBlockThreads, 2)
+extern "C" __global__ __launch_bounds__(kGeneratedDpppBlockThreads, {minimum_blocks_per_sm})
 void generated_dppp_shell_class_force_uhf_persistent_kernel(
     const GeneratedDpppShellTask* tasks,
     const double* primitive_exponents,
@@ -810,3 +1010,20 @@ void generated_dppp_shell_class_force_uhf_persistent_kernel(
       task_count, task_head);
 }}
 """
+    return _specialize_dppp_identifiers(source, spec)
+
+
+def emit_dppp_fused_cuda(plan: DpppFusedPlan | None = None) -> str:
+    """Emit the production-golden dppp specialization of the generic emitter."""
+
+    if plan is None:
+        generic = build_fused_shell_plan(DPPP_SPEC)
+    else:
+        generic = FusedShellPlan(
+            spec=DPPP_SPEC,
+            components=plan.components,
+            coulomb_states=plan.coulomb_states,
+            coulomb_indices=plan.coulomb_indices,
+            block_threads=plan.block_threads,
+        )
+    return emit_shell_class_fused_cuda(DPPP_SPEC, generic)
