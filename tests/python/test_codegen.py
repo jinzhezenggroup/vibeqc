@@ -33,8 +33,21 @@ from tools.qce_codegen import (
     evaluate_fused_shell_component,
     nvrtc_cache_key,
 )
-from tools.qce_codegen.benchmark import emit_dppp_benchmark_cuda
-from tools.qce_codegen.benchmark import emit_shell_class_benchmark_cuda
+from tools.qce_codegen.batch_benchmark import (
+    DEFAULT_CANDIDATES,
+    emit_batch_driver,
+    emit_candidate_translation_unit,
+    rank_profiled_candidates,
+)
+from tools.qce_codegen.benchmark import (
+    emit_dppp_benchmark_cuda,
+    emit_shell_class_benchmark_cuda,
+)
+from tools.qce_codegen.production import (
+    emit_registry_header,
+    load_production_manifest,
+    write_production_bundle,
+)
 from tools.qce_codegen.shell_class import (
     AXES,
     CENTERS,
@@ -517,6 +530,7 @@ def test_ddps_fused_cuda_generates_order_four_double_matchings():
     assert "kGeneratedDdpsBlockThreads = 128U" in source
     assert "PairOrder == 1U || PairOrder == 4U" in source
     assert "first_removed | second_removed, 2U" in source
+    assert "first_d >= second_d" in source
     assert "GeneratedDdpsPairTerm second_terms[2]" in source
     assert "generated_ddps_shell_class_force_rhf_kernel" in source
     assert "generated_dppp" not in source
@@ -524,27 +538,62 @@ def test_ddps_fused_cuda_generates_order_four_double_matchings():
     assert "Dual3" not in source
 
 
-def test_checked_in_dppp_fused_header_matches_generator():
-    """Keep production CUDA synchronized with the symbolic AOT emitter."""
+def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path):
+    """Keep machine CUDA out of Git while retaining deterministic builds."""
 
-    header = REPOSITORY_ROOT / "src" / "scf" / "generated" / "dppp_fused.cuh"
-    assert header.read_text(encoding="utf-8") == emit_dppp_fused_cuda()
-
-
-def test_checked_in_dpds_fused_header_matches_generator():
-    """Keep the first fully spec-generated production kernel synchronized."""
-
-    header = REPOSITORY_ROOT / "src" / "scf" / "generated" / "dpds_fused.cuh"
-    assert header.read_text(encoding="utf-8") == emit_shell_class_fused_cuda(
-        DPDS_SPEC
+    manifest = (
+        REPOSITORY_ROOT
+        / "tools"
+        / "qce_codegen"
+        / "production_shell_classes.json"
     )
-
-
-def test_checked_in_ddps_fused_header_matches_generator():
-    header = REPOSITORY_ROOT / "src" / "scf" / "generated" / "ddps_fused.cuh"
-    assert header.read_text(encoding="utf-8") == emit_shell_class_fused_cuda(
-        DDPS_SPEC
+    specifications = load_production_manifest(manifest)
+    assert tuple(spec.name for spec in specifications) == (
+        "dppp",
+        "dpds",
+        "ppps",
+        "dpps",
+        "dsps",
+        "dspp",
     )
+    first_directory = tmp_path / "first"
+    second_directory = tmp_path / "second"
+    first = write_production_bundle(manifest, first_directory, shard_count=4)
+    second = write_production_bundle(manifest, second_directory, shard_count=4)
+    assert [path.name for path in first] == [path.name for path in second]
+    for first_path, second_path in zip(first, second, strict=True):
+        assert first_path.read_bytes() == second_path.read_bytes()
+        assert b"\0" not in first_path.read_bytes()
+    header = emit_registry_header(specifications)
+    assert '{"ppps", 4U, 3U, 64U}' in header
+    assert '{"dspp", 8U, 4U, 64U}' in header
+    assert "QCE_AOT_SHELL_CLASSES" in header
+
+
+def test_batch_screening_ranks_real_profile_and_emits_one_process_driver():
+    payload = {
+        "shell_classes": [
+            {"class": "dppp"},
+            {"class": "ppps"},
+            {"class": "ddps"},
+            {"class": "psss"},
+        ]
+    }
+    ranked = rank_profiled_candidates(payload, limit=2)
+    assert tuple(spec.name for spec in ranked) == ("ddps",)
+    candidate = DEFAULT_CANDIDATES[0]
+    source = emit_candidate_translation_unit(
+        candidate,
+        task_count=2,
+        primitive_count=1,
+        warmups=0,
+        iterations=1,
+        samples=1,
+    )
+    assert f'qce_run_shell_class_{candidate.name}' in source
+    driver = emit_batch_driver((candidate,))
+    assert "cudaFree(nullptr)" in driver
+    assert f"qce_run_shell_class_{candidate.name}()" in driver
 
 
 @pytest.mark.parametrize(

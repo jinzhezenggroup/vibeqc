@@ -297,12 +297,19 @@ def _generic_task_component_setup(spec: ShellClassSpec) -> str:
 
     names = _component_names(spec)
     lines = list(_generic_component_decode(spec))
-    if spec.angular[2] == spec.angular[3]:
+    symmetry_conditions = []
+    for first, second in ((0, 1), (2, 3)):
+        if spec.angular[first] == spec.angular[second]:
+            symmetry_conditions.append(
+                f"shared.task.shell[{first}] != shared.task.shell[{second}] || "
+                f"{names[first]} >= {names[second]}"
+            )
+    if symmetry_conditions:
+        expression = ") && (".join(symmetry_conditions)
         lines.extend(
             [
                 "  const bool unique_ket_component =",
-                "      shared.task.shell[2] != shared.task.shell[3] ||",
-                f"      {names[2]} >= {names[3]};",
+                f"      ({expression});",
             ]
         )
     else:
@@ -348,7 +355,6 @@ def emit_shell_class_fused_cuda(
         for axis in component
     )
     first_pair_order, second_pair_order = spec.pair_orders
-    component_counts = tuple(map(len, spec.center_components))
     supported_pair_orders = " || ".join(
         f"PairOrder == {order}U" for order in sorted(set(spec.pair_orders))
     )
@@ -442,7 +448,7 @@ __device__ __constant__ signed char generated_dppp_coulomb_indices[{side**3}] = 
 {_format_cuda_array(plan.coulomb_indices)}
 }};
 
-__device__ __constant__ unsigned char generated_dppp_d_axes[{component_counts[0]}][{DPPP_SPEC.angular[0]}] = {{
+__device__ __constant__ unsigned char generated_dppp_d_axes[6][2] = {{
 {_format_cuda_array(d_axes, columns=6)}
 }};
 
@@ -460,7 +466,7 @@ __device__ __forceinline__ unsigned generated_dppp_state_index(unsigned state) {
   const unsigned y_order = (state >> 3U) & 7U;
   const unsigned z_order = (state >> 6U) & 7U;
   return static_cast<unsigned>(generated_dppp_coulomb_indices[
-      (x_order * 7U + y_order) * 7U + z_order]);
+      (x_order * {side}U + y_order) * {side}U + z_order]);
 }}
 
 __device__ __forceinline__ unsigned generated_dppp_wick_multiplicity(

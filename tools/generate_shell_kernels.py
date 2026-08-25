@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Generate or inspect shell-class-specific CUDA derivative kernels."""
 
 from __future__ import annotations
@@ -13,6 +12,7 @@ from qce_codegen.dppp_dispatch import (
     emit_shell_class_fused_cuda,
 )
 from qce_codegen.fused_schedule import build_fused_shell_plan
+from qce_codegen.production import write_production_bundle
 from qce_codegen.shell_class import (
     build_dppp_component_kernel,
     build_dppp_contraction_kernel,
@@ -22,7 +22,6 @@ from qce_codegen.shell_class import (
     emit_psss_cuda,
 )
 from qce_codegen.shell_spec import DDPS_SPEC, DPDS_SPEC, DPPP_SPEC
-
 
 FUSED_SPECS = {"dppp": DPPP_SPEC, "dpds": DPDS_SPEC, "ddps": DDPS_SPEC}
 
@@ -62,7 +61,37 @@ def main() -> None:
         type=Path,
         help="write generated output to this path instead of standard output",
     )
+    parser.add_argument(
+        "--production-manifest",
+        type=Path,
+        help="generate production CUDA shards from an accepted-class manifest",
+    )
+    parser.add_argument(
+        "--output-directory",
+        type=Path,
+        help="build directory for --production-manifest artifacts",
+    )
+    parser.add_argument(
+        "--shards",
+        type=int,
+        default=4,
+        help="stable CUDA translation-unit count for production generation",
+    )
     arguments = parser.parse_args()
+
+    if arguments.production_manifest is not None:
+        if arguments.output_directory is None:
+            parser.error("--production-manifest requires --output-directory")
+        if arguments.output is not None:
+            parser.error("--output cannot be combined with --production-manifest")
+        write_production_bundle(
+            arguments.production_manifest,
+            arguments.output_directory,
+            arguments.shards,
+        )
+        return
+    if arguments.output_directory is not None:
+        parser.error("--output-directory requires --production-manifest")
 
     if arguments.shell_class == "psss":
         kernel = build_psss_kernel(arguments.axis)

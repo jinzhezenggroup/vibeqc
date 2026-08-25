@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import argparse
-from collections import defaultdict
-from dataclasses import dataclass
 import json
+from collections import defaultdict
+from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 ANGULAR_LABELS = "spdfgh"
 
@@ -42,7 +42,7 @@ def canonical_shell_class(
 
 def summarize_shell_classes(
     shells: Iterable[ShellWork],
-    angular_order: int,
+    angular_order: int | None,
     tile_size: int = 256,
 ) -> list[dict[str, int | float | str | list[int]]]:
     """Match the host planner's exact pre-screen AO tile enumeration."""
@@ -82,7 +82,7 @@ def summarize_shell_classes(
                     second_pair[3].angular,
                 )
             )
-            if angular != angular_order:
+            if angular_order is not None and angular != angular_order:
                 continue
             shell_class = canonical_shell_class(
                 (first_pair[2].angular, first_pair[3].angular),
@@ -124,14 +124,14 @@ def summarize_shell_classes(
 
 
 def summarize_active_shell_classes(
-    entries: Iterable[object], angular_order: int
+    entries: Iterable[object], angular_order: int | None
 ) -> list[dict[str, int | float | str | list[int]]]:
     """Format native final-density counters for one total angular order."""
 
     selected = [
         entry
         for entry in entries
-        if sum(entry.shell_angular) == angular_order
+        if (angular_order is None or sum(entry.shell_angular) == angular_order)
         and entry.primitive_quartets != 0
     ]
     primitive_total = sum(entry.primitive_quartets for entry in selected)
@@ -200,6 +200,11 @@ def main() -> None:
     )
     parser.add_argument("--angular-order", type=int, default=5)
     parser.add_argument(
+        "--all-orders",
+        action="store_true",
+        help="report every active shell class from one SCF execution",
+    )
+    parser.add_argument(
         "--active",
         action="store_true",
         help="run QCE CUDA and report final-density screened work",
@@ -245,7 +250,7 @@ def main() -> None:
             )
         )
     payload: dict[str, object] = {
-        "angular_order": arguments.angular_order,
+        "angular_order": None if arguments.all_orders else arguments.angular_order,
         "basis": case.pyscf_basis,
         "case": arguments.case,
         "direct_cartesian_ao_count": molecule.nao_nr(cart=True),
@@ -286,7 +291,8 @@ def main() -> None:
                 ),
                 "screening_tolerance": arguments.screening_tolerance,
                 "shell_classes": summarize_active_shell_classes(
-                    profile, arguments.angular_order
+                    profile,
+                    None if arguments.all_orders else arguments.angular_order,
                 ),
             }
         )
@@ -299,7 +305,8 @@ def main() -> None:
                     "four shell primitive counts"
                 ),
                 "shell_classes": summarize_shell_classes(
-                    shells, arguments.angular_order
+                    shells,
+                    None if arguments.all_orders else arguments.angular_order,
                 ),
             }
         )

@@ -9,12 +9,11 @@ tables or index arithmetic by hand to CUDA.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from functools import cached_property, reduce
 from itertools import product
 from operator import mul
-from typing import Sequence
-
 
 AXES = ("x", "y", "z")
 _AXIS_INDEX = {axis: index for index, axis in enumerate(AXES)}
@@ -159,6 +158,71 @@ class ShellClassSpec:
         )
 
 
-DPPP_SPEC = ShellClassSpec("dppp", (2, 1, 1, 1))
-DPDS_SPEC = ShellClassSpec("dpds", (2, 1, 2, 0))
-DDPS_SPEC = ShellClassSpec("ddps", (2, 2, 1, 0))
+_SHELL_LABELS = "spdfgh"
+
+
+def shell_pair_class(first: int, second: int) -> int:
+    """Encode one angular pair in the production triangular ordering."""
+
+    high = max(first, second)
+    low = min(first, second)
+    return high * (high + 1) // 2 + low
+
+
+def canonical_shell_angular(
+    first_pair: tuple[int, int], second_pair: tuple[int, int]
+) -> tuple[int, int, int, int]:
+    """Apply the same pair and quartet canonicalization as production CUDA."""
+
+    pairs = []
+    for first, second in (first_pair, second_pair):
+        ordered = (max(first, second), min(first, second))
+        pairs.append((shell_pair_class(*ordered), ordered))
+    pairs.sort(reverse=True)
+    return (*pairs[0][1], *pairs[1][1])
+
+
+def shell_class_name(angular: Iterable[int]) -> str:
+    """Return conventional shell notation for a canonical angular tuple."""
+
+    values = tuple(angular)
+    if len(values) != 4:
+        raise ValueError("a shell class must contain exactly four centers")
+    try:
+        return "".join(_SHELL_LABELS[value] for value in values)
+    except (IndexError, TypeError) as error:
+        raise ValueError("unsupported shell angular momentum") from error
+
+
+def enumerate_fused_shell_specs(
+    maximum_angular_momentum: int = 2,
+) -> tuple[ShellClassSpec, ...]:
+    """Enumerate canonical classes supported by one-block fused lowering.
+
+    The current emitter requires non-s Gaussian pairs and one cooperative lane
+    per Cartesian AO quartet.  Classes exceeding CUDA's 1024-thread block
+    limit are omitted so profiling selects only compilable candidates.
+    """
+
+    pairs = tuple(
+        (high, low)
+        for high in range(maximum_angular_momentum + 1)
+        for low in range(high + 1)
+        if high + low != 0
+    )
+    specifications = []
+    for first_index, first_pair in enumerate(pairs):
+        for second_pair in pairs[: first_index + 1]:
+            angular = canonical_shell_angular(first_pair, second_pair)
+            specification = ShellClassSpec(shell_class_name(angular), angular)
+            if specification.component_count <= 1024:
+                specifications.append(specification)
+    return tuple(specifications)
+
+
+FUSED_SHELL_SPECS = enumerate_fused_shell_specs()
+FUSED_SHELL_SPEC_BY_NAME = {spec.name: spec for spec in FUSED_SHELL_SPECS}
+
+DPPP_SPEC = FUSED_SHELL_SPEC_BY_NAME["dppp"]
+DPDS_SPEC = FUSED_SHELL_SPEC_BY_NAME["dpds"]
+DDPS_SPEC = FUSED_SHELL_SPEC_BY_NAME["ddps"]
