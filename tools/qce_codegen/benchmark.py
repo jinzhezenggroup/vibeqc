@@ -41,15 +41,20 @@ template <unsigned MaximumOrder>
 __device__ __forceinline__ void boys_values(double argument, double* values) {
   for (unsigned order = 0; order <= MaximumOrder; ++order) values[order] = 0.0;
   if (argument < 6.0) {
-    for (unsigned order = 0; order <= MaximumOrder; ++order) {
-      double term = 1.0;
-      double sum = 0.0;
-      for (unsigned k = 0; k < 80U; ++k) {
-        sum += term / static_cast<double>(2U * order + 2U * k + 1U);
-        term *= -argument / static_cast<double>(k + 1U);
-        if (fabs(term) < 1.0e-18) break;
-      }
-      values[order] = sum;
+    double term = 1.0;
+    double sum = 0.0;
+    for (unsigned k = 0; k < 80U; ++k) {
+      sum += term /
+          static_cast<double>(2U * MaximumOrder + 2U * k + 1U);
+      term *= -argument / static_cast<double>(k + 1U);
+      if (fabs(term) < 1.0e-18) break;
+    }
+    values[MaximumOrder] = sum;
+    const double exponential = exp(-argument);
+    for (unsigned order = MaximumOrder; order > 0U; --order) {
+      values[order - 1U] =
+          (2.0 * argument * values[order] + exponential) /
+          static_cast<double>(2U * order - 1U);
     }
     return;
   }

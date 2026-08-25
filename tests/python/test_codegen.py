@@ -244,6 +244,40 @@ def boys_values(argument: float, count: int = 3) -> list[float]:
     return values
 
 
+@pytest.mark.parametrize("argument", (0.0, 1.0e-10, 0.05, 1.0, 5.999))
+@pytest.mark.parametrize("count", (1, 3, 7, 13))
+def test_highest_order_boys_series_supports_downward_recurrence(
+    argument: float, count: int
+):
+    """One highest-order series must reproduce every lower Boys value."""
+
+    maximum_order = count - 1
+    term = 1.0
+    highest = 0.0
+    for k in range(80):
+        highest += term / (2 * maximum_order + 2 * k + 1)
+        term *= -argument / (k + 1)
+        if abs(term) < 1.0e-18:
+            break
+    candidate = [0.0] * count
+    candidate[maximum_order] = highest
+    exponential = math.exp(-argument)
+    for order in range(maximum_order, 0, -1):
+        candidate[order - 1] = (
+            2.0 * argument * candidate[order] + exponential
+        ) / (2 * order - 1)
+
+    reference = [
+        sum(
+            (-argument) ** k
+            / (math.factorial(k) * (2 * order + 2 * k + 1))
+            for k in range(80)
+        )
+        for order in range(count)
+    ]
+    assert candidate == pytest.approx(reference, rel=2.0e-12, abs=2.0e-14)
+
+
 def sample_variables() -> dict[str, float]:
     values = {
         "alpha": 1.3,

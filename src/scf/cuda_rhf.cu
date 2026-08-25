@@ -653,15 +653,23 @@ __device__ void boys_values(Scalar argument, Scalar* values) {
     values[order] = scalar<Scalar>(0.0);
   }
   if (scalar_value(argument) < 6.0) {
-    for (unsigned order = 0; order <= MaximumOrder; ++order) {
-      Scalar term = scalar<Scalar>(1.0);
-      Scalar sum = scalar<Scalar>(0.0);
-      for (unsigned k = 0; k < 80; ++k) {
-        sum = sum + term / static_cast<double>(2 * order + 2 * k + 1);
-        term = term * (-1.0 * argument) / static_cast<double>(k + 1);
-        if (fabs(scalar_value(term)) < 1.0e-18) break;
-      }
-      values[order] = sum;
+    // Evaluate only the highest requested Boys order by its convergent power
+    // series. Lower orders follow from the stable downward recurrence, which
+    // removes MaximumOrder duplicate series from every primitive quartet.
+    Scalar term = scalar<Scalar>(1.0);
+    Scalar sum = scalar<Scalar>(0.0);
+    for (unsigned k = 0; k < 80; ++k) {
+      sum = sum + term /
+          static_cast<double>(2 * MaximumOrder + 2 * k + 1);
+      term = term * (-1.0 * argument) / static_cast<double>(k + 1);
+      if (fabs(scalar_value(term)) < 1.0e-18) break;
+    }
+    values[MaximumOrder] = sum;
+    const Scalar exponential = qexp(-1.0 * argument);
+    for (unsigned order = MaximumOrder; order > 0; --order) {
+      values[order - 1] =
+          (2.0 * argument * values[order] + exponential) /
+          static_cast<double>(2 * order - 1);
     }
     return;
   }
