@@ -5,6 +5,8 @@ from pathlib import Path
 import subprocess
 import sys
 
+import pytest
+
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
@@ -16,6 +18,18 @@ def _benchmark_support_module():
     spec = importlib.util.spec_from_file_location("qce_benchmark_support", path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _shell_histogram_module():
+    """Load the pure shell-work planner without requiring PySCF."""
+
+    path = REPOSITORY_ROOT / "benchmarks" / "shell_class_histogram.py"
+    spec = importlib.util.spec_from_file_location("qce_shell_histogram", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
@@ -183,3 +197,16 @@ def test_gpu_comparison_gate_reports_all_threshold_failures():
         "one or more QCE systems did not converge",
         "one or more GPU4PySCF reference systems did not converge",
     ]
+
+
+def test_shell_class_histogram_matches_direct_pair_symmetry():
+    histogram = _shell_histogram_module()
+    shells = [
+        histogram.ShellWork(angular=2, ao_count=6, primitive_count=1),
+        histogram.ShellWork(angular=1, ao_count=3, primitive_count=2),
+        histogram.ShellWork(angular=0, ao_count=1, primitive_count=3),
+    ]
+    rows = histogram.summarize_shell_classes(shells, angular_order=5)
+    assert {row["class"] for row in rows} == {"dppp", "dpds", "ddps"}
+    assert sum(row["primitive_quartets"] for row in rows) > 0
+    assert sum(row["primitive_work_fraction"] for row in rows) == pytest.approx(1.0)
