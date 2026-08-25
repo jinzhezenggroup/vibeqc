@@ -8391,6 +8391,8 @@ struct CudaRhfBucketPlan {
   CudaResources resources;
   ArenaLayout layout;
   HostBatch topology;
+  // Geometry-derived arena state is reusable until coordinates change.
+  std::vector<double> cached_positions;
   core::ScfOptions options;
   std::size_t batch_size{};
   std::size_t nbf{};
@@ -8662,6 +8664,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   const bool use_cusolver =
       nbf > static_cast<std::size_t>(kSmallEigensolverLimit) &&
       nbf <= static_cast<std::size_t>(kBatchedEigensolverLimit);
+  const bool geometry_changed =
+      first_setup || plan.cached_positions != host.positions;
+  const bool all_systems_warm = std::all_of(
+      host.warm_mask.begin(), host.warm_mask.end(),
+      [](std::uint8_t value) { return value != 0; });
   const bool use_cublas = plan.cublas_enabled &&
       nbf >= kCublasMatrixProductAoThreshold;
   cudaError_t cuda_error = cudaSetDevice(device_id);
@@ -8933,10 +8940,12 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       {host_pair_second.data(),
        {ao_pair_second, host_pair_second.size() * sizeof(std::int32_t)}},
   };
-  const std::pair<const void*, std::pair<void*, std::size_t>> dynamic_uploads[] = {
-      {host.positions.data(), {positions, host.positions.size() * sizeof(double)}},
-      {host.warm_mask.data(), {warm_mask, host.warm_mask.size() * sizeof(std::uint8_t)}},
-      {host.warm_density.data(), {warm_density, host.warm_density.size() * sizeof(double)}},
+  const std::pair<const void*, std::pair<void*, std::size_t>>
+      dynamic_uploads[] = {
+      {host.warm_mask.data(),
+       {warm_mask, host.warm_mask.size() * sizeof(std::uint8_t)}},
+      {host.warm_density.data(),
+       {warm_density, host.warm_density.size() * sizeof(double)}},
   };
   if (first_setup) {
     for (const auto& upload : static_uploads) {
@@ -8947,6 +8956,15 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         fill_global_failure(outputs, status);
         return outputs;
       }
+    }
+  }
+  if (geometry_changed) {
+    const qce_status position_status = copy_to_device(
+        positions, host.positions.data(),
+        host.positions.size() * sizeof(double), resources.stream_);
+    if (position_status != QCE_STATUS_SUCCESS) {
+      fill_global_failure(outputs, position_status);
+      return outputs;
     }
   }
   for (const auto& upload : dynamic_uploads) {
@@ -9156,97 +9174,114 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       static_cast<std::int32_t>(batch_size), active, converged, failed,
       iterations, previous_energy, energy_change, density_rms,
       diis_count, diis_head);
-  build_one_electron_integrals_kernel<<<blocks_for(pair_elements), threads, 0,
-                                        resources.stream_>>>(
-      device_batch, ao_pair_first, ao_pair_second, pair_count, overlap, hcore);
-  if (persistent_eri) {
-    build_eri_kernel<<<blocks_for(eri_elements), threads, 0, resources.stream_>>>(
-        device_batch, eri);
-  } else {
-    build_schwarz_bounds_packed_kernel<<<blocks_for(direct_pair_elements),
-                                         threads,
-                                         0, resources.stream_>>>(
-        device_batch, direct_pair_count, schwarz_bounds);
-    if (quartet_direct) {
-      reduce_shell_pair_bounds_kernel<<<
-          static_cast<unsigned>(total_shell_pairs), threads,
-          threads * sizeof(double), resources.stream_>>>(
-          device_batch, schwarz_bounds, shell_pair_bounds);
+  qce_status status = QCE_STATUS_SUCCESS;
+  if (geometry_changed) {
+    build_one_electron_integrals_kernel<<<blocks_for(pair_elements), threads, 0,
+                                          resources.stream_>>>(
+        device_batch, ao_pair_first, ao_pair_second, pair_count, overlap,
+        hcore);
+    if (persistent_eri) {
+      build_eri_kernel<<<blocks_for(eri_elements), threads, 0,
+                         resources.stream_>>>(device_batch, eri);
+    } else {
+      build_schwarz_bounds_packed_kernel<<<blocks_for(direct_pair_elements),
+                                           threads, 0, resources.stream_>>>(
+          device_batch, direct_pair_count, schwarz_bounds);
+      if (quartet_direct) {
+        reduce_shell_pair_bounds_kernel<<<
+            static_cast<unsigned>(total_shell_pairs), threads,
+            threads * sizeof(double), resources.stream_>>>(
+            device_batch, schwarz_bounds, shell_pair_bounds);
+      }
     }
-  }
-  build_nuclear_repulsion_kernel<<<blocks_for(batch_size), threads, 0,
-                                    resources.stream_>>>(
-      device_batch, nuclear_repulsion);
+    build_nuclear_repulsion_kernel<<<blocks_for(batch_size), threads, 0,
+                                      resources.stream_>>>(
+        device_batch, nuclear_repulsion);
 
-  copy_matrix_kernel<<<blocks_for(matrix_elements), threads, 0, resources.stream_>>>(
-      matrix_elements, overlap, eigensystem);
-  qce_status status = launch_solver(resources, static_cast<int>(nbf),
-                                    static_cast<int>(batch_size), eigensystem,
-                                    temporary, eigenvalues, lwork, solver_info,
-                                    active);
-  if (status != QCE_STATUS_SUCCESS) {
-    fill_global_failure(outputs, status);
-    return outputs;
-  }
-  inspect_solver_kernel<<<blocks_for(batch_size), threads, 0, resources.stream_>>>(
-      static_cast<std::int32_t>(batch_size), solver_info, active, failed, converged);
-  build_orthogonalizer_kernel<<<blocks_for(matrix_elements), threads, 0,
-                                resources.stream_>>>(
-      static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
-      eigensystem, eigenvalues, active, orthogonalizer, failed);
-
-  status = multiply_matrices(hcore, false, orthogonalizer, temporary);
-  if (status == QCE_STATUS_SUCCESS) {
-    status = multiply_matrices(
-        orthogonalizer, true, temporary, eigensystem);
-  }
-  if (status != QCE_STATUS_SUCCESS) {
-    fill_global_failure(outputs, status);
-    return outputs;
-  }
-  status = launch_solver(resources, static_cast<int>(nbf),
-                         static_cast<int>(batch_size), eigensystem,
-                         temporary, eigenvalues, lwork, solver_info, active);
-  if (status != QCE_STATUS_SUCCESS) {
-    fill_global_failure(outputs, status);
-    return outputs;
-  }
-  inspect_solver_kernel<<<blocks_for(batch_size), threads, 0, resources.stream_>>>(
-      static_cast<std::int32_t>(batch_size), solver_info, active, failed, converged);
-  if (unrestricted) {
-    status = multiply_matrices(
-        orthogonalizer, false, eigensystem, temporary);
+    copy_matrix_kernel<<<blocks_for(matrix_elements), threads, 0,
+                         resources.stream_>>>(
+        matrix_elements, overlap, eigensystem);
+    status = launch_solver(
+        resources, static_cast<int>(nbf), static_cast<int>(batch_size),
+        eigensystem, temporary, eigenvalues, lwork, solver_info, active);
     if (status != QCE_STATUS_SUCCESS) {
       fill_global_failure(outputs, status);
       return outputs;
     }
-    broadcast_spin_matrix_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
-                                   resources.stream_>>>(
-        static_cast<std::int32_t>(batch_size), 2,
-        static_cast<std::int32_t>(nbf), temporary, active, coefficients);
-    mix_open_shell_guess_kernel<<<blocks_for(batch_size * nbf), threads, 0,
+    inspect_solver_kernel<<<blocks_for(batch_size), threads, 0,
+                            resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), solver_info, active, failed,
+        converged);
+    build_orthogonalizer_kernel<<<blocks_for(matrix_elements), threads, 0,
                                   resources.stream_>>>(
         static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
-        occupied, active, coefficients);
-    build_spin_density_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
-                                resources.stream_>>>(
-        static_cast<std::int32_t>(batch_size), 2,
-        static_cast<std::int32_t>(nbf), occupied, coefficients, active, density);
+        eigensystem, eigenvalues, active, orthogonalizer, failed);
+  }
+
+  // A valid warm density supersedes the core-Hamiltonian guess. Homogeneous
+  // warm replay can therefore skip its transforms, eigensolve, and density
+  // construction without changing mixed warm/cold bucket semantics.
+  if (!all_systems_warm) {
+    status = multiply_matrices(hcore, false, orthogonalizer, temporary);
+    if (status == QCE_STATUS_SUCCESS) {
+      status = multiply_matrices(
+          orthogonalizer, true, temporary, eigensystem);
+    }
+    if (status != QCE_STATUS_SUCCESS) {
+      fill_global_failure(outputs, status);
+      return outputs;
+    }
+    status = launch_solver(
+        resources, static_cast<int>(nbf), static_cast<int>(batch_size),
+        eigensystem, temporary, eigenvalues, lwork, solver_info, active);
+    if (status != QCE_STATUS_SUCCESS) {
+      fill_global_failure(outputs, status);
+      return outputs;
+    }
+    inspect_solver_kernel<<<blocks_for(batch_size), threads, 0,
+                            resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), solver_info, active, failed,
+        converged);
+    if (unrestricted) {
+      status = multiply_matrices(
+          orthogonalizer, false, eigensystem, temporary);
+      if (status != QCE_STATUS_SUCCESS) {
+        fill_global_failure(outputs, status);
+        return outputs;
+      }
+      broadcast_spin_matrix_kernel<<<blocks_for(spin_matrix_elements), threads,
+                                     0, resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size), 2,
+          static_cast<std::int32_t>(nbf), temporary, active, coefficients);
+      mix_open_shell_guess_kernel<<<blocks_for(batch_size * nbf), threads, 0,
+                                    resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size),
+          static_cast<std::int32_t>(nbf), occupied, active, coefficients);
+      build_spin_density_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
+                                  resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size), 2,
+          static_cast<std::int32_t>(nbf), occupied, coefficients, active,
+          density);
+    } else {
+      status = multiply_matrices(
+          orthogonalizer, false, eigensystem, coefficients);
+      if (status != QCE_STATUS_SUCCESS) {
+        fill_global_failure(outputs, status);
+        return outputs;
+      }
+      build_density_kernel<<<blocks_for(matrix_elements), threads, 0,
+                             resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size),
+          static_cast<std::int32_t>(nbf), occupied, coefficients, active,
+          density);
+    }
+  }
+  if (unrestricted) {
     apply_uhf_warm_density_kernel<<<static_cast<unsigned>(batch_size), 1, 0,
                                     resources.stream_>>>(
         static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
         occupied, warm_mask, warm_density, overlap, density);
   } else {
-    status = multiply_matrices(
-        orthogonalizer, false, eigensystem, coefficients);
-    if (status != QCE_STATUS_SUCCESS) {
-      fill_global_failure(outputs, status);
-      return outputs;
-    }
-    build_density_kernel<<<blocks_for(matrix_elements), threads, 0,
-                           resources.stream_>>>(
-        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
-        occupied, coefficients, active, density);
     apply_warm_density_kernel<<<static_cast<unsigned>(batch_size), 1, 0,
                                 resources.stream_>>>(
         static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
@@ -9606,6 +9641,14 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   if (cuda_error != cudaSuccess) {
     fill_global_failure(outputs, cuda_status(cuda_error));
     return outputs;
+  }
+  if (std::none_of(host_failed.begin(), host_failed.end(),
+                   [](std::uint8_t value) { return value != 0; })) {
+    plan.cached_positions = host.positions;
+  } else if (geometry_changed) {
+    // Never reuse an orthogonalizer from a calculation that reported a
+    // numerical failure; retry the full geometry path on the next execution.
+    plan.cached_positions.clear();
   }
 
   for (std::size_t system = 0; system < batch_size; ++system) {

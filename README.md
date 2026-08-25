@@ -182,6 +182,16 @@ Bad coordinates or a nonconverged SCF item do not abort valid neighbors.
   1.68 s and batch-4 from about 7.33 s to 5.92 s while preserving the
   explicit energy/force limits; the 96-AO parity gate nevertheless remains
   open until both points reach at least `1.0x` versus GPU4PySCF.
+  Prepared plans also retain geometry-derived overlap, core Hamiltonian,
+  Schwarz bounds, nuclear repulsion, and orthogonalizer state while the exact
+  coordinate vector is unchanged. Any coordinate difference invalidates that
+  state before replay. When every system supplies a valid warm density, the
+  core-Hamiltonian guess that would immediately be overwritten is skipped as
+  well. On the exact warm 96-AO batch-1 profile this removes the one-electron,
+  Schwarz, and orthogonalizer setup kernels and reduces Graph-native cyclic
+  eigensolver instances from three to one. Candidate medians fall from
+  1.673 s to 1.596 s at batch 1 and from 6.242 s to 6.170 s at batch 4;
+  both speed gates remain open.
   Remaining component-unrolled/Rys kernels, broader named-basis gates, and
   DF J/K are still required before making broad production performance claims.
 

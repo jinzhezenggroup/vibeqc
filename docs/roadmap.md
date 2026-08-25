@@ -133,6 +133,17 @@ and performance measurements pass.
   the energy/force limits but reach only `0.812x` and `0.923x` for batch 1/4,
   so the explicit parity milestone is still open. The 192-AO batch-1/4
   candidate errors remain below `9.7e-12 Eh` and `2.3e-10 Eh/bohr`.
+  Prepared CUDA plans now reuse geometry-derived overlap, core Hamiltonian,
+  Schwarz/shell-pair bounds, nuclear repulsion, and orthogonalizer state while
+  the exact coordinate vector is unchanged. Coordinate updates invalidate and
+  rebuild that state; density and convergence state remain dynamic. Fully warm
+  homogeneous buckets also skip the core-Hamiltonian guess that warm-density
+  normalization immediately replaces. The exact 96-AO batch-1 warm profile
+  consequently removes the one-electron/Schwarz preparation kernels and drops
+  cyclic eigensolver instances from three to one. Candidate medians improve
+  from 1.673/6.242 s to 1.596/6.170 s at batch 1/4, with 96-AO errors below
+  `4.4e-12 Eh` and `2.6e-12 Eh/bohr`. The 192-AO batch-1/4 candidate remains
+  below `1.1e-11 Eh` and `5.8e-11 Eh/bohr`.
   Clean RTX 5090
   artifacts validate energy, forces, and homogeneous-batch throughput for the
   exact `sdf18-direct`, Cartesian water/def2-SVP, and open-shell

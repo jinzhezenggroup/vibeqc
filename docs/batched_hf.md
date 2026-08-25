@@ -13,7 +13,7 @@ shell-task and DF algorithms remain roadmap work.
 | Large eigensolves | Above the 32-AO cuSOLVER batched range, one cooperative Graph-native Jacobi block owns each state and reuses arena workspace | 48-AO water/def2-TZVP energy and forces match PySCF on an allocated RTX 5090 |
 | Per-system convergence | Every item owns status, iteration count, residuals, and convergence flag | H2 succeeds while H3+ intentionally fails with `max_iterations=2` |
 | Failure isolation | Invalid coordinates and nonconvergence do not abort structurally valid neighbors | Native and Python isolation tests |
-| Fixed-topology plans | Prepared systems own reusable CUDA arenas, solver state, and Graph executables; subsequent calls replace dynamic coordinates/warm guesses only | Coordinate-update energy is compared with an independent calculation |
+| Fixed-topology plans | Prepared systems own reusable CUDA arenas, solver state, Graph executables, and exact-coordinate geometry caches; changed coordinates rebuild all geometry-derived state before replay | Same-coordinate warm replay and coordinate-update energy are compared with independent calculations |
 | Warm starts | One converged AO density is retained per topology, symmetrized, and electron-trace normalized for new geometry | Cold/warm iteration counts and explicit clear operation are tested |
 | Differentiable batches | Torch accepts a sequence of ragged coordinate tensors and calls native analytic forces in backward | Ragged H2/H3+ backward checks total gradient invariance |
 | Throughput evidence | Benchmarks report independent, cold-batch, and warm-batch timing for configurable batch size/backend | `benchmarks/batch_throughput.py` exercised at batch 1/16/64 |
@@ -76,4 +76,10 @@ The generic orders six through twelve keep fixed grids to avoid increasing the
 resource pressure of their 254-register kernels. This scheduler changes only
 which worker consumes an already compacted quartet; screening, density
 contraction, integral formulas, and force accumulation are unchanged.
+For unchanged coordinates, prepared plans retain overlap, core Hamiltonian,
+Schwarz/shell-pair bounds, nuclear repulsion, and the orthogonalizer. Exact
+coordinate comparison invalidates this cache before a coordinate update. If
+all systems carry valid warm densities, their immediately overwritten
+core-Hamiltonian guesses are skipped; mixed warm/cold batches retain the cold
+guess path. SCF and force state remain dynamic on every execution.
 Finer AO-level active compaction remains a later scheduler milestone.

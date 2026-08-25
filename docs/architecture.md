@@ -160,6 +160,17 @@ Coulomb auxiliary states are stored in
 a four-dimensional simplex (1,820 states through f) rather than a dense 13^4
 thread-local array.
 
+The prepared plan separately caches the exact coordinate vector associated
+with its geometry-derived arena state. Equal coordinates reuse overlap, core
+Hamiltonian, retained small-system ERIs or direct Schwarz bounds, shell-pair
+bounds, nuclear repulsion, and the orthogonalizer. Any coordinate difference
+uploads positions and rebuilds all of them on the owning stream before SCF.
+Density, DIIS, convergence, and force state are never part of this geometry
+cache. A homogeneous valid warm-density replay also omits the
+core-Hamiltonian eigenguess because the following warm-density normalization
+would replace it exactly; mixed warm/cold buckets retain the common cold-guess
+path so every cold member remains initialized.
+
 J/K uses two runtime policies selected by fixed AO topology. Buckets through
 16 AOs compute ERIs once per geometry and retain them in the bucket arena,
 matching the persistent-cache strategy used successfully in GPUxtb. Larger
