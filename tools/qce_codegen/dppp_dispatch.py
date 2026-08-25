@@ -332,9 +332,9 @@ def emit_shell_class_fused_cuda(
     plan = build_fused_shell_plan(spec) if plan is None else plan
     if plan.spec != spec:
         raise ValueError("fused plan and shell specification do not match")
-    if any(order == 0 or order > 3 for order in spec.pair_orders):
+    if any(order == 0 or order > 4 for order in spec.pair_orders):
         raise ValueError(
-            "current fused CUDA candidate supports pair orders one through three"
+            "current fused CUDA candidate supports pair orders one through four"
         )
     if any(order > 2 for order in spec.angular):
         raise ValueError("current fused CUDA candidate supports s/p/d shells")
@@ -352,6 +352,30 @@ def emit_shell_class_fused_cuda(
     supported_pair_orders = " || ".join(
         f"PairOrder == {order}U" for order in sorted(set(spec.pair_orders))
     )
+    double_pair_matchings = ""
+    if max(spec.pair_orders) >= 4:
+        double_pair_matchings = """  if constexpr (PairOrder >= 4U) {
+    for (unsigned first = 0; first < PairOrder; ++first) {
+      for (unsigned second = first + 1U; second < PairOrder; ++second) {
+        if (axes[first] != axes[second]) continue;
+        const unsigned first_removed =
+            (1U << first) | (1U << second);
+        for (unsigned third = 0; third < PairOrder; ++third) {
+          for (unsigned fourth = third + 1U; fourth < PairOrder; ++fourth) {
+            if (axes[third] != axes[fourth]) continue;
+            const unsigned second_removed =
+                (1U << third) | (1U << fourth);
+            if (first_removed >= second_removed ||
+                (first_removed & second_removed) != 0U) continue;
+            generated_dppp_add_pair_matching(
+                term, axes, shifts, shift_gradients, inverse_two_exponent,
+                subset, first_removed | second_removed, 2U);
+          }
+        }
+      }
+    }
+  }
+"""
     component_gradient_setup = _generic_component_gradient_setup(spec)
     task_component_setup = _generic_task_component_setup(spec)
     component_names = _emitted_component_names(spec)
@@ -542,7 +566,7 @@ __device__ __forceinline__ GeneratedDpppPairTerm generated_dppp_pair_term(
       }}
     }}
   }}
-  return term;
+{double_pair_matchings}  return term;
 }}
 
 template <bool SharedCoulomb>

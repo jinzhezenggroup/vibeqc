@@ -58,6 +58,12 @@ RTX5090_DPDS_RESOURCE_LIMITS = {
     "generated_dpds_shell_class_force_rhf_persistent_kernel": (156, 40, 1880),
     "generated_dpds_shell_class_force_uhf_persistent_kernel": (156, 40, 1880),
 }
+RTX5090_DDPS_RESOURCE_LIMITS = {
+    "generated_ddps_shell_class_force_rhf_kernel": (160, 64, 1872),
+    "generated_ddps_shell_class_force_uhf_kernel": (160, 64, 1872),
+    "generated_ddps_shell_class_force_rhf_persistent_kernel": (160, 64, 1880),
+    "generated_ddps_shell_class_force_uhf_persistent_kernel": (160, 64, 1880),
+}
 
 
 def assert_rtx5090_resources(
@@ -505,6 +511,19 @@ def test_dpds_fused_cuda_is_generated_from_shell_spec():
     assert "Dual3" not in source
 
 
+def test_ddps_fused_cuda_generates_order_four_double_matchings():
+    source = emit_shell_class_fused_cuda(DDPS_SPEC)
+    assert "kGeneratedDdpsComponentCount = 108U" in source
+    assert "kGeneratedDdpsBlockThreads = 128U" in source
+    assert "PairOrder == 1U || PairOrder == 4U" in source
+    assert "first_removed | second_removed, 2U" in source
+    assert "GeneratedDdpsPairTerm second_terms[2]" in source
+    assert "generated_ddps_shell_class_force_rhf_kernel" in source
+    assert "generated_dppp" not in source
+    assert "__noinline__" not in source
+    assert "Dual3" not in source
+
+
 def test_checked_in_dppp_fused_header_matches_generator():
     """Keep production CUDA synchronized with the symbolic AOT emitter."""
 
@@ -521,14 +540,31 @@ def test_checked_in_dpds_fused_header_matches_generator():
     )
 
 
-def test_dppp_fused_cuda_compiles_when_nvcc_is_configured(tmp_path: Path):
-    """Compile the standalone candidate for explicit local resource probes."""
+def test_checked_in_ddps_fused_header_matches_generator():
+    header = REPOSITORY_ROOT / "src" / "scf" / "generated" / "ddps_fused.cuh"
+    assert header.read_text(encoding="utf-8") == emit_shell_class_fused_cuda(
+        DDPS_SPEC
+    )
+
+
+@pytest.mark.parametrize(
+    ("spec", "resource_limits"),
+    (
+        (DPPP_SPEC, RTX5090_DPPP_RESOURCE_LIMITS),
+        (DPDS_SPEC, RTX5090_DPDS_RESOURCE_LIMITS),
+        (DDPS_SPEC, RTX5090_DDPS_RESOURCE_LIMITS),
+    ),
+)
+def test_fused_cuda_compiles_when_nvcc_is_configured(
+    tmp_path: Path, spec, resource_limits
+):
+    """Compile every generated shell class for explicit resource probes."""
 
     nvcc = os.environ.get("QCE_NVCC")
     if nvcc is None:
         pytest.skip("set QCE_NVCC to run the generated CUDA compile gate")
     cuda_architecture = os.environ.get("QCE_CUDA_ARCH", "sm_90")
-    source = tmp_path / "generated_dppp_fused.cu"
+    source = tmp_path / f"generated_{spec.name}_fused.cu"
     source.write_text(
         """
 template <unsigned MaximumOrder>
@@ -538,7 +574,7 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
   }
 }
 """
-        + emit_dppp_fused_cuda(),
+        + emit_shell_class_fused_cuda(spec),
         encoding="utf-8",
     )
     result = subprocess.run(
@@ -550,7 +586,7 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
             "-Xptxas=-v",
             str(source),
             "-o",
-            str(tmp_path / "generated_dppp_fused.cubin"),
+            str(tmp_path / f"generated_{spec.name}_fused.cubin"),
         ],
         check=False,
         capture_output=True,
@@ -560,55 +596,8 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
     if os.environ.get("QCE_NVCC_VERBOSE"):
         print(result.stdout + result.stderr)
     assert result.returncode == 0, result.stdout + result.stderr
-    if cuda_architecture == "sm_120":
-        assert_rtx5090_resources(
-            result.stdout + result.stderr, RTX5090_DPPP_RESOURCE_LIMITS
-        )
-
-
-def test_dpds_fused_cuda_compiles_when_nvcc_is_configured(tmp_path: Path):
-    """Compile the first fully specification-generated shell-class kernel."""
-
-    nvcc = os.environ.get("QCE_NVCC")
-    if nvcc is None:
-        pytest.skip("set QCE_NVCC to run the generated CUDA compile gate")
-    cuda_architecture = os.environ.get("QCE_CUDA_ARCH", "sm_90")
-    source = tmp_path / "generated_dpds_fused.cu"
-    source.write_text(
-        """
-template <unsigned MaximumOrder>
-__device__ __forceinline__ void boys_values(double argument, double* values) {
-  for (unsigned order = 0; order <= MaximumOrder; ++order) {
-    values[order] = 1.0 / (2.0 * static_cast<double>(order) + 1.0 + argument);
-  }
-}
-"""
-        + emit_shell_class_fused_cuda(DPDS_SPEC),
-        encoding="utf-8",
-    )
-    result = subprocess.run(
-        [
-            nvcc,
-            "-std=c++17",
-            f"-arch={cuda_architecture}",
-            "-cubin",
-            "-Xptxas=-v",
-            str(source),
-            "-o",
-            str(tmp_path / "generated_dpds_fused.cubin"),
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
-    if os.environ.get("QCE_NVCC_VERBOSE"):
-        print(result.stdout + result.stderr)
-    assert result.returncode == 0, result.stdout + result.stderr
-    if cuda_architecture == "sm_120":
-        assert_rtx5090_resources(
-            result.stdout + result.stderr, RTX5090_DPDS_RESOURCE_LIMITS
-        )
+    if cuda_architecture == "sm_120" and resource_limits is not None:
+        assert_rtx5090_resources(result.stdout + result.stderr, resource_limits)
 
 
 def test_dppp_benchmark_compares_shared_and_recomputed_schedules():
@@ -627,9 +616,15 @@ def test_dppp_benchmark_compares_shared_and_recomputed_schedules():
     assert '\\"speedup\\"' in source
 
 
-def test_dpds_benchmark_is_generated_without_shell_specific_harness_code():
+@pytest.mark.parametrize(
+    ("spec", "third_offset"),
+    ((DPDS_SPEC, 9), (DDPS_SPEC, 12)),
+)
+def test_benchmark_is_generated_without_shell_specific_harness_code(
+    spec, third_offset
+):
     source = emit_shell_class_benchmark_cuda(
-        DPDS_SPEC,
+        spec,
         task_count=32,
         primitive_count=2,
         warmups=1,
@@ -637,10 +632,11 @@ def test_dpds_benchmark_is_generated_without_shell_specific_harness_code():
         samples=5,
     )
     assert "constexpr std::size_t n = 16U" in source
+    assert f"task.ao_begin[2] = {third_offset}U" in source
     assert "task.ao_begin[3] = 15U" in source
-    assert "generated_dpds_component_gradient<true>" in source
-    assert "generated_dpds_component_gradient<false>" in source
-    assert "generated_dpds_component_recompute_rhf_kernel" in source
+    assert f"generated_{spec.name}_component_gradient<true>" in source
+    assert f"generated_{spec.name}_component_gradient<false>" in source
+    assert f"generated_{spec.name}_component_recompute_rhf_kernel" in source
     assert "generated_dppp" not in source
 
 
@@ -764,13 +760,14 @@ def test_codegen_cli_writes_dppp_component_candidate(tmp_path: Path):
     assert "generated_dppp_shell_class_force_rhf_kernel" in fused
 
 
-def test_codegen_cli_writes_dpds_fused_candidate(tmp_path: Path):
-    output = tmp_path / "generated" / "dpds_fused.cuh"
+@pytest.mark.parametrize("spec", (DPDS_SPEC, DDPS_SPEC))
+def test_codegen_cli_writes_generated_fused_candidate(tmp_path: Path, spec):
+    output = tmp_path / "generated" / f"{spec.name}_fused.cuh"
     command = [
         sys.executable,
         "tools/generate_shell_kernels.py",
         "--shell-class",
-        "dpds",
+        spec.name,
         "--lowering",
         "fused",
         "--output",
@@ -780,5 +777,5 @@ def test_codegen_cli_writes_dpds_fused_candidate(tmp_path: Path):
     first = output.read_text(encoding="utf-8")
     subprocess.run(command, check=True)
     assert output.read_text(encoding="utf-8") == first
-    assert first == emit_shell_class_fused_cuda(DPDS_SPEC)
-    assert "generated_dpds_shell_class_force_rhf_kernel" in first
+    assert first == emit_shell_class_fused_cuda(spec)
+    assert f"generated_{spec.name}_shell_class_force_rhf_kernel" in first

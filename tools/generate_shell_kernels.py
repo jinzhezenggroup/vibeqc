@@ -21,13 +21,18 @@ from qce_codegen.shell_class import (
     emit_dppp_contraction_cuda,
     emit_psss_cuda,
 )
-from qce_codegen.shell_spec import DPDS_SPEC, DPPP_SPEC
+from qce_codegen.shell_spec import DDPS_SPEC, DPDS_SPEC, DPPP_SPEC
+
+
+FUSED_SPECS = {"dppp": DPPP_SPEC, "dpds": DPDS_SPEC, "ddps": DDPS_SPEC}
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--shell-class", choices=("psss", "dppp", "dpds"), default="psss"
+        "--shell-class",
+        choices=("psss", *FUSED_SPECS),
+        default="psss",
     )
     parser.add_argument("--axis", choices=("x", "y", "z"), default="x")
     parser.add_argument(
@@ -87,7 +92,9 @@ def main() -> None:
             )
     else:
         if arguments.lowering != "fused":
-            parser.error("dpds currently supports only the fused lowering")
+            parser.error(
+                f"{arguments.shell_class} currently supports only the fused lowering"
+            )
         kernel = None
         component_metadata = {"lowering": "fused"}
     if arguments.format == "cuda":
@@ -100,15 +107,18 @@ def main() -> None:
         elif arguments.shell_class == "dppp":
             output = emit_dppp_fused_cuda()
         else:
-            output = emit_shell_class_fused_cuda(DPDS_SPEC)
+            output = emit_shell_class_fused_cuda(
+                FUSED_SPECS[arguments.shell_class]
+            )
     else:
         if arguments.lowering == "fused":
             if arguments.shell_class == "dppp":
                 plan = build_dppp_fused_plan()
                 source = emit_dppp_fused_cuda(plan)
-            elif arguments.shell_class == "dpds":
-                plan = build_fused_shell_plan(DPDS_SPEC)
-                source = emit_shell_class_fused_cuda(DPDS_SPEC, plan)
+            elif arguments.shell_class in FUSED_SPECS:
+                specification = FUSED_SPECS[arguments.shell_class]
+                plan = build_fused_shell_plan(specification)
+                source = emit_shell_class_fused_cuda(specification, plan)
             else:
                 parser.error("psss does not support the fused lowering")
             output = json.dumps(

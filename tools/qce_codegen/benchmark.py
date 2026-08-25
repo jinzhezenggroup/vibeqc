@@ -27,7 +27,7 @@ from .dppp_dispatch import (
     _specialize_dppp_identifiers,
     emit_shell_class_fused_cuda,
 )
-from .shell_spec import DPDS_SPEC, DPPP_SPEC, ShellClassSpec
+from .shell_spec import DDPS_SPEC, DPDS_SPEC, DPPP_SPEC, ShellClassSpec
 
 _CUDA_PRELUDE = r"""
 #include <cuda_runtime.h>
@@ -460,7 +460,7 @@ def main() -> None:
     parser.add_argument("--partition", default="main")
     parser.add_argument("--gres", default="gpu:5090:1")
     parser.add_argument(
-        "--shell-class", choices=("dppp", "dpds"), default="dppp"
+        "--shell-class", choices=("dppp", "dpds", "ddps"), default="dppp"
     )
     parser.add_argument("--tasks", type=int, default=512)
     parser.add_argument("--primitives", type=int, default=2)
@@ -473,9 +473,11 @@ def main() -> None:
         help="also write the generated standalone CUDA source to this path",
     )
     arguments = parser.parse_args()
-    specification = {"dppp": DPPP_SPEC, "dpds": DPDS_SPEC}[
-        arguments.shell_class
-    ]
+    specification = {
+        "dppp": DPPP_SPEC,
+        "dpds": DPDS_SPEC,
+        "ddps": DDPS_SPEC,
+    }[arguments.shell_class]
     source = emit_shell_class_benchmark_cuda(
         specification,
         arguments.tasks,
