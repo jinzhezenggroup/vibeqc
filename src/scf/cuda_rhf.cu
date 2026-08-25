@@ -74,6 +74,9 @@ constexpr unsigned kPackedSsssAngularOrderCount = 1;
 // share every primitive-pair, product-center, Boys, and decay calculation, so
 // one lane should own the complete shell task instead of one AO component.
 constexpr unsigned kFusedPsssAngularOrder = 1;
+// Order two is fully covered by psps, ppss, and dsss. A single shell-task
+// worker can dispatch those three exact recurrences without another queue.
+constexpr unsigned kFusedOrderTwoAngularOrder = 2;
 static_assert(detail::kDirectQuartetThreads == 32);
 // Generated order-five classes are removed from a compact generic fallback
 // queue. Keeping the order explicit avoids coupling runtime selection to one
@@ -1680,6 +1683,258 @@ __device__ Scalar primitive_eri_order2(
       qexp(-mu * distance_squared(first, second) -
            nu * distance_squared(third, fourth));
   return 2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q)) * pair_decay * value;
+}
+
+/** Cartesian source component count for one s, p, or d shell. */
+template <unsigned ShellAngular>
+__host__ __device__ constexpr unsigned order2_shell_component_count() {
+  static_assert(ShellAngular <= 2);
+  return (ShellAngular + 1) * (ShellAngular + 2) / 2;
+}
+
+/** Return one CCA-ordered Cartesian component through d angular momentum. */
+template <unsigned ShellAngular>
+__device__ __forceinline__ Angular order2_shell_component(unsigned component) {
+  static_assert(ShellAngular <= 2);
+  if constexpr (ShellAngular == 0) {
+    (void)component;
+    return {0, 0, 0};
+  } else if constexpr (ShellAngular == 1) {
+    return component == 0 ? Angular{1, 0, 0}
+         : component == 1 ? Angular{0, 1, 0}
+                          : Angular{0, 0, 1};
+  } else {
+    switch (component) {
+      case 0: return {2, 0, 0};
+      case 1: return {1, 1, 0};
+      case 2: return {1, 0, 1};
+      case 3: return {0, 2, 0};
+      case 4: return {0, 1, 1};
+      default: return {0, 0, 2};
+    }
+  }
+}
+
+/**
+ * Evaluate one order-two AO component from shell-shared primitive data.
+ *
+ * Product centers, Boys values, decay, and the Coulomb prefactor are owned by
+ * the enclosing shell contraction. This helper retains only the inexpensive
+ * component-dependent pair expansions and Coulomb derivative contraction.
+ */
+template <unsigned FirstShellAngular,
+          unsigned SecondShellAngular,
+          unsigned ThirdShellAngular,
+          unsigned FourthShellAngular>
+__device__ __forceinline__ double order2_component_value(
+    double p,
+    const Vec3<double>& product_p,
+    const Vec3<double>& first,
+    const Angular& angular_first,
+    const Vec3<double>& second,
+    const Angular& angular_second,
+    double q,
+    const Vec3<double>& product_q,
+    const Vec3<double>& third,
+    const Angular& angular_third,
+    const Vec3<double>& fourth,
+    const Angular& angular_fourth,
+    double rho,
+    const Vec3<double>& product_difference,
+    const double (&boys)[3]) {
+  constexpr unsigned FirstPairOrder =
+      FirstShellAngular + SecondShellAngular;
+  constexpr unsigned SecondPairOrder =
+      ThirdShellAngular + FourthShellAngular;
+  static_assert(FirstPairOrder + SecondPairOrder == 2);
+  constexpr unsigned FirstTermCount =
+      FirstPairOrder == 0 ? 1 : (FirstPairOrder == 1 ? 2 : 4);
+  constexpr unsigned SecondTermCount =
+      SecondPairOrder == 0 ? 1 : (SecondPairOrder == 1 ? 2 : 4);
+  const LowOrderPairExpansion<double> first_expansion =
+      make_low_order_pair_expansion<
+          FirstShellAngular, SecondShellAngular>(
+          p, product_p, first, angular_first, second, angular_second);
+  const LowOrderPairExpansion<double> second_expansion =
+      make_low_order_pair_expansion<
+          ThirdShellAngular, FourthShellAngular>(
+          q, product_q, third, angular_third, fourth, angular_fourth);
+
+  double value = 0.0;
+#pragma unroll
+  for (unsigned first_term = 0; first_term < FirstTermCount; ++first_term) {
+#pragma unroll
+    for (unsigned second_term = 0; second_term < SecondTermCount;
+         ++second_term) {
+      const LowOrderHermiteTerm<double>& first_item =
+          first_expansion.terms[first_term];
+      const LowOrderHermiteTerm<double>& second_item =
+          second_expansion.terms[second_term];
+      const double sign =
+          (low_order_derivative_total(second_item.derivative_state) & 1U) == 0
+          ? 1.0
+          : -1.0;
+      value += sign * first_item.coefficient * second_item.coefficient *
+          low_order_coulomb(
+              first_item.derivative_state + second_item.derivative_state,
+              rho, product_difference, boys);
+    }
+  }
+  return value;
+}
+
+/** Maximum full Cartesian output count among the three order-two classes. */
+struct Order2IntegralVector {
+  double component[9];
+};
+
+/**
+ * Contract one canonical order-two shell quartet into all requested outputs.
+ *
+ * `active_component_mask` uses the canonical full Cartesian product order.
+ * Symmetry-diagonal tasks therefore avoid computing product entries that are
+ * absent from their lower-triangular AO-quartet domain.
+ */
+template <unsigned FirstShellAngular,
+          unsigned SecondShellAngular,
+          unsigned ThirdShellAngular,
+          unsigned FourthShellAngular>
+__device__ __noinline__ Order2IntegralVector
+contracted_eri_cartesian_source_order2_shell(
+    const DeviceBatch& batch,
+    std::int32_t first_shell,
+    std::int32_t second_shell,
+    std::int32_t third_shell,
+    std::int32_t fourth_shell,
+    unsigned active_component_mask) {
+  static_assert(FirstShellAngular + SecondShellAngular +
+                ThirdShellAngular + FourthShellAngular == 2);
+  constexpr unsigned FirstCount =
+      order2_shell_component_count<FirstShellAngular>();
+  constexpr unsigned SecondCount =
+      order2_shell_component_count<SecondShellAngular>();
+  constexpr unsigned ThirdCount =
+      order2_shell_component_count<ThirdShellAngular>();
+  constexpr unsigned FourthCount =
+      order2_shell_component_count<FourthShellAngular>();
+  constexpr unsigned OutputCount =
+      FirstCount * SecondCount * ThirdCount * FourthCount;
+  static_assert(OutputCount <= 9);
+
+  const std::int32_t shells[4] = {
+      first_shell, second_shell, third_shell, fourth_shell};
+  const Vec3<double> positions[4] = {
+      atom_position<double>(batch, batch.shell_atoms[first_shell], -1),
+      atom_position<double>(batch, batch.shell_atoms[second_shell], -1),
+      atom_position<double>(batch, batch.shell_atoms[third_shell], -1),
+      atom_position<double>(batch, batch.shell_atoms[fourth_shell], -1),
+  };
+  const std::int64_t ao_begin[4] = {
+      batch.shell_direct_ao_offsets[first_shell],
+      batch.shell_direct_ao_offsets[second_shell],
+      batch.shell_direct_ao_offsets[third_shell],
+      batch.shell_direct_ao_offsets[fourth_shell],
+  };
+  const double first_pair_distance =
+      distance_squared(positions[0], positions[1]);
+  const double second_pair_distance =
+      distance_squared(positions[2], positions[3]);
+
+  Order2IntegralVector result{};
+  for (std::int64_t a = batch.shell_primitive_offsets[shells[0]];
+       a < batch.shell_primitive_offsets[shells[0] + 1]; ++a) {
+    const double alpha = batch.primitive_exponents[a];
+    const double coefficient_a = batch.primitive_coefficients[a];
+    for (std::int64_t b = batch.shell_primitive_offsets[shells[1]];
+         b < batch.shell_primitive_offsets[shells[1] + 1]; ++b) {
+      const double beta = batch.primitive_exponents[b];
+      const double p = alpha + beta;
+      const double mu = alpha * beta / p;
+      const Vec3<double> product_p =
+          product_center(alpha, positions[0], beta, positions[1]);
+      const double first_pair_coefficient =
+          coefficient_a * batch.primitive_coefficients[b];
+      for (std::int64_t c = batch.shell_primitive_offsets[shells[2]];
+           c < batch.shell_primitive_offsets[shells[2] + 1]; ++c) {
+        const double gamma = batch.primitive_exponents[c];
+        const double first_three_coefficient =
+            first_pair_coefficient * batch.primitive_coefficients[c];
+        for (std::int64_t d = batch.shell_primitive_offsets[shells[3]];
+             d < batch.shell_primitive_offsets[shells[3] + 1]; ++d) {
+          const double delta = batch.primitive_exponents[d];
+          const double q = gamma + delta;
+          const double nu = gamma * delta / q;
+          const double rho = p * q / (p + q);
+          const Vec3<double> product_q =
+              product_center(gamma, positions[2], delta, positions[3]);
+          const Vec3<double> product_difference{
+              product_p.x - product_q.x,
+              product_p.y - product_q.y,
+              product_p.z - product_q.z,
+          };
+          double boys[3];
+          boys_values<2>(
+              rho * distance_squared(product_p, product_q), boys);
+          const double pair_decay = exp(
+              -mu * first_pair_distance - nu * second_pair_distance);
+          const double primitive_coefficient =
+              first_three_coefficient * batch.primitive_coefficients[d];
+          const double common = primitive_coefficient *
+              2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q)) * pair_decay;
+
+          unsigned output = 0;
+#pragma unroll
+          for (unsigned first_component = 0;
+               first_component < FirstCount; ++first_component) {
+            const Angular angular_first =
+                order2_shell_component<FirstShellAngular>(first_component);
+#pragma unroll
+            for (unsigned second_component = 0;
+                 second_component < SecondCount; ++second_component) {
+              const Angular angular_second =
+                  order2_shell_component<SecondShellAngular>(second_component);
+#pragma unroll
+              for (unsigned third_component = 0;
+                   third_component < ThirdCount; ++third_component) {
+                const Angular angular_third =
+                    order2_shell_component<ThirdShellAngular>(third_component);
+#pragma unroll
+                for (unsigned fourth_component = 0;
+                     fourth_component < FourthCount; ++fourth_component,
+                         ++output) {
+                  if ((active_component_mask & (1U << output)) == 0) {
+                    continue;
+                  }
+                  const Angular angular_fourth =
+                      order2_shell_component<FourthShellAngular>(
+                          fourth_component);
+                  const double angular_coefficient =
+                      batch.direct_ao_coefficients[
+                          ao_begin[0] + first_component] *
+                      batch.direct_ao_coefficients[
+                          ao_begin[1] + second_component] *
+                      batch.direct_ao_coefficients[
+                          ao_begin[2] + third_component] *
+                      batch.direct_ao_coefficients[
+                          ao_begin[3] + fourth_component];
+                  result.component[output] += angular_coefficient * common *
+                      order2_component_value<
+                          FirstShellAngular, SecondShellAngular,
+                          ThirdShellAngular, FourthShellAngular>(
+                          p, product_p, positions[0], angular_first,
+                          positions[1], angular_second,
+                          q, product_q, positions[2], angular_third,
+                          positions[3], angular_fourth,
+                          rho, product_difference, boys);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return result;
 }
 
 /** Exact-sized sparse pair expansion used only by total-order-3 quartets. */
@@ -6844,6 +7099,182 @@ __device__ __noinline__ void contract_fock_direct_psss_task(
   }
 }
 
+/** One canonical shell slot and its position in the original quartet. */
+struct Order2SourceSlot {
+  std::int32_t shell;
+  unsigned original;
+};
+
+/** Map raw AO slots to the fused vector's canonical Cartesian product. */
+__device__ __forceinline__ unsigned order2_component_index(
+    const DeviceBatch& batch,
+    const Order2SourceSlot (&slots)[4],
+    const std::size_t (&raw_ao)[4],
+    std::size_t system_ao_begin) {
+  unsigned output = 0;
+#pragma unroll
+  for (unsigned slot = 0; slot < 4; ++slot) {
+    const unsigned angular = batch.shell_angular[slots[slot].shell];
+    const unsigned component_count = (angular + 1) * (angular + 2) / 2;
+    const std::size_t local_begin = static_cast<std::size_t>(
+        batch.shell_direct_ao_offsets[slots[slot].shell]) - system_ao_begin;
+    const unsigned component = static_cast<unsigned>(
+        raw_ao[slots[slot].original] - local_begin);
+    output = output * component_count + component;
+  }
+  return output;
+}
+
+/** Evaluate and scatter one complete psps, ppss, or dsss shell task. */
+template <bool Unrestricted>
+__device__ __noinline__ void contract_fock_direct_order2_task(
+    const DeviceBatch& batch,
+    ActiveShellQuartetTile task,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    const std::uint8_t* active,
+    double* fock) {
+  if (task.tile != 0U) return;
+  const std::size_t first_pair = task.first_pair;
+  const std::size_t second_pair = task.second_pair;
+  const std::int32_t system = batch.shell_pair_systems[first_pair];
+  if (active != nullptr && active[system] == 0) return;
+
+  Order2SourceSlot slots[4] = {
+      {batch.shell_pair_first[first_pair], 0},
+      {batch.shell_pair_second[first_pair], 1},
+      {batch.shell_pair_first[second_pair], 2},
+      {batch.shell_pair_second[second_pair], 3},
+  };
+  const unsigned shell_class = direct_quartet_shell_class_device(
+      batch.shell_angular[slots[0].shell],
+      batch.shell_angular[slots[1].shell],
+      batch.shell_angular[slots[2].shell],
+      batch.shell_angular[slots[3].shell]);
+  if (shell_class != 2U && shell_class != 3U && shell_class != 6U) return;
+
+  if (batch.shell_angular[slots[0].shell] <
+      batch.shell_angular[slots[1].shell]) {
+    const Order2SourceSlot swap = slots[0];
+    slots[0] = slots[1];
+    slots[1] = swap;
+  }
+  if (batch.shell_angular[slots[2].shell] <
+      batch.shell_angular[slots[3].shell]) {
+    const Order2SourceSlot swap = slots[2];
+    slots[2] = slots[3];
+    slots[3] = swap;
+  }
+  const unsigned first_pair_class = direct_shell_pair_class_cuda(
+      batch.shell_angular[slots[0].shell],
+      batch.shell_angular[slots[1].shell]);
+  const unsigned second_pair_class = direct_shell_pair_class_cuda(
+      batch.shell_angular[slots[2].shell],
+      batch.shell_angular[slots[3].shell]);
+  if (first_pair_class < second_pair_class) {
+    const Order2SourceSlot first_swap = slots[0];
+    slots[0] = slots[2];
+    slots[2] = first_swap;
+    const Order2SourceSlot second_swap = slots[1];
+    slots[1] = slots[3];
+    slots[3] = second_swap;
+  }
+
+  const std::size_t n = static_cast<std::size_t>(batch.direct_nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t physical_offset =
+      static_cast<std::size_t>(system) * matrix_size;
+  const std::size_t spin_offset =
+      static_cast<std::size_t>(system) * 2 * matrix_size;
+  const std::size_t system_ao_begin = static_cast<std::size_t>(system) * n;
+  const std::size_t first_ao_pair_count =
+      shell_ao_pair_count(batch, first_pair);
+  const std::size_t second_ao_pair_count =
+      shell_ao_pair_count(batch, second_pair);
+  const bool same_shell_pair = first_pair == second_pair;
+  const std::size_t ao_quartet_count = same_shell_pair
+      ? first_ao_pair_count * (first_ao_pair_count + 1) / 2
+      : first_ao_pair_count * second_ao_pair_count;
+
+  unsigned active_component_mask = 0;
+  for (std::size_t ordinal = 0; ordinal < ao_quartet_count; ++ordinal) {
+    std::size_t first_ao_pair = 0;
+    std::size_t second_ao_pair = 0;
+    if (same_shell_pair) {
+      decode_lower_triangle(ordinal, first_ao_pair, second_ao_pair);
+    } else {
+      first_ao_pair = ordinal / second_ao_pair_count;
+      second_ao_pair = ordinal % second_ao_pair_count;
+    }
+    std::size_t raw_ao[4];
+    decode_shell_ao_pair(
+        batch, first_pair, first_ao_pair, system_ao_begin,
+        raw_ao[0], raw_ao[1]);
+    decode_shell_ao_pair(
+        batch, second_pair, second_ao_pair, system_ao_begin,
+        raw_ao[2], raw_ao[3]);
+    if (schwarz_bounds[
+            physical_offset + matrix_index(raw_ao[0], raw_ao[1], n)] *
+            schwarz_bounds[
+                physical_offset + matrix_index(raw_ao[2], raw_ao[3], n)] <
+        screening_tolerance) {
+      continue;
+    }
+    active_component_mask |=
+        1U << order2_component_index(
+            batch, slots, raw_ao, system_ao_begin);
+  }
+  if (active_component_mask == 0) return;
+
+  Order2IntegralVector integral{};
+  switch (shell_class) {
+    case 2:
+      integral = contracted_eri_cartesian_source_order2_shell<1, 0, 1, 0>(
+          batch, slots[0].shell, slots[1].shell,
+          slots[2].shell, slots[3].shell, active_component_mask);
+      break;
+    case 3:
+      integral = contracted_eri_cartesian_source_order2_shell<1, 1, 0, 0>(
+          batch, slots[0].shell, slots[1].shell,
+          slots[2].shell, slots[3].shell, active_component_mask);
+      break;
+    default:
+      integral = contracted_eri_cartesian_source_order2_shell<2, 0, 0, 0>(
+          batch, slots[0].shell, slots[1].shell,
+          slots[2].shell, slots[3].shell, active_component_mask);
+      break;
+  }
+
+  for (std::size_t ordinal = 0; ordinal < ao_quartet_count; ++ordinal) {
+    std::size_t first_ao_pair = 0;
+    std::size_t second_ao_pair = 0;
+    if (same_shell_pair) {
+      decode_lower_triangle(ordinal, first_ao_pair, second_ao_pair);
+    } else {
+      first_ao_pair = ordinal / second_ao_pair_count;
+      second_ao_pair = ordinal % second_ao_pair_count;
+    }
+    std::size_t raw_ao[4];
+    decode_shell_ao_pair(
+        batch, first_pair, first_ao_pair, system_ao_begin,
+        raw_ao[0], raw_ao[1]);
+    decode_shell_ao_pair(
+        batch, second_pair, second_ao_pair, system_ao_begin,
+        raw_ao[2], raw_ao[3]);
+    const unsigned component = order2_component_index(
+        batch, slots, raw_ao, system_ao_begin);
+    if ((active_component_mask & (1U << component)) == 0 ||
+        integral.component[component] == 0.0) {
+      continue;
+    }
+    accumulate_direct_fock_integral<Unrestricted>(
+        n, physical_offset, spin_offset, density, fock,
+        raw_ao[0], raw_ao[1], raw_ao[2], raw_ao[3],
+        integral.component[component]);
+  }
+}
+
 /** Fixed-capacity wrapper retained for high-register angular orders. */
 template <bool Unrestricted, unsigned AngularOrder>
 __global__ void build_fock_direct_quartet_kernel(
@@ -6926,6 +7357,37 @@ __global__ void build_fock_direct_psss_persistent_kernel(
     }
     // Tail lanes must remain live until the next warp-uniform queue exit so
     // the full-mask shuffle above is valid on every persistent iteration.
+  }
+}
+
+/** Consume complete order-two shell tasks, one independent task per lane. */
+template <bool Unrestricted>
+__global__ void build_fock_direct_order2_persistent_kernel(
+    DeviceBatch batch,
+    const std::uint32_t* active_shell_quartet_tile_count,
+    const ActiveShellQuartetTile* active_shell_quartet_tiles,
+    std::uint32_t* task_head,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    const std::uint8_t* active,
+    double* fock) {
+  const unsigned lane = threadIdx.x;
+  const std::uint32_t work_count = *active_shell_quartet_tile_count;
+  while (true) {
+    std::uint32_t packed_begin = 0;
+    if (lane == 0) {
+      packed_begin = atomicAdd(
+          task_head, static_cast<std::uint32_t>(warpSize));
+    }
+    packed_begin = __shfl_sync(0xffffffffU, packed_begin, 0);
+    if (packed_begin >= work_count) return;
+    const std::uint32_t packed_item = packed_begin + lane;
+    if (packed_item < work_count) {
+      contract_fock_direct_order2_task<Unrestricted>(
+          batch, active_shell_quartet_tiles[packed_item],
+          screening_tolerance, schwarz_bounds, density, active, fock);
+    }
   }
 }
 
@@ -8222,6 +8684,17 @@ void launch_angular_fock_quartets(
             (capacities[AngularOrder] + detail::kDirectQuartetThreads - 1) /
             detail::kDirectQuartetThreads);
         build_fock_direct_psss_persistent_kernel<Unrestricted><<<
+            std::min(capacity_workers, persistent_worker_blocks),
+            detail::kDirectQuartetThreads, 0, stream>>>(
+            batch, active_tile_counts + AngularOrder,
+            active_tiles + offsets[AngularOrder],
+            persistent_task_heads + AngularOrder, screening_tolerance,
+            schwarz_bounds, density, active, fock);
+      } else if constexpr (AngularOrder == kFusedOrderTwoAngularOrder) {
+        const unsigned capacity_workers = static_cast<unsigned>(
+            (capacities[AngularOrder] + detail::kDirectQuartetThreads - 1) /
+            detail::kDirectQuartetThreads);
+        build_fock_direct_order2_persistent_kernel<Unrestricted><<<
             std::min(capacity_workers, persistent_worker_blocks),
             detail::kDirectQuartetThreads, 0, stream>>>(
             batch, active_tile_counts + AngularOrder,
