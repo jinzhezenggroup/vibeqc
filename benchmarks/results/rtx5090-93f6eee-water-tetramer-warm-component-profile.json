@@ -1,0 +1,92 @@
+{
+  "benchmark": "warm_energy_force_component_profile",
+  "capture": {
+    "capture_range": "cudaProfilerApi",
+    "nsight_systems": "2025.2.1.0",
+    "qce_cuda_runtime_capture_span_seconds": 1.526585359,
+    "qce_iterations": 2,
+    "qce_wall_seconds": 1.526585359,
+    "sequence": "one uncaptured cold energy-plus-force execution followed by one captured warm execution",
+    "trace": "cuda,nvtx"
+  },
+  "environment": {
+    "cuda_runtime": "12.9",
+    "device": "NVIDIA GeForce RTX 5090",
+    "driver": "580.95.05",
+    "gpu4pyscf_commit": "db6bb7f12bf4b6465b7c5ff0a9741bc2be08318d",
+    "gpu4pyscf_version": "1.8.1",
+    "node": "node3",
+    "qce_commit": "93f6eee16cbdd35cebf58c471a00875120e46e65",
+    "qce_dirty": false
+  },
+  "gpu4pyscf": {
+    "component_kernel_milliseconds": {
+      "direct_jk": 501.61271,
+      "eigensolver": 5.822565,
+      "one_electron_force": 2.519305,
+      "other": 4.338709,
+      "two_electron_force": 311.187256
+    },
+    "kernel_launches": 4419,
+    "kernel_span_milliseconds": 1515.173802,
+    "span_minus_summed_kernel_milliseconds": 689.693257,
+    "summed_kernel_milliseconds": 825.480545,
+    "two_electron_force_kernel_milliseconds_by_total_angular_order": {
+      "0": 23.574182,
+      "1": 36.362563,
+      "2": 57.083627,
+      "3": 80.068394,
+      "4": 46.403201,
+      "5": 26.380192,
+      "fallback_6_through_8": 41.315097
+    }
+  },
+  "methodology_notes": [
+    "Both engines use the exact 96-AO batch-1 acceptance workload and the acceptance SCF and screening tolerances.",
+    "The QCE profile was captured from the tree published as clean commit 93f6eee; the unchanged GPU4PySCF values come from the matching clean 1.8.1 capture published with c28b1e9.",
+    "QCE's runtime capture span is the interval from cuProfilerStart through the final captured CUDA synchronization, derived from the exported Nsight Systems trace.",
+    "Component values sum CUDA kernel durations by demangled kernel family; they do not include CPU work or idle gaps.",
+    "The direct-J/K category contains the direct quartet kernels; its small density-bound, compaction, and spherical-transform helpers are included in other. GPU4PySCF direct J/K includes Rys K, MD J, density-transform, and q-condition kernels.",
+    "The GPU4PySCF fallback force kernel covers total angular orders six through eight for this s/p/d def2-SVP workload.",
+    "Span-minus-summed-kernel is diagnostic only because concurrent kernels, if present, make duration sums non-additive."
+  ],
+  "qce": {
+    "component_kernel_milliseconds": {
+      "direct_jk": 487.953365,
+      "eigensolver": 31.257409,
+      "one_electron_force": 22.065422,
+      "one_electron_values_and_schwarz": 0.0,
+      "other": 4.10932,
+      "two_electron_force": 354.977409
+    },
+    "kernel_launches": 56,
+    "kernel_span_milliseconds": 1523.037721,
+    "span_minus_summed_kernel_milliseconds": 622.674796,
+    "summed_kernel_milliseconds": 900.362925,
+    "two_electron_force_kernel_milliseconds_by_total_angular_order": {
+      "0": 30.228127,
+      "1": 54.262768,
+      "2": 65.180392,
+      "3": 47.214594,
+      "4": 55.163762,
+      "5": 47.572323,
+      "6": 29.163836,
+      "7": 22.457935,
+      "8": 3.733672
+    }
+  },
+  "schema_version": 1,
+  "workload": {
+    "ao_count": 96,
+    "basis": "def2-SVP",
+    "basis_representation": "real spherical",
+    "batch_size": 1,
+    "case": "water-tetramer-def2-svp-spherical",
+    "density_tolerance": 1e-10,
+    "energy_tolerance_hartree": 1e-12,
+    "gpu4pyscf_gradient_tolerance": 1e-09,
+    "maximum_iterations": 100,
+    "molecule": "GMTKN55/WATER27 optimized water tetramer",
+    "screening_tolerance": 1e-14
+  }
+}

@@ -52,32 +52,41 @@ The exact acceptance workload and tolerances are unchanged.
 
 | Component | QCE kernel time | GPU4PySCF kernel time | QCE minus GPU4PySCF |
 | --- | ---: | ---: | ---: |
-| Direct J/K | 491.743 ms | 501.613 ms | -9.869 ms |
-| Two-electron force | 364.973 ms | 311.187 ms | +53.785 ms |
-| Eigensolver | 31.206 ms | 5.823 ms | +25.383 ms |
-| One-electron force | 22.061 ms | 2.519 ms | +19.541 ms |
+| Direct J/K | 487.953 ms | 501.613 ms | -13.659 ms |
+| Two-electron force | 354.977 ms | 311.187 ms | +43.790 ms |
+| Eigensolver | 31.257 ms | 5.823 ms | +25.435 ms |
+| One-electron force | 22.065 ms | 2.519 ms | +19.546 ms |
 | QCE one-electron values and Schwarz | 0.000 ms | n/a | n/a |
 
-QCE records 56 kernel launches and a 1.539 s kernel span; GPU4PySCF records
+QCE records 56 kernel launches and a 1.523 s kernel span; GPU4PySCF records
 4,419 launches and a 1.515 s kernel span. Launch count is therefore not the
 primary explanation for the gap. Direct J/K kernel time remains comparable.
 Order 2 now stores only one center's pair-coefficient gradients, evaluates
 three full centers, and restores the fourth from translation. Its kernel falls
 from 188 registers and 864 stack bytes to 169 registers and 624 stack bytes,
 and from 88.488 ms to 65.231 ms. Three additional isolated captures bracket it
-at 64.708--65.402 ms. The complete force pass improves by 5.4%.
+at 64.708--65.402 ms.
 
-The largest remaining isolated force gap is now order 5 at 50.694 ms versus
-26.380 ms. Order 1 follows at +18.616 ms, while orders 6--8 together cost
-58.757 ms versus GPU4PySCF's 41.315 ms fallback. Outside the two-electron
-force, eigensolver and one-electron-force gaps are +25.383 and +19.541 ms.
+Orders 4--6 now generate each subset coefficient and its first-center
+gradient in one matching traversal instead of materializing the full pair
+expansion and revisiting every matching for three Cartesian derivatives.
+Their resources fall from `215/226/255` registers and
+`1472/2064/3376` stack bytes to `207/218/224` registers and
+`880/992/1216` bytes. Five captures bracket order 4 at 54.125--55.164 ms,
+order 5 at 47.453--47.572 ms, and order 6 at 28.988--29.164 ms. The clean
+complete force pass reaches 354.977 ms, 2.7% below `2c0ee1a`.
+
+The largest remaining isolated force gap is order 5 at 47.572 ms versus
+26.380 ms. Order 1 follows at +17.900 ms, while orders 6--8 together cost
+55.355 ms versus GPU4PySCF's 41.315 ms fallback. Outside the two-electron
+force, eigensolver and one-electron-force gaps are +25.435 and +19.546 ms.
 GPU4PySCF executes common classes through generated Rys `ip1` kernels with
 cooperative workers and shared primitive-pair intermediates. The next primary
-targets are therefore order-5 cooperative contraction, eigensolver, and
-one-electron force rather than direct-J/K tuning. See the
-[`2c0ee1a` component artifact](rtx5090-2c0ee1a-water-tetramer-warm-component-profile.json)
+targets are therefore eigensolver, order-5 cooperative contraction,
+one-electron force, and order 1 rather than direct-J/K tuning. See the
+[`93f6eee` component artifact](rtx5090-93f6eee-water-tetramer-warm-component-profile.json)
 for the full per-order breakdown and capture metadata. Its QCE values come
-from clean `2c0ee1a`; the unchanged GPU4PySCF values come from the matching
+from clean `93f6eee`; the unchanged GPU4PySCF values come from the matching
 clean 1.8.1 capture previously published with `c28b1e9`.
 
 ## Current exact shell-class results

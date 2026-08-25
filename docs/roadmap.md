@@ -175,6 +175,19 @@ and performance measurements pass.
   repeat-to-repeat SCF-state sensitivity that the harness does not yet record
   per repeat. Order five is now the largest isolated force deficit, while the
   eigensolver and one-electron force are comparable system-level targets.
+  High-order pair coefficients and first-center gradients now share one
+  subset/Wick matching traversal, and only the compact pair geometry plus the
+  smaller canonical second-pair term array remain live. Order-4/5/6 resources
+  fall from `215/226/255` registers and `1472/2064/3376` stack bytes to
+  `207/218/224` registers and `880/992/1216` bytes. Five 96-AO captures span
+  54.125--55.164, 47.453--47.572, and 28.988--29.164 ms respectively; the
+  clean complete two-electron force reaches 354.977 ms. A new formal
+  three-repeat endpoint run remains accuracy-valid but records only
+  `0.922x`/`0.949x` at batch 1/4, so neither required speed gate closes.
+  Eigensolver is now the largest system-level gap, followed by order five,
+  one-electron force, and order one. The next experimental branch will test
+  conservative FP32/log-domain screening metadata while retaining FP64 ERI,
+  J/K, force accumulation, SCF matrices, and eigensolver arithmetic.
   Clean RTX 5090
   artifacts validate energy, forces, and homogeneous-batch throughput for the
   exact `sdf18-direct`, Cartesian water/def2-SVP, and open-shell
