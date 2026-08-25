@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import os
+import re
 import subprocess
 import sys
 from dataclasses import replace
@@ -12,11 +13,18 @@ from pathlib import Path
 import pytest
 
 from tools.qce_codegen import (
+    DDPS_SPEC,
+    DPDS_SPEC,
+    DPPP_SPEC,
     NvrtcCacheSpec,
+    ShellClassSpec,
     build_dppp_component_kernel,
     build_dppp_contraction_kernel,
     build_dppp_fused_plan,
     build_psss_kernel,
+    build_shell_class_component_kernel,
+    build_shell_class_contraction_kernel,
+    cartesian_components,
     dppp_components,
     emit_dppp_fused_cuda,
     evaluate_dppp_fused_component,
@@ -32,6 +40,127 @@ from tools.qce_codegen.shell_class import (
 )
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+
+
+RTX5090_DPPP_RESOURCE_LIMITS = {
+    "generated_dppp_shell_class_force_rhf_kernel": (158, 40, 2064),
+    "generated_dppp_shell_class_force_uhf_kernel": (158, 40, 2064),
+    "generated_dppp_shell_class_force_rhf_persistent_kernel": (159, 40, 2072),
+    "generated_dppp_shell_class_force_uhf_persistent_kernel": (159, 40, 2072),
+}
+
+
+def assert_rtx5090_dppp_resources(ptxas_output: str) -> None:
+    """Reject CUDA 12.9 resource regressions before production integration."""
+
+    for function, (register_limit, stack_limit, shared_limit) in (
+        RTX5090_DPPP_RESOURCE_LIMITS.items()
+    ):
+        match = re.search(
+            rf"Function properties for {function}\n"
+            r"\s+(\d+) bytes stack frame, (\d+) bytes spill stores, "
+            r"(\d+) bytes spill loads\n"
+            r"ptxas info\s+: Used (\d+) registers,.*?, (\d+) bytes smem",
+            ptxas_output,
+        )
+        assert match is not None, f"missing ptxas resources for {function}"
+        stack, spill_stores, spill_loads, registers, shared = map(
+            int, match.groups()
+        )
+        assert registers <= register_limit
+        assert stack <= stack_limit
+        assert spill_stores == 0
+        assert spill_loads == 0
+        assert shared <= shared_limit
+
+
+def test_shell_spec_generates_cca_components_and_compile_time_bounds():
+    """Derive shell schedules without handwritten component tables."""
+
+    assert cartesian_components(0) == ("",)
+    assert cartesian_components(1) == AXES
+    assert cartesian_components(2) == ("xx", "xy", "xz", "yy", "yz", "zz")
+    assert cartesian_components(3) == (
+        "xxx",
+        "xxy",
+        "xxz",
+        "xyy",
+        "xyz",
+        "xzz",
+        "yyy",
+        "yyz",
+        "yzz",
+        "zzz",
+    )
+    assert DPPP_SPEC.pair_orders == (3, 2)
+    assert DPDS_SPEC.pair_orders == (3, 2)
+    assert DDPS_SPEC.pair_orders == (4, 1)
+    assert DPPP_SPEC.maximum_force_coulomb_order == 6
+    assert DPPP_SPEC.component_count == 162
+    assert DPPP_SPEC.component_strides == (27, 9, 3, 1)
+
+
+def test_shell_spec_component_schedule_round_trips_without_manual_decoding():
+    for index, component in enumerate(DPPP_SPEC.components):
+        assert DPPP_SPEC.component_index(component) == index
+        assert DPPP_SPEC.component_from_index(index) == component
+    assert DPPP_SPEC.component_quantums(("xy", "z", "x", "y")) == (
+        (0, 0),
+        (0, 1),
+        (1, 2),
+        (2, 0),
+        (3, 1),
+    )
+
+
+def test_shell_spec_rejects_invalid_metadata_and_components():
+    with pytest.raises(ValueError):
+        ShellClassSpec("bad", (2, 1, 1))
+    with pytest.raises(ValueError):
+        ShellClassSpec("Bad", (2, 1, 1, 1))
+    with pytest.raises(ValueError):
+        DPPP_SPEC.validate_component(("xx", "x", "y", "xx"))
+    with pytest.raises(IndexError):
+        DPPP_SPEC.component_from_index(DPPP_SPEC.component_count)
+
+
+@pytest.mark.parametrize(
+    ("spec", "component"),
+    (
+        (DPDS_SPEC, ("xy", "z", "xz", "")),
+        (DDPS_SPEC, ("xy", "xz", "z", "")),
+    ),
+)
+def test_generic_shell_ad_matches_factored_lowering(spec, component):
+    """Exercise pair orders 3+2 and 4+1 without handwritten builders."""
+
+    full = build_shell_class_component_kernel(spec, component)
+    factored = build_shell_class_contraction_kernel(spec, component)
+    full_values = sample_variables()
+    argument = full.graph.evaluate(full.boys_argument, full_values)
+    for order, value in enumerate(
+        boys_values(argument, spec.maximum_force_coulomb_order + 1)
+    ):
+        full_values[f"boys_{order}"] = value
+    factored_values = factored_dppp_variables(full_values)
+
+    full_value = full.graph.evaluate(full.value, full_values)
+    factored_value = (
+        factored_values["prefactor"]
+        * factored.graph.evaluate(factored.value, factored_values)
+    )
+    assert factored_value == pytest.approx(full_value, rel=5.0e-13, abs=5.0e-13)
+    for center in range(4):
+        for axis in range(3):
+            actual = factored.graph.evaluate(
+                factored.gradients[center][axis], factored_values
+            )
+            expected = full.graph.evaluate(
+                full.gradients[center][axis], full_values
+            )
+            assert actual == pytest.approx(
+                expected, rel=3.0e-11, abs=3.0e-11
+            )
 
 
 def boys_values(argument: float, count: int = 3) -> list[float]:
@@ -369,6 +498,8 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
     if os.environ.get("QCE_NVCC_VERBOSE"):
         print(result.stdout + result.stderr)
     assert result.returncode == 0, result.stdout + result.stderr
+    if cuda_architecture == "sm_120":
+        assert_rtx5090_dppp_resources(result.stdout + result.stderr)
 
 
 def test_dppp_benchmark_compares_shared_and_recomputed_schedules():

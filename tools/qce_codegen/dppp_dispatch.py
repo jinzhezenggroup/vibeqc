@@ -17,15 +17,14 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from itertools import product
 
-from .shell_class import AXES, D_COMPONENTS
+from .shell_spec import AXES, DPPP_SPEC
 
 DpppComponent = tuple[str, str, str, str]
 CoulombState = tuple[int, int, int]
 _AXIS_INDEX = {axis: index for index, axis in enumerate(AXES)}
-_MAXIMUM_COULOMB_ORDER = 6
-_COMPONENT_COUNT = len(D_COMPONENTS) * len(AXES) ** 3
+_MAXIMUM_COULOMB_ORDER = DPPP_SPEC.maximum_force_coulomb_order
+_COMPONENT_COUNT = DPPP_SPEC.component_count
 _BLOCK_THREADS = 192
 
 
@@ -48,11 +47,7 @@ class DpppFusedPlan:
 def dppp_components() -> tuple[DpppComponent, ...]:
     """Return all Cartesian components in production CCA ordering."""
 
-    return tuple(
-        (d_component, *p_components)
-        for d_component in D_COMPONENTS
-        for p_components in product(AXES, repeat=3)
-    )
+    return DPPP_SPEC.components
 
 
 def build_dppp_fused_plan() -> DpppFusedPlan:
@@ -197,11 +192,9 @@ def evaluate_dppp_fused_component(
     mapping mistakes before a generated kernel is considered for production.
     """
 
-    d_component, first_p, third_p, fourth_p = component
-    if d_component not in D_COMPONENTS or any(
-        axis not in AXES for axis in (first_p, third_p, fourth_p)
-    ):
-        raise ValueError(f"unsupported dppp component {component!r}")
+    d_component, first_p, third_p, fourth_p = DPPP_SPEC.validate_component(
+        component
+    )
 
     d_axes = tuple(_AXIS_INDEX[axis] for axis in d_component)
     first_p_axis = _AXIS_INDEX[first_p]
@@ -316,8 +309,14 @@ def emit_dppp_fused_cuda(plan: DpppFusedPlan | None = None) -> str:
     )
     d_axes = tuple(
         _AXIS_INDEX[axis]
-        for component in D_COMPONENTS
+        for component in DPPP_SPEC.center_components[0]
         for axis in component
+    )
+    first_pair_order, second_pair_order = DPPP_SPEC.pair_orders
+    component_strides = DPPP_SPEC.component_strides
+    component_counts = tuple(map(len, DPPP_SPEC.center_components))
+    supported_pair_orders = " || ".join(
+        f"PairOrder == {order}U" for order in sorted(DPPP_SPEC.pair_orders)
     )
     return f"""/**
  * Generated cooperative AOT candidate for canonical (d p|p p) forces.
@@ -379,7 +378,7 @@ __device__ __constant__ signed char generated_dppp_coulomb_indices[343] = {{
 {_format_cuda_array(plan.coulomb_indices)}
 }};
 
-__device__ __constant__ unsigned char generated_dppp_d_axes[6][2] = {{
+__device__ __constant__ unsigned char generated_dppp_d_axes[{component_counts[0]}][{DPPP_SPEC.angular[0]}] = {{
 {_format_cuda_array(d_axes, columns=6)}
 }};
 
@@ -484,7 +483,7 @@ __device__ __forceinline__ GeneratedDpppPairTerm generated_dppp_pair_term(
     const double (&shift_gradients)[PairOrder],
     double inverse_two_exponent,
     unsigned subset) {{
-  static_assert(PairOrder == 2U || PairOrder == 3U);
+  static_assert({supported_pair_orders});
   GeneratedDpppPairTerm term{{}};
   for (unsigned quantum = 0; quantum < PairOrder; ++quantum) {{
     if ((subset & (1U << quantum)) != 0U) {{
@@ -524,34 +523,34 @@ __device__ __forceinline__ void generated_dppp_component_gradient(
     const GeneratedDpppPrimitiveGeometry& geometry,
     const double* coulomb,
     double (&gradient)[4][3]) {{
-  const unsigned d_component = component / 27U;
-  const unsigned p_components = component % 27U;
-  const unsigned first_p = p_components / 9U;
-  const unsigned third_p = (p_components / 3U) % 3U;
-  const unsigned fourth_p = p_components % 3U;
-  const unsigned first_axes[3] = {{
+  const unsigned d_component = component / {component_strides[0]}U;
+  const unsigned p_components = component % {component_strides[0]}U;
+  const unsigned first_p = p_components / {component_strides[1]}U;
+  const unsigned third_p = (p_components / {component_strides[2]}U) % {component_counts[2]}U;
+  const unsigned fourth_p = p_components % {component_counts[3]}U;
+  const unsigned first_axes[{first_pair_order}] = {{
       generated_dppp_d_axes[d_component][0],
       generated_dppp_d_axes[d_component][1],
       first_p}};
-  const double first_shifts[3] = {{
+  const double first_shifts[{first_pair_order}] = {{
       geometry.pair_shifts[0][first_axes[0]],
       geometry.pair_shifts[0][first_axes[1]],
       geometry.pair_shifts[1][first_axes[2]]}};
-  const double first_shift_gradients[3] = {{
+  const double first_shift_gradients[{first_pair_order}] = {{
       geometry.product_scales[0] - 1.0,
       geometry.product_scales[0] - 1.0,
       geometry.product_scales[0]}};
-  const unsigned second_axes[2] = {{third_p, fourth_p}};
-  const double second_shifts[2] = {{
+  const unsigned second_axes[{second_pair_order}] = {{third_p, fourth_p}};
+  const double second_shifts[{second_pair_order}] = {{
       geometry.pair_shifts[2][third_p],
       geometry.pair_shifts[3][fourth_p]}};
-  const double second_shift_gradients[2] = {{
+  const double second_shift_gradients[{second_pair_order}] = {{
       geometry.product_scales[2] - 1.0,
       geometry.product_scales[2]}};
 
   GeneratedDpppPairTerm second_terms[4];
 #pragma unroll
-  for (unsigned subset = 0; subset < 4U; ++subset) {{
+  for (unsigned subset = 0; subset < {1 << second_pair_order}U; ++subset) {{
     second_terms[subset] = generated_dppp_pair_term(
         second_axes, second_shifts, second_shift_gradients,
         geometry.inverse_two_q, subset);
@@ -559,12 +558,12 @@ __device__ __forceinline__ void generated_dppp_component_gradient(
   double value = 0.0;
   double value_gradient[3][3]{{}};
 #pragma unroll
-  for (unsigned first_subset = 0; first_subset < 8U; ++first_subset) {{
+  for (unsigned first_subset = 0; first_subset < {1 << first_pair_order}U; ++first_subset) {{
     const GeneratedDpppPairTerm first_term = generated_dppp_pair_term(
         first_axes, first_shifts, first_shift_gradients,
         geometry.inverse_two_p, first_subset);
 #pragma unroll
-    for (unsigned second_subset = 0; second_subset < 4U; ++second_subset) {{
+    for (unsigned second_subset = 0; second_subset < {1 << second_pair_order}U; ++second_subset) {{
       const GeneratedDpppPairTerm& second_term = second_terms[second_subset];
       const double sign =
           (generated_dppp_state_total(second_term.derivative_state) & 1U)
@@ -790,11 +789,11 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task(
 
   const bool component_lane = lane < kGeneratedDpppComponentCount;
   const unsigned component = component_lane ? lane : 0U;
-  const unsigned d_component = component / 27U;
-  const unsigned p_components = component % 27U;
-  const unsigned first_p = p_components / 9U;
-  const unsigned third_p = (p_components / 3U) % 3U;
-  const unsigned fourth_p = p_components % 3U;
+  const unsigned d_component = component / {component_strides[0]}U;
+  const unsigned p_components = component % {component_strides[0]}U;
+  const unsigned first_p = p_components / {component_strides[1]}U;
+  const unsigned third_p = (p_components / {component_strides[2]}U) % {component_counts[2]}U;
+  const unsigned fourth_p = p_components % {component_counts[3]}U;
   const bool unique_ket_component =
       shared.task.shell[2] != shared.task.shell[3] || third_p >= fourth_p;
   const std::size_t i = shared.task.ao_begin[0] + d_component;

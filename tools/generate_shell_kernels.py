@@ -12,7 +12,6 @@ from qce_codegen.dppp_dispatch import (
     emit_dppp_fused_cuda,
 )
 from qce_codegen.shell_class import (
-    D_COMPONENTS,
     build_dppp_component_kernel,
     build_dppp_contraction_kernel,
     build_psss_kernel,
@@ -20,13 +19,18 @@ from qce_codegen.shell_class import (
     emit_dppp_contraction_cuda,
     emit_psss_cuda,
 )
+from qce_codegen.shell_spec import DPPP_SPEC
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--shell-class", choices=("psss", "dppp"), default="psss")
     parser.add_argument("--axis", choices=("x", "y", "z"), default="x")
-    parser.add_argument("--d-component", choices=D_COMPONENTS, default="xx")
+    parser.add_argument(
+        "--d-component",
+        choices=DPPP_SPEC.center_components[0],
+        default="xx",
+    )
     parser.add_argument(
         "--p-components",
         default="xxx",
