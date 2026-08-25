@@ -12,25 +12,25 @@ batch timing boundary.
 
 | Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup | Max energy error | Max force error | Gate |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| [`WATER27 tetramer`](rtx5090-35af36c-water-tetramer-def2-svp-spherical-b1.json) | 1 | 1546.907 ms | 1380.994 ms | 0.893x | 3.47e-12 Eh | 2.60e-12 Eh/bohr | speed fails |
-| [`WATER27 tetramer`](rtx5090-35af36c-water-tetramer-def2-svp-spherical-b4.json) | 4 | 5678.878 ms | 5503.573 ms | 0.969x | 4.49e-12 Eh | 2.63e-12 Eh/bohr | speed fails |
+| [`WATER27 tetramer`](rtx5090-ccdd250-water-tetramer-def2-svp-spherical-b1.json) | 1 | 1319.720 ms | 1071.889 ms | 0.812x | 1.36e-12 Eh | 9.68e-12 Eh/bohr | speed fails |
+| [`WATER27 tetramer`](rtx5090-ccdd250-water-tetramer-def2-svp-spherical-b4.json) | 4 | 5059.831 ms | 4287.969 ms | 0.847x | 5.63e-12 Eh | 1.08e-11 Eh/bohr | speed fails |
 
 Both clean artifacts come from commit
-`35af36c0a970754634884a6c4401e4c06ddda11a` on 2026-08-25. Every QCE and
+`ccdd250247da0af98fee2a5b921e7b3cf99f7f0a` on 2026-08-25. Every QCE and
 GPU4PySCF system converged, and both points pass the explicit `3e-11 Eh` and
 `3e-11 Eh/bohr` accuracy limits. They fail only the required `1.0x` minimum
 speedup, so the 96-AO milestone remains open. All three synchronized warm
 samples are retained because both engines show material timing variation at
-this size. A first batch-4 observation required QCE iteration counts
-`[2, 2, 3, 4]` and produced a 6526.875/5182.166 ms median, or only
-[`0.794x`](rtx5090-35af36c-water-tetramer-def2-svp-spherical-b4-iteration-noisy.json).
-The published gate row is the immediate clean rerun where every QCE member
-finished in two iterations. Relative to clean `a4db5f3`, the observed QCE
-medians fall by 3.0% at batch 1 and 8.1% at batch 4; scoped speedup rises from
-`0.864x`/`0.888x` to `0.893x`/`0.969x`. Direct-J/K atomic reductions can alter
-the warm SCF trajectory for both engines, so these endpoint medians must be
-read together with their retained raw samples and final iteration counts.
-Batch 4 is close to parity, but neither required point has passed yet.
+this size. Relative to clean `35af36c`, hoisting pair-coefficient gradients
+reduces the observed QCE medians by 14.7% at batch 1 and 10.9% at batch 4.
+The separately executed GPU4PySCF medians also shift downward by 22.4% and
+22.1%, so scoped speedup falls to `0.812x`/`0.847x` despite the absolute QCE
+improvement. The final QCE convergence states use two iterations at batch 1
+and `[2, 3, 2, 2]` at batch 4. Direct-J/K atomic reductions can alter warm SCF
+trajectories for both engines, and the current harness does not yet preserve
+iteration counts for every timed repeat. These endpoint medians must therefore
+be read together with all retained raw samples; neither required speed point
+has passed yet.
 
 ## Realistic 192-AO correctness status
 
@@ -55,27 +55,28 @@ The exact acceptance workload and tolerances are unchanged.
 
 | Component | QCE kernel time | GPU4PySCF kernel time | QCE minus GPU4PySCF |
 | --- | ---: | ---: | ---: |
-| Direct J/K | 493.537 ms | 501.613 ms | -8.076 ms |
-| Two-electron force | 423.957 ms | 311.187 ms | +112.770 ms |
-| Eigensolver | 31.246 ms | 5.823 ms | +25.424 ms |
-| One-electron force | 22.054 ms | 2.519 ms | +19.535 ms |
+| Direct J/K | 491.499 ms | 501.613 ms | -10.114 ms |
+| Two-electron force | 385.819 ms | 311.187 ms | +74.631 ms |
+| Eigensolver | 31.288 ms | 5.823 ms | +25.465 ms |
+| One-electron force | 22.041 ms | 2.519 ms | +19.522 ms |
 | QCE one-electron values and Schwarz | 0.000 ms | n/a | n/a |
 
-QCE records 56 kernel launches and a 1.596 s kernel span; GPU4PySCF records
+QCE records 56 kernel launches and a 1.555 s kernel span; GPU4PySCF records
 4,419 launches and a 1.515 s kernel span. Launch count is therefore not the
 primary explanation for the gap. Direct J/K kernel time remains comparable.
-The order-6 specialization cuts that class from 87.429 to 44.045 ms and the
-full two-electron-force pass by 8.9%, but the force still dominates the
-remaining component deficit. Order 5 is now the largest isolated gap at
-64.266 ms versus 26.380 ms. Order 2 costs 87.364 ms versus 57.084 ms, while
-orders 6--8 together cost 71.401 ms versus GPU4PySCF's 41.315 ms fallback.
-GPU4PySCF executes common classes through generated Rys `ip1` kernels with
-cooperative workers and shared primitive-pair intermediates. The next primary
-target is therefore generated/cooperative order-5 contraction and primitive-
-pair reuse, followed by order 2, rather than more direct-J/K tuning. See the
-[`35af36c` component artifact](rtx5090-35af36c-water-tetramer-warm-component-profile.json)
+Hoisting pair-coefficient gradients out of the high-order Cartesian product
+reduces order 4/5/6 from 67.703/64.266/44.045 ms to
+58.539/50.458/30.582 ms. The complete force pass improves by 9.0%. Order 2 is
+now the largest isolated gap at 88.488 ms versus 57.084 ms; order 5 follows at
+50.458 ms versus 26.380 ms. Orders 6--8 together cost 57.230 ms versus
+GPU4PySCF's 41.315 ms fallback. GPU4PySCF executes common classes through
+generated Rys `ip1` kernels with cooperative workers and shared primitive-pair
+intermediates. The next primary target is therefore generated/cooperative
+order-2 contraction and primitive-pair reuse, rather than more direct-J/K
+tuning. See the
+[`ccdd250` component artifact](rtx5090-ccdd250-water-tetramer-warm-component-profile.json)
 for the full per-order breakdown and capture metadata. Its QCE values come
-from clean `35af36c`; the unchanged GPU4PySCF values come from the matching
+from clean `ccdd250`; the unchanged GPU4PySCF values come from the matching
 clean 1.8.1 capture previously published with `c28b1e9`.
 
 ## Current exact shell-class results

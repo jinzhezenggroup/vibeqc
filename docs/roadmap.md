@@ -154,6 +154,15 @@ and performance measurements pass.
   below `4.5e-12 Eh` and `2.7e-12 Eh/bohr`. Both required speed gates remain
   open. Order five is now the largest isolated force gap against GPU4PySCF,
   followed by order two and the combined order-6--8 fallback.
+  High-order pair-coefficient gradients now move outside the first/second-term
+  Cartesian product: the smaller canonical second-pair gradients are cached
+  once, while each first-pair gradient is evaluated once per outer term. On
+  the next clean profile, order 4/5/6 fall to 58.539/50.458/30.582 ms and the
+  complete force pass reaches 385.819 ms. Clean QCE medians improve to
+  1.320/5.060 s at batch 1/4 with both accuracy gates passing. Independently
+  faster GPU4PySCF samples leave the scoped speed gates at `0.812x`/`0.847x`,
+  so the milestone remains open. Order two is now the largest isolated force
+  deficit and becomes the next generated/cooperative contraction target.
   Clean RTX 5090
   artifacts validate energy, forces, and homogeneous-batch throughput for the
   exact `sdf18-direct`, Cartesian water/def2-SVP, and open-shell
