@@ -22,7 +22,9 @@ if(QCE_ENABLE_CUDA)
     if(NOT CMAKE_CUDA_ARCHITECTURES)
       set(CMAKE_CUDA_ARCHITECTURES 120)
     endif()
-    find_package(CUDAToolkit REQUIRED)
+    # XsyevBatched is the capture-safe production eigensolver for realistic
+    # AO buckets and is available in the supported CUDA 12.9 toolkit.
+    find_package(CUDAToolkit 12.9 REQUIRED)
   else()
     message(WARNING "CUDA compiler not found; building the CPU reference backend only")
     set(QCE_ENABLE_CUDA OFF)

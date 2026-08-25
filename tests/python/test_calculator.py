@@ -132,7 +132,7 @@ def test_cuda_spherical_def2_svp_water_matches_pyscf():
 
 
 def test_cuda_def2_tzvp_water_uses_graph_native_eigensolver():
-    """Validate the capture-safe eigensolver above cuSOLVER's batched range."""
+    """Validate the capture-safe batched provider on a realistic AO matrix."""
 
     atoms = [
         ("O", (0.0, 0.0, 0.0)),
