@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 import math
-from pathlib import Path
+import os
 import subprocess
 import sys
+from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -14,9 +15,14 @@ from tools.qce_codegen import (
     NvrtcCacheSpec,
     build_dppp_component_kernel,
     build_dppp_contraction_kernel,
+    build_dppp_fused_plan,
     build_psss_kernel,
+    dppp_components,
+    emit_dppp_fused_cuda,
+    evaluate_dppp_fused_component,
     nvrtc_cache_key,
 )
+from tools.qce_codegen.benchmark import emit_dppp_benchmark_cuda
 from tools.qce_codegen.shell_class import (
     AXES,
     CENTERS,
@@ -264,6 +270,111 @@ def test_factored_dppp_lowering_matches_full_symbolic_kernel(
             )
 
 
+def test_dppp_fused_plan_covers_components_and_shared_coulomb_states():
+    plan = build_dppp_fused_plan()
+    components = dppp_components()
+    assert plan.components == components
+    assert len(components) == 162
+    assert len(plan.coulomb_states) == 84
+    assert len(plan.coulomb_indices) == 7**3
+    assert plan.block_threads == 192
+    assert plan.warp_count == 6
+    for index, (x_order, y_order, z_order) in enumerate(plan.coulomb_states):
+        dense_index = (x_order * 7 + y_order) * 7 + z_order
+        assert plan.coulomb_indices[dense_index] == index
+        assert x_order + y_order + z_order <= 6
+
+
+def test_dppp_fused_schedule_preserves_all_component_gradients():
+    values = factored_dppp_variables(sample_variables())
+    for component in dppp_components():
+        direct = build_dppp_contraction_kernel(component[0], component[1:])
+        fused = evaluate_dppp_fused_component(component, values)
+        for center in range(4):
+            for axis in range(3):
+                expected = direct.graph.evaluate(
+                    direct.gradients[center][axis], values
+                )
+                actual = fused[center][axis]
+                assert actual == pytest.approx(
+                    expected, rel=4.0e-12, abs=4.0e-12
+                )
+
+
+def test_dppp_fused_cuda_emits_one_shared_shell_class_schedule():
+    source = emit_dppp_fused_cuda()
+    assert "kGeneratedDpppComponentCount = 162U" in source
+    assert "kGeneratedDpppCoulombStateCount = 84U" in source
+    assert "kGeneratedDpppBlockThreads = 192U" in source
+    assert "__shared__ Shared shared" in source
+    assert "generated_dppp_density_coefficient" in source
+    assert "generated_dppp_component_gradient" in source
+    assert "generated_dppp_shell_class_force_rhf_kernel" in source
+    assert "generated_dppp_shell_class_force_uhf_kernel" in source
+    assert source.count("boys_values<6>") == 1
+    assert "__noinline__" not in source
+    assert "generated_dppp_orbit_" not in source
+    assert "coordinate_gradient" not in source
+    assert "Dual3" not in source
+
+
+def test_dppp_fused_cuda_compiles_when_nvcc_is_configured(tmp_path: Path):
+    """Compile the standalone candidate for explicit local resource probes."""
+
+    nvcc = os.environ.get("QCE_NVCC")
+    if nvcc is None:
+        pytest.skip("set QCE_NVCC to run the generated CUDA compile gate")
+    cuda_architecture = os.environ.get("QCE_CUDA_ARCH", "sm_90")
+    source = tmp_path / "generated_dppp_fused.cu"
+    source.write_text(
+        """
+template <unsigned MaximumOrder>
+__device__ __forceinline__ void boys_values(double argument, double* values) {
+  for (unsigned order = 0; order <= MaximumOrder; ++order) {
+    values[order] = 1.0 / (2.0 * static_cast<double>(order) + 1.0 + argument);
+  }
+}
+"""
+        + emit_dppp_fused_cuda(),
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [
+            nvcc,
+            "-std=c++17",
+            f"-arch={cuda_architecture}",
+            "-cubin",
+            "-Xptxas=-v",
+            str(source),
+            "-o",
+            str(tmp_path / "generated_dppp_fused.cubin"),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    if os.environ.get("QCE_NVCC_VERBOSE"):
+        print(result.stdout + result.stderr)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_dppp_benchmark_compares_shared_and_recomputed_schedules():
+    source = emit_dppp_benchmark_cuda(
+        task_count=32,
+        primitive_count=2,
+        warmups=1,
+        iterations=3,
+        samples=5,
+    )
+    assert "constexpr unsigned kTaskCount = 32;" in source
+    assert "constexpr unsigned kPrimitiveCount = 2;" in source
+    assert "generated_dppp_component_gradient<true>" in source
+    assert "generated_dppp_component_gradient<false>" in source
+    assert "generated_dppp_component_recompute_rhf_kernel" in source
+    assert '\\"speedup\\"' in source
+
+
 def test_cuda_emission_is_deterministic_and_runtime_ad_free():
     first = emit_psss_cuda(build_psss_kernel("z"))
     second = emit_psss_cuda(build_psss_kernel("z"))
@@ -365,3 +476,20 @@ def test_codegen_cli_writes_dppp_component_candidate(tmp_path: Path):
     subprocess.run(factored_command, check=True)
     assert factored_output.read_text(encoding="utf-8") == factored
     assert "generated_dppp_xy_xyz_factored_gradient" in factored
+
+    fused_output = tmp_path / "generated" / "dppp_fused.cuh"
+    fused_command = [
+        sys.executable,
+        "tools/generate_shell_kernels.py",
+        "--shell-class",
+        "dppp",
+        "--lowering",
+        "fused",
+        "--output",
+        str(fused_output),
+    ]
+    subprocess.run(fused_command, check=True)
+    fused = fused_output.read_text(encoding="utf-8")
+    subprocess.run(fused_command, check=True)
+    assert fused_output.read_text(encoding="utf-8") == fused
+    assert "generated_dppp_shell_class_force_rhf_kernel" in fused
