@@ -2880,7 +2880,8 @@ struct CartesianQuartetGradient {
 };
 
 /**
- * Evaluate all four center derivatives of an ssss or canonical psss primitive.
+ * Evaluate the independent center derivatives of an ssss or canonical psss
+ * primitive.
  *
  * Coordinate differentiation changes only the Gaussian pair decay, product
  * centers, and Boys argument. Computing those shared values once is much
@@ -2936,7 +2937,10 @@ __device__ void primitive_eri_order01_gradient(
     value = pa * boys[0] - coulomb_scale * pq_axis * boys[1];
   }
 
-  for (unsigned center = 0; center < 4; ++center) {
+  // A simultaneous translation of all four Gaussian centers leaves the ERI
+  // unchanged. Evaluate only three centers and recover the fourth exactly;
+  // the force consumer already relies on this invariant across unique atoms.
+  for (unsigned center = 0; center < 3; ++center) {
     for (int coordinate = 0; coordinate < 3; ++coordinate) {
       double decay_derivative = 0.0;
       if (center < 2) {
@@ -2973,6 +2977,11 @@ __device__ void primitive_eri_order01_gradient(
       gradient[center][coordinate] =
           prefactor * (value_derivative + value * decay_derivative);
     }
+  }
+  for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+    gradient[3][coordinate] =
+        -gradient[0][coordinate] - gradient[1][coordinate] -
+        gradient[2][coordinate];
   }
 }
 
