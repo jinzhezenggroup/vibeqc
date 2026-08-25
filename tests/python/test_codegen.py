@@ -31,6 +31,8 @@ from tools.qce_codegen.shell_class import (
     emit_psss_cuda,
 )
 
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+
 
 def boys_values(argument: float, count: int = 3) -> list[float]:
     """Reference Boys sequence sufficient for the psss pilot."""
@@ -311,11 +313,21 @@ def test_dppp_fused_cuda_emits_one_shared_shell_class_schedule():
     assert "generated_dppp_component_gradient" in source
     assert "generated_dppp_shell_class_force_rhf_kernel" in source
     assert "generated_dppp_shell_class_force_uhf_kernel" in source
+    assert "generated_dppp_shell_class_force_rhf_persistent_kernel" in source
+    assert "generated_dppp_shell_class_force_uhf_persistent_kernel" in source
+    assert "retained_by_schwarz" in source
     assert source.count("boys_values<6>") == 1
     assert "__noinline__" not in source
     assert "generated_dppp_orbit_" not in source
     assert "coordinate_gradient" not in source
     assert "Dual3" not in source
+
+
+def test_checked_in_dppp_fused_header_matches_generator():
+    """Keep production CUDA synchronized with the symbolic AOT emitter."""
+
+    header = REPOSITORY_ROOT / "src" / "scf" / "generated" / "dppp_fused.cuh"
+    assert header.read_text(encoding="utf-8") == emit_dppp_fused_cuda()
 
 
 def test_dppp_fused_cuda_compiles_when_nvcc_is_configured(tmp_path: Path):

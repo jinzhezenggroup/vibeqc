@@ -306,8 +306,8 @@ int main() {
     generated_dppp_shell_class_force_rhf_kernel<<<kTaskCount,
         kGeneratedDpppBlockThreads>>>(
         device_tasks, device_exponents, device_primitive_coefficients,
-        device_ao_coefficients, device_positions, device_density,
-        device_forces, kTaskCount);
+        device_ao_coefficients, device_positions, 0.0, nullptr,
+        device_density, device_forces, kTaskCount);
   };
   auto launch_recompute = [&]() {
     generated_dppp_component_recompute_rhf_kernel<<<kTaskCount,
