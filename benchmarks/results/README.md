@@ -12,36 +12,36 @@ batch timing boundary.
 
 | Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup | Max energy error | Max force error | Gate |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| [`WATER27 tetramer`](rtx5090-0e33f48-water-tetramer-def2-svp-spherical-b1.json) | 1 | 2221.007 ms | 1366.337 ms | 0.615x | 2.50e-12 Eh | 2.01e-12 Eh/bohr | speed fails |
-| [`WATER27 tetramer`](rtx5090-0e33f48-water-tetramer-def2-svp-spherical-b4.json) | 4 | 7854.238 ms | 5191.182 ms | 0.661x | 4.15e-12 Eh | 5.18e-12 Eh/bohr | speed fails |
+| [`WATER27 tetramer`](rtx5090-299cf69-water-tetramer-def2-svp-spherical-b1.json) | 1 | 1673.305 ms | 1374.275 ms | 0.821x | 1.71e-12 Eh | 2.05e-12 Eh/bohr | speed fails |
+| [`WATER27 tetramer`](rtx5090-299cf69-water-tetramer-def2-svp-spherical-b4.json) | 4 | 6242.249 ms | 5481.170 ms | 0.878x | 3.52e-12 Eh | 2.41e-12 Eh/bohr | speed fails |
 
 Both clean artifacts come from commit
-`0e33f48802f3b3b21a17fbc4f33ae892decd8fbc` on 2026-08-25. Every QCE and
+`299cf691437d06c8f809a3fd471378d174540afa` on 2026-08-25. Every QCE and
 GPU4PySCF system converged, and both points pass the explicit `3e-11 Eh` and
 `3e-11 Eh/bohr` accuracy limits. They fail only the required `1.0x` minimum
 speedup, so the 96-AO milestone remains open. All three synchronized warm
 samples are retained because both engines show material timing variation at
-this size. The batch-4 QCE samples reached 4/3/2/2 SCF iterations. Although the
-analytic one-electron force materially improves its isolated kernel, these
-formal endpoint medians do not improve on the preceding clean `5c398b4`
-artifacts. The next optimization phase therefore targets the direct J/K and
-two-electron-force execution architecture rather than further one-electron
-specialization.
+this size. Persistent total-order 0--5 analytic-force workers reduce the QCE
+median by 24.7% at batch 1 and 20.5% at batch 4 relative to the preceding
+clean `0e33f48` artifacts; scoped speedup rises from `0.615x`/`0.661x` to
+`0.821x`/`0.878x`. This is a substantive endpoint improvement but not parity.
+The remaining measured targets are generated/cooperative low-order
+two-electron force contraction and the 96-by-96 eigensolver.
 
 ## Realistic 192-AO correctness status
 
 | Artifact | Batch | QCE warm | GPU4PySCF warm | Informational speedup | Max energy error | Max force error | Gate |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| [`WATER27 S4 octamer`](rtx5090-0e33f48-water-octamer-s4-def2-svp-spherical-b1.json) | 1 | 18513.703 ms | 2248.314 ms | 0.121x | 1.25e-12 Eh | 5.60e-11 Eh/bohr | passes |
-| [`WATER27 S4 octamer`](rtx5090-0e33f48-water-octamer-s4-def2-svp-spherical-b4.json) | 4 | 86667.525 ms | 8210.706 ms | 0.095x | 1.09e-11 Eh | 2.23e-10 Eh/bohr | passes |
+| [`WATER27 S4 octamer`](rtx5090-299cf69-water-octamer-s4-def2-svp-spherical-b1.json) | 1 | 20781.519 ms | 2224.372 ms | 0.107x | 2.27e-12 Eh | 5.60e-11 Eh/bohr | passes |
+| [`WATER27 S4 octamer`](rtx5090-299cf69-water-octamer-s4-def2-svp-spherical-b4.json) | 4 | 81085.245 ms | 8170.464 ms | 0.101x | 1.10e-11 Eh | 2.37e-10 Eh/bohr | passes |
 
-These clean commit-`0e33f48` artifacts use one synchronized warm replay per
+These clean commit-`299cf69` artifacts use one synchronized warm replay per
 point because of the direct-J/K cost. Both satisfy the current `1e-10 Eh` and
 `5e-10 Eh/bohr` correctness limits. The recorded warm times remain sensitive
 to the number of SCF iterations reached after nondeterministic direct-J/K
-atomic reductions; the batch-4 artifact records 9/4/3/2 iterations across its
-four systems. Their speedups are retained for transparency but are not
-acceptance criteria until complete DF J/K lands.
+atomic reductions; the batch-1 artifact records five iterations and batch 4
+records 4/3/6/8 across its four systems. Their speedups are retained for
+transparency but are not acceptance criteria until complete DF J/K lands.
 
 ## 96-AO warm component profile
 
@@ -65,9 +65,12 @@ on this point. The dominant deficit is the two-electron force, followed by the
 191.475 ms in QCE versus 57.084 ms in GPU4PySCF. Order one costs
 108.961 ms versus 36.363 ms. GPU4PySCF executes those classes through
 generated Rys `ip1` kernels with 256-thread cooperative workers, a persistent
-device task head, and shared bra primitive-pair intermediates; QCE still maps
-one warp to each virtually expanded AO-quartet subtile. The next architecture
-prototype therefore targets cooperative order-2 force contraction rather than
+device task head, and shared bra primitive-pair intermediates. Commit
+`299cf69` adds persistent task heads to QCE's specialized order-0--5 force
+kernels and reduces the full two-electron force pass to 466.6 ms, but each
+worker still evaluates one virtually expanded AO-quartet subtile without the
+same primitive-pair reuse. The next force target is therefore generated or
+cooperative order-2 contraction, followed by the eigensolver, rather than
 further direct-J/K or one-electron tuning. See the
 [`c28b1e9` component artifact](rtx5090-c28b1e9-water-tetramer-warm-component-profile.json)
 for the per-order breakdown and capture metadata.
