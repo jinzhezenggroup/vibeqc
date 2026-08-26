@@ -1187,6 +1187,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     fock_specifications = load_production_fock_manifest(manifest)
     assert tuple(spec.name for spec in specifications) == (
         "dppp",
+        "dpdp",
         "dpds",
         "ddps",
         "fpps",
@@ -1206,10 +1207,17 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
         spec.name for spec in specifications
     )
     assert all(selection.architecture == "sm_120" for selection in selections)
-    assert all(
-        selection.schedule.pair_storage == PairStorage.MATERIALIZED
+    assert {
+        selection.spec.name: selection.schedule.pair_storage
         for selection in selections
-    )
+    } == {
+        spec.name: (
+            PairStorage.RECOMPUTED
+            if spec.name == "dpdp"
+            else PairStorage.MATERIALIZED
+        )
+        for spec in specifications
+    }
     assert tuple(selection.consumers for selection in selections) == tuple(
         (KernelConsumer.FOCK, KernelConsumer.FORCE)
         if selection.spec.name == "dpps"
@@ -1225,6 +1233,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
         assert first_path.read_bytes() == second_path.read_bytes()
         assert b"\0" not in first_path.read_bytes()
     header = emit_registry_header(selections)
+    assert '{"dpdp", 14U, 6U, 64U, 2U, 64U}' in header
     assert '{"ppps", 4U, 3U, 64U, 2U, 27U}' in header
     assert '{"dspp", 8U, 4U, 64U, 2U, 54U}' in header
     assert '{"dpps", 11U, 4U, 64U, 3U, 54U}' in header
