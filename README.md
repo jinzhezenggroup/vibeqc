@@ -17,35 +17,16 @@ benchmarks/results/ instead of expanding this file.
 </p>
 
 VibeQC combines **vibe coding** and **quantum chemistry**. It is a fully
-vibe-coded quantum-chemistry program: its API, CPU reference implementation,
-CUDA kernels, tests, benchmark tools, and documentation have all been created
-and iterated through a human-directed AI coding workflow. The human supplies
-the scientific goals, constraints, and review; coding agents produce and
-revise the implementation.
+vibe-coded quantum-chemistry program: humans set the scientific goals,
+constraints, and review standards; coding agents produce and revise the code,
+tests, benchmarks, and documentation. Numerical results are checked against
+independent references, and performance claims require reproducible gates.
 
-“Vibe-coded” describes how VibeQC was built, not a relaxation of scientific
-standards. Numerical results are checked against independent references, and
-performance claims require reproducible benchmark gates.
+Today VibeQC provides **RHF and UHF energies and analytic nuclear forces**.
+Other electronic-structure methods remain on the
+[roadmap](docs/methods.md), not in the current release.
 
-The project's long-term mission is to cover **all quantum-chemistry methods**
-behind one coherent, accelerator-native interface. That is a direction, not a
-claim about today's release.
-
-## Supported methods
-
-The currently supported electronic-structure method family is
-**Hartree-Fock (HF)**:
-
-| Method family | Implemented variants | Available results |
-| --- | --- | --- |
-| Hartree-Fock (HF) | RHF, UHF | Energy and analytic nuclear forces |
-
-No other electronic-structure method family is currently implemented. The
-method interface is intended to expand beyond HF to DFT, post-HF,
-multireference, excited-state, periodic, relativistic, and embedding methods.
-See the [method roadmap](docs/methods.md) for the intended scope.
-
-## Current functionality
+## Features
 
 - CPU reference and CUDA backends.
 - Ragged batches, per-system failure isolation, and density warm starts.
@@ -62,14 +43,17 @@ Requirements: CMake 3.24+, a C++20 compiler, Python 3.10+, and optionally CUDA
 cmake -S . -B build -G Ninja \
   -DCMAKE_CUDA_COMPILER=/path/to/cuda/bin/nvcc \
   -DCMAKE_CUDA_ARCHITECTURES=120
-cmake --build build -j10
-python -m pip install -e .
 ```
 
-For a CPU-only build:
+For CPU only, configure with:
 
 ```bash
 cmake -S . -B build -G Ninja -DVIBEQC_ENABLE_CUDA=OFF
+```
+
+Then build and install:
+
+```bash
 cmake --build build -j10
 python -m pip install -e .
 ```
@@ -78,7 +62,7 @@ The Python package finds `build/libvibeqc.so` automatically when built in the
 repository. For another build location, set `VIBEQC_LIBRARY` to the shared
 library path.
 
-## Single-point calculation
+## Python API
 
 Coordinates are in Bohr, energies in Hartree, and forces in Hartree/Bohr.
 
@@ -95,7 +79,7 @@ print(result.energy)
 print(result.forces)
 ```
 
-## Batched calculation
+Prepared batches retain reusable topology and density state:
 
 ```python
 from vibeqc import Calculator
@@ -115,12 +99,10 @@ print(first.energies)
 
 ## Documentation
 
-- [Documentation index](docs/index.md)
-- [Methods and long-term scope](docs/methods.md)
-- [Batched HF behavior](docs/batched_hf.md)
-- [Architecture](docs/architecture.md)
-- [Implementation roadmap](docs/roadmap.md)
-- [Benchmark protocol and results](benchmarks/results/README.md)
+- [Documentation index](docs/index.md) — methods, batching, architecture, and
+  implementation roadmap.
+- [Benchmark results](benchmarks/results/README.md) — protocol, gates, and
+  reproducible artifacts.
 
 ## License
 
