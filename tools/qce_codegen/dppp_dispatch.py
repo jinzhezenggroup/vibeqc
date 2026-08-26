@@ -18,13 +18,16 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+from .cuda import CudaEmitter
 from .fused_schedule import (
     CoulombState,
     FusedShellPlan,
     build_fused_shell_plan,
     evaluate_fused_shell_component,
 )
-from .shell_spec import AXES, DPPP_SPEC, ShellClassSpec
+from .ir import KernelConsumer, PairOrientation, PairStorage, ScheduleKind
+from .shell_class import build_weighted_shell_contraction_kernel
+from .shell_spec import AXES, DPPP_SPEC, ShellClassSpec, cartesian_components
 
 DpppComponent = tuple[str, str, str, str]
 _AXIS_INDEX = {axis: index for index, axis in enumerate(AXES)}
@@ -185,8 +188,10 @@ def _component_axis_expression(
         return component_name
     if angular_momentum == 2:
         return f"generated_dppp_d_axes[{component_name}][{quantum}]"
+    if angular_momentum == 3:
+        return f"generated_dppp_f_axes[{component_name}][{quantum}]"
     raise ValueError(
-        "current fused CUDA candidate supports s, p, and d centers only"
+        "current fused CUDA candidate supports s, p, d, and f centers only"
     )
 
 
@@ -260,20 +265,23 @@ def _generic_component_gradient_setup(spec: ShellClassSpec) -> str:
                 )
                 gradients.append(f"{scale} - 1.0" if pair_center == 0 else scale)
         order = sum(spec.angular[center] for center in centers)
+        storage_order = max(order, 1)
         lines.extend(
             _cuda_array_declaration(
-                f"const unsigned {pair_name}_axes[{order}]", axes
+                f"const unsigned {pair_name}_axes[{storage_order}]",
+                axes or ["0U"],
             )
         )
         lines.extend(
             _cuda_array_declaration(
-                f"const double {pair_name}_shifts[{order}]", shifts
+                f"const double {pair_name}_shifts[{storage_order}]",
+                shifts or ["0.0"],
             )
         )
         lines.extend(
             _cuda_array_declaration(
-                f"const double {pair_name}_shift_gradients[{order}]",
-                gradients,
+                f"const double {pair_name}_shift_gradients[{storage_order}]",
+                gradients or ["0.0"],
             )
         )
     return "\n".join(lines)
@@ -299,60 +307,18 @@ def _generic_component_value_setup(spec: ShellClassSpec) -> str:
                     f"[{pair_name}_axes[{axis_position}]]"
                 )
         order = sum(spec.angular[center] for center in centers)
+        storage_order = max(order, 1)
         lines.extend(
             _cuda_array_declaration(
-                f"const unsigned {pair_name}_axes[{order}]", axes
+                f"const unsigned {pair_name}_axes[{storage_order}]",
+                axes or ["0U"],
             )
         )
         lines.extend(
             _cuda_array_declaration(
-                f"const double {pair_name}_shifts[{order}]", shifts
+                f"const double {pair_name}_shifts[{storage_order}]",
+                shifts or ["0.0"],
             )
-        )
-    return "\n".join(lines)
-
-
-def _generic_task_component_setup(spec: ShellClassSpec) -> str:
-    """Generate AO/density routing for one automatically decoded lane."""
-
-    if spec == DPPP_SPEC:
-        return """  const unsigned d_component = component / 27U;
-  const unsigned p_components = component % 27U;
-  const unsigned first_p = p_components / 9U;
-  const unsigned third_p = (p_components / 3U) % 3U;
-  const unsigned fourth_p = p_components % 3U;
-  const bool unique_ket_component =
-      shared.task.shell[2] != shared.task.shell[3] || third_p >= fourth_p;
-  const std::size_t i = shared.task.ao_begin[0] + d_component;
-  const std::size_t j = shared.task.ao_begin[1] + first_p;
-  const std::size_t k = shared.task.ao_begin[2] + third_p;
-  const std::size_t l = shared.task.ao_begin[3] + fourth_p;"""
-
-    names = _component_names(spec)
-    lines = list(_generic_component_decode(spec))
-    symmetry_conditions = []
-    for first, second in ((0, 1), (2, 3)):
-        if spec.angular[first] == spec.angular[second]:
-            symmetry_conditions.append(
-                f"shared.task.shell[{first}] != shared.task.shell[{second}] || "
-                f"{names[first]} >= {names[second]}"
-            )
-    if symmetry_conditions:
-        expression = ") && (".join(symmetry_conditions)
-        lines.extend(
-            [
-                "  const bool unique_ket_component =",
-                f"      ({expression});",
-            ]
-        )
-    else:
-        lines.append("  constexpr bool unique_ket_component = true;")
-    for center, (ao_name, component_name) in enumerate(
-        zip(("i", "j", "k", "l"), names, strict=True)
-    ):
-        lines.append(
-            f"  const std::size_t {ao_name} = "
-            f"shared.task.ao_begin[{center}] + {component_name};"
         )
     return "\n".join(lines)
 
@@ -375,14 +341,167 @@ def _emit_shell_class_fock_cuda(
     coulomb_state_count = (
         (maximum_order + 1) * (maximum_order + 2) * (maximum_order + 3) // 6
     )
-    block_threads = (
-        (max(spec.component_count, coulomb_state_count) + 31) // 32
-    ) * 32
+    if plan.schedule.kind == ScheduleKind.COMPONENT_LANES:
+        block_threads = (
+            (max(spec.component_count, coulomb_state_count) + 31) // 32
+        ) * 32
+    else:
+        block_threads = plan.schedule.block_threads
     minimum_blocks_per_sm = (384 + block_threads - 1) // block_threads
     barrier = "__syncwarp();" if block_threads == 32 else "__syncthreads();"
     component_setup = _generic_component_value_setup(spec)
     task_component_setup = _generic_task_component_setup(spec)
     component_names = _emitted_component_names(spec)
+    shared_coulomb = "true" if plan.schedule.shared_coulomb else "false"
+    coulomb_storage_count = (
+        "kGeneratedDpppFockCoulombStateCount"
+        if plan.schedule.shared_coulomb
+        else "1"
+    )
+    coulomb_setup = ""
+    if plan.schedule.shared_coulomb:
+        if plan.schedule.kind == ScheduleKind.TILED_COMPONENTS:
+            coulomb_setup = """          for (unsigned state = lane;
+               state < kGeneratedDpppFockCoulombStateCount;
+               state += kGeneratedDpppBlockThreads) {
+            shared.coulomb[state] = generated_dppp_coulomb(
+                generated_dppp_coulomb_states[state], shared.primitive);
+          }
+          __syncthreads();
+"""
+        else:
+            coulomb_setup = (
+                "          if (lane < kGeneratedDpppFockCoulombStateCount) {\n"
+                "            shared.coulomb[lane] = generated_dppp_coulomb(\n"
+                "                generated_dppp_coulomb_states[lane], "
+                "shared.primitive);\n"
+                "          }\n"
+                f"          {barrier}\n"
+            )
+    if plan.schedule.kind == ScheduleKind.TILED_COMPONENTS:
+        component_schedule_setup = f"""  for (unsigned component_tile_begin = 0U;
+       component_tile_begin < kGeneratedDpppComponentCount;
+       component_tile_begin += {plan.schedule.component_tile}U) {{
+  const unsigned tile_component = component_tile_begin + lane;
+  const bool component_lane = tile_component < kGeneratedDpppComponentCount;
+  const unsigned component = component_lane ? tile_component : 0U;
+"""
+        component_schedule_close = "  __syncthreads();\n  }\n"
+    else:
+        component_schedule_setup = """  const bool component_lane =
+      lane < kGeneratedDpppComponentCount;
+  const unsigned component = component_lane ? lane : 0U;
+"""
+        component_schedule_close = ""
+    if plan.schedule.pair_storage == PairStorage.RECOMPUTED:
+        if plan.schedule.pair_orientation == PairOrientation.CANONICAL:
+            value_contraction = f"""  double value = 0.0;
+QCE_PAIR_UNROLL
+  for (unsigned first_subset = 0;
+       first_subset < {1 << first_pair_order}U; ++first_subset) {{
+    const GeneratedDpppValueTerm first_term =
+        generated_dppp_pair_value_term<{first_pair_order}U>(
+        first_axes, first_shifts, geometry.inverse_two_p, first_subset);
+QCE_PAIR_UNROLL
+    for (unsigned second_subset = 0;
+         second_subset < {1 << second_pair_order}U; ++second_subset) {{
+      const GeneratedDpppValueTerm second_term =
+          generated_dppp_pair_value_term<{second_pair_order}U>(
+          second_axes, second_shifts, geometry.inverse_two_q, second_subset);
+      const double sign =
+          (generated_dppp_state_total(second_term.derivative_state) & 1U)
+          == 0U ? 1.0 : -1.0;
+      const unsigned state =
+          first_term.derivative_state + second_term.derivative_state;
+      value += sign * first_term.coefficient * second_term.coefficient *
+          generated_dppp_component_coulomb<SharedCoulomb>(
+              geometry, coulomb, state);
+    }}
+  }}
+"""
+        else:
+            value_contraction = f"""  double value = 0.0;
+QCE_PAIR_UNROLL
+  for (unsigned second_subset = 0;
+       second_subset < {1 << second_pair_order}U; ++second_subset) {{
+    const GeneratedDpppValueTerm second_term =
+        generated_dppp_pair_value_term<{second_pair_order}U>(
+        second_axes, second_shifts, geometry.inverse_two_q, second_subset);
+    const double sign =
+        (generated_dppp_state_total(second_term.derivative_state) & 1U)
+        == 0U ? 1.0 : -1.0;
+QCE_PAIR_UNROLL
+    for (unsigned first_subset = 0;
+         first_subset < {1 << first_pair_order}U; ++first_subset) {{
+      const GeneratedDpppValueTerm first_term =
+          generated_dppp_pair_value_term<{first_pair_order}U>(
+          first_axes, first_shifts, geometry.inverse_two_p, first_subset);
+      const unsigned state =
+          first_term.derivative_state + second_term.derivative_state;
+      value += sign * first_term.coefficient * second_term.coefficient *
+          generated_dppp_component_coulomb<SharedCoulomb>(
+              geometry, coulomb, state);
+    }}
+  }}
+"""
+    elif plan.schedule.pair_orientation == PairOrientation.CANONICAL:
+        value_contraction = f"""  GeneratedDpppValueTerm second_terms[{1 << second_pair_order}];
+QCE_PAIR_UNROLL
+  for (unsigned subset = 0; subset < {1 << second_pair_order}U; ++subset) {{
+    second_terms[subset] = generated_dppp_pair_value_term<{second_pair_order}U>(
+        second_axes, second_shifts, geometry.inverse_two_q, subset);
+  }}
+  double value = 0.0;
+QCE_PAIR_UNROLL
+  for (unsigned first_subset = 0;
+       first_subset < {1 << first_pair_order}U; ++first_subset) {{
+    const GeneratedDpppValueTerm first_term =
+        generated_dppp_pair_value_term<{first_pair_order}U>(
+        first_axes, first_shifts, geometry.inverse_two_p, first_subset);
+QCE_PAIR_UNROLL
+    for (unsigned second_subset = 0;
+         second_subset < {1 << second_pair_order}U; ++second_subset) {{
+      const GeneratedDpppValueTerm& second_term = second_terms[second_subset];
+      const double sign =
+          (generated_dppp_state_total(second_term.derivative_state) & 1U)
+          == 0U ? 1.0 : -1.0;
+      const unsigned state =
+          first_term.derivative_state + second_term.derivative_state;
+      value += sign * first_term.coefficient * second_term.coefficient *
+          generated_dppp_component_coulomb<SharedCoulomb>(
+              geometry, coulomb, state);
+    }}
+  }}
+"""
+    else:
+        value_contraction = f"""  GeneratedDpppValueTerm first_terms[{1 << first_pair_order}];
+QCE_PAIR_UNROLL
+  for (unsigned subset = 0; subset < {1 << first_pair_order}U; ++subset) {{
+    first_terms[subset] = generated_dppp_pair_value_term<{first_pair_order}U>(
+        first_axes, first_shifts, geometry.inverse_two_p, subset);
+  }}
+  double value = 0.0;
+QCE_PAIR_UNROLL
+  for (unsigned second_subset = 0;
+       second_subset < {1 << second_pair_order}U; ++second_subset) {{
+    const GeneratedDpppValueTerm second_term =
+        generated_dppp_pair_value_term<{second_pair_order}U>(
+        second_axes, second_shifts, geometry.inverse_two_q, second_subset);
+    const double sign =
+        (generated_dppp_state_total(second_term.derivative_state) & 1U)
+        == 0U ? 1.0 : -1.0;
+QCE_PAIR_UNROLL
+    for (unsigned first_subset = 0;
+         first_subset < {1 << first_pair_order}U; ++first_subset) {{
+      const GeneratedDpppValueTerm& first_term = first_terms[first_subset];
+      const unsigned state =
+          first_term.derivative_state + second_term.derivative_state;
+      value += sign * first_term.coefficient * second_term.coefficient *
+          generated_dppp_component_coulomb<SharedCoulomb>(
+              geometry, coulomb, state);
+    }}
+  }}
+"""
     double_pair_matchings = ""
     if max(spec.pair_orders) >= 4:
         double_pair_matchings = """  if constexpr (PairOrder >= 4U) {
@@ -397,7 +516,7 @@ def _emit_shell_class_fock_cuda(
                 (1U << third) | (1U << fourth);
             if (first_removed >= second_removed ||
                 (first_removed & second_removed) != 0U) continue;
-            generated_dppp_add_value_matching(
+            generated_dppp_add_value_matching<PairOrder>(
                 term, axes, shifts, inverse_two_exponent, subset,
                 first_removed | second_removed, 2U);
           }
@@ -406,7 +525,7 @@ def _emit_shell_class_fock_cuda(
     }
   }
 """
-    return f"""
+    source = f"""
 
 /** Coefficient-only pair term used by the SCF Fock recurrence. */
 struct GeneratedDpppValueTerm {{
@@ -421,8 +540,8 @@ constexpr unsigned kGeneratedDpppFockBlockThreads = {block_threads}U;
 template <unsigned PairOrder>
 __device__ __forceinline__ void generated_dppp_add_value_matching(
     GeneratedDpppValueTerm& term,
-    const unsigned (&axes)[PairOrder],
-    const double (&shifts)[PairOrder],
+    const unsigned* axes,
+    const double* shifts,
     double inverse_two_exponent,
     unsigned subset,
     unsigned removed,
@@ -444,8 +563,8 @@ __device__ __forceinline__ void generated_dppp_add_value_matching(
 template <unsigned PairOrder>
 __device__ __forceinline__ GeneratedDpppValueTerm
 generated_dppp_pair_value_term(
-    const unsigned (&axes)[PairOrder],
-    const double (&shifts)[PairOrder],
+    const unsigned* axes,
+    const double* shifts,
     double inverse_two_exponent,
     unsigned subset) {{
   static_assert({supported_pair_orders});
@@ -455,12 +574,12 @@ generated_dppp_pair_value_term(
       term.derivative_state += 1U << (3U * axes[quantum]);
     }}
   }}
-  generated_dppp_add_value_matching(
+  generated_dppp_add_value_matching<PairOrder>(
       term, axes, shifts, inverse_two_exponent, subset, 0U, 0U);
   for (unsigned first = 0; first < PairOrder; ++first) {{
     for (unsigned second = first + 1U; second < PairOrder; ++second) {{
       if (axes[first] == axes[second]) {{
-        generated_dppp_add_value_matching(
+        generated_dppp_add_value_matching<PairOrder>(
             term, axes, shifts, inverse_two_exponent, subset,
             (1U << first) | (1U << second), 1U);
       }}
@@ -477,38 +596,13 @@ __device__ __forceinline__ double generated_dppp_component_value(
     const double* coulomb) {{
 {component_setup}
 
-  GeneratedDpppValueTerm second_terms[{1 << second_pair_order}];
-#pragma unroll
-  for (unsigned subset = 0; subset < {1 << second_pair_order}U; ++subset) {{
-    second_terms[subset] = generated_dppp_pair_value_term(
-        second_axes, second_shifts, geometry.inverse_two_q, subset);
-  }}
-  double value = 0.0;
-#pragma unroll
-  for (unsigned first_subset = 0;
-       first_subset < {1 << first_pair_order}U; ++first_subset) {{
-    const GeneratedDpppValueTerm first_term = generated_dppp_pair_value_term(
-        first_axes, first_shifts, geometry.inverse_two_p, first_subset);
-#pragma unroll
-    for (unsigned second_subset = 0;
-         second_subset < {1 << second_pair_order}U; ++second_subset) {{
-      const GeneratedDpppValueTerm& second_term = second_terms[second_subset];
-      const double sign =
-          (generated_dppp_state_total(second_term.derivative_state) & 1U)
-          == 0U ? 1.0 : -1.0;
-      const unsigned state =
-          first_term.derivative_state + second_term.derivative_state;
-      value += sign * first_term.coefficient * second_term.coefficient *
-          generated_dppp_component_coulomb<SharedCoulomb>(
-              geometry, coulomb, state);
-    }}
-  }}
+{value_contraction}
   return geometry.prefactor * value;
 }}
 
 /** Scatter one canonical integral using QCE's existing RHF/UHF convention. */
 template <bool Unrestricted>
-__device__ __forceinline__ void generated_dppp_accumulate_fock_integral(
+__device__ __forceinline__ void generated_dppp_accumulate_fock(
     const GeneratedDpppShellTask& task,
     const double* density,
     double* fock,
@@ -578,7 +672,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_fock_task(
     GeneratedDpppShellTask task;
     GeneratedDpppVec3 positions[4];
     GeneratedDpppPrimitiveGeometry primitive;
-    double coulomb[kGeneratedDpppFockCoulombStateCount];
+    double coulomb[{coulomb_storage_count}];
   }};
   __shared__ Shared shared;
   const unsigned lane = threadIdx.x;
@@ -592,9 +686,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_fock_task(
   }}
   {barrier}
 
-  const bool component_lane = lane < kGeneratedDpppComponentCount;
-  const unsigned component = component_lane ? lane : 0U;
-{task_component_setup}
+{component_schedule_setup}{task_component_setup}
   const std::size_t matrix_order =
       static_cast<std::size_t>(shared.task.matrix_order);
   const bool retained_by_schwarz = component_lane && unique_ket_component &&
@@ -636,24 +728,60 @@ __device__ __forceinline__ void generated_dppp_shell_class_fock_task(
             shared.positions[2], shared.positions[3], shared.primitive);
       }}
       {barrier}
-      if (lane < kGeneratedDpppFockCoulombStateCount) {{
-        shared.coulomb[lane] = generated_dppp_coulomb(
-            generated_dppp_coulomb_states[lane], shared.primitive);
-      }}
-      {barrier}
+{coulomb_setup}
       if (retained_by_schwarz) {{
         component_integral += angular_coefficient *
             shared.primitive.primitive_coefficient *
-            generated_dppp_component_value<true>(
+            generated_dppp_component_value<{shared_coulomb}>(
                 component, shared.primitive, shared.coulomb);
       }}
       {barrier}
     }}
   }}
   if (retained_by_schwarz && component_integral != 0.0) {{
-    generated_dppp_accumulate_fock_integral<Unrestricted>(
+    generated_dppp_accumulate_fock<Unrestricted>(
         shared.task, density, fock, i, j, k, l, component_integral);
   }}
+{component_schedule_close}}}
+
+extern "C" __global__ __launch_bounds__(
+    kGeneratedDpppFockBlockThreads, {minimum_blocks_per_sm})
+void generated_dppp_shell_class_fock_rhf_kernel(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* fock,
+    std::size_t task_count) {{
+  if (blockIdx.x >= task_count) return;
+  generated_dppp_shell_class_fock_task<false>(
+      tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+      atom_positions, screening_tolerance, schwarz_bounds, density, fock,
+      static_cast<std::size_t>(blockIdx.x));
+}}
+
+extern "C" __global__ __launch_bounds__(
+    kGeneratedDpppFockBlockThreads, {minimum_blocks_per_sm})
+void generated_dppp_shell_class_fock_uhf_kernel(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* fock,
+    std::size_t task_count) {{
+  if (blockIdx.x >= task_count) return;
+  generated_dppp_shell_class_fock_task<true>(
+      tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+      atom_positions, screening_tolerance, schwarz_bounds, density, fock,
+      static_cast<std::size_t>(blockIdx.x));
 }}
 
 template <bool Unrestricted>
@@ -668,6 +796,7 @@ generated_dppp_shell_class_fock_persistent(
     const double* schwarz_bounds,
     const double* density,
     double* fock,
+    const std::uint32_t* task_offset,
     const std::uint32_t* task_count,
     std::uint32_t* task_head) {{
   const unsigned lane = threadIdx.x;
@@ -680,7 +809,7 @@ generated_dppp_shell_class_fock_persistent(
     generated_dppp_shell_class_fock_task<Unrestricted>(
         tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
         atom_positions, screening_tolerance, schwarz_bounds, density, fock,
-        static_cast<std::size_t>(task_index));
+        static_cast<std::size_t>(*task_offset + task_index));
     {barrier}
   }}
 }}
@@ -697,12 +826,13 @@ void generated_dppp_shell_class_fock_rhf_persistent_kernel(
     const double* schwarz_bounds,
     const double* density,
     double* fock,
+    const std::uint32_t* task_offset,
     const std::uint32_t* task_count,
     std::uint32_t* task_head) {{
   generated_dppp_shell_class_fock_persistent<false>(
       tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
       atom_positions, screening_tolerance, schwarz_bounds, density, fock,
-      task_count, task_head);
+      task_offset, task_count, task_head);
 }}
 
 extern "C" __global__ __launch_bounds__(
@@ -717,12 +847,597 @@ void generated_dppp_shell_class_fock_uhf_persistent_kernel(
     const double* schwarz_bounds,
     const double* density,
     double* fock,
+    const std::uint32_t* task_offset,
     const std::uint32_t* task_count,
     std::uint32_t* task_head) {{
   generated_dppp_shell_class_fock_persistent<true>(
       tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
       atom_positions, screening_tolerance, schwarz_bounds, density, fock,
-      task_count, task_head);
+      task_offset, task_count, task_head);
+}}
+"""
+    if plan.schedule.kind == ScheduleKind.PACKED_TASKS:
+        worker_marker = """template <bool Unrestricted>
+__device__ __forceinline__ void generated_dppp_shell_class_fock_task("""
+        worker_begin = source.find(worker_marker)
+        if worker_begin < 0:
+            raise RuntimeError("generated Fock task marker changed unexpectedly")
+        source = source[:worker_begin] + _emit_packed_fock_consumer_cuda(
+            spec,
+            plan,
+            minimum_blocks_per_sm,
+        )
+    return source
+
+
+def _generic_task_component_setup(spec: ShellClassSpec) -> str:
+    """Generate AO/density routing for one automatically decoded lane."""
+
+    if spec == DPPP_SPEC:
+        return """  const unsigned d_component = component / 27U;
+  const unsigned p_components = component % 27U;
+  const unsigned first_p = p_components / 9U;
+  const unsigned third_p = (p_components / 3U) % 3U;
+  const unsigned fourth_p = p_components % 3U;
+  const bool unique_ket_component =
+      shared.task.shell[2] != shared.task.shell[3] || third_p >= fourth_p;
+  const std::size_t i = shared.task.ao_begin[0] + d_component;
+  const std::size_t j = shared.task.ao_begin[1] + first_p;
+  const std::size_t k = shared.task.ao_begin[2] + third_p;
+  const std::size_t l = shared.task.ao_begin[3] + fourth_p;"""
+
+    names = _component_names(spec)
+    lines = list(_generic_component_decode(spec))
+    symmetry_conditions = []
+    for first, second in ((0, 1), (2, 3)):
+        if spec.angular[first] == spec.angular[second]:
+            symmetry_conditions.append(
+                f"shared.task.shell[{first}] != shared.task.shell[{second}] || "
+                f"{names[first]} >= {names[second]}"
+            )
+    if symmetry_conditions:
+        expression = ") && (".join(symmetry_conditions)
+        lines.extend(
+            [
+                "  const bool unique_ket_component =",
+                f"      ({expression});",
+            ]
+        )
+    else:
+        lines.append("  constexpr bool unique_ket_component = true;")
+    for center, (ao_name, component_name) in enumerate(
+        zip(("i", "j", "k", "l"), names, strict=True)
+    ):
+        lines.append(
+            f"  const std::size_t {ao_name} = "
+            f"shared.task.ao_begin[{center}] + {component_name};"
+        )
+    return "\n".join(lines)
+
+
+def _emit_weighted_component_gradient_cuda(spec: ShellClassSpec) -> str:
+    """Emit one shell-wide weighted gradient with horizontal symbolic CSE."""
+
+    kernel = build_weighted_shell_contraction_kernel(spec)
+    variable_code = {
+        "inverse_two_p": "geometry.inverse_two_p",
+        "inverse_two_q": "geometry.inverse_two_q",
+        "rho": "geometry.rho",
+        "first_product_scale": "geometry.product_scales[0]",
+        "second_product_scale": "geometry.product_scales[1]",
+        "third_product_scale": "geometry.product_scales[2]",
+        "prefactor": "geometry.prefactor",
+    }
+    for axis_index, axis in enumerate(AXES):
+        variable_code[f"difference_{axis}"] = (
+            f"geometry.difference[{axis_index}]"
+        )
+        for center, prefix in enumerate(("pa", "pb", "qc", "qd")):
+            variable_code[f"{prefix}_{axis}"] = (
+                f"geometry.pair_shifts[{center}][{axis_index}]"
+            )
+        for center_index, center in enumerate(("first", "second", "third")):
+            variable_code[f"decay_{center}_{axis}"] = (
+                f"geometry.decay_gradients[{center_index}][{axis_index}]"
+            )
+    for order in range(spec.maximum_force_coulomb_order + 1):
+        variable_code[f"boys_{order}"] = f"geometry.boys[{order}]"
+    for component in range(spec.component_count):
+        variable_code[f"component_weight_{component}"] = (
+            f"component_weights[{component}]"
+        )
+
+    roots = [
+        kernel.gradients[center][coordinate]
+        for center in range(3)
+        for coordinate in range(3)
+    ]
+    emitter = CudaEmitter(kernel.graph, variable_code)
+    emitter.emit(roots)
+    lines = [
+        "/** Density-weighted shell gradient with cross-component CSE. */",
+        "__device__ __noinline__ void generated_dppp_weighted_component_gradient(",
+        "    const GeneratedDpppPrimitiveGeometry& geometry,",
+        "    const double (&component_weights)[kGeneratedDpppComponentCount],",
+        "    double (&gradient)[3][3]) {",
+        *emitter.lines,
+    ]
+    for center in range(3):
+        for coordinate in range(3):
+            lines.append(
+                f"  gradient[{center}][{coordinate}] = "
+                f"{emitter.reference(kernel.gradients[center][coordinate])};"
+            )
+    lines.append("}")
+    return "\n".join(lines) + "\n\n"
+
+
+def _emit_packed_force_consumer_cuda(
+    spec: ShellClassSpec,
+    plan: FusedShellPlan,
+    minimum_blocks_per_sm: int,
+) -> str:
+    """Emit one-independent-task-per-lane force kernels for small shells.
+
+    Packed lowering intentionally reuses the generic component recurrence and
+    exact density permutation helpers emitted above it.  Only task ownership
+    changes: a 32-thread block processes up to 32 unrelated shell quartets.
+    """
+
+    task_component_setup = _generic_task_component_setup(spec).replace(
+        "shared.task", "task"
+    )
+    component_names = _emitted_component_names(spec)
+    kernel_qualifier = (
+        f"__maxnreg__({plan.schedule.maximum_registers})"
+        if plan.schedule.maximum_registers
+        else f"__launch_bounds__(32, {minimum_blocks_per_sm})"
+    )
+    return f"""struct GeneratedDpppPackedLaneStorage {{
+  GeneratedDpppVec3 positions[4];
+  GeneratedDpppPrimitiveGeometry primitive;
+}};
+
+template <bool Unrestricted>
+__device__ __forceinline__ void generated_dppp_packed_force_lane(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    std::size_t task_index,
+    GeneratedDpppPackedLaneStorage& storage) {{
+  const GeneratedDpppShellTask& task = tasks[task_index];
+#pragma unroll
+  for (unsigned center = 0; center < 4U; ++center) {{
+    storage.positions[center] = atom_positions[task.atom[center]];
+  }}
+  double component_weights[kGeneratedDpppComponentCount]{{}};
+#pragma unroll
+  for (unsigned component = 0U;
+       component < kGeneratedDpppComponentCount; ++component) {{
+{task_component_setup}
+    const std::size_t matrix_order =
+        static_cast<std::size_t>(task.matrix_order);
+    const bool retained_by_schwarz = schwarz_bounds == nullptr ||
+        schwarz_bounds[
+            task.density_offset +
+            generated_dppp_matrix_index(i, j, matrix_order)] *
+            schwarz_bounds[
+                task.density_offset +
+                generated_dppp_matrix_index(k, l, matrix_order)] >=
+            screening_tolerance;
+    const double density_coefficient =
+        unique_ket_component && retained_by_schwarz
+        ? generated_dppp_density_coefficient<Unrestricted>(
+              task, i, j, k, l, density)
+        : 0.0;
+    const double angular_coefficient =
+        ao_coefficients[task.ao_coefficient_begin[0] + {component_names[0]}] *
+        ao_coefficients[task.ao_coefficient_begin[1] + {component_names[1]}] *
+        ao_coefficients[task.ao_coefficient_begin[2] + {component_names[2]}] *
+        ao_coefficients[task.ao_coefficient_begin[3] + {component_names[3]}];
+    component_weights[component] =
+        density_coefficient * angular_coefficient;
+  }}
+  double task_force[9]{{}};
+  const std::int64_t first_pair_begin =
+      primitive_pair_offsets[task.shell_pair[0]];
+  const std::int64_t first_pair_end =
+      primitive_pair_offsets[task.shell_pair[0] + 1U];
+  const std::int64_t second_pair_begin =
+      primitive_pair_offsets[task.shell_pair[1]];
+  const std::int64_t second_pair_end =
+      primitive_pair_offsets[task.shell_pair[1] + 1U];
+  for (std::int64_t first_primitive = first_pair_begin;
+       first_primitive < first_pair_end; ++first_primitive) {{
+    for (std::int64_t second_primitive = second_pair_begin;
+         second_primitive < second_pair_end; ++second_primitive) {{
+      generated_dppp_make_primitive_geometry(
+          primitive_pairs[first_primitive],
+          primitive_pairs[second_primitive],
+          (task.reversed_shell_pair_mask & 1U) != 0U,
+          (task.reversed_shell_pair_mask & 2U) != 0U,
+          storage.positions[0], storage.positions[1],
+          storage.positions[2], storage.positions[3],
+          storage.primitive);
+      double primitive_gradient[3][3];
+      generated_dppp_weighted_component_gradient(
+          storage.primitive, component_weights, primitive_gradient);
+      const double scale = -storage.primitive.primitive_coefficient;
+#pragma unroll
+      for (unsigned center = 0; center < 3U; ++center) {{
+#pragma unroll
+        for (unsigned coordinate = 0; coordinate < 3U; ++coordinate) {{
+          task_force[center * 3U + coordinate] +=
+              scale * primitive_gradient[center][coordinate];
+        }}
+      }}
+    }}
+  }}
+#pragma unroll
+  for (unsigned slot = 0; slot < 9U; ++slot) {{
+    const double value = task_force[slot];
+    if (value == 0.0) continue;
+    const unsigned center = slot / 3U;
+    const unsigned coordinate = slot % 3U;
+    atomicAdd(
+        forces + static_cast<std::size_t>(task.atom[center]) * 3U + coordinate,
+        value);
+  }}
+#pragma unroll
+  for (unsigned coordinate = 0; coordinate < 3U; ++coordinate) {{
+    const double value = -task_force[coordinate] -
+        task_force[3U + coordinate] - task_force[6U + coordinate];
+    if (value != 0.0) {{
+      atomicAdd(
+          forces + static_cast<std::size_t>(task.atom[3]) * 3U + coordinate,
+          value);
+    }}
+  }}
+}}
+
+extern "C" __global__ {kernel_qualifier}
+void generated_dppp_shell_class_force_rhf_kernel(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    std::size_t task_count) {{
+  __shared__ GeneratedDpppPackedLaneStorage lane_storage[32];
+  const std::size_t task_index =
+      static_cast<std::size_t>(blockIdx.x) * 32U + threadIdx.x;
+  if (task_index >= task_count) return;
+  generated_dppp_packed_force_lane<false>(
+      tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+      atom_positions, screening_tolerance, schwarz_bounds, density, forces,
+      task_index, lane_storage[threadIdx.x]);
+}}
+
+extern "C" __global__ {kernel_qualifier}
+void generated_dppp_shell_class_force_uhf_kernel(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    std::size_t task_count) {{
+  __shared__ GeneratedDpppPackedLaneStorage lane_storage[32];
+  const std::size_t task_index =
+      static_cast<std::size_t>(blockIdx.x) * 32U + threadIdx.x;
+  if (task_index >= task_count) return;
+  generated_dppp_packed_force_lane<true>(
+      tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+      atom_positions, screening_tolerance, schwarz_bounds, density, forces,
+      task_index, lane_storage[threadIdx.x]);
+}}
+
+template <bool Unrestricted>
+__device__ __forceinline__ void generated_dppp_packed_force_persistent(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    const std::uint32_t* task_offset,
+    const std::uint32_t* task_count,
+    std::uint32_t* task_head) {{
+  __shared__ std::uint32_t task_base;
+  __shared__ GeneratedDpppPackedLaneStorage lane_storage[32];
+  while (true) {{
+    if (threadIdx.x == 0U) task_base = atomicAdd(task_head, 32U);
+    __syncthreads();
+    if (task_base >= *task_count) return;
+    const std::uint32_t task_index = task_base + threadIdx.x;
+    if (task_index < *task_count) {{
+      generated_dppp_packed_force_lane<Unrestricted>(
+          tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+          atom_positions, screening_tolerance, schwarz_bounds, density, forces,
+          static_cast<std::size_t>(*task_offset + task_index),
+          lane_storage[threadIdx.x]);
+    }}
+    __syncthreads();
+  }}
+}}
+
+extern "C" __global__ {kernel_qualifier}
+void generated_dppp_shell_class_force_rhf_persistent_kernel(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    const std::uint32_t* task_offset,
+    const std::uint32_t* task_count,
+    std::uint32_t* task_head) {{
+  generated_dppp_packed_force_persistent<false>(
+      tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+      atom_positions, screening_tolerance, schwarz_bounds, density, forces,
+      task_offset, task_count, task_head);
+}}
+
+extern "C" __global__ {kernel_qualifier}
+void generated_dppp_shell_class_force_uhf_persistent_kernel(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    const std::uint32_t* task_offset,
+    const std::uint32_t* task_count,
+    std::uint32_t* task_head) {{
+  generated_dppp_packed_force_persistent<true>(
+      tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+      atom_positions, screening_tolerance, schwarz_bounds, density, forces,
+      task_offset, task_count, task_head);
+}}
+"""
+
+
+def _emit_packed_fock_consumer_cuda(
+    spec: ShellClassSpec,
+    plan: FusedShellPlan,
+    minimum_blocks_per_sm: int,
+) -> str:
+    """Emit packed low-order Fock kernels using the shared value recurrence."""
+
+    task_component_setup = _generic_task_component_setup(spec).replace(
+        "shared.task", "task"
+    )
+    component_names = _emitted_component_names(spec)
+    kernel_qualifier = (
+        f"__maxnreg__({plan.schedule.maximum_registers})"
+        if plan.schedule.maximum_registers
+        else f"__launch_bounds__(32, {minimum_blocks_per_sm})"
+    )
+    return f"""
+
+template <bool Unrestricted>
+__device__ __forceinline__ void generated_dppp_packed_fock_lane(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* fock,
+    std::size_t task_index,
+    GeneratedDpppPackedLaneStorage& storage) {{
+  const GeneratedDpppShellTask& task = tasks[task_index];
+#pragma unroll
+  for (unsigned center = 0; center < 4U; ++center) {{
+    storage.positions[center] = atom_positions[task.atom[center]];
+  }}
+  bool evaluate_components[kGeneratedDpppComponentCount]{{}};
+  double angular_coefficients[kGeneratedDpppComponentCount]{{}};
+#pragma unroll
+  for (unsigned component = 0U;
+       component < kGeneratedDpppComponentCount; ++component) {{
+{task_component_setup}
+    const std::size_t matrix_order =
+        static_cast<std::size_t>(task.matrix_order);
+    const bool retained_by_schwarz = schwarz_bounds == nullptr ||
+        schwarz_bounds[
+            task.density_offset +
+            generated_dppp_matrix_index(i, j, matrix_order)] *
+            schwarz_bounds[
+                task.density_offset +
+                generated_dppp_matrix_index(k, l, matrix_order)] >=
+            screening_tolerance;
+    evaluate_components[component] =
+        unique_ket_component && retained_by_schwarz;
+    angular_coefficients[component] =
+        ao_coefficients[task.ao_coefficient_begin[0] + {component_names[0]}] *
+        ao_coefficients[task.ao_coefficient_begin[1] + {component_names[1]}] *
+        ao_coefficients[task.ao_coefficient_begin[2] + {component_names[2]}] *
+        ao_coefficients[task.ao_coefficient_begin[3] + {component_names[3]}];
+  }}
+  double component_integrals[kGeneratedDpppComponentCount]{{}};
+  const std::int64_t first_pair_begin =
+      primitive_pair_offsets[task.shell_pair[0]];
+  const std::int64_t first_pair_end =
+      primitive_pair_offsets[task.shell_pair[0] + 1U];
+  const std::int64_t second_pair_begin =
+      primitive_pair_offsets[task.shell_pair[1]];
+  const std::int64_t second_pair_end =
+      primitive_pair_offsets[task.shell_pair[1] + 1U];
+  for (std::int64_t first_primitive = first_pair_begin;
+       first_primitive < first_pair_end; ++first_primitive) {{
+    for (std::int64_t second_primitive = second_pair_begin;
+         second_primitive < second_pair_end; ++second_primitive) {{
+      generated_dppp_make_primitive_geometry(
+          primitive_pairs[first_primitive],
+          primitive_pairs[second_primitive],
+          (task.reversed_shell_pair_mask & 1U) != 0U,
+          (task.reversed_shell_pair_mask & 2U) != 0U,
+          storage.positions[0], storage.positions[1],
+          storage.positions[2], storage.positions[3],
+          storage.primitive);
+#pragma unroll
+      for (unsigned component = 0U;
+           component < kGeneratedDpppComponentCount; ++component) {{
+        if (!evaluate_components[component]) continue;
+        component_integrals[component] +=
+            angular_coefficients[component] *
+            storage.primitive.primitive_coefficient *
+            generated_dppp_component_value<false>(
+                component, storage.primitive, nullptr);
+      }}
+    }}
+  }}
+#pragma unroll
+  for (unsigned component = 0U;
+       component < kGeneratedDpppComponentCount; ++component) {{
+    const double component_integral = component_integrals[component];
+    if (component_integral != 0.0) {{
+{task_component_setup}
+      generated_dppp_accumulate_fock<Unrestricted>(
+          task, density, fock, i, j, k, l, component_integral);
+    }}
+  }}
+}}
+
+extern "C" __global__ {kernel_qualifier}
+void generated_dppp_shell_class_fock_rhf_kernel(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* fock,
+    std::size_t task_count) {{
+  __shared__ GeneratedDpppPackedLaneStorage lane_storage[32];
+  const std::size_t task_index =
+      static_cast<std::size_t>(blockIdx.x) * 32U + threadIdx.x;
+  if (task_index >= task_count) return;
+  generated_dppp_packed_fock_lane<false>(
+      tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+      atom_positions, screening_tolerance, schwarz_bounds, density, fock,
+      task_index, lane_storage[threadIdx.x]);
+}}
+
+extern "C" __global__ {kernel_qualifier}
+void generated_dppp_shell_class_fock_uhf_kernel(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* fock,
+    std::size_t task_count) {{
+  __shared__ GeneratedDpppPackedLaneStorage lane_storage[32];
+  const std::size_t task_index =
+      static_cast<std::size_t>(blockIdx.x) * 32U + threadIdx.x;
+  if (task_index >= task_count) return;
+  generated_dppp_packed_fock_lane<true>(
+      tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+      atom_positions, screening_tolerance, schwarz_bounds, density, fock,
+      task_index, lane_storage[threadIdx.x]);
+}}
+
+template <bool Unrestricted>
+__device__ __forceinline__ void generated_dppp_packed_fock_persistent(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* fock,
+    const std::uint32_t* task_offset,
+    const std::uint32_t* task_count,
+    std::uint32_t* task_head) {{
+  __shared__ std::uint32_t task_base;
+  __shared__ GeneratedDpppPackedLaneStorage lane_storage[32];
+  while (true) {{
+    if (threadIdx.x == 0U) task_base = atomicAdd(task_head, 32U);
+    __syncthreads();
+    if (task_base >= *task_count) return;
+    const std::uint32_t task_index = task_base + threadIdx.x;
+    if (task_index < *task_count) {{
+      generated_dppp_packed_fock_lane<Unrestricted>(
+          tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+          atom_positions, screening_tolerance, schwarz_bounds, density, fock,
+          static_cast<std::size_t>(*task_offset + task_index),
+          lane_storage[threadIdx.x]);
+    }}
+    __syncthreads();
+  }}
+}}
+
+extern "C" __global__ {kernel_qualifier}
+void generated_dppp_shell_class_fock_rhf_persistent_kernel(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* fock,
+    const std::uint32_t* task_offset,
+    const std::uint32_t* task_count,
+    std::uint32_t* task_head) {{
+  generated_dppp_packed_fock_persistent<false>(
+      tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+      atom_positions, screening_tolerance, schwarz_bounds, density, fock,
+      task_offset, task_count, task_head);
+}}
+
+extern "C" __global__ {kernel_qualifier}
+void generated_dppp_shell_class_fock_uhf_persistent_kernel(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* fock,
+    const std::uint32_t* task_offset,
+    const std::uint32_t* task_count,
+    std::uint32_t* task_head) {{
+  generated_dppp_packed_fock_persistent<true>(
+      tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+      atom_positions, screening_tolerance, schwarz_bounds, density, fock,
+      task_offset, task_count, task_head);
 }}
 """
 
@@ -730,8 +1445,6 @@ void generated_dppp_shell_class_fock_uhf_persistent_kernel(
 def emit_shell_class_fused_cuda(
     spec: ShellClassSpec,
     plan: FusedShellPlan | None = None,
-    *,
-    include_fock: bool = False,
 ) -> str:
     """Emit a complete cooperative force kernel from a shell specification.
 
@@ -744,25 +1457,87 @@ def emit_shell_class_fused_cuda(
     plan = build_fused_shell_plan(spec) if plan is None else plan
     if plan.spec != spec:
         raise ValueError("fused plan and shell specification do not match")
-    if any(order == 0 or order > 4 for order in spec.pair_orders):
+    if plan.schedule.kind not in (
+        ScheduleKind.PACKED_TASKS,
+        ScheduleKind.SHELL_TASK,
+        ScheduleKind.COMPONENT_LANES,
+        ScheduleKind.TILED_COMPONENTS,
+    ):
         raise ValueError(
-            "current fused CUDA candidate supports pair orders one through four"
+            "current CUDA emitter implements packed, shell-task, component-lane, and tiled schedules"
         )
-    if any(order > 2 for order in spec.angular):
-        raise ValueError("current fused CUDA candidate supports s/p/d shells")
+    if (
+        plan.schedule.kind == ScheduleKind.PACKED_TASKS
+        and plan.schedule.shared_coulomb
+    ):
+        raise ValueError("packed tasks require lane-local Coulomb evaluation")
+    if (
+        plan.schedule.kind == ScheduleKind.TILED_COMPONENTS
+        and plan.schedule.component_tile != plan.schedule.block_threads
+    ):
+        raise ValueError(
+            "tiled CUDA lowering requires one component per block thread"
+        )
+    if any(order > 6 for order in spec.pair_orders):
+        raise ValueError(
+            "current fused CUDA candidate supports pair orders zero through six"
+        )
+    if any(order > 3 for order in spec.angular):
+        raise ValueError("current fused CUDA candidate supports s/p/d/f shells")
+    maximum_order = spec.maximum_force_coulomb_order
+    state_axis_bits = max(3, maximum_order.bit_length())
+    state_mask = (1 << state_axis_bits) - 1
     packed_states = tuple(
-        x_order | (y_order << 3) | (z_order << 6)
+        x_order
+        | (y_order << state_axis_bits)
+        | (z_order << (2 * state_axis_bits))
         for x_order, y_order, z_order in plan.coulomb_states
+    )
+    coulomb_index_type = (
+        "signed char" if len(plan.coulomb_states) <= 128 else "short"
     )
     d_axes = tuple(
         _AXIS_INDEX[axis]
         for component in DPPP_SPEC.center_components[0]
         for axis in component
     )
+    f_axes = tuple(
+        _AXIS_INDEX[axis]
+        for component in cartesian_components(3)
+        for axis in component
+    )
+    f_axes_declaration = ""
+    if any(order == 3 for order in spec.angular):
+        f_axes_declaration = f"""
+__device__ __constant__ unsigned char generated_dppp_f_axes[10][3] = {{
+{_format_cuda_array(f_axes, columns=10)}
+}};
+"""
     first_pair_order, second_pair_order = spec.pair_orders
+    explicit_pair_order = 0 in spec.pair_orders
+    first_pair_term = (
+        f"generated_dppp_pair_term<{first_pair_order}U>"
+        if explicit_pair_order
+        else "generated_dppp_pair_term"
+    )
+    second_pair_term = (
+        f"generated_dppp_pair_term<{second_pair_order}U>"
+        if explicit_pair_order
+        else "generated_dppp_pair_term"
+    )
     supported_pair_orders = " || ".join(
         f"PairOrder == {order}U" for order in sorted(set(spec.pair_orders))
     )
+    if explicit_pair_order:
+        pair_array_parameters = """    const unsigned* axes,
+    const double* shifts,
+    const double* shift_gradients,"""
+        pair_matching_call = "generated_dppp_add_pair_matching<PairOrder>"
+    else:
+        pair_array_parameters = """    const unsigned (&axes)[PairOrder],
+    const double (&shifts)[PairOrder],
+    const double (&shift_gradients)[PairOrder],"""
+        pair_matching_call = "generated_dppp_add_pair_matching"
     double_pair_matchings = ""
     if max(spec.pair_orders) >= 4:
         double_pair_matchings = """  if constexpr (PairOrder >= 4U) {
@@ -778,7 +1553,7 @@ def emit_shell_class_fused_cuda(
                 (1U << third) | (1U << fourth);
             if (first_removed >= second_removed ||
                 (first_removed & second_removed) != 0U) continue;
-            generated_dppp_add_pair_matching(
+            QCE_PAIR_MATCHING_CALL(
                 term, axes, shifts, shift_gradients, inverse_two_exponent,
                 subset, first_removed | second_removed, 2U);
           }
@@ -787,12 +1562,231 @@ def emit_shell_class_fused_cuda(
     }
   }
 """
+        double_pair_matchings = double_pair_matchings.replace(
+            "QCE_PAIR_MATCHING_CALL", pair_matching_call
+        )
+    triple_pair_matchings = ""
+    if max(spec.pair_orders) >= 6:
+        triple_pair_matchings = """  if constexpr (PairOrder >= 6U) {
+    for (unsigned first = 0; first < PairOrder; ++first) {
+      for (unsigned second = first + 1U; second < PairOrder; ++second) {
+        if (axes[first] != axes[second]) continue;
+        const unsigned first_removed =
+            (1U << first) | (1U << second);
+        for (unsigned third = 0; third < PairOrder; ++third) {
+          for (unsigned fourth = third + 1U; fourth < PairOrder; ++fourth) {
+            if (axes[third] != axes[fourth]) continue;
+            const unsigned second_removed =
+                (1U << third) | (1U << fourth);
+            if (first_removed >= second_removed ||
+                (first_removed & second_removed) != 0U) continue;
+            for (unsigned fifth = 0; fifth < PairOrder; ++fifth) {
+              for (unsigned sixth = fifth + 1U; sixth < PairOrder; ++sixth) {
+                if (axes[fifth] != axes[sixth]) continue;
+                const unsigned third_removed =
+                    (1U << fifth) | (1U << sixth);
+                if (second_removed >= third_removed ||
+                    ((first_removed | second_removed) & third_removed) != 0U) {
+                  continue;
+                }
+                QCE_PAIR_MATCHING_CALL(
+                    term, axes, shifts, shift_gradients,
+                    inverse_two_exponent, subset,
+                    first_removed | second_removed | third_removed, 3U);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+"""
+        triple_pair_matchings = triple_pair_matchings.replace(
+            "QCE_PAIR_MATCHING_CALL", pair_matching_call
+        )
     component_gradient_setup = _generic_component_gradient_setup(spec)
     task_component_setup = _generic_task_component_setup(spec)
     component_names = _emitted_component_names(spec)
-    maximum_order = spec.maximum_force_coulomb_order
     side = maximum_order + 1
-    minimum_blocks_per_sm = (384 + plan.block_threads - 1) // plan.block_threads
+    minimum_blocks_per_sm = plan.schedule.minimum_blocks_per_sm or (
+        2
+        if plan.schedule.kind == ScheduleKind.PACKED_TASKS
+        else (384 + plan.block_threads - 1) // plan.block_threads
+    )
+    shared_coulomb = "true" if plan.schedule.shared_coulomb else "false"
+    coulomb_storage_count = (
+        "kGeneratedDpppCoulombStateCount"
+        if plan.schedule.shared_coulomb
+        else "1"
+    )
+    coulomb_setup = ""
+    if plan.schedule.shared_coulomb:
+        if plan.schedule.kind == ScheduleKind.TILED_COMPONENTS:
+            coulomb_setup = """          for (unsigned state = lane;
+               state < kGeneratedDpppCoulombStateCount;
+               state += kGeneratedDpppBlockThreads) {
+            shared.coulomb[state] = generated_dppp_coulomb(
+                generated_dppp_coulomb_states[state], shared.primitive);
+          }
+          __syncthreads();
+"""
+        else:
+            coulomb_setup = """          if (lane < kGeneratedDpppCoulombStateCount) {
+            shared.coulomb[lane] = generated_dppp_coulomb(
+                generated_dppp_coulomb_states[lane], shared.primitive);
+          }
+          __syncthreads();
+"""
+    if plan.schedule.kind == ScheduleKind.TILED_COMPONENTS:
+        component_schedule_setup = f"""  for (unsigned component_tile_begin = 0U;
+       component_tile_begin < kGeneratedDpppComponentCount;
+       component_tile_begin += {plan.schedule.component_tile}U) {{
+  const unsigned tile_component = component_tile_begin + lane;
+  const bool component_lane = tile_component < kGeneratedDpppComponentCount;
+  const unsigned component = component_lane ? tile_component : 0U;
+"""
+        component_schedule_close = "  __syncthreads();\n  }\n"
+    else:
+        component_schedule_setup = """  const bool component_lane = lane < kGeneratedDpppComponentCount;
+  const unsigned component = component_lane ? lane : 0U;
+"""
+        component_schedule_close = ""
+    pair_accumulation = f"""      const double sign =
+          (generated_dppp_state_total(second_term.derivative_state) & 1U)
+          == 0U ? 1.0 : -1.0;
+      const unsigned state =
+          first_term.derivative_state + second_term.derivative_state;
+      const double state_value = generated_dppp_component_coulomb<SharedCoulomb>(
+          geometry, coulomb, state);
+      const double coefficient =
+          sign * first_term.coefficient * second_term.coefficient;
+      value += coefficient * state_value;
+#pragma unroll
+      for (unsigned coordinate = 0; coordinate < 3U; ++coordinate) {{
+        const double scaled_derivative = coefficient *
+            generated_dppp_component_coulomb<SharedCoulomb>(
+                geometry, coulomb,
+                state + (1U << ({state_axis_bits}U * coordinate)));
+        const double first_coefficient_gradient =
+            sign * first_term.first_center[coordinate] *
+            second_term.coefficient;
+        const double second_coefficient_gradient =
+            sign * first_term.coefficient *
+            second_term.first_center[coordinate];
+        value_gradient[0][coordinate] +=
+            first_coefficient_gradient * state_value +
+            geometry.product_scales[0] * scaled_derivative;
+        value_gradient[1][coordinate] +=
+            -first_coefficient_gradient * state_value +
+            geometry.product_scales[1] * scaled_derivative;
+        value_gradient[2][coordinate] +=
+            second_coefficient_gradient * state_value -
+            geometry.product_scales[2] * scaled_derivative;
+      }}
+"""
+    if plan.schedule.pair_storage == PairStorage.RECOMPUTED:
+        if plan.schedule.pair_orientation == PairOrientation.CANONICAL:
+            gradient_contraction = f"""  double value = 0.0;
+  double value_gradient[3][3]{{}};
+QCE_PAIR_UNROLL
+  for (unsigned first_subset = 0;
+       first_subset < {1 << first_pair_order}U; ++first_subset) {{
+    const GeneratedDpppPairTerm first_term = {first_pair_term}(
+        first_axes, first_shifts, first_shift_gradients,
+        geometry.inverse_two_p, first_subset);
+QCE_PAIR_UNROLL
+    for (unsigned second_subset = 0;
+         second_subset < {1 << second_pair_order}U; ++second_subset) {{
+      const GeneratedDpppPairTerm second_term = {second_pair_term}(
+          second_axes, second_shifts, second_shift_gradients,
+          geometry.inverse_two_q, second_subset);
+{pair_accumulation}    }}
+  }}
+"""
+        else:
+            gradient_contraction = f"""  double value = 0.0;
+  double value_gradient[3][3]{{}};
+QCE_PAIR_UNROLL
+  for (unsigned second_subset = 0;
+       second_subset < {1 << second_pair_order}U; ++second_subset) {{
+    const GeneratedDpppPairTerm second_term = {second_pair_term}(
+        second_axes, second_shifts, second_shift_gradients,
+        geometry.inverse_two_q, second_subset);
+QCE_PAIR_UNROLL
+    for (unsigned first_subset = 0;
+         first_subset < {1 << first_pair_order}U; ++first_subset) {{
+      const GeneratedDpppPairTerm first_term = {first_pair_term}(
+          first_axes, first_shifts, first_shift_gradients,
+          geometry.inverse_two_p, first_subset);
+{pair_accumulation}    }}
+  }}
+"""
+    elif plan.schedule.pair_orientation == PairOrientation.CANONICAL:
+        gradient_contraction = f"""  GeneratedDpppPairTerm second_terms[{1 << second_pair_order}];
+QCE_PAIR_UNROLL
+  for (unsigned subset = 0; subset < {1 << second_pair_order}U; ++subset) {{
+    second_terms[subset] = {second_pair_term}(
+        second_axes, second_shifts, second_shift_gradients,
+        geometry.inverse_two_q, subset);
+  }}
+  double value = 0.0;
+  double value_gradient[3][3]{{}};
+QCE_PAIR_UNROLL
+  for (unsigned first_subset = 0;
+       first_subset < {1 << first_pair_order}U; ++first_subset) {{
+    const GeneratedDpppPairTerm first_term = {first_pair_term}(
+        first_axes, first_shifts, first_shift_gradients,
+        geometry.inverse_two_p, first_subset);
+QCE_PAIR_UNROLL
+    for (unsigned second_subset = 0;
+         second_subset < {1 << second_pair_order}U; ++second_subset) {{
+      const GeneratedDpppPairTerm& second_term = second_terms[second_subset];
+{pair_accumulation}    }}
+  }}
+"""
+    else:
+        gradient_contraction = f"""  GeneratedDpppPairTerm first_terms[{1 << first_pair_order}];
+QCE_PAIR_UNROLL
+  for (unsigned subset = 0; subset < {1 << first_pair_order}U; ++subset) {{
+    first_terms[subset] = {first_pair_term}(
+        first_axes, first_shifts, first_shift_gradients,
+        geometry.inverse_two_p, subset);
+  }}
+  double value = 0.0;
+  double value_gradient[3][3]{{}};
+QCE_PAIR_UNROLL
+  for (unsigned second_subset = 0;
+       second_subset < {1 << second_pair_order}U; ++second_subset) {{
+    const GeneratedDpppPairTerm second_term = {second_pair_term}(
+        second_axes, second_shifts, second_shift_gradients,
+        geometry.inverse_two_q, second_subset);
+QCE_PAIR_UNROLL
+    for (unsigned first_subset = 0;
+         first_subset < {1 << first_pair_order}U; ++first_subset) {{
+      const GeneratedDpppPairTerm& first_term = first_terms[first_subset];
+{pair_accumulation}    }}
+  }}
+"""
+    if maximum_order <= 7:
+        high_wick_multiplicity = """  return order * (order - 1U) * (order - 2U) * (order - 3U) *
+      (order - 4U) * (order - 5U) / 48U;
+"""
+    else:
+        high_wick_multiplicity = """  unsigned numerator = 1U;
+  for (unsigned factor = 0U; factor < 2U * pairs; ++factor) {
+    numerator *= order - factor;
+  }
+  unsigned denominator = 1U << pairs;
+  for (unsigned factor = 2U; factor <= pairs; ++factor) {
+    denominator *= factor;
+  }
+  return numerator / denominator;
+"""
+    warp_count_declaration = (
+        ""
+        if plan.schedule.kind == ScheduleKind.PACKED_TASKS
+        else f"constexpr unsigned kGeneratedDpppWarpCount = {plan.warp_count}U;\n"
+    )
     source = f"""/**
  * Generated cooperative AOT candidate for canonical (d p|p p) forces.
  *
@@ -854,20 +1848,21 @@ struct GeneratedDpppPairTerm {{
 constexpr unsigned kGeneratedDpppComponentCount = {spec.component_count}U;
 constexpr unsigned kGeneratedDpppBlockThreads = {plan.block_threads}U;
 constexpr unsigned kGeneratedDpppCoulombStateCount = {len(plan.coulomb_states)}U;
-constexpr unsigned kGeneratedDpppWarpCount = {plan.warp_count}U;
+{warp_count_declaration}
 
 __device__ __constant__ unsigned short generated_dppp_coulomb_states[
     kGeneratedDpppCoulombStateCount] = {{
 {_format_cuda_array(packed_states)}
 }};
 
-__device__ __constant__ signed char generated_dppp_coulomb_indices[{side**3}] = {{
+__device__ __constant__ {coulomb_index_type} generated_dppp_coulomb_indices[{side**3}] = {{
 {_format_cuda_array(plan.coulomb_indices)}
 }};
 
 __device__ __constant__ unsigned char generated_dppp_d_axes[6][2] = {{
 {_format_cuda_array(d_axes, columns=6)}
 }};
+{f_axes_declaration}
 
 __device__ __forceinline__ double generated_dppp_axis(
     const GeneratedDpppVec3& value, unsigned axis) {{
@@ -875,13 +1870,17 @@ __device__ __forceinline__ double generated_dppp_axis(
 }}
 
 __device__ __forceinline__ unsigned generated_dppp_state_total(unsigned state) {{
-  return (state & 7U) + ((state >> 3U) & 7U) + ((state >> 6U) & 7U);
+  return (state & {state_mask}U) +
+      ((state >> {state_axis_bits}U) & {state_mask}U) +
+      ((state >> {2 * state_axis_bits}U) & {state_mask}U);
 }}
 
 __device__ __forceinline__ unsigned generated_dppp_state_index(unsigned state) {{
-  const unsigned x_order = state & 7U;
-  const unsigned y_order = (state >> 3U) & 7U;
-  const unsigned z_order = (state >> 6U) & 7U;
+  const unsigned x_order = state & {state_mask}U;
+  const unsigned y_order =
+      (state >> {state_axis_bits}U) & {state_mask}U;
+  const unsigned z_order =
+      (state >> {2 * state_axis_bits}U) & {state_mask}U;
   return static_cast<unsigned>(generated_dppp_coulomb_indices[
       (x_order * {side}U + y_order) * {side}U + z_order]);
 }}
@@ -893,16 +1892,17 @@ __device__ __forceinline__ unsigned generated_dppp_wick_multiplicity(
   if (pairs == 2U) {{
     return order * (order - 1U) * (order - 2U) * (order - 3U) / 8U;
   }}
-  return order * (order - 1U) * (order - 2U) * (order - 3U) *
-      (order - 4U) * (order - 5U) / 48U;
+{high_wick_multiplicity.rstrip()}
 }}
 
 __device__ __forceinline__ double generated_dppp_coulomb(
     unsigned derivative_state,
     const GeneratedDpppPrimitiveGeometry& geometry) {{
-  const unsigned x_order = derivative_state & 7U;
-  const unsigned y_order = (derivative_state >> 3U) & 7U;
-  const unsigned z_order = (derivative_state >> 6U) & 7U;
+  const unsigned x_order = derivative_state & {state_mask}U;
+  const unsigned y_order =
+      (derivative_state >> {state_axis_bits}U) & {state_mask}U;
+  const unsigned z_order =
+      (derivative_state >> {2 * state_axis_bits}U) & {state_mask}U;
   const unsigned total_order = x_order + y_order + z_order;
   double value = 0.0;
   for (unsigned x_pairs = 0; x_pairs <= x_order / 2U; ++x_pairs) {{
@@ -929,9 +1929,7 @@ __device__ __forceinline__ double generated_dppp_coulomb(
 template <unsigned PairOrder>
 __device__ __forceinline__ void generated_dppp_add_pair_matching(
     GeneratedDpppPairTerm& term,
-    const unsigned (&axes)[PairOrder],
-    const double (&shifts)[PairOrder],
-    const double (&shift_gradients)[PairOrder],
+{pair_array_parameters}
     double inverse_two_exponent,
     unsigned subset,
     unsigned removed,
@@ -965,31 +1963,30 @@ __device__ __forceinline__ void generated_dppp_add_pair_matching(
 
 template <unsigned PairOrder>
 __device__ __forceinline__ GeneratedDpppPairTerm generated_dppp_pair_term(
-    const unsigned (&axes)[PairOrder],
-    const double (&shifts)[PairOrder],
-    const double (&shift_gradients)[PairOrder],
+{pair_array_parameters}
     double inverse_two_exponent,
     unsigned subset) {{
   static_assert({supported_pair_orders});
   GeneratedDpppPairTerm term{{}};
   for (unsigned quantum = 0; quantum < PairOrder; ++quantum) {{
     if ((subset & (1U << quantum)) != 0U) {{
-      term.derivative_state += 1U << (3U * axes[quantum]);
+      term.derivative_state +=
+          1U << ({state_axis_bits}U * axes[quantum]);
     }}
   }}
-  generated_dppp_add_pair_matching(
+  {pair_matching_call}(
       term, axes, shifts, shift_gradients, inverse_two_exponent,
       subset, 0U, 0U);
   for (unsigned first = 0; first < PairOrder; ++first) {{
     for (unsigned second = first + 1U; second < PairOrder; ++second) {{
       if (axes[first] == axes[second]) {{
-        generated_dppp_add_pair_matching(
+        {pair_matching_call}(
             term, axes, shifts, shift_gradients, inverse_two_exponent,
             subset, (1U << first) | (1U << second), 1U);
       }}
     }}
   }}
-{double_pair_matchings}  return term;
+{double_pair_matchings}{triple_pair_matchings}  return term;
 }}
 
 template <bool SharedCoulomb>
@@ -1012,56 +2009,7 @@ __device__ __forceinline__ void generated_dppp_component_gradient(
     double (&gradient)[4][3]) {{
 {component_gradient_setup}
 
-  GeneratedDpppPairTerm second_terms[{1 << second_pair_order}];
-#pragma unroll
-  for (unsigned subset = 0; subset < {1 << second_pair_order}U; ++subset) {{
-    second_terms[subset] = generated_dppp_pair_term(
-        second_axes, second_shifts, second_shift_gradients,
-        geometry.inverse_two_q, subset);
-  }}
-  double value = 0.0;
-  double value_gradient[3][3]{{}};
-#pragma unroll
-  for (unsigned first_subset = 0; first_subset < {1 << first_pair_order}U; ++first_subset) {{
-    const GeneratedDpppPairTerm first_term = generated_dppp_pair_term(
-        first_axes, first_shifts, first_shift_gradients,
-        geometry.inverse_two_p, first_subset);
-#pragma unroll
-    for (unsigned second_subset = 0; second_subset < {1 << second_pair_order}U; ++second_subset) {{
-      const GeneratedDpppPairTerm& second_term = second_terms[second_subset];
-      const double sign =
-          (generated_dppp_state_total(second_term.derivative_state) & 1U)
-          == 0U ? 1.0 : -1.0;
-      const unsigned state =
-          first_term.derivative_state + second_term.derivative_state;
-      const double state_value = generated_dppp_component_coulomb<SharedCoulomb>(
-          geometry, coulomb, state);
-      const double coefficient =
-          sign * first_term.coefficient * second_term.coefficient;
-      value += coefficient * state_value;
-#pragma unroll
-      for (unsigned coordinate = 0; coordinate < 3U; ++coordinate) {{
-        const double scaled_derivative = coefficient *
-            generated_dppp_component_coulomb<SharedCoulomb>(
-                geometry, coulomb, state + (1U << (3U * coordinate)));
-        const double first_coefficient_gradient =
-            sign * first_term.first_center[coordinate] *
-            second_term.coefficient;
-        const double second_coefficient_gradient =
-            sign * first_term.coefficient *
-            second_term.first_center[coordinate];
-        value_gradient[0][coordinate] +=
-            first_coefficient_gradient * state_value +
-            geometry.product_scales[0] * scaled_derivative;
-        value_gradient[1][coordinate] +=
-            -first_coefficient_gradient * state_value +
-            geometry.product_scales[1] * scaled_derivative;
-        value_gradient[2][coordinate] +=
-            second_coefficient_gradient * state_value -
-            geometry.product_scales[2] * scaled_derivative;
-      }}
-    }}
-  }}
+{gradient_contraction}
 #pragma unroll
   for (unsigned center = 0; center < 3U; ++center) {{
 #pragma unroll
@@ -1239,7 +2187,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task(
     GeneratedDpppShellTask task;
     GeneratedDpppVec3 positions[4];
     GeneratedDpppPrimitiveGeometry primitive;
-    double coulomb[kGeneratedDpppCoulombStateCount];
+    double coulomb[{coulomb_storage_count}];
     double warp_sums[kGeneratedDpppWarpCount][12];
   }};
   __shared__ Shared shared;
@@ -1254,9 +2202,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task(
   }}
   __syncthreads();
 
-  const bool component_lane = lane < kGeneratedDpppComponentCount;
-  const unsigned component = component_lane ? lane : 0U;
-{task_component_setup}
+{component_schedule_setup}{task_component_setup}
   const std::size_t matrix_order =
       static_cast<std::size_t>(shared.task.matrix_order);
   const bool retained_by_schwarz = schwarz_bounds == nullptr ||
@@ -1302,14 +2248,10 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task(
             shared.positions[2], shared.positions[3], shared.primitive);
       }}
       __syncthreads();
-      if (lane < kGeneratedDpppCoulombStateCount) {{
-        shared.coulomb[lane] = generated_dppp_coulomb(
-            generated_dppp_coulomb_states[lane], shared.primitive);
-      }}
-      __syncthreads();
+{coulomb_setup}
       if (density_coefficient != 0.0) {{
         double primitive_gradient[4][3];
-        generated_dppp_component_gradient<true>(
+        generated_dppp_component_gradient<{shared_coulomb}>(
             component, shared.primitive, shared.coulomb,
             primitive_gradient);
         const double scale = -density_coefficient * angular_coefficient *
@@ -1354,7 +2296,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task(
                 value);
     }}
   }}
-}}
+{component_schedule_close}}}
 
 extern "C" __global__ __launch_bounds__(kGeneratedDpppBlockThreads, {minimum_blocks_per_sm})
 void generated_dppp_shell_class_force_rhf_kernel(
@@ -1406,6 +2348,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_persistent(
     const double* schwarz_bounds,
     const double* density,
     double* forces,
+    const std::uint32_t* task_offset,
     const std::uint32_t* task_count,
     std::uint32_t* task_head) {{
   const unsigned lane = threadIdx.x;
@@ -1418,7 +2361,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_persistent(
     generated_dppp_shell_class_force_task<Unrestricted>(
         tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
         atom_positions, screening_tolerance, schwarz_bounds, density, forces,
-        static_cast<std::size_t>(task_index));
+        static_cast<std::size_t>(*task_offset + task_index));
     __syncthreads();
   }}
 }}
@@ -1434,12 +2377,13 @@ void generated_dppp_shell_class_force_rhf_persistent_kernel(
     const double* schwarz_bounds,
     const double* density,
     double* forces,
+    const std::uint32_t* task_offset,
     const std::uint32_t* task_count,
     std::uint32_t* task_head) {{
   generated_dppp_shell_class_force_persistent<false>(
       tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
       atom_positions, screening_tolerance, schwarz_bounds, density, forces,
-      task_count, task_head);
+      task_offset, task_count, task_head);
 }}
 
 extern "C" __global__ __launch_bounds__(kGeneratedDpppBlockThreads, {minimum_blocks_per_sm})
@@ -1453,16 +2397,38 @@ void generated_dppp_shell_class_force_uhf_persistent_kernel(
     const double* schwarz_bounds,
     const double* density,
     double* forces,
+    const std::uint32_t* task_offset,
     const std::uint32_t* task_count,
     std::uint32_t* task_head) {{
   generated_dppp_shell_class_force_persistent<true>(
       tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
       atom_positions, screening_tolerance, schwarz_bounds, density, forces,
-      task_count, task_head);
+      task_offset, task_count, task_head);
 }}
 """
-    if include_fock:
+    if plan.schedule.kind == ScheduleKind.PACKED_TASKS:
+        force_marker = """template <bool Unrestricted>
+__device__ __forceinline__ void generated_dppp_shell_class_force_task("""
+        force_begin = source.find(force_marker)
+        if force_begin < 0:
+            raise RuntimeError("generated force task marker changed unexpectedly")
+        source = (
+            source[:force_begin]
+            + _emit_weighted_component_gradient_cuda(spec)
+            + _emit_packed_force_consumer_cuda(
+                spec,
+                plan,
+                minimum_blocks_per_sm,
+            )
+        )
+    if KernelConsumer.FOCK in plan.kernel.integral.consumers:
         source += _emit_shell_class_fock_cuda(spec, plan)
+    pair_unroll = (
+        "#pragma unroll"
+        if plan.schedule.unroll_pair_terms
+        else "#pragma unroll 1"
+    )
+    source = source.replace("QCE_PAIR_UNROLL", pair_unroll)
     return _specialize_dppp_identifiers(source, spec)
 
 
@@ -1551,6 +2517,7 @@ def emit_dppp_fused_cuda(plan: DpppFusedPlan | None = None) -> str:
         generic = build_fused_shell_plan(DPPP_SPEC)
     else:
         generic = FusedShellPlan(
+            kernel=build_fused_shell_plan(DPPP_SPEC).kernel,
             spec=DPPP_SPEC,
             components=plan.components,
             coulomb_states=plan.coulomb_states,

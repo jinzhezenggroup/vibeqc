@@ -7277,29 +7277,99 @@ __global__ void compact_active_shell_quartet_tiles_kernel(
   }
 }
 
-/** Canonicalize one exact shell class for a generated fused AOT consumer. */
-__global__ void compact_generated_shell_tasks_kernel(
+constexpr std::uint8_t kNoGeneratedShellClass =
+    std::numeric_limits<std::uint8_t>::max();
+
+/**
+ * Classify every active logical quartet once for all generated consumers.
+ *
+ * The byte tag is retained across the device-side prefix sum so task
+ * materialization does not repeat exact-class decoding. Slots for AO tiles
+ * beyond tile zero and classes disabled by the runtime mask remain tagged as
+ * unclassified and fall through to the handwritten consumers.
+ */
+__global__ void classify_generated_shell_tasks_kernel(
     DeviceBatch batch,
-    const std::uint32_t* active_shell_quartet_tile_count,
+    std::size_t total_tile_capacity,
+    const std::uint32_t* active_shell_quartet_tile_offsets,
+    const std::uint32_t* active_shell_quartet_tile_counts,
     const ActiveShellQuartetTile* active_shell_quartet_tiles,
-    unsigned target_shell_class,
-    const std::uint64_t* enabled_shell_class_mask,
-    std::uint32_t* generated_task_count,
+    std::uint64_t enabled_shell_class_mask,
+    const std::uint64_t* enabled_shell_class_mask_pointer,
+    std::uint32_t* generated_task_counts,
+    std::uint8_t* generated_shell_classes) {
+  const std::size_t slot =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (slot >= total_tile_capacity) return;
+  generated_shell_classes[slot] = kNoGeneratedShellClass;
+
+  unsigned angular_order = 0;
+  while (angular_order + 1 < detail::kDirectQuartetAngularOrderCount &&
+         slot >= active_shell_quartet_tile_offsets[angular_order + 1]) {
+    ++angular_order;
+  }
+  const std::size_t partition_begin =
+      active_shell_quartet_tile_offsets[angular_order];
+  if (slot - partition_begin >= active_shell_quartet_tile_counts[angular_order]) {
+    return;
+  }
+
+  const ActiveShellQuartetTile tile = active_shell_quartet_tiles[slot];
+  if (tile.tile != 0U) return;
+
+  const std::int32_t first_shell = batch.shell_pair_first[tile.first_pair];
+  const std::int32_t second_shell = batch.shell_pair_second[tile.first_pair];
+  const std::int32_t third_shell = batch.shell_pair_first[tile.second_pair];
+  const std::int32_t fourth_shell = batch.shell_pair_second[tile.second_pair];
+  const unsigned shell_class = direct_quartet_shell_class_device(
+      batch.shell_angular[first_shell], batch.shell_angular[second_shell],
+      batch.shell_angular[third_shell], batch.shell_angular[fourth_shell]);
+  if (enabled_shell_class_mask_pointer != nullptr) {
+    enabled_shell_class_mask = *enabled_shell_class_mask_pointer;
+  }
+  if (shell_class >= detail::kDirectQuartetShellClassCount ||
+      (enabled_shell_class_mask &
+       (std::uint64_t{1} << shell_class)) == 0U) {
+    return;
+  }
+  generated_shell_classes[slot] = static_cast<std::uint8_t>(shell_class);
+  atomicAdd(generated_task_counts + shell_class, 1U);
+}
+
+/** Build compact class slices and reset their materialization/worker cursors. */
+__global__ void prefix_generated_shell_task_counts_kernel(
+    const std::uint32_t* generated_task_counts,
+    std::uint32_t* generated_task_offsets,
+    std::uint32_t* generated_task_write_counts,
+    std::uint32_t* generated_task_heads) {
+  if (blockIdx.x != 0U || threadIdx.x != 0U) return;
+  std::uint32_t offset = 0;
+  generated_task_offsets[0] = 0;
+  for (unsigned shell_class = 0;
+       shell_class < detail::kDirectQuartetShellClassCount; ++shell_class) {
+    generated_task_write_counts[shell_class] = 0;
+    generated_task_heads[shell_class] = 0;
+    offset += generated_task_counts[shell_class];
+    generated_task_offsets[shell_class + 1] = offset;
+  }
+}
+
+/** Canonicalize classified quartets into contiguous exact-class slices. */
+__global__ void materialize_generated_shell_tasks_kernel(
+    DeviceBatch batch,
+    std::size_t total_tile_capacity,
+    const ActiveShellQuartetTile* active_shell_quartet_tiles,
+    const std::uint8_t* generated_shell_classes,
+    const std::uint32_t* generated_task_offsets,
+    std::uint32_t* generated_task_write_counts,
     GeneratedShellTask* generated_tasks) {
   const std::size_t active_tile =
       static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (active_tile >=
-      static_cast<std::size_t>(*active_shell_quartet_tile_count)) {
-    return;
-  }
-  if (enabled_shell_class_mask != nullptr &&
-      ((*enabled_shell_class_mask &
-        (std::uint64_t{1} << target_shell_class)) == 0U)) {
-    return;
-  }
-  const ActiveShellQuartetTile tile =
-      active_shell_quartet_tiles[active_tile];
-  if (tile.tile != 0U) return;
+  if (active_tile >= total_tile_capacity) return;
+  const unsigned shell_class = generated_shell_classes[active_tile];
+  if (shell_class == kNoGeneratedShellClass) return;
+
+  const ActiveShellQuartetTile tile = active_shell_quartet_tiles[active_tile];
 
   std::int32_t shells[4] = {
       batch.shell_pair_first[tile.first_pair],
@@ -7309,11 +7379,6 @@ __global__ void compact_generated_shell_tasks_kernel(
   };
   std::uint32_t shell_pairs[2] = {tile.first_pair, tile.second_pair};
   std::uint32_t reversed_shell_pair_mask = 0U;
-  const unsigned shell_class = direct_quartet_shell_class_device(
-      batch.shell_angular[shells[0]], batch.shell_angular[shells[1]],
-      batch.shell_angular[shells[2]], batch.shell_angular[shells[3]]);
-  if (shell_class != target_shell_class) return;
-
   // Sort within each pair and then between pairs exactly as the shell-class
   // encoding does. The task retains the resulting slot-to-atom map so the
   // generated force is accumulated onto the original physical centers.
@@ -7354,7 +7419,8 @@ __global__ void compact_generated_shell_tasks_kernel(
   const std::size_t matrix_size = matrix_order * matrix_order;
   const std::size_t system_ao_begin =
       static_cast<std::size_t>(system) * matrix_order;
-  const std::uint32_t task_index = atomicAdd(generated_task_count, 1U);
+  const std::uint32_t task_index = generated_task_offsets[shell_class] +
+      atomicAdd(generated_task_write_counts + shell_class, 1U);
   GeneratedShellTask& task = generated_tasks[task_index];
 #pragma unroll
   for (unsigned center = 0; center < 4U; ++center) {
@@ -10356,63 +10422,79 @@ __global__ void two_electron_force_quartet_persistent_kernel(
   }
 }
 
-/** Prepare and consume one exact generated shell-class queue. */
-cudaError_t launch_generated_shell_class_force(
+/** Prepare compact exact-class slices shared by generated Fock and force code. */
+cudaError_t prepare_generated_shell_tasks(
     cudaStream_t stream,
-    const generated::ShellKernelMetadata& kernel,
-    std::size_t capacity,
-    DeviceBatch batch,
-    const std::uint32_t* active_tile_count,
-    const ActiveShellQuartetTile* active_tiles,
-    GeneratedShellTask* generated_tasks,
-    std::uint32_t* generated_task_count,
-    std::uint32_t* generated_task_head,
-    unsigned persistent_worker_blocks,
-    bool unrestricted,
-    double screening_tolerance,
-    const double* schwarz_bounds,
-    const double* density,
-    double* forces) {
-  if (capacity == 0) return cudaSuccess;
-  cudaError_t error = cudaMemsetAsync(
-      generated_task_count, 0, sizeof(std::uint32_t), stream);
-  if (error != cudaSuccess) return error;
-  error = cudaMemsetAsync(
-      generated_task_head, 0, sizeof(std::uint32_t), stream);
-  if (error != cudaSuccess) return error;
-  constexpr unsigned preparation_threads = kCaptureSafeKernelThreads;
-  const unsigned preparation_blocks = static_cast<unsigned>(
-      (capacity + preparation_threads - 1) / preparation_threads);
-  compact_generated_shell_tasks_kernel<<<
-      preparation_blocks, preparation_threads, 0, stream>>>(
-      batch, active_tile_count, active_tiles, kernel.shell_class,
-      nullptr, generated_task_count, generated_tasks);
-  error = cudaPeekAtLastError();
-  if (error != cudaSuccess) return error;
-
-  const unsigned worker_blocks = std::min(
-      static_cast<unsigned>(capacity), persistent_worker_blocks);
-  return generated::launch_shell_class(
-      kernel.shell_class, stream, unrestricted, worker_blocks,
-      generated_tasks, batch.shell_pair_primitive_offsets,
-      batch.shell_primitive_pairs, batch.direct_ao_coefficients,
-      batch.positions, screening_tolerance, schwarz_bounds, density, forces,
-      generated_task_count, generated_task_head);
-}
-
-/** Launch every enabled generated class using one reusable queue allocation. */
-cudaError_t launch_generated_shell_class_forces(
-    cudaStream_t stream,
-    const std::array<std::size_t,
-                     detail::kDirectQuartetAngularOrderCount>& capacities,
-    const std::array<std::uint32_t,
-                     detail::kDirectQuartetAngularOrderCount + 1>& offsets,
+    std::size_t total_tile_capacity,
+    std::size_t generated_task_capacity,
+    const std::uint32_t* active_tile_offsets,
     DeviceBatch batch,
     const std::uint32_t* active_tile_counts,
     const ActiveShellQuartetTile* active_tiles,
     GeneratedShellTask* generated_tasks,
-    std::uint32_t* generated_task_count,
-    std::uint32_t* generated_task_head,
+    std::uint8_t* generated_shell_classes,
+    std::uint32_t* generated_task_offsets,
+    std::uint32_t* generated_task_counts,
+    std::uint32_t* generated_task_write_counts,
+    std::uint32_t* generated_task_heads,
+    std::uint64_t enabled_mask,
+    const std::uint64_t* enabled_mask_pointer) {
+  if ((enabled_mask == 0U && enabled_mask_pointer == nullptr) ||
+      generated_task_capacity == 0 ||
+      total_tile_capacity == 0) {
+    return cudaSuccess;
+  }
+  cudaError_t error = cudaMemsetAsync(
+      generated_task_counts, 0,
+      detail::kDirectQuartetShellClassCount * sizeof(std::uint32_t), stream);
+  if (error != cudaSuccess) return error;
+  constexpr unsigned preparation_threads = kCaptureSafeKernelThreads;
+  const unsigned preparation_blocks = static_cast<unsigned>(
+      (total_tile_capacity + preparation_threads - 1) /
+      preparation_threads);
+  classify_generated_shell_tasks_kernel<<<
+      preparation_blocks, preparation_threads, 0, stream>>>(
+      batch, total_tile_capacity, active_tile_offsets, active_tile_counts,
+      active_tiles, enabled_mask, enabled_mask_pointer, generated_task_counts,
+      generated_shell_classes);
+  error = cudaPeekAtLastError();
+  if (error != cudaSuccess) return error;
+  prefix_generated_shell_task_counts_kernel<<<1, 1, 0, stream>>>(
+      generated_task_counts, generated_task_offsets,
+      generated_task_write_counts, generated_task_heads);
+  error = cudaPeekAtLastError();
+  if (error != cudaSuccess) return error;
+  materialize_generated_shell_tasks_kernel<<<
+      preparation_blocks, preparation_threads, 0, stream>>>(
+      batch, total_tile_capacity, active_tiles, generated_shell_classes,
+      generated_task_offsets, generated_task_write_counts, generated_tasks);
+  return cudaPeekAtLastError();
+}
+
+/**
+ * Bucket all enabled generated classes once, then launch their force slices.
+ *
+ * Counts, offsets, and worker heads remain device-resident, so adding an AOT
+ * class does not add a host synchronization or another scan of every active
+ * quartet. The generated persistent kernels apply their class offset when
+ * loading tasks from the shared compact allocation.
+ */
+cudaError_t launch_generated_shell_class_forces(
+    cudaStream_t stream,
+    std::size_t total_tile_capacity,
+    std::size_t generated_task_capacity,
+    const std::array<std::size_t,
+                     detail::kDirectQuartetAngularOrderCount>& capacities,
+    const std::uint32_t* active_tile_offsets,
+    DeviceBatch batch,
+    const std::uint32_t* active_tile_counts,
+    const ActiveShellQuartetTile* active_tiles,
+    GeneratedShellTask* generated_tasks,
+    std::uint8_t* generated_shell_classes,
+    std::uint32_t* generated_task_offsets,
+    std::uint32_t* generated_task_counts,
+    std::uint32_t* generated_task_write_counts,
+    std::uint32_t* generated_task_heads,
     unsigned persistent_worker_blocks,
     bool unrestricted,
     std::uint64_t enabled_mask,
@@ -10420,86 +10502,61 @@ cudaError_t launch_generated_shell_class_forces(
     const double* schwarz_bounds,
     const double* density,
     double* forces) {
+  if (enabled_mask == 0U || generated_task_capacity == 0 ||
+      total_tile_capacity == 0) {
+    return cudaSuccess;
+  }
+  cudaError_t error = prepare_generated_shell_tasks(
+      stream, total_tile_capacity, generated_task_capacity,
+      active_tile_offsets, batch, active_tile_counts, active_tiles,
+      generated_tasks, generated_shell_classes, generated_task_offsets,
+      generated_task_counts, generated_task_write_counts,
+      generated_task_heads, enabled_mask, nullptr);
+  if (error != cudaSuccess) return error;
+
   for (const generated::ShellKernelMetadata& kernel :
        generated::kShellKernels) {
     if ((enabled_mask & (std::uint64_t{1} << kernel.shell_class)) == 0U) {
       continue;
     }
-    const cudaError_t error = launch_generated_shell_class_force(
-        stream, kernel, capacities[kernel.angular_order], batch,
-        active_tile_counts + kernel.angular_order,
-        active_tiles + offsets[kernel.angular_order], generated_tasks,
-        generated_task_count, generated_task_head, persistent_worker_blocks,
-        unrestricted, screening_tolerance, schwarz_bounds, density, forces);
+    const unsigned worker_blocks = std::min(
+        static_cast<unsigned>(capacities[kernel.angular_order]),
+        persistent_worker_blocks);
+    error = generated::launch_shell_class(
+        kernel.shell_class, stream, unrestricted, worker_blocks,
+        generated_tasks, generated_task_offsets + kernel.shell_class,
+        batch.shell_pair_primitive_offsets, batch.shell_primitive_pairs,
+        batch.direct_ao_coefficients, batch.positions, screening_tolerance,
+        schwarz_bounds, density, forces,
+        generated_task_counts + kernel.shell_class,
+        generated_task_heads + kernel.shell_class);
     if (error != cudaSuccess) return error;
   }
   return cudaSuccess;
 }
 
 /**
- * Prepare and consume one generated Fock class.
+ * Bucket all enabled generated classes once, then launch their Fock slices.
  *
- * The device-resident mask is read by the compactor so the same fixed set of
- * nodes remains valid when a prepared plan is replayed under a different
- * QCE_AOT_FOCK_SHELL_CLASSES selection.
+ * The mask stays device-resident so graph replay can change the environment
+ * selection without changing its fixed preparation and worker launch nodes.
  */
-cudaError_t launch_generated_shell_class_fock(
-    cudaStream_t stream,
-    const generated::ShellKernelMetadata& kernel,
-    std::size_t capacity,
-    DeviceBatch batch,
-    const std::uint32_t* active_tile_count,
-    const ActiveShellQuartetTile* active_tiles,
-    GeneratedShellTask* generated_tasks,
-    std::uint32_t* generated_task_count,
-    std::uint32_t* generated_task_head,
-    const std::uint64_t* enabled_mask,
-    unsigned persistent_worker_blocks,
-    bool unrestricted,
-    double screening_tolerance,
-    const double* schwarz_bounds,
-    const double* density,
-    double* fock) {
-  if (capacity == 0) return cudaSuccess;
-  cudaError_t error = cudaMemsetAsync(
-      generated_task_count, 0, sizeof(std::uint32_t), stream);
-  if (error != cudaSuccess) return error;
-  error = cudaMemsetAsync(
-      generated_task_head, 0, sizeof(std::uint32_t), stream);
-  if (error != cudaSuccess) return error;
-  constexpr unsigned preparation_threads = kCaptureSafeKernelThreads;
-  const unsigned preparation_blocks = static_cast<unsigned>(
-      (capacity + preparation_threads - 1) / preparation_threads);
-  compact_generated_shell_tasks_kernel<<<
-      preparation_blocks, preparation_threads, 0, stream>>>(
-      batch, active_tile_count, active_tiles, kernel.shell_class, enabled_mask,
-      generated_task_count, generated_tasks);
-  error = cudaPeekAtLastError();
-  if (error != cudaSuccess) return error;
-
-  const unsigned worker_blocks = std::min(
-      static_cast<unsigned>(capacity), persistent_worker_blocks);
-  return generated::launch_shell_class_fock(
-      kernel.shell_class, stream, unrestricted, worker_blocks,
-      generated_tasks, batch.shell_pair_primitive_offsets,
-      batch.shell_primitive_pairs, batch.direct_ao_coefficients,
-      batch.positions, screening_tolerance, schwarz_bounds, density, fock,
-      generated_task_count, generated_task_head);
-}
-
-/** Capture every supported Fock class; the device mask activates exact queues. */
 cudaError_t launch_generated_shell_class_focks(
     cudaStream_t stream,
+    std::size_t total_tile_capacity,
+    std::size_t generated_task_capacity,
     const std::array<std::size_t,
                      detail::kDirectQuartetAngularOrderCount>& capacities,
-    const std::array<std::uint32_t,
-                     detail::kDirectQuartetAngularOrderCount + 1>& offsets,
+    const std::uint32_t* active_tile_offsets,
     DeviceBatch batch,
     const std::uint32_t* active_tile_counts,
     const ActiveShellQuartetTile* active_tiles,
     GeneratedShellTask* generated_tasks,
-    std::uint32_t* generated_task_count,
-    std::uint32_t* generated_task_head,
+    std::uint8_t* generated_shell_classes,
+    std::uint32_t* generated_task_offsets,
+    std::uint32_t* generated_task_counts,
+    std::uint32_t* generated_task_write_counts,
+    std::uint32_t* generated_task_heads,
     const std::uint64_t* enabled_mask,
     unsigned persistent_worker_blocks,
     bool unrestricted,
@@ -10507,15 +10564,27 @@ cudaError_t launch_generated_shell_class_focks(
     const double* schwarz_bounds,
     const double* density,
     double* fock) {
+  cudaError_t error = prepare_generated_shell_tasks(
+      stream, total_tile_capacity, generated_task_capacity,
+      active_tile_offsets, batch, active_tile_counts, active_tiles,
+      generated_tasks, generated_shell_classes, generated_task_offsets,
+      generated_task_counts, generated_task_write_counts,
+      generated_task_heads, 0U, enabled_mask);
+  if (error != cudaSuccess) return error;
+
   for (const generated::ShellKernelMetadata& kernel :
        generated::kFockShellKernels) {
-    const cudaError_t error = launch_generated_shell_class_fock(
-        stream, kernel, capacities[kernel.angular_order], batch,
-        active_tile_counts + kernel.angular_order,
-        active_tiles + offsets[kernel.angular_order], generated_tasks,
-        generated_task_count, generated_task_head, enabled_mask,
-        persistent_worker_blocks, unrestricted, screening_tolerance,
-        schwarz_bounds, density, fock);
+    const unsigned worker_blocks = std::min(
+        static_cast<unsigned>(capacities[kernel.angular_order]),
+        persistent_worker_blocks);
+    error = generated::launch_shell_class_fock(
+        kernel.shell_class, stream, unrestricted, worker_blocks,
+        generated_tasks, generated_task_offsets + kernel.shell_class,
+        batch.shell_pair_primitive_offsets, batch.shell_primitive_pairs,
+        batch.direct_ao_coefficients, batch.positions, screening_tolerance,
+        schwarz_bounds, density, fock,
+        generated_task_counts + kernel.shell_class,
+        generated_task_heads + kernel.shell_class);
     if (error != cudaSuccess) return error;
   }
   return cudaSuccess;
@@ -10832,8 +10901,11 @@ struct ArenaLayout {
   std::size_t persistent_fock_task_heads{};
   std::size_t persistent_force_task_heads{};
   std::size_t generated_shell_tasks{};
-  std::size_t generated_shell_task_count{};
-  std::size_t generated_shell_task_head{};
+  std::size_t generated_shell_classes{};
+  std::size_t generated_shell_task_offsets{};
+  std::size_t generated_shell_task_counts{};
+  std::size_t generated_shell_task_write_counts{};
+  std::size_t generated_shell_task_heads{};
   std::size_t generated_fock_shell_class_mask{};
   std::size_t generic_order5_tiles{};
   std::size_t generic_order5_tile_count{};
@@ -11042,12 +11114,29 @@ bool make_layout(std::size_t batch_size,
           cursor, made.persistent_force_task_heads) ||
       !append_array<GeneratedShellTask>(
           generated_shell_task_capacity, cursor, made.generated_shell_tasks) ||
+      !append_array<std::uint8_t>(
+          generated_shell_task_capacity == 0 ? 0 : shell_quartet_tile_count,
+          cursor, made.generated_shell_classes) ||
       !append_array<std::uint32_t>(
-          generated_shell_task_capacity == 0 ? 0 : 1,
-          cursor, made.generated_shell_task_count) ||
+          generated_shell_task_capacity == 0
+              ? 0
+              : detail::kDirectQuartetShellClassCount + 1,
+          cursor, made.generated_shell_task_offsets) ||
       !append_array<std::uint32_t>(
-          generated_shell_task_capacity == 0 ? 0 : 1,
-          cursor, made.generated_shell_task_head) ||
+          generated_shell_task_capacity == 0
+              ? 0
+              : detail::kDirectQuartetShellClassCount,
+          cursor, made.generated_shell_task_counts) ||
+      !append_array<std::uint32_t>(
+          generated_shell_task_capacity == 0
+              ? 0
+              : detail::kDirectQuartetShellClassCount,
+          cursor, made.generated_shell_task_write_counts) ||
+      !append_array<std::uint32_t>(
+          generated_shell_task_capacity == 0
+              ? 0
+              : detail::kDirectQuartetShellClassCount,
+          cursor, made.generated_shell_task_heads) ||
       !append_array<std::uint64_t>(
           shell_quartet_tile_count == 0 ? 0 : 1,
           cursor, made.generated_fock_shell_class_mask) ||
@@ -11636,6 +11725,7 @@ struct CudaRhfBucketPlan {
   std::size_t total_shell_pairs{};
   std::size_t total_shell_quartets{};
   std::size_t total_shell_quartet_tiles{};
+  std::size_t generated_shell_task_capacity{};
   std::array<std::size_t, detail::kDirectQuartetAngularOrderCount>
       shell_quartet_tile_capacities{};
   std::array<std::uint32_t, detail::kDirectQuartetAngularOrderCount + 1>
@@ -11873,15 +11963,13 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   if (requested_quartet_direct) {
     for (const generated::ShellKernelMetadata& kernel :
          generated::kShellKernels) {
-      generated_shell_task_capacity = std::max(
-          generated_shell_task_capacity,
-          direct_task_layout.angular_order_tile_counts[kernel.angular_order]);
-    }
-    for (const generated::ShellKernelMetadata& kernel :
-         generated::kFockShellKernels) {
-      generated_shell_task_capacity = std::max(
-          generated_shell_task_capacity,
-          direct_task_layout.angular_order_tile_counts[kernel.angular_order]);
+      if (!checked_add(
+              generated_shell_task_capacity,
+              direct_task_layout.shell_class_tile_counts[kernel.shell_class],
+              generated_shell_task_capacity)) {
+        fill_global_failure(outputs, QCE_STATUS_INVALID_ARGUMENT);
+        return outputs;
+      }
     }
   }
   if (first_setup) {
@@ -11937,6 +12025,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       plan.resident_psss_bra_primitive_pairs = std::max(
           plan.resident_psss_bra_primitive_pairs, primitive_pairs);
     }
+    plan.generated_shell_task_capacity = generated_shell_task_capacity;
     plan.shell_quartet_tile_capacities =
         direct_task_layout.angular_order_tile_counts;
     for (std::size_t order = 0;
@@ -12140,10 +12229,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       resources.arena_, layout.persistent_force_task_heads);
   auto generated_shell_tasks = arena_pointer<GeneratedShellTask>(
       resources.arena_, layout.generated_shell_tasks);
-  auto generated_shell_task_count = arena_pointer<std::uint32_t>(
-      resources.arena_, layout.generated_shell_task_count);
-  auto generated_shell_task_head = arena_pointer<std::uint32_t>(
-      resources.arena_, layout.generated_shell_task_head);
+  auto generated_shell_classes = arena_pointer<std::uint8_t>(
+      resources.arena_, layout.generated_shell_classes);
+  auto generated_shell_task_offsets = arena_pointer<std::uint32_t>(
+      resources.arena_, layout.generated_shell_task_offsets);
+  auto generated_shell_task_counts = arena_pointer<std::uint32_t>(
+      resources.arena_, layout.generated_shell_task_counts);
+  auto generated_shell_task_write_counts = arena_pointer<std::uint32_t>(
+      resources.arena_, layout.generated_shell_task_write_counts);
+  auto generated_shell_task_heads = arena_pointer<std::uint32_t>(
+      resources.arena_, layout.generated_shell_task_heads);
   auto generated_fock_shell_class_mask = arena_pointer<std::uint64_t>(
       resources.arena_, layout.generated_fock_shell_class_mask);
   auto generic_order5_tiles = arena_pointer<ActiveShellQuartetTile>(
@@ -12540,11 +12635,15 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
             static_cast<std::int32_t>(nbf), hcore, active, fock);
       }
       cudaError_t generated_error = launch_generated_shell_class_focks(
-          resources.stream_, plan.shell_quartet_tile_capacities,
-          plan.shell_quartet_tile_offsets, device_batch,
+          resources.stream_, plan.total_shell_quartet_tiles,
+          plan.generated_shell_task_capacity,
+          plan.shell_quartet_tile_capacities,
+          active_shell_quartet_tile_offsets, device_batch,
           active_shell_quartet_tile_counts, active_shell_quartet_tiles,
-          generated_shell_tasks, generated_shell_task_count,
-          generated_shell_task_head, generated_fock_shell_class_mask,
+          generated_shell_tasks, generated_shell_classes,
+          generated_shell_task_offsets, generated_shell_task_counts,
+          generated_shell_task_write_counts, generated_shell_task_heads,
+          generated_fock_shell_class_mask,
           plan.persistent_quartet_worker_blocks, true,
           options.screening_tolerance, schwarz_bounds, quartet_density,
           quartet_fock);
@@ -12577,11 +12676,15 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
             static_cast<std::int32_t>(nbf), hcore, active, fock);
       }
       cudaError_t generated_error = launch_generated_shell_class_focks(
-          resources.stream_, plan.shell_quartet_tile_capacities,
-          plan.shell_quartet_tile_offsets, device_batch,
+          resources.stream_, plan.total_shell_quartet_tiles,
+          plan.generated_shell_task_capacity,
+          plan.shell_quartet_tile_capacities,
+          active_shell_quartet_tile_offsets, device_batch,
           active_shell_quartet_tile_counts, active_shell_quartet_tiles,
-          generated_shell_tasks, generated_shell_task_count,
-          generated_shell_task_head, generated_fock_shell_class_mask,
+          generated_shell_tasks, generated_shell_classes,
+          generated_shell_task_offsets, generated_shell_task_counts,
+          generated_shell_task_write_counts, generated_shell_task_heads,
+          generated_fock_shell_class_mask,
           plan.persistent_quartet_worker_blocks, false,
           options.screening_tolerance, schwarz_bounds, quartet_density,
           quartet_fock);
@@ -13078,11 +13181,15 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         device_batch, density, active, forces);
   } else if (unrestricted && quartet_direct) {
     cuda_error = launch_generated_shell_class_forces(
-        resources.stream_, plan.shell_quartet_tile_capacities,
-        plan.shell_quartet_tile_offsets, device_batch,
+        resources.stream_, plan.total_shell_quartet_tiles,
+        plan.generated_shell_task_capacity,
+        plan.shell_quartet_tile_capacities,
+        active_shell_quartet_tile_offsets, device_batch,
         active_shell_quartet_tile_counts, active_shell_quartet_tiles,
-        generated_shell_tasks, generated_shell_task_count,
-        generated_shell_task_head, plan.persistent_quartet_worker_blocks, true,
+        generated_shell_tasks, generated_shell_classes,
+        generated_shell_task_offsets, generated_shell_task_counts,
+        generated_shell_task_write_counts, generated_shell_task_heads,
+        plan.persistent_quartet_worker_blocks, true,
         generated_shell_class_mask, options.screening_tolerance,
         schwarz_bounds, transformed_direct ? direct_density : density, forces);
     if (cuda_error != cudaSuccess) {
@@ -13113,11 +13220,15 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         device_batch, density, active, forces);
   } else if (quartet_direct) {
     cuda_error = launch_generated_shell_class_forces(
-        resources.stream_, plan.shell_quartet_tile_capacities,
-        plan.shell_quartet_tile_offsets, device_batch,
+        resources.stream_, plan.total_shell_quartet_tiles,
+        plan.generated_shell_task_capacity,
+        plan.shell_quartet_tile_capacities,
+        active_shell_quartet_tile_offsets, device_batch,
         active_shell_quartet_tile_counts, active_shell_quartet_tiles,
-        generated_shell_tasks, generated_shell_task_count,
-        generated_shell_task_head, plan.persistent_quartet_worker_blocks, false,
+        generated_shell_tasks, generated_shell_classes,
+        generated_shell_task_offsets, generated_shell_task_counts,
+        generated_shell_task_write_counts, generated_shell_task_heads,
+        plan.persistent_quartet_worker_blocks, false,
         generated_shell_class_mask, options.screening_tolerance,
         schwarz_bounds, transformed_direct ? direct_density : density, forces);
     if (cuda_error != cudaSuccess) {

@@ -4,10 +4,18 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
 
 from .dppp_dispatch import emit_shell_class_fused_cuda
 from .fused_schedule import build_fused_shell_plan
+from .ir import (
+    KernelConsumer,
+    PairOrientation,
+    PairStorage,
+    ScheduleIR,
+    ScheduleKind,
+)
 from .shell_spec import FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec, shell_pair_class
 
 _PRODUCTION_PRELUDE = r"""#include "scf/generated_shell_task.hpp"
@@ -50,6 +58,149 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
 """
 
 
+@dataclass(frozen=True, slots=True)
+class KernelSelection:
+    """One architecture-tuned shell kernel selected for production."""
+
+    architecture: str
+    spec: ShellClassSpec
+    consumers: tuple[KernelConsumer, ...]
+    schedule: ScheduleIR
+
+    def __post_init__(self) -> None:
+        if not self.architecture.startswith("sm_"):
+            raise ValueError("production architecture must use CUDA sm_ notation")
+        if not self.consumers:
+            raise ValueError("production kernel requires at least one consumer")
+        # Force owns the canonical task ABI. Fock may share that source, but a
+        # value-only entry cannot yet be emitted without its force companion.
+        if KernelConsumer.FORCE not in self.consumers:
+            raise ValueError("current production emitter requires a force consumer")
+
+
+def _schedule_from_payload(payload: object) -> ScheduleIR:
+    """Validate one explicit architecture-tuned schedule record."""
+
+    if not isinstance(payload, dict):
+        raise TypeError("kernel schedule must be a JSON object")
+    try:
+        return ScheduleIR(
+            kind=ScheduleKind(payload["kind"]),
+            block_threads=int(payload["block_threads"]),
+            component_tile=int(payload["component_tile"]),
+            tasks_per_warp=int(payload.get("tasks_per_warp", 1)),
+            shared_coulomb=bool(payload.get("shared_coulomb", True)),
+            pair_orientation=PairOrientation(
+                payload.get("pair_orientation", PairOrientation.CANONICAL.value)
+            ),
+            pair_storage=PairStorage(
+                payload.get("pair_storage", PairStorage.MATERIALIZED.value)
+            ),
+            unroll_pair_terms=bool(payload.get("unroll_pair_terms", True)),
+            minimum_blocks_per_sm=int(payload.get("minimum_blocks_per_sm", 0)),
+            maximum_registers=int(payload.get("maximum_registers", 0)),
+        )
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError("invalid production kernel schedule") from error
+
+
+def _default_architecture(payload: dict[str, object]) -> str:
+    """Resolve an unambiguous default architecture from a v2 manifest."""
+
+    configured = payload.get("default_architecture")
+    if isinstance(configured, str):
+        return configured
+    architectures = payload.get("architectures")
+    if isinstance(architectures, dict) and len(architectures) == 1:
+        return next(iter(architectures))
+    raise ValueError(
+        "multi-architecture production manifest requires default_architecture"
+    )
+
+
+def load_production_kernel_selections(
+    path: Path, architecture: str | None = None
+) -> tuple[KernelSelection, ...]:
+    """Load explicit kernel consumers and schedules for one GPU architecture."""
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("schema_version") == 1:
+        # Preserve custom manifests while the repository migrates to v2.
+        names = payload.get("shell_classes")
+        if not isinstance(names, list) or not names:
+            raise ValueError("production manifest requires shell_classes")
+        acceptance = payload.get("acceptance")
+        accepted_architecture = (
+            acceptance.get("architecture")
+            if isinstance(acceptance, dict)
+            else None
+        )
+        selected_architecture = architecture or (
+            accepted_architecture
+            if isinstance(accepted_architecture, str)
+            else "sm_120"
+        )
+        rows = [
+            {
+                "shell_class": name,
+                "consumers": [KernelConsumer.FORCE.value],
+            }
+            for name in names
+        ]
+    elif payload.get("schema_version") == 2:
+        selected_architecture = architecture or _default_architecture(payload)
+        architectures = payload.get("architectures")
+        if not isinstance(architectures, dict):
+            raise ValueError("v2 production manifest requires architectures")
+        profile = architectures.get(selected_architecture)
+        if not isinstance(profile, dict):
+            raise ValueError(
+                f"production manifest has no profile for {selected_architecture}"
+            )
+        rows = profile.get("kernels")
+        if not isinstance(rows, list) or not rows:
+            raise ValueError("architecture profile requires a non-empty kernels list")
+    else:
+        raise ValueError("unsupported production shell manifest schema")
+
+    selections = []
+    seen = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            raise TypeError("production kernel entry must be a JSON object")
+        name = row.get("shell_class")
+        if not isinstance(name, str) or name not in FUSED_SHELL_SPEC_BY_NAME:
+            raise ValueError(f"unsupported production shell class {name!r}")
+        if name in seen:
+            raise ValueError(f"duplicate production shell class {name!r}")
+        spec = FUSED_SHELL_SPEC_BY_NAME[name]
+        raw_consumers = row.get("consumers", [KernelConsumer.FORCE.value])
+        if not isinstance(raw_consumers, list) or not raw_consumers:
+            raise ValueError(f"{name} requires a non-empty consumers list")
+        try:
+            consumers = tuple(KernelConsumer(item) for item in raw_consumers)
+        except ValueError as error:
+            raise ValueError(f"{name} has an unsupported consumer") from error
+        schedule_payload = row.get("schedule")
+        if schedule_payload is None:
+            schedule = build_fused_shell_plan(spec, consumers=consumers).schedule
+        else:
+            schedule = _schedule_from_payload(schedule_payload)
+            # Build the complete IR now so component coverage and block limits
+            # fail during manifest loading rather than CUDA compilation.
+            build_fused_shell_plan(spec, consumers=consumers, schedule=schedule)
+        selections.append(
+            KernelSelection(
+                architecture=selected_architecture,
+                spec=spec,
+                consumers=consumers,
+                schedule=schedule,
+            )
+        )
+        seen.add(name)
+    return tuple(selections)
+
+
 def shell_class_index(spec: ShellClassSpec) -> int:
     """Return the production triangular quartet-class index."""
 
@@ -60,46 +211,27 @@ def shell_class_index(spec: ShellClassSpec) -> int:
     return high * (high + 1) // 2 + low
 
 
-def load_production_manifest(path: Path) -> tuple[ShellClassSpec, ...]:
-    """Load and validate the ordered list used by normal production builds."""
+def load_production_manifest(
+    path: Path, architecture: str | None = None
+) -> tuple[ShellClassSpec, ...]:
+    """Compatibility view returning the ordered shell specifications."""
 
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    if payload.get("schema_version") != 1:
-        raise ValueError("unsupported production shell manifest schema")
-    names = payload.get("shell_classes")
-    if not isinstance(names, list) or not names:
-        raise ValueError("production manifest requires a non-empty shell_classes list")
-    specifications = []
-    seen = set()
-    for name in names:
-        if not isinstance(name, str) or name not in FUSED_SHELL_SPEC_BY_NAME:
-            raise ValueError(f"unsupported production shell class {name!r}")
-        if name in seen:
-            raise ValueError(f"duplicate production shell class {name!r}")
-        specifications.append(FUSED_SHELL_SPEC_BY_NAME[name])
-        seen.add(name)
-    return tuple(specifications)
+    return tuple(
+        selection.spec
+        for selection in load_production_kernel_selections(path, architecture)
+    )
 
 
-def load_production_fock_manifest(path: Path) -> tuple[ShellClassSpec, ...]:
-    """Load the subset whose generated sources also provide Fock workers."""
+def load_production_fock_manifest(
+    path: Path, architecture: str | None = None
+) -> tuple[ShellClassSpec, ...]:
+    """Compatibility view returning classes with generated Fock consumers."""
 
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    if payload.get("schema_version") != 1:
-        raise ValueError("unsupported production shell manifest schema")
-    names = payload.get("fock_shell_classes", [])
-    if not isinstance(names, list):
-        raise ValueError("fock_shell_classes must be a list")
-    specifications = []
-    seen = set()
-    for name in names:
-        if not isinstance(name, str) or name not in FUSED_SHELL_SPEC_BY_NAME:
-            raise ValueError(f"unsupported production Fock shell class {name!r}")
-        if name in seen:
-            raise ValueError(f"duplicate production Fock shell class {name!r}")
-        specifications.append(FUSED_SHELL_SPEC_BY_NAME[name])
-        seen.add(name)
-    return tuple(specifications)
+    return tuple(
+        selection.spec
+        for selection in load_production_kernel_selections(path, architecture)
+        if KernelConsumer.FOCK in selection.consumers
+    )
 
 
 def _launch_wrapper(spec: ShellClassSpec) -> str:
@@ -164,8 +296,9 @@ static_assert(
 
 extern "C" cudaError_t qce_launch_generated_{spec.name}(
     cudaStream_t stream, bool unrestricted, unsigned worker_blocks,
-    const void* tasks, const std::int64_t* primitive_pair_offsets,
-    const void* primitive_pairs, const double* ao_coefficients,
+    const void* tasks, const std::uint32_t* task_offset,
+    const std::int64_t* primitive_pair_offsets, const void* primitive_pairs,
+    const double* ao_coefficients,
     const void* atom_positions, double screening_tolerance,
     const double* schwarz_bounds, const double* density, double* forces,
     const std::uint32_t* task_count, std::uint32_t* task_head) {{
@@ -182,13 +315,13 @@ extern "C" cudaError_t qce_launch_generated_{spec.name}(
         worker_blocks, kGenerated{class_name}BlockThreads, 0, stream>>>(
         typed_tasks, typed_primitive_pairs, primitive_pair_offsets,
         ao_coefficients, typed_positions, screening_tolerance, schwarz_bounds,
-        density, forces, task_count, task_head);
+        density, forces, task_offset, task_count, task_head);
   }} else {{
     generated_{spec.name}_shell_class_force_rhf_persistent_kernel<<<
         worker_blocks, kGenerated{class_name}BlockThreads, 0, stream>>>(
         typed_tasks, typed_primitive_pairs, primitive_pair_offsets,
         ao_coefficients, typed_positions, screening_tolerance, schwarz_bounds,
-        density, forces, task_count, task_head);
+        density, forces, task_offset, task_count, task_head);
   }}
   return cudaPeekAtLastError();
 }}
@@ -202,8 +335,9 @@ def _fock_launch_wrapper(spec: ShellClassSpec) -> str:
     return f"""
 extern "C" cudaError_t qce_launch_generated_{spec.name}_fock(
     cudaStream_t stream, bool unrestricted, unsigned worker_blocks,
-    const void* tasks, const std::int64_t* primitive_pair_offsets,
-    const void* primitive_pairs, const double* ao_coefficients,
+    const void* tasks, const std::uint32_t* task_offset,
+    const std::int64_t* primitive_pair_offsets, const void* primitive_pairs,
+    const double* ao_coefficients,
     const void* atom_positions, double screening_tolerance,
     const double* schwarz_bounds, const double* density, double* fock,
     const std::uint32_t* task_count, std::uint32_t* task_head) {{
@@ -220,69 +354,97 @@ extern "C" cudaError_t qce_launch_generated_{spec.name}_fock(
         worker_blocks, kGenerated{class_name}FockBlockThreads, 0, stream>>>(
         typed_tasks, typed_primitive_pairs, primitive_pair_offsets,
         ao_coefficients, typed_positions, screening_tolerance, schwarz_bounds,
-        density, fock, task_count, task_head);
+        density, fock, task_offset, task_count, task_head);
   }} else {{
     generated_{spec.name}_shell_class_fock_rhf_persistent_kernel<<<
         worker_blocks, kGenerated{class_name}FockBlockThreads, 0, stream>>>(
         typed_tasks, typed_primitive_pairs, primitive_pair_offsets,
         ao_coefficients, typed_positions, screening_tolerance, schwarz_bounds,
-        density, fock, task_count, task_head);
+        density, fock, task_offset, task_count, task_head);
   }}
   return cudaPeekAtLastError();
 }}
 """
 
 
+def _as_selection(item: ShellClassSpec | KernelSelection) -> KernelSelection:
+    """Normalize compatibility callers to the explicit production IR."""
+
+    if isinstance(item, KernelSelection):
+        return item
+    plan = build_fused_shell_plan(item)
+    return KernelSelection(
+        architecture="sm_120",
+        spec=item,
+        consumers=(KernelConsumer.FORCE,),
+        schedule=plan.schedule,
+    )
+
+
 def emit_production_shard(
-    specifications: Iterable[ShellClassSpec],
-    fock_specifications: Iterable[ShellClassSpec] = (),
+    specifications: Iterable[ShellClassSpec | KernelSelection],
 ) -> str:
     """Emit one CUDA TU containing a deterministic subset of accepted classes."""
 
-    specs = tuple(specifications)
-    fock_names = {spec.name for spec in fock_specifications}
+    selections = tuple(map(_as_selection, specifications))
     body = [_PRODUCTION_PRELUDE]
-    for spec in specs:
-        include_fock = spec.name in fock_names
-        body.append(
-            emit_shell_class_fused_cuda(spec, include_fock=include_fock)
+    for selection in selections:
+        plan = build_fused_shell_plan(
+            selection.spec,
+            consumers=selection.consumers,
+            schedule=selection.schedule,
         )
-        body.append(_launch_wrapper(spec))
-        if include_fock:
-            body.append(_fock_launch_wrapper(spec))
-    if not specs:
+        body.append(emit_shell_class_fused_cuda(selection.spec, plan))
+        body.append(_launch_wrapper(selection.spec))
+        if KernelConsumer.FOCK in selection.consumers:
+            body.append(_fock_launch_wrapper(selection.spec))
+    if not selections:
         body.append("// Empty deterministic shard reserved for stable CMake outputs.\n")
     return "".join(body)
 
 
 def emit_registry_header(
-    specifications: Iterable[ShellClassSpec],
-    fock_specifications: Iterable[ShellClassSpec] = (),
+    specifications: Iterable[ShellClassSpec | KernelSelection],
 ) -> str:
     """Emit production metadata and the host launch API consumed by cuda_rhf."""
 
-    specs = tuple(specifications)
-    fock_specs = tuple(fock_specifications)
+    selections = tuple(map(_as_selection, specifications))
     rows = []
-    for spec in specs:
-        plan = build_fused_shell_plan(spec)
+    for selection in selections:
+        spec = selection.spec
+        plan = build_fused_shell_plan(
+            spec,
+            consumers=selection.consumers,
+            schedule=selection.schedule,
+        )
+        consumer_mask = sum(
+            1 << list(KernelConsumer).index(consumer)
+            for consumer in selection.consumers
+        )
         rows.append(
             f'    {{"{spec.name}", {shell_class_index(spec)}U, '
-            f"{sum(spec.angular)}U, {plan.block_threads}U}},"
+            f"{sum(spec.angular)}U, {plan.block_threads}U, "
+            f"{consumer_mask}U, {plan.schedule.component_tile}U}},"
         )
     fock_rows = []
-    for spec in fock_specs:
+    for selection in selections:
+        if KernelConsumer.FOCK not in selection.consumers:
+            continue
+        spec = selection.spec
         angular_order = sum(spec.angular)
         value_state_count = (
-            (angular_order + 1) * (angular_order + 2) *
-            (angular_order + 3) // 6
+            (angular_order + 1)
+            * (angular_order + 2)
+            * (angular_order + 3)
+            // 6
         )
         block_threads = (
             (max(spec.component_count, value_state_count) + 31) // 32
         ) * 32
         fock_rows.append(
             f'    {{"{spec.name}", {shell_class_index(spec)}U, '
-            f"{angular_order}U, {block_threads}U}},"
+            f"{angular_order}U, {block_threads}U, 1U, "
+            f"{spec.component_count}U}},"
         )
     return f"""#ifndef QCE_GENERATED_SHELL_REGISTRY_HPP
 #define QCE_GENERATED_SHELL_REGISTRY_HPP
@@ -300,6 +462,8 @@ struct ShellKernelMetadata {{
   unsigned shell_class;
   unsigned angular_order;
   unsigned block_threads;
+  unsigned consumer_mask;
+  unsigned component_tile;
 }};
 
 inline constexpr ShellKernelMetadata kShellKernels[] = {{
@@ -308,7 +472,7 @@ inline constexpr ShellKernelMetadata kShellKernels[] = {{
 inline constexpr std::size_t kShellKernelCount =
     sizeof(kShellKernels) / sizeof(kShellKernels[0]);
 
-inline constexpr std::array<ShellKernelMetadata, {len(fock_specs)}>
+inline constexpr std::array<ShellKernelMetadata, {len(fock_rows)}>
     kFockShellKernels{{{{
 {chr(10).join(fock_rows)}
 }}}};
@@ -325,6 +489,7 @@ std::uint64_t enabled_fock_shell_class_mask() noexcept;
 cudaError_t launch_shell_class(
     unsigned shell_class, cudaStream_t stream, bool unrestricted,
     unsigned worker_blocks, const void* tasks,
+    const std::uint32_t* task_offset,
     const std::int64_t* primitive_pair_offsets, const void* primitive_pairs,
     const double* ao_coefficients, const void* atom_positions,
     double screening_tolerance, const double* schwarz_bounds,
@@ -335,6 +500,7 @@ cudaError_t launch_shell_class(
 cudaError_t launch_shell_class_fock(
     unsigned shell_class, cudaStream_t stream, bool unrestricted,
     unsigned worker_blocks, const void* tasks,
+    const std::uint32_t* task_offset,
     const std::int64_t* primitive_pair_offsets, const void* primitive_pairs,
     const double* ao_coefficients, const void* atom_positions,
     double screening_tolerance, const double* schwarz_bounds,
@@ -348,45 +514,50 @@ cudaError_t launch_shell_class_fock(
 
 
 def emit_registry_source(
-    specifications: Iterable[ShellClassSpec],
-    fock_specifications: Iterable[ShellClassSpec] = (),
+    specifications: Iterable[ShellClassSpec | KernelSelection],
 ) -> str:
     """Emit environment-controlled dispatch without handwritten class switches."""
 
-    specs = tuple(specifications)
-    fock_specs = tuple(fock_specifications)
+    selections = tuple(map(_as_selection, specifications))
+    specs = tuple(item.spec for item in selections)
+    fock_specs = tuple(
+        item.spec
+        for item in selections
+        if KernelConsumer.FOCK in item.consumers
+    )
     declarations = "\n".join(
         f"""extern "C" cudaError_t qce_launch_generated_{spec.name}(
-    cudaStream_t, bool, unsigned, const void*, const std::int64_t*,
-    const void*, const double*, const void*, double, const double*,
-    const double*, double*,
-    const std::uint32_t*, std::uint32_t*);"""
+    cudaStream_t, bool, unsigned, const void*, const std::uint32_t*,
+    const std::int64_t*, const void*, const double*, const void*, double,
+    const double*, const double*, double*, const std::uint32_t*,
+    std::uint32_t*);"""
         for spec in specs
     )
     cases = "\n".join(
         f"""    case {shell_class_index(spec)}U:
       return qce_launch_generated_{spec.name}(
-          stream, unrestricted, worker_blocks, tasks, primitive_pair_offsets,
-          primitive_pairs, ao_coefficients, atom_positions,
+          stream, unrestricted, worker_blocks, tasks, task_offset,
+          primitive_pair_offsets, primitive_pairs, ao_coefficients,
+          atom_positions,
           screening_tolerance, schwarz_bounds, density, forces, task_count,
           task_head);"""
         for spec in specs
     )
     fock_declarations = "\n".join(
         f"""extern "C" cudaError_t qce_launch_generated_{spec.name}_fock(
-    cudaStream_t, bool, unsigned, const void*, const std::int64_t*,
-    const void*, const double*, const void*, double, const double*,
-    const double*, double*,
-    const std::uint32_t*, std::uint32_t*);"""
+    cudaStream_t, bool, unsigned, const void*, const std::uint32_t*,
+    const std::int64_t*, const void*, const double*, const void*, double,
+    const double*, const double*, double*, const std::uint32_t*,
+    std::uint32_t*);"""
         for spec in fock_specs
     )
     fock_cases = "\n".join(
         f"""    case {shell_class_index(spec)}U:
       return qce_launch_generated_{spec.name}_fock(
-          stream, unrestricted, worker_blocks, tasks, primitive_pair_offsets,
-          primitive_pairs, ao_coefficients, atom_positions,
-          screening_tolerance, schwarz_bounds, density, fock, task_count,
-          task_head);"""
+          stream, unrestricted, worker_blocks, tasks, task_offset,
+          primitive_pair_offsets, primitive_pairs, ao_coefficients,
+          atom_positions, screening_tolerance, schwarz_bounds, density, fock,
+          task_count, task_head);"""
         for spec in fock_specs
     )
     return f"""#include "qce_generated_shell_registry.hpp"
@@ -448,6 +619,7 @@ std::uint64_t enabled_fock_shell_class_mask() noexcept {{
 cudaError_t launch_shell_class(
     unsigned shell_class, cudaStream_t stream, bool unrestricted,
     unsigned worker_blocks, const void* tasks,
+    const std::uint32_t* task_offset,
     const std::int64_t* primitive_pair_offsets, const void* primitive_pairs,
     const double* ao_coefficients, const void* atom_positions,
     double screening_tolerance, const double* schwarz_bounds,
@@ -462,6 +634,7 @@ cudaError_t launch_shell_class(
 cudaError_t launch_shell_class_fock(
     unsigned shell_class, cudaStream_t stream, bool unrestricted,
     unsigned worker_blocks, const void* tasks,
+    const std::uint32_t* task_offset,
     const std::int64_t* primitive_pair_offsets, const void* primitive_pairs,
     const double* ao_coefficients, const void* atom_positions,
     double screening_tolerance, const double* schwarz_bounds,
@@ -486,41 +659,28 @@ def _write_if_changed(path: Path, content: str) -> None:
 
 
 def write_production_bundle(
-    manifest: Path, output_directory: Path, shard_count: int
+    manifest: Path,
+    output_directory: Path,
+    shard_count: int,
+    architecture: str | None = None,
 ) -> tuple[Path, ...]:
     """Write deterministic build artifacts and return every generated path."""
 
     if shard_count < 1:
         raise ValueError("production shard count must be positive")
-    specifications = load_production_manifest(manifest)
-    fock_specifications = load_production_fock_manifest(manifest)
-    force_names = {spec.name for spec in specifications}
-    missing_force_sources = [
-        spec.name for spec in fock_specifications if spec.name not in force_names
-    ]
-    if missing_force_sources:
-        raise ValueError(
-            "Fock shell classes must also provide the shared force source: "
-            + ", ".join(missing_force_sources)
-        )
-    fock_names = {spec.name for spec in fock_specifications}
+    selections = load_production_kernel_selections(manifest, architecture)
     shards = [[] for _ in range(shard_count)]
-    for index, specification in enumerate(specifications):
-        shards[index % shard_count].append(specification)
+    for index, selection in enumerate(selections):
+        shards[index % shard_count].append(selection)
     output_directory.mkdir(parents=True, exist_ok=True)
     outputs = []
     for index, shard in enumerate(shards):
         path = output_directory / f"qce_generated_shell_shard_{index}.cu"
-        shard_fock = [spec for spec in shard if spec.name in fock_names]
-        _write_if_changed(path, emit_production_shard(shard, shard_fock))
+        _write_if_changed(path, emit_production_shard(shard))
         outputs.append(path)
     header = output_directory / "qce_generated_shell_registry.hpp"
     source = output_directory / "qce_generated_shell_registry.cu"
-    _write_if_changed(
-        header, emit_registry_header(specifications, fock_specifications)
-    )
-    _write_if_changed(
-        source, emit_registry_source(specifications, fock_specifications)
-    )
+    _write_if_changed(header, emit_registry_header(selections))
+    _write_if_changed(source, emit_registry_source(selections))
     outputs.extend((header, source))
     return tuple(outputs)
