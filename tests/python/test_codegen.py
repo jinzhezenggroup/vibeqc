@@ -33,6 +33,7 @@ from tools.qce_codegen import (
     NvrtcCacheSpec,
     PairOrientation,
     PairStorage,
+    ScheduleIR,
     ScheduleKind,
     ShellClassSpec,
     build_dppp_component_kernel,
@@ -121,6 +122,10 @@ RTX5090_PSPS_RESOURCE_LIMITS = {
 RTX5090_PPSS_RESOURCE_LIMITS = {
     "generated_ppss_shell_class_force_rhf_persistent_kernel": (234, 0, 0),
     "generated_ppss_shell_class_force_uhf_persistent_kernel": (234, 0, 0),
+}
+RTX5090_PPPS_SCALAR_THREAD_RESOURCE_LIMITS = {
+    "generated_ppps_shell_class_force_rhf_persistent_kernel": (168, 0, 27000),
+    "generated_ppps_shell_class_force_uhf_persistent_kernel": (168, 0, 27000),
 }
 
 
@@ -227,6 +232,38 @@ def test_one_warp_component_schedule_strides_larger_coulomb_table(name):
         f"state += kGenerated{class_name}BlockThreads" in source
     )
     assert "shared.coulomb[state] = generated_" in source
+
+
+def test_ppps_scalar_thread_schedule_emits_component_scoped_dag():
+    """Keep every scalar recurrence inside a bounded no-spill helper."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
+    schedule = ScheduleIR(
+        kind=ScheduleKind.THREAD_TASKS,
+        block_threads=32,
+        component_tile=spec.component_count,
+        tasks_per_warp=32,
+        shared_coulomb=False,
+        minimum_blocks_per_sm=8,
+    )
+    source = emit_shell_class_fused_cuda(
+        spec,
+        build_fused_shell_plan(spec, schedule=schedule),
+    )
+    assert "storage.component_weights[0] = 0.0;" in source
+    assert "storage.component_weights[26] = 0.0;" in source
+    assert "double force_0 = storage.task_force[0];" in source
+    assert "double force_8 = storage.task_force[8];" in source
+    assert "component_weights[component]" not in source
+    assert "primitive_gradient[" not in source
+    assert "generated_ppps_scalar_thread_accumulate_components_0_3" in source
+    assert "generated_ppps_scalar_thread_accumulate_components_24_27" in source
+    assert source.count(
+        "__device__ __noinline__ void "
+        "generated_ppps_scalar_thread_accumulate_components_"
+    ) == 9
+    assert "__launch_bounds__(32, 8)" in source
+    assert source.count("force_0 += primitive_scale") == 27
 
 
 @pytest.mark.parametrize(
@@ -1514,6 +1551,184 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
     assert result.returncode == 0, result.stdout + result.stderr
     if cuda_architecture == "sm_120" and resource_limits is not None:
         assert_rtx5090_resources(result.stdout + result.stderr, resource_limits)
+
+
+def test_ppps_scalar_thread_cuda_compiles_without_spills_when_nvcc_is_configured(
+    tmp_path: Path,
+):
+    """Gate the scalar ppps prototype before any production routing."""
+
+    nvcc = os.environ.get("QCE_NVCC")
+    if nvcc is None:
+        pytest.skip("set QCE_NVCC to run the generated CUDA compile gate")
+    cuda_architecture = os.environ.get("QCE_CUDA_ARCH", "sm_90")
+    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
+    schedule = ScheduleIR(
+        kind=ScheduleKind.THREAD_TASKS,
+        block_threads=32,
+        component_tile=spec.component_count,
+        tasks_per_warp=32,
+        shared_coulomb=False,
+        minimum_blocks_per_sm=8,
+    )
+    source = tmp_path / "generated_ppps_scalar_thread.cu"
+    source.write_text(
+        """
+template <unsigned MaximumOrder>
+__device__ __forceinline__ void boys_values(double argument, double* values) {
+  for (unsigned order = 0; order <= MaximumOrder; ++order) {
+    values[order] = 1.0 / (2.0 * static_cast<double>(order) + 1.0 + argument);
+  }
+}
+"""
+        + emit_shell_class_fused_cuda(
+            spec,
+            build_fused_shell_plan(spec, schedule=schedule),
+        ),
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [
+            nvcc,
+            "-std=c++17",
+            f"-arch={cuda_architecture}",
+            "-cubin",
+            "-Xptxas=-v",
+            str(source),
+            "-o",
+            str(tmp_path / "generated_ppps_scalar_thread.cubin"),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=240,
+    )
+    if os.environ.get("QCE_NVCC_VERBOSE"):
+        print(result.stdout + result.stderr)
+    assert result.returncode == 0, result.stdout + result.stderr
+    if cuda_architecture == "sm_120":
+        assert_rtx5090_resources(
+            result.stdout + result.stderr,
+            RTX5090_PPPS_SCALAR_THREAD_RESOURCE_LIMITS,
+        )
+        resource_records = re.findall(
+            r"(\d+) bytes stack frame, (\d+) bytes spill stores, "
+            r"(\d+) bytes spill loads",
+            result.stdout + result.stderr,
+        )
+        assert resource_records
+        assert all(
+            tuple(map(int, record)) == (0, 0, 0)
+            for record in resource_records
+        )
+
+
+def test_ppps_scalar_thread_benchmark_runs_when_nvcc_is_configured(
+    tmp_path: Path,
+):
+    """Execute the scalar persistent worker against the component oracle."""
+
+    nvcc = os.environ.get("QCE_NVCC")
+    if nvcc is None:
+        pytest.skip("set QCE_NVCC to run the generated CUDA benchmark gate")
+    cuda_architecture = os.environ.get("QCE_CUDA_ARCH", "sm_90")
+    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
+    schedule = ScheduleIR(
+        kind=ScheduleKind.THREAD_TASKS,
+        block_threads=32,
+        component_tile=spec.component_count,
+        tasks_per_warp=32,
+        shared_coulomb=False,
+        minimum_blocks_per_sm=8,
+    )
+    environment = dict(os.environ)
+    if environment.get("CUDA_VISIBLE_DEVICES") == "":
+        environment.pop("CUDA_VISIBLE_DEVICES")
+
+    def compile_and_run(
+        label: str,
+        selected_schedule: ScheduleIR,
+    ) -> dict[str, object]:
+        source = tmp_path / f"generated_ppps_{label}_benchmark.cu"
+        source.write_text(
+            emit_shell_class_benchmark_cuda(
+                spec,
+                task_count=512,
+                primitive_count=2,
+                warmups=1,
+                iterations=3,
+                samples=3,
+                schedule=selected_schedule,
+                benchmark_kernel_only=True,
+                persistent_kernel=True,
+            ),
+            encoding="utf-8",
+        )
+        executable = tmp_path / f"generated_ppps_{label}_benchmark"
+        compile_result = subprocess.run(
+            [
+                nvcc,
+                "-std=c++17",
+                f"-arch={cuda_architecture}",
+                "-O3",
+                str(source),
+                "-o",
+                str(executable),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=240,
+        )
+        assert compile_result.returncode == 0, (
+            compile_result.stdout + compile_result.stderr
+        )
+        run_result = subprocess.run(
+            [str(executable)],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            env=environment,
+        )
+        assert run_result.returncode == 0, run_result.stdout + run_result.stderr
+        payload = json.loads(run_result.stdout.strip().splitlines()[-1])
+        assert payload["consumer"] == "force"
+        assert payload["topology"] == "persistent_shared"
+        assert payload["maximum_force_error"] <= (
+            2.0e-10 * max(1.0, payload["maximum_force"])
+        )
+        return payload
+
+    production_schedule = next(
+        selection.schedule
+        for selection in load_production_kernel_selections(
+            REPOSITORY_ROOT
+            / "tools"
+            / "qce_codegen"
+            / "production_shell_classes.json",
+            "sm_120",
+        )
+        if selection.spec == spec
+    )
+    scalar_payload = compile_and_run("scalar_thread", schedule)
+    production_payload = compile_and_run(
+        "component_lanes",
+        production_schedule,
+    )
+    print(
+        json.dumps(
+            {
+                "scalar_thread_ms": scalar_payload["fused_ms"],
+                "component_lanes_ms": production_payload["fused_ms"],
+                "speedup_vs_component_lanes": (
+                    production_payload["fused_ms"]
+                    / scalar_payload["fused_ms"]
+                ),
+            },
+            sort_keys=True,
+        )
+    )
 
 
 def test_joint_fock_force_cuda_compiles_when_nvcc_is_configured(tmp_path: Path):

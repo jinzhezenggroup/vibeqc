@@ -1081,7 +1081,12 @@ def _retain_selected_persistent_benchmark_kernel(
         f"void {stem}_uhf_kernel(",
         f"void {stem}_uhf_persistent_kernel(",
     ):
-        source = _remove_cuda_kernel_definition(source, signature)
+        # Scalar thread-task lowerings intentionally emit only persistent
+        # wrappers.  Other schedules still carry ordinary wrappers, so remove
+        # them when present without treating their deliberate absence as an
+        # ABI regression.
+        if signature in source:
+            source = _remove_cuda_kernel_definition(source, signature)
     if f"void {stem}_rhf_persistent_kernel(" not in source:
         raise RuntimeError("persistent RHF benchmark wrapper is missing")
     return source

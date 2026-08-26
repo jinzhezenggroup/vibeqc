@@ -746,28 +746,50 @@ def _clone_expression(
 
 def build_weighted_shell_contraction_kernel(
     spec: ShellClassSpec,
+    component_indices: Sequence[int] | None = None,
 ) -> WeightedShellContractionKernel:
     """Build one density-weightable DAG spanning every shell component.
 
     The component kernels intentionally originate from the existing symbolic
     oracle.  Cloning them into a shared graph preserves that correctness source
     while exposing horizontal CSE that is invisible to one-component-at-a-time
-    CUDA lowering.
+    CUDA lowering.  ``component_indices`` optionally bounds CSE to a stable
+    subset so register-sensitive emitters can trade a small amount of
+    recomputation for shorter live ranges without changing the mathematics.
     """
+
+    selected_components = (
+        tuple(range(spec.component_count))
+        if component_indices is None
+        else tuple(component_indices)
+    )
+    if not selected_components:
+        raise ValueError("weighted shell contraction requires a component")
+    if len(set(selected_components)) != len(selected_components):
+        raise ValueError("weighted shell component indices must be unique")
+    if any(
+        component < 0 or component >= spec.component_count
+        for component in selected_components
+    ):
+        raise ValueError("weighted shell component index is out of range")
 
     graph = Graph()
     component_weights = tuple(
         graph.variable(f"component_weight_{component}")
-        for component in range(spec.component_count)
+        for component in selected_components
     )
     weighted_values = []
     weighted_gradients: list[list[list[Expr]]] = [
         [[] for _ in AXES] for _ in CENTERS
     ]
-    for component_index, component in enumerate(spec.components):
+    for component_index, weight in zip(
+        selected_components,
+        component_weights,
+        strict=True,
+    ):
+        component = spec.components[component_index]
         kernel = build_shell_class_contraction_kernel(spec, component)
         memo: dict[int, Expr] = {}
-        weight = component_weights[component_index]
         weighted_values.append(
             weight * _clone_expression(kernel.value, graph, memo)
         )
