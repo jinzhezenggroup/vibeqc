@@ -75,8 +75,16 @@ class IntegralIR:
             raise ValueError("an integral IR requires at least one consumer")
         if not self.consumers <= frozenset(KernelConsumer):
             raise ValueError("integral IR contains an unsupported consumer")
-        if self.recurrence != "subset_wick":
+        if self.recurrence not in ("subset_wick", "rys3"):
             raise ValueError(f"unsupported integral recurrence {self.recurrence!r}")
+        if self.recurrence == "rys3" and (
+            self.spec.name != "ppps"
+            or self.consumers != frozenset((KernelConsumer.FORCE,))
+        ):
+            raise ValueError(
+                "the direct three-root recurrence currently supports only "
+                "force-only ppps kernels"
+            )
         if (
             KernelConsumer.FORCE in self.consumers
             and self.independent_force_centers != (0, 1, 2)
@@ -211,12 +219,15 @@ class KernelIR:
 def build_integral_ir(
     spec: ShellClassSpec,
     consumers: tuple[KernelConsumer | str, ...] = (KernelConsumer.FORCE,),
+    *,
+    recurrence: str = "subset_wick",
 ) -> IntegralIR:
     """Normalize requested observables into one mathematical integral IR."""
 
     return IntegralIR(
         spec=spec,
         consumers=frozenset(KernelConsumer(item) for item in consumers),
+        recurrence=recurrence,
     )
 
 

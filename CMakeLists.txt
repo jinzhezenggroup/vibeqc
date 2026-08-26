@@ -95,6 +95,8 @@ if(VIBEQC_ENABLE_CUDA)
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/ir.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/low_order_force.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/production.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/rys.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/rys3_data.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/shell_class.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/shell_spec.py"
     COMMENT "Generating accepted fused shell-class CUDA shards"

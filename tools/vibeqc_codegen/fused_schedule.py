@@ -63,10 +63,11 @@ def build_fused_shell_plan(
     *,
     consumers: tuple[KernelConsumer | str, ...] = (KernelConsumer.FORCE,),
     schedule: ScheduleIR | None = None,
+    recurrence: str = "subset_wick",
 ) -> FusedShellPlan:
     """Lower integral and schedule IRs into deterministic CUDA lookup tables."""
 
-    integral = build_integral_ir(spec, consumers)
+    integral = build_integral_ir(spec, consumers, recurrence=recurrence)
     selected_schedule = schedule or default_schedule(integral)
     kernel = KernelIR(integral=integral, schedule=selected_schedule)
     maximum_order = integral.maximum_coulomb_order
