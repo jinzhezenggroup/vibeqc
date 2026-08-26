@@ -17,10 +17,12 @@ different from differentiating the eigensolver, DIIS, or SCF iteration trace.
 
 The CUDA s-p-d-f path contracts stationary RHF/UHF gradients on the GPU. Its
 one-electron force differentiates Cartesian Gaussians with exact raised/lowered
-angular-momentum identities. One AO-pair worker shares compact overlap and
-kinetic recurrences across both basis centers; each nuclear-attraction term
-shares one Hermite, Boys, and Coulomb recurrence across all six basis-center
-derivatives and recovers the nuclear-center derivative by translation. Its
+angular-momentum identities. One warp owns one public AO pair: lane zero forms
+the compact overlap/kinetic derivatives, while the remaining lanes treat the
+nuclei as a batched point-charge auxiliary dimension. The warp builds one
+primitive/component Hermite table in shared memory, reuses it across all active
+nuclear-center Coulomb recurrences, reduces the two basis-center derivatives,
+and recovers each nuclear-center derivative by translation. Its
 Cartesian McMurchie-Davidson recurrence is shared mathematically with the CPU
 oracle but implemented independently in CUDA. The canonical first-order
 `(p s | s s)`
@@ -151,11 +153,12 @@ thread. The dedicated force paths through total angular order five compute all
 center derivatives from one shared set of Gaussian product and Boys values,
 then recover omitted centers from translational invariance; orders six and
 above retain the general three-component Dual path.
-The one-electron force likewise assigns one public AO pair to each worker and
+The one-electron force likewise assigns one public AO pair to each warp and
 accumulates overlap, kinetic, basis-center attraction, and per-nucleus
-attraction derivatives directly into the stationary force contraction. It no
-longer launches one complete automatic-differentiation recurrence per atom
-coordinate.
+attraction derivatives directly into the stationary force contraction. One
+kernel launch covers every AO pair and nucleus; there is no per-nucleus host
+loop. The previous scalar AO-pair worker remains an explicit diagnostic
+fallback through `VIBEQC_ONE_ELECTRON_FORCE_SCALAR`.
 Coulomb auxiliary states are stored in
 a four-dimensional simplex (1,820 states through f) rather than a dense 13^4
 thread-local array.
@@ -222,8 +225,9 @@ screening and symmetry domain.
 Canonical AO-pair arrays remain resident for one-electron triangles and
 Schwarz bounds, following gpuxtb's immutable pair-metadata pattern. Their
 one-electron force consumer evaluates every pair once, uses translation for
-overlap/kinetic center derivatives, and accumulates each nucleus after sharing
-its attraction recurrence across both basis centers. Each Fock
+overlap/kinetic center derivatives, and distributes point-charge nuclei across
+one worker warp after sharing its attraction Hermite table across both basis
+centers. Each Fock
 build reduces the current density to shell-pair absolute maxima before task
 generation. RHF keeps the full Coulomb magnitude and its one-half exchange
 magnitude separately; UHF keeps total-density Coulomb and maximum same-spin
