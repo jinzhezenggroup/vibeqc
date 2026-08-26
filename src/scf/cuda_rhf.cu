@@ -8246,7 +8246,8 @@ __device__ __noinline__ void contract_fock_direct_order2_task(
     const double* schwarz_bounds,
     const double* density,
     const std::uint8_t* active,
-    double* fock) {
+    double* fock,
+    const std::uint64_t* generated_fock_shell_class_mask) {
   if (task.tile != 0U) return;
   const std::size_t first_pair = task.first_pair;
   const std::size_t second_pair = task.second_pair;
@@ -8265,6 +8266,14 @@ __device__ __noinline__ void contract_fock_direct_order2_task(
       batch.shell_angular[slots[2].shell],
       batch.shell_angular[slots[3].shell]);
   if (shell_class != 2U && shell_class != 3U && shell_class != 6U) return;
+  // Generated order-two workers execute before this handwritten fallback.
+  // Honor the exact-class mask here as the generic subtile path does, or the
+  // same shell quartet is scattered into the Fock matrix twice.
+  if (generated_fock_shell_class_mask != nullptr &&
+      ((*generated_fock_shell_class_mask &
+        (std::uint64_t{1} << shell_class)) != 0U)) {
+    return;
+  }
 
   if (batch.shell_angular[slots[0].shell] <
       batch.shell_angular[slots[1].shell]) {
@@ -8485,7 +8494,8 @@ __global__ void build_fock_direct_order2_persistent_kernel(
     const double* schwarz_bounds,
     const double* density,
     const std::uint8_t* active,
-    double* fock) {
+    double* fock,
+    const std::uint64_t* generated_fock_shell_class_mask) {
   const unsigned lane = threadIdx.x;
   const std::uint32_t work_count = *active_shell_quartet_tile_count;
   while (true) {
@@ -8500,7 +8510,8 @@ __global__ void build_fock_direct_order2_persistent_kernel(
     if (packed_item < work_count) {
       contract_fock_direct_order2_task<Unrestricted>(
           batch, active_shell_quartet_tiles[packed_item],
-          screening_tolerance, schwarz_bounds, density, active, fock);
+          screening_tolerance, schwarz_bounds, density, active, fock,
+          generated_fock_shell_class_mask);
     }
   }
 }
@@ -10659,7 +10670,8 @@ void launch_angular_fock_quartets(
             detail::kDirectQuartetThreads, 0, stream>>>(
             batch, order_tile_count, order_tiles,
             persistent_task_heads + AngularOrder, screening_tolerance,
-            schwarz_bounds, density, active, fock);
+            schwarz_bounds, density, active, fock,
+            generated_fock_shell_class_mask);
       } else if constexpr (AngularOrder <
                            kPersistentFockAngularOrderCount) {
         const unsigned capacity_blocks = static_cast<unsigned>(

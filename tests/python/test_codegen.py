@@ -157,11 +157,15 @@ def test_small_shell_schedule_space_includes_packed_and_cooperative_variants():
 
 
 @pytest.mark.parametrize(
-    ("spec", "block_threads"),
-    ((PSPS_SPEC, PSPS_BLOCK_THREADS), (PPSS_SPEC, PPSS_BLOCK_THREADS)),
+    "spec",
+    (
+        PSPS_SPEC,
+        PPSS_SPEC,
+        FUSED_SHELL_SPEC_BY_NAME["dsss"],
+    ),
 )
-def test_thread_task_schedule_models_low_order_workers(spec, block_threads):
-    """Represent accepted one-task-per-lane kernels in the schedule IR."""
+def test_packed_schedule_models_low_order_fock_workers(spec):
+    """Keep the accepted order-two topology at one shell task per lane."""
 
     schedule = next(
         selection.schedule
@@ -173,8 +177,8 @@ def test_thread_task_schedule_models_low_order_workers(spec, block_threads):
         )
         if selection.spec == spec
     )
-    assert schedule.kind == ScheduleKind.THREAD_TASKS
-    assert schedule.block_threads == block_threads
+    assert schedule.kind == ScheduleKind.PACKED_TASKS
+    assert schedule.block_threads == 32
     assert schedule.tasks_per_warp == 32
     assert not schedule.shared_coulomb
 
@@ -1200,6 +1204,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
         "pppp",
         "psps",
         "ppss",
+        "dsss",
     )
     assert tuple(spec.name for spec in fock_specifications) == (
         "dppp",
@@ -1208,6 +1213,9 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
         "ppps",
         "dpps",
         "dsps",
+        "psps",
+        "ppss",
+        "dsss",
     )
     selections = load_production_kernel_selections(manifest, "sm_120")
     assert tuple(selection.spec.name for selection in selections) == tuple(
@@ -1235,6 +1243,9 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
             "ppps",
             "dpps",
             "dsps",
+            "psps",
+            "ppss",
+            "dsss",
         )
         else (KernelConsumer.FORCE,)
         for selection in selections
@@ -1258,8 +1269,9 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     assert '{"dspp", 8U, 4U, 64U, 2U, 54U}' in header
     assert '{"dpps", 11U, 4U, 64U, 3U, 54U}' in header
     assert '{"pppp", 5U, 4U, 96U, 2U, 81U}' in header
-    assert '{"psps", 2U, 2U, 256U, 2U, 9U}' in header
-    assert '{"ppss", 3U, 2U, 256U, 2U, 9U}' in header
+    assert '{"psps", 2U, 2U, 32U, 3U, 9U}' in header
+    assert '{"ppss", 3U, 2U, 32U, 3U, 9U}' in header
+    assert '{"dsss", 6U, 2U, 32U, 3U, 6U}' in header
     assert "QCE_AOT_SHELL_CLASSES" in header
     assert "QCE_AOT_FOCK_SHELL_CLASSES" in header
     shards = "\n".join(
@@ -1292,6 +1304,33 @@ def test_runtime_buckets_all_generated_classes_before_dispatch():
     assert "materialize_generated_shell_tasks_kernel" in source
     assert "compact_generated_shell_tasks_kernel" not in source
     assert source.count("classify_generated_shell_tasks_kernel<<<") == 1
+
+
+def test_generated_order2_fock_masks_handwritten_fallback():
+    """Prevent generated order-two Fock quartets from being scattered twice."""
+
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
+        encoding="utf-8"
+    )
+    task_begin = source.index("contract_fock_direct_order2_task(")
+    task_end = source.index(
+        "/** Fixed-capacity wrapper retained for high-register angular orders. */",
+        task_begin,
+    )
+    task_source = source[task_begin:task_end]
+    assert "generated_fock_shell_class_mask" in task_source
+    assert "std::uint64_t{1} << shell_class" in task_source
+
+    worker_begin = source.index(
+        "void build_fock_direct_order2_persistent_kernel("
+    )
+    worker_end = source.index(
+        "/** Consume only the active compacted Fock domain from a device queue. */",
+        worker_begin,
+    )
+    worker_source = source[worker_begin:worker_end]
+    assert "generated_fock_shell_class_mask" in worker_source
+    assert "contract_fock_direct_order2_task<Unrestricted>" in worker_source
 
 
 def test_production_codegen_cmake_tracks_transitive_generator_inputs():
