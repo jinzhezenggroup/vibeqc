@@ -34,6 +34,20 @@
           }
         },
         {
+          "shell_class": "dddp",
+          "consumers": ["force"],
+          "schedule": {
+            "kind": "tiled_components",
+            "block_threads": 64,
+            "component_tile": 64,
+            "tasks_per_warp": 1,
+            "shared_coulomb": true,
+            "pair_orientation": "swapped",
+            "pair_storage": "recomputed",
+            "unroll_pair_terms": true
+          }
+        },
+        {
           "shell_class": "dpds",
           "consumers": ["force"],
           "schedule": {

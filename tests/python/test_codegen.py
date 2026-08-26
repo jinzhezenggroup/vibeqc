@@ -1188,6 +1188,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     assert tuple(spec.name for spec in specifications) == (
         "dppp",
         "dpdp",
+        "dddp",
         "dpds",
         "ddps",
         "fpps",
@@ -1213,7 +1214,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     } == {
         spec.name: (
             PairStorage.RECOMPUTED
-            if spec.name == "dpdp"
+            if spec.name in ("dpdp", "dddp")
             else PairStorage.MATERIALIZED
         )
         for spec in specifications
@@ -1234,6 +1235,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
         assert b"\0" not in first_path.read_bytes()
     header = emit_registry_header(selections)
     assert '{"dpdp", 14U, 6U, 64U, 2U, 64U}' in header
+    assert '{"dddp", 19U, 7U, 64U, 2U, 64U}' in header
     assert '{"ppps", 4U, 3U, 64U, 2U, 27U}' in header
     assert '{"dspp", 8U, 4U, 64U, 2U, 54U}' in header
     assert '{"dpps", 11U, 4U, 64U, 3U, 54U}' in header
