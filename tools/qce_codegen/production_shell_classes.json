@@ -118,6 +118,20 @@
           }
         },
         {
+          "shell_class": "pppp",
+          "consumers": ["force"],
+          "schedule": {
+            "kind": "component_lanes",
+            "block_threads": 96,
+            "component_tile": 81,
+            "tasks_per_warp": 1,
+            "shared_coulomb": true,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true
+          }
+        },
+        {
           "shell_class": "psps",
           "consumers": ["force"],
           "schedule": {

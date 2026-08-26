@@ -959,6 +959,17 @@ def test_dppp_fused_cuda_emits_one_shared_shell_class_schedule():
     assert "generated_dppp_orbit_" not in source
 
 
+def test_equal_shell_pair_component_domain_matches_active_tile_triangle():
+    """Avoid double-counting (ij|kl) and (kl|ij) in shell-wide workers."""
+
+    source = emit_shell_class_fused_cuda(FUSED_SHELL_SPEC_BY_NAME["pppp"])
+    assert (
+        "shared.task.shell_pair[0] != shared.task.shell_pair[1] || "
+        "(first_p * 3U + second_p) >= (third_p * 3U + fourth_p)"
+        in source
+    )
+
+
 def test_fused_cuda_can_emit_fock_values_and_force_gradients_together():
     """Generate both consumers from one integral and component schedule IR."""
 
@@ -1183,6 +1194,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
         "dpps",
         "dsps",
         "dspp",
+        "pppp",
         "psps",
         "ppss",
     )
@@ -1216,6 +1228,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     assert '{"ppps", 4U, 3U, 64U, 2U, 27U}' in header
     assert '{"dspp", 8U, 4U, 64U, 2U, 54U}' in header
     assert '{"dpps", 11U, 4U, 64U, 3U, 54U}' in header
+    assert '{"pppp", 5U, 4U, 96U, 2U, 81U}' in header
     assert '{"psps", 2U, 2U, 256U, 2U, 9U}' in header
     assert '{"ppss", 3U, 2U, 256U, 2U, 9U}' in header
     assert "QCE_AOT_SHELL_CLASSES" in header

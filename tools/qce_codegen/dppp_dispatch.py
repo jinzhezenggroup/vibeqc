@@ -895,6 +895,19 @@ def _generic_task_component_setup(spec: ShellClassSpec) -> str:
                 f"shared.task.shell[{first}] != shared.task.shell[{second}] || "
                 f"{names[first]} >= {names[second]}"
             )
+    if spec.angular[:2] == spec.angular[2:]:
+        # The active-tile builder triangularizes AO-pair quartets when the
+        # bra and ket refer to the same shell pair.  Generated shell-wide
+        # workers must reproduce that domain; density permutation de-dup only
+        # removes equal AO-index permutations and cannot prevent evaluating
+        # both (ij|kl) and (kl|ij) component lanes.
+        second_component_count = len(spec.center_components[1])
+        fourth_component_count = len(spec.center_components[3])
+        symmetry_conditions.append(
+            "shared.task.shell_pair[0] != shared.task.shell_pair[1] || "
+            f"({names[0]} * {second_component_count}U + {names[1]}) >= "
+            f"({names[2]} * {fourth_component_count}U + {names[3]})"
+        )
     if symmetry_conditions:
         expression = ") && (".join(symmetry_conditions)
         lines.extend(
