@@ -1,10 +1,10 @@
-"""Shared exact workloads for QCE and GPU4PySCF comparisons."""
+"""Shared exact workloads for VIBEQC and GPU4PySCF comparisons."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from qce import Primitive, Shell
+from vibeqc import Primitive, Shell
 
 
 _ANGSTROM_TO_BOHR = 1.8897261246257702
@@ -26,11 +26,11 @@ def _angstrom_atoms(
 
 @dataclass(frozen=True)
 class BenchmarkCase:
-    """One exact common workload for QCE and PySCF/GPU4PySCF."""
+    """One exact common workload for VIBEQC and PySCF/GPU4PySCF."""
 
     description: str
     atoms: tuple[tuple[str, tuple[float, float, float]], ...]
-    qce_basis: str | tuple[Shell, ...]
+    vibeqc_basis: str | tuple[Shell, ...]
     pyscf_basis: str | dict[str, list]
     charge: int = 0
     multiplicity: int = 1
@@ -60,7 +60,7 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
         "sp8": BenchmarkCase(
             description="H2, 8 Cartesian s/p AOs",
             atoms=sp_atoms,
-            qce_basis=(
+            vibeqc_basis=(
                 Shell(0, 0, (Primitive(1.2, 1.0),)),
                 Shell(0, 1, (Primitive(0.7, 1.0),)),
                 Shell(1, 0, (Primitive(1.2, 1.0),)),
@@ -71,7 +71,7 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
         "sdf18-direct": BenchmarkCase(
             description="HeH+, 18 Cartesian s/d/f AOs, screened direct J/K",
             atoms=(("He", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))),
-            qce_basis=(
+            vibeqc_basis=(
                 Shell(0, 0, (Primitive(1.5, 1.0),)),
                 Shell(0, 2, (Primitive(0.8, 1.0),)),
                 Shell(0, 3, (Primitive(0.6, 1.0),)),
@@ -90,7 +90,7 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
                 ("He", (0.0, 0.0, 0.0)),
                 ("He", (0.0, 0.0, 2.0)),
             ),
-            qce_basis=tuple(
+            vibeqc_basis=tuple(
                 shell
                 for atom_index in range(3)
                 for shell in (
@@ -107,7 +107,7 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
                 ("H", (0.0, -1.43233673, 1.10715266)),
                 ("H", (0.0, 1.43233673, 1.10715266)),
             ),
-            qce_basis="def2-svp",
+            vibeqc_basis="def2-svp",
             pyscf_basis="def2-svp",
         ),
         "water-def2-svp-spherical": BenchmarkCase(
@@ -117,7 +117,7 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
                 ("H", (0.0, -1.43233673, 1.10715266)),
                 ("H", (0.0, 1.43233673, 1.10715266)),
             ),
-            qce_basis="def2-svp",
+            vibeqc_basis="def2-svp",
             pyscf_basis="def2-svp",
             basis_representation="spherical",
         ),
@@ -128,7 +128,7 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
                 ("H", (0.0, -1.43233673, 1.10715266)),
                 ("H", (0.0, 1.43233673, 1.10715266)),
             ),
-            qce_basis="def2-tzvp",
+            vibeqc_basis="def2-tzvp",
             pyscf_basis="def2-tzvp",
         ),
         "water-def2-tzvp-spherical": BenchmarkCase(
@@ -138,7 +138,7 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
                 ("H", (0.0, -1.43233673, 1.10715266)),
                 ("H", (0.0, 1.43233673, 1.10715266)),
             ),
-            qce_basis="def2-tzvp",
+            vibeqc_basis="def2-tzvp",
             pyscf_basis="def2-tzvp",
             basis_representation="spherical",
         ),
@@ -163,7 +163,7 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
                 ("H", (1.47969274920594, 0.49296699491671, 0.00986060363313)),
                 ("H", (1.74937311874999, 1.81941989798974, -0.75214359146194)),
             )),
-            qce_basis="def2-svp",
+            vibeqc_basis="def2-svp",
             pyscf_basis="def2-svp",
             basis_representation="spherical",
             expected_ao_count=96,
@@ -202,7 +202,7 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
                 ("H", (2.17246664587724, -0.02636079885791, 0.45836947014101)),
                 ("H", (1.39882401939553, -0.76704414676758, 1.56446474221910)),
             )),
-            qce_basis="def2-svp",
+            vibeqc_basis="def2-svp",
             pyscf_basis="def2-svp",
             basis_representation="spherical",
             expected_ao_count=192,
@@ -215,7 +215,7 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
                 ("O", (0.0, 0.0, 0.0)),
                 ("H", (0.0, 0.0, 1.8323918340046244)),
             ),
-            qce_basis="def2-svp",
+            vibeqc_basis="def2-svp",
             pyscf_basis="def2-svp",
             multiplicity=2,
             method="uhf",
@@ -228,7 +228,7 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
                 ("O", (0.0, 0.0, 0.0)),
                 ("H", (0.0, 0.0, 1.8323918340046244)),
             ),
-            qce_basis="def2-svp",
+            vibeqc_basis="def2-svp",
             pyscf_basis="def2-svp",
             multiplicity=2,
             method="uhf",
@@ -237,7 +237,7 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
         "h2plus-uhf2": BenchmarkCase(
             description="H2+, 2 Cartesian s AOs, UHF doublet",
             atoms=sp_atoms,
-            qce_basis=(
+            vibeqc_basis=(
                 Shell(
                     0,
                     0,
@@ -272,7 +272,7 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
         "heh-sdf18-uhf": BenchmarkCase(
             description="HeH, 18 Cartesian s/d/f AOs, direct UHF doublet",
             atoms=(("He", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))),
-            qce_basis=(
+            vibeqc_basis=(
                 Shell(0, 0, (Primitive(1.5, 1.0),)),
                 Shell(0, 2, (Primitive(0.8, 1.0),)),
                 Shell(0, 3, (Primitive(0.6, 1.0),)),
@@ -297,7 +297,7 @@ def real_molecule_gate_points() -> tuple[BenchmarkGatePoint, ...]:
         # GPU4PySCF reaches a stable energy/force plateau here but can keep
         # cycling above its 1e-10 gradient threshold for the scaled batch
         # endpoints. The 1e-9 setting converges all four reference systems
-        # while remaining well inside the explicit QCE error gates.
+        # while remaining well inside the explicit VIBEQC error gates.
         "reference_gradient_tolerance": 1.0e-9,
     }
     accuracy_192 = {

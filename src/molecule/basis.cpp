@@ -4,7 +4,7 @@
 #include <limits>
 #include <numbers>
 
-namespace qce::molecule {
+namespace vibeqc::molecule {
 namespace {
 
 constexpr unsigned kMaximumPublicAngularMomentum = 3;
@@ -48,9 +48,9 @@ std::vector<CartesianComponent> cartesian_components(unsigned l) {
 }
 
 std::vector<AoExpansion> ao_expansions(
-    unsigned l, qce_basis_representation representation) {
+    unsigned l, vibeqc_basis_representation representation) {
   const std::vector<CartesianComponent> cartesian = cartesian_components(l);
-  if (representation == QCE_BASIS_CARTESIAN || l < 2) {
+  if (representation == VIBEQC_BASIS_CARTESIAN || l < 2) {
     std::vector<AoExpansion> expansions;
     expansions.reserve(cartesian.size());
     for (const CartesianComponent& component : cartesian) {
@@ -108,7 +108,7 @@ std::size_t ao_count(const core::System& system) noexcept {
   std::size_t count = 0;
   for (const core::Shell& shell : system.shells) {
     const std::size_t functions =
-        system.basis_representation == QCE_BASIS_SPHERICAL
+        system.basis_representation == VIBEQC_BASIS_SPHERICAL
         ? 2 * static_cast<std::size_t>(shell.angular_momentum) + 1
         : cartesian_count(shell.angular_momentum);
     if (functions > std::numeric_limits<std::size_t>::max() - count) return 0;
@@ -136,47 +136,47 @@ double cartesian_component_normalization(
   return 1.0 / std::sqrt(denominator);
 }
 
-qce_status validate_and_normalize(core::System& system, std::string& detail) {
+vibeqc_status validate_and_normalize(core::System& system, std::string& detail) {
   if (system.atoms.empty() || system.shells.empty()) {
     detail = "a system requires at least one atom and one basis shell";
-    return QCE_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   int nuclear_charge = 0;
   for (const auto& atom : system.atoms) {
     if (atom.atomic_number <= 0) {
       detail = "atomic numbers must be positive";
-      return QCE_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
     }
     nuclear_charge += atom.atomic_number;
   }
   system.electron_count = nuclear_charge - system.charge;
   if (system.electron_count <= 0 || system.multiplicity == 0) {
     detail = "electron count must be positive and multiplicity nonzero";
-    return QCE_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
-  if (system.basis_representation != QCE_BASIS_CARTESIAN &&
-      system.basis_representation != QCE_BASIS_SPHERICAL) {
+  if (system.basis_representation != VIBEQC_BASIS_CARTESIAN &&
+      system.basis_representation != VIBEQC_BASIS_SPHERICAL) {
     detail = "basis representation must be Cartesian or spherical";
-    return QCE_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
 
   for (auto& shell : system.shells) {
     if (shell.atom_index >= system.atoms.size()) {
       detail = "shell atom index is out of range";
-      return QCE_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
     }
     if (shell.angular_momentum > kMaximumPublicAngularMomentum) {
       detail = "the executable Cartesian path currently supports s through f shells";
-      return QCE_STATUS_NOT_IMPLEMENTED;
+      return VIBEQC_STATUS_NOT_IMPLEMENTED;
     }
     if (shell.primitives.empty()) {
       detail = "each shell requires at least one primitive";
-      return QCE_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
     }
     for (auto& primitive : shell.primitives) {
       if (!(primitive.exponent > 0.0) || !std::isfinite(primitive.coefficient)) {
         detail = "primitive exponents must be positive and coefficients finite";
-        return QCE_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_STATUS_INVALID_ARGUMENT;
       }
     }
 
@@ -196,7 +196,7 @@ qce_status validate_and_normalize(core::System& system, std::string& detail) {
     }
     if (!(norm2 > 0.0) || !std::isfinite(norm2)) {
       detail = "contracted shell has an invalid normalization";
-      return QCE_STATUS_NUMERICAL_FAILURE;
+      return VIBEQC_STATUS_NUMERICAL_FAILURE;
     }
     const double scale = 1.0 / std::sqrt(norm2);
     for (auto& primitive : shell.primitives) {
@@ -205,7 +205,7 @@ qce_status validate_and_normalize(core::System& system, std::string& detail) {
                       primitive.exponent, shell.angular_momentum);
     }
   }
-  return QCE_STATUS_SUCCESS;
+  return VIBEQC_STATUS_SUCCESS;
 }
 
-}  // namespace qce::molecule
+}  // namespace vibeqc::molecule

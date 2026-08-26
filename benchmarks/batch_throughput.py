@@ -4,7 +4,7 @@ import argparse
 import statistics
 import time
 
-from qce import Calculator
+from vibeqc import Calculator
 
 from _support import environment_metadata, write_result
 

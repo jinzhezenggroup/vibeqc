@@ -136,7 +136,7 @@ class PreparedBatch:
 
         _native.check(
             self._library,
-            self._library.qce_context_create(
+            self._library.vibeqc_context_create(
                 ctypes.byref(calculator._context_descriptor()), ctypes.byref(self._context)
             ),
         )
@@ -159,7 +159,7 @@ class PreparedBatch:
                 flags |= _native.BATCH_ENABLE_SHELL_CLASS_PROFILING
             _native.check(
                 self._library,
-                self._library.qce_batch_prepare(
+                self._library.vibeqc_batch_prepare(
                     self._context,
                     handle_array,
                     count,
@@ -173,12 +173,12 @@ class PreparedBatch:
             raise
         finally:
             for handle in system_handles:
-                self._library.qce_system_destroy(handle)
+                self._library.vibeqc_system_destroy(handle)
 
     @property
     def system_count(self) -> int:
         self._ensure_open()
-        return int(self._library.qce_batch_get_system_count(self._batch))
+        return int(self._library.vibeqc_batch_get_system_count(self._batch))
 
     @property
     def atomic_numbers(self) -> tuple[tuple[int, ...], ...]:
@@ -266,7 +266,7 @@ class PreparedBatch:
         )
         _native.check(
             self._library,
-            self._library.qce_batch_execute(
+            self._library.vibeqc_batch_execute(
                 self._batch,
                 inputs_pointer,
                 input_count,
@@ -283,7 +283,7 @@ class PreparedBatch:
                 if succeeded
                 else None
             )
-            message = self._library.qce_status_message(output.status).decode("utf-8")
+            message = self._library.vibeqc_status_message(output.status).decode("utf-8")
             items.append(
                 BatchItemResult(
                     index=index,
@@ -314,7 +314,7 @@ class PreparedBatch:
         self._ensure_open()
         _native.check(
             self._library,
-            self._library.qce_batch_clear_warm_starts(self._batch),
+            self._library.vibeqc_batch_clear_warm_starts(self._batch),
         )
 
     def last_shell_class_profile(self) -> tuple[ShellClassProfileEntry, ...]:
@@ -334,7 +334,7 @@ class PreparedBatch:
         )()
         _native.check(
             self._library,
-            self._library.qce_batch_get_last_shell_class_profile(
+            self._library.vibeqc_batch_get_last_shell_class_profile(
                 self._batch,
                 native_entries,
                 len(native_entries),
@@ -364,10 +364,10 @@ class PreparedBatch:
 
     def close(self) -> None:
         if self._batch.value:
-            self._library.qce_batch_destroy(self._batch)
+            self._library.vibeqc_batch_destroy(self._batch)
             self._batch = ctypes.c_void_p()
         if self._context.value:
-            self._library.qce_context_destroy(self._context)
+            self._library.vibeqc_context_destroy(self._context)
             self._context = ctypes.c_void_p()
 
     def __enter__(self) -> "PreparedBatch":

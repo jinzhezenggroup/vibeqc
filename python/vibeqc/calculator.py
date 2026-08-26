@@ -77,7 +77,7 @@ class Result:
 def _basis_pack() -> dict[str, object]:
     """Load the generated, data-only Basis Set Exchange subset once."""
 
-    path = resources.files("qce").joinpath("data/basis_pack.json")
+    path = resources.files("vibeqc").joinpath("data/basis_pack.json")
     with path.open("r", encoding="utf-8") as handle:
         pack = json.load(handle)
     if pack.get("schema_version") != 1:
@@ -184,7 +184,7 @@ class Calculator:
         available = ctypes.c_int32()
         _native.check(
             self._library,
-            self._library.qce_method_available(self._method, ctypes.byref(available)),
+            self._library.vibeqc_method_available(self._method, ctypes.byref(available)),
         )
         if not available.value:
             raise NotImplementedError(f"method {method!r} is reserved but not implemented")
@@ -266,7 +266,7 @@ class Calculator:
         system = ctypes.c_void_p()
         _native.check(
             self._library,
-            self._library.qce_system_create(
+            self._library.vibeqc_system_create(
                 context, ctypes.byref(descriptor), ctypes.byref(system)
             ),
         )
@@ -329,7 +329,7 @@ class Calculator:
         context = ctypes.c_void_p()
         _native.check(
             self._library,
-            self._library.qce_context_create(
+            self._library.vibeqc_context_create(
                 ctypes.byref(self._context_descriptor()), ctypes.byref(context)
             ),
         )
@@ -342,7 +342,7 @@ class Calculator:
             method_descriptor = self._method_descriptor()
             _native.check(
                 self._library,
-                self._library.qce_calculation_prepare(
+                self._library.vibeqc_calculation_prepare(
                     context,
                     system,
                     ctypes.byref(method_descriptor),
@@ -364,7 +364,7 @@ class Calculator:
             )
             _native.check(
                 self._library,
-                self._library.qce_calculation_execute(
+                self._library.vibeqc_calculation_execute(
                     calculation, ctypes.byref(result_descriptor)
                 ),
             )
@@ -385,7 +385,7 @@ class Calculator:
             )
         finally:
             if calculation.value:
-                self._library.qce_calculation_destroy(calculation)
+                self._library.vibeqc_calculation_destroy(calculation)
             if system.value:
-                self._library.qce_system_destroy(system)
-            self._library.qce_context_destroy(context)
+                self._library.vibeqc_system_destroy(system)
+            self._library.vibeqc_context_destroy(context)

@@ -1,9 +1,9 @@
-#ifndef QCE_SCF_GENERATED_SHELL_TASK_HPP
-#define QCE_SCF_GENERATED_SHELL_TASK_HPP
+#ifndef VIBEQC_SCF_GENERATED_SHELL_TASK_HPP
+#define VIBEQC_SCF_GENERATED_SHELL_TASK_HPP
 
 #include <cstdint>
 
-namespace qce::scf::detail {
+namespace vibeqc::scf::detail {
 
 /** Stable geometry-cache ABI shared by handwritten and generated kernels. */
 struct GeneratedPrimitivePairData {
@@ -34,6 +34,6 @@ struct GeneratedShellTask {
   std::uint32_t atom[4];
 };
 
-}  // namespace qce::scf::detail
+}  // namespace vibeqc::scf::detail
 
 #endif

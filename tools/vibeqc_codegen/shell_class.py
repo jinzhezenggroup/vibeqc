@@ -1,7 +1,7 @@
 """Symbolic shell-class kernel builders.
 
 The compact ``(p s|s s)`` pilot validates the compiler stages. The ``dppp``
-builder mirrors QCE's exact subset/Wick Gaussian-product expansion for one
+builder mirrors VIBEQC's exact subset/Wick Gaussian-product expansion for one
 Cartesian component, so the same DAG, differentiation, and CSE machinery can
 be evaluated on the first profile-selected production shell class.
 """

@@ -41,7 +41,7 @@
     },
     "runtime": {
       "cuda_visible_devices": "0",
-      "qce_library": "/home/jzzeng/codes/qc/build/libqce.so.0.1.0"
+      "vibeqc_library": "/home/jzzeng/codes/qc/build/libvibeqc.so.0.1.0"
     },
     "timestamp_utc": "2026-08-24T07:13:47.931205+00:00"
   },
@@ -166,7 +166,7 @@
     ],
     "warm_systems_per_second": 1.1042911592178615
   },
-  "qce": {
+  "vibeqc": {
     "cold_seconds": 1.44317534000038,
     "energies_hartree": [
       -75.3265160696738,

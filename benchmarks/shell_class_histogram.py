@@ -14,7 +14,7 @@ ANGULAR_LABELS = "spdfgh"
 
 @dataclass(frozen=True, slots=True)
 class ShellWork:
-    """Topology data needed to reproduce QCE's direct tile counts."""
+    """Topology data needed to reproduce VIBEQC's direct tile counts."""
 
     angular: int
     ao_count: int
@@ -207,7 +207,7 @@ def main() -> None:
     parser.add_argument(
         "--active",
         action="store_true",
-        help="run QCE CUDA and report final-density screened work",
+        help="run VIBEQC CUDA and report final-density screened work",
     )
     parser.add_argument("--batch", type=int, default=1)
     parser.add_argument("--warm-repeats", type=int, default=1)
@@ -218,7 +218,7 @@ def main() -> None:
         "--screening-tolerance",
         type=float,
         default=1.0e-14,
-        help="QCE direct-screening threshold; default matches the formal gate",
+        help="VIBEQC direct-screening threshold; default matches the formal gate",
     )
     parser.add_argument("--output", type=Path)
     arguments = parser.parse_args()
@@ -226,7 +226,7 @@ def main() -> None:
         raise ValueError("--batch must be positive and --warm-repeats non-negative")
 
     # PySCF is a benchmark-only dependency. Importing it here keeps --help and
-    # the pure topology helpers usable in the normal QCE development venv.
+    # the pure topology helpers usable in the normal VIBEQC development venv.
     from pyscf import gto
 
     case = benchmark_cases()[arguments.case]
@@ -256,12 +256,12 @@ def main() -> None:
         "direct_cartesian_ao_count": molecule.nao_nr(cart=True),
     }
     if arguments.active:
-        from qce import Calculator
+        from vibeqc import Calculator
 
         systems = scaled_geometries(case.atoms, arguments.batch)
         calculator = Calculator(
             method=case.method,
-            basis=case.qce_basis,
+            basis=case.vibeqc_basis,
             basis_representation=case.basis_representation,
             device="cuda",
             max_iterations=arguments.max_iterations,
@@ -285,7 +285,7 @@ def main() -> None:
                 "batch_size": arguments.batch,
                 "iterations": [item.iterations for item in result.items],
                 "methodology": (
-                    "QCE final converged-density direct task compaction after "
+                    "VIBEQC final converged-density direct task compaction after "
                     "Schwarz and density screening; counters aggregate the "
                     "most recent execution across the native batch"
                 ),
@@ -300,7 +300,7 @@ def main() -> None:
         payload.update(
             {
                 "methodology": (
-                    "QCE host-planner topology before Schwarz/density screening; "
+                    "VIBEQC host-planner topology before Schwarz/density screening; "
                     "primitive work weights unique Cartesian AO quartets by the "
                     "four shell primitive counts"
                 ),

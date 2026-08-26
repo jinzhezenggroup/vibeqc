@@ -1,5 +1,12 @@
 # Implementation roadmap
 
+VibeQC's long-term mission is to cover all quantum-chemistry methods through a
+coherent, accelerator-native interface. The method-family map is maintained in
+[methods.md](methods.md). The milestones below describe the narrower path from
+the current RHF/UHF implementation toward that mission; they do not imply that
+planned DFT, post-HF, multireference, excited-state, periodic, embedding, or
+relativistic capabilities already exist.
+
 The repository deliberately separates implemented capability from reserved
 interfaces. A milestone is complete only after independent numerical oracles
 and performance measurements pass.
@@ -158,7 +165,7 @@ and performance measurements pass.
   Cartesian product: the smaller canonical second-pair gradients are cached
   once, while each first-pair gradient is evaluated once per outer term. On
   the next clean profile, order 4/5/6 fall to 58.539/50.458/30.582 ms and the
-  complete force pass reaches 385.819 ms. Clean QCE medians improve to
+  complete force pass reaches 385.819 ms. Clean VibeQC medians improve to
   1.320/5.060 s at batch 1/4 with both accuracy gates passing. Independently
   faster GPU4PySCF samples leave the scoped speed gates at `0.812x`/`0.847x`,
   so the milestone remains open. Order two is now the largest isolated force
@@ -312,7 +319,7 @@ and performance measurements pass.
   batch 4 must each stay at
   or below `3e-11 Eh` maximum energy error and `3e-11 Eh/bohr` maximum force
   error under `1e-12 Eh`/`1e-10` SCF energy/density tolerances and a `1e-14`
-  QCE Schwarz-screening threshold matching GPU4PySCF's direct-SCF threshold.
+  VibeQC Schwarz-screening threshold matching GPU4PySCF's direct-SCF threshold.
   GPU4PySCF uses its separate `1e-9` orbital-gradient threshold at this size;
   `1e-10` can cycle at its numerical-noise floor for the scaled batch
   endpoints. A full batch-4 replay at `1e-9` converged all reference systems

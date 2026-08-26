@@ -3,32 +3,32 @@
 These JSON files retain raw synchronized timing samples, accuracy differences,
 the clean source commit, package versions, and CUDA device metadata. The two
 engines use the same case-specific AO representation, SCF tolerances,
-energy-plus-gradient workload, and allocated RTX 5090. QCE submits one
+energy-plus-gradient workload, and allocated RTX 5090. VibeQC submits one
 homogeneous fixed-topology batch; GPU4PySCF 1.8.1 retains one warm object per
 system and invokes its single-system interface sequentially inside the same
 batch timing boundary.
 
 ## Realistic 96-AO acceptance status
 
-| Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup | Max energy error | Max force error | Gate |
+| Artifact | Batch | VibeQC warm median | GPU4PySCF warm median | Scoped speedup | Max energy error | Max force error | Gate |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | [`WATER27 tetramer`](rtx5090-10d2b6f-water-tetramer-def2-svp-spherical-b1.json) | 1 | 1096.459 ms | 1354.249 ms | 1.235x | 2.56e-12 Eh | 2.16e-12 Eh/bohr | passes |
 | [`WATER27 tetramer`](rtx5090-10d2b6f-water-tetramer-def2-svp-spherical-b4.json) | 4 | 3894.213 ms | 5183.268 ms | 1.331x | 2.96e-12 Eh | 5.66e-12 Eh/bohr | passes |
 
 Both clean artifacts come from commit
-`10d2b6f87654d3d77bb12108018005a0d5382dd7` on 2026-08-25. Every QCE and
+`10d2b6f87654d3d77bb12108018005a0d5382dd7` on 2026-08-25. Every VibeQC and
 GPU4PySCF system converged, and both points pass the explicit `3e-11 Eh` and
 `3e-11 Eh/bohr` accuracy limits plus the required `1.0x` minimum speedup. The
 explicit 96-AO direct-J/K milestone is therefore closed at both batch sizes.
 All three synchronized warm samples remain in the artifacts because both
-engines show material timing variation: QCE spans 0.910--1.097 s at batch 1
+engines show material timing variation: VibeQC spans 0.910--1.097 s at batch 1
 and 3.370--4.284 s at batch 4, while GPU4PySCF spans 1.059--1.682 s and
 4.254--6.434 s respectively. The harness records only the final repeat's SCF
 iterations, which are three at batch 1 and `[2, 2, 2, 2]` at batch 4.
 
 ## Realistic 192-AO correctness status
 
-| Artifact | Batch | QCE warm | GPU4PySCF warm | Informational speedup | Max energy error | Max force error | Gate |
+| Artifact | Batch | VibeQC warm | GPU4PySCF warm | Informational speedup | Max energy error | Max force error | Gate |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | [`WATER27 S4 octamer`](rtx5090-10d2b6f-water-octamer-s4-def2-svp-spherical-b1.json) | 1 | 8814.841 ms | 1482.881 ms | 0.168x | 5.12e-12 Eh | 2.25e-10 Eh/bohr | passes |
 | [`WATER27 S4 octamer`](rtx5090-10d2b6f-water-octamer-s4-def2-svp-spherical-b4.json) | 4 | 32146.584 ms | 9236.162 ms | 0.287x | 7.62e-12 Eh | 5.87e-11 Eh/bohr | passes |
@@ -66,15 +66,15 @@ One CUDA-profiler-range capture per engine isolates a warm batch-1
 energy-plus-force execution after the cold plan/object has already completed.
 The exact acceptance workload and tolerances are unchanged.
 
-| Component | QCE kernel time | GPU4PySCF kernel time | QCE minus GPU4PySCF |
+| Component | VibeQC kernel time | GPU4PySCF kernel time | VibeQC minus GPU4PySCF |
 | --- | ---: | ---: | ---: |
 | Direct J/K | 487.953 ms | 501.613 ms | -13.659 ms |
 | Two-electron force | 354.977 ms | 311.187 ms | +43.790 ms |
 | Eigensolver | 31.257 ms | 5.823 ms | +25.435 ms |
 | One-electron force | 22.065 ms | 2.519 ms | +19.546 ms |
-| QCE one-electron values and Schwarz | 0.000 ms | n/a | n/a |
+| VibeQC one-electron values and Schwarz | 0.000 ms | n/a | n/a |
 
-QCE records 56 kernel launches and a 1.523 s kernel span; GPU4PySCF records
+VibeQC records 56 kernel launches and a 1.523 s kernel span; GPU4PySCF records
 4,419 launches and a 1.515 s kernel span. Launch count is therefore not the
 primary explanation for the gap. Direct J/K kernel time remains comparable.
 Order 2 now stores only one center's pair-coefficient gradients, evaluates
@@ -101,7 +101,7 @@ cooperative workers and shared primitive-pair intermediates. The next primary
 targets are therefore eigensolver, order-5 cooperative contraction,
 one-electron force, and order 1 rather than direct-J/K tuning. See the
 [`93f6eee` component artifact](rtx5090-93f6eee-water-tetramer-warm-component-profile.json)
-for the full per-order breakdown and capture metadata. Its QCE values come
+for the full per-order breakdown and capture metadata. Its VibeQC values come
 from clean `93f6eee`; the unchanged GPU4PySCF values come from the matching
 clean 1.8.1 capture previously published with `c28b1e9`.
 
@@ -133,18 +133,18 @@ successful device-tail relaunch at all four acceptance sizes:
 | 192 | 4 | 5.316 ms | 10,355,424 B | 0 B |
 
 On the production 96-AO batch-1 capture, cuSOLVER provider kernels sum to
-2.612 ms, down from the previous QCE cyclic kernel's 31.226 ms and below the
+2.612 ms, down from the previous VibeQC cyclic kernel's 31.226 ms and below the
 matching GPU4PySCF eigensolver's 5.823 ms. The eigensolver gap is therefore
 closed. The formal end-to-end matrix still misses the 96-AO parity gate:
 
-| AO count | Batch | QCE warm | GPU4PySCF warm | Speedup | Max dE | Max dF | Gate |
+| AO count | Batch | VibeQC warm | GPU4PySCF warm | Speedup | Max dE | Max dF | Gate |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | 96 | 1 | 1397.063 ms | 1351.642 ms | 0.967x | 1.76e-12 Eh | 2.01e-12 Eh/bohr | accuracy pass, speed fail |
 | 96 | 4 | 5803.771 ms | 5421.947 ms | 0.934x | 3.47e-12 Eh | 2.82e-12 Eh/bohr | accuracy pass, speed fail |
 | 192 | 1 | 13475.169 ms | 2218.889 ms | 0.165x | 1.93e-12 Eh | 5.30e-11 Eh/bohr | accuracy pass; speed deferred |
 | 192 | 4 | 66719.807 ms | 7763.699 ms | 0.116x | 8.87e-12 Eh | 2.36e-10 Eh/bohr | accuracy pass; speed deferred |
 
-QCE-only repeated samples give 1.397 s at batch 1 (seven repeats) and
+VibeQC-only repeated samples give 1.397 s at batch 1 (seven repeats) and
 5.605 s at batch 4 (five repeats). Remaining 96-AO work is now dominated by
 the two-electron and one-electron force paths rather than diagonalization.
 The concise raw summary is
@@ -162,7 +162,7 @@ DF J/K remains the prerequisite for activating the 192-AO speed gate.
 
 ## Current exact shell-class results
 
-| Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup | Max energy error | Max force error |
+| Artifact | Batch | VibeQC warm median | GPU4PySCF warm median | Scoped speedup | Max energy error | Max force error |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | [`sdf18-direct`](rtx5090-8300dff-sdf18-direct-b16.json) | 16 | 67.709 ms | 2499.369 ms | 36.91x | 6.35e-14 Eh | 4.87e-14 Eh/bohr |
 | [`water-def2-svp`](rtx5090-8300dff-water-def2-svp-b8.json) | 8 | 1202.903 ms | 7300.320 ms | 6.07x | 1.72e-12 Eh | 5.29e-13 Eh/bohr |
@@ -185,77 +185,77 @@ artifact was recorded after the closed order-4 recurrence at clean commit
 The matching Cartesian def2-TZVP artifact was recorded from clean commit
 `e303ca4aae9930dafd9f52bde813a030953a09cc`.
 They establish performance only for these exact homogeneous batch workloads;
-they are not a claim of broad QCE leadership.
+they are not a claim of broad VibeQC leadership.
 
 ## Prior closed order-3 baseline
 
-| Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup |
+| Artifact | Batch | VibeQC warm median | GPU4PySCF warm median | Scoped speedup |
 | --- | ---: | ---: | ---: | ---: |
 | [`water-def2-tzvp-spherical`](rtx5090-89d9e90-water-def2-tzvp-spherical-b4.json) | 4 | 963.050 ms | 12123.476 ms | 12.59x |
 
 The clean `89d9e902c77141f8a8ff2dd0c1357c6202ef1c57` baseline used closed
 recurrences through total order three but retained generic order-4 Hermite and
 Coulomb workspaces. Keeping it beside the closed order-4 artifact makes the
-5.3% QCE warm-time reduction independently auditable.
+5.3% VibeQC warm-time reduction independently auditable.
 
 ## Prior closed order-2 baseline
 
-| Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup |
+| Artifact | Batch | VibeQC warm median | GPU4PySCF warm median | Scoped speedup |
 | --- | ---: | ---: | ---: | ---: |
 | [`water-def2-tzvp-spherical`](rtx5090-1041d86-water-def2-tzvp-spherical-b4.json) | 4 | 1027.326 ms | 12158.679 ms | 11.84x |
 
 The clean `1041d865c0f995214baec917f8f3c725a25ac903` baseline used closed
 recurrences through total order two but retained generic order-3 Hermite and
 Coulomb workspaces. Keeping it beside the closed order-3 artifact makes the
-6.3% QCE warm-time reduction independently auditable.
+6.3% VibeQC warm-time reduction independently auditable.
 
 ## Prior closed order-1 baseline
 
-| Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup |
+| Artifact | Batch | VibeQC warm median | GPU4PySCF warm median | Scoped speedup |
 | --- | ---: | ---: | ---: | ---: |
 | [`water-def2-tzvp-spherical`](rtx5090-f260de0-water-def2-tzvp-spherical-b4.json) | 4 | 1090.931 ms | 12137.277 ms | 11.13x |
 
 The clean `f260de081a009f391537f6697b672aa9e98b6a87` baseline used the closed
 `(p s | s s)` recurrence but retained generic total-order-2 Hermite and
 Coulomb workspaces. Keeping it beside the closed order-2 artifact makes the
-5.8% QCE warm-time reduction independently auditable.
+5.8% VibeQC warm-time reduction independently auditable.
 
 ## Prior generic order-1 baseline
 
-| Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup |
+| Artifact | Batch | VibeQC warm median | GPU4PySCF warm median | Scoped speedup |
 | --- | ---: | ---: | ---: | ---: |
 | [`water-def2-tzvp-spherical`](rtx5090-f644916-water-def2-tzvp-spherical-b4.json) | 4 | 1137.845 ms | 12106.988 ms | 10.64x |
 
 The clean `f644916918a946e24f869145244db16296d54628` baseline used the generic
 Hermite coefficient arrays for `(p s | s s)`. Keeping it beside the closed
-order-1 artifact makes the 4.1% QCE warm-time reduction independently
+order-1 artifact makes the 4.1% VibeQC warm-time reduction independently
 auditable.
 
 ## Prior 256-thread direct-tile baseline
 
-| Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup |
+| Artifact | Batch | VibeQC warm median | GPU4PySCF warm median | Scoped speedup |
 | --- | ---: | ---: | ---: | ---: |
 | [`water-def2-tzvp-spherical`](rtx5090-b4a13fa-water-def2-tzvp-spherical-b4.json) | 4 | 1561.725 ms | 12136.266 ms | 7.77x |
 
 The clean `b4a13fab29828429a92f224c1fe3ec98ddf27677` baseline launched one
 256-thread block per compact descriptor. Keeping it beside the virtual
-one-warp artifact makes the 27.1% QCE warm-time reduction independently
+one-warp artifact makes the 27.1% VibeQC warm-time reduction independently
 auditable.
 
 ## Prior sparse spherical contraction baseline
 
-| Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup |
+| Artifact | Batch | VibeQC warm median | GPU4PySCF warm median | Scoped speedup |
 | --- | ---: | ---: | ---: | ---: |
 | [`water-def2-tzvp-spherical`](rtx5090-a057e82-water-def2-tzvp-spherical-b4.json) | 4 | 4303.961 ms | 12124.321 ms | 2.82x |
 
 The clean `a057e82af019912818e26f91d0dfba1d9861e316` baseline contracted sparse
 real-spherical expansion terms inside every direct quartet. Keeping it beside
-the `b4a13fa` Cartesian-source artifact makes the 63.7% QCE warm-time reduction
+the `b4a13fa` Cartesian-source artifact makes the 63.7% VibeQC warm-time reduction
 independently auditable.
 
 ## Prior spherical force baseline
 
-| Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup |
+| Artifact | Batch | VibeQC warm median | GPU4PySCF warm median | Scoped speedup |
 | --- | ---: | ---: | ---: | ---: |
 | [`water-def2-tzvp-spherical`](rtx5090-40cef2f-water-def2-tzvp-spherical-b4.json) | 4 | 5644.454 ms | 12095.489 ms | 2.14x |
 
@@ -266,7 +266,7 @@ independently auditable.
 
 ## Prior angular-order baseline
 
-| Artifact | Batch | QCE warm median | GPU4PySCF warm median | Scoped speedup |
+| Artifact | Batch | VibeQC warm median | GPU4PySCF warm median | Scoped speedup |
 | --- | ---: | ---: | ---: | ---: |
 | [`sdf18-direct`](rtx5090-b042488-sdf18-direct-b16.json) | 16 | 78.346 ms | 2503.287 ms | 31.95x |
 | [`water-def2-svp`](rtx5090-b042488-water-def2-svp-b8.json) | 8 | 1536.982 ms | 7340.873 ms | 4.78x |
@@ -282,7 +282,7 @@ export PATH=/group/software/cuda-12.9.1/bin:$PATH
 export LD_LIBRARY_PATH=/group/software/cuda-12.9.1/lib64:/group/software/cuda-12.9.1/targets/x86_64-linux/lib:$LD_LIBRARY_PATH
 export CUPY_CACHE_DIR=/tmp/cupy-sm120-$SLURM_JOB_ID
 export PYTHONPATH=$PWD/python
-export QCE_LIBRARY=$PWD/build/libqce.so.0.1.0
+export VIBEQC_LIBRARY=$PWD/build/libvibeqc.so.0.1.0
 
 uv run --isolated \
   --with cupy-cuda12x==14.2.0 \

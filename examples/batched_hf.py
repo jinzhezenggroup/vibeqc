@@ -1,6 +1,6 @@
 import numpy as np
 
-from qce import Calculator
+from vibeqc import Calculator
 
 
 systems = [

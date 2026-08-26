@@ -2,8 +2,8 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from qce import Calculator
-from qce.torch import batched_energy, energy
+from vibeqc import Calculator
+from vibeqc.torch import batched_energy, energy
 
 
 def test_torch_backward_matches_native_force():

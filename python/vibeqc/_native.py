@@ -1,4 +1,4 @@
-"""Private ctypes declarations for the QCE C ABI.
+"""Private ctypes declarations for the VIBEQC C ABI.
 
 Keeping the binding thin ensures Python, Torch, and future JAX callers use the
 same native calculation path instead of reimplementing SCF orchestration.
@@ -144,11 +144,11 @@ class ShellClassProfileEntry(ctypes.Structure):
 
 def _candidate_paths() -> list[Path]:
     candidates: list[Path] = []
-    if configured := os.environ.get("QCE_LIBRARY"):
+    if configured := os.environ.get("VIBEQC_LIBRARY"):
         candidates.append(Path(configured))
     root = Path(__file__).resolve().parents[2]
     candidates.extend(
-        [root / "build" / "libqce.so", root / "build" / "libqce.dylib"]
+        [root / "build" / "libvibeqc.so", root / "build" / "libvibeqc.dylib"]
     )
     return candidates
 
@@ -160,39 +160,39 @@ def load_library() -> ctypes.CDLL:
             break
     else:
         raise RuntimeError(
-            "QCE native library was not found; set QCE_LIBRARY or build in ./build"
+            "VIBEQC native library was not found; set VIBEQC_LIBRARY or build in ./build"
         )
 
     void_pp = ctypes.POINTER(ctypes.c_void_p)
-    library.qce_get_abi_version.restype = ctypes.c_uint32
-    library.qce_status_message.argtypes = [ctypes.c_int]
-    library.qce_status_message.restype = ctypes.c_char_p
-    library.qce_method_available.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int32)]
-    library.qce_method_available.restype = ctypes.c_int
-    library.qce_context_create.argtypes = [ctypes.POINTER(ContextDescriptor), void_pp]
-    library.qce_context_create.restype = ctypes.c_int
-    library.qce_context_destroy.argtypes = [ctypes.c_void_p]
-    library.qce_system_create.argtypes = [
+    library.vibeqc_get_abi_version.restype = ctypes.c_uint32
+    library.vibeqc_status_message.argtypes = [ctypes.c_int]
+    library.vibeqc_status_message.restype = ctypes.c_char_p
+    library.vibeqc_method_available.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int32)]
+    library.vibeqc_method_available.restype = ctypes.c_int
+    library.vibeqc_context_create.argtypes = [ctypes.POINTER(ContextDescriptor), void_pp]
+    library.vibeqc_context_create.restype = ctypes.c_int
+    library.vibeqc_context_destroy.argtypes = [ctypes.c_void_p]
+    library.vibeqc_system_create.argtypes = [
         ctypes.c_void_p,
         ctypes.POINTER(SystemDescriptor),
         void_pp,
     ]
-    library.qce_system_create.restype = ctypes.c_int
-    library.qce_system_destroy.argtypes = [ctypes.c_void_p]
-    library.qce_calculation_prepare.argtypes = [
+    library.vibeqc_system_create.restype = ctypes.c_int
+    library.vibeqc_system_destroy.argtypes = [ctypes.c_void_p]
+    library.vibeqc_calculation_prepare.argtypes = [
         ctypes.c_void_p,
         ctypes.c_void_p,
         ctypes.POINTER(MethodDescriptor),
         void_pp,
     ]
-    library.qce_calculation_prepare.restype = ctypes.c_int
-    library.qce_calculation_destroy.argtypes = [ctypes.c_void_p]
-    library.qce_calculation_execute.argtypes = [
+    library.vibeqc_calculation_prepare.restype = ctypes.c_int
+    library.vibeqc_calculation_destroy.argtypes = [ctypes.c_void_p]
+    library.vibeqc_calculation_execute.argtypes = [
         ctypes.c_void_p,
         ctypes.POINTER(ResultDescriptor),
     ]
-    library.qce_calculation_execute.restype = ctypes.c_int
-    library.qce_batch_prepare.argtypes = [
+    library.vibeqc_calculation_execute.restype = ctypes.c_int
+    library.vibeqc_batch_prepare.argtypes = [
         ctypes.c_void_p,
         ctypes.POINTER(ctypes.c_void_p),
         ctypes.c_uint32,
@@ -200,34 +200,34 @@ def load_library() -> ctypes.CDLL:
         ctypes.c_uint32,
         void_pp,
     ]
-    library.qce_batch_prepare.restype = ctypes.c_int
-    library.qce_batch_destroy.argtypes = [ctypes.c_void_p]
-    library.qce_batch_get_system_count.argtypes = [ctypes.c_void_p]
-    library.qce_batch_get_system_count.restype = ctypes.c_uint32
-    library.qce_batch_get_last_shell_class_profile.argtypes = [
+    library.vibeqc_batch_prepare.restype = ctypes.c_int
+    library.vibeqc_batch_destroy.argtypes = [ctypes.c_void_p]
+    library.vibeqc_batch_get_system_count.argtypes = [ctypes.c_void_p]
+    library.vibeqc_batch_get_system_count.restype = ctypes.c_uint32
+    library.vibeqc_batch_get_last_shell_class_profile.argtypes = [
         ctypes.c_void_p,
         ctypes.POINTER(ShellClassProfileEntry),
         ctypes.c_uint32,
     ]
-    library.qce_batch_get_last_shell_class_profile.restype = ctypes.c_int
-    library.qce_batch_clear_warm_starts.argtypes = [ctypes.c_void_p]
-    library.qce_batch_clear_warm_starts.restype = ctypes.c_int
-    library.qce_batch_execute.argtypes = [
+    library.vibeqc_batch_get_last_shell_class_profile.restype = ctypes.c_int
+    library.vibeqc_batch_clear_warm_starts.argtypes = [ctypes.c_void_p]
+    library.vibeqc_batch_clear_warm_starts.restype = ctypes.c_int
+    library.vibeqc_batch_execute.argtypes = [
         ctypes.c_void_p,
         ctypes.POINTER(BatchInputDescriptor),
         ctypes.c_uint32,
         ctypes.POINTER(BatchItemResultDescriptor),
         ctypes.c_uint32,
     ]
-    library.qce_batch_execute.restype = ctypes.c_int
-    if library.qce_get_abi_version() != ABI_VERSION:
-        raise RuntimeError("QCE Python/native ABI version mismatch")
+    library.vibeqc_batch_execute.restype = ctypes.c_int
+    if library.vibeqc_get_abi_version() != ABI_VERSION:
+        raise RuntimeError("VIBEQC Python/native ABI version mismatch")
     return library
 
 
 def check(library: ctypes.CDLL, status: int) -> None:
     if status != STATUS_SUCCESS:
-        message = library.qce_status_message(status).decode("utf-8")
+        message = library.vibeqc_status_message(status).decode("utf-8")
         if status == STATUS_NOT_IMPLEMENTED:
-            raise NotImplementedError(f"QCE error {status}: {message}")
-        raise RuntimeError(f"QCE error {status}: {message}")
+            raise NotImplementedError(f"VIBEQC error {status}: {message}")
+        raise RuntimeError(f"VIBEQC error {status}: {message}")

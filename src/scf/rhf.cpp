@@ -12,7 +12,7 @@
 #include <utility>
 #include <vector>
 
-namespace qce::scf {
+namespace vibeqc::scf {
 namespace {
 
 using Matrix = std::vector<double>;
@@ -794,7 +794,7 @@ core::ScfResult run_uhf(const core::System& system,
   return result;
 }
 
-#if !QCE_HAS_CUDA
+#if !VIBEQC_HAS_CUDA
 // Keep diagnostics identical to the CUDA backend's small persistent-ERI
 // policy without exposing an implementation tuning threshold through the ABI.
 constexpr std::size_t kDiagnosticPersistentEriAoLimit = 16;
@@ -874,7 +874,7 @@ std::vector<RhfBucketItem> run_rhf_cuda_bucket(
     bool) {
   std::vector<RhfBucketItem> outputs(systems.size());
   for (RhfBucketItem& output : outputs) {
-    output.status = QCE_STATUS_NOT_IMPLEMENTED;
+    output.status = VIBEQC_STATUS_NOT_IMPLEMENTED;
   }
   return outputs;
 }
@@ -888,7 +888,7 @@ std::vector<RhfBucketItem> run_rhf_cuda_bucket_cached(
     bool) {
   std::vector<RhfBucketItem> outputs(systems.size());
   for (RhfBucketItem& output : outputs) {
-    output.status = QCE_STATUS_NOT_IMPLEMENTED;
+    output.status = VIBEQC_STATUS_NOT_IMPLEMENTED;
   }
   return outputs;
 }
@@ -901,7 +901,7 @@ std::vector<RhfBucketItem> run_uhf_cuda_bucket(
     bool) {
   std::vector<RhfBucketItem> outputs(systems.size());
   for (RhfBucketItem& output : outputs) {
-    output.status = QCE_STATUS_NOT_IMPLEMENTED;
+    output.status = VIBEQC_STATUS_NOT_IMPLEMENTED;
   }
   return outputs;
 }
@@ -915,7 +915,7 @@ std::vector<RhfBucketItem> run_uhf_cuda_bucket_cached(
     bool) {
   std::vector<RhfBucketItem> outputs(systems.size());
   for (RhfBucketItem& output : outputs) {
-    output.status = QCE_STATUS_NOT_IMPLEMENTED;
+    output.status = VIBEQC_STATUS_NOT_IMPLEMENTED;
   }
   return outputs;
 }
@@ -928,4 +928,4 @@ bool get_rhf_cuda_shell_class_profile(
 }
 #endif
 
-}  // namespace qce::scf
+}  // namespace vibeqc::scf

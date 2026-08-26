@@ -124,7 +124,7 @@ def emit_candidate_translation_unit(
         iterations=iterations,
         samples=samples,
     )
-    entry = f'qce_run_shell_class_{spec.name}'
+    entry = f'vibeqc_run_shell_class_{spec.name}'
     source = source.replace("int main() {", f'extern "C" int {entry}() {{', 1)
     marker = r'{\"task_count\":%u'
     replacement = rf'{{\"shell_class\":\"{spec.name}\",\"task_count\":%u'
@@ -138,10 +138,10 @@ def emit_batch_driver(specifications: Iterable[ShellClassSpec]) -> str:
 
     specs = tuple(specifications)
     declarations = "\n".join(
-        f'extern "C" int qce_run_shell_class_{spec.name}();' for spec in specs
+        f'extern "C" int vibeqc_run_shell_class_{spec.name}();' for spec in specs
     )
     calls = "\n".join(
-        f"  failures += qce_run_shell_class_{spec.name}() != 0;" for spec in specs
+        f"  failures += vibeqc_run_shell_class_{spec.name}() != 0;" for spec in specs
     )
     return f"""#include <cuda_runtime.h>
 #include <cstdio>
@@ -290,7 +290,7 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
     work_directory_owner = None
     if arguments.work_directory is None:
         work_directory_owner = tempfile.TemporaryDirectory(
-            prefix="qce-shell-batch-"
+            prefix="vibeqc-shell-batch-"
         )
         directory = Path(work_directory_owner.name)
     else:

@@ -5,7 +5,7 @@
 #include <limits>
 #include <new>
 
-namespace qce::scf {
+namespace vibeqc::scf {
 namespace {
 
 __global__ void rhf_fock_bucket_kernel(std::size_t batch_size,
@@ -54,10 +54,10 @@ struct CudaFockBucketHandle {
 
 namespace {
 
-qce_status cuda_failure(cudaError_t error, std::string& detail) {
+vibeqc_status cuda_failure(cudaError_t error, std::string& detail) {
   detail = cudaGetErrorString(error);
-  return error == cudaErrorMemoryAllocation ? QCE_STATUS_OUT_OF_MEMORY
-                                             : QCE_STATUS_CUDA_ERROR;
+  return error == cudaErrorMemoryAllocation ? VIBEQC_STATUS_OUT_OF_MEMORY
+                                             : VIBEQC_STATUS_CUDA_ERROR;
 }
 
 void release(CudaFockBucketHandle& handle) {
@@ -72,31 +72,31 @@ void release(CudaFockBucketHandle& handle) {
 
 }  // namespace
 
-qce_status create_cuda_fock_bucket(int device_id,
+vibeqc_status create_cuda_fock_bucket(int device_id,
                                    std::size_t batch_size,
                                    std::size_t nbf,
                                    const std::vector<double>& hcore,
                                    const std::vector<double>& eri,
                                    CudaFockBucketHandle** handle,
                                    std::string& detail) {
-  if (handle == nullptr) return QCE_STATUS_INVALID_ARGUMENT;
+  if (handle == nullptr) return VIBEQC_STATUS_INVALID_ARGUMENT;
   *handle = nullptr;
-  if (batch_size == 0 || nbf == 0) return QCE_STATUS_INVALID_ARGUMENT;
+  if (batch_size == 0 || nbf == 0) return VIBEQC_STATUS_INVALID_ARGUMENT;
   const std::size_t matrix_size = nbf * nbf;
   const std::size_t eri_size = matrix_size * matrix_size;
   if (hcore.size() != batch_size * matrix_size ||
       eri.size() != batch_size * eri_size) {
     detail = "CUDA Fock bucket host buffers have incompatible dimensions";
-    return QCE_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   if (batch_size > std::numeric_limits<std::size_t>::max() / matrix_size) {
-    return QCE_STATUS_OUT_OF_MEMORY;
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
   }
   cudaError_t error = cudaSetDevice(device_id);
   if (error != cudaSuccess) return cuda_failure(error, detail);
 
   CudaFockBucketHandle* candidate = new (std::nothrow) CudaFockBucketHandle{};
-  if (candidate == nullptr) return QCE_STATUS_OUT_OF_MEMORY;
+  if (candidate == nullptr) return VIBEQC_STATUS_OUT_OF_MEMORY;
   candidate->device_id = device_id;
   candidate->batch_size = batch_size;
   candidate->nbf = nbf;
@@ -128,19 +128,19 @@ qce_status create_cuda_fock_bucket(int device_id,
     return cuda_failure(error, detail);
   }
   *handle = candidate;
-  return QCE_STATUS_SUCCESS;
+  return VIBEQC_STATUS_SUCCESS;
 }
 
-qce_status execute_cuda_fock_bucket(CudaFockBucketHandle* handle,
+vibeqc_status execute_cuda_fock_bucket(CudaFockBucketHandle* handle,
                                     const std::vector<double>& density,
                                     std::vector<double>& fock,
                                     std::string& detail) {
-  if (handle == nullptr) return QCE_STATUS_INVALID_ARGUMENT;
+  if (handle == nullptr) return VIBEQC_STATUS_INVALID_ARGUMENT;
   const std::size_t matrix_size = handle->nbf * handle->nbf;
   const std::size_t elements = handle->batch_size * matrix_size;
   if (density.size() != elements || fock.size() != elements) {
     detail = "CUDA Fock bucket iteration buffers have incompatible dimensions";
-    return QCE_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   cudaError_t error = cudaSetDevice(handle->device_id);
   if (error != cudaSuccess) return cuda_failure(error, detail);
@@ -163,7 +163,7 @@ qce_status execute_cuda_fock_bucket(CudaFockBucketHandle* handle,
       (error = cudaStreamSynchronize(handle->stream)) != cudaSuccess) {
     return cuda_failure(error, detail);
   }
-  return QCE_STATUS_SUCCESS;
+  return VIBEQC_STATUS_SUCCESS;
 }
 
 void destroy_cuda_fock_bucket(CudaFockBucketHandle* handle) {
@@ -172,4 +172,4 @@ void destroy_cuda_fock_bucket(CudaFockBucketHandle* handle) {
   delete handle;
 }
 
-}  // namespace qce::scf
+}  // namespace vibeqc::scf

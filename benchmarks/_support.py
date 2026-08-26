@@ -79,7 +79,7 @@ def environment_metadata(
         },
         "packages": package_versions,
         "runtime": {
-            "qce_library": os.environ.get("QCE_LIBRARY"),
+            "vibeqc_library": os.environ.get("VIBEQC_LIBRARY"),
             "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
         },
         "accelerator": accelerator,
@@ -115,7 +115,7 @@ def benchmark_gate_failures(
     speedup: float,
     maximum_energy_error: float,
     maximum_force_error: float,
-    qce_converged: bool = True,
+    vibeqc_converged: bool = True,
     reference_converged: bool = True,
     minimum_speedup: float | None = None,
     maximum_energy_error_limit: float | None = None,
@@ -124,8 +124,8 @@ def benchmark_gate_failures(
     """Return actionable failures for optional accuracy/performance gates."""
 
     failures = []
-    if not qce_converged:
-        failures.append("one or more QCE systems did not converge")
+    if not vibeqc_converged:
+        failures.append("one or more VIBEQC systems did not converge")
     if not reference_converged:
         failures.append("one or more GPU4PySCF reference systems did not converge")
     if minimum_speedup is not None and speedup < minimum_speedup:

@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-namespace qce::integrals {
+namespace vibeqc::integrals {
 namespace {
 
 // Dynamic forward derivatives make the CPU implementation a compact and
@@ -491,7 +491,7 @@ std::vector<GlobalAoExpansion> spherical_expansions(
         molecule::cartesian_components(shell.angular_momentum);
     for (const molecule::AoExpansion& shell_expansion :
          molecule::ao_expansions(
-             shell.angular_momentum, QCE_BASIS_SPHERICAL)) {
+             shell.angular_momentum, VIBEQC_BASIS_SPHERICAL)) {
       GlobalAoExpansion expansion;
       expansion.reserve(shell_expansion.size());
       for (const molecule::CartesianExpansionTerm& term : shell_expansion) {
@@ -705,7 +705,7 @@ IntegralData build_integrals(const core::System& system) {
   unpack_jets(eri, out.eri, out.eri_derivative, out.ncoord);
   out.nuclear_repulsion = nuclear_repulsion.value;
   out.nuclear_repulsion_derivative = std::move(nuclear_repulsion.derivative);
-  if (system.basis_representation == QCE_BASIS_SPHERICAL) {
+  if (system.basis_representation == VIBEQC_BASIS_SPHERICAL) {
     const std::vector<GlobalAoExpansion> target_aos =
         spherical_expansions(system);
     IntegralData spherical;
@@ -757,4 +757,4 @@ IntegralData build_integrals(const core::System& system) {
   return out;
 }
 
-}  // namespace qce::integrals
+}  // namespace vibeqc::integrals

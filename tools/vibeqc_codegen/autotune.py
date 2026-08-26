@@ -82,7 +82,7 @@ class ScheduleTrial:
         """Return the unique host entry used by the batch driver."""
 
         return (
-            f"qce_run_schedule_{self.spec.name}_{self.consumer.value}_"
+            f"vibeqc_run_schedule_{self.spec.name}_{self.consumer.value}_"
             f"{self.schedule_id}"
         )
 
@@ -266,7 +266,7 @@ def _oracle_symbol_prefix(trial: ScheduleTrial) -> str:
     """Return a stable C symbol prefix shared by equivalent oracle mappings."""
 
     return (
-        f"qce_oracle_{trial.spec.name}_{trial.consumer.value}_"
+        f"vibeqc_oracle_{trial.spec.name}_{trial.consumer.value}_"
         f"{trial.schedule.kind.value}_b{trial.schedule.block_threads}_"
         f"t{trial.schedule.component_tile}_w{trial.schedule.tasks_per_warp}"
     )
@@ -584,7 +584,7 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
     work_directory_owner = None
     if arguments.work_directory is None:
         work_directory_owner = tempfile.TemporaryDirectory(
-            prefix="qce-shell-autotune-"
+            prefix="vibeqc-shell-autotune-"
         )
         directory = Path(work_directory_owner.name)
     else:

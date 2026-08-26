@@ -16,7 +16,7 @@ def _benchmark_support_module():
     """Load benchmark helpers without turning the scripts into a package."""
 
     path = REPOSITORY_ROOT / "benchmarks" / "_support.py"
-    spec = importlib.util.spec_from_file_location("qce_benchmark_support", path)
+    spec = importlib.util.spec_from_file_location("vibeqc_benchmark_support", path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -27,7 +27,7 @@ def _shell_histogram_module():
     """Load the pure shell-work planner without requiring PySCF."""
 
     path = REPOSITORY_ROOT / "benchmarks" / "shell_class_histogram.py"
-    spec = importlib.util.spec_from_file_location("qce_shell_histogram", path)
+    spec = importlib.util.spec_from_file_location("vibeqc_shell_histogram", path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
@@ -40,7 +40,7 @@ def _batch_comparison_module():
 
     benchmark_directory = REPOSITORY_ROOT / "benchmarks"
     path = benchmark_directory / "compare_gpu4pyscf_batch.py"
-    spec = importlib.util.spec_from_file_location("qce_batch_comparison", path)
+    spec = importlib.util.spec_from_file_location("vibeqc_batch_comparison", path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.path.insert(0, str(benchmark_directory))
@@ -57,7 +57,7 @@ def test_batch_benchmark_writes_reproducible_json(tmp_path):
     output = tmp_path / "batch.json"
     environment = os.environ.copy()
     environment["PYTHONPATH"] = str(REPOSITORY_ROOT / "python")
-    environment["QCE_LIBRARY"] = str(REPOSITORY_ROOT / "build" / "libqce.so")
+    environment["VIBEQC_LIBRARY"] = str(REPOSITORY_ROOT / "build" / "libvibeqc.so")
     completed = subprocess.run(
         (
             sys.executable,
@@ -207,11 +207,11 @@ def test_gpu_comparison_gate_reports_all_threshold_failures():
         speedup=4.0,
         maximum_energy_error=2.0e-12,
         maximum_force_error=3.0e-12,
-        qce_converged=False,
+        vibeqc_converged=False,
         reference_converged=False,
     )
     assert convergence_failures == [
-        "one or more QCE systems did not converge",
+        "one or more VIBEQC systems did not converge",
         "one or more GPU4PySCF reference systems did not converge",
     ]
 

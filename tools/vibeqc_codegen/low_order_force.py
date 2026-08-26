@@ -212,7 +212,7 @@ generated_psps_contract_weighted_coulomb(
   return result;
 }
 
-// QCE_LOW_ORDER_TASK_BEGIN
+// VIBEQC_LOW_ORDER_TASK_BEGIN
 template <bool Unrestricted>
 __device__ __forceinline__ void generated_psps_force_task(
     const GeneratedPspsShellTask* tasks,
@@ -470,7 +470,7 @@ __device__ __forceinline__ void generated_psps_force_task(
     }
   }
 }
-// QCE_LOW_ORDER_TASK_END
+// VIBEQC_LOW_ORDER_TASK_END
 
 template <bool Unrestricted>
 __device__ __forceinline__ void generated_psps_force_persistent(
@@ -808,8 +808,8 @@ __device__ __forceinline__ void generated_psps_force_task(
 def _replace_low_order_task(source: str, task: str) -> str:
     """Replace one shell-specific task while retaining the shared worker."""
 
-    begin = "// QCE_LOW_ORDER_TASK_BEGIN\n"
-    end = "// QCE_LOW_ORDER_TASK_END\n"
+    begin = "// VIBEQC_LOW_ORDER_TASK_BEGIN\n"
+    end = "// VIBEQC_LOW_ORDER_TASK_END\n"
     prefix, remainder = source.split(begin, maxsplit=1)
     _, suffix = remainder.split(end, maxsplit=1)
     return prefix + begin + task + end + suffix

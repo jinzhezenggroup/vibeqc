@@ -1,14 +1,14 @@
-#ifndef QCE_CORE_TYPES_HPP
-#define QCE_CORE_TYPES_HPP
+#ifndef VIBEQC_CORE_TYPES_HPP
+#define VIBEQC_CORE_TYPES_HPP
 
-#include "qce/qce.h"
+#include "vibeqc/vibeqc.h"
 
 #include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
 
-namespace qce::core {
+namespace vibeqc::core {
 
 struct Atom {
   int atomic_number{};
@@ -32,7 +32,7 @@ struct System {
   int charge{};
   unsigned multiplicity{1};
   int electron_count{};
-  qce_basis_representation basis_representation{QCE_BASIS_CARTESIAN};
+  vibeqc_basis_representation basis_representation{VIBEQC_BASIS_CARTESIAN};
 };
 
 struct ScfOptions {
@@ -58,12 +58,12 @@ struct ScfResult {
 };
 
 struct ContextState {
-  qce_backend requested_backend{QCE_BACKEND_CPU_REFERENCE};
-  qce_backend executed_backend{QCE_BACKEND_CPU_REFERENCE};
+  vibeqc_backend requested_backend{VIBEQC_BACKEND_CPU_REFERENCE};
+  vibeqc_backend executed_backend{VIBEQC_BACKEND_CPU_REFERENCE};
   int device_id{0};
   std::string device_name;
 };
 
-}  // namespace qce::core
+}  // namespace vibeqc::core
 
 #endif

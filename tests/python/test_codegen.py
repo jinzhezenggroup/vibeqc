@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from tools.qce_codegen import (
+from tools.vibeqc_codegen import (
     DDDD_SPEC,
     DDPS_SPEC,
     DPDS_SPEC,
@@ -57,7 +57,7 @@ from tools.qce_codegen import (
     nvrtc_cache_key,
     schedule_candidates,
 )
-from tools.qce_codegen.autotune import (
+from tools.vibeqc_codegen.autotune import (
     _compile_trial,
     emit_schedule_driver,
     emit_schedule_oracle_translation_unit,
@@ -66,19 +66,19 @@ from tools.qce_codegen.autotune import (
     supported_schedule_trials,
     update_manifest_payload,
 )
-from tools.qce_codegen.batch_benchmark import (
+from tools.vibeqc_codegen.batch_benchmark import (
     DEFAULT_CANDIDATES,
     candidate_specs,
     emit_batch_driver,
     emit_candidate_translation_unit,
     rank_profiled_candidates,
 )
-from tools.qce_codegen.benchmark import (
+from tools.vibeqc_codegen.benchmark import (
     emit_dppp_benchmark_cuda,
     emit_shell_class_benchmark_cuda,
     emit_shell_class_oracle_cuda,
 )
-from tools.qce_codegen.production import (
+from tools.vibeqc_codegen.production import (
     _PRODUCTION_PRELUDE,
     emit_registry_header,
     load_production_fock_manifest,
@@ -86,7 +86,7 @@ from tools.qce_codegen.production import (
     load_production_manifest,
     write_production_bundle,
 )
-from tools.qce_codegen.shell_class import (
+from tools.vibeqc_codegen.shell_class import (
     AXES,
     CENTERS,
     emit_dppp_component_cuda,
@@ -282,7 +282,7 @@ def test_packed_schedule_models_low_order_fock_workers(spec):
         for selection in load_production_kernel_selections(
             REPOSITORY_ROOT
             / "tools"
-            / "qce_codegen"
+            / "vibeqc_codegen"
             / "production_shell_classes.json"
         )
         if selection.spec == spec
@@ -1295,7 +1295,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     manifest = (
         REPOSITORY_ROOT
         / "tools"
-        / "qce_codegen"
+        / "vibeqc_codegen"
         / "production_shell_classes.json"
     )
     specifications = load_production_manifest(manifest)
@@ -1392,8 +1392,8 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     assert '{"psps", 2U, 2U, 32U, 3U, 9U}' in header
     assert '{"ppss", 3U, 2U, 32U, 3U, 9U}' in header
     assert '{"dsss", 6U, 2U, 32U, 3U, 6U}' in header
-    assert "QCE_AOT_SHELL_CLASSES" in header
-    assert "QCE_AOT_FOCK_SHELL_CLASSES" in header
+    assert "VIBEQC_AOT_SHELL_CLASSES" in header
+    assert "VIBEQC_AOT_FOCK_SHELL_CLASSES" in header
     shards = "\n".join(
         path.read_text(encoding="utf-8")
         for path in first
@@ -1458,15 +1458,15 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs():
 
     source = (REPOSITORY_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
     for dependency in (
-        "tools/qce_codegen/cuda.py",
-        "tools/qce_codegen/dppp_dispatch.py",
-        "tools/qce_codegen/expr.py",
-        "tools/qce_codegen/fused_schedule.py",
-        "tools/qce_codegen/ir.py",
-        "tools/qce_codegen/low_order_force.py",
-        "tools/qce_codegen/production.py",
-        "tools/qce_codegen/shell_class.py",
-        "tools/qce_codegen/shell_spec.py",
+        "tools/vibeqc_codegen/cuda.py",
+        "tools/vibeqc_codegen/dppp_dispatch.py",
+        "tools/vibeqc_codegen/expr.py",
+        "tools/vibeqc_codegen/fused_schedule.py",
+        "tools/vibeqc_codegen/ir.py",
+        "tools/vibeqc_codegen/low_order_force.py",
+        "tools/vibeqc_codegen/production.py",
+        "tools/vibeqc_codegen/shell_class.py",
+        "tools/vibeqc_codegen/shell_spec.py",
     ):
         assert dependency in source
 
@@ -1494,10 +1494,10 @@ def test_batch_screening_ranks_real_profile_and_emits_one_process_driver():
         iterations=1,
         samples=1,
     )
-    assert f'qce_run_shell_class_{candidate.name}' in source
+    assert f'vibeqc_run_shell_class_{candidate.name}' in source
     driver = emit_batch_driver((candidate,))
     assert "cudaFree(nullptr)" in driver
-    assert f"qce_run_shell_class_{candidate.name}()" in driver
+    assert f"vibeqc_run_shell_class_{candidate.name}()" in driver
 
 
 @pytest.mark.parametrize(
@@ -1513,10 +1513,10 @@ def test_fused_cuda_compiles_when_nvcc_is_configured(
 ):
     """Compile every generated shell class for explicit resource probes."""
 
-    nvcc = os.environ.get("QCE_NVCC")
+    nvcc = os.environ.get("VIBEQC_NVCC")
     if nvcc is None:
-        pytest.skip("set QCE_NVCC to run the generated CUDA compile gate")
-    cuda_architecture = os.environ.get("QCE_CUDA_ARCH", "sm_90")
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
     source = tmp_path / f"generated_{spec.name}_fused.cu"
     source.write_text(
         """
@@ -1546,7 +1546,7 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
         text=True,
         timeout=120,
     )
-    if os.environ.get("QCE_NVCC_VERBOSE"):
+    if os.environ.get("VIBEQC_NVCC_VERBOSE"):
         print(result.stdout + result.stderr)
     assert result.returncode == 0, result.stdout + result.stderr
     if cuda_architecture == "sm_120" and resource_limits is not None:
@@ -1558,10 +1558,10 @@ def test_ppps_scalar_thread_cuda_compiles_without_spills_when_nvcc_is_configured
 ):
     """Gate the scalar ppps prototype before any production routing."""
 
-    nvcc = os.environ.get("QCE_NVCC")
+    nvcc = os.environ.get("VIBEQC_NVCC")
     if nvcc is None:
-        pytest.skip("set QCE_NVCC to run the generated CUDA compile gate")
-    cuda_architecture = os.environ.get("QCE_CUDA_ARCH", "sm_90")
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
     spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
     schedule = ScheduleIR(
         kind=ScheduleKind.THREAD_TASKS,
@@ -1603,7 +1603,7 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
         text=True,
         timeout=240,
     )
-    if os.environ.get("QCE_NVCC_VERBOSE"):
+    if os.environ.get("VIBEQC_NVCC_VERBOSE"):
         print(result.stdout + result.stderr)
     assert result.returncode == 0, result.stdout + result.stderr
     if cuda_architecture == "sm_120":
@@ -1628,10 +1628,10 @@ def test_ppps_scalar_thread_benchmark_runs_when_nvcc_is_configured(
 ):
     """Execute the scalar persistent worker against the component oracle."""
 
-    nvcc = os.environ.get("QCE_NVCC")
+    nvcc = os.environ.get("VIBEQC_NVCC")
     if nvcc is None:
-        pytest.skip("set QCE_NVCC to run the generated CUDA benchmark gate")
-    cuda_architecture = os.environ.get("QCE_CUDA_ARCH", "sm_90")
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA benchmark gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
     spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
     schedule = ScheduleIR(
         kind=ScheduleKind.THREAD_TASKS,
@@ -1705,7 +1705,7 @@ def test_ppps_scalar_thread_benchmark_runs_when_nvcc_is_configured(
         for selection in load_production_kernel_selections(
             REPOSITORY_ROOT
             / "tools"
-            / "qce_codegen"
+            / "vibeqc_codegen"
             / "production_shell_classes.json",
             "sm_120",
         )
@@ -1734,10 +1734,10 @@ def test_ppps_scalar_thread_benchmark_runs_when_nvcc_is_configured(
 def test_joint_fock_force_cuda_compiles_when_nvcc_is_configured(tmp_path: Path):
     """Compile the dual-consumer pilot through the real CUDA frontend."""
 
-    nvcc = os.environ.get("QCE_NVCC")
+    nvcc = os.environ.get("VIBEQC_NVCC")
     if nvcc is None:
-        pytest.skip("set QCE_NVCC to run the generated CUDA compile gate")
-    cuda_architecture = os.environ.get("QCE_CUDA_ARCH", "sm_90")
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
     plan = build_fused_shell_plan(
         DPDS_SPEC,
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
@@ -1778,10 +1778,10 @@ def test_tiled_joint_fock_force_cuda_compiles_when_nvcc_is_configured(
 ):
     """Compile the tiled dual-consumer lowering through the real frontend."""
 
-    nvcc = os.environ.get("QCE_NVCC")
+    nvcc = os.environ.get("VIBEQC_NVCC")
     if nvcc is None:
-        pytest.skip("set QCE_NVCC to run the generated CUDA compile gate")
-    cuda_architecture = os.environ.get("QCE_CUDA_ARCH", "sm_90")
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
     integral = build_integral_ir(
         DPPP_SPEC,
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
@@ -1831,10 +1831,10 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
 def test_dddd_tiled_cuda_compiles_when_nvcc_is_configured(tmp_path: Path):
     """Compile a 1296-component class that cannot use one lane per quartet."""
 
-    nvcc = os.environ.get("QCE_NVCC")
+    nvcc = os.environ.get("VIBEQC_NVCC")
     if nvcc is None:
-        pytest.skip("set QCE_NVCC to run the generated CUDA compile gate")
-    cuda_architecture = os.environ.get("QCE_CUDA_ARCH", "sm_90")
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
     schedule = replace(
         build_fused_shell_plan(DDDD_SPEC).schedule,
         block_threads=128,
@@ -1888,10 +1888,10 @@ def test_f_shell_cuda_compiles_when_nvcc_is_configured(
 ):
     """Compile pair-order-six and tiled f-shell gradients with CUDA 12.9."""
 
-    nvcc = os.environ.get("QCE_NVCC")
+    nvcc = os.environ.get("VIBEQC_NVCC")
     if nvcc is None:
-        pytest.skip("set QCE_NVCC to run the generated CUDA compile gate")
-    cuda_architecture = os.environ.get("QCE_CUDA_ARCH", "sm_90")
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
     schedule = replace(build_fused_shell_plan(spec).schedule, unroll_pair_terms=False)
     if spec == FDDD_SPEC:
         schedule = replace(
@@ -1940,10 +1940,10 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
 def test_psss_shell_task_cuda_compiles_when_nvcc_is_configured(tmp_path: Path):
     """Compile a zero-order ket pair through generated Fock/force lowering."""
 
-    nvcc = os.environ.get("QCE_NVCC")
+    nvcc = os.environ.get("VIBEQC_NVCC")
     if nvcc is None:
-        pytest.skip("set QCE_NVCC to run the generated CUDA compile gate")
-    cuda_architecture = os.environ.get("QCE_CUDA_ARCH", "sm_90")
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
     integral = build_integral_ir(
         PSSS_SPEC,
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
@@ -1992,10 +1992,10 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
 def test_psss_packed_cuda_compiles_when_nvcc_is_configured(tmp_path: Path):
     """Compile 32 independent low-order tasks per warp for Fock and force."""
 
-    nvcc = os.environ.get("QCE_NVCC")
+    nvcc = os.environ.get("VIBEQC_NVCC")
     if nvcc is None:
-        pytest.skip("set QCE_NVCC to run the generated CUDA compile gate")
-    cuda_architecture = os.environ.get("QCE_CUDA_ARCH", "sm_90")
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
     integral = build_integral_ir(
         PSSS_SPEC,
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
@@ -2047,10 +2047,10 @@ def test_psps_weighted_cuda_compiles_with_zero_stack_when_nvcc_is_configured(
 ):
     """Keep the low-order AOT worker out of the giant-TU stack path."""
 
-    nvcc = os.environ.get("QCE_NVCC")
+    nvcc = os.environ.get("VIBEQC_NVCC")
     if nvcc is None:
-        pytest.skip("set QCE_NVCC to run the generated CUDA compile gate")
-    cuda_architecture = os.environ.get("QCE_CUDA_ARCH", "sm_90")
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
     source = tmp_path / "generated_psps_weighted.cu"
     source.write_text(
         _PRODUCTION_PRELUDE.replace(
@@ -2076,7 +2076,7 @@ def test_psps_weighted_cuda_compiles_with_zero_stack_when_nvcc_is_configured(
         text=True,
         timeout=120,
     )
-    if os.environ.get("QCE_NVCC_VERBOSE"):
+    if os.environ.get("VIBEQC_NVCC_VERBOSE"):
         print(result.stdout + result.stderr)
     assert result.returncode == 0, result.stdout + result.stderr
     if cuda_architecture == "sm_120":
@@ -2088,10 +2088,10 @@ def test_psps_weighted_cuda_compiles_with_zero_stack_when_nvcc_is_configured(
 def test_ppss_weighted_cuda_compiles_when_nvcc_is_configured(tmp_path: Path):
     """Compile the ppss prototype and reject spills before benchmarking it."""
 
-    nvcc = os.environ.get("QCE_NVCC")
+    nvcc = os.environ.get("VIBEQC_NVCC")
     if nvcc is None:
-        pytest.skip("set QCE_NVCC to run the generated CUDA compile gate")
-    cuda_architecture = os.environ.get("QCE_CUDA_ARCH", "sm_90")
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
     source = tmp_path / "generated_ppss_weighted.cu"
     source.write_text(
         _PRODUCTION_PRELUDE.replace(
@@ -2117,7 +2117,7 @@ def test_ppss_weighted_cuda_compiles_when_nvcc_is_configured(tmp_path: Path):
         text=True,
         timeout=120,
     )
-    if os.environ.get("QCE_NVCC_VERBOSE"):
+    if os.environ.get("VIBEQC_NVCC_VERBOSE"):
         print(result.stdout + result.stderr)
     assert result.returncode == 0, result.stdout + result.stderr
     if cuda_architecture == "sm_120":
@@ -2132,10 +2132,10 @@ def test_schedule_knob_cuda_variants_compile_when_nvcc_is_configured(
 ):
     """Compile both cooperative sharing policies through the real frontend."""
 
-    nvcc = os.environ.get("QCE_NVCC")
+    nvcc = os.environ.get("VIBEQC_NVCC")
     if nvcc is None:
-        pytest.skip("set QCE_NVCC to run the generated CUDA compile gate")
-    cuda_architecture = os.environ.get("QCE_CUDA_ARCH", "sm_90")
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
     base = build_fused_shell_plan(DPDS_SPEC).schedule
     schedule = replace(
         base,
@@ -2238,10 +2238,10 @@ def test_packed_order2_fock_oracle_drops_force_wrappers():
 def test_fock_benchmark_runs_when_nvcc_is_configured(tmp_path: Path):
     """Execute the swapped value benchmark and its independent oracle."""
 
-    nvcc = os.environ.get("QCE_NVCC")
+    nvcc = os.environ.get("VIBEQC_NVCC")
     if nvcc is None:
-        pytest.skip("set QCE_NVCC to run the generated CUDA benchmark gate")
-    cuda_architecture = os.environ.get("QCE_CUDA_ARCH", "sm_90")
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA benchmark gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
     schedule = replace(
         build_fused_shell_plan(DPDS_SPEC).schedule,
         pair_orientation=PairOrientation.SWAPPED,
@@ -2320,7 +2320,7 @@ def test_benchmark_accepts_an_explicit_schedule_or_lowered_plan():
     assert source.count("generated_dpds_component_gradient<false>") == 2
     assert "#pragma unroll 1" in source
     assert "#pragma unroll\n" in source
-    assert "QCE_PAIR_UNROLL" not in source
+    assert "VIBEQC_PAIR_UNROLL" not in source
     plan = build_fused_shell_plan(DPDS_SPEC, schedule=schedule)
     assert source == emit_shell_class_benchmark_cuda(
         DPDS_SPEC,
@@ -2358,13 +2358,13 @@ def test_autotune_compile_timeout_terminates_the_compiler_process_group(
         """#!/bin/sh
 sleep 60 &
 child_pid=$!
-printf '%s\n' "$child_pid" > "$QCE_TEST_CHILD_PID_FILE"
+printf '%s\n' "$child_pid" > "$VIBEQC_TEST_CHILD_PID_FILE"
 wait "$child_pid"
 """,
         encoding="utf-8",
     )
     fake_nvcc.chmod(0o755)
-    monkeypatch.setenv("QCE_TEST_CHILD_PID_FILE", str(child_pid_file))
+    monkeypatch.setenv("VIBEQC_TEST_CHILD_PID_FILE", str(child_pid_file))
 
     row = _compile_trial(
         fake_nvcc,
@@ -2445,7 +2445,7 @@ def test_autotune_emits_unique_schedule_variants_and_manifest_records():
     )
     oracle_source = emit_schedule_oracle_translation_unit(component_trials[0])
     oracle_kernel = (
-        "qce_oracle_dpds_force_component_lanes_b128_t108_w1_"
+        "vibeqc_oracle_dpds_force_component_lanes_b128_t108_w1_"
         "component_recompute_rhf_kernel"
     )
     assert separate_source.count(oracle_kernel) == 2
@@ -2541,10 +2541,10 @@ def test_autotune_same_class_variants_link_when_nvcc_is_configured(
 ):
     """Ensure symbol isolation lets one GPU process compare same-class code."""
 
-    nvcc = os.environ.get("QCE_NVCC")
+    nvcc = os.environ.get("VIBEQC_NVCC")
     if nvcc is None:
-        pytest.skip("set QCE_NVCC to run the generated CUDA link gate")
-    cuda_architecture = os.environ.get("QCE_CUDA_ARCH", "sm_90")
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA link gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
     trials = supported_schedule_trials(DPDS_SPEC)[:2]
     sources = []
     for trial in trials:

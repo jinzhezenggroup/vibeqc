@@ -41,7 +41,7 @@
     },
     "runtime": {
       "cuda_visible_devices": "0",
-      "qce_library": "/home/jzzeng/codes/qc/build/libqce.so.0.1.0"
+      "vibeqc_library": "/home/jzzeng/codes/qc/build/libvibeqc.so.0.1.0"
     },
     "timestamp_utc": "2026-08-24T19:01:23.198394+00:00"
   },
@@ -132,7 +132,7 @@
     ],
     "warm_systems_per_second": 0.7409466009547035
   },
-  "qce": {
+  "vibeqc": {
     "cold_seconds": 7.13187656300579,
     "convergence": [
       {
@@ -341,7 +341,7 @@
     "max_iterations": 100,
     "method": "rhf",
     "multiplicity": 1,
-    "qce_screening_tolerance": 1e-14,
+    "vibeqc_screening_tolerance": 1e-14,
     "reference_gradient_tolerance": 1e-09
   }
 }

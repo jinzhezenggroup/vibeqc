@@ -16,7 +16,7 @@ architecture manifest; generated production CUDA remains a build artifact.
 
 ## Current pipeline
 
-`tools/qce_codegen/ir.py` separates mathematical intent from execution policy:
+`tools/vibeqc_codegen/ir.py` separates mathematical intent from execution policy:
 
 - `IntegralIR` describes a canonical shell class and its consumers (`fock`,
   `force`). Force differentiates centers 0, 1, and 2 and restores center 3 by
@@ -85,7 +85,7 @@ low-order code must match that arithmetic quality before replacing it.
 
 ## Architecture autotuning
 
-`tools/qce_codegen/autotune.py` emits every CUDA-supported schedule variant
+`tools/vibeqc_codegen/autotune.py` emits every CUDA-supported schedule variant
 with unique symbols, compiles the translation units in parallel, links them
 into one executable, and runs all variants in one GPU allocation. A candidate
 is rejected for:
@@ -99,7 +99,7 @@ Passing variants are ranked by measured kernel time. The winner can be written
 to a schema-v2, architecture-specific production manifest:
 
 ```bash
-python -m tools.qce_codegen.autotune \
+python -m tools.vibeqc_codegen.autotune \
   --nvcc /group/software/cuda-12.9.1/bin/nvcc \
   --architecture sm_120 \
   --shell-class dpds \
@@ -114,7 +114,7 @@ joint `fock`/`force` consumer set because both kernels share the canonical task
 ABI.
 
 The manifest records every code-shape decision rather than relying on emitter
-defaults. CMake selects a profile with `QCE_AOT_CODEGEN_ARCHITECTURE`.
+defaults. CMake selects a profile with `VIBEQC_AOT_CODEGEN_ARCHITECTURE`.
 
 Large-shell tuning uses a staged compiler pipeline. Equivalent schedules share
 one separately compiled correctness oracle per component mapping; tiled oracle
@@ -313,7 +313,7 @@ python tools/generate_shell_kernels.py \
   --shell-class dppp --lowering fused --format stats
 python tools/generate_shell_kernels.py \
   --shell-class fddd --lowering fused --format stats
-cmake --build build --target qce_codegen_pilot
+cmake --build build --target vibeqc_codegen_pilot
 ```
 
 Candidate batch screening is intentionally sparse: pass either an explicit
@@ -325,14 +325,14 @@ Run Python gates:
 
 ```bash
 python -m pytest tests/python/test_codegen.py -q
-python -m ruff check tools/qce_codegen tests/python/test_codegen.py
+python -m ruff check tools/vibeqc_codegen tests/python/test_codegen.py
 ```
 
 Run the explicit CUDA gate:
 
 ```bash
-QCE_NVCC=/group/software/cuda-12.9.1/bin/nvcc \
-QCE_CUDA_ARCH=sm_120 \
+VIBEQC_NVCC=/group/software/cuda-12.9.1/bin/nvcc \
+VIBEQC_CUDA_ARCH=sm_120 \
 python -m pytest tests/python/test_codegen.py -q -s
 ```
 

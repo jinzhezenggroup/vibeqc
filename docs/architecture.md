@@ -4,7 +4,7 @@
 
 RHF and UHF are executable in the HF vertical prototype. `WB97M_V` and
 `RCCSD_T` have stable method identifiers for capability discovery but return
-`QCE_STATUS_NOT_IMPLEMENTED`. No DFT grid or coupled-cluster tensor framework
+`VIBEQC_STATUS_NOT_IMPLEMENTED`. No DFT grid or coupled-cluster tensor framework
 is created before a real method requires it.
 
 ## Derivative policy
@@ -101,7 +101,7 @@ are resident in the fixed plan.
 
 ## Fleet execution
 
-`qce_batch` is a persistent, non-reentrant fleet plan. It copies system
+`vibeqc_batch` is a persistent, non-reentrant fleet plan. It copies system
 topologies during preparation, so caller system handles can be released. Each
 execution optionally supplies new ragged coordinates without rebuilding basis
 metadata. Compatible systems are bucketed by AO count, occupied count, and

@@ -3,9 +3,9 @@
   "capture": {
     "capture_range": "cudaProfilerApi",
     "nsight_systems": "2025.2.1.0",
-    "qce_cuda_runtime_capture_span_seconds": 1.558292431,
-    "qce_iterations": 2,
-    "qce_wall_seconds": 1.558280852,
+    "vibeqc_cuda_runtime_capture_span_seconds": 1.558292431,
+    "vibeqc_iterations": 2,
+    "vibeqc_wall_seconds": 1.558280852,
     "sequence": "one uncaptured cold energy-plus-force execution followed by one captured warm execution",
     "trace": "cuda,nvtx"
   },
@@ -16,8 +16,8 @@
     "gpu4pyscf_commit": "db6bb7f12bf4b6465b7c5ff0a9741bc2be08318d",
     "gpu4pyscf_version": "1.8.1",
     "node": "node3",
-    "qce_commit": "ccdd250247da0af98fee2a5b921e7b3cf99f7f0a",
-    "qce_dirty": false
+    "vibeqc_commit": "ccdd250247da0af98fee2a5b921e7b3cf99f7f0a",
+    "vibeqc_dirty": false
   },
   "gpu4pyscf": {
     "component_kernel_milliseconds": {
@@ -43,14 +43,14 @@
   },
   "methodology_notes": [
     "Both engines use the exact 96-AO batch-1 acceptance workload and the acceptance SCF and screening tolerances.",
-    "The QCE profile was captured from clean commit ccdd250; the unchanged GPU4PySCF values come from the matching clean 1.8.1 capture published with c28b1e9.",
-    "QCE's runtime capture span is the interval from cuProfilerStart through the final captured CUDA synchronization, derived from the exported Nsight Systems trace.",
+    "The VIBEQC profile was captured from clean commit ccdd250; the unchanged GPU4PySCF values come from the matching clean 1.8.1 capture published with c28b1e9.",
+    "VIBEQC's runtime capture span is the interval from cuProfilerStart through the final captured CUDA synchronization, derived from the exported Nsight Systems trace.",
     "Component values sum CUDA kernel durations by demangled kernel family; they do not include CPU work or idle gaps.",
     "The direct-J/K category includes GPU4PySCF Rys K, MD J, density-transform, and q-condition kernels.",
     "The GPU4PySCF fallback force kernel covers total angular orders six through eight for this s/p/d def2-SVP workload.",
     "Span-minus-summed-kernel is diagnostic only because concurrent kernels, if present, make duration sums non-additive."
   ],
-  "qce": {
+  "vibeqc": {
     "component_kernel_milliseconds": {
       "direct_jk": 491.498984,
       "eigensolver": 31.287840,

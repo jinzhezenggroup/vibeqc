@@ -1,12 +1,12 @@
-#ifndef QCE_INTEGRALS_S_INTEGRALS_HPP
-#define QCE_INTEGRALS_S_INTEGRALS_HPP
+#ifndef VIBEQC_INTEGRALS_S_INTEGRALS_HPP
+#define VIBEQC_INTEGRALS_S_INTEGRALS_HPP
 
 #include "core/types.hpp"
 
 #include <cstddef>
 #include <vector>
 
-namespace qce::integrals {
+namespace vibeqc::integrals {
 
 struct IntegralData {
   std::size_t nbf{};
@@ -41,6 +41,6 @@ inline IntegralData build_s_integrals(const core::System& system) {
   return build_integrals(system);
 }
 
-}  // namespace qce::integrals
+}  // namespace vibeqc::integrals
 
 #endif

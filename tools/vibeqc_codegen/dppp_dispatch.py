@@ -398,13 +398,13 @@ def _emit_shell_class_fock_cuda(
     if plan.schedule.pair_storage == PairStorage.RECOMPUTED:
         if plan.schedule.pair_orientation == PairOrientation.CANONICAL:
             value_contraction = f"""  double value = 0.0;
-QCE_PAIR_UNROLL
+VIBEQC_PAIR_UNROLL
   for (unsigned first_subset = 0;
        first_subset < {1 << first_pair_order}U; ++first_subset) {{
     const GeneratedDpppValueTerm first_term =
         generated_dppp_pair_value_term<{first_pair_order}U>(
         first_axes, first_shifts, geometry.inverse_two_p, first_subset);
-QCE_PAIR_UNROLL
+VIBEQC_PAIR_UNROLL
     for (unsigned second_subset = 0;
          second_subset < {1 << second_pair_order}U; ++second_subset) {{
       const GeneratedDpppValueTerm second_term =
@@ -423,7 +423,7 @@ QCE_PAIR_UNROLL
 """
         else:
             value_contraction = f"""  double value = 0.0;
-QCE_PAIR_UNROLL
+VIBEQC_PAIR_UNROLL
   for (unsigned second_subset = 0;
        second_subset < {1 << second_pair_order}U; ++second_subset) {{
     const GeneratedDpppValueTerm second_term =
@@ -432,7 +432,7 @@ QCE_PAIR_UNROLL
     const double sign =
         (generated_dppp_state_total(second_term.derivative_state) & 1U)
         == 0U ? 1.0 : -1.0;
-QCE_PAIR_UNROLL
+VIBEQC_PAIR_UNROLL
     for (unsigned first_subset = 0;
          first_subset < {1 << first_pair_order}U; ++first_subset) {{
       const GeneratedDpppValueTerm first_term =
@@ -448,19 +448,19 @@ QCE_PAIR_UNROLL
 """
     elif plan.schedule.pair_orientation == PairOrientation.CANONICAL:
         value_contraction = f"""  GeneratedDpppValueTerm second_terms[{1 << second_pair_order}];
-QCE_PAIR_UNROLL
+VIBEQC_PAIR_UNROLL
   for (unsigned subset = 0; subset < {1 << second_pair_order}U; ++subset) {{
     second_terms[subset] = generated_dppp_pair_value_term<{second_pair_order}U>(
         second_axes, second_shifts, geometry.inverse_two_q, subset);
   }}
   double value = 0.0;
-QCE_PAIR_UNROLL
+VIBEQC_PAIR_UNROLL
   for (unsigned first_subset = 0;
        first_subset < {1 << first_pair_order}U; ++first_subset) {{
     const GeneratedDpppValueTerm first_term =
         generated_dppp_pair_value_term<{first_pair_order}U>(
         first_axes, first_shifts, geometry.inverse_two_p, first_subset);
-QCE_PAIR_UNROLL
+VIBEQC_PAIR_UNROLL
     for (unsigned second_subset = 0;
          second_subset < {1 << second_pair_order}U; ++second_subset) {{
       const GeneratedDpppValueTerm& second_term = second_terms[second_subset];
@@ -477,13 +477,13 @@ QCE_PAIR_UNROLL
 """
     else:
         value_contraction = f"""  GeneratedDpppValueTerm first_terms[{1 << first_pair_order}];
-QCE_PAIR_UNROLL
+VIBEQC_PAIR_UNROLL
   for (unsigned subset = 0; subset < {1 << first_pair_order}U; ++subset) {{
     first_terms[subset] = generated_dppp_pair_value_term<{first_pair_order}U>(
         first_axes, first_shifts, geometry.inverse_two_p, subset);
   }}
   double value = 0.0;
-QCE_PAIR_UNROLL
+VIBEQC_PAIR_UNROLL
   for (unsigned second_subset = 0;
        second_subset < {1 << second_pair_order}U; ++second_subset) {{
     const GeneratedDpppValueTerm second_term =
@@ -492,7 +492,7 @@ QCE_PAIR_UNROLL
     const double sign =
         (generated_dppp_state_total(second_term.derivative_state) & 1U)
         == 0U ? 1.0 : -1.0;
-QCE_PAIR_UNROLL
+VIBEQC_PAIR_UNROLL
     for (unsigned first_subset = 0;
          first_subset < {1 << first_pair_order}U; ++first_subset) {{
       const GeneratedDpppValueTerm& first_term = first_terms[first_subset];
@@ -602,7 +602,7 @@ __device__ __forceinline__ double generated_dppp_component_value(
   return geometry.prefactor * value;
 }}
 
-/** Scatter one canonical integral using QCE's existing RHF/UHF convention. */
+/** Scatter one canonical integral using VIBEQC's existing RHF/UHF convention. */
 template <bool Unrestricted>
 __device__ __forceinline__ void generated_dppp_accumulate_fock(
     const GeneratedDpppShellTask& task,
@@ -2473,7 +2473,7 @@ __device__ __constant__ unsigned char generated_dppp_f_axes[10][3] = {{
                 (1U << third) | (1U << fourth);
             if (first_removed >= second_removed ||
                 (first_removed & second_removed) != 0U) continue;
-            QCE_PAIR_MATCHING_CALL(
+            VIBEQC_PAIR_MATCHING_CALL(
                 term, axes, shifts, shift_gradients, inverse_two_exponent,
                 subset, first_removed | second_removed, 2U);
           }
@@ -2483,7 +2483,7 @@ __device__ __constant__ unsigned char generated_dppp_f_axes[10][3] = {{
   }
 """
         double_pair_matchings = double_pair_matchings.replace(
-            "QCE_PAIR_MATCHING_CALL", pair_matching_call
+            "VIBEQC_PAIR_MATCHING_CALL", pair_matching_call
         )
     triple_pair_matchings = ""
     if max(spec.pair_orders) >= 6:
@@ -2509,7 +2509,7 @@ __device__ __constant__ unsigned char generated_dppp_f_axes[10][3] = {{
                     ((first_removed | second_removed) & third_removed) != 0U) {
                   continue;
                 }
-                QCE_PAIR_MATCHING_CALL(
+                VIBEQC_PAIR_MATCHING_CALL(
                     term, axes, shifts, shift_gradients,
                     inverse_two_exponent, subset,
                     first_removed | second_removed | third_removed, 3U);
@@ -2522,7 +2522,7 @@ __device__ __constant__ unsigned char generated_dppp_f_axes[10][3] = {{
   }
 """
         triple_pair_matchings = triple_pair_matchings.replace(
-            "QCE_PAIR_MATCHING_CALL", pair_matching_call
+            "VIBEQC_PAIR_MATCHING_CALL", pair_matching_call
         )
     component_gradient_setup = _generic_component_gradient_setup(spec)
     task_component_setup = _generic_task_component_setup(spec)
@@ -2610,13 +2610,13 @@ __device__ __constant__ unsigned char generated_dppp_f_axes[10][3] = {{
         if plan.schedule.pair_orientation == PairOrientation.CANONICAL:
             gradient_contraction = f"""  double value = 0.0;
   double value_gradient[3][3]{{}};
-QCE_PAIR_UNROLL
+VIBEQC_PAIR_UNROLL
   for (unsigned first_subset = 0;
        first_subset < {1 << first_pair_order}U; ++first_subset) {{
     const GeneratedDpppPairTerm first_term = {first_pair_term}(
         first_axes, first_shifts, first_shift_gradients,
         geometry.inverse_two_p, first_subset);
-QCE_PAIR_UNROLL
+VIBEQC_PAIR_UNROLL
     for (unsigned second_subset = 0;
          second_subset < {1 << second_pair_order}U; ++second_subset) {{
       const GeneratedDpppPairTerm second_term = {second_pair_term}(
@@ -2628,13 +2628,13 @@ QCE_PAIR_UNROLL
         else:
             gradient_contraction = f"""  double value = 0.0;
   double value_gradient[3][3]{{}};
-QCE_PAIR_UNROLL
+VIBEQC_PAIR_UNROLL
   for (unsigned second_subset = 0;
        second_subset < {1 << second_pair_order}U; ++second_subset) {{
     const GeneratedDpppPairTerm second_term = {second_pair_term}(
         second_axes, second_shifts, second_shift_gradients,
         geometry.inverse_two_q, second_subset);
-QCE_PAIR_UNROLL
+VIBEQC_PAIR_UNROLL
     for (unsigned first_subset = 0;
          first_subset < {1 << first_pair_order}U; ++first_subset) {{
       const GeneratedDpppPairTerm first_term = {first_pair_term}(
@@ -2645,7 +2645,7 @@ QCE_PAIR_UNROLL
 """
     elif plan.schedule.pair_orientation == PairOrientation.CANONICAL:
         gradient_contraction = f"""  GeneratedDpppPairTerm second_terms[{1 << second_pair_order}];
-QCE_PAIR_UNROLL
+VIBEQC_PAIR_UNROLL
   for (unsigned subset = 0; subset < {1 << second_pair_order}U; ++subset) {{
     second_terms[subset] = {second_pair_term}(
         second_axes, second_shifts, second_shift_gradients,
@@ -2653,13 +2653,13 @@ QCE_PAIR_UNROLL
   }}
   double value = 0.0;
   double value_gradient[3][3]{{}};
-QCE_PAIR_UNROLL
+VIBEQC_PAIR_UNROLL
   for (unsigned first_subset = 0;
        first_subset < {1 << first_pair_order}U; ++first_subset) {{
     const GeneratedDpppPairTerm first_term = {first_pair_term}(
         first_axes, first_shifts, first_shift_gradients,
         geometry.inverse_two_p, first_subset);
-QCE_PAIR_UNROLL
+VIBEQC_PAIR_UNROLL
     for (unsigned second_subset = 0;
          second_subset < {1 << second_pair_order}U; ++second_subset) {{
       const GeneratedDpppPairTerm& second_term = second_terms[second_subset];
@@ -2668,7 +2668,7 @@ QCE_PAIR_UNROLL
 """
     else:
         gradient_contraction = f"""  GeneratedDpppPairTerm first_terms[{1 << first_pair_order}];
-QCE_PAIR_UNROLL
+VIBEQC_PAIR_UNROLL
   for (unsigned subset = 0; subset < {1 << first_pair_order}U; ++subset) {{
     first_terms[subset] = {first_pair_term}(
         first_axes, first_shifts, first_shift_gradients,
@@ -2676,13 +2676,13 @@ QCE_PAIR_UNROLL
   }}
   double value = 0.0;
   double value_gradient[3][3]{{}};
-QCE_PAIR_UNROLL
+VIBEQC_PAIR_UNROLL
   for (unsigned second_subset = 0;
        second_subset < {1 << second_pair_order}U; ++second_subset) {{
     const GeneratedDpppPairTerm second_term = {second_pair_term}(
         second_axes, second_shifts, second_shift_gradients,
         geometry.inverse_two_q, second_subset);
-QCE_PAIR_UNROLL
+VIBEQC_PAIR_UNROLL
     for (unsigned first_subset = 0;
          first_subset < {1 << first_pair_order}U; ++first_subset) {{
       const GeneratedDpppPairTerm& first_term = first_terms[first_subset];
@@ -3372,7 +3372,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
         if plan.schedule.unroll_pair_terms
         else "#pragma unroll 1"
     )
-    source = source.replace("QCE_PAIR_UNROLL", pair_unroll)
+    source = source.replace("VIBEQC_PAIR_UNROLL", pair_unroll)
     return _specialize_dppp_identifiers(source, spec)
 
 

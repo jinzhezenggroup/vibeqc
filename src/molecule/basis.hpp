@@ -1,5 +1,5 @@
-#ifndef QCE_MOLECULE_BASIS_HPP
-#define QCE_MOLECULE_BASIS_HPP
+#ifndef VIBEQC_MOLECULE_BASIS_HPP
+#define VIBEQC_MOLECULE_BASIS_HPP
 
 #include "core/types.hpp"
 
@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-namespace qce::molecule {
+namespace vibeqc::molecule {
 
 /** Cartesian exponent triple in CCA order (xx, xy, xz, yy, yz, zz for d). */
 using CartesianComponent = std::array<unsigned, 3>;
@@ -40,7 +40,7 @@ inline constexpr std::size_t kMaximumAoExpansionTerms = 3;
  * independent numerical oracle.
  */
 [[nodiscard]] std::vector<AoExpansion> ao_expansions(
-    unsigned l, qce_basis_representation representation);
+    unsigned l, vibeqc_basis_representation representation);
 
 /** Total Cartesian AO count represented by a system's shells. */
 [[nodiscard]] std::size_t ao_count(const core::System& system) noexcept;
@@ -59,8 +59,8 @@ inline constexpr std::size_t kMaximumAoExpansionTerms = 3;
     const CartesianComponent& component) noexcept;
 
 /** Validate and radially normalize contracted Cartesian Gaussian shells. */
-qce_status validate_and_normalize(core::System& system, std::string& detail);
+vibeqc_status validate_and_normalize(core::System& system, std::string& detail);
 
-}  // namespace qce::molecule
+}  // namespace vibeqc::molecule
 
 #endif

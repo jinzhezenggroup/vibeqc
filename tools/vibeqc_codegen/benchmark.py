@@ -7,7 +7,7 @@ benefit of shell-class fusion without involving production CUDA dispatch.
 
 Run, for example::
 
-    python -m tools.qce_codegen.benchmark \
+    python -m tools.vibeqc_codegen.benchmark \
       --nvcc /group/software/cuda-12.9.1/bin/nvcc --architecture sm_120 \
       --partition main --gres gpu:5090:1
 """
@@ -103,14 +103,14 @@ void generated_dppp_component_recompute_rhf_kernel(
   }
   __syncthreads();
 
-QCE_COMPONENT_SCHEDULE_SETUP
-QCE_COMPONENT_SETUP
+VIBEQC_COMPONENT_SCHEDULE_SETUP
+VIBEQC_COMPONENT_SETUP
   const double density_coefficient =
       component_lane && unique_ket_component
       ? generated_dppp_density_coefficient<false>(
             shared.task, i, j, k, l, density)
       : 0.0;
-QCE_ANGULAR_COEFFICIENT
+VIBEQC_ANGULAR_COEFFICIENT
   double component_force[12]{};
 
   if (density_coefficient != 0.0) {
@@ -177,7 +177,7 @@ QCE_ANGULAR_COEFFICIENT
                 value);
     }
   }
-QCE_COMPONENT_SCHEDULE_CLOSE
+VIBEQC_COMPONENT_SCHEDULE_CLOSE
 }
 """
 
@@ -211,10 +211,10 @@ void generated_dppp_component_recompute_fock_rhf_kernel(
   }
   __syncthreads();
 
-QCE_COMPONENT_SCHEDULE_SETUP
-QCE_COMPONENT_SETUP
+VIBEQC_COMPONENT_SCHEDULE_SETUP
+VIBEQC_COMPONENT_SETUP
   const bool evaluate_component = component_lane && unique_ket_component;
-QCE_ANGULAR_COEFFICIENT
+VIBEQC_ANGULAR_COEFFICIENT
   double component_integral = 0.0;
   if (evaluate_component) {
     for (std::uint64_t a = shared.task.primitive_begin[0];
@@ -247,13 +247,13 @@ QCE_ANGULAR_COEFFICIENT
     generated_dppp_accumulate_fock<false>(
         shared.task, density, fock, i, j, k, l, component_integral);
   }
-QCE_COMPONENT_SCHEDULE_CLOSE
+VIBEQC_COMPONENT_SCHEDULE_CLOSE
 }
 """
 
 
 _HOST_HARNESS = r"""
-#define QCE_CUDA_CHECK(call) do { \
+#define VIBEQC_CUDA_CHECK(call) do { \
   const cudaError_t error = (call); \
   if (error != cudaSuccess) { \
     std::fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, \
@@ -262,32 +262,32 @@ _HOST_HARNESS = r"""
   } \
 } while (false)
 
-constexpr unsigned kTaskCount = QCE_TASK_COUNT;
-constexpr unsigned kPrimitiveCount = QCE_PRIMITIVE_COUNT;
-constexpr unsigned kWarmups = QCE_WARMUPS;
-constexpr unsigned kIterations = QCE_ITERATIONS;
-constexpr unsigned kSamples = QCE_SAMPLES;
+constexpr unsigned kTaskCount = VIBEQC_TASK_COUNT;
+constexpr unsigned kPrimitiveCount = VIBEQC_PRIMITIVE_COUNT;
+constexpr unsigned kWarmups = VIBEQC_WARMUPS;
+constexpr unsigned kIterations = VIBEQC_ITERATIONS;
+constexpr unsigned kSamples = VIBEQC_SAMPLES;
 
 template <typename Launch>
 float benchmark_kernel(Launch launch, double* forces, std::size_t force_bytes) {
   std::vector<float> samples;
   samples.reserve(kSamples);
   for (unsigned sample = 0; sample < kSamples; ++sample) {
-    QCE_CUDA_CHECK(cudaMemset(forces, 0, force_bytes));
+    VIBEQC_CUDA_CHECK(cudaMemset(forces, 0, force_bytes));
     for (unsigned warmup = 0; warmup < kWarmups; ++warmup) launch();
-    QCE_CUDA_CHECK(cudaDeviceSynchronize());
+    VIBEQC_CUDA_CHECK(cudaDeviceSynchronize());
     cudaEvent_t begin;
     cudaEvent_t end;
-    QCE_CUDA_CHECK(cudaEventCreate(&begin));
-    QCE_CUDA_CHECK(cudaEventCreate(&end));
-    QCE_CUDA_CHECK(cudaEventRecord(begin));
+    VIBEQC_CUDA_CHECK(cudaEventCreate(&begin));
+    VIBEQC_CUDA_CHECK(cudaEventCreate(&end));
+    VIBEQC_CUDA_CHECK(cudaEventRecord(begin));
     for (unsigned iteration = 0; iteration < kIterations; ++iteration) launch();
-    QCE_CUDA_CHECK(cudaEventRecord(end));
-    QCE_CUDA_CHECK(cudaEventSynchronize(end));
+    VIBEQC_CUDA_CHECK(cudaEventRecord(end));
+    VIBEQC_CUDA_CHECK(cudaEventSynchronize(end));
     float milliseconds = 0.0f;
-    QCE_CUDA_CHECK(cudaEventElapsedTime(&milliseconds, begin, end));
-    QCE_CUDA_CHECK(cudaEventDestroy(begin));
-    QCE_CUDA_CHECK(cudaEventDestroy(end));
+    VIBEQC_CUDA_CHECK(cudaEventElapsedTime(&milliseconds, begin, end));
+    VIBEQC_CUDA_CHECK(cudaEventDestroy(begin));
+    VIBEQC_CUDA_CHECK(cudaEventDestroy(end));
     samples.push_back(milliseconds / static_cast<float>(kIterations));
   }
   std::sort(samples.begin(), samples.end());
@@ -295,13 +295,13 @@ float benchmark_kernel(Launch launch, double* forces, std::size_t force_bytes) {
 }
 
 int main() {
-  constexpr std::size_t n = QCE_MATRIX_ORDER;
+  constexpr std::size_t n = VIBEQC_MATRIX_ORDER;
   constexpr std::size_t matrix_size = n * n;
   std::vector<GeneratedDpppShellTask> tasks(kTaskCount);
   std::vector<GeneratedDpppVec3> positions(kTaskCount * 4U);
   std::vector<double> exponents(kPrimitiveCount * 4U);
   std::vector<double> primitive_coefficients(kPrimitiveCount * 4U);
-  std::vector<double> ao_coefficients(QCE_AO_COUNT, 1.0);
+  std::vector<double> ao_coefficients(VIBEQC_AO_COUNT, 1.0);
   std::vector<double> density(matrix_size);
   for (unsigned primitive = 0; primitive < kPrimitiveCount * 4U; ++primitive) {
     exponents[primitive] = 0.45 + 0.07 * static_cast<double>(primitive % 7U);
@@ -375,11 +375,11 @@ int main() {
     for (unsigned center = 0; center < 4U; ++center) {
       task.primitive_begin[center] = center * kPrimitiveCount;
       task.primitive_end[center] = (center + 1U) * kPrimitiveCount;
-      task.atom[center] = QCE_ATOM_INDEX;
+      task.atom[center] = VIBEQC_ATOM_INDEX;
       task.shell[center] = task_index * 4U + center;
       positions[task.atom[center]] = base_positions[center];
     }
-QCE_AO_OFFSETS
+VIBEQC_AO_OFFSETS
     task.density_offset = 0U;
     task.spin_offset = 0U;
     task.matrix_order = static_cast<std::uint32_t>(n);
@@ -397,49 +397,49 @@ QCE_AO_OFFSETS
   double* device_ao_coefficients = nullptr;
   double* device_density = nullptr;
   double* device_forces = nullptr;
-QCE_PERSISTENT_DECLARATIONS
-  const std::size_t force_count = QCE_FORCE_COUNT;
-  QCE_CUDA_CHECK(cudaMalloc(&device_tasks, tasks.size() * sizeof(tasks[0])));
-  QCE_CUDA_CHECK(cudaMalloc(&device_positions, positions.size() * sizeof(positions[0])));
-  QCE_CUDA_CHECK(cudaMalloc(&device_exponents, exponents.size() * sizeof(double)));
-  QCE_CUDA_CHECK(cudaMalloc(&device_primitive_coefficients,
+VIBEQC_PERSISTENT_DECLARATIONS
+  const std::size_t force_count = VIBEQC_FORCE_COUNT;
+  VIBEQC_CUDA_CHECK(cudaMalloc(&device_tasks, tasks.size() * sizeof(tasks[0])));
+  VIBEQC_CUDA_CHECK(cudaMalloc(&device_positions, positions.size() * sizeof(positions[0])));
+  VIBEQC_CUDA_CHECK(cudaMalloc(&device_exponents, exponents.size() * sizeof(double)));
+  VIBEQC_CUDA_CHECK(cudaMalloc(&device_primitive_coefficients,
                             primitive_coefficients.size() * sizeof(double)));
-  QCE_CUDA_CHECK(cudaMalloc(
+  VIBEQC_CUDA_CHECK(cudaMalloc(
       &device_primitive_pair_offsets,
       primitive_pair_offsets.size() * sizeof(primitive_pair_offsets[0])));
-  QCE_CUDA_CHECK(cudaMalloc(
+  VIBEQC_CUDA_CHECK(cudaMalloc(
       &device_primitive_pairs,
       primitive_pairs.size() * sizeof(primitive_pairs[0])));
-  QCE_CUDA_CHECK(cudaMalloc(&device_ao_coefficients,
+  VIBEQC_CUDA_CHECK(cudaMalloc(&device_ao_coefficients,
                             ao_coefficients.size() * sizeof(double)));
-  QCE_CUDA_CHECK(cudaMalloc(&device_density, density.size() * sizeof(double)));
-  QCE_CUDA_CHECK(cudaMalloc(&device_forces, force_count * sizeof(double)));
-  QCE_CUDA_CHECK(cudaMemcpy(device_tasks, tasks.data(),
+  VIBEQC_CUDA_CHECK(cudaMalloc(&device_density, density.size() * sizeof(double)));
+  VIBEQC_CUDA_CHECK(cudaMalloc(&device_forces, force_count * sizeof(double)));
+  VIBEQC_CUDA_CHECK(cudaMemcpy(device_tasks, tasks.data(),
                             tasks.size() * sizeof(tasks[0]), cudaMemcpyHostToDevice));
-  QCE_CUDA_CHECK(cudaMemcpy(device_positions, positions.data(),
+  VIBEQC_CUDA_CHECK(cudaMemcpy(device_positions, positions.data(),
                             positions.size() * sizeof(positions[0]), cudaMemcpyHostToDevice));
-  QCE_CUDA_CHECK(cudaMemcpy(device_exponents, exponents.data(),
+  VIBEQC_CUDA_CHECK(cudaMemcpy(device_exponents, exponents.data(),
                             exponents.size() * sizeof(double), cudaMemcpyHostToDevice));
-  QCE_CUDA_CHECK(cudaMemcpy(device_primitive_coefficients,
+  VIBEQC_CUDA_CHECK(cudaMemcpy(device_primitive_coefficients,
                             primitive_coefficients.data(),
                             primitive_coefficients.size() * sizeof(double),
                             cudaMemcpyHostToDevice));
-  QCE_CUDA_CHECK(cudaMemcpy(
+  VIBEQC_CUDA_CHECK(cudaMemcpy(
       device_primitive_pair_offsets, primitive_pair_offsets.data(),
       primitive_pair_offsets.size() * sizeof(primitive_pair_offsets[0]),
       cudaMemcpyHostToDevice));
-  QCE_CUDA_CHECK(cudaMemcpy(
+  VIBEQC_CUDA_CHECK(cudaMemcpy(
       device_primitive_pairs, primitive_pairs.data(),
       primitive_pairs.size() * sizeof(primitive_pairs[0]),
       cudaMemcpyHostToDevice));
-  QCE_CUDA_CHECK(cudaMemcpy(device_ao_coefficients, ao_coefficients.data(),
+  VIBEQC_CUDA_CHECK(cudaMemcpy(device_ao_coefficients, ao_coefficients.data(),
                             ao_coefficients.size() * sizeof(double), cudaMemcpyHostToDevice));
-  QCE_CUDA_CHECK(cudaMemcpy(device_density, density.data(),
+  VIBEQC_CUDA_CHECK(cudaMemcpy(device_density, density.data(),
                             density.size() * sizeof(double), cudaMemcpyHostToDevice));
-QCE_PERSISTENT_SETUP
+VIBEQC_PERSISTENT_SETUP
 
   auto launch_fused = [&]() {
-QCE_FUSED_LAUNCH
+VIBEQC_FUSED_LAUNCH
   };
   auto launch_recompute = [&]() {
     generated_dppp_component_recompute_rhf_kernel<<<kTaskCount,
@@ -451,15 +451,15 @@ QCE_FUSED_LAUNCH
 
   std::vector<double> fused_forces(force_count);
   std::vector<double> recompute_forces(force_count);
-  QCE_CUDA_CHECK(cudaMemset(device_forces, 0, force_count * sizeof(double)));
+  VIBEQC_CUDA_CHECK(cudaMemset(device_forces, 0, force_count * sizeof(double)));
   launch_fused();
-  QCE_CUDA_CHECK(cudaGetLastError());
-  QCE_CUDA_CHECK(cudaMemcpy(fused_forces.data(), device_forces,
+  VIBEQC_CUDA_CHECK(cudaGetLastError());
+  VIBEQC_CUDA_CHECK(cudaMemcpy(fused_forces.data(), device_forces,
                             force_count * sizeof(double), cudaMemcpyDeviceToHost));
-  QCE_CUDA_CHECK(cudaMemset(device_forces, 0, force_count * sizeof(double)));
+  VIBEQC_CUDA_CHECK(cudaMemset(device_forces, 0, force_count * sizeof(double)));
   launch_recompute();
-  QCE_CUDA_CHECK(cudaGetLastError());
-  QCE_CUDA_CHECK(cudaMemcpy(recompute_forces.data(), device_forces,
+  VIBEQC_CUDA_CHECK(cudaGetLastError());
+  VIBEQC_CUDA_CHECK(cudaMemcpy(recompute_forces.data(), device_forces,
                             force_count * sizeof(double), cudaMemcpyDeviceToHost));
   double maximum_error = 0.0;
   double maximum_force = 0.0;
@@ -476,7 +476,7 @@ QCE_FUSED_LAUNCH
   std::printf(
       "{\"task_count\":%u,\"primitive_count_per_shell\":%u,"
       "\"primitive_quartets_per_task\":%u,\"consumer\":\"force\","
-      "\"topology\":\"QCE_BENCHMARK_TOPOLOGY\","
+      "\"topology\":\"VIBEQC_BENCHMARK_TOPOLOGY\","
       "\"fused_ms\":%.9g,"
       "\"recompute_ms\":%.9g,\"speedup\":%.9g,"
       "\"maximum_force_error\":%.17g,\"maximum_force\":%.17g}\n",
@@ -494,14 +494,14 @@ QCE_FUSED_LAUNCH
   cudaFree(device_exponents);
   cudaFree(device_positions);
   cudaFree(device_tasks);
-QCE_PERSISTENT_FREE
+VIBEQC_PERSISTENT_FREE
   return maximum_error <= 2.0e-10 * fmax(1.0, maximum_force) ? 0 : 3;
 }
 """
 
 
 _FOCK_HOST_HARNESS = r"""
-#define QCE_CUDA_CHECK(call) do { \
+#define VIBEQC_CUDA_CHECK(call) do { \
   const cudaError_t error = (call); \
   if (error != cudaSuccess) { \
     std::fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, \
@@ -510,32 +510,32 @@ _FOCK_HOST_HARNESS = r"""
   } \
 } while (false)
 
-constexpr unsigned kTaskCount = QCE_TASK_COUNT;
-constexpr unsigned kPrimitiveCount = QCE_PRIMITIVE_COUNT;
-constexpr unsigned kWarmups = QCE_WARMUPS;
-constexpr unsigned kIterations = QCE_ITERATIONS;
-constexpr unsigned kSamples = QCE_SAMPLES;
+constexpr unsigned kTaskCount = VIBEQC_TASK_COUNT;
+constexpr unsigned kPrimitiveCount = VIBEQC_PRIMITIVE_COUNT;
+constexpr unsigned kWarmups = VIBEQC_WARMUPS;
+constexpr unsigned kIterations = VIBEQC_ITERATIONS;
+constexpr unsigned kSamples = VIBEQC_SAMPLES;
 
 template <typename Launch>
 float benchmark_kernel(Launch launch, double* output, std::size_t output_bytes) {
   std::vector<float> samples;
   samples.reserve(kSamples);
   for (unsigned sample = 0; sample < kSamples; ++sample) {
-    QCE_CUDA_CHECK(cudaMemset(output, 0, output_bytes));
+    VIBEQC_CUDA_CHECK(cudaMemset(output, 0, output_bytes));
     for (unsigned warmup = 0; warmup < kWarmups; ++warmup) launch();
-    QCE_CUDA_CHECK(cudaDeviceSynchronize());
+    VIBEQC_CUDA_CHECK(cudaDeviceSynchronize());
     cudaEvent_t begin;
     cudaEvent_t end;
-    QCE_CUDA_CHECK(cudaEventCreate(&begin));
-    QCE_CUDA_CHECK(cudaEventCreate(&end));
-    QCE_CUDA_CHECK(cudaEventRecord(begin));
+    VIBEQC_CUDA_CHECK(cudaEventCreate(&begin));
+    VIBEQC_CUDA_CHECK(cudaEventCreate(&end));
+    VIBEQC_CUDA_CHECK(cudaEventRecord(begin));
     for (unsigned iteration = 0; iteration < kIterations; ++iteration) launch();
-    QCE_CUDA_CHECK(cudaEventRecord(end));
-    QCE_CUDA_CHECK(cudaEventSynchronize(end));
+    VIBEQC_CUDA_CHECK(cudaEventRecord(end));
+    VIBEQC_CUDA_CHECK(cudaEventSynchronize(end));
     float milliseconds = 0.0f;
-    QCE_CUDA_CHECK(cudaEventElapsedTime(&milliseconds, begin, end));
-    QCE_CUDA_CHECK(cudaEventDestroy(begin));
-    QCE_CUDA_CHECK(cudaEventDestroy(end));
+    VIBEQC_CUDA_CHECK(cudaEventElapsedTime(&milliseconds, begin, end));
+    VIBEQC_CUDA_CHECK(cudaEventDestroy(begin));
+    VIBEQC_CUDA_CHECK(cudaEventDestroy(end));
     samples.push_back(milliseconds / static_cast<float>(kIterations));
   }
   std::sort(samples.begin(), samples.end());
@@ -543,13 +543,13 @@ float benchmark_kernel(Launch launch, double* output, std::size_t output_bytes) 
 }
 
 int main() {
-  constexpr std::size_t n = QCE_MATRIX_ORDER;
+  constexpr std::size_t n = VIBEQC_MATRIX_ORDER;
   constexpr std::size_t matrix_size = n * n;
   std::vector<GeneratedDpppShellTask> tasks(kTaskCount);
   std::vector<GeneratedDpppVec3> positions(kTaskCount * 4U);
   std::vector<double> exponents(kPrimitiveCount * 4U);
   std::vector<double> primitive_coefficients(kPrimitiveCount * 4U);
-  std::vector<double> ao_coefficients(QCE_AO_COUNT, 1.0);
+  std::vector<double> ao_coefficients(VIBEQC_AO_COUNT, 1.0);
   std::vector<double> density(kTaskCount * matrix_size);
   for (unsigned primitive = 0; primitive < kPrimitiveCount * 4U; ++primitive) {
     exponents[primitive] = 0.45 + 0.07 * static_cast<double>(primitive % 7U);
@@ -633,8 +633,8 @@ int main() {
       task.shell[center] = task_index * 4U + center;
       positions[task.atom[center]] = base_positions[center];
     }
-QCE_AO_OFFSETS
-    task.density_offset = QCE_DENSITY_OFFSET;
+VIBEQC_AO_OFFSETS
+    task.density_offset = VIBEQC_DENSITY_OFFSET;
     task.spin_offset = 0U;
     task.matrix_order = static_cast<std::uint32_t>(n);
     task.shell_pair[0] = 0U;
@@ -651,49 +651,49 @@ QCE_AO_OFFSETS
   double* device_ao_coefficients = nullptr;
   double* device_density = nullptr;
   double* device_fock = nullptr;
-QCE_PERSISTENT_DECLARATIONS
+VIBEQC_PERSISTENT_DECLARATIONS
   const std::size_t fock_count = density.size();
-  QCE_CUDA_CHECK(cudaMalloc(&device_tasks, tasks.size() * sizeof(tasks[0])));
-  QCE_CUDA_CHECK(cudaMalloc(&device_positions, positions.size() * sizeof(positions[0])));
-  QCE_CUDA_CHECK(cudaMalloc(&device_exponents, exponents.size() * sizeof(double)));
-  QCE_CUDA_CHECK(cudaMalloc(&device_primitive_coefficients,
+  VIBEQC_CUDA_CHECK(cudaMalloc(&device_tasks, tasks.size() * sizeof(tasks[0])));
+  VIBEQC_CUDA_CHECK(cudaMalloc(&device_positions, positions.size() * sizeof(positions[0])));
+  VIBEQC_CUDA_CHECK(cudaMalloc(&device_exponents, exponents.size() * sizeof(double)));
+  VIBEQC_CUDA_CHECK(cudaMalloc(&device_primitive_coefficients,
                             primitive_coefficients.size() * sizeof(double)));
-  QCE_CUDA_CHECK(cudaMalloc(
+  VIBEQC_CUDA_CHECK(cudaMalloc(
       &device_primitive_pair_offsets,
       primitive_pair_offsets.size() * sizeof(primitive_pair_offsets[0])));
-  QCE_CUDA_CHECK(cudaMalloc(
+  VIBEQC_CUDA_CHECK(cudaMalloc(
       &device_primitive_pairs,
       primitive_pairs.size() * sizeof(primitive_pairs[0])));
-  QCE_CUDA_CHECK(cudaMalloc(&device_ao_coefficients,
+  VIBEQC_CUDA_CHECK(cudaMalloc(&device_ao_coefficients,
                             ao_coefficients.size() * sizeof(double)));
-  QCE_CUDA_CHECK(cudaMalloc(&device_density, density.size() * sizeof(double)));
-  QCE_CUDA_CHECK(cudaMalloc(&device_fock, fock_count * sizeof(double)));
-  QCE_CUDA_CHECK(cudaMemcpy(device_tasks, tasks.data(),
+  VIBEQC_CUDA_CHECK(cudaMalloc(&device_density, density.size() * sizeof(double)));
+  VIBEQC_CUDA_CHECK(cudaMalloc(&device_fock, fock_count * sizeof(double)));
+  VIBEQC_CUDA_CHECK(cudaMemcpy(device_tasks, tasks.data(),
                             tasks.size() * sizeof(tasks[0]), cudaMemcpyHostToDevice));
-  QCE_CUDA_CHECK(cudaMemcpy(device_positions, positions.data(),
+  VIBEQC_CUDA_CHECK(cudaMemcpy(device_positions, positions.data(),
                             positions.size() * sizeof(positions[0]), cudaMemcpyHostToDevice));
-  QCE_CUDA_CHECK(cudaMemcpy(device_exponents, exponents.data(),
+  VIBEQC_CUDA_CHECK(cudaMemcpy(device_exponents, exponents.data(),
                             exponents.size() * sizeof(double), cudaMemcpyHostToDevice));
-  QCE_CUDA_CHECK(cudaMemcpy(device_primitive_coefficients,
+  VIBEQC_CUDA_CHECK(cudaMemcpy(device_primitive_coefficients,
                             primitive_coefficients.data(),
                             primitive_coefficients.size() * sizeof(double),
                             cudaMemcpyHostToDevice));
-  QCE_CUDA_CHECK(cudaMemcpy(
+  VIBEQC_CUDA_CHECK(cudaMemcpy(
       device_primitive_pair_offsets, primitive_pair_offsets.data(),
       primitive_pair_offsets.size() * sizeof(primitive_pair_offsets[0]),
       cudaMemcpyHostToDevice));
-  QCE_CUDA_CHECK(cudaMemcpy(
+  VIBEQC_CUDA_CHECK(cudaMemcpy(
       device_primitive_pairs, primitive_pairs.data(),
       primitive_pairs.size() * sizeof(primitive_pairs[0]),
       cudaMemcpyHostToDevice));
-  QCE_CUDA_CHECK(cudaMemcpy(device_ao_coefficients, ao_coefficients.data(),
+  VIBEQC_CUDA_CHECK(cudaMemcpy(device_ao_coefficients, ao_coefficients.data(),
                             ao_coefficients.size() * sizeof(double), cudaMemcpyHostToDevice));
-  QCE_CUDA_CHECK(cudaMemcpy(device_density, density.data(),
+  VIBEQC_CUDA_CHECK(cudaMemcpy(device_density, density.data(),
                             density.size() * sizeof(double), cudaMemcpyHostToDevice));
-QCE_PERSISTENT_SETUP
+VIBEQC_PERSISTENT_SETUP
 
   auto launch_fused = [&]() {
-QCE_FUSED_LAUNCH
+VIBEQC_FUSED_LAUNCH
   };
   auto launch_recompute = [&]() {
     generated_dppp_component_recompute_fock_rhf_kernel<<<kTaskCount,
@@ -705,15 +705,15 @@ QCE_FUSED_LAUNCH
 
   std::vector<double> fused_fock(fock_count);
   std::vector<double> recompute_fock(fock_count);
-  QCE_CUDA_CHECK(cudaMemset(device_fock, 0, fock_count * sizeof(double)));
+  VIBEQC_CUDA_CHECK(cudaMemset(device_fock, 0, fock_count * sizeof(double)));
   launch_fused();
-  QCE_CUDA_CHECK(cudaGetLastError());
-  QCE_CUDA_CHECK(cudaMemcpy(fused_fock.data(), device_fock,
+  VIBEQC_CUDA_CHECK(cudaGetLastError());
+  VIBEQC_CUDA_CHECK(cudaMemcpy(fused_fock.data(), device_fock,
                             fock_count * sizeof(double), cudaMemcpyDeviceToHost));
-  QCE_CUDA_CHECK(cudaMemset(device_fock, 0, fock_count * sizeof(double)));
+  VIBEQC_CUDA_CHECK(cudaMemset(device_fock, 0, fock_count * sizeof(double)));
   launch_recompute();
-  QCE_CUDA_CHECK(cudaGetLastError());
-  QCE_CUDA_CHECK(cudaMemcpy(recompute_fock.data(), device_fock,
+  VIBEQC_CUDA_CHECK(cudaGetLastError());
+  VIBEQC_CUDA_CHECK(cudaMemcpy(recompute_fock.data(), device_fock,
                             fock_count * sizeof(double), cudaMemcpyDeviceToHost));
   double maximum_error = 0.0;
   double maximum_fock = 0.0;
@@ -730,7 +730,7 @@ QCE_FUSED_LAUNCH
   std::printf(
       "{\"task_count\":%u,\"primitive_count_per_shell\":%u,"
       "\"primitive_quartets_per_task\":%u,\"consumer\":\"fock\","
-      "\"topology\":\"QCE_BENCHMARK_TOPOLOGY\","
+      "\"topology\":\"VIBEQC_BENCHMARK_TOPOLOGY\","
       "\"fused_ms\":%.9g,\"recompute_ms\":%.9g,\"speedup\":%.9g,"
       "\"maximum_fock_error\":%.17g,\"maximum_fock\":%.17g}\n",
       kTaskCount, kPrimitiveCount,
@@ -747,7 +747,7 @@ QCE_FUSED_LAUNCH
   cudaFree(device_exponents);
   cudaFree(device_positions);
   cudaFree(device_tasks);
-QCE_PERSISTENT_FREE
+VIBEQC_PERSISTENT_FREE
   return maximum_error <= 2.0e-10 * fmax(1.0, maximum_fock) ? 0 : 3;
 }
 """
@@ -780,11 +780,11 @@ def _benchmark_unfused_kernel(
   const unsigned component = component_lane ? lane : 0U;"""
         schedule_close = ""
     source = _UNFUSED_KERNEL.replace(
-        "QCE_COMPONENT_SCHEDULE_SETUP", schedule_setup
-    ).replace("QCE_COMPONENT_SCHEDULE_CLOSE", schedule_close)
+        "VIBEQC_COMPONENT_SCHEDULE_SETUP", schedule_setup
+    ).replace("VIBEQC_COMPONENT_SCHEDULE_CLOSE", schedule_close)
     source = source.replace(
-        "QCE_COMPONENT_SETUP", _generic_task_component_setup(spec)
-    ).replace("QCE_ANGULAR_COEFFICIENT", "\n".join(angular_lines))
+        "VIBEQC_COMPONENT_SETUP", _generic_task_component_setup(spec)
+    ).replace("VIBEQC_ANGULAR_COEFFICIENT", "\n".join(angular_lines))
     return _specialize_dppp_identifiers(source, spec)
 
 
@@ -816,11 +816,11 @@ def _benchmark_unfused_fock_kernel(
   const unsigned component = component_lane ? lane : 0U;"""
         schedule_close = ""
     source = _UNFUSED_FOCK_KERNEL.replace(
-        "QCE_COMPONENT_SCHEDULE_SETUP", schedule_setup
-    ).replace("QCE_COMPONENT_SCHEDULE_CLOSE", schedule_close)
+        "VIBEQC_COMPONENT_SCHEDULE_SETUP", schedule_setup
+    ).replace("VIBEQC_COMPONENT_SCHEDULE_CLOSE", schedule_close)
     source = source.replace(
-        "QCE_COMPONENT_SETUP", _generic_task_component_setup(spec)
-    ).replace("QCE_ANGULAR_COEFFICIENT", "\n".join(angular_lines))
+        "VIBEQC_COMPONENT_SETUP", _generic_task_component_setup(spec)
+    ).replace("VIBEQC_ANGULAR_COEFFICIENT", "\n".join(angular_lines))
     return _specialize_dppp_identifiers(source, spec)
 
 
@@ -847,33 +847,33 @@ def _persistent_benchmark_snippets(
         else "kGeneratedDpppBlockThreads"
     )
     return {
-        "QCE_PERSISTENT_DECLARATIONS": """  std::uint32_t* device_task_offset = nullptr;
+        "VIBEQC_PERSISTENT_DECLARATIONS": """  std::uint32_t* device_task_offset = nullptr;
   std::uint32_t* device_task_count = nullptr;
   std::uint32_t* device_task_head = nullptr;""",
-        "QCE_PERSISTENT_SETUP": """  const std::uint32_t host_task_offset = 0U;
+        "VIBEQC_PERSISTENT_SETUP": """  const std::uint32_t host_task_offset = 0U;
   const std::uint32_t host_task_count = kTaskCount;
   cudaDeviceProp device_properties{};
-  QCE_CUDA_CHECK(cudaGetDeviceProperties(&device_properties, 0));
+  VIBEQC_CUDA_CHECK(cudaGetDeviceProperties(&device_properties, 0));
   const unsigned persistent_grid_count =
       static_cast<unsigned>(device_properties.multiProcessorCount) * 8U;
-  QCE_CUDA_CHECK(cudaMalloc(&device_task_offset, sizeof(std::uint32_t)));
-  QCE_CUDA_CHECK(cudaMalloc(&device_task_count, sizeof(std::uint32_t)));
-  QCE_CUDA_CHECK(cudaMalloc(&device_task_head, sizeof(std::uint32_t)));
-  QCE_CUDA_CHECK(cudaMemcpy(device_task_offset, &host_task_offset,
+  VIBEQC_CUDA_CHECK(cudaMalloc(&device_task_offset, sizeof(std::uint32_t)));
+  VIBEQC_CUDA_CHECK(cudaMalloc(&device_task_count, sizeof(std::uint32_t)));
+  VIBEQC_CUDA_CHECK(cudaMalloc(&device_task_head, sizeof(std::uint32_t)));
+  VIBEQC_CUDA_CHECK(cudaMemcpy(device_task_offset, &host_task_offset,
                             sizeof(std::uint32_t), cudaMemcpyHostToDevice));
-  QCE_CUDA_CHECK(cudaMemcpy(device_task_count, &host_task_count,
+  VIBEQC_CUDA_CHECK(cudaMemcpy(device_task_count, &host_task_count,
                             sizeof(std::uint32_t), cudaMemcpyHostToDevice));""",
-        "QCE_FUSED_LAUNCH": f"""    QCE_CUDA_CHECK(cudaMemsetAsync(
+        "VIBEQC_FUSED_LAUNCH": f"""    VIBEQC_CUDA_CHECK(cudaMemsetAsync(
         device_task_head, 0, sizeof(std::uint32_t)));
     {kernel}<<<persistent_grid_count, {block_threads}>>>(
         device_tasks, device_primitive_pairs, device_primitive_pair_offsets,
         device_ao_coefficients, device_positions, 0.0, nullptr,
         device_density, {output}, device_task_offset, device_task_count,
         device_task_head);""",
-        "QCE_PERSISTENT_FREE": """  cudaFree(device_task_head);
+        "VIBEQC_PERSISTENT_FREE": """  cudaFree(device_task_head);
   cudaFree(device_task_count);
   cudaFree(device_task_offset);""",
-        "QCE_BENCHMARK_TOPOLOGY": "persistent_shared",
+        "VIBEQC_BENCHMARK_TOPOLOGY": "persistent_shared",
     }
 
 
@@ -883,23 +883,23 @@ def _ordinary_benchmark_snippets(
     """Return the legacy isolated one-shot benchmark launch snippets."""
 
     if consumer == KernelConsumer.FOCK:
-        launch = """    generated_dppp_shell_class_fock_rhf_kernel<<<QCE_FUSED_GRID_COUNT,
+        launch = """    generated_dppp_shell_class_fock_rhf_kernel<<<VIBEQC_FUSED_GRID_COUNT,
         kGeneratedDpppFockBlockThreads>>>(
         device_tasks, device_primitive_pairs, device_primitive_pair_offsets,
         device_ao_coefficients, device_positions, 0.0, nullptr,
         device_density, device_fock, kTaskCount);"""
     else:
-        launch = """    generated_dppp_shell_class_force_rhf_kernel<<<QCE_FUSED_GRID_COUNT,
+        launch = """    generated_dppp_shell_class_force_rhf_kernel<<<VIBEQC_FUSED_GRID_COUNT,
         kGeneratedDpppBlockThreads>>>(
         device_tasks, device_primitive_pairs, device_primitive_pair_offsets,
         device_ao_coefficients, device_positions, 0.0, nullptr,
         device_density, device_forces, kTaskCount);"""
     return {
-        "QCE_PERSISTENT_DECLARATIONS": "",
-        "QCE_PERSISTENT_SETUP": "",
-        "QCE_FUSED_LAUNCH": launch,
-        "QCE_PERSISTENT_FREE": "",
-        "QCE_BENCHMARK_TOPOLOGY": "ordinary_isolated",
+        "VIBEQC_PERSISTENT_DECLARATIONS": "",
+        "VIBEQC_PERSISTENT_SETUP": "",
+        "VIBEQC_FUSED_LAUNCH": launch,
+        "VIBEQC_PERSISTENT_FREE": "",
+        "VIBEQC_BENCHMARK_TOPOLOGY": "ordinary_isolated",
     }
 
 
@@ -919,19 +919,19 @@ def _apply_benchmark_topology(
     if consumer == KernelConsumer.FORCE:
         snippets.update(
             {
-                "QCE_ATOM_INDEX": (
+                "VIBEQC_ATOM_INDEX": (
                     "center * 6U + ((task_index / "
                     "(center < 2U ? 1024U : 16U)) % 6U)"
                     if persistent_kernel
                     else "task_index * 4U + center"
                 ),
-                "QCE_FORCE_COUNT": (
+                "VIBEQC_FORCE_COUNT": (
                     "24U * 3U" if persistent_kernel else "kTaskCount * 12U"
                 ),
             }
         )
     else:
-        snippets["QCE_DENSITY_OFFSET"] = (
+        snippets["VIBEQC_DENSITY_OFFSET"] = (
             "0U"
             if persistent_kernel
             else "static_cast<std::uint64_t>(task_index) * matrix_size"
@@ -962,9 +962,9 @@ def _benchmark_host_harness(
             for center, offset in enumerate(offsets)
         )
     ao_count = sum(component_counts)
-    source = _HOST_HARNESS.replace("QCE_MATRIX_ORDER", f"{ao_count}U")
-    source = source.replace("QCE_AO_COUNT", f"{ao_count}U")
-    source = source.replace("QCE_AO_OFFSETS", "\n".join(offset_lines))
+    source = _HOST_HARNESS.replace("VIBEQC_MATRIX_ORDER", f"{ao_count}U")
+    source = source.replace("VIBEQC_AO_COUNT", f"{ao_count}U")
+    source = source.replace("VIBEQC_AO_OFFSETS", "\n".join(offset_lines))
     tasks_per_block = plan.schedule.tasks_per_block
     fused_grid_count = (
         f"(kTaskCount + {tasks_per_block - 1}U) / {tasks_per_block}U"
@@ -976,7 +976,7 @@ def _benchmark_host_harness(
         KernelConsumer.FORCE,
         persistent_kernel=persistent_kernel,
     )
-    source = source.replace("QCE_FUSED_GRID_COUNT", fused_grid_count)
+    source = source.replace("VIBEQC_FUSED_GRID_COUNT", fused_grid_count)
     return _specialize_dppp_identifiers(source, spec)
 
 
@@ -997,9 +997,9 @@ def _benchmark_fock_host_harness(
             for center, offset in enumerate(offsets)
         )
     ao_count = sum(component_counts)
-    source = _FOCK_HOST_HARNESS.replace("QCE_MATRIX_ORDER", f"{ao_count}U")
-    source = source.replace("QCE_AO_COUNT", f"{ao_count}U")
-    source = source.replace("QCE_AO_OFFSETS", "\n".join(offset_lines))
+    source = _FOCK_HOST_HARNESS.replace("VIBEQC_MATRIX_ORDER", f"{ao_count}U")
+    source = source.replace("VIBEQC_AO_COUNT", f"{ao_count}U")
+    source = source.replace("VIBEQC_AO_OFFSETS", "\n".join(offset_lines))
     tasks_per_block = plan.schedule.tasks_per_block
     fused_grid_count = (
         f"(kTaskCount + {tasks_per_block - 1}U) / {tasks_per_block}U"
@@ -1011,7 +1011,7 @@ def _benchmark_fock_host_harness(
         KernelConsumer.FOCK,
         persistent_kernel=persistent_kernel,
     )
-    source = source.replace("QCE_FUSED_GRID_COUNT", fused_grid_count)
+    source = source.replace("VIBEQC_FUSED_GRID_COUNT", fused_grid_count)
     return _specialize_dppp_identifiers(source, spec)
 
 
@@ -1300,11 +1300,11 @@ def emit_shell_class_benchmark_cuda(
         )
         baseline = _benchmark_unfused_kernel(spec, selected_plan)
     replacements = {
-        "QCE_TASK_COUNT": str(task_count),
-        "QCE_PRIMITIVE_COUNT": str(primitive_count),
-        "QCE_WARMUPS": str(warmups),
-        "QCE_ITERATIONS": str(iterations),
-        "QCE_SAMPLES": str(samples),
+        "VIBEQC_TASK_COUNT": str(task_count),
+        "VIBEQC_PRIMITIVE_COUNT": str(primitive_count),
+        "VIBEQC_WARMUPS": str(warmups),
+        "VIBEQC_ITERATIONS": str(iterations),
+        "VIBEQC_SAMPLES": str(samples),
     }
     for marker, value in replacements.items():
         host = host.replace(marker, value)
@@ -1428,7 +1428,7 @@ def main() -> None:
     if arguments.keep_source is not None:
         arguments.keep_source.parent.mkdir(parents=True, exist_ok=True)
         arguments.keep_source.write_text(source, encoding="utf-8")
-    with tempfile.TemporaryDirectory(prefix="qce-dppp-benchmark-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="vibeqc-dppp-benchmark-") as temporary:
         directory = Path(temporary)
         cuda_source = directory / "dppp_benchmark.cu"
         executable = directory / "dppp_benchmark"

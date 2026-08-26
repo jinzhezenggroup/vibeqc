@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
+  <title id="title">VibeQC logo</title>
+  <desc id="description">An orbital-shaped violet and cyan V crossed by an oscillating magenta wave.</desc>
+  <defs>
+    <linearGradient id="left-lobe" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8b5cf6"/>
+      <stop offset="0.55" stop-color="#6d5dfc"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+    <linearGradient id="right-lobe" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="0.55" stop-color="#4f8cff"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="wave" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#c084fc" stop-opacity="0.35"/>
+      <stop offset="0.5" stop-color="#ec4899"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Curved lobes keep the V legible at icon size while suggesting orbitals. -->
+  <path fill="url(#left-lobe)" d="M66 88c25-34 82-40 116-14 18 14 30 33 38 56l53 168c8 25 3 53-14 73l-45 54c-16 20-48 16-59-7-6-14-4-31 5-43l45-62-55-171c-9-27-29-45-55-51-10-2-20-3-29-3z"/>
+  <path fill="url(#right-lobe)" d="M446 88c-25-34-82-40-116-14-18 14-30 33-38 56l-53 168c-8 25-3 53 14 73l45 54c16 20 48 16 59-7 6-14 4-31-5-43l-45-62 55-171c9-27 29-45 55-51 10-2 20-3 29-3z"/>
+
+  <!-- The wave is the "vibe" and the bright point reads as an electron. -->
+  <path d="M57 254c40-64 79-64 119 0s79 64 119 0 79-64 119 0c14 23 28 35 41 37" fill="none" stroke="url(#wave)" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="455" cy="291" r="14" fill="#22d3ee"/>
+  <circle cx="455" cy="291" r="6" fill="#ecfeff"/>
+</svg>

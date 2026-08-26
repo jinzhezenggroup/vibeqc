@@ -3,9 +3,9 @@
   "capture": {
     "capture_range": "cudaProfilerApi",
     "nsight_systems": "2025.2.1.0",
-    "qce_cuda_runtime_capture_span_seconds": 1.47138553,
-    "qce_iterations": 2,
-    "qce_wall_seconds": 1.47138553,
+    "vibeqc_cuda_runtime_capture_span_seconds": 1.47138553,
+    "vibeqc_iterations": 2,
+    "vibeqc_wall_seconds": 1.47138553,
     "sequence": "one uncaptured cold energy-plus-force execution followed by one captured warm execution",
     "trace": "cuda,nvtx"
   },
@@ -16,8 +16,8 @@
     "gpu4pyscf_commit": "db6bb7f12bf4b6465b7c5ff0a9741bc2be08318d",
     "gpu4pyscf_version": "1.8.1",
     "node": "node3",
-    "qce_commit": "962f0bdc08bb73ecf2274833deca43bcabae96b4",
-    "qce_dirty": false
+    "vibeqc_commit": "962f0bdc08bb73ecf2274833deca43bcabae96b4",
+    "vibeqc_dirty": false
   },
   "formal_96_ao_gate": {
     "batch_1": {
@@ -30,8 +30,8 @@
       "maximum_force_error_hartree_per_bohr": 1.7212099800989478e-12,
       "passed_accuracy": true,
       "passed_speed": false,
-      "qce_final_iterations": [2],
-      "qce_warm_seconds": [
+      "vibeqc_final_iterations": [2],
+      "vibeqc_warm_seconds": [
         1.4861568980122684,
         1.478704672990716,
         1.4770276740018744
@@ -48,8 +48,8 @@
       "maximum_force_error_hartree_per_bohr": 2.629127818232213e-12,
       "passed_accuracy": true,
       "passed_speed": false,
-      "qce_final_iterations": [3, 3, 2, 2],
-      "qce_warm_seconds": [
+      "vibeqc_final_iterations": [3, 3, 2, 2],
+      "vibeqc_warm_seconds": [
         6.4136134879954625,
         5.729631554000662,
         5.957363333000103
@@ -85,13 +85,13 @@
   },
   "methodology_notes": [
     "Both engines use the exact 96-AO batch-1 acceptance workload and the acceptance SCF and screening tolerances.",
-    "The QCE profile and endpoint gates were captured from clean commit 962f0bd; the unchanged GPU4PySCF component values come from the matching clean 1.8.1 capture published with c28b1e9.",
-    "QCE evaluates three independent primitive center derivatives for order zero and one, then reconstructs the fourth from translational invariance.",
+    "The VIBEQC profile and endpoint gates were captured from clean commit 962f0bd; the unchanged GPU4PySCF component values come from the matching clean 1.8.1 capture published with c28b1e9.",
+    "VIBEQC evaluates three independent primitive center derivatives for order zero and one, then reconstructs the fourth from translational invariance.",
     "Four pre-commit validation captures and the final clean capture all used the exact committed implementation; only two-iteration captures are included in the repeated component samples.",
-    "The batch-4 endpoint median is SCF-branch-sensitive because the final QCE batch contains 3/3/2/2 iterations across its systems.",
+    "The batch-4 endpoint median is SCF-branch-sensitive because the final VIBEQC batch contains 3/3/2/2 iterations across its systems.",
     "Component values sum CUDA kernel durations by demangled kernel family; they do not include CPU work or idle gaps."
   ],
-  "qce": {
+  "vibeqc": {
     "component_kernel_milliseconds": {
       "direct_jk": 489.40645,
       "eigensolver": 31.225549,
@@ -148,7 +148,7 @@
       ]
     }
   },
-  "qce_baseline": {
+  "vibeqc_baseline": {
     "commit": "93f6eee16cbdd35cebf58c471a00875120e46e65",
     "order_0_force_kernel_milliseconds": 30.228127,
     "order_1_force_kernel_milliseconds": 54.262768,

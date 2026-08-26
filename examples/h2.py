@@ -1,4 +1,4 @@
-from qce import Calculator
+from vibeqc import Calculator
 
 
 calculator = Calculator(method="rhf", basis="sto-3g", device="cuda")

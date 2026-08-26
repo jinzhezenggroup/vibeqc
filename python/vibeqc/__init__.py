@@ -1,4 +1,4 @@
-"""Thin Python interface to the versioned native QCE ABI."""
+"""Thin Python interface to the versioned native VIBEQC ABI."""
 
 from .calculator import Atom, Calculator, Primitive, Result, Shell
 from .batch import (

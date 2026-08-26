@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from qce import Calculator, Primitive, Shell
+from vibeqc import Calculator, Primitive, Shell
 
 
 def systems():

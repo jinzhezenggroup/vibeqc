@@ -251,61 +251,61 @@ def _launch_wrapper(spec: ShellClassSpec) -> str:
     class_name = spec.name[0].upper() + spec.name[1:]
     return f"""
 static_assert(sizeof(Generated{class_name}ShellTask) ==
-              sizeof(qce::scf::detail::GeneratedShellTask));
+              sizeof(vibeqc::scf::detail::GeneratedShellTask));
 static_assert(alignof(Generated{class_name}ShellTask) ==
-              alignof(qce::scf::detail::GeneratedShellTask));
+              alignof(vibeqc::scf::detail::GeneratedShellTask));
 static_assert(offsetof(Generated{class_name}ShellTask, primitive_begin) ==
-              offsetof(qce::scf::detail::GeneratedShellTask, primitive_begin));
+              offsetof(vibeqc::scf::detail::GeneratedShellTask, primitive_begin));
 static_assert(offsetof(Generated{class_name}ShellTask, primitive_end) ==
-              offsetof(qce::scf::detail::GeneratedShellTask, primitive_end));
+              offsetof(vibeqc::scf::detail::GeneratedShellTask, primitive_end));
 static_assert(offsetof(Generated{class_name}ShellTask, ao_begin) ==
-              offsetof(qce::scf::detail::GeneratedShellTask, ao_begin));
+              offsetof(vibeqc::scf::detail::GeneratedShellTask, ao_begin));
 static_assert(offsetof(Generated{class_name}ShellTask, ao_coefficient_begin) ==
-              offsetof(qce::scf::detail::GeneratedShellTask,
+              offsetof(vibeqc::scf::detail::GeneratedShellTask,
                        ao_coefficient_begin));
 static_assert(offsetof(Generated{class_name}ShellTask, density_offset) ==
-              offsetof(qce::scf::detail::GeneratedShellTask, density_offset));
+              offsetof(vibeqc::scf::detail::GeneratedShellTask, density_offset));
 static_assert(offsetof(Generated{class_name}ShellTask, spin_offset) ==
-              offsetof(qce::scf::detail::GeneratedShellTask, spin_offset));
+              offsetof(vibeqc::scf::detail::GeneratedShellTask, spin_offset));
 static_assert(offsetof(Generated{class_name}ShellTask, matrix_order) ==
-              offsetof(qce::scf::detail::GeneratedShellTask, matrix_order));
+              offsetof(vibeqc::scf::detail::GeneratedShellTask, matrix_order));
 static_assert(offsetof(Generated{class_name}ShellTask, shell_pair) ==
-              offsetof(qce::scf::detail::GeneratedShellTask, shell_pair));
+              offsetof(vibeqc::scf::detail::GeneratedShellTask, shell_pair));
 static_assert(
     offsetof(Generated{class_name}ShellTask, reversed_shell_pair_mask) ==
-    offsetof(qce::scf::detail::GeneratedShellTask,
+    offsetof(vibeqc::scf::detail::GeneratedShellTask,
              reversed_shell_pair_mask));
 static_assert(offsetof(Generated{class_name}ShellTask, shell) ==
-              offsetof(qce::scf::detail::GeneratedShellTask, shell));
+              offsetof(vibeqc::scf::detail::GeneratedShellTask, shell));
 static_assert(offsetof(Generated{class_name}ShellTask, atom) ==
-              offsetof(qce::scf::detail::GeneratedShellTask, atom));
+              offsetof(vibeqc::scf::detail::GeneratedShellTask, atom));
 static_assert(sizeof(Generated{class_name}PrimitivePairData) ==
-              sizeof(qce::scf::detail::GeneratedPrimitivePairData));
+              sizeof(vibeqc::scf::detail::GeneratedPrimitivePairData));
 static_assert(alignof(Generated{class_name}PrimitivePairData) ==
-              alignof(qce::scf::detail::GeneratedPrimitivePairData));
+              alignof(vibeqc::scf::detail::GeneratedPrimitivePairData));
 static_assert(
     offsetof(Generated{class_name}PrimitivePairData, exponent_sum) ==
-    offsetof(qce::scf::detail::GeneratedPrimitivePairData, exponent_sum));
+    offsetof(vibeqc::scf::detail::GeneratedPrimitivePairData, exponent_sum));
 static_assert(
     offsetof(Generated{class_name}PrimitivePairData, reduced_exponent) ==
-    offsetof(qce::scf::detail::GeneratedPrimitivePairData, reduced_exponent));
+    offsetof(vibeqc::scf::detail::GeneratedPrimitivePairData, reduced_exponent));
 static_assert(
     offsetof(Generated{class_name}PrimitivePairData, product_center) ==
-    offsetof(qce::scf::detail::GeneratedPrimitivePairData, product_center));
+    offsetof(vibeqc::scf::detail::GeneratedPrimitivePairData, product_center));
 static_assert(
     offsetof(Generated{class_name}PrimitivePairData, weighted_coefficient) ==
-    offsetof(qce::scf::detail::GeneratedPrimitivePairData,
+    offsetof(vibeqc::scf::detail::GeneratedPrimitivePairData,
              weighted_coefficient));
 static_assert(
     offsetof(Generated{class_name}PrimitivePairData, first_product_scale) ==
-    offsetof(qce::scf::detail::GeneratedPrimitivePairData,
+    offsetof(vibeqc::scf::detail::GeneratedPrimitivePairData,
              first_product_scale));
 static_assert(
     offsetof(Generated{class_name}PrimitivePairData, second_product_scale) ==
-    offsetof(qce::scf::detail::GeneratedPrimitivePairData,
+    offsetof(vibeqc::scf::detail::GeneratedPrimitivePairData,
              second_product_scale));
 
-extern "C" cudaError_t qce_launch_generated_{spec.name}(
+extern "C" cudaError_t vibeqc_launch_generated_{spec.name}(
     cudaStream_t stream, bool unrestricted, unsigned worker_blocks,
     const void* tasks, const std::uint32_t* task_offset,
     const std::int64_t* primitive_pair_offsets, const void* primitive_pairs,
@@ -344,7 +344,7 @@ def _fock_launch_wrapper(spec: ShellClassSpec) -> str:
 
     class_name = spec.name[0].upper() + spec.name[1:]
     return f"""
-extern "C" cudaError_t qce_launch_generated_{spec.name}_fock(
+extern "C" cudaError_t vibeqc_launch_generated_{spec.name}_fock(
     cudaStream_t stream, bool unrestricted, unsigned worker_blocks,
     const void* tasks, const std::uint32_t* task_offset,
     const std::int64_t* primitive_pair_offsets, const void* primitive_pairs,
@@ -488,8 +488,8 @@ def emit_registry_header(
             f"{angular_order}U, {block_threads}U, 1U, "
             f"{spec.component_count}U}},"
         )
-    return f"""#ifndef QCE_GENERATED_SHELL_REGISTRY_HPP
-#define QCE_GENERATED_SHELL_REGISTRY_HPP
+    return f"""#ifndef VIBEQC_GENERATED_SHELL_REGISTRY_HPP
+#define VIBEQC_GENERATED_SHELL_REGISTRY_HPP
 
 #include <cuda_runtime_api.h>
 
@@ -497,7 +497,7 @@ def emit_registry_header(
 #include <cstddef>
 #include <cstdint>
 
-namespace qce::scf::generated {{
+namespace vibeqc::scf::generated {{
 
 struct ShellKernelMetadata {{
   const char* name;
@@ -521,10 +521,10 @@ inline constexpr std::array<ShellKernelMetadata, {len(fock_rows)}>
 inline constexpr std::size_t kFockShellKernelCount =
     kFockShellKernels.size();
 
-/** Return the exact-class bit mask selected by QCE_AOT_SHELL_CLASSES. */
+/** Return the exact-class bit mask selected by VIBEQC_AOT_SHELL_CLASSES. */
 std::uint64_t enabled_shell_class_mask() noexcept;
 
-/** Return the Fock-class mask selected by QCE_AOT_FOCK_SHELL_CLASSES. */
+/** Return the Fock-class mask selected by VIBEQC_AOT_FOCK_SHELL_CLASSES. */
 std::uint64_t enabled_fock_shell_class_mask() noexcept;
 
 /** Launch one generated persistent kernel selected by exact class index. */
@@ -549,7 +549,7 @@ cudaError_t launch_shell_class_fock(
     const double* density, double* fock, const std::uint32_t* task_count,
     std::uint32_t* task_head) noexcept;
 
-}}  // namespace qce::scf::generated
+}}  // namespace vibeqc::scf::generated
 
 #endif
 """
@@ -568,7 +568,7 @@ def emit_registry_source(
         if KernelConsumer.FOCK in item.consumers
     )
     declarations = "\n".join(
-        f"""extern "C" cudaError_t qce_launch_generated_{spec.name}(
+        f"""extern "C" cudaError_t vibeqc_launch_generated_{spec.name}(
     cudaStream_t, bool, unsigned, const void*, const std::uint32_t*,
     const std::int64_t*, const void*, const double*, const void*, double,
     const double*, const double*, double*, const std::uint32_t*,
@@ -577,7 +577,7 @@ def emit_registry_source(
     )
     cases = "\n".join(
         f"""    case {shell_class_index(spec)}U:
-      return qce_launch_generated_{spec.name}(
+      return vibeqc_launch_generated_{spec.name}(
           stream, unrestricted, worker_blocks, tasks, task_offset,
           primitive_pair_offsets, primitive_pairs, ao_coefficients,
           atom_positions,
@@ -586,7 +586,7 @@ def emit_registry_source(
         for spec in specs
     )
     fock_declarations = "\n".join(
-        f"""extern "C" cudaError_t qce_launch_generated_{spec.name}_fock(
+        f"""extern "C" cudaError_t vibeqc_launch_generated_{spec.name}_fock(
     cudaStream_t, bool, unsigned, const void*, const std::uint32_t*,
     const std::int64_t*, const void*, const double*, const void*, double,
     const double*, const double*, double*, const std::uint32_t*,
@@ -595,14 +595,14 @@ def emit_registry_source(
     )
     fock_cases = "\n".join(
         f"""    case {shell_class_index(spec)}U:
-      return qce_launch_generated_{spec.name}_fock(
+      return vibeqc_launch_generated_{spec.name}_fock(
           stream, unrestricted, worker_blocks, tasks, task_offset,
           primitive_pair_offsets, primitive_pairs, ao_coefficients,
           atom_positions, screening_tolerance, schwarz_bounds, density, fock,
           task_count, task_head);"""
         for spec in fock_specs
     )
-    return f"""#include "qce_generated_shell_registry.hpp"
+    return f"""#include "vibeqc_generated_shell_registry.hpp"
 
 #include <cstdlib>
 #include <cstring>
@@ -610,7 +610,7 @@ def emit_registry_source(
 {declarations}
 {fock_declarations}
 
-namespace qce::scf::generated {{
+namespace vibeqc::scf::generated {{
 namespace {{
 
 bool selected(const char* list, const char* name) noexcept {{
@@ -631,7 +631,7 @@ bool selected(const char* list, const char* name) noexcept {{
 }}  // namespace
 
 std::uint64_t enabled_shell_class_mask() noexcept {{
-  const char* selection = std::getenv("QCE_AOT_SHELL_CLASSES");
+  const char* selection = std::getenv("VIBEQC_AOT_SHELL_CLASSES");
   const bool all = selection == nullptr || *selection == '\\0' ||
                    std::strcmp(selection, "all") == 0;
   if (!all && std::strcmp(selection, "none") == 0) return 0;
@@ -645,7 +645,7 @@ std::uint64_t enabled_shell_class_mask() noexcept {{
 }}
 
 std::uint64_t enabled_fock_shell_class_mask() noexcept {{
-  const char* selection = std::getenv("QCE_AOT_FOCK_SHELL_CLASSES");
+  const char* selection = std::getenv("VIBEQC_AOT_FOCK_SHELL_CLASSES");
   const bool all = selection == nullptr || *selection == '\\0' ||
                    std::strcmp(selection, "all") == 0;
   if (!all && std::strcmp(selection, "none") == 0) return 0;
@@ -688,7 +688,7 @@ cudaError_t launch_shell_class_fock(
   }}
 }}
 
-}}  // namespace qce::scf::generated
+}}  // namespace vibeqc::scf::generated
 """
 
 
@@ -717,11 +717,11 @@ def write_production_bundle(
     output_directory.mkdir(parents=True, exist_ok=True)
     outputs = []
     for index, shard in enumerate(shards):
-        path = output_directory / f"qce_generated_shell_shard_{index}.cu"
+        path = output_directory / f"vibeqc_generated_shell_shard_{index}.cu"
         _write_if_changed(path, emit_production_shard(shard))
         outputs.append(path)
-    header = output_directory / "qce_generated_shell_registry.hpp"
-    source = output_directory / "qce_generated_shell_registry.cu"
+    header = output_directory / "vibeqc_generated_shell_registry.hpp"
+    source = output_directory / "vibeqc_generated_shell_registry.cu"
     _write_if_changed(header, emit_registry_header(selections))
     _write_if_changed(source, emit_registry_source(selections))
     outputs.extend((header, source))

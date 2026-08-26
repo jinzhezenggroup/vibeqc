@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "qce-engine"
+name = "vibeqc"
 version = "0.1.0"
-description = "HF-first native electronic-structure engine prototype"
+description = "VibeQC: GPU-native batched quantum chemistry"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "GPL-3.0-or-later"}
@@ -22,4 +22,4 @@ package-dir = {"" = "python"}
 where = ["python"]
 
 [tool.setuptools.package-data]
-qce = ["data/*.json"]
+vibeqc = ["data/*.json"]

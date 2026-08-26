@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from qce import Calculator, Primitive, Shell
+from vibeqc import Calculator, Primitive, Shell
 
 
 def test_h2_energy_and_force_invariance():

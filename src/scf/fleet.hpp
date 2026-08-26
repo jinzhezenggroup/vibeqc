@@ -1,5 +1,5 @@
-#ifndef QCE_SCF_FLEET_HPP
-#define QCE_SCF_FLEET_HPP
+#ifndef VIBEQC_SCF_FLEET_HPP
+#define VIBEQC_SCF_FLEET_HPP
 
 #include "core/types.hpp"
 #include "scf/rhf.hpp"
@@ -8,17 +8,17 @@
 #include <optional>
 #include <vector>
 
-namespace qce::scf {
+namespace vibeqc::scf {
 
 struct CudaRhfBucketPlan;
 
 struct FleetItemResult {
-  qce_status status{QCE_STATUS_INTERNAL_ERROR};
+  vibeqc_status status{VIBEQC_STATUS_INTERNAL_ERROR};
   core::ScfResult scf;
   std::size_t bucket_id{};
   bool warm_start_used{};
   bool warm_start_fallback{};
-  qce_backend executed_backend{QCE_BACKEND_CPU_REFERENCE};
+  vibeqc_backend executed_backend{VIBEQC_BACKEND_CPU_REFERENCE};
 };
 
 /**
@@ -32,7 +32,7 @@ struct FleetItemResult {
 class FleetPlan {
  public:
   FleetPlan(std::vector<core::System> systems,
-            qce_method method,
+            vibeqc_method method,
             core::ScfOptions options,
             bool warm_starts_enabled,
             bool cuda_fock_enabled,
@@ -55,7 +55,7 @@ class FleetPlan {
 
  private:
   std::vector<core::System> systems_;
-  qce_method method_{QCE_METHOD_RHF};
+  vibeqc_method method_{VIBEQC_METHOD_RHF};
   core::ScfOptions options_;
   bool warm_starts_enabled_{};
   bool cuda_fock_enabled_{};
@@ -71,6 +71,6 @@ class FleetPlan {
   std::vector<CudaRhfBucketPlan*> cuda_bucket_plans_;
 };
 
-}  // namespace qce::scf
+}  // namespace vibeqc::scf
 
 #endif

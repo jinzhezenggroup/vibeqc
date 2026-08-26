@@ -1,6 +1,6 @@
-"""Homogeneous-batch QCE versus conventional GPU4PySCF throughput.
+"""Homogeneous-batch VIBEQC versus conventional GPU4PySCF throughput.
 
-QCE executes one native fixed-topology bucket. GPU4PySCF currently exposes a
+VIBEQC executes one native fixed-topology bucket. GPU4PySCF currently exposes a
 single-molecule SCF interface, so the comparison retains one initialized GPU
 object and warm density per system and executes them sequentially inside the
 same synchronized batch timing boundary.
@@ -14,7 +14,7 @@ import time
 
 import numpy as np
 
-from qce import Calculator
+from vibeqc import Calculator
 
 from _cases import benchmark_cases
 from _support import (
@@ -26,7 +26,7 @@ from _support import (
 
 
 def convergence_payload(result) -> list[dict[str, object]]:
-    """Serialize one QCE replay's per-system SCF convergence diagnostics."""
+    """Serialize one VIBEQC replay's per-system SCF convergence diagnostics."""
 
     return [
         {
@@ -146,7 +146,7 @@ def main() -> None:
         )
     calculator = Calculator(
         method=case.method,
-        basis=case.qce_basis,
+        basis=case.vibeqc_basis,
         basis_representation=case.basis_representation,
         device="cuda",
         max_iterations=args.max_iterations,
@@ -162,21 +162,21 @@ def main() -> None:
     ) as batch:
         cp.cuda.Stream.null.synchronize()
         start = time.perf_counter()
-        qce_result = batch.execute(strict=True)
+        vibeqc_result = batch.execute(strict=True)
         cp.cuda.Stream.null.synchronize()
-        qce_cold = time.perf_counter() - start
-        qce_warm = []
-        qce_warm_convergence = []
+        vibeqc_cold = time.perf_counter() - start
+        vibeqc_warm = []
+        vibeqc_warm_convergence = []
         for _ in range(args.repeats):
             cp.cuda.Stream.null.synchronize()
             start = time.perf_counter()
-            qce_result = batch.execute(strict=True)
+            vibeqc_result = batch.execute(strict=True)
             cp.cuda.Stream.null.synchronize()
-            qce_warm.append(time.perf_counter() - start)
+            vibeqc_warm.append(time.perf_counter() - start)
             # Keep timing and convergence state paired per replay. Direct-J/K
             # atomic reduction order can move a system across a tight energy
             # threshold, so retaining only the final repeat hides stragglers.
-            qce_warm_convergence.append(convergence_payload(qce_result))
+            vibeqc_warm_convergence.append(convergence_payload(vibeqc_result))
 
     gpu_objects = []
     for atoms in systems:
@@ -224,24 +224,24 @@ def main() -> None:
         cp.cuda.Stream.null.synchronize()
         gpu_warm.append(time.perf_counter() - start)
 
-    qce_energies = qce_result.energies
-    qce_forces = np.stack([item.forces for item in qce_result.items])
+    vibeqc_energies = vibeqc_result.energies
+    vibeqc_forces = np.stack([item.forces for item in vibeqc_result.items])
     gpu_energy_array = np.asarray([float(energy) for energy in gpu_energies])
     gpu_force_array = np.stack(
         [cp.asnumpy(-gradient) for gradient in gpu_gradients]
     )
-    maximum_energy_error = float(np.max(np.abs(qce_energies - gpu_energy_array)))
-    maximum_force_error = float(np.max(np.abs(qce_forces - gpu_force_array)))
-    qce_warm_median = statistics.median(qce_warm)
+    maximum_energy_error = float(np.max(np.abs(vibeqc_energies - gpu_energy_array)))
+    maximum_force_error = float(np.max(np.abs(vibeqc_forces - gpu_force_array)))
+    vibeqc_warm_median = statistics.median(vibeqc_warm)
     gpu_warm_median = statistics.median(gpu_warm)
-    warm_speedup = gpu_warm_median / qce_warm_median
-    qce_converged = all(item.converged for item in qce_result.items)
+    warm_speedup = gpu_warm_median / vibeqc_warm_median
+    vibeqc_converged = all(item.converged for item in vibeqc_result.items)
     reference_converged = all(engine.converged for engine in gpu_objects)
     gate_failures = benchmark_gate_failures(
         speedup=warm_speedup,
         maximum_energy_error=maximum_energy_error,
         maximum_force_error=maximum_force_error,
-        qce_converged=qce_converged,
+        vibeqc_converged=vibeqc_converged,
         reference_converged=reference_converged,
         minimum_speedup=args.minimum_speedup,
         maximum_energy_error_limit=args.maximum_energy_error,
@@ -255,21 +255,21 @@ def main() -> None:
     print(f"maximum energy difference: {maximum_energy_error:.3e} Eh")
     print(f"maximum force difference: {maximum_force_error:.3e} Eh/bohr")
     print(
-        "QCE final max density RMS: "
-        f"{max(item.density_rms for item in qce_result.items):.3e}"
+        "VIBEQC final max density RMS: "
+        f"{max(item.density_rms for item in vibeqc_result.items):.3e}"
     )
-    print(f"QCE/reference converged: {qce_converged}/{reference_converged}")
-    print(f"QCE cold batch: {qce_cold * 1e3:.3f} ms")
-    print(f"QCE warm median/min: {qce_warm_median * 1e3:.3f}/"
-          f"{min(qce_warm) * 1e3:.3f} ms")
+    print(f"VIBEQC/reference converged: {vibeqc_converged}/{reference_converged}")
+    print(f"VIBEQC cold batch: {vibeqc_cold * 1e3:.3f} ms")
+    print(f"VIBEQC warm median/min: {vibeqc_warm_median * 1e3:.3f}/"
+          f"{min(vibeqc_warm) * 1e3:.3f} ms")
     print(
-        "QCE warm SCF iterations: "
+        "VIBEQC warm SCF iterations: "
         + "; ".join(
             ",".join(str(item["iterations"]) for item in replay)
-            for replay in qce_warm_convergence
+            for replay in vibeqc_warm_convergence
         )
     )
-    print(f"QCE warm throughput: {args.batch / qce_warm_median:.2f} systems/s")
+    print(f"VIBEQC warm throughput: {args.batch / vibeqc_warm_median:.2f} systems/s")
     print(f"GPU4PySCF cold batch: {gpu_cold * 1e3:.3f} ms")
     print(f"GPU4PySCF warm median/min: {gpu_warm_median * 1e3:.3f}/"
           f"{min(gpu_warm) * 1e3:.3f} ms")
@@ -314,7 +314,7 @@ def main() -> None:
                 "reference_gradient_tolerance":
                     args.reference_gradient_tolerance,
                 "max_iterations": args.max_iterations,
-                "qce_screening_tolerance": args.screening_tolerance,
+                "vibeqc_screening_tolerance": args.screening_tolerance,
                 "direct_scf_tolerance": 1.0e-14,
             },
             "settings": {
@@ -330,18 +330,18 @@ def main() -> None:
                 "maximum_energy_error_hartree": maximum_energy_error,
                 "maximum_force_error_hartree_per_bohr": maximum_force_error,
             },
-            "qce": {
-                "energies_hartree": qce_energies.tolist(),
-                "forces_hartree_per_bohr": qce_forces.tolist(),
+            "vibeqc": {
+                "energies_hartree": vibeqc_energies.tolist(),
+                "forces_hartree_per_bohr": vibeqc_forces.tolist(),
                 # ``convergence`` remains the final replay for schema
                 # compatibility; ``warm_convergence`` pairs every raw timing
                 # sample with the state that produced it.
-                "convergence": convergence_payload(qce_result),
-                "warm_convergence": qce_warm_convergence,
-                "cold_seconds": qce_cold,
-                "warm_seconds": qce_warm,
-                "warm_median_seconds": qce_warm_median,
-                "warm_systems_per_second": args.batch / qce_warm_median,
+                "convergence": convergence_payload(vibeqc_result),
+                "warm_convergence": vibeqc_warm_convergence,
+                "cold_seconds": vibeqc_cold,
+                "warm_seconds": vibeqc_warm,
+                "warm_median_seconds": vibeqc_warm_median,
+                "warm_systems_per_second": args.batch / vibeqc_warm_median,
             },
             "gpu4pyscf": {
                 "energies_hartree": gpu_energy_array.tolist(),

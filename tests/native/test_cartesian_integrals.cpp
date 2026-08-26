@@ -43,8 +43,8 @@ std::size_t eri_index(std::size_t i,
   return ((i * n + j) * n + k) * n + l;
 }
 
-qce::core::System hydrogen_sp_dimer() {
-  qce::core::System system;
+vibeqc::core::System hydrogen_sp_dimer() {
+  vibeqc::core::System system;
   system.atoms = {{1, {0.0, 0.0, -0.7}}, {1, {0.0, 0.0, 0.7}}};
   system.shells = {
       {0, 0, {{1.2, 1.0}}}, {0, 1, {{0.7, 1.0}}},
@@ -52,14 +52,14 @@ qce::core::System hydrogen_sp_dimer() {
   };
   system.multiplicity = 1;
   std::string detail;
-  require(qce::molecule::validate_and_normalize(system, detail) ==
-              QCE_STATUS_SUCCESS,
+  require(vibeqc::molecule::validate_and_normalize(system, detail) ==
+              VIBEQC_STATUS_SUCCESS,
           "s/p system normalization failed");
   return system;
 }
 
-qce::core::System helium_hydrogen_sdf() {
-  qce::core::System system;
+vibeqc::core::System helium_hydrogen_sdf() {
+  vibeqc::core::System system;
   system.atoms = {{2, {0.0, 0.0, -0.7}}, {1, {0.0, 0.0, 0.7}}};
   system.shells = {
       {0, 0, {{1.5, 1.0}}},
@@ -70,22 +70,22 @@ qce::core::System helium_hydrogen_sdf() {
   system.charge = 1;
   system.multiplicity = 1;
   std::string detail;
-  require(qce::molecule::validate_and_normalize(system, detail) ==
-              QCE_STATUS_SUCCESS,
+  require(vibeqc::molecule::validate_and_normalize(system, detail) ==
+              VIBEQC_STATUS_SUCCESS,
           "s/d/f system normalization failed");
   return system;
 }
 
-qce::scf::detail::DirectQuartetTaskLayout direct_task_layout(
-    const qce::core::System& system) {
+vibeqc::scf::detail::DirectQuartetTaskLayout direct_task_layout(
+    const vibeqc::core::System& system) {
   std::vector<std::int64_t> shell_ao_offsets{0};
   std::vector<std::uint8_t> shell_angular;
-  for (const qce::core::Shell& shell : system.shells) {
+  for (const vibeqc::core::Shell& shell : system.shells) {
     shell_angular.push_back(
         static_cast<std::uint8_t>(shell.angular_momentum));
     shell_ao_offsets.push_back(
         shell_ao_offsets.back() + static_cast<std::int64_t>(
-            qce::molecule::cartesian_count(shell.angular_momentum)));
+            vibeqc::molecule::cartesian_count(shell.angular_momentum)));
   }
   std::vector<std::int32_t> shell_pair_first;
   std::vector<std::int32_t> shell_pair_second;
@@ -97,8 +97,8 @@ qce::scf::detail::DirectQuartetTaskLayout direct_task_layout(
   }
   const std::vector<std::int64_t> system_shell_pair_offsets{
       0, static_cast<std::int64_t>(shell_pair_first.size())};
-  qce::scf::detail::DirectQuartetTaskLayout layout;
-  require(qce::scf::detail::make_direct_quartet_task_layout(
+  vibeqc::scf::detail::DirectQuartetTaskLayout layout;
+  require(vibeqc::scf::detail::make_direct_quartet_task_layout(
               shell_ao_offsets, shell_angular, system_shell_pair_offsets,
               shell_pair_first, shell_pair_second, layout),
           "direct-J/K task layout rejected a valid shell topology");
@@ -113,21 +113,21 @@ int main() {
       const std::vector<std::int64_t> shell_ao_offsets{0, 1};
       const std::vector<std::int64_t> system_pair_offsets{0, 1};
       const std::vector<std::int32_t> shell_pair{0};
-      qce::scf::detail::DirectQuartetTaskLayout invalid_layout;
-      require(!qce::scf::detail::make_direct_quartet_task_layout(
+      vibeqc::scf::detail::DirectQuartetTaskLayout invalid_layout;
+      require(!vibeqc::scf::detail::make_direct_quartet_task_layout(
                   shell_ao_offsets, {4}, system_pair_offsets, shell_pair,
                   shell_pair, invalid_layout),
               "direct-J/K task layout accepted angular momentum above f");
-      require(!qce::scf::detail::make_direct_quartet_task_layout(
+      require(!vibeqc::scf::detail::make_direct_quartet_task_layout(
                   shell_ao_offsets, {}, system_pair_offsets, shell_pair,
                   shell_pair, invalid_layout),
               "direct-J/K task layout accepted missing shell angular data");
     }
-    const qce::core::System system = hydrogen_sp_dimer();
-    require(qce::molecule::ao_count(system) == 8,
+    const vibeqc::core::System system = hydrogen_sp_dimer();
+    require(vibeqc::molecule::ao_count(system) == 8,
             "s/p shell expansion produced the wrong AO count");
-    const qce::scf::CudaRhfBasisLayoutStats layout =
-        qce::scf::inspect_rhf_cuda_basis_layout({system});
+    const vibeqc::scf::CudaRhfBasisLayoutStats layout =
+        vibeqc::scf::inspect_rhf_cuda_basis_layout({system});
     require(layout.shell_count == 4 && layout.shell_pair_count == 10 &&
                 layout.shell_quartet_count == 55 &&
                 layout.ao_count == 8,
@@ -138,8 +138,8 @@ int main() {
             "expanded primitive diagnostic has the wrong Cartesian count");
     require(layout.device_basis_bytes == 796,
             "CUDA basis topology payload changed unexpectedly");
-    const qce::scf::CudaRhfBasisLayoutStats sdf_layout =
-        qce::scf::inspect_rhf_cuda_basis_layout({helium_hydrogen_sdf()});
+    const vibeqc::scf::CudaRhfBasisLayoutStats sdf_layout =
+        vibeqc::scf::inspect_rhf_cuda_basis_layout({helium_hydrogen_sdf()});
     require(sdf_layout.shell_count == 4 &&
                 sdf_layout.shell_pair_count == 10 &&
                 sdf_layout.shell_quartet_count == 55 &&
@@ -150,7 +150,7 @@ int main() {
             "s/d/f primitive storage was expanded per Cartesian component");
     require(sdf_layout.device_basis_bytes == 1326,
             "s/d/f CUDA basis topology payload changed unexpectedly");
-    const qce::scf::detail::DirectQuartetTaskLayout sdf_tasks =
+    const vibeqc::scf::detail::DirectQuartetTaskLayout sdf_tasks =
         direct_task_layout(helium_hydrogen_sdf());
     require(sdf_tasks.shell_quartet_count == 55 &&
                 sdf_tasks.exact_tile_count == 100 &&
@@ -166,10 +166,10 @@ int main() {
             "Cartesian direct-J/K angular buckets are inconsistent");
     std::array<std::size_t, 13> sdf_shell_class_orders{};
     for (std::size_t shell_class = 0;
-         shell_class < qce::scf::detail::kDirectQuartetShellClassCount;
+         shell_class < vibeqc::scf::detail::kDirectQuartetShellClassCount;
          ++shell_class) {
       const std::size_t order =
-          qce::scf::detail::direct_quartet_shell_class_angular_order(
+          vibeqc::scf::detail::direct_quartet_shell_class_angular_order(
               shell_class);
       require(order < sdf_shell_class_orders.size(),
               "direct-J/K shell class decoded an invalid angular order");
@@ -180,16 +180,16 @@ int main() {
                 sdf_tasks.exact_tile_count &&
                 sdf_shell_class_orders == sdf_tasks.angular_order_tile_counts &&
                 sdf_tasks.shell_class_tile_counts[
-                    qce::scf::detail::direct_quartet_shell_class(0, 0, 0, 0)] ==
+                    vibeqc::scf::detail::direct_quartet_shell_class(0, 0, 0, 0)] ==
                     6 &&
                 sdf_tasks.shell_class_tile_counts[
-                    qce::scf::detail::direct_quartet_shell_class(3, 3, 3, 3)] ==
+                    vibeqc::scf::detail::direct_quartet_shell_class(3, 3, 3, 3)] ==
                     7,
             "Cartesian exact shell-class partitions are inconsistent");
-    qce::core::System spherical_sdf = helium_hydrogen_sdf();
-    spherical_sdf.basis_representation = QCE_BASIS_SPHERICAL;
-    const qce::scf::CudaRhfBasisLayoutStats spherical_layout =
-        qce::scf::inspect_rhf_cuda_basis_layout({spherical_sdf});
+    vibeqc::core::System spherical_sdf = helium_hydrogen_sdf();
+    spherical_sdf.basis_representation = VIBEQC_BASIS_SPHERICAL;
+    const vibeqc::scf::CudaRhfBasisLayoutStats spherical_layout =
+        vibeqc::scf::inspect_rhf_cuda_basis_layout({spherical_sdf});
     require(spherical_layout.shell_count == 4 &&
                 spherical_layout.shell_pair_count == 10 &&
                 spherical_layout.shell_quartet_count == 55 &&
@@ -199,7 +199,7 @@ int main() {
                 spherical_layout.expanded_primitive_references == 18 &&
                 spherical_layout.device_basis_bytes == 1174,
             "spherical CUDA basis metadata is not compact and shell-owned");
-    const qce::scf::detail::DirectQuartetTaskLayout spherical_tasks =
+    const vibeqc::scf::detail::DirectQuartetTaskLayout spherical_tasks =
         direct_task_layout(spherical_sdf);
     require(spherical_tasks.shell_quartet_count == 55 &&
                 spherical_tasks.exact_tile_count == 100 &&
@@ -215,10 +215,10 @@ int main() {
             "spherical Cartesian-source angular buckets are inconsistent");
     std::array<std::size_t, 13> spherical_shell_class_orders{};
     for (std::size_t shell_class = 0;
-         shell_class < qce::scf::detail::kDirectQuartetShellClassCount;
+         shell_class < vibeqc::scf::detail::kDirectQuartetShellClassCount;
          ++shell_class) {
       spherical_shell_class_orders[
-          qce::scf::detail::direct_quartet_shell_class_angular_order(
+          vibeqc::scf::detail::direct_quartet_shell_class_angular_order(
               shell_class)] +=
           spherical_tasks.shell_class_tile_counts[shell_class];
     }
@@ -227,8 +227,8 @@ int main() {
                 spherical_shell_class_orders ==
                     spherical_tasks.angular_order_tile_counts,
             "spherical exact shell-class partitions are inconsistent");
-    const qce::integrals::IntegralData integrals =
-        qce::integrals::build_cartesian_integrals(system);
+    const vibeqc::integrals::IntegralData integrals =
+        vibeqc::integrals::build_cartesian_integrals(system);
     require(integrals.nbf == 8, "integral engine reported the wrong AO count");
 
     // Values were generated independently with PySCF 2.11/libcint using

@@ -1,5 +1,5 @@
-#ifndef QCE_SCF_DIRECT_TASK_LAYOUT_HPP
-#define QCE_SCF_DIRECT_TASK_LAYOUT_HPP
+#ifndef VIBEQC_SCF_DIRECT_TASK_LAYOUT_HPP
+#define VIBEQC_SCF_DIRECT_TASK_LAYOUT_HPP
 
 #include <algorithm>
 #include <array>
@@ -8,7 +8,7 @@
 #include <limits>
 #include <vector>
 
-namespace qce::scf::detail {
+namespace vibeqc::scf::detail {
 
 /**
  * Threads assigned to one symmetry-unique direct-J/K AO-quartet subtile.
@@ -341,6 +341,6 @@ inline bool make_direct_quartet_task_layout(
   return true;
 }
 
-}  // namespace qce::scf::detail
+}  // namespace vibeqc::scf::detail
 
 #endif

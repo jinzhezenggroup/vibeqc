@@ -5,8 +5,8 @@
     "device": "NVIDIA GeForce RTX 5090",
     "driver": "580.95.05",
     "gpu4pyscf_version": "1.8.1",
-    "qce_commit": "32af06946dd7255976518843f1ec50a1161efe32",
-    "source_note": "The measured QCE source equals 32af069; unrelated shell-codegen research files were dirty and were not linked into libqce."
+    "vibeqc_commit": "32af06946dd7255976518843f1ec50a1161efe32",
+    "source_note": "The measured VIBEQC source equals 32af069; unrelated shell-codegen research files were dirty and were not linked into libvibeqc."
   },
   "formal_real_molecule_gates": {
     "96_ao_batch_1": {
@@ -15,7 +15,7 @@
       "maximum_force_error_hartree_per_bohr": 2.0046091522840648e-12,
       "passed_accuracy": true,
       "passed_speed": false,
-      "qce_warm_median_seconds": 1.3970632920099888,
+      "vibeqc_warm_median_seconds": 1.3970632920099888,
       "warm_speedup": 0.9674880728219608
     },
     "96_ao_batch_4": {
@@ -24,7 +24,7 @@
       "maximum_force_error_hartree_per_bohr": 2.8240318070138493e-12,
       "passed_accuracy": true,
       "passed_speed": false,
-      "qce_warm_median_seconds": 5.803771242004586,
+      "vibeqc_warm_median_seconds": 5.803771242004586,
       "warm_speedup": 0.934210937840803
     },
     "192_ao_batch_1": {
@@ -32,7 +32,7 @@
       "maximum_energy_error_hartree": 1.9326762412674725e-12,
       "maximum_force_error_hartree_per_bohr": 5.2999028776756774e-11,
       "passed_accuracy": true,
-      "qce_warm_seconds": 13.475169274010113,
+      "vibeqc_warm_seconds": 13.475169274010113,
       "speed_gate": "deferred_until_density_fitting",
       "warm_speedup": 0.1646649940263352
     },
@@ -41,7 +41,7 @@
       "maximum_energy_error_hartree": 8.86757334228605e-12,
       "maximum_force_error_hartree_per_bohr": 2.3629760474708217e-10,
       "passed_accuracy": true,
-      "qce_warm_seconds": 66.71980716999678,
+      "vibeqc_warm_seconds": 66.71980716999678,
       "speed_gate": "deferred_until_density_fitting",
       "warm_speedup": 0.11636272627746806
     },
@@ -92,12 +92,12 @@
   },
   "production_96_ao_batch_1_profile": {
     "gpu4pyscf_eigensolver_kernel_milliseconds": 5.822565,
-    "previous_qce_cyclic_kernel_milliseconds": 31.225549,
+    "previous_vibeqc_cyclic_kernel_milliseconds": 31.225549,
     "profile_iterations": 3,
     "provider_kernel_instances": 226,
     "provider_kernel_milliseconds": 2.61204,
     "provider_speedup_over_gpu4pyscf": 2.2291255110947765,
-    "provider_speedup_over_previous_qce": 11.954468155158422
+    "provider_speedup_over_previous_vibeqc": 11.954468155158422
   },
   "production_192_ao_batch_1_profile": {
     "cublas_gemm_kernel_milliseconds": 0.357,
@@ -105,7 +105,7 @@
     "device_tail_scf_graph_milliseconds": 4178.837,
     "iterations": 2,
     "one_electron_force_kernel_milliseconds": 53.628,
-    "other_qce_kernel_milliseconds": 20.948,
+    "other_vibeqc_kernel_milliseconds": 20.948,
     "post_scf_direct_jk_kernel_milliseconds": 4045.472,
     "profile_wall_seconds": 11.320269237,
     "scaling_over_96_ao": {
@@ -116,7 +116,7 @@
     },
     "two_electron_force_kernel_milliseconds": 2976.035
   },
-  "qce_only_repeats": {
+  "vibeqc_only_repeats": {
     "96_ao_batch_1": {
       "median_seconds": 1.396686777996365,
       "repeats": 7,

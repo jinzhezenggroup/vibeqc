@@ -1,7 +1,7 @@
 """Accept a generated shell-class batch against the current production set.
 
-The benchmark changes ``QCE_AOT_SHELL_CLASSES`` inside one process, so the
-baseline and candidate share one prepared QCE batch, CUDA context, and GPU
+The benchmark changes ``VIBEQC_AOT_SHELL_CLASSES`` inside one process, so the
+baseline and candidate share one prepared VIBEQC batch, CUDA context, and GPU
 allocation.  If the complete candidate set fails, recursive subset checks
 identify the smallest observed regression group without rebuilding CUDA.
 """
@@ -18,7 +18,7 @@ from pathlib import Path
 import numpy as np
 from _cases import benchmark_cases
 from compare_gpu4pyscf_batch import scaled_geometries
-from qce import Calculator
+from vibeqc import Calculator
 
 
 def _class_list(value: str) -> tuple[str, ...]:
@@ -33,7 +33,7 @@ def _class_list(value: str) -> tuple[str, ...]:
 def _execute(batch, cupy, selection: tuple[str, ...], repeats: int):
     """Time one runtime selection and retain the final converged result."""
 
-    os.environ["QCE_AOT_SHELL_CLASSES"] = ",".join(selection)
+    os.environ["VIBEQC_AOT_SHELL_CLASSES"] = ",".join(selection)
     timings = []
     result = None
     for _ in range(repeats):
@@ -208,7 +208,7 @@ def main() -> None:
         systems = scaled_geometries(case.atoms, batch_size)
         calculator = Calculator(
             method=case.method,
-            basis=case.qce_basis,
+            basis=case.vibeqc_basis,
             basis_representation=case.basis_representation,
             device="cuda",
             max_iterations=arguments.max_iterations,

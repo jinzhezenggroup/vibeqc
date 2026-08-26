@@ -3,8 +3,8 @@
   "capture": {
     "capture_range": "cudaProfilerApi",
     "nsight_systems": "2025.1.3.140-251335620677v0",
-    "qce_cuda_runtime_capture_span_seconds": 1.599878920,
-    "qce_iterations": 2,
+    "vibeqc_cuda_runtime_capture_span_seconds": 1.599878920,
+    "vibeqc_iterations": 2,
     "sequence": "one uncaptured cold energy-plus-force execution followed by one captured warm execution",
     "trace": "cuda,nvtx"
   },
@@ -15,8 +15,8 @@
     "gpu4pyscf_commit": "db6bb7f12bf4b6465b7c5ff0a9741bc2be08318d",
     "gpu4pyscf_version": "1.8.1",
     "node": "node3",
-    "qce_commit": "35af36c0a970754634884a6c4401e4c06ddda11a",
-    "qce_dirty": false
+    "vibeqc_commit": "35af36c0a970754634884a6c4401e4c06ddda11a",
+    "vibeqc_dirty": false
   },
   "gpu4pyscf": {
     "component_kernel_milliseconds": {
@@ -42,14 +42,14 @@
   },
   "methodology_notes": [
     "Both engines use the exact 96-AO batch-1 acceptance workload and the acceptance SCF and screening tolerances.",
-    "The QCE profile was captured from clean commit 35af36c; the unchanged GPU4PySCF values come from the matching clean 1.8.1 capture published with c28b1e9.",
-    "QCE's runtime capture span is the interval from cuProfilerStart through the final captured CUDA synchronization, derived from the exported Nsight Systems trace.",
+    "The VIBEQC profile was captured from clean commit 35af36c; the unchanged GPU4PySCF values come from the matching clean 1.8.1 capture published with c28b1e9.",
+    "VIBEQC's runtime capture span is the interval from cuProfilerStart through the final captured CUDA synchronization, derived from the exported Nsight Systems trace.",
     "Component values sum CUDA kernel durations by demangled kernel family; they do not include CPU work or idle gaps.",
     "The direct-J/K category includes GPU4PySCF Rys K, MD J, density-transform, and q-condition kernels.",
     "The GPU4PySCF fallback force kernel covers total angular orders six through eight for this s/p/d def2-SVP workload.",
     "Span-minus-summed-kernel is diagnostic only because concurrent kernels, if present, make duration sums non-additive."
   ],
-  "qce": {
+  "vibeqc": {
     "component_kernel_milliseconds": {
       "direct_jk": 493.537120,
       "eigensolver": 31.246231,

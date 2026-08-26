@@ -6,19 +6,19 @@ import argparse
 import json
 from pathlib import Path
 
-from qce_codegen.dppp_dispatch import (
+from vibeqc_codegen.dppp_dispatch import (
     emit_shell_class_fused_cuda,
 )
-from qce_codegen.fused_schedule import build_fused_shell_plan
-from qce_codegen.ir import KernelConsumer
-from qce_codegen.low_order_force import (
+from vibeqc_codegen.fused_schedule import build_fused_shell_plan
+from vibeqc_codegen.ir import KernelConsumer
+from vibeqc_codegen.low_order_force import (
     PPSS_BLOCK_THREADS,
     PSPS_BLOCK_THREADS,
     emit_ppss_weighted_force_cuda,
     emit_psps_weighted_force_cuda,
 )
-from qce_codegen.production import write_production_bundle
-from qce_codegen.shell_class import (
+from vibeqc_codegen.production import write_production_bundle
+from vibeqc_codegen.shell_class import (
     build_dppp_component_kernel,
     build_dppp_contraction_kernel,
     build_psss_kernel,
@@ -26,7 +26,7 @@ from qce_codegen.shell_class import (
     emit_dppp_contraction_cuda,
     emit_psss_cuda,
 )
-from qce_codegen.shell_spec import DPPP_SPEC, FUSED_SHELL_SPEC_BY_NAME
+from vibeqc_codegen.shell_spec import DPPP_SPEC, FUSED_SHELL_SPEC_BY_NAME
 
 FUSED_SPECS = FUSED_SHELL_SPEC_BY_NAME
 

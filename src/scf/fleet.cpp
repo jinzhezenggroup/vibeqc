@@ -14,37 +14,37 @@
 #include <thread>
 #include <utility>
 
-namespace qce::scf {
+namespace vibeqc::scf {
 namespace {
 
 using WorkloadKey = std::tuple<std::size_t, int, int, std::size_t>;
 
-WorkloadKey workload_key(const core::System& system, qce_method method) {
+WorkloadKey workload_key(const core::System& system, vibeqc_method method) {
   std::size_t primitive_count = 0;
   for (const auto& shell : system.shells) {
     primitive_count += shell.primitives.size();
   }
   const int spin_excess = static_cast<int>(system.multiplicity) - 1;
-  const int alpha = method == QCE_METHOD_UHF
+  const int alpha = method == VIBEQC_METHOD_UHF
       ? (system.electron_count + spin_excess) / 2
       : system.electron_count / 2;
-  const int beta = method == QCE_METHOD_UHF
+  const int beta = method == VIBEQC_METHOD_UHF
       ? system.electron_count - alpha
       : alpha;
   return {molecule::ao_count(system), alpha, beta, primitive_count};
 }
 
-qce_status exception_status() {
+vibeqc_status exception_status() {
   try {
     throw;
   } catch (const std::bad_alloc&) {
-    return QCE_STATUS_OUT_OF_MEMORY;
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
   } catch (const std::invalid_argument&) {
-    return QCE_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
   } catch (const std::exception&) {
-    return QCE_STATUS_NUMERICAL_FAILURE;
+    return VIBEQC_STATUS_NUMERICAL_FAILURE;
   } catch (...) {
-    return QCE_STATUS_INTERNAL_ERROR;
+    return VIBEQC_STATUS_INTERNAL_ERROR;
   }
 }
 
@@ -66,7 +66,7 @@ void apply_coordinates(core::System& system, const std::vector<double>& coordina
 }  // namespace
 
 FleetPlan::FleetPlan(std::vector<core::System> systems,
-                     qce_method method,
+                     vibeqc_method method,
                      core::ScfOptions options,
                      bool warm_starts_enabled,
                      bool cuda_fock_enabled,
@@ -115,11 +115,11 @@ std::vector<FleetItemResult> FleetPlan::execute(
   const auto execute_one = [&](std::size_t system_index) {
     FleetItemResult& item = results[system_index];
     item.bucket_id = bucket_ids_[system_index];
-    item.executed_backend = QCE_BACKEND_CPU_REFERENCE;
+    item.executed_backend = VIBEQC_BACKEND_CPU_REFERENCE;
     core::System execution_system = systems_[system_index];
     if (!coordinates.empty() && coordinates[system_index].has_value()) {
       if (!valid_coordinates(*coordinates[system_index], execution_system.atoms.size())) {
-        item.status = QCE_STATUS_INVALID_ARGUMENT;
+        item.status = VIBEQC_STATUS_INVALID_ARGUMENT;
         return;
       }
       apply_coordinates(execution_system, *coordinates[system_index]);
@@ -129,7 +129,7 @@ std::vector<FleetItemResult> FleetPlan::execute(
         warm_starts_enabled_ && warm_densities_[system_index].has_value();
     item.warm_start_used = has_warm_density;
     try {
-      item.scf = method_ == QCE_METHOD_UHF
+      item.scf = method_ == VIBEQC_METHOD_UHF
           ? run_uhf(execution_system, options_,
                     has_warm_density ? &*warm_densities_[system_index] : nullptr)
           : run_rhf(execution_system, options_,
@@ -139,21 +139,21 @@ std::vector<FleetItemResult> FleetPlan::execute(
         // a poor numerical guess. Retry cold so warm starts never reduce the
         // robustness of independent fleet items.
         item.warm_start_fallback = true;
-        item.scf = method_ == QCE_METHOD_UHF
+        item.scf = method_ == VIBEQC_METHOD_UHF
             ? run_uhf(execution_system, options_, nullptr)
             : run_rhf(execution_system, options_, nullptr);
       }
-      item.status = item.scf.converged ? QCE_STATUS_SUCCESS
-                                       : QCE_STATUS_SCF_NOT_CONVERGED;
+      item.status = item.scf.converged ? VIBEQC_STATUS_SUCCESS
+                                       : VIBEQC_STATUS_SCF_NOT_CONVERGED;
     } catch (...) {
       if (has_warm_density) {
         try {
           item.warm_start_fallback = true;
-          item.scf = method_ == QCE_METHOD_UHF
+          item.scf = method_ == VIBEQC_METHOD_UHF
               ? run_uhf(execution_system, options_, nullptr)
               : run_rhf(execution_system, options_, nullptr);
-          item.status = item.scf.converged ? QCE_STATUS_SUCCESS
-                                           : QCE_STATUS_SCF_NOT_CONVERGED;
+          item.status = item.scf.converged ? VIBEQC_STATUS_SUCCESS
+                                           : VIBEQC_STATUS_SCF_NOT_CONVERGED;
         } catch (...) {
           item.status = exception_status();
         }
@@ -162,7 +162,7 @@ std::vector<FleetItemResult> FleetPlan::execute(
       }
     }
 
-    if (item.status == QCE_STATUS_SUCCESS && warm_starts_enabled_) {
+    if (item.status == VIBEQC_STATUS_SUCCESS && warm_starts_enabled_) {
       warm_densities_[system_index] = item.scf.density;
     }
   };
@@ -198,7 +198,7 @@ std::vector<FleetItemResult> FleetPlan::execute(
         if (!coordinates.empty() && coordinates[system_index].has_value()) {
           if (!valid_coordinates(*coordinates[system_index],
                                  execution_system.atoms.size())) {
-            item.status = QCE_STATUS_INVALID_ARGUMENT;
+            item.status = VIBEQC_STATUS_INVALID_ARGUMENT;
             continue;
           }
           apply_coordinates(execution_system, *coordinates[system_index]);
@@ -213,7 +213,7 @@ std::vector<FleetItemResult> FleetPlan::execute(
       }
 
       if (!cuda_systems.empty()) {
-        std::vector<RhfBucketItem> cuda_results = method_ == QCE_METHOD_UHF
+        std::vector<RhfBucketItem> cuda_results = method_ == VIBEQC_METHOD_UHF
             ? run_uhf_cuda_bucket_cached(
                   &cuda_bucket_plans_[bucket], cuda_systems, options_,
                   initial_densities, device_id_,
@@ -245,15 +245,15 @@ std::vector<FleetItemResult> FleetPlan::execute(
           FleetItemResult& item = results[system_index];
           item.status = cuda_results[slot].status;
           item.scf = std::move(cuda_results[slot].scf);
-          item.executed_backend = QCE_BACKEND_CUDA;
+          item.executed_backend = VIBEQC_BACKEND_CUDA;
 
-          if (item.warm_start_used && item.status != QCE_STATUS_SUCCESS &&
-              item.status != QCE_STATUS_CUDA_ERROR &&
-              item.status != QCE_STATUS_OUT_OF_MEMORY) {
+          if (item.warm_start_used && item.status != VIBEQC_STATUS_SUCCESS &&
+              item.status != VIBEQC_STATUS_CUDA_ERROR &&
+              item.status != VIBEQC_STATUS_OUT_OF_MEMORY) {
             item.warm_start_fallback = true;
             const std::vector<core::System> cold_system{cuda_systems[slot]};
             const std::vector<const std::vector<double>*> cold_density{nullptr};
-            std::vector<RhfBucketItem> cold = method_ == QCE_METHOD_UHF
+            std::vector<RhfBucketItem> cold = method_ == VIBEQC_METHOD_UHF
                 ? run_uhf_cuda_bucket(
                       cold_system, options_, cold_density, device_id_, false)
                 : run_rhf_cuda_bucket(
@@ -261,7 +261,7 @@ std::vector<FleetItemResult> FleetPlan::execute(
             item.status = cold.front().status;
             item.scf = std::move(cold.front().scf);
           }
-          if (item.status == QCE_STATUS_SUCCESS && warm_starts_enabled_) {
+          if (item.status == VIBEQC_STATUS_SUCCESS && warm_starts_enabled_) {
             warm_densities_[system_index] = item.scf.density;
           }
         }
@@ -292,4 +292,4 @@ void FleetPlan::clear_warm_starts() {
   for (auto& density : warm_densities_) density.reset();
 }
 
-}  // namespace qce::scf
+}  // namespace vibeqc::scf

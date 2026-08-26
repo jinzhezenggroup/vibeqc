@@ -1,5 +1,5 @@
-#ifndef QCE_SCF_RHF_HPP
-#define QCE_SCF_RHF_HPP
+#ifndef VIBEQC_SCF_RHF_HPP
+#define VIBEQC_SCF_RHF_HPP
 
 #include "core/types.hpp"
 #include "scf/direct_task_layout.hpp"
@@ -9,7 +9,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace qce::scf {
+namespace vibeqc::scf {
 
 /**
  * Run closed-shell RHF and assemble its variational analytic gradient.
@@ -52,7 +52,7 @@ core::ScfResult run_uhf_cuda(const core::System& system,
                              const std::vector<double>* initial_density = nullptr);
 
 struct RhfBucketItem {
-  qce_status status{QCE_STATUS_INTERNAL_ERROR};
+  vibeqc_status status{VIBEQC_STATUS_INTERNAL_ERROR};
   core::ScfResult scf;
 };
 
@@ -136,6 +136,6 @@ bool get_rhf_cuda_shell_class_profile(
 
 void destroy_rhf_cuda_bucket_plan(CudaRhfBucketPlan* plan) noexcept;
 
-}  // namespace qce::scf
+}  // namespace vibeqc::scf
 
 #endif

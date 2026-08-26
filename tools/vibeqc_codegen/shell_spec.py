@@ -20,7 +20,7 @@ _AXIS_INDEX = {axis: index for index, axis in enumerate(AXES)}
 
 
 def cartesian_components(angular_momentum: int) -> tuple[str, ...]:
-    """Return Cartesian components in QCE's CCA ordering.
+    """Return Cartesian components in VIBEQC's CCA ordering.
 
     The ordering is descending in the x exponent and then descending in the y
     exponent.  This produces ``x, y, z`` for p shells and
