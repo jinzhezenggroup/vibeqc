@@ -17,6 +17,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <limits>
 #include <new>
 #include <optional>
@@ -54,6 +55,11 @@ constexpr unsigned kCaptureSafeKernelThreads = 32;
 // the same occupancy target. Keep one shared limit so their scheduling policy
 // cannot drift when the device SM count changes.
 constexpr unsigned kPersistentQuartetWarpsPerMultiprocessor = 8;
+// Resident psss force blocks keep one p-s primitive-pair list in shared
+// memory while their threads traverse the system's s-s ket pairs. Large
+// contracted bases fall back to the established compact-tile worker.
+constexpr unsigned kResidentPsssThreads = 128;
+constexpr std::size_t kResidentPsssMaximumBraPrimitivePairs = 64;
 // Orders zero through six have dedicated analytic derivatives and enough work
 // to amortize the device queue. Higher generic Dual3 orders retain fixed grids
 // because queue state raises their already-maximal register footprint without
@@ -106,6 +112,15 @@ struct ActiveShellQuartetTile {
 };
 
 static_assert(sizeof(ActiveShellQuartetTile) == 3 * sizeof(std::uint32_t));
+
+/** One static resident-bra task over a compact contiguous ket-pair chunk. */
+struct PsssResidentTask {
+  std::uint32_t bra_pair;
+  std::uint32_t ket_begin;
+  std::uint32_t ket_count;
+};
+
+static_assert(sizeof(PsssResidentTask) == 3 * sizeof(std::uint32_t));
 
 /** Optional final-density profiling counters; never touched in normal runs. */
 struct DeviceShellClassProfileEntry {
@@ -3566,6 +3581,7 @@ contracted_eri_cartesian_source_psss(
  * decay, and Boys values are evaluated only once. The fourth-center gradient
  * is intentionally omitted and restored from translation by the force task.
  */
+template <bool ResidentBra>
 __device__ __noinline__ PsssWeightedGradient
 contracted_eri_cartesian_source_psss_weighted_gradient(
     const DeviceBatch& batch,
@@ -3575,7 +3591,9 @@ contracted_eri_cartesian_source_psss_weighted_gradient(
     std::int32_t paired_s_shell,
     std::int32_t third_shell,
     std::int32_t fourth_shell,
-    const double (&density_coefficient)[3]) {
+    const double (&density_coefficient)[3],
+    const PrimitivePairData* resident_first_pairs,
+    std::int64_t resident_first_pair_count) {
   const Vec3<double> first = atom_position<double>(
       batch, batch.shell_atoms[p_shell], -1);
   const Vec3<double> second = atom_position<double>(
@@ -3607,18 +3625,21 @@ contracted_eri_cartesian_source_psss_weighted_gradient(
       batch.shell_pair_first[first_shell_pair] == p_shell;
   const bool second_pair_matches_canonical_order =
       batch.shell_pair_first[second_shell_pair] == third_shell;
-  const std::int64_t first_pair_begin =
-      batch.shell_pair_primitive_offsets[first_shell_pair];
-  const std::int64_t first_pair_end =
-      batch.shell_pair_primitive_offsets[first_shell_pair + 1];
+  const std::int64_t first_pair_begin = ResidentBra
+      ? 0
+      : batch.shell_pair_primitive_offsets[first_shell_pair];
+  const std::int64_t first_pair_end = ResidentBra
+      ? resident_first_pair_count
+      : batch.shell_pair_primitive_offsets[first_shell_pair + 1];
   const std::int64_t second_pair_begin =
       batch.shell_pair_primitive_offsets[second_shell_pair];
   const std::int64_t second_pair_end =
       batch.shell_pair_primitive_offsets[second_shell_pair + 1];
   for (std::int64_t first_primitive = first_pair_begin;
        first_primitive < first_pair_end; ++first_primitive) {
-    const PrimitivePairData first_pair =
-        batch.shell_primitive_pairs[first_primitive];
+    const PrimitivePairData first_pair = ResidentBra
+        ? resident_first_pairs[first_primitive]
+        : batch.shell_primitive_pairs[first_primitive];
     const double p = first_pair.exponent_sum;
     const double mu = first_pair.reduced_exponent;
     const Vec3<double> product_p = first_pair.product_center;
@@ -7153,6 +7174,43 @@ __global__ void clear_active_shell_quartet_tile_counts_kernel(
   }
 }
 
+/** Apply the shell-level Schwarz and density gates shared by all consumers. */
+__device__ __forceinline__ bool direct_shell_quartet_survives_screening(
+    const DeviceBatch& batch,
+    std::size_t first_pair,
+    std::size_t second_pair,
+    double screening_tolerance,
+    const double* shell_pair_bounds,
+    const ShellPairDensityBounds* shell_pair_density_bounds) {
+  const double quartet_bound =
+      shell_pair_bounds[first_pair] * shell_pair_bounds[second_pair];
+  if (quartet_bound < screening_tolerance) return false;
+
+  const std::int32_t system = batch.shell_pair_systems[first_pair];
+  const std::int32_t first_shell = batch.shell_pair_first[first_pair];
+  const std::int32_t second_shell = batch.shell_pair_second[first_pair];
+  const std::int32_t third_shell = batch.shell_pair_first[second_pair];
+  const std::int32_t fourth_shell = batch.shell_pair_second[second_pair];
+  double density_bound = fmax(
+      shell_pair_density_bounds[first_pair].coulomb,
+      shell_pair_density_bounds[second_pair].coulomb);
+  const std::size_t crossed_pairs[4] = {
+      system_shell_pair_index(
+          batch, system, first_shell, third_shell),
+      system_shell_pair_index(
+          batch, system, first_shell, fourth_shell),
+      system_shell_pair_index(
+          batch, system, second_shell, third_shell),
+      system_shell_pair_index(
+          batch, system, second_shell, fourth_shell),
+  };
+  for (const std::size_t crossed_pair : crossed_pairs) {
+    density_bound = fmax(
+        density_bound, shell_pair_density_bounds[crossed_pair].exchange);
+  }
+  return quartet_bound * density_bound >= screening_tolerance;
+}
+
 __global__ void compact_active_shell_quartet_tiles_kernel(
     DeviceBatch batch,
     double screening_tolerance,
@@ -7180,34 +7238,14 @@ __global__ void compact_active_shell_quartet_tiles_kernel(
       static_cast<std::size_t>(batch.system_shell_pair_offsets[system]);
   const std::size_t first_pair = pair_begin + first_pair_local;
   const std::size_t second_pair = pair_begin + second_pair_local;
-  const double quartet_bound =
-      shell_pair_bounds[first_pair] * shell_pair_bounds[second_pair];
-  if (quartet_bound < screening_tolerance) {
-    return;
-  }
+  if (!direct_shell_quartet_survives_screening(
+          batch, first_pair, second_pair, screening_tolerance,
+          shell_pair_bounds, shell_pair_density_bounds)) return;
 
   const std::int32_t first_shell = batch.shell_pair_first[first_pair];
   const std::int32_t second_shell = batch.shell_pair_second[first_pair];
   const std::int32_t third_shell = batch.shell_pair_first[second_pair];
   const std::int32_t fourth_shell = batch.shell_pair_second[second_pair];
-  double density_bound = fmax(
-      shell_pair_density_bounds[first_pair].coulomb,
-      shell_pair_density_bounds[second_pair].coulomb);
-  const std::size_t crossed_pairs[4] = {
-      system_shell_pair_index(
-          batch, system, first_shell, third_shell),
-      system_shell_pair_index(
-          batch, system, first_shell, fourth_shell),
-      system_shell_pair_index(
-          batch, system, second_shell, third_shell),
-      system_shell_pair_index(
-          batch, system, second_shell, fourth_shell),
-  };
-  for (const std::size_t crossed_pair : crossed_pairs) {
-    density_bound = fmax(
-        density_bound, shell_pair_density_bounds[crossed_pair].exchange);
-  }
-  if (quartet_bound * density_bound < screening_tolerance) return;
 
   const std::size_t first_ao_pair_count =
       shell_ao_pair_count(batch, first_pair);
@@ -9279,7 +9317,7 @@ __device__ __forceinline__ double direct_force_density_coefficient(
 }
 
 /** Evaluate and write one complete density-weighted psss force shell task. */
-template <bool Unrestricted>
+template <bool Unrestricted, bool ResidentBra = false>
 __device__ __noinline__ void contract_two_electron_force_psss_task(
     const DeviceBatch& batch,
     ActiveShellQuartetTile task,
@@ -9288,7 +9326,9 @@ __device__ __noinline__ void contract_two_electron_force_psss_task(
     const double* density,
     const std::uint8_t* active,
     double* forces,
-    std::uint64_t generated_shell_class_mask) {
+    std::uint64_t generated_shell_class_mask,
+    const PrimitivePairData* resident_first_pairs = nullptr,
+    std::int64_t resident_first_pair_count = 0) {
   if (task.tile != 0U) return;
   const std::size_t first_pair = task.first_pair;
   const std::size_t second_pair = task.second_pair;
@@ -9403,10 +9443,11 @@ __device__ __noinline__ void contract_two_electron_force_psss_task(
   }
 
   const PsssWeightedGradient gradient =
-      contracted_eri_cartesian_source_psss_weighted_gradient(
+      contracted_eri_cartesian_source_psss_weighted_gradient<ResidentBra>(
           batch, canonical_pair[0], canonical_pair[1],
           slots[0], slots[1], slots[2], slots[3],
-          density_coefficient);
+          density_coefficient, resident_first_pairs,
+          resident_first_pair_count);
   double derivative_sum[3]{};
   for (unsigned atom = 0; atom + 1 < unique_center_count; ++atom) {
     const std::int64_t coordinate =
@@ -10119,6 +10160,79 @@ __global__ void two_electron_force_quartet_packed_persistent_kernel(
   }
 }
 
+/**
+ * Keep one p-s bra resident while block threads traverse all s-s ket pairs.
+ *
+ * Total angular order one contains only psss quartets, so enumerating each
+ * p-s shell pair once and each s-s shell pair in its system once preserves
+ * unique quartet ownership without consulting the unordered compact queue.
+ * The shared primitive-pair records remove the remaining repeated bra loads
+ * across the hundreds of ket tasks normally associated with one 192-AO bra.
+ */
+template <bool Unrestricted>
+__global__ void two_electron_force_psss_resident_bra_kernel(
+    DeviceBatch batch,
+    const PsssResidentTask* resident_tasks,
+    const std::uint32_t* resident_ket_pairs,
+    std::size_t resident_task_count,
+    double screening_tolerance,
+    const double* shell_pair_bounds,
+    const ShellPairDensityBounds* shell_pair_density_bounds,
+    const double* schwarz_bounds,
+    const double* density,
+    const std::uint8_t* active,
+    double* forces,
+    std::uint64_t generated_shell_class_mask) {
+  extern __shared__ PrimitivePairData resident_first_pairs[];
+  const std::size_t task_index = static_cast<std::size_t>(blockIdx.x);
+  if (task_index >= resident_task_count) return;
+  const PsssResidentTask task = resident_tasks[task_index];
+  const std::size_t bra_pair = task.bra_pair;
+
+  const std::int32_t system = batch.shell_pair_systems[bra_pair];
+  if (active[system] == 0) return;
+  const std::int32_t bra_first_shell = batch.shell_pair_first[bra_pair];
+  const std::int32_t bra_second_shell = batch.shell_pair_second[bra_pair];
+  const unsigned bra_first_angular = batch.shell_angular[bra_first_shell];
+  const unsigned bra_second_angular = batch.shell_angular[bra_second_shell];
+  if (bra_first_angular + bra_second_angular != 1U) return;
+
+  const std::int64_t bra_primitive_begin =
+      batch.shell_pair_primitive_offsets[bra_pair];
+  const std::int64_t bra_primitive_count =
+      batch.shell_pair_primitive_offsets[bra_pair + 1U] -
+      bra_primitive_begin;
+  if (bra_primitive_count <= 0 ||
+      bra_primitive_count > static_cast<std::int64_t>(
+          kResidentPsssMaximumBraPrimitivePairs)) return;
+  for (std::int64_t primitive = threadIdx.x;
+       primitive < bra_primitive_count; primitive += blockDim.x) {
+    resident_first_pairs[primitive] =
+        batch.shell_primitive_pairs[bra_primitive_begin + primitive];
+  }
+  __syncthreads();
+
+  for (std::size_t local_ket = threadIdx.x;
+       local_ket < task.ket_count; local_ket += blockDim.x) {
+    const std::size_t ket_pair =
+        resident_ket_pairs[task.ket_begin + local_ket];
+    const std::size_t first_pair = bra_pair > ket_pair ? bra_pair : ket_pair;
+    const std::size_t second_pair = bra_pair > ket_pair ? ket_pair : bra_pair;
+    if (!direct_shell_quartet_survives_screening(
+            batch, first_pair, second_pair, screening_tolerance,
+            shell_pair_bounds, shell_pair_density_bounds)) {
+      continue;
+    }
+    contract_two_electron_force_psss_task<Unrestricted, true>(
+        batch,
+        {static_cast<std::uint32_t>(first_pair),
+         static_cast<std::uint32_t>(second_pair), 0U},
+        screening_tolerance, schwarz_bounds, density, active, forces,
+        generated_shell_class_mask, resident_first_pairs,
+        bra_primitive_count);
+  }
+}
+
 /** Consume complete density-weighted psss force tasks, one task per lane. */
 template <bool Unrestricted>
 __global__ void two_electron_force_psss_persistent_kernel(
@@ -10509,7 +10623,13 @@ void launch_angular_force_quartets(
     const ActiveShellQuartetTile* generic_order5_tiles,
     std::uint32_t* persistent_task_heads,
     unsigned persistent_worker_blocks,
+    const PsssResidentTask* psss_resident_tasks,
+    const std::uint32_t* psss_resident_ket_pairs,
+    std::size_t psss_resident_task_count,
+    std::size_t resident_psss_bra_primitive_pairs,
     double screening_tolerance,
+    const double* shell_pair_bounds,
+    const ShellPairDensityBounds* shell_pair_density_bounds,
     const double* schwarz_bounds,
     const double* density,
     const std::uint8_t* active,
@@ -10540,16 +10660,31 @@ void launch_angular_force_quartets(
             schwarz_bounds, density, active, forces,
             generated_shell_class_mask);
       } else if constexpr (AngularOrder == kFusedPsssAngularOrder) {
-        const unsigned capacity_workers = static_cast<unsigned>(
-            (capacities[AngularOrder] + detail::kDirectQuartetThreads - 1) /
-            detail::kDirectQuartetThreads);
-        two_electron_force_psss_persistent_kernel<Unrestricted><<<
-            std::min(capacity_workers, persistent_worker_blocks),
-            detail::kDirectQuartetThreads, 0, stream>>>(
-            batch, order_tile_count, order_tiles,
-            persistent_task_heads + AngularOrder, screening_tolerance,
-            schwarz_bounds, density, active, forces,
-            generated_shell_class_mask);
+        if (psss_resident_task_count != 0 &&
+            resident_psss_bra_primitive_pairs != 0 &&
+            resident_psss_bra_primitive_pairs <=
+                kResidentPsssMaximumBraPrimitivePairs) {
+          two_electron_force_psss_resident_bra_kernel<Unrestricted><<<
+              static_cast<unsigned>(psss_resident_task_count),
+              kResidentPsssThreads,
+              resident_psss_bra_primitive_pairs * sizeof(PrimitivePairData),
+              stream>>>(
+              batch, psss_resident_tasks, psss_resident_ket_pairs,
+              psss_resident_task_count, screening_tolerance, shell_pair_bounds,
+              shell_pair_density_bounds, schwarz_bounds, density, active,
+              forces, generated_shell_class_mask);
+        } else {
+          const unsigned capacity_workers = static_cast<unsigned>(
+              (capacities[AngularOrder] + detail::kDirectQuartetThreads - 1) /
+              detail::kDirectQuartetThreads);
+          two_electron_force_psss_persistent_kernel<Unrestricted><<<
+              std::min(capacity_workers, persistent_worker_blocks),
+              detail::kDirectQuartetThreads, 0, stream>>>(
+              batch, order_tile_count, order_tiles,
+              persistent_task_heads + AngularOrder, screening_tolerance,
+              schwarz_bounds, density, active, forces,
+              generated_shell_class_mask);
+        }
       } else if constexpr (AngularOrder == kFusedOrderTwoAngularOrder) {
         const unsigned capacity_workers = static_cast<unsigned>(
             (capacities[AngularOrder] + detail::kDirectQuartetThreads - 1) /
@@ -10621,8 +10756,12 @@ void launch_angular_force_quartets(
     launch_angular_force_quartets<Unrestricted, AngularOrder + 1>(
         stream, capacities, offsets, batch, active_tile_counts, active_tiles,
         generic_order5_tile_count, generic_order5_tiles,
-        persistent_task_heads, persistent_worker_blocks, screening_tolerance,
-        schwarz_bounds, density, active, forces,
+        persistent_task_heads, persistent_worker_blocks,
+        psss_resident_tasks, psss_resident_ket_pairs,
+        psss_resident_task_count,
+        resident_psss_bra_primitive_pairs, screening_tolerance,
+        shell_pair_bounds, shell_pair_density_bounds, schwarz_bounds,
+        density, active, forces,
         generated_shell_class_mask);
   }
 }
@@ -10662,6 +10801,8 @@ struct ArenaLayout {
   std::size_t shell_pair_second{};
   std::size_t shell_pair_primitive_offsets{};
   std::size_t shell_primitive_pairs{};
+  std::size_t psss_resident_tasks{};
+  std::size_t psss_resident_ket_pairs{};
   std::size_t ao_shells{};
   std::size_t ao_term_counts{};
   std::size_t ao_term_angular{};
@@ -10748,6 +10889,8 @@ bool make_layout(std::size_t batch_size,
                  std::size_t shell_count,
                  std::size_t shell_pair_count,
                  std::size_t shell_pair_primitive_count,
+                 std::size_t psss_resident_task_count,
+                 std::size_t psss_resident_ket_pair_count,
                  std::size_t shell_quartet_tile_count,
                  std::size_t generated_shell_task_capacity,
                  std::size_t generic_order5_tile_capacity,
@@ -10830,6 +10973,11 @@ bool make_layout(std::size_t batch_size,
       !append_array<PrimitivePairData>(
           shell_quartet_tile_count == 0 ? 0 : shell_pair_primitive_count,
           cursor, made.shell_primitive_pairs) ||
+      !append_array<PsssResidentTask>(
+          psss_resident_task_count, cursor, made.psss_resident_tasks) ||
+      !append_array<std::uint32_t>(
+          psss_resident_ket_pair_count, cursor,
+          made.psss_resident_ket_pairs) ||
       !append_array<std::int32_t>(aos, cursor, made.ao_shells) ||
       !append_array<std::uint8_t>(aos, cursor, made.ao_term_counts) ||
       !append_array<std::uint8_t>(
@@ -10979,6 +11127,8 @@ struct HostBatch {
   std::vector<std::int32_t> shell_pair_first;
   std::vector<std::int32_t> shell_pair_second;
   std::vector<std::int64_t> shell_pair_primitive_offsets;
+  std::vector<PsssResidentTask> psss_resident_tasks;
+  std::vector<std::uint32_t> psss_resident_ket_pairs;
   std::vector<std::int32_t> ao_shells;
   std::vector<std::uint8_t> ao_term_counts;
   std::vector<std::uint8_t> ao_term_angular;
@@ -11172,9 +11322,47 @@ bool pack_host_batch(const std::vector<core::System>& systems,
       }
     }
     const std::size_t system_shell_pair_end = host.shell_pair_first.size();
+    const std::size_t system_shell_pair_begin = static_cast<std::size_t>(
+        host.system_shell_pair_offsets.back());
     const std::size_t system_shell_pair_count =
-        system_shell_pair_end -
-        static_cast<std::size_t>(host.system_shell_pair_offsets.back());
+        system_shell_pair_end - system_shell_pair_begin;
+    std::vector<std::uint32_t> psss_bra_pairs;
+    const std::size_t resident_ket_begin =
+        host.psss_resident_ket_pairs.size();
+    for (std::size_t pair = system_shell_pair_begin;
+         pair < system_shell_pair_end; ++pair) {
+      if (pair > std::numeric_limits<std::uint32_t>::max()) return false;
+      const std::int32_t first_shell = host.shell_pair_first[pair];
+      const std::int32_t second_shell = host.shell_pair_second[pair];
+      const unsigned first_angular = host.shell_angular[first_shell];
+      const unsigned second_angular = host.shell_angular[second_shell];
+      if (first_angular + second_angular == 1U) {
+        psss_bra_pairs.push_back(static_cast<std::uint32_t>(pair));
+      } else if (first_angular == 0U && second_angular == 0U) {
+        host.psss_resident_ket_pairs.push_back(
+            static_cast<std::uint32_t>(pair));
+      }
+    }
+    const std::size_t resident_ket_count =
+        host.psss_resident_ket_pairs.size() - resident_ket_begin;
+    if (resident_ket_begin > std::numeric_limits<std::uint32_t>::max() ||
+        resident_ket_count > std::numeric_limits<std::uint32_t>::max()) {
+      return false;
+    }
+    for (const std::uint32_t bra_pair : psss_bra_pairs) {
+      for (std::size_t ket = 0; ket < resident_ket_count;
+           ket += kResidentPsssThreads) {
+        const std::size_t chunk_count = std::min<std::size_t>(
+            kResidentPsssThreads, resident_ket_count - ket);
+        const std::size_t chunk_begin = resident_ket_begin + ket;
+        if (chunk_begin > std::numeric_limits<std::uint32_t>::max()) {
+          return false;
+        }
+        host.psss_resident_tasks.push_back(
+            {bra_pair, static_cast<std::uint32_t>(chunk_begin),
+             static_cast<std::uint32_t>(chunk_count)});
+      }
+    }
     host.system_shell_pair_offsets.push_back(
         static_cast<std::int64_t>(system_shell_pair_end));
     std::size_t system_shell_pair_plus_one = 0;
@@ -11453,6 +11641,8 @@ struct CudaRhfBucketPlan {
   std::array<std::uint32_t, detail::kDirectQuartetAngularOrderCount + 1>
       shell_quartet_tile_offsets{};
   unsigned persistent_quartet_worker_blocks{};
+  std::size_t resident_psss_bra_primitive_pairs{};
+  std::size_t resident_psss_task_count{};
   std::size_t primitive_count{};
   std::size_t diis_history{};
   int lwork{};
@@ -11635,6 +11825,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   // validate the resulting fixed Graph grid before narrowing it to unsigned.
   if (total_shell_pairs > std::numeric_limits<unsigned>::max() ||
       total_shell_quartets > std::numeric_limits<unsigned>::max() ||
+      host.psss_resident_tasks.size() >
+          std::numeric_limits<unsigned>::max() ||
       total_shell_quartet_tiles >
           std::numeric_limits<unsigned>::max() /
               detail::kDirectQuartetSubtilesPerTile) {
@@ -11695,6 +11887,12 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   if (first_setup) {
     if (!make_layout(batch_size, nbf, direct_nbf, total_atoms, total_shells,
                      total_shell_pairs, total_shell_pair_primitives,
+                     requested_quartet_direct
+                         ? host.psss_resident_tasks.size()
+                         : 0,
+                     requested_quartet_direct
+                         ? host.psss_resident_ket_pairs.size()
+                         : 0,
                      total_shell_quartet_tiles,
                      generated_shell_task_capacity,
                      generic_order5_tile_capacity,
@@ -11715,6 +11913,30 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     plan.total_shell_pairs = total_shell_pairs;
     plan.total_shell_quartets = total_shell_quartets;
     plan.total_shell_quartet_tiles = total_shell_quartet_tiles;
+    plan.resident_psss_bra_primitive_pairs = 0;
+    const char* resident_psss_selection =
+        std::getenv("QCE_PSSS_RESIDENT_BRA");
+    const bool resident_psss_enabled =
+        resident_psss_selection == nullptr ||
+        (std::strcmp(resident_psss_selection, "0") != 0 &&
+         std::strcmp(resident_psss_selection, "none") != 0);
+    plan.resident_psss_task_count =
+        requested_quartet_direct && resident_psss_enabled
+        ? host.psss_resident_tasks.size()
+        : 0;
+    for (std::size_t pair = 0; pair < total_shell_pairs; ++pair) {
+      const std::int32_t first_shell = host.shell_pair_first[pair];
+      const std::int32_t second_shell = host.shell_pair_second[pair];
+      if (host.shell_angular[first_shell] +
+              host.shell_angular[second_shell] != 1U) {
+        continue;
+      }
+      const std::size_t primitive_pairs = static_cast<std::size_t>(
+          host.shell_pair_primitive_offsets[pair + 1] -
+          host.shell_pair_primitive_offsets[pair]);
+      plan.resident_psss_bra_primitive_pairs = std::max(
+          plan.resident_psss_bra_primitive_pairs, primitive_pairs);
+    }
     plan.shell_quartet_tile_capacities =
         direct_task_layout.angular_order_tile_counts;
     for (std::size_t order = 0;
@@ -11862,6 +12084,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       resources.arena_, layout.shell_pair_primitive_offsets);
   auto shell_primitive_pairs = arena_pointer<PrimitivePairData>(
       resources.arena_, layout.shell_primitive_pairs);
+  auto psss_resident_tasks = arena_pointer<PsssResidentTask>(
+      resources.arena_, layout.psss_resident_tasks);
+  auto psss_resident_ket_pairs = arena_pointer<std::uint32_t>(
+      resources.arena_, layout.psss_resident_ket_pairs);
   auto ao_shells =
       arena_pointer<std::int32_t>(resources.arena_, layout.ao_shells);
   auto ao_term_counts =
@@ -12028,6 +12254,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         quartet_direct
             ? host.shell_pair_primitive_offsets.size() *
                   sizeof(std::int64_t)
+            : 0}},
+      {host.psss_resident_tasks.data(),
+       {psss_resident_tasks,
+        quartet_direct
+            ? host.psss_resident_tasks.size() * sizeof(PsssResidentTask)
+            : 0}},
+      {host.psss_resident_ket_pairs.data(),
+       {psss_resident_ket_pairs,
+        quartet_direct
+            ? host.psss_resident_ket_pairs.size() * sizeof(std::uint32_t)
             : 0}},
       {host.ao_shells.data(),
        {ao_shells, host.ao_shells.size() * sizeof(std::int32_t)}},
@@ -12859,7 +13095,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         active_shell_quartet_tile_counts, active_shell_quartet_tiles,
         generic_order5_tile_count, generic_order5_tiles,
         persistent_force_task_heads, plan.persistent_quartet_worker_blocks,
-        options.screening_tolerance, schwarz_bounds,
+        psss_resident_tasks, psss_resident_ket_pairs,
+        plan.resident_psss_task_count,
+        plan.resident_psss_bra_primitive_pairs,
+        options.screening_tolerance, shell_pair_bounds,
+        shell_pair_density_bounds, schwarz_bounds,
         transformed_direct ? direct_density : density, active, forces,
         generated_shell_class_mask);
   } else if (unrestricted) {
@@ -12890,7 +13130,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         active_shell_quartet_tile_counts, active_shell_quartet_tiles,
         generic_order5_tile_count, generic_order5_tiles,
         persistent_force_task_heads, plan.persistent_quartet_worker_blocks,
-        options.screening_tolerance, schwarz_bounds,
+        psss_resident_tasks, psss_resident_ket_pairs,
+        plan.resident_psss_task_count,
+        plan.resident_psss_bra_primitive_pairs,
+        options.screening_tolerance, shell_pair_bounds,
+        shell_pair_density_bounds, schwarz_bounds,
         transformed_direct ? direct_density : density, active, forces,
         generated_shell_class_mask);
   } else {
