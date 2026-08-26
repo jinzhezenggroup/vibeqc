@@ -43,6 +43,37 @@ def _distribution_version(names: Iterable[str]) -> str | None:
     return None
 
 
+def _source_status_payload(
+    tracked_status: str | None,
+    untracked_paths: str | None,
+) -> dict[str, Any]:
+    """Separate source dirtiness from newly generated result artifacts.
+
+    A benchmark matrix commonly writes several new JSON files before they are
+    committed together. Earlier files in that same matrix must not make later
+    runs look as though they used modified scientific source. Tracked changes
+    always count as dirty; only untracked ``benchmarks/results/*.json`` files
+    are classified as pending generated evidence instead of source changes.
+    """
+
+    if tracked_status is None or untracked_paths is None:
+        return {
+            "dirty": None,
+            "pending_generated_benchmark_artifacts": None,
+        }
+    untracked = [line for line in untracked_paths.splitlines() if line]
+    pending_results = [
+        path
+        for path in untracked
+        if path.startswith("benchmarks/results/") and path.endswith(".json")
+    ]
+    source_untracked = [path for path in untracked if path not in pending_results]
+    return {
+        "dirty": bool(tracked_status or source_untracked),
+        "pending_generated_benchmark_artifacts": len(pending_results),
+    }
+
+
 def environment_metadata(
     *,
     distributions: dict[str, tuple[str, ...]] | None = None,
@@ -56,7 +87,11 @@ def environment_metadata(
     """
 
     head = _git_output("rev-parse", "HEAD")
-    status = _git_output("status", "--porcelain=v1")
+    tracked_status = _git_output(
+        "status", "--porcelain=v1", "--untracked-files=no"
+    )
+    untracked_paths = _git_output("ls-files", "--others", "--exclude-standard")
+    source_status = _source_status_payload(tracked_status, untracked_paths)
     package_versions = {
         label: _distribution_version(candidates)
         for label, candidates in (distributions or {}).items()
@@ -65,7 +100,7 @@ def environment_metadata(
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "git": {
             "commit": head,
-            "dirty": None if status is None else bool(status),
+            **source_status,
         },
         "host": {
             "node": platform.node(),

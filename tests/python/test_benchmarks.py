@@ -51,6 +51,17 @@ def _batch_comparison_module():
     return module
 
 
+def _results_summary_module():
+    """Load the artifact-to-Markdown generator as a pure helper module."""
+
+    path = REPOSITORY_ROOT / "benchmarks" / "generate_results_summary.py"
+    spec = importlib.util.spec_from_file_location("vibeqc_results_summary", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def test_batch_benchmark_writes_reproducible_json(tmp_path):
     """Keep benchmark artifacts tied to raw samples and exact source state."""
 
@@ -87,6 +98,24 @@ def test_batch_benchmark_writes_reproducible_json(tmp_path):
     assert payload["result"]["executed_backend"] == "cpu_reference"
     assert payload["environment"]["git"]["commit"]
     assert payload["environment"]["packages"]["numpy"]
+
+
+def test_benchmark_source_status_ignores_only_pending_result_json():
+    support = _benchmark_support_module()
+    assert support._source_status_payload(
+        "",
+        "benchmarks/results/new-point.json\n",
+    ) == {
+        "dirty": False,
+        "pending_generated_benchmark_artifacts": 1,
+    }
+    assert support._source_status_payload(
+        " M src/scf/rhf.cpp",
+        "benchmarks/results/new-point.json\nnotes.txt\n",
+    ) == {
+        "dirty": True,
+        "pending_generated_benchmark_artifacts": 1,
+    }
 
 
 def test_gpu_comparison_help_does_not_require_an_allocated_device():
@@ -159,6 +188,7 @@ def test_real_molecule_gate_has_four_explicit_dry_run_points(tmp_path):
     assert sum("water-octamer-s4-def2-svp-spherical" in line for line in commands) == 2
     assert sum("--batch 1" in line for line in commands) == 2
     assert sum("--batch 4" in line for line in commands) == 2
+    assert all("--repeats 5" in line for line in commands)
     assert sum("--minimum-speedup 1.0" in line for line in commands) == 2
     assert all("--max-iterations 100" in line for line in commands)
     assert all("--energy-tolerance 1e-12" in line for line in commands)
@@ -243,6 +273,159 @@ def test_batch_comparison_pairs_each_timing_with_convergence_state():
     assert [item["iterations"] for item in payload] == [2, 3]
     assert payload[0]["energy_change_hartree"] == 1.5e-12
     assert payload[1]["density_rms"] == 4.0e-14
+    assert payload[0]["final_residuals"]["energy_change_hartree"] == 1.5e-12
+    assert payload[0]["warm_start"] == {"used": True, "fallback": False}
+
+
+def test_batch_comparison_uses_exact_abba_counts_and_iteration_matching():
+    comparison = _batch_comparison_module()
+
+    order = comparison.interleaved_engine_order(5)
+    assert order == (
+        "vibeqc",
+        "gpu4pyscf",
+        "gpu4pyscf",
+        "vibeqc",
+        "vibeqc",
+        "gpu4pyscf",
+        "gpu4pyscf",
+        "vibeqc",
+        "vibeqc",
+        "gpu4pyscf",
+    )
+    assert order.count("vibeqc") == order.count("gpu4pyscf") == 5
+
+    def sample(seconds, iterations):
+        return {
+            "seconds": seconds,
+            "convergence": [
+                {"iterations": value} for value in iterations
+            ],
+        }
+
+    matched = comparison.iteration_matched_summary(
+        [sample(2.0, (2, 2)), sample(3.0, (3, 2)), sample(2.2, (2, 2))],
+        [sample(4.0, (2, 2)), sample(4.2, (2, 2)), sample(5.0, (4, 2))],
+    )
+    assert matched["iteration_branch"] == [2, 2]
+    assert matched["vibeqc_median_seconds"] == pytest.approx(2.1)
+    assert matched["gpu4pyscf_median_seconds"] == pytest.approx(4.1)
+    assert matched["speedup"] == pytest.approx(4.1 / 2.1)
+
+
+def test_gpu_cycle_tracker_retains_explicit_final_residuals():
+    comparison = _batch_comparison_module()
+    tracker = comparison.GpuCycleTracker()
+    tracker({"cycle": 0, "e_tot": -10.0, "norm_ddm": 0.2})
+    tracker({
+        "cycle": 1,
+        "e_tot": -10.25,
+        "norm_ddm": 1.0e-7,
+        "norm_gorb": 2.0e-8,
+    })
+    assert tracker.iterations == 2
+    assert tracker.energy_change_hartree == pytest.approx(0.25)
+    assert tracker.density_rms == pytest.approx(1.0e-7)
+    assert tracker.orbital_gradient_norm == pytest.approx(2.0e-8)
+
+
+def test_accuracy_gate_prefers_iteration_matched_repeat_pairs():
+    comparison = _batch_comparison_module()
+    summary = comparison.accuracy_gate_summary([
+        {
+            "iteration_branches_match": False,
+            "maximum_energy_error_hartree": 1.0e-9,
+            "maximum_force_error_hartree_per_bohr": 2.0e-9,
+        },
+        {
+            "iteration_branches_match": True,
+            "maximum_energy_error_hartree": 3.0e-12,
+            "maximum_force_error_hartree_per_bohr": 4.0e-12,
+        },
+    ])
+    assert summary == {
+        "selection": "iteration_matched_pairs",
+        "pair_count": 1,
+        "maximum_energy_error_hartree": 3.0e-12,
+        "maximum_force_error_hartree_per_bohr": 4.0e-12,
+    }
+
+    unmatched = comparison.accuracy_gate_summary([
+        {
+            "iteration_branches_match": False,
+            "maximum_energy_error_hartree": 1.0e-9,
+            "maximum_force_error_hartree_per_bohr": 2.0e-9,
+        },
+        {
+            "iteration_branches_match": False,
+            "maximum_energy_error_hartree": 5.0e-12,
+            "maximum_force_error_hartree_per_bohr": 6.0e-12,
+        },
+    ])
+    assert unmatched == {
+        "selection": "final_pair_unmatched_labeled",
+        "pair_count": 1,
+        "maximum_energy_error_hartree": 5.0e-12,
+        "maximum_force_error_hartree_per_bohr": 6.0e-12,
+    }
+
+
+def test_results_summary_selects_latest_clean_five_repeat_artifacts(tmp_path):
+    summary = _results_summary_module()
+    readme = tmp_path / "README.md"
+    readme.write_text(
+        f"before\n{summary.BEGIN_MARKER}\nstale\n{summary.END_MARKER}\nafter\n",
+        encoding="utf-8",
+    )
+
+    for index, ((ao_count, batch_size), case) in enumerate(
+        summary.PARITY_CASES.items()
+    ):
+        payload = {
+            "schema_version": 2,
+            "benchmark": "compare_gpu4pyscf_batch",
+            "environment": {
+                "timestamp_utc": f"2026-08-27T00:00:0{index}+00:00",
+                "git": {"commit": f"{index + 1:040x}", "dirty": False},
+            },
+            "workload": {
+                "case": case,
+                "ao_count": ao_count,
+                "batch_size": batch_size,
+            },
+            "settings": {"repeats_per_engine": 5},
+            "accuracy": {
+                "maximum_energy_error_hartree": 1.0e-12,
+                "maximum_force_error_hartree_per_bohr": 2.0e-12,
+                "gate_selection": {
+                    "maximum_energy_error_hartree": 5.0e-13,
+                    "maximum_force_error_hartree_per_bohr": 7.0e-13,
+                },
+            },
+            "timing_summary": {
+                "ordinary": {
+                    "vibeqc_median_seconds": 1.0,
+                    "gpu4pyscf_median_seconds": 2.0,
+                },
+                "iteration_matched": {
+                    "iteration_branch": [2] * batch_size,
+                    "speedup": 2.0,
+                },
+            },
+            "gate": {"passed": True},
+        }
+        (tmp_path / f"point-{ao_count}-{batch_size}.json").write_text(
+            json.dumps(payload), encoding="utf-8"
+        )
+
+    selected = summary.accepted_parity_artifacts(tmp_path.glob("*.json"))
+    section = summary.render_parity_section(selected)
+    assert "five interleaved warm samples" in section
+    assert "192 | 4" in section
+    assert summary.update_readme(readme, section)
+    assert not summary.update_readme(readme, section)
+    with pytest.raises(ValueError, match="stale"):
+        summary.update_readme(readme, section + "\nchanged", check=True)
 
 
 def test_shell_class_histogram_matches_direct_pair_symmetry():

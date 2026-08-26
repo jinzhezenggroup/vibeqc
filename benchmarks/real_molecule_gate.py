@@ -76,7 +76,12 @@ def main() -> None:
         default="all",
         help="run the full matrix or only one AO-size pair",
     )
-    parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument(
+        "--repeats",
+        type=int,
+        default=5,
+        help="interleaved warm samples collected per engine and gate point",
+    )
     parser.add_argument("--output-directory", type=Path, required=True)
     parser.add_argument(
         "--dry-run",
