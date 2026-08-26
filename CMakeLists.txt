@@ -36,6 +36,7 @@ add_library(vibeqc SHARED
   src/integrals/s_integrals.cpp
   src/molecule/basis.cpp
   src/runtime/context.cpp
+  src/scf/density_fitting.cpp
   src/scf/fleet.cpp
   src/scf/rhf.cpp
 )
@@ -140,6 +141,14 @@ if(VIBEQC_BUILD_TESTS)
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
   add_test(NAME vibeqc_cartesian_integral_tests
     COMMAND vibeqc_cartesian_integral_tests)
+
+  add_executable(vibeqc_density_fitting_tests
+    tests/native/test_density_fitting.cpp)
+  target_link_libraries(vibeqc_density_fitting_tests PRIVATE vibeqc)
+  target_include_directories(vibeqc_density_fitting_tests
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  add_test(NAME vibeqc_density_fitting_tests
+    COMMAND vibeqc_density_fitting_tests)
 
   add_executable(vibeqc_uhf_tests tests/native/test_uhf.cpp)
   target_link_libraries(vibeqc_uhf_tests PRIVATE vibeqc)
