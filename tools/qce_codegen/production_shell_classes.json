@@ -49,7 +49,7 @@
         },
         {
           "shell_class": "dpds",
-          "consumers": ["force"],
+          "consumers": ["fock", "force"],
           "schedule": {
             "kind": "component_lanes",
             "block_threads": 128,
@@ -63,7 +63,7 @@
         },
         {
           "shell_class": "ddps",
-          "consumers": ["force"],
+          "consumers": ["fock", "force"],
           "schedule": {
             "kind": "component_lanes",
             "block_threads": 128,
