@@ -1,0 +1,89 @@
+{
+  "benchmark": "experimental_ppps_rys3_rejection",
+  "schema_version": 1,
+  "environment": {
+    "accelerator": "NVIDIA GeForce RTX 5090",
+    "architecture": "sm_120",
+    "base_commit": "ac3917717ba92a9321694a0a536bb1c96f5d2b4a",
+    "candidate_source_dirty": true,
+    "cuda_toolkit": "12.9.1"
+  },
+  "candidate": {
+    "description": "Force-only ppps lowering using three-root interpolation, explicit one-dimensional TRR/HRR state programs, one shell task per lane, shared density weights, and the existing persistent exact-class queue ABI.",
+    "component_count": 27,
+    "independent_force_centers": [
+      0,
+      1,
+      2
+    ],
+    "recurrence_instructions_per_axis": 23,
+    "requested_states_per_axis": 20,
+    "roots": 3
+  },
+  "correctness": {
+    "host_oracle": "Every ppps component value and all four-center gradients agree with the independent subset/Wick oracle; center D is recovered by translation invariance.",
+    "maximum_force_error_trials": [
+      1.1857181902996672e-13,
+      5.551115123125783e-17
+    ],
+    "status": "passed"
+  },
+  "compile": {
+    "compile_seconds": 4.668385019002017,
+    "cubin_bytes": 1110608,
+    "global_memory_table_bytes": 27024,
+    "production_wrapper_resources": {
+      "registers_per_thread": 255,
+      "shared_memory_bytes": 8528,
+      "spill_load_bytes": 64,
+      "spill_store_bytes": 64,
+      "stack_bytes": 56,
+      "wrappers": [
+        "RHF",
+        "UHF"
+      ]
+    }
+  },
+  "paired_gpu_trials": [
+    {
+      "component_lanes_fused_ms": 0.45543468,
+      "rys3_fused_ms": 1.31474137,
+      "rys3_speedup_vs_component_lanes": 0.3464063255471239,
+      "rys3_slowdown_vs_component_lanes": 2.886783727958237
+    },
+    {
+      "component_lanes": {
+        "fused_ms": 0.455530673,
+        "maximum_force": 0.7997577055361769,
+        "maximum_force_error": 5.551115123125783e-17,
+        "recompute_ms": 0.880341351
+      },
+      "rys3": {
+        "fused_ms": 1.03204262,
+        "maximum_force": 0.7997577055361769,
+        "maximum_force_error": 1.1857181902996672e-13,
+        "recompute_ms": 0.880373299
+      },
+      "rys3_speedup_vs_component_lanes": 0.44138746227360265,
+      "rys3_slowdown_vs_component_lanes": 2.265583123138119
+    }
+  ],
+  "high_order_state_projection": {
+    "shell_class": "dddd",
+    "component_count": 1296,
+    "recurrence_instructions_per_axis": 216,
+    "requested_states_per_axis": 162,
+    "roots": 5
+  },
+  "limitations": [
+    "The CUDA emitter is force-only and specialized to ppps; the backend-independent state planner is generic.",
+    "No production Fock emitter was built because the lower-order force prototype already failed the resource and timing gates.",
+    "No five-root dddd interpolation table or CUDA root evaluator was added.",
+    "The microbenchmark retains the production queue ABI but does not constitute the 192-AO endpoint gate."
+  ],
+  "decision": {
+    "accepted_for_production": false,
+    "production_dispatch_changed": false,
+    "reason": "The low-order ppps prototype is 2.27x to 2.89x slower than the production component-lane recurrence and compiles at 255 registers per thread with stack traffic and spills. Scaling the same lowering to five-root, 1296-component dddd cannot satisfy the zero-spill or 10% endpoint promotion gates without a materially different cooperative design."
+  }
+}

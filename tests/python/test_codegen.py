@@ -33,6 +33,8 @@ from tools.vibeqc_codegen import (
     NvrtcCacheSpec,
     PairOrientation,
     PairStorage,
+    RysRecurrenceKind,
+    RysState,
     ScheduleIR,
     ScheduleKind,
     ShellClassSpec,
@@ -41,20 +43,30 @@ from tools.vibeqc_codegen import (
     build_dppp_fused_plan,
     build_fused_shell_plan,
     build_integral_ir,
+    build_ppps_rys_force_program,
     build_psss_kernel,
+    build_rys_axis_program,
+    build_rys_force_program,
     build_shell_class_component_kernel,
     build_shell_class_contraction_kernel,
     build_weighted_shell_contraction_kernel,
     cartesian_components,
     dppp_components,
     emit_dppp_fused_cuda,
+    emit_ppps_rys3_root_body_cuda,
     emit_ppss_weighted_force_cuda,
     emit_psps_weighted_force_cuda,
+    emit_rys3_roots_cuda,
     emit_shell_class_fused_cuda,
     evaluate_dppp_fused_component,
     evaluate_fused_shell_component,
+    evaluate_fused_shell_observables,
     evaluate_fused_shell_value,
+    evaluate_ppps_rys_component,
     nvrtc_cache_key,
+    rys3_roots_weights,
+    rys3_table_roots_weights,
+    rys_boys_values,
     schedule_candidates,
 )
 from tools.vibeqc_codegen.autotune import (
@@ -264,6 +276,144 @@ def test_ppps_scalar_thread_schedule_emits_component_scoped_dag():
     ) == 9
     assert "__launch_bounds__(32, 8)" in source
     assert source.count("force_0 += primitive_scale") == 27
+
+
+def test_ppps_rys_program_is_a_compact_unique_state_recurrence():
+    """Keep the independent backend at recurrence-state granularity."""
+
+    program = build_ppps_rys_force_program()
+    assert program.spec == FUSED_SHELL_SPEC_BY_NAME["ppps"]
+    assert program.nroots == 3
+    assert program.independent_force_centers == (0, 1, 2)
+    assert program.component_order == program.spec.components
+    assert len(program.axis_program.requested_states) == 20
+    assert len(program.axis_program.instructions) == 23
+    states = [instruction.state for instruction in program.axis_program.instructions]
+    assert len(states) == len(set(states))
+    emitted: set[RysState] = set()
+    for instruction in program.axis_program.instructions:
+        assert set(instruction.dependencies) <= emitted
+        emitted.add(instruction.state)
+    assert {instruction.kind for instruction in program.axis_program.instructions} == {
+        RysRecurrenceKind.SEED,
+        RysRecurrenceKind.TRR_BRA,
+        RysRecurrenceKind.TRR_KET,
+        RysRecurrenceKind.HRR_BRA,
+    }
+    minimal = build_rys_axis_program((RysState(1, 1, 1, 0),))
+    assert minimal.instructions[-1].state == RysState(1, 1, 1, 0)
+
+    schedule = ScheduleIR(
+        kind=ScheduleKind.THREAD_TASKS,
+        block_threads=32,
+        component_tile=program.spec.component_count,
+        tasks_per_warp=32,
+        shared_coulomb=False,
+        minimum_blocks_per_sm=12,
+    )
+    plan = build_fused_shell_plan(
+        program.spec,
+        schedule=schedule,
+        recurrence="rys3",
+    )
+    assert plan.kernel.integral.recurrence == "rys3"
+    with pytest.raises(ValueError, match="force-only ppps"):
+        build_fused_shell_plan(DPPP_SPEC, recurrence="rys3")
+
+
+def test_dddd_rys_program_exposes_five_root_backend_requirements():
+    """Quantify the high-order state surface without emitting scalar algebra."""
+
+    program = build_rys_force_program(DDDD_SPEC)
+    assert program.nroots == 5
+    assert len(program.component_order) == 1296
+    assert len(program.axis_program.requested_states) == 162
+    assert len(program.axis_program.instructions) == 216
+
+
+@pytest.mark.parametrize("argument", (0.0, 1.0e-10, 0.05, 1.0, 5.999))
+def test_rys3_rule_reproduces_first_six_boys_moments(argument: float):
+    """Treat the host eigensolve only as a high-accuracy Rys3 oracle."""
+
+    roots, weights = rys3_roots_weights(argument)
+    assert all(0.0 < root < 1.0 for root in roots)
+    assert all(weight > 0.0 for weight in weights)
+    moments = rys_boys_values(argument, 6)
+    for order, expected in enumerate(moments):
+        assert sum(
+            weight * root**order
+            for root, weight in zip(roots, weights, strict=True)
+        ) == pytest.approx(expected, rel=3.0e-13, abs=3.0e-14)
+
+
+@pytest.mark.parametrize(
+    "argument", (0.0, 1.0e-10, 0.05, 1.0, 5.999, 25.0, 50.0, 80.0)
+)
+def test_gpu4pyscf_rys3_table_matches_moment_oracle(argument: float):
+    """Verify the attributed nroots=3 table before CUDA emission."""
+
+    roots, weights = rys3_table_roots_weights(argument)
+    moments = rys_boys_values(argument, 6)
+    for order, expected in enumerate(moments):
+        assert sum(
+            weight * root**order
+            for root, weight in zip(roots, weights, strict=True)
+        ) == pytest.approx(expected, rel=3.0e-11, abs=3.0e-14)
+
+
+def test_ppps_rys_cuda_emits_compact_state_program_and_attributed_table():
+    """Prevent the direct recurrence from regressing into a scalar DAG."""
+
+    roots = emit_rys3_roots_cuda()
+    body = emit_ppps_rys3_root_body_cuda()
+    assert "Copyright 2021-2024 The PySCF Developers" in roots
+    assert "generated_ppps_rys3_rw[3360]" in roots
+    assert "generated_ppps_rys3_roots" in roots
+    assert 80 <= body.count("double rys_state_") <= 93
+    assert body.count("rys_state_") > 69
+    assert body.count("const double density_weight") == 27
+    assert body.count("force_") == 243
+    assert "boys_" not in body
+    assert "component_gradient" not in body
+
+    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
+    schedule = ScheduleIR(
+        kind=ScheduleKind.THREAD_TASKS,
+        block_threads=32,
+        component_tile=spec.component_count,
+        tasks_per_warp=32,
+        shared_coulomb=False,
+        minimum_blocks_per_sm=12,
+    )
+    plan = build_fused_shell_plan(
+        spec,
+        schedule=schedule,
+        recurrence="rys3",
+    )
+    source = emit_shell_class_fused_cuda(spec, plan)
+    assert "generated_ppps_rys3_force_task" in source
+    assert "component_weights[kGeneratedPppsComponentCount][32]" in source
+    assert "generated_ppps_scalar_thread" not in source
+
+
+def test_ppps_rys_recurrence_matches_every_symbolic_component():
+    """Lock component order, force signs, and translation recovery."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
+    values = factored_dppp_variables(sample_variables())
+    for component in spec.components:
+        actual = evaluate_ppps_rys_component(component, values)
+        expected = evaluate_fused_shell_observables(spec, component, values)
+        assert actual.value == pytest.approx(
+            expected.value, rel=3.0e-13, abs=3.0e-13
+        )
+        for center in range(4):
+            for axis in range(3):
+                assert actual.gradients[center][axis] == pytest.approx(
+                    expected.gradients[center][axis],
+                    rel=8.0e-13,
+                    abs=8.0e-13,
+                )
 
 
 @pytest.mark.parametrize(
@@ -1465,6 +1615,8 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs():
         "tools/vibeqc_codegen/ir.py",
         "tools/vibeqc_codegen/low_order_force.py",
         "tools/vibeqc_codegen/production.py",
+        "tools/vibeqc_codegen/rys.py",
+        "tools/vibeqc_codegen/rys3_data.py",
         "tools/vibeqc_codegen/shell_class.py",
         "tools/vibeqc_codegen/shell_spec.py",
     ):
@@ -1498,6 +1650,204 @@ def test_batch_screening_ranks_real_profile_and_emits_one_process_driver():
     driver = emit_batch_driver((candidate,))
     assert "cudaFree(nullptr)" in driver
     assert f"vibeqc_run_shell_class_{candidate.name}()" in driver
+
+
+def test_ppps_rys3_cuda_compiles_with_bounded_call_save_when_nvcc_is_configured(
+    tmp_path: Path,
+):
+    """Bound the Rys evaluator call-save before any production route."""
+
+    nvcc = os.environ.get("VIBEQC_NVCC")
+    if nvcc is None:
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
+    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
+    schedule = ScheduleIR(
+        kind=ScheduleKind.THREAD_TASKS,
+        block_threads=32,
+        component_tile=spec.component_count,
+        tasks_per_warp=32,
+        shared_coulomb=False,
+        minimum_blocks_per_sm=8,
+    )
+    plan = build_fused_shell_plan(
+        spec,
+        schedule=schedule,
+        recurrence="rys3",
+    )
+    source = tmp_path / "generated_ppps_rys3.cu"
+    source.write_text(
+        """
+template <unsigned MaximumOrder>
+__device__ __forceinline__ void boys_values(double argument, double* values) {
+  for (unsigned order = 0; order <= MaximumOrder; ++order) {
+    values[order] = 1.0 / (2.0 * static_cast<double>(order) + 1.0 + argument);
+  }
+}
+"""
+        + emit_shell_class_fused_cuda(spec, plan),
+        encoding="utf-8",
+    )
+    cubin = tmp_path / "generated_ppps_rys3.cubin"
+    compile_started = time.perf_counter()
+    result = subprocess.run(
+        [
+            nvcc,
+            "-std=c++17",
+            f"-arch={cuda_architecture}",
+            "-cubin",
+            "-Xptxas=-v",
+            str(source),
+            "-o",
+            str(cubin),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=240,
+    )
+    compile_seconds = time.perf_counter() - compile_started
+    if os.environ.get("VIBEQC_NVCC_VERBOSE"):
+        print(result.stdout + result.stderr)
+    assert result.returncode == 0, result.stdout + result.stderr
+    print(
+        json.dumps(
+            {
+                "compile_seconds": compile_seconds,
+                "cubin_bytes": cubin.stat().st_size,
+            },
+            sort_keys=True,
+        )
+    )
+    if cuda_architecture == "sm_120":
+        output = result.stdout + result.stderr
+        assert "generated_ppps_shell_class_force_rhf_persistent_kernel" in output
+        resource_records = re.findall(
+            r"(\d+) bytes stack frame, (\d+) bytes spill stores, "
+            r"(\d+) bytes spill loads",
+            output,
+        )
+        assert resource_records
+        numeric_records = tuple(
+            tuple(map(int, record)) for record in resource_records
+        )
+        assert max(record[0] for record in numeric_records) <= 56
+        assert max(record[1] for record in numeric_records) <= 64
+        assert max(record[2] for record in numeric_records) <= 64
+
+
+def test_ppps_rys3_benchmark_runs_against_component_lanes_when_nvcc_is_configured(
+    tmp_path: Path,
+):
+    """Compare direct Rys recurrence with the current ppps task topology."""
+
+    nvcc = os.environ.get("VIBEQC_NVCC")
+    if nvcc is None:
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA benchmark gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
+    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
+    direct_schedule = ScheduleIR(
+        kind=ScheduleKind.THREAD_TASKS,
+        block_threads=32,
+        component_tile=spec.component_count,
+        tasks_per_warp=32,
+        shared_coulomb=False,
+        minimum_blocks_per_sm=8,
+    )
+    direct_plan = build_fused_shell_plan(
+        spec,
+        schedule=direct_schedule,
+        recurrence="rys3",
+    )
+    production_plan = next(
+        build_fused_shell_plan(
+            spec,
+            consumers=selection.consumers,
+            schedule=selection.schedule,
+        )
+        for selection in load_production_kernel_selections(
+            REPOSITORY_ROOT
+            / "tools"
+            / "vibeqc_codegen"
+            / "production_shell_classes.json",
+            "sm_120",
+        )
+        if selection.spec == spec
+    )
+    environment = dict(os.environ)
+
+    def compile_and_run(label: str, plan) -> dict[str, object]:
+        source = tmp_path / f"generated_ppps_{label}_benchmark.cu"
+        source.write_text(
+            emit_shell_class_benchmark_cuda(
+                spec,
+                task_count=512,
+                primitive_count=2,
+                warmups=1,
+                iterations=3,
+                samples=3,
+                plan=plan,
+                benchmark_kernel_only=True,
+                persistent_kernel=True,
+            ),
+            encoding="utf-8",
+        )
+        executable = tmp_path / f"generated_ppps_{label}_benchmark"
+        compile_result = subprocess.run(
+            [
+                nvcc,
+                "-std=c++17",
+                f"-arch={cuda_architecture}",
+                "-O3",
+                str(source),
+                "-o",
+                str(executable),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=240,
+        )
+        assert compile_result.returncode == 0, (
+            compile_result.stdout + compile_result.stderr
+        )
+        run_result = subprocess.run(
+            [
+                "srun",
+                "--partition=main",
+                "--gres=gpu:5090:1",
+                "--nodes=1",
+                "--ntasks=1",
+                "--time=00:03:00",
+                str(executable),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=210,
+            env=environment,
+        )
+        assert run_result.returncode == 0, run_result.stdout + run_result.stderr
+        payload = json.loads(run_result.stdout.strip().splitlines()[-1])
+        assert payload["maximum_force_error"] <= (
+            2.0e-10 * max(1.0, payload["maximum_force"])
+        )
+        return payload
+
+    direct = compile_and_run("rys3", direct_plan)
+    production = compile_and_run("component_lanes", production_plan)
+    print(
+        json.dumps(
+            {
+                "rys3": direct,
+                "component_lanes": production,
+                "speedup_vs_component_lanes": (
+                    production["fused_ms"] / direct["fused_ms"]
+                ),
+            },
+            sort_keys=True,
+        )
+    )
 
 
 @pytest.mark.parametrize(

@@ -83,6 +83,41 @@ goldens. In particular, the `psss` force kernel added by `032f497` combines
 all three weighted Cartesian outputs in one primitive traversal. Generated
 low-order code must match that arithmetic quality before replacing it.
 
+## Experimental Rys backend
+
+The compiler also contains a backend-independent Rys/TRR/HRR state IR. It
+constructs a topologically ordered, duplicate-free one-dimensional recurrence
+program from any catalog shell specification while retaining the existing
+component order and translation recovery for center D. For `dddd`, this model
+requires five roots, 1296 Cartesian components, 162 requested axis states, and
+216 recurrence instructions. This exposes the high-order state surface without
+expanding it into the subset/Wick scalar expression DAG.
+
+An experimental CUDA lowering tests the approach on force-only `ppps`. It uses
+the same persistent exact-class queue ABI as production, assigns one complete
+shell task to each lane, evaluates a three-root interpolation table, and
+contracts the explicit recurrence states immediately into nine force
+accumulators. The three-root numerical data and interpolation are attributed to
+GPU4PySCF/PySCF under Apache-2.0 in the generated source. Independent tests
+cover the first six Boys moments, every Cartesian component, all four force
+centers, and translation recovery.
+
+The `sm_120` experiment rejects this lowering for production. The RHF and UHF
+wrappers compile at 255 registers per thread, a 56-byte stack, 64-byte spill
+stores, 64-byte spill loads, and 8528 bytes of shared memory. The 1,110,608-byte
+cubin took 4.67 seconds to compile and embeds a 27,024-byte root table. In two
+paired RTX 5090 runs, the Rys kernel took 1.315 ms and 1.032 ms versus 0.455 ms
+and 0.456 ms for the production component-lane recurrence: a 2.89x and 2.27x
+slowdown, respectively. Maximum force disagreement was `1.19e-13`.
+
+Consequently, production dispatch remains unchanged. No force endpoint was run
+and no Fock or five-root `dddd` CUDA emitter was added: the simpler three-root
+case already fails the zero-spill/resource gate and loses the isolated timing
+gate by more than twofold. Reaching high-order production performance would
+require a materially different cooperative primitive/root/component mapping,
+not direct scaling of this thread-task prototype. The full measurements are in
+`benchmarks/results/rtx5090-ac39177-issue-3-rys3-rejection.json`.
+
 ## Architecture autotuning
 
 `tools/vibeqc_codegen/autotune.py` emits every CUDA-supported schedule variant
