@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .dppp_dispatch import emit_shell_class_fused_cuda
 from .fused_schedule import build_fused_shell_plan
+from .low_order_force import PSPS_BLOCK_THREADS, emit_psps_weighted_force_cuda
 from .shell_spec import FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec, shell_pair_class
 
 _PRODUCTION_PRELUDE = r"""#include "scf/generated_shell_task.hpp"
@@ -195,6 +196,14 @@ extern "C" cudaError_t qce_launch_generated_{spec.name}(
 """
 
 
+def _force_block_threads(spec: ShellClassSpec) -> int:
+    """Return the execution shape selected by the shell-specific emitter."""
+
+    if spec.name == "psps":
+        return PSPS_BLOCK_THREADS
+    return build_fused_shell_plan(spec).block_threads
+
+
 def _fock_launch_wrapper(spec: ShellClassSpec) -> str:
     """Emit the stable C ABI wrapper for one generated Fock worker."""
 
@@ -244,9 +253,14 @@ def emit_production_shard(
     body = [_PRODUCTION_PRELUDE]
     for spec in specs:
         include_fock = spec.name in fock_names
-        body.append(
-            emit_shell_class_fused_cuda(spec, include_fock=include_fock)
-        )
+        if spec.name == "psps":
+            if include_fock:
+                raise ValueError("the weighted psps emitter is force-only")
+            body.append(emit_psps_weighted_force_cuda())
+        else:
+            body.append(
+                emit_shell_class_fused_cuda(spec, include_fock=include_fock)
+            )
         body.append(_launch_wrapper(spec))
         if include_fock:
             body.append(_fock_launch_wrapper(spec))
@@ -265,10 +279,9 @@ def emit_registry_header(
     fock_specs = tuple(fock_specifications)
     rows = []
     for spec in specs:
-        plan = build_fused_shell_plan(spec)
         rows.append(
             f'    {{"{spec.name}", {shell_class_index(spec)}U, '
-            f"{sum(spec.angular)}U, {plan.block_threads}U}},"
+            f"{sum(spec.angular)}U, {_force_block_threads(spec)}U}},"
         )
     fock_rows = []
     for spec in fock_specs:

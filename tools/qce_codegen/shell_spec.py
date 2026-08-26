@@ -221,7 +221,16 @@ def enumerate_fused_shell_specs(
 
 
 FUSED_SHELL_SPECS = enumerate_fused_shell_specs()
-FUSED_SHELL_SPEC_BY_NAME = {spec.name: spec for spec in FUSED_SHELL_SPECS}
+# Low-order weighted workers use a thread-per-shell-task schedule rather than
+# the cooperative component-per-lane lowering used by ``FUSED_SHELL_SPECS``.
+# Keep their declarative metadata in the same production lookup so manifests
+# and exact-class dispatch remain data driven without incorrectly adding them
+# to the cooperative benchmark candidate set.
+PSPS_SPEC = ShellClassSpec("psps", (1, 0, 1, 0))
+FUSED_SHELL_SPEC_BY_NAME = {
+    **{spec.name: spec for spec in FUSED_SHELL_SPECS},
+    PSPS_SPEC.name: PSPS_SPEC,
+}
 
 DPPP_SPEC = FUSED_SHELL_SPEC_BY_NAME["dppp"]
 DPDS_SPEC = FUSED_SHELL_SPEC_BY_NAME["dpds"]

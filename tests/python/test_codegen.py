@@ -18,6 +18,8 @@ from tools.qce_codegen import (
     DPPP_SPEC,
     FUSED_SHELL_SPEC_BY_NAME,
     NvrtcCacheSpec,
+    PSPS_BLOCK_THREADS,
+    PSPS_SPEC,
     ShellClassSpec,
     build_dppp_component_kernel,
     build_dppp_contraction_kernel,
@@ -29,6 +31,7 @@ from tools.qce_codegen import (
     cartesian_components,
     dppp_components,
     emit_dppp_fused_cuda,
+    emit_psps_weighted_force_cuda,
     emit_shell_class_fused_cuda,
     evaluate_dppp_fused_component,
     evaluate_fused_shell_component,
@@ -45,6 +48,7 @@ from tools.qce_codegen.benchmark import (
     emit_shell_class_benchmark_cuda,
 )
 from tools.qce_codegen.production import (
+    _PRODUCTION_PRELUDE,
     emit_registry_header,
     load_production_fock_manifest,
     load_production_manifest,
@@ -79,6 +83,10 @@ RTX5090_DDPS_RESOURCE_LIMITS = {
     "generated_ddps_shell_class_force_rhf_persistent_kernel": (160, 64, 1888),
     "generated_ddps_shell_class_force_uhf_persistent_kernel": (160, 64, 1888),
 }
+RTX5090_PSPS_RESOURCE_LIMITS = {
+    "generated_psps_shell_class_force_rhf_persistent_kernel": (220, 0, 0),
+    "generated_psps_shell_class_force_uhf_persistent_kernel": (220, 0, 0),
+}
 
 
 def assert_rtx5090_resources(
@@ -94,13 +102,15 @@ def assert_rtx5090_resources(
             rf"Function properties for {function}\n"
             r"\s+(\d+) bytes stack frame, (\d+) bytes spill stores, "
             r"(\d+) bytes spill loads\n"
-            r"ptxas info\s+: Used (\d+) registers,.*?, (\d+) bytes smem",
+            r"ptxas info\s+: Used (\d+) registers([^\n]*)",
             ptxas_output,
         )
         assert match is not None, f"missing ptxas resources for {function}"
-        stack, spill_stores, spill_loads, registers, shared = map(
-            int, match.groups()
+        stack, spill_stores, spill_loads, registers = map(
+            int, match.groups()[:4]
         )
+        shared_match = re.search(r"(\d+) bytes smem", match.group(5))
+        shared = int(shared_match.group(1)) if shared_match is not None else 0
         assert registers <= register_limit
         assert stack <= stack_limit
         assert spill_stores == 0
@@ -578,6 +588,23 @@ def test_ddps_fused_cuda_generates_order_four_double_matchings():
     assert "Dual3" not in source
 
 
+def test_psps_weighted_cuda_uses_one_thread_per_complete_shell_task():
+    """Keep low-order work dense instead of assigning three lanes per block."""
+
+    source = emit_psps_weighted_force_cuda()
+    assert PSPS_SPEC.angular == (1, 0, 1, 0)
+    assert PSPS_BLOCK_THREADS == 256
+    assert "kGeneratedPspsBlockThreads = 256U" in source
+    assert "atomicAdd(task_head, 32U)" in source
+    assert "double component_weight[9]" in source
+    assert "boys_values<3>" in source
+    assert "generated_psps_density_coefficient<Unrestricted>" in source
+    assert "generated_psps_shell_class_force_rhf_persistent_kernel" in source
+    assert "generated_psps_shell_class_force_uhf_persistent_kernel" in source
+    assert "__noinline__" not in source
+    assert "Dual3" not in source
+
+
 @pytest.mark.parametrize(
     ("name", "component_count", "state_count", "block_threads"),
     (
@@ -642,6 +669,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
         "dpps",
         "dsps",
         "dspp",
+        "psps",
     )
     assert tuple(spec.name for spec in fock_specifications) == (
         "dpps",
@@ -658,6 +686,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     assert '{"ppps", 4U, 3U, 64U}' in header
     assert '{"dspp", 8U, 4U, 64U}' in header
     assert '{"dpps", 11U, 4U, 64U}' in header
+    assert '{"psps", 2U, 2U, 256U}' in header
     assert "QCE_AOT_SHELL_CLASSES" in header
     assert "QCE_AOT_FOCK_SHELL_CLASSES" in header
     shards = "\n".join(
@@ -749,6 +778,49 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
     assert result.returncode == 0, result.stdout + result.stderr
     if cuda_architecture == "sm_120" and resource_limits is not None:
         assert_rtx5090_resources(result.stdout + result.stderr, resource_limits)
+
+
+def test_psps_weighted_cuda_compiles_with_zero_stack_when_nvcc_is_configured(
+    tmp_path: Path,
+):
+    """Keep the low-order AOT worker out of the giant-TU stack path."""
+
+    nvcc = os.environ.get("QCE_NVCC")
+    if nvcc is None:
+        pytest.skip("set QCE_NVCC to run the generated CUDA compile gate")
+    cuda_architecture = os.environ.get("QCE_CUDA_ARCH", "sm_90")
+    source = tmp_path / "generated_psps_weighted.cu"
+    source.write_text(
+        _PRODUCTION_PRELUDE.replace(
+            '#include "scf/generated_shell_task.hpp"\n', ""
+        )
+        + "#include <cstddef>\n#include <cstdint>\n"
+        + emit_psps_weighted_force_cuda(),
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [
+            nvcc,
+            "-std=c++17",
+            f"-arch={cuda_architecture}",
+            "-cubin",
+            "-Xptxas=-v",
+            str(source),
+            "-o",
+            str(tmp_path / "generated_psps_weighted.cubin"),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    if os.environ.get("QCE_NVCC_VERBOSE"):
+        print(result.stdout + result.stderr)
+    assert result.returncode == 0, result.stdout + result.stderr
+    if cuda_architecture == "sm_120":
+        assert_rtx5090_resources(
+            result.stdout + result.stderr, RTX5090_PSPS_RESOURCE_LIMITS
+        )
 
 
 def test_dppp_benchmark_compares_shared_and_recomputed_schedules():

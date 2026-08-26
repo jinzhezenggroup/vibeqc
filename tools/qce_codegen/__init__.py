@@ -14,6 +14,10 @@ from .fused_schedule import (
     build_fused_shell_plan,
     evaluate_fused_shell_component,
 )
+from .low_order_force import (
+    PSPS_BLOCK_THREADS,
+    emit_psps_weighted_force_cuda,
+)
 from .shell_class import (
     DpppComponentKernel,
     DpppContractionKernel,
@@ -32,6 +36,7 @@ from .shell_spec import (
     DPPP_SPEC,
     FUSED_SHELL_SPEC_BY_NAME,
     FUSED_SHELL_SPECS,
+    PSPS_SPEC,
     ShellClassSpec,
     canonical_shell_angular,
     cartesian_components,
@@ -46,12 +51,14 @@ __all__ = [
     "DPPP_SPEC",
     "FUSED_SHELL_SPECS",
     "FUSED_SHELL_SPEC_BY_NAME",
+    "PSPS_SPEC",
     "DpppComponentKernel",
     "DpppContractionKernel",
     "DpppFusedPlan",
     "FusedShellPlan",
     "NvrtcCacheSpec",
     "PsssKernel",
+    "PSPS_BLOCK_THREADS",
     "ShellClassComponentKernel",
     "ShellClassContractionKernel",
     "ShellClassSpec",
@@ -66,6 +73,7 @@ __all__ = [
     "cartesian_components",
     "dppp_components",
     "emit_dppp_fused_cuda",
+    "emit_psps_weighted_force_cuda",
     "emit_shell_class_fused_cuda",
     "enumerate_fused_shell_specs",
     "evaluate_dppp_fused_component",

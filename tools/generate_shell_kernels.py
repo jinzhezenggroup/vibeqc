@@ -12,6 +12,7 @@ from qce_codegen.dppp_dispatch import (
     emit_shell_class_fused_cuda,
 )
 from qce_codegen.fused_schedule import build_fused_shell_plan
+from qce_codegen.low_order_force import emit_psps_weighted_force_cuda
 from qce_codegen.production import write_production_bundle
 from qce_codegen.shell_class import (
     build_dppp_component_kernel,
@@ -21,9 +22,14 @@ from qce_codegen.shell_class import (
     emit_dppp_contraction_cuda,
     emit_psss_cuda,
 )
-from qce_codegen.shell_spec import DDPS_SPEC, DPDS_SPEC, DPPP_SPEC
+from qce_codegen.shell_spec import DDPS_SPEC, DPDS_SPEC, DPPP_SPEC, PSPS_SPEC
 
-FUSED_SPECS = {"dppp": DPPP_SPEC, "dpds": DPDS_SPEC, "ddps": DDPS_SPEC}
+FUSED_SPECS = {
+    "dppp": DPPP_SPEC,
+    "dpds": DPDS_SPEC,
+    "ddps": DDPS_SPEC,
+    "psps": PSPS_SPEC,
+}
 
 
 def main() -> None:
@@ -135,6 +141,8 @@ def main() -> None:
             output = emit_dppp_contraction_cuda(kernel)
         elif arguments.shell_class == "dppp":
             output = emit_dppp_fused_cuda()
+        elif arguments.shell_class == "psps":
+            output = emit_psps_weighted_force_cuda()
         else:
             output = emit_shell_class_fused_cuda(
                 FUSED_SPECS[arguments.shell_class]
@@ -144,16 +152,22 @@ def main() -> None:
             if arguments.shell_class == "dppp":
                 plan = build_dppp_fused_plan()
                 source = emit_dppp_fused_cuda(plan)
+                block_threads = plan.block_threads
+            elif arguments.shell_class == "psps":
+                plan = build_fused_shell_plan(PSPS_SPEC)
+                source = emit_psps_weighted_force_cuda()
+                block_threads = 256
             elif arguments.shell_class in FUSED_SPECS:
                 specification = FUSED_SPECS[arguments.shell_class]
                 plan = build_fused_shell_plan(specification)
                 source = emit_shell_class_fused_cuda(specification, plan)
+                block_threads = plan.block_threads
             else:
                 parser.error("psss does not support the fused lowering")
             output = json.dumps(
                 {
                     **component_metadata,
-                    "block_threads": plan.block_threads,
+                    "block_threads": block_threads,
                     "component_count": len(plan.components),
                     "coulomb_state_count": len(plan.coulomb_states),
                     "shell_class": arguments.shell_class,

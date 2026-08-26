@@ -85,6 +85,7 @@ if(QCE_ENABLE_CUDA)
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/__init__.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/dppp_dispatch.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/fused_schedule.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/low_order_force.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/production.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/shell_spec.py"
     COMMENT "Generating accepted fused shell-class CUDA shards"
