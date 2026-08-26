@@ -909,11 +909,19 @@ def _retain_selected_benchmark_kernel(
     force_task_signature = source.find(
         f"__device__ __forceinline__ void {prefix}_shell_class_force_task("
     )
-    if force_task_signature < 0:
-        raise RuntimeError("Fock benchmark force task marker changed unexpectedly")
-    force_task = source.rfind(
-        "template <bool Unrestricted>", 0, force_task_signature
-    )
+    if force_task_signature >= 0:
+        force_task = source.rfind(
+            "template <bool Unrestricted>", 0, force_task_signature
+        )
+    else:
+        # Packed low-order schedules inline their force work directly in the
+        # wrapper and therefore have no shared force-task helper to anchor.
+        force_rhf = source.find(
+            f"void {prefix}_shell_class_force_rhf_kernel("
+        )
+        force_task = source.rfind(
+            'extern "C" __global__', 0, force_rhf
+        )
     fock_begin = source.find(fock_section)
     if force_task < 0 or fock_begin < 0 or force_task >= fock_begin:
         raise RuntimeError("Fock benchmark force-section markers changed unexpectedly")

@@ -75,6 +75,7 @@ from tools.qce_codegen.batch_benchmark import (
 from tools.qce_codegen.benchmark import (
     emit_dppp_benchmark_cuda,
     emit_shell_class_benchmark_cuda,
+    emit_shell_class_oracle_cuda,
 )
 from tools.qce_codegen.production import (
     _PRODUCTION_PRELUDE,
@@ -1227,7 +1228,14 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     assert tuple(selection.consumers for selection in selections) == tuple(
         (KernelConsumer.FOCK, KernelConsumer.FORCE)
         if selection.spec.name
-        in ("dppp", "dpds", "ddps", "ppps", "dpps", "dsps")
+        in (
+            "dppp",
+            "dpds",
+            "ddps",
+            "ppps",
+            "dpps",
+            "dsps",
+        )
         else (KernelConsumer.FORCE,)
         for selection in selections
     )
@@ -1868,6 +1876,26 @@ def test_fock_benchmark_compares_value_only_shared_and_recomputed_schedules():
     )[1]
     assert '\\"consumer\\":\\"fock\\"' in source
     assert '\\"maximum_fock_error\\"' in source
+
+
+def test_packed_order2_fock_oracle_drops_force_wrappers():
+    """Keep packed low-order schedules available to Fock autotuning."""
+
+    trial = next(
+        trial
+        for trial in supported_schedule_trials(PSPS_SPEC, KernelConsumer.FOCK)
+        if trial.schedule.kind == ScheduleKind.PACKED_TASKS
+    )
+    plan = build_fused_shell_plan(
+        PSPS_SPEC,
+        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+        schedule=trial.schedule,
+    )
+    source = emit_shell_class_oracle_cuda(
+        PSPS_SPEC, plan, KernelConsumer.FOCK
+    )
+    assert "generated_psps_shell_class_fock_rhf_kernel" in source
+    assert "generated_psps_shell_class_force_rhf_kernel" not in source
 
 
 def test_fock_benchmark_runs_when_nvcc_is_configured(tmp_path: Path):
