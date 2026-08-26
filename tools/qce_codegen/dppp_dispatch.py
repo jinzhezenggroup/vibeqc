@@ -371,9 +371,11 @@ def _emit_shell_class_fock_cuda(
 """
         else:
             coulomb_setup = (
-                "          if (lane < kGeneratedDpppFockCoulombStateCount) {\n"
-                "            shared.coulomb[lane] = generated_dppp_coulomb(\n"
-                "                generated_dppp_coulomb_states[lane], "
+                "          for (unsigned state = lane;\n"
+                "               state < kGeneratedDpppFockCoulombStateCount;\n"
+                "               state += kGeneratedDpppFockBlockThreads) {\n"
+                "            shared.coulomb[state] = generated_dppp_coulomb(\n"
+                "                generated_dppp_coulomb_states[state], "
                 "shared.primitive);\n"
                 "          }\n"
                 f"          {barrier}\n"
@@ -2178,9 +2180,11 @@ __device__ __constant__ unsigned char generated_dppp_f_axes[10][3] = {{
           __syncthreads();
 """
         else:
-            coulomb_setup = """          if (lane < kGeneratedDpppCoulombStateCount) {
-            shared.coulomb[lane] = generated_dppp_coulomb(
-                generated_dppp_coulomb_states[lane], shared.primitive);
+            coulomb_setup = """          for (unsigned state = lane;
+               state < kGeneratedDpppCoulombStateCount;
+               state += kGeneratedDpppBlockThreads) {
+            shared.coulomb[state] = generated_dppp_coulomb(
+                generated_dppp_coulomb_states[state], shared.primitive);
           }
           __syncthreads();
 """

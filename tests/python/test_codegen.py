@@ -197,6 +197,38 @@ def test_subgroup_schedule_advances_independent_ppps_tasks_per_block():
     assert "blockIdx.x) * 32U + subgroup" in source
 
 
+@pytest.mark.parametrize("name", ("dpss", "ppps", "dsps"))
+def test_one_warp_component_schedule_strides_larger_coulomb_table(name):
+    """Do not retain an idle second warp after a short Coulomb setup."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
+    integral = build_integral_ir(
+        spec,
+        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+    )
+    component_schedules = [
+        item
+        for item in schedule_candidates(integral)
+        if item.kind == ScheduleKind.COMPONENT_LANES
+    ]
+    assert [item.block_threads for item in component_schedules] == [64, 32]
+    compact = component_schedules[1]
+    source = emit_shell_class_fused_cuda(
+        spec,
+        build_fused_shell_plan(
+            spec,
+            consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+            schedule=compact,
+        ),
+    )
+    class_name = name[0].upper() + name[1:]
+    assert f"kGenerated{class_name}BlockThreads = 32U" in source
+    assert (
+        f"state += kGenerated{class_name}BlockThreads" in source
+    )
+    assert "shared.coulomb[state] = generated_" in source
+
+
 @pytest.mark.parametrize(
     "spec",
     (
@@ -1308,11 +1340,11 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     assert '{"dppp", 12U, 5U, 192U, 3U, 162U}' in header
     assert '{"dpds", 13U, 5U, 128U, 3U, 108U}' in header
     assert '{"ddps", 16U, 5U, 128U, 3U, 108U}' in header
-    assert '{"ppps", 4U, 3U, 64U, 3U, 27U}' in header
-    assert '{"dsps", 7U, 3U, 64U, 3U, 18U}' in header
+    assert '{"ppps", 4U, 3U, 32U, 3U, 27U}' in header
+    assert '{"dsps", 7U, 3U, 32U, 3U, 18U}' in header
     assert '{"dpdp", 14U, 6U, 64U, 2U, 64U}' in header
     assert '{"dddp", 19U, 7U, 64U, 2U, 64U}' in header
-    assert '{"dpss", 10U, 3U, 64U, 2U, 18U}' in header
+    assert '{"dpss", 10U, 3U, 32U, 2U, 18U}' in header
     assert '{"dsds", 9U, 4U, 64U, 2U, 36U}' in header
     assert '{"ddss", 15U, 4U, 64U, 2U, 36U}' in header
     assert '{"ddpp", 17U, 6U, 64U, 2U, 64U}' in header

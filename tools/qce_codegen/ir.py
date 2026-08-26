@@ -283,6 +283,19 @@ def schedule_candidates(integral: IntegralIR) -> tuple[ScheduleIR, ...]:
                 component_tile=component_count,
             )
         )
+        # Coulomb setup is a short cooperative prelude, whereas every
+        # component lane remains live through all primitive quartets.  When a
+        # shell fits in one warp, also let that warp generate a larger Coulomb
+        # table in strides.  This avoids keeping a second warp resident solely
+        # to initialize a handful of states before it becomes idle.
+        if component_count <= 32 and cooperative_threads > 32:
+            candidates.append(
+                ScheduleIR(
+                    kind=ScheduleKind.COMPONENT_LANES,
+                    block_threads=32,
+                    component_tile=component_count,
+                )
+            )
 
     # Tiled schedules bound block size and live ranges for large d/f classes.
     # Multiple tile sizes are kept because register pressure and shared-state
