@@ -59,6 +59,24 @@ classes also use far fewer than 32 AO-component lanes per warp, so packed
 shell-class workers remain a larger follow-up opportunity than further queue
 claim micro-tuning.
 
+### Active high-order queue experiment
+
+Issue #2 tested exact generic queues and bounded high-order workers against the
+fixed-capacity fallback on the 192-AO batch-1 gate. Orders 6, 7, and 8 retained
+only 379,680/64,800/5,504 active subtiles inside capacity grids of
+916,480/204,800/24,704 blocks, so the candidate eliminated almost all rejected
+or no-op claims without a host readback.
+
+The tail was not a material device-time bottleneck. The best order-specific
+grid-stride configuration changed direct-Fock plus two-electron-force time from
+1380.963 ms to 1380.514 ms (0.03%) and the iteration-matched two-cycle endpoint
+from 2559.929 ms to 2546.095 ms (0.54%). Static workers, per-subtile and
+per-tile work stealing, and a device-dispatched exact grid were also rejected;
+the latter cannot coexist with the device-launch SCF Graph. Production dispatch
+therefore remains unchanged. Raw domains, five endpoint samples per mode, and
+the Nsight component totals are retained in the
+[`0ef0900` experiment artifact](rtx5090-0ef0900-issue-2-active-queue-experiment.json).
+
 ## 96-AO warm component profile
 
 One CUDA-profiler-range capture per engine isolates a warm batch-1
