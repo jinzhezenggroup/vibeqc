@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  # Pull requests already run the full workflow. Limit push runs to master so
+  # a same-repository PR branch does not schedule the same jobs twice.
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+# Keep only the newest validation for a pull request. Master pushes use their
+# unique run ID, so one merge never cancels another merge's validation record.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  cpu:
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+    runs-on: ubuntu-24.04
+    env:
+      # Keep each compiler cache bounded so both matrix jobs can share the
+      # repository's Actions cache quota. Compiler identity and flags remain
+      # part of ccache's own key, so a miss affects speed rather than validity.
+      CCACHE_MAXSIZE: 1G
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install ccache
+        run: sudo apt-get update && sudo apt-get install --yes ccache
+      - name: Restore ccache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ccache
+          key: ccache-cpu-${{ matrix.compiler }}-${{ hashFiles('CMakeLists.txt', 'include/**', 'src/**', 'tests/native/**', 'tools/**') }}
+          restore-keys: |
+            ccache-cpu-${{ matrix.compiler }}-
+      - name: Configure
+        env:
+          CXX: ${{ matrix.compiler == 'gcc' && 'g++' || 'clang++' }}
+        run: >-
+          cmake -S . -B build -G Ninja
+          -DVIBEQC_ENABLE_CUDA=OFF
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Show ccache statistics
+        run: ccache --show-stats
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  python:
+    runs-on: ubuntu-24.04
+    env:
+      CCACHE_MAXSIZE: 1G
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install uv and Python 3.11
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.10.7"
+          python-version: "3.11"
+          enable-cache: true
+      - name: Install ccache
+        run: sudo apt-get update && sudo apt-get install --yes ccache
+      - name: Restore ccache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ccache
+          key: ccache-python-${{ hashFiles('CMakeLists.txt', 'include/**', 'src/**', 'tests/**', 'tools/**', 'pyproject.toml') }}
+          restore-keys: |
+            ccache-python-
+      - name: Build the CPU native library
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DVIBEQC_ENABLE_CUDA=OFF \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake --build build --parallel
+      - name: Install the Python package and test dependencies
+        run: |
+          uv venv --python 3.11
+          uv pip install --python .venv/bin/python --editable '.[test]'
+      - name: Show ccache statistics
+        run: ccache --show-stats
+      - name: Run Python tests
+        env:
+          VIBEQC_LIBRARY: ${{ github.workspace }}/build/libvibeqc.so
+        run: .venv/bin/python -m pytest tests/python -q
+
+  pass:
+    name: Pass CI checks
+    needs: [cpu, python]
+    runs-on: ubuntu-24.04
+    if: always()
+    steps:
+      - name: Decide whether the needed jobs succeeded or failed
+        uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # v1.2.2
+        with:
+          jobs: ${{ toJSON(needs) }}
