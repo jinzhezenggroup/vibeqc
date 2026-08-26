@@ -8,38 +8,37 @@ homogeneous fixed-topology batch; GPU4PySCF 1.8.1 retains one warm object per
 system and invokes its single-system interface sequentially inside the same
 batch timing boundary.
 
-## Realistic 96-AO acceptance status
+<!-- BEGIN GENERATED PARITY TABLE -->
+## Current 96/192-AO parity matrix
 
-| Artifact | Batch | VibeQC warm median | GPU4PySCF warm median | Scoped speedup | Max energy error | Max force error | Gate |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| [`WATER27 tetramer`](rtx5090-10d2b6f-water-tetramer-def2-svp-spherical-b1.json) | 1 | 1096.459 ms | 1354.249 ms | 1.235x | 2.56e-12 Eh | 2.16e-12 Eh/bohr | passes |
-| [`WATER27 tetramer`](rtx5090-10d2b6f-water-tetramer-def2-svp-spherical-b4.json) | 4 | 3894.213 ms | 5183.268 ms | 1.331x | 2.96e-12 Eh | 5.66e-12 Eh/bohr | passes |
+This table is generated from the newest clean accepted artifacts with at least five interleaved warm samples per engine. Ordinary and iteration-matched medians are deliberately reported separately.
 
-Both clean artifacts come from commit
-`10d2b6f87654d3d77bb12108018005a0d5382dd7` on 2026-08-25. Every VibeQC and
-GPU4PySCF system converged, and both points pass the explicit `3e-11 Eh` and
-`3e-11 Eh/bohr` accuracy limits plus the required `1.0x` minimum speedup. The
-explicit 96-AO direct-J/K milestone is therefore closed at both batch sizes.
-All three synchronized warm samples remain in the artifacts because both
-engines show material timing variation: VibeQC spans 0.910--1.097 s at batch 1
-and 3.370--4.284 s at batch 4, while GPU4PySCF spans 1.059--1.682 s and
-4.254--6.434 s respectively. The harness records only the final repeat's SCF
-iterations, which are three at batch 1 and `[2, 2, 2, 2]` at batch 4.
+| AO | Batch | Artifact | Source | Samples | Ordinary VibeQC / GPU4PySCF | Iteration-matched branch | Matched speedup | Max dE | Max dF |
+| ---: | ---: | --- | --- | ---: | ---: | --- | ---: | ---: | ---: |
+| 96 | 1 | [`rtx5090-a5473bf-water-tetramer-def2-svp-spherical-b1`](rtx5090-a5473bf-water-tetramer-def2-svp-spherical-b1.json) | `a5473bf` | 5 | 416.829 ms / 1948.937 ms | 3 | 3.579x | 1.71e-12 Eh | 1.76e-11 Eh/bohr |
+| 96 | 4 | [`rtx5090-a5473bf-water-tetramer-def2-svp-spherical-b4`](rtx5090-a5473bf-water-tetramer-def2-svp-spherical-b4.json) | `a5473bf` | 5 | 1194.954 ms / 7260.944 ms | unavailable (unmatched) | n/a | 3.24e-12 Eh | 1.66e-11 Eh/bohr |
+| 192 | 1 | [`rtx5090-a5473bf-water-octamer-s4-def2-svp-spherical-b1`](rtx5090-a5473bf-water-octamer-s4-def2-svp-spherical-b1.json) | `a5473bf` | 5 | 2495.702 ms / 2219.326 ms | unavailable (unmatched) | n/a | 8.75e-12 Eh | 5.49e-11 Eh/bohr |
+| 192 | 4 | [`rtx5090-a5473bf-water-octamer-s4-def2-svp-spherical-b4`](rtx5090-a5473bf-water-octamer-s4-def2-svp-spherical-b4.json) | `a5473bf` | 5 | 10558.560 ms / 7401.350 ms | unavailable (unmatched) | n/a | 1.27e-11 Eh | 2.44e-10 Eh/bohr |
 
-## Realistic 192-AO correctness status
+When a shared branch exists, the speed gate uses its iteration-matched median. Otherwise the ordinary median is explicitly labeled unmatched and remains a timing observation rather than a parity claim.
+<!-- END GENERATED PARITY TABLE -->
 
-| Artifact | Batch | VibeQC warm | GPU4PySCF warm | Informational speedup | Max energy error | Max force error | Gate |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| [`WATER27 S4 octamer`](rtx5090-10d2b6f-water-octamer-s4-def2-svp-spherical-b1.json) | 1 | 8814.841 ms | 1482.881 ms | 0.168x | 5.12e-12 Eh | 2.25e-10 Eh/bohr | passes |
-| [`WATER27 S4 octamer`](rtx5090-10d2b6f-water-octamer-s4-def2-svp-spherical-b4.json) | 4 | 32146.584 ms | 9236.162 ms | 0.287x | 7.62e-12 Eh | 5.87e-11 Eh/bohr | passes |
+## Current 192-AO batch-1 device profile
 
-These clean commit-`10d2b6f` artifacts use one synchronized warm replay per
-point because of the direct-J/K cost. Both satisfy the current `1e-10 Eh` and
-`5e-10 Eh/bohr` correctness limits. The recorded warm times remain sensitive
-to the number of SCF iterations reached after nondeterministic direct-J/K
-atomic reductions; the batch-1 artifact records three iterations and batch 4
-records 2/2/3/3 across its four systems. Their speedups are retained for
-transparency but are not acceptance criteria until complete DF J/K lands.
+The clean current-head Nsight Systems capture isolates the
+`vibeqc/warm/energy-plus-force` NVTX range. Profiling overhead raised the host
+interval, so the capture is used for device attribution rather than endpoint
+timing. The top three contributors account for 97.93% of recorded kernel time:
+
+| Component | Kernel time | Share | Launches |
+| --- | ---: | ---: | ---: |
+| Two-electron force | 898.338 ms | 62.65% | 31 |
+| Direct J/K and Fock transforms | 453.942 ms | 31.66% | 20 |
+| One-electron force | 51.903 ms | 3.62% | 1 |
+
+The complete classification, top individual kernels, register counts, and
+local-memory observations are in the
+[`7cab59c` component artifact](rtx5090-7cab59c-water-octamer-s4-warm-component-profile.json).
 
 ## Order-aware direct-Fock scheduling
 
