@@ -64,6 +64,10 @@ if(QCE_ENABLE_CUDA)
       CACHE FILEPATH "Accepted generated shell classes for production CUDA")
   set(QCE_AOT_GENERATED_DIRECTORY
       "${CMAKE_CURRENT_BINARY_DIR}/generated/production_shell_kernels")
+  list(GET CMAKE_CUDA_ARCHITECTURES 0 QCE_AOT_PRIMARY_CUDA_ARCHITECTURE)
+  set(QCE_AOT_CODEGEN_ARCHITECTURE
+      "sm_${QCE_AOT_PRIMARY_CUDA_ARCHITECTURE}"
+      CACHE STRING "CUDA architecture profile used by shell code generation")
   set(QCE_AOT_GENERATED_SOURCES
       "${QCE_AOT_GENERATED_DIRECTORY}/qce_generated_shell_registry.cu")
   foreach(shard RANGE 0 3)
@@ -78,15 +82,20 @@ if(QCE_ENABLE_CUDA)
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_shell_kernels.py"
             --production-manifest "${QCE_AOT_SHELL_MANIFEST}"
             --output-directory "${QCE_AOT_GENERATED_DIRECTORY}"
+            --architecture "${QCE_AOT_CODEGEN_ARCHITECTURE}"
             --shards 4
     DEPENDS
       "${QCE_AOT_SHELL_MANIFEST}"
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_shell_kernels.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/__init__.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/cuda.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/dppp_dispatch.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/expr.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/fused_schedule.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/ir.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/low_order_force.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/production.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/shell_class.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/qce_codegen/shell_spec.py"
     COMMENT "Generating accepted fused shell-class CUDA shards"
     VERBATIM)

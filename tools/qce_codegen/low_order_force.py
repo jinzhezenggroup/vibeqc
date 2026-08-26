@@ -480,6 +480,7 @@ __device__ __forceinline__ void generated_psps_force_persistent(
     const double* schwarz_bounds,
     const double* density,
     double* forces,
+    const std::uint32_t* task_offset,
     const std::uint32_t* task_count,
     std::uint32_t* task_head) {
   const unsigned warp_lane = threadIdx.x % 32U;
@@ -493,7 +494,8 @@ __device__ __forceinline__ void generated_psps_force_persistent(
       generated_psps_force_task<Unrestricted>(
           tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
           atom_positions, screening_tolerance, schwarz_bounds, density,
-          forces, static_cast<std::size_t>(task_index));
+          forces,
+          static_cast<std::size_t>(*task_offset + task_index));
     }
   }
 }
@@ -509,12 +511,13 @@ void generated_psps_shell_class_force_rhf_persistent_kernel(
     const double* schwarz_bounds,
     const double* density,
     double* forces,
+    const std::uint32_t* task_offset,
     const std::uint32_t* task_count,
     std::uint32_t* task_head) {
   generated_psps_force_persistent<false>(
       tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
       atom_positions, screening_tolerance, schwarz_bounds, density, forces,
-      task_count, task_head);
+      task_offset, task_count, task_head);
 }
 
 extern "C" __global__ __launch_bounds__(kGeneratedPspsBlockThreads, 1)
@@ -528,12 +531,13 @@ void generated_psps_shell_class_force_uhf_persistent_kernel(
     const double* schwarz_bounds,
     const double* density,
     double* forces,
+    const std::uint32_t* task_offset,
     const std::uint32_t* task_count,
     std::uint32_t* task_head) {
   generated_psps_force_persistent<true>(
       tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
       atom_positions, screening_tolerance, schwarz_bounds, density, forces,
-      task_count, task_head);
+      task_offset, task_count, task_head);
 }
 """
 

@@ -1,53 +1,178 @@
 {
-  "schema_version": 1,
-  "shell_classes": [
-    "dppp",
-    "dpds",
-    "ppps",
-    "dpps",
-    "dsps",
-    "dspp",
-    "psps"
-  ],
-  "fock_shell_classes": [
-    "dpps"
-  ],
-  "acceptance": {
-    "architecture": "sm_120",
-    "cuda_toolkit": "12.9.1",
-    "workload": "water-tetramer-def2-svp-spherical",
-    "baseline_shell_classes": ["dppp", "dpds"],
-    "batch_1_speedup": 1.0120468152969344,
-    "batch_4_speedup": 1.1586077522017282,
-    "maximum_energy_error_hartree": 1.0231815394945443e-12,
-    "maximum_force_error_hartree_per_bohr": 6.839667721081355e-13
-  },
-  "fock_acceptance": {
-    "architecture": "sm_120",
-    "cuda_toolkit": "12.9.1",
-    "workload": "water-octamer-s4-def2-svp-spherical",
-    "shell_classes": ["dpps"],
-    "baseline_seconds": 4.596967296,
-    "candidate_seconds": 4.495852836,
-    "speedup": 1.0224906105,
-    "maximum_energy_error_hartree": 1.3642420526593924e-12,
-    "maximum_force_error_hartree_per_bohr": 4.584e-12,
-    "rejected_shell_classes": ["ppps", "dsps"]
-  },
-  "low_order_force_acceptance": {
-    "architecture": "sm_120",
-    "cuda_toolkit": "12.9.1",
-    "workload": "water-octamer-s4-def2-svp-spherical",
-    "shell_classes": ["psps"],
-    "baseline_kernel_milliseconds": 54.472344,
-    "candidate_kernel_milliseconds": 36.518183,
-    "gpu4pyscf_kernel_milliseconds": 40.160,
-    "registers_per_thread": 218,
-    "stack_bytes_per_thread": 0,
-    "baseline_seconds": 3.385719,
-    "candidate_seconds": 3.368758,
-    "speedup": 1.005035,
-    "maximum_energy_error_hartree": 3.070e-12,
-    "maximum_force_error_hartree_per_bohr": 2.125e-11
+  "schema_version": 2,
+  "default_architecture": "sm_120",
+  "architectures": {
+    "sm_120": {
+      "cuda_toolkit": "12.9.1",
+      "kernels": [
+        {
+          "shell_class": "dppp",
+          "consumers": ["force"],
+          "schedule": {
+            "kind": "component_lanes",
+            "block_threads": 192,
+            "component_tile": 162,
+            "tasks_per_warp": 1,
+            "shared_coulomb": true,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true
+          }
+        },
+        {
+          "shell_class": "dpds",
+          "consumers": ["force"],
+          "schedule": {
+            "kind": "component_lanes",
+            "block_threads": 128,
+            "component_tile": 108,
+            "tasks_per_warp": 1,
+            "shared_coulomb": true,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true
+          }
+        },
+        {
+          "shell_class": "ddps",
+          "consumers": ["force"],
+          "schedule": {
+            "kind": "component_lanes",
+            "block_threads": 128,
+            "component_tile": 108,
+            "tasks_per_warp": 1,
+            "shared_coulomb": true,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true
+          }
+        },
+        {
+          "shell_class": "fpps",
+          "consumers": ["force"],
+          "schedule": {
+            "kind": "component_lanes",
+            "block_threads": 96,
+            "component_tile": 90,
+            "tasks_per_warp": 1,
+            "shared_coulomb": true,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true
+          }
+        },
+        {
+          "shell_class": "ppps",
+          "consumers": ["force"],
+          "schedule": {
+            "kind": "component_lanes",
+            "block_threads": 64,
+            "component_tile": 27,
+            "tasks_per_warp": 1,
+            "shared_coulomb": true,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true
+          }
+        },
+        {
+          "shell_class": "dpps",
+          "consumers": ["fock", "force"],
+          "schedule": {
+            "kind": "component_lanes",
+            "block_threads": 64,
+            "component_tile": 54,
+            "tasks_per_warp": 1,
+            "shared_coulomb": true,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true
+          }
+        },
+        {
+          "shell_class": "dsps",
+          "consumers": ["force"],
+          "schedule": {
+            "kind": "component_lanes",
+            "block_threads": 64,
+            "component_tile": 18,
+            "tasks_per_warp": 1,
+            "shared_coulomb": true,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true
+          }
+        },
+        {
+          "shell_class": "dspp",
+          "consumers": ["force"],
+          "schedule": {
+            "kind": "component_lanes",
+            "block_threads": 64,
+            "component_tile": 54,
+            "tasks_per_warp": 1,
+            "shared_coulomb": true,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true
+          }
+        },
+        {
+          "shell_class": "psps",
+          "consumers": ["force"],
+          "schedule": {
+            "kind": "thread_tasks",
+            "block_threads": 256,
+            "component_tile": 9,
+            "tasks_per_warp": 32,
+            "shared_coulomb": false,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true
+          }
+        }
+      ],
+      "acceptance": {
+        "workload": "water-def2-tzvp-spherical",
+        "baseline_shell_classes": [
+          "dppp",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp"
+        ],
+        "batch_1_speedup": 1.0021617399247562,
+        "batch_4_speedup": 1.005352288388426,
+        "batch_8_speedup": 1.0059585606041488,
+        "maximum_energy_error_hartree": 2.4158453015843406e-13,
+        "maximum_force_error_hartree_per_bohr": 7.174677518761996e-13
+      },
+      "fock_acceptance": {
+        "workload": "water-octamer-s4-def2-svp-spherical",
+        "shell_classes": ["dpps"],
+        "baseline_seconds": 4.596967296,
+        "candidate_seconds": 4.495852836,
+        "speedup": 1.0224906105,
+        "maximum_energy_error_hartree": 1.3642420526593924e-12,
+        "maximum_force_error_hartree_per_bohr": 4.584e-12,
+        "rejected_shell_classes": ["ppps", "dsps"]
+      },
+      "low_order_force_acceptance": {
+        "workload": "water-octamer-s4-def2-svp-spherical",
+        "shell_classes": ["psps"],
+        "baseline_kernel_milliseconds": 54.472344,
+        "candidate_kernel_milliseconds": 36.518183,
+        "gpu4pyscf_kernel_milliseconds": 40.160,
+        "registers_per_thread": 218,
+        "stack_bytes_per_thread": 0,
+        "baseline_seconds": 3.385719,
+        "candidate_seconds": 3.368758,
+        "speedup": 1.005035,
+        "maximum_energy_error_hartree": 3.070e-12,
+        "maximum_force_error_hartree_per_bohr": 2.125e-11
+      }
+    }
   }
 }

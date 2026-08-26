@@ -8,9 +8,9 @@ symbolically, simplified locally, and emitted as scalar temporaries.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import math
-from typing import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)

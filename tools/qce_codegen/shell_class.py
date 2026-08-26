@@ -8,13 +8,12 @@ be evaluated on the first profile-selected production shell class.
 
 from __future__ import annotations
 
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Iterator, Mapping, Sequence
 
 from .cuda import CudaEmitter
 from .expr import Expr, Graph
 from .shell_spec import AXES, DPPP_SPEC, ShellClassSpec
-
 
 CENTERS = ("first", "second", "third", "fourth")
 # Compatibility alias for the component-level dppp inspection CLI.  The
@@ -80,6 +79,23 @@ class ShellClassContractionKernel:
     spec: ShellClassSpec
     component: tuple[str, str, str, str]
     variables: Mapping[str, Expr]
+    value: Expr
+    gradients: tuple[tuple[Expr, Expr, Expr], ...]
+
+
+@dataclass(frozen=True, slots=True)
+class WeightedShellContractionKernel:
+    """Shell-wide value/gradient DAG after component weights are applied.
+
+    All Cartesian components are cloned into one interned graph.  Variables
+    with the same geometry name and structurally identical recurrence nodes
+    therefore share one CUDA temporary, allowing low-order packed schedules to
+    perform cross-component CSE before primitive execution.
+    """
+
+    graph: Graph
+    spec: ShellClassSpec
+    component_weights: tuple[Expr, ...]
     value: Expr
     gradients: tuple[tuple[Expr, Expr, Expr], ...]
 
@@ -688,6 +704,98 @@ def build_shell_class_contraction_kernel(
     )
 
 
+def _clone_expression(
+    expression: Expr,
+    target: Graph,
+    memo: dict[int, Expr],
+) -> Expr:
+    """Clone one DAG root while interning shared variables and operations."""
+
+    cached = memo.get(expression.identifier)
+    if cached is not None:
+        return cached
+    node = expression.graph.node(expression)
+    if node.operation == "constant":
+        cloned = target.constant(float(node.payload))
+    elif node.operation == "variable":
+        cloned = target.variable(str(node.payload))
+    else:
+        arguments = tuple(
+            _clone_expression(
+                Expr(expression.graph, identifier),
+                target,
+                memo,
+            )
+            for identifier in node.arguments
+        )
+        if node.operation == "add":
+            cloned = target.add(arguments[0], arguments[1])
+        elif node.operation == "multiply":
+            cloned = target.multiply(arguments[0], arguments[1])
+        elif node.operation == "reciprocal":
+            cloned = target.reciprocal(arguments[0])
+        elif node.operation == "exp":
+            cloned = target.exponential(arguments[0])
+        elif node.operation == "power":
+            cloned = target.power(arguments[0], float(node.payload))
+        else:
+            raise ValueError(f"unsupported cloned operation {node.operation!r}")
+    memo[expression.identifier] = cloned
+    return cloned
+
+
+def build_weighted_shell_contraction_kernel(
+    spec: ShellClassSpec,
+) -> WeightedShellContractionKernel:
+    """Build one density-weightable DAG spanning every shell component.
+
+    The component kernels intentionally originate from the existing symbolic
+    oracle.  Cloning them into a shared graph preserves that correctness source
+    while exposing horizontal CSE that is invisible to one-component-at-a-time
+    CUDA lowering.
+    """
+
+    graph = Graph()
+    component_weights = tuple(
+        graph.variable(f"component_weight_{component}")
+        for component in range(spec.component_count)
+    )
+    weighted_values = []
+    weighted_gradients: list[list[list[Expr]]] = [
+        [[] for _ in AXES] for _ in CENTERS
+    ]
+    for component_index, component in enumerate(spec.components):
+        kernel = build_shell_class_contraction_kernel(spec, component)
+        memo: dict[int, Expr] = {}
+        weight = component_weights[component_index]
+        weighted_values.append(
+            weight * _clone_expression(kernel.value, graph, memo)
+        )
+        for center in range(4):
+            for axis in range(3):
+                weighted_gradients[center][axis].append(
+                    weight
+                    * _clone_expression(
+                        kernel.gradients[center][axis],
+                        graph,
+                        memo,
+                    )
+                )
+    prefactor = graph.variable("prefactor")
+    value = prefactor * graph.sum(weighted_values)
+    gradients = tuple(
+        tuple(graph.sum(weighted_gradients[center][axis]) for axis in range(3))
+        for center in range(4)
+    )
+    return WeightedShellContractionKernel(
+        graph=graph,
+        spec=spec,
+        component_weights=component_weights,
+        value=value,
+        gradients=gradients,
+    )
+
+
 def build_dppp_contraction_kernel(
     d_component: str,
     p_components: Sequence[str],
@@ -735,8 +843,10 @@ def emit_psss_cuda(kernel: PsssKernel) -> str:
     emitter.emit(roots)
 
     lines = [
-        "/** Generated symbolic/CSE derivative for canonical "
-        f"(p{kernel.p_axis} s|s s). */",
+        (
+            "/** Generated symbolic/CSE derivative for canonical "
+            f"(p{kernel.p_axis} s|s s). */"
+        ),
         f"__device__ void generated_psss_{kernel.p_axis}_gradient(",
         "    double alpha,",
         "    const Vec3<double>& first,",
@@ -784,9 +894,11 @@ def emit_dppp_component_cuda(kernel: DpppComponentKernel) -> str:
     p_label = "".join(kernel.p_components)
     function_name = f"generated_dppp_{kernel.d_component}_{p_label}_gradient"
     lines = [
-        "/** Generated symbolic/CSE derivative for canonical "
-        f"({kernel.d_component} {kernel.p_components[0]}|"
-        f"{kernel.p_components[1]} {kernel.p_components[2]}). */",
+        (
+            "/** Generated symbolic/CSE derivative for canonical "
+            f"({kernel.d_component} {kernel.p_components[0]}|"
+            f"{kernel.p_components[1]} {kernel.p_components[2]}). */"
+        ),
         f"__device__ void {function_name}(",
         "    double alpha,",
         "    const Vec3<double>& first,",
@@ -845,8 +957,10 @@ def emit_dppp_contraction_cuda(kernel: DpppContractionKernel) -> str:
         f"generated_dppp_{kernel.d_component}_{p_label}_factored_gradient"
     )
     lines = [
-        "/** Component algebra consuming one cooperatively shared primitive "
-        "geometry. */",
+        (
+            "/** Component algebra consuming one cooperatively shared primitive "
+            "geometry. */"
+        ),
         f"__device__ void {function_name}(",
         "    const GeneratedDpppGeometry& geometry,",
         "    double (&gradient)[4][3]) {",

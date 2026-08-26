@@ -197,41 +197,37 @@ def shell_class_name(angular: Iterable[int]) -> str:
 def enumerate_fused_shell_specs(
     maximum_angular_momentum: int = 2,
 ) -> tuple[ShellClassSpec, ...]:
-    """Enumerate canonical classes supported by one-block fused lowering.
+    """Enumerate canonical classes supported by fused/tiled lowering.
 
-    The current emitter requires non-s Gaussian pairs and one cooperative lane
-    per Cartesian AO quartet.  Classes exceeding CUDA's 1024-thread block
-    limit are omitted so profiling selects only compilable candidates.
+    Zero-order ``ss`` pairs are retained for low-order packed/shell-task
+    lowering.  Large Cartesian products remain present because
+    ``TILED_COMPONENTS`` schedules no longer require one CUDA thread for every
+    AO quartet at the same time.
     """
 
     pairs = tuple(
         (high, low)
         for high in range(maximum_angular_momentum + 1)
         for low in range(high + 1)
-        if high + low != 0
     )
     specifications = []
     for first_index, first_pair in enumerate(pairs):
         for second_pair in pairs[: first_index + 1]:
             angular = canonical_shell_angular(first_pair, second_pair)
             specification = ShellClassSpec(shell_class_name(angular), angular)
-            if specification.component_count <= 1024:
-                specifications.append(specification)
+            specifications.append(specification)
     return tuple(specifications)
 
 
-FUSED_SHELL_SPECS = enumerate_fused_shell_specs()
-# Low-order weighted workers use a thread-per-shell-task schedule rather than
-# the cooperative component-per-lane lowering used by ``FUSED_SHELL_SPECS``.
-# Keep their declarative metadata in the same production lookup so manifests
-# and exact-class dispatch remain data driven without incorrectly adding them
-# to the cooperative benchmark candidate set.
-PSPS_SPEC = ShellClassSpec("psps", (1, 0, 1, 0))
-FUSED_SHELL_SPEC_BY_NAME = {
-    **{spec.name: spec for spec in FUSED_SHELL_SPECS},
-    PSPS_SPEC.name: PSPS_SPEC,
-}
+FUSED_SHELL_SPECS = enumerate_fused_shell_specs(3)
+FUSED_SHELL_SPEC_BY_NAME = {spec.name: spec for spec in FUSED_SHELL_SPECS}
 
 DPPP_SPEC = FUSED_SHELL_SPEC_BY_NAME["dppp"]
 DPDS_SPEC = FUSED_SHELL_SPEC_BY_NAME["dpds"]
 DDPS_SPEC = FUSED_SHELL_SPEC_BY_NAME["ddps"]
+DDDD_SPEC = FUSED_SHELL_SPEC_BY_NAME["dddd"]
+FDDD_SPEC = FUSED_SHELL_SPEC_BY_NAME["fddd"]
+FFPS_SPEC = FUSED_SHELL_SPEC_BY_NAME["ffps"]
+PSSS_SPEC = FUSED_SHELL_SPEC_BY_NAME["psss"]
+PSPS_SPEC = FUSED_SHELL_SPEC_BY_NAME["psps"]
+SSSS_SPEC = FUSED_SHELL_SPEC_BY_NAME["ssss"]

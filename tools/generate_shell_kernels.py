@@ -7,12 +7,14 @@ import json
 from pathlib import Path
 
 from qce_codegen.dppp_dispatch import (
-    build_dppp_fused_plan,
-    emit_dppp_fused_cuda,
     emit_shell_class_fused_cuda,
 )
 from qce_codegen.fused_schedule import build_fused_shell_plan
-from qce_codegen.low_order_force import emit_psps_weighted_force_cuda
+from qce_codegen.ir import KernelConsumer
+from qce_codegen.low_order_force import (
+    PSPS_BLOCK_THREADS,
+    emit_psps_weighted_force_cuda,
+)
 from qce_codegen.production import write_production_bundle
 from qce_codegen.shell_class import (
     build_dppp_component_kernel,
@@ -22,21 +24,16 @@ from qce_codegen.shell_class import (
     emit_dppp_contraction_cuda,
     emit_psss_cuda,
 )
-from qce_codegen.shell_spec import DDPS_SPEC, DPDS_SPEC, DPPP_SPEC, PSPS_SPEC
+from qce_codegen.shell_spec import DPPP_SPEC, FUSED_SHELL_SPEC_BY_NAME
 
-FUSED_SPECS = {
-    "dppp": DPPP_SPEC,
-    "dpds": DPDS_SPEC,
-    "ddps": DDPS_SPEC,
-    "psps": PSPS_SPEC,
-}
+FUSED_SPECS = FUSED_SHELL_SPEC_BY_NAME
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--shell-class",
-        choices=("psss", *FUSED_SPECS),
+        choices=tuple(FUSED_SPECS),
         default="psss",
     )
     parser.add_argument("--axis", choices=("x", "y", "z"), default="x")
@@ -83,6 +80,19 @@ def main() -> None:
         default=4,
         help="stable CUDA translation-unit count for production generation",
     )
+    parser.add_argument(
+        "--architecture",
+        help="select an architecture profile from a v2 production manifest",
+    )
+    parser.add_argument(
+        "--consumer",
+        action="append",
+        choices=tuple(item.value for item in KernelConsumer),
+        help=(
+            "generated fused consumer; repeat to emit both Fock values and "
+            "analytic forces (force is the default)"
+        ),
+    )
     arguments = parser.parse_args()
 
     if arguments.production_manifest is not None:
@@ -94,12 +104,25 @@ def main() -> None:
             arguments.production_manifest,
             arguments.output_directory,
             arguments.shards,
+            arguments.architecture,
         )
         return
     if arguments.output_directory is not None:
         parser.error("--output-directory requires --production-manifest")
 
-    if arguments.shell_class == "psss":
+    consumers = tuple(
+        KernelConsumer(item)
+        for item in (arguments.consumer or (KernelConsumer.FORCE.value,))
+    )
+    if KernelConsumer.FOCK in consumers and KernelConsumer.FORCE not in consumers:
+        # The current shared emitter always retains the force oracle alongside
+        # a Fock pilot. This prevents a value-only plan from truncating the
+        # raised Coulomb states needed by the emitted force functions.
+        consumers = (*consumers, KernelConsumer.FORCE)
+
+    if arguments.shell_class == "psss" and arguments.lowering != "fused":
+        if arguments.lowering != "full":
+            parser.error("psss supports the full pilot or fused shell lowering")
         kernel = build_psss_kernel(arguments.axis)
         component_metadata = {"axis": arguments.axis}
     elif arguments.shell_class == "dppp":
@@ -133,43 +156,47 @@ def main() -> None:
         kernel = None
         component_metadata = {"lowering": "fused"}
     if arguments.format == "cuda":
-        if arguments.shell_class == "psss":
+        if arguments.shell_class == "psss" and arguments.lowering != "fused":
             output = emit_psss_cuda(kernel)
         elif arguments.lowering == "full":
             output = emit_dppp_component_cuda(kernel)
         elif arguments.lowering == "factored":
             output = emit_dppp_contraction_cuda(kernel)
-        elif arguments.shell_class == "dppp":
-            output = emit_dppp_fused_cuda()
         elif arguments.shell_class == "psps":
+            if consumers != (KernelConsumer.FORCE,):
+                parser.error("the weighted psps emitter is force-only")
             output = emit_psps_weighted_force_cuda()
         else:
+            specification = FUSED_SPECS[arguments.shell_class]
             output = emit_shell_class_fused_cuda(
-                FUSED_SPECS[arguments.shell_class]
+                specification,
+                build_fused_shell_plan(
+                    specification, consumers=consumers
+                ),
             )
     else:
         if arguments.lowering == "fused":
-            if arguments.shell_class == "dppp":
-                plan = build_dppp_fused_plan()
-                source = emit_dppp_fused_cuda(plan)
-                block_threads = plan.block_threads
-            elif arguments.shell_class == "psps":
-                plan = build_fused_shell_plan(PSPS_SPEC)
+            specification = FUSED_SPECS[arguments.shell_class]
+            plan = build_fused_shell_plan(
+                specification, consumers=consumers
+            )
+            if arguments.shell_class == "psps":
+                if consumers != (KernelConsumer.FORCE,):
+                    parser.error("the weighted psps emitter is force-only")
                 source = emit_psps_weighted_force_cuda()
-                block_threads = 256
-            elif arguments.shell_class in FUSED_SPECS:
-                specification = FUSED_SPECS[arguments.shell_class]
-                plan = build_fused_shell_plan(specification)
+                block_threads = PSPS_BLOCK_THREADS
+            else:
                 source = emit_shell_class_fused_cuda(specification, plan)
                 block_threads = plan.block_threads
-            else:
-                parser.error("psss does not support the fused lowering")
             output = json.dumps(
                 {
                     **component_metadata,
                     "block_threads": block_threads,
                     "component_count": len(plan.components),
                     "coulomb_state_count": len(plan.coulomb_states),
+                    "consumers": sorted(
+                        item.value for item in plan.kernel.integral.consumers
+                    ),
                     "shell_class": arguments.shell_class,
                     "source_bytes": len(source.encode("utf-8")),
                     "source_lines": source.count("\n"),

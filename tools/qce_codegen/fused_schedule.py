@@ -12,8 +12,14 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+from .ir import (
+    KernelConsumer,
+    KernelIR,
+    ScheduleIR,
+    build_integral_ir,
+    default_schedule,
+)
 from .shell_spec import AXES, ShellClassSpec
-
 
 ShellComponent = tuple[str, str, str, str]
 CoulombState = tuple[int, int, int]
@@ -24,6 +30,7 @@ _AXIS_INDEX = {axis: index for index, axis in enumerate(AXES)}
 class FusedShellPlan:
     """Static component, Coulomb, and cooperative-block schedule."""
 
+    kernel: KernelIR
     spec: ShellClassSpec
     components: tuple[ShellComponent, ...]
     coulomb_states: tuple[CoulombState, ...]
@@ -34,13 +41,35 @@ class FusedShellPlan:
     def warp_count(self) -> int:
         """Return the number of full warps used by one generated block."""
 
-        return self.block_threads // 32
+        return self.kernel.schedule.warp_count
+
+    @property
+    def schedule(self) -> ScheduleIR:
+        """Return the explicit execution policy consumed by CUDA emission."""
+
+        return self.kernel.schedule
 
 
-def build_fused_shell_plan(spec: ShellClassSpec) -> FusedShellPlan:
-    """Build deterministic component and shared-Coulomb schedules."""
+@dataclass(frozen=True, slots=True)
+class FusedShellResult:
+    """Value and all-center gradient produced by the shared recurrence."""
 
-    maximum_order = spec.maximum_force_coulomb_order
+    value: float
+    gradients: tuple[tuple[float, float, float], ...]
+
+
+def build_fused_shell_plan(
+    spec: ShellClassSpec,
+    *,
+    consumers: tuple[KernelConsumer | str, ...] = (KernelConsumer.FORCE,),
+    schedule: ScheduleIR | None = None,
+) -> FusedShellPlan:
+    """Lower integral and schedule IRs into deterministic CUDA lookup tables."""
+
+    integral = build_integral_ir(spec, consumers)
+    selected_schedule = schedule or default_schedule(integral)
+    kernel = KernelIR(integral=integral, schedule=selected_schedule)
+    maximum_order = integral.maximum_coulomb_order
     states = tuple(
         (x_order, y_order, total - x_order - y_order)
         for total in range(maximum_order + 1)
@@ -55,19 +84,13 @@ def build_fused_shell_plan(spec: ShellClassSpec) -> FusedShellPlan:
         for y_order in range(side)
         for z_order in range(side)
     )
-    minimum_threads = max(spec.component_count, len(states), 12)
-    block_threads = ((minimum_threads + 31) // 32) * 32
-    if block_threads > 1024:
-        raise ValueError(
-            f"{spec.name} needs {block_threads} cooperative threads; "
-            "split its component schedule before CUDA emission"
-        )
     return FusedShellPlan(
+        kernel=kernel,
         spec=spec,
         components=spec.components,
         coulomb_states=states,
         coulomb_indices=dense_indices,
-        block_threads=block_threads,
+        block_threads=selected_schedule.block_threads,
     )
 
 
@@ -215,12 +238,12 @@ def _pair_input(
     )
 
 
-def evaluate_fused_shell_component(
+def evaluate_fused_shell_observables(
     spec: ShellClassSpec,
     component: Sequence[str],
     variables: Mapping[str, float],
-) -> tuple[tuple[float, float, float], ...]:
-    """Evaluate one component using the fused recurrence execution shape."""
+) -> FusedShellResult:
+    """Evaluate value and gradient using the fused recurrence execution shape."""
 
     normalized = spec.validate_component(component)
     first_scale = variables["first_product_scale"]
@@ -309,4 +332,27 @@ def evaluate_fused_shell_component(
             for axis in range(3)
         )
     )
-    return tuple(gradients)
+    return FusedShellResult(
+        value=prefactor * value,
+        gradients=tuple(gradients),
+    )
+
+
+def evaluate_fused_shell_component(
+    spec: ShellClassSpec,
+    component: Sequence[str],
+    variables: Mapping[str, float],
+) -> tuple[tuple[float, float, float], ...]:
+    """Compatibility view returning only all-center gradients."""
+
+    return evaluate_fused_shell_observables(spec, component, variables).gradients
+
+
+def evaluate_fused_shell_value(
+    spec: ShellClassSpec,
+    component: Sequence[str],
+    variables: Mapping[str, float],
+) -> float:
+    """Return the ERI value consumed by generated Fock kernels."""
+
+    return evaluate_fused_shell_observables(spec, component, variables).value

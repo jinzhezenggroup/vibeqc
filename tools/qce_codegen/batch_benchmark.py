@@ -54,10 +54,12 @@ class KernelResources:
 def candidate_specs(
     names: Iterable[str] | None = None,
 ) -> tuple[ShellClassSpec, ...]:
-    """Resolve an explicit list or the complete uncovered s/p/d batch."""
+    """Resolve an explicit sparse list of uncovered s/p/d/f candidates."""
 
     if names is None:
-        return DEFAULT_CANDIDATES
+        raise ValueError(
+            "candidate screening requires --profile or an explicit --shell-class"
+        )
     specifications = []
     seen = set()
     for name in names:
@@ -170,10 +172,20 @@ _RESOURCE_PATTERN = re.compile(
 )
 
 
-def parse_ptxas_resources(output: str, shell_class: str) -> tuple[KernelResources, ...]:
-    """Extract the four production fused kernels from verbose ptxas output."""
+def parse_ptxas_resources(
+    output: str,
+    shell_class: str,
+    *,
+    symbol_prefix: str | None = None,
+) -> tuple[KernelResources, ...]:
+    """Extract the four force kernels from verbose ``ptxas`` output.
 
-    marker = f"generated_{shell_class}_shell_class_force_"
+    Autotuning translation units suffix every generated symbol so several
+    schedules for the same shell class can coexist in one executable.
+    ``symbol_prefix`` lets that driver reuse the production resource parser.
+    """
+
+    marker = symbol_prefix or f"generated_{shell_class}_shell_class_force_"
     resources = []
     for match in _RESOURCE_PATTERN.finditer(output):
         function = match.group("function")
@@ -483,6 +495,10 @@ def main() -> None:
     arguments = parser.parse_args()
     if arguments.compile_jobs < 1:
         parser.error("--compile-jobs must be positive")
+    if arguments.profile is not None and arguments.shell_class:
+        parser.error("pass either --profile or --shell-class, not both")
+    if arguments.profile is None and not arguments.shell_class:
+        parser.error("candidate screening requires --profile or --shell-class")
     report = _run_batch(arguments)
     output = json.dumps(report, indent=2, sort_keys=True) + "\n"
     if arguments.output is None:
