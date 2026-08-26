@@ -31,7 +31,9 @@ from .ir import (
     tuning_schedule_candidates,
 )
 from .low_order_force import (
+    PPSS_BLOCK_THREADS,
     PSPS_BLOCK_THREADS,
+    emit_ppss_weighted_force_cuda,
     emit_psps_weighted_force_cuda,
 )
 from .shell_class import (
@@ -57,6 +59,7 @@ from .shell_spec import (
     FFPS_SPEC,
     FUSED_SHELL_SPEC_BY_NAME,
     FUSED_SHELL_SPECS,
+    PPSS_SPEC,
     PSPS_SPEC,
     PSSS_SPEC,
     SSSS_SPEC,
@@ -92,6 +95,8 @@ __all__ = [
     "PairOrientation",
     "PairStorage",
     "PsssKernel",
+    "PPSS_BLOCK_THREADS",
+    "PPSS_SPEC",
     "PSPS_BLOCK_THREADS",
     "ScheduleIR",
     "ScheduleKind",
@@ -113,6 +118,7 @@ __all__ = [
     "default_schedule",
     "dppp_components",
     "emit_dppp_fused_cuda",
+    "emit_ppss_weighted_force_cuda",
     "emit_psps_weighted_force_cuda",
     "emit_shell_class_fused_cuda",
     "enumerate_fused_shell_specs",

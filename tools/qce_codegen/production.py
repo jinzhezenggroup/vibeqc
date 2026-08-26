@@ -16,8 +16,18 @@ from .ir import (
     ScheduleIR,
     ScheduleKind,
 )
-from .low_order_force import PSPS_BLOCK_THREADS, emit_psps_weighted_force_cuda
+from .low_order_force import (
+    PPSS_BLOCK_THREADS,
+    PSPS_BLOCK_THREADS,
+    emit_ppss_weighted_force_cuda,
+    emit_psps_weighted_force_cuda,
+)
 from .shell_spec import FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec, shell_pair_class
+
+_THREAD_TASK_FORCE_EMITTERS = {
+    "ppss": (PPSS_BLOCK_THREADS, emit_ppss_weighted_force_cuda),
+    "psps": (PSPS_BLOCK_THREADS, emit_psps_weighted_force_cuda),
+}
 
 _PRODUCTION_PRELUDE = r"""#include "scf/generated_shell_task.hpp"
 
@@ -373,14 +383,15 @@ def _as_selection(item: ShellClassSpec | KernelSelection) -> KernelSelection:
 
     if isinstance(item, KernelSelection):
         return item
-    if item.name == "psps":
+    if item.name in _THREAD_TASK_FORCE_EMITTERS:
+        block_threads, _ = _THREAD_TASK_FORCE_EMITTERS[item.name]
         return KernelSelection(
             architecture="sm_120",
             spec=item,
             consumers=(KernelConsumer.FORCE,),
             schedule=ScheduleIR(
                 kind=ScheduleKind.THREAD_TASKS,
-                block_threads=PSPS_BLOCK_THREADS,
+                block_threads=block_threads,
                 component_tile=item.component_count,
                 tasks_per_warp=32,
                 shared_coulomb=False,
@@ -404,13 +415,21 @@ def emit_production_shard(
     body = [_PRODUCTION_PRELUDE]
     for selection in selections:
         if selection.schedule.kind == ScheduleKind.THREAD_TASKS:
-            if selection.spec.name != "psps":
-                raise ValueError("thread-task production lowering supports only psps")
+            configuration = _THREAD_TASK_FORCE_EMITTERS.get(selection.spec.name)
+            if configuration is None:
+                raise ValueError(
+                    "thread-task production lowering has no shell-specific emitter"
+                )
             if selection.consumers != (KernelConsumer.FORCE,):
-                raise ValueError("the weighted psps emitter is force-only")
-            if selection.schedule.block_threads != PSPS_BLOCK_THREADS:
-                raise ValueError("weighted psps requires its accepted block size")
-            body.append(emit_psps_weighted_force_cuda())
+                raise ValueError(
+                    f"the weighted {selection.spec.name} emitter is force-only"
+                )
+            block_threads, emitter = configuration
+            if selection.schedule.block_threads != block_threads:
+                raise ValueError(
+                    f"weighted {selection.spec.name} requires its accepted block size"
+                )
+            body.append(emitter())
         else:
             plan = build_fused_shell_plan(
                 selection.spec,

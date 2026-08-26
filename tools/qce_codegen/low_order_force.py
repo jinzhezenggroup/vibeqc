@@ -1,17 +1,18 @@
 """Emit low-order weighted analytic-force CUDA workers.
 
 The cooperative component-per-lane schedule used by higher shell classes is
-poorly matched to ``psps`` because only nine Cartesian components would keep
-lanes busy.  This emitter instead assigns one complete compacted shell task to
-each CUDA thread.  The thread forms all nine screened density coefficients,
-traverses each primitive quartet once, and contracts the complete analytic
-gradient before writing the four physical centers.
+poorly matched to ``psps`` and ``ppss`` because only nine Cartesian components
+would keep lanes busy.  These emitters instead assign one complete compacted
+shell task to each CUDA thread.  The thread forms all nine screened density
+coefficients, traverses each primitive quartet once, and contracts the complete
+analytic gradient before writing the four physical centers.
 """
 
 from __future__ import annotations
 
 
 PSPS_BLOCK_THREADS = 256
+PPSS_BLOCK_THREADS = 256
 
 
 _PSPS_WEIGHTED_FORCE_CUDA = r"""
@@ -211,6 +212,7 @@ generated_psps_contract_weighted_coulomb(
   return result;
 }
 
+// QCE_LOW_ORDER_TASK_BEGIN
 template <bool Unrestricted>
 __device__ __forceinline__ void generated_psps_force_task(
     const GeneratedPspsShellTask* tasks,
@@ -468,6 +470,7 @@ __device__ __forceinline__ void generated_psps_force_task(
     }
   }
 }
+// QCE_LOW_ORDER_TASK_END
 
 template <bool Unrestricted>
 __device__ __forceinline__ void generated_psps_force_persistent(
@@ -542,7 +545,293 @@ void generated_psps_shell_class_force_uhf_persistent_kernel(
 """
 
 
+_PPSS_TASK_CUDA = r"""template <bool Unrestricted>
+__device__ __forceinline__ void generated_psps_force_task(
+    const GeneratedPspsShellTask* tasks,
+    const GeneratedPspsPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedPspsVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    std::size_t task_index) {
+  const GeneratedPspsShellTask& task = tasks[task_index];
+  const std::size_t n = static_cast<std::size_t>(task.matrix_order);
+  const std::size_t first_p_ao = static_cast<std::size_t>(task.ao_begin[0]);
+  const std::size_t second_p_ao = static_cast<std::size_t>(task.ao_begin[1]);
+  const std::size_t third_s_ao = static_cast<std::size_t>(task.ao_begin[2]);
+  const std::size_t fourth_s_ao = static_cast<std::size_t>(task.ao_begin[3]);
+  const bool same_p_shell = task.shell[0] == task.shell[1];
+  double component_weight[9]{};
+  bool any_component = false;
+
+#pragma unroll
+  for (unsigned first_axis = 0; first_axis < 3U; ++first_axis) {
+#pragma unroll
+    for (unsigned second_axis = 0; second_axis < 3U; ++second_axis) {
+      if (same_p_shell && first_axis < second_axis) continue;
+      const std::size_t i = first_p_ao + first_axis;
+      const std::size_t j = second_p_ao + second_axis;
+      const std::size_t k = third_s_ao;
+      const std::size_t l = fourth_s_ao;
+      if (schwarz_bounds != nullptr &&
+          schwarz_bounds[
+              task.density_offset + generated_psps_matrix_index(i, j, n)] *
+              schwarz_bounds[
+                  task.density_offset +
+                  generated_psps_matrix_index(k, l, n)] <
+              screening_tolerance) {
+        continue;
+      }
+      const double density_coefficient =
+          generated_psps_density_coefficient<Unrestricted>(
+              task, i, j, k, l, density);
+      if (density_coefficient == 0.0) continue;
+      const double angular_coefficient =
+          ao_coefficients[task.ao_coefficient_begin[0] + first_axis] *
+          ao_coefficients[task.ao_coefficient_begin[1] + second_axis] *
+          ao_coefficients[task.ao_coefficient_begin[2]] *
+          ao_coefficients[task.ao_coefficient_begin[3]];
+      component_weight[first_axis * 3U + second_axis] =
+          density_coefficient * angular_coefficient;
+      any_component = true;
+    }
+  }
+  if (!any_component) return;
+
+  const GeneratedPspsVec3 first = atom_positions[task.atom[0]];
+  const GeneratedPspsVec3 second = atom_positions[task.atom[1]];
+  const GeneratedPspsVec3 third = atom_positions[task.atom[2]];
+  const GeneratedPspsVec3 fourth = atom_positions[task.atom[3]];
+  const bool first_pair_reversed =
+      (task.reversed_shell_pair_mask & 1U) != 0U;
+  const bool second_pair_reversed =
+      (task.reversed_shell_pair_mask & 2U) != 0U;
+  double gradient[3][3]{};
+
+  const std::int64_t first_pair_begin =
+      primitive_pair_offsets[task.shell_pair[0]];
+  const std::int64_t first_pair_end =
+      primitive_pair_offsets[task.shell_pair[0] + 1U];
+  const std::int64_t second_pair_begin =
+      primitive_pair_offsets[task.shell_pair[1]];
+  const std::int64_t second_pair_end =
+      primitive_pair_offsets[task.shell_pair[1] + 1U];
+  for (std::int64_t first_primitive = first_pair_begin;
+       first_primitive < first_pair_end; ++first_primitive) {
+    const GeneratedPspsPrimitivePairData first_pair =
+        primitive_pairs[first_primitive];
+    const double p = first_pair.exponent_sum;
+    const double mu = first_pair.reduced_exponent;
+    const double inverse_two_p = 0.5 / p;
+    const GeneratedPspsVec3 product_p = first_pair.product_center;
+    const double pa[3] = {
+        product_p.x - first.x,
+        product_p.y - first.y,
+        product_p.z - first.z,
+    };
+    const double pb[3] = {
+        product_p.x - second.x,
+        product_p.y - second.y,
+        product_p.z - second.z,
+    };
+    const double first_product_scale = first_pair_reversed
+        ? first_pair.second_product_scale
+        : first_pair.first_product_scale;
+    const double second_product_scale = first_pair_reversed
+        ? first_pair.first_product_scale
+        : first_pair.second_product_scale;
+    for (std::int64_t second_primitive = second_pair_begin;
+         second_primitive < second_pair_end; ++second_primitive) {
+      const GeneratedPspsPrimitivePairData second_pair =
+          primitive_pairs[second_primitive];
+      const double q = second_pair.exponent_sum;
+      const double nu = second_pair.reduced_exponent;
+      const double rho = p * q / (p + q);
+      const GeneratedPspsVec3 product_q = second_pair.product_center;
+      const double x = product_p.x - product_q.x;
+      const double y = product_p.y - product_q.y;
+      const double z = product_p.z - product_q.z;
+      double boys[4];
+      boys_values<3>(rho * (x * x + y * y + z * z), boys);
+
+      const double row[3] = {
+          component_weight[0] * pb[0] + component_weight[1] * pb[1] +
+              component_weight[2] * pb[2],
+          component_weight[3] * pb[0] + component_weight[4] * pb[1] +
+              component_weight[5] * pb[2],
+          component_weight[6] * pb[0] + component_weight[7] * pb[1] +
+              component_weight[8] * pb[2],
+      };
+      const double column[3] = {
+          component_weight[0] * pa[0] + component_weight[3] * pa[1] +
+              component_weight[6] * pa[2],
+          component_weight[1] * pa[0] + component_weight[4] * pa[1] +
+              component_weight[7] * pa[2],
+          component_weight[2] * pa[0] + component_weight[5] * pa[1] +
+              component_weight[8] * pa[2],
+      };
+      const double h0 =
+          pa[0] * row[0] + pa[1] * row[1] + pa[2] * row[2] +
+          inverse_two_p *
+              (component_weight[0] + component_weight[4] +
+               component_weight[8]);
+      const double hx = inverse_two_p * (row[0] + column[0]);
+      const double hy = inverse_two_p * (row[1] + column[1]);
+      const double hz = inverse_two_p * (row[2] + column[2]);
+      const double second_scale = inverse_two_p * inverse_two_p;
+      const GeneratedPspsWeightedCoulomb coulomb =
+          generated_psps_contract_weighted_coulomb(
+              rho, x, y, z, boys, h0, hx, hy, hz,
+              second_scale * component_weight[0],
+              second_scale * (component_weight[1] + component_weight[3]),
+              second_scale * (component_weight[2] + component_weight[6]),
+              second_scale * component_weight[4],
+              second_scale * (component_weight[5] + component_weight[7]),
+              second_scale * component_weight[8]);
+
+      const double first_shift_scale = first_product_scale - 1.0;
+      const double second_shift_scale = first_product_scale;
+      const double explicit_first[3] = {
+          (first_shift_scale * row[0] + second_shift_scale * column[0]) *
+                  coulomb.c0 +
+              inverse_two_p *
+                  (first_shift_scale *
+                       (component_weight[0] * coulomb.cx +
+                        component_weight[1] * coulomb.cy +
+                        component_weight[2] * coulomb.cz) +
+                   second_shift_scale *
+                       (component_weight[0] * coulomb.cx +
+                        component_weight[3] * coulomb.cy +
+                        component_weight[6] * coulomb.cz)),
+          (first_shift_scale * row[1] + second_shift_scale * column[1]) *
+                  coulomb.c0 +
+              inverse_two_p *
+                  (first_shift_scale *
+                       (component_weight[3] * coulomb.cx +
+                        component_weight[4] * coulomb.cy +
+                        component_weight[5] * coulomb.cz) +
+                   second_shift_scale *
+                       (component_weight[1] * coulomb.cx +
+                        component_weight[4] * coulomb.cy +
+                        component_weight[7] * coulomb.cz)),
+          (first_shift_scale * row[2] + second_shift_scale * column[2]) *
+                  coulomb.c0 +
+              inverse_two_p *
+                  (first_shift_scale *
+                       (component_weight[6] * coulomb.cx +
+                        component_weight[7] * coulomb.cy +
+                        component_weight[8] * coulomb.cz) +
+                   second_shift_scale *
+                       (component_weight[2] * coulomb.cx +
+                        component_weight[5] * coulomb.cy +
+                        component_weight[8] * coulomb.cz)),
+      };
+      const double third_product_scale = second_pair_reversed
+          ? second_pair.second_product_scale
+          : second_pair.first_product_scale;
+      const double product_scale[3] = {
+          first_product_scale, second_product_scale, -third_product_scale};
+      const double prefactor =
+          first_pair.weighted_coefficient *
+          second_pair.weighted_coefficient *
+          34.986836655249725 / (p * q * sqrt(p + q));
+
+#pragma unroll
+      for (unsigned center = 0; center < 3U; ++center) {
+#pragma unroll
+        for (unsigned coordinate = 0; coordinate < 3U; ++coordinate) {
+          const double pair_coefficient_derivative = center == 0U
+              ? explicit_first[coordinate]
+              : (center == 1U ? -explicit_first[coordinate] : 0.0);
+          const double first_difference =
+              generated_psps_axis(first, coordinate) -
+              generated_psps_axis(second, coordinate);
+          const double third_difference =
+              generated_psps_axis(third, coordinate) -
+              generated_psps_axis(fourth, coordinate);
+          const double decay_derivative = center < 2U
+              ? (center == 0U ? -2.0 * mu : 2.0 * mu) * first_difference
+              : -2.0 * nu * third_difference;
+          gradient[center][coordinate] += prefactor *
+              (pair_coefficient_derivative +
+               product_scale[center] * coulomb.chain[coordinate] +
+               coulomb.value * decay_derivative);
+        }
+      }
+    }
+  }
+
+  double center_gradient[4][3];
+#pragma unroll
+  for (unsigned coordinate = 0; coordinate < 3U; ++coordinate) {
+    center_gradient[0][coordinate] = gradient[0][coordinate];
+    center_gradient[1][coordinate] = gradient[1][coordinate];
+    center_gradient[2][coordinate] = gradient[2][coordinate];
+    center_gradient[3][coordinate] =
+        -gradient[0][coordinate] - gradient[1][coordinate] -
+        gradient[2][coordinate];
+  }
+#pragma unroll
+  for (unsigned center = 0; center < 4U; ++center) {
+    bool first_occurrence = true;
+#pragma unroll
+    for (unsigned previous = 0; previous < 4U; ++previous) {
+      if (previous >= center) break;
+      first_occurrence = first_occurrence &&
+          task.atom[previous] != task.atom[center];
+    }
+    if (!first_occurrence) continue;
+#pragma unroll
+    for (unsigned coordinate = 0; coordinate < 3U; ++coordinate) {
+      double derivative = 0.0;
+#pragma unroll
+      for (unsigned source = 0; source < 4U; ++source) {
+        if (task.atom[source] == task.atom[center]) {
+          derivative += center_gradient[source][coordinate];
+        }
+      }
+      if (derivative != 0.0) {
+        atomicAdd(
+            forces + static_cast<std::size_t>(task.atom[center]) * 3U +
+                coordinate,
+            -derivative);
+      }
+    }
+  }
+}
+"""
+
+
+def _replace_low_order_task(source: str, task: str) -> str:
+    """Replace one shell-specific task while retaining the shared worker."""
+
+    begin = "// QCE_LOW_ORDER_TASK_BEGIN\n"
+    end = "// QCE_LOW_ORDER_TASK_END\n"
+    prefix, remainder = source.split(begin, maxsplit=1)
+    _, suffix = remainder.split(end, maxsplit=1)
+    return prefix + begin + task + end + suffix
+
+
+def _specialize_low_order_identifiers(source: str, target: str) -> str:
+    """Rename the shared psps ABI skeleton for another low-order class."""
+
+    class_name = target[0].upper() + target[1:]
+    return source.replace("Psps", class_name).replace("psps", target)
+
+
 def emit_psps_weighted_force_cuda() -> str:
     """Return the deterministic thread-per-task ``psps`` CUDA worker."""
 
     return _PSPS_WEIGHTED_FORCE_CUDA
+
+
+def emit_ppss_weighted_force_cuda() -> str:
+    """Return the deterministic thread-per-task ``ppss`` CUDA worker."""
+
+    source = _replace_low_order_task(
+        _PSPS_WEIGHTED_FORCE_CUDA, _PPSS_TASK_CUDA
+    )
+    return _specialize_low_order_identifiers(source, "ppss")

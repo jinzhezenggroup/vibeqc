@@ -130,6 +130,20 @@
             "pair_storage": "materialized",
             "unroll_pair_terms": true
           }
+        },
+        {
+          "shell_class": "ppss",
+          "consumers": ["force"],
+          "schedule": {
+            "kind": "thread_tasks",
+            "block_threads": 256,
+            "component_tile": 9,
+            "tasks_per_warp": 32,
+            "shared_coulomb": false,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true
+          }
         }
       ],
       "acceptance": {

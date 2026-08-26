@@ -12,7 +12,9 @@ from qce_codegen.dppp_dispatch import (
 from qce_codegen.fused_schedule import build_fused_shell_plan
 from qce_codegen.ir import KernelConsumer
 from qce_codegen.low_order_force import (
+    PPSS_BLOCK_THREADS,
     PSPS_BLOCK_THREADS,
+    emit_ppss_weighted_force_cuda,
     emit_psps_weighted_force_cuda,
 )
 from qce_codegen.production import write_production_bundle
@@ -162,10 +164,15 @@ def main() -> None:
             output = emit_dppp_component_cuda(kernel)
         elif arguments.lowering == "factored":
             output = emit_dppp_contraction_cuda(kernel)
-        elif arguments.shell_class == "psps":
+        elif arguments.shell_class in ("ppss", "psps"):
             if consumers != (KernelConsumer.FORCE,):
-                parser.error("the weighted psps emitter is force-only")
-            output = emit_psps_weighted_force_cuda()
+                parser.error(
+                    f"the weighted {arguments.shell_class} emitter is force-only"
+                )
+            output = {
+                "ppss": emit_ppss_weighted_force_cuda,
+                "psps": emit_psps_weighted_force_cuda,
+            }[arguments.shell_class]()
         else:
             specification = FUSED_SPECS[arguments.shell_class]
             output = emit_shell_class_fused_cuda(
@@ -180,11 +187,16 @@ def main() -> None:
             plan = build_fused_shell_plan(
                 specification, consumers=consumers
             )
-            if arguments.shell_class == "psps":
+            if arguments.shell_class in ("ppss", "psps"):
                 if consumers != (KernelConsumer.FORCE,):
-                    parser.error("the weighted psps emitter is force-only")
-                source = emit_psps_weighted_force_cuda()
-                block_threads = PSPS_BLOCK_THREADS
+                    parser.error(
+                        f"the weighted {arguments.shell_class} emitter is force-only"
+                    )
+                block_threads, emitter = {
+                    "ppss": (PPSS_BLOCK_THREADS, emit_ppss_weighted_force_cuda),
+                    "psps": (PSPS_BLOCK_THREADS, emit_psps_weighted_force_cuda),
+                }[arguments.shell_class]
+                source = emitter()
             else:
                 source = emit_shell_class_fused_cuda(specification, plan)
                 block_threads = plan.block_threads
