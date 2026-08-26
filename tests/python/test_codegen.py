@@ -1235,6 +1235,11 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
         "dppp",
         "dpdp",
         "dddp",
+        "dpss",
+        "dsds",
+        "ddss",
+        "ddpp",
+        "ddds",
         "dpds",
         "ddps",
         "fpps",
@@ -1269,7 +1274,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     } == {
         spec.name: (
             PairStorage.RECOMPUTED
-            if spec.name in ("dpdp", "dddp")
+            if spec.name in ("dpdp", "dddp", "ddpp", "ddds")
             else PairStorage.MATERIALIZED
         )
         for spec in specifications
@@ -1307,6 +1312,11 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     assert '{"dsps", 7U, 3U, 64U, 3U, 18U}' in header
     assert '{"dpdp", 14U, 6U, 64U, 2U, 64U}' in header
     assert '{"dddp", 19U, 7U, 64U, 2U, 64U}' in header
+    assert '{"dpss", 10U, 3U, 64U, 2U, 18U}' in header
+    assert '{"dsds", 9U, 4U, 64U, 2U, 36U}' in header
+    assert '{"ddss", 15U, 4U, 64U, 2U, 36U}' in header
+    assert '{"ddpp", 17U, 6U, 64U, 2U, 64U}' in header
+    assert '{"ddds", 18U, 6U, 64U, 2U, 64U}' in header
     assert '{"dspp", 8U, 4U, 64U, 2U, 54U}' in header
     assert '{"dpps", 11U, 4U, 64U, 3U, 54U}' in header
     assert '{"pppp", 5U, 4U, 96U, 2U, 81U}' in header
