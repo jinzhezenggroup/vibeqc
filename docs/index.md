@@ -11,6 +11,8 @@ cover all quantum-chemistry methods through a coherent batched interface.
   and verification.
 - [Methods](methods.md): implemented methods, planned method families, and the
   acceptance standard for enabling new capabilities.
+- [Density fitting](density_fitting.md): milestone-1 correctness and planning
+  foundation, plus the production features that remain in issue #5.
 
 ## Developers
 

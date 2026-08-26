@@ -513,8 +513,30 @@ std::vector<GlobalAoExpansion> spherical_expansions(
   return expansions;
 }
 
+std::vector<GlobalAoExpansion> public_ao_expansions(
+    const core::System& system) {
+  if (system.basis_representation == VIBEQC_BASIS_SPHERICAL) {
+    return spherical_expansions(system);
+  }
+  std::vector<GlobalAoExpansion> expansions;
+  const std::size_t count = molecule::cartesian_ao_count(system);
+  expansions.reserve(count);
+  for (std::size_t ao = 0; ao < count; ++ao) {
+    expansions.push_back({{ao, 1.0}});
+  }
+  return expansions;
+}
+
 std::size_t matrix_index(std::size_t i, std::size_t j, std::size_t n) {
   return i * n + j;
+}
+
+std::size_t three_center_index(std::size_t i,
+                               std::size_t j,
+                               std::size_t auxiliary,
+                               std::size_t n,
+                               std::size_t naux) {
+  return (i * n + j) * naux + auxiliary;
 }
 
 std::size_t eri_index(std::size_t i,
@@ -596,7 +618,212 @@ std::vector<double> transform_eri(
   return transformed;
 }
 
+std::vector<double> transform_three_center(
+    const double* source,
+    std::size_t cartesian_count,
+    std::size_t cartesian_auxiliary_count,
+    const std::vector<GlobalAoExpansion>& target_aos,
+    const std::vector<GlobalAoExpansion>& target_auxiliary_aos) {
+  const std::size_t target_count = target_aos.size();
+  const std::size_t target_auxiliary_count = target_auxiliary_aos.size();
+  std::vector<double> transformed(
+      target_count * target_count * target_auxiliary_count, 0.0);
+  for (std::size_t p = 0; p < target_count; ++p) {
+    for (std::size_t q = 0; q < target_count; ++q) {
+      for (std::size_t auxiliary = 0;
+           auxiliary < target_auxiliary_count; ++auxiliary) {
+        double value = 0.0;
+        for (const GlobalExpansionTerm& i : target_aos[p]) {
+          for (const GlobalExpansionTerm& j : target_aos[q]) {
+            for (const GlobalExpansionTerm& item :
+                 target_auxiliary_aos[auxiliary]) {
+              value += i.coefficient * j.coefficient * item.coefficient *
+                  source[three_center_index(
+                      i.cartesian_ao, j.cartesian_ao, item.cartesian_ao,
+                      cartesian_count, cartesian_auxiliary_count)];
+            }
+          }
+        }
+        transformed[three_center_index(
+            p, q, auxiliary, target_count, target_auxiliary_count)] = value;
+      }
+    }
+  }
+  return transformed;
+}
+
+void require_matching_density_fitting_geometry(
+    const core::System& orbital_system,
+    const core::System& auxiliary_system) {
+  if (orbital_system.atoms.size() != auxiliary_system.atoms.size()) {
+    throw std::invalid_argument(
+        "orbital and auxiliary systems must contain the same atoms");
+  }
+  for (std::size_t atom = 0; atom < orbital_system.atoms.size(); ++atom) {
+    const core::Atom& orbital = orbital_system.atoms[atom];
+    const core::Atom& auxiliary = auxiliary_system.atoms[atom];
+    if (orbital.atomic_number != auxiliary.atomic_number ||
+        orbital.position != auxiliary.position) {
+      throw std::invalid_argument(
+          "orbital and auxiliary systems must share exact geometry");
+    }
+  }
+}
+
 }  // namespace
+
+DensityFittingIntegralData build_density_fitting_integrals(
+    const core::System& orbital_system,
+    const core::System& auxiliary_system) {
+  require_matching_density_fitting_geometry(
+      orbital_system, auxiliary_system);
+
+  DensityFittingIntegralData cartesian;
+  cartesian.nbf = molecule::cartesian_ao_count(orbital_system);
+  cartesian.naux = molecule::cartesian_ao_count(auxiliary_system);
+  cartesian.ncoord = orbital_system.atoms.size() * 3;
+  const std::vector<AoView> orbital_aos =
+      expand_cartesian_aos(orbital_system);
+  const std::vector<AoView> auxiliary_aos =
+      expand_cartesian_aos(auxiliary_system);
+
+  std::vector<Vec3> atom_coordinates;
+  atom_coordinates.reserve(orbital_system.atoms.size());
+  for (std::size_t atom = 0; atom < orbital_system.atoms.size(); ++atom) {
+    Vec3 position;
+    for (std::size_t axis = 0; axis < 3; ++axis) {
+      position[axis] = Jet::variable(
+          orbital_system.atoms[atom].position[axis], cartesian.ncoord,
+          atom * 3 + axis);
+    }
+    atom_coordinates.push_back(std::move(position));
+  }
+
+  const molecule::CartesianComponent zero_angular{0, 0, 0};
+  std::vector<Jet> metric(
+      cartesian.naux * cartesian.naux, Jet(0.0, cartesian.ncoord));
+  for (std::size_t p = 0; p < cartesian.naux; ++p) {
+    const AoView& first_auxiliary = auxiliary_aos[p];
+    const Vec3& first_center =
+        atom_coordinates[first_auxiliary.shell->atom_index];
+    for (std::size_t q = 0; q < cartesian.naux; ++q) {
+      const AoView& second_auxiliary = auxiliary_aos[q];
+      const Vec3& second_center =
+          atom_coordinates[second_auxiliary.shell->atom_index];
+      Jet value(0.0, cartesian.ncoord);
+      const double component_factor =
+          first_auxiliary.component_normalization *
+          second_auxiliary.component_normalization;
+      for (const core::Primitive& first_primitive :
+           first_auxiliary.shell->primitives) {
+        for (const core::Primitive& second_primitive :
+             second_auxiliary.shell->primitives) {
+          const double weight = component_factor *
+              first_primitive.coefficient * second_primitive.coefficient;
+          value = value + weight * primitive_eri_cartesian(
+              first_primitive.exponent, first_center,
+              first_auxiliary.angular, 0.0, first_center, zero_angular,
+              second_primitive.exponent, second_center,
+              second_auxiliary.angular, 0.0, second_center, zero_angular);
+        }
+      }
+      metric[matrix_index(p, q, cartesian.naux)] = std::move(value);
+    }
+  }
+
+  std::vector<Jet> three_center(
+      cartesian.nbf * cartesian.nbf * cartesian.naux,
+      Jet(0.0, cartesian.ncoord));
+  for (std::size_t i = 0; i < cartesian.nbf; ++i) {
+    const AoView& first_ao = orbital_aos[i];
+    const Vec3& first_center = atom_coordinates[first_ao.shell->atom_index];
+    for (std::size_t j = 0; j < cartesian.nbf; ++j) {
+      const AoView& second_ao = orbital_aos[j];
+      const Vec3& second_center = atom_coordinates[second_ao.shell->atom_index];
+      for (std::size_t p = 0; p < cartesian.naux; ++p) {
+        const AoView& auxiliary_ao = auxiliary_aos[p];
+        const Vec3& auxiliary_center =
+            atom_coordinates[auxiliary_ao.shell->atom_index];
+        Jet value(0.0, cartesian.ncoord);
+        const double component_factor = first_ao.component_normalization *
+            second_ao.component_normalization *
+            auxiliary_ao.component_normalization;
+        for (const core::Primitive& first_primitive :
+             first_ao.shell->primitives) {
+          for (const core::Primitive& second_primitive :
+               second_ao.shell->primitives) {
+            for (const core::Primitive& auxiliary_primitive :
+                 auxiliary_ao.shell->primitives) {
+              const double weight = component_factor *
+                  first_primitive.coefficient * second_primitive.coefficient *
+                  auxiliary_primitive.coefficient;
+              value = value + weight * primitive_eri_cartesian(
+                  first_primitive.exponent, first_center, first_ao.angular,
+                  second_primitive.exponent, second_center, second_ao.angular,
+                  auxiliary_primitive.exponent, auxiliary_center,
+                  auxiliary_ao.angular, 0.0, auxiliary_center, zero_angular);
+            }
+          }
+        }
+        three_center[three_center_index(
+            i, j, p, cartesian.nbf, cartesian.naux)] = std::move(value);
+      }
+    }
+  }
+
+  unpack_jets(
+      metric, cartesian.metric, cartesian.metric_derivative,
+      cartesian.ncoord);
+  unpack_jets(
+      three_center, cartesian.three_center,
+      cartesian.three_center_derivative, cartesian.ncoord);
+
+  const std::vector<GlobalAoExpansion> target_orbital_aos =
+      public_ao_expansions(orbital_system);
+  const std::vector<GlobalAoExpansion> target_auxiliary_aos =
+      public_ao_expansions(auxiliary_system);
+  if (target_orbital_aos.size() == cartesian.nbf &&
+      target_auxiliary_aos.size() == cartesian.naux) {
+    return cartesian;
+  }
+
+  DensityFittingIntegralData transformed;
+  transformed.nbf = target_orbital_aos.size();
+  transformed.naux = target_auxiliary_aos.size();
+  transformed.ncoord = cartesian.ncoord;
+  transformed.metric = transform_matrix(
+      cartesian.metric.data(), cartesian.naux, target_auxiliary_aos);
+  transformed.three_center = transform_three_center(
+      cartesian.three_center.data(), cartesian.nbf, cartesian.naux,
+      target_orbital_aos, target_auxiliary_aos);
+  const std::size_t cartesian_metric_size = cartesian.naux * cartesian.naux;
+  const std::size_t cartesian_three_center_size =
+      cartesian.nbf * cartesian.nbf * cartesian.naux;
+  transformed.metric_derivative.reserve(
+      transformed.ncoord * transformed.naux * transformed.naux);
+  transformed.three_center_derivative.reserve(
+      transformed.ncoord * transformed.nbf * transformed.nbf *
+      transformed.naux);
+  for (std::size_t coordinate = 0; coordinate < transformed.ncoord;
+       ++coordinate) {
+    std::vector<double> metric_derivative = transform_matrix(
+        cartesian.metric_derivative.data() +
+            coordinate * cartesian_metric_size,
+        cartesian.naux, target_auxiliary_aos);
+    std::vector<double> three_center_derivative = transform_three_center(
+        cartesian.three_center_derivative.data() +
+            coordinate * cartesian_three_center_size,
+        cartesian.nbf, cartesian.naux, target_orbital_aos,
+        target_auxiliary_aos);
+    transformed.metric_derivative.insert(
+        transformed.metric_derivative.end(), metric_derivative.begin(),
+        metric_derivative.end());
+    transformed.three_center_derivative.insert(
+        transformed.three_center_derivative.end(),
+        three_center_derivative.begin(), three_center_derivative.end());
+  }
+  return transformed;
+}
 
 IntegralData build_integrals(const core::System& system) {
   IntegralData out;

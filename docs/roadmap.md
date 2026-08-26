@@ -342,8 +342,13 @@ and performance measurements pass.
 
 ## M3: density fitting and fleet mode
 
-- Two- and three-center integral kernels, Coulomb metric factorization, DF J/K,
-  and complete auxiliary-basis gradient response.
+- Foundation implemented: independent CPU two-/three-center values and first
+  nuclear derivatives, Cartesian/real-spherical transforms, Coulomb-metric
+  conditioning diagnostics, and a memory-bounded contraction tile planner.
+- Remaining density-fitting epic: accelerator-native batched integral kernels,
+  device metric factorization, RHF/UHF RI-J/K, complete auxiliary-basis gradient
+  response, and production SCF dispatch. See [density fitting](density_fitting.md)
+  for the exact supported boundary.
 - Extend the implemented CUDA J/K active set with persistent device ERIs,
   streams, CUDA graphs where profitable, and batched small-matrix operations;
   retain identical failure and result ordering.

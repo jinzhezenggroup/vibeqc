@@ -12,6 +12,7 @@ forces are executable.
 | Hartree-Fock | RHF | Implemented: energy and analytic forces |
 | Hartree-Fock | UHF | Implemented: energy and analytic forces |
 | Hartree-Fock | ROHF, GHF, spinor HF | Planned |
+| Density fitting | Two-/three-center integral oracle, first nuclear derivatives, metric conditioning, memory planner | CPU correctness foundation implemented; accelerator RI-J/K and SCF integration planned |
 | Density functional theory | LDA, GGA, meta-GGA, hybrid, range-separated, nonlocal correlation | Planned |
 | Perturbation theory | MP2 and higher-order variants | Planned |
 | Coupled cluster | CCSD, perturbative triples, higher-rank variants | Planned |
@@ -42,8 +43,11 @@ A method becomes supported only when all of the following are true:
 ## Expansion strategy
 
 The current HF foundation supplies basis handling, integral validation,
-device-resident SCF, analytic gradients, and ragged fleet execution. Near-term
-work extends this foundation with density fitting and broader HF robustness.
+device-resident SCF, analytic gradients, and ragged fleet execution. The first
+density-fitting milestone adds a CPU correctness oracle, metric conditioning,
+and a memory-bounded tile planner; it does not yet change production SCF
+dispatch. Near-term work extends this foundation with accelerator RI-J/K and
+broader HF robustness.
 DFT grids and exchange-correlation response, followed by AO-to-MO transforms
 and correlated tensor contractions, open the main DFT and post-HF families.
 Multireference, excited-state, periodic, embedding, and relativistic methods
