@@ -7,14 +7,14 @@
       "kernels": [
         {
           "shell_class": "dppp",
-          "consumers": ["force"],
+          "consumers": ["fock", "force"],
           "schedule": {
             "kind": "component_lanes",
             "block_threads": 192,
             "component_tile": 162,
             "tasks_per_warp": 1,
             "shared_coulomb": true,
-            "pair_orientation": "canonical",
+            "pair_orientation": "swapped",
             "pair_storage": "materialized",
             "unroll_pair_terms": true
           }
