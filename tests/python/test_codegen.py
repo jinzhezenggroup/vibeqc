@@ -1576,6 +1576,29 @@ def test_runtime_buckets_all_generated_classes_before_dispatch():
     assert source.count("classify_generated_shell_tasks_kernel<<<") == 1
 
 
+def test_one_electron_force_batches_point_charges_in_one_warp_per_ao_pair():
+    """Keep nuclear centers device-batched with the scalar path as fallback."""
+
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
+        encoding="utf-8"
+    )
+    cooperative_begin = source.index(
+        "void contracted_one_electron_force_pair_cooperative("
+    )
+    cooperative_end = source.index(
+        "template <unsigned MaximumAngular, typename Scalar>",
+        cooperative_begin,
+    )
+    cooperative = source[cooperative_begin:cooperative_end]
+    assert "atom_base += warpSize" in cooperative
+    assert "shared_coefficients[axis]" in cooperative
+    assert "if (lane == 0U)" in cooperative
+    assert "__shfl_down_sync" in cooperative
+    assert source.count("one_electron_force_cooperative_kernel<<<") == 1
+    assert 'std::getenv("VIBEQC_ONE_ELECTRON_FORCE_SCALAR")' in source
+    assert "scalar_one_electron_force_environment == nullptr" in source
+
+
 def test_generated_order2_fock_masks_handwritten_fallback():
     """Prevent generated order-two Fock quartets from being scattered twice."""
 

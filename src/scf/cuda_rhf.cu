@@ -1293,6 +1293,10 @@ struct OneElectronDerivativeHermiteCoefficients {
   __device__ double& at(unsigned i, unsigned j, unsigned t) {
     return data[(i * kJDimension + j) * kTDimension + t];
   }
+
+  __device__ double at(unsigned i, unsigned j, unsigned t) const {
+    return data[(i * kJDimension + j) * kTDimension + t];
+  }
 };
 
 /** Fill every coefficient required by first derivatives of one shell pair. */
@@ -1350,36 +1354,21 @@ __device__ void fill_one_electron_derivative_hermite(
   }
 }
 
-/**
- * Evaluate both basis-center gradients of one nucleus's attraction integral.
- *
- * All raised/lowered Cartesian components share one Hermite workspace, one
- * Boys sequence, and one Coulomb auxiliary recurrence.
- */
 template <unsigned MaximumAngular>
 __device__ __noinline__ void
-primitive_nuclear_attraction_cartesian_atom_gradient(
+primitive_nuclear_attraction_cartesian_atom_gradient_from_hermite(
     const DeviceBatch& batch,
     double alpha,
-    const Vec3<double>& first,
     const Angular& angular_first,
     double beta,
-    const Vec3<double>& second,
     const Angular& angular_second,
     std::int64_t atom,
+    double exponent,
+    const Vec3<double>& product,
+    const OneElectronDerivativeHermiteCoefficients* coefficients,
     double (&first_gradient)[3],
     double (&second_gradient)[3]) {
   static_assert(MaximumAngular <= 2 * kMaximumAngularMomentum + 1);
-  const double exponent = alpha + beta;
-  const Vec3<double> product = product_center(alpha, first, beta, second);
-  OneElectronDerivativeHermiteCoefficients coefficients[3];
-  for (int axis = 0; axis < 3; ++axis) {
-    fill_one_electron_derivative_hermite(
-        angular_axis(angular_first, axis) + 1,
-        angular_axis(angular_second, axis) + 1, vec_axis(product, axis),
-        vec_axis(first, axis), vec_axis(second, axis), alpha, beta,
-        coefficients[axis]);
-  }
   CoulombAuxiliary<double, MaximumAngular> auxiliary;
   fill_coulomb<MaximumAngular>(
       exponent, product, atom_position<double>(batch, atom, -1), auxiliary);
@@ -1438,6 +1427,44 @@ primitive_nuclear_attraction_cartesian_atom_gradient(
       }
     }
   }
+}
+
+/**
+ * Evaluate both basis-center gradients of one nucleus's attraction integral.
+ *
+ * All raised/lowered Cartesian components share one Hermite workspace, one
+ * Boys sequence, and one Coulomb auxiliary recurrence. The separate
+ * precomputed entry point lets a cooperative AO-pair worker build the Hermite
+ * coefficients once and reuse them across all nuclear centers in its warp.
+ */
+template <unsigned MaximumAngular>
+__device__ __noinline__ void
+primitive_nuclear_attraction_cartesian_atom_gradient(
+    const DeviceBatch& batch,
+    double alpha,
+    const Vec3<double>& first,
+    const Angular& angular_first,
+    double beta,
+    const Vec3<double>& second,
+    const Angular& angular_second,
+    std::int64_t atom,
+    double (&first_gradient)[3],
+    double (&second_gradient)[3]) {
+  static_assert(MaximumAngular <= 2 * kMaximumAngularMomentum + 1);
+  const double exponent = alpha + beta;
+  const Vec3<double> product = product_center(alpha, first, beta, second);
+  OneElectronDerivativeHermiteCoefficients coefficients[3];
+  for (int axis = 0; axis < 3; ++axis) {
+    fill_one_electron_derivative_hermite(
+        angular_axis(angular_first, axis) + 1,
+        angular_axis(angular_second, axis) + 1, vec_axis(product, axis),
+        vec_axis(first, axis), vec_axis(second, axis), alpha, beta,
+        coefficients[axis]);
+  }
+  primitive_nuclear_attraction_cartesian_atom_gradient_from_hermite<
+      MaximumAngular>(
+      batch, alpha, angular_first, beta, angular_second, atom, exponent,
+      product, coefficients, first_gradient, second_gradient);
 }
 
 template <unsigned MaximumAngular,
@@ -3193,6 +3220,183 @@ __device__ void contracted_one_electron_force_pair(
     }
     if (second_force[axis] != 0.0) {
       atomicAdd(forces + second_coordinate + axis, second_force[axis]);
+    }
+  }
+}
+
+/**
+ * Contract one AO pair with nuclear centers distributed across one warp.
+ *
+ * A block owns one public AO pair. Lane zero evaluates the translation-
+ * invariant overlap/kinetic terms once, while every lane owns one point-charge
+ * auxiliary center at a time. The large Hermite table depends only on the AO
+ * pair and primitive pair, so lane zero materializes it in shared memory and
+ * all nuclear-center lanes reuse it for their Coulomb recurrences. Basis-center
+ * attraction derivatives are reduced in registers; this preserves the scalar
+ * path's one force update per AO pair and center.
+ */
+template <unsigned MaximumAngular>
+__device__ void contracted_one_electron_force_pair_cooperative(
+    const DeviceBatch& batch,
+    std::int32_t system,
+    std::int32_t i,
+    std::int32_t j,
+    double density,
+    double weighted_density,
+    double* forces,
+    OneElectronDerivativeHermiteCoefficients* shared_coefficients) {
+  static_assert(MaximumAngular >= 1);
+  static_assert(MaximumAngular <= 2 * kMaximumAngularMomentum + 1);
+  const unsigned lane = threadIdx.x;
+  const std::int64_t ao_i = static_cast<std::int64_t>(system) * batch.nbf + i;
+  const std::int64_t ao_j = static_cast<std::int64_t>(system) * batch.nbf + j;
+  const std::int32_t shell_i = batch.ao_shells[ao_i];
+  const std::int32_t shell_j = batch.ao_shells[ao_j];
+  const std::int64_t first_atom = batch.shell_atoms[shell_i];
+  const std::int64_t second_atom = batch.shell_atoms[shell_j];
+  const Vec3<double> first = atom_position<double>(batch, first_atom, -1);
+  const Vec3<double> second = atom_position<double>(batch, second_atom, -1);
+  const unsigned first_terms = batch.ao_term_counts[ao_i];
+  const unsigned second_terms = batch.ao_term_counts[ao_j];
+  const double pair_weight = i == j ? 1.0 : 2.0;
+  const double density_scale = -pair_weight * density;
+  const double overlap_scale = pair_weight * weighted_density;
+  double first_force[3]{};
+  double second_force[3]{};
+
+  // These terms do not depend on a point-charge center. Keeping them on lane
+  // zero avoids repeating the compact overlap recurrence across the warp.
+  if (lane == 0U) {
+    for (std::int64_t a = batch.shell_primitive_offsets[shell_i];
+         a < batch.shell_primitive_offsets[shell_i + 1]; ++a) {
+      for (std::int64_t b = batch.shell_primitive_offsets[shell_j];
+           b < batch.shell_primitive_offsets[shell_j + 1]; ++b) {
+        const double primitive_weight = batch.primitive_coefficients[a] *
+            batch.primitive_coefficients[b];
+        for (unsigned first_term = 0; first_term < first_terms; ++first_term) {
+          const Angular angular_first = ao_angular(batch, ao_i, first_term);
+          const double first_coefficient =
+              ao_term_coefficient(batch, ao_i, first_term);
+          for (unsigned second_term = 0; second_term < second_terms;
+               ++second_term) {
+            const Angular angular_second =
+                ao_angular(batch, ao_j, second_term);
+            const double weight = primitive_weight * first_coefficient *
+                ao_term_coefficient(batch, ao_j, second_term);
+            double overlap_gradient[3];
+            double kinetic_gradient[3];
+            primitive_overlap_second_center_gradient(
+                batch.primitive_exponents[a], first, angular_first,
+                batch.primitive_exponents[b], second, angular_second,
+                overlap_gradient);
+            primitive_kinetic_second_center_gradient(
+                batch.primitive_exponents[a], first, angular_first,
+                batch.primitive_exponents[b], second, angular_second,
+                kinetic_gradient);
+            for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+              const double contribution = weight *
+                  (density_scale * kinetic_gradient[coordinate] +
+                   overlap_scale * overlap_gradient[coordinate]);
+              first_force[coordinate] -= contribution;
+              second_force[coordinate] += contribution;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  const std::int64_t atom_begin = batch.atom_offsets[system];
+  const std::int64_t atom_end = batch.atom_offsets[system + 1];
+  for (std::int64_t atom_base = atom_begin; atom_base < atom_end;
+       atom_base += warpSize) {
+    const std::int64_t atom = atom_base + lane;
+    double nuclear_force[3]{};
+    for (std::int64_t a = batch.shell_primitive_offsets[shell_i];
+         a < batch.shell_primitive_offsets[shell_i + 1]; ++a) {
+      const double alpha = batch.primitive_exponents[a];
+      for (std::int64_t b = batch.shell_primitive_offsets[shell_j];
+           b < batch.shell_primitive_offsets[shell_j + 1]; ++b) {
+        const double beta = batch.primitive_exponents[b];
+        const double exponent = alpha + beta;
+        const Vec3<double> product = product_center(alpha, first, beta, second);
+        const double primitive_weight = batch.primitive_coefficients[a] *
+            batch.primitive_coefficients[b];
+        for (unsigned first_term = 0; first_term < first_terms; ++first_term) {
+          const Angular angular_first = ao_angular(batch, ao_i, first_term);
+          const double first_coefficient =
+              ao_term_coefficient(batch, ao_i, first_term);
+          for (unsigned second_term = 0; second_term < second_terms;
+               ++second_term) {
+            const Angular angular_second =
+                ao_angular(batch, ao_j, second_term);
+            const double weight = density_scale * primitive_weight *
+                first_coefficient *
+                ao_term_coefficient(batch, ao_j, second_term);
+            if (lane == 0U) {
+              for (int axis = 0; axis < 3; ++axis) {
+                fill_one_electron_derivative_hermite(
+                    angular_axis(angular_first, axis) + 1,
+                    angular_axis(angular_second, axis) + 1,
+                    vec_axis(product, axis), vec_axis(first, axis),
+                    vec_axis(second, axis), alpha, beta,
+                    shared_coefficients[axis]);
+              }
+            }
+            __syncthreads();
+            if (atom < atom_end) {
+              double first_gradient[3];
+              double second_gradient[3];
+              primitive_nuclear_attraction_cartesian_atom_gradient_from_hermite<
+                  MaximumAngular>(
+                  batch, alpha, angular_first, beta, angular_second, atom,
+                  exponent, product, shared_coefficients, first_gradient,
+                  second_gradient);
+              for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+                first_force[coordinate] +=
+                    weight * first_gradient[coordinate];
+                second_force[coordinate] +=
+                    weight * second_gradient[coordinate];
+                nuclear_force[coordinate] -= weight *
+                    (first_gradient[coordinate] +
+                     second_gradient[coordinate]);
+              }
+            }
+            // No lane may overwrite the shared Hermite table while another
+            // lane is still evaluating its point-charge recurrence.
+            __syncthreads();
+          }
+        }
+      }
+    }
+    if (atom < atom_end) {
+      const std::int64_t coordinate = atom * 3;
+      for (unsigned axis = 0; axis < 3; ++axis) {
+        if (nuclear_force[axis] != 0.0) {
+          atomicAdd(forces + coordinate + axis, nuclear_force[axis]);
+        }
+      }
+    }
+  }
+
+  for (unsigned offset = warpSize / 2; offset != 0; offset /= 2) {
+    for (unsigned axis = 0; axis < 3; ++axis) {
+      first_force[axis] +=
+          __shfl_down_sync(0xffffffffU, first_force[axis], offset);
+      second_force[axis] +=
+          __shfl_down_sync(0xffffffffU, second_force[axis], offset);
+    }
+  }
+  if (lane == 0U) {
+    const std::int64_t first_coordinate = first_atom * 3;
+    const std::int64_t second_coordinate = second_atom * 3;
+    for (unsigned axis = 0; axis < 3; ++axis) {
+      if (first_force[axis] != 0.0) {
+        atomicAdd(forces + first_coordinate + axis, first_force[axis]);
+      }
+      if (second_force[axis] != 0.0) {
+        atomicAdd(forces + second_coordinate + axis, second_force[axis]);
+      }
     }
   }
 }
@@ -9045,14 +9249,15 @@ __global__ void nuclear_force_kernel(DeviceBatch batch,
   forces[coordinate] = -derivative.derivative;
 }
 
-__global__ void one_electron_force_kernel(DeviceBatch batch,
-                                          const std::int32_t* pair_first,
-                                          const std::int32_t* pair_second,
-                                          std::size_t pair_count,
-                                          const double* density,
-                                          const double* weighted_density,
-                                          const std::uint8_t* active,
-                                          double* forces) {
+__global__ void one_electron_force_scalar_kernel(
+    DeviceBatch batch,
+    const std::int32_t* pair_first,
+    const std::int32_t* pair_second,
+    std::size_t pair_count,
+    const double* density,
+    const double* weighted_density,
+    const std::uint8_t* active,
+    double* forces) {
   const std::size_t n = static_cast<std::size_t>(batch.nbf);
   const std::size_t matrix_size = n * n;
   const std::size_t element =
@@ -9093,6 +9298,71 @@ __global__ void one_electron_force_kernel(DeviceBatch batch,
     VIBEQC_ONE_ELECTRON_FORCE_CASE(7);
   }
 #undef VIBEQC_ONE_ELECTRON_FORCE_CASE
+}
+
+/**
+ * Treat nuclei as a prepared point-charge auxiliary dimension.
+ *
+ * One warp owns one AO pair and reuses a shared primitive-pair Hermite table
+ * while its lanes evaluate independent nuclear centers. This avoids a host or
+ * device launch per nucleus and preserves the public-basis density contraction
+ * used by the scalar accuracy oracle.
+ */
+__global__ void one_electron_force_cooperative_kernel(
+    DeviceBatch batch,
+    const std::int32_t* pair_first,
+    const std::int32_t* pair_second,
+    std::size_t pair_count,
+    const double* density,
+    const double* weighted_density,
+    const std::uint8_t* active,
+    double* forces) {
+  extern __shared__ double one_electron_shared[];
+  if (blockDim.x != warpSize) return;
+  const std::size_t element = static_cast<std::size_t>(blockIdx.x);
+  if (element >= static_cast<std::size_t>(batch.batch_size) * pair_count) {
+    return;
+  }
+  const std::int32_t system =
+      static_cast<std::int32_t>(element / pair_count);
+  const std::size_t local = element % pair_count;
+  if (active[system] == 0) return;
+  const std::size_t n = static_cast<std::size_t>(batch.nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t i = static_cast<std::size_t>(pair_first[local]);
+  const std::size_t j = static_cast<std::size_t>(pair_second[local]);
+  const std::size_t matrix_offset =
+      static_cast<std::size_t>(system) * matrix_size;
+  const double pij = density[matrix_offset + matrix_index(i, j, n)];
+  const double wij =
+      weighted_density[matrix_offset + matrix_index(i, j, n)];
+  if (pij == 0.0 && wij == 0.0) return;
+  const std::int64_t ao_i = static_cast<std::int64_t>(system) * batch.nbf +
+      static_cast<std::int32_t>(i);
+  const std::int64_t ao_j = static_cast<std::int64_t>(system) * batch.nbf +
+      static_cast<std::int32_t>(j);
+  const unsigned maximum =
+      batch.shell_angular[batch.ao_shells[ao_i]] +
+      batch.shell_angular[batch.ao_shells[ao_j]] + 1U;
+  auto* shared_coefficients = reinterpret_cast<
+      OneElectronDerivativeHermiteCoefficients*>(one_electron_shared);
+#define VIBEQC_ONE_ELECTRON_FORCE_COOPERATIVE_CASE(Order)                  \
+  case Order:                                                              \
+    contracted_one_electron_force_pair_cooperative<Order>(                 \
+        batch, system, static_cast<std::int32_t>(i),                        \
+        static_cast<std::int32_t>(j), pij, wij, forces,                     \
+        shared_coefficients);                                               \
+    break
+  switch (maximum) {
+    VIBEQC_ONE_ELECTRON_FORCE_COOPERATIVE_CASE(1);
+    VIBEQC_ONE_ELECTRON_FORCE_COOPERATIVE_CASE(2);
+    VIBEQC_ONE_ELECTRON_FORCE_COOPERATIVE_CASE(3);
+    VIBEQC_ONE_ELECTRON_FORCE_COOPERATIVE_CASE(4);
+    VIBEQC_ONE_ELECTRON_FORCE_COOPERATIVE_CASE(5);
+    VIBEQC_ONE_ELECTRON_FORCE_COOPERATIVE_CASE(6);
+    VIBEQC_ONE_ELECTRON_FORCE_COOPERATIVE_CASE(7);
+  }
+#undef VIBEQC_ONE_ELECTRON_FORCE_COOPERATIVE_CASE
 }
 
 __global__ void two_electron_force_kernel(DeviceBatch batch,
@@ -11924,6 +12194,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                   [](std::uint8_t angular) { return angular <= 3; });
   const bool requested_transformed_direct =
       requested_quartet_direct && direct_nbf != nbf;
+  const char* scalar_one_electron_force_environment =
+      std::getenv("VIBEQC_ONE_ELECTRON_FORCE_SCALAR");
+  const bool cooperative_one_electron_force =
+      scalar_one_electron_force_environment == nullptr ||
+      std::strcmp(scalar_one_electron_force_environment, "0") == 0;
   detail::DirectQuartetTaskLayout direct_task_layout{};
   std::size_t total_shell_quartet_tiles = 0;
   if (requested_quartet_direct) {
@@ -13194,11 +13469,25 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   nuclear_force_kernel<<<blocks_for(force_coordinate_count), threads, 0,
                           resources.stream_>>>(
       device_batch, active, forces);
-  one_electron_force_kernel<<<blocks_for(one_electron_force_elements), threads,
-                               0, resources.stream_>>>(
-      device_batch, ao_pair_first, ao_pair_second, pair_count,
-      unrestricted ? total_density : density,
-      unrestricted ? total_weighted_density : weighted_density, active, forces);
+  if (cooperative_one_electron_force) {
+    constexpr std::size_t shared_bytes =
+        3 * sizeof(OneElectronDerivativeHermiteCoefficients);
+    one_electron_force_cooperative_kernel<<<
+        static_cast<unsigned>(one_electron_force_elements), threads,
+        shared_bytes, resources.stream_>>>(
+        device_batch, ao_pair_first, ao_pair_second, pair_count,
+        unrestricted ? total_density : density,
+        unrestricted ? total_weighted_density : weighted_density, active,
+        forces);
+  } else {
+    one_electron_force_scalar_kernel<<<
+        blocks_for(one_electron_force_elements), threads, 0,
+        resources.stream_>>>(
+        device_batch, ao_pair_first, ao_pair_second, pair_count,
+        unrestricted ? total_density : density,
+        unrestricted ? total_weighted_density : weighted_density, active,
+        forces);
+  }
   const std::uint64_t generated_shell_class_mask =
       quartet_direct ? generated::enabled_shell_class_mask() : 0U;
   if (quartet_direct &&

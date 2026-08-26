@@ -58,11 +58,12 @@ contracts the final-density task list and visits only its shell-center
 coordinates. ERI translational invariance evaluates `N-1` unique
 centers and reconstructs the last derivative, reducing force recurrence work
 without changing the stationary gradient. The one-electron force assigns one
-worker to each public AO pair, forms exact raised/lowered overlap and kinetic
-derivatives, and shares each nucleus's Hermite/Boys/Coulomb recurrence across
-both basis-center gradients. The nuclear-center attraction derivative follows
-from translation, so this path does not replay a full dual recurrence for
-every atom coordinate. Dedicated analytic formulas handle
+warp to each public AO pair, forms exact raised/lowered overlap and kinetic
+derivatives on lane zero, and distributes point-charge nuclei across the warp.
+All active nuclear lanes reuse one shared primitive/component Hermite table;
+the nuclear-center attraction derivative follows from translation, so this
+path needs neither a host launch per nucleus nor a full dual recurrence per
+atom coordinate. Dedicated analytic formulas handle
 total angular orders zero through five; their sparse high-order formulas share
 each raised Coulomb state across all centers and reconstruct the fourth basis
 center from translational invariance. Orders six and above use a force-only

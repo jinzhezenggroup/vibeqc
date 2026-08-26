@@ -83,6 +83,15 @@ One CUDA-profiler-range capture per engine isolates a warm batch-1
 energy-plus-force execution after the cold plan/object has already completed.
 The exact acceptance workload and tolerances are unchanged.
 
+The one-electron force subsequently moved from one scalar AO-pair worker to
+one warp per AO pair with nuclear centers treated as point-charge auxiliary
+tasks. Five same-binary captures reduce the component from 20.043 to 2.181 ms
+at 96 AOs (`9.19x`) and from 55.676 to 6.384 ms at 192 AOs (`8.72x`). The
+96-AO kernel is now below the 5 ms target. Same-binary endpoint medians improve
+by `4.6%` and `2.4%`, and the full 96/192-AO batch-1/4 accuracy matrix passes.
+The raw samples and resource usage are retained in the
+[`e2c9d5c` cooperative one-electron artifact](rtx5090-e2c9d5c-issue-4-cooperative-one-electron-force.json).
+
 | Component | VibeQC kernel time | GPU4PySCF kernel time | VibeQC minus GPU4PySCF |
 | --- | ---: | ---: | ---: |
 | Direct J/K | 487.953 ms | 501.613 ms | -13.659 ms |
