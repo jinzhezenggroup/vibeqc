@@ -148,12 +148,53 @@ def test_small_shell_schedule_space_includes_packed_and_cooperative_variants():
     """Allow tuning to choose task packing instead of one fixed mapping."""
 
     candidates = schedule_candidates(build_integral_ir(PSPS_SPEC))
-    assert [item.kind for item in candidates[:3]] == [
+    assert [item.kind for item in candidates[:5]] == [
         ScheduleKind.PACKED_TASKS,
         ScheduleKind.SHELL_TASK,
+        ScheduleKind.SUBGROUP_TASKS,
+        ScheduleKind.SUBGROUP_TASKS,
         ScheduleKind.COMPONENT_LANES,
     ]
     assert candidates[0].tasks_per_warp == 32
+    assert candidates[2].subgroup_lanes == 16
+    assert candidates[2].tasks_per_block == 16
+    assert candidates[3].subgroup_lanes == 8
+    assert candidates[3].tasks_per_block == 32
+
+
+def test_subgroup_schedule_advances_independent_ppps_tasks_per_block():
+    """Keep task-local barriers and reductions inside each lane subgroup."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
+    schedule = next(
+        item
+        for item in schedule_candidates(
+            build_integral_ir(
+                spec,
+                consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+            )
+        )
+        if item.kind == ScheduleKind.SUBGROUP_TASKS
+        and item.tasks_per_warp == 4
+    )
+    plan = build_fused_shell_plan(
+        spec,
+        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+        schedule=schedule,
+    )
+    source = emit_shell_class_fused_cuda(spec, plan)
+    assert schedule.block_threads == 256
+    assert schedule.subgroup_lanes == 8
+    assert schedule.tasks_per_block == 32
+    assert "GeneratedPppsSubgroupForceStorage" in source
+    assert "GeneratedPppsSubgroupFockStorage" in source
+    assert "state += 8U" in source
+    assert "atomicAdd(task_head, 1U)" in source
+    assert "__syncwarp(subgroup_mask)" in source
+    assert "__syncthreads()" not in source.split(
+        "GeneratedPppsSubgroupForceStorage", maxsplit=1
+    )[1]
+    assert "blockIdx.x) * 32U + subgroup" in source
 
 
 @pytest.mark.parametrize(
@@ -2131,7 +2172,10 @@ def test_autotune_emits_unique_schedule_variants_and_manifest_records():
         assert trial.symbol_prefix in source
         assert f'\\"schedule_id\\":\\"{trial.schedule_id}\\"' in source
         assert "shell_class_force_uhf_kernel" not in source
-        assert "shell_class_force_rhf_persistent_kernel" not in source
+        assert "shell_class_force_rhf_kernel" not in source
+        assert "shell_class_force_rhf_persistent_kernel" in source
+        assert '\\"topology\\":\\"persistent_shared\\"' in source
+        assert "device_task_head" in source
     assert component_trials[0].symbol_prefix not in sources[1]
     separate_source = emit_schedule_translation_unit(
         component_trials[0],
@@ -2151,6 +2195,8 @@ def test_autotune_emits_unique_schedule_variants_and_manifest_records():
     assert oracle_source.count(oracle_kernel) == 1
     assert "Per-component recurrence baseline" not in separate_source
     assert "Per-component recurrence baseline" in oracle_source
+    assert "center < 2U ? 1024U : 16U" in separate_source
+    assert "const std::size_t force_count = 24U * 3U" in separate_source
     driver = emit_schedule_driver(component_trials[:2])
     assert component_trials[0].entry_point in driver
     assert component_trials[1].entry_point in driver
@@ -2200,7 +2246,9 @@ def test_autotune_emits_unique_schedule_variants_and_manifest_records():
     assert '\\"consumer\\":\\"fock\\"' in fock_source
     assert "shell_class_force_task" not in fock_source
     assert "shell_class_fock_uhf_kernel" not in fock_source
-    assert "shell_class_fock_rhf_persistent_kernel" not in fock_source
+    assert "shell_class_fock_rhf_kernel" not in fock_source
+    assert "shell_class_fock_rhf_persistent_kernel" in fock_source
+    assert "task.density_offset = 0U" in fock_source
     resource_source = emit_schedule_resource_translation_unit(fock_trials[0])
     assert "shell_class_fock_uhf_kernel" in resource_source
     assert "shell_class_fock_rhf_persistent_kernel" in resource_source

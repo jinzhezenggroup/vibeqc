@@ -35,6 +35,7 @@ class ScheduleKind(str, Enum):
 
     PACKED_TASKS = "packed_tasks"
     THREAD_TASKS = "thread_tasks"
+    SUBGROUP_TASKS = "subgroup_tasks"
     SHELL_TASK = "shell_task"
     COMPONENT_LANES = "component_lanes"
     TILED_COMPONENTS = "tiled_components"
@@ -104,8 +105,9 @@ class ScheduleIR:
     """CUDA-independent cooperative execution policy.
 
     ``component_tile`` is the maximum number of Cartesian components handled
-    by one cooperative task.  ``tasks_per_warp`` is greater than one only for
-    packed schedules where each lane owns an independent complete shell task.
+    by one cooperative task.  ``tasks_per_warp`` also defines the width of a
+    ``SUBGROUP_TASKS`` worker: each power-of-two subgroup owns one complete
+    shell task and has ``32 / tasks_per_warp`` cooperating lanes.
     """
 
     kind: ScheduleKind
@@ -146,9 +148,19 @@ class ScheduleIR:
                 raise ValueError("thread-task schedules require one task per lane")
             if self.shared_coulomb:
                 raise ValueError("thread-task schedules require lane-local Coulomb data")
+        elif self.kind == ScheduleKind.SUBGROUP_TASKS:
+            if self.tasks_per_warp not in (2, 4, 8):
+                raise ValueError(
+                    "subgroup-task schedules require 2, 4, or 8 tasks per warp"
+                )
+            if not self.shared_coulomb:
+                raise ValueError(
+                    "subgroup-task schedules require task-local shared Coulomb data"
+                )
         elif self.tasks_per_warp != 1:
             raise ValueError(
-                "only packed- or thread-task schedules may own multiple tasks"
+                "only packed-, thread-, or subgroup-task schedules may own "
+                "multiple tasks"
             )
 
     @property
@@ -156,6 +168,26 @@ class ScheduleIR:
         """Return the number of full warps in one cooperative block."""
 
         return self.block_threads // 32
+
+    @property
+    def subgroup_lanes(self) -> int:
+        """Return the cooperating lane count for one subgroup shell task."""
+
+        if self.kind != ScheduleKind.SUBGROUP_TASKS:
+            raise ValueError("only subgroup-task schedules define subgroup lanes")
+        return 32 // self.tasks_per_warp
+
+    @property
+    def tasks_per_block(self) -> int:
+        """Return complete shell tasks advanced by one generated block."""
+
+        if self.kind == ScheduleKind.PACKED_TASKS:
+            return 32
+        if self.kind == ScheduleKind.THREAD_TASKS:
+            return self.block_threads
+        if self.kind == ScheduleKind.SUBGROUP_TASKS:
+            return self.warp_count * self.tasks_per_warp
+        return 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -220,6 +252,22 @@ def schedule_candidates(integral: IntegralIR) -> tuple[ScheduleIR, ...]:
                 shared_coulomb=False,
             )
         )
+
+    # Multiple task-local subgroups preserve primitive/Coulomb reuse without
+    # dedicating an entire block to a low- or medium-component shell quartet.
+    # The emitter loops components within each subgroup, so this schedule also
+    # remains legal when a task owns more components than subgroup lanes.
+    if component_count <= 64:
+        for tasks_per_warp in (2, 4):
+            candidates.append(
+                ScheduleIR(
+                    kind=ScheduleKind.SUBGROUP_TASKS,
+                    block_threads=256,
+                    component_tile=component_count,
+                    tasks_per_warp=tasks_per_warp,
+                    shared_coulomb=True,
+                )
+            )
 
     coulomb_state_count = comb(integral.maximum_coulomb_order + 3, 3)
     cooperative_threads = (
@@ -326,6 +374,16 @@ def tuning_schedule_candidates(integral: IntegralIR) -> tuple[ScheduleIR, ...]:
                             unroll_pair_terms=unroll_pair_terms,
                             minimum_blocks_per_sm=0,
                             maximum_registers=maximum_registers,
+                        )
+                    )
+        elif schedule.kind == ScheduleKind.SUBGROUP_TASKS:
+            for pair_orientation in PairOrientation:
+                for unroll_pair_terms in (True, False):
+                    candidates.append(
+                        replace(
+                            schedule,
+                            pair_orientation=pair_orientation,
+                            unroll_pair_terms=unroll_pair_terms,
                         )
                     )
         else:

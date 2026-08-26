@@ -375,7 +375,7 @@ int main() {
     for (unsigned center = 0; center < 4U; ++center) {
       task.primitive_begin[center] = center * kPrimitiveCount;
       task.primitive_end[center] = (center + 1U) * kPrimitiveCount;
-      task.atom[center] = task_index * 4U + center;
+      task.atom[center] = QCE_ATOM_INDEX;
       task.shell[center] = task_index * 4U + center;
       positions[task.atom[center]] = base_positions[center];
     }
@@ -397,7 +397,8 @@ QCE_AO_OFFSETS
   double* device_ao_coefficients = nullptr;
   double* device_density = nullptr;
   double* device_forces = nullptr;
-  const std::size_t force_count = kTaskCount * 12U;
+QCE_PERSISTENT_DECLARATIONS
+  const std::size_t force_count = QCE_FORCE_COUNT;
   QCE_CUDA_CHECK(cudaMalloc(&device_tasks, tasks.size() * sizeof(tasks[0])));
   QCE_CUDA_CHECK(cudaMalloc(&device_positions, positions.size() * sizeof(positions[0])));
   QCE_CUDA_CHECK(cudaMalloc(&device_exponents, exponents.size() * sizeof(double)));
@@ -435,13 +436,10 @@ QCE_AO_OFFSETS
                             ao_coefficients.size() * sizeof(double), cudaMemcpyHostToDevice));
   QCE_CUDA_CHECK(cudaMemcpy(device_density, density.data(),
                             density.size() * sizeof(double), cudaMemcpyHostToDevice));
+QCE_PERSISTENT_SETUP
 
   auto launch_fused = [&]() {
-    generated_dppp_shell_class_force_rhf_kernel<<<QCE_FUSED_GRID_COUNT,
-        kGeneratedDpppBlockThreads>>>(
-        device_tasks, device_primitive_pairs, device_primitive_pair_offsets,
-        device_ao_coefficients, device_positions, 0.0, nullptr,
-        device_density, device_forces, kTaskCount);
+QCE_FUSED_LAUNCH
   };
   auto launch_recompute = [&]() {
     generated_dppp_component_recompute_rhf_kernel<<<kTaskCount,
@@ -478,6 +476,7 @@ QCE_AO_OFFSETS
   std::printf(
       "{\"task_count\":%u,\"primitive_count_per_shell\":%u,"
       "\"primitive_quartets_per_task\":%u,\"consumer\":\"force\","
+      "\"topology\":\"QCE_BENCHMARK_TOPOLOGY\","
       "\"fused_ms\":%.9g,"
       "\"recompute_ms\":%.9g,\"speedup\":%.9g,"
       "\"maximum_force_error\":%.17g,\"maximum_force\":%.17g}\n",
@@ -495,6 +494,7 @@ QCE_AO_OFFSETS
   cudaFree(device_exponents);
   cudaFree(device_positions);
   cudaFree(device_tasks);
+QCE_PERSISTENT_FREE
   return maximum_error <= 2.0e-10 * fmax(1.0, maximum_force) ? 0 : 3;
 }
 """
@@ -634,8 +634,7 @@ int main() {
       positions[task.atom[center]] = base_positions[center];
     }
 QCE_AO_OFFSETS
-    task.density_offset =
-        static_cast<std::uint64_t>(task_index) * matrix_size;
+    task.density_offset = QCE_DENSITY_OFFSET;
     task.spin_offset = 0U;
     task.matrix_order = static_cast<std::uint32_t>(n);
     task.shell_pair[0] = 0U;
@@ -652,6 +651,7 @@ QCE_AO_OFFSETS
   double* device_ao_coefficients = nullptr;
   double* device_density = nullptr;
   double* device_fock = nullptr;
+QCE_PERSISTENT_DECLARATIONS
   const std::size_t fock_count = density.size();
   QCE_CUDA_CHECK(cudaMalloc(&device_tasks, tasks.size() * sizeof(tasks[0])));
   QCE_CUDA_CHECK(cudaMalloc(&device_positions, positions.size() * sizeof(positions[0])));
@@ -690,13 +690,10 @@ QCE_AO_OFFSETS
                             ao_coefficients.size() * sizeof(double), cudaMemcpyHostToDevice));
   QCE_CUDA_CHECK(cudaMemcpy(device_density, density.data(),
                             density.size() * sizeof(double), cudaMemcpyHostToDevice));
+QCE_PERSISTENT_SETUP
 
   auto launch_fused = [&]() {
-    generated_dppp_shell_class_fock_rhf_kernel<<<QCE_FUSED_GRID_COUNT,
-        kGeneratedDpppFockBlockThreads>>>(
-        device_tasks, device_primitive_pairs, device_primitive_pair_offsets,
-        device_ao_coefficients, device_positions, 0.0, nullptr,
-        device_density, device_fock, kTaskCount);
+QCE_FUSED_LAUNCH
   };
   auto launch_recompute = [&]() {
     generated_dppp_component_recompute_fock_rhf_kernel<<<kTaskCount,
@@ -733,6 +730,7 @@ QCE_AO_OFFSETS
   std::printf(
       "{\"task_count\":%u,\"primitive_count_per_shell\":%u,"
       "\"primitive_quartets_per_task\":%u,\"consumer\":\"fock\","
+      "\"topology\":\"QCE_BENCHMARK_TOPOLOGY\","
       "\"fused_ms\":%.9g,\"recompute_ms\":%.9g,\"speedup\":%.9g,"
       "\"maximum_fock_error\":%.17g,\"maximum_fock\":%.17g}\n",
       kTaskCount, kPrimitiveCount,
@@ -749,6 +747,7 @@ QCE_AO_OFFSETS
   cudaFree(device_exponents);
   cudaFree(device_positions);
   cudaFree(device_tasks);
+QCE_PERSISTENT_FREE
   return maximum_error <= 2.0e-10 * fmax(1.0, maximum_fock) ? 0 : 3;
 }
 """
@@ -825,8 +824,130 @@ def _benchmark_unfused_fock_kernel(
     return _specialize_dppp_identifiers(source, spec)
 
 
+def _persistent_benchmark_snippets(
+    consumer: KernelConsumer,
+) -> dict[str, str]:
+    """Return host snippets that exercise the production persistent ABI.
+
+    Production launches eight worker blocks per SM and all workers contend on
+    one queue head.  Keeping that topology in schedule timing is important:
+    ordinary one-shot kernels hide terminal queue claims and greatly
+    understate scatter contention for multi-task blocks.
+    """
+
+    output = "device_fock" if consumer == KernelConsumer.FOCK else "device_forces"
+    kernel = (
+        "generated_dppp_shell_class_fock_rhf_persistent_kernel"
+        if consumer == KernelConsumer.FOCK
+        else "generated_dppp_shell_class_force_rhf_persistent_kernel"
+    )
+    block_threads = (
+        "kGeneratedDpppFockBlockThreads"
+        if consumer == KernelConsumer.FOCK
+        else "kGeneratedDpppBlockThreads"
+    )
+    return {
+        "QCE_PERSISTENT_DECLARATIONS": """  std::uint32_t* device_task_offset = nullptr;
+  std::uint32_t* device_task_count = nullptr;
+  std::uint32_t* device_task_head = nullptr;""",
+        "QCE_PERSISTENT_SETUP": """  const std::uint32_t host_task_offset = 0U;
+  const std::uint32_t host_task_count = kTaskCount;
+  cudaDeviceProp device_properties{};
+  QCE_CUDA_CHECK(cudaGetDeviceProperties(&device_properties, 0));
+  const unsigned persistent_grid_count =
+      static_cast<unsigned>(device_properties.multiProcessorCount) * 8U;
+  QCE_CUDA_CHECK(cudaMalloc(&device_task_offset, sizeof(std::uint32_t)));
+  QCE_CUDA_CHECK(cudaMalloc(&device_task_count, sizeof(std::uint32_t)));
+  QCE_CUDA_CHECK(cudaMalloc(&device_task_head, sizeof(std::uint32_t)));
+  QCE_CUDA_CHECK(cudaMemcpy(device_task_offset, &host_task_offset,
+                            sizeof(std::uint32_t), cudaMemcpyHostToDevice));
+  QCE_CUDA_CHECK(cudaMemcpy(device_task_count, &host_task_count,
+                            sizeof(std::uint32_t), cudaMemcpyHostToDevice));""",
+        "QCE_FUSED_LAUNCH": f"""    QCE_CUDA_CHECK(cudaMemsetAsync(
+        device_task_head, 0, sizeof(std::uint32_t)));
+    {kernel}<<<persistent_grid_count, {block_threads}>>>(
+        device_tasks, device_primitive_pairs, device_primitive_pair_offsets,
+        device_ao_coefficients, device_positions, 0.0, nullptr,
+        device_density, {output}, device_task_offset, device_task_count,
+        device_task_head);""",
+        "QCE_PERSISTENT_FREE": """  cudaFree(device_task_head);
+  cudaFree(device_task_count);
+  cudaFree(device_task_offset);""",
+        "QCE_BENCHMARK_TOPOLOGY": "persistent_shared",
+    }
+
+
+def _ordinary_benchmark_snippets(
+    consumer: KernelConsumer,
+) -> dict[str, str]:
+    """Return the legacy isolated one-shot benchmark launch snippets."""
+
+    if consumer == KernelConsumer.FOCK:
+        launch = """    generated_dppp_shell_class_fock_rhf_kernel<<<QCE_FUSED_GRID_COUNT,
+        kGeneratedDpppFockBlockThreads>>>(
+        device_tasks, device_primitive_pairs, device_primitive_pair_offsets,
+        device_ao_coefficients, device_positions, 0.0, nullptr,
+        device_density, device_fock, kTaskCount);"""
+    else:
+        launch = """    generated_dppp_shell_class_force_rhf_kernel<<<QCE_FUSED_GRID_COUNT,
+        kGeneratedDpppBlockThreads>>>(
+        device_tasks, device_primitive_pairs, device_primitive_pair_offsets,
+        device_ao_coefficients, device_positions, 0.0, nullptr,
+        device_density, device_forces, kTaskCount);"""
+    return {
+        "QCE_PERSISTENT_DECLARATIONS": "",
+        "QCE_PERSISTENT_SETUP": "",
+        "QCE_FUSED_LAUNCH": launch,
+        "QCE_PERSISTENT_FREE": "",
+        "QCE_BENCHMARK_TOPOLOGY": "ordinary_isolated",
+    }
+
+
+def _apply_benchmark_topology(
+    source: str,
+    consumer: KernelConsumer,
+    *,
+    persistent_kernel: bool,
+) -> str:
+    """Specialize host task ownership, scatter targets, and launch ABI."""
+
+    snippets = (
+        _persistent_benchmark_snippets(consumer)
+        if persistent_kernel
+        else _ordinary_benchmark_snippets(consumer)
+    )
+    if consumer == KernelConsumer.FORCE:
+        snippets.update(
+            {
+                "QCE_ATOM_INDEX": (
+                    "center * 6U + ((task_index / "
+                    "(center < 2U ? 1024U : 16U)) % 6U)"
+                    if persistent_kernel
+                    else "task_index * 4U + center"
+                ),
+                "QCE_FORCE_COUNT": (
+                    "24U * 3U" if persistent_kernel else "kTaskCount * 12U"
+                ),
+            }
+        )
+    else:
+        snippets["QCE_DENSITY_OFFSET"] = (
+            "0U"
+            if persistent_kernel
+            else "static_cast<std::uint64_t>(task_index) * matrix_size"
+        )
+    for marker, replacement in snippets.items():
+        if marker not in source:
+            raise RuntimeError(f"benchmark topology marker {marker} is missing")
+        source = source.replace(marker, replacement)
+    return source
+
+
 def _benchmark_host_harness(
-    spec: ShellClassSpec, plan: FusedShellPlan
+    spec: ShellClassSpec,
+    plan: FusedShellPlan,
+    *,
+    persistent_kernel: bool,
 ) -> str:
     """Generate dense AO storage and offsets for a synthetic shell quartet."""
 
@@ -844,17 +965,26 @@ def _benchmark_host_harness(
     source = _HOST_HARNESS.replace("QCE_MATRIX_ORDER", f"{ao_count}U")
     source = source.replace("QCE_AO_COUNT", f"{ao_count}U")
     source = source.replace("QCE_AO_OFFSETS", "\n".join(offset_lines))
+    tasks_per_block = plan.schedule.tasks_per_block
     fused_grid_count = (
-        "(kTaskCount + 31U) / 32U"
-        if plan.schedule.kind == ScheduleKind.PACKED_TASKS
+        f"(kTaskCount + {tasks_per_block - 1}U) / {tasks_per_block}U"
+        if tasks_per_block > 1
         else "kTaskCount"
+    )
+    source = _apply_benchmark_topology(
+        source,
+        KernelConsumer.FORCE,
+        persistent_kernel=persistent_kernel,
     )
     source = source.replace("QCE_FUSED_GRID_COUNT", fused_grid_count)
     return _specialize_dppp_identifiers(source, spec)
 
 
 def _benchmark_fock_host_harness(
-    spec: ShellClassSpec, plan: FusedShellPlan
+    spec: ShellClassSpec,
+    plan: FusedShellPlan,
+    *,
+    persistent_kernel: bool,
 ) -> str:
     """Generate isolated per-task density/Fock matrices for value timing."""
 
@@ -870,27 +1000,115 @@ def _benchmark_fock_host_harness(
     source = _FOCK_HOST_HARNESS.replace("QCE_MATRIX_ORDER", f"{ao_count}U")
     source = source.replace("QCE_AO_COUNT", f"{ao_count}U")
     source = source.replace("QCE_AO_OFFSETS", "\n".join(offset_lines))
+    tasks_per_block = plan.schedule.tasks_per_block
     fused_grid_count = (
-        "(kTaskCount + 31U) / 32U"
-        if plan.schedule.kind == ScheduleKind.PACKED_TASKS
+        f"(kTaskCount + {tasks_per_block - 1}U) / {tasks_per_block}U"
+        if tasks_per_block > 1
         else "kTaskCount"
+    )
+    source = _apply_benchmark_topology(
+        source,
+        KernelConsumer.FOCK,
+        persistent_kernel=persistent_kernel,
     )
     source = source.replace("QCE_FUSED_GRID_COUNT", fused_grid_count)
     return _specialize_dppp_identifiers(source, spec)
+
+
+def _remove_cuda_kernel_definition(source: str, signature: str) -> str:
+    """Remove one complete extern CUDA wrapper identified by its signature."""
+
+    signature_begin = source.find(signature)
+    if signature_begin < 0:
+        raise RuntimeError(f"benchmark wrapper {signature} changed unexpectedly")
+    function_begin = source.rfind('extern "C" __global__', 0, signature_begin)
+    if function_begin < 0:
+        raise RuntimeError(f"benchmark wrapper {signature} has no declaration")
+    brace_begin = source.find("{", signature_begin)
+    if brace_begin < 0:
+        raise RuntimeError(f"benchmark wrapper {signature} has no body")
+    depth = 0
+    function_end = -1
+    for position in range(brace_begin, len(source)):
+        character = source[position]
+        if character == "{":
+            depth += 1
+        elif character == "}":
+            depth -= 1
+            if depth == 0:
+                function_end = position + 1
+                break
+    if function_end < 0:
+        raise RuntimeError(f"benchmark wrapper {signature} has an open body")
+    while function_end < len(source) and source[function_end] in "\r\n":
+        function_end += 1
+    return source[:function_begin] + source[function_end:]
+
+
+def _retain_selected_persistent_benchmark_kernel(
+    source: str,
+    spec: ShellClassSpec,
+    consumer: KernelConsumer,
+) -> str:
+    """Keep the production RHF persistent wrapper and its device helpers."""
+
+    prefix = f"generated_{spec.name}"
+    fock_section = "/** Coefficient-only pair term used by the SCF Fock recurrence. */"
+    if consumer == KernelConsumer.FOCK:
+        force_task_signature = source.find(
+            f"__device__ __forceinline__ void {prefix}_shell_class_force_task("
+        )
+        if force_task_signature >= 0:
+            force_begin = source.rfind(
+                "template <bool Unrestricted>", 0, force_task_signature
+            )
+        else:
+            force_rhf = source.find(
+                f"void {prefix}_shell_class_force_rhf_kernel("
+            )
+            force_begin = source.rfind('extern "C" __global__', 0, force_rhf)
+        fock_begin = source.find(fock_section)
+        if force_begin < 0 or fock_begin < 0 or force_begin >= fock_begin:
+            raise RuntimeError(
+                "persistent Fock benchmark force-section markers changed "
+                "unexpectedly"
+            )
+        source = source[:force_begin] + source[fock_begin:]
+
+    stem = f"{prefix}_shell_class_{consumer.value}"
+    for signature in (
+        f"void {stem}_rhf_kernel(",
+        f"void {stem}_uhf_kernel(",
+        f"void {stem}_uhf_persistent_kernel(",
+    ):
+        source = _remove_cuda_kernel_definition(source, signature)
+    if f"void {stem}_rhf_persistent_kernel(" not in source:
+        raise RuntimeError("persistent RHF benchmark wrapper is missing")
+    return source
 
 
 def _retain_selected_benchmark_kernel(
     source: str,
     spec: ShellClassSpec,
     consumer: KernelConsumer,
+    *,
+    persistent_kernel: bool = False,
 ) -> str:
     """Remove production-only wrappers from a timing translation unit.
 
-    Schedule search executes only the ordinary RHF kernel.  UHF and persistent
-    wrappers instantiate the same large recurrence several more times and can
-    dominate NVCC time for tiled d/f shells.  The autotuner separately compiles
-    the selected winner with every production wrapper before manifest output.
+    Autotuning keeps exactly one RHF entry point so unused UHF companions do
+    not dominate NVCC time.  Production-like timing retains the persistent
+    wrapper because queue and scatter topology materially affect schedule
+    ranking; the standalone diagnostic benchmark may still request the
+    ordinary one-shot wrapper.
     """
+
+    if persistent_kernel:
+        return _retain_selected_persistent_benchmark_kernel(
+            source,
+            spec,
+            consumer,
+        )
 
     prefix = f"generated_{spec.name}"
     force_uhf = f"void {prefix}_shell_class_force_uhf_kernel("
@@ -1029,6 +1247,7 @@ def emit_shell_class_benchmark_cuda(
     schedule: ScheduleIR | None = None,
     consumer: KernelConsumer | str = KernelConsumer.FORCE,
     benchmark_kernel_only: bool = False,
+    persistent_kernel: bool = False,
     oracle_symbol_prefix: str | None = None,
 ) -> str:
     """Return a self-contained benchmark for one explicit schedule.
@@ -1062,10 +1281,18 @@ def emit_shell_class_benchmark_cuda(
             f"{selected_consumer.value} benchmark requires its consumer"
         )
     if selected_consumer == KernelConsumer.FOCK:
-        host = _benchmark_fock_host_harness(spec, selected_plan)
+        host = _benchmark_fock_host_harness(
+            spec,
+            selected_plan,
+            persistent_kernel=persistent_kernel,
+        )
         baseline = _benchmark_unfused_fock_kernel(spec, selected_plan)
     else:
-        host = _benchmark_host_harness(spec, selected_plan)
+        host = _benchmark_host_harness(
+            spec,
+            selected_plan,
+            persistent_kernel=persistent_kernel,
+        )
         baseline = _benchmark_unfused_kernel(spec, selected_plan)
     replacements = {
         "QCE_TASK_COUNT": str(task_count),
@@ -1082,6 +1309,7 @@ def emit_shell_class_benchmark_cuda(
             fused,
             spec,
             selected_consumer,
+            persistent_kernel=persistent_kernel,
         )
     oracle_declaration = ""
     if oracle_symbol_prefix is not None:

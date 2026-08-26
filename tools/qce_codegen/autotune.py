@@ -149,6 +149,7 @@ def supported_schedule_trials(
         if schedule.kind
         in (
             ScheduleKind.PACKED_TASKS,
+            ScheduleKind.SUBGROUP_TASKS,
             ScheduleKind.SHELL_TASK,
             ScheduleKind.COMPONENT_LANES,
             ScheduleKind.TILED_COMPONENTS,
@@ -216,6 +217,7 @@ def emit_schedule_translation_unit(
         plan=plan,
         consumer=trial.consumer,
         benchmark_kernel_only=True,
+        persistent_kernel=True,
         oracle_symbol_prefix=(
             _oracle_symbol_prefix(_oracle_schedule_trial(oracle_trial))
             if oracle_trial is not None
@@ -767,6 +769,14 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 maximum_stack_bytes=arguments.max_stack_bytes,
                 maximum_shared_bytes=arguments.max_shared_bytes,
             )
+            if (
+                trial.schedule.kind == ScheduleKind.SUBGROUP_TASKS
+                and not arguments.allow_experimental_subgroup_winner
+            ):
+                reasons.append(
+                    "subgroup schedules require explicit end-to-end "
+                    "production acceptance"
+                )
             if compile_row["timed_out"]:
                 reasons.append(
                     "NVCC compilation exceeded "
@@ -944,6 +954,9 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 "maximum_shared_bytes": arguments.max_shared_bytes,
                 "compile_timeout_seconds": arguments.compile_timeout,
                 "spills_allowed": False,
+                "experimental_subgroup_winners_allowed": (
+                    arguments.allow_experimental_subgroup_winner
+                ),
             },
             "winners": winner_rows,
             "candidates": candidates,
@@ -998,6 +1011,15 @@ def main() -> None:
     parser.add_argument("--max-packed-registers", type=int, default=224)
     parser.add_argument("--max-stack-bytes", type=int, default=128)
     parser.add_argument("--max-shared-bytes", type=int, default=49152)
+    parser.add_argument(
+        "--allow-experimental-subgroup-winner",
+        action="store_true",
+        help=(
+            "allow subgroup schedules to become manifest winners after the "
+            "synthetic gate; normally they require a separate end-to-end "
+            "production acceptance"
+        ),
+    )
     parser.add_argument("--timeout", type=int, default=600)
     parser.add_argument("--work-directory", type=Path)
     parser.add_argument(
