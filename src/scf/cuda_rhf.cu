@@ -7459,8 +7459,14 @@ __global__ void compact_generic_order5_tiles_kernel(
     const std::uint32_t* active_shell_quartet_tile_count,
     const ActiveShellQuartetTile* active_shell_quartet_tiles,
     std::uint64_t generated_shell_class_mask,
+    const std::uint64_t* generated_shell_class_mask_pointer,
     std::uint32_t* generic_tile_count,
     ActiveShellQuartetTile* generic_tiles) {
+  // Fock graph replay uploads its runtime selection to device memory, while
+  // the final force path supplies a host-resolved value outside the graph.
+  if (generated_shell_class_mask_pointer != nullptr) {
+    generated_shell_class_mask = *generated_shell_class_mask_pointer;
+  }
   const std::size_t active_tile =
       static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (active_tile >=
@@ -10600,6 +10606,8 @@ void launch_angular_fock_quartets(
     DeviceBatch batch,
     const std::uint32_t* active_tile_counts,
     const ActiveShellQuartetTile* active_tiles,
+    const std::uint32_t* generic_order5_tile_count,
+    const ActiveShellQuartetTile* generic_order5_tiles,
     std::uint32_t* persistent_task_heads,
     unsigned persistent_worker_blocks,
     double screening_tolerance,
@@ -10610,6 +10618,17 @@ void launch_angular_fock_quartets(
     const std::uint64_t* generated_fock_shell_class_mask) {
   if constexpr (AngularOrder < detail::kDirectQuartetAngularOrderCount) {
     if (capacities[AngularOrder] != 0) {
+      const std::uint32_t* order_tile_count =
+          active_tile_counts + AngularOrder;
+      const ActiveShellQuartetTile* order_tiles =
+          active_tiles + offsets[AngularOrder];
+      if constexpr (AngularOrder == kGenericOrderFiveAngularOrder) {
+        // Every order-five class currently enabled for generated Fock owns an
+        // exact queue. Avoid making the generic persistent worker claim all
+        // six subtiles only to decode the class and return.
+        order_tile_count = generic_order5_tile_count;
+        order_tiles = generic_order5_tiles;
+      }
       if constexpr (AngularOrder < kPackedSsssAngularOrderCount) {
         const unsigned capacity_workers = static_cast<unsigned>(
             (capacities[AngularOrder] + detail::kDirectQuartetThreads - 1) /
@@ -10618,8 +10637,7 @@ void launch_angular_fock_quartets(
             Unrestricted, AngularOrder><<<
                 std::min(capacity_workers, persistent_worker_blocks),
                 detail::kDirectQuartetThreads, 0, stream>>>(
-            batch, active_tile_counts + AngularOrder,
-            active_tiles + offsets[AngularOrder],
+            batch, order_tile_count, order_tiles,
             persistent_task_heads + AngularOrder, screening_tolerance,
             schwarz_bounds, density, active, fock);
       } else if constexpr (AngularOrder == kFusedPsssAngularOrder) {
@@ -10629,8 +10647,7 @@ void launch_angular_fock_quartets(
         build_fock_direct_psss_persistent_kernel<Unrestricted><<<
             std::min(capacity_workers, persistent_worker_blocks),
             detail::kDirectQuartetThreads, 0, stream>>>(
-            batch, active_tile_counts + AngularOrder,
-            active_tiles + offsets[AngularOrder],
+            batch, order_tile_count, order_tiles,
             persistent_task_heads + AngularOrder, screening_tolerance,
             schwarz_bounds, density, active, fock);
       } else if constexpr (AngularOrder == kFusedOrderTwoAngularOrder) {
@@ -10640,8 +10657,7 @@ void launch_angular_fock_quartets(
         build_fock_direct_order2_persistent_kernel<Unrestricted><<<
             std::min(capacity_workers, persistent_worker_blocks),
             detail::kDirectQuartetThreads, 0, stream>>>(
-            batch, active_tile_counts + AngularOrder,
-            active_tiles + offsets[AngularOrder],
+            batch, order_tile_count, order_tiles,
             persistent_task_heads + AngularOrder, screening_tolerance,
             schwarz_bounds, density, active, fock);
       } else if constexpr (AngularOrder <
@@ -10653,8 +10669,7 @@ void launch_angular_fock_quartets(
             Unrestricted, AngularOrder><<<
                 std::min(capacity_blocks, persistent_worker_blocks),
                 detail::kDirectQuartetThreads, 0, stream>>>(
-            batch, active_tile_counts + AngularOrder,
-            active_tiles + offsets[AngularOrder],
+            batch, order_tile_count, order_tiles,
             persistent_task_heads + AngularOrder, screening_tolerance,
             schwarz_bounds, density, active, fock,
             generated_fock_shell_class_mask);
@@ -10664,14 +10679,14 @@ void launch_angular_fock_quartets(
                 capacities[AngularOrder] *
                 detail::direct_quartet_subtiles_per_tile(AngularOrder)),
             detail::kDirectQuartetThreads, 0, stream>>>(
-            batch, active_tile_counts + AngularOrder,
-            active_tiles + offsets[AngularOrder], screening_tolerance,
+            batch, order_tile_count, order_tiles, screening_tolerance,
             schwarz_bounds, density, active, fock,
             generated_fock_shell_class_mask);
       }
     }
     launch_angular_fock_quartets<Unrestricted, AngularOrder + 1>(
         stream, capacities, offsets, batch, active_tile_counts, active_tiles,
+        generic_order5_tile_count, generic_order5_tiles,
         persistent_task_heads, persistent_worker_blocks,
         screening_tolerance, schwarz_bounds, density, active, fock,
         generated_fock_shell_class_mask);
@@ -12621,6 +12636,26 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           shell_pair_density_bounds, active,
           active_shell_quartet_tile_offsets,
           active_shell_quartet_tile_counts, active_shell_quartet_tiles);
+      if (plan.shell_quartet_tile_capacities[
+              kGenericOrderFiveAngularOrder] != 0) {
+        cudaError_t compact_error = cudaMemsetAsync(
+            generic_order5_tile_count, 0, sizeof(std::uint32_t),
+            resources.stream_);
+        if (compact_error != cudaSuccess) return compact_error;
+        compact_generic_order5_tiles_kernel<<<
+            blocks_for(plan.shell_quartet_tile_capacities[
+                kGenericOrderFiveAngularOrder]),
+            threads, 0, resources.stream_>>>(
+            device_batch,
+            active_shell_quartet_tile_counts + kGenericOrderFiveAngularOrder,
+            active_shell_quartet_tiles +
+                plan.shell_quartet_tile_offsets[
+                    kGenericOrderFiveAngularOrder],
+            0U, generated_fock_shell_class_mask,
+            generic_order5_tile_count, generic_order5_tiles);
+        compact_error = cudaPeekAtLastError();
+        if (compact_error != cudaSuccess) return compact_error;
+      }
     }
     if (unrestricted && persistent_eri) {
       build_uhf_fock_kernel<<<blocks_for(spin_matrix_elements), threads, 0,
@@ -12652,6 +12687,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           resources.stream_, plan.shell_quartet_tile_capacities,
           plan.shell_quartet_tile_offsets, device_batch,
           active_shell_quartet_tile_counts, active_shell_quartet_tiles,
+          generic_order5_tile_count, generic_order5_tiles,
           persistent_fock_task_heads,
           plan.persistent_quartet_worker_blocks,
           options.screening_tolerance, schwarz_bounds, quartet_density, active,
@@ -12693,6 +12729,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           resources.stream_, plan.shell_quartet_tile_capacities,
           plan.shell_quartet_tile_offsets, device_batch,
           active_shell_quartet_tile_counts, active_shell_quartet_tiles,
+          generic_order5_tile_count, generic_order5_tiles,
           persistent_fock_task_heads,
           plan.persistent_quartet_worker_blocks,
           options.screening_tolerance, schwarz_bounds, quartet_density, active,
@@ -13166,7 +13203,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           active_shell_quartet_tile_counts + kGenericOrderFiveAngularOrder,
           active_shell_quartet_tiles +
               plan.shell_quartet_tile_offsets[kGenericOrderFiveAngularOrder],
-          generated_shell_class_mask, generic_order5_tile_count,
+          generated_shell_class_mask, nullptr, generic_order5_tile_count,
           generic_order5_tiles);
       cuda_error = cudaPeekAtLastError();
     }
