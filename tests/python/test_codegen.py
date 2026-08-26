@@ -1202,7 +1202,9 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     )
     assert tuple(spec.name for spec in fock_specifications) == (
         "dppp",
+        "ppps",
         "dpps",
+        "dsps",
     )
     selections = load_production_kernel_selections(manifest, "sm_120")
     assert tuple(selection.spec.name for selection in selections) == tuple(
@@ -1222,7 +1224,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     }
     assert tuple(selection.consumers for selection in selections) == tuple(
         (KernelConsumer.FOCK, KernelConsumer.FORCE)
-        if selection.spec.name in ("dppp", "dpps")
+        if selection.spec.name in ("dppp", "ppps", "dpps", "dsps")
         else (KernelConsumer.FORCE,)
         for selection in selections
     )
@@ -1236,9 +1238,10 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
         assert b"\0" not in first_path.read_bytes()
     header = emit_registry_header(selections)
     assert '{"dppp", 12U, 5U, 192U, 3U, 162U}' in header
+    assert '{"ppps", 4U, 3U, 64U, 3U, 27U}' in header
+    assert '{"dsps", 7U, 3U, 64U, 3U, 18U}' in header
     assert '{"dpdp", 14U, 6U, 64U, 2U, 64U}' in header
     assert '{"dddp", 19U, 7U, 64U, 2U, 64U}' in header
-    assert '{"ppps", 4U, 3U, 64U, 2U, 27U}' in header
     assert '{"dspp", 8U, 4U, 64U, 2U, 54U}' in header
     assert '{"dpps", 11U, 4U, 64U, 3U, 54U}' in header
     assert '{"pppp", 5U, 4U, 96U, 2U, 81U}' in header
