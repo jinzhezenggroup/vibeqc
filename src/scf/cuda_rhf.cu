@@ -105,10 +105,14 @@ constexpr unsigned kGenericOrderFiveAngularOrder = 5;
 // requested absolute tolerance remains the dominant term for ordinary cases.
 constexpr double kDirectFockEnergyRoundoffFactor = 16.0;
 constexpr double kDoubleMachineEpsilon = 2.2204460492503131e-16;
-// Reusing F(P_n) is numerically indistinguishable from advancing to P_{n+1}
-// only after the fixed-point density step is this small. Looser user-requested
-// convergence remains valid, but finalization falls back to the full rebuild.
-constexpr double kConvergedFockReuseDensityRms = 1.0e-12;
+// Tight requests retain the historical gate because analytic-force error is
+// first order in the remaining raw-Fock stationarity error. The default 1e-8
+// density target admits a separately bounded fast path: its 2e-9 cap covers
+// the validated 384-AO fixed-dm0 branch while keeping the observed
+// reuse-versus-rebuild force drift below 3e-8 Eh/bohr.
+constexpr double kTightConvergedFockReuseDensityRms = 1.0e-12;
+constexpr double kExpandedConvergedFockReuseDensityTolerance = 1.0e-8;
+constexpr double kExpandedConvergedFockReuseDensityRms = 2.0e-9;
 // Force-product screening is an additional approximation on top of the Fock
 // quartet gate. Do not inherit deliberately loose SCF screening thresholds:
 // doing so removes derivative terms that remain present in the screened
@@ -12527,6 +12531,13 @@ bool reuse_converged_fock_requested() {
       std::strcmp(force_rebuild, "none") == 0;
 }
 
+/** Select the validated final-Fock reuse gate for one requested accuracy. */
+double converged_fock_reuse_density_rms(double density_tolerance) {
+  return density_tolerance >= kExpandedConvergedFockReuseDensityTolerance
+      ? kExpandedConvergedFockReuseDensityRms
+      : kTightConvergedFockReuseDensityRms;
+}
+
 /** Enable the production force density-product gate unless A/B disables it. */
 bool force_density_product_screening_requested() {
   const char* selection =
@@ -14066,7 +14077,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       select_final_fock_rebuild_kernel<<<
           blocks_for(batch_size), threads, 0, resources.stream_>>>(
           static_cast<std::int32_t>(batch_size),
-          kConvergedFockReuseDensityRms, density_rms, converged, failed,
+          converged_fock_reuse_density_rms(options.density_tolerance),
+          density_rms, converged, failed,
           final_fock_reuse_mask, active, final_fock_rebuild_count);
       copy_selected_matrices_kernel<<<
           blocks_for(spin_matrix_elements), threads, 0,

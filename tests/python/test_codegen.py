@@ -1928,7 +1928,7 @@ def test_one_electron_force_batches_point_charges_in_one_warp_per_ao_pair():
 
 
 def test_batched_finalization_reuses_each_converged_raw_fock():
-    """Rebuild only loose peers and restore shared force-task metadata."""
+    """Reuse requested-accuracy peers and restore shared force metadata."""
 
     source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
         encoding="utf-8"
@@ -1936,6 +1936,10 @@ def test_batched_finalization_reuses_each_converged_raw_fock():
     assert "template <bool RetainConvergedDensity>" in source
     assert 'std::getenv("VIBEQC_FINAL_FOCK_REBUILD")' in source
     assert "select_final_fock_rebuild_kernel" in source
+    assert "kTightConvergedFockReuseDensityRms = 1.0e-12" in source
+    assert "kExpandedConvergedFockReuseDensityTolerance = 1.0e-8" in source
+    assert "kExpandedConvergedFockReuseDensityRms = 2.0e-9" in source
+    assert "converged_fock_reuse_density_rms(options.density_tolerance)" in source
     assert "copy_selected_matrices_kernel" in source
     assert "launch_direct_quartet_metadata(density)" in source
     # A resident dm0 is already normalized for its cached overlap matrix, so a
