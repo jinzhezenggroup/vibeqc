@@ -10847,7 +10847,11 @@ __global__ void two_electron_force_quartet_packed_persistent_kernel(
  * across the hundreds of ket tasks normally associated with one 192-AO bra.
  */
 template <bool Unrestricted>
-__global__ void two_electron_force_psss_resident_bra_kernel(
+// Four resident 128-thread blocks cap this register-heavy contraction at
+// 128 registers/thread on sm_120.  The extra occupancy hides the long
+// primitive-pair dependency chain without changing the resident-bra schedule.
+__global__ __launch_bounds__(kResidentPsssThreads, 4)
+void two_electron_force_psss_resident_bra_kernel(
     DeviceBatch batch,
     const PsssResidentTask* resident_tasks,
     const std::uint32_t* resident_ket_pairs,

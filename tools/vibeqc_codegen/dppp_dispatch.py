@@ -946,6 +946,92 @@ def _generic_task_component_setup(spec: ShellClassSpec) -> str:
 def _emit_weighted_component_gradient_cuda(spec: ShellClassSpec) -> str:
     """Emit one shell-wide weighted gradient with horizontal symbolic CSE."""
 
+    maximum_order = spec.maximum_force_coulomb_order
+    side = maximum_order + 1
+    pair_shift_rows = 4 if spec.angular[3] != 0 else 3
+    fourth_pair_shift = (
+        "    geometry.pair_shifts[3][axis] = "
+        "product_q - fourth_coordinate;"
+        if pair_shift_rows == 4
+        else ""
+    )
+    compact_geometry = f"""/**
+ * Geometry retained by packed force lanes.
+ *
+ * The generic geometry also materializes Cartesian coordinate powers and
+ * (-2 rho) powers for component-at-a-time Coulomb evaluation.  The weighted
+ * contraction below expands those expressions directly, so retaining the two
+ * tables would waste per-lane shared memory and reduce resident warps.
+ */
+struct GeneratedDpppPackedForceGeometry {{
+  double inverse_two_p;
+  double inverse_two_q;
+  double rho;
+  double product_scales[3];
+  // Only the first three center derivatives are evaluated explicitly; the
+  // fourth follows from translational invariance and needs no stored shift.
+  double pair_shifts[{pair_shift_rows}][3];
+  double difference[3];
+  double decay_gradients[3][3];
+  double boys[{side}];
+  double prefactor;
+  double primitive_coefficient;
+}};
+
+__device__ __forceinline__ void generated_dppp_make_packed_force_geometry(
+    const GeneratedDpppPrimitivePairData& first_pair,
+    const GeneratedDpppPrimitivePairData& second_pair,
+    bool first_pair_reversed,
+    bool second_pair_reversed,
+    const GeneratedDpppVec3& first,
+    const GeneratedDpppVec3& second,
+    const GeneratedDpppVec3& third,
+    const GeneratedDpppVec3& fourth,
+    GeneratedDpppPackedForceGeometry& geometry) {{
+  const double p = first_pair.exponent_sum;
+  const double q = second_pair.exponent_sum;
+  geometry.rho = p * q / (p + q);
+  geometry.inverse_two_p = 0.5 / p;
+  geometry.inverse_two_q = 0.5 / q;
+  geometry.product_scales[0] = first_pair_reversed
+      ? first_pair.second_product_scale : first_pair.first_product_scale;
+  geometry.product_scales[1] = first_pair_reversed
+      ? first_pair.first_product_scale : first_pair.second_product_scale;
+  geometry.product_scales[2] = second_pair_reversed
+      ? second_pair.second_product_scale : second_pair.first_product_scale;
+  double argument_squared_distance = 0.0;
+#pragma unroll
+  for (unsigned axis = 0; axis < 3U; ++axis) {{
+    const double first_coordinate = generated_dppp_axis(first, axis);
+    const double second_coordinate = generated_dppp_axis(second, axis);
+    const double third_coordinate = generated_dppp_axis(third, axis);
+    const double fourth_coordinate = generated_dppp_axis(fourth, axis);
+    const double product_p = generated_dppp_axis(first_pair.product_center, axis);
+    const double product_q = generated_dppp_axis(second_pair.product_center, axis);
+    geometry.pair_shifts[0][axis] = product_p - first_coordinate;
+    geometry.pair_shifts[1][axis] = product_p - second_coordinate;
+    geometry.pair_shifts[2][axis] = product_q - third_coordinate;
+{fourth_pair_shift}
+    geometry.difference[axis] = product_p - product_q;
+    geometry.decay_gradients[0][axis] =
+        -2.0 * first_pair.reduced_exponent *
+        (first_coordinate - second_coordinate);
+    geometry.decay_gradients[1][axis] =
+        2.0 * first_pair.reduced_exponent *
+        (first_coordinate - second_coordinate);
+    geometry.decay_gradients[2][axis] =
+        -2.0 * second_pair.reduced_exponent *
+        (third_coordinate - fourth_coordinate);
+    argument_squared_distance +=
+        geometry.difference[axis] * geometry.difference[axis];
+  }}
+  boys_values<{maximum_order}>(
+      geometry.rho * argument_squared_distance, geometry.boys);
+  geometry.prefactor = 34.986836655249725 / (p * q * sqrt(p + q));
+  geometry.primitive_coefficient =
+      first_pair.weighted_coefficient * second_pair.weighted_coefficient;
+}}
+"""
     kernel = build_weighted_shell_contraction_kernel(spec)
     variable_code = {
         "inverse_two_p": "geometry.inverse_two_p",
@@ -983,9 +1069,11 @@ def _emit_weighted_component_gradient_cuda(spec: ShellClassSpec) -> str:
     emitter = CudaEmitter(kernel.graph, variable_code)
     emitter.emit(roots)
     lines = [
+        compact_geometry.rstrip(),
+        "",
         "/** Density-weighted shell gradient with cross-component CSE. */",
         "__device__ __noinline__ void generated_dppp_weighted_component_gradient(",
-        "    const GeneratedDpppPrimitiveGeometry& geometry,",
+        "    const GeneratedDpppPackedForceGeometry& geometry,",
         "    const double (&component_weights)[kGeneratedDpppComponentCount],",
         "    double (&gradient)[3][3]) {",
         *emitter.lines,
@@ -1021,9 +1109,9 @@ def _emit_packed_force_consumer_cuda(
         if plan.schedule.maximum_registers
         else f"__launch_bounds__(32, {minimum_blocks_per_sm})"
     )
-    return f"""struct GeneratedDpppPackedLaneStorage {{
+    return f"""struct GeneratedDpppPackedForceLaneStorage {{
   GeneratedDpppVec3 positions[4];
-  GeneratedDpppPrimitiveGeometry primitive;
+  GeneratedDpppPackedForceGeometry primitive;
 }};
 
 template <bool Unrestricted>
@@ -1038,7 +1126,7 @@ __device__ __forceinline__ void generated_dppp_packed_force_lane(
     const double* density,
     double* forces,
     std::size_t task_index,
-    GeneratedDpppPackedLaneStorage& storage) {{
+    GeneratedDpppPackedForceLaneStorage& storage) {{
   const GeneratedDpppShellTask& task = tasks[task_index];
 #pragma unroll
   for (unsigned center = 0; center < 4U; ++center) {{
@@ -1062,19 +1150,13 @@ __device__ __forceinline__ void generated_dppp_packed_force_lane(
                 generated_dppp_matrix_index(k, l, matrix_order)];
     const bool retained_by_schwarz = schwarz_bounds == nullptr ||
         schwarz_product >= screening_tolerance;
-    const double candidate_density_coefficient =
+    // Force and Fock must retain the same AO quartet.  The density coefficient
+    // weights the derivative but must not introduce a second, non-variational
+    // screening decision that is absent from the energy path.
+    const double density_coefficient =
         unique_ket_component && retained_by_schwarz
         ? generated_dppp_density_coefficient<Unrestricted>(
               task, i, j, k, l, density)
-        : 0.0;
-    // Refine the shell-level bound with the exact AO contraction weight. A
-    // zeroed component cannot contribute to the analytic two-electron force,
-    // and a lane whose complete task is screened can skip every primitive.
-    const double density_coefficient =
-        schwarz_bounds == nullptr ||
-            fabs(candidate_density_coefficient) * schwarz_product >=
-                screening_tolerance
-        ? candidate_density_coefficient
         : 0.0;
     const double angular_coefficient =
         ao_coefficients[task.ao_coefficient_begin[0] + {component_names[0]}] *
@@ -1099,7 +1181,7 @@ __device__ __forceinline__ void generated_dppp_packed_force_lane(
        first_primitive < first_pair_end; ++first_primitive) {{
     for (std::int64_t second_primitive = second_pair_begin;
          second_primitive < second_pair_end; ++second_primitive) {{
-      generated_dppp_make_primitive_geometry(
+      generated_dppp_make_packed_force_geometry(
           primitive_pairs[first_primitive],
           primitive_pairs[second_primitive],
           (task.reversed_shell_pair_mask & 1U) != 0U,
@@ -1155,7 +1237,7 @@ void generated_dppp_shell_class_force_rhf_kernel(
     const double* density,
     double* forces,
     std::size_t task_count) {{
-  __shared__ GeneratedDpppPackedLaneStorage lane_storage[32];
+  __shared__ GeneratedDpppPackedForceLaneStorage lane_storage[32];
   const std::size_t task_index =
       static_cast<std::size_t>(blockIdx.x) * 32U + threadIdx.x;
   if (task_index >= task_count) return;
@@ -1177,7 +1259,7 @@ void generated_dppp_shell_class_force_uhf_kernel(
     const double* density,
     double* forces,
     std::size_t task_count) {{
-  __shared__ GeneratedDpppPackedLaneStorage lane_storage[32];
+  __shared__ GeneratedDpppPackedForceLaneStorage lane_storage[32];
   const std::size_t task_index =
       static_cast<std::size_t>(blockIdx.x) * 32U + threadIdx.x;
   if (task_index >= task_count) return;
@@ -1202,7 +1284,7 @@ __device__ __forceinline__ void generated_dppp_packed_force_persistent(
     const std::uint32_t* task_count,
     std::uint32_t* task_head) {{
   __shared__ std::uint32_t task_base;
-  __shared__ GeneratedDpppPackedLaneStorage lane_storage[32];
+  __shared__ GeneratedDpppPackedForceLaneStorage lane_storage[32];
   while (true) {{
     if (threadIdx.x == 0U) task_base = atomicAdd(task_head, 32U);
     __syncthreads();
@@ -2228,7 +2310,10 @@ def _emit_packed_fock_consumer_cuda(
         if plan.schedule.maximum_registers
         else f"__launch_bounds__(32, {minimum_blocks_per_sm})"
     )
-    return f"""
+    return f"""struct GeneratedDpppPackedFockLaneStorage {{
+  GeneratedDpppVec3 positions[4];
+  GeneratedDpppPrimitiveGeometry primitive;
+}};
 
 template <bool Unrestricted>
 __device__ __forceinline__ void generated_dppp_packed_fock_lane(
@@ -2242,7 +2327,7 @@ __device__ __forceinline__ void generated_dppp_packed_fock_lane(
     const double* density,
     double* fock,
     std::size_t task_index,
-    GeneratedDpppPackedLaneStorage& storage) {{
+    GeneratedDpppPackedFockLaneStorage& storage) {{
   const GeneratedDpppShellTask& task = tasks[task_index];
 #pragma unroll
   for (unsigned center = 0; center < 4U; ++center) {{
@@ -2329,7 +2414,7 @@ void generated_dppp_shell_class_fock_rhf_kernel(
     const double* density,
     double* fock,
     std::size_t task_count) {{
-  __shared__ GeneratedDpppPackedLaneStorage lane_storage[32];
+  __shared__ GeneratedDpppPackedFockLaneStorage lane_storage[32];
   const std::size_t task_index =
       static_cast<std::size_t>(blockIdx.x) * 32U + threadIdx.x;
   if (task_index >= task_count) return;
@@ -2351,7 +2436,7 @@ void generated_dppp_shell_class_fock_uhf_kernel(
     const double* density,
     double* fock,
     std::size_t task_count) {{
-  __shared__ GeneratedDpppPackedLaneStorage lane_storage[32];
+  __shared__ GeneratedDpppPackedFockLaneStorage lane_storage[32];
   const std::size_t task_index =
       static_cast<std::size_t>(blockIdx.x) * 32U + threadIdx.x;
   if (task_index >= task_count) return;
@@ -2376,7 +2461,7 @@ __device__ __forceinline__ void generated_dppp_packed_fock_persistent(
     const std::uint32_t* task_count,
     std::uint32_t* task_head) {{
   __shared__ std::uint32_t task_base;
-  __shared__ GeneratedDpppPackedLaneStorage lane_storage[32];
+  __shared__ GeneratedDpppPackedFockLaneStorage lane_storage[32];
   while (true) {{
     if (threadIdx.x == 0U) task_base = atomicAdd(task_head, 32U);
     __syncthreads();
@@ -3462,19 +3547,12 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task(
               generated_dppp_matrix_index(k, l, matrix_order)];
   const bool retained_by_schwarz = schwarz_bounds == nullptr ||
       schwarz_product >= screening_tolerance;
-  const double candidate_density_coefficient =
+  // Match the Fock consumer's Schwarz-only selection so analytic forces stay
+  // variational at both production and deliberately loose test tolerances.
+  const double density_coefficient =
       component_lane && unique_ket_component && retained_by_schwarz
       ? generated_dppp_density_coefficient<Unrestricted>(
             shared.task, i, j, k, l, density)
-      : 0.0;
-  // Use the exact AO contraction weight to tighten the shell-level screening
-  // decision. If every component is removed, the whole block can bypass the
-  // primitive recurrence and its shared Coulomb table.
-  const double density_coefficient =
-      schwarz_bounds == nullptr ||
-          fabs(candidate_density_coefficient) * schwarz_product >=
-              screening_tolerance
-      ? candidate_density_coefficient
       : 0.0;
   const double angular_coefficient = component_lane
       ? ao_coefficients[shared.task.ao_coefficient_begin[0] + {component_names[0]}] *
