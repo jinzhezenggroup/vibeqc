@@ -1951,6 +1951,19 @@ def test_batched_finalization_reuses_each_converged_raw_fock():
     assert "update_uhf_convergence_kernel<true>" in source
 
 
+def test_warm_density_validation_parallelizes_each_system_matrix():
+    """Keep fixed-dm0 setup from regressing to one serial N^2 worker."""
+
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
+        encoding="utf-8"
+    )
+    assert "constexpr unsigned kWarmDensityThreads = 256" in source
+    assert "warm_density_block_sum<kWarmDensityThreads>" in source
+    for kernel in ("apply_warm_density_kernel", "apply_uhf_warm_density_kernel"):
+        launch = rf"{kernel}<<<static_cast<unsigned>\(batch_size\),\s*"
+        assert re.search(launch + r"kWarmDensityThreads", source)
+
+
 def test_force_density_product_screening_is_force_only_and_conservative():
     """Keep the force queue optional without weakening the SCF Fock gate."""
 
