@@ -36,6 +36,8 @@ _THREAD_TASK_FORCE_EMITTERS = {
     "psps": (PSPS_BLOCK_THREADS, emit_psps_weighted_force_cuda),
 }
 
+_SUPPORTED_RECURRENCES = frozenset(("subset_wick", "rys3"))
+
 _PRODUCTION_PRELUDE = r"""#include "scf/generated_shell_task.hpp"
 
 #include <cuda_runtime.h>
@@ -94,6 +96,7 @@ class KernelSelection:
     schedule: ScheduleIR
     profile: str = ""
     tuned: bool = True
+    recurrence: str = "subset_wick"
 
     def __post_init__(self) -> None:
         if not self.architecture.startswith("sm_"):
@@ -102,6 +105,18 @@ class KernelSelection:
             object.__setattr__(self, "profile", self.architecture)
         if not self.consumers:
             raise ValueError("production kernel requires at least one consumer")
+        if (
+            not isinstance(self.recurrence, str)
+            or self.recurrence not in _SUPPORTED_RECURRENCES
+        ):
+            raise ValueError(
+                f"unsupported production recurrence {self.recurrence!r}"
+            )
+        if self.recurrence == "rys3" and KernelConsumer.FOCK in self.consumers:
+            raise ValueError(
+                "production rys3 recurrence is force-only and cannot include "
+                "the Fock consumer"
+            )
         # Force owns the canonical task ABI. Fock may share that source, but a
         # value-only entry cannot yet be emitted without its force companion.
         if KernelConsumer.FORCE not in self.consumers:
@@ -325,6 +340,36 @@ def _default_architecture(payload: dict[str, object]) -> str:
     )
 
 
+def _recurrence_from_row(
+    name: str,
+    row: Mapping[str, object],
+    consumers: tuple[KernelConsumer, ...],
+) -> str:
+    """Validate and normalize a manifest row's integral recurrence.
+
+    Recurrence is scientific lowering intent rather than a CUDA schedule
+    property.  Keeping this check at the manifest boundary makes an invalid
+    force/Fock combination fail before any source generation is attempted.
+    The default preserves the schema's historical subset/Wick lowering.
+    """
+
+    recurrence = row.get("recurrence", "subset_wick")
+    if not isinstance(recurrence, str):
+        raise ValueError(f"{name} recurrence must be a string")
+    if recurrence not in _SUPPORTED_RECURRENCES:
+        supported = ", ".join(sorted(_SUPPORTED_RECURRENCES))
+        raise ValueError(
+            f"{name} has unsupported recurrence {recurrence!r}; "
+            f"expected one of {supported}"
+        )
+    if recurrence == "rys3" and KernelConsumer.FOCK in consumers:
+        raise ValueError(
+            f"{name} recurrence 'rys3' is force-only and cannot include "
+            "the Fock consumer"
+        )
+    return recurrence
+
+
 def _selections_from_rows(
     rows: object,
     *,
@@ -355,9 +400,14 @@ def _selections_from_rows(
             consumers = tuple(KernelConsumer(item) for item in raw_consumers)
         except ValueError as error:
             raise ValueError(f"{name} has an unsupported consumer") from error
+        recurrence = _recurrence_from_row(name, row, consumers)
         schedule_payload = row.get("schedule")
         if schedule_payload is None:
-            schedule = build_fused_shell_plan(spec, consumers=consumers).schedule
+            schedule = build_fused_shell_plan(
+                spec,
+                consumers=consumers,
+                recurrence=recurrence,
+            ).schedule
         else:
             schedule = _schedule_from_payload(schedule_payload)
             # Build the complete IR now so component coverage and block limits
@@ -366,6 +416,7 @@ def _selections_from_rows(
                 spec,
                 consumers=consumers,
                 schedule=schedule,
+                recurrence=recurrence,
                 target=target,
             )
         selections.append(
@@ -376,6 +427,7 @@ def _selections_from_rows(
                 schedule=schedule,
                 profile=profile,
                 tuned=tuned,
+                recurrence=recurrence,
             )
         )
         seen.add(name)
@@ -707,7 +759,10 @@ def emit_production_shard(
     selections = tuple(map(_as_selection, specifications))
     body = [_PRODUCTION_PRELUDE]
     for selection in selections:
-        if selection.schedule.kind == ScheduleKind.THREAD_TASKS:
+        if (
+            selection.schedule.kind == ScheduleKind.THREAD_TASKS
+            and selection.recurrence != "rys3"
+        ):
             configuration = _THREAD_TASK_FORCE_EMITTERS.get(selection.spec.name)
             if configuration is None:
                 raise ValueError(
@@ -728,6 +783,7 @@ def emit_production_shard(
                 selection.spec,
                 consumers=selection.consumers,
                 schedule=selection.schedule,
+                recurrence=selection.recurrence,
             )
             body.append(emit_shell_class_fused_cuda(selection.spec, plan))
         body.append(_launch_wrapper(selection.spec))
@@ -751,6 +807,7 @@ def emit_registry_header(
             spec,
             consumers=selection.consumers,
             schedule=selection.schedule,
+            recurrence=selection.recurrence,
         )
         consumer_mask = sum(
             1 << list(KernelConsumer).index(consumer)
@@ -1041,7 +1098,10 @@ def emit_profile_shard(
     namespace = f"vibeqc::scf::generated::profile_{identifier}"
     body = [_PRODUCTION_PRELUDE, f"\nnamespace {namespace} {{\n"]
     for selection in items:
-        if selection.schedule.kind == ScheduleKind.THREAD_TASKS:
+        if (
+            selection.schedule.kind == ScheduleKind.THREAD_TASKS
+            and selection.recurrence != "rys3"
+        ):
             configuration = _THREAD_TASK_FORCE_EMITTERS.get(selection.spec.name)
             if configuration is None:
                 raise ValueError(
@@ -1062,6 +1122,7 @@ def emit_profile_shard(
                 selection.spec,
                 consumers=selection.consumers,
                 schedule=selection.schedule,
+                recurrence=selection.recurrence,
                 target=profile.target,
             )
             source = emit_shell_class_fused_cuda(selection.spec, plan)
@@ -1124,6 +1185,7 @@ def emit_multi_registry_header(
                 selection.spec,
                 consumers=selection.consumers,
                 schedule=selection.schedule,
+                recurrence=selection.recurrence,
                 target=profile.target,
             )
             consumer_mask = sum(
@@ -1217,6 +1279,7 @@ def emit_multi_registry_source(
                 selection.spec,
                 consumers=selection.consumers,
                 schedule=selection.schedule,
+                recurrence=selection.recurrence,
                 target=profile.target,
             )
             consumer_mask = sum(
