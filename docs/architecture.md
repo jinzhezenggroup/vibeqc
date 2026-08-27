@@ -262,9 +262,19 @@ magnitude separately; UHF keeps total-density Coulomb and maximum same-spin
 exchange magnitudes. A device pass then compacts only shell quartets whose
 shell-level Schwarz product survives both the configured threshold and at
 least one of the two Coulomb or four crossed exchange density blocks. This
-reduction and compaction are part of the captured SCF Graph. The final Fock
-rebuild regenerates the list from the converged density, and the
-analytic-force pass consumes that identical list without host readback.
+reduction and compaction are part of the captured SCF Graph. A single-system
+bucket retains `P_n`, `F(P_n)`, its transformed direct density, and its compact
+quartet list when the accepted final density step is at most `1e-12` RMS. Final
+canonicalization and analytic forces reuse that consistent snapshot instead of
+rebuilding Fock. After force evaluation, the already accepted `P_{n+1}` becomes
+the returned warm state so subsequent replays retain the legacy convergence
+branch. A looser accepted step automatically restores `P_{n+1}` before
+finalization and uses the rebuild, preserving force accuracy for relaxed SCF
+requests.
+Multi-system buckets still rebuild from their converged
+densities because peers can stop on different device-tail Graph launches and
+therefore need their final compact lists regenerated together. The diagnostic
+`VIBEQC_FINAL_FOCK_REBUILD=1` restores the rebuild for single-system A/B checks.
 Component-unrolled/Rys quartet kernels and finer AO-level task compaction
 remain subsequent scheduler work. Direct quartets
 always operate on normalized Cartesian source AOs. For a public real-spherical
