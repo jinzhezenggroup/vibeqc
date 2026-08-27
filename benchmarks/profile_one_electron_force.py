@@ -26,7 +26,7 @@ _SCALAR_ENVIRONMENT = "VIBEQC_ONE_ELECTRON_FORCE_SCALAR"
 def main() -> None:
     cases = benchmark_cases()
     supported_cases = tuple(
-        name for name, case in cases.items() if case.expected_ao_count in (96, 192)
+        name for name, case in cases.items() if case.expected_ao_count is not None
     )
     parser = argparse.ArgumentParser()
     parser.add_argument("--case", choices=supported_cases, required=True)
@@ -35,10 +35,19 @@ def main() -> None:
         "--mode", choices=("scalar", "cooperative"), required=True
     )
     parser.add_argument("--repeats", type=int, default=1)
+    parser.add_argument("--energy-tolerance", type=float, default=1.0e-12)
+    parser.add_argument("--density-tolerance", type=float, default=1.0e-10)
+    parser.add_argument("--screening-tolerance", type=float, default=1.0e-14)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     if args.batch < 1 or args.repeats < 1:
         raise ValueError("--batch and --repeats must be positive")
+    if (
+        args.energy_tolerance <= 0.0
+        or args.density_tolerance <= 0.0
+        or args.screening_tolerance <= 0.0
+    ):
+        raise ValueError("SCF and screening tolerances must be positive")
 
     if args.mode == "scalar":
         os.environ[_SCALAR_ENVIRONMENT] = "1"
@@ -53,9 +62,9 @@ def main() -> None:
         basis_representation=case.basis_representation,
         device="cuda",
         max_iterations=100,
-        energy_tolerance=1.0e-12,
-        density_tolerance=1.0e-10,
-        screening_tolerance=1.0e-14,
+        energy_tolerance=args.energy_tolerance,
+        density_tolerance=args.density_tolerance,
+        screening_tolerance=args.screening_tolerance,
     )
     with calculator.prepare_batch(
         systems,
@@ -90,6 +99,9 @@ def main() -> None:
         "ao_count": case.expected_ao_count,
         "batch_size": args.batch,
         "mode": args.mode,
+        "energy_tolerance": args.energy_tolerance,
+        "density_tolerance": args.density_tolerance,
+        "screening_tolerance": args.screening_tolerance,
         "repeats": args.repeats,
         "warm_samples": samples,
         "warm_median_seconds": statistics.median(warm_seconds),

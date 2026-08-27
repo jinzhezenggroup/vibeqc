@@ -1045,24 +1045,36 @@ __device__ __forceinline__ void generated_dppp_packed_force_lane(
     storage.positions[center] = atom_positions[task.atom[center]];
   }}
   double component_weights[kGeneratedDpppComponentCount]{{}};
+  bool any_component = false;
 #pragma unroll
   for (unsigned component = 0U;
        component < kGeneratedDpppComponentCount; ++component) {{
 {task_component_setup}
     const std::size_t matrix_order =
         static_cast<std::size_t>(task.matrix_order);
-    const bool retained_by_schwarz = schwarz_bounds == nullptr ||
-        schwarz_bounds[
+    const double schwarz_product = schwarz_bounds == nullptr
+        ? 0.0
+        : schwarz_bounds[
             task.density_offset +
             generated_dppp_matrix_index(i, j, matrix_order)] *
-            schwarz_bounds[
+          schwarz_bounds[
                 task.density_offset +
-                generated_dppp_matrix_index(k, l, matrix_order)] >=
-            screening_tolerance;
-    const double density_coefficient =
+                generated_dppp_matrix_index(k, l, matrix_order)];
+    const bool retained_by_schwarz = schwarz_bounds == nullptr ||
+        schwarz_product >= screening_tolerance;
+    const double candidate_density_coefficient =
         unique_ket_component && retained_by_schwarz
         ? generated_dppp_density_coefficient<Unrestricted>(
               task, i, j, k, l, density)
+        : 0.0;
+    // Refine the shell-level bound with the exact AO contraction weight. A
+    // zeroed component cannot contribute to the analytic two-electron force,
+    // and a lane whose complete task is screened can skip every primitive.
+    const double density_coefficient =
+        schwarz_bounds == nullptr ||
+            fabs(candidate_density_coefficient) * schwarz_product >=
+                screening_tolerance
+        ? candidate_density_coefficient
         : 0.0;
     const double angular_coefficient =
         ao_coefficients[task.ao_coefficient_begin[0] + {component_names[0]}] *
@@ -1071,7 +1083,9 @@ __device__ __forceinline__ void generated_dppp_packed_force_lane(
         ao_coefficients[task.ao_coefficient_begin[3] + {component_names[3]}];
     component_weights[component] =
         density_coefficient * angular_coefficient;
+    any_component = any_component || density_coefficient != 0.0;
   }}
+  if (!any_component) return;
   double task_force[9]{{}};
   const std::int64_t first_pair_begin =
       primitive_pair_offsets[task.shell_pair[0]];
@@ -3438,18 +3452,29 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task(
 {component_schedule_setup}{task_component_setup}
   const std::size_t matrix_order =
       static_cast<std::size_t>(shared.task.matrix_order);
-  const bool retained_by_schwarz = schwarz_bounds == nullptr ||
-      schwarz_bounds[
+  const double schwarz_product = schwarz_bounds == nullptr
+      ? 0.0
+      : schwarz_bounds[
           shared.task.density_offset +
           generated_dppp_matrix_index(i, j, matrix_order)] *
-          schwarz_bounds[
+        schwarz_bounds[
               shared.task.density_offset +
-              generated_dppp_matrix_index(k, l, matrix_order)] >=
-          screening_tolerance;
-  const double density_coefficient =
+              generated_dppp_matrix_index(k, l, matrix_order)];
+  const bool retained_by_schwarz = schwarz_bounds == nullptr ||
+      schwarz_product >= screening_tolerance;
+  const double candidate_density_coefficient =
       component_lane && unique_ket_component && retained_by_schwarz
       ? generated_dppp_density_coefficient<Unrestricted>(
             shared.task, i, j, k, l, density)
+      : 0.0;
+  // Use the exact AO contraction weight to tighten the shell-level screening
+  // decision. If every component is removed, the whole block can bypass the
+  // primitive recurrence and its shared Coulomb table.
+  const double density_coefficient =
+      schwarz_bounds == nullptr ||
+          fabs(candidate_density_coefficient) * schwarz_product >=
+              screening_tolerance
+      ? candidate_density_coefficient
       : 0.0;
   const double angular_coefficient = component_lane
       ? ao_coefficients[shared.task.ao_coefficient_begin[0] + {component_names[0]}] *
@@ -3457,6 +3482,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task(
         ao_coefficients[shared.task.ao_coefficient_begin[2] + {component_names[2]}] *
         ao_coefficients[shared.task.ao_coefficient_begin[3] + {component_names[3]}]
       : 0.0;
+  if (!__syncthreads_or(density_coefficient != 0.0)) return;
   double component_force[12]{{}};
 
   const std::int64_t first_pair_begin =

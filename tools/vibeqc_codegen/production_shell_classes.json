@@ -37,7 +37,7 @@
         },
         {
           "shell_class": "dpdp",
-          "consumers": ["force"],
+          "consumers": ["fock", "force"],
           "schedule": {
             "kind": "tiled_components",
             "block_threads": 64,
@@ -79,7 +79,7 @@
         },
         {
           "shell_class": "dsds",
-          "consumers": ["force"],
+          "consumers": ["fock", "force"],
           "schedule": {
             "kind": "component_lanes",
             "block_threads": 64,
@@ -93,7 +93,7 @@
         },
         {
           "shell_class": "ddss",
-          "consumers": ["force"],
+          "consumers": ["fock", "force"],
           "schedule": {
             "kind": "component_lanes",
             "block_threads": 64,
@@ -107,7 +107,7 @@
         },
         {
           "shell_class": "ddpp",
-          "consumers": ["force"],
+          "consumers": ["fock", "force"],
           "schedule": {
             "kind": "tiled_components",
             "block_threads": 64,
@@ -121,7 +121,7 @@
         },
         {
           "shell_class": "ddds",
-          "consumers": ["force"],
+          "consumers": ["fock", "force"],
           "schedule": {
             "kind": "tiled_components",
             "block_threads": 64,
@@ -219,7 +219,7 @@
         },
         {
           "shell_class": "dspp",
-          "consumers": ["force"],
+          "consumers": ["fock", "force"],
           "schedule": {
             "kind": "component_lanes",
             "block_threads": 64,
@@ -233,7 +233,7 @@
         },
         {
           "shell_class": "pppp",
-          "consumers": ["force"],
+          "consumers": ["fock", "force"],
           "schedule": {
             "kind": "component_lanes",
             "block_threads": 96,
@@ -314,6 +314,25 @@
         "maximum_energy_error_hartree": 1.3642420526593924e-12,
         "maximum_force_error_hartree_per_bohr": 4.584e-12,
         "rejected_shell_classes": ["ppps", "dsps"]
+      },
+      "fock_order46_acceptance": {
+        "workload": "water-hexadecamer-2s4-def2-svp-spherical",
+        "shell_classes": [
+          "dpdp",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dspp",
+          "pppp"
+        ],
+        "baseline_seconds": 6.8382355099893175,
+        "candidate_seconds": 6.372726670000702,
+        "speedup": 1.0730470431,
+        "maximum_energy_delta_from_previous_vibeqc_hartree": 3.184e-12,
+        "maximum_force_delta_from_previous_vibeqc_hartree_per_bohr": 1.951e-10,
+        "rejected_shell_classes": ["dpss", "dddp"],
+        "rejection_reason": "dpss did not improve the 384-AO endpoint; generated dddp Fock exceeded the production CUDA launch resource envelope"
       },
       "order2_packed_acceptance": {
         "workload": "water-octamer-s4-def2-svp-spherical",

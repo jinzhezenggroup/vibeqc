@@ -285,6 +285,8 @@ def test_one_warp_component_schedule_strides_larger_coulomb_table(name):
         f"state += kGenerated{class_name}BlockThreads" in source
     )
     assert "shared.coulomb[state] = generated_" in source
+    assert "fabs(candidate_density_coefficient) * schwarz_product" in source
+    assert "__syncthreads_or(density_coefficient != 0.0)" in source
 
 
 def test_ppps_scalar_thread_schedule_emits_component_scoped_dag():
@@ -534,6 +536,8 @@ def test_zero_order_pairs_lower_through_shell_task_schedule():
     assert "generated_psss_packed_force_lane" in packed
     assert "generated_psss_packed_fock_lane" in packed
     assert "generated_psss_weighted_component_gradient" in packed
+    assert "fabs(candidate_density_coefficient) * schwarz_product" in packed
+    assert "if (!any_component) return;" in packed
     assert "generated_psss_component_gradient<false>" not in packed
     assert "atomicAdd(task_head, 32U)" in packed
     assert "blockIdx.x) * 32U + threadIdx.x" in packed
@@ -1514,11 +1518,18 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     )
     assert tuple(spec.name for spec in fock_specifications) == (
         "dppp",
+        "dpdp",
+        "dsds",
+        "ddss",
+        "ddpp",
+        "ddds",
         "dpds",
         "ddps",
         "ppps",
         "dpps",
         "dsps",
+        "dspp",
+        "pppp",
         "psps",
         "ppss",
         "dsss",
@@ -1544,11 +1555,18 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
         if selection.spec.name
         in (
             "dppp",
+            "dpdp",
+            "dsds",
+            "ddss",
+            "ddpp",
+            "ddds",
             "dpds",
             "ddps",
             "ppps",
             "dpps",
             "dsps",
+            "dspp",
+            "pppp",
             "psps",
             "ppss",
             "dsss",
@@ -1570,16 +1588,16 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     assert '{"ddps", 16U, 5U, 128U, 3U, 108U}' in header
     assert '{"ppps", 4U, 3U, 32U, 3U, 27U}' in header
     assert '{"dsps", 7U, 3U, 32U, 3U, 18U}' in header
-    assert '{"dpdp", 14U, 6U, 64U, 2U, 64U}' in header
+    assert '{"dpdp", 14U, 6U, 64U, 3U, 64U}' in header
     assert '{"dddp", 19U, 7U, 64U, 2U, 64U}' in header
     assert '{"dpss", 10U, 3U, 32U, 2U, 18U}' in header
-    assert '{"dsds", 9U, 4U, 64U, 2U, 36U}' in header
-    assert '{"ddss", 15U, 4U, 64U, 2U, 36U}' in header
-    assert '{"ddpp", 17U, 6U, 64U, 2U, 64U}' in header
-    assert '{"ddds", 18U, 6U, 64U, 2U, 64U}' in header
-    assert '{"dspp", 8U, 4U, 64U, 2U, 54U}' in header
+    assert '{"dsds", 9U, 4U, 64U, 3U, 36U}' in header
+    assert '{"ddss", 15U, 4U, 64U, 3U, 36U}' in header
+    assert '{"ddpp", 17U, 6U, 64U, 3U, 64U}' in header
+    assert '{"ddds", 18U, 6U, 64U, 3U, 64U}' in header
+    assert '{"dspp", 8U, 4U, 64U, 3U, 54U}' in header
     assert '{"dpps", 11U, 4U, 64U, 3U, 54U}' in header
-    assert '{"pppp", 5U, 4U, 96U, 2U, 81U}' in header
+    assert '{"pppp", 5U, 4U, 96U, 3U, 81U}' in header
     assert '{"psps", 2U, 2U, 32U, 3U, 9U}' in header
     assert '{"ppss", 3U, 2U, 32U, 3U, 9U}' in header
     assert '{"dsss", 6U, 2U, 32U, 3U, 6U}' in header
@@ -1827,6 +1845,23 @@ def test_batched_finalization_reuses_each_converged_raw_fock():
     assert "iteration > 1 || has_energy_baseline" in source
     assert "update_convergence_kernel<true>" in source
     assert "update_uhf_convergence_kernel<true>" in source
+
+
+def test_cached_direct_plan_reuses_immutable_task_layout():
+    """Keep quadratic shell-pair topology enumeration out of warm replay."""
+
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
+        encoding="utf-8"
+    )
+    layout_begin = source.index("detail::DirectQuartetTaskLayout direct_task_layout")
+    layout_end = source.index(
+        "// Direct consumers expand each compact logical tile", layout_begin
+    )
+    layout_setup = source[layout_begin:layout_end]
+    assert "requested_quartet_direct && first_setup" in layout_setup
+    assert "plan.total_shell_quartet_tiles" in layout_setup
+    assert source.count("detail::make_direct_quartet_task_layout(") == 1
+    assert "**plan, candidate, options" in source
 
 
 def test_generated_order2_fock_masks_handwritten_fallback():
