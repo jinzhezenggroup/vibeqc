@@ -44,7 +44,15 @@ _PRODUCTION_PRELUDE = r"""#include "scf/generated_shell_task.hpp"
 template <unsigned MaximumOrder>
 __device__ __forceinline__ void boys_values(double argument, double* values) {
   for (unsigned order = 0; order <= MaximumOrder; ++order) values[order] = 0.0;
-  if (argument < 6.0) {
+  // Switch low orders to stable upward recurrence before the generic cutoff;
+  // this removes long alternating series from dominant s/p/d quartets.
+  constexpr double series_threshold = MaximumOrder == 0 ? 1.0e-8
+      : MaximumOrder == 1 ? 0.25
+      : MaximumOrder == 2 ? 0.75
+      : MaximumOrder == 3 ? 1.25
+      : MaximumOrder == 4 ? 2.0
+                          : 6.0;
+  if (argument < series_threshold) {
     double term = 1.0;
     double sum = 0.0;
     for (unsigned k = 0; k < 80U; ++k) {

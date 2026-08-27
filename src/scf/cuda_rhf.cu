@@ -736,7 +736,17 @@ __device__ void boys_values(Scalar argument, Scalar* values) {
   for (unsigned order = 0; order <= MaximumOrder; ++order) {
     values[order] = scalar<Scalar>(0.0);
   }
-  if (scalar_value(argument) < 6.0) {
+  // Low Boys orders tolerate upward recurrence much earlier than the generic
+  // high-order path. Avoid a long alternating series for the dominant direct
+  // s/p/d quartets once cancellation is bounded; the thresholds keep the
+  // worst relative error below 4e-15 against a high-precision oracle.
+  constexpr double series_threshold = MaximumOrder == 0 ? 1.0e-8
+      : MaximumOrder == 1 ? 0.25
+      : MaximumOrder == 2 ? 0.75
+      : MaximumOrder == 3 ? 1.25
+      : MaximumOrder == 4 ? 2.0
+                          : 6.0;
+  if (scalar_value(argument) < series_threshold) {
     // Evaluate only the highest requested Boys order by its convergent power
     // series. Lower orders follow from the stable downward recurrence, which
     // removes MaximumOrder duplicate series from every primitive quartet.
@@ -4481,6 +4491,117 @@ contracted_eri_cartesian_source_dsss_weighted_gradient(
 struct CartesianQuartetGradient {
   double center[4][3];
 };
+
+/** Density-weighted ssss derivatives for the first three input centers. */
+struct SsssWeightedGradient {
+  double center[3][3];
+};
+
+/**
+ * Contract an ssss shell quartet from the reusable primitive-pair cache.
+ *
+ * The generic order-zero path rebuilds both primitive pairs for every
+ * primitive quartet, including product centers, Gaussian pair decay, and
+ * coefficient products. Those quantities already live in PrimitivePairData
+ * and are shared with direct Fock. Only the inter-pair Boys argument and the
+ * derivative chain therefore remain here. The fourth center is omitted by
+ * translational invariance and reconstructed by the force-task consumer.
+ */
+__device__ __forceinline__ SsssWeightedGradient
+contracted_eri_cartesian_source_ssss_weighted_gradient(
+    const DeviceBatch& batch,
+    std::size_t first_shell_pair,
+    std::size_t second_shell_pair,
+    std::int32_t first_shell,
+    std::int32_t second_shell,
+    std::int32_t third_shell,
+    std::int32_t fourth_shell,
+    double component_weight) {
+  const Vec3<double> first = atom_position<double>(
+      batch, batch.shell_atoms[first_shell], -1);
+  const Vec3<double> second = atom_position<double>(
+      batch, batch.shell_atoms[second_shell], -1);
+  const Vec3<double> third = atom_position<double>(
+      batch, batch.shell_atoms[third_shell], -1);
+  const Vec3<double> fourth = atom_position<double>(
+      batch, batch.shell_atoms[fourth_shell], -1);
+  const Vec3<double> first_difference{
+      first.x - second.x,
+      first.y - second.y,
+      first.z - second.z,
+  };
+  const Vec3<double> second_difference{
+      third.x - fourth.x,
+      third.y - fourth.y,
+      third.z - fourth.z,
+  };
+
+  SsssWeightedGradient result{};
+  const std::int64_t first_pair_begin =
+      batch.shell_pair_primitive_offsets[first_shell_pair];
+  const std::int64_t first_pair_end =
+      batch.shell_pair_primitive_offsets[first_shell_pair + 1];
+  const std::int64_t second_pair_begin =
+      batch.shell_pair_primitive_offsets[second_shell_pair];
+  const std::int64_t second_pair_end =
+      batch.shell_pair_primitive_offsets[second_shell_pair + 1];
+  for (std::int64_t first_primitive = first_pair_begin;
+       first_primitive < first_pair_end; ++first_primitive) {
+    const PrimitivePairData first_pair =
+        batch.shell_primitive_pairs[first_primitive];
+    const double p = first_pair.exponent_sum;
+    for (std::int64_t second_primitive = second_pair_begin;
+         second_primitive < second_pair_end; ++second_primitive) {
+      const PrimitivePairData second_pair =
+          batch.shell_primitive_pairs[second_primitive];
+      const double q = second_pair.exponent_sum;
+      const double rho = p * q / (p + q);
+      const Vec3<double> product_difference{
+          first_pair.product_center.x - second_pair.product_center.x,
+          first_pair.product_center.y - second_pair.product_center.y,
+          first_pair.product_center.z - second_pair.product_center.z,
+      };
+      double boys[2];
+      boys_values<1>(
+          rho * distance_squared(first_pair.product_center,
+                                 second_pair.product_center),
+          boys);
+      const double prefactor =
+          component_weight * first_pair.weighted_coefficient *
+          second_pair.weighted_coefficient * 2.0 * pow(kPi, 2.5) /
+          (p * q * sqrt(p + q));
+      const double product_chain[3] = {
+          -2.0 * rho * product_difference.x * boys[1],
+          -2.0 * rho * product_difference.y * boys[1],
+          -2.0 * rho * product_difference.z * boys[1],
+      };
+      const double first_decay[3] = {
+          -2.0 * first_pair.reduced_exponent * first_difference.x * boys[0],
+          -2.0 * first_pair.reduced_exponent * first_difference.y * boys[0],
+          -2.0 * first_pair.reduced_exponent * first_difference.z * boys[0],
+      };
+      const double third_decay[3] = {
+          -2.0 * second_pair.reduced_exponent * second_difference.x * boys[0],
+          -2.0 * second_pair.reduced_exponent * second_difference.y * boys[0],
+          -2.0 * second_pair.reduced_exponent * second_difference.z * boys[0],
+      };
+
+#pragma unroll
+      for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+        result.center[0][coordinate] += prefactor *
+            (first_pair.first_product_scale * product_chain[coordinate] +
+             first_decay[coordinate]);
+        result.center[1][coordinate] += prefactor *
+            (first_pair.second_product_scale * product_chain[coordinate] -
+             first_decay[coordinate]);
+        result.center[2][coordinate] += prefactor *
+            (-second_pair.first_product_scale * product_chain[coordinate] +
+             third_decay[coordinate]);
+      }
+    }
+  }
+  return result;
+}
 
 /**
  * Evaluate the independent center derivatives of an ssss or canonical psss
@@ -9756,6 +9877,124 @@ __device__ __forceinline__ double direct_force_density_coefficient(
   return coefficient;
 }
 
+/** Evaluate and write one complete density-weighted ssss force shell task. */
+template <bool Unrestricted>
+__device__ __forceinline__ void contract_two_electron_force_ssss_task(
+    const DeviceBatch& batch,
+    ActiveShellQuartetTile task,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    const std::uint8_t* active,
+    double* forces,
+    std::uint64_t generated_shell_class_mask) {
+  // Every s shell contains one Cartesian AO, so a valid ssss shell quartet
+  // occupies exactly the first compact tile and needs no AO-pair decoding.
+  if (task.tile != 0U) return;
+  if ((generated_shell_class_mask & std::uint64_t{1}) != 0U) return;
+  const std::size_t first_pair = task.first_pair;
+  const std::size_t second_pair = task.second_pair;
+  const std::int32_t system = batch.shell_pair_systems[first_pair];
+  if (active[system] == 0) return;
+
+  const std::int32_t shells[4] = {
+      batch.shell_pair_first[first_pair],
+      batch.shell_pair_second[first_pair],
+      batch.shell_pair_first[second_pair],
+      batch.shell_pair_second[second_pair],
+  };
+  for (unsigned slot = 0; slot < 4; ++slot) {
+    if (batch.shell_angular[shells[slot]] != 0U) return;
+  }
+
+  const std::int32_t center_atoms[4] = {
+      batch.shell_atoms[shells[0]], batch.shell_atoms[shells[1]],
+      batch.shell_atoms[shells[2]], batch.shell_atoms[shells[3]],
+  };
+  std::int32_t unique_center_atoms[4];
+  unsigned unique_center_count = 0;
+  for (unsigned center = 0; center < 4; ++center) {
+    bool duplicate_center = false;
+    for (unsigned previous = 0; previous < unique_center_count; ++previous) {
+      duplicate_center = duplicate_center ||
+          center_atoms[center] == unique_center_atoms[previous];
+    }
+    if (!duplicate_center) {
+      unique_center_atoms[unique_center_count++] = center_atoms[center];
+    }
+  }
+  if (unique_center_count == 1) return;
+
+  const std::size_t n = static_cast<std::size_t>(batch.direct_nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t physical_offset =
+      static_cast<std::size_t>(system) * matrix_size;
+  const std::size_t spin_offset =
+      static_cast<std::size_t>(system) * 2 * matrix_size;
+  const std::size_t system_ao_begin = static_cast<std::size_t>(system) * n;
+  const std::size_t ao[4] = {
+      static_cast<std::size_t>(batch.shell_direct_ao_offsets[shells[0]]) -
+          system_ao_begin,
+      static_cast<std::size_t>(batch.shell_direct_ao_offsets[shells[1]]) -
+          system_ao_begin,
+      static_cast<std::size_t>(batch.shell_direct_ao_offsets[shells[2]]) -
+          system_ao_begin,
+      static_cast<std::size_t>(batch.shell_direct_ao_offsets[shells[3]]) -
+          system_ao_begin,
+  };
+  if (schwarz_bounds[physical_offset + matrix_index(ao[0], ao[1], n)] *
+          schwarz_bounds[physical_offset + matrix_index(ao[2], ao[3], n)] <
+      screening_tolerance) {
+    return;
+  }
+  const double density_coefficient =
+      direct_force_density_coefficient<Unrestricted>(
+          n, physical_offset, spin_offset, density,
+          ao[0], ao[1], ao[2], ao[3]);
+  if (density_coefficient == 0.0) return;
+  const double component_weight = density_coefficient *
+      batch.direct_ao_coefficients[system_ao_begin + ao[0]] *
+      batch.direct_ao_coefficients[system_ao_begin + ao[1]] *
+      batch.direct_ao_coefficients[system_ao_begin + ao[2]] *
+      batch.direct_ao_coefficients[system_ao_begin + ao[3]];
+  const SsssWeightedGradient gradient =
+      contracted_eri_cartesian_source_ssss_weighted_gradient(
+          batch, first_pair, second_pair, shells[0], shells[1], shells[2],
+          shells[3], component_weight);
+
+  double derivative_sum[3]{};
+  for (unsigned atom = 0; atom + 1 < unique_center_count; ++atom) {
+    const std::int64_t coordinate =
+        static_cast<std::int64_t>(unique_center_atoms[atom]) * 3;
+    for (unsigned axis = 0; axis < 3; ++axis) {
+      double derivative = 0.0;
+      double fourth_derivative = 0.0;
+      for (unsigned center = 0; center < 3; ++center) {
+        const double value = gradient.center[center][axis];
+        fourth_derivative -= value;
+        if (center_atoms[center] == unique_center_atoms[atom]) {
+          derivative += value;
+        }
+      }
+      if (center_atoms[3] == unique_center_atoms[atom]) {
+        derivative += fourth_derivative;
+      }
+      derivative_sum[axis] += derivative;
+      if (derivative != 0.0) {
+        atomicAdd(forces + coordinate + axis, -derivative);
+      }
+    }
+  }
+  const std::int64_t final_coordinate =
+      static_cast<std::int64_t>(unique_center_atoms[unique_center_count - 1]) *
+      3;
+  for (unsigned axis = 0; axis < 3; ++axis) {
+    if (derivative_sum[axis] != 0.0) {
+      atomicAdd(forces + final_coordinate + axis, derivative_sum[axis]);
+    }
+  }
+}
+
 /** Evaluate and write one complete density-weighted psss force shell task. */
 template <bool Unrestricted, bool ResidentBra = false>
 __device__ __noinline__ void contract_two_electron_force_psss_task(
@@ -10590,12 +10829,10 @@ __global__ void two_electron_force_quartet_packed_persistent_kernel(
     if (packed_begin >= work_count) return;
     const std::uint32_t packed_item = packed_begin + lane;
     if (packed_item < work_count) {
-      contract_two_electron_force_quartet_subtile<
-          Unrestricted, AngularOrder>(
-          batch, active_shell_quartet_tile_count,
-          active_shell_quartet_tiles, screening_tolerance, schwarz_bounds,
-          density, active, forces, generated_shell_class_mask, packed_item,
-          0U);
+      contract_two_electron_force_ssss_task<Unrestricted>(
+          batch, active_shell_quartet_tiles[packed_item], screening_tolerance,
+          schwarz_bounds, density, active, forces,
+          generated_shell_class_mask);
     }
   }
 }
