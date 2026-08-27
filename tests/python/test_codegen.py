@@ -326,6 +326,12 @@ def test_one_warp_component_schedule_strides_larger_coulomb_table(name):
     assert "candidate_density_coefficient" not in source
     assert "fabs(candidate_density_coefficient)" not in source
     assert "__syncthreads_or(density_coefficient != 0.0)" in source
+    assert "double component_force[9]{};" in source
+    assert "double component_force[12]{};" not in source
+    assert "double warp_sums[kGenerated" in source
+    assert "WarpCount][9];" in source
+    assert "const double fourth_value =" in source
+    assert "shared.task.atom[3]" in source
 
 
 def test_ppps_scalar_thread_schedule_emits_component_scoped_dag():
