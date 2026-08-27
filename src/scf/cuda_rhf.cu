@@ -12117,7 +12117,7 @@ struct CudaRhfBucketPlan {
   // as an SCF convergence baseline.
   std::vector<double> cached_warm_density;
   std::optional<CudaRhfShellClassProfile> last_shell_class_profile;
-  core::ScfOptions options;
+  ScfOptions options;
   std::size_t batch_size{};
   std::size_t nbf{};
   std::size_t direct_nbf{};
@@ -12191,8 +12191,8 @@ bool same_topology(const HostBatch& first, const HostBatch& second) {
          first.occupied == second.occupied;
 }
 
-bool same_options(const core::ScfOptions& first,
-                  const core::ScfOptions& second) {
+bool same_options(const ScfOptions& first,
+                  const ScfOptions& second) {
   return first.max_iterations == second.max_iterations &&
          first.diis_history == second.diis_history &&
          first.energy_tolerance == second.energy_tolerance &&
@@ -12203,7 +12203,7 @@ bool same_options(const core::ScfOptions& first,
 std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     CudaRhfBucketPlan& plan,
     const std::vector<core::System>& systems,
-    const core::ScfOptions& options,
+    const ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
     bool unrestricted,
@@ -13904,7 +13904,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
 
   for (std::size_t system = 0; system < batch_size; ++system) {
     RhfBucketItem& output = outputs[system];
-    core::ScfResult& result = output.scf;
+    ScfResult& result = output.scf;
     result.energy = host_energy[system];
     result.iterations = host_iterations[system];
     result.energy_change = host_energy_change[system];
@@ -13988,7 +13988,7 @@ namespace {
 std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
     CudaRhfBucketPlan** plan,
     const std::vector<core::System>& systems,
-    const core::ScfOptions& options,
+    const ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
     bool unrestricted,
@@ -14059,7 +14059,7 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
 std::vector<RhfBucketItem> run_rhf_cuda_bucket_cached(
     CudaRhfBucketPlan** plan,
     const std::vector<core::System>& systems,
-    const core::ScfOptions& options,
+    const ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
     bool shell_class_profiling) {
@@ -14071,7 +14071,7 @@ std::vector<RhfBucketItem> run_rhf_cuda_bucket_cached(
 std::vector<RhfBucketItem> run_uhf_cuda_bucket_cached(
     CudaRhfBucketPlan** plan,
     const std::vector<core::System>& systems,
-    const core::ScfOptions& options,
+    const ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
     bool shell_class_profiling) {
@@ -14096,7 +14096,7 @@ bool get_rhf_cuda_shell_class_profile(
 
 std::vector<RhfBucketItem> run_rhf_cuda_bucket(
     const std::vector<core::System>& systems,
-    const core::ScfOptions& options,
+    const ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
     bool shell_class_profiling) {
@@ -14110,7 +14110,7 @@ std::vector<RhfBucketItem> run_rhf_cuda_bucket(
 
 std::vector<RhfBucketItem> run_uhf_cuda_bucket(
     const std::vector<core::System>& systems,
-    const core::ScfOptions& options,
+    const ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
     bool shell_class_profiling) {
@@ -14122,8 +14122,8 @@ std::vector<RhfBucketItem> run_uhf_cuda_bucket(
   return outputs;
 }
 
-core::ScfResult run_rhf_cuda(const core::System& system,
-                             const core::ScfOptions& options,
+ScfResult run_rhf_cuda(const core::System& system,
+                       const ScfOptions& options,
                              int device_id,
                              const std::vector<double>* initial_density) {
   const std::vector<core::System> systems{system};
@@ -14138,8 +14138,8 @@ core::ScfResult run_rhf_cuda(const core::System& system,
   return std::move(result.front().scf);
 }
 
-core::ScfResult run_uhf_cuda(const core::System& system,
-                             const core::ScfOptions& options,
+ScfResult run_uhf_cuda(const core::System& system,
+                       const ScfOptions& options,
                              int device_id,
                              const std::vector<double>* initial_density) {
   const std::vector<core::System> systems{system};

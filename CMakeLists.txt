@@ -43,8 +43,14 @@ if(VIBEQC_ENABLE_CUDA)
 endif()
 
 add_library(vibeqc SHARED
-  src/api/c_api.cpp
+  src/api/c_api_batch.cpp
+  src/api/c_api_calculation.cpp
+  src/api/c_api_common.cpp
+  src/api/c_api_context.cpp
+  src/api/error.cpp
   src/integrals/s_integrals.cpp
+  src/methods/hf_method.cpp
+  src/methods/registry.cpp
   src/molecule/basis.cpp
   src/runtime/context.cpp
   src/scf/density_fitting.cpp

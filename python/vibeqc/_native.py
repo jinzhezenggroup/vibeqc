@@ -15,11 +15,17 @@ ABI_VERSION = 0
 STATUS_SUCCESS = 0
 STATUS_INVALID_ARGUMENT = 1
 STATUS_NOT_IMPLEMENTED = 3
+STATUS_NOT_CONVERGED = 4
 STATUS_SCF_NOT_CONVERGED = 4
 METHOD_RHF = 1
 METHOD_UHF = 2
 METHOD_WB97M_V = 3
 METHOD_RCCSD_T = 4
+METHOD_FAMILY_HARTREE_FOCK = 1
+METHOD_FAMILY_DENSITY_FUNCTIONAL = 2
+METHOD_FAMILY_COUPLED_CLUSTER = 3
+PROPERTY_ENERGY = 1 << 0
+PROPERTY_FORCES = 1 << 1
 BACKEND_CPU_REFERENCE = 0
 BACKEND_CUDA = 1
 BACKEND_HYBRID_CUDA = 2
@@ -87,6 +93,18 @@ class MethodDescriptor(ctypes.Structure):
         ("energy_tolerance", ctypes.c_double),
         ("density_tolerance", ctypes.c_double),
         ("screening_tolerance", ctypes.c_double),
+    ]
+
+
+class MethodCapabilitiesDescriptor(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("method", ctypes.c_int),
+        ("family", ctypes.c_int),
+        ("supported_properties", ctypes.c_uint32),
+        ("available", ctypes.c_int32),
+        ("supports_batch", ctypes.c_int32),
     ]
 
 
@@ -169,6 +187,11 @@ def load_library() -> ctypes.CDLL:
     library.vibeqc_status_message.restype = ctypes.c_char_p
     library.vibeqc_method_available.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int32)]
     library.vibeqc_method_available.restype = ctypes.c_int
+    library.vibeqc_method_get_capabilities.argtypes = [
+        ctypes.c_int,
+        ctypes.POINTER(MethodCapabilitiesDescriptor),
+    ]
+    library.vibeqc_method_get_capabilities.restype = ctypes.c_int
     library.vibeqc_context_create.argtypes = [ctypes.POINTER(ContextDescriptor), void_pp]
     library.vibeqc_context_create.restype = ctypes.c_int
     library.vibeqc_context_destroy.argtypes = [ctypes.c_void_p]

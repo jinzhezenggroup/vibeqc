@@ -23,6 +23,13 @@ _ATOMIC_NUMBERS = {
     for atomic_number, symbol in enumerate(_ELEMENT_SYMBOLS, start=1)
 }
 
+_METHODS = {
+    "rhf": _native.METHOD_RHF,
+    "uhf": _native.METHOD_UHF,
+    "wb97m-v": _native.METHOD_WB97M_V,
+    "ccsd(t)": _native.METHOD_RCCSD_T,
+}
+
 
 @dataclass(frozen=True)
 class Atom:
@@ -71,6 +78,59 @@ class Result:
     energy_change: float
     density_rms: float
     executed_backend: str
+
+
+@dataclass(frozen=True)
+class MethodCapabilities:
+    """Executable properties reported by the native method registry."""
+
+    method: str
+    family: str
+    available: bool
+    supports_batch: bool
+    supported_properties: frozenset[str]
+
+
+@lru_cache(maxsize=None)
+def method_capabilities(method: str) -> MethodCapabilities:
+    """Query method support without constructing a calculator or system."""
+
+    canonical = method.lower()
+    try:
+        method_id = _METHODS[canonical]
+    except KeyError as error:
+        raise ValueError(f"unknown method {method!r}") from error
+    library = _native.load_library()
+    native = _native.MethodCapabilitiesDescriptor(
+        ctypes.sizeof(_native.MethodCapabilitiesDescriptor),
+        _native.ABI_VERSION,
+        0,
+        0,
+        0,
+        0,
+        0,
+    )
+    _native.check(
+        library,
+        library.vibeqc_method_get_capabilities(method_id, ctypes.byref(native)),
+    )
+    family = {
+        _native.METHOD_FAMILY_HARTREE_FOCK: "hartree_fock",
+        _native.METHOD_FAMILY_DENSITY_FUNCTIONAL: "density_functional",
+        _native.METHOD_FAMILY_COUPLED_CLUSTER: "coupled_cluster",
+    }[native.family]
+    properties = set()
+    if native.supported_properties & _native.PROPERTY_ENERGY:
+        properties.add("energy")
+    if native.supported_properties & _native.PROPERTY_FORCES:
+        properties.add("forces")
+    return MethodCapabilities(
+        method=canonical,
+        family=family,
+        available=bool(native.available),
+        supports_batch=bool(native.supports_batch),
+        supported_properties=frozenset(properties),
+    )
 
 
 @lru_cache(maxsize=1)
@@ -147,13 +207,7 @@ class Calculator:
         diis_history: int = 8,
         screening_tolerance: float = 1.0e-12,
     ) -> None:
-        methods = {
-            "rhf": _native.METHOD_RHF,
-            "uhf": _native.METHOD_UHF,
-            "wb97m-v": _native.METHOD_WB97M_V,
-            "ccsd(t)": _native.METHOD_RCCSD_T,
-        }
-        if method.lower() not in methods:
+        if method.lower() not in _METHODS:
             raise ValueError(f"unknown method {method!r}")
         if device not in {"cpu", "cuda"}:
             raise ValueError("device must be 'cpu' or 'cuda'")
@@ -165,7 +219,7 @@ class Calculator:
             raise ValueError(
                 "basis_representation must be 'cartesian' or 'spherical'"
             )
-        self._method = methods[method.lower()]
+        self._method = _METHODS[method.lower()]
         self._basis = basis
         self._basis_representation = representations[basis_representation]
         self._backend = (
