@@ -172,6 +172,10 @@ class Batch {
 
   void clear_warm_starts() { check(vibeqc_batch_clear_warm_starts(handle_)); }
 
+  void set_warm_start_updates(bool enabled) {
+    check(vibeqc_batch_set_warm_start_updates(handle_, enabled ? 1 : 0));
+  }
+
  private:
   vibeqc_batch* handle_ = nullptr;
   std::vector<std::uint32_t> atom_counts_;

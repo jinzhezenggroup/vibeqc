@@ -1,13 +1,13 @@
-import json
 import importlib.util
+import json
 import os
-from pathlib import Path
+import sqlite3
 import subprocess
 import sys
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
@@ -277,6 +277,40 @@ def test_batch_comparison_pairs_each_timing_with_convergence_state():
     assert payload[0]["warm_start"] == {"used": True, "fallback": False}
 
 
+def test_batch_comparison_records_fixed_post_cold_warm_policy():
+    """Keep each engine on one dm0 and document the unmeasured priming pass."""
+
+    comparison = _batch_comparison_module()
+    assert comparison.fixed_warm_start_policy() == {
+        "vibeqc": "engine-local fixed post-cold converged density snapshot",
+        "gpu4pyscf": "engine-local fixed post-cold converged density snapshot",
+        "cross_engine_density_identity": (
+            "not asserted because backend AO conventions are independent"
+        ),
+    }
+
+    def sample(seconds, iterations):
+        return {
+            "seconds": seconds,
+            "convergence": [{"iterations": value} for value in iterations],
+        }
+
+    metadata = comparison.warm_start_priming_metadata(
+        sample(1.25, (2, 3)), sample(2.5, (2, 3))
+    )
+    assert metadata["performed"] is True
+    assert metadata["measured"] is False
+    assert metadata["engine_order"] == ["vibeqc", "gpu4pyscf"]
+    assert metadata["vibeqc"] == {
+        "seconds": 1.25,
+        "iteration_branch": [2, 3],
+    }
+    assert metadata["gpu4pyscf"] == {
+        "seconds": 2.5,
+        "iteration_branch": [2, 3],
+    }
+
+
 def test_batch_comparison_uses_exact_abba_counts_and_iteration_matching():
     comparison = _batch_comparison_module()
 
@@ -439,6 +473,88 @@ def test_shell_class_histogram_matches_direct_pair_symmetry():
     assert {row["class"] for row in rows} == {"dppp", "dpds", "ddps"}
     assert sum(row["primitive_quartets"] for row in rows) > 0
     assert sum(row["primitive_work_fraction"] for row in rows) == pytest.approx(1.0)
+
+
+def test_gpu4pyscf_rys_ip1_canonicalization_merges_all_orientations():
+    """Map pair/within-pair Rys directions to one generic class key."""
+
+    histogram = _shell_histogram_module()
+    assert histogram.gpu4pyscf_rys_ip1_shell_class(
+        "rys_ejk_ip1_1110"
+    ) == (1, 1, 1, 0)
+    assert histogram.gpu4pyscf_rys_ip1_shell_class(
+        "rys_ejk_ip1_1011"
+    ) == (1, 1, 1, 0)
+    assert histogram.gpu4pyscf_rys_ip1_shell_class(
+        "namespace::rys_vjk_ip1_0011"
+    ) == (1, 1, 0, 0)
+    assert histogram.gpu4pyscf_rys_ip1_shell_class(
+        "rys_ejk_ip1_kernel"
+    ) is None
+
+    aggregate = histogram.aggregate_gpu4pyscf_rys_ip1_sqlite
+    # The SQLite helper is tested below; this compact input also locks the
+    # canonical transformation independently from Nsight's schema.
+    assert histogram.shell_class_label(
+        histogram.gpu4pyscf_rys_ip1_shell_class("rys_ejk_ip1_1011")
+    ) == "ppps"
+    with pytest.raises(ValueError, match="unsupported angular digit"):
+        histogram.gpu4pyscf_rys_ip1_shell_class("rys_ejk_ip1_9999")
+    assert callable(aggregate)
+
+
+def test_gpu4pyscf_rys_ip1_sqlite_aggregation_sums_canonical_directions(tmp_path):
+    """Aggregate Nsight rows by canonical class, not raw kernel suffix."""
+
+    histogram = _shell_histogram_module()
+    database = tmp_path / "capture.sqlite"
+    connection = sqlite3.connect(database)
+    connection.execute("CREATE TABLE StringIds (id INTEGER PRIMARY KEY, value TEXT)")
+    connection.execute(
+        """
+        CREATE TABLE CUPTI_ACTIVITY_KIND_KERNEL (
+            start INTEGER NOT NULL,
+            end INTEGER NOT NULL,
+            demangledName INTEGER NOT NULL,
+            shortName INTEGER NOT NULL
+        )
+        """
+    )
+    names = {
+        1: "rys_ejk_ip1_1110(RysIntEnvVars)",
+        2: "rys_ejk_ip1_1011(RysIntEnvVars)",
+        3: "rys_ejk_ip1_1100(RysIntEnvVars)",
+        4: "unrelated_kernel",
+    }
+    connection.executemany(
+        "INSERT INTO StringIds(id, value) VALUES (?, ?)", names.items()
+    )
+    connection.executemany(
+        "INSERT INTO CUPTI_ACTIVITY_KIND_KERNEL"
+        "(start, end, demangledName, shortName) VALUES (?, ?, ?, ?)",
+        [
+            (0, 2_000_000, 1, 1),
+            (3_000_000, 6_000_000, 2, 2),
+            (7_000_000, 8_000_000, 3, 3),
+            (9_000_000, 100_000_000, 4, 4),
+        ],
+    )
+    connection.commit()
+    connection.close()
+
+    profile = histogram.aggregate_gpu4pyscf_rys_ip1_sqlite(database)
+    assert profile == {
+        "ppps": {
+            "kernel_time_milliseconds": 5.0,
+            "launches": 2,
+            "kernel_names": sorted(names[index] for index in (1, 2)),
+        },
+        "ppss": {
+            "kernel_time_milliseconds": 1.0,
+            "launches": 1,
+            "kernel_names": [names[3]],
+        },
+    }
 
 
 def test_active_shell_class_histogram_ranks_screened_primitive_work():

@@ -115,6 +115,10 @@ class HfPreparedBatch final : public PreparedBatch {
 
   void clear_warm_starts() override { plan_.clear_warm_starts(); }
 
+  void set_warm_start_updates(bool enabled) override {
+    plan_.set_warm_start_updates(enabled);
+  }
+
   [[nodiscard]] std::optional<std::vector<DirectShellClassProfileEntry>>
   last_direct_shell_class_profile() const override {
     const auto& native = plan_.last_shell_class_profile();

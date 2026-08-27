@@ -162,7 +162,8 @@ std::vector<FleetItemResult> FleetPlan::execute(
       }
     }
 
-    if (item.status == VIBEQC_STATUS_SUCCESS && warm_starts_enabled_) {
+    if (item.status == VIBEQC_STATUS_SUCCESS && warm_starts_enabled_ &&
+        warm_start_updates_enabled_) {
       warm_densities_[system_index] = item.scf.density;
     }
   };
@@ -261,7 +262,8 @@ std::vector<FleetItemResult> FleetPlan::execute(
             item.status = cold.front().status;
             item.scf = std::move(cold.front().scf);
           }
-          if (item.status == VIBEQC_STATUS_SUCCESS && warm_starts_enabled_) {
+          if (item.status == VIBEQC_STATUS_SUCCESS && warm_starts_enabled_ &&
+              warm_start_updates_enabled_) {
             warm_densities_[system_index] = item.scf.density;
           }
         }
@@ -290,6 +292,20 @@ std::vector<FleetItemResult> FleetPlan::execute(
 
 void FleetPlan::clear_warm_starts() {
   for (auto& density : warm_densities_) density.reset();
+  for (CudaRhfBucketPlan* plan : cuda_bucket_plans_) {
+    clear_rhf_cuda_bucket_warm_starts(plan);
+  }
+}
+
+void FleetPlan::set_warm_start_updates(bool enabled) noexcept {
+  if (warm_start_updates_enabled_ == enabled) return;
+  // The CUDA plan owns the energy associated with its current returned
+  // density. Freeze that pair at the same transition where Fleet stops
+  // replacing the corresponding host dm0 snapshots.
+  for (CudaRhfBucketPlan* plan : cuda_bucket_plans_) {
+    set_rhf_cuda_bucket_warm_start_updates(plan, enabled);
+  }
+  warm_start_updates_enabled_ = enabled;
 }
 
 }  // namespace vibeqc::scf

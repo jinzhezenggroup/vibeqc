@@ -48,6 +48,10 @@ constexpr std::size_t kCublasMatrixProductAoThreshold = 17;
 // Capture-safe scalar kernels are small or register-heavy and use one warp per
 // block. Direct quartets keep their separately documented virtual tiling.
 constexpr unsigned kCaptureSafeKernelThreads = 32;
+// Matrix reductions use one complete warp per system. Keep this independent
+// from the generic capture-safe launch width so tuning other kernels cannot
+// silently drop reductions from additional warps.
+constexpr unsigned kMatrixReductionThreads = 32;
 // Persistent direct-force workers retain one AO-quartet warp per block. Eight
 // resident workers per SM balance the high-register force kernels while
 // replacing topology-capacity grids with device-side work stealing.
@@ -7198,9 +7202,11 @@ __global__ void apply_warm_density_kernel(std::int32_t batch_size,
                                           const std::uint8_t* warm_mask,
                                           const double* warm_density,
                                           const double* overlap,
-                                          double* density) {
+                                          double* density,
+                                          std::uint8_t* warm_invalid) {
   const std::int32_t system = static_cast<std::int32_t>(blockIdx.x);
   if (system >= batch_size || warm_mask[system] == 0 || threadIdx.x != 0) return;
+  warm_invalid[system] = 0;
   const std::size_t n = static_cast<std::size_t>(nbf);
   const std::size_t matrix_size = n * n;
   const std::size_t offset = static_cast<std::size_t>(system) * matrix_size;
@@ -7215,7 +7221,9 @@ __global__ void apply_warm_density_kernel(std::int32_t batch_size,
     }
   }
   const double target = 2.0 * occupied[system];
-  if (isfinite(trace) && fabs(trace) > 1.0e-14) {
+  const bool valid_trace = isfinite(trace) && trace > 0.0;
+  warm_invalid[system] = valid_trace ? 0 : 1;
+  if (valid_trace) {
     const double scale = target / trace;
     for (std::size_t element = 0; element < matrix_size; ++element) {
       density[offset + element] *= scale;
@@ -7230,9 +7238,11 @@ __global__ void apply_uhf_warm_density_kernel(
     const std::uint8_t* warm_mask,
     const double* warm_density,
     const double* overlap,
-    double* density) {
+    double* density,
+    std::uint8_t* warm_invalid) {
   const std::int32_t system = static_cast<std::int32_t>(blockIdx.x);
   if (system >= batch_size || warm_mask[system] == 0 || threadIdx.x != 0) return;
+  warm_invalid[system] = 0;
   const std::size_t n = static_cast<std::size_t>(nbf);
   const std::size_t matrix_size = n * n;
   const std::size_t overlap_offset =
@@ -7256,11 +7266,13 @@ __global__ void apply_uhf_warm_density_kernel(
       for (std::size_t element = 0; element < matrix_size; ++element) {
         density[offset + element] = 0.0;
       }
-    } else if (isfinite(trace) && fabs(trace) > 1.0e-14) {
+    } else if (isfinite(trace) && trace > 0.0) {
       const double scale = target / trace;
       for (std::size_t element = 0; element < matrix_size; ++element) {
         density[offset + element] *= scale;
       }
+    } else {
+      warm_invalid[system] = 1;
     }
   }
 }
@@ -8900,77 +8912,26 @@ __global__ void build_fock_direct_quartet_persistent_kernel(
   }
 }
 
-__global__ void build_commutator_residual_kernel(
+/** Subtract the second GEMM product from the first in a batched matrix set. */
+__global__ void subtract_matrix_batches_kernel(
     std::int32_t batch_size,
+    std::int32_t matrices_per_system,
     std::int32_t nbf,
-    const double* fock,
-    const double* density,
-    const double* overlap,
+    const double* subtract,
     const std::uint8_t* active,
-    double* residual) {
-  const std::size_t n = static_cast<std::size_t>(nbf);
-  const std::size_t matrix_size = n * n;
+    double* minuend) {
+  const std::size_t matrix_size = static_cast<std::size_t>(nbf) * nbf;
   const std::size_t element =
       static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (element >= static_cast<std::size_t>(batch_size) * matrix_size) return;
-  const std::int32_t system = static_cast<std::int32_t>(element / matrix_size);
-  if (active[system] == 0) return;
-  const std::size_t local = element % matrix_size;
-  const std::size_t row = local % n;
-  const std::size_t column = local / n;
-  const std::size_t offset = static_cast<std::size_t>(system) * matrix_size;
-  double fps = 0.0;
-  double spf = 0.0;
-  for (std::size_t first = 0; first < n; ++first) {
-    for (std::size_t second = 0; second < n; ++second) {
-      fps += fock[offset + matrix_index(row, first, n)] *
-             density[offset + matrix_index(first, second, n)] *
-             overlap[offset + matrix_index(second, column, n)];
-      spf += overlap[offset + matrix_index(row, first, n)] *
-             density[offset + matrix_index(first, second, n)] *
-             fock[offset + matrix_index(second, column, n)];
-    }
-  }
-  residual[element] = fps - spf;
-}
-
-__global__ void build_spin_commutator_residual_kernel(
-    std::int32_t batch_size,
-    std::int32_t spin_count,
-    std::int32_t nbf,
-    const double* fock,
-    const double* density,
-    const double* overlap,
-    const std::uint8_t* active,
-    double* residual) {
-  const std::size_t n = static_cast<std::size_t>(nbf);
-  const std::size_t matrix_size = n * n;
-  const std::size_t state_count =
-      static_cast<std::size_t>(batch_size) * spin_count;
-  const std::size_t element =
-      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (element >= state_count * matrix_size) return;
+  const std::size_t total = static_cast<std::size_t>(batch_size) *
+                            static_cast<std::size_t>(matrices_per_system) *
+                            matrix_size;
+  if (element >= total) return;
   const std::size_t state = element / matrix_size;
-  const std::size_t system = state / static_cast<std::size_t>(spin_count);
-  if (active[system] == 0) return;
-  const std::size_t local = element % matrix_size;
-  const std::size_t row = local % n;
-  const std::size_t column = local / n;
-  const std::size_t spin_offset = state * matrix_size;
-  const std::size_t overlap_offset = system * matrix_size;
-  double fps = 0.0;
-  double spf = 0.0;
-  for (std::size_t first = 0; first < n; ++first) {
-    for (std::size_t second = 0; second < n; ++second) {
-      fps += fock[spin_offset + matrix_index(row, first, n)] *
-             density[spin_offset + matrix_index(first, second, n)] *
-             overlap[overlap_offset + matrix_index(second, column, n)];
-      spf += overlap[overlap_offset + matrix_index(row, first, n)] *
-             density[spin_offset + matrix_index(first, second, n)] *
-             fock[spin_offset + matrix_index(second, column, n)];
-    }
-  }
-  residual[element] = fps - spf;
+  const std::size_t system =
+      state / static_cast<std::size_t>(matrices_per_system);
+  if (active != nullptr && active[system] == 0) return;
+  minuend[element] -= subtract[element];
 }
 
 __global__ void update_diis_kernel(std::int32_t batch_size,
@@ -8987,14 +8948,19 @@ __global__ void update_diis_kernel(std::int32_t batch_size,
                                    std::uint32_t* history_count,
                                    std::uint32_t* history_head,
                                    double* effective_fock) {
+  // One warp owns one system.  History vectors and the O(N^2) residual-dot
+  // products are distributed across lanes, while the small dense DIIS solve
+  // remains in lane zero.  This preserves the original dot-product order for
+  // each B-matrix entry and avoids the old single-thread N^2 bottleneck.
   const std::int32_t system = static_cast<std::int32_t>(blockIdx.x);
-  if (system >= batch_size || active[system] == 0 || threadIdx.x != 0) return;
+  if (system >= batch_size || active[system] == 0) return;
   const std::size_t matrix_size = static_cast<std::size_t>(nbf) * nbf;
   const std::size_t vector_size =
       matrix_size * static_cast<std::size_t>(matrices_per_system);
   const std::size_t matrix_offset = static_cast<std::size_t>(system) * vector_size;
   if (history_capacity < 2) {
-    for (std::size_t element = 0; element < vector_size; ++element) {
+    for (std::size_t element = threadIdx.x; element < vector_size;
+         element += blockDim.x) {
       effective_fock[matrix_offset + element] = fock[matrix_offset + element];
     }
     return;
@@ -9002,22 +8968,30 @@ __global__ void update_diis_kernel(std::int32_t batch_size,
 
   const std::size_t history_stride =
       static_cast<std::size_t>(history_capacity) * vector_size;
-  const std::uint32_t slot = history_head[system];
+  std::uint32_t slot = 0;
+  if (threadIdx.x == 0) slot = history_head[system];
+  slot = __shfl_sync(0xffffffffU, slot, 0);
   const std::size_t slot_offset =
       static_cast<std::size_t>(system) * history_stride +
       static_cast<std::size_t>(slot) * vector_size;
-  for (std::size_t element = 0; element < vector_size; ++element) {
+  for (std::size_t element = threadIdx.x; element < vector_size;
+       element += blockDim.x) {
     fock_history[slot_offset + element] = fock[matrix_offset + element];
     residual_history[slot_offset + element] = residual[matrix_offset + element];
   }
-  const std::uint32_t count =
-      history_count[system] < history_capacity
-          ? history_count[system] + 1
-          : history_capacity;
-  history_count[system] = count;
-  history_head[system] = (slot + 1) % history_capacity;
+  __syncwarp();
+  std::uint32_t count = 0;
+  if (threadIdx.x == 0) {
+    count = history_count[system] < history_capacity
+        ? history_count[system] + 1
+        : history_capacity;
+    history_count[system] = count;
+    history_head[system] = (slot + 1) % history_capacity;
+  }
+  count = __shfl_sync(0xffffffffU, count, 0);
   if (count < 2) {
-    for (std::size_t element = 0; element < vector_size; ++element) {
+    for (std::size_t element = threadIdx.x; element < vector_size;
+         element += blockDim.x) {
       effective_fock[matrix_offset + element] = fock[matrix_offset + element];
     }
     return;
@@ -9029,79 +9003,99 @@ __global__ void update_diis_kernel(std::int32_t batch_size,
   double* matrix = linear_system + static_cast<std::size_t>(system) * system_stride;
   double* rhs = coefficients +
       static_cast<std::size_t>(system) * (history_capacity + 1);
-  for (std::uint32_t row = 0; row < dimension; ++row) {
-    rhs[row] = row == count ? -1.0 : 0.0;
-    for (std::uint32_t column = 0; column < dimension; ++column) {
-      matrix[static_cast<std::size_t>(row) * dimension + column] = 0.0;
-    }
+  const std::size_t linear_elements =
+      static_cast<std::size_t>(dimension) * dimension;
+  for (std::size_t element = threadIdx.x; element < linear_elements;
+       element += blockDim.x) {
+    matrix[element] = 0.0;
   }
-  for (std::uint32_t row = 0; row < count; ++row) {
+  for (std::uint32_t row = threadIdx.x; row < dimension;
+       row += blockDim.x) {
+    rhs[row] = row == count ? -1.0 : 0.0;
+  }
+  __syncwarp();
+  const std::size_t dot_count = static_cast<std::size_t>(count) * count;
+  for (std::size_t pair = threadIdx.x; pair < dot_count;
+       pair += blockDim.x) {
+    const std::uint32_t row = static_cast<std::uint32_t>(pair / count);
+    const std::uint32_t column = static_cast<std::uint32_t>(pair % count);
     const std::size_t row_offset =
         static_cast<std::size_t>(system) * history_stride +
         static_cast<std::size_t>(row) * vector_size;
-    for (std::uint32_t column = 0; column < count; ++column) {
-      const std::size_t column_offset =
-          static_cast<std::size_t>(system) * history_stride +
-          static_cast<std::size_t>(column) * vector_size;
-      double dot = 0.0;
-      for (std::size_t element = 0; element < vector_size; ++element) {
-        dot += residual_history[row_offset + element] *
-               residual_history[column_offset + element];
-      }
-      matrix[static_cast<std::size_t>(row) * dimension + column] = dot;
+    const std::size_t column_offset =
+        static_cast<std::size_t>(system) * history_stride +
+        static_cast<std::size_t>(column) * vector_size;
+    double dot = 0.0;
+    for (std::size_t element = 0; element < vector_size; ++element) {
+      dot += residual_history[row_offset + element] *
+             residual_history[column_offset + element];
     }
-    matrix[static_cast<std::size_t>(row) * dimension + count] = -1.0;
-    matrix[static_cast<std::size_t>(count) * dimension + row] = -1.0;
+    matrix[static_cast<std::size_t>(row) * dimension + column] = dot;
   }
+  __syncwarp();
+  if (threadIdx.x == 0) {
+    for (std::uint32_t row = 0; row < count; ++row) {
+      matrix[static_cast<std::size_t>(row) * dimension + count] = -1.0;
+      matrix[static_cast<std::size_t>(count) * dimension + row] = -1.0;
+    }
+  }
+  __syncwarp();
 
-  bool nonsingular = true;
-  for (std::uint32_t column = 0; column < dimension; ++column) {
-    std::uint32_t pivot = column;
-    for (std::uint32_t row = column + 1; row < dimension; ++row) {
-      if (fabs(matrix[static_cast<std::size_t>(row) * dimension + column]) >
-          fabs(matrix[static_cast<std::size_t>(pivot) * dimension + column])) {
-        pivot = row;
+  int nonsingular = 1;
+  if (threadIdx.x == 0) {
+    for (std::uint32_t column = 0; column < dimension; ++column) {
+      std::uint32_t pivot = column;
+      for (std::uint32_t row = column + 1; row < dimension; ++row) {
+        if (fabs(matrix[static_cast<std::size_t>(row) * dimension + column]) >
+            fabs(matrix[static_cast<std::size_t>(pivot) * dimension + column])) {
+          pivot = row;
+        }
       }
-    }
-    const double diagonal =
-        matrix[static_cast<std::size_t>(pivot) * dimension + column];
-    if (fabs(diagonal) < 1.0e-14) {
-      nonsingular = false;
-      break;
-    }
-    if (pivot != column) {
-      for (std::uint32_t item = 0; item < dimension; ++item) {
-        const std::size_t first =
-            static_cast<std::size_t>(column) * dimension + item;
-        const std::size_t second =
-            static_cast<std::size_t>(pivot) * dimension + item;
-        const double swap = matrix[first];
-        matrix[first] = matrix[second];
-        matrix[second] = swap;
+      const double diagonal =
+          matrix[static_cast<std::size_t>(pivot) * dimension + column];
+      if (fabs(diagonal) < 1.0e-14) {
+        nonsingular = 0;
+        break;
       }
-      const double swap = rhs[column];
-      rhs[column] = rhs[pivot];
-      rhs[pivot] = swap;
-    }
-    const double scale =
-        matrix[static_cast<std::size_t>(column) * dimension + column];
-    for (std::uint32_t item = column; item < dimension; ++item) {
-      matrix[static_cast<std::size_t>(column) * dimension + item] /= scale;
-    }
-    rhs[column] /= scale;
-    for (std::uint32_t row = 0; row < dimension; ++row) {
-      if (row == column) continue;
-      const double factor =
-          matrix[static_cast<std::size_t>(row) * dimension + column];
+      if (pivot != column) {
+        for (std::uint32_t item = 0; item < dimension; ++item) {
+          const std::size_t first =
+              static_cast<std::size_t>(column) * dimension + item;
+          const std::size_t second =
+              static_cast<std::size_t>(pivot) * dimension + item;
+          const double swap = matrix[first];
+          matrix[first] = matrix[second];
+          matrix[second] = swap;
+        }
+        const double swap = rhs[column];
+        rhs[column] = rhs[pivot];
+        rhs[pivot] = swap;
+      }
+      const double scale =
+          matrix[static_cast<std::size_t>(column) * dimension + column];
       for (std::uint32_t item = column; item < dimension; ++item) {
-        matrix[static_cast<std::size_t>(row) * dimension + item] -=
-            factor * matrix[static_cast<std::size_t>(column) * dimension + item];
+        matrix[static_cast<std::size_t>(column) * dimension + item] /= scale;
       }
-      rhs[row] -= factor * rhs[column];
+      rhs[column] /= scale;
+      for (std::uint32_t row = 0; row < dimension; ++row) {
+        if (row == column) continue;
+        const double factor =
+            matrix[static_cast<std::size_t>(row) * dimension + column];
+        for (std::uint32_t item = column; item < dimension; ++item) {
+          matrix[static_cast<std::size_t>(row) * dimension + item] -=
+              factor * matrix[static_cast<std::size_t>(column) * dimension + item];
+        }
+        rhs[row] -= factor * rhs[column];
+      }
     }
   }
+  __syncwarp();
+  // The solve is lane-zero-only; broadcast its success flag before any lane
+  // decides whether it should form the extrapolated Fock matrix.
+  nonsingular = __shfl_sync(0xffffffffU, nonsingular, 0);
 
-  for (std::size_t element = 0; element < vector_size; ++element) {
+  for (std::size_t element = threadIdx.x; element < vector_size;
+       element += blockDim.x) {
     double value = fock[matrix_offset + element];
     if (nonsingular) {
       value = 0.0;
@@ -9124,17 +9118,24 @@ __global__ void compute_energy_kernel(std::int32_t batch_size,
                                       const double* nuclear_repulsion,
                                       const std::uint8_t* active,
                                       double* energy) {
-  const std::int32_t system = static_cast<std::int32_t>(
-      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x);
+  // One warp owns one system.  The previous one-thread-per-system mapping
+  // made the N^2 contraction and its global-memory latency completely serial
+  // at large AO counts; all callers launch exactly one 32-thread block per
+  // system, which also keeps this graph-capture-safe.
+  const std::int32_t system = static_cast<std::int32_t>(blockIdx.x);
   if (system >= batch_size || (active != nullptr && active[system] == 0)) return;
   const std::size_t matrix_size = static_cast<std::size_t>(nbf) * nbf;
   const std::size_t offset = static_cast<std::size_t>(system) * matrix_size;
-  double value = nuclear_repulsion[system];
-  for (std::size_t element = 0; element < matrix_size; ++element) {
+  double value = 0.0;
+  for (std::size_t element = threadIdx.x; element < matrix_size;
+       element += blockDim.x) {
     value += 0.5 * density[offset + element] *
              (hcore[offset + element] + fock[offset + element]);
   }
-  energy[system] = value;
+  for (unsigned delta = warpSize / 2; delta != 0; delta >>= 1) {
+    value += __shfl_down_sync(0xffffffffU, value, delta);
+  }
+  if (threadIdx.x == 0) energy[system] = nuclear_repulsion[system] + value;
 }
 
 __global__ void compute_uhf_energy_kernel(std::int32_t batch_size,
@@ -9145,8 +9146,7 @@ __global__ void compute_uhf_energy_kernel(std::int32_t batch_size,
                                           const double* nuclear_repulsion,
                                           const std::uint8_t* active,
                                           double* energy) {
-  const std::int32_t system = static_cast<std::int32_t>(
-      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x);
+  const std::int32_t system = static_cast<std::int32_t>(blockIdx.x);
   if (system >= batch_size || (active != nullptr && active[system] == 0)) return;
   const std::size_t matrix_size = static_cast<std::size_t>(nbf) * nbf;
   const std::size_t physical_offset =
@@ -9154,14 +9154,18 @@ __global__ void compute_uhf_energy_kernel(std::int32_t batch_size,
   const std::size_t alpha_offset =
       static_cast<std::size_t>(system) * 2 * matrix_size;
   const std::size_t beta_offset = alpha_offset + matrix_size;
-  double value = nuclear_repulsion[system];
-  for (std::size_t element = 0; element < matrix_size; ++element) {
+  double value = 0.0;
+  for (std::size_t element = threadIdx.x; element < matrix_size;
+       element += blockDim.x) {
     value += 0.5 * density[alpha_offset + element] *
              (hcore[physical_offset + element] + fock[alpha_offset + element]);
     value += 0.5 * density[beta_offset + element] *
              (hcore[physical_offset + element] + fock[beta_offset + element]);
   }
-  energy[system] = value;
+  for (unsigned delta = warpSize / 2; delta != 0; delta >>= 1) {
+    value += __shfl_down_sync(0xffffffffU, value, delta);
+  }
+  if (threadIdx.x == 0) energy[system] = nuclear_repulsion[system] + value;
 }
 
 /** Comparison guard for the nondeterministic FP64 direct-Fock reduction. */
@@ -9191,49 +9195,61 @@ __global__ void update_convergence_kernel(std::int32_t batch_size,
                                           std::uint32_t* iterations,
                                           double* energy_change,
                                           double* density_rms) {
-  const std::int32_t system = static_cast<std::int32_t>(
-      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x);
+  // A warp owns one system.  This is intentionally a one-warp block because
+  // all scalar state transitions are performed by lane zero after the warp
+  // reduction; the matrix walk itself is spread over the 32 lanes.
+  const std::int32_t system = static_cast<std::int32_t>(blockIdx.x);
   if (system >= batch_size || active[system] == 0) return;
   const std::size_t matrix_size = static_cast<std::size_t>(nbf) * nbf;
   const std::size_t offset = static_cast<std::size_t>(system) * matrix_size;
-  const std::uint32_t iteration = iterations[system] + 1;
-  const bool has_energy_baseline = isfinite(previous_energy[system]);
   double square = 0.0;
-  for (std::size_t element = 0; element < matrix_size; ++element) {
+  for (std::size_t element = threadIdx.x; element < matrix_size;
+       element += blockDim.x) {
     const double delta = next_density[offset + element] - density[offset + element];
     square += delta * delta;
     if constexpr (!RetainConvergedDensity) {
       density[offset + element] = next_density[offset + element];
     }
   }
-  const double change = isfinite(previous_energy[system])
-      ? fabs(energy[system] - previous_energy[system])
-      : CUDART_INF;
-  const double roundoff_guard = direct_fock_energy_roundoff_guard(
-      guard_direct_fock_roundoff, energy[system], previous_energy[system]);
-  const double rms = sqrt(square / static_cast<double>(matrix_size));
-  iterations[system] = iteration;
-  energy_change[system] = change;
-  density_rms[system] = rms;
-  const bool did_converge =
-      (iteration > 1 || has_energy_baseline) &&
-      change < energy_tolerance + roundoff_guard &&
-      rms < density_tolerance;
+  for (unsigned delta = warpSize / 2; delta != 0; delta >>= 1) {
+    square += __shfl_down_sync(0xffffffffU, square, delta);
+  }
+  int copy_next_density = 0;
+  if (threadIdx.x == 0) {
+    const std::uint32_t iteration = iterations[system] + 1;
+    const bool has_energy_baseline = isfinite(previous_energy[system]);
+    const double change = has_energy_baseline
+        ? fabs(energy[system] - previous_energy[system])
+        : CUDART_INF;
+    const double roundoff_guard = direct_fock_energy_roundoff_guard(
+        guard_direct_fock_roundoff, energy[system], previous_energy[system]);
+    const double rms = sqrt(square / static_cast<double>(matrix_size));
+    iterations[system] = iteration;
+    energy_change[system] = change;
+    density_rms[system] = rms;
+    const bool did_converge =
+        (iteration > 1 || has_energy_baseline) &&
+        change < energy_tolerance + roundoff_guard &&
+        rms < density_tolerance;
+    if (did_converge) {
+      converged[system] = 1;
+      active[system] = 0;
+    } else {
+      previous_energy[system] = energy[system];
+      copy_next_density = 1;
+    }
+  }
+  copy_next_density = __shfl_sync(0xffffffffU, copy_next_density, 0);
   if constexpr (RetainConvergedDensity) {
     // The raw Fock matrix still corresponds to P_n. Advance to P_{n+1} only
     // when another SCF iteration is required, so finalization can reuse the
     // already computed F(P_n) after convergence instead of rebuilding it.
-    if (!did_converge) {
-      for (std::size_t element = 0; element < matrix_size; ++element) {
+    if (copy_next_density != 0) {
+      for (std::size_t element = threadIdx.x; element < matrix_size;
+           element += blockDim.x) {
         density[offset + element] = next_density[offset + element];
       }
     }
-  }
-  if (did_converge) {
-    converged[system] = 1;
-    active[system] = 0;
-  } else {
-    previous_energy[system] = energy[system];
   }
 }
 
@@ -9250,50 +9266,64 @@ __global__ void update_uhf_convergence_kernel(
     double* density,
     std::uint8_t* active,
     std::uint8_t* converged,
-    std::uint32_t* iterations,
-    double* energy_change,
-    double* density_rms) {
-  const std::int32_t system = static_cast<std::int32_t>(
-      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x);
+                                          std::uint32_t* iterations,
+                                          double* energy_change,
+                                          double* density_rms) {
+  // Keep UHF's two spin matrices under one warp so the convergence reduction
+  // and scalar state transition have the same ordering as RHF.
+  const std::int32_t system = static_cast<std::int32_t>(blockIdx.x);
   if (system >= batch_size || active[system] == 0) return;
   const std::size_t matrix_size = static_cast<std::size_t>(nbf) * nbf;
   const std::size_t vector_size = 2 * matrix_size;
   const std::size_t offset = static_cast<std::size_t>(system) * vector_size;
-  const bool has_energy_baseline = isfinite(previous_energy[system]);
   double square = 0.0;
-  for (std::size_t element = 0; element < vector_size; ++element) {
+  for (std::size_t element = threadIdx.x; element < vector_size;
+       element += blockDim.x) {
     const double delta = next_density[offset + element] - density[offset + element];
     square += delta * delta;
     if constexpr (!RetainConvergedDensity) {
       density[offset + element] = next_density[offset + element];
     }
   }
-  const double change = isfinite(previous_energy[system])
-      ? fabs(energy[system] - previous_energy[system])
-      : CUDART_INF;
-  const double roundoff_guard = direct_fock_energy_roundoff_guard(
-      guard_direct_fock_roundoff, energy[system], previous_energy[system]);
-  const double rms = sqrt(square / static_cast<double>(vector_size));
-  previous_energy[system] = energy[system];
-  energy_change[system] = change;
-  density_rms[system] = rms;
-  ++iterations[system];
-  const bool did_converge =
-      (iterations[system] > 1 || has_energy_baseline) &&
-      change < energy_tolerance + roundoff_guard &&
-      rms < density_tolerance;
+  for (unsigned delta = warpSize / 2; delta != 0; delta >>= 1) {
+    square += __shfl_down_sync(0xffffffffU, square, delta);
+  }
+  int copy_next_density = 0;
+  if (threadIdx.x == 0) {
+    const bool has_energy_baseline = isfinite(previous_energy[system]);
+    const double change = has_energy_baseline
+        ? fabs(energy[system] - previous_energy[system])
+        : CUDART_INF;
+    const double roundoff_guard = direct_fock_energy_roundoff_guard(
+        guard_direct_fock_roundoff, energy[system], previous_energy[system]);
+    const double rms = sqrt(square / static_cast<double>(vector_size));
+    // Preserve the existing UHF baseline update semantics, including the
+    // converged iteration, because it is observable by the next warm replay.
+    previous_energy[system] = energy[system];
+    energy_change[system] = change;
+    density_rms[system] = rms;
+    const std::uint32_t iteration = ++iterations[system];
+    const bool did_converge =
+        (iteration > 1 || has_energy_baseline) &&
+        change < energy_tolerance + roundoff_guard &&
+        rms < density_tolerance;
+    if (did_converge) {
+      converged[system] = 1;
+      active[system] = 0;
+    } else {
+      copy_next_density = 1;
+    }
+  }
+  copy_next_density = __shfl_sync(0xffffffffU, copy_next_density, 0);
   if constexpr (RetainConvergedDensity) {
     // Preserve each system's spin densities paired with its raw alpha/beta
     // Fock matrices until per-system finalization selects reuse or rebuild.
-    if (!did_converge) {
-      for (std::size_t element = 0; element < vector_size; ++element) {
+    if (copy_next_density != 0) {
+      for (std::size_t element = threadIdx.x; element < vector_size;
+           element += blockDim.x) {
         density[offset + element] = next_density[offset + element];
       }
     }
-  }
-  if (did_converge) {
-    converged[system] = 1;
-    active[system] = 0;
   }
 }
 
@@ -11518,6 +11548,10 @@ struct ArenaLayout {
   std::size_t occupied{};
   std::size_t warm_mask{};
   std::size_t warm_density{};
+  // Setup-only flags for rejecting an external warm density before graph
+  // capture.  They are deliberately separate from `failed`, whose lifetime
+  // spans the SCF graph and denotes numerical solver failures.
+  std::size_t warm_invalid{};
   std::size_t overlap{};
   std::size_t hcore{};
   std::size_t eri{};
@@ -11706,6 +11740,7 @@ bool make_layout(std::size_t batch_size,
                                   made.occupied) ||
       !append_array<std::uint8_t>(batch_size, cursor, made.warm_mask) ||
       !append_array<double>(spin_matrices, cursor, made.warm_density) ||
+      !append_array<std::uint8_t>(batch_size, cursor, made.warm_invalid) ||
       !append_array<double>(matrices, cursor, made.overlap) ||
       !append_array<double>(matrices, cursor, made.hcore) ||
       !append_array<double>(eris, cursor, made.eri) ||
@@ -12122,9 +12157,16 @@ bool pack_host_batch(const std::vector<core::System>& systems,
     }
     const std::vector<double>* warm = initial_densities[system_index];
     const std::size_t warm_size = host.spin_count * matrix_size;
-    const bool valid_warm = warm != nullptr && warm->size() == warm_size &&
-        std::all_of(warm->begin(), warm->end(),
-                    [](double value) { return std::isfinite(value); });
+    // A supplied warm state is an explicit input, not an optional hint.  The
+    // CPU path rejects malformed matrices; silently converting one to a cold
+    // guess would make CUDA and CPU disagree and could hide a caller bug.
+    if (warm != nullptr &&
+        (warm->size() != warm_size ||
+         !std::all_of(warm->begin(), warm->end(),
+                      [](double value) { return std::isfinite(value); }))) {
+      return false;
+    }
+    const bool valid_warm = warm != nullptr;
     host.warm_mask.push_back(valid_warm ? 1 : 0);
     if (valid_warm) {
       std::copy(warm->begin(), warm->end(),
@@ -12354,9 +12396,17 @@ struct CudaRhfBucketPlan {
   HostBatch topology;
   // Geometry-derived arena state is reusable until coordinates change.
   std::vector<double> cached_positions;
-  // Match the next host warm input before reusing the resident final energy
-  // as an SCF convergence baseline.
-  std::vector<double> cached_warm_density;
+  // The current device density and its associated convergence seed are one
+  // cache, while a fixed benchmark dm0 and seed are a separate cache. The
+  // distinction matters because finalization advances the returned density
+  // after evaluating the final energy, so repeated fixed-dm0 replays cease to
+  // be resident hits even though they must retain the original energy seed.
+  std::vector<double> resident_warm_positions;
+  std::vector<double> resident_warm_density;
+  std::vector<double> resident_previous_energy;
+  std::vector<double> frozen_warm_positions;
+  std::vector<double> frozen_warm_density;
+  std::vector<double> frozen_previous_energy;
   std::optional<CudaRhfShellClassProfile> last_shell_class_profile;
   ScfOptions options;
   std::size_t batch_size{};
@@ -12384,6 +12434,7 @@ struct CudaRhfBucketPlan {
   bool unrestricted{};
   bool shell_class_profiling{};
   bool reuse_converged_fock{};
+  bool warm_start_updates_enabled{true};
   bool cublas_enabled{true};
   bool retry_without_cublas{};
   bool initialized{};
@@ -12732,9 +12783,41 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   const bool all_systems_warm = std::all_of(
       host.warm_mask.begin(), host.warm_mask.end(),
       [](std::uint8_t value) { return value != 0; });
-  const bool reuse_previous_energy =
-      !geometry_changed && all_systems_warm &&
-      plan.cached_warm_density == host.warm_density;
+  const bool any_system_warm = std::any_of(
+      host.warm_mask.begin(), host.warm_mask.end(),
+      [](std::uint8_t value) { return value != 0; });
+  // Density residency and the previous-energy baseline are deliberately
+  // independent. A fixed warm start can reuse its frozen energy seed after a
+  // prior replay advanced the device density. Geometry remains part of a
+  // resident-density hit because applying an external dm0 also renormalizes
+  // its electron trace against the geometry-dependent overlap matrix.
+  const bool device_resident_density_hit =
+      all_systems_warm &&
+      plan.resident_warm_positions == host.positions &&
+      plan.resident_warm_density == host.warm_density;
+  const bool resident_energy_baseline_hit =
+      device_resident_density_hit &&
+      plan.resident_warm_positions == host.positions &&
+      plan.resident_previous_energy.size() == batch_size;
+  const bool frozen_energy_baseline_hit =
+      all_systems_warm && !plan.warm_start_updates_enabled &&
+      plan.frozen_warm_density == host.warm_density &&
+      plan.frozen_warm_positions == host.positions &&
+      plan.frozen_previous_energy.size() == batch_size;
+  const bool cached_energy_baseline_hit =
+      frozen_energy_baseline_hit || resident_energy_baseline_hit;
+  // Copy the tiny seed vector locally before invalidating residency. Any
+  // early CUDA or validation failure below may have partially changed the
+  // device density; only a fully successful execution republishes it.
+  std::vector<double> host_previous_energy_seed;
+  if (frozen_energy_baseline_hit) {
+    host_previous_energy_seed = plan.frozen_previous_energy;
+  } else if (resident_energy_baseline_hit) {
+    host_previous_energy_seed = plan.resident_previous_energy;
+  }
+  plan.resident_warm_positions.clear();
+  plan.resident_warm_density.clear();
+  plan.resident_previous_energy.clear();
   const bool use_cublas = plan.cublas_enabled &&
       nbf >= kCublasMatrixProductAoThreshold;
   cudaError_t cuda_error = cudaSetDevice(device_id);
@@ -12870,6 +12953,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   auto occupied = arena_pointer<std::int32_t>(resources.arena_, layout.occupied);
   auto warm_mask = arena_pointer<std::uint8_t>(resources.arena_, layout.warm_mask);
   auto warm_density = arena_pointer<double>(resources.arena_, layout.warm_density);
+  auto warm_invalid = arena_pointer<std::uint8_t>(resources.arena_, layout.warm_invalid);
   auto overlap = arena_pointer<double>(resources.arena_, layout.overlap);
   auto hcore = arena_pointer<double>(resources.arena_, layout.hcore);
   auto eri = arena_pointer<double>(resources.arena_, layout.eri);
@@ -13071,9 +13155,15 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   const std::pair<const void*, std::pair<void*, std::size_t>>
       dynamic_uploads[] = {
       {host.warm_mask.data(),
-       {warm_mask, host.warm_mask.size() * sizeof(std::uint8_t)}},
+       {warm_mask,
+        device_resident_density_hit
+            ? 0
+            : host.warm_mask.size() * sizeof(std::uint8_t)}},
       {host.warm_density.data(),
-       {warm_density, host.warm_density.size() * sizeof(double)}},
+       {warm_density,
+        device_resident_density_hit
+            ? 0
+            : host.warm_density.size() * sizeof(double)}},
       {&host_generated_fock_shell_class_mask,
        {generated_fock_shell_class_mask,
         total_shell_quartet_tiles == 0 ? 0 : sizeof(std::uint64_t)}},
@@ -13102,6 +13192,18 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     const vibeqc_status status = copy_to_device(
         upload.second.first, upload.first, upload.second.second,
         resources.stream_);
+    if (status != VIBEQC_STATUS_SUCCESS) {
+      fill_global_failure(outputs, status);
+      return outputs;
+    }
+  }
+  if (cached_energy_baseline_hit) {
+    // The SCF graph initializes previous_energy from this device buffer. A
+    // frozen replay therefore restores its original seed explicitly instead
+    // of relying on whatever energy the most recent resident density left.
+    const vibeqc_status status = copy_to_device(
+        energy, host_previous_energy_seed.data(),
+        host_previous_energy_seed.size() * sizeof(double), resources.stream_);
     if (status != VIBEQC_STATUS_SUCCESS) {
       fill_global_failure(outputs, status);
       return outputs;
@@ -13211,6 +13313,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
 
   constexpr unsigned threads =
       kCaptureSafeKernelThreads;
+  constexpr unsigned matrix_reduction_threads = kMatrixReductionThreads;
   const auto blocks_for = [](std::size_t elements) {
     return static_cast<unsigned>((elements + threads - 1) / threads);
   };
@@ -13240,6 +13343,49 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       plan.retry_without_cublas = true;
     }
     return product_status;
+  };
+  const auto build_commutator_residual = [&]() -> vibeqc_status {
+    // [F, P]S is evaluated as four O(N^3) products.  `temporary` and
+    // `eigensystem` are iteration scratch at this point: the former holds the
+    // first product until it is folded into `residual`, while the latter is
+    // overwritten before DIIS uses it as its effective-Fock output.  Keeping
+    // the products in separate launches also lets the existing cuBLAS
+    // strided-batched wrapper handle RHF and interleaved UHF layouts alike.
+    vibeqc_status product_status = VIBEQC_STATUS_SUCCESS;
+    if (unrestricted) {
+      product_status = multiply_spin_matrices(
+          fock, true, false, density, true, temporary);
+      if (product_status == VIBEQC_STATUS_SUCCESS) {
+        product_status = multiply_spin_matrices(
+            temporary, true, false, overlap, false, residual);
+      }
+      if (product_status == VIBEQC_STATUS_SUCCESS) {
+        product_status = multiply_spin_matrices(
+            overlap, false, false, density, true, eigensystem);
+      }
+      if (product_status == VIBEQC_STATUS_SUCCESS) {
+        product_status = multiply_spin_matrices(
+            eigensystem, true, false, fock, true, temporary);
+      }
+    } else {
+      product_status = multiply_matrices(fock, false, density, temporary);
+      if (product_status == VIBEQC_STATUS_SUCCESS) {
+        product_status = multiply_matrices(temporary, false, overlap, residual);
+      }
+      if (product_status == VIBEQC_STATUS_SUCCESS) {
+        product_status = multiply_matrices(overlap, false, density, eigensystem);
+      }
+      if (product_status == VIBEQC_STATUS_SUCCESS) {
+        product_status = multiply_matrices(eigensystem, false, fock, temporary);
+      }
+    }
+    if (product_status != VIBEQC_STATUS_SUCCESS) return product_status;
+    subtract_matrix_batches_kernel<<<
+        blocks_for(spin_matrix_elements), threads, 0, resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size),
+        static_cast<std::int32_t>(spin_count), static_cast<std::int32_t>(nbf),
+        temporary, active, residual);
+    return cuda_status(cudaPeekAtLastError());
   };
   const auto launch_direct_quartet_metadata =
       [&](const double* density_input) -> cudaError_t {
@@ -13435,7 +13581,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   };
   initialize_state_kernel<<<blocks_for(batch_size), threads, 0,
                             resources.stream_>>>(
-      static_cast<std::int32_t>(batch_size), reuse_previous_energy, energy,
+      static_cast<std::int32_t>(batch_size), cached_energy_baseline_hit, energy,
       active, converged, failed, iterations, previous_energy, energy_change,
       density_rms, diis_count, diis_head);
   vibeqc_status status = VIBEQC_STATUS_SUCCESS;
@@ -13540,16 +13686,51 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           density);
     }
   }
-  if (unrestricted) {
-    apply_uhf_warm_density_kernel<<<static_cast<unsigned>(batch_size), 1, 0,
-                                    resources.stream_>>>(
-        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
-        occupied, warm_mask, warm_density, overlap, density);
-  } else {
-    apply_warm_density_kernel<<<static_cast<unsigned>(batch_size), 1, 0,
-                                resources.stream_>>>(
-        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
-        occupied, warm_mask, warm_density, overlap, density);
+  std::vector<std::uint8_t> host_warm_invalid;
+  if (!device_resident_density_hit && any_system_warm) {
+    // The normalization kernel also performs the CPU-equivalent metric trace
+    // check.  Fence only this exceptional input-validation path; a resident
+    // replay skips both the host upload and this O(N^2) setup scan.
+    cuda_error = cudaMemsetAsync(warm_invalid, 0, batch_size * sizeof(std::uint8_t),
+                                 resources.stream_);
+    if (cuda_error != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
+    if (unrestricted) {
+      apply_uhf_warm_density_kernel<<<static_cast<unsigned>(batch_size), 1, 0,
+                                      resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size),
+          static_cast<std::int32_t>(nbf), occupied, warm_mask, warm_density,
+          overlap, density, warm_invalid);
+    } else {
+      apply_warm_density_kernel<<<static_cast<unsigned>(batch_size), 1, 0,
+                                  resources.stream_>>>(
+          static_cast<std::int32_t>(batch_size),
+          static_cast<std::int32_t>(nbf), occupied, warm_mask, warm_density,
+          overlap, density, warm_invalid);
+    }
+    host_warm_invalid.resize(batch_size, 0);
+    cuda_error = cudaMemcpyAsync(
+        host_warm_invalid.data(), warm_invalid,
+        batch_size * sizeof(std::uint8_t), cudaMemcpyDeviceToHost,
+        resources.stream_);
+    if (cuda_error == cudaSuccess) {
+      cuda_error = cudaStreamSynchronize(resources.stream_);
+    }
+    if (cuda_error != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
+    if (std::any_of(host_warm_invalid.begin(), host_warm_invalid.end(),
+                    [](std::uint8_t value) { return value != 0; })) {
+      // The validation kernel has already symmetrized the candidate in the
+      // resident density buffer. Residency was invalidated before execution,
+      // and a rejected trace must not publish a replacement cache entry. A
+      // separately frozen valid dm0/energy pair remains safe to replay.
+      fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
+      return outputs;
+    }
   }
 
   if (first_setup) {
@@ -13574,26 +13755,29 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       return outputs;
     }
     if (unrestricted) {
-      compute_uhf_energy_kernel<<<blocks_for(batch_size), threads, 0,
+      compute_uhf_energy_kernel<<<static_cast<unsigned>(batch_size),
+                                  matrix_reduction_threads, 0,
                                   resources.stream_>>>(
           static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
           density, hcore, fock, nuclear_repulsion, active, energy);
-      build_spin_commutator_residual_kernel<<<
-          blocks_for(spin_matrix_elements), threads, 0, resources.stream_>>>(
-          static_cast<std::int32_t>(batch_size), 2,
-          static_cast<std::int32_t>(nbf), fock, density, overlap, active,
-          residual);
+      status = build_commutator_residual();
     } else {
-      compute_energy_kernel<<<blocks_for(batch_size), threads, 0,
+      compute_energy_kernel<<<static_cast<unsigned>(batch_size),
+                              matrix_reduction_threads, 0,
                               resources.stream_>>>(
           static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
           density, hcore, fock, nuclear_repulsion, active, energy);
-      build_commutator_residual_kernel<<<blocks_for(matrix_elements), threads, 0,
-                                         resources.stream_>>>(
-          static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
-          fock, density, overlap, active, residual);
+      status = build_commutator_residual();
     }
-    update_diis_kernel<<<static_cast<unsigned>(batch_size), 1, 0,
+    if (status != VIBEQC_STATUS_SUCCESS) {
+      cudaGraph_t abandoned_graph = nullptr;
+      (void)cudaStreamEndCapture(resources.stream_, &abandoned_graph);
+      if (abandoned_graph != nullptr) (void)cudaGraphDestroy(abandoned_graph);
+      if (use_cublas) plan.retry_without_cublas = true;
+      fill_global_failure(outputs, status);
+      return outputs;
+    }
+    update_diis_kernel<<<static_cast<unsigned>(batch_size), matrix_reduction_threads, 0,
                          resources.stream_>>>(
         static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
         unrestricted ? 2 : 1,
@@ -13646,7 +13830,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
               next_density);
           if (reuse_converged_fock) {
             update_uhf_convergence_kernel<true><<<
-                blocks_for(batch_size), threads, 0, resources.stream_>>>(
+                static_cast<unsigned>(batch_size), matrix_reduction_threads, 0,
+                resources.stream_>>>(
                 static_cast<std::int32_t>(batch_size),
                 static_cast<std::int32_t>(nbf), options.energy_tolerance,
                 options.density_tolerance, quartet_direct, energy,
@@ -13654,7 +13839,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                 iterations, energy_change, density_rms);
           } else {
             update_uhf_convergence_kernel<false><<<
-                blocks_for(batch_size), threads, 0, resources.stream_>>>(
+                static_cast<unsigned>(batch_size), matrix_reduction_threads, 0,
+                resources.stream_>>>(
                 static_cast<std::int32_t>(batch_size),
                 static_cast<std::int32_t>(nbf), options.energy_tolerance,
                 options.density_tolerance, quartet_direct, energy,
@@ -13677,7 +13863,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
               next_density);
           if (reuse_converged_fock) {
             update_convergence_kernel<true><<<
-                blocks_for(batch_size), threads, 0, resources.stream_>>>(
+                static_cast<unsigned>(batch_size), matrix_reduction_threads, 0,
+                resources.stream_>>>(
                 static_cast<std::int32_t>(batch_size),
                 static_cast<std::int32_t>(nbf), options.energy_tolerance,
                 options.density_tolerance, quartet_direct, energy,
@@ -13685,7 +13872,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                 iterations, energy_change, density_rms);
           } else {
             update_convergence_kernel<false><<<
-                blocks_for(batch_size), threads, 0, resources.stream_>>>(
+                static_cast<unsigned>(batch_size), matrix_reduction_threads, 0,
+                resources.stream_>>>(
                 static_cast<std::int32_t>(batch_size),
                 static_cast<std::int32_t>(nbf), options.energy_tolerance,
                 options.density_tolerance, quartet_direct, energy,
@@ -13887,7 +14075,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         shell_class_profile);
   }
   if (unrestricted) {
-    compute_uhf_energy_kernel<<<blocks_for(batch_size), threads, 0,
+    compute_uhf_energy_kernel<<<static_cast<unsigned>(batch_size),
+                                matrix_reduction_threads, 0,
                                 resources.stream_>>>(
         static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
         density, hcore, fock, nuclear_repulsion, active, energy);
@@ -13904,7 +14093,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
         weighted_density, active, total_weighted_density);
   } else {
-    compute_energy_kernel<<<blocks_for(batch_size), threads, 0,
+    compute_energy_kernel<<<static_cast<unsigned>(batch_size),
+                            matrix_reduction_threads, 0,
                             resources.stream_>>>(
         static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(nbf),
         density, hcore, fock, nuclear_repulsion, active, energy);
@@ -14139,11 +14329,15 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       std::all_of(host_converged.begin(), host_converged.end(),
                   [](std::uint8_t value) { return value != 0; });
   if (all_systems_converged) {
-    plan.cached_warm_density = host_density;
+    plan.resident_warm_positions = host.positions;
+    plan.resident_warm_density = host_density;
+    plan.resident_previous_energy = host_energy;
   } else {
     // A failed or incomplete execution cannot provide an energy baseline for
     // the next warm density, even if the fleet retains another system's state.
-    plan.cached_warm_density.clear();
+    plan.resident_warm_positions.clear();
+    plan.resident_warm_density.clear();
+    plan.resident_previous_energy.clear();
   }
 
   for (std::size_t system = 0; system < batch_size; ++system) {
@@ -14326,6 +14520,34 @@ std::vector<RhfBucketItem> run_uhf_cuda_bucket_cached(
 
 void destroy_rhf_cuda_bucket_plan(CudaRhfBucketPlan* plan) noexcept {
   delete plan;
+}
+
+void set_rhf_cuda_bucket_warm_start_updates(
+    CudaRhfBucketPlan* plan, bool enabled) noexcept {
+  if (plan == nullptr || plan->warm_start_updates_enabled == enabled) return;
+  if (!enabled) {
+    // Freeze only on the policy transition. Repeating the setter while fixed
+    // must not replace the original post-cold dm0/seed with a later replay's
+    // advanced resident state.
+    plan->frozen_warm_positions = plan->resident_warm_positions;
+    plan->frozen_warm_density = plan->resident_warm_density;
+    plan->frozen_previous_energy = plan->resident_previous_energy;
+  } else {
+    plan->frozen_warm_positions.clear();
+    plan->frozen_warm_density.clear();
+    plan->frozen_previous_energy.clear();
+  }
+  plan->warm_start_updates_enabled = enabled;
+}
+
+void clear_rhf_cuda_bucket_warm_starts(CudaRhfBucketPlan* plan) noexcept {
+  if (plan == nullptr) return;
+  plan->resident_warm_positions.clear();
+  plan->resident_warm_density.clear();
+  plan->resident_previous_energy.clear();
+  plan->frozen_warm_positions.clear();
+  plan->frozen_warm_density.clear();
+  plan->frozen_previous_energy.clear();
 }
 
 bool get_rhf_cuda_shell_class_profile(

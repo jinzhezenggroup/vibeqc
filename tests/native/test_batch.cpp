@@ -81,6 +81,11 @@ int main() {
             "batch preparation failed");
     require(vibeqc_batch_get_system_count(batch) == systems.size(),
             "batch system count is incorrect");
+    require(vibeqc_batch_set_warm_start_updates(nullptr, 0) ==
+                VIBEQC_STATUS_INVALID_ARGUMENT &&
+                vibeqc_batch_set_warm_start_updates(batch, 2) ==
+                    VIBEQC_STATUS_INVALID_ARGUMENT,
+            "warm-start update policy accepted an invalid argument");
 
     std::array<double, 6> h2_forces{};
     std::array<double, 12> h4_forces{};
@@ -110,6 +115,12 @@ int main() {
                 first[0].bucket_id != first[2].bucket_id &&
                 first[1].bucket_id != first[2].bucket_id,
             "different workload shapes were not assigned distinct buckets");
+
+    // Freeze the post-cold snapshots so every warm replay uses one fixed dm0,
+    // matching controlled backend-comparison benchmark semantics.
+    require(vibeqc_batch_set_warm_start_updates(batch, 0) ==
+                VIBEQC_STATUS_SUCCESS,
+            "failed to freeze batch warm-start snapshots");
 
     std::array<vibeqc_batch_item_result_descriptor, 3> second{{
         output(h2_forces.data(), h2_forces.size()),

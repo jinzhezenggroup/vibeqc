@@ -82,6 +82,21 @@ bool get_rhf_cuda_shell_class_profile(
 
 void destroy_rhf_cuda_bucket_plan(CudaRhfBucketPlan* plan) noexcept;
 
+/**
+ * Control whether a cached CUDA bucket may advance its fixed warm-start seed.
+ *
+ * A true-to-false transition snapshots the currently resident converged
+ * density together with its previous-energy seed. Replays of that exact dm0
+ * can then restore the same one-iteration convergence baseline even after the
+ * device-resident density has advanced. Re-enabling updates discards the
+ * frozen baseline without invalidating the current resident-density cache.
+ */
+void set_rhf_cuda_bucket_warm_start_updates(
+    CudaRhfBucketPlan* plan, bool enabled) noexcept;
+
+/** Discard both resident and frozen warm-start state for a CUDA bucket. */
+void clear_rhf_cuda_bucket_warm_starts(CudaRhfBucketPlan* plan) noexcept;
+
 }  // namespace vibeqc::scf
 
 #endif

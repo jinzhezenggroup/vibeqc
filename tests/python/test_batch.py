@@ -34,6 +34,7 @@ def test_prepared_batch_warm_start_coordinate_updates_and_failure_isolation():
     batch_systems = systems()
     with calculator.prepare_batch(batch_systems, charges=[0, 0, 0, 1]) as prepared:
         cold = prepared.execute(strict=True)
+        prepared.set_warm_start_updates(False)
         warm = prepared.execute(strict=True)
         assert all(not item.warm_start_used for item in cold.items)
         assert all(item.warm_start_used for item in warm.items)
@@ -55,8 +56,16 @@ def test_prepared_batch_warm_start_coordinate_updates_and_failure_isolation():
             isolated.raise_for_failures()
 
         prepared.clear_warm_starts()
+        prepared.set_warm_start_updates(True)
         cold_again = prepared.execute(strict=True)
         assert all(not item.warm_start_used for item in cold_again.items)
+
+
+def test_closed_prepared_batch_rejects_warm_start_policy_update():
+    prepared = Calculator().prepare_batch(systems()[:1])
+    prepared.close()
+    with pytest.raises(RuntimeError, match="closed"):
+        prepared.set_warm_start_updates(False)
 
 
 def test_closed_prepared_batch_rejects_execution():

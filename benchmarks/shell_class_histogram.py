@@ -4,12 +4,24 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
+import sqlite3
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
 ANGULAR_LABELS = "spdfgh"
+
+# GPU4PySCF's unrolled Rys gradient symbols encode the four shell angular
+# momenta in the final four digits.  The same physical shell class can be
+# emitted in more than one pair/center orientation (for example, ppps is
+# present as both ``..._1110`` and ``..._1011``), so the suffix must not be
+# used as the aggregation key directly.
+_GPU4PYSCF_RYS_IP1_RE = re.compile(
+    r"(?<![A-Za-z0-9])rys_(?:[ev]jk)_ip1_(?P<angular>[0-9]{4})(?![0-9])",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,6 +50,131 @@ def canonical_shell_class(
         pairs.append((shell_pair_class(*ordered), ordered))
     pairs.sort(reverse=True)
     return (*pairs[0][1], *pairs[1][1])
+
+
+def gpu4pyscf_rys_ip1_shell_class(
+    kernel_name: str,
+) -> tuple[int, int, int, int] | None:
+    """Decode and canonicalize one GPU4PySCF unrolled Rys IP1 symbol.
+
+    GPU4PySCF uses the four digits after ``rys_ejk_ip1_`` (or
+    ``rys_vjk_ip1_``) to describe the raw shell order.  Pair exchange and
+    within-pair exchange are integral symmetries, not distinct work classes;
+    applying :func:`canonical_shell_class` here makes all orientations share
+    one key.  Non-Rys symbols, including the generic unspecialized
+    ``rys_ejk_ip1_kernel``, return ``None`` so callers can process a complete
+    Nsight kernel table without a separate name filter.
+
+    A recognized symbol with an unsupported angular digit is rejected instead
+    of being silently assigned to a misleading class.
+    """
+
+    if not isinstance(kernel_name, str):
+        raise TypeError("kernel_name must be a string")
+    match = _GPU4PYSCF_RYS_IP1_RE.search(kernel_name)
+    if match is None:
+        return None
+    angular = tuple(int(value) for value in match.group("angular"))
+    if any(value >= len(ANGULAR_LABELS) for value in angular):
+        raise ValueError(
+            f"unsupported angular digit in GPU4PySCF kernel {kernel_name!r}"
+        )
+    return canonical_shell_class(
+        (angular[0], angular[1]), (angular[2], angular[3])
+    )
+
+
+def shell_class_label(shell_angular: Iterable[int]) -> str:
+    """Return the conventional label for one canonical four-center class."""
+
+    values = tuple(shell_angular)
+    if len(values) != 4:
+        raise ValueError("a shell class must contain exactly four centers")
+    if any(value < 0 or value >= len(ANGULAR_LABELS) for value in values):
+        raise ValueError(f"unsupported shell angular tuple {values!r}")
+    return "".join(ANGULAR_LABELS[value] for value in values)
+
+
+def aggregate_gpu4pyscf_rys_ip1_sqlite(
+    database: str | Path,
+) -> dict[str, dict[str, int | float | list[str]]]:
+    """Aggregate unrolled GPU4PySCF Rys IP1 kernels by canonical class.
+
+    Nsight Systems stores kernel names in ``StringIds`` and references them
+    from ``CUPTI_ACTIVITY_KIND_KERNEL``.  The returned records use the same
+    duration convention as the profile artifacts (milliseconds) and retain
+    the raw symbols for auditability.  Both pair orientations are therefore
+    included in one class total without a ppps-specific special case.
+
+    The trace schema has used both ``demangledName`` and ``shortName`` across
+    Nsight releases.  Prefer the demangled name and fall back to the short
+    name so old and new captures receive identical canonical treatment.
+    """
+
+    with sqlite3.connect(str(database)) as connection:
+        table_columns = {
+            row[1]
+            for row in connection.execute(
+                "PRAGMA table_info(CUPTI_ACTIVITY_KIND_KERNEL)"
+            )
+        }
+        if not table_columns:
+            raise ValueError(
+                "SQLite trace has no CUPTI_ACTIVITY_KIND_KERNEL table"
+            )
+        name_column = next(
+            (
+                candidate
+                for candidate in ("demangledName", "demangled", "shortName")
+                if candidate in table_columns
+            ),
+            None,
+        )
+        if name_column is None:
+            raise ValueError(
+                "SQLite kernel table has no recognized name-id column"
+            )
+        try:
+            rows = connection.execute(
+                f"""
+                SELECT names.value, COUNT(*),
+                       COALESCE(SUM(kernels.end - kernels.start), 0)
+                FROM CUPTI_ACTIVITY_KIND_KERNEL AS kernels
+                JOIN StringIds AS names ON kernels.{name_column} = names.id
+                GROUP BY names.value
+                """
+            )
+        except sqlite3.OperationalError as error:
+            raise ValueError(
+                "SQLite trace does not expose the expected StringIds table"
+            ) from error
+
+        totals: dict[str, dict[str, int | float | set[str]]] = {}
+        for kernel_name, launches, nanoseconds in rows:
+            shell_angular = gpu4pyscf_rys_ip1_shell_class(kernel_name)
+            if shell_angular is None:
+                continue
+            label = shell_class_label(shell_angular)
+            row = totals.setdefault(
+                label,
+                {
+                    "kernel_time_milliseconds": 0.0,
+                    "launches": 0,
+                    "kernel_names": set(),
+                },
+            )
+            row["kernel_time_milliseconds"] += float(nanoseconds) / 1.0e6
+            row["launches"] += int(launches)
+            row["kernel_names"].add(kernel_name)
+
+    return {
+        label: {
+            "kernel_time_milliseconds": float(row["kernel_time_milliseconds"]),
+            "launches": int(row["launches"]),
+            "kernel_names": sorted(row["kernel_names"]),
+        }
+        for label, row in sorted(totals.items())
+    }
 
 
 def summarize_shell_classes(
