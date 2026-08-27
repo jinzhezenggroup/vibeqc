@@ -178,6 +178,7 @@
         {
           "shell_class": "ppps",
           "consumers": ["fock", "force"],
+          "resident_force_recurrence": "rys3",
           "schedule": {
             "kind": "component_lanes",
             "block_threads": 32,

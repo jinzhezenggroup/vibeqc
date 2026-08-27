@@ -447,14 +447,28 @@ def _state_expression(
     return f"{dependency[0]} - cd{axis} * {dependency[1]}"
 
 
-def emit_ppps_rys3_root_body_cuda() -> str:
+def emit_ppps_rys3_root_body_cuda(
+    *,
+    component_weight_expression: str = "component_weights[{component}U][lane]",
+) -> str:
     """Emit one root's state-on-first-use recurrence and force contraction.
 
     The caller provides compact primitive scalars, ``weighted_root`` (Rys
-    weight times the signed primitive prefactor), shared component weights,
-    and nine register force accumulators.  States are introduced immediately
-    before their first component use so PTXAS can reuse slots after last use.
+    weight times the signed primitive prefactor), component weights, and nine
+    register force accumulators.  States are introduced immediately before
+    their first component use so PTXAS can reuse slots after last use.
+
+    ``component_weight_expression`` is a format string containing
+    ``{component}``.  The default names the lane-major shared table used by
+    the original thread-task prototype.  Resident-bra lowering passes a
+    thread-local expression instead, avoiding a second 27-entry shared table
+    while keeping this mathematical recurrence body identical.
     """
+
+    if "{component}" not in component_weight_expression:
+        raise ValueError(
+            "component_weight_expression must contain a {component} field"
+        )
 
     program = build_ppps_rys_force_program()
 
@@ -602,7 +616,9 @@ def emit_ppps_rys3_root_body_cuda() -> str:
             lines.extend(
                 [
                     "      {",
-                    f"        const double density_weight = component_weights[{component_index}U][lane];",
+                    "        const double density_weight = "
+                    + component_weight_expression.format(component=component_index)
+                    + ";",
                     f"        const double product_xy = {base_names[0]} * {base_names[1]} * density_weight;",
                     f"        const double product_xz = {base_names[0]} * {base_names[2]} * density_weight;",
                     f"        const double product_yz = {base_names[1]} * {base_names[2]} * density_weight;",

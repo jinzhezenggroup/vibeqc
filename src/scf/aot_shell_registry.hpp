@@ -73,6 +73,26 @@ cudaError_t launch_shell_class_fock(
     const double* density, double* fock, const std::uint32_t* task_count,
     std::uint32_t* task_head) noexcept;
 
+/**
+ * Launch the optional canonical ppps resident-bra force worker.
+ *
+ * ``resident_tasks`` contains one descriptor per block.  Each descriptor
+ * names a cached p-p bra pair and a contiguous range of grouped p-s ket
+ * tasks.  The opaque pointers keep this public ABI independent of the
+ * profile-scoped generated CUDA types; AOT wrappers validate their layout
+ * against ``generated_shell_task.hpp`` before launching.  Implementations
+ * return ``cudaErrorNotSupported`` when the selected profile has no resident
+ * route, and ``cudaErrorInvalidValue`` when no profile is selected or the
+ * descriptor count cannot be represented by a CUDA grid.
+ */
+cudaError_t launch_ppps_resident(
+    cudaStream_t stream, bool unrestricted, const void* resident_tasks,
+    const void* ket_tasks, const std::int64_t* primitive_pair_offsets,
+    const void* primitive_pairs, const double* ao_coefficients,
+    const void* atom_positions, double screening_tolerance,
+    const double* schwarz_bounds, const double* density, double* forces,
+    std::size_t task_count) noexcept;
+
 }  // namespace vibeqc::scf::generated
 
 #endif

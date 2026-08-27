@@ -28,10 +28,17 @@ from .cuda_emitter import (
     emit_uncached_primitive_geometry_cuda,
 )
 from .cuda_schedule import ScheduleIR, ScheduleKind
+from .dppp_dispatch import emit_ppps_resident_bra_rys3_cuda
 from .dppp_specialization import _specialize_dppp_identifiers
 from .fused_schedule import FusedShellPlan, build_fused_shell_plan
 from .ir import KernelConsumer
-from .shell_spec import DDPS_SPEC, DPDS_SPEC, DPPP_SPEC, ShellClassSpec
+from .shell_spec import (
+    DDPS_SPEC,
+    DPDS_SPEC,
+    DPPP_SPEC,
+    FUSED_SHELL_SPEC_BY_NAME,
+    ShellClassSpec,
+)
 
 _CUDA_PRELUDE = r"""
 #include <cuda_runtime.h>
@@ -912,6 +919,57 @@ def _ordinary_benchmark_snippets(
     }
 
 
+def _ppps_resident_benchmark_snippets() -> dict[str, str]:
+    """Return host snippets for the isolated 256-thread resident-bra ABI.
+
+    Synthetic ppps benchmark tasks already share shell-pair zero as their
+    canonical pp bra.  Chunking that contiguous array in groups of 256 exactly
+    models the descriptor consumed by the candidate without introducing a
+    production task-packing implementation into this isolated gate.
+    """
+
+    return {
+        "VIBEQC_PERSISTENT_DECLARATIONS": (
+            "  GeneratedPppsResidentTask* device_resident_tasks = nullptr;"
+        ),
+        "VIBEQC_PERSISTENT_SETUP": """  constexpr unsigned resident_task_count =
+      (kTaskCount + kGeneratedDpppResidentBlockThreads - 1U) /
+      kGeneratedDpppResidentBlockThreads;
+  std::vector<GeneratedPppsResidentTask> resident_tasks(resident_task_count);
+  for (unsigned chunk = 0U; chunk < resident_task_count; ++chunk) {
+    const unsigned ket_begin =
+        chunk * kGeneratedDpppResidentBlockThreads;
+    resident_tasks[chunk] = {
+        0U, ket_begin,
+        std::min(kGeneratedDpppResidentBlockThreads, kTaskCount - ket_begin)};
+  }
+  VIBEQC_CUDA_CHECK(cudaMalloc(
+      &device_resident_tasks,
+      resident_tasks.size() * sizeof(resident_tasks[0])));
+  VIBEQC_CUDA_CHECK(cudaMemcpy(
+      device_resident_tasks, resident_tasks.data(),
+      resident_tasks.size() * sizeof(resident_tasks[0]),
+      cudaMemcpyHostToDevice));""",
+        "VIBEQC_FUSED_LAUNCH": """    generated_dppp_resident_bra_force_rhf_kernel<<<
+        resident_task_count, kGeneratedDpppResidentBlockThreads>>>(
+        device_resident_tasks, device_tasks, device_primitive_pairs,
+        device_primitive_pair_offsets, device_ao_coefficients,
+        device_positions, 0.0, nullptr, device_density, device_forces,
+        resident_task_count);""",
+        "VIBEQC_PERSISTENT_FREE": "  cudaFree(device_resident_tasks);",
+        "VIBEQC_BENCHMARK_TOPOLOGY": "resident_bra_1110",
+        # Match the production persistent benchmark's scatter pattern.  The
+        # first two centers remain constant for at least four resident chunks,
+        # while ket centers rotate more frequently and create realistic
+        # atomic contention on the same compact force array.
+        "VIBEQC_ATOM_INDEX": (
+            "center * 6U + ((task_index / "
+            "(center < 2U ? 1024U : 16U)) % 6U)"
+        ),
+        "VIBEQC_FORCE_COUNT": "24U * 3U",
+    }
+
+
 def _apply_benchmark_topology(
     source: str,
     consumer: KernelConsumer,
@@ -1349,6 +1407,69 @@ def emit_shell_class_benchmark_cuda(
         + emit_uncached_primitive_geometry_cuda(spec)
         + oracle_declaration
         + baseline
+        + host
+    )
+
+
+def emit_ppps_resident_bra_benchmark_cuda(
+    task_count: int,
+    primitive_count: int,
+    warmups: int,
+    iterations: int,
+    samples: int,
+) -> str:
+    """Return a self-contained correctness/timing gate for resident ppps.
+
+    The candidate consumes grouped cached primitive pairs, while the oracle
+    independently recomputes primitive geometry and Cartesian derivatives.
+    This function deliberately does not alter the production manifest or
+    runtime queue; it only answers whether the 1110 kernel is worth wiring up.
+    """
+
+    positive_values = (task_count, primitive_count, iterations, samples)
+    if any(value <= 0 for value in positive_values) or warmups < 0:
+        raise ValueError("benchmark sizes must be positive and warmups non-negative")
+    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
+    schedule = ScheduleIR(
+        kind=ScheduleKind.THREAD_TASKS,
+        block_threads=32,
+        component_tile=spec.component_count,
+        tasks_per_warp=32,
+        shared_coulomb=False,
+    )
+    plan = build_fused_shell_plan(spec, schedule=schedule, recurrence="rys3")
+
+    component_counts = tuple(map(len, spec.center_components))
+    offsets = tuple(sum(component_counts[:center]) for center in range(4))
+    offset_lines = []
+    for field in ("ao_begin", "ao_coefficient_begin"):
+        offset_lines.extend(
+            f"    task.{field}[{center}] = {offset}U;"
+            for center, offset in enumerate(offsets)
+        )
+    ao_count = sum(component_counts)
+    host = _HOST_HARNESS.replace("VIBEQC_MATRIX_ORDER", f"{ao_count}U")
+    host = host.replace("VIBEQC_AO_COUNT", f"{ao_count}U")
+    host = host.replace("VIBEQC_AO_OFFSETS", "\n".join(offset_lines))
+    for marker, replacement in _ppps_resident_benchmark_snippets().items():
+        if marker not in host:
+            raise RuntimeError(f"resident benchmark marker {marker} is missing")
+        host = host.replace(marker, replacement)
+    replacements = {
+        "VIBEQC_TASK_COUNT": str(task_count),
+        "VIBEQC_PRIMITIVE_COUNT": str(primitive_count),
+        "VIBEQC_WARMUPS": str(warmups),
+        "VIBEQC_ITERATIONS": str(iterations),
+        "VIBEQC_SAMPLES": str(samples),
+    }
+    for marker, value in replacements.items():
+        host = host.replace(marker, value)
+    host = _specialize_dppp_identifiers(host, spec)
+    return (
+        _CUDA_PRELUDE
+        + emit_ppps_resident_bra_rys3_cuda()
+        + emit_uncached_primitive_geometry_cuda(spec)
+        + _benchmark_unfused_kernel(spec, plan)
         + host
     )
 
