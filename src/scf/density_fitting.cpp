@@ -116,6 +116,132 @@ bool checked_multiply(
   return true;
 }
 
+std::size_t checked_matrix_elements(std::size_t dimension,
+                                    const char* description) {
+  std::size_t elements = 0;
+  if (dimension == 0 || !checked_multiply(dimension, dimension, elements)) {
+    throw std::invalid_argument(description);
+  }
+  return elements;
+}
+
+std::size_t checked_three_center_elements(std::size_t nbf, std::size_t naux) {
+  const std::size_t matrix_elements =
+      checked_matrix_elements(nbf, "DF orbital dimension is invalid");
+  std::size_t elements = 0;
+  if (naux == 0 || !checked_multiply(matrix_elements, naux, elements)) {
+    throw std::invalid_argument("DF three-center dimensions are invalid");
+  }
+  return elements;
+}
+
+void require_finite(const std::vector<double>& values,
+                    const char* description) {
+  if (!std::all_of(values.begin(), values.end(),
+                   [](double value) { return std::isfinite(value); })) {
+    throw std::invalid_argument(description);
+  }
+}
+
+std::size_t three_center_index(std::size_t mu, std::size_t nu,
+                               std::size_t auxiliary, std::size_t nbf,
+                               std::size_t naux) {
+  return (mu * nbf + nu) * naux + auxiliary;
+}
+
+void validate_three_center(const DensityFittingThreeCenter& three_center) {
+  const std::size_t expected = checked_three_center_elements(
+      three_center.nbf, three_center.naux);
+  if (three_center.values.size() != expected ||
+      three_center.effective_rank == 0 ||
+      three_center.effective_rank > three_center.naux) {
+    throw std::invalid_argument(
+        "orthonormalized DF three-center tensor is inconsistent");
+  }
+  require_finite(three_center.values,
+                 "orthonormalized DF three-center entries must be finite");
+}
+
+void validate_density(const std::vector<double>& density,
+                      std::size_t matrix_elements) {
+  if (density.size() != matrix_elements) {
+    throw std::invalid_argument("DF density dimensions are inconsistent");
+  }
+  require_finite(density, "DF density entries must be finite");
+}
+
+std::vector<double> build_coulomb(const DensityFittingThreeCenter& three_center,
+                                  const std::vector<double>& density) {
+  const std::size_t nbf = three_center.nbf;
+  const std::size_t naux = three_center.naux;
+  std::vector<double> auxiliary_density(naux, 0.0);
+  for (std::size_t mu = 0; mu < nbf; ++mu) {
+    for (std::size_t nu = 0; nu < nbf; ++nu) {
+      const double density_value = density[index(mu, nu, nbf)];
+      for (std::size_t auxiliary = 0; auxiliary < naux; ++auxiliary) {
+        auxiliary_density[auxiliary] +=
+            density_value *
+            three_center
+                .values[three_center_index(mu, nu, auxiliary, nbf, naux)];
+      }
+    }
+  }
+
+  std::vector<double> coulomb(nbf * nbf, 0.0);
+  for (std::size_t mu = 0; mu < nbf; ++mu) {
+    for (std::size_t nu = 0; nu < nbf; ++nu) {
+      double value = 0.0;
+      for (std::size_t auxiliary = 0; auxiliary < naux; ++auxiliary) {
+        value += three_center
+                     .values[three_center_index(mu, nu, auxiliary, nbf, naux)] *
+                 auxiliary_density[auxiliary];
+      }
+      coulomb[index(mu, nu, nbf)] = value;
+    }
+  }
+  return coulomb;
+}
+
+std::vector<double> build_exchange(
+    const DensityFittingThreeCenter& three_center,
+    const std::vector<double>& density) {
+  const std::size_t nbf = three_center.nbf;
+  const std::size_t naux = three_center.naux;
+  std::vector<double> exchange(nbf * nbf, 0.0);
+  std::vector<double> transformed_density(nbf * nbf, 0.0);
+  for (std::size_t auxiliary = 0; auxiliary < naux; ++auxiliary) {
+    std::fill(transformed_density.begin(), transformed_density.end(), 0.0);
+    // For each Q, form B_Q D and then (B_Q D) B_Q^T. This O(N^3 Naux)
+    // ordering mirrors the two GEMMs used by the future blocked CUDA path and
+    // avoids materializing any four-center ERIs in the CPU oracle.
+    for (std::size_t mu = 0; mu < nbf; ++mu) {
+      for (std::size_t lambda = 0; lambda < nbf; ++lambda) {
+        double value = 0.0;
+        for (std::size_t kappa = 0; kappa < nbf; ++kappa) {
+          value +=
+              three_center
+                  .values[three_center_index(mu, kappa, auxiliary, nbf, naux)] *
+              density[index(kappa, lambda, nbf)];
+        }
+        transformed_density[index(mu, lambda, nbf)] = value;
+      }
+    }
+    for (std::size_t mu = 0; mu < nbf; ++mu) {
+      for (std::size_t nu = 0; nu < nbf; ++nu) {
+        double value = 0.0;
+        for (std::size_t lambda = 0; lambda < nbf; ++lambda) {
+          value +=
+              transformed_density[index(mu, lambda, nbf)] *
+              three_center
+                  .values[three_center_index(nu, lambda, auxiliary, nbf, naux)];
+        }
+        exchange[index(mu, nu, nbf)] += value;
+      }
+    }
+  }
+  return exchange;
+}
+
 std::size_t workspace_bytes(
     std::size_t batch_tile,
     std::size_t ao_pair_tile,
@@ -195,6 +321,81 @@ DensityFittingMetricFactor factor_density_fitting_metric(
   }
   result.condition_number = largest / smallest_retained;
   return result;
+}
+
+DensityFittingThreeCenter orthonormalize_density_fitting_three_center(
+    const std::vector<double>& three_center, std::size_t nbf,
+    const DensityFittingMetricFactor& metric_factor) {
+  const std::size_t naux = metric_factor.dimension;
+  const std::size_t tensor_elements = checked_three_center_elements(nbf, naux);
+  const std::size_t metric_elements =
+      checked_matrix_elements(naux, "DF metric factor dimension is invalid");
+  if (three_center.size() != tensor_elements ||
+      metric_factor.inverse_square_root.size() != metric_elements ||
+      metric_factor.effective_rank == 0 ||
+      metric_factor.effective_rank > naux) {
+    throw std::invalid_argument(
+        "DF three-center tensor and metric factor are inconsistent");
+  }
+  require_finite(three_center, "DF three-center entries must be finite");
+  require_finite(metric_factor.inverse_square_root,
+                 "DF metric factor entries must be finite");
+
+  DensityFittingThreeCenter result{
+      nbf,
+      naux,
+      metric_factor.effective_rank,
+      std::vector<double>(tensor_elements, 0.0),
+  };
+  for (std::size_t mu = 0; mu < nbf; ++mu) {
+    for (std::size_t nu = 0; nu < nbf; ++nu) {
+      for (std::size_t target = 0; target < naux; ++target) {
+        double value = 0.0;
+        for (std::size_t source = 0; source < naux; ++source) {
+          value +=
+              three_center[three_center_index(mu, nu, source, nbf, naux)] *
+              metric_factor.inverse_square_root[index(source, target, naux)];
+        }
+        result.values[three_center_index(mu, nu, target, nbf, naux)] = value;
+      }
+    }
+  }
+  return result;
+}
+
+DensityFittingRhfJk build_density_fitting_rhf_jk(
+    const DensityFittingThreeCenter& three_center,
+    const std::vector<double>& density) {
+  validate_three_center(three_center);
+  const std::size_t matrix_elements = checked_matrix_elements(
+      three_center.nbf, "DF orbital dimension is invalid");
+  validate_density(density, matrix_elements);
+  return {
+      three_center.nbf,
+      build_coulomb(three_center, density),
+      build_exchange(three_center, density),
+  };
+}
+
+DensityFittingUhfJk build_density_fitting_uhf_jk(
+    const DensityFittingThreeCenter& three_center,
+    const std::vector<double>& alpha_density,
+    const std::vector<double>& beta_density) {
+  validate_three_center(three_center);
+  const std::size_t matrix_elements = checked_matrix_elements(
+      three_center.nbf, "DF orbital dimension is invalid");
+  validate_density(alpha_density, matrix_elements);
+  validate_density(beta_density, matrix_elements);
+  std::vector<double> total_density(matrix_elements, 0.0);
+  for (std::size_t element = 0; element < matrix_elements; ++element) {
+    total_density[element] = alpha_density[element] + beta_density[element];
+  }
+  return {
+      three_center.nbf,
+      build_coulomb(three_center, total_density),
+      build_exchange(three_center, alpha_density),
+      build_exchange(three_center, beta_density),
+  };
 }
 
 DensityFittingTilePlan plan_density_fitting_tiles(

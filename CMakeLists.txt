@@ -121,6 +121,7 @@ target_compile_options(vibeqc PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-W
 if(VIBEQC_ENABLE_CUDA)
   target_sources(vibeqc PRIVATE
     src/runtime/cuda_runtime.cu
+    src/scf/cuda_density_fitting.cu
     src/scf/cuda_rhf.cu
   )
   if(NOT VIBEQC_CUDA_SPLIT_COMPILE_THREADS STREQUAL "1")
@@ -265,6 +266,7 @@ if(VIBEQC_ENABLE_CUDA)
   target_compile_definitions(vibeqc PUBLIC VIBEQC_HAS_CUDA=1)
   set_target_properties(vibeqc PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 else()
+  target_sources(vibeqc PRIVATE src/scf/cuda_density_fitting_stub.cpp)
   target_compile_definitions(vibeqc PUBLIC VIBEQC_HAS_CUDA=0)
 endif()
 
