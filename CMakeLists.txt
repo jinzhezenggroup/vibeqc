@@ -5,6 +5,17 @@ project(VibeQC VERSION 0.1.0 LANGUAGES CXX)
 find_package(Python3 COMPONENTS Interpreter QUIET)
 
 option(VIBEQC_ENABLE_CUDA "Build the CUDA runtime backend" ON)
+option(VIBEQC_ENABLE_AOT_SHELLS
+       "Use generated architecture-tuned shell kernels when available" ON)
+option(VIBEQC_AOT_REQUIRE_TUNED_PROFILE
+       "Fail when no generated-shell profile matches the CUDA target" OFF)
+set(VIBEQC_AOT_PROFILE "auto" CACHE STRING
+    "Generated-shell profile: auto, portable_cuda, or an exact manifest key")
+set_property(CACHE VIBEQC_AOT_PROFILE PROPERTY STRINGS
+             auto portable_cuda sm_120)
+set(VIBEQC_AOT_CODEGEN_ARCHITECTURE "" CACHE STRING
+    "Deprecated alias for VIBEQC_AOT_PROFILE")
+mark_as_advanced(VIBEQC_AOT_CODEGEN_ARCHITECTURE)
 option(VIBEQC_BUILD_TESTS "Build native tests" ON)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -63,12 +74,77 @@ if(VIBEQC_ENABLE_CUDA)
   set(VIBEQC_AOT_SHELL_MANIFEST
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/production_shell_classes.json"
       CACHE FILEPATH "Accepted generated shell classes for production CUDA")
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+      "${VIBEQC_AOT_SHELL_MANIFEST}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/profile.py")
   set(VIBEQC_AOT_GENERATED_DIRECTORY
       "${CMAKE_CURRENT_BINARY_DIR}/generated/production_shell_kernels")
   list(GET CMAKE_CUDA_ARCHITECTURES 0 VIBEQC_AOT_PRIMARY_CUDA_ARCHITECTURE)
-  set(VIBEQC_AOT_CODEGEN_ARCHITECTURE
-      "sm_${VIBEQC_AOT_PRIMARY_CUDA_ARCHITECTURE}"
-      CACHE STRING "CUDA architecture profile used by shell code generation")
+  set(VIBEQC_AOT_REQUESTED_ARCHITECTURE
+      "${VIBEQC_AOT_PRIMARY_CUDA_ARCHITECTURE}")
+  if(VIBEQC_AOT_REQUESTED_ARCHITECTURE MATCHES "^[0-9]+$")
+    set(VIBEQC_AOT_REQUESTED_ARCHITECTURE
+        "sm_${VIBEQC_AOT_REQUESTED_ARCHITECTURE}")
+  endif()
+
+  if(VIBEQC_AOT_CODEGEN_ARCHITECTURE)
+    if(NOT VIBEQC_AOT_PROFILE STREQUAL "auto" AND
+       NOT VIBEQC_AOT_PROFILE STREQUAL VIBEQC_AOT_CODEGEN_ARCHITECTURE)
+      message(FATAL_ERROR
+        "Set only VIBEQC_AOT_PROFILE; the deprecated "
+        "VIBEQC_AOT_CODEGEN_ARCHITECTURE alias conflicts with it")
+    endif()
+    set(VIBEQC_AOT_PROFILE "${VIBEQC_AOT_CODEGEN_ARCHITECTURE}")
+    message(DEPRECATION
+      "VIBEQC_AOT_CODEGEN_ARCHITECTURE is deprecated; use "
+      "VIBEQC_AOT_PROFILE instead")
+  endif()
+
+  if(NOT VIBEQC_ENABLE_AOT_SHELLS AND VIBEQC_AOT_REQUIRE_TUNED_PROFILE)
+    message(FATAL_ERROR
+      "VIBEQC_AOT_REQUIRE_TUNED_PROFILE cannot be used when "
+      "VIBEQC_ENABLE_AOT_SHELLS is OFF")
+  endif()
+
+  set(VIBEQC_AOT_RESOLVED_PROFILE "portable_cuda")
+  set(VIBEQC_AOT_PROFILE_IS_TUNED OFF)
+  if(VIBEQC_ENABLE_AOT_SHELLS)
+    set(_vibeqc_profile_command
+        "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/profile.py"
+        --manifest "${VIBEQC_AOT_SHELL_MANIFEST}"
+        --architecture "${VIBEQC_AOT_REQUESTED_ARCHITECTURE}"
+        --profile "${VIBEQC_AOT_PROFILE}")
+    if(VIBEQC_AOT_REQUIRE_TUNED_PROFILE)
+      list(APPEND _vibeqc_profile_command --require-tuned)
+    endif()
+    execute_process(
+      COMMAND ${_vibeqc_profile_command}
+      RESULT_VARIABLE _vibeqc_profile_result
+      OUTPUT_VARIABLE _vibeqc_profile_output
+      ERROR_VARIABLE _vibeqc_profile_error
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if(NOT _vibeqc_profile_result EQUAL 0)
+      string(STRIP "${_vibeqc_profile_error}" _vibeqc_profile_error)
+      message(FATAL_ERROR
+        "Unable to resolve a generated-shell CUDA profile:\n"
+        "${_vibeqc_profile_error}")
+    endif()
+    set(_vibeqc_profile_resolution "${_vibeqc_profile_output}")
+    list(LENGTH _vibeqc_profile_resolution _vibeqc_profile_fields)
+    if(NOT _vibeqc_profile_fields EQUAL 3)
+      message(FATAL_ERROR
+        "Generated-shell profile resolver returned an invalid result: "
+        "${_vibeqc_profile_output}")
+    endif()
+    list(GET _vibeqc_profile_resolution 0 VIBEQC_AOT_RESOLVED_PROFILE)
+    list(GET _vibeqc_profile_resolution 1 VIBEQC_AOT_REQUESTED_ARCHITECTURE)
+    list(GET _vibeqc_profile_resolution 2 _vibeqc_profile_tuned)
+    if(_vibeqc_profile_tuned STREQUAL "1")
+      set(VIBEQC_AOT_PROFILE_IS_TUNED ON)
+    endif()
+  endif()
+
   set(VIBEQC_AOT_GENERATED_SOURCES
       "${VIBEQC_AOT_GENERATED_DIRECTORY}/vibeqc_generated_shell_registry.cu")
   foreach(shard RANGE 0 3)
@@ -77,31 +153,55 @@ if(VIBEQC_ENABLE_CUDA)
   endforeach()
   set(VIBEQC_AOT_GENERATED_HEADER
       "${VIBEQC_AOT_GENERATED_DIRECTORY}/vibeqc_generated_shell_registry.hpp")
-  add_custom_command(
-    OUTPUT ${VIBEQC_AOT_GENERATED_SOURCES} "${VIBEQC_AOT_GENERATED_HEADER}"
-    COMMAND "${Python3_EXECUTABLE}"
-            "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_shell_kernels.py"
-            --production-manifest "${VIBEQC_AOT_SHELL_MANIFEST}"
-            --output-directory "${VIBEQC_AOT_GENERATED_DIRECTORY}"
-            --architecture "${VIBEQC_AOT_CODEGEN_ARCHITECTURE}"
-            --shards 4
-    DEPENDS
-      "${VIBEQC_AOT_SHELL_MANIFEST}"
-      "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_shell_kernels.py"
-      "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/__init__.py"
-      "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/cuda.py"
-      "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/dppp_dispatch.py"
-      "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/expr.py"
-      "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/fused_schedule.py"
-      "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/ir.py"
-      "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/low_order_force.py"
-      "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/production.py"
-      "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/rys.py"
-      "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/rys3_data.py"
-      "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/shell_class.py"
-      "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/shell_spec.py"
-    COMMENT "Generating accepted fused shell-class CUDA shards"
-    VERBATIM)
+
+  if(VIBEQC_AOT_PROFILE_IS_TUNED)
+    add_custom_command(
+      OUTPUT ${VIBEQC_AOT_GENERATED_SOURCES} "${VIBEQC_AOT_GENERATED_HEADER}"
+      COMMAND "${Python3_EXECUTABLE}"
+              "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_shell_kernels.py"
+              --production-manifest "${VIBEQC_AOT_SHELL_MANIFEST}"
+              --output-directory "${VIBEQC_AOT_GENERATED_DIRECTORY}"
+              --architecture "${VIBEQC_AOT_RESOLVED_PROFILE}"
+              --shards 4
+      DEPENDS
+        "${VIBEQC_AOT_SHELL_MANIFEST}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_shell_kernels.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/__init__.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/cuda.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/dppp_dispatch.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/expr.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/fused_schedule.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/ir.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/low_order_force.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/production.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/rys.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/rys3_data.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/shell_class.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/shell_spec.py"
+      COMMENT
+        "Generating ${VIBEQC_AOT_RESOLVED_PROFILE} fused shell-class CUDA shards"
+      VERBATIM)
+    message(STATUS
+      "VibeQC generated-shell profile: ${VIBEQC_AOT_RESOLVED_PROFILE} "
+      "(tuned for ${VIBEQC_AOT_REQUESTED_ARCHITECTURE})")
+  else()
+    add_custom_command(
+      OUTPUT ${VIBEQC_AOT_GENERATED_SOURCES} "${VIBEQC_AOT_GENERATED_HEADER}"
+      COMMAND "${Python3_EXECUTABLE}"
+              "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_portable_shell_registry.py"
+              --output-directory "${VIBEQC_AOT_GENERATED_DIRECTORY}"
+              --requested-architecture "${VIBEQC_AOT_REQUESTED_ARCHITECTURE}"
+              --profile "${VIBEQC_AOT_RESOLVED_PROFILE}"
+              --shards 4
+      DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_portable_shell_registry.py"
+      COMMENT
+        "Generating portable CUDA shell registry without tuned AOT kernels"
+      VERBATIM)
+    message(STATUS
+      "VibeQC generated-shell profile: portable_cuda for "
+      "${VIBEQC_AOT_REQUESTED_ARCHITECTURE}; using generic CUDA kernels")
+  endif()
   set_source_files_properties(${VIBEQC_AOT_GENERATED_SOURCES}
                               PROPERTIES GENERATED TRUE)
   target_sources(vibeqc PRIVATE ${VIBEQC_AOT_GENERATED_SOURCES})

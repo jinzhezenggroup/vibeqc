@@ -21,6 +21,8 @@ cover all quantum-chemistry methods through a coherent batched interface.
   implementation history.
 - [Shell code generation](shell_codegen.md): generated CUDA policy and
   correctness model.
+- [CUDA profiles](cuda_profiles.md): exact tuned-profile selection,
+  portable fallback behavior, and the multi-architecture roadmap.
 - [Benchmark evidence](../benchmarks/results/README.md): comparison boundary,
   reproducibility rules, gates, and archived results.
 
