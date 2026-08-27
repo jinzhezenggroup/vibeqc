@@ -4,21 +4,23 @@ VibeQC executes one native fixed-topology bucket. GPU4PySCF currently exposes
 a single-molecule SCF interface, so one initialized GPU object and warm density
 are retained per system. Warm samples are interleaved in a deterministic ABBA
 order to reduce clock and thermal drift, and every timing remains paired with
-the SCF branch and numerical result that produced it.
+the SCF branch and numerical result that produced it. After one cold execution,
+both engines replay their own fixed post-cold density snapshot; an unmeasured
+priming replay settles VibeQC's resident-density upload path before timing
+begins. Cross-engine density identity is not asserted because each backend owns
+its AO convention.
 """
 
 from __future__ import annotations
 
 import argparse
-from contextlib import contextmanager
 import statistics
 import time
-from typing import Any, Iterator, Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
+from typing import Any
 
 import numpy as np
-
-from vibeqc import Calculator
-
 from _cases import benchmark_cases
 from _support import (
     benchmark_gate_failures,
@@ -26,10 +28,22 @@ from _support import (
     environment_metadata,
     write_result,
 )
-
+from vibeqc import Calculator
 
 VIBEQC_ENGINE = "vibeqc"
 GPU4PYSCF_ENGINE = "gpu4pyscf"
+
+
+def fixed_warm_start_policy() -> dict[str, str]:
+    """Describe the engine-local fixed post-cold replay contract."""
+
+    return {
+        "vibeqc": "engine-local fixed post-cold converged density snapshot",
+        "gpu4pyscf": "engine-local fixed post-cold converged density snapshot",
+        "cross_engine_density_identity": (
+            "not asserted because backend AO conventions are independent"
+        ),
+    }
 
 
 def convergence_payload(result) -> list[dict[str, object]]:
@@ -236,6 +250,37 @@ def pair_repeat_accuracy(
     return pairs
 
 
+def warm_start_priming_metadata(
+    vibeqc_sample: dict[str, Any], gpu_sample: dict[str, Any]
+) -> dict[str, Any]:
+    """Serialize the unmeasured replay used to settle fixed-dm0 state.
+
+    After VibeQC's cold execution, the first fixed-dm0 replay can take an
+    exact-resident fast path while subsequent replays upload the unchanged
+    host snapshot after the device has produced a new density.  Recording an
+    unmeasured replay makes all published samples use the steady fixed-dm0
+    path without hiding that setup from artifact readers.
+    """
+
+    return {
+        "performed": True,
+        "measured": False,
+        "purpose": (
+            "settle the post-cold resident-density state before timing; every "
+            "published replay still starts from the fixed post-cold dm0"
+        ),
+        "engine_order": [VIBEQC_ENGINE, GPU4PYSCF_ENGINE],
+        "vibeqc": {
+            "seconds": float(vibeqc_sample["seconds"]),
+            "iteration_branch": list(iteration_branch(vibeqc_sample)),
+        },
+        "gpu4pyscf": {
+            "seconds": float(gpu_sample["seconds"]),
+            "iteration_branch": list(iteration_branch(gpu_sample)),
+        },
+    }
+
+
 def accuracy_gate_summary(pairs: Sequence[dict[str, Any]]) -> dict[str, Any]:
     """Select branch-matched accuracy rows when the engines share them.
 
@@ -421,8 +466,8 @@ def main() -> None:
     # Import GPU packages only after argument parsing so workload construction
     # and --help remain usable on login nodes without an allocated device.
     import cupy as cp
-    from pyscf import gto, scf
     from gpu4pyscf.scf import uhf as gpu_uhf
+    from pyscf import gto, scf
 
     case = cases[args.case]
     systems = scaled_geometries(case.atoms, args.batch)
@@ -491,6 +536,12 @@ def main() -> None:
         vibeqc_cold_result = batch.execute(strict=True)
         cp.cuda.Stream.null.synchronize()
         vibeqc_cold = time.perf_counter() - start
+        # Freeze the converged post-cold density before collecting either
+        # engine's warm samples.  The benchmark compares the same replay from
+        # one fixed dm0; allowing VibeQC to replace its retained density after
+        # each sample would make later samples follow a different SCF path
+        # from the first one (and from GPU4PySCF's explicit dm0 snapshot).
+        batch.set_warm_start_updates(False)
 
         cp.cuda.Stream.null.synchronize()
         start = time.perf_counter()
@@ -507,6 +558,19 @@ def main() -> None:
             gpu_objects, gpu_cold_trackers
         )
         gpu_warm_densities = [engine.make_rdm1().copy() for engine in gpu_objects]
+
+        # Establish a steady resident-state path before starting the captured
+        # interleaved measurements.  VibeQC's first replay may reuse the
+        # post-cold device density without an upload; after that replay the
+        # frozen host dm0 must be uploaded again.  GPU4PySCF already receives a
+        # fresh copy of the same snapshot on every replay.  The priming calls
+        # are intentionally outside the profiler range and are recorded below
+        # as unmeasured setup, never mixed into warm timing medians.
+        vibeqc_prime = _vibeqc_sample(batch, cp, -1)
+        gpu_prime = _gpu_sample(gpu_objects, gpu_warm_densities, cp, -1)
+        warm_start_priming = warm_start_priming_metadata(
+            vibeqc_prime, gpu_prime
+        )
 
         if args.capture_warm_range:
             cp.cuda.profiler.start()
@@ -655,10 +719,8 @@ def main() -> None:
                 "repeats_per_engine": args.repeats,
                 "interleave_policy": "deterministic ABBA",
                 "measurement_order": list(measurement_order),
-                "warm_start_policy": {
-                    "vibeqc": "retained native fixed-topology density",
-                    "gpu4pyscf": "fixed post-cold converged density snapshot",
-                },
+                "warm_start_policy": fixed_warm_start_policy(),
+                "warm_start_priming": warm_start_priming,
                 "gates": {
                     "minimum_iteration_matched_speedup": args.minimum_speedup,
                     "maximum_energy_error_hartree": args.maximum_energy_error,

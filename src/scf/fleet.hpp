@@ -48,6 +48,16 @@ class FleetPlan {
 
   void clear_warm_starts();
 
+  /**
+   * Control whether successful executions replace the retained warm guesses.
+   *
+   * Disabling updates freezes the current per-system density snapshots. This
+   * is useful for reproducible A/B measurements where every replay must start
+   * from the same dm0; it does not enable warm starts or manufacture missing
+   * snapshots.
+   */
+  void set_warm_start_updates(bool enabled) noexcept;
+
   /** Return the final-density profile from the most recent CUDA execution. */
   [[nodiscard]] const std::optional<CudaRhfShellClassProfile>&
   last_shell_class_profile() const noexcept {
@@ -59,6 +69,7 @@ class FleetPlan {
   vibeqc_method method_{VIBEQC_METHOD_RHF};
   ScfOptions options_;
   bool warm_starts_enabled_{};
+  bool warm_start_updates_enabled_{true};
   bool cuda_fock_enabled_{};
   bool shell_class_profiling_enabled_{};
   int device_id_{};

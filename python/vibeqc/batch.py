@@ -96,8 +96,9 @@ class PreparedBatch:
     """Persistent topology-aware native fleet plan.
 
     The object is not concurrently re-entrant because successful executions
-    update per-system warm-start densities. Use separate plans for concurrent
-    callers.
+    may update per-system warm-start densities. Use separate plans for
+    concurrent callers. Warm-start updates can be frozen after an initial
+    execution when reproducible replays from one fixed dm0 are required.
     """
 
     def __init__(
@@ -315,6 +316,22 @@ class PreparedBatch:
         _native.check(
             self._library,
             self._library.vibeqc_batch_clear_warm_starts(self._batch),
+        )
+
+    def set_warm_start_updates(self, enabled: bool) -> None:
+        """Control whether successful executions replace retained densities.
+
+        Disabling updates freezes the current per-system snapshots without
+        disabling warm starts. It is intended for controlled A/B benchmarks
+        where every replay must begin from exactly the same post-cold dm0.
+        """
+
+        self._ensure_open()
+        _native.check(
+            self._library,
+            self._library.vibeqc_batch_set_warm_start_updates(
+                self._batch, int(bool(enabled))
+            ),
         )
 
     def last_shell_class_profile(self) -> tuple[ShellClassProfileEntry, ...]:

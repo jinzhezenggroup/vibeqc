@@ -922,6 +922,11 @@ std::vector<RhfBucketItem> run_uhf_cuda_bucket_cached(
 
 void destroy_rhf_cuda_bucket_plan(CudaRhfBucketPlan*) noexcept {}
 
+void set_rhf_cuda_bucket_warm_start_updates(
+    CudaRhfBucketPlan*, bool) noexcept {}
+
+void clear_rhf_cuda_bucket_warm_starts(CudaRhfBucketPlan*) noexcept {}
+
 bool get_rhf_cuda_shell_class_profile(
     const CudaRhfBucketPlan*, CudaRhfShellClassProfile&) noexcept {
   return false;

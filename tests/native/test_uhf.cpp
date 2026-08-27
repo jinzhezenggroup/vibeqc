@@ -1,12 +1,15 @@
 #include "vibeqc/vibeqc.h"
 #include "molecule/basis.hpp"
+#include "scf/fleet.hpp"
 #include "scf/rhf.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -57,6 +60,162 @@ bool cuda_device_available() {
   const vibeqc_status status = vibeqc_context_create(&descriptor, &context);
   if (context != nullptr) vibeqc_context_destroy(context);
   return status == VIBEQC_STATUS_SUCCESS;
+}
+
+vibeqc::core::System large_ao_atom(bool unrestricted) {
+  vibeqc::core::System system;
+  system.atoms = {{unrestricted ? 1 : 2, {0.0, 0.0, 0.0}}};
+  // Seventeen even-tempered s shells cross the cuBLAS matrix-product
+  // threshold while keeping the direct integral/force regression cheap.
+  // A factor-three radial spacing avoids exact same-center dependence.
+  double exponent = 1.0e-6;
+  for (int shell = 0; shell < 17; ++shell) {
+    system.shells.push_back({0, 0, {{exponent, 1.0}}});
+    exponent *= 3.0;
+  }
+  system.charge = 0;
+  system.multiplicity = unrestricted ? 2 : 1;
+  system.basis_representation = VIBEQC_BASIS_SPHERICAL;
+  std::string detail;
+  require(vibeqc::molecule::validate_and_normalize(system, detail) ==
+              VIBEQC_STATUS_SUCCESS,
+          "large-AO atomic test system normalization failed");
+  return system;
+}
+
+void verify_cached_cuda_warm_density_sequence(bool unrestricted) {
+  const vibeqc::core::System system = large_ao_atom(unrestricted);
+  vibeqc::scf::ScfOptions options;
+  options.max_iterations = 100;
+  options.energy_tolerance = 1.0e-12;
+  options.density_tolerance = 1.0e-10;
+  options.screening_tolerance = 1.0e-14;
+
+  const vibeqc::scf::ScfResult cpu = unrestricted
+      ? vibeqc::scf::run_uhf(system, options)
+      : vibeqc::scf::run_rhf(system, options);
+  require(cpu.converged, "large-AO CPU oracle did not converge");
+
+  vibeqc::scf::CudaRhfBucketPlan* plan = nullptr;
+  const std::vector<vibeqc::core::System> systems{system};
+  const std::vector<const std::vector<double>*> cold_density{nullptr};
+  const auto run_cached = [&](const std::vector<const std::vector<double>*>& dm0) {
+    return unrestricted
+        ? vibeqc::scf::run_uhf_cuda_bucket_cached(
+              &plan, systems, options, dm0, 0, false)
+        : vibeqc::scf::run_rhf_cuda_bucket_cached(
+              &plan, systems, options, dm0, 0, false);
+  };
+
+  std::vector<vibeqc::scf::RhfBucketItem> cold = run_cached(cold_density);
+  require(cold.size() == 1 && cold[0].status == VIBEQC_STATUS_SUCCESS &&
+              cold[0].scf.converged,
+          "large-AO cached CUDA cold execution failed");
+  require(std::abs(cold[0].scf.energy - cpu.energy) < 5.0e-9,
+          "large-AO CUDA energy differs from the CPU oracle");
+
+  const std::vector<double> valid_density = cold[0].scf.density;
+  const std::vector<const std::vector<double>*> valid_input{&valid_density};
+  vibeqc::scf::set_rhf_cuda_bucket_warm_start_updates(plan, false);
+  std::vector<vibeqc::scf::RhfBucketItem> first_fixed =
+      run_cached(valid_input);
+  std::vector<vibeqc::scf::RhfBucketItem> second_fixed =
+      run_cached(valid_input);
+  require(first_fixed[0].status == VIBEQC_STATUS_SUCCESS &&
+              first_fixed[0].scf.converged &&
+              first_fixed[0].scf.iterations == 1 &&
+              second_fixed[0].status == VIBEQC_STATUS_SUCCESS &&
+              second_fixed[0].scf.converged &&
+              second_fixed[0].scf.iterations == 1,
+          "fixed CUDA dm0 did not retain its one-iteration energy baseline");
+  double advanced_density_change = 0.0;
+  for (std::size_t element = 0; element < valid_density.size(); ++element) {
+    advanced_density_change = std::max(
+        advanced_density_change,
+        std::abs(first_fixed[0].scf.density[element] - valid_density[element]));
+  }
+  require(advanced_density_change > 0.0,
+          "fixed-dm0 regression did not exercise an advanced resident density");
+
+  std::vector<double> invalid_density = valid_density;
+  for (double& value : invalid_density) value = -value;
+  const std::vector<const std::vector<double>*> invalid_input{&invalid_density};
+  std::vector<vibeqc::scf::RhfBucketItem> invalid = run_cached(invalid_input);
+  require(invalid[0].status == VIBEQC_STATUS_INVALID_ARGUMENT,
+          "CUDA accepted a non-positive warm-density electron trace");
+
+  // The rejected normalization overwrites device scratch before reporting
+  // INVALID_ARGUMENT. Replaying the frozen valid dm0 proves that the resident
+  // cache was invalidated without corrupting its separate frozen baseline.
+  std::vector<vibeqc::scf::RhfBucketItem> recovered = run_cached(valid_input);
+  require(recovered[0].status == VIBEQC_STATUS_SUCCESS &&
+              recovered[0].scf.converged &&
+              recovered[0].scf.iterations == 1 &&
+              std::abs(recovered[0].scf.energy - first_fixed[0].scf.energy) <
+                  5.0e-10,
+          "cached CUDA plan did not recover after rejecting a warm density");
+
+  // Re-enabling updates must discard the fixed baseline. Because the current
+  // resident density has advanced past valid_density, replaying that old dm0
+  // once more must take the ordinary baseline-free (at least two iteration)
+  // path. Clearing then invalidates even an exact resident replay.
+  vibeqc::scf::set_rhf_cuda_bucket_warm_start_updates(plan, true);
+  std::vector<vibeqc::scf::RhfBucketItem> after_enable =
+      run_cached(valid_input);
+  require(after_enable[0].status == VIBEQC_STATUS_SUCCESS &&
+              after_enable[0].scf.converged &&
+              after_enable[0].scf.iterations > 1,
+          "re-enabled CUDA warm updates retained a stale frozen baseline");
+  const std::vector<double> resident_density = after_enable[0].scf.density;
+  const std::vector<const std::vector<double>*> resident_input{
+      &resident_density};
+  vibeqc::scf::clear_rhf_cuda_bucket_warm_starts(plan);
+  std::vector<vibeqc::scf::RhfBucketItem> after_clear =
+      run_cached(resident_input);
+  require(after_clear[0].status == VIBEQC_STATUS_SUCCESS &&
+              after_clear[0].scf.converged &&
+              after_clear[0].scf.iterations > 1,
+          "cleared CUDA warm cache reused a resident energy baseline");
+  vibeqc::scf::destroy_rhf_cuda_bucket_plan(plan);
+}
+
+void verify_fleet_fixed_warm_start() {
+  vibeqc::scf::ScfOptions options;
+  options.max_iterations = 100;
+  options.energy_tolerance = 1.0e-12;
+  options.density_tolerance = 1.0e-10;
+  options.screening_tolerance = 1.0e-14;
+  vibeqc::scf::FleetPlan fleet(
+      {large_ao_atom(false)}, VIBEQC_METHOD_RHF, options, true, true, false, 0);
+
+  const std::vector<vibeqc::scf::FleetItemResult> cold = fleet.execute({});
+  require(cold.size() == 1 && cold[0].status == VIBEQC_STATUS_SUCCESS &&
+              cold[0].scf.converged,
+          "CUDA Fleet cold execution for fixed warm-start test failed");
+  fleet.set_warm_start_updates(false);
+  const std::vector<vibeqc::scf::FleetItemResult> first_fixed =
+      fleet.execute({});
+  const std::vector<vibeqc::scf::FleetItemResult> second_fixed =
+      fleet.execute({});
+  require(first_fixed[0].warm_start_used && second_fixed[0].warm_start_used &&
+              first_fixed[0].scf.iterations == 1 &&
+              second_fixed[0].scf.iterations == 1,
+          "Fleet did not propagate its fixed dm0/energy baseline to CUDA");
+
+  fleet.set_warm_start_updates(true);
+  const std::vector<vibeqc::scf::FleetItemResult> resumed = fleet.execute({});
+  const std::vector<vibeqc::scf::FleetItemResult> updated = fleet.execute({});
+  require(resumed[0].status == VIBEQC_STATUS_SUCCESS &&
+              resumed[0].scf.iterations > 1 &&
+              updated[0].status == VIBEQC_STATUS_SUCCESS &&
+              updated[0].scf.iterations == 1,
+          "Fleet did not resume advancing CUDA warm-start state");
+
+  fleet.clear_warm_starts();
+  const std::vector<vibeqc::scf::FleetItemResult> cleared = fleet.execute({});
+  require(cleared[0].status == VIBEQC_STATUS_SUCCESS &&
+              !cleared[0].warm_start_used && cleared[0].scf.iterations > 1,
+          "Fleet clear retained CUDA warm-start state");
 }
 #endif
 
@@ -112,6 +271,9 @@ int main() {
           hydrogen_molecular_ion(1.4), cuda_options, 0, &cuda.density);
       require(cuda_warm.converged && cuda_warm.initial_density_used,
               "CUDA UHF packed spin density was not accepted as a warm start");
+      verify_cached_cuda_warm_density_sequence(false);
+      verify_cached_cuda_warm_density_sequence(true);
+      verify_fleet_fixed_warm_start();
     } else {
       std::cout << "CUDA UHF checks skipped: no allocated CUDA device\n";
     }

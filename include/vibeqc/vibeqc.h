@@ -279,6 +279,17 @@ VIBEQC_API vibeqc_status vibeqc_batch_get_last_shell_class_profile(
 VIBEQC_API vibeqc_status vibeqc_batch_clear_warm_starts(vibeqc_batch* batch);
 
 /**
+ * Enable or disable replacement of retained warm-start densities.
+ *
+ * Passing zero freezes the current snapshots so every later execution starts
+ * from the same per-system dm0. Passing one restores the default behavior in
+ * which each successful execution advances its retained density. Existing
+ * snapshots are neither cleared nor created by this call.
+ */
+VIBEQC_API vibeqc_status vibeqc_batch_set_warm_start_updates(
+    vibeqc_batch* batch, int32_t enabled);
+
+/**
  * Execute all systems with failure isolation. A successful function return
  * means the batch was structurally valid; inspect each result.status for its
  * scientific outcome. `inputs` may be NULL with input_count=0 to reuse all

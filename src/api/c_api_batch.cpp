@@ -91,6 +91,19 @@ vibeqc_status vibeqc_batch_clear_warm_starts(vibeqc_batch* batch) {
   }
 }
 
+vibeqc_status vibeqc_batch_set_warm_start_updates(vibeqc_batch* batch,
+                                                   int32_t enabled) {
+  if (batch == nullptr || (enabled != 0 && enabled != 1)) {
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  try {
+    batch->plan->set_warm_start_updates(enabled != 0);
+    return VIBEQC_STATUS_SUCCESS;
+  } catch (...) {
+    return vibeqc::api::map_exception(&batch->context->last_detail);
+  }
+}
+
 vibeqc_status vibeqc_batch_execute(
     vibeqc_batch* batch,
     const vibeqc_batch_input_descriptor* inputs,

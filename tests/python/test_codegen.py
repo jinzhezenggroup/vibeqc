@@ -1938,7 +1938,10 @@ def test_batched_finalization_reuses_each_converged_raw_fock():
     assert "select_final_fock_rebuild_kernel" in source
     assert "copy_selected_matrices_kernel" in source
     assert "launch_direct_quartet_metadata(density)" in source
-    assert "plan.cached_warm_density == host.warm_density" in source
+    # A resident dm0 is already normalized for its cached overlap matrix, so a
+    # geometry change must re-run the warm-density normalization path.
+    assert "plan.resident_warm_positions == host.positions" in source
+    assert "plan.resident_warm_density == host.warm_density" in source
     assert "iteration > 1 || has_energy_baseline" in source
     assert "update_convergence_kernel<true>" in source
     assert "update_uhf_convergence_kernel<true>" in source

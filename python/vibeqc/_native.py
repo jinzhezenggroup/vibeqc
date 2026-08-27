@@ -235,6 +235,11 @@ def load_library() -> ctypes.CDLL:
     library.vibeqc_batch_get_last_shell_class_profile.restype = ctypes.c_int
     library.vibeqc_batch_clear_warm_starts.argtypes = [ctypes.c_void_p]
     library.vibeqc_batch_clear_warm_starts.restype = ctypes.c_int
+    library.vibeqc_batch_set_warm_start_updates.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_int32,
+    ]
+    library.vibeqc_batch_set_warm_start_updates.restype = ctypes.c_int
     library.vibeqc_batch_execute.argtypes = [
         ctypes.c_void_p,
         ctypes.POINTER(BatchInputDescriptor),

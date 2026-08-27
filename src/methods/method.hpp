@@ -72,6 +72,7 @@ class PreparedBatch {
   [[nodiscard]] virtual std::size_t size() const noexcept = 0;
   virtual std::vector<BatchItemResult> execute(const Coordinates& coordinates) = 0;
   virtual void clear_warm_starts() = 0;
+  virtual void set_warm_start_updates(bool enabled) = 0;
   [[nodiscard]] virtual std::optional<std::vector<DirectShellClassProfileEntry>>
   last_direct_shell_class_profile() const = 0;
 };
