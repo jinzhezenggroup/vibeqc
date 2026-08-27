@@ -19,13 +19,14 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from .cuda import CudaEmitter
+from .cuda_schedule import PairOrientation, PairStorage, ScheduleKind
 from .fused_schedule import (
     CoulombState,
     FusedShellPlan,
     build_fused_shell_plan,
     evaluate_fused_shell_component,
 )
-from .ir import KernelConsumer, PairOrientation, PairStorage, ScheduleKind
+from .ir import KernelConsumer
 from .rys import emit_ppps_rys3_root_body_cuda, emit_rys3_roots_cuda
 from .shell_class import build_weighted_shell_contraction_kernel
 from .shell_spec import AXES, DPPP_SPEC, ShellClassSpec, cartesian_components

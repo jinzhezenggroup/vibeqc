@@ -3,19 +3,26 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable
+import re
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 
-from .dppp_dispatch import emit_shell_class_fused_cuda
-from .fused_schedule import build_fused_shell_plan
-from .ir import (
-    KernelConsumer,
+from .cuda_emitter import emit_shell_class_fused_cuda
+from .cuda_schedule import (
     PairOrientation,
     PairStorage,
     ScheduleIR,
     ScheduleKind,
 )
+from .cuda_target import (
+    CudaTargetInfo,
+    cuda_target_info,
+    normalize_cuda_architecture,
+)
+from .fused_schedule import build_fused_shell_plan
+from .ir import KernelConsumer
 from .low_order_force import (
     PPSS_BLOCK_THREADS,
     PSPS_BLOCK_THREADS,
@@ -77,16 +84,197 @@ class KernelSelection:
     spec: ShellClassSpec
     consumers: tuple[KernelConsumer, ...]
     schedule: ScheduleIR
+    profile: str = ""
+    tuned: bool = True
 
     def __post_init__(self) -> None:
         if not self.architecture.startswith("sm_"):
             raise ValueError("production architecture must use CUDA sm_ notation")
+        if not self.profile:
+            object.__setattr__(self, "profile", self.architecture)
         if not self.consumers:
             raise ValueError("production kernel requires at least one consumer")
         # Force owns the canonical task ABI. Fock may share that source, but a
         # value-only entry cannot yet be emitted without its force companion.
         if KernelConsumer.FORCE not in self.consumers:
             raise ValueError("current production emitter requires a force consumer")
+
+
+class ProfileMatch(str, Enum):
+    """How a production manifest profile was selected for a build target."""
+
+    EXACT = "exact"
+    COMPATIBLE = "compatible"
+    PORTABLE = "portable"
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvedProductionProfile:
+    """Manifest resolution result for one concrete CUDA compile target."""
+
+    target: CudaTargetInfo
+    profile: str
+    match: ProfileMatch
+    tuned: bool
+    selections: tuple[KernelSelection, ...]
+    cuda_toolkit: str
+
+    @property
+    def portable(self) -> bool:
+        """Return whether execution intentionally uses the generic fallback."""
+
+        return self.match == ProfileMatch.PORTABLE
+
+
+def _profile_kind(name: str, profile: dict[str, object]) -> str:
+    """Return the explicit or backward-compatible profile kind."""
+
+    configured = profile.get("kind")
+    if isinstance(configured, str):
+        return configured
+    return "portable" if name in ("portable", "portable_cuda") else "tuned"
+
+
+def _profile_compatible(
+    name: str,
+    profile: dict[str, object],
+    architecture: str,
+) -> bool:
+    """Return whether a non-portable profile explicitly accepts a target."""
+
+    if name == architecture:
+        return True
+    compatible = profile.get("compatible_architectures", ())
+    if isinstance(compatible, list) and architecture in compatible:
+        return True
+    capabilities = profile.get("compatible_compute_capabilities", ())
+    if not isinstance(capabilities, list):
+        return False
+    major, minor = cuda_target_info(architecture).compute_capability
+    accepted = {
+        architecture,
+        f"{major}.{minor}",
+        f"{major}.x",
+        f"sm_{major}x",
+    }
+    return any(item in accepted for item in capabilities if isinstance(item, str))
+
+
+def _portable_profile(
+    architectures: dict[str, object],
+) -> tuple[str, dict[str, object]] | None:
+    """Return the single manifest portable profile, if one is declared."""
+
+    portable = []
+    for name, raw_profile in architectures.items():
+        if isinstance(raw_profile, dict) and _profile_kind(name, raw_profile) == "portable":
+            portable.append((name, raw_profile))
+    if len(portable) > 1:
+        raise ValueError("production manifest declares multiple portable profiles")
+    return portable[0] if portable else None
+
+
+def _resolve_profile_payload(
+    payload: dict[str, object],
+    architecture: str,
+    requested_profile: str,
+) -> tuple[str, dict[str, object], ProfileMatch]:
+    """Resolve exact, compatible, portable, then synthetic generic fallback."""
+
+    architectures = payload.get("architectures")
+    if not isinstance(architectures, dict):
+        raise TypeError("v2 production manifest requires architectures")
+
+    if requested_profile in ("portable", "portable_cuda"):
+        portable = _portable_profile(architectures)
+        if portable is None:
+            return "portable_cuda", {"kind": "portable", "kernels": []}, ProfileMatch.PORTABLE
+        return portable[0], portable[1], ProfileMatch.PORTABLE
+
+    if requested_profile != "auto":
+        raw_profile = architectures.get(requested_profile)
+        if not isinstance(raw_profile, dict):
+            raise ValueError(f"production manifest has no profile {requested_profile!r}")
+        kind = _profile_kind(requested_profile, raw_profile)
+        if kind == "portable":
+            return requested_profile, raw_profile, ProfileMatch.PORTABLE
+        if not _profile_compatible(requested_profile, raw_profile, architecture):
+            raise ValueError(
+                f"profile {requested_profile!r} is incompatible with {architecture}"
+            )
+        match = (
+            ProfileMatch.EXACT
+            if requested_profile == architecture
+            else ProfileMatch.COMPATIBLE
+        )
+        return requested_profile, raw_profile, match
+
+    exact = architectures.get(architecture)
+    if isinstance(exact, dict) and _profile_kind(architecture, exact) != "portable":
+        return architecture, exact, ProfileMatch.EXACT
+    compatible = [
+        (name, raw_profile)
+        for name, raw_profile in architectures.items()
+        if isinstance(raw_profile, dict)
+        and _profile_kind(name, raw_profile) != "portable"
+        and _profile_compatible(name, raw_profile, architecture)
+    ]
+    if len(compatible) > 1:
+        names = ", ".join(name for name, _ in compatible)
+        raise ValueError(
+            f"multiple production profiles are compatible with {architecture}: {names}"
+        )
+    if compatible:
+        return compatible[0][0], compatible[0][1], ProfileMatch.COMPATIBLE
+    portable = _portable_profile(architectures)
+    if portable is not None:
+        return portable[0], portable[1], ProfileMatch.PORTABLE
+    # An empty synthetic portable profile is the final safe fallback. It emits
+    # no generated class mask, leaving the validated generic CUDA path active.
+    return "portable_cuda", {"kind": "portable", "kernels": []}, ProfileMatch.PORTABLE
+
+
+def _validate_measured_target(
+    profile_name: str,
+    profile: dict[str, object],
+    target: CudaTargetInfo,
+    match: ProfileMatch,
+) -> None:
+    """Reject stale exact-profile capability or generator-ABI metadata."""
+
+    generator_abi = profile.get("generator_abi", target.generator_abi)
+    if int(generator_abi) != target.generator_abi:
+        raise ValueError(
+            f"profile {profile_name!r} uses generator ABI {generator_abi}, "
+            f"expected {target.generator_abi}"
+        )
+    if match != ProfileMatch.EXACT:
+        return
+    measured = profile.get("target")
+    if measured is None:
+        return
+    if not isinstance(measured, dict):
+        raise TypeError("profile target metadata must be a JSON object")
+    expected: dict[str, object] = {
+        "compute_capability": (
+            f"{target.compute_capability_major}.{target.compute_capability_minor}"
+        ),
+        "warp_size": target.warp_size,
+        "maximum_threads_per_block": target.maximum_threads_per_block,
+        "maximum_threads_per_sm": target.maximum_threads_per_sm,
+        "maximum_blocks_per_sm": target.maximum_blocks_per_sm,
+        "registers_per_sm": target.registers_per_sm,
+        "maximum_registers_per_thread": target.maximum_registers_per_thread,
+        "shared_memory_per_block": target.shared_memory_per_block,
+        "shared_memory_per_block_optin": target.shared_memory_per_block_optin,
+        "shared_memory_per_sm": target.shared_memory_per_sm,
+    }
+    for key, value in expected.items():
+        if key in measured and measured[key] != value:
+            raise ValueError(
+                f"profile {profile_name!r} target field {key} does not "
+                f"match catalog value {value!r}"
+            )
 
 
 def _schedule_from_payload(payload: object) -> ScheduleIR:
@@ -129,51 +317,18 @@ def _default_architecture(payload: dict[str, object]) -> str:
     )
 
 
-def load_production_kernel_selections(
-    path: Path, architecture: str | None = None
+def _selections_from_rows(
+    rows: object,
+    *,
+    architecture: str,
+    profile: str,
+    tuned: bool,
+    target: CudaTargetInfo,
 ) -> tuple[KernelSelection, ...]:
-    """Load explicit kernel consumers and schedules for one GPU architecture."""
+    """Validate explicit manifest rows for one resolved build target."""
 
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    if payload.get("schema_version") == 1:
-        # Preserve custom manifests while the repository migrates to v2.
-        names = payload.get("shell_classes")
-        if not isinstance(names, list) or not names:
-            raise ValueError("production manifest requires shell_classes")
-        acceptance = payload.get("acceptance")
-        accepted_architecture = (
-            acceptance.get("architecture")
-            if isinstance(acceptance, dict)
-            else None
-        )
-        selected_architecture = architecture or (
-            accepted_architecture
-            if isinstance(accepted_architecture, str)
-            else "sm_120"
-        )
-        rows = [
-            {
-                "shell_class": name,
-                "consumers": [KernelConsumer.FORCE.value],
-            }
-            for name in names
-        ]
-    elif payload.get("schema_version") == 2:
-        selected_architecture = architecture or _default_architecture(payload)
-        architectures = payload.get("architectures")
-        if not isinstance(architectures, dict):
-            raise ValueError("v2 production manifest requires architectures")
-        profile = architectures.get(selected_architecture)
-        if not isinstance(profile, dict):
-            raise ValueError(
-                f"production manifest has no profile for {selected_architecture}"
-            )
-        rows = profile.get("kernels")
-        if not isinstance(rows, list) or not rows:
-            raise ValueError("architecture profile requires a non-empty kernels list")
-    else:
-        raise ValueError("unsupported production shell manifest schema")
-
+    if not isinstance(rows, list):
+        raise TypeError("architecture profile requires a kernels list")
     selections = []
     seen = set()
     for row in rows:
@@ -199,17 +354,133 @@ def load_production_kernel_selections(
             schedule = _schedule_from_payload(schedule_payload)
             # Build the complete IR now so component coverage and block limits
             # fail during manifest loading rather than CUDA compilation.
-            build_fused_shell_plan(spec, consumers=consumers, schedule=schedule)
+            build_fused_shell_plan(
+                spec,
+                consumers=consumers,
+                schedule=schedule,
+                target=target,
+            )
         selections.append(
             KernelSelection(
-                architecture=selected_architecture,
+                architecture=architecture,
                 spec=spec,
                 consumers=consumers,
                 schedule=schedule,
+                profile=profile,
+                tuned=tuned,
             )
         )
         seen.add(name)
     return tuple(selections)
+
+
+def resolve_production_profile(
+    path: Path,
+    architecture: str | None = None,
+    profile: str = "auto",
+) -> ResolvedProductionProfile:
+    """Resolve one target through exact, compatible, and portable profiles."""
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise TypeError("production shell manifest must be a JSON object")
+    schema_version = payload.get("schema_version")
+    default_architecture = (
+        "sm_120"
+        if schema_version == 1
+        else _default_architecture(payload)
+    )
+    selected_architecture = normalize_cuda_architecture(
+        architecture or default_architecture
+    )
+    target = cuda_target_info(selected_architecture)
+    if schema_version == 1:
+        names = payload.get("shell_classes")
+        if not isinstance(names, list) or not names:
+            raise ValueError("production manifest requires shell_classes")
+        acceptance = payload.get("acceptance")
+        accepted_architecture = (
+            acceptance.get("architecture")
+            if isinstance(acceptance, dict)
+            else "sm_120"
+        )
+        accepted_architecture = normalize_cuda_architecture(
+            accepted_architecture
+            if isinstance(accepted_architecture, str)
+            else "sm_120"
+        )
+        if selected_architecture != accepted_architecture or profile in (
+            "portable",
+            "portable_cuda",
+        ):
+            return ResolvedProductionProfile(
+                target=target,
+                profile="portable_cuda",
+                match=ProfileMatch.PORTABLE,
+                tuned=False,
+                selections=(),
+                cuda_toolkit="",
+            )
+        rows = [
+            {"shell_class": name, "consumers": [KernelConsumer.FORCE.value]}
+            for name in names
+        ]
+        selections = _selections_from_rows(
+            rows,
+            architecture=selected_architecture,
+            profile=accepted_architecture,
+            tuned=True,
+            target=target,
+        )
+        return ResolvedProductionProfile(
+            target=target,
+            profile=accepted_architecture,
+            match=ProfileMatch.EXACT,
+            tuned=True,
+            selections=selections,
+            cuda_toolkit="",
+        )
+    if schema_version != 2:
+        raise ValueError("unsupported production shell manifest schema")
+
+    profile_name, profile_payload, match = _resolve_profile_payload(
+        payload,
+        selected_architecture,
+        profile,
+    )
+    _validate_measured_target(profile_name, profile_payload, target, match)
+    tuned = match == ProfileMatch.EXACT and _profile_kind(
+        profile_name, profile_payload
+    ) == "tuned"
+    rows = profile_payload.get("kernels", [])
+    selections = _selections_from_rows(
+        rows,
+        architecture=selected_architecture,
+        profile=profile_name,
+        tuned=tuned,
+        target=target,
+    )
+    toolkit = profile_payload.get("cuda_toolkit", "")
+    if not isinstance(toolkit, str):
+        raise TypeError("profile cuda_toolkit must be a string")
+    return ResolvedProductionProfile(
+        target=target,
+        profile=profile_name,
+        match=match,
+        tuned=tuned,
+        selections=selections,
+        cuda_toolkit=toolkit,
+    )
+
+
+def load_production_kernel_selections(
+    path: Path,
+    architecture: str | None = None,
+    profile: str = "auto",
+) -> tuple[KernelSelection, ...]:
+    """Load safe production selections for one concrete CUDA target."""
+
+    return resolve_production_profile(path, architecture, profile).selections
 
 
 def shell_class_index(spec: ShellClassSpec) -> int:
@@ -223,29 +494,40 @@ def shell_class_index(spec: ShellClassSpec) -> int:
 
 
 def load_production_manifest(
-    path: Path, architecture: str | None = None
+    path: Path,
+    architecture: str | None = None,
+    profile: str = "auto",
 ) -> tuple[ShellClassSpec, ...]:
     """Compatibility view returning the ordered shell specifications."""
 
     return tuple(
         selection.spec
-        for selection in load_production_kernel_selections(path, architecture)
+        for selection in load_production_kernel_selections(
+            path, architecture, profile
+        )
     )
 
 
 def load_production_fock_manifest(
-    path: Path, architecture: str | None = None
+    path: Path,
+    architecture: str | None = None,
+    profile: str = "auto",
 ) -> tuple[ShellClassSpec, ...]:
     """Compatibility view returning classes with generated Fock consumers."""
 
     return tuple(
         selection.spec
-        for selection in load_production_kernel_selections(path, architecture)
+        for selection in load_production_kernel_selections(
+            path, architecture, profile
+        )
         if KernelConsumer.FOCK in selection.consumers
     )
 
 
-def _launch_wrapper(spec: ShellClassSpec) -> str:
+def _launch_wrapper(
+    spec: ShellClassSpec,
+    symbol: str | None = None,
+) -> str:
     """Emit a stable C ABI wrapper around one generated persistent kernel."""
 
     class_name = spec.name[0].upper() + spec.name[1:]
@@ -305,7 +587,7 @@ static_assert(
     offsetof(vibeqc::scf::detail::GeneratedPrimitivePairData,
              second_product_scale));
 
-extern "C" cudaError_t vibeqc_launch_generated_{spec.name}(
+extern "C" cudaError_t {symbol or f"vibeqc_launch_generated_{spec.name}"}(
     cudaStream_t stream, bool unrestricted, unsigned worker_blocks,
     const void* tasks, const std::uint32_t* task_offset,
     const std::int64_t* primitive_pair_offsets, const void* primitive_pairs,
@@ -339,12 +621,15 @@ extern "C" cudaError_t vibeqc_launch_generated_{spec.name}(
 """
 
 
-def _fock_launch_wrapper(spec: ShellClassSpec) -> str:
+def _fock_launch_wrapper(
+    spec: ShellClassSpec,
+    symbol: str | None = None,
+) -> str:
     """Emit the stable C ABI wrapper for one generated Fock worker."""
 
     class_name = spec.name[0].upper() + spec.name[1:]
     return f"""
-extern "C" cudaError_t vibeqc_launch_generated_{spec.name}_fock(
+extern "C" cudaError_t {symbol or f"vibeqc_launch_generated_{spec.name}_fock"}(
     cudaStream_t stream, bool unrestricted, unsigned worker_blocks,
     const void* tasks, const std::uint32_t* task_offset,
     const std::int64_t* primitive_pair_offsets, const void* primitive_pairs,
@@ -692,6 +977,532 @@ cudaError_t launch_shell_class_fock(
 """
 
 
+def _profile_identifier(value: str) -> str:
+    """Return a stable C/CMake identifier for a profile or architecture."""
+
+    if re.fullmatch(r"sm_[0-9]+", value):
+        return value.replace("_", "")
+    identifier = re.sub(r"[^0-9A-Za-z]+", "_", value).strip("_").lower()
+    if not identifier:
+        raise ValueError("profile identifier cannot be empty")
+    return identifier
+
+
+def _strip_emitter_includes(source: str) -> str:
+    """Remove global standard includes before placing source in a namespace."""
+
+    return re.sub(
+        r"^#include <(?:cstddef|cstdint)>\n",
+        "",
+        source,
+        flags=re.MULTILINE,
+    )
+
+
+def _scope_profile_identifiers(
+    source: str,
+    selection: KernelSelection,
+    identifier: str,
+) -> str:
+    """Apply the emitter's two structured identifier roots to one profile.
+
+    Generated code owns a lower-case CUDA symbol root and a CamelCase type
+    root. Rewriting only those declared roots keeps profile isolation explicit
+    and avoids unconstrained shell-name/string substitution.
+    """
+
+    class_name = selection.spec.name[0].upper() + selection.spec.name[1:]
+    profile_class = "".join(part.capitalize() for part in identifier.split("_"))
+    return source.replace(
+        f"generated_{selection.spec.name}",
+        f"generated_{identifier}_{selection.spec.name}",
+    ).replace(
+        f"Generated{class_name}",
+        f"Generated{profile_class}{class_name}",
+    )
+
+
+def emit_profile_shard(
+    profile: ResolvedProductionProfile,
+    selections: Iterable[KernelSelection],
+) -> str:
+    """Emit one architecture-namespaced shard with collision-free symbols."""
+
+    items = tuple(selections)
+    identifier = _profile_identifier(profile.target.architecture)
+    namespace = f"vibeqc::scf::generated::profile_{identifier}"
+    body = [_PRODUCTION_PRELUDE, f"\nnamespace {namespace} {{\n"]
+    for selection in items:
+        if selection.schedule.kind == ScheduleKind.THREAD_TASKS:
+            configuration = _THREAD_TASK_FORCE_EMITTERS.get(selection.spec.name)
+            if configuration is None:
+                raise ValueError(
+                    "thread-task production lowering has no shell-specific emitter"
+                )
+            if selection.consumers != (KernelConsumer.FORCE,):
+                raise ValueError(
+                    f"the weighted {selection.spec.name} emitter is force-only"
+                )
+            block_threads, emitter = configuration
+            if selection.schedule.block_threads != block_threads:
+                raise ValueError(
+                    f"weighted {selection.spec.name} requires its accepted block size"
+                )
+            source = emitter()
+        else:
+            plan = build_fused_shell_plan(
+                selection.spec,
+                consumers=selection.consumers,
+                schedule=selection.schedule,
+                target=profile.target,
+            )
+            source = emit_shell_class_fused_cuda(selection.spec, plan)
+        force_symbol = (
+            f"vibeqc_launch_{identifier}_generated_{selection.spec.name}"
+        )
+        body.append(
+            _scope_profile_identifiers(
+                _strip_emitter_includes(source), selection, identifier
+            )
+        )
+        force_wrapper = _scope_profile_identifiers(
+            _launch_wrapper(selection.spec, force_symbol),
+            selection,
+            identifier,
+        ).replace(
+            _scope_profile_identifiers(force_symbol, selection, identifier),
+            force_symbol,
+        )
+        body.append(force_wrapper)
+        if KernelConsumer.FOCK in selection.consumers:
+            fock_symbol = f"{force_symbol}_fock"
+            fock_wrapper = _scope_profile_identifiers(
+                _fock_launch_wrapper(
+                    selection.spec,
+                    fock_symbol,
+                ),
+                selection,
+                identifier,
+            ).replace(
+                _scope_profile_identifiers(fock_symbol, selection, identifier),
+                fock_symbol,
+            )
+            body.append(fock_wrapper)
+    if not items:
+        body.append("// Portable profile: generic CUDA kernels remain active.\n")
+    body.append(f"\n}}  // namespace {namespace}\n")
+    return "".join(body)
+
+
+def emit_multi_registry_header(
+    profiles: Iterable[ResolvedProductionProfile],
+) -> str:
+    """Emit immutable metadata for every independently compiled profile."""
+
+    items = tuple(profiles)
+    profile_rows = []
+    kernel_rows = []
+    for profile in items:
+        profile_rows.append(
+            f'    {{"{profile.profile}", "{profile.target.architecture}", '
+            f"{profile.target.compute_capability_major}, "
+            f"{profile.target.compute_capability_minor}, "
+            f"{'true' if profile.tuned else 'false'}, "
+            f"{'true' if profile.portable else 'false'}, "
+            f"{'true' if profile.match == ProfileMatch.COMPATIBLE else 'false'}}},"
+        )
+        for selection in profile.selections:
+            plan = build_fused_shell_plan(
+                selection.spec,
+                consumers=selection.consumers,
+                schedule=selection.schedule,
+                target=profile.target,
+            )
+            consumer_mask = sum(
+                1 << list(KernelConsumer).index(consumer)
+                for consumer in selection.consumers
+            )
+            kernel_rows.append(
+                f'    {{"{profile.target.architecture}", "{selection.spec.name}", '
+                f"{shell_class_index(selection.spec)}U, {plan.block_threads}U, "
+                f"{consumer_mask}U, {plan.schedule.component_tile}U}},"
+            )
+    return f"""#ifndef VIBEQC_GENERATED_SHELL_REGISTRY_HPP
+#define VIBEQC_GENERATED_SHELL_REGISTRY_HPP
+
+#include "scf/aot_shell_registry.hpp"
+
+#include <array>
+#include <cstddef>
+
+namespace vibeqc::scf::generated {{
+
+struct CompiledKernelMetadata {{
+  const char* target_architecture;
+  const char* name;
+  unsigned shell_class;
+  unsigned block_threads;
+  unsigned consumer_mask;
+  unsigned component_tile;
+}};
+
+inline constexpr std::array<ProfileInfo, {len(profile_rows)}> kCompiledProfiles{{{{
+{chr(10).join(profile_rows)}
+}}}};
+inline constexpr std::size_t kCompiledProfileCount =
+    kCompiledProfiles.size();
+
+inline constexpr std::array<CompiledKernelMetadata, {len(kernel_rows)}>
+    kCompiledShellKernels{{{{
+{chr(10).join(kernel_rows)}
+}}}};
+inline constexpr std::size_t kCompiledShellKernelCount =
+    kCompiledShellKernels.size();
+
+}}  // namespace vibeqc::scf::generated
+
+#endif
+"""
+
+
+def _launch_parameter_declaration() -> str:
+    return """unsigned shell_class, cudaStream_t stream, bool unrestricted,
+    unsigned worker_blocks, const void* tasks,
+    const std::uint32_t* task_offset,
+    const std::int64_t* primitive_pair_offsets, const void* primitive_pairs,
+    const double* ao_coefficients, const void* atom_positions,
+    double screening_tolerance, const double* schwarz_bounds,
+    const double* density, double* output, const std::uint32_t* task_count,
+    std::uint32_t* task_head"""
+
+
+def _launch_argument_list() -> str:
+    return """stream, unrestricted, worker_blocks, tasks, task_offset,
+          primitive_pair_offsets, primitive_pairs, ao_coefficients,
+          atom_positions, screening_tolerance, schwarz_bounds, density, output,
+          task_count, task_head"""
+
+
+def emit_multi_registry_source(
+    profiles: Iterable[ResolvedProductionProfile],
+) -> str:
+    """Emit one per-device profile resolver and collision-free launch table."""
+
+    items = tuple(profiles)
+    declarations = []
+    helpers = []
+    kernel_arrays = []
+    kernel_sets = []
+    launch_parameters = _launch_parameter_declaration()
+    launch_arguments = _launch_argument_list()
+    for index, profile in enumerate(items):
+        identifier = _profile_identifier(profile.target.architecture)
+        force_cases = []
+        fock_cases = []
+        force_names = []
+        fock_names = []
+        force_mask = 0
+        fock_mask = 0
+        for selection in profile.selections:
+            shell_class = shell_class_index(selection.spec)
+            plan = build_fused_shell_plan(
+                selection.spec,
+                consumers=selection.consumers,
+                schedule=selection.schedule,
+                target=profile.target,
+            )
+            consumer_mask = sum(
+                1 << list(KernelConsumer).index(consumer)
+                for consumer in selection.consumers
+            )
+            force_symbol = (
+                f"vibeqc_launch_{identifier}_generated_{selection.spec.name}"
+            )
+            declarations.append(
+                f'extern "C" cudaError_t {force_symbol}('
+                "cudaStream_t, bool, unsigned, const void*, const std::uint32_t*, "
+                "const std::int64_t*, const void*, const double*, const void*, "
+                "double, const double*, const double*, double*, "
+                "const std::uint32_t*, std::uint32_t*);"
+            )
+            force_cases.append(
+                f"    case {shell_class}U:\n"
+                f"      return {force_symbol}({launch_arguments});"
+            )
+            force_names.append(
+                f'    {{"{selection.spec.name}", {shell_class}U, '
+                f"{sum(selection.spec.angular)}U, {plan.block_threads}U, "
+                f"{consumer_mask}U, {plan.schedule.component_tile}U}},"
+            )
+            force_mask |= 1 << shell_class
+            if KernelConsumer.FOCK in selection.consumers:
+                fock_symbol = f"{force_symbol}_fock"
+                declarations.append(
+                    f'extern "C" cudaError_t {fock_symbol}('
+                    "cudaStream_t, bool, unsigned, const void*, "
+                    "const std::uint32_t*, const std::int64_t*, const void*, "
+                    "const double*, const void*, double, const double*, "
+                    "const double*, double*, const std::uint32_t*, "
+                    "std::uint32_t*);"
+                )
+                fock_cases.append(
+                    f"    case {shell_class}U:\n"
+                    f"      return {fock_symbol}({launch_arguments});"
+                )
+                fock_names.append(
+                    f'    {{"{selection.spec.name}", {shell_class}U, '
+                    f"{sum(selection.spec.angular)}U, {plan.block_threads}U, "
+                    f"{consumer_mask}U, {plan.schedule.component_tile}U}},"
+                )
+                fock_mask |= 1 << shell_class
+        helpers.append(
+            f"""cudaError_t launch_{identifier}_force({launch_parameters}) noexcept {{
+  switch (shell_class) {{
+{chr(10).join(force_cases)}
+    default: return cudaErrorInvalidValue;
+  }}
+}}
+
+cudaError_t launch_{identifier}_fock({launch_parameters}) noexcept {{
+  switch (shell_class) {{
+{chr(10).join(fock_cases)}
+    default: return cudaErrorInvalidValue;
+  }}
+}}
+"""
+        )
+        kernel_arrays.append(
+            f"""constexpr std::array<ShellKernelMetadata, {len(force_names)}> kForceNames{index}{{{{
+{chr(10).join(force_names)}
+}}}};
+constexpr std::array<ShellKernelMetadata, {len(fock_names)}> kFockNames{index}{{{{
+{chr(10).join(fock_names)}
+}}}};
+"""
+        )
+        kernel_sets.append(
+            f"""    {{kCompiledProfiles[{index}], UINT64_C({force_mask}),
+      UINT64_C({fock_mask}), kForceNames{index}.data(), kForceNames{index}.size(),
+      kFockNames{index}.data(), kFockNames{index}.size(),
+      launch_{identifier}_force, launch_{identifier}_fock}},"""
+        )
+    return f"""#include "vibeqc_generated_shell_registry.hpp"
+
+#include <array>
+#include <cstdlib>
+#include <cstring>
+#include <mutex>
+
+{chr(10).join(declarations)}
+
+namespace vibeqc::scf::generated {{
+namespace {{
+
+using LaunchFunction = cudaError_t (*)({_launch_parameter_declaration()}) noexcept;
+
+struct KernelSet {{
+  ProfileInfo info;
+  std::uint64_t force_mask;
+  std::uint64_t fock_mask;
+  const ShellKernelMetadata* force_names;
+  std::size_t force_name_count;
+  const ShellKernelMetadata* fock_names;
+  std::size_t fock_name_count;
+  LaunchFunction launch_force;
+  LaunchFunction launch_fock;
+}};
+
+{chr(10).join(helpers)}
+{chr(10).join(kernel_arrays)}
+
+constexpr std::array<KernelSet, {len(items)}> kKernelSets{{{{
+{chr(10).join(kernel_sets)}
+}}}};
+
+constexpr ProfileInfo kGenericProfile{{
+    "generic_cuda", "portable_cuda", 0, 0, false, true, false}};
+
+constexpr std::size_t kMaximumCachedDevices = 128;
+std::array<const KernelSet*, kMaximumCachedDevices> selected_by_device{{}};
+std::mutex selection_mutex;
+
+bool selected(const char* list, const char* name) noexcept {{
+  const std::size_t name_size = std::strlen(name);
+  const char* cursor = list;
+  while (*cursor != '\\0') {{
+    while (*cursor == ',' || *cursor == ';' || *cursor == ' ' ||
+           *cursor == '\t') ++cursor;
+    const char* begin = cursor;
+    while (*cursor != '\\0' && *cursor != ',' && *cursor != ';' &&
+           *cursor != ' ' && *cursor != '\t') ++cursor;
+    if (static_cast<std::size_t>(cursor - begin) == name_size &&
+        std::strncmp(begin, name, name_size) == 0) return true;
+  }}
+  return false;
+}}
+
+const KernelSet* resolve(int major, int minor) noexcept {{
+  for (const KernelSet& kernels : kKernelSets) {{
+    if (kernels.info.compute_capability_major == major &&
+        kernels.info.compute_capability_minor == minor) return &kernels;
+  }}
+  return nullptr;
+}}
+
+const KernelSet* current_kernel_set() noexcept {{
+  int device = 0;
+  if (cudaGetDevice(&device) != cudaSuccess || device < 0 ||
+      static_cast<std::size_t>(device) >= kMaximumCachedDevices) return nullptr;
+  std::lock_guard<std::mutex> lock(selection_mutex);
+  const KernelSet*& cached = selected_by_device[static_cast<std::size_t>(device)];
+  if (cached == nullptr) {{
+    int major = 0;
+    int minor = 0;
+    if (cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor,
+                               device) != cudaSuccess ||
+        cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor,
+                               device) != cudaSuccess) return nullptr;
+    cached = resolve(major, minor);
+  }}
+  return cached;
+}}
+
+std::uint64_t environment_mask(
+    const char* variable, std::uint64_t available,
+    const ShellKernelMetadata* names, std::size_t count) noexcept {{
+  const char* selection = std::getenv(variable);
+  const bool all = selection == nullptr || *selection == '\\0' ||
+                   std::strcmp(selection, "all") == 0;
+  if (all) return available;
+  if (std::strcmp(selection, "none") == 0) return 0;
+  std::uint64_t mask = 0;
+  for (std::size_t index = 0; index < count; ++index) {{
+    if (selected(selection, names[index].name))
+      mask |= std::uint64_t{{1}} << names[index].shell_class;
+  }}
+  return mask & available;
+}}
+
+}}  // namespace
+
+void select_profile_for_device(int device_id, int major, int minor) noexcept {{
+  if (device_id < 0 ||
+      static_cast<std::size_t>(device_id) >= kMaximumCachedDevices) return;
+  std::lock_guard<std::mutex> lock(selection_mutex);
+  selected_by_device[static_cast<std::size_t>(device_id)] = resolve(major, minor);
+}}
+
+const ProfileInfo& selected_profile() noexcept {{
+  const KernelSet* kernels = current_kernel_set();
+  return kernels == nullptr ? kGenericProfile : kernels->info;
+}}
+
+const ShellKernelMetadata* selected_shell_kernels(
+    std::size_t& count) noexcept {{
+  const KernelSet* kernels = current_kernel_set();
+  if (kernels == nullptr) {{
+    count = 0;
+    return nullptr;
+  }}
+  count = kernels->force_name_count;
+  return kernels->force_names;
+}}
+
+const ShellKernelMetadata* selected_fock_shell_kernels(
+    std::size_t& count) noexcept {{
+  const KernelSet* kernels = current_kernel_set();
+  if (kernels == nullptr) {{
+    count = 0;
+    return nullptr;
+  }}
+  count = kernels->fock_name_count;
+  return kernels->fock_names;
+}}
+
+std::uint64_t enabled_shell_class_mask() noexcept {{
+  const KernelSet* kernels = current_kernel_set();
+  return kernels == nullptr ? 0 : environment_mask(
+      "VIBEQC_AOT_SHELL_CLASSES", kernels->force_mask,
+      kernels->force_names, kernels->force_name_count);
+}}
+
+std::uint64_t enabled_fock_shell_class_mask() noexcept {{
+  const KernelSet* kernels = current_kernel_set();
+  return kernels == nullptr ? 0 : environment_mask(
+      "VIBEQC_AOT_FOCK_SHELL_CLASSES", kernels->fock_mask,
+      kernels->fock_names, kernels->fock_name_count);
+}}
+
+cudaError_t launch_shell_class({_launch_parameter_declaration()}) noexcept {{
+  const KernelSet* kernels = current_kernel_set();
+  return kernels == nullptr ? cudaErrorInvalidValue : kernels->launch_force(
+      shell_class, {launch_arguments});
+}}
+
+cudaError_t launch_shell_class_fock({_launch_parameter_declaration()}) noexcept {{
+  const KernelSet* kernels = current_kernel_set();
+  return kernels == nullptr ? cudaErrorInvalidValue : kernels->launch_fock(
+      shell_class, {launch_arguments});
+}}
+
+}}  // namespace vibeqc::scf::generated
+"""
+
+
+def write_production_bundles(
+    manifest: Path,
+    output_directory: Path,
+    shard_count: int,
+    architectures: Sequence[str],
+    profile_by_architecture: Mapping[str, str] | None = None,
+) -> tuple[Path, ...]:
+    """Write independent, namespaced AOT bundles and one runtime registry."""
+
+    if shard_count < 1:
+        raise ValueError("production shard count must be positive")
+    normalized = tuple(
+        sorted(
+            {normalize_cuda_architecture(item) for item in architectures},
+            key=lambda item: int(item.removeprefix("sm_")),
+        )
+    )
+    if not normalized:
+        raise ValueError("at least one CUDA architecture is required")
+    requested = {
+        normalize_cuda_architecture(key): value
+        for key, value in (profile_by_architecture or {}).items()
+    }
+    profiles = tuple(
+        resolve_production_profile(
+            manifest,
+            architecture,
+            requested.get(architecture, "auto"),
+        )
+        for architecture in normalized
+    )
+    output_directory.mkdir(parents=True, exist_ok=True)
+    outputs = []
+    for profile in profiles:
+        identifier = _profile_identifier(profile.target.architecture)
+        profile_directory = output_directory / profile.target.architecture
+        profile_directory.mkdir(parents=True, exist_ok=True)
+        shards = [[] for _ in range(shard_count)]
+        for index, selection in enumerate(profile.selections):
+            shards[index % shard_count].append(selection)
+        for index, shard in enumerate(shards):
+            path = profile_directory / (
+                f"vibeqc_generated_shell_{identifier}_shard_{index}.cu"
+            )
+            _write_if_changed(path, emit_profile_shard(profile, shard))
+            outputs.append(path)
+    header = output_directory / "vibeqc_generated_shell_registry.hpp"
+    source = output_directory / "vibeqc_generated_shell_registry.cu"
+    _write_if_changed(header, emit_multi_registry_header(profiles))
+    _write_if_changed(source, emit_multi_registry_source(profiles))
+    outputs.extend((header, source))
+    return tuple(outputs)
+
+
 def _write_if_changed(path: Path, content: str) -> None:
     """Preserve timestamps when deterministic regeneration is byte-identical."""
 
@@ -705,12 +1516,15 @@ def write_production_bundle(
     output_directory: Path,
     shard_count: int,
     architecture: str | None = None,
+    profile: str = "auto",
 ) -> tuple[Path, ...]:
     """Write deterministic build artifacts and return every generated path."""
 
     if shard_count < 1:
         raise ValueError("production shard count must be positive")
-    selections = load_production_kernel_selections(manifest, architecture)
+    selections = load_production_kernel_selections(
+        manifest, architecture, profile
+    )
     shards = [[] for _ in range(shard_count)]
     for index, selection in enumerate(selections):
         shards[index % shard_count].append(selection)

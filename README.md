@@ -45,6 +45,21 @@ cmake -S . -B build -G Ninja \
   -DCMAKE_CUDA_ARCHITECTURES=120
 ```
 
+CUDA 12.9 can also build portable generic binaries for `80`, `86`, `89`, and
+`90`. Only `sm_120` currently has a measured generated-shell profile; other
+targets automatically keep the validated generic CUDA kernels. A distributable
+fat binary can be configured with:
+
+```bash
+cmake -S . -B build -G Ninja \
+  -DCMAKE_CUDA_COMPILER=/path/to/cuda/bin/nvcc \
+  -DVIBEQC_CUDA_ARCHITECTURES="80;90;120" \
+  -DVIBEQC_AOT_PROFILES="sm_120"
+```
+
+Use `-DVIBEQC_ENABLE_AOT_SHELLS=OFF` to omit generated shell bundles entirely,
+or `-DVIBEQC_AOT_PROFILE=portable` to retain an explicit empty portable profile.
+
 For CPU only, configure with:
 
 ```bash

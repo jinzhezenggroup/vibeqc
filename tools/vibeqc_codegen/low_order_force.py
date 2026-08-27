@@ -10,7 +10,6 @@ analytic gradient before writing the four physical centers.
 
 from __future__ import annotations
 
-
 PSPS_BLOCK_THREADS = 256
 PPSS_BLOCK_THREADS = 256
 

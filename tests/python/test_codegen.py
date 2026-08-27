@@ -29,6 +29,8 @@ from tools.vibeqc_codegen import (
     PSPS_SPEC,
     PSSS_SPEC,
     SSSS_SPEC,
+    CudaTargetInfo,
+    IntegralIR,
     KernelConsumer,
     NvrtcCacheSpec,
     PairOrientation,
@@ -51,6 +53,7 @@ from tools.vibeqc_codegen import (
     build_shell_class_contraction_kernel,
     build_weighted_shell_contraction_kernel,
     cartesian_components,
+    cuda_target_info,
     dppp_components,
     emit_dppp_fused_cuda,
     emit_ppps_rys3_root_body_cuda,
@@ -78,6 +81,7 @@ from tools.vibeqc_codegen.autotune import (
     supported_schedule_trials,
     update_manifest_payload,
 )
+from tools.vibeqc_codegen.backend import TargetInfo, TargetScheduleShape
 from tools.vibeqc_codegen.batch_benchmark import (
     DEFAULT_CANDIDATES,
     candidate_specs,
@@ -96,7 +100,9 @@ from tools.vibeqc_codegen.production import (
     load_production_fock_manifest,
     load_production_kernel_selections,
     load_production_manifest,
+    resolve_production_profile,
     write_production_bundle,
+    write_production_bundles,
 )
 from tools.vibeqc_codegen.shell_class import (
     AXES,
@@ -139,6 +145,41 @@ RTX5090_PPPS_SCALAR_THREAD_RESOURCE_LIMITS = {
     "generated_ppps_shell_class_force_rhf_persistent_kernel": (168, 0, 27000),
     "generated_ppps_shell_class_force_uhf_persistent_kernel": (168, 0, 27000),
 }
+
+
+def test_integral_ir_has_no_accelerator_schedule_fields():
+    """Keep scientific intent independent of backend execution geometry."""
+
+    assert set(IntegralIR.__dataclass_fields__) == {
+        "spec",
+        "consumers",
+        "independent_force_centers",
+        "recurrence",
+    }
+    synthetic = TargetInfo(
+        backend="synthetic",
+        architecture="wave64",
+        subgroup_size=64,
+        maximum_workgroup_threads=256,
+        maximum_resident_workgroups=8,
+    )
+    TargetScheduleShape(128, 64).validate_for(synthetic)
+    with pytest.raises(ValueError, match="subgroup size"):
+        TargetScheduleShape(128, 32).validate_for(synthetic)
+
+
+@pytest.mark.parametrize(
+    "architecture", ("sm_80", "sm_86", "sm_89", "sm_90", "sm_120")
+)
+def test_cuda_target_catalog_covers_the_compile_matrix(architecture: str):
+    """Expose target-derived scheduling and resource limits for supported SMs."""
+
+    target = cuda_target_info(architecture)
+    assert isinstance(target, CudaTargetInfo)
+    assert target.architecture == architecture
+    assert target.warp_size == 32
+    assert target.maximum_threads_per_block == 1024
+    assert target.tuning_maximum_shared_bytes <= target.shared_memory_per_block
 
 
 def test_integral_and_schedule_irs_separate_math_from_cuda_mapping():
@@ -1563,6 +1604,178 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     )
 
 
+@pytest.mark.parametrize("architecture", ("sm_80", "sm_86", "sm_89", "sm_90"))
+def test_unmeasured_cuda_targets_resolve_to_empty_portable_profile(
+    architecture: str,
+):
+    """Never reuse the measured RTX 5090 schedule on another compute target."""
+
+    manifest = (
+        REPOSITORY_ROOT
+        / "tools"
+        / "vibeqc_codegen"
+        / "production_shell_classes.json"
+    )
+    resolved = resolve_production_profile(manifest, architecture)
+    assert resolved.profile == "portable_cuda"
+    assert resolved.portable is True
+    assert resolved.tuned is False
+    assert resolved.selections == ()
+    with pytest.raises(ValueError, match="incompatible"):
+        resolve_production_profile(manifest, architecture, "sm_120")
+
+
+def _small_multi_profile_manifest(path: Path) -> None:
+    """Write two legal measured profiles for collision/link tests."""
+
+    schedule = {
+        "kind": "packed_tasks",
+        "block_threads": 32,
+        "component_tile": 6,
+        "tasks_per_warp": 32,
+        "shared_coulomb": False,
+        "pair_orientation": "canonical",
+        "pair_storage": "materialized",
+        "unroll_pair_terms": True,
+    }
+    profile = {
+        "kind": "tuned",
+        "cuda_toolkit": "12.9.1",
+        "generator_abi": 1,
+        "kernels": [
+            {
+                "shell_class": "dsss",
+                "consumers": ["force"],
+                "schedule": schedule,
+            }
+        ],
+    }
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "default_architecture": "sm_120",
+                "architectures": {
+                    "sm_80": profile,
+                    "sm_120": profile,
+                    "portable_cuda": {"kind": "portable", "kernels": []},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_multi_profile_bundle_is_order_independent_and_collision_free(
+    tmp_path: Path,
+):
+    """Generate separate symbols, metadata, and shards for every target."""
+
+    manifest = tmp_path / "manifest.json"
+    _small_multi_profile_manifest(manifest)
+    first_directory = tmp_path / "first"
+    second_directory = tmp_path / "second"
+    first = write_production_bundles(
+        manifest, first_directory, 1, ("sm_120", "sm_80")
+    )
+    second = write_production_bundles(
+        manifest, second_directory, 1, ("sm_80", "sm_120")
+    )
+    assert [path.relative_to(first_directory) for path in first] == [
+        path.relative_to(second_directory) for path in second
+    ]
+    for first_path, second_path in zip(first, second, strict=True):
+        assert first_path.read_bytes() == second_path.read_bytes()
+
+    registry = (first_directory / "vibeqc_generated_shell_registry.cu").read_text(
+        encoding="utf-8"
+    )
+    assert "vibeqc_launch_sm80_generated_dsss" in registry
+    assert "vibeqc_launch_sm120_generated_dsss" in registry
+    header = (first_directory / "vibeqc_generated_shell_registry.hpp").read_text(
+        encoding="utf-8"
+    )
+    assert header.index('"sm_80"') < header.index('"sm_120"')
+    sm80 = next(path for path in first if "sm80_shard" in path.name).read_text(
+        encoding="utf-8"
+    )
+    sm120 = next(path for path in first if "sm120_shard" in path.name).read_text(
+        encoding="utf-8"
+    )
+    assert "namespace vibeqc::scf::generated::profile_sm80" in sm80
+    assert "namespace vibeqc::scf::generated::profile_sm120" in sm120
+
+
+def test_multi_profile_objects_compile_and_link_when_nvcc_is_configured(
+    tmp_path: Path,
+):
+    """Verify two architecture bundles do not collide at host or device link."""
+
+    nvcc = os.environ.get("VIBEQC_NVCC")
+    if nvcc is None:
+        pytest.skip("set VIBEQC_NVCC to run the multi-profile compile/link test")
+    manifest = tmp_path / "manifest.json"
+    _small_multi_profile_manifest(manifest)
+    output = tmp_path / "generated"
+    write_production_bundles(manifest, output, 1, ("sm_80", "sm_120"))
+    objects = []
+    for architecture in ("sm_80", "sm_120"):
+        source = next(
+            (output / architecture).glob(
+                f"vibeqc_generated_shell_{architecture.replace('_', '')}_shard_0.cu"
+            )
+        )
+        obj = tmp_path / f"{architecture}.o"
+        result = subprocess.run(
+            [
+                nvcc,
+                "-std=c++20",
+                f"-arch={architecture}",
+                f"-I{REPOSITORY_ROOT / 'src'}",
+                "-Xcompiler=-fPIC",
+                "-c",
+                str(source),
+                "-o",
+                str(obj),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=240,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+        objects.append(obj)
+    registry_object = tmp_path / "registry.o"
+    result = subprocess.run(
+        [
+            nvcc,
+            "-std=c++20",
+            "-arch=sm_80",
+            f"-I{output}",
+            f"-I{REPOSITORY_ROOT / 'src'}",
+            "-Xcompiler=-fPIC",
+            "-c",
+            str(output / "vibeqc_generated_shell_registry.cu"),
+            "-o",
+            str(registry_object),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    library = tmp_path / "libprofiles.so"
+    result = subprocess.run(
+        [nvcc, "-shared", str(registry_object), *(map(str, objects)), "-o", str(library)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 def test_runtime_buckets_all_generated_classes_before_dispatch():
     """Prevent production promotion from restoring one scan per exact class."""
 
@@ -2756,6 +2969,20 @@ wait "$child_pid"
     while child_proc.exists() and time.monotonic() < deadline:
         time.sleep(0.01)
     assert not child_proc.exists()
+
+
+def test_autotune_driver_probes_and_rejects_target_before_trials():
+    """Fail an architecture/device mismatch before any benchmark entry runs."""
+
+    target = cuda_target_info("sm_80")
+    trial = supported_schedule_trials(DPDS_SPEC, target=target)[0]
+    source = emit_schedule_driver((trial,), "sm_80")
+    probe = source.index(r'\"target_probe\"')
+    mismatch = source.index("properties.major != 8")
+    trial_call = source.index(trial.entry_point, source.index("int failures = 0"))
+    assert probe < mismatch < trial_call
+    assert "maximum_blocks_per_sm" in source
+    assert "compile target sm_80 does not match allocated" in source
 
 
 def test_autotune_emits_unique_schedule_variants_and_manifest_records():

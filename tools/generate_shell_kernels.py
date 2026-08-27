@@ -6,9 +6,7 @@ import argparse
 import json
 from pathlib import Path
 
-from vibeqc_codegen.dppp_dispatch import (
-    emit_shell_class_fused_cuda,
-)
+from vibeqc_codegen.cuda_emitter import emit_shell_class_fused_cuda
 from vibeqc_codegen.fused_schedule import build_fused_shell_plan
 from vibeqc_codegen.ir import KernelConsumer
 from vibeqc_codegen.low_order_force import (
@@ -17,7 +15,10 @@ from vibeqc_codegen.low_order_force import (
     emit_ppss_weighted_force_cuda,
     emit_psps_weighted_force_cuda,
 )
-from vibeqc_codegen.production import write_production_bundle
+from vibeqc_codegen.production import (
+    write_production_bundle,
+    write_production_bundles,
+)
 from vibeqc_codegen.shell_class import (
     build_dppp_component_kernel,
     build_dppp_contraction_kernel,
@@ -87,6 +88,26 @@ def main() -> None:
         help="select an architecture profile from a v2 production manifest",
     )
     parser.add_argument(
+        "--target-architecture",
+        action="append",
+        help=(
+            "concrete CUDA compile target for a multi-profile bundle; repeat "
+            "for every fat-binary architecture"
+        ),
+    )
+    parser.add_argument(
+        "--profile",
+        default="auto",
+        help="auto, portable, sm_XX, or a named manifest profile",
+    )
+    parser.add_argument(
+        "--profile-map",
+        action="append",
+        default=[],
+        metavar="SM_XX=PROFILE",
+        help="override profile resolution for one --target-architecture",
+    )
+    parser.add_argument(
         "--consumer",
         action="append",
         choices=tuple(item.value for item in KernelConsumer),
@@ -102,12 +123,33 @@ def main() -> None:
             parser.error("--production-manifest requires --output-directory")
         if arguments.output is not None:
             parser.error("--output cannot be combined with --production-manifest")
-        write_production_bundle(
-            arguments.production_manifest,
-            arguments.output_directory,
-            arguments.shards,
-            arguments.architecture,
-        )
+        if arguments.target_architecture:
+            profile_by_architecture = {}
+            for item in arguments.profile_map:
+                architecture, separator, profile = item.partition("=")
+                if not separator or not architecture or not profile:
+                    parser.error("--profile-map must use SM_XX=PROFILE syntax")
+                profile_by_architecture[architecture] = profile
+            if arguments.profile != "auto":
+                for architecture in arguments.target_architecture:
+                    profile_by_architecture.setdefault(
+                        architecture, arguments.profile
+                    )
+            write_production_bundles(
+                arguments.production_manifest,
+                arguments.output_directory,
+                arguments.shards,
+                arguments.target_architecture,
+                profile_by_architecture,
+            )
+        else:
+            write_production_bundle(
+                arguments.production_manifest,
+                arguments.output_directory,
+                arguments.shards,
+                arguments.architecture,
+                arguments.profile,
+            )
         return
     if arguments.output_directory is not None:
         parser.error("--output-directory requires --production-manifest")

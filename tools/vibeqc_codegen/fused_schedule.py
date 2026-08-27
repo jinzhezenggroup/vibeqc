@@ -12,13 +12,13 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from .ir import (
-    KernelConsumer,
+from .cuda_schedule import (
     KernelIR,
     ScheduleIR,
-    build_integral_ir,
     default_schedule,
 )
+from .cuda_target import DEFAULT_CUDA_TARGET, CudaTargetInfo
+from .ir import KernelConsumer, build_integral_ir
 from .shell_spec import AXES, ShellClassSpec
 
 ShellComponent = tuple[str, str, str, str]
@@ -64,12 +64,17 @@ def build_fused_shell_plan(
     consumers: tuple[KernelConsumer | str, ...] = (KernelConsumer.FORCE,),
     schedule: ScheduleIR | None = None,
     recurrence: str = "subset_wick",
+    target: CudaTargetInfo = DEFAULT_CUDA_TARGET,
 ) -> FusedShellPlan:
     """Lower integral and schedule IRs into deterministic CUDA lookup tables."""
 
     integral = build_integral_ir(spec, consumers, recurrence=recurrence)
-    selected_schedule = schedule or default_schedule(integral)
-    kernel = KernelIR(integral=integral, schedule=selected_schedule)
+    selected_schedule = schedule or default_schedule(integral, target)
+    kernel = KernelIR(
+        integral=integral,
+        schedule=selected_schedule,
+        target=target,
+    )
     maximum_order = integral.maximum_coulomb_order
     states = tuple(
         (x_order, y_order, total - x_order - y_order)

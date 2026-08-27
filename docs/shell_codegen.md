@@ -6,7 +6,8 @@ Move integral differentiation and shell specialization out of GPU execution
 and into a deterministic compiler pipeline:
 
 ```text
-Integral IR -> Schedule IR -> CUDA -> correctness/resource/timing gates
+Integral IR -> backend lowering -> CUDA target/schedule IR
+            -> CUDA -> correctness/resource/timing gates
 ```
 
 Generated kernels contain ordinary FP64 arithmetic and no runtime automatic
@@ -16,15 +17,24 @@ architecture manifest; generated production CUDA remains a build artifact.
 
 ## Current pipeline
 
-`tools/vibeqc_codegen/ir.py` separates mathematical intent from execution policy:
+`tools/vibeqc_codegen/ir.py` is now strictly mathematical, while
+`cuda_target.py` and `cuda_schedule.py` own NVIDIA execution policy:
 
 - `IntegralIR` describes a canonical shell class and its consumers (`fock`,
   `force`). Force differentiates centers 0, 1, and 2 and restores center 3 by
   exact translation invariance.
-- `ScheduleIR` describes task/component ownership, block size, component tile,
+- `CudaScheduleIR` describes task/component ownership, block size, component tile,
   Coulomb-state placement, pair orientation/storage, and loop unrolling.
-- `KernelIR` combines the two and validates component coverage before CUDA is
+- `CudaKernelIR` combines the two with a `CudaTargetInfo` and validates target
+  limits and component coverage before CUDA is
   emitted.
+
+The backend contracts in `backend.py` cover source emission, compilation,
+resource parsing, device probing, benchmark execution, and registry emission.
+NVCC process-group handling and finite Slurm execution live in the CUDA adapter,
+not in the mathematical IR. Production code imports the generic CUDA emitter
+surface; the historical `dppp` pilot is isolated behind a compatibility
+specialization module.
 
 The subset/Wick recurrence is shared by ERI values and analytic gradients.
 One plan can therefore emit RHF/UHF Fock and force kernels from the same
@@ -149,7 +159,15 @@ joint `fock`/`force` consumer set because both kernels share the canonical task
 ABI.
 
 The manifest records every code-shape decision rather than relying on emitter
-defaults. CMake selects a profile with `VIBEQC_AOT_CODEGEN_ARCHITECTURE`.
+defaults. The autotune driver queries the allocated device before invoking any
+trial and exits on an architecture mismatch. Its artifact records real device
+limits, driver/runtime versions, NVCC/PTXAS versions, generator ABI, and the
+target-derived resource gates.
+
+CMake selects profiles with `VIBEQC_AOT_PROFILE` or `VIBEQC_AOT_PROFILES`.
+`auto` resolves exact measured profile, explicitly compatible profile, empty
+`portable_cuda`, then generic fallback. `VIBEQC_ENABLE_AOT_SHELLS=OFF` omits all
+generated shell objects.
 
 Large-shell tuning uses a staged compiler pipeline. Equivalent schedules share
 one separately compiled correctness oracle per component mapping; tiled oracle
@@ -269,17 +287,27 @@ not sufficient evidence for promotion over a tuned handwritten kernel.
 
 ## Production AOT policy
 
-`production_shell_classes.json` is architecture-specific. The current
-`sm_120` profile contains force kernels for:
+`production_shell_classes.json` carries explicit tuned and portable profiles.
+The current `sm_120` profile is measured; `portable_cuda` is intentionally
+empty so unsupported targets retain generic correctness. The `sm_120` force
+profile contains:
 
 ```text
-dppp dpds ddps fpps ppps dpps dsps dspp
+dppp dpdp dddp dpss dsds ddss ddpp ddds dpds ddps fpps
+ppps dpps dsps dspp pppp psps ppss dsss
 ```
 
-The generated registry records class index, consumer mask, block size, and
-component tile. CUDA shards are generated in the build directory and consumed
-through a stable C ABI, which keeps generator changes isolated from
-`src/scf/cuda_rhf.cu`.
+The generated registry records profile identity, target compute capability,
+class index, consumer mask, block size, and component tile. Every profile uses
+architecture-suffixed C entry points and scoped device/type identifiers. Each
+object target is compiled only for its intended SM; one runtime registry picks
+the active `KernelSet` once per device. Architecture list order cannot change
+the generated sources or dispatch behavior.
+
+Compile-only builds are supported for `sm_80`, `sm_86`, `sm_89`, `sm_90`, and
+`sm_120` with the project's CUDA 12.9 toolkit requirement. Only GPU-backed
+performance claims are profile-specific; portable builds never apply RTX 5090
+resource goldens.
 
 The `dpps` production row enables both `fock` and `force`. Its coefficient-only
 Fock worker measured `1.02249x` end-to-end speedup on the real-spherical

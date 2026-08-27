@@ -1,12 +1,41 @@
 """Build-time symbolic code generation for shell-class CUDA kernels."""
 
+from .backend import (
+    BenchmarkExecutor,
+    CompilerAdapter,
+    DeviceProbe,
+    RegistryEmitter,
+    ResourceParser,
+    SourceEmitter,
+    TargetInfo,
+    TargetScheduleShape,
+)
 from .cache import NvrtcCacheSpec, nvrtc_cache_key
-from .dppp_dispatch import (
+from .cuda_emitter import emit_shell_class_fused_cuda
+from .cuda_schedule import (
+    CudaKernelIR,
+    CudaScheduleIR,
+    KernelIR,
+    PairOrientation,
+    PairStorage,
+    ScheduleIR,
+    ScheduleKind,
+    default_schedule,
+    schedule_candidates,
+    tuning_schedule_candidates,
+)
+from .cuda_target import (
+    CUDA_TARGETS,
+    DEFAULT_CUDA_TARGET,
+    CudaTargetInfo,
+    cuda_target_info,
+    normalize_cuda_architecture,
+)
+from .dppp_specialization import (
     DpppFusedPlan,
     build_dppp_fused_plan,
     dppp_components,
     emit_dppp_fused_cuda,
-    emit_shell_class_fused_cuda,
     evaluate_dppp_fused_component,
 )
 from .fused_schedule import (
@@ -20,15 +49,7 @@ from .fused_schedule import (
 from .ir import (
     IntegralIR,
     KernelConsumer,
-    KernelIR,
-    PairOrientation,
-    PairStorage,
-    ScheduleIR,
-    ScheduleKind,
     build_integral_ir,
-    default_schedule,
-    schedule_candidates,
-    tuning_schedule_candidates,
 )
 from .low_order_force import (
     PPSS_BLOCK_THREADS,
@@ -91,8 +112,10 @@ from .shell_spec import (
 )
 
 __all__ = [
+    "CUDA_TARGETS",
     "DDDD_SPEC",
     "DDPS_SPEC",
+    "DEFAULT_CUDA_TARGET",
     "DPDS_SPEC",
     "DPPP_SPEC",
     "FDDD_SPEC",
@@ -105,6 +128,12 @@ __all__ = [
     "PSPS_SPEC",
     "PSSS_SPEC",
     "SSSS_SPEC",
+    "BenchmarkExecutor",
+    "CompilerAdapter",
+    "CudaKernelIR",
+    "CudaScheduleIR",
+    "CudaTargetInfo",
+    "DeviceProbe",
     "DpppComponentKernel",
     "DpppContractionKernel",
     "DpppFusedPlan",
@@ -118,6 +147,8 @@ __all__ = [
     "PairStorage",
     "PppsRysForceProgram",
     "PsssKernel",
+    "RegistryEmitter",
+    "ResourceParser",
     "RysAxisProgram",
     "RysForceProgram",
     "RysRecurrenceInstruction",
@@ -128,6 +159,9 @@ __all__ = [
     "ShellClassComponentKernel",
     "ShellClassContractionKernel",
     "ShellClassSpec",
+    "SourceEmitter",
+    "TargetInfo",
+    "TargetScheduleShape",
     "WeightedShellContractionKernel",
     "build_dppp_component_kernel",
     "build_dppp_contraction_kernel",
@@ -143,6 +177,7 @@ __all__ = [
     "build_weighted_shell_contraction_kernel",
     "canonical_shell_angular",
     "cartesian_components",
+    "cuda_target_info",
     "default_schedule",
     "dppp_components",
     "emit_dppp_fused_cuda",
@@ -157,6 +192,7 @@ __all__ = [
     "evaluate_fused_shell_observables",
     "evaluate_fused_shell_value",
     "evaluate_ppps_rys_component",
+    "normalize_cuda_architecture",
     "nvrtc_cache_key",
     "rys3_roots_weights",
     "rys3_table_roots_weights",
