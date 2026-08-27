@@ -96,6 +96,7 @@ from tools.vibeqc_codegen.benchmark import (
 )
 from tools.vibeqc_codegen.production import (
     _PRODUCTION_PRELUDE,
+    _partition_production_selections,
     emit_registry_header,
     load_production_fock_manifest,
     load_production_kernel_selections,
@@ -1615,6 +1616,26 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
         spec.name for spec in specifications
     )
     assert all(selection.architecture == "sm_120" for selection in selections)
+    shards = _partition_production_selections(selections, shard_count=8)
+    shard_by_name = {
+        selection.spec.name: shard_index
+        for shard_index, shard in enumerate(shards)
+        for selection in shard
+    }
+    # Removing a manifest entry must not invalidate unrelated source shards.
+    without_dppp = _partition_production_selections(
+        tuple(selection for selection in selections if selection.spec.name != "dppp"),
+        shard_count=8,
+    )
+    assert {
+        selection.spec.name: shard_index
+        for shard_index, shard in enumerate(without_dppp)
+        for selection in shard
+    } == {
+        name: shard_index
+        for name, shard_index in shard_by_name.items()
+        if name != "dppp"
+    }
     assert {
         selection.spec.name: selection.schedule.pair_storage
         for selection in selections

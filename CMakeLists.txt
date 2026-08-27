@@ -8,12 +8,61 @@ option(VIBEQC_ENABLE_CUDA "Build the CUDA runtime backend" ON)
 option(VIBEQC_ENABLE_AOT_SHELLS
        "Build generated shell kernels in addition to the generic CUDA path" ON)
 option(VIBEQC_BUILD_TESTS "Build native tests" ON)
+set(VIBEQC_COMPILER_CACHE "auto" CACHE STRING
+    "Compiler cache launcher: auto, off, or an executable name/path")
 set(VIBEQC_CUDA_ARCHITECTURES "" CACHE STRING
     "CUDA architectures shipped by VibeQC; defaults to CMAKE_CUDA_ARCHITECTURES")
+set(VIBEQC_CUDA_SPLIT_COMPILE_THREADS "1" CACHE STRING
+    "NVCC split-compile threads for cuda_rhf.cu; 1 preserves production code generation")
 set(VIBEQC_AOT_PROFILE "auto" CACHE STRING
     "AOT profile for every target: auto, portable, sm_XX, or a named profile")
 set(VIBEQC_AOT_PROFILES "" CACHE STRING
     "Optional explicit list of AOT profiles, independent of architecture order")
+set(VIBEQC_AOT_SHARDS "8" CACHE STRING
+    "Number of independently compiled CUDA shards per AOT architecture")
+
+# Repeated CUDA experiments frequently return to byte-identical source after an
+# A/B test or branch switch.  Reuse those expensive objects automatically when
+# a supported cache is installed, while preserving explicit user launchers.
+unset(_vibeqc_compiler_cache)
+if(VIBEQC_COMPILER_CACHE STREQUAL "auto")
+  find_program(_vibeqc_compiler_cache NAMES sccache ccache NO_CACHE)
+elseif(NOT VIBEQC_COMPILER_CACHE STREQUAL "off"
+       AND NOT VIBEQC_COMPILER_CACHE STREQUAL "none"
+       AND NOT VIBEQC_COMPILER_CACHE STREQUAL "")
+  if(IS_ABSOLUTE "${VIBEQC_COMPILER_CACHE}")
+    if(NOT EXISTS "${VIBEQC_COMPILER_CACHE}")
+      message(FATAL_ERROR
+              "VIBEQC_COMPILER_CACHE does not exist: ${VIBEQC_COMPILER_CACHE}")
+    endif()
+    set(_vibeqc_compiler_cache "${VIBEQC_COMPILER_CACHE}")
+  else()
+    find_program(_vibeqc_compiler_cache
+                 NAMES "${VIBEQC_COMPILER_CACHE}" NO_CACHE)
+    if(NOT _vibeqc_compiler_cache)
+      message(FATAL_ERROR
+              "Compiler cache executable not found: ${VIBEQC_COMPILER_CACHE}")
+    endif()
+  endif()
+endif()
+if(_vibeqc_compiler_cache)
+  if(NOT CMAKE_CXX_COMPILER_LAUNCHER)
+    set(CMAKE_CXX_COMPILER_LAUNCHER "${_vibeqc_compiler_cache}")
+  endif()
+  if(NOT CMAKE_CUDA_COMPILER_LAUNCHER)
+    set(CMAKE_CUDA_COMPILER_LAUNCHER "${_vibeqc_compiler_cache}")
+  endif()
+  message(STATUS "VibeQC compiler cache: ${_vibeqc_compiler_cache}")
+endif()
+
+if(NOT VIBEQC_CUDA_SPLIT_COMPILE_THREADS MATCHES "^[0-9]+$")
+  message(FATAL_ERROR
+          "VIBEQC_CUDA_SPLIT_COMPILE_THREADS must be a non-negative integer")
+endif()
+if(NOT VIBEQC_AOT_SHARDS MATCHES "^[1-9][0-9]*$")
+  message(FATAL_ERROR "VIBEQC_AOT_SHARDS must be a positive integer")
+endif()
+math(EXPR VIBEQC_AOT_LAST_SHARD "${VIBEQC_AOT_SHARDS} - 1")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -74,6 +123,13 @@ if(VIBEQC_ENABLE_CUDA)
     src/runtime/cuda_runtime.cu
     src/scf/cuda_rhf.cu
   )
+  if(NOT VIBEQC_CUDA_SPLIT_COMPILE_THREADS STREQUAL "1")
+    # Split compilation is useful for syntax/resource experiments on the
+    # monolithic fallback TU, but NVCC may make different optimization choices.
+    # Keep it opt-in so production benchmark binaries remain comparable.
+    set_property(SOURCE src/scf/cuda_rhf.cu APPEND PROPERTY COMPILE_OPTIONS
+                 "--split-compile=${VIBEQC_CUDA_SPLIT_COMPILE_THREADS}")
+  endif()
   if(VIBEQC_ENABLE_AOT_SHELLS)
     if(NOT Python3_Interpreter_FOUND)
       find_package(Python3 COMPONENTS Interpreter REQUIRED)
@@ -104,7 +160,7 @@ if(VIBEQC_ENABLE_CUDA)
       set(profile_architecture "sm_${architecture}")
       list(APPEND VIBEQC_AOT_GENERATOR_ARGUMENTS
            --target-architecture "${profile_architecture}")
-      foreach(shard RANGE 0 3)
+      foreach(shard RANGE 0 ${VIBEQC_AOT_LAST_SHARD})
         list(APPEND VIBEQC_AOT_GENERATED_PROFILE_SOURCES
              "${VIBEQC_AOT_GENERATED_DIRECTORY}/${profile_architecture}/vibeqc_generated_shell_sm${architecture}_shard_${shard}.cu")
       endforeach()
@@ -146,7 +202,7 @@ if(VIBEQC_ENABLE_CUDA)
               "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_shell_kernels.py"
               --production-manifest "${VIBEQC_AOT_SHELL_MANIFEST}"
               --output-directory "${VIBEQC_AOT_GENERATED_DIRECTORY}"
-              --shards 4
+              --shards "${VIBEQC_AOT_SHARDS}"
               ${VIBEQC_AOT_GENERATOR_ARGUMENTS}
       DEPENDS
         "${VIBEQC_AOT_SHELL_MANIFEST}"
@@ -181,7 +237,7 @@ if(VIBEQC_ENABLE_CUDA)
     foreach(architecture IN LISTS VIBEQC_AOT_TARGET_ARCHITECTURES)
       set(profile_architecture "sm_${architecture}")
       set(profile_sources)
-      foreach(shard RANGE 0 3)
+      foreach(shard RANGE 0 ${VIBEQC_AOT_LAST_SHARD})
         list(APPEND profile_sources
              "${VIBEQC_AOT_GENERATED_DIRECTORY}/${profile_architecture}/vibeqc_generated_shell_sm${architecture}_shard_${shard}.cu")
       endforeach()
