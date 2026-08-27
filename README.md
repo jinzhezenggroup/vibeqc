@@ -59,6 +59,16 @@ cmake -S . -B build -G Ninja \
 
 Use `-DVIBEQC_ENABLE_AOT_SHELLS=OFF` to omit generated shell bundles entirely,
 or `-DVIBEQC_AOT_PROFILE=portable` to retain an explicit empty portable profile.
+Builds automatically use `sccache` or `ccache` when either is on `PATH`;
+override this with `-DVIBEQC_COMPILER_CACHE=off` or an explicit executable.
+Generated CUDA is split into eight stable shards by default.  Tune this with
+`-DVIBEQC_AOT_SHARDS=N` when local compile parallelism or memory is limited.
+
+For compile-only CUDA experiments,
+`-DVIBEQC_CUDA_SPLIT_COMPILE_THREADS=N` enables NVCC split compilation of the
+large generic translation unit.  It defaults to `1` because split compilation
+can change optimizer resource choices; use the normal setting for performance
+and release binaries.
 
 For CPU only, configure with:
 

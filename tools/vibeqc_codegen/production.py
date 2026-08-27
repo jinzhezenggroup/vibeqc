@@ -1494,9 +1494,9 @@ def write_production_bundles(
         identifier = _profile_identifier(profile.target.architecture)
         profile_directory = output_directory / profile.target.architecture
         profile_directory.mkdir(parents=True, exist_ok=True)
-        shards = [[] for _ in range(shard_count)]
-        for index, selection in enumerate(profile.selections):
-            shards[index % shard_count].append(selection)
+        shards = _partition_production_selections(
+            profile.selections, shard_count
+        )
         for index, shard in enumerate(shards):
             path = profile_directory / (
                 f"vibeqc_generated_shell_{identifier}_shard_{index}.cu"
@@ -1519,6 +1519,27 @@ def _write_if_changed(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
+def _partition_production_selections(
+    selections: Iterable[KernelSelection], shard_count: int
+) -> tuple[tuple[KernelSelection, ...], ...]:
+    """Assign shell classes to stable translation units.
+
+    The production shell-class index is independent of manifest membership and
+    ordering.  Using it as the shard key prevents an inserted or temporarily
+    disabled class from moving unrelated kernels to new CUDA source files and
+    invalidating their compiler-cache entries.
+    """
+
+    shards: list[list[KernelSelection]] = [
+        [] for _ in range(shard_count)
+    ]
+    for selection in selections:
+        shards[shell_class_index(selection.spec) % shard_count].append(
+            selection
+        )
+    return tuple(tuple(shard) for shard in shards)
+
+
 def write_production_bundle(
     manifest: Path,
     output_directory: Path,
@@ -1533,9 +1554,7 @@ def write_production_bundle(
     selections = load_production_kernel_selections(
         manifest, architecture, profile
     )
-    shards = [[] for _ in range(shard_count)]
-    for index, selection in enumerate(selections):
-        shards[index % shard_count].append(selection)
+    shards = _partition_production_selections(selections, shard_count)
     output_directory.mkdir(parents=True, exist_ok=True)
     outputs = []
     for index, shard in enumerate(shards):
