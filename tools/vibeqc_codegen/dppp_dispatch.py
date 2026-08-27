@@ -3520,7 +3520,10 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task(
     GeneratedDpppVec3 positions[4];
     GeneratedDpppPrimitiveGeometry primitive;
     double coulomb[{coulomb_storage_count}];
-    double warp_sums[kGeneratedDpppWarpCount][12];
+    // Accumulate only the three independent center derivatives.  The fourth
+    // center follows from translational invariance after the block reduction,
+    // avoiding three long-lived FP64 accumulators in every component lane.
+    double warp_sums[kGeneratedDpppWarpCount][9];
   }};
   __shared__ Shared shared;
   const unsigned lane = threadIdx.x;
@@ -3561,7 +3564,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task(
         ao_coefficients[shared.task.ao_coefficient_begin[3] + {component_names[3]}]
       : 0.0;
   if (!__syncthreads_or(density_coefficient != 0.0)) return;
-  double component_force[12]{{}};
+  double component_force[9]{{}};
 
   const std::int64_t first_pair_begin =
       primitive_pair_offsets[shared.task.shell_pair[0]];
@@ -3594,7 +3597,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task(
         const double scale = -density_coefficient * angular_coefficient *
             shared.primitive.primitive_coefficient;
 #pragma unroll
-        for (unsigned center = 0; center < 4U; ++center) {{
+        for (unsigned center = 0; center < 3U; ++center) {{
 #pragma unroll
           for (unsigned coordinate = 0; coordinate < 3U; ++coordinate) {{
             component_force[center * 3U + coordinate] +=
@@ -3609,7 +3612,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task(
   const unsigned warp = lane / 32U;
   const unsigned warp_lane = lane % 32U;
 #pragma unroll
-  for (unsigned slot = 0; slot < 12U; ++slot) {{
+  for (unsigned slot = 0; slot < 9U; ++slot) {{
     double value = component_force[slot];
 #pragma unroll
     for (unsigned offset = 16U; offset != 0U; offset /= 2U) {{
@@ -3618,19 +3621,33 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task(
     if (warp_lane == 0U) shared.warp_sums[warp][slot] = value;
   }}
   __syncthreads();
-  if (lane < 12U) {{
+  if (lane < 9U) {{
     double value = 0.0;
 #pragma unroll
     for (unsigned source_warp = 0; source_warp < kGeneratedDpppWarpCount;
          ++source_warp) {{
       value += shared.warp_sums[source_warp][lane];
     }}
+    // Preserve the independent totals for the translation-recovered center.
+    // Each lane reads and overwrites only its own slot before the next barrier.
+    shared.warp_sums[0][lane] = value;
     if (value != 0.0) {{
       const unsigned center = lane / 3U;
       const unsigned coordinate = lane % 3U;
       atomicAdd(forces + static_cast<std::size_t>(shared.task.atom[center]) * 3U +
                     coordinate,
                 value);
+    }}
+  }}
+  __syncthreads();
+  if (lane < 3U) {{
+    const double fourth_value =
+        -shared.warp_sums[0][lane] - shared.warp_sums[0][3U + lane] -
+        shared.warp_sums[0][6U + lane];
+    if (fourth_value != 0.0) {{
+      atomicAdd(
+          forces + static_cast<std::size_t>(shared.task.atom[3]) * 3U + lane,
+          fourth_value);
     }}
   }}
 {component_schedule_close}}}
