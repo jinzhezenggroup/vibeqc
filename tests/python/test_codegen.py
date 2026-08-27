@@ -147,6 +147,44 @@ RTX5090_PPPS_SCALAR_THREAD_RESOURCE_LIMITS = {
 }
 
 
+@pytest.mark.parametrize(
+    ("maximum_order", "series_threshold"),
+    ((0, 1.0e-8), (1, 0.25), (2, 0.75), (3, 1.25), (4, 2.0)),
+)
+def test_generated_low_order_boys_thresholds_preserve_upward_recurrence(
+    maximum_order: int, series_threshold: float
+):
+    """Keep the fast low-order branch accurate at its least stable point."""
+
+    threshold_literal = (
+        "1.0e-8" if maximum_order == 0 else str(series_threshold)
+    )
+    assert f"MaximumOrder == {maximum_order} ? {threshold_literal}" in (
+        _PRODUCTION_PRELUDE
+    )
+    for argument in (
+        series_threshold,
+        series_threshold + 1.0e-6,
+        0.5 * (series_threshold + 6.0),
+        6.0,
+    ):
+        values = [
+            0.5
+            * math.sqrt(math.pi / argument)
+            * math.erf(math.sqrt(argument))
+        ]
+        exponential = math.exp(-argument)
+        for order in range(1, maximum_order + 1):
+            values.append(
+                ((2.0 * order - 1.0) * values[-1] - exponential)
+                / (2.0 * argument)
+            )
+        reference = rys_boys_values(argument, maximum_order + 1)[maximum_order]
+        assert values[maximum_order] == pytest.approx(
+            reference, rel=5.0e-14, abs=1.0e-15
+        )
+
+
 def test_integral_ir_has_no_accelerator_schedule_fields():
     """Keep scientific intent independent of backend execution geometry."""
 
