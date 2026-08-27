@@ -52,6 +52,11 @@ constexpr unsigned kCaptureSafeKernelThreads = 32;
 // from the generic capture-safe launch width so tuning other kernels cannot
 // silently drop reductions from additional warps.
 constexpr unsigned kMatrixReductionThreads = 32;
+// External warm densities require an O(N^2) symmetry and metric-trace pass
+// before they can enter a captured SCF replay. One block owns each system so
+// batch-size-one production runs can spread that setup scan across the GPU.
+constexpr unsigned kWarmDensityThreads = 256;
+static_assert(kWarmDensityThreads % 32 == 0);
 // Persistent direct-force workers retain one AO-quartet warp per block. Eight
 // resident workers per SM balance the high-register force kernels while
 // replacing topology-capacity grids with device-side work stealing.
@@ -7221,6 +7226,33 @@ __global__ void mix_open_shell_guess_kernel(std::int32_t batch_size,
       -sine * occupied_value + cosine * virtual_value;
 }
 
+template <unsigned BlockThreads>
+__device__ double warm_density_block_sum(double value, double* warp_sums) {
+  static_assert(BlockThreads % 32 == 0);
+  constexpr unsigned kWarpWidth = 32;
+  const unsigned lane = threadIdx.x % kWarpWidth;
+  const unsigned warp = threadIdx.x / kWarpWidth;
+  for (unsigned delta = kWarpWidth / 2; delta != 0; delta >>= 1) {
+    value += __shfl_down_sync(0xffffffffU, value, delta);
+  }
+  if (lane == 0) warp_sums[warp] = value;
+  __syncthreads();
+
+  // The first warp reduces the block's partial sums. All lanes participate in
+  // the shuffle so the full mask remains valid; unused lanes contribute 0.
+  value = warp == 0 && lane < BlockThreads / kWarpWidth
+      ? warp_sums[lane]
+      : 0.0;
+  if (warp == 0) {
+    for (unsigned delta = kWarpWidth / 2; delta != 0; delta >>= 1) {
+      value += __shfl_down_sync(0xffffffffU, value, delta);
+    }
+  }
+  if (threadIdx.x == 0) warp_sums[0] = value;
+  __syncthreads();
+  return warp_sums[0];
+}
+
 __global__ void apply_warm_density_kernel(std::int32_t batch_size,
                                           std::int32_t nbf,
                                           const std::int32_t* occupied,
@@ -7230,27 +7262,34 @@ __global__ void apply_warm_density_kernel(std::int32_t batch_size,
                                           double* density,
                                           std::uint8_t* warm_invalid) {
   const std::int32_t system = static_cast<std::int32_t>(blockIdx.x);
-  if (system >= batch_size || warm_mask[system] == 0 || threadIdx.x != 0) return;
-  warm_invalid[system] = 0;
+  if (system >= batch_size || warm_mask[system] == 0) return;
+  __shared__ double warp_sums[kWarmDensityThreads / 32];
+  __shared__ double scale;
+  __shared__ int valid_trace;
   const std::size_t n = static_cast<std::size_t>(nbf);
   const std::size_t matrix_size = n * n;
   const std::size_t offset = static_cast<std::size_t>(system) * matrix_size;
   double trace = 0.0;
-  for (std::size_t row = 0; row < n; ++row) {
-    for (std::size_t column = 0; column < n; ++column) {
-      const double symmetric = 0.5 *
-          (warm_density[offset + matrix_index(row, column, n)] +
-           warm_density[offset + matrix_index(column, row, n)]);
-      density[offset + matrix_index(row, column, n)] = symmetric;
-      trace += symmetric * overlap[offset + matrix_index(column, row, n)];
-    }
+  for (std::size_t element = threadIdx.x; element < matrix_size;
+       element += blockDim.x) {
+    const std::size_t row = element % n;
+    const std::size_t column = element / n;
+    const std::size_t transpose = matrix_index(column, row, n);
+    const double symmetric = 0.5 *
+        (warm_density[offset + element] + warm_density[offset + transpose]);
+    density[offset + element] = symmetric;
+    trace += symmetric * overlap[offset + transpose];
   }
-  const double target = 2.0 * occupied[system];
-  const bool valid_trace = isfinite(trace) && trace > 0.0;
-  warm_invalid[system] = valid_trace ? 0 : 1;
-  if (valid_trace) {
-    const double scale = target / trace;
-    for (std::size_t element = 0; element < matrix_size; ++element) {
+  trace = warm_density_block_sum<kWarmDensityThreads>(trace, warp_sums);
+  if (threadIdx.x == 0) {
+    valid_trace = isfinite(trace) && trace > 0.0;
+    warm_invalid[system] = valid_trace ? 0 : 1;
+    scale = valid_trace ? 2.0 * occupied[system] / trace : 0.0;
+  }
+  __syncthreads();
+  if (valid_trace != 0) {
+    for (std::size_t element = threadIdx.x; element < matrix_size;
+         element += blockDim.x) {
       density[offset + element] *= scale;
     }
   }
@@ -7266,39 +7305,54 @@ __global__ void apply_uhf_warm_density_kernel(
     double* density,
     std::uint8_t* warm_invalid) {
   const std::int32_t system = static_cast<std::int32_t>(blockIdx.x);
-  if (system >= batch_size || warm_mask[system] == 0 || threadIdx.x != 0) return;
-  warm_invalid[system] = 0;
+  if (system >= batch_size || warm_mask[system] == 0) return;
+  __shared__ double warp_sums[kWarmDensityThreads / 32];
+  __shared__ double scale;
+  __shared__ int valid_trace;
   const std::size_t n = static_cast<std::size_t>(nbf);
   const std::size_t matrix_size = n * n;
   const std::size_t overlap_offset =
       static_cast<std::size_t>(system) * matrix_size;
+  if (threadIdx.x == 0) warm_invalid[system] = 0;
+  __syncthreads();
   for (std::int32_t spin = 0; spin < 2; ++spin) {
     const std::size_t state = static_cast<std::size_t>(system) * 2 + spin;
     const std::size_t offset = state * matrix_size;
-    double trace = 0.0;
-    for (std::size_t row = 0; row < n; ++row) {
-      for (std::size_t column = 0; column < n; ++column) {
-        const double symmetric = 0.5 *
-            (warm_density[offset + matrix_index(row, column, n)] +
-             warm_density[offset + matrix_index(column, row, n)]);
-        density[offset + matrix_index(row, column, n)] = symmetric;
-        trace += symmetric *
-            overlap[overlap_offset + matrix_index(column, row, n)];
-      }
-    }
     const double target = static_cast<double>(occupied[state]);
     if (target == 0.0) {
-      for (std::size_t element = 0; element < matrix_size; ++element) {
+      for (std::size_t element = threadIdx.x; element < matrix_size;
+           element += blockDim.x) {
         density[offset + element] = 0.0;
       }
-    } else if (isfinite(trace) && trace > 0.0) {
-      const double scale = target / trace;
-      for (std::size_t element = 0; element < matrix_size; ++element) {
+      __syncthreads();
+      continue;
+    }
+    double trace = 0.0;
+    for (std::size_t element = threadIdx.x; element < matrix_size;
+         element += blockDim.x) {
+      const std::size_t row = element % n;
+      const std::size_t column = element / n;
+      const std::size_t transpose = matrix_index(column, row, n);
+      const double symmetric = 0.5 *
+          (warm_density[offset + element] + warm_density[offset + transpose]);
+      density[offset + element] = symmetric;
+      trace += symmetric * overlap[overlap_offset + transpose];
+    }
+    trace = warm_density_block_sum<kWarmDensityThreads>(trace, warp_sums);
+    if (threadIdx.x == 0) {
+      valid_trace = isfinite(trace) && trace > 0.0;
+      scale = valid_trace ? target / trace : 0.0;
+      if (valid_trace == 0) warm_invalid[system] = 1;
+    }
+    __syncthreads();
+    if (valid_trace != 0) {
+      for (std::size_t element = threadIdx.x; element < matrix_size;
+           element += blockDim.x) {
         density[offset + element] *= scale;
       }
-    } else {
-      warm_invalid[system] = 1;
     }
+    // Both spin passes reuse the same reduction and scalar slots.
+    __syncthreads();
   }
 }
 
@@ -14160,14 +14214,15 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       return outputs;
     }
     if (unrestricted) {
-      apply_uhf_warm_density_kernel<<<static_cast<unsigned>(batch_size), 1, 0,
+      apply_uhf_warm_density_kernel<<<static_cast<unsigned>(batch_size),
+                                      kWarmDensityThreads, 0,
                                       resources.stream_>>>(
           static_cast<std::int32_t>(batch_size),
           static_cast<std::int32_t>(nbf), occupied, warm_mask, warm_density,
           overlap, density, warm_invalid);
     } else {
-      apply_warm_density_kernel<<<static_cast<unsigned>(batch_size), 1, 0,
-                                  resources.stream_>>>(
+      apply_warm_density_kernel<<<static_cast<unsigned>(batch_size),
+                                  kWarmDensityThreads, 0, resources.stream_>>>(
           static_cast<std::int32_t>(batch_size),
           static_cast<std::int32_t>(nbf), occupied, warm_mask, warm_density,
           overlap, density, warm_invalid);
