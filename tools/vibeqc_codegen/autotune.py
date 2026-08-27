@@ -13,11 +13,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import signal
+import shutil
 import subprocess
 import sys
 import tempfile
-import time
 from collections.abc import Iterable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, replace
@@ -29,16 +28,22 @@ from .benchmark import (
     emit_shell_class_oracle_cuda,
     emit_shell_class_resource_cuda,
 )
-from .fused_schedule import build_fused_shell_plan
-from .ir import (
-    KernelConsumer,
+from .cuda_adapter import CudaBenchmarkExecutor, CudaCompilerAdapter
+from .cuda_schedule import (
     PairOrientation,
     PairStorage,
     ScheduleIR,
     ScheduleKind,
-    build_integral_ir,
     tuning_schedule_candidates,
 )
+from .cuda_target import (
+    DEFAULT_CUDA_TARGET,
+    CudaTargetInfo,
+    cuda_target_info,
+    normalize_cuda_architecture,
+)
+from .fused_schedule import build_fused_shell_plan
+from .ir import KernelConsumer, build_integral_ir
 from .shell_spec import FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec
 
 
@@ -49,6 +54,7 @@ class ScheduleTrial:
     spec: ShellClassSpec
     schedule: ScheduleIR
     consumer: KernelConsumer = KernelConsumer.FORCE
+    target: CudaTargetInfo = DEFAULT_CUDA_TARGET
 
     @property
     def schedule_id(self) -> str:
@@ -116,6 +122,7 @@ def schedule_payload(schedule: ScheduleIR) -> dict[str, object]:
 def supported_schedule_trials(
     spec: ShellClassSpec,
     consumer: KernelConsumer | str = KernelConsumer.FORCE,
+    target: CudaTargetInfo = DEFAULT_CUDA_TARGET,
 ) -> tuple[ScheduleTrial, ...]:
     """Return the schedule variants implemented by the current CUDA emitter.
 
@@ -144,8 +151,9 @@ def supported_schedule_trials(
             spec=spec,
             schedule=schedule,
             consumer=selected_consumer,
+            target=target,
         )
-        for schedule in tuning_schedule_candidates(integral)
+        for schedule in tuning_schedule_candidates(integral, target)
         if schedule.kind
         in (
             ScheduleKind.PACKED_TASKS,
@@ -206,6 +214,7 @@ def emit_schedule_translation_unit(
         trial.spec,
         consumers=consumers,
         schedule=trial.schedule,
+        target=trial.target,
     )
     source = emit_shell_class_benchmark_cuda(
         trial.spec,
@@ -259,6 +268,7 @@ def _oracle_schedule_trial(trial: ScheduleTrial) -> ScheduleTrial:
             minimum_blocks_per_sm=0,
             maximum_registers=0,
         ),
+        target=trial.target,
     )
 
 
@@ -285,6 +295,7 @@ def emit_schedule_oracle_translation_unit(trial: ScheduleTrial) -> str:
         oracle_trial.spec,
         consumers=consumers,
         schedule=oracle_trial.schedule,
+        target=oracle_trial.target,
     )
     source = emit_shell_class_oracle_cuda(
         oracle_trial.spec,
@@ -311,6 +322,7 @@ def emit_schedule_resource_translation_unit(trial: ScheduleTrial) -> str:
         trial.spec,
         consumers=consumers,
         schedule=trial.schedule,
+        target=trial.target,
     )
     return _isolate_schedule_symbols(
         emit_shell_class_resource_cuda(trial.spec, plan),
@@ -318,17 +330,25 @@ def emit_schedule_resource_translation_unit(trial: ScheduleTrial) -> str:
     )
 
 
-def emit_schedule_driver(trials: Iterable[ScheduleTrial]) -> str:
-    """Emit the one-process driver used for stable schedule comparisons."""
+def emit_schedule_driver(
+    trials: Iterable[ScheduleTrial],
+    architecture: str | None = None,
+) -> str:
+    """Emit a driver that validates its allocated GPU before benchmarking."""
 
     items = tuple(trials)
+    selected_architecture = normalize_cuda_architecture(
+        architecture
+        or (items[0].target.architecture if items else DEFAULT_CUDA_TARGET.architecture)
+    )
+    expected_target = cuda_target_info(selected_architecture)
     declarations = "\n".join(
         f'extern "C" int {trial.entry_point}();' for trial in items
     )
     calls = "\n".join(
         f"  failures += {trial.entry_point}() != 0;" for trial in items
     )
-    return f"""#include <cuda_runtime.h>
+    return rf"""#include <cuda_runtime.h>
 #include <cstdio>
 
 {declarations}
@@ -336,9 +356,49 @@ def emit_schedule_driver(trials: Iterable[ScheduleTrial]) -> str:
 int main() {{
   const cudaError_t initialization = cudaFree(nullptr);
   if (initialization != cudaSuccess) {{
-    std::fprintf(stderr, "CUDA initialization failed: %s\\n",
+    std::fprintf(stderr, "CUDA initialization failed: %s\n",
                  cudaGetErrorString(initialization));
     return 2;
+  }}
+  int device = 0;
+  cudaDeviceProp properties{{}};
+  int driver_version = 0;
+  int runtime_version = 0;
+  int optin_shared_bytes = 0;
+  if (cudaGetDevice(&device) != cudaSuccess ||
+      cudaGetDeviceProperties(&properties, device) != cudaSuccess ||
+      cudaDriverGetVersion(&driver_version) != cudaSuccess ||
+      cudaRuntimeGetVersion(&runtime_version) != cudaSuccess ||
+      cudaDeviceGetAttribute(&optin_shared_bytes,
+          cudaDevAttrMaxSharedMemoryPerBlockOptin, device) != cudaSuccess) {{
+    std::fprintf(stderr, "CUDA target probe failed\n");
+    return 2;
+  }}
+  std::printf(
+      "{{\"target_probe\":true,\"device_name\":\"%s\","
+      "\"device_id\":%d,\"compute_capability_major\":%d,"
+      "\"compute_capability_minor\":%d,\"warp_size\":%d,"
+      "\"maximum_threads_per_block\":%d,"
+      "\"maximum_threads_per_sm\":%d,\"maximum_blocks_per_sm\":%d,"
+      "\"registers_per_sm\":%d,\"shared_memory_per_block\":%zu,"
+      "\"shared_memory_per_block_optin\":%d,"
+      "\"shared_memory_per_sm\":%zu,\"sm_count\":%d,"
+      "\"driver_version\":%d,\"runtime_version\":%d}}\n",
+      properties.name, device, properties.major, properties.minor,
+      properties.warpSize, properties.maxThreadsPerBlock,
+      properties.maxThreadsPerMultiProcessor, properties.maxBlocksPerMultiProcessor,
+      properties.regsPerMultiprocessor, properties.sharedMemPerBlock,
+      optin_shared_bytes, properties.sharedMemPerMultiprocessor,
+      properties.multiProcessorCount, driver_version, runtime_version);
+  std::fflush(stdout);
+  if (properties.major != {expected_target.compute_capability_major} ||
+      properties.minor != {expected_target.compute_capability_minor}) {{
+    std::fprintf(
+        stderr,
+        "compile target {selected_architecture} does not match allocated "
+        "device sm_%d%d\n",
+        properties.major, properties.minor);
+    return 5;
   }}
   int failures = 0;
 {calls}
@@ -445,59 +505,22 @@ def _compile_trial(
     stem = f"{trial.spec.name}_{trial.schedule_id}{artifact_suffix}"
     source = directory / f"{stem}.cu"
     obj = directory / f"{stem}.o"
-    command = [
-        str(nvcc),
-        "-std=c++17",
-        f"-arch={architecture}",
-        "-O3",
-        "-Xptxas=-v",
-        "-c",
-        str(source),
-        "-o",
-        str(obj),
-    ]
-    started = time.monotonic()
-    process = subprocess.Popen(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        start_new_session=True,
+    compiler = CudaCompilerAdapter(
+        nvcc=nvcc,
+        target=cuda_target_info(architecture),
+        compile_timeout=compile_timeout,
     )
-    timed_out = False
-    try:
-        stdout, stderr = process.communicate(timeout=compile_timeout)
-    except subprocess.TimeoutExpired:
-        timed_out = True
-        # The process owns a new session, so its PID is also the process-group
-        # ID and cannot accidentally target unrelated compiler invocations.
-        try:
-            os.killpg(process.pid, signal.SIGTERM)
-        except ProcessLookupError:
-            pass
-        try:
-            stdout, stderr = process.communicate(timeout=5)
-        except subprocess.TimeoutExpired:
-            try:
-                os.killpg(process.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            stdout, stderr = process.communicate()
-    duration_seconds = time.monotonic() - started
-    diagnostics = stdout + stderr
-    if timed_out:
-        diagnostics += (
-            f"NVCC compilation timed out after {compile_timeout:g} seconds\n"
-        )
+    result = compiler.compile(source, obj)
+    diagnostics = result.stdout + result.stderr
     marker = (
         f"{trial.symbol_prefix}_shell_class_{trial.consumer.value}_"
     )
     return {
         "key": trial.key,
         "object": obj,
-        "returncode": 124 if timed_out else process.returncode,
-        "timed_out": timed_out,
-        "duration_seconds": duration_seconds,
+        "returncode": result.returncode,
+        "timed_out": result.timed_out,
+        "duration_seconds": result.duration_seconds,
         "diagnostics": diagnostics,
         "resources": parse_ptxas_resources(
             diagnostics,
@@ -519,6 +542,23 @@ def _runtime_environment(nvcc: Path) -> dict[str, str]:
         str(library) if not previous else f"{library}:{previous}"
     )
     return environment
+
+
+def _tool_version(command: Path) -> str:
+    """Return one compiler version line for tuning-artifact provenance."""
+
+    try:
+        result = subprocess.run(
+            [str(command), "--version"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except OSError:
+        return ""
+    lines = [line.strip() for line in (result.stdout + result.stderr).splitlines()]
+    return next((line for line in reversed(lines) if line), "")
 
 
 def _resource_rejections(
@@ -574,12 +614,38 @@ def _resolve_specifications(names: Iterable[str]) -> tuple[ShellClassSpec, ...]:
 def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
     """Generate, compile, run, rank, and optionally persist schedule winners."""
 
+    arguments.architecture = normalize_cuda_architecture(arguments.architecture)
+    target = cuda_target_info(arguments.architecture)
+    compiler = CudaCompilerAdapter(
+        nvcc=arguments.nvcc,
+        target=target,
+        compile_timeout=arguments.compile_timeout,
+    )
+    executor = CudaBenchmarkExecutor(
+        timeout=arguments.timeout,
+        local=arguments.local,
+        srun=arguments.srun,
+        partition=arguments.partition,
+        gres=arguments.gres,
+        slurm_time=arguments.slurm_time,
+    )
+    if arguments.max_registers is None:
+        arguments.max_registers = target.tuning_maximum_registers
+    if arguments.max_packed_registers is None:
+        arguments.max_packed_registers = target.tuning_maximum_packed_registers
+    if arguments.max_stack_bytes is None:
+        arguments.max_stack_bytes = target.tuning_maximum_stack_bytes
+    if arguments.max_shared_bytes is None:
+        arguments.max_shared_bytes = min(
+            target.tuning_maximum_shared_bytes,
+            target.shared_memory_per_block,
+        )
     specifications = _resolve_specifications(arguments.shell_class)
     selected_consumer = KernelConsumer(arguments.consumer)
     trials = tuple(
         trial
         for spec in specifications
-        for trial in supported_schedule_trials(spec, selected_consumer)
+        for trial in supported_schedule_trials(spec, selected_consumer, target)
     )
     work_directory_owner = None
     if arguments.work_directory is None:
@@ -672,7 +738,7 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
         if runnable_trials:
             driver = directory / "autotune_driver.cu"
             driver.write_text(
-                emit_schedule_driver(runnable_trials),
+                emit_schedule_driver(runnable_trials, arguments.architecture),
                 encoding="utf-8",
             )
             executable = directory / "shell_schedule_autotune"
@@ -681,7 +747,7 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 for trial, row in zip(trials, compile_rows, strict=True)
             }
             objects = [
-                str(compile_by_key[trial.key]["object"])
+                Path(compile_by_key[trial.key]["object"])
                 for trial in runnable_trials
             ]
             used_oracle_prefixes = {
@@ -689,51 +755,26 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 for trial in runnable_trials
             }
             objects.extend(
-                str(oracle_compile_by_prefix[prefix]["object"])
-                for prefix in sorted(used_oracle_prefixes)
-            )
-            link = subprocess.run(
-                [
-                    str(arguments.nvcc),
-                    "-std=c++17",
-                    f"-arch={arguments.architecture}",
-                    "-O3",
-                    str(driver),
-                    *objects,
-                    "-o",
-                    str(executable),
-                ],
-                check=False,
-                capture_output=True,
-                text=True,
-                timeout=300,
-            )
+                    Path(oracle_compile_by_prefix[prefix]["object"])
+                    for prefix in sorted(used_oracle_prefixes)
+                )
+            link = compiler.link(driver, objects, executable)
             if link.returncode != 0:
                 raise RuntimeError(link.stdout + link.stderr)
-            command = [str(executable)]
-            if not arguments.local:
-                command = [
-                    arguments.srun,
-                    f"--partition={arguments.partition}",
-                    f"--gres={arguments.gres}",
-                    "--nodes=1",
-                    "--ntasks=1",
-                    str(executable),
-                ]
-            run = subprocess.run(
-                command,
-                check=False,
-                capture_output=True,
-                text=True,
-                timeout=arguments.timeout,
-                env=_runtime_environment(arguments.nvcc),
+            run = executor.run(
+                executable,
+                _runtime_environment(arguments.nvcc),
             )
             run_returncode = run.returncode
             run_stderr = run.stderr
+            runtime_probe = None
             for line in run.stdout.splitlines():
                 try:
                     row = json.loads(line)
                 except json.JSONDecodeError:
+                    continue
+                if row.get("target_probe") is True:
+                    runtime_probe = row
                     continue
                 shell_class = row.get("shell_class")
                 consumer = row.get("consumer")
@@ -746,6 +787,9 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                     runtime_rows[
                         f"{shell_class}:{consumer}:{schedule_id}"
                     ] = row
+
+        else:
+            runtime_probe = None
 
         candidates = []
         passing_by_class: dict[
@@ -792,6 +836,8 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
             elif oracle_compile["returncode"] != 0:
                 reasons.append("oracle NVCC compilation failed")
             runtime = runtime_rows.get(trial.key)
+            if run_returncode == 5:
+                reasons.append("compile and runtime CUDA targets differ")
             if runtime is None:
                 reasons.append("schedule did not produce a runtime result")
             else:
@@ -935,6 +981,12 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
             "architecture": arguments.architecture,
             "consumer": selected_consumer.value,
             "nvcc": str(arguments.nvcc),
+            "target": target.to_payload(),
+            "toolchain": {
+                "nvcc": _tool_version(arguments.nvcc),
+                "ptxas": _tool_version(arguments.nvcc.with_name("ptxas")),
+                "generator_abi": target.generator_abi,
+            },
             "single_gpu_process": True,
             "runtime": {
                 "local": arguments.local,
@@ -943,6 +995,7 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 "gres": None if arguments.local else arguments.gres,
                 "returncode": run_returncode,
                 "stderr": run_stderr,
+                "device": runtime_probe,
             },
             "gates": {
                 "minimum_speedup": arguments.minimum_speedup,
@@ -980,12 +1033,19 @@ def main() -> None:
     parser.add_argument(
         "--nvcc",
         type=Path,
-        default=Path("/group/software/cuda-12.9.1/bin/nvcc"),
+        default=Path(
+            os.environ.get("VIBEQC_NVCC", shutil.which("nvcc") or "nvcc")
+        ),
     )
     parser.add_argument("--architecture", default="sm_120")
     parser.add_argument("--srun", default="srun")
     parser.add_argument("--partition", default="main")
-    parser.add_argument("--gres", default="gpu:5090:1")
+    parser.add_argument("--gres", default="gpu:1")
+    parser.add_argument(
+        "--slurm-time",
+        default="00:10:00",
+        help="finite Slurm allocation time used for the benchmark process",
+    )
     parser.add_argument(
         "--local",
         action="store_true",
@@ -1007,10 +1067,10 @@ def main() -> None:
     parser.add_argument("--minimum-speedup", type=float, default=1.0)
     parser.add_argument("--absolute-tolerance", type=float, default=2.0e-10)
     parser.add_argument("--relative-tolerance", type=float, default=2.0e-10)
-    parser.add_argument("--max-registers", type=int, default=192)
-    parser.add_argument("--max-packed-registers", type=int, default=224)
-    parser.add_argument("--max-stack-bytes", type=int, default=128)
-    parser.add_argument("--max-shared-bytes", type=int, default=49152)
+    parser.add_argument("--max-registers", type=int)
+    parser.add_argument("--max-packed-registers", type=int)
+    parser.add_argument("--max-stack-bytes", type=int)
+    parser.add_argument("--max-shared-bytes", type=int)
     parser.add_argument(
         "--allow-experimental-subgroup-winner",
         action="store_true",

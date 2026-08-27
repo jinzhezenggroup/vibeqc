@@ -21,15 +21,16 @@ import sys
 import tempfile
 from pathlib import Path
 
-from .dppp_dispatch import (
+from .cuda_emitter import (
     _emitted_component_names,
     _generic_task_component_setup,
-    _specialize_dppp_identifiers,
     emit_shell_class_fused_cuda,
     emit_uncached_primitive_geometry_cuda,
 )
+from .cuda_schedule import ScheduleIR, ScheduleKind
+from .dppp_specialization import _specialize_dppp_identifiers
 from .fused_schedule import FusedShellPlan, build_fused_shell_plan
-from .ir import KernelConsumer, ScheduleIR, ScheduleKind
+from .ir import KernelConsumer
 from .shell_spec import DDPS_SPEC, DPDS_SPEC, DPPP_SPEC, ShellClassSpec
 
 _CUDA_PRELUDE = r"""

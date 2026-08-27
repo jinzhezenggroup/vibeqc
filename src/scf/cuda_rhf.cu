@@ -4,7 +4,7 @@
 #include "scf/direct_task_layout.hpp"
 #include "scf/generated_shell_task.hpp"
 
-#include "vibeqc_generated_shell_registry.hpp"
+#include "scf/aot_shell_registry.hpp"
 
 #include <cublas_v2.h>
 #include <cuda_runtime_api.h>
@@ -10801,8 +10801,12 @@ cudaError_t launch_generated_shell_class_forces(
       generated_task_heads, enabled_mask, nullptr);
   if (error != cudaSuccess) return error;
 
-  for (const generated::ShellKernelMetadata& kernel :
-       generated::kShellKernels) {
+  std::size_t kernel_count = 0;
+  const generated::ShellKernelMetadata* kernels =
+      generated::selected_shell_kernels(kernel_count);
+  for (std::size_t kernel_index = 0; kernel_index < kernel_count;
+       ++kernel_index) {
+    const generated::ShellKernelMetadata& kernel = kernels[kernel_index];
     if ((enabled_mask & (std::uint64_t{1} << kernel.shell_class)) == 0U) {
       continue;
     }
@@ -10859,8 +10863,12 @@ cudaError_t launch_generated_shell_class_focks(
       generated_task_heads, 0U, enabled_mask);
   if (error != cudaSuccess) return error;
 
-  for (const generated::ShellKernelMetadata& kernel :
-       generated::kFockShellKernels) {
+  std::size_t kernel_count = 0;
+  const generated::ShellKernelMetadata* kernels =
+      generated::selected_fock_shell_kernels(kernel_count);
+  for (std::size_t kernel_index = 0; kernel_index < kernel_count;
+       ++kernel_index) {
+    const generated::ShellKernelMetadata& kernel = kernels[kernel_index];
     const unsigned worker_blocks = std::min(
         static_cast<unsigned>(capacities[kernel.angular_order]),
         persistent_worker_blocks);
@@ -12263,8 +12271,12 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
             kGenericOrderFiveAngularOrder]
       : 0;
   if (requested_quartet_direct) {
-    for (const generated::ShellKernelMetadata& kernel :
-         generated::kShellKernels) {
+    std::size_t kernel_count = 0;
+    const generated::ShellKernelMetadata* kernels =
+        generated::selected_shell_kernels(kernel_count);
+    for (std::size_t kernel_index = 0; kernel_index < kernel_count;
+         ++kernel_index) {
+      const generated::ShellKernelMetadata& kernel = kernels[kernel_index];
       if (!checked_add(
               generated_shell_task_capacity,
               direct_task_layout.shell_class_tile_counts[kernel.shell_class],

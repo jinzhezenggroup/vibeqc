@@ -82,6 +82,34 @@ Contexts own device selection and runtime resources. Systems and calculations
 are opaque handles. Caller-provided output storage remains caller-owned, and
 no hidden process-global calculation state is used.
 
+CUDA context initialization retains compute capability, warp size, SM/thread/
+block limits, register-file limits, shared-memory limits, and SM count. It also
+selects one generated `KernelSet` for that device. Exact measured profiles are
+preferred, compatible profiles must opt in explicitly in the manifest, and an
+empty portable profile selects the generic CUDA implementation. A schedule
+measured for `sm_120` is never selected on another compute capability.
+
+## Code-generation boundaries
+
+The scientific compiler boundary is:
+
+```text
+IntegralIR
+  -> backend lowering
+  -> CudaTargetInfo + CudaScheduleIR
+  -> CUDA source emitter
+  -> CUDA compiler/resource/device/benchmark adapters
+  -> production registry
+```
+
+`IntegralIR` owns only shell structure, requested observables, independent
+derivative centers, recurrence choice, precision/screening semantics, and
+scientific invariants. It contains no warp, block, register, shared-memory,
+compiler, or vendor fields. Backend-neutral `TargetInfo`/`TargetScheduleShape`
+tests can therefore validate a synthetic subgroup width without importing a
+CUDA emitter. CUDA legality, occupancy candidates, and tuning resource gates
+receive an explicit `CudaTargetInfo` instead of module constants.
+
 ## Fixed-topology basis layout
 
 CUDA plans retain contracted primitives once per physical Gaussian shell.

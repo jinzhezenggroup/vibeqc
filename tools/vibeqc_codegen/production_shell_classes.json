@@ -3,7 +3,23 @@
   "default_architecture": "sm_120",
   "architectures": {
     "sm_120": {
+      "kind": "tuned",
       "cuda_toolkit": "12.9.1",
+      "generator_abi": 1,
+      "target": {
+        "compute_capability": "12.0",
+        "warp_size": 32,
+        "maximum_threads_per_block": 1024,
+        "maximum_threads_per_sm": 1536,
+        "maximum_blocks_per_sm": 24,
+        "registers_per_sm": 65536,
+        "maximum_registers_per_thread": 255,
+        "shared_memory_per_block": 49152,
+        "shared_memory_per_block_optin": 101376,
+        "shared_memory_per_sm": 102400,
+        "sm_count": 170,
+        "required_cuda_features": ["fp64", "fp64_atomic_add"]
+      },
       "kernels": [
         {
           "shell_class": "dppp",
@@ -340,6 +356,12 @@
         "maximum_stack_bytes_per_thread": 40,
         "local_memory_bytes_per_thread": 0
       }
+    },
+    "portable_cuda": {
+      "kind": "portable",
+      "cuda_toolkit": "12.9.1",
+      "generator_abi": 1,
+      "kernels": []
     }
   }
 }
