@@ -341,6 +341,13 @@ int main() {
             2.0 * alpha_density[matrix_index(i, j, integrals.nbf)];
       }
     }
+    // The CUDA exchange path deliberately composes row-major AO matrices
+    // through column-major cuBLAS views. Exercise a non-symmetric input so a
+    // missing layout transpose cannot hide behind the physical SCF symmetry.
+    require(integrals.nbf >= 2,
+            "DF layout regression requires at least two AO functions");
+    rhf_density[matrix_index(0, 1, integrals.nbf)] += 0.017;
+    rhf_density[matrix_index(1, 0, integrals.nbf)] -= 0.011;
 
     const vibeqc::scf::DensityFittingRhfJk rhf_jk =
         vibeqc::scf::build_density_fitting_rhf_jk(orthonormal_three_center,
