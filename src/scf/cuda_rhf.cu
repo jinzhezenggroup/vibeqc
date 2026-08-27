@@ -109,6 +109,12 @@ constexpr double kDoubleMachineEpsilon = 2.2204460492503131e-16;
 // only after the fixed-point density step is this small. Looser user-requested
 // convergence remains valid, but finalization falls back to the full rebuild.
 constexpr double kConvergedFockReuseDensityRms = 1.0e-12;
+// Force-product screening is an additional approximation on top of the Fock
+// quartet gate. Do not inherit deliberately loose SCF screening thresholds:
+// doing so removes derivative terms that remain present in the screened
+// energy and breaks finite-difference consistency. Production 1e-14 runs keep
+// the intended gate strength, while looser diagnostic runs use this cap.
+constexpr double kForceDensityProductScreeningTolerance = 1.0e-14;
 
 using GeneratedShellTask = detail::GeneratedShellTask;
 
@@ -141,13 +147,20 @@ struct DeviceShellClassProfileEntry {
 static_assert(sizeof(DeviceShellClassProfileEntry) ==
               sizeof(CudaRhfShellClassProfileEntry));
 
-/** Density magnitudes that can multiply one shell pair in direct J/K. */
+/** Raw spin-resolved density magnitudes for one direct-AO shell block. */
 struct ShellPairDensityBounds {
   double coulomb;
-  double exchange;
+  double exchange_alpha;
+  double exchange_beta;
 };
 
-static_assert(sizeof(ShellPairDensityBounds) == 2 * sizeof(double));
+static_assert(sizeof(ShellPairDensityBounds) == 3 * sizeof(double));
+
+/** Select the density gate applied while compacting direct shell quartets. */
+enum class DirectScreeningPurpose : std::uint8_t {
+  Fock,
+  Force,
+};
 
 struct Dual {
   double value;
@@ -7443,8 +7456,10 @@ __global__ void reduce_shell_pair_bounds_kernel(
  *
  * The direct quartet kernels scatter every ERI symmetry permutation, so a
  * shell quartet can contribute through its two Coulomb density blocks or any
- * of its four crossed exchange blocks. Keeping separate bounds preserves the
- * RHF one-half exchange factor and the UHF same-spin contraction.
+ * of its four crossed exchange blocks. UHF alpha and beta exchange bounds
+ * remain separate so the force gate never invents an opposite-spin product.
+ * RHF stores its one physical density in the alpha field; the Fock gate
+ * applies the existing one-half exchange factor when it consumes that field.
  */
 template <bool Unrestricted>
 __global__ void reduce_shell_pair_density_bounds_kernel(
@@ -7454,7 +7469,8 @@ __global__ void reduce_shell_pair_density_bounds_kernel(
     ShellPairDensityBounds* shell_pair_density_bounds) {
   extern __shared__ double block_maxima[];
   double* coulomb_maxima = block_maxima;
-  double* exchange_maxima = block_maxima + blockDim.x;
+  double* exchange_alpha_maxima = block_maxima + blockDim.x;
+  double* exchange_beta_maxima = block_maxima + 2 * blockDim.x;
   const std::size_t shell_pair = static_cast<std::size_t>(blockIdx.x);
   if (shell_pair >= static_cast<std::size_t>(batch.total_shell_pairs)) return;
   const std::int32_t system = batch.shell_pair_systems[shell_pair];
@@ -7468,7 +7484,8 @@ __global__ void reduce_shell_pair_density_bounds_kernel(
   const std::size_t ao_pair_count = shell_ao_pair_count(batch, shell_pair);
 
   double local_coulomb = 0.0;
-  double local_exchange = 0.0;
+  double local_exchange_alpha = 0.0;
+  double local_exchange_beta = 0.0;
   if (active == nullptr || active[system] != 0) {
     for (std::size_t ordinal = threadIdx.x; ordinal < ao_pair_count;
          ordinal += blockDim.x) {
@@ -7489,37 +7506,44 @@ __global__ void reduce_shell_pair_density_bounds_kernel(
             local_coulomb,
             fmax(fabs(alpha_forward + beta_forward),
                  fabs(alpha_reverse + beta_reverse)));
-        local_exchange = fmax(
-            local_exchange,
-            fmax(fmax(fabs(alpha_forward), fabs(beta_forward)),
-                 fmax(fabs(alpha_reverse), fabs(beta_reverse))));
+        local_exchange_alpha = fmax(
+            local_exchange_alpha,
+            fmax(fabs(alpha_forward), fabs(alpha_reverse)));
+        local_exchange_beta = fmax(
+            local_exchange_beta,
+            fmax(fabs(beta_forward), fabs(beta_reverse)));
       } else {
         const double magnitude = fmax(
             fabs(density[physical_offset + forward]),
             fabs(density[physical_offset + reverse]));
         local_coulomb = fmax(local_coulomb, magnitude);
-        local_exchange = fmax(local_exchange, 0.5 * magnitude);
+        local_exchange_alpha = fmax(local_exchange_alpha, magnitude);
       }
     }
   }
 
   coulomb_maxima[threadIdx.x] = local_coulomb;
-  exchange_maxima[threadIdx.x] = local_exchange;
+  exchange_alpha_maxima[threadIdx.x] = local_exchange_alpha;
+  exchange_beta_maxima[threadIdx.x] = local_exchange_beta;
   __syncthreads();
   for (unsigned stride = blockDim.x / 2; stride != 0; stride /= 2) {
     if (threadIdx.x < stride) {
       coulomb_maxima[threadIdx.x] = fmax(
           coulomb_maxima[threadIdx.x],
           coulomb_maxima[threadIdx.x + stride]);
-      exchange_maxima[threadIdx.x] = fmax(
-          exchange_maxima[threadIdx.x],
-          exchange_maxima[threadIdx.x + stride]);
+      exchange_alpha_maxima[threadIdx.x] = fmax(
+          exchange_alpha_maxima[threadIdx.x],
+          exchange_alpha_maxima[threadIdx.x + stride]);
+      exchange_beta_maxima[threadIdx.x] = fmax(
+          exchange_beta_maxima[threadIdx.x],
+          exchange_beta_maxima[threadIdx.x + stride]);
     }
     __syncthreads();
   }
   if (threadIdx.x == 0) {
     shell_pair_density_bounds[shell_pair] = {
-        coulomb_maxima[0], exchange_maxima[0]};
+        coulomb_maxima[0], exchange_alpha_maxima[0],
+        exchange_beta_maxima[0]};
   }
 }
 
@@ -7538,7 +7562,8 @@ __global__ void clear_active_shell_quartet_tile_counts_kernel(
   }
 }
 
-/** Apply the shell-level Schwarz and density gates shared by all consumers. */
+/** Apply the shell-level Schwarz and density gate for one direct consumer. */
+template <bool Unrestricted, DirectScreeningPurpose Purpose>
 __device__ __forceinline__ bool direct_shell_quartet_survives_screening(
     const DeviceBatch& batch,
     std::size_t first_pair,
@@ -7555,26 +7580,69 @@ __device__ __forceinline__ bool direct_shell_quartet_survives_screening(
   const std::int32_t second_shell = batch.shell_pair_second[first_pair];
   const std::int32_t third_shell = batch.shell_pair_first[second_pair];
   const std::int32_t fourth_shell = batch.shell_pair_second[second_pair];
-  double density_bound = fmax(
-      shell_pair_density_bounds[first_pair].coulomb,
-      shell_pair_density_bounds[second_pair].coulomb);
-  const std::size_t crossed_pairs[4] = {
-      system_shell_pair_index(
-          batch, system, first_shell, third_shell),
-      system_shell_pair_index(
-          batch, system, first_shell, fourth_shell),
-      system_shell_pair_index(
-          batch, system, second_shell, third_shell),
-      system_shell_pair_index(
-          batch, system, second_shell, fourth_shell),
-  };
-  for (const std::size_t crossed_pair : crossed_pairs) {
-    density_bound = fmax(
-        density_bound, shell_pair_density_bounds[crossed_pair].exchange);
+  const std::size_t ac_pair = system_shell_pair_index(
+      batch, system, first_shell, third_shell);
+  const std::size_t ad_pair = system_shell_pair_index(
+      batch, system, first_shell, fourth_shell);
+  const std::size_t bc_pair = system_shell_pair_index(
+      batch, system, second_shell, third_shell);
+  const std::size_t bd_pair = system_shell_pair_index(
+      batch, system, second_shell, fourth_shell);
+  const ShellPairDensityBounds ab = shell_pair_density_bounds[first_pair];
+  const ShellPairDensityBounds cd = shell_pair_density_bounds[second_pair];
+  const ShellPairDensityBounds ac = shell_pair_density_bounds[ac_pair];
+  const ShellPairDensityBounds ad = shell_pair_density_bounds[ad_pair];
+  const ShellPairDensityBounds bc = shell_pair_density_bounds[bc_pair];
+  const ShellPairDensityBounds bd = shell_pair_density_bounds[bd_pair];
+
+  double fock_density_bound = fmax(
+      ab.coulomb, cd.coulomb);
+  if constexpr (Unrestricted) {
+    fock_density_bound = fmax(
+        fock_density_bound,
+        fmax(fmax(ac.exchange_alpha, ac.exchange_beta),
+             fmax(ad.exchange_alpha, ad.exchange_beta)));
+    fock_density_bound = fmax(
+        fock_density_bound,
+        fmax(fmax(bc.exchange_alpha, bc.exchange_beta),
+             fmax(bd.exchange_alpha, bd.exchange_beta)));
+  } else {
+    // Preserve the established RHF Fock gate exactly: F = J - K/2.
+    const double exchange_bound = fmax(
+        fmax(ac.exchange_alpha, ad.exchange_alpha),
+        fmax(bc.exchange_alpha, bd.exchange_alpha));
+    fock_density_bound = fmax(fock_density_bound, 0.5 * exchange_bound);
   }
-  return quartet_bound * density_bound >= screening_tolerance;
+  if (quartet_bound * fock_density_bound < screening_tolerance) return false;
+  if constexpr (Purpose == DirectScreeningPurpose::Fock) return true;
+
+  // Screen J and each same-spin K contraction independently. Combining the
+  // exact symmetry-reduced coefficient here would exploit cancellation and
+  // can make loose-screening analytic forces disagree with finite differences.
+  const double force_screening_tolerance =
+      fmin(screening_tolerance, kForceDensityProductScreeningTolerance);
+  if (quartet_bound * ab.coulomb * cd.coulomb >=
+      force_screening_tolerance) {
+    return true;
+  }
+  if constexpr (Unrestricted) {
+    return quartet_bound * ac.exchange_alpha * bd.exchange_alpha >=
+               force_screening_tolerance ||
+        quartet_bound * ac.exchange_beta * bd.exchange_beta >=
+               force_screening_tolerance ||
+        quartet_bound * ad.exchange_alpha * bc.exchange_alpha >=
+               force_screening_tolerance ||
+        quartet_bound * ad.exchange_beta * bc.exchange_beta >=
+               force_screening_tolerance;
+  } else {
+    return quartet_bound * ac.exchange_alpha * bd.exchange_alpha >=
+               force_screening_tolerance ||
+        quartet_bound * ad.exchange_alpha * bc.exchange_alpha >=
+               force_screening_tolerance;
+  }
 }
 
+template <bool Unrestricted, DirectScreeningPurpose Purpose>
 __global__ void compact_active_shell_quartet_tiles_kernel(
     DeviceBatch batch,
     double screening_tolerance,
@@ -7602,7 +7670,7 @@ __global__ void compact_active_shell_quartet_tiles_kernel(
       static_cast<std::size_t>(batch.system_shell_pair_offsets[system]);
   const std::size_t first_pair = pair_begin + first_pair_local;
   const std::size_t second_pair = pair_begin + second_pair_local;
-  if (!direct_shell_quartet_survives_screening(
+  if (!direct_shell_quartet_survives_screening<Unrestricted, Purpose>(
           batch, first_pair, second_pair, screening_tolerance,
           shell_pair_bounds, shell_pair_density_bounds)) return;
 
@@ -10889,6 +10957,7 @@ void two_electron_force_psss_resident_bra_kernel(
     double screening_tolerance,
     const double* shell_pair_bounds,
     const ShellPairDensityBounds* shell_pair_density_bounds,
+    bool force_density_product_screening,
     const double* schwarz_bounds,
     const double* density,
     const std::uint8_t* active,
@@ -10929,9 +10998,16 @@ void two_electron_force_psss_resident_bra_kernel(
         resident_ket_pairs[task.ket_begin + local_ket];
     const std::size_t first_pair = bra_pair > ket_pair ? bra_pair : ket_pair;
     const std::size_t second_pair = bra_pair > ket_pair ? ket_pair : bra_pair;
-    if (!direct_shell_quartet_survives_screening(
-            batch, first_pair, second_pair, screening_tolerance,
-            shell_pair_bounds, shell_pair_density_bounds)) {
+    const bool survives_screening = force_density_product_screening
+        ? direct_shell_quartet_survives_screening<
+              Unrestricted, DirectScreeningPurpose::Force>(
+              batch, first_pair, second_pair, screening_tolerance,
+              shell_pair_bounds, shell_pair_density_bounds)
+        : direct_shell_quartet_survives_screening<
+              Unrestricted, DirectScreeningPurpose::Fock>(
+              batch, first_pair, second_pair, screening_tolerance,
+              shell_pair_bounds, shell_pair_density_bounds);
+    if (!survives_screening) {
       continue;
     }
     contract_two_electron_force_psss_task<Unrestricted, true>(
@@ -11362,6 +11438,7 @@ void launch_angular_force_quartets(
     double screening_tolerance,
     const double* shell_pair_bounds,
     const ShellPairDensityBounds* shell_pair_density_bounds,
+    bool force_density_product_screening,
     const double* schwarz_bounds,
     const double* density,
     const std::uint8_t* active,
@@ -11403,8 +11480,9 @@ void launch_angular_force_quartets(
               stream>>>(
               batch, psss_resident_tasks, psss_resident_ket_pairs,
               psss_resident_task_count, screening_tolerance, shell_pair_bounds,
-              shell_pair_density_bounds, schwarz_bounds, density, active,
-              forces, generated_shell_class_mask);
+              shell_pair_density_bounds, force_density_product_screening,
+              schwarz_bounds, density, active, forces,
+              generated_shell_class_mask);
         } else {
           const unsigned capacity_workers = static_cast<unsigned>(
               (capacities[AngularOrder] + detail::kDirectQuartetThreads - 1) /
@@ -11492,8 +11570,8 @@ void launch_angular_force_quartets(
         psss_resident_tasks, psss_resident_ket_pairs,
         psss_resident_task_count,
         resident_psss_bra_primitive_pairs, screening_tolerance,
-        shell_pair_bounds, shell_pair_density_bounds, schwarz_bounds,
-        density, active, forces,
+        shell_pair_bounds, shell_pair_density_bounds,
+        force_density_product_screening, schwarz_bounds, density, active, forces,
         generated_shell_class_mask);
   }
 }
@@ -12449,6 +12527,15 @@ bool reuse_converged_fock_requested() {
       std::strcmp(force_rebuild, "none") == 0;
 }
 
+/** Enable the production force density-product gate unless A/B disables it. */
+bool force_density_product_screening_requested() {
+  const char* selection =
+      std::getenv("VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING");
+  return selection == nullptr ||
+      (std::strcmp(selection, "0") != 0 &&
+       std::strcmp(selection, "none") != 0);
+}
+
 bool same_topology(const HostBatch& first, const HostBatch& second) {
   return first.nbf == second.nbf &&
          first.direct_nbf == second.direct_nbf &&
@@ -12599,6 +12686,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       std::strcmp(scalar_one_electron_force_environment, "0") == 0;
   const bool requested_reuse_converged_fock =
       reuse_converged_fock_requested();
+  // Read this on every cached execution so one prepared batch can provide a
+  // fixed-dm0 old/new A/B without rebuilding its immutable topology plan.
+  const bool force_density_product_screening =
+      force_density_product_screening_requested();
   const bool first_setup = !plan.initialized;
   detail::DirectQuartetTaskLayout direct_task_layout{};
   std::size_t total_shell_quartet_tiles = 0;
@@ -13417,22 +13508,64 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     if (unrestricted) {
       reduce_shell_pair_density_bounds_kernel<true><<<
           static_cast<unsigned>(total_shell_pairs), threads,
-          2 * threads * sizeof(double), resources.stream_>>>(
+          3 * threads * sizeof(double), resources.stream_>>>(
           device_batch, quartet_density, active,
           shell_pair_density_bounds);
+      compact_active_shell_quartet_tiles_kernel<
+          true, DirectScreeningPurpose::Fock><<<
+              blocks_for(total_shell_quartets), threads, 0,
+              resources.stream_>>>(
+          device_batch, options.screening_tolerance, shell_pair_bounds,
+          shell_pair_density_bounds, active,
+          active_shell_quartet_tile_offsets,
+          active_shell_quartet_tile_counts, active_shell_quartet_tiles);
     } else {
       reduce_shell_pair_density_bounds_kernel<false><<<
           static_cast<unsigned>(total_shell_pairs), threads,
-          2 * threads * sizeof(double), resources.stream_>>>(
+          3 * threads * sizeof(double), resources.stream_>>>(
           device_batch, quartet_density, active,
           shell_pair_density_bounds);
+      compact_active_shell_quartet_tiles_kernel<
+          false, DirectScreeningPurpose::Fock><<<
+              blocks_for(total_shell_quartets), threads, 0,
+              resources.stream_>>>(
+          device_batch, options.screening_tolerance, shell_pair_bounds,
+          shell_pair_density_bounds, active,
+          active_shell_quartet_tile_offsets,
+          active_shell_quartet_tile_counts, active_shell_quartet_tiles);
     }
-    compact_active_shell_quartet_tiles_kernel<<<
-        blocks_for(total_shell_quartets), threads, 0, resources.stream_>>>(
-        device_batch, options.screening_tolerance, shell_pair_bounds,
-        shell_pair_density_bounds, active,
-        active_shell_quartet_tile_offsets,
-        active_shell_quartet_tile_counts, active_shell_quartet_tiles);
+    return cudaPeekAtLastError();
+  };
+  const auto launch_direct_force_compaction = [&]() -> cudaError_t {
+    if (!quartet_direct || !force_density_product_screening) {
+      return cudaSuccess;
+    }
+    // The final Fock/metadata path above has already reduced the selected
+    // density in the direct Cartesian AO domain. Reuse those bounds and
+    // overwrite the no-longer-needed Fock queue with its force-only subset.
+    clear_active_shell_quartet_tile_counts_kernel<<<
+        blocks_for(detail::kDirectQuartetAngularOrderCount), threads, 0,
+        resources.stream_>>>(active_shell_quartet_tile_counts,
+                             persistent_fock_task_heads);
+    if (unrestricted) {
+      compact_active_shell_quartet_tiles_kernel<
+          true, DirectScreeningPurpose::Force><<<
+              blocks_for(total_shell_quartets), threads, 0,
+              resources.stream_>>>(
+          device_batch, options.screening_tolerance, shell_pair_bounds,
+          shell_pair_density_bounds, active,
+          active_shell_quartet_tile_offsets,
+          active_shell_quartet_tile_counts, active_shell_quartet_tiles);
+    } else {
+      compact_active_shell_quartet_tiles_kernel<
+          false, DirectScreeningPurpose::Force><<<
+              blocks_for(total_shell_quartets), threads, 0,
+              resources.stream_>>>(
+          device_batch, options.screening_tolerance, shell_pair_bounds,
+          shell_pair_density_bounds, active,
+          active_shell_quartet_tile_offsets,
+          active_shell_quartet_tile_counts, active_shell_quartet_tiles);
+    }
     return cudaPeekAtLastError();
   };
   const auto launch_fock_builder =
@@ -14053,6 +14186,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   // The accepted density update has already passed the requested SCF density
   // tolerance, so retaining P keeps all final energy/two-electron force terms
   // evaluated consistently at the same P and F(P).
+  cuda_error = launch_direct_force_compaction();
+  if (cuda_error != cudaSuccess) {
+    fill_global_failure(outputs, cuda_status(cuda_error));
+    return outputs;
+  }
   if (shell_class_profiling && quartet_direct) {
     cuda_error = cudaMemsetAsync(
         shell_class_profile, 0,
@@ -14197,7 +14335,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         plan.resident_psss_task_count,
         plan.resident_psss_bra_primitive_pairs,
         options.screening_tolerance, shell_pair_bounds,
-        shell_pair_density_bounds, schwarz_bounds,
+        shell_pair_density_bounds, force_density_product_screening,
+        schwarz_bounds,
         transformed_direct ? direct_density : density, active, forces,
         generated_shell_class_mask);
   } else if (unrestricted) {
@@ -14236,7 +14375,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         plan.resident_psss_task_count,
         plan.resident_psss_bra_primitive_pairs,
         options.screening_tolerance, shell_pair_bounds,
-        shell_pair_density_bounds, schwarz_bounds,
+        shell_pair_density_bounds, force_density_product_screening,
+        schwarz_bounds,
         transformed_direct ? direct_density : density, active, forces,
         generated_shell_class_mask);
   } else {

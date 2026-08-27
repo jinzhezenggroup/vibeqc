@@ -359,7 +359,9 @@ def test_cartesian_d_f_cuda_matches_pyscf_libcint_reference():
     assert np.max(np.abs(result.forces.sum(axis=0))) < 3.0e-11
 
 
-def test_screened_direct_jk_force_matches_energy_finite_difference():
+def test_screened_direct_jk_force_matches_energy_finite_difference(
+    monkeypatch: pytest.MonkeyPatch,
+):
     """Keep the direct-J/K screening decision variational and force-consistent."""
 
     basis = (
@@ -390,7 +392,20 @@ def test_screened_direct_jk_force_matches_energy_finite_difference():
     atoms = [("He", coordinates(1.4)[0]), ("H", coordinates(1.4)[1])]
     try:
         with calculator.prepare_batch([atoms], charges=[1]) as batch:
+            # Seed the resident density before comparing force-screening modes;
+            # otherwise the cold-to-warm SCF refinement obscures their tiny
+            # numerical difference.
+            batch.execute([coordinates(1.4)], strict=True)
             center = batch.execute([coordinates(1.4)], strict=True).items[0]
+            # The force-only density-product gate is evaluated on every warm
+            # execution rather than cached in the immutable direct-J/K plan.
+            # Compare both paths on one prepared batch so the A/B switch and
+            # the conservative loose-threshold cap remain covered together.
+            monkeypatch.setenv("VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING", "0")
+            unscreened = batch.execute(
+                [coordinates(1.4)], strict=True
+            ).items[0]
+            monkeypatch.delenv("VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING")
             plus = batch.execute([coordinates(1.4001)], strict=True).items[0]
             minus = batch.execute([coordinates(1.3999)], strict=True).items[0]
     except RuntimeError as error:
@@ -400,6 +415,9 @@ def test_screened_direct_jk_force_matches_energy_finite_difference():
     # Both atoms move by +/-dR/2, so translational invariance makes the force
     # on atom 1 equal to -dE/dR.
     assert center.forces is not None
+    assert unscreened.forces is not None
+    assert center.energy == pytest.approx(unscreened.energy, abs=1.0e-12)
+    assert np.max(np.abs(center.forces - unscreened.forces)) < 2.0e-10
     assert center.forces[1, 2] == pytest.approx(-derivative, abs=2.0e-6)
     assert np.max(np.abs(center.forces.sum(axis=0))) < 3.0e-10
 
