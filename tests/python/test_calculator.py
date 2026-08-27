@@ -396,6 +396,7 @@ def test_screened_direct_jk_force_matches_energy_finite_difference(
             # otherwise the cold-to-warm SCF refinement obscures their tiny
             # numerical difference.
             batch.execute([coordinates(1.4)], strict=True)
+            batch.set_warm_start_updates(False)
             center = batch.execute([coordinates(1.4)], strict=True).items[0]
             # The force-only density-product gate is evaluated on every warm
             # execution rather than cached in the immutable direct-J/K plan.
@@ -420,6 +421,42 @@ def test_screened_direct_jk_force_matches_energy_finite_difference(
     assert np.max(np.abs(center.forces - unscreened.forces)) < 2.0e-10
     assert center.forces[1, 2] == pytest.approx(-derivative, abs=2.0e-6)
     assert np.max(np.abs(center.forces.sum(axis=0))) < 3.0e-10
+
+
+def test_cuda_final_fock_reuse_matches_forced_rebuild(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Bound the force impact when an accepted raw Fock skips final rebuild."""
+
+    basis = (
+        Shell(0, 0, (Primitive(1.5, 1.0),)),
+        Shell(0, 2, (Primitive(0.8, 1.0),)),
+        Shell(0, 3, (Primitive(0.6, 1.0),)),
+        Shell(1, 0, (Primitive(1.2, 1.0),)),
+    )
+    atoms = [("He", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
+
+    def evaluate():
+        return Calculator(
+            basis=basis,
+            device="cuda",
+            energy_tolerance=1.0e-10,
+            density_tolerance=1.0e-8,
+            screening_tolerance=1.0e-14,
+        ).singlepoint(atoms, charge=1)
+
+    try:
+        reused = evaluate()
+        monkeypatch.setenv("VIBEQC_FINAL_FOCK_REBUILD", "1")
+        rebuilt = evaluate()
+    except RuntimeError as error:
+        pytest.skip(f"CUDA device unavailable: {error}")
+
+    # Exercise the range newly admitted by the bounded reuse policy rather
+    # than a density step that already satisfied the historical 1e-12 gate.
+    assert 1.0e-12 < reused.density_rms < 2.0e-9
+    assert reused.energy == pytest.approx(rebuilt.energy, abs=5.0e-9)
+    assert np.max(np.abs(reused.forces - rebuilt.forces)) < 5.0e-7
 
 
 def test_larger_direct_jk_matches_cpu_oracle():
