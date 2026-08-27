@@ -3159,6 +3159,18 @@ def test_autotune_driver_probes_and_rejects_target_before_trials():
     assert "compile target sm_80 does not match allocated" in source
 
 
+def test_autotune_keeps_benchmark_executor_distinct_from_compile_pool():
+    """Prevent parallel compilation from shadowing the GPU run adapter."""
+
+    source = (
+        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "autotune.py"
+    ).read_text(encoding="utf-8")
+    assert "benchmark_executor = CudaBenchmarkExecutor(" in source
+    assert "as compile_pool:" in source
+    assert "run = benchmark_executor.run(" in source
+    assert "as executor:" not in source
+
+
 def test_autotune_emits_unique_schedule_variants_and_manifest_records():
     """Keep same-class variants linkable and every winner reproducible."""
 

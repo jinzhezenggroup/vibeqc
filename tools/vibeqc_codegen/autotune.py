@@ -621,7 +621,7 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
         target=target,
         compile_timeout=arguments.compile_timeout,
     )
-    executor = CudaBenchmarkExecutor(
+    benchmark_executor = CudaBenchmarkExecutor(
         timeout=arguments.timeout,
         local=arguments.local,
         srun=arguments.srun,
@@ -671,9 +671,9 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 f"{oracle_trial.spec.name}_{oracle_trial.schedule_id}_oracle.cu"
             )
             oracle_path.write_text(oracle_source, encoding="utf-8")
-        with ThreadPoolExecutor(max_workers=arguments.compile_jobs) as executor:
+        with ThreadPoolExecutor(max_workers=arguments.compile_jobs) as compile_pool:
             oracle_compile_rows = list(
-                executor.map(
+                compile_pool.map(
                     lambda trial: _compile_trial(
                         arguments.nvcc,
                         arguments.architecture,
@@ -709,9 +709,9 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 encoding="utf-8",
             )
 
-        with ThreadPoolExecutor(max_workers=arguments.compile_jobs) as executor:
+        with ThreadPoolExecutor(max_workers=arguments.compile_jobs) as compile_pool:
             compile_rows = list(
-                executor.map(
+                compile_pool.map(
                     lambda trial: _compile_trial(
                         arguments.nvcc,
                         arguments.architecture,
@@ -761,7 +761,7 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
             link = compiler.link(driver, objects, executable)
             if link.returncode != 0:
                 raise RuntimeError(link.stdout + link.stderr)
-            run = executor.run(
+            run = benchmark_executor.run(
                 executable,
                 _runtime_environment(arguments.nvcc),
             )
