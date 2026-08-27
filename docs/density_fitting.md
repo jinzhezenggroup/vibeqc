@@ -16,6 +16,14 @@ four-center J/K path; selecting a density-fitting SCF mode is not yet supported.
 - Symmetric metric inverse square root with a configurable relative
   linear-dependence threshold, effective-rank reporting, and a condition-number
   diagnostic.
+- Host-reference metric-orthonormalized three-center tensors and RHF/UHF RI-J/K
+  contractions. The density-based exchange schedule uses the same pair of
+  matrix multiplications intended for blocked accelerator execution without
+  materializing four-center ERIs.
+- A persistent homogeneous CUDA J/K plan performs device-side metric
+  eigendecomposition and inverse-square-root construction, cuBLAS three-center
+  transforms and RI-J, and auxiliary-tiled two-GEMM RI-K for RHF and UHF. The
+  transformed tensor remains resident across repeated density contractions.
 - A deterministic planner for batch, AO-pair, auxiliary, and occupied-orbital
   tiles. Its workspace estimate includes the permanent metric factor and does
   not require the full three-center tensor when that tensor exceeds the budget.
@@ -26,10 +34,11 @@ GPU density-fitting mode.
 
 ## Remaining in issue #5
 
-- CUDA batched two-/three-center kernels and device-side metric factorization.
+- CUDA batched two-/three-center integral evaluation kernels.
 - Prepared, reusable auxiliary-basis topology and workspaces for fixed-topology
   batches.
-- RHF and UHF RI-J/K contractions and device-resident SCF integration.
+- Device-resident SCF integration, CUDA Graph replay, and planner-driven
+  streaming when the complete transformed three-center tensor exceeds budget.
 - Complete RI-J/K analytic-force response, including all auxiliary and Pulay
   terms.
 - Warm CUDA Graph replay, per-system failure isolation, memory measurements,
