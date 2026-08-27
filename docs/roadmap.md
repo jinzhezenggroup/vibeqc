@@ -355,6 +355,9 @@ and performance measurements pass.
 
 ## Reserved method boundaries
 
+- The method registry, family/property capability query, and method-neutral
+  prepared calculation/batch interfaces are implemented. New families attach
+  behind this boundary rather than adding branches to the C ABI.
 - `WB97M_V` remains discoverable but unavailable until grid, meta-GGA,
   range-separated exchange, VV10, and their force responses have independent
   designs and tests.

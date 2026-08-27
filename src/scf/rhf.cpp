@@ -621,7 +621,7 @@ void finalize_scf(const integrals::IntegralData& ints,
                   const Matrix& orthogonalizer,
                   std::size_t occupied,
                   Matrix& density,
-                  core::ScfResult& result) {
+                  ScfResult& result) {
   const std::size_t n = ints.nbf;
   Matrix final_fock = build_fock(ints.hcore, ints.eri, density, n);
   EigenResult orbitals = generalized_eigen(final_fock, orthogonalizer, n);
@@ -641,7 +641,7 @@ void finalize_uhf(const integrals::IntegralData& ints,
                   std::size_t beta_occupied,
                   Matrix& alpha_density,
                   Matrix& beta_density,
-                  core::ScfResult& result) {
+                  ScfResult& result) {
   const std::size_t n = ints.nbf;
   auto [alpha_fock, beta_fock] = build_uhf_focks(
       ints.hcore, ints.eri, alpha_density, beta_density, n);
@@ -668,8 +668,8 @@ void finalize_uhf(const integrals::IntegralData& ints,
 
 }  // namespace
 
-core::ScfResult run_rhf(const core::System& system,
-                        const core::ScfOptions& options,
+ScfResult run_rhf(const core::System& system,
+                  const ScfOptions& options,
                         const std::vector<double>* initial_density) {
   const integrals::IntegralData ints =
       integrals::build_cartesian_integrals(system);
@@ -684,7 +684,7 @@ core::ScfResult run_rhf(const core::System& system,
                                            initial_density, orbitals);
   Diis diis(options.diis_history);
 
-  core::ScfResult result;
+  ScfResult result;
   result.initial_density_used = initial_density != nullptr;
   double previous_energy = std::numeric_limits<double>::infinity();
   for (unsigned iteration = 1; iteration <= options.max_iterations; ++iteration) {
@@ -720,8 +720,8 @@ core::ScfResult run_rhf(const core::System& system,
   return result;
 }
 
-core::ScfResult run_uhf(const core::System& system,
-                        const core::ScfOptions& options,
+ScfResult run_uhf(const core::System& system,
+                  const ScfOptions& options,
                         const std::vector<double>* initial_density) {
   const integrals::IntegralData ints =
       integrals::build_cartesian_integrals(system);
@@ -739,7 +739,7 @@ core::ScfResult run_uhf(const core::System& system,
       alpha_orbitals, beta_orbitals);
   Diis diis(options.diis_history);
 
-  core::ScfResult result;
+  ScfResult result;
   result.initial_density_used = initial_density != nullptr;
   double previous_energy = std::numeric_limits<double>::infinity();
   for (unsigned iteration = 1; iteration <= options.max_iterations; ++iteration) {
@@ -852,15 +852,15 @@ CudaRhfBasisLayoutStats inspect_rhf_cuda_basis_layout(
           expanded_primitives, device_basis_bytes};
 }
 
-core::ScfResult run_rhf_cuda(const core::System&,
-                             const core::ScfOptions&,
+ScfResult run_rhf_cuda(const core::System&,
+                       const ScfOptions&,
                              int,
                              const std::vector<double>*) {
   throw std::runtime_error("the library was built without CUDA support");
 }
 
-core::ScfResult run_uhf_cuda(const core::System&,
-                             const core::ScfOptions&,
+ScfResult run_uhf_cuda(const core::System&,
+                       const ScfOptions&,
                              int,
                              const std::vector<double>*) {
   throw std::runtime_error("the library was built without CUDA support");
@@ -868,7 +868,7 @@ core::ScfResult run_uhf_cuda(const core::System&,
 
 std::vector<RhfBucketItem> run_rhf_cuda_bucket(
     const std::vector<core::System>& systems,
-    const core::ScfOptions&,
+    const ScfOptions&,
     const std::vector<const std::vector<double>*>&,
     int,
     bool) {
@@ -882,7 +882,7 @@ std::vector<RhfBucketItem> run_rhf_cuda_bucket(
 std::vector<RhfBucketItem> run_rhf_cuda_bucket_cached(
     CudaRhfBucketPlan**,
     const std::vector<core::System>& systems,
-    const core::ScfOptions&,
+    const ScfOptions&,
     const std::vector<const std::vector<double>*>&,
     int,
     bool) {
@@ -895,7 +895,7 @@ std::vector<RhfBucketItem> run_rhf_cuda_bucket_cached(
 
 std::vector<RhfBucketItem> run_uhf_cuda_bucket(
     const std::vector<core::System>& systems,
-    const core::ScfOptions&,
+    const ScfOptions&,
     const std::vector<const std::vector<double>*>&,
     int,
     bool) {
@@ -909,7 +909,7 @@ std::vector<RhfBucketItem> run_uhf_cuda_bucket(
 std::vector<RhfBucketItem> run_uhf_cuda_bucket_cached(
     CudaRhfBucketPlan**,
     const std::vector<core::System>& systems,
-    const core::ScfOptions&,
+    const ScfOptions&,
     const std::vector<const std::vector<double>*>&,
     int,
     bool) {

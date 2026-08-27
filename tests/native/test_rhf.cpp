@@ -17,7 +17,7 @@ void require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
 
-Evaluation h2(double distance) {
+Evaluation h2(double distance, bool verify_energy_only = false) {
   vibeqc_context_descriptor context_descriptor{
       sizeof(vibeqc_context_descriptor), VIBEQC_ABI_VERSION, 0,
       VIBEQC_BACKEND_CPU_REFERENCE};
@@ -70,6 +70,17 @@ Evaluation h2(double distance) {
   require(result.converged == 1, "RHF did not report convergence");
   evaluation.energy = result.energy;
 
+  if (verify_energy_only) {
+    vibeqc_result_descriptor energy_only{
+        sizeof(vibeqc_result_descriptor), VIBEQC_ABI_VERSION, 0.0,
+        nullptr, 0, 0, 0.0, 0.0, 0, VIBEQC_BACKEND_CPU_REFERENCE};
+    require(vibeqc_calculation_execute(calculation, &energy_only) ==
+                VIBEQC_STATUS_SUCCESS,
+            "energy-only execution failed");
+    require(std::abs(energy_only.energy - evaluation.energy) < 1.0e-14,
+            "omitting force storage changed the energy");
+  }
+
   vibeqc_calculation_destroy(calculation);
   vibeqc_system_destroy(system);
   vibeqc_context_destroy(context);
@@ -91,7 +102,25 @@ int main() {
                 VIBEQC_STATUS_SUCCESS && available == 0,
             "wB97M-V must remain explicitly unavailable");
 
-    const Evaluation center = h2(1.4);
+    vibeqc_method_capabilities_descriptor capabilities{
+        sizeof(vibeqc_method_capabilities_descriptor), VIBEQC_ABI_VERSION,
+        0, 0, 0, 0, 0};
+    require(vibeqc_method_get_capabilities(VIBEQC_METHOD_RHF, &capabilities) ==
+                VIBEQC_STATUS_SUCCESS,
+            "RHF detailed capability query failed");
+    require(capabilities.family == VIBEQC_METHOD_FAMILY_HARTREE_FOCK &&
+                capabilities.available == 1 && capabilities.supports_batch == 1 &&
+                capabilities.supported_properties ==
+                    (VIBEQC_PROPERTY_ENERGY | VIBEQC_PROPERTY_FORCES),
+            "RHF detailed capabilities are incorrect");
+    require(vibeqc_method_get_capabilities(VIBEQC_METHOD_RCCSD_T,
+                                           &capabilities) ==
+                VIBEQC_STATUS_SUCCESS &&
+                capabilities.family == VIBEQC_METHOD_FAMILY_COUPLED_CLUSTER &&
+                capabilities.available == 0,
+            "RCCSD(T) reserved capabilities are incorrect");
+
+    const Evaluation center = h2(1.4, true);
     require(std::abs(center.energy - (-1.11671432506255)) < 2.0e-9,
             "H2/STO-3G RHF energy differs from the reference");
     for (int axis = 0; axis < 3; ++axis) {

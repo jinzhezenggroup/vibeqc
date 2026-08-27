@@ -26,7 +26,9 @@ enum {
   VIBEQC_STATUS_INVALID_ARGUMENT = 1,
   VIBEQC_STATUS_ABI_MISMATCH = 2,
   VIBEQC_STATUS_NOT_IMPLEMENTED = 3,
-  VIBEQC_STATUS_SCF_NOT_CONVERGED = 4,
+  VIBEQC_STATUS_NOT_CONVERGED = 4,
+  /** Compatibility name retained for the original HF-only ABI. */
+  VIBEQC_STATUS_SCF_NOT_CONVERGED = VIBEQC_STATUS_NOT_CONVERGED,
   VIBEQC_STATUS_NUMERICAL_FAILURE = 5,
   VIBEQC_STATUS_CUDA_ERROR = 6,
   VIBEQC_STATUS_OUT_OF_MEMORY = 7,
@@ -39,6 +41,20 @@ enum {
   VIBEQC_METHOD_UHF = 2,
   VIBEQC_METHOD_WB97M_V = 3,
   VIBEQC_METHOD_RCCSD_T = 4
+};
+
+/** Broad algorithm family used for capability discovery and dispatch. */
+typedef int32_t vibeqc_method_family;
+enum {
+  VIBEQC_METHOD_FAMILY_HARTREE_FOCK = 1,
+  VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL = 2,
+  VIBEQC_METHOD_FAMILY_COUPLED_CLUSTER = 3
+};
+
+typedef uint32_t vibeqc_property_flags;
+enum {
+  VIBEQC_PROPERTY_ENERGY = 1u << 0,
+  VIBEQC_PROPERTY_FORCES = 1u << 1
 };
 
 typedef int32_t vibeqc_backend;
@@ -138,6 +154,17 @@ typedef struct vibeqc_method_descriptor {
   double screening_tolerance;
 } vibeqc_method_descriptor;
 
+/** Executable capabilities for one method identifier. */
+typedef struct vibeqc_method_capabilities_descriptor {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  vibeqc_method method;
+  vibeqc_method_family family;
+  vibeqc_property_flags supported_properties;
+  int32_t available;
+  int32_t supports_batch;
+} vibeqc_method_capabilities_descriptor;
+
 typedef struct vibeqc_result_descriptor {
   uint32_t struct_size;
   uint32_t abi_version;
@@ -187,6 +214,11 @@ VIBEQC_API const char* vibeqc_status_message(vibeqc_status status);
 /** Query whether a method is currently executable. */
 VIBEQC_API vibeqc_status vibeqc_method_available(vibeqc_method method, int32_t* available);
 
+/** Query method family, properties, and batch support without preparing work. */
+VIBEQC_API vibeqc_status vibeqc_method_get_capabilities(
+    vibeqc_method method,
+    vibeqc_method_capabilities_descriptor* capabilities);
+
 VIBEQC_API vibeqc_status vibeqc_context_create(
     const vibeqc_context_descriptor* descriptor, vibeqc_context** context);
 VIBEQC_API void vibeqc_context_destroy(vibeqc_context* context);
@@ -205,9 +237,10 @@ VIBEQC_API vibeqc_status vibeqc_calculation_prepare(
 VIBEQC_API void vibeqc_calculation_destroy(vibeqc_calculation* calculation);
 
 /**
- * Execute synchronously. The caller owns result->forces and must provide at
- * least 3 * atom_count doubles. Coordinates and all reported derivatives use
- * atomic units (Bohr, Hartree, Hartree/Bohr).
+ * Execute synchronously. To request forces, the caller owns result->forces and
+ * provides at least 3 * atom_count doubles. A NULL pointer with force_count=0
+ * requests energy and diagnostics only. Coordinates and all reported
+ * derivatives use atomic units (Bohr, Hartree, Hartree/Bohr).
  */
 VIBEQC_API vibeqc_status vibeqc_calculation_execute(
     vibeqc_calculation* calculation, vibeqc_result_descriptor* result);

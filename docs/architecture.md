@@ -7,6 +7,37 @@ RHF and UHF are executable in the HF vertical prototype. `WB97M_V` and
 `VIBEQC_STATUS_NOT_IMPLEMENTED`. No DFT grid or coupled-cluster tensor framework
 is created before a real method requires it.
 
+## Method execution boundary
+
+The public ABI no longer dispatches scientific functions directly. Its opaque
+calculation and batch handles own method-neutral `PreparedCalculation` and
+`PreparedBatch` plans created by the method registry:
+
+```text
+C / C++ / Python API
+  -> method registry and capability metadata
+  -> method-family adapter
+  -> scientific implementation and backend plan
+```
+
+RHF and UHF are implemented by the Hartree-Fock adapter. System validation,
+SCF option translation, CPU/CUDA selection, warm densities, and fleet execution
+are private to that adapter. Adding a DFT or correlated method therefore adds a
+registry definition and its own prepared-plan implementation instead of adding
+branches to the C ABI.
+
+The registry reports method family, executable properties, and batch support.
+Reserved DFT and coupled-cluster identifiers remain discoverable with zero
+executable properties. Result publication is method-neutral internally; the
+ABI-0 `density_rms` field currently carries the adapter's residual diagnostic.
+Force buffers may be omitted for energy-only execution, which allows future
+methods to become executable before analytic gradients are available.
+
+SCF options and retained densities live under `scf/`, not `core/`. The core
+types describe only systems and runtime state. The HF compatibility umbrella
+`scf/rhf.hpp` includes the smaller `mean_field.hpp` and `cuda_batch.hpp`
+boundaries for existing internal callers.
+
 ## Derivative policy
 
 Nuclear forces are native analytic derivatives. The current reference engine

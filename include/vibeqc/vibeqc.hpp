@@ -29,6 +29,24 @@ inline void check(vibeqc_status status) {
   }
 }
 
+struct MethodCapabilities {
+  vibeqc_method method{};
+  vibeqc_method_family family{};
+  vibeqc_property_flags supported_properties{};
+  bool available{};
+  bool supports_batch{};
+};
+
+/** Query the native registry without preparing a system or calculation. */
+inline MethodCapabilities method_capabilities(vibeqc_method method) {
+  vibeqc_method_capabilities_descriptor native{
+      sizeof(vibeqc_method_capabilities_descriptor), VIBEQC_ABI_VERSION,
+      0, 0, 0, 0, 0};
+  check(vibeqc_method_get_capabilities(method, &native));
+  return {native.method, native.family, native.supported_properties,
+          native.available != 0, native.supports_batch != 0};
+}
+
 class Context {
  public:
   explicit Context(const vibeqc_context_descriptor& descriptor) {

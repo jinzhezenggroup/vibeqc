@@ -35,28 +35,6 @@ struct System {
   vibeqc_basis_representation basis_representation{VIBEQC_BASIS_CARTESIAN};
 };
 
-struct ScfOptions {
-  unsigned max_iterations{100};
-  unsigned diis_history{8};
-  double energy_tolerance{1.0e-10};
-  double density_tolerance{1.0e-8};
-  double screening_tolerance{1.0e-12};
-};
-
-struct ScfResult {
-  double energy{};
-  std::vector<double> forces;
-  // The converged AO density is retained internally for topology-compatible
-  // warm starts. RHF stores one N x N matrix; UHF stores alpha then beta
-  // matrices. It is never exposed as an implicit public buffer.
-  std::vector<double> density;
-  unsigned iterations{};
-  double energy_change{};
-  double density_rms{};
-  bool converged{};
-  bool initial_density_used{};
-};
-
 struct ContextState {
   vibeqc_backend requested_backend{VIBEQC_BACKEND_CPU_REFERENCE};
   vibeqc_backend executed_backend{VIBEQC_BACKEND_CPU_REFERENCE};

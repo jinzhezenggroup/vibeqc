@@ -2,7 +2,8 @@
 #define VIBEQC_SCF_FLEET_HPP
 
 #include "core/types.hpp"
-#include "scf/rhf.hpp"
+#include "scf/cuda_batch.hpp"
+#include "scf/types.hpp"
 
 #include <cstddef>
 #include <optional>
@@ -14,7 +15,7 @@ struct CudaRhfBucketPlan;
 
 struct FleetItemResult {
   vibeqc_status status{VIBEQC_STATUS_INTERNAL_ERROR};
-  core::ScfResult scf;
+  ScfResult scf;
   std::size_t bucket_id{};
   bool warm_start_used{};
   bool warm_start_fallback{};
@@ -33,7 +34,7 @@ class FleetPlan {
  public:
   FleetPlan(std::vector<core::System> systems,
             vibeqc_method method,
-            core::ScfOptions options,
+            ScfOptions options,
             bool warm_starts_enabled,
             bool cuda_fock_enabled,
             bool shell_class_profiling_enabled,
@@ -56,7 +57,7 @@ class FleetPlan {
  private:
   std::vector<core::System> systems_;
   vibeqc_method method_{VIBEQC_METHOD_RHF};
-  core::ScfOptions options_;
+  ScfOptions options_;
   bool warm_starts_enabled_{};
   bool cuda_fock_enabled_{};
   bool shell_class_profiling_enabled_{};

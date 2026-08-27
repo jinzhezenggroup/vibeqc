@@ -48,6 +48,9 @@ density-fitting milestone adds a CPU correctness oracle, metric conditioning,
 and a memory-bounded tile planner; it does not yet change production SCF
 dispatch. Near-term work extends this foundation with accelerator RI-J/K and
 broader HF robustness.
+Method capability discovery and prepared execution are now registry-driven:
+the public API is independent of RHF/UHF dispatch, while each method family
+owns its validation, options, retained state, and batch policy.
 DFT grids and exchange-correlation response, followed by AO-to-MO transforms
 and correlated tensor contractions, open the main DFT and post-HF families.
 Multireference, excited-state, periodic, embedding, and relativistic methods

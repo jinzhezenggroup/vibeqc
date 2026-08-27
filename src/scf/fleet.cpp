@@ -1,7 +1,7 @@
 #include "scf/fleet.hpp"
 
 #include "molecule/basis.hpp"
-#include "scf/rhf.hpp"
+#include "scf/mean_field.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -67,7 +67,7 @@ void apply_coordinates(core::System& system, const std::vector<double>& coordina
 
 FleetPlan::FleetPlan(std::vector<core::System> systems,
                      vibeqc_method method,
-                     core::ScfOptions options,
+                     ScfOptions options,
                      bool warm_starts_enabled,
                      bool cuda_fock_enabled,
                      bool shell_class_profiling_enabled,

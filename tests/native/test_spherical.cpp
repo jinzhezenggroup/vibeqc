@@ -78,8 +78,8 @@ bool cuda_device_available() {
   return status == VIBEQC_STATUS_SUCCESS;
 }
 
-void require_cuda_matches_cpu(const vibeqc::core::ScfResult& cuda,
-                              const vibeqc::core::ScfResult& cpu,
+void require_cuda_matches_cpu(const vibeqc::scf::ScfResult& cuda,
+                              const vibeqc::scf::ScfResult& cpu,
                               const char* label) {
   require(cpu.converged, "CPU spherical oracle did not converge");
   require(cuda.converged, label);
@@ -106,10 +106,10 @@ int main() {
     require(vibeqc::molecule::ao_count(sd) == 7,
             "spherical s/d AO count is incorrect");
 
-    vibeqc::core::ScfOptions options;
+    vibeqc::scf::ScfOptions options;
     options.energy_tolerance = 1.0e-12;
     options.density_tolerance = 1.0e-10;
-    const vibeqc::core::ScfResult result = vibeqc::scf::run_rhf(sd, options);
+    const vibeqc::scf::ScfResult result = vibeqc::scf::run_rhf(sd, options);
     require(result.converged, "spherical s/d RHF did not converge");
     // Independent PySCF/libcint reference with cart=False and the exact same
     // one-primitive basis definitions.
@@ -135,7 +135,7 @@ int main() {
 
 #if VIBEQC_HAS_CUDA
     if (cuda_device_available()) {
-      const vibeqc::core::ScfResult cuda_sd =
+      const vibeqc::scf::ScfResult cuda_sd =
           vibeqc::scf::run_rhf_cuda(sd, options, 0);
       require_cuda_matches_cpu(cuda_sd, result,
                                "CUDA spherical s/d RHF did not converge");
@@ -144,16 +144,16 @@ int main() {
       // seven real f harmonics without making the allocated-GPU smoke test a
       // large molecular benchmark.
       const vibeqc::core::System sf = helium_sf_atom();
-      const vibeqc::core::ScfResult cpu_sf = vibeqc::scf::run_rhf(sf, options);
-      const vibeqc::core::ScfResult cuda_sf =
+      const vibeqc::scf::ScfResult cpu_sf = vibeqc::scf::run_rhf(sf, options);
+      const vibeqc::scf::ScfResult cuda_sf =
           vibeqc::scf::run_rhf_cuda(sf, options, 0);
       require_cuda_matches_cpu(cuda_sf, cpu_sf,
                                "CUDA spherical s/f RHF did not converge");
 
       const vibeqc::core::System sd_doublet = helium_hydrogen_sd_doublet();
-      const vibeqc::core::ScfResult cpu_uhf =
+      const vibeqc::scf::ScfResult cpu_uhf =
           vibeqc::scf::run_uhf(sd_doublet, options);
-      const vibeqc::core::ScfResult cuda_uhf =
+      const vibeqc::scf::ScfResult cuda_uhf =
           vibeqc::scf::run_uhf_cuda(sd_doublet, options, 0);
       require_cuda_matches_cpu(cuda_uhf, cpu_uhf,
                                "CUDA spherical s/d UHF did not converge");

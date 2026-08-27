@@ -1,6 +1,14 @@
 """Thin Python interface to the versioned native VIBEQC ABI."""
 
-from .calculator import Atom, Calculator, Primitive, Result, Shell
+from .calculator import (
+    Atom,
+    Calculator,
+    MethodCapabilities,
+    Primitive,
+    Result,
+    Shell,
+    method_capabilities,
+)
 from .batch import (
     BatchItemResult,
     BatchResult,
@@ -13,10 +21,12 @@ __all__ = [
     "BatchItemResult",
     "BatchResult",
     "Calculator",
+    "MethodCapabilities",
     "PreparedBatch",
     "Primitive",
     "Result",
     "Shell",
     "ShellClassProfileEntry",
+    "method_capabilities",
 ]
 __version__ = "0.1.0"

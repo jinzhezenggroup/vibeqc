@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from vibeqc import Calculator, Primitive, Shell
+from vibeqc import Calculator, Primitive, Shell, method_capabilities
 
 
 def test_h2_energy_and_force_invariance():
@@ -21,6 +21,19 @@ def test_wb97m_v_is_reserved_not_implemented():
         pass
     else:
         raise AssertionError("wB97M-V must report that it is not implemented")
+
+
+def test_method_capabilities_report_families_and_properties():
+    rhf = method_capabilities("rhf")
+    assert rhf.family == "hartree_fock"
+    assert rhf.available
+    assert rhf.supports_batch
+    assert rhf.supported_properties == frozenset(("energy", "forces"))
+
+    ccsd_t = method_capabilities("ccsd(t)")
+    assert ccsd_t.family == "coupled_cluster"
+    assert not ccsd_t.available
+    assert not ccsd_t.supports_batch
 
 
 def test_helium_sto3g_reference():
