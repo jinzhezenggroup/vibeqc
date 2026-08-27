@@ -8,8 +8,12 @@ from pathlib import Path
 import pytest
 
 from tools.vibeqc_codegen.production import (
+    emit_multi_registry_header,
+    emit_multi_registry_source,
     emit_production_shard,
     emit_profile_shard,
+    emit_registry_header,
+    emit_registry_source,
     load_production_kernel_selections,
     resolve_production_profile,
 )
@@ -91,3 +95,124 @@ def test_existing_production_rows_default_to_subset_wick():
     selections = load_production_kernel_selections(manifest, "sm_120")
     assert selections
     assert all(selection.recurrence == "subset_wick" for selection in selections)
+    assert next(
+        selection for selection in selections if selection.spec.name == "ppps"
+    ).resident_force_recurrence == "rys3"
+
+
+def test_ppps_resident_option_keeps_ordinary_fock_force_fallback(tmp_path: Path):
+    """Emit resident Rys3 beside, rather than instead of, ppps force/Fock."""
+
+    manifest = tmp_path / "resident.json"
+    row = {
+        "shell_class": "ppps",
+        "consumers": ["fock", "force"],
+        "resident_force_recurrence": "rys3",
+        "schedule": {
+            "kind": "component_lanes",
+            "block_threads": 32,
+            "component_tile": 27,
+            "tasks_per_warp": 1,
+            "shared_coulomb": True,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": True,
+        },
+    }
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "default_architecture": "sm_120",
+                "architectures": {"sm_120": {"kernels": [row]}},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    resolved = resolve_production_profile(manifest, "sm_120")
+    selection = resolved.selections[0]
+    assert selection.recurrence == "subset_wick"
+    assert selection.resident_force_recurrence == "rys3"
+
+    source = emit_production_shard(resolved.selections)
+    assert "vibeqc_launch_generated_ppps(" in source
+    assert "vibeqc_launch_generated_ppps_fock(" in source
+    assert 'extern "C" cudaError_t vibeqc_launch_ppps_resident(' in source
+    assert "generated_ppps_resident_bra_force_rhf_kernel<<<" in source
+    assert "generated_ppps_resident_bra_force_uhf_kernel<<<" in source
+    assert "const void* resident_tasks" in source
+    assert "const void* ket_tasks" in source
+    assert "std::size_t task_count" in source
+    assert "local_ket += kGeneratedPppsResidentBlockThreads" in source
+    assert "resident.ket_count > kGeneratedPppsResidentBlockThreads" not in source
+
+    profile_source = emit_profile_shard(resolved, resolved.selections)
+    assert "vibeqc::scf::detail::GeneratedPppsResidentTask" in profile_source
+    assert "vibeqc::scf::detail::GeneratedSm120PppsResidentTask" not in profile_source
+
+    registry_header = emit_registry_header(resolved.selections)
+    registry_source = emit_registry_source(resolved.selections)
+    assert "launch_ppps_resident" in registry_header
+    assert "vibeqc_launch_ppps_resident" in registry_source
+    assert "return cudaErrorNotSupported;" not in registry_source
+
+
+def test_ppps_resident_registry_falls_back_when_not_selected(tmp_path: Path):
+    """Keep the API safe for profiles that do not compile a resident route."""
+
+    manifest = tmp_path / "ordinary.json"
+    _rys3_manifest(manifest, ["force"])
+    resolved = resolve_production_profile(manifest, "sm_120")
+    registry_source = emit_registry_source(resolved.selections)
+    assert "launch_ppps_resident" in emit_registry_header(resolved.selections)
+    assert "return cudaErrorNotSupported;" in registry_source
+
+
+def test_multi_profile_resident_registry_tracks_each_profile(tmp_path: Path):
+    """Select the resident function pointer together with the CUDA profile."""
+
+    schedule = {
+        "kind": "component_lanes",
+        "block_threads": 32,
+        "component_tile": 27,
+        "tasks_per_warp": 1,
+        "shared_coulomb": True,
+        "pair_orientation": "canonical",
+        "pair_storage": "materialized",
+        "unroll_pair_terms": True,
+    }
+
+    def profile(resident: bool) -> dict[str, object]:
+        row: dict[str, object] = {
+            "shell_class": "ppps",
+            "consumers": ["fock", "force"],
+            "schedule": schedule,
+        }
+        if resident:
+            row["resident_force_recurrence"] = "rys3"
+        return {"kernels": [row]}
+
+    manifest = tmp_path / "multi.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "default_architecture": "sm_120",
+                "architectures": {
+                    "sm_80": profile(False),
+                    "sm_120": profile(True),
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    sm80 = resolve_production_profile(manifest, "sm_80")
+    sm120 = resolve_production_profile(manifest, "sm_120")
+    source = emit_multi_registry_source((sm80, sm120))
+    header = emit_multi_registry_header((sm80, sm120))
+    assert '#include "scf/aot_shell_registry.hpp"' in header
+    assert "launch_sm80_resident" in source
+    assert "return cudaErrorNotSupported;" in source
+    assert "launch_sm120_resident" in source
+    assert "vibeqc_launch_sm120_ppps_resident" in source

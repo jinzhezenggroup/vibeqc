@@ -92,7 +92,14 @@ constexpr unsigned kFusedOrderTwoAngularOrder = 2;
 // must also mask this class out of the generic AO-component fallback.
 constexpr unsigned kPspsShellClass = 2;
 constexpr unsigned kPpssShellClass = 3;
+// Canonical (p p|p s) is the fourth triangular pair-of-pairs class:
+// pair(pp)=2 and pair(ps)=1, hence 2*(2+1)/2 + 1 == 4.
+constexpr unsigned kPppsShellClass = 4;
+constexpr unsigned kPppsAngularOrder = 3;
 constexpr unsigned kDsssShellClass = 6;
+// The generated resident ppps consumer stages one pp primitive-pair list in
+// shared memory.  Larger lists stay on the established ordinary task path.
+constexpr unsigned kGeneratedPppsResidentMaximumBraPrimitivePairs = 64;
 static_assert(detail::kDirectQuartetThreads == 32);
 // Generated order-five classes are removed from a compact generic fallback
 // queue. Keeping the order explicit avoids coupling runtime selection to one
@@ -121,6 +128,7 @@ constexpr double kExpandedConvergedFockReuseDensityRms = 2.0e-9;
 constexpr double kForceDensityProductScreeningTolerance = 1.0e-14;
 
 using GeneratedShellTask = detail::GeneratedShellTask;
+using GeneratedPppsResidentTask = detail::GeneratedPppsResidentTask;
 
 /** Geometry-dependent direct-J/K work emitted by shell-bound compaction. */
 struct ActiveShellQuartetTile {
@@ -7717,6 +7725,127 @@ constexpr std::uint8_t kNoGeneratedShellClass =
     std::numeric_limits<std::uint8_t>::max();
 
 /**
+ * Return the canonical ``pp`` pair for an active ppps tile.
+ *
+ * Direct compaction stores an unordered pair-of-pairs, while generated
+ * kernels consume the pair with the larger triangular class in slot zero.
+ * Keeping this test in one device helper makes resident grouping use exactly
+ * the same symmetry convention as generated task materialization.  The
+ * primitive-pair limit is part of the predicate: a bra that cannot fit in
+ * shared memory must remain visible to the ordinary generated ppps queue.
+ */
+__device__ __forceinline__ bool resident_ppps_bra_pair(
+    const DeviceBatch& batch,
+    const ActiveShellQuartetTile& tile,
+    std::uint32_t& bra_pair) {
+  if (tile.tile != 0U) return false;
+  const std::int32_t first_shell = batch.shell_pair_first[tile.first_pair];
+  const std::int32_t second_shell = batch.shell_pair_second[tile.first_pair];
+  const std::int32_t third_shell = batch.shell_pair_first[tile.second_pair];
+  const std::int32_t fourth_shell = batch.shell_pair_second[tile.second_pair];
+  const unsigned first_pair_class = direct_shell_pair_class_cuda(
+      batch.shell_angular[first_shell], batch.shell_angular[second_shell]);
+  const unsigned second_pair_class = direct_shell_pair_class_cuda(
+      batch.shell_angular[third_shell], batch.shell_angular[fourth_shell]);
+  if (first_pair_class == 2U && second_pair_class == 1U) {
+    bra_pair = tile.first_pair;
+  } else if (first_pair_class == 1U && second_pair_class == 2U) {
+    bra_pair = tile.second_pair;
+  } else {
+    return false;
+  }
+  const std::int64_t begin = batch.shell_pair_primitive_offsets[bra_pair];
+  const std::int64_t end =
+      batch.shell_pair_primitive_offsets[static_cast<std::size_t>(bra_pair) + 1U];
+  const std::int64_t count = end - begin;
+  return count > 0 && count <= static_cast<std::int64_t>(
+      kGeneratedPppsResidentMaximumBraPrimitivePairs);
+}
+
+/**
+ * Fill the stable generated task ABI from one canonicalized shell quartet.
+ *
+ * Both the ordinary class queue and the resident ppps queue use this helper.
+ * In particular, the two one-bit pair-orientation mask records the swaps
+ * applied before pair-exchange canonicalization; generated force code uses
+ * it to map primitive-pair product scales back to physical centers.
+ */
+__device__ __forceinline__ void populate_generated_shell_task(
+    const DeviceBatch& batch,
+    const ActiveShellQuartetTile& tile,
+    GeneratedShellTask& task) {
+  std::int32_t shells[4] = {
+      batch.shell_pair_first[tile.first_pair],
+      batch.shell_pair_second[tile.first_pair],
+      batch.shell_pair_first[tile.second_pair],
+      batch.shell_pair_second[tile.second_pair],
+  };
+  std::uint32_t shell_pairs[2] = {tile.first_pair, tile.second_pair};
+  std::uint32_t reversed_shell_pair_mask = 0U;
+  if (batch.shell_angular[shells[0]] < batch.shell_angular[shells[1]]) {
+    const std::int32_t swap = shells[0];
+    shells[0] = shells[1];
+    shells[1] = swap;
+    reversed_shell_pair_mask |= 1U;
+  }
+  if (batch.shell_angular[shells[2]] < batch.shell_angular[shells[3]]) {
+    const std::int32_t swap = shells[2];
+    shells[2] = shells[3];
+    shells[3] = swap;
+    reversed_shell_pair_mask |= 2U;
+  }
+  const unsigned first_pair_class = direct_shell_pair_class_cuda(
+      batch.shell_angular[shells[0]], batch.shell_angular[shells[1]]);
+  const unsigned second_pair_class = direct_shell_pair_class_cuda(
+      batch.shell_angular[shells[2]], batch.shell_angular[shells[3]]);
+  if (first_pair_class < second_pair_class) {
+    const std::int32_t first = shells[0];
+    const std::int32_t second = shells[1];
+    shells[0] = shells[2];
+    shells[1] = shells[3];
+    shells[2] = first;
+    shells[3] = second;
+    const std::uint32_t pair_swap = shell_pairs[0];
+    shell_pairs[0] = shell_pairs[1];
+    shell_pairs[1] = pair_swap;
+    reversed_shell_pair_mask =
+        ((reversed_shell_pair_mask & 1U) << 1U) |
+        ((reversed_shell_pair_mask & 2U) >> 1U);
+  }
+
+  const std::int32_t system = batch.shell_pair_systems[tile.first_pair];
+  const std::size_t matrix_order =
+      static_cast<std::size_t>(batch.direct_nbf);
+  const std::size_t matrix_size = matrix_order * matrix_order;
+  const std::size_t system_ao_begin =
+      static_cast<std::size_t>(system) * matrix_order;
+#pragma unroll
+  for (unsigned center = 0; center < 4U; ++center) {
+    const std::int32_t shell = shells[center];
+    task.primitive_begin[center] = static_cast<std::uint64_t>(
+        batch.shell_primitive_offsets[shell]);
+    task.primitive_end[center] = static_cast<std::uint64_t>(
+        batch.shell_primitive_offsets[shell + 1]);
+    const std::size_t ao_begin = static_cast<std::size_t>(
+        batch.shell_direct_ao_offsets[shell]);
+    task.ao_begin[center] = static_cast<std::uint64_t>(
+        ao_begin - system_ao_begin);
+    task.ao_coefficient_begin[center] = static_cast<std::uint64_t>(ao_begin);
+    task.shell[center] = static_cast<std::uint32_t>(shell);
+    task.atom[center] = static_cast<std::uint32_t>(
+        batch.shell_atoms[shell]);
+  }
+  task.density_offset = static_cast<std::uint64_t>(
+      static_cast<std::size_t>(system) * matrix_size);
+  task.spin_offset = static_cast<std::uint64_t>(
+      static_cast<std::size_t>(system) * 2U * matrix_size);
+  task.matrix_order = static_cast<std::uint32_t>(matrix_order);
+  task.shell_pair[0] = shell_pairs[0];
+  task.shell_pair[1] = shell_pairs[1];
+  task.reversed_shell_pair_mask = reversed_shell_pair_mask;
+}
+
+/**
  * Classify every active logical quartet once for all generated consumers.
  *
  * The byte tag is retained across the device-side prefix sum so task
@@ -7732,6 +7861,7 @@ __global__ void classify_generated_shell_tasks_kernel(
     const ActiveShellQuartetTile* active_shell_quartet_tiles,
     std::uint64_t enabled_shell_class_mask,
     const std::uint64_t* enabled_shell_class_mask_pointer,
+    bool exclude_resident_ppps,
     std::uint32_t* generated_task_counts,
     std::uint8_t* generated_shell_classes) {
   const std::size_t slot =
@@ -7767,6 +7897,13 @@ __global__ void classify_generated_shell_tasks_kernel(
       (enabled_shell_class_mask &
        (std::uint64_t{1} << shell_class)) == 0U) {
     return;
+  }
+  // Force preparation can route eligible canonical ppps quartets through the
+  // resident-bra consumer.  Leave oversized bra primitive lists in this
+  // ordinary class queue; otherwise their force contribution would vanish.
+  if (exclude_resident_ppps && shell_class == kPppsShellClass) {
+    std::uint32_t bra_pair = 0;
+    if (resident_ppps_bra_pair(batch, tile, bra_pair)) return;
   }
   generated_shell_classes[slot] = static_cast<std::uint8_t>(shell_class);
   atomicAdd(generated_task_counts + shell_class, 1U);
@@ -7806,83 +7943,143 @@ __global__ void materialize_generated_shell_tasks_kernel(
   if (shell_class == kNoGeneratedShellClass) return;
 
   const ActiveShellQuartetTile tile = active_shell_quartet_tiles[active_tile];
-
-  std::int32_t shells[4] = {
-      batch.shell_pair_first[tile.first_pair],
-      batch.shell_pair_second[tile.first_pair],
-      batch.shell_pair_first[tile.second_pair],
-      batch.shell_pair_second[tile.second_pair],
-  };
-  std::uint32_t shell_pairs[2] = {tile.first_pair, tile.second_pair};
-  std::uint32_t reversed_shell_pair_mask = 0U;
-  // Sort within each pair and then between pairs exactly as the shell-class
-  // encoding does. The task retains the resulting slot-to-atom map so the
-  // generated force is accumulated onto the original physical centers.
-  if (batch.shell_angular[shells[0]] < batch.shell_angular[shells[1]]) {
-    const std::int32_t swap = shells[0];
-    shells[0] = shells[1];
-    shells[1] = swap;
-    reversed_shell_pair_mask |= 1U;
-  }
-  if (batch.shell_angular[shells[2]] < batch.shell_angular[shells[3]]) {
-    const std::int32_t swap = shells[2];
-    shells[2] = shells[3];
-    shells[3] = swap;
-    reversed_shell_pair_mask |= 2U;
-  }
-  const unsigned first_pair_class = direct_shell_pair_class_cuda(
-      batch.shell_angular[shells[0]], batch.shell_angular[shells[1]]);
-  const unsigned second_pair_class = direct_shell_pair_class_cuda(
-      batch.shell_angular[shells[2]], batch.shell_angular[shells[3]]);
-  if (first_pair_class < second_pair_class) {
-    const std::int32_t first = shells[0];
-    const std::int32_t second = shells[1];
-    shells[0] = shells[2];
-    shells[1] = shells[3];
-    shells[2] = first;
-    shells[3] = second;
-    const std::uint32_t pair_swap = shell_pairs[0];
-    shell_pairs[0] = shell_pairs[1];
-    shell_pairs[1] = pair_swap;
-    reversed_shell_pair_mask =
-        ((reversed_shell_pair_mask & 1U) << 1U) |
-        ((reversed_shell_pair_mask & 2U) >> 1U);
-  }
-
-  const std::int32_t system = batch.shell_pair_systems[tile.first_pair];
-  const std::size_t matrix_order =
-      static_cast<std::size_t>(batch.direct_nbf);
-  const std::size_t matrix_size = matrix_order * matrix_order;
-  const std::size_t system_ao_begin =
-      static_cast<std::size_t>(system) * matrix_order;
   const std::uint32_t task_index = generated_task_offsets[shell_class] +
       atomicAdd(generated_task_write_counts + shell_class, 1U);
-  GeneratedShellTask& task = generated_tasks[task_index];
-#pragma unroll
-  for (unsigned center = 0; center < 4U; ++center) {
-    const std::int32_t shell = shells[center];
-    task.primitive_begin[center] = static_cast<std::uint64_t>(
-        batch.shell_primitive_offsets[shell]);
-    task.primitive_end[center] = static_cast<std::uint64_t>(
-        batch.shell_primitive_offsets[shell + 1]);
-    const std::size_t ao_begin = static_cast<std::size_t>(
-        batch.shell_direct_ao_offsets[shell]);
-    task.ao_begin[center] = static_cast<std::uint64_t>(
-        ao_begin - system_ao_begin);
-    task.ao_coefficient_begin[center] =
-        static_cast<std::uint64_t>(ao_begin);
-    task.shell[center] = static_cast<std::uint32_t>(shell);
-    task.atom[center] =
-        static_cast<std::uint32_t>(batch.shell_atoms[shell]);
+  populate_generated_shell_task(batch, tile, generated_tasks[task_index]);
+}
+
+/**
+ * Count force-eligible canonical ppps tiles by their ``pp`` bra pair.
+ *
+ * This is intentionally indexed by the global shell-pair ordinal rather than
+ * by a host-built map.  A direct batch can contain roughly 18k shell pairs;
+ * three compact uint32 arrays make that histogram inexpensive and, more
+ * importantly, keep active-system and force-screening decisions on device.
+ */
+__global__ void count_ppps_resident_bra_tasks_kernel(
+    DeviceBatch batch,
+    std::size_t active_tile_capacity,
+    const std::uint32_t* active_shell_quartet_tile_count,
+    const ActiveShellQuartetTile* active_shell_quartet_tiles,
+    std::uint64_t enabled_shell_class_mask,
+    std::uint32_t* resident_bra_counts) {
+  const std::size_t slot =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (slot >= active_tile_capacity ||
+      slot >= *active_shell_quartet_tile_count) return;
+  const ActiveShellQuartetTile tile = active_shell_quartet_tiles[slot];
+  if ((enabled_shell_class_mask & (std::uint64_t{1} << kPppsShellClass)) ==
+      0U) {
+    return;
   }
-  task.density_offset = static_cast<std::uint64_t>(
-      static_cast<std::size_t>(system) * matrix_size);
-  task.spin_offset = static_cast<std::uint64_t>(
-      static_cast<std::size_t>(system) * 2U * matrix_size);
-  task.matrix_order = static_cast<std::uint32_t>(matrix_order);
-  task.shell_pair[0] = shell_pairs[0];
-  task.shell_pair[1] = shell_pairs[1];
-  task.reversed_shell_pair_mask = reversed_shell_pair_mask;
+  std::uint32_t bra_pair = 0;
+  if (resident_ppps_bra_pair(batch, tile, bra_pair)) {
+    atomicAdd(resident_bra_counts + bra_pair, 1U);
+  }
+}
+
+/**
+ * Prefix the ppps bra histogram and initialize one descriptor per bra.
+ *
+ * Descriptors are stored at their shell-pair ordinal.  Inactive ordinals have
+ * a zero ``ket_count`` and are harmless when the resident launch uses the
+ * fixed shell-pair capacity; this avoids a device-to-host count readback and
+ * keeps the force path graph/replay safe.  ``resident_bra_offsets`` indexes
+ * the transient ppps-sized tail of the generated-task arena.  The final-force
+ * stream launches the resident consumer before ordinary preparation is
+ * allowed to overwrite that tail.
+ */
+__global__ void prefix_ppps_resident_bra_tasks_kernel(
+    std::size_t total_shell_pairs,
+    const std::uint32_t* resident_bra_counts,
+    std::uint32_t* resident_bra_offsets,
+    std::uint32_t* resident_bra_write_counts,
+    GeneratedPppsResidentTask* resident_tasks) {
+  if (blockIdx.x != 0U || threadIdx.x != 0U) return;
+  std::uint32_t offset = 0U;
+  resident_bra_offsets[0] = 0U;
+  for (std::size_t bra_pair = 0; bra_pair < total_shell_pairs; ++bra_pair) {
+    resident_bra_write_counts[bra_pair] = 0U;
+    const std::uint32_t count = resident_bra_counts[bra_pair];
+    resident_tasks[bra_pair] = {
+        static_cast<std::uint32_t>(bra_pair), offset, count};
+    // Host topology validation bounds the resident allocation below
+    // UINT32_MAX: every resident ket is one active ppps tile and the tile
+    // capacity is checked before this kernel is launched.
+    offset += count;
+    resident_bra_offsets[bra_pair + 1U] = offset;
+    resident_tasks[bra_pair].ket_begin =
+        resident_bra_offsets[bra_pair];
+  }
+}
+
+/** Materialize eligible ppps tasks into the bra-grouped resident array. */
+__global__ void materialize_ppps_resident_bra_tasks_kernel(
+    DeviceBatch batch,
+    std::size_t active_tile_capacity,
+    const std::uint32_t* active_shell_quartet_tile_count,
+    const ActiveShellQuartetTile* active_shell_quartet_tiles,
+    const std::uint32_t* resident_bra_offsets,
+    std::uint32_t* resident_bra_write_counts,
+    GeneratedShellTask* resident_ket_tasks) {
+  const std::size_t slot =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (slot >= active_tile_capacity ||
+      slot >= *active_shell_quartet_tile_count) return;
+  const ActiveShellQuartetTile tile = active_shell_quartet_tiles[slot];
+  std::uint32_t bra_pair = 0;
+  if (!resident_ppps_bra_pair(batch, tile, bra_pair)) return;
+  const std::uint32_t ket_index = resident_bra_offsets[bra_pair] +
+      atomicAdd(resident_bra_write_counts + bra_pair, 1U);
+  populate_generated_shell_task(batch, tile, resident_ket_tasks[ket_index]);
+}
+
+/** Prepare the resident ppps histogram, prefix, descriptors, and ket records. */
+cudaError_t prepare_ppps_resident_tasks(
+    cudaStream_t stream,
+    std::size_t active_tile_capacity,
+    std::size_t total_shell_pairs,
+    DeviceBatch batch,
+    const std::uint32_t* active_tile_count,
+    const ActiveShellQuartetTile* active_tiles,
+    GeneratedPppsResidentTask* resident_tasks,
+    GeneratedShellTask* resident_ket_tasks,
+    std::uint32_t* resident_bra_counts,
+    std::uint32_t* resident_bra_offsets,
+    std::uint32_t* resident_bra_write_counts,
+    std::uint64_t enabled_mask) {
+  if (active_tile_capacity == 0 || total_shell_pairs == 0 ||
+      resident_tasks == nullptr || resident_ket_tasks == nullptr ||
+      resident_bra_counts == nullptr || resident_bra_offsets == nullptr ||
+      resident_bra_write_counts == nullptr ||
+      (enabled_mask & (std::uint64_t{1} << kPppsShellClass)) == 0U) {
+    return cudaSuccess;
+  }
+  cudaError_t error = cudaMemsetAsync(
+      resident_bra_counts, 0, total_shell_pairs * sizeof(std::uint32_t),
+      stream);
+  if (error != cudaSuccess) return error;
+  constexpr unsigned preparation_threads = kCaptureSafeKernelThreads;
+  const unsigned preparation_blocks = static_cast<unsigned>(
+      (active_tile_capacity + preparation_threads - 1) /
+      preparation_threads);
+  count_ppps_resident_bra_tasks_kernel<<<
+      preparation_blocks, preparation_threads, 0, stream>>>(
+      batch, active_tile_capacity, active_tile_count, active_tiles,
+      enabled_mask, resident_bra_counts);
+  error = cudaPeekAtLastError();
+  if (error != cudaSuccess) return error;
+  prefix_ppps_resident_bra_tasks_kernel<<<1, 1, 0, stream>>>(
+      total_shell_pairs, resident_bra_counts, resident_bra_offsets,
+      resident_bra_write_counts, resident_tasks);
+  error = cudaPeekAtLastError();
+  if (error != cudaSuccess) return error;
+  materialize_ppps_resident_bra_tasks_kernel<<<
+      preparation_blocks, preparation_threads, 0, stream>>>(
+      batch, active_tile_capacity, active_tile_count, active_tiles,
+      resident_bra_offsets, resident_bra_write_counts,
+      resident_ket_tasks);
+  return cudaPeekAtLastError();
 }
 
 /**
@@ -11163,7 +11360,8 @@ cudaError_t prepare_generated_shell_tasks(
     std::uint32_t* generated_task_write_counts,
     std::uint32_t* generated_task_heads,
     std::uint64_t enabled_mask,
-    const std::uint64_t* enabled_mask_pointer) {
+    const std::uint64_t* enabled_mask_pointer,
+    bool exclude_resident_ppps) {
   if ((enabled_mask == 0U && enabled_mask_pointer == nullptr) ||
       generated_task_capacity == 0 ||
       total_tile_capacity == 0) {
@@ -11180,8 +11378,8 @@ cudaError_t prepare_generated_shell_tasks(
   classify_generated_shell_tasks_kernel<<<
       preparation_blocks, preparation_threads, 0, stream>>>(
       batch, total_tile_capacity, active_tile_offsets, active_tile_counts,
-      active_tiles, enabled_mask, enabled_mask_pointer, generated_task_counts,
-      generated_shell_classes);
+      active_tiles, enabled_mask, enabled_mask_pointer, exclude_resident_ppps,
+      generated_task_counts, generated_shell_classes);
   error = cudaPeekAtLastError();
   if (error != cudaSuccess) return error;
   prefix_generated_shell_task_counts_kernel<<<1, 1, 0, stream>>>(
@@ -11220,6 +11418,13 @@ cudaError_t launch_generated_shell_class_forces(
     std::uint32_t* generated_task_counts,
     std::uint32_t* generated_task_write_counts,
     std::uint32_t* generated_task_heads,
+    GeneratedPppsResidentTask* resident_ppps_tasks,
+    GeneratedShellTask* resident_ppps_ket_tasks,
+    std::uint32_t* resident_ppps_bra_counts,
+    std::uint32_t* resident_ppps_bra_offsets,
+    std::uint32_t* resident_ppps_bra_write_counts,
+    std::size_t total_shell_pairs,
+    bool resident_ppps_enabled,
     unsigned persistent_worker_blocks,
     bool unrestricted,
     std::uint64_t enabled_mask,
@@ -11227,16 +11432,52 @@ cudaError_t launch_generated_shell_class_forces(
     const double* schwarz_bounds,
     const double* density,
     double* forces) {
-  if (enabled_mask == 0U || generated_task_capacity == 0 ||
-      total_tile_capacity == 0) {
+  bool use_resident_ppps = resident_ppps_enabled &&
+      (enabled_mask & (std::uint64_t{1} << kPppsShellClass)) != 0U;
+  if (total_tile_capacity == 0 ||
+      (enabled_mask == 0U && !use_resident_ppps) ||
+      (generated_task_capacity == 0 && !use_resident_ppps)) {
     return cudaSuccess;
   }
-  cudaError_t error = prepare_generated_shell_tasks(
+  cudaError_t error = cudaSuccess;
+  if (use_resident_ppps) {
+    std::size_t ppps_tile_offset = 0;
+    for (unsigned order = 0; order < kPppsAngularOrder; ++order) {
+      ppps_tile_offset += capacities[order];
+    }
+    // ppps has total angular order three.  Restrict both grouping scans to
+    // that fixed partition instead of rereading every active shell quartet.
+    error = prepare_ppps_resident_tasks(
+        stream, capacities[kPppsAngularOrder], total_shell_pairs, batch,
+        active_tile_counts + kPppsAngularOrder,
+        active_tiles + ppps_tile_offset, resident_ppps_tasks,
+        resident_ppps_ket_tasks, resident_ppps_bra_counts,
+        resident_ppps_bra_offsets, resident_ppps_bra_write_counts,
+        enabled_mask);
+    if (error != cudaSuccess) return error;
+  }
+  if (use_resident_ppps) {
+    // Probe the selected AOT profile before excluding eligible ppps records
+    // from the ordinary queue.  A portable profile may contain the ordinary
+    // ppps class without its optional resident route; in that case fall back
+    // losslessly instead of dropping the resident-eligible quartets.
+    error = generated::launch_ppps_resident(
+        stream, unrestricted, resident_ppps_tasks, resident_ppps_ket_tasks,
+        batch.shell_pair_primitive_offsets, batch.shell_primitive_pairs,
+        batch.direct_ao_coefficients, batch.positions, screening_tolerance,
+        schwarz_bounds, density, forces, total_shell_pairs);
+    if (error == cudaErrorNotSupported) {
+      use_resident_ppps = false;
+    } else if (error != cudaSuccess) {
+      return error;
+    }
+  }
+  error = prepare_generated_shell_tasks(
       stream, total_tile_capacity, generated_task_capacity,
       active_tile_offsets, batch, active_tile_counts, active_tiles,
       generated_tasks, generated_shell_classes, generated_task_offsets,
       generated_task_counts, generated_task_write_counts,
-      generated_task_heads, enabled_mask, nullptr);
+      generated_task_heads, enabled_mask, nullptr, use_resident_ppps);
   if (error != cudaSuccess) return error;
 
   std::size_t kernel_count = 0;
@@ -11261,6 +11502,9 @@ cudaError_t launch_generated_shell_class_forces(
         generated_task_heads + kernel.shell_class);
     if (error != cudaSuccess) return error;
   }
+  // The resident launch precedes ordinary preparation so an unsupported
+  // optional route can select the complete fallback queue without dropping
+  // any eligible ppps records.
   return cudaSuccess;
 }
 
@@ -11298,7 +11542,7 @@ cudaError_t launch_generated_shell_class_focks(
       active_tile_offsets, batch, active_tile_counts, active_tiles,
       generated_tasks, generated_shell_classes, generated_task_offsets,
       generated_task_counts, generated_task_write_counts,
-      generated_task_heads, 0U, enabled_mask);
+      generated_task_heads, 0U, enabled_mask, false);
   if (error != cudaSuccess) return error;
 
   std::size_t kernel_count = 0;
@@ -11655,6 +11899,10 @@ struct ArenaLayout {
   std::size_t generated_shell_task_counts{};
   std::size_t generated_shell_task_write_counts{};
   std::size_t generated_shell_task_heads{};
+  std::size_t generated_ppps_resident_tasks{};
+  std::size_t generated_ppps_resident_bra_counts{};
+  std::size_t generated_ppps_resident_bra_offsets{};
+  std::size_t generated_ppps_resident_bra_write_counts{};
   std::size_t generated_fock_shell_class_mask{};
   std::size_t generic_order5_tiles{};
   std::size_t generic_order5_tile_count{};
@@ -11716,6 +11964,7 @@ bool make_layout(std::size_t batch_size,
                  std::size_t psss_resident_ket_pair_count,
                  std::size_t shell_quartet_tile_count,
                  std::size_t generated_shell_task_capacity,
+                 std::size_t ppps_resident_ket_task_capacity,
                  std::size_t generic_order5_tile_capacity,
                  std::size_t primitives,
                  std::size_t diis_history,
@@ -11889,6 +12138,18 @@ bool make_layout(std::size_t batch_size,
               ? 0
               : detail::kDirectQuartetShellClassCount,
           cursor, made.generated_shell_task_heads) ||
+      !append_array<GeneratedPppsResidentTask>(
+          ppps_resident_ket_task_capacity == 0 ? 0 : shell_pair_count,
+          cursor, made.generated_ppps_resident_tasks) ||
+      !append_array<std::uint32_t>(
+          ppps_resident_ket_task_capacity == 0 ? 0 : shell_pair_count,
+          cursor, made.generated_ppps_resident_bra_counts) ||
+      !append_array<std::uint32_t>(
+          ppps_resident_ket_task_capacity == 0 ? 0 : shell_pair_count + 1,
+          cursor, made.generated_ppps_resident_bra_offsets) ||
+      !append_array<std::uint32_t>(
+          ppps_resident_ket_task_capacity == 0 ? 0 : shell_pair_count,
+          cursor, made.generated_ppps_resident_bra_write_counts) ||
       !append_array<std::uint64_t>(
           shell_quartet_tile_count == 0 ? 0 : 1,
           cursor, made.generated_fock_shell_class_mask) ||
@@ -12500,6 +12761,7 @@ struct CudaRhfBucketPlan {
   std::size_t total_shell_quartets{};
   std::size_t total_shell_quartet_tiles{};
   std::size_t generated_shell_task_capacity{};
+  std::size_t resident_ppps_ket_task_capacity{};
   std::array<std::size_t, detail::kDirectQuartetAngularOrderCount>
       shell_quartet_tile_capacities{};
   std::array<std::uint32_t, detail::kDirectQuartetAngularOrderCount + 1>
@@ -12542,6 +12804,14 @@ double converged_fock_reuse_density_rms(double density_tolerance) {
 bool force_density_product_screening_requested() {
   const char* selection =
       std::getenv("VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING");
+  return selection == nullptr ||
+      (std::strcmp(selection, "0") != 0 &&
+       std::strcmp(selection, "none") != 0);
+}
+
+/** Enable resident-bra ppps force routing unless an explicit A/B disables it. */
+bool resident_ppps_bra_requested() {
+  const char* selection = std::getenv("VIBEQC_PPPS_RESIDENT_BRA");
   return selection == nullptr ||
       (std::strcmp(selection, "0") != 0 &&
        std::strcmp(selection, "none") != 0);
@@ -12701,6 +12971,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   // fixed-dm0 old/new A/B without rebuilding its immutable topology plan.
   const bool force_density_product_screening =
       force_density_product_screening_requested();
+  // Read this per execution so one prepared topology can compare the new
+  // route with the complete ordinary ppps queue in the same binary.
+  const bool resident_ppps_bra = resident_ppps_bra_requested();
   const bool first_setup = !plan.initialized;
   detail::DirectQuartetTaskLayout direct_task_layout{};
   std::size_t total_shell_quartet_tiles = 0;
@@ -12767,6 +13040,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   }
   std::size_t generated_shell_task_capacity =
       first_setup ? 0 : plan.generated_shell_task_capacity;
+  std::size_t resident_ppps_ket_task_capacity =
+      first_setup ? 0 : plan.resident_ppps_ket_task_capacity;
   const std::size_t generic_order5_tile_capacity = requested_quartet_direct
       ? (first_setup
              ? direct_task_layout.angular_order_tile_counts[
@@ -12789,6 +13064,28 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         return outputs;
       }
     }
+    // Every active canonical ppps shell quartet occupies one tile at angular
+    // order three, so this exact class count is the maximum resident ket
+    // record count.  Reserve a reusable tail of the existing generated-task
+    // arena only when the selected AOT bundle contains a ppps force consumer;
+    // portable/stub builds then retain their original arena footprint.
+    bool ppps_force_available = false;
+    for (std::size_t kernel_index = 0; kernel_index < kernel_count;
+         ++kernel_index) {
+      if (kernels[kernel_index].shell_class == kPppsShellClass) {
+        ppps_force_available = true;
+        break;
+      }
+    }
+    resident_ppps_ket_task_capacity = ppps_force_available
+        ? direct_task_layout.shell_class_tile_counts[kPppsShellClass]
+        : 0;
+  }
+  if (resident_ppps_ket_task_capacity > generated_shell_task_capacity ||
+      resident_ppps_ket_task_capacity > static_cast<std::size_t>(
+          std::numeric_limits<std::uint32_t>::max())) {
+    fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
+    return outputs;
   }
   if (first_setup) {
     if (!make_layout(batch_size, nbf, direct_nbf, total_atoms, total_shells,
@@ -12801,6 +13098,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                          : 0,
                      total_shell_quartet_tiles,
                      generated_shell_task_capacity,
+                     resident_ppps_ket_task_capacity,
                      generic_order5_tile_capacity,
                      host.primitive_exponents.size(), diis_history,
                      host.spin_count,
@@ -12844,6 +13142,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           plan.resident_psss_bra_primitive_pairs, primitive_pairs);
     }
     plan.generated_shell_task_capacity = generated_shell_task_capacity;
+    plan.resident_ppps_ket_task_capacity =
+        resident_ppps_ket_task_capacity;
     plan.shell_quartet_tile_capacities =
         direct_task_layout.angular_order_tile_counts;
     for (std::size_t order = 0;
@@ -13095,6 +13395,24 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       resources.arena_, layout.generated_shell_task_write_counts);
   auto generated_shell_task_heads = arena_pointer<std::uint32_t>(
       resources.arena_, layout.generated_shell_task_heads);
+  auto generated_ppps_resident_tasks = arena_pointer<GeneratedPppsResidentTask>(
+      resources.arena_, layout.generated_ppps_resident_tasks);
+  // Final force preparation is ordered after the last Fock consumer on the
+  // same stream.  Reuse the ppps-sized tail of the ordinary generated-task
+  // arena for resident ket records, then let ordinary force preparation
+  // overwrite it only after the resident launch completes.  This avoids a
+  // multi-gigabyte duplicate queue at the 384-AO endpoint.
+  GeneratedShellTask* generated_ppps_resident_ket_tasks = nullptr;
+  if (resident_ppps_ket_task_capacity != 0) {
+    generated_ppps_resident_ket_tasks = generated_shell_tasks +
+        (generated_shell_task_capacity - resident_ppps_ket_task_capacity);
+  }
+  auto generated_ppps_resident_bra_counts = arena_pointer<std::uint32_t>(
+      resources.arena_, layout.generated_ppps_resident_bra_counts);
+  auto generated_ppps_resident_bra_offsets = arena_pointer<std::uint32_t>(
+      resources.arena_, layout.generated_ppps_resident_bra_offsets);
+  auto generated_ppps_resident_bra_write_counts = arena_pointer<std::uint32_t>(
+      resources.arena_, layout.generated_ppps_resident_bra_write_counts);
   auto generated_fock_shell_class_mask = arena_pointer<std::uint64_t>(
       resources.arena_, layout.generated_fock_shell_class_mask);
   auto generic_order5_tiles = arena_pointer<ActiveShellQuartetTile>(
@@ -14330,6 +14648,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         generated_shell_tasks, generated_shell_classes,
         generated_shell_task_offsets, generated_shell_task_counts,
         generated_shell_task_write_counts, generated_shell_task_heads,
+        generated_ppps_resident_tasks, generated_ppps_resident_ket_tasks,
+        generated_ppps_resident_bra_counts,
+        generated_ppps_resident_bra_offsets,
+        generated_ppps_resident_bra_write_counts, total_shell_pairs,
+        resident_ppps_bra && resident_ppps_ket_task_capacity != 0,
         plan.persistent_quartet_worker_blocks, true,
         generated_shell_class_mask, options.screening_tolerance,
         schwarz_bounds, transformed_direct ? direct_density : density, forces);
@@ -14370,6 +14693,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         generated_shell_tasks, generated_shell_classes,
         generated_shell_task_offsets, generated_shell_task_counts,
         generated_shell_task_write_counts, generated_shell_task_heads,
+        generated_ppps_resident_tasks, generated_ppps_resident_ket_tasks,
+        generated_ppps_resident_bra_counts,
+        generated_ppps_resident_bra_offsets,
+        generated_ppps_resident_bra_write_counts, total_shell_pairs,
+        resident_ppps_bra && resident_ppps_ket_task_capacity != 0,
         plan.persistent_quartet_worker_blocks, false,
         generated_shell_class_mask, options.screening_tolerance,
         schwarz_bounds, transformed_direct ? direct_density : density, forces);

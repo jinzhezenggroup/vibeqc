@@ -31,6 +31,10 @@ from .cuda_target import (
     cuda_target_info,
     normalize_cuda_architecture,
 )
+from .dppp_dispatch import (
+    emit_ppps_1110_resident_bra_cuda,
+    emit_ppps_resident_bra_rys3_cuda,
+)
 from .dppp_specialization import (
     DpppFusedPlan,
     build_dppp_fused_plan,
@@ -181,6 +185,8 @@ __all__ = [
     "default_schedule",
     "dppp_components",
     "emit_dppp_fused_cuda",
+    "emit_ppps_1110_resident_bra_cuda",
+    "emit_ppps_resident_bra_rys3_cuda",
     "emit_ppps_rys3_root_body_cuda",
     "emit_ppss_weighted_force_cuda",
     "emit_psps_weighted_force_cuda",

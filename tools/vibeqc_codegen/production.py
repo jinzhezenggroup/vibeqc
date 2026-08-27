@@ -21,6 +21,7 @@ from .cuda_target import (
     cuda_target_info,
     normalize_cuda_architecture,
 )
+from .dppp_dispatch import emit_ppps_resident_bra_rys3_cuda
 from .fused_schedule import build_fused_shell_plan
 from .ir import KernelConsumer
 from .low_order_force import (
@@ -42,6 +43,8 @@ _PRODUCTION_PRELUDE = r"""#include "scf/generated_shell_task.hpp"
 
 #include <cuda_runtime.h>
 #include <cmath>
+#include <cstddef>
+#include <limits>
 
 template <unsigned MaximumOrder>
 __device__ __forceinline__ void boys_values(double argument, double* values) {
@@ -97,6 +100,7 @@ class KernelSelection:
     profile: str = ""
     tuned: bool = True
     recurrence: str = "subset_wick"
+    resident_force_recurrence: str | None = None
 
     def __post_init__(self) -> None:
         if not self.architecture.startswith("sm_"):
@@ -117,6 +121,20 @@ class KernelSelection:
                 "production rys3 recurrence is force-only and cannot include "
                 "the Fock consumer"
             )
+        if self.resident_force_recurrence is not None:
+            if self.spec.name != "ppps":
+                raise ValueError(
+                    "resident force recurrence is currently available only "
+                    "for the ppps shell class"
+                )
+            if KernelConsumer.FORCE not in self.consumers:
+                raise ValueError(
+                    "resident force recurrence requires the force consumer"
+                )
+            if self.resident_force_recurrence != "rys3":
+                raise ValueError(
+                    "resident ppps force recurrence must be rys3"
+                )
         # Force owns the canonical task ABI. Fock may share that source, but a
         # value-only entry cannot yet be emitted without its force companion.
         if KernelConsumer.FORCE not in self.consumers:
@@ -370,6 +388,39 @@ def _recurrence_from_row(
     return recurrence
 
 
+def _resident_force_recurrence_from_row(
+    name: str,
+    row: Mapping[str, object],
+    consumers: tuple[KernelConsumer, ...],
+) -> str | None:
+    """Validate an optional force-only resident lowering beside a row.
+
+    Resident ppps is an additional launch route, not a replacement for the
+    ordinary force/Fock selection.  Keeping the opt-in on the same manifest
+    row prevents duplicate shell-class metadata and leaves the existing
+    force/Fock wrapper available as a safe fallback.
+    """
+
+    recurrence = row.get("resident_force_recurrence")
+    if recurrence is None:
+        return None
+    if name != "ppps":
+        raise ValueError(
+            f"{name} does not support a resident force recurrence"
+        )
+    if KernelConsumer.FORCE not in consumers:
+        raise ValueError(
+            f"{name} resident force recurrence requires the force consumer"
+        )
+    if not isinstance(recurrence, str):
+        raise ValueError(f"{name} resident_force_recurrence must be a string")
+    if recurrence != "rys3":
+        raise ValueError(
+            f"{name} resident force recurrence must be rys3"
+        )
+    return recurrence
+
+
 def _selections_from_rows(
     rows: object,
     *,
@@ -401,6 +452,9 @@ def _selections_from_rows(
         except ValueError as error:
             raise ValueError(f"{name} has an unsupported consumer") from error
         recurrence = _recurrence_from_row(name, row, consumers)
+        resident_force_recurrence = _resident_force_recurrence_from_row(
+            name, row, consumers
+        )
         schedule_payload = row.get("schedule")
         if schedule_payload is None:
             schedule = build_fused_shell_plan(
@@ -428,6 +482,7 @@ def _selections_from_rows(
                 profile=profile,
                 tuned=tuned,
                 recurrence=recurrence,
+                resident_force_recurrence=resident_force_recurrence,
             )
         )
         seen.add(name)
@@ -723,6 +778,73 @@ extern "C" cudaError_t {symbol or f"vibeqc_launch_generated_{spec.name}_fock"}(
 """
 
 
+def _ppps_resident_launch_wrapper(symbol: str | None = None) -> str:
+    """Emit the stable opaque-pointer C ABI for resident ppps force work.
+
+    The generated CUDA source owns a profile-scoped descriptor type so that
+    multiple architecture shards can coexist in one fat binary.  The host
+    descriptor lives in ``generated_shell_task.hpp``; these size/alignment and
+    field-offset assertions make a mismatch fail at AOT compilation instead
+    of silently corrupting a resident launch.
+    """
+
+    return f"""
+static_assert(sizeof(GeneratedPppsResidentTask) ==
+              sizeof(vibeqc::scf::detail::GeneratedPppsResidentTask));
+static_assert(alignof(GeneratedPppsResidentTask) ==
+              alignof(vibeqc::scf::detail::GeneratedPppsResidentTask));
+static_assert(offsetof(GeneratedPppsResidentTask, bra_pair) ==
+              offsetof(vibeqc::scf::detail::GeneratedPppsResidentTask,
+                       bra_pair));
+static_assert(offsetof(GeneratedPppsResidentTask, ket_begin) ==
+              offsetof(vibeqc::scf::detail::GeneratedPppsResidentTask,
+                       ket_begin));
+static_assert(offsetof(GeneratedPppsResidentTask, ket_count) ==
+              offsetof(vibeqc::scf::detail::GeneratedPppsResidentTask,
+                       ket_count));
+static_assert(sizeof(GeneratedPppsPrimitivePairData) ==
+              sizeof(vibeqc::scf::detail::GeneratedPrimitivePairData));
+static_assert(alignof(GeneratedPppsPrimitivePairData) ==
+              alignof(vibeqc::scf::detail::GeneratedPrimitivePairData));
+
+extern "C" cudaError_t {symbol or "vibeqc_launch_ppps_resident"}(
+    cudaStream_t stream, bool unrestricted, const void* resident_tasks,
+    const void* ket_tasks,
+    const std::int64_t* primitive_pair_offsets, const void* primitive_pairs,
+    const double* ao_coefficients, const void* atom_positions,
+    double screening_tolerance, const double* schwarz_bounds,
+    const double* density, double* forces, std::size_t task_count) {{
+  if (task_count == 0U) return cudaSuccess;
+  if (task_count > static_cast<std::size_t>(
+          std::numeric_limits<unsigned>::max())) return cudaErrorInvalidValue;
+  const auto* typed_resident_tasks =
+      static_cast<const GeneratedPppsResidentTask*>(resident_tasks);
+  const auto* typed_ket_tasks =
+      static_cast<const GeneratedPppsShellTask*>(ket_tasks);
+  const auto* typed_positions =
+      static_cast<const GeneratedPppsVec3*>(atom_positions);
+  const auto* typed_primitive_pairs =
+      static_cast<const GeneratedPppsPrimitivePairData*>(primitive_pairs);
+  if (unrestricted) {{
+    generated_ppps_resident_bra_force_uhf_kernel<<<
+        static_cast<unsigned>(task_count),
+        kGeneratedPppsResidentBlockThreads, 0, stream>>>(
+        typed_resident_tasks, typed_ket_tasks, typed_primitive_pairs,
+        primitive_pair_offsets, ao_coefficients, typed_positions,
+        screening_tolerance, schwarz_bounds, density, forces, task_count);
+  }} else {{
+    generated_ppps_resident_bra_force_rhf_kernel<<<
+        static_cast<unsigned>(task_count),
+        kGeneratedPppsResidentBlockThreads, 0, stream>>>(
+        typed_resident_tasks, typed_ket_tasks, typed_primitive_pairs,
+        primitive_pair_offsets, ao_coefficients, typed_positions,
+        screening_tolerance, schwarz_bounds, density, forces, task_count);
+  }}
+  return cudaPeekAtLastError();
+}}
+"""
+
+
 def _as_selection(item: ShellClassSpec | KernelSelection) -> KernelSelection:
     """Normalize compatibility callers to the explicit production IR."""
 
@@ -748,6 +870,20 @@ def _as_selection(item: ShellClassSpec | KernelSelection) -> KernelSelection:
         spec=item,
         consumers=(KernelConsumer.FORCE,),
         schedule=plan.schedule,
+    )
+
+
+def _emit_ppps_resident_source(selection: KernelSelection) -> str:
+    """Emit only the resident ppps tail for an opted-in production row."""
+
+    if selection.resident_force_recurrence is None:
+        return ""
+    # The ordinary ppps source is emitted immediately before this tail.  A
+    # subset/Wick row needs the Rys evaluator appended; a force-only ordinary
+    # Rys row already contains the evaluator and must not define it twice.
+    return emit_ppps_resident_bra_rys3_cuda(
+        include_shared_definitions=False,
+        include_rys3_roots=selection.recurrence != "rys3",
     )
 
 
@@ -789,6 +925,9 @@ def emit_production_shard(
         body.append(_launch_wrapper(selection.spec))
         if KernelConsumer.FOCK in selection.consumers:
             body.append(_fock_launch_wrapper(selection.spec))
+        if selection.resident_force_recurrence is not None:
+            body.append(_emit_ppps_resident_source(selection))
+            body.append(_ppps_resident_launch_wrapper())
     if not selections:
         body.append("// Empty deterministic shard reserved for stable CMake outputs.\n")
     return "".join(body)
@@ -899,6 +1038,15 @@ cudaError_t launch_shell_class_fock(
     const double* density, double* fock, const std::uint32_t* task_count,
     std::uint32_t* task_head) noexcept;
 
+/** Launch the optional resident-bra ppps force worker. */
+cudaError_t launch_ppps_resident(
+    cudaStream_t stream, bool unrestricted, const void* resident_tasks,
+    const void* ket_tasks, const std::int64_t* primitive_pair_offsets,
+    const void* primitive_pairs, const double* ao_coefficients,
+    const void* atom_positions, double screening_tolerance,
+    const double* schwarz_bounds, const double* density, double* forces,
+    std::size_t task_count) noexcept;
+
 }}  // namespace vibeqc::scf::generated
 
 #endif
@@ -916,6 +1064,14 @@ def emit_registry_source(
         item.spec
         for item in selections
         if KernelConsumer.FOCK in item.consumers
+    )
+    resident_selection = next(
+        (
+            item
+            for item in selections
+            if item.resident_force_recurrence is not None
+        ),
+        None,
     )
     declarations = "\n".join(
         f"""extern "C" cudaError_t vibeqc_launch_generated_{spec.name}(
@@ -952,6 +1108,17 @@ def emit_registry_source(
           task_count, task_head);"""
         for spec in fock_specs
     )
+    resident_declaration = ""
+    resident_launch = "return cudaErrorNotSupported;"
+    if resident_selection is not None:
+        resident_declaration = (
+            "extern \"C\" cudaError_t vibeqc_launch_ppps_resident("
+            f"{_resident_launch_parameter_declaration()});"
+        )
+        resident_launch = (
+            "return vibeqc_launch_ppps_resident("
+            f"{_resident_launch_argument_list()});"
+        )
     return f"""#include "vibeqc_generated_shell_registry.hpp"
 
 #include <cstdlib>
@@ -959,6 +1126,7 @@ def emit_registry_source(
 
 {declarations}
 {fock_declarations}
+{resident_declaration}
 
 namespace vibeqc::scf::generated {{
 namespace {{
@@ -1038,6 +1206,11 @@ cudaError_t launch_shell_class_fock(
   }}
 }}
 
+cudaError_t launch_ppps_resident(
+    {_resident_launch_parameter_declaration()}) noexcept {{
+  {resident_launch}
+}}
+
 }}  // namespace vibeqc::scf::generated
 """
 
@@ -1076,6 +1249,15 @@ def _scope_profile_identifiers(
     and avoids unconstrained shell-name/string substitution.
     """
 
+    # Profile scoping applies to generated CUDA types, never to the stable
+    # runtime ABI included from ``generated_shell_task.hpp``.  Protect the
+    # qualified host descriptor while rewriting the shared ``GeneratedPpps``
+    # prefix, then restore it verbatim.
+    host_resident_task = "vibeqc::scf::detail::GeneratedPppsResidentTask"
+    host_resident_task_placeholder = "VIBEQC_STABLE_PPPS_RESIDENT_TASK_ABI"
+    source = source.replace(
+        host_resident_task, host_resident_task_placeholder
+    )
     class_name = selection.spec.name[0].upper() + selection.spec.name[1:]
     profile_class = "".join(part.capitalize() for part in identifier.split("_"))
     return source.replace(
@@ -1084,7 +1266,7 @@ def _scope_profile_identifiers(
     ).replace(
         f"Generated{class_name}",
         f"Generated{profile_class}{class_name}",
-    )
+    ).replace(host_resident_task_placeholder, host_resident_task)
 
 
 def emit_profile_shard(
@@ -1157,6 +1339,23 @@ def emit_profile_shard(
                 fock_symbol,
             )
             body.append(fock_wrapper)
+        if selection.resident_force_recurrence is not None:
+            resident_source = _scope_profile_identifiers(
+                _strip_emitter_includes(_emit_ppps_resident_source(selection)),
+                selection,
+                identifier,
+            )
+            body.append(resident_source)
+            resident_symbol = f"vibeqc_launch_{identifier}_ppps_resident"
+            resident_wrapper = _scope_profile_identifiers(
+                _ppps_resident_launch_wrapper(resident_symbol),
+                selection,
+                identifier,
+            ).replace(
+                _scope_profile_identifiers(resident_symbol, selection, identifier),
+                resident_symbol,
+            )
+            body.append(resident_wrapper)
     if not items:
         body.append("// Portable profile: generic CUDA kernels remain active.\n")
     body.append(f"\n}}  // namespace {namespace}\n")
@@ -1246,11 +1445,31 @@ def _launch_parameter_declaration() -> str:
     std::uint32_t* task_head"""
 
 
+def _resident_launch_parameter_declaration() -> str:
+    """Return the stable resident-bra launch signature shared by emitters."""
+
+    return """cudaStream_t stream, bool unrestricted,
+    const void* resident_tasks, const void* ket_tasks,
+    const std::int64_t* primitive_pair_offsets, const void* primitive_pairs,
+    const double* ao_coefficients, const void* atom_positions,
+    double screening_tolerance, const double* schwarz_bounds,
+    const double* density, double* forces, std::size_t task_count"""
+
+
 def _launch_argument_list() -> str:
     return """stream, unrestricted, worker_blocks, tasks, task_offset,
           primitive_pair_offsets, primitive_pairs, ao_coefficients,
           atom_positions, screening_tolerance, schwarz_bounds, density, output,
           task_count, task_head"""
+
+
+def _resident_launch_argument_list() -> str:
+    """Return arguments for forwarding a resident-bra launch."""
+
+    return """stream, unrestricted, resident_tasks, ket_tasks,
+          primitive_pair_offsets, primitive_pairs, ao_coefficients,
+          atom_positions, screening_tolerance, schwarz_bounds, density,
+          forces, task_count"""
 
 
 def emit_multi_registry_source(
@@ -1269,6 +1488,7 @@ def emit_multi_registry_source(
         identifier = _profile_identifier(profile.target.architecture)
         force_cases = []
         fock_cases = []
+        resident_symbol = None
         force_names = []
         fock_names = []
         force_mask = 0
@@ -1326,6 +1546,12 @@ def emit_multi_registry_source(
                     f"{consumer_mask}U, {plan.schedule.component_tile}U}},"
                 )
                 fock_mask |= 1 << shell_class
+            if selection.resident_force_recurrence is not None:
+                resident_symbol = f"vibeqc_launch_{identifier}_ppps_resident"
+                declarations.append(
+                    f'extern "C" cudaError_t {resident_symbol}('
+                    f"{_resident_launch_parameter_declaration()});"
+                )
         helpers.append(
             f"""cudaError_t launch_{identifier}_force({launch_parameters}) noexcept {{
   switch (shell_class) {{
@@ -1340,6 +1566,15 @@ cudaError_t launch_{identifier}_fock({launch_parameters}) noexcept {{
     default: return cudaErrorInvalidValue;
   }}
 }}
+
+cudaError_t launch_{identifier}_resident(
+    {_resident_launch_parameter_declaration()}) noexcept {{
+  """ + (
+                f"return {resident_symbol}({_resident_launch_argument_list()});"
+                if resident_symbol is not None
+                else "return cudaErrorNotSupported;"
+            ) + """
+}
 """
         )
         kernel_arrays.append(
@@ -1355,7 +1590,8 @@ constexpr std::array<ShellKernelMetadata, {len(fock_names)}> kFockNames{index}{{
             f"""    {{kCompiledProfiles[{index}], UINT64_C({force_mask}),
       UINT64_C({fock_mask}), kForceNames{index}.data(), kForceNames{index}.size(),
       kFockNames{index}.data(), kFockNames{index}.size(),
-      launch_{identifier}_force, launch_{identifier}_fock}},"""
+      launch_{identifier}_force, launch_{identifier}_fock,
+      launch_{identifier}_resident}},"""
         )
     return f"""#include "vibeqc_generated_shell_registry.hpp"
 
@@ -1370,6 +1606,7 @@ namespace vibeqc::scf::generated {{
 namespace {{
 
 using LaunchFunction = cudaError_t (*)({_launch_parameter_declaration()}) noexcept;
+using ResidentLaunchFunction = cudaError_t (*)({_resident_launch_parameter_declaration()}) noexcept;
 
 struct KernelSet {{
   ProfileInfo info;
@@ -1381,6 +1618,7 @@ struct KernelSet {{
   std::size_t fock_name_count;
   LaunchFunction launch_force;
   LaunchFunction launch_fock;
+  ResidentLaunchFunction launch_resident;
 }};
 
 {chr(10).join(helpers)}
@@ -1514,6 +1752,14 @@ cudaError_t launch_shell_class_fock({_launch_parameter_declaration()}) noexcept 
   const KernelSet* kernels = current_kernel_set();
   return kernels == nullptr ? cudaErrorInvalidValue : kernels->launch_fock(
       shell_class, {launch_arguments});
+}}
+
+cudaError_t launch_ppps_resident(
+    {_resident_launch_parameter_declaration()}) noexcept {{
+  const KernelSet* kernels = current_kernel_set();
+  if (kernels == nullptr) return cudaErrorInvalidValue;
+  if (kernels->launch_resident == nullptr) return cudaErrorNotSupported;
+  return kernels->launch_resident({_resident_launch_argument_list()});
 }}
 
 }}  // namespace vibeqc::scf::generated

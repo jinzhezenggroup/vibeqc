@@ -19,7 +19,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from .cuda import CudaEmitter
-from .cuda_schedule import PairOrientation, PairStorage, ScheduleKind
+from .cuda_schedule import PairOrientation, PairStorage, ScheduleIR, ScheduleKind
 from .fused_schedule import (
     CoulombState,
     FusedShellPlan,
@@ -29,7 +29,13 @@ from .fused_schedule import (
 from .ir import KernelConsumer
 from .rys import emit_ppps_rys3_root_body_cuda, emit_rys3_roots_cuda
 from .shell_class import build_weighted_shell_contraction_kernel
-from .shell_spec import AXES, DPPP_SPEC, ShellClassSpec, cartesian_components
+from .shell_spec import (
+    AXES,
+    DPPP_SPEC,
+    FUSED_SHELL_SPEC_BY_NAME,
+    ShellClassSpec,
+    cartesian_components,
+)
 
 DpppComponent = tuple[str, str, str, str]
 _AXIS_INDEX = {axis: index for index, axis in enumerate(AXES)}
@@ -2020,6 +2026,420 @@ void generated_dppp_shell_class_force_uhf_persistent_kernel(
       task_offset, task_count, task_head);
 }}
 """
+
+
+def _emit_ppps_resident_bra_rys3_force_consumer_cuda(
+    *, include_rys3_roots: bool = True
+) -> str:
+    """Emit the isolated canonical ``(p p|p s)`` resident-bra prototype.
+
+    A resident descriptor maps one block to one ``p p`` shell pair and a
+    contiguous range of existing ``GeneratedDpppShellTask`` ket records.  The
+    descriptor itself is deliberately small and remains ABI-compatible with
+    the host-side definition in ``generated_shell_task.hpp``; the generated
+    type is checked by the production C wrapper before it is passed to CUDA.
+
+    Each lane walks a strided subset of the grouped ``p s`` ket tasks.  The
+    block first stages the common bra primitive-pair records in shared
+    memory, then each lane evaluates its ket primitive pairs with 27
+    explicitly named density/Cartesian weights.  This keeps the bra cache
+    resident even when one descriptor covers more than 256 ket tasks.
+    Rys roots remain in shared SoA storage to avoid an addressable six-double
+    local array; the straight-line TRR/HRR body immediately folds each
+    component into nine scalar force accumulators and recovers center D by
+    translation invariance.
+    """
+
+    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
+    task_component_setup = _generic_task_component_setup(spec).replace(
+        "shared.task", "task"
+    )
+    component_names = _emitted_component_names(spec)
+    component_weight_names = tuple(
+        f"component_weight_{component}"
+        for component in range(spec.component_count)
+    )
+    weight_blocks: list[str] = []
+    for component in range(spec.component_count):
+        setup = "\n".join(
+            f"    {line}" for line in task_component_setup.splitlines()
+        )
+        weight_blocks.append(
+            f"""  {component_weight_names[component]} = 0.0;
+  {{
+    constexpr unsigned component = {component}U;
+{setup}
+    const std::size_t matrix_order =
+        static_cast<std::size_t>(task.matrix_order);
+    const double schwarz_product = context.schwarz_bounds == nullptr
+        ? 0.0
+        : context.schwarz_bounds[
+            task.density_offset +
+            generated_dppp_matrix_index(i, j, matrix_order)] *
+          context.schwarz_bounds[
+            task.density_offset +
+            generated_dppp_matrix_index(k, l, matrix_order)];
+    const bool retained_by_schwarz = context.schwarz_bounds == nullptr ||
+        schwarz_product >= context.screening_tolerance;
+    if (unique_ket_component && retained_by_schwarz) {{
+      const double density_coefficient =
+          generated_dppp_density_coefficient<Unrestricted>(
+              task, i, j, k, l, context.density);
+      const double angular_coefficient =
+          context.ao_coefficients[
+              task.ao_coefficient_begin[0] + {component_names[0]}] *
+          context.ao_coefficients[
+              task.ao_coefficient_begin[1] + {component_names[1]}] *
+          context.ao_coefficients[
+              task.ao_coefficient_begin[2] + {component_names[2]}] *
+          context.ao_coefficients[
+              task.ao_coefficient_begin[3] + {component_names[3]}];
+      {component_weight_names[component]} =
+          density_coefficient * angular_coefficient;
+      any_component = any_component || density_coefficient != 0.0;
+    }}
+  }}"""
+        )
+
+    root_body = emit_ppps_rys3_root_body_cuda(
+        component_weight_expression="component_weight_{component}"
+    )
+    weight_code = "\n".join(weight_blocks)
+    independent_atomics = []
+    for center in range(3):
+        for coordinate in range(3):
+            slot = center * 3 + coordinate
+            independent_atomics.append(
+                f"""  if (force_{slot} != 0.0) {{
+    atomicAdd(
+        context.forces + static_cast<std::size_t>(task.atom[{center}]) * 3U +
+            {coordinate}U,
+        force_{slot});
+  }}"""
+            )
+    fourth_atomics = []
+    for coordinate in range(3):
+        slots = [center * 3 + coordinate for center in range(3)]
+        fourth_atomics.append(
+            f"""  const double fourth_force_{coordinate} =
+      -force_{slots[0]} - force_{slots[1]} - force_{slots[2]};
+  if (fourth_force_{coordinate} != 0.0) {{
+    atomicAdd(
+        context.forces + static_cast<std::size_t>(task.atom[3]) * 3U +
+            {coordinate}U,
+        fourth_force_{coordinate});
+  }}"""
+        )
+    force_declarations = "\n".join(
+        f"  double force_{slot} = 0.0;" for slot in range(9)
+    )
+    independent_atomic_code = "\n".join(independent_atomics)
+    fourth_atomic_code = "\n".join(fourth_atomics)
+
+    weight_declarations = "\n".join(
+        f"  double {name} = 0.0;" for name in component_weight_names
+    )
+
+    roots = emit_rys3_roots_cuda() if include_rys3_roots else ""
+    return roots + f"""/*
+ * Canonical ppps (1110) resident-bra force worker.
+ *
+ * The descriptor remains profile-scoped in generated CUDA and is checked
+ * against the host ABI by the production C wrapper.  The runtime may keep
+ * using the ordinary shell-task route as a fallback.
+ */
+struct GeneratedPppsResidentTask {{
+  std::uint32_t bra_pair;
+  std::uint32_t ket_begin;
+  std::uint32_t ket_count;
+}};
+
+constexpr unsigned kGeneratedPppsResidentBlockThreads = 256U;
+constexpr unsigned kGeneratedPppsResidentMaximumBraPrimitivePairs = 64U;
+
+/** Pointers and immutable screening inputs shared by all resident lanes. */
+struct GeneratedPppsResidentContext {{
+  const GeneratedDpppShellTask* ket_tasks;
+  const GeneratedDpppPrimitivePairData* primitive_pairs;
+  const std::int64_t* primitive_pair_offsets;
+  const double* ao_coefficients;
+  const GeneratedDpppVec3* atom_positions;
+  double screening_tolerance;
+  const double* schwarz_bounds;
+  const double* density;
+  double* forces;
+}};
+
+/**
+ * Evaluate one ket lane against every staged bra primitive pair.
+ *
+ * The recurrence body is straight-line code generated from the unique Rys
+ * state DAG.  Each component is contracted at its last-use point, so only
+ * the nine force scalars and the lane's 27 weights cross primitive loops.
+ */
+template <bool Unrestricted>
+__device__ __forceinline__ void generated_ppps_resident_force_task(
+    const GeneratedPppsResidentContext& context,
+    const GeneratedPppsResidentTask& resident,
+    const GeneratedDpppPrimitivePairData* resident_bra_pairs,
+    unsigned resident_bra_pair_count,
+    double (&roots_weights)[6][kGeneratedPppsResidentBlockThreads]) {{
+  const unsigned lane = threadIdx.x;
+  for (unsigned local_ket = lane;
+       local_ket < resident.ket_count;
+       local_ket += kGeneratedPppsResidentBlockThreads) {{
+    const std::size_t task_index =
+        static_cast<std::size_t>(resident.ket_begin) + local_ket;
+    const GeneratedDpppShellTask& task = context.ket_tasks[task_index];
+    if (task.shell_pair[0] != resident.bra_pair) continue;
+
+{weight_declarations}
+  bool any_component = false;
+{weight_code}
+  if (!any_component) continue;
+  const GeneratedDpppVec3 first = context.atom_positions[task.atom[0]];
+  const GeneratedDpppVec3 second = context.atom_positions[task.atom[1]];
+  const GeneratedDpppVec3 third = context.atom_positions[task.atom[2]];
+  const bool first_pair_reversed =
+      (task.reversed_shell_pair_mask & 1U) != 0U;
+  const bool second_pair_reversed =
+      (task.reversed_shell_pair_mask & 2U) != 0U;
+{force_declarations}
+
+  const std::int64_t second_pair_begin =
+      context.primitive_pair_offsets[task.shell_pair[1]];
+  const std::int64_t second_pair_end =
+      context.primitive_pair_offsets[task.shell_pair[1] + 1U];
+  for (unsigned bra_primitive = 0U;
+       bra_primitive < resident_bra_pair_count; ++bra_primitive) {{
+    const GeneratedDpppPrimitivePairData first_pair =
+        resident_bra_pairs[bra_primitive];
+    const double p = first_pair.exponent_sum;
+    const double first_product_scale = first_pair_reversed
+        ? first_pair.second_product_scale : first_pair.first_product_scale;
+    const double second_product_scale = first_pair_reversed
+        ? first_pair.first_product_scale : first_pair.second_product_scale;
+    const double alpha2 = 2.0 * p * first_product_scale;
+    const double beta2 = 2.0 * p * second_product_scale;
+    const double pax = first_pair.product_center.x - first.x;
+    const double pay = first_pair.product_center.y - first.y;
+    const double paz = first_pair.product_center.z - first.z;
+    const double abx = second.x - first.x;
+    const double aby = second.y - first.y;
+    const double abz = second.z - first.z;
+    for (std::int64_t second_primitive = second_pair_begin;
+         second_primitive < second_pair_end; ++second_primitive) {{
+      const GeneratedDpppPrimitivePairData second_pair =
+          context.primitive_pairs[second_primitive];
+      const double q = second_pair.exponent_sum;
+      const double third_product_scale = second_pair_reversed
+          ? second_pair.second_product_scale : second_pair.first_product_scale;
+      const double gamma2 = 2.0 * q * third_product_scale;
+      const double qcx = second_pair.product_center.x - third.x;
+      const double qcy = second_pair.product_center.y - third.y;
+      const double qcz = second_pair.product_center.z - third.z;
+      const double dx = first_pair.product_center.x -
+          second_pair.product_center.x;
+      const double dy = first_pair.product_center.y -
+          second_pair.product_center.y;
+      const double dz = first_pair.product_center.z -
+          second_pair.product_center.z;
+      const double rho = p * q / (p + q);
+      generated_ppps_rys3_roots(
+          rho * (dx * dx + dy * dy + dz * dz),
+          &roots_weights[0][lane],
+          kGeneratedPppsResidentBlockThreads);
+      const double primitive_prefactor =
+          -34.986836655249725 * first_pair.weighted_coefficient *
+          second_pair.weighted_coefficient / (p * q * sqrt(p + q));
+#pragma unroll
+      for (unsigned root_index = 0U; root_index < 3U; ++root_index) {{
+        const double root = roots_weights[2U * root_index][lane];
+        const double weighted_root =
+            roots_weights[2U * root_index + 1U][lane] * primitive_prefactor;
+        const double root_over_sum = root / (p + q);
+        const double root_bra = root_over_sum * q;
+        const double root_ket = root_over_sum * p;
+        const double b10 = 0.5 / p * (1.0 - root_bra);
+        const double b00 = 0.5 * root_over_sum;
+        const double b01 = 0.5 / q * (1.0 - root_ket);
+        const double c0x = pax - dx * root_bra;
+        const double c0y = pay - dy * root_bra;
+        const double c0z = paz - dz * root_bra;
+        const double cpx = qcx + dx * root_ket;
+        const double cpy = qcy + dy * root_ket;
+        const double cpz = qcz + dz * root_ket;
+{root_body}
+      }}
+    }}
+  }}
+{independent_atomic_code}
+{fourth_atomic_code}
+  }}
+}}
+
+/**
+ * One block owns one pp bra pair and a contiguous p-s ket-task chunk.
+ *
+ * All lanes participate in the cache barrier, including tail lanes whose
+ * ket-task slot is outside ``ket_count``.  This is required because the
+ * resident descriptor is intentionally ragged at the end of a chunk.  Tail
+ * lanes still reach the cache barrier above, while each lane then walks all
+ * of its assigned ket records in 256-thread strides.
+ */
+template <bool Unrestricted>
+__device__ __forceinline__ void generated_ppps_resident_bra_worker(
+    const GeneratedPppsResidentTask* resident_tasks,
+    const GeneratedDpppShellTask* ket_tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    std::size_t resident_task_count) {{
+  __shared__ GeneratedPppsResidentContext context;
+  __shared__ GeneratedDpppPrimitivePairData resident_bra_pairs[
+      kGeneratedPppsResidentMaximumBraPrimitivePairs];
+  __shared__ double roots_weights[6][kGeneratedPppsResidentBlockThreads];
+  __shared__ GeneratedPppsResidentTask resident;
+  if (threadIdx.x == 0U) {{
+    context.ket_tasks = ket_tasks;
+    context.primitive_pairs = primitive_pairs;
+    context.primitive_pair_offsets = primitive_pair_offsets;
+    context.ao_coefficients = ao_coefficients;
+    context.atom_positions = atom_positions;
+    context.screening_tolerance = screening_tolerance;
+    context.schwarz_bounds = schwarz_bounds;
+    context.density = density;
+    context.forces = forces;
+    if (blockIdx.x < resident_task_count) {{
+      resident = resident_tasks[blockIdx.x];
+    }}
+  }}
+  __syncthreads();
+  if (blockIdx.x >= resident_task_count) return;
+  // The runtime deliberately preserves one descriptor slot per shell-pair
+  // ordinal to avoid a host readback and a second device compaction.  Most
+  // ordinals are holes, so reject them before reading primitive offsets or
+  // touching the shared bra cache.
+  if (resident.ket_count == 0U) return;
+  const std::int64_t bra_pair_begin =
+      primitive_pair_offsets[resident.bra_pair];
+  const std::int64_t bra_pair_end =
+      primitive_pair_offsets[resident.bra_pair + 1U];
+  const std::int64_t bra_pair_count = bra_pair_end - bra_pair_begin;
+  if (bra_pair_count <= 0 ||
+      bra_pair_count > static_cast<std::int64_t>(
+          kGeneratedPppsResidentMaximumBraPrimitivePairs)) return;
+  for (std::int64_t primitive = threadIdx.x;
+       primitive < bra_pair_count; primitive +=
+           kGeneratedPppsResidentBlockThreads) {{
+    resident_bra_pairs[primitive] =
+        primitive_pairs[bra_pair_begin + primitive];
+  }}
+  __syncthreads();
+  generated_ppps_resident_force_task<Unrestricted>(
+      context, resident, resident_bra_pairs,
+      static_cast<unsigned>(bra_pair_count), roots_weights);
+}}
+
+extern "C" __global__ __launch_bounds__(
+    kGeneratedPppsResidentBlockThreads, 1)
+void generated_ppps_resident_bra_force_rhf_kernel(
+    const GeneratedPppsResidentTask* resident_tasks,
+    const GeneratedDpppShellTask* ket_tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    std::size_t resident_task_count) {{
+  generated_ppps_resident_bra_worker<false>(
+      resident_tasks, ket_tasks, primitive_pairs, primitive_pair_offsets,
+      ao_coefficients, atom_positions, screening_tolerance, schwarz_bounds,
+      density, forces, resident_task_count);
+}}
+
+extern "C" __global__ __launch_bounds__(
+    kGeneratedPppsResidentBlockThreads, 1)
+void generated_ppps_resident_bra_force_uhf_kernel(
+    const GeneratedPppsResidentTask* resident_tasks,
+    const GeneratedDpppShellTask* ket_tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    std::size_t resident_task_count) {{
+  generated_ppps_resident_bra_worker<true>(
+      resident_tasks, ket_tasks, primitive_pairs, primitive_pair_offsets,
+      ao_coefficients, atom_positions, screening_tolerance, schwarz_bounds,
+      density, forces, resident_task_count);
+}}
+"""
+
+
+def emit_ppps_resident_bra_rys3_cuda(
+    *,
+    include_shared_definitions: bool = True,
+    include_rys3_roots: bool = True,
+) -> str:
+    """Emit the canonical 256-thread ``ppps`` resident-bra Rys3 worker.
+
+    ``include_shared_definitions`` keeps the standalone correctness harness
+    self-contained.  Production AOT shards already contain the ordinary ppps
+    shell definitions, so they request only the resident-specific tail to
+    avoid duplicate CUDA type/function definitions.  A subset/Wick ordinary
+    ppps row also lacks the Rys evaluator; ``include_rys3_roots`` therefore
+    controls that one additional shared dependency independently.
+    """
+
+    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
+    schedule = ScheduleIR(
+        kind=ScheduleKind.THREAD_TASKS,
+        block_threads=32,
+        component_tile=spec.component_count,
+        tasks_per_warp=32,
+        shared_coulomb=False,
+    )
+    plan = build_fused_shell_plan(
+        spec, schedule=schedule, recurrence="rys3"
+    )
+    resident_tail = _emit_ppps_resident_bra_rys3_force_consumer_cuda(
+        include_rys3_roots=include_rys3_roots
+    )
+    if include_shared_definitions:
+        source = emit_shell_class_fused_cuda(spec, plan)
+        # The existing Rys thread consumer starts with the attributed roots
+        # table; cut before that table so the standalone source does not
+        # retain an unused 27-entry shared weight helper from the one-task
+        # prototype.
+        marker = """/*
+ * Three-root interpolation adapted from GPU4PySCF."""
+        marker_index = source.find(marker)
+        if marker_index < 0:
+            raise RuntimeError("generated force task marker changed unexpectedly")
+        prefix = source[:marker_index]
+    else:
+        prefix = ""
+        # The resident tail references the normal generated ppps task/cache
+        # helpers.  The production shard places it directly after the normal
+        # ppps emitter, where those definitions are already available.
+    return prefix + _specialize_dppp_identifiers(resident_tail, spec)
+
+
+# Keep the numbering used in the GPU4PySCF literature discoverable to callers
+# while retaining the descriptive name in generated source/tests.
+emit_ppps_1110_resident_bra_cuda = emit_ppps_resident_bra_rys3_cuda
 
 
 def _emit_subgroup_force_consumer_cuda(

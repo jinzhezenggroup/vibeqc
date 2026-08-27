@@ -34,6 +34,26 @@ struct GeneratedShellTask {
   std::uint32_t atom[4];
 };
 
+/**
+ * Descriptor for one resident canonical ``ppps`` bra shell pair.
+ *
+ * The descriptor owns all active ``p s`` ket tasks for one ``p p`` bra pair.
+ * ``ket_begin`` and ``ket_count`` index a device-side, bra-grouped array of
+ * ``GeneratedShellTask`` records.  They are deliberately 32-bit: the direct
+ * shell-pair task builder already bounds one bucket below ``UINT32_MAX`` and
+ * the compact resident allocation is at most one record per active ppps
+ * shell quartet.  Keeping this ABI to three words makes descriptor traffic
+ * negligible compared with the generated recurrence.
+ */
+struct GeneratedPppsResidentTask {
+  std::uint32_t bra_pair;
+  std::uint32_t ket_begin;
+  std::uint32_t ket_count;
+};
+
+static_assert(sizeof(GeneratedPppsResidentTask) == 12);
+static_assert(alignof(GeneratedPppsResidentTask) == alignof(std::uint32_t));
+
 }  // namespace vibeqc::scf::detail
 
 #endif
