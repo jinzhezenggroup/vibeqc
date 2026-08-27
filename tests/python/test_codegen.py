@@ -1947,6 +1947,24 @@ def test_batched_finalization_reuses_each_converged_raw_fock():
     assert "update_uhf_convergence_kernel<true>" in source
 
 
+def test_force_density_product_screening_is_force_only_and_conservative():
+    """Keep the force queue optional without weakening the SCF Fock gate."""
+
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
+        encoding="utf-8"
+    )
+    assert "enum class DirectScreeningPurpose" in source
+    assert "DirectScreeningPurpose::Fock" in source
+    assert "DirectScreeningPurpose::Force" in source
+    assert "kForceDensityProductScreeningTolerance = 1.0e-14" in source
+    assert (
+        "fmin(screening_tolerance, "
+        "kForceDensityProductScreeningTolerance)" in source
+    )
+    assert 'std::getenv("VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING")' in source
+    assert "launch_direct_force_compaction();" in source
+
+
 def test_cached_direct_plan_reuses_immutable_task_layout():
     """Keep quadratic shell-pair topology enumeration out of warm replay."""
 
