@@ -1812,15 +1812,19 @@ def test_one_electron_force_batches_point_charges_in_one_warp_per_ao_pair():
     assert "scalar_one_electron_force_environment == nullptr" in source
 
 
-def test_single_system_finalization_reuses_the_converged_raw_fock():
-    """Keep the final-Fock rebuild as an explicit fallback, not the B1 default."""
+def test_batched_finalization_reuses_each_converged_raw_fock():
+    """Rebuild only loose peers and restore shared force-task metadata."""
 
     source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
         encoding="utf-8"
     )
     assert "template <bool RetainConvergedDensity>" in source
     assert 'std::getenv("VIBEQC_FINAL_FOCK_REBUILD")' in source
-    assert "if (!reuse_converged_fock_for_execution)" in source
+    assert "select_final_fock_rebuild_kernel" in source
+    assert "copy_selected_matrices_kernel" in source
+    assert "launch_direct_quartet_metadata(density)" in source
+    assert "plan.cached_warm_density == host.warm_density" in source
+    assert "iteration > 1 || has_energy_baseline" in source
     assert "update_convergence_kernel<true>" in source
     assert "update_uhf_convergence_kernel<true>" in source
 

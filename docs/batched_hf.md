@@ -69,16 +69,20 @@ each raised Coulomb state across all centers and reconstruct the fourth basis
 center from translational invariance. Orders six and above use a force-only
 three-component forward scalar that propagates x/y/z together so the exact
 shell-class value recurrence executes once rather than three times.
-For batch one, a final density step at or below `1e-12` RMS retains the density
-paired with the last raw Fock matrix and reuses both for final canonicalization
-and forces. This avoids a complete post-SCF direct-J/K rebuild. Looser accepted
-steps automatically restore the next density and rebuild, while larger batches
-retain that rebuild until final task metadata can be restored independently for
-systems that converge on different device-tail iterations.
-After the force kernels consume the retained density/Fock snapshot, the
-accepted next density is restored as the returned warm state; this keeps later
-replays on the established convergence branch without changing the current
-energy or force evaluation.
+Every converged system retains the density paired with its last raw Fock
+matrix. A final step at or below `1e-12` RMS reuses that snapshot; only looser
+systems restore their next densities and rebuild Fock. Because systems can
+converge on different device-tail iterations, a multi-system bucket recreates
+the final transformed densities, shell-pair bounds, and compact task list after
+the selective rebuild. This metadata-only pass makes the force domain
+consistent without reevaluating J/K for tight peers.
+After force kernels consume the selected snapshots, reused systems restore the
+accepted next densities as their returned warm states. An unchanged-geometry
+replay whose warm density exactly matches the previous successful return also
+reuses the resident final energy as its comparison baseline. It can therefore
+converge in one SCF Graph iteration when the unchanged energy and density tests
+already pass; changed coordinates or external warm inputs retain the original
+two-energy-evaluation protocol.
 Because the force pass follows the final SCF Graph replay, orders zero through
 five consume their compacted partitions through persistent device task queues
 rather than fixed topology-capacity grids. One-warp blocks steal subtiles until
