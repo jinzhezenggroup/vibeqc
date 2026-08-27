@@ -323,7 +323,8 @@ def test_one_warp_component_schedule_strides_larger_coulomb_table(name):
         f"state += kGenerated{class_name}BlockThreads" in source
     )
     assert "shared.coulomb[state] = generated_" in source
-    assert "fabs(candidate_density_coefficient) * schwarz_product" in source
+    assert "candidate_density_coefficient" not in source
+    assert "fabs(candidate_density_coefficient)" not in source
     assert "__syncthreads_or(density_coefficient != 0.0)" in source
 
 
@@ -574,7 +575,8 @@ def test_zero_order_pairs_lower_through_shell_task_schedule():
     assert "generated_psss_packed_force_lane" in packed
     assert "generated_psss_packed_fock_lane" in packed
     assert "generated_psss_weighted_component_gradient" in packed
-    assert "fabs(candidate_density_coefficient) * schwarz_product" in packed
+    assert "candidate_density_coefficient" not in packed
+    assert "fabs(candidate_density_coefficient)" not in packed
     assert "if (!any_component) return;" in packed
     assert "generated_psss_component_gradient<false>" not in packed
     assert "atomicAdd(task_head, 32U)" in packed
@@ -1454,6 +1456,36 @@ def test_psps_weighted_cuda_uses_one_thread_per_complete_shell_task():
     assert "generated_psps_shell_class_force_uhf_persistent_kernel" in source
     assert "__noinline__" not in source
     assert "Dual3" not in source
+
+
+def test_packed_force_geometry_omits_component_coulomb_tables():
+    """Keep packed-force shared storage limited to fields its CSE consumes."""
+
+    source = emit_shell_class_fused_cuda(
+        PSPS_SPEC,
+        build_fused_shell_plan(
+            PSPS_SPEC,
+            consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+            schedule=ScheduleIR(
+                kind=ScheduleKind.PACKED_TASKS,
+                block_threads=32,
+                component_tile=PSPS_SPEC.component_count,
+                tasks_per_warp=32,
+                shared_coulomb=False,
+            ),
+        ),
+    )
+    force_geometry = source.split(
+        "struct GeneratedPspsPackedForceGeometry", maxsplit=1
+    )[1].split("};", maxsplit=1)[0]
+    assert "coordinate_powers" not in force_geometry
+    assert "negative_two_rho_powers" not in force_geometry
+    assert "pair_shifts[3][3]" in force_geometry
+    assert "pair_shifts[3][axis]" not in source.split(
+        "generated_psps_make_packed_force_geometry", maxsplit=1
+    )[1].split("/** Density-weighted shell gradient", maxsplit=1)[0]
+    assert "GeneratedPspsPackedForceLaneStorage" in source
+    assert "GeneratedPspsPackedFockLaneStorage" in source
 
 
 def test_ppss_weighted_cuda_reuses_the_low_order_worker_shape():
