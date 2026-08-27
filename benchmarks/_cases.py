@@ -56,7 +56,7 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
     """Return artificial and bundled named-basis validation cases."""
 
     sp_atoms = (("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7)))
-    return {
+    cases = {
         "sp8": BenchmarkCase(
             description="H2, 8 Cartesian s/p AOs",
             atoms=sp_atoms,
@@ -286,6 +286,33 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
             method="uhf",
         ),
     }
+
+    # This synthetic scaling point reuses the physical WATER27 S4 octamer
+    # topology while keeping the two copies far enough apart to avoid atomic
+    # overlap. It is intentionally labeled synthetic: the case exists to make
+    # the 384-AO direct-J/K scaling regression reproducible, not to represent
+    # an optimized water-hexadecamer structure.
+    octamer = cases["water-octamer-s4-def2-svp-spherical"].atoms
+    half_separation = 5.0 * _ANGSTROM_TO_BOHR
+    cases["water-hexadecamer-2s4-def2-svp-spherical"] = BenchmarkCase(
+        description=(
+            "synthetic pair of translated WATER27 S4 water octamers, "
+            "384 real spherical AOs, def2-SVP direct J/K"
+        ),
+        atoms=tuple(
+            (
+                element,
+                (position[0] + x_shift, position[1], position[2]),
+            )
+            for x_shift in (-half_separation, half_separation)
+            for element, position in octamer
+        ),
+        vibeqc_basis="def2-svp",
+        pyscf_basis="def2-svp",
+        basis_representation="spherical",
+        expected_ao_count=384,
+    )
+    return cases
 
 
 def real_molecule_gate_points() -> tuple[BenchmarkGatePoint, ...]:

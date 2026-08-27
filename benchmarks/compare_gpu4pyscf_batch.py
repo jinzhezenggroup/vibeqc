@@ -390,6 +390,14 @@ def main() -> None:
     parser.add_argument("--maximum-energy-error", type=float)
     parser.add_argument("--maximum-force-error", type=float)
     parser.add_argument(
+        "--capture-warm-range",
+        action="store_true",
+        help=(
+            "delimit all interleaved warm samples with the CUDA profiler API "
+            "for Nsight Systems capture-range profiling"
+        ),
+    )
+    parser.add_argument(
         "--output",
         help="optional JSON path for raw timings and reproducibility metadata",
     )
@@ -500,15 +508,23 @@ def main() -> None:
         )
         gpu_warm_densities = [engine.make_rdm1().copy() for engine in gpu_objects]
 
-        for sequence_index, engine in enumerate(measurement_order):
-            if engine == VIBEQC_ENGINE:
-                vibeqc_samples.append(_vibeqc_sample(batch, cp, sequence_index))
-            else:
-                gpu_samples.append(
-                    _gpu_sample(
-                        gpu_objects, gpu_warm_densities, cp, sequence_index
+        if args.capture_warm_range:
+            cp.cuda.profiler.start()
+        try:
+            for sequence_index, engine in enumerate(measurement_order):
+                if engine == VIBEQC_ENGINE:
+                    vibeqc_samples.append(
+                        _vibeqc_sample(batch, cp, sequence_index)
                     )
-                )
+                else:
+                    gpu_samples.append(
+                        _gpu_sample(
+                            gpu_objects, gpu_warm_densities, cp, sequence_index
+                        )
+                    )
+        finally:
+            if args.capture_warm_range:
+                cp.cuda.profiler.stop()
 
     repeat_accuracy = pair_repeat_accuracy(vibeqc_samples, gpu_samples)
     maximum_energy_error = max(

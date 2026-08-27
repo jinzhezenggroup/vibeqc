@@ -12202,21 +12202,15 @@ bool same_options(const ScfOptions& first,
 
 std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     CudaRhfBucketPlan& plan,
-    const std::vector<core::System>& systems,
+    const HostBatch& host,
     const ScfOptions& options,
-    const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
     bool unrestricted,
     bool shell_class_profiling) {
-  std::vector<RhfBucketItem> outputs(systems.size());
+  const std::size_t batch_size = host.warm_mask.size();
+  std::vector<RhfBucketItem> outputs(batch_size);
   plan.last_shell_class_profile.reset();
-  HostBatch host;
-  if (!pack_host_batch(systems, initial_densities, host, unrestricted)) {
-    fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
-    return outputs;
-  }
 
-  const std::size_t batch_size = systems.size();
   const std::size_t nbf = host.nbf;
   const std::size_t direct_nbf = host.direct_nbf;
   const std::size_t spin_count = host.spin_count;
@@ -12313,9 +12307,13 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       std::strcmp(scalar_one_electron_force_environment, "0") == 0;
   const bool requested_reuse_converged_fock =
       reuse_converged_fock_requested();
+  const bool first_setup = !plan.initialized;
   detail::DirectQuartetTaskLayout direct_task_layout{};
   std::size_t total_shell_quartet_tiles = 0;
-  if (requested_quartet_direct) {
+  if (requested_quartet_direct && first_setup) {
+    // Exact topology capacities are immutable for a prepared bucket. Their
+    // pair-of-pairs enumeration is O(n_shell_pairs^2), so recomputing it on
+    // every warm replay adds substantial host latency at large AO counts.
     if (!detail::make_direct_quartet_task_layout(
             host.shell_direct_ao_offsets, host.shell_angular,
             host.system_shell_pair_offsets, host.shell_pair_first,
@@ -12326,6 +12324,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       return outputs;
     }
     total_shell_quartet_tiles = direct_task_layout.exact_tile_count;
+  } else if (requested_quartet_direct) {
+    total_shell_quartet_tiles = plan.total_shell_quartet_tiles;
   }
   // Direct consumers expand each compact logical tile into one-warp blocks;
   // validate the resulting fixed Graph grid before narrowing it to unsigned.
@@ -12361,7 +12361,6 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
     return outputs;
   }
-  const bool first_setup = !plan.initialized;
   if (!first_setup &&
       (plan.resources.device_id_ != device_id ||
        !same_topology(plan.topology, host) ||
@@ -12372,12 +12371,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
     return outputs;
   }
-  std::size_t generated_shell_task_capacity = 0;
+  std::size_t generated_shell_task_capacity =
+      first_setup ? 0 : plan.generated_shell_task_capacity;
   const std::size_t generic_order5_tile_capacity = requested_quartet_direct
-      ? direct_task_layout.angular_order_tile_counts[
-            kGenericOrderFiveAngularOrder]
+      ? (first_setup
+             ? direct_task_layout.angular_order_tile_counts[
+                   kGenericOrderFiveAngularOrder]
+             : plan.shell_quartet_tile_capacities[
+                   kGenericOrderFiveAngularOrder])
       : 0;
-  if (requested_quartet_direct) {
+  if (requested_quartet_direct && first_setup) {
     std::size_t kernel_count = 0;
     const generated::ShellKernelMetadata* kernels =
         generated::selected_shell_kernels(kernel_count);
@@ -14025,7 +14028,7 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
     }
   }
   std::vector<RhfBucketItem> outputs = execute_hf_cuda_bucket(
-      **plan, systems, options, initial_densities, device_id, unrestricted,
+      **plan, candidate, options, device_id, unrestricted,
       shell_class_profiling);
   const bool retry_without_cublas =
       !(*plan)->initialized && (*plan)->retry_without_cublas;
@@ -14044,7 +14047,7 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
     }
     (*plan)->cublas_enabled = false;
     outputs = execute_hf_cuda_bucket(
-        **plan, systems, options, initial_densities, device_id, unrestricted,
+        **plan, candidate, options, device_id, unrestricted,
         shell_class_profiling);
     if (!(*plan)->initialized) {
       delete *plan;
