@@ -322,6 +322,30 @@ execution mapping rather than production timing of a known-spilling kernel.
 Primitive-signature sorting was also rejected for DSPS and DPPS because it was
 neutral to slower for their cooperative block workers.
 
+### DPPS uniform component warps
+
+The scalar Rys3 generator also exposed why DPPS needs a different execution
+mapping: one thread owning all 54 Cartesian components compiled with 255
+registers, an 832 B stack, and 1,768/2,752 B of spill stores/loads. DPPS now
+reuses the DPPP uniform-warp geometry instead. Each 256-thread block advances
+32 quartets; the hardware lane is the task coordinate and eight warps own
+disjoint component slices. The existing 64-thread component-lane Fock worker
+is retained unchanged.
+
+The isolated force gate improves from 39.521587 ms for component lanes to
+7.822773 ms for uniform component warps (`5.052x`) with a `6.51e-12 Eh/bohr`
+maximum force difference. Production kernels use 216--218 registers, a 56 B
+explicit stack, 36,360 B shared memory, and no spills. On the real 384-AO
+profile, DPPS falls from 122.643 ms to 91.341 ms per replay (`1.343x`), saving
+31.302 ms.
+
+The five-repeat endpoint correspondingly improves from 2.810138 s to
+2.779508 s; GPU4PySCF measures 2.139936 s, leaving a `1.299x` ratio. Maximum
+energy and force errors are `1.59e-11 Eh` and `3.15e-8 Eh/bohr`. The 96- and
+192-AO checks retain the one-iteration branch and pass the same accuracy gates.
+The complete resource and timing evidence is retained in the
+[DPPS uniform Rys3 artifact](../benchmarks/results/rtx5090-908bc46-issue-41-dpps-uniform-rys3.json).
+
 ## Architecture autotuning
 
 `tools/vibeqc_codegen/autotune.py` emits every CUDA-supported schedule variant
