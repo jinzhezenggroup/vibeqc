@@ -11,11 +11,13 @@ namespace vibeqc::scf {
 
 struct CudaDensityFittingJkPlan;
 
-/** Metric conditioning reported after device-side eigendecomposition. */
+/** Metric conditioning and generic cuSOLVER workspace requirements. */
 struct CudaDensityFittingMetricDiagnostic {
   std::size_t effective_rank{};
   double absolute_threshold{};
   double condition_number{};
+  std::size_t solver_device_workspace_bytes{};
+  std::size_t solver_host_workspace_bytes{};
 };
 
 /**

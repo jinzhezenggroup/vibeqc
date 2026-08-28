@@ -385,6 +385,22 @@ int main() {
                          "UHF beta RI-K contraction is inconsistent");
 
 #if VIBEQC_HAS_CUDA
+    {
+      vibeqc::scf::CudaDensityFittingJkPlan* invalid_plan = nullptr;
+      std::vector<vibeqc::scf::CudaDensityFittingMetricDiagnostic>
+          invalid_diagnostics;
+      std::string invalid_detail;
+      const std::size_t oversized_dimension =
+          static_cast<std::size_t>(std::numeric_limits<int>::max()) + 1;
+      const vibeqc_status invalid_dimension_status =
+          vibeqc::scf::create_cuda_density_fitting_jk_plan(
+              0, 1, 1, oversized_dimension, {}, {}, 1.0e-12, 1,
+              &invalid_plan, invalid_diagnostics, invalid_detail);
+      require(invalid_dimension_status == VIBEQC_STATUS_INVALID_ARGUMENT &&
+                  invalid_plan == nullptr,
+              "CUDA DF accepted an eigensolver dimension above its checked "
+              "API range");
+    }
     if (cuda_device_available()) {
       std::vector<double> second_metric = plus.metric;
       const std::size_t dependent = plus.naux - 1;
@@ -448,6 +464,12 @@ int main() {
           raw_plan, &vibeqc::scf::destroy_cuda_density_fitting_jk_plan);
       require(diagnostics.size() == 2,
               "CUDA DF plan returned the wrong diagnostic count");
+      require(diagnostics[0].solver_device_workspace_bytes > 0 &&
+                  diagnostics[0].solver_device_workspace_bytes ==
+                      diagnostics[1].solver_device_workspace_bytes &&
+                  diagnostics[0].solver_host_workspace_bytes ==
+                      diagnostics[1].solver_host_workspace_bytes,
+              "CUDA DF generic eigensolver workspace diagnostics differ");
       require(diagnostics[0].effective_rank == factor.effective_rank &&
                   diagnostics[1].effective_rank == second_factor.effective_rank,
               "CUDA DF metric effective rank differs from the CPU oracle");
