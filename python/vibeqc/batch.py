@@ -131,6 +131,80 @@ class PppsQueueProfile:
         return self.empty_descriptors / self.descriptor_slots
 
 
+@dataclass(frozen=True)
+class EigensolverDiagnostic:
+    """Setup-time eigensolver selection and exact Graph probe evidence."""
+
+    bucket_id: int
+    ordinary_family: str
+    graph_family: str
+    selection_source: str
+    matrix_dimension: int
+    physical_system_count: int
+    solver_batch_count: int
+    api_eligible: bool
+    api_reason: str
+    matrix_batch_product: int
+    probe_failure_stage: str
+    device_workspace_bytes: int
+    host_workspace_bytes: int
+    available_device_bytes: int
+    device_id: int
+    device_uuid: str
+    device_name: str
+    compute_capability: tuple[int, int]
+    cuda_runtime_version: int
+    cuda_driver_version: int
+    cusolver_version: int
+    cuda_error: int
+    cusolver_error: int
+    ordinary_execution_passed: bool
+    graph_capture_passed: bool
+    host_graph_replay_passed: bool
+    device_tail_replay_passed: bool
+    graph_eligible: bool
+    maximum_eigenvalue_error: float
+    maximum_residual: float
+    maximum_orthogonality_error: float
+
+    def to_dict(self) -> dict[str, object]:
+        """Return JSON-ready evidence without losing exact status codes."""
+
+        return {
+            "bucket_id": self.bucket_id,
+            "ordinary_family": self.ordinary_family,
+            "graph_family": self.graph_family,
+            "selection_source": self.selection_source,
+            "matrix_dimension": self.matrix_dimension,
+            "physical_system_count": self.physical_system_count,
+            "solver_batch_count": self.solver_batch_count,
+            "api_eligible": self.api_eligible,
+            "api_reason": self.api_reason,
+            "matrix_batch_product": self.matrix_batch_product,
+            "probe_failure_stage": self.probe_failure_stage,
+            "device_workspace_bytes": self.device_workspace_bytes,
+            "host_workspace_bytes": self.host_workspace_bytes,
+            "available_device_bytes": self.available_device_bytes,
+            "device_id": self.device_id,
+            "device_uuid": self.device_uuid,
+            "device_name": self.device_name,
+            "compute_capability": list(self.compute_capability),
+            "cuda_runtime_version": self.cuda_runtime_version,
+            "cuda_driver_version": self.cuda_driver_version,
+            "cusolver_version": self.cusolver_version,
+            "cuda_error": self.cuda_error,
+            "cusolver_error": self.cusolver_error,
+            "ordinary_execution_passed": self.ordinary_execution_passed,
+            "graph_capture_passed": self.graph_capture_passed,
+            "host_graph_replay_passed": self.host_graph_replay_passed,
+            "device_tail_replay_passed": self.device_tail_replay_passed,
+            "graph_eligible": self.graph_eligible,
+            "maximum_eigenvalue_error": self.maximum_eigenvalue_error,
+            "maximum_residual": self.maximum_residual,
+            "maximum_orthogonality_error": self.maximum_orthogonality_error,
+        }
+
+
 class PreparedBatch:
     """Persistent topology-aware native fleet plan.
 
@@ -470,6 +544,98 @@ class PreparedBatch:
             ),
             ket_primitive_work=tuple(int(value) for value in native.ket_primitive_work),
         )
+
+    def last_eigensolver_diagnostics(
+        self,
+    ) -> tuple[EigensolverDiagnostic, ...]:
+        """Return one cached setup decision for every CUDA workload bucket."""
+
+        self._ensure_open()
+        count = ctypes.c_uint32()
+        _native.check(
+            self._library,
+            self._library.vibeqc_batch_get_last_eigensolver_diagnostics(
+                self._batch, None, 0, ctypes.byref(count)
+            ),
+        )
+        native_entries = (_native.EigensolverDiagnostic * count.value)()
+        written = ctypes.c_uint32()
+        _native.check(
+            self._library,
+            self._library.vibeqc_batch_get_last_eigensolver_diagnostics(
+                self._batch,
+                native_entries,
+                len(native_entries),
+                ctypes.byref(written),
+            ),
+        )
+        if written.value != count.value:
+            raise RuntimeError("eigensolver diagnostic count changed during copy")
+        diagnostics = []
+        for native in native_entries:
+            diagnostics.append(
+                EigensolverDiagnostic(
+                    bucket_id=int(native.bucket_id),
+                    ordinary_family=_native.EIGENSOLVER_FAMILY_NAMES[
+                        native.ordinary_family
+                    ],
+                    graph_family=_native.EIGENSOLVER_FAMILY_NAMES[
+                        native.graph_family
+                    ],
+                    selection_source=(
+                        _native.EIGENSOLVER_SELECTION_SOURCE_NAMES[
+                            native.selection_source
+                        ]
+                    ),
+                    matrix_dimension=int(native.matrix_dimension),
+                    physical_system_count=int(native.physical_system_count),
+                    solver_batch_count=int(native.solver_batch_count),
+                    api_eligible=bool(native.api_eligible),
+                    api_reason=_native.XSYEV_ELIGIBILITY_REASON_NAMES[
+                        native.api_reason
+                    ],
+                    matrix_batch_product=int(native.matrix_batch_product),
+                    probe_failure_stage=_native.XSYEV_GRAPH_PROBE_STAGE_NAMES[
+                        native.probe_failure_stage
+                    ],
+                    device_workspace_bytes=int(native.device_workspace_bytes),
+                    host_workspace_bytes=int(native.host_workspace_bytes),
+                    available_device_bytes=int(native.available_device_bytes),
+                    device_id=int(native.device_id),
+                    device_uuid=bytes(native.device_uuid).hex(),
+                    device_name=bytes(native.device_name)
+                    .split(b"\0", 1)[0]
+                    .decode("utf-8", errors="replace"),
+                    compute_capability=(
+                        int(native.compute_capability_major),
+                        int(native.compute_capability_minor),
+                    ),
+                    cuda_runtime_version=int(native.cuda_runtime_version),
+                    cuda_driver_version=int(native.cuda_driver_version),
+                    cusolver_version=int(native.cusolver_version),
+                    cuda_error=int(native.cuda_error),
+                    cusolver_error=int(native.cusolver_error),
+                    ordinary_execution_passed=bool(
+                        native.ordinary_execution_passed
+                    ),
+                    graph_capture_passed=bool(native.graph_capture_passed),
+                    host_graph_replay_passed=bool(
+                        native.host_graph_replay_passed
+                    ),
+                    device_tail_replay_passed=bool(
+                        native.device_tail_replay_passed
+                    ),
+                    graph_eligible=bool(native.graph_eligible),
+                    maximum_eigenvalue_error=float(
+                        native.maximum_eigenvalue_error
+                    ),
+                    maximum_residual=float(native.maximum_residual),
+                    maximum_orthogonality_error=float(
+                        native.maximum_orthogonality_error
+                    ),
+                )
+            )
+        return tuple(diagnostics)
 
     def close(self) -> None:
         if self._batch.value:

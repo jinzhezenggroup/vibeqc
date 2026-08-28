@@ -1,6 +1,7 @@
 #include "scf/rhf.hpp"
 
 #include "molecule/basis.hpp"
+#include "scf/cuda_eigensolver_policy.hpp"
 #include "scf/direct_task_layout.hpp"
 #include "scf/generated_shell_task.hpp"
 
@@ -6725,10 +6726,6 @@ __global__ void inspect_spin_solver_kernel(std::int32_t batch_size,
 
 constexpr std::int32_t kSmallEigensolverLimit = 16;
 constexpr std::int32_t kBatchedEigensolverLimit = 32;
-// CUDA 12.9 keeps vector-mode XsyevBatched capture-safe through 512 AOs. At
-// 513 it changes provider implementation, so larger matrices retain the
-// graph-native fallback instead of crossing that known capture cliff.
-constexpr std::int32_t kXsyevBatchedEigensolverLimit = 512;
 constexpr unsigned kGraphEigensolverThreads = 64;
 
 __global__ void symmetric_eigen_small_kernel(std::int32_t batch_size,
@@ -13175,21 +13172,22 @@ vibeqc_status launch_spin_matrix_product(CudaResources& resources,
 }
 
 vibeqc_status launch_solver(CudaResources& resources,
-                         int nbf,
-                         int batch_size,
-                         double* matrices,
-                         double* eigenvector_workspace,
-                         double* eigenvalues,
-                         int lwork,
-                         int* info,
-                         const std::uint8_t* active) {
-  if (nbf <= kSmallEigensolverLimit) {
+                            CudaEigensolverFamily family,
+                            int nbf,
+                            int batch_size,
+                            double* matrices,
+                            double* eigenvector_workspace,
+                            double* eigenvalues,
+                            int lwork,
+                            int* info,
+                            const std::uint8_t* active) {
+  if (family == CudaEigensolverFamily::small_native) {
     symmetric_eigen_small_kernel<<<static_cast<unsigned>(batch_size), 1, 0,
                                    resources.stream_>>>(
         batch_size, nbf, matrices, eigenvalues, info, active);
     return cuda_status(cudaPeekAtLastError());
   }
-  if (nbf <= kBatchedEigensolverLimit) {
+  if (family == CudaEigensolverFamily::jacobi_batched) {
     const cusolverStatus_t status = cusolverDnDsyevjBatched(
         resources.solver_, CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER,
         nbf, matrices, nbf, eigenvalues,
@@ -13198,9 +13196,9 @@ vibeqc_status launch_solver(CudaResources& resources,
     return status == CUSOLVER_STATUS_SUCCESS ? VIBEQC_STATUS_SUCCESS
                                              : solver_status(status);
   }
-  if (nbf <= kXsyevBatchedEigensolverLimit) {
-    // Unlike Dsyevj/Dsyevd, CUDA 12.9 XsyevBatched can be captured into the
-    // device-launch iteration Graph when all workspace is setup-owned.
+  if (family == CudaEigensolverFamily::xsyev_batched) {
+    // The setup-time exact-stack probe has already captured, instantiated,
+    // host-replayed, and device-tail-replayed this signature.
     const cusolverStatus_t status = cusolverDnXsyevBatched(
         resources.solver_, resources.solver_parameters_,
         CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER, nbf, CUDA_R_64F,
@@ -13211,8 +13209,9 @@ vibeqc_status launch_solver(CudaResources& resources,
     return status == CUSOLVER_STATUS_SUCCESS ? VIBEQC_STATUS_SUCCESS
                                              : solver_status(status);
   }
-  // XsyevBatched changes to a non-capturable provider above 512 AOs. Retain
-  // the unbounded graph-native implementation for that uncommon range.
+  // API-ineligible or Graph-rejected signatures retain the unbounded native
+  // implementation without treating a provider limitation as a calculation
+  // failure.
   symmetric_eigen_graph_maximum_pivot_kernel<<<
       static_cast<unsigned>(batch_size), kGraphEigensolverThreads, 0,
       resources.stream_>>>(
@@ -13242,6 +13241,7 @@ struct CudaRhfBucketPlan {
   std::vector<double> frozen_previous_energy;
   std::optional<CudaRhfShellClassProfile> last_shell_class_profile;
   std::optional<CudaPppsQueueProfile> last_ppps_queue_profile;
+  CudaEigensolverDiagnostic eigensolver_diagnostic;
   ScfOptions options;
   std::size_t batch_size{};
   std::size_t nbf{};
@@ -13711,11 +13711,49 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   const bool quartet_direct = plan.quartet_direct;
   const bool transformed_direct = plan.transformed_direct;
   const bool reuse_converged_fock = plan.reuse_converged_fock;
-  const bool use_cusolver =
-      nbf > static_cast<std::size_t>(kSmallEigensolverLimit) &&
-      nbf <= static_cast<std::size_t>(kXsyevBatchedEigensolverLimit);
-  const bool use_jacobi = use_cusolver &&
-      nbf <= static_cast<std::size_t>(kBatchedEigensolverLimit);
+  if (first_setup) {
+    plan.eigensolver_diagnostic = {};
+    plan.eigensolver_diagnostic.matrix_dimension = nbf;
+    plan.eigensolver_diagnostic.physical_system_count = batch_size;
+    plan.eigensolver_diagnostic.solver_batch_count = spin_batch_size;
+    if (nbf <= static_cast<std::size_t>(kSmallEigensolverLimit)) {
+      plan.eigensolver_diagnostic.ordinary_family =
+          CudaEigensolverFamily::small_native;
+      plan.eigensolver_diagnostic.family =
+          CudaEigensolverFamily::small_native;
+    } else if (nbf <= static_cast<std::size_t>(kBatchedEigensolverLimit)) {
+      plan.eigensolver_diagnostic.ordinary_family =
+          CudaEigensolverFamily::jacobi_batched;
+      plan.eigensolver_diagnostic.family =
+          CudaEigensolverFamily::jacobi_batched;
+    } else {
+      plan.eigensolver_diagnostic.xsyev_probe =
+          probe_xsyev_batched_device_launch_graph(
+              device_id, nbf, spin_batch_size);
+      const XsyevBatchedDispatch dispatch = select_xsyev_batched_dispatch(
+          plan.eigensolver_diagnostic.xsyev_probe);
+      plan.eigensolver_diagnostic.family =
+          dispatch.device_launch_graph_provider
+          ? CudaEigensolverFamily::xsyev_batched
+          : CudaEigensolverFamily::graph_native;
+      plan.eigensolver_diagnostic.ordinary_family =
+          dispatch.ordinary_stream_provider
+          ? CudaEigensolverFamily::xsyev_batched
+          : CudaEigensolverFamily::graph_native;
+      plan.eigensolver_diagnostic.selection_source =
+          plan.eigensolver_diagnostic.xsyev_probe.graph_eligible
+          ? CudaEigensolverSelectionSource::exact_probe
+          : CudaEigensolverSelectionSource::exact_probe_fallback;
+    }
+  }
+  const CudaEigensolverFamily graph_eigensolver_family =
+      plan.eigensolver_diagnostic.family;
+  const CudaEigensolverFamily ordinary_eigensolver_family =
+      plan.eigensolver_diagnostic.ordinary_family;
+  const bool use_jacobi =
+      graph_eigensolver_family == CudaEigensolverFamily::jacobi_batched;
+  const bool use_cusolver = use_jacobi ||
+      ordinary_eigensolver_family == CudaEigensolverFamily::xsyev_batched;
   const bool geometry_changed =
       first_setup || plan.cached_positions != host.positions;
   const bool all_systems_warm = std::all_of(
@@ -14629,7 +14667,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                          resources.stream_>>>(
         matrix_elements, overlap, eigensystem);
     status = launch_solver(
-        resources, static_cast<int>(nbf), static_cast<int>(batch_size),
+        resources, ordinary_eigensolver_family, static_cast<int>(nbf),
+        static_cast<int>(batch_size),
         eigensystem, temporary, eigenvalues, lwork, solver_info, active);
     if (status != VIBEQC_STATUS_SUCCESS) {
       fill_global_failure(outputs, status);
@@ -14659,7 +14698,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       return outputs;
     }
     status = launch_solver(
-        resources, static_cast<int>(nbf), static_cast<int>(batch_size),
+        resources, ordinary_eigensolver_family, static_cast<int>(nbf),
+        static_cast<int>(batch_size),
         eigensystem, temporary, eigenvalues, lwork, solver_info, active);
     if (status != VIBEQC_STATUS_SUCCESS) {
       fill_global_failure(outputs, status);
@@ -14813,7 +14853,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         expand_spin_active_kernel<<<blocks_for(spin_batch_size), threads, 0,
                                     resources.stream_>>>(
             static_cast<std::int32_t>(batch_size), 2, active, spin_active);
-        status = launch_solver(resources, static_cast<int>(nbf),
+        status = launch_solver(resources, graph_eigensolver_family,
+                               static_cast<int>(nbf),
                                static_cast<int>(spin_batch_size), eigensystem,
                                temporary, eigenvalues, lwork, solver_info,
                                spin_active);
@@ -14826,7 +14867,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
             orthogonalizer, true, temporary, eigensystem);
       }
       if (status == VIBEQC_STATUS_SUCCESS) {
-        status = launch_solver(resources, static_cast<int>(nbf),
+        status = launch_solver(resources, graph_eigensolver_family,
+                               static_cast<int>(nbf),
                                static_cast<int>(batch_size), eigensystem,
                                temporary, eigenvalues, lwork, solver_info,
                                active);
@@ -15020,7 +15062,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       expand_spin_active_kernel<<<blocks_for(spin_batch_size), threads, 0,
                                   resources.stream_>>>(
           static_cast<std::int32_t>(batch_size), 2, active, spin_active);
-      status = launch_solver(resources, static_cast<int>(nbf),
+      status = launch_solver(resources, ordinary_eigensolver_family,
+                             static_cast<int>(nbf),
                              static_cast<int>(spin_batch_size), eigensystem,
                              temporary, eigenvalues, lwork, solver_info,
                              spin_active);
@@ -15032,7 +15075,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           orthogonalizer, true, temporary, eigensystem);
     }
     if (status == VIBEQC_STATUS_SUCCESS) {
-      status = launch_solver(resources, static_cast<int>(nbf),
+      status = launch_solver(resources, ordinary_eigensolver_family,
+                             static_cast<int>(nbf),
                              static_cast<int>(batch_size), eigensystem,
                              temporary, eigenvalues, lwork, solver_info,
                              active);
@@ -15658,6 +15702,14 @@ bool get_rhf_cuda_ppps_queue_profile(
     return false;
   }
   profile = *plan->last_ppps_queue_profile;
+  return true;
+}
+
+bool get_rhf_cuda_eigensolver_diagnostic(
+    const CudaRhfBucketPlan* plan,
+    CudaEigensolverDiagnostic& diagnostic) noexcept {
+  if (plan == nullptr || !plan->initialized) return false;
+  diagnostic = plan->eigensolver_diagnostic;
   return true;
 }
 

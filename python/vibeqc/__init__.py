@@ -12,6 +12,7 @@ from .calculator import (
 from .batch import (
     BatchItemResult,
     BatchResult,
+    EigensolverDiagnostic,
     PppsQueueProfile,
     PreparedBatch,
     ShellClassProfileEntry,
@@ -22,6 +23,7 @@ __all__ = [
     "BatchItemResult",
     "BatchResult",
     "Calculator",
+    "EigensolverDiagnostic",
     "MethodCapabilities",
     "PppsQueueProfile",
     "PreparedBatch",

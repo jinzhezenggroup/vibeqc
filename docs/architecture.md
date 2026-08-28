@@ -183,27 +183,36 @@ densities bypass this seed and retain their converged state.
 
 The CPU reference backend uses a bounded native worker group within each
 bucket. A CUDA context builds overlap, core-Hamiltonian, ERI, and nuclear terms
-on the device, uses cuSOLVER batched Jacobi eigensolves, retains all SCF matrix
-and convergence state on the device, and assembles the analytic force without
-a scientific host fallback. The host submits a fixed maximum iteration chain;
-an active mask stops converged or failed systems while peers continue.
+on the device, selects a setup-qualified batched eigensolver, retains all SCF
+matrix and convergence state on the device, and assembles the analytic force
+without a scientific host fallback. The host submits a fixed maximum iteration
+chain; an active mask stops converged or failed systems while peers continue.
 Python never orchestrates per-system SCF loops.
 
 The current CUDA implementation is complete for the public executable scope
 (RHF/UHF with contracted Cartesian or real spherical s-p-d-f shells), but is
 not yet a component-unrolled/Rys or DF HF engine. Its SCF loop uses device DIIS
 and a device-tail-launched CUDA Graph.
-AO matrices up to 16 use the low-overhead serial device Jacobi kernel, sizes
-17--32 use cuSOLVER's batched Jacobi provider, and larger matrices use a
-Graph-native cooperative Jacobi kernel with one block per physical or spin
-state. For 33--256 AOs, one 256-thread block applies disjoint
-round-robin rotations as parallel cyclic sweeps, reducing diagonalization from
-the maximum-pivot path's O(n^4) work to O(n^3). Larger matrices retain the
-unbounded 64-thread maximum-pivot fallback. Both paths reuse the plan's
-temporary matrix for eigenvectors, impose no public AO-count limit, and avoid
-provider routines
-that synchronize the host and invalidate stream capture above their small
-batched range.
+AO matrices up to 16 use the low-overhead serial device Jacobi kernel and sizes
+17--32 use cuSOLVER's batched Jacobi provider. Larger matrices use generic FP64
+`cusolverDnXsyevBatched` only when overflow-safe documented API checks and an
+isolated exact-signature probe both pass. The probe captures on a private
+stream, instantiates with `cudaGraphInstantiateFlagDeviceLaunch`, validates a
+host replay and device-tail replay, and records stack identity, workspaces,
+status codes, residuals, and orthogonality. Provider rejection selects the
+Graph-native solver rather than aborting SCF. CUDA 12.9's documented 32768
+dimension bound is distinct from the measured RTX 5090 provider transition:
+512 AOs is capture-compatible on that stack, while 513 and 768 AOs remain
+ordinary-cuSOLVER-compatible but use the fallback only for VibeQC's stronger
+iteration-Graph contract. Setup and finalization remain on cuSOLVER for those
+API-eligible signatures.
+
+The Graph-native path uses one cooperative block per physical or spin state.
+For 33--256 AOs, one 256-thread block applies disjoint round-robin rotations as
+parallel cyclic sweeps, reducing diagonalization from the maximum-pivot path's
+O(n^4) work to O(n^3). Larger matrices retain the unbounded 64-thread
+maximum-pivot fallback. Both paths reuse the plan's temporary matrix for
+eigenvectors and impose no public AO-count limit.
 Each fixed-topology bucket owns and replays one packed arena and Graph, so warm
 executions do not recreate streams, provider handles, workspaces, or graph
 executables. Analytic forces are decomposed over coordinates and integral

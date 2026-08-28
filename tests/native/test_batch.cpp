@@ -111,6 +111,17 @@ int main() {
                                                          &ppps_profile) ==
                     VIBEQC_STATUS_INVALID_ARGUMENT,
             "a non-profiled batch unexpectedly published PPPS queue data");
+    std::uint32_t eigensolver_diagnostic_count = 0;
+    require(vibeqc_batch_get_last_eigensolver_diagnostics(
+                batch, nullptr, 0, &eigensolver_diagnostic_count) ==
+                VIBEQC_STATUS_NOT_IMPLEMENTED &&
+                vibeqc_batch_get_last_eigensolver_diagnostics(
+                    nullptr, nullptr, 0, &eigensolver_diagnostic_count) ==
+                    VIBEQC_STATUS_INVALID_ARGUMENT &&
+                vibeqc_batch_get_last_eigensolver_diagnostics(
+                    batch, nullptr, 1, &eigensolver_diagnostic_count) ==
+                    VIBEQC_STATUS_INVALID_ARGUMENT,
+            "CPU batch unexpectedly published CUDA eigensolver evidence");
     for (const auto& item : first) {
       require(item.status == VIBEQC_STATUS_SUCCESS && item.converged == 1,
               "a valid first-run batch item failed");

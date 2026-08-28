@@ -10,7 +10,7 @@ shell-task and DF algorithms remain roadmap work.
 | Native ragged systems | `vibeqc_batch` stores independent `System` objects and force buffers; no padded molecule tensor exists | Mixed He/H2/H3+/H4 C and Python tests assert exact per-item force shapes |
 | Batch scheduler | `FleetPlan` sorts by `(nbf, nocc, primitive_count)` and restores input order | Bucket IDs and independent-energy ordering are tested |
 | Compatible-work parallelism | CPU buckets use bounded native worker groups; CUDA buckets use batched integral/matrix kernels and device eigensolves with an active mask | 64-system repeated stress test and CUDA same-bucket comparison |
-| Large eigensolves | Above the 32-AO cuSOLVER batched range, one cooperative Graph-native Jacobi block owns each state and reuses arena workspace | 48-AO water/def2-TZVP energy and forces match PySCF on an allocated RTX 5090 |
+| Large eigensolves | Above 32 AOs, generic FP64 `XsyevBatched` is used only after an exact setup-time device-launch Graph probe; rejected signatures automatically use the cooperative Graph-native solver | API/product boundary tests plus 512/513/768-AO probe and fallback checks on an allocated RTX 5090 |
 | Per-system convergence | Every item owns status, iteration count, residuals, and convergence flag | H2 succeeds while H3+ intentionally fails with `max_iterations=2` |
 | Failure isolation | Invalid coordinates and nonconvergence do not abort structurally valid neighbors | Native and Python isolation tests |
 | Fixed-topology plans | Prepared systems own reusable CUDA arenas, solver state, Graph executables, and exact-coordinate geometry caches; changed coordinates rebuild all geometry-derived state before replay | Same-coordinate warm replay and coordinate-update energy are compared with independent calculations |
@@ -98,3 +98,38 @@ all systems carry valid warm densities, their immediately overwritten
 core-Hamiltonian guesses are skipped; mixed warm/cold batches retain the cold
 guess path. SCF and force state remain dynamic on every execution.
 Finer AO-level active compaction remains a later scheduler milestone.
+
+## Eigensolver dispatch
+
+The solver hierarchy is explicit per fixed-topology bucket. Matrices through
+16 AOs use the low-overhead native kernel, 17--32 AOs use cuSOLVER batched
+Jacobi, and larger FP64 matrices first undergo checked `XsyevBatched` API
+eligibility. CUDA 12.9 documents `n <= 32768` and
+`n * lda * solver_batch <= INT32_MAX`; `solver_batch` is the physical RHF
+batch and the doubled alpha/beta batch for UHF.
+
+API eligibility does not imply device-launch Graph eligibility. Setup probes
+the exact device, CUDA/cuSOLVER stack, matrix dimension, solver batch, and
+workspace signature on a private stream. It validates ordinary execution,
+capture, device-launch instantiation, host replay, one device-tail replay,
+eigenvalue residuals, and orthogonality. A rejected provider selects the
+Graph-native implementation without failing the calculation, and warm replays
+reuse the recorded decision without probing or allocating again. On the
+measured RTX 5090 with CUDA 12.9, 512 AOs passes this stronger Graph contract
+while 513 and 768 AOs execute normally in cuSOLVER but reject capture and
+therefore fall back only inside the iteration Graph. Their setup and final
+ordinary-stream solves continue to use cuSOLVER. This observed 512/513
+transition is not a cuSOLVER matrix size limit.
+
+The cache is plan-local rather than a process-global manifest: a different
+device or matrix/batch signature creates a different bucket plan, and a new
+process/toolkit stack probes again. Device ordinal, name, UUID, compute
+capability, runtime/driver versions, and cuSOLVER version remain in the record
+so any future persistent profile can reject a stale key explicitly.
+
+`PreparedBatch.last_eigensolver_diagnostics()` and the corresponding C ABI
+getter publish one record per executed bucket, including ordinary and Graph
+provider families, selection source, dimensions, CUDA/cuSOLVER versions,
+workspace sizes, API decision, probe stage/status codes, and validation errors.
+Batch comparison JSON stores the same records under
+`vibeqc.eigensolver_diagnostics`.

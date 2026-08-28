@@ -132,6 +132,77 @@ vibeqc_status vibeqc_batch_get_last_ppps_queue_profile(
   }
 }
 
+vibeqc_status vibeqc_batch_get_last_eigensolver_diagnostics(
+    const vibeqc_batch* batch,
+    vibeqc_eigensolver_diagnostic* entries,
+    uint32_t entry_count,
+    uint32_t* written_count) {
+  if (batch == nullptr || written_count == nullptr ||
+      (entries == nullptr && entry_count != 0U)) {
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  *written_count = 0U;
+  try {
+    const auto source = batch->plan->last_eigensolver_diagnostics();
+    if (source.empty()) return VIBEQC_STATUS_NOT_IMPLEMENTED;
+    if (source.size() > std::numeric_limits<std::uint32_t>::max()) {
+      return VIBEQC_STATUS_INTERNAL_ERROR;
+    }
+    *written_count = static_cast<std::uint32_t>(source.size());
+    if (entries == nullptr) return VIBEQC_STATUS_SUCCESS;
+    if (entry_count < source.size()) return VIBEQC_STATUS_INVALID_ARGUMENT;
+    for (std::size_t index = 0; index < source.size(); ++index) {
+      const vibeqc::methods::EigensolverDiagnostic& input = source[index];
+      vibeqc_eigensolver_diagnostic& output = entries[index];
+      output = {};
+      output.bucket_id = input.bucket_id;
+      output.ordinary_family =
+          static_cast<std::int32_t>(input.ordinary_family);
+      output.graph_family = static_cast<std::int32_t>(input.graph_family);
+      output.selection_source =
+          static_cast<std::int32_t>(input.selection_source);
+      output.matrix_dimension = input.matrix_dimension;
+      output.physical_system_count = input.physical_system_count;
+      output.solver_batch_count = input.solver_batch_count;
+      output.api_eligible = input.api_eligible ? 1 : 0;
+      output.api_reason = static_cast<std::int32_t>(input.api_reason);
+      output.matrix_batch_product = input.matrix_batch_product;
+      output.probe_failure_stage =
+          static_cast<std::int32_t>(input.probe_failure_stage);
+      output.device_workspace_bytes = input.device_workspace_bytes;
+      output.host_workspace_bytes = input.host_workspace_bytes;
+      output.available_device_bytes = input.available_device_bytes;
+      output.device_id = input.device_id;
+      std::copy(input.device_uuid.begin(), input.device_uuid.end(),
+                output.device_uuid);
+      std::copy(input.device_name.begin(), input.device_name.end(),
+                output.device_name);
+      output.compute_capability_major = input.compute_capability_major;
+      output.compute_capability_minor = input.compute_capability_minor;
+      output.cuda_runtime_version = input.cuda_runtime_version;
+      output.cuda_driver_version = input.cuda_driver_version;
+      output.cusolver_version = input.cusolver_version;
+      output.cuda_error = input.cuda_error;
+      output.cusolver_error = input.cusolver_error;
+      output.ordinary_execution_passed =
+          input.ordinary_execution_passed ? 1 : 0;
+      output.graph_capture_passed = input.graph_capture_passed ? 1 : 0;
+      output.host_graph_replay_passed =
+          input.host_graph_replay_passed ? 1 : 0;
+      output.device_tail_replay_passed =
+          input.device_tail_replay_passed ? 1 : 0;
+      output.graph_eligible = input.graph_eligible ? 1 : 0;
+      output.maximum_eigenvalue_error = input.maximum_eigenvalue_error;
+      output.maximum_residual = input.maximum_residual;
+      output.maximum_orthogonality_error =
+          input.maximum_orthogonality_error;
+    }
+    return VIBEQC_STATUS_SUCCESS;
+  } catch (...) {
+    return vibeqc::api::map_exception(&batch->context->last_detail);
+  }
+}
+
 vibeqc_status vibeqc_batch_clear_warm_starts(vibeqc_batch* batch) {
   if (batch == nullptr) return VIBEQC_STATUS_INVALID_ARGUMENT;
   try {
