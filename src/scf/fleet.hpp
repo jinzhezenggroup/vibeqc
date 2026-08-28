@@ -38,6 +38,7 @@ class FleetPlan {
             bool warm_starts_enabled,
             bool cuda_fock_enabled,
             bool shell_class_profiling_enabled,
+            bool inactive_eigensolver_profiling_enabled,
             int device_id);
   ~FleetPlan();
 
@@ -76,6 +77,12 @@ class FleetPlan {
     return last_eigensolver_diagnostics_;
   }
 
+  /** Return device-timed iteration records from the most recent execution. */
+  [[nodiscard]] const CudaInactiveEigensolverProfile&
+  last_inactive_eigensolver_profile() const noexcept {
+    return last_inactive_eigensolver_profile_;
+  }
+
  private:
   std::vector<core::System> systems_;
   vibeqc_method method_{VIBEQC_METHOD_RHF};
@@ -84,6 +91,7 @@ class FleetPlan {
   bool warm_start_updates_enabled_{true};
   bool cuda_fock_enabled_{};
   bool shell_class_profiling_enabled_{};
+  bool inactive_eigensolver_profiling_enabled_{};
   int device_id_{};
   std::vector<std::size_t> execution_order_;
   std::vector<std::size_t> bucket_ids_;
@@ -91,6 +99,7 @@ class FleetPlan {
   std::optional<CudaRhfShellClassProfile> last_shell_class_profile_;
   std::optional<CudaPppsQueueProfile> last_ppps_queue_profile_;
   std::vector<CudaEigensolverDiagnostic> last_eigensolver_diagnostics_;
+  CudaInactiveEigensolverProfile last_inactive_eigensolver_profile_;
   // One allocation/Graph owner per workload bucket. Raw opaque pointers keep
   // CUDA headers out of this public C++ translation unit; the destructor owns
   // them through the backend-specific destroy function.

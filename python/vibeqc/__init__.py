@@ -1,5 +1,14 @@
 """Thin Python interface to the versioned native VIBEQC ABI."""
 
+from .batch import (
+    BatchItemResult,
+    BatchResult,
+    EigensolverDiagnostic,
+    InactiveEigensolverProfileEntry,
+    PppsQueueProfile,
+    PreparedBatch,
+    ShellClassProfileEntry,
+)
 from .calculator import (
     Atom,
     Calculator,
@@ -9,14 +18,6 @@ from .calculator import (
     Shell,
     method_capabilities,
 )
-from .batch import (
-    BatchItemResult,
-    BatchResult,
-    EigensolverDiagnostic,
-    PppsQueueProfile,
-    PreparedBatch,
-    ShellClassProfileEntry,
-)
 
 __all__ = [
     "Atom",
@@ -24,6 +25,7 @@ __all__ = [
     "BatchResult",
     "Calculator",
     "EigensolverDiagnostic",
+    "InactiveEigensolverProfileEntry",
     "MethodCapabilities",
     "PppsQueueProfile",
     "PreparedBatch",

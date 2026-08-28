@@ -88,7 +88,15 @@ enum {
    * This diagnostic adds one untimed-by-default CUDA reduction after the
    * final compaction pass. Leave it disabled for production timing runs.
    */
-  VIBEQC_BATCH_ENABLE_SHELL_CLASS_PROFILING = 1u << 1
+  VIBEQC_BATCH_ENABLE_SHELL_CLASS_PROFILING = 1u << 1,
+  /**
+   * Collect one device-timed record for every SCF iteration eigensolve.
+   *
+   * The instrumentation is inserted into the device-tail CUDA Graph and is
+   * intended only for diagnosing divergent fleets. Leave it disabled during
+   * production endpoint timing.
+   */
+  VIBEQC_BATCH_ENABLE_INACTIVE_EIGENSOLVER_PROFILING = 1u << 2
 };
 
 /** Number of pair/pair-exchange-reduced s/p/d/f quartet shell classes. */
@@ -152,7 +160,9 @@ typedef int32_t vibeqc_eigensolver_selection_source;
 enum {
   VIBEQC_EIGENSOLVER_SELECTION_DIMENSION_POLICY = 0,
   VIBEQC_EIGENSOLVER_SELECTION_EXACT_PROBE = 1,
-  VIBEQC_EIGENSOLVER_SELECTION_EXACT_PROBE_FALLBACK = 2
+  VIBEQC_EIGENSOLVER_SELECTION_EXACT_PROBE_FALLBACK = 2,
+  /** Explicit benchmark-only override of the Graph eigensolver family. */
+  VIBEQC_EIGENSOLVER_SELECTION_BENCHMARK_OVERRIDE = 3
 };
 
 typedef int32_t vibeqc_xsyev_eligibility_reason;
@@ -226,6 +236,35 @@ typedef struct vibeqc_eigensolver_diagnostic {
   double maximum_residual;
   double maximum_orthogonality_error;
 } vibeqc_eigensolver_diagnostic;
+
+typedef uint32_t vibeqc_eigensolver_inactive_touch_flags;
+enum {
+  /** An inactive matrix was copied before the provider call. */
+  VIBEQC_EIGENSOLVER_INACTIVE_TOUCH_COPY = 1u << 0,
+  /** cuBLAS transformed an inactive matrix before the provider call. */
+  VIBEQC_EIGENSOLVER_INACTIVE_TOUCH_CUBLAS_TRANSFORM = 1u << 1,
+  /** The provider input was replaced with a finite identity matrix. */
+  VIBEQC_EIGENSOLVER_INACTIVE_TOUCH_IDENTITY_SANITIZE = 1u << 2
+};
+
+/** Device-timed evidence for one eigensolve in the device-tail SCF loop. */
+typedef struct vibeqc_inactive_eigensolver_profile_entry {
+  uint32_t bucket_id;
+  uint32_t iteration;
+  vibeqc_eigensolver_family family;
+  uint32_t physical_system_count;
+  uint32_t solver_batch_count;
+  uint32_t active_physical_count;
+  uint32_t active_solver_count;
+  uint64_t solver_elapsed_nanoseconds;
+  /** Number of inactive matrices found non-finite before identity repair. */
+  uint32_t inactive_input_nonfinite_count;
+  /** Number of inactive matrices still non-finite when submitted. */
+  uint32_t inactive_submission_nonfinite_count;
+  uint32_t inactive_info_nonzero_count;
+  vibeqc_eigensolver_inactive_touch_flags inactive_touch_flags;
+  int32_t provider_invoked;
+} vibeqc_inactive_eigensolver_profile_entry;
 
 typedef struct vibeqc_context_descriptor {
   uint32_t struct_size;
@@ -415,6 +454,20 @@ VIBEQC_API vibeqc_status vibeqc_batch_get_last_ppps_queue_profile(
 VIBEQC_API vibeqc_status vibeqc_batch_get_last_eigensolver_diagnostics(
     const vibeqc_batch* batch,
     vibeqc_eigensolver_diagnostic* entries,
+    uint32_t entry_count,
+    uint32_t* written_count);
+
+/**
+ * Copy per-iteration inactive-eigensolver evidence from the last execution.
+ *
+ * The batch must opt into
+ * `VIBEQC_BATCH_ENABLE_INACTIVE_EIGENSOLVER_PROFILING`. Pass `entries = NULL`
+ * and `entry_count = 0` to query the required count. Records are bucket-major
+ * and iteration-ordered within each bucket.
+ */
+VIBEQC_API vibeqc_status vibeqc_batch_get_last_inactive_eigensolver_profile(
+    const vibeqc_batch* batch,
+    vibeqc_inactive_eigensolver_profile_entry* entries,
     uint32_t entry_count,
     uint32_t* written_count);
 

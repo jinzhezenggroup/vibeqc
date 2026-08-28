@@ -295,7 +295,8 @@ void verify_fleet_fixed_warm_start() {
   options.density_tolerance = 1.0e-10;
   options.screening_tolerance = 1.0e-14;
   vibeqc::scf::FleetPlan fleet(
-      {large_ao_atom(false)}, VIBEQC_METHOD_RHF, options, true, true, false, 0);
+      {large_ao_atom(false)}, VIBEQC_METHOD_RHF, options, true, true, false,
+      false, 0);
 
   const std::vector<vibeqc::scf::FleetItemResult> cold = fleet.execute({});
   require(cold.size() == 1 && cold[0].status == VIBEQC_STATUS_SUCCESS &&

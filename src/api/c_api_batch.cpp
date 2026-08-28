@@ -203,6 +203,53 @@ vibeqc_status vibeqc_batch_get_last_eigensolver_diagnostics(
   }
 }
 
+vibeqc_status vibeqc_batch_get_last_inactive_eigensolver_profile(
+    const vibeqc_batch* batch,
+    vibeqc_inactive_eigensolver_profile_entry* entries,
+    uint32_t entry_count,
+    uint32_t* written_count) {
+  if (batch == nullptr || written_count == nullptr ||
+      (entries == nullptr && entry_count != 0U)) {
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  *written_count = 0U;
+  try {
+    const auto source = batch->plan->last_inactive_eigensolver_profile();
+    if (source.empty()) return VIBEQC_STATUS_NOT_IMPLEMENTED;
+    if (source.size() > std::numeric_limits<std::uint32_t>::max()) {
+      return VIBEQC_STATUS_INTERNAL_ERROR;
+    }
+    *written_count = static_cast<std::uint32_t>(source.size());
+    if (entries == nullptr) return VIBEQC_STATUS_SUCCESS;
+    if (entry_count < source.size()) return VIBEQC_STATUS_INVALID_ARGUMENT;
+    for (std::size_t index = 0; index < source.size(); ++index) {
+      const vibeqc::methods::InactiveEigensolverProfileEntry& input =
+          source[index];
+      vibeqc_inactive_eigensolver_profile_entry& output = entries[index];
+      output = {};
+      output.bucket_id = input.bucket_id;
+      output.iteration = input.iteration;
+      output.family = static_cast<std::int32_t>(input.family);
+      output.physical_system_count = input.physical_system_count;
+      output.solver_batch_count = input.solver_batch_count;
+      output.active_physical_count = input.active_physical_count;
+      output.active_solver_count = input.active_solver_count;
+      output.solver_elapsed_nanoseconds = input.solver_elapsed_nanoseconds;
+      output.inactive_input_nonfinite_count =
+          input.inactive_input_nonfinite_count;
+      output.inactive_submission_nonfinite_count =
+          input.inactive_submission_nonfinite_count;
+      output.inactive_info_nonzero_count =
+          input.inactive_info_nonzero_count;
+      output.inactive_touch_flags = input.inactive_touch_flags;
+      output.provider_invoked = input.provider_invoked ? 1 : 0;
+    }
+    return VIBEQC_STATUS_SUCCESS;
+  } catch (...) {
+    return vibeqc::api::map_exception(&batch->context->last_detail);
+  }
+}
+
 vibeqc_status vibeqc_batch_clear_warm_starts(vibeqc_batch* batch) {
   if (batch == nullptr) return VIBEQC_STATUS_INVALID_ARGUMENT;
   try {

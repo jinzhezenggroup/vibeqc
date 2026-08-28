@@ -33,6 +33,10 @@ BASIS_CARTESIAN = 0
 BASIS_SPHERICAL = 1
 BATCH_ENABLE_WARM_STARTS = 1 << 0
 BATCH_ENABLE_SHELL_CLASS_PROFILING = 1 << 1
+BATCH_ENABLE_INACTIVE_EIGENSOLVER_PROFILING = 1 << 2
+EIGENSOLVER_INACTIVE_TOUCH_COPY = 1 << 0
+EIGENSOLVER_INACTIVE_TOUCH_CUBLAS_TRANSFORM = 1 << 1
+EIGENSOLVER_INACTIVE_TOUCH_IDENTITY_SANITIZE = 1 << 2
 DIRECT_SHELL_CLASS_COUNT = 55
 PPPS_PROFILE_BLOCK_SIZE_COUNT = 4
 PPPS_PROFILE_ORIENTATION_COUNT = 2
@@ -47,6 +51,7 @@ EIGENSOLVER_SELECTION_SOURCE_NAMES = (
     "dimension_policy",
     "exact_probe",
     "exact_probe_fallback",
+    "benchmark_override",
 )
 XSYEV_ELIGIBILITY_REASON_NAMES = (
     "eligible",
@@ -295,6 +300,24 @@ class EigensolverDiagnostic(ctypes.Structure):
     ]
 
 
+class InactiveEigensolverProfileEntry(ctypes.Structure):
+    _fields_ = [
+        ("bucket_id", ctypes.c_uint32),
+        ("iteration", ctypes.c_uint32),
+        ("family", ctypes.c_int32),
+        ("physical_system_count", ctypes.c_uint32),
+        ("solver_batch_count", ctypes.c_uint32),
+        ("active_physical_count", ctypes.c_uint32),
+        ("active_solver_count", ctypes.c_uint32),
+        ("solver_elapsed_nanoseconds", ctypes.c_uint64),
+        ("inactive_input_nonfinite_count", ctypes.c_uint32),
+        ("inactive_submission_nonfinite_count", ctypes.c_uint32),
+        ("inactive_info_nonzero_count", ctypes.c_uint32),
+        ("inactive_touch_flags", ctypes.c_uint32),
+        ("provider_invoked", ctypes.c_int32),
+    ]
+
+
 def _candidate_paths() -> list[Path]:
     candidates: list[Path] = []
     if configured := os.environ.get("VIBEQC_LIBRARY"):
@@ -380,6 +403,13 @@ def load_library() -> ctypes.CDLL:
         ctypes.POINTER(ctypes.c_uint32),
     ]
     library.vibeqc_batch_get_last_eigensolver_diagnostics.restype = ctypes.c_int
+    library.vibeqc_batch_get_last_inactive_eigensolver_profile.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(InactiveEigensolverProfileEntry),
+        ctypes.c_uint32,
+        ctypes.POINTER(ctypes.c_uint32),
+    ]
+    library.vibeqc_batch_get_last_inactive_eigensolver_profile.restype = ctypes.c_int
     library.vibeqc_batch_clear_warm_starts.argtypes = [ctypes.c_void_p]
     library.vibeqc_batch_clear_warm_starts.restype = ctypes.c_int
     library.vibeqc_batch_set_warm_start_updates.argtypes = [

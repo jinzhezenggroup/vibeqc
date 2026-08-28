@@ -122,6 +122,17 @@ int main() {
                     batch, nullptr, 1, &eigensolver_diagnostic_count) ==
                     VIBEQC_STATUS_INVALID_ARGUMENT,
             "CPU batch unexpectedly published CUDA eigensolver evidence");
+    std::uint32_t inactive_profile_count = 0;
+    require(vibeqc_batch_get_last_inactive_eigensolver_profile(
+                batch, nullptr, 0, &inactive_profile_count) ==
+                VIBEQC_STATUS_NOT_IMPLEMENTED &&
+                vibeqc_batch_get_last_inactive_eigensolver_profile(
+                    nullptr, nullptr, 0, &inactive_profile_count) ==
+                    VIBEQC_STATUS_INVALID_ARGUMENT &&
+                vibeqc_batch_get_last_inactive_eigensolver_profile(
+                    batch, nullptr, 1, &inactive_profile_count) ==
+                    VIBEQC_STATUS_INVALID_ARGUMENT,
+            "CPU batch unexpectedly published inactive eigensolver data");
     for (const auto& item : first) {
       require(item.status == VIBEQC_STATUS_SUCCESS && item.converged == 1,
               "a valid first-run batch item failed");

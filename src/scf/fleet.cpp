@@ -121,6 +121,7 @@ FleetPlan::FleetPlan(std::vector<core::System> systems,
                      bool warm_starts_enabled,
                      bool cuda_fock_enabled,
                      bool shell_class_profiling_enabled,
+                     bool inactive_eigensolver_profiling_enabled,
                      int device_id)
     : systems_(std::move(systems)),
       method_(method),
@@ -128,6 +129,8 @@ FleetPlan::FleetPlan(std::vector<core::System> systems,
       warm_starts_enabled_(warm_starts_enabled),
       cuda_fock_enabled_(cuda_fock_enabled),
       shell_class_profiling_enabled_(shell_class_profiling_enabled),
+      inactive_eigensolver_profiling_enabled_(
+          inactive_eigensolver_profiling_enabled),
       device_id_(device_id),
       execution_order_(systems_.size()),
       bucket_ids_(systems_.size()),
@@ -163,6 +166,7 @@ std::vector<FleetItemResult> FleetPlan::execute(
   last_shell_class_profile_.reset();
   last_ppps_queue_profile_.reset();
   last_eigensolver_diagnostics_.clear();
+  last_inactive_eigensolver_profile_.clear();
   std::vector<FleetItemResult> results(systems_.size());
   const auto execute_one = [&](std::size_t system_index) {
     FleetItemResult& item = results[system_index];
@@ -270,16 +274,28 @@ std::vector<FleetItemResult> FleetPlan::execute(
             ? run_uhf_cuda_bucket_cached(
                   &cuda_bucket_plans_[bucket], cuda_systems, options_,
                   initial_densities, device_id_,
-                  shell_class_profiling_enabled_)
+                  shell_class_profiling_enabled_,
+                  inactive_eigensolver_profiling_enabled_)
             : run_rhf_cuda_bucket_cached(
                   &cuda_bucket_plans_[bucket], cuda_systems, options_,
                   initial_densities, device_id_,
-                  shell_class_profiling_enabled_);
+                  shell_class_profiling_enabled_,
+                  inactive_eigensolver_profiling_enabled_);
         CudaEigensolverDiagnostic eigensolver_diagnostic;
         if (get_rhf_cuda_eigensolver_diagnostic(
                 cuda_bucket_plans_[bucket], eigensolver_diagnostic)) {
           eigensolver_diagnostic.bucket_id = bucket;
           last_eigensolver_diagnostics_.push_back(eigensolver_diagnostic);
+        }
+        if (inactive_eigensolver_profiling_enabled_) {
+          CudaInactiveEigensolverProfile bucket_profile;
+          if (get_rhf_cuda_inactive_eigensolver_profile(
+                  cuda_bucket_plans_[bucket], bucket_profile)) {
+            for (auto& entry : bucket_profile) entry.bucket_id = bucket;
+            last_inactive_eigensolver_profile_.insert(
+                last_inactive_eigensolver_profile_.end(),
+                bucket_profile.begin(), bucket_profile.end());
+          }
         }
         if (shell_class_profiling_enabled_) {
           CudaRhfShellClassProfile bucket_profile{};

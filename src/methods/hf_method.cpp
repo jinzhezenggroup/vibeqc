@@ -151,6 +151,27 @@ EigensolverDiagnostic adapt_eigensolver_diagnostic(
   return diagnostic;
 }
 
+InactiveEigensolverProfileEntry adapt_inactive_eigensolver_profile_entry(
+    const scf::CudaInactiveEigensolverProfileEntry& native) {
+  InactiveEigensolverProfileEntry entry;
+  entry.bucket_id = static_cast<std::uint32_t>(native.bucket_id);
+  entry.iteration = native.iteration;
+  entry.family = static_cast<std::uint32_t>(native.family);
+  entry.physical_system_count = native.physical_system_count;
+  entry.solver_batch_count = native.solver_batch_count;
+  entry.active_physical_count = native.active_physical_count;
+  entry.active_solver_count = native.active_solver_count;
+  entry.solver_elapsed_nanoseconds = native.solver_elapsed_nanoseconds;
+  entry.inactive_input_nonfinite_count =
+      native.inactive_input_nonfinite_count;
+  entry.inactive_submission_nonfinite_count =
+      native.inactive_submission_nonfinite_count;
+  entry.inactive_info_nonzero_count = native.inactive_info_nonzero_count;
+  entry.inactive_touch_flags = native.inactive_touch_flags;
+  entry.provider_invoked = native.provider_invoked;
+  return entry;
+}
+
 class HfPreparedCalculation final : public PreparedCalculation {
  public:
   HfPreparedCalculation(Capabilities capabilities,
@@ -205,6 +226,8 @@ class HfPreparedBatch final : public PreparedBatch {
               (flags & VIBEQC_BATCH_ENABLE_WARM_STARTS) != 0,
               context.requested_backend == VIBEQC_BACKEND_CUDA,
               (flags & VIBEQC_BATCH_ENABLE_SHELL_CLASS_PROFILING) != 0,
+              (flags &
+               VIBEQC_BATCH_ENABLE_INACTIVE_EIGENSOLVER_PROFILING) != 0,
               context.device_id) {}
 
   [[nodiscard]] std::size_t size() const noexcept override {
@@ -265,6 +288,16 @@ class HfPreparedBatch final : public PreparedBatch {
     return diagnostics;
   }
 
+  [[nodiscard]] std::vector<InactiveEigensolverProfileEntry>
+  last_inactive_eigensolver_profile() const override {
+    const auto& native = plan_.last_inactive_eigensolver_profile();
+    std::vector<InactiveEigensolverProfileEntry> profile;
+    profile.reserve(native.size());
+    std::transform(native.begin(), native.end(), std::back_inserter(profile),
+                   adapt_inactive_eigensolver_profile_entry);
+    return profile;
+  }
+
  private:
   scf::FleetPlan plan_;
 };
@@ -309,7 +342,8 @@ std::unique_ptr<PreparedBatch> prepare_hf_batch(
     vibeqc_batch_flags flags) {
   constexpr vibeqc_batch_flags supported_flags =
       VIBEQC_BATCH_ENABLE_WARM_STARTS |
-      VIBEQC_BATCH_ENABLE_SHELL_CLASS_PROFILING;
+      VIBEQC_BATCH_ENABLE_SHELL_CLASS_PROFILING |
+      VIBEQC_BATCH_ENABLE_INACTIVE_EIGENSOLVER_PROFILING;
   if ((flags & ~supported_flags) != 0) {
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
                       "unsupported Hartree-Fock batch flag");

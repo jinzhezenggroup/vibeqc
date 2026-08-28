@@ -97,6 +97,7 @@ enum class CudaEigensolverSelectionSource : std::uint32_t {
   dimension_policy = 0,
   exact_probe,
   exact_probe_fallback,
+  benchmark_override,
 };
 
 /** Setup-time provider selection and exact Graph qualification evidence. */
@@ -115,6 +116,26 @@ struct CudaEigensolverDiagnostic {
   XsyevBatchedGraphProbeResult xsyev_probe;
 };
 
+/** One device-timed eigensolve from a device-tail SCF iteration. */
+struct CudaInactiveEigensolverProfileEntry {
+  std::uint64_t bucket_id{};
+  std::uint32_t iteration{};
+  CudaEigensolverFamily family{CudaEigensolverFamily::small_native};
+  std::uint32_t physical_system_count{};
+  std::uint32_t solver_batch_count{};
+  std::uint32_t active_physical_count{};
+  std::uint32_t active_solver_count{};
+  std::uint64_t solver_elapsed_nanoseconds{};
+  std::uint32_t inactive_input_nonfinite_count{};
+  std::uint32_t inactive_submission_nonfinite_count{};
+  std::uint32_t inactive_info_nonzero_count{};
+  std::uint32_t inactive_touch_flags{};
+  bool provider_invoked{};
+};
+
+using CudaInactiveEigensolverProfile =
+    std::vector<CudaInactiveEigensolverProfileEntry>;
+
 CudaRhfBasisLayoutStats inspect_rhf_cuda_basis_layout(
     const std::vector<core::System>& systems);
 
@@ -123,7 +144,8 @@ std::vector<RhfBucketItem> run_rhf_cuda_bucket(
     const ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
-    bool shell_class_profiling = false);
+    bool shell_class_profiling = false,
+    bool inactive_eigensolver_profiling = false);
 
 std::vector<RhfBucketItem> run_rhf_cuda_bucket_cached(
     CudaRhfBucketPlan** plan,
@@ -131,14 +153,16 @@ std::vector<RhfBucketItem> run_rhf_cuda_bucket_cached(
     const ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
-    bool shell_class_profiling = false);
+    bool shell_class_profiling = false,
+    bool inactive_eigensolver_profiling = false);
 
 std::vector<RhfBucketItem> run_uhf_cuda_bucket(
     const std::vector<core::System>& systems,
     const ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
-    bool shell_class_profiling = false);
+    bool shell_class_profiling = false,
+    bool inactive_eigensolver_profiling = false);
 
 std::vector<RhfBucketItem> run_uhf_cuda_bucket_cached(
     CudaRhfBucketPlan** plan,
@@ -146,7 +170,8 @@ std::vector<RhfBucketItem> run_uhf_cuda_bucket_cached(
     const ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
-    bool shell_class_profiling = false);
+    bool shell_class_profiling = false,
+    bool inactive_eigensolver_profiling = false);
 
 bool get_rhf_cuda_shell_class_profile(
     const CudaRhfBucketPlan* plan,
@@ -159,6 +184,10 @@ bool get_rhf_cuda_ppps_queue_profile(
 bool get_rhf_cuda_eigensolver_diagnostic(
     const CudaRhfBucketPlan* plan,
     CudaEigensolverDiagnostic& diagnostic) noexcept;
+
+bool get_rhf_cuda_inactive_eigensolver_profile(
+    const CudaRhfBucketPlan* plan,
+    CudaInactiveEigensolverProfile& profile) noexcept;
 
 void destroy_rhf_cuda_bucket_plan(CudaRhfBucketPlan* plan) noexcept;
 
