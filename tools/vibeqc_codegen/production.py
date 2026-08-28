@@ -38,7 +38,9 @@ _THREAD_TASK_FORCE_EMITTERS = {
 }
 
 _SUPPORTED_RECURRENCES = frozenset(("subset_wick", "rys3", "rys4"))
-_COOPERATIVE_RYS3_SHELLS = frozenset(("dpps", "dsps", "pppp"))
+_COOPERATIVE_RYS3_SHELLS = frozenset(
+    ("dpps", "dpss", "dsps", "dspp", "pppp")
+)
 
 _PRODUCTION_PRELUDE = r"""#include "scf/generated_shell_task.hpp"
 

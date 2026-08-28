@@ -169,6 +169,10 @@ RTX5090_PPPS_SCALAR_THREAD_RESOURCE_LIMITS = {
     "generated_ppps_shell_class_force_rhf_persistent_kernel": (168, 0, 27000),
     "generated_ppps_shell_class_force_uhf_persistent_kernel": (168, 0, 27000),
 }
+RTX5090_DPSS_SCALAR_RYS3_RESOURCE_LIMITS = {
+    "generated_dpss_shell_class_force_rhf_persistent_kernel": (252, 0, 6224),
+    "generated_dpss_shell_class_force_uhf_persistent_kernel": (252, 0, 6224),
+}
 
 
 @pytest.mark.parametrize(
@@ -588,8 +592,30 @@ def test_ppps_rys_cuda_emits_compact_state_program_and_attributed_table():
     )
     source = emit_shell_class_fused_cuda(spec, plan)
     assert "generated_ppps_rys3_force_task" in source
+    assert "generated_ppps_rys3_roots" in source
     assert "component_weights[kGeneratedPppsComponentCount][32]" in source
     assert "generated_ppps_scalar_thread" not in source
+
+    dpss_spec = FUSED_SHELL_SPEC_BY_NAME["dpss"]
+    dpss_schedule = ScheduleIR(
+        kind=ScheduleKind.THREAD_TASKS,
+        block_threads=32,
+        component_tile=dpss_spec.component_count,
+        tasks_per_warp=32,
+        shared_coulomb=False,
+        minimum_blocks_per_sm=8,
+    )
+    dpss_source = emit_shell_class_fused_cuda(
+        dpss_spec,
+        build_fused_shell_plan(
+            dpss_spec,
+            schedule=dpss_schedule,
+            recurrence="rys3",
+        ),
+    )
+    assert "generated_dpss_rys3_force_task" in dpss_source
+    assert "generated_dpss_rys3_roots" in dpss_source
+    assert "generated_ppps_rys3_roots" not in dpss_source
 
 
 def test_ppps_rys_recurrence_matches_every_symbolic_component():
@@ -632,7 +658,7 @@ def test_dppp_rys4_recurrence_matches_every_symbolic_component():
                 )
 
 
-@pytest.mark.parametrize("name", ("dpps", "dsps", "pppp"))
+@pytest.mark.parametrize("name", ("dpps", "dpss", "dsps", "dspp", "pppp"))
 def test_cooperative_rys3_recurrence_matches_every_symbolic_component(
     name: str,
 ):
@@ -731,7 +757,8 @@ def test_dppp_rys4_uniform_warps_advance_32_quartets_per_block():
 
 
 @pytest.mark.parametrize(
-    ("name", "fock_block_threads"), (("dpps", 64), ("pppp", 96))
+    ("name", "fock_block_threads"),
+    (("dpps", 64), ("dspp", 64), ("pppp", 96)),
 )
 def test_rys3_uniform_warps_split_components_without_scalar_spills(
     name: str, fock_block_threads: int
@@ -2076,7 +2103,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     assert '{"ddss", 15U, 4U, 64U, 3U, 36U}' in header
     assert '{"ddpp", 17U, 6U, 64U, 3U, 64U}' in header
     assert '{"ddds", 18U, 6U, 64U, 3U, 64U}' in header
-    assert '{"dspp", 8U, 4U, 64U, 3U, 54U}' in header
+    assert '{"dspp", 8U, 4U, 256U, 3U, 54U}' in header
     assert '{"dpps", 11U, 4U, 256U, 3U, 54U}' in header
     assert '{"pppp", 5U, 4U, 256U, 3U, 81U}' in header
     assert '{"psps", 2U, 2U, 32U, 3U, 9U}' in header
@@ -2477,16 +2504,25 @@ def test_batch_screening_ranks_real_profile_and_emits_one_process_driver():
     assert f"vibeqc_run_shell_class_{candidate.name}()" in driver
 
 
-def test_ppps_rys3_cuda_compiles_with_bounded_call_save_when_nvcc_is_configured(
+@pytest.mark.parametrize(
+    ("name", "resource_limits"),
+    (
+        ("ppps", None),
+        ("dpss", RTX5090_DPSS_SCALAR_RYS3_RESOURCE_LIMITS),
+    ),
+)
+def test_scalar_rys3_cuda_compiles_with_bounded_call_save_when_nvcc_is_configured(
     tmp_path: Path,
+    name: str,
+    resource_limits: dict[str, tuple[int, int, int]] | None,
 ):
-    """Bound the Rys evaluator call-save before any production route."""
+    """Bound scalar Rys3 resources before adding another production class."""
 
     nvcc = os.environ.get("VIBEQC_NVCC")
     if nvcc is None:
         pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
     cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
-    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
     schedule = ScheduleIR(
         kind=ScheduleKind.THREAD_TASKS,
         block_threads=32,
@@ -2500,7 +2536,7 @@ def test_ppps_rys3_cuda_compiles_with_bounded_call_save_when_nvcc_is_configured(
         schedule=schedule,
         recurrence="rys3",
     )
-    source = tmp_path / "generated_ppps_rys3.cu"
+    source = tmp_path / f"generated_{name}_rys3.cu"
     source.write_text(
         """
 template <unsigned MaximumOrder>
@@ -2513,7 +2549,7 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
         + emit_shell_class_fused_cuda(spec, plan),
         encoding="utf-8",
     )
-    cubin = tmp_path / "generated_ppps_rys3.cubin"
+    cubin = tmp_path / f"generated_{name}_rys3.cubin"
     compile_started = time.perf_counter()
     result = subprocess.run(
         [
@@ -2546,7 +2582,12 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
     )
     if cuda_architecture == "sm_120":
         output = result.stdout + result.stderr
-        assert "generated_ppps_shell_class_force_rhf_persistent_kernel" in output
+        assert (
+            f"generated_{name}_shell_class_force_rhf_persistent_kernel"
+            in output
+        )
+        if resource_limits is not None:
+            assert_rtx5090_resources(output, resource_limits)
         resource_records = re.findall(
             r"(\d+) bytes stack frame, (\d+) bytes spill stores, "
             r"(\d+) bytes spill loads",
@@ -2556,9 +2597,12 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
         numeric_records = tuple(
             tuple(map(int, record)) for record in resource_records
         )
-        assert max(record[0] for record in numeric_records) <= 56
-        assert max(record[1] for record in numeric_records) <= 64
-        assert max(record[2] for record in numeric_records) <= 64
+        if name == "ppps":
+            assert max(record[0] for record in numeric_records) <= 56
+            assert max(record[1] for record in numeric_records) <= 64
+            assert max(record[2] for record in numeric_records) <= 64
+        else:
+            assert all(record == (0, 0, 0) for record in numeric_records)
 
 
 def test_dppp_cooperative_rys4_compiles_without_spills_when_nvcc_is_configured(
@@ -2711,6 +2755,7 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
     ("name", "ordinary_limit", "persistent_limit"),
     (
         ("dpps", (216, 56, 36360), (218, 56, 36360)),
+        ("dspp", (214, 56, 36360), (216, 56, 36360)),
         ("pppp", (230, 88, 36360), (232, 88, 36360)),
     ),
 )
@@ -3205,7 +3250,7 @@ def test_dppp_uniform_warp_rys4_benchmark_runs_against_component_lanes_when_nvcc
     assert result["speedup_vs_component_lanes"] > 1.0
 
 
-@pytest.mark.parametrize("name", ("dpps", "dsps", "pppp"))
+@pytest.mark.parametrize("name", ("dpps", "dpss", "dsps", "dspp", "pppp"))
 def test_cooperative_rys3_benchmark_runs_against_component_lanes_when_nvcc_is_configured(
     tmp_path: Path,
     name: str,
