@@ -60,15 +60,20 @@ from tools.vibeqc_codegen import (
     emit_ppss_weighted_force_cuda,
     emit_psps_weighted_force_cuda,
     emit_rys3_roots_cuda,
+    emit_rys4_roots_cuda,
+    emit_rys_force_root_body_cuda,
     emit_shell_class_fused_cuda,
     evaluate_dppp_fused_component,
     evaluate_fused_shell_component,
     evaluate_fused_shell_observables,
     evaluate_fused_shell_value,
     evaluate_ppps_rys_component,
+    evaluate_rys_component,
     nvrtc_cache_key,
     rys3_roots_weights,
     rys3_table_roots_weights,
+    rys4_roots_weights,
+    rys4_table_roots_weights,
     rys_boys_values,
     schedule_candidates,
 )
@@ -420,6 +425,21 @@ def test_dddd_rys_program_exposes_five_root_backend_requirements():
     assert len(program.axis_program.instructions) == 216
 
 
+def test_dppp_rys_program_bounds_four_root_state_groups():
+    """Expose the exact DPPP Rys4 surface before production integration."""
+
+    program = build_rys_force_program(DPPP_SPEC)
+    assert program.nroots == 4
+    assert len(program.component_order) == 162
+    assert len(program.axis_program.requested_states) == 56
+    assert len(program.axis_program.instructions) == 67
+    body = emit_rys_force_root_body_cuda(DPPP_SPEC, component_group=3)
+    assert body.count("const double component_density_weight") == 162
+    assert body.count("double rys_state_") == 1375
+    assert "boys_" not in body
+    assert "component_gradient" not in body
+
+
 @pytest.mark.parametrize("argument", (0.0, 1.0e-10, 0.05, 1.0, 5.999))
 def test_rys3_rule_reproduces_first_six_boys_moments(argument: float):
     """Treat the host eigensolve only as a high-accuracy Rys3 oracle."""
@@ -450,6 +470,75 @@ def test_gpu4pyscf_rys3_table_matches_moment_oracle(argument: float):
         ) == pytest.approx(expected, rel=3.0e-11, abs=3.0e-14)
 
 
+@pytest.mark.parametrize("argument", (0.0, 1.0e-10, 0.05, 1.0, 5.999))
+def test_rys4_rule_reproduces_first_eight_boys_moments(argument: float):
+    """Treat the host eigensolve only as a high-accuracy Rys4 oracle."""
+
+    roots, weights = rys4_roots_weights(argument)
+    assert all(0.0 < root < 1.0 for root in roots)
+    assert all(weight > 0.0 for weight in weights)
+    moments = rys_boys_values(argument, 8)
+    for order, expected in enumerate(moments):
+        assert sum(
+            weight * root**order
+            for root, weight in zip(roots, weights, strict=True)
+        ) == pytest.approx(expected, rel=8.0e-12, abs=5.0e-14)
+
+
+@pytest.mark.parametrize(
+    "argument", (0.0, 1.0e-10, 0.05, 1.0, 5.999, 25.0, 55.0, 80.0)
+)
+def test_gpu4pyscf_rys4_table_matches_moment_oracle(argument: float):
+    """Verify the attributed nroots=4 slice before CUDA integration."""
+
+    roots, weights = rys4_table_roots_weights(argument)
+    moments = rys_boys_values(argument, 8)
+    for order, expected in enumerate(moments):
+        assert sum(
+            weight * root**order
+            for root, weight in zip(roots, weights, strict=True)
+        ) == pytest.approx(expected, rel=4.0e-11, abs=5.0e-13)
+
+
+@pytest.mark.parametrize(
+    "argument",
+    (
+        3.0e-7 - 1.0e-14,
+        3.0e-7,
+        3.0e-7 + 1.0e-14,
+        2.5 - 1.0e-12,
+        2.5,
+        2.5 + 1.0e-12,
+        55.0 - 1.0e-10,
+        55.0,
+        55.0 + 1.0e-10,
+    ),
+)
+def test_gpu4pyscf_rys4_table_is_accurate_across_branch_boundaries(
+    argument: float,
+):
+    """Cover the small-x, interpolation-interval, and large-x boundaries."""
+
+    roots, weights = rys4_table_roots_weights(argument)
+    moments = rys_boys_values(argument, 8)
+    for order, expected in enumerate(moments):
+        assert sum(
+            weight * root**order
+            for root, weight in zip(roots, weights, strict=True)
+        ) == pytest.approx(expected, rel=4.0e-11, abs=5.0e-13)
+
+
+def test_dppp_rys4_cuda_emits_only_the_fixed_root_slice():
+    """Keep Rys4 tables compact enough for generated CUDA compilation."""
+
+    roots = emit_rys4_roots_cuda()
+    assert "Copyright 2021-2024 The PySCF Developers" in roots
+    assert "generated_dppp_rys4_rw[4480]" in roots
+    assert "generated_dppp_rys4_roots" in roots
+    assert "series < 8U" in roots
+    assert "argument > 55.0" in roots
+
+
 def test_ppps_rys_cuda_emits_compact_state_program_and_attributed_table():
     """Prevent the direct recurrence from regressing into a scalar DAG."""
 
@@ -460,7 +549,7 @@ def test_ppps_rys_cuda_emits_compact_state_program_and_attributed_table():
     assert "generated_ppps_rys3_roots" in roots
     assert 80 <= body.count("double rys_state_") <= 93
     assert body.count("rys_state_") > 69
-    assert body.count("const double density_weight") == 27
+    assert body.count("const double component_density_weight") == 27
     assert body.count("force_") == 243
     assert "boys_" not in body
     assert "component_gradient" not in body
@@ -503,6 +592,57 @@ def test_ppps_rys_recurrence_matches_every_symbolic_component():
                     rel=8.0e-13,
                     abs=8.0e-13,
                 )
+
+
+def test_dppp_rys4_recurrence_matches_every_symbolic_component():
+    """Lock the four-root DPPP oracle before CUDA performance promotion."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME["dppp"]
+    values = factored_dppp_variables(sample_variables())
+    for component in spec.components:
+        actual = evaluate_rys_component(spec, component, values)
+        expected = evaluate_fused_shell_observables(spec, component, values)
+        assert actual.value == pytest.approx(
+            expected.value, rel=6.0e-13, abs=6.0e-13
+        )
+        for center in range(4):
+            for axis in range(3):
+                assert actual.gradients[center][axis] == pytest.approx(
+                    expected.gradients[center][axis],
+                    rel=1.5e-12,
+                    abs=1.5e-12,
+                )
+
+
+def test_dppp_cooperative_rys4_uses_uniform_runtime_indexed_axis_recurrence():
+    """Prevent regression to a divergent 162-way component dispatcher."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME["dppp"]
+    schedule = ScheduleIR(
+        kind=ScheduleKind.COMPONENT_LANES,
+        block_threads=192,
+        component_tile=spec.component_count,
+        tasks_per_warp=1,
+        shared_coulomb=True,
+        pair_orientation=PairOrientation.SWAPPED,
+        pair_storage=PairStorage.MATERIALIZED,
+        unroll_pair_terms=True,
+        minimum_blocks_per_sm=2,
+    )
+    plan = build_fused_shell_plan(
+        spec,
+        schedule=schedule,
+        recurrence="rys4",
+    )
+    source = emit_shell_class_fused_cuda(spec, plan)
+    assert "generated_dppp_rys4_component_lane_task" in source
+    assert "volatile double trr[5][4]" in source
+    assert "generated_dppp_rys4_axis" in source
+    assert "switch (component)" not in source
+    assert "generated_dppp_rys4_fill_weights" not in source
+    assert "component_weights[kGeneratedDpppComponentCount][32]" not in source
+    assert "GeneratedDpppPrimitiveGeometry primitive" not in source
+    assert "generated_dppp_rys4_roots" in source
 
 
 @pytest.mark.parametrize(
@@ -2159,6 +2299,85 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
         assert max(record[2] for record in numeric_records) <= 64
 
 
+def test_dppp_cooperative_rys4_compiles_without_spills_when_nvcc_is_configured(
+    tmp_path: Path,
+):
+    """Apply the sm_120 resource gate before any production promotion."""
+
+    nvcc = os.environ.get("VIBEQC_NVCC")
+    if nvcc is None:
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
+    schedule = ScheduleIR(
+        kind=ScheduleKind.COMPONENT_LANES,
+        block_threads=192,
+        component_tile=DPPP_SPEC.component_count,
+        tasks_per_warp=1,
+        shared_coulomb=True,
+        pair_orientation=PairOrientation.SWAPPED,
+        pair_storage=PairStorage.MATERIALIZED,
+        unroll_pair_terms=True,
+        minimum_blocks_per_sm=2,
+    )
+    plan = build_fused_shell_plan(
+        DPPP_SPEC,
+        schedule=schedule,
+        recurrence="rys4",
+    )
+    source = tmp_path / "generated_dppp_cooperative_rys4.cu"
+    source.write_text(
+        """
+template <unsigned MaximumOrder>
+__device__ __forceinline__ void boys_values(double argument, double* values) {
+  for (unsigned order = 0; order <= MaximumOrder; ++order) {
+    values[order] = 1.0 / (2.0 * static_cast<double>(order) + 1.0 + argument);
+  }
+}
+"""
+        + emit_shell_class_fused_cuda(DPPP_SPEC, plan),
+        encoding="utf-8",
+    )
+    cubin = tmp_path / "generated_dppp_cooperative_rys4.cubin"
+    result = subprocess.run(
+        [
+            nvcc,
+            "-std=c++17",
+            f"-arch={cuda_architecture}",
+            "-O3",
+            "-cubin",
+            "-Xptxas=-v",
+            str(source),
+            "-o",
+            str(cubin),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=240,
+    )
+    if os.environ.get("VIBEQC_NVCC_VERBOSE"):
+        print(result.stdout + result.stderr)
+    assert result.returncode == 0, result.stdout + result.stderr
+    if cuda_architecture == "sm_120":
+        assert_rtx5090_resources(
+            result.stdout + result.stderr,
+            {
+                "generated_dppp_shell_class_force_rhf_kernel": (168, 160, 1024),
+                "generated_dppp_shell_class_force_uhf_kernel": (168, 160, 1024),
+                "generated_dppp_shell_class_force_rhf_persistent_kernel": (
+                    168,
+                    160,
+                    1024,
+                ),
+                "generated_dppp_shell_class_force_uhf_persistent_kernel": (
+                    168,
+                    160,
+                    1024,
+                ),
+            },
+        )
+
+
 def test_ppps_rys3_benchmark_runs_against_component_lanes_when_nvcc_is_configured(
     tmp_path: Path,
 ):
@@ -2266,6 +2485,116 @@ def test_ppps_rys3_benchmark_runs_against_component_lanes_when_nvcc_is_configure
                 "component_lanes": production,
                 "speedup_vs_component_lanes": (
                     production["fused_ms"] / direct["fused_ms"]
+                ),
+            },
+            sort_keys=True,
+        )
+    )
+
+
+def test_dppp_cooperative_rys4_benchmark_runs_against_component_lanes_when_nvcc_is_configured(
+    tmp_path: Path,
+):
+    """Measure uniform cooperative Rys4 against the accepted DPPP force path."""
+
+    nvcc = os.environ.get("VIBEQC_NVCC")
+    if nvcc is None:
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA benchmark gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
+    rys4_schedule = ScheduleIR(
+        kind=ScheduleKind.COMPONENT_LANES,
+        block_threads=192,
+        component_tile=DPPP_SPEC.component_count,
+        tasks_per_warp=1,
+        shared_coulomb=True,
+        pair_orientation=PairOrientation.SWAPPED,
+        pair_storage=PairStorage.MATERIALIZED,
+        unroll_pair_terms=True,
+        minimum_blocks_per_sm=2,
+    )
+    rys4_plan = build_fused_shell_plan(
+        DPPP_SPEC,
+        schedule=rys4_schedule,
+        recurrence="rys4",
+    )
+    production_plan = next(
+        build_fused_shell_plan(DPPP_SPEC, schedule=selection.schedule)
+        for selection in load_production_kernel_selections(
+            REPOSITORY_ROOT
+            / "tools"
+            / "vibeqc_codegen"
+            / "production_shell_classes.json",
+            "sm_120",
+        )
+        if selection.spec == DPPP_SPEC
+    )
+    environment = dict(os.environ)
+
+    def compile_and_run(label: str, plan) -> dict[str, object]:
+        source = tmp_path / f"generated_dppp_{label}_benchmark.cu"
+        source.write_text(
+            emit_shell_class_benchmark_cuda(
+                DPPP_SPEC,
+                task_count=8192,
+                primitive_count=3,
+                warmups=1,
+                iterations=3,
+                samples=3,
+                plan=plan,
+                benchmark_kernel_only=True,
+                persistent_kernel=True,
+            ),
+            encoding="utf-8",
+        )
+        executable = tmp_path / f"generated_dppp_{label}_benchmark"
+        compiled = subprocess.run(
+            [
+                nvcc,
+                "-std=c++17",
+                f"-arch={cuda_architecture}",
+                "-O3",
+                str(source),
+                "-o",
+                str(executable),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=240,
+        )
+        assert compiled.returncode == 0, compiled.stdout + compiled.stderr
+        run = subprocess.run(
+            [
+                "srun",
+                "--partition=main",
+                "--gres=gpu:5090:1",
+                "--nodes=1",
+                "--ntasks=1",
+                "--time=00:05:00",
+                str(executable),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=330,
+            env=environment,
+        )
+        assert run.returncode == 0, run.stdout + run.stderr
+        payload = json.loads(run.stdout.strip().splitlines()[-1])
+        assert payload["maximum_force_error"] <= (
+            2.0e-10 * max(1.0, payload["maximum_force"])
+        )
+        return payload
+
+    rys4 = compile_and_run("cooperative_rys4", rys4_plan)
+    production = compile_and_run("component_lanes", production_plan)
+    print(
+        json.dumps(
+            {
+                "cooperative_rys4": rys4,
+                "component_lanes": production,
+                "speedup_vs_component_lanes": (
+                    production["fused_ms"] / rys4["fused_ms"]
                 ),
             },
             sort_keys=True,

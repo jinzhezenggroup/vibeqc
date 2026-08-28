@@ -24,6 +24,7 @@
         {
           "shell_class": "dppp",
           "consumers": ["fock", "force"],
+          "recurrence": "rys4",
           "schedule": {
             "kind": "component_lanes",
             "block_threads": 192,

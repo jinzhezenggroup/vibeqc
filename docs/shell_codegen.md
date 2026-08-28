@@ -120,13 +120,37 @@ paired RTX 5090 runs, the Rys kernel took 1.315 ms and 1.032 ms versus 0.455 ms
 and 0.456 ms for the production component-lane recurrence: a 2.89x and 2.27x
 slowdown, respectively. Maximum force disagreement was `1.19e-13`.
 
-Consequently, production dispatch remains unchanged. No force endpoint was run
-and no Fock or five-root `dddd` CUDA emitter was added: the simpler three-root
-case already fails the zero-spill/resource gate and loses the isolated timing
-gate by more than twofold. Reaching high-order production performance would
-require a materially different cooperative primitive/root/component mapping,
-not direct scaling of this thread-task prototype. The full measurements are in
+Consequently, the `ppps` thread-task production dispatch remains unchanged. No
+force endpoint was run for that candidate and no five-root `dddd` CUDA emitter
+was added: the simpler three-root case already fails the zero-spill/resource
+gate and loses the isolated timing gate by more than twofold. Reaching
+high-order production performance requires a materially different cooperative
+primitive/root/component mapping, not direct scaling of this thread-task
+prototype. The full measurements are in
 `benchmarks/results/rtx5090-ac39177-issue-3-rys3-rejection.json`.
+
+`dppp` now exercises that cooperative alternative. One 192-thread block owns
+one canonical task, lane zero evaluates the four-root interpolation once per
+primitive quartet, and the 162 active component lanes execute the same
+runtime-indexed one-dimensional TRR/HRR program. Each axis uses an explicitly
+addressed `5x4` table and returns only its base value and three independent
+first derivatives; this avoids both a 162-way divergent switch and the
+shell-wide scalar state graph. The fourth center is still recovered from
+translation after the six-warp force reduction. The fixed four-root table is a
+reproducible, Apache-attributed slice extracted from GPU4PySCF.
+
+On CUDA 12.9 `sm_120`, all four RHF/UHF ordinary and persistent wrappers use
+168 registers, a 160-byte stack, zero spills, and at most 960 bytes of shared
+memory. The checked-in 8192-task, three-primitive isolated gate improved from
+218.329 ms to 183.241 ms (`1.191x`) with `8.32e-12` maximum force disagreement.
+In the fixed-`dm0`, one-iteration 384-AO endpoint, the `dppp` kernel fell from
+167.420 ms to 139.197 ms and the VibeQC median moved from 3.327 s to 3.298 s.
+The smaller endpoint gain is expected: current profiling places the remaining
+VibeQC/GPU4PySCF force-kernel gap across many exact shell classes rather than
+inside `dppp` alone. The raw evidence is the
+[isolated gate](../benchmarks/results/rtx5090-26ef747-dppp-cooperative-rys4-isolated.json),
+[384-AO endpoint](../benchmarks/results/rtx5090-26ef747-384ao-dppp-cooperative-rys4.json),
+and [kernel summary](../benchmarks/results/rtx5090-26ef747-384ao-dppp-cooperative-rys4-kernel-summary.csv).
 
 ## Architecture autotuning
 

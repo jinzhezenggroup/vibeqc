@@ -224,6 +224,7 @@ if(VIBEQC_ENABLE_CUDA)
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/production.py"
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/rys.py"
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/rys3_data.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/rys4_data.py"
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/shell_class.py"
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/shell_spec.py"
       COMMENT "Generating target-specific fused shell-class CUDA bundles"

@@ -39,7 +39,7 @@ class IntegralIR:
             raise ValueError("an integral IR requires at least one consumer")
         if not self.consumers <= frozenset(KernelConsumer):
             raise ValueError("integral IR contains an unsupported consumer")
-        if self.recurrence not in ("subset_wick", "rys3"):
+        if self.recurrence not in ("subset_wick", "rys3", "rys4"):
             raise ValueError(f"unsupported integral recurrence {self.recurrence!r}")
         if self.recurrence == "rys3" and (
             self.spec.name != "ppps"
@@ -48,6 +48,14 @@ class IntegralIR:
             raise ValueError(
                 "the direct three-root recurrence currently supports only "
                 "force-only ppps kernels"
+            )
+        if self.recurrence == "rys4" and (
+            self.spec.name != "dppp"
+            or KernelConsumer.FORCE not in self.consumers
+        ):
+            raise ValueError(
+                "the direct four-root recurrence requires a dppp force "
+                "consumer; its Fock consumer retains the value recurrence"
             )
         if (
             KernelConsumer.FORCE in self.consumers
