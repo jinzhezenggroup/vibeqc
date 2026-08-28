@@ -105,7 +105,11 @@ void generated_dppp_component_recompute_rhf_kernel(
   struct Shared {
     GeneratedDpppShellTask task;
     GeneratedDpppVec3 positions[4];
-    double warp_sums[kGeneratedDpppWarpCount][12];
+    // The fused Rys4 uniform-warp lowering intentionally does not emit the
+    // legacy force-worker warp-count symbol.  Derive the oracle's reduction
+    // shape from the common launch geometry so the benchmark remains usable
+    // for both old and new force consumers.
+    double warp_sums[kGeneratedDpppBlockThreads / 32U][12];
   };
   __shared__ Shared shared;
   const unsigned lane = threadIdx.x;
@@ -181,7 +185,8 @@ VIBEQC_ANGULAR_COEFFICIENT
   if (lane < 12U) {
     double value = 0.0;
 #pragma unroll
-    for (unsigned source_warp = 0; source_warp < kGeneratedDpppWarpCount;
+    for (unsigned source_warp = 0;
+         source_warp < kGeneratedDpppBlockThreads / 32U;
          ++source_warp) {
       value += shared.warp_sums[source_warp][lane];
     }
