@@ -267,7 +267,7 @@ branch. The comparisons are independent and their endpoint savings should not
 be added. Raw samples and promotion gates are retained in the
 [low-order signature-bucketing artifact](../benchmarks/results/rtx5090-0b6a573-issue-41-low-order-signature-bucketing.json).
 
-The current-head Phase-0 ledger joins an unprofiled, iteration-matched endpoint
+The pre-DSPS Phase-0 ledger joins an unprofiled, iteration-matched endpoint
 with five Nsight warm replays and the exact final-density shell-class profile.
 At 384 AOs, the accepted endpoint is 2.887663 s for VibeQC versus 2.139527 s
 for GPU4PySCF (`1.350x`). Relative to the issue baseline, the VibeQC endpoint
@@ -291,6 +291,36 @@ generalized roots-at-most-three queue/backend targets; the larger `psss` entry
 remains on its separate resident-kernel path. The complete joined evidence is
 retained in the
 [current-head component ledger](../benchmarks/results/rtx5090-0b6a573-issue-41-current-head-component-ledger.json).
+
+### DSPS scalar Rys3 promotion
+
+The PPPS scalar whole-task Rys3 emitter is now generated from the catalog shell
+specification rather than a PPPS-only expression. DSPS therefore uses the same
+one-task-per-lane mathematical backend with 32 threads, 32 tasks per warp, and
+an eight-block-per-SM launch bound. The Fock consumer deliberately retains its
+previous component-lane schedule so the production change isolates force
+performance.
+
+The isolated DSPS gate improves from 19.122454 ms for component lanes to
+6.183466 ms for scalar thread tasks (`3.093x`) with a maximum force difference
+of `1.13e-11 Eh/bohr`. The promoted force kernel uses 252 registers, 7,248 B
+shared memory, and no stack or local memory. Its production shell-class time
+falls from 127.806 ms to 52.621 ms per replay (`2.429x`), saving 75.185 ms.
+
+On the five-repeat, iteration-matched 384-AO endpoint, VibeQC falls from
+2.887663 s to 2.810138 s while GPU4PySCF measures 2.135372 s. The change saves
+77.525 ms end to end; maximum energy and force errors remain `1.64e-11 Eh` and
+`3.15e-8 Eh/bohr`. The 96-AO guard regresses by 0.74%, below its 2% limit, and
+the 192-AO guard is neutral. The complete measurements and resource decisions
+are retained in the
+[DSPS scalar Rys3 artifact](../benchmarks/results/rtx5090-176b07d-issue-41-dsps-scalar-rys3.json).
+
+The same generalized emitter can produce DPPS, but that scalar candidate is
+not promoted: PTXAS reports 255 registers, an 832 B stack, and 1,768/2,752 B
+of spill stores/loads. DPPS therefore needs lower live ranges or a different
+execution mapping rather than production timing of a known-spilling kernel.
+Primitive-signature sorting was also rejected for DSPS and DPPS because it was
+neutral to slower for their cooperative block workers.
 
 ## Architecture autotuning
 

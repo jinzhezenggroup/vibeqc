@@ -212,14 +212,15 @@
           "consumers": ["fock", "force"],
           "recurrence": "rys3",
           "schedule": {
-            "kind": "component_lanes",
+            "kind": "thread_tasks",
             "block_threads": 32,
             "component_tile": 18,
-            "tasks_per_warp": 1,
-            "shared_coulomb": true,
+            "tasks_per_warp": 32,
+            "shared_coulomb": false,
             "pair_orientation": "canonical",
             "pair_storage": "materialized",
-            "unroll_pair_terms": true
+            "unroll_pair_terms": true,
+            "minimum_blocks_per_sm": 8
           }
         },
         {

@@ -15,6 +15,7 @@ generated function is called from a hot inner loop.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
@@ -1730,7 +1731,7 @@ def _emit_rys_thread_force_consumer_cuda(
     plan: FusedShellPlan,
     minimum_blocks_per_sm: int,
 ) -> str:
-    """Emit one complete ``ppps`` task per lane with compact Rys recurrence.
+    """Emit one complete three-root Rys task per lane.
 
     The shell-task ABI, screening, density symmetry, and persistent queue are
     identical to the existing generated worker.  Only the primitive hot loop
@@ -1738,12 +1739,20 @@ def _emit_rys_thread_force_consumer_cuda(
     program, and each component is contracted immediately into nine register
     force accumulators.  Density weights use lane-major shared SoA storage to
     avoid carrying the entire shell's coefficients through the recurrence.
+
+    The mathematical Rys program is built from ``spec`` rather than from a
+    PPPS-specific expression.  This makes PPPS, DSPS, DPPS, and other
+    three-root catalog classes share one scalar backend while preserving
+    shell-specific straight-line component contraction.
     """
 
-    if spec.name != "ppps" or plan.kernel.integral.recurrence != "rys3":
-        raise ValueError("direct Rys thread lowering requires a ppps rys3 plan")
+    program = build_rys_force_program(spec)
+    if plan.kernel.integral.recurrence != "rys3" or program.nroots != 3:
+        raise ValueError(
+            "direct Rys thread lowering requires a three-root rys3 plan"
+        )
     if plan.schedule.block_threads != 32:
-        raise ValueError("direct Rys ppps thread tasks currently use one CUDA warp")
+        raise ValueError("direct Rys thread tasks currently use one CUDA warp")
 
     task_component_setup = _generic_task_component_setup(spec).replace(
         "shared.task", "task"
@@ -5415,6 +5424,37 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
                 pair_storage=plan.schedule.pair_storage,
                 unroll_pair_terms=plan.schedule.unroll_pair_terms,
                 minimum_blocks_per_sm=2,
+                warp_size=plan.schedule.warp_size,
+            )
+            fock_plan = build_fused_shell_plan(
+                spec,
+                consumers=tuple(plan.kernel.integral.consumers),
+                schedule=fock_schedule,
+                recurrence=plan.kernel.integral.recurrence,
+                target=plan.kernel.target,
+            )
+        elif (
+            plan.kernel.integral.recurrence == "rys3"
+            and plan.schedule.kind == ScheduleKind.THREAD_TASKS
+        ):
+            # Scalar Rys3 is a force-only architecture experiment.  Retain the
+            # accepted component-lane value recurrence so the real endpoint
+            # isolates force performance and does not silently retune Fock.
+            value_state_count = math.comb(
+                plan.kernel.integral.value_coulomb_order + 3, 3
+            )
+            fock_block_threads = (
+                max(spec.component_count, value_state_count) + 31
+            ) // 32 * 32
+            fock_schedule = ScheduleIR(
+                kind=ScheduleKind.COMPONENT_LANES,
+                block_threads=fock_block_threads,
+                component_tile=spec.component_count,
+                tasks_per_warp=1,
+                shared_coulomb=True,
+                pair_orientation=plan.schedule.pair_orientation,
+                pair_storage=plan.schedule.pair_storage,
+                unroll_pair_terms=plan.schedule.unroll_pair_terms,
                 warp_size=plan.schedule.warp_size,
             )
             fock_plan = build_fused_shell_plan(
