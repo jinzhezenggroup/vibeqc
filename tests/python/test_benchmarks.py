@@ -216,6 +216,65 @@ def test_aot_endpoint_default_fock_selection_ignores_ambient_filter(monkeypatch)
     assert os.environ["VIBEQC_AOT_FOCK_SHELL_CLASSES"] == "ambient-only"
 
 
+def test_aot_endpoint_environment_overrides_parse_and_restore(monkeypatch):
+    """Keep side-specific runtime env changes isolated within each replay."""
+
+    endpoint = _aot_shell_gate_module()
+    assert endpoint._parse_environment_overrides(
+        ("VIBEQC_TEST_A=one=two", "VIBEQC_TEST_B=")
+    ) == {
+        "VIBEQC_TEST_A": "one=two",
+        "VIBEQC_TEST_B": "",
+    }
+    parser = endpoint._parser()
+    arguments = parser.parse_args(
+        (
+            "--baseline-env",
+            "VIBEQC_PSPS_RESIDENT_BRA=0",
+            "--candidate-env",
+            "VIBEQC_PSPS_RESIDENT_BRA=1",
+        )
+    )
+    endpoint._validate_arguments(parser, arguments)
+    assert arguments.baseline_environment_overrides == {
+        "VIBEQC_PSPS_RESIDENT_BRA": "0"
+    }
+    assert arguments.candidate_environment_overrides == {
+        "VIBEQC_PSPS_RESIDENT_BRA": "1"
+    }
+
+    monkeypatch.setenv("VIBEQC_TEST_A", "outside")
+    monkeypatch.delenv("VIBEQC_TEST_NEW", raising=False)
+    with endpoint._aot_selection(
+        ("dppp",),
+        environment_overrides={
+            "VIBEQC_TEST_A": "inside",
+            "VIBEQC_TEST_NEW": "created",
+        },
+    ):
+        assert os.environ["VIBEQC_TEST_A"] == "inside"
+        assert os.environ["VIBEQC_TEST_NEW"] == "created"
+    assert os.environ["VIBEQC_TEST_A"] == "outside"
+    assert "VIBEQC_TEST_NEW" not in os.environ
+
+    with pytest.raises(RuntimeError, match="restore"), endpoint._aot_selection(
+        ("dppp",),
+        environment_overrides={"VIBEQC_TEST_A": "during-error"},
+    ):
+        raise RuntimeError("restore")
+    assert os.environ["VIBEQC_TEST_A"] == "outside"
+
+    for values, message in (
+        (("VIBEQC_TEST_DUP=1", "VIBEQC_TEST_DUP=2"), "duplicate"),
+        (("VIBEQC_TEST_MALFORMED",), "NAME=VALUE"),
+        (("=missing-name",), "non-empty"),
+        (("VIBEQC_AOT_SHELL_CLASSES=bad",), "reserved"),
+        (("VIBEQC_AOT_FOCK_SHELL_CLASSES=bad",), "reserved"),
+    ):
+        with pytest.raises(ValueError, match=message):
+            endpoint._parse_environment_overrides(values)
+
+
 def test_aot_endpoint_freezes_after_one_cold_baseline_and_records_schema():
     """Verify fixed-dm0 control flow with a fake prepared batch."""
 
@@ -257,6 +316,7 @@ def test_aot_endpoint_freezes_after_one_cold_baseline_and_records_schema():
                     strict,
                     os.environ.get("VIBEQC_AOT_SHELL_CLASSES"),
                     os.environ.get("VIBEQC_AOT_FOCK_SHELL_CLASSES"),
+                    os.environ.get("VIBEQC_PSPS_RESIDENT_BRA"),
                 )
             )
             return FakeResult()
@@ -273,6 +333,8 @@ def test_aot_endpoint_freezes_after_one_cold_baseline_and_records_schema():
         2,
         order_style="abba",
         warmups=1,
+        baseline_environment_overrides={"VIBEQC_PSPS_RESIDENT_BRA": "0"},
+        candidate_environment_overrides={"VIBEQC_PSPS_RESIDENT_BRA": "1"},
         maximum_energy_error=1.0e-12,
         maximum_force_error=1.0e-12,
         minimum_speedup=0.1,
@@ -290,6 +352,23 @@ def test_aot_endpoint_freezes_after_one_cold_baseline_and_records_schema():
         "dppp",
     ]
     assert all(entry[0] for entry in batch.executions)
+    assert [entry[3] for entry in batch.executions] == [
+        "0",
+        "0",
+        "0",
+        "1",
+        "1",
+        "0",
+    ]
+    assert [
+        sample["environment_overrides"]
+        for sample in measurement["raw_samples"]
+    ] == [
+        {"VIBEQC_PSPS_RESIDENT_BRA": "0"},
+        {"VIBEQC_PSPS_RESIDENT_BRA": "1"},
+        {"VIBEQC_PSPS_RESIDENT_BRA": "1"},
+        {"VIBEQC_PSPS_RESIDENT_BRA": "0"},
+    ]
     assert measurement["fixed_dm0"] == {
         "enabled": True,
         "source": "measured baseline cold result",
@@ -378,7 +457,20 @@ def guarded_import(name, *args, **kwargs):
     return real_import(name, *args, **kwargs)
 
 builtins.__import__ = guarded_import
-sys.argv = [sys.argv[0], "--dry-run", "--batch", "1", "--repeats", "2", "--output", output_path]
+sys.argv = [
+    sys.argv[0],
+    "--dry-run",
+    "--batch",
+    "1",
+    "--repeats",
+    "2",
+    "--baseline-env",
+    "VIBEQC_PSPS_RESIDENT_BRA=0",
+    "--candidate-env",
+    "VIBEQC_PSPS_RESIDENT_BRA=1",
+    "--output",
+    output_path,
+]
 runpy.run_path(script_path, run_name="__main__")
 """
     # Pass the script path as a separate argv item to keep the guard readable.
@@ -394,6 +486,12 @@ runpy.run_path(script_path, run_name="__main__")
     assert payload["protocol"] == "fixed_dm0_interleaved_ab"
     assert payload["baseline_selection"]["shell_classes"] == ["dppp", "dpds"]
     assert payload["candidate_selection"]["shell_classes"][-1] == "dspp"
+    assert payload["baseline_selection"]["environment_overrides"] == {
+        "VIBEQC_PSPS_RESIDENT_BRA": "0"
+    }
+    assert payload["candidate_selection"]["environment_overrides"] == {
+        "VIBEQC_PSPS_RESIDENT_BRA": "1"
+    }
     assert payload["measurement_order"].count("baseline") == 2
     assert payload["measurement_order"].count("candidate") == 2
 

@@ -19,7 +19,7 @@ import json
 import os
 import statistics
 import time
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
@@ -28,6 +28,9 @@ import numpy as np
 
 _SHELL_ENVIRONMENT = "VIBEQC_AOT_SHELL_CLASSES"
 _FOCK_SHELL_ENVIRONMENT = "VIBEQC_AOT_FOCK_SHELL_CLASSES"
+_RESERVED_ENVIRONMENTS = frozenset(
+    {_SHELL_ENVIRONMENT, _FOCK_SHELL_ENVIRONMENT}
+)
 BASELINE = "baseline"
 CANDIDATE = "candidate"
 
@@ -66,6 +69,90 @@ def _ordered_union(*selections: Sequence[str]) -> tuple[str, ...]:
     return tuple(result)
 
 
+def _parse_environment_overrides(
+    values: Sequence[str] | None,
+) -> dict[str, str]:
+    """Parse repeated ``NAME=VALUE`` options into an ordered mapping.
+
+    Values may contain additional ``=`` characters, which is useful for
+    options whose value is itself a serialized setting.  A duplicate key on
+    one side of an A/B comparison is almost certainly a typo, so reject it
+    rather than letting the last occurrence silently win.  The two sides are
+    parsed independently and may intentionally use the same key with
+    different values.
+    """
+
+    overrides: dict[str, str] = {}
+    for raw_value in values or ():
+        if not isinstance(raw_value, str) or "=" not in raw_value:
+            raise ValueError(
+                "environment overrides must use NAME=VALUE syntax"
+            )
+        name, value = raw_value.split("=", 1)
+        if not name:
+            raise ValueError("environment override names must be non-empty")
+        if "=" in name:
+            raise ValueError("environment override names cannot contain '='")
+        if "\x00" in name or "\x00" in value:
+            raise ValueError("environment overrides cannot contain NUL bytes")
+        if name in _RESERVED_ENVIRONMENTS:
+            raise ValueError(
+                f"environment override {name!r} is reserved for shell selection"
+            )
+        if name in overrides:
+            raise ValueError(f"duplicate environment override {name!r}")
+        overrides[name] = value
+    return overrides
+
+
+def _validated_environment_overrides(
+    overrides: Mapping[str, str] | None,
+) -> dict[str, str]:
+    """Validate a programmatic override mapping before touching ``os.environ``."""
+
+    if overrides is None:
+        return {}
+    if not isinstance(overrides, Mapping):
+        raise TypeError("environment overrides must be a mapping")
+    validated: dict[str, str] = {}
+    for name, value in overrides.items():
+        if not isinstance(name, str) or not isinstance(value, str):
+            raise TypeError(
+                "environment override names and values must be strings"
+            )
+        if not name:
+            raise ValueError("environment override names must be non-empty")
+        if "=" in name:
+            raise ValueError("environment override names cannot contain '='")
+        if "\x00" in name or "\x00" in value:
+            raise ValueError("environment overrides cannot contain NUL bytes")
+        if name in _RESERVED_ENVIRONMENTS:
+            raise ValueError(
+                f"environment override {name!r} is reserved for shell selection"
+            )
+        validated[name] = value
+    return validated
+
+
+def _argument_environment_overrides(
+    arguments: argparse.Namespace, side: str
+) -> dict[str, str]:
+    """Return normalized overrides from a parser namespace.
+
+    ``_dry_run_payload`` is also used directly by pure-Python tests and small
+    inspection tools, so tolerate a namespace that has not gone through
+    ``_validate_arguments`` yet.
+    """
+
+    attribute = f"{side}_environment_overrides"
+    if hasattr(arguments, attribute):
+        value = getattr(arguments, attribute)
+        return {} if value is None else dict(value)
+    return _parse_environment_overrides(
+        getattr(arguments, f"{side}_env", ())
+    )
+
+
 def interleaved_selection_order(
     repeats: int, style: str = "abba"
 ) -> tuple[str, ...]:
@@ -99,6 +186,7 @@ def interleaved_selection_order(
 def _aot_selection(
     shell_classes: Sequence[str],
     fock_classes: Sequence[str] | None = None,
+    environment_overrides: Mapping[str, str] | None = None,
 ) -> Iterator[None]:
     """Install one deterministic registry selection and restore caller state.
 
@@ -108,12 +196,14 @@ def _aot_selection(
     context manager still restores the caller's value afterwards.
     """
 
+    overrides = _validated_environment_overrides(environment_overrides)
     values = {
         _SHELL_ENVIRONMENT: ",".join(shell_classes),
         _FOCK_SHELL_ENVIRONMENT: (
             None if fock_classes is None else ",".join(fock_classes)
         ),
     }
+    values.update(overrides)
     previous = {name: os.environ.get(name) for name in values}
     try:
         for name, value in values.items():
@@ -175,10 +265,15 @@ def _execute_once(
     shell_classes: Sequence[str],
     *,
     fock_classes: Sequence[str] | None = None,
+    environment_overrides: Mapping[str, str] | None = None,
 ) -> tuple[Any, float]:
     """Execute one synchronized replay under an exact registry selection."""
 
-    with _aot_selection(shell_classes, fock_classes):
+    with _aot_selection(
+        shell_classes,
+        fock_classes,
+        environment_overrides=environment_overrides,
+    ):
         _synchronize(cupy_module)
         start = time.perf_counter()
         result = batch.execute(strict=True)
@@ -192,6 +287,8 @@ def _execute(
     cupy_module: Any,
     selection: tuple[str, ...],
     repeats: int,
+    *,
+    environment_overrides: Mapping[str, str] | None = None,
 ) -> tuple[Any, list[float]]:
     """Compatibility helper for a contiguous selection replay.
 
@@ -204,7 +301,12 @@ def _execute(
     timings = []
     result = None
     for _ in range(repeats):
-        result, elapsed = _execute_once(batch, cupy_module, selection)
+        result, elapsed = _execute_once(
+            batch,
+            cupy_module,
+            selection,
+            environment_overrides=environment_overrides,
+        )
         timings.append(elapsed)
     assert result is not None
     return result, timings
@@ -312,6 +414,7 @@ def _sample(
     sequence_index: int,
     *,
     fock_classes: Sequence[str] | None = None,
+    environment_overrides: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """Run and serialize one replay while keeping the result for A/B pairing."""
 
@@ -320,6 +423,7 @@ def _sample(
         cupy_module,
         shell_classes,
         fock_classes=fock_classes,
+        environment_overrides=environment_overrides,
     )
     payload = _result_payload(result)
     return {
@@ -327,6 +431,7 @@ def _sample(
         "selection": label,
         "shell_classes": list(shell_classes),
         "fock_classes": None if fock_classes is None else list(fock_classes),
+        "environment_overrides": dict(environment_overrides or {}),
         "seconds": float(seconds),
         **payload,
     }
@@ -342,6 +447,8 @@ def _alternating_replays(
     order_style: str = "abba",
     baseline_fock_classes: tuple[str, ...] | None = None,
     candidate_fock_classes: tuple[str, ...] | None = None,
+    baseline_environment_overrides: Mapping[str, str] | None = None,
+    candidate_environment_overrides: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """Collect fixed-dm0 A/B samples in a deterministic interleaved order."""
 
@@ -351,9 +458,11 @@ def _alternating_replays(
         if label == BASELINE:
             classes = baseline_classes
             fock_classes = baseline_fock_classes
+            environment_overrides = baseline_environment_overrides
         else:
             classes = candidate_classes
             fock_classes = candidate_fock_classes
+            environment_overrides = candidate_environment_overrides
         samples.append(
             _sample(
                 batch,
@@ -362,6 +471,7 @@ def _alternating_replays(
                 classes,
                 sequence_index,
                 fock_classes=fock_classes,
+                environment_overrides=environment_overrides,
             )
         )
     baseline_samples = [
@@ -490,6 +600,7 @@ def _cold_baseline_and_freeze(
     baseline_classes: tuple[str, ...],
     *,
     baseline_fock_classes: tuple[str, ...] | None = None,
+    baseline_environment_overrides: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """Execute exactly one measured cold baseline and freeze its post-cold dm0."""
 
@@ -498,6 +609,7 @@ def _cold_baseline_and_freeze(
         cupy_module,
         baseline_classes,
         fock_classes=baseline_fock_classes,
+        environment_overrides=baseline_environment_overrides,
     )
     payload = _result_payload(result)
     batch.set_warm_start_updates(False)
@@ -509,6 +621,7 @@ def _cold_baseline_and_freeze(
             if baseline_fock_classes is None
             else list(baseline_fock_classes)
         ),
+        "environment_overrides": dict(baseline_environment_overrides or {}),
         "warm_start_updates_after_run": False,
         **payload,
     }
@@ -525,6 +638,8 @@ def _fixed_dm0_measurement(
     warmups: int,
     baseline_fock_classes: tuple[str, ...] | None = None,
     candidate_fock_classes: tuple[str, ...] | None = None,
+    baseline_environment_overrides: Mapping[str, str] | None = None,
+    candidate_environment_overrides: Mapping[str, str] | None = None,
     maximum_energy_error: float,
     maximum_force_error: float,
     minimum_speedup: float,
@@ -536,6 +651,7 @@ def _fixed_dm0_measurement(
         cupy_module,
         baseline_classes,
         baseline_fock_classes=baseline_fock_classes,
+        baseline_environment_overrides=baseline_environment_overrides,
     )
     warmup_samples = []
     for index in range(warmups):
@@ -547,6 +663,7 @@ def _fixed_dm0_measurement(
                 baseline_classes,
                 index,
                 fock_classes=baseline_fock_classes,
+                environment_overrides=baseline_environment_overrides,
             )
         )
     measurement = _alternating_replays(
@@ -558,6 +675,8 @@ def _fixed_dm0_measurement(
         order_style=order_style,
         baseline_fock_classes=baseline_fock_classes,
         candidate_fock_classes=candidate_fock_classes,
+        baseline_environment_overrides=baseline_environment_overrides,
+        candidate_environment_overrides=candidate_environment_overrides,
     )
     _gate_measurement(
         measurement,
@@ -584,6 +703,9 @@ def _measurement(
     maximum_energy_error: float,
     maximum_force_error: float,
     minimum_speedup: float,
+    *,
+    baseline_environment_overrides: Mapping[str, str] | None = None,
+    candidate_environment_overrides: Mapping[str, str] | None = None,
 ) -> dict[str, object]:
     """Run the fixed-dm0 measurement with the public legacy signature."""
 
@@ -595,6 +717,8 @@ def _measurement(
         repeats,
         order_style="abba",
         warmups=0,
+        baseline_environment_overrides=baseline_environment_overrides,
+        candidate_environment_overrides=candidate_environment_overrides,
         maximum_energy_error=maximum_energy_error,
         maximum_force_error=maximum_force_error,
         minimum_speedup=minimum_speedup,
@@ -624,6 +748,12 @@ def _bisect_regression(
         order_style=arguments.order,
         baseline_fock_classes=getattr(arguments, "baseline_fock_classes", None),
         candidate_fock_classes=getattr(arguments, "candidate_fock_classes", None),
+        baseline_environment_overrides=getattr(
+            arguments, "baseline_environment_overrides", {}
+        ),
+        candidate_environment_overrides=getattr(
+            arguments, "candidate_environment_overrides", {}
+        ),
     )
     _gate_measurement(
         measurement,
@@ -655,7 +785,9 @@ def _bisect_regression(
 
 
 def _selection_payload(
-    shell_classes: tuple[str, ...], fock_classes: tuple[str, ...] | None
+    shell_classes: tuple[str, ...],
+    fock_classes: tuple[str, ...] | None,
+    environment_overrides: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """Return a stable JSON representation of a runtime registry selection."""
 
@@ -665,6 +797,7 @@ def _selection_payload(
         "fock_environment": (
             "default-all" if fock_classes is None else "explicit"
         ),
+        "environment_overrides": dict(environment_overrides or {}),
     }
 
 
@@ -695,10 +828,14 @@ def _dry_run_payload(arguments: argparse.Namespace) -> dict[str, Any]:
         "case": arguments.case,
         "batches": list(batches),
         "baseline_selection": _selection_payload(
-            arguments.baseline_classes, arguments.baseline_fock_classes
+            arguments.baseline_classes,
+            arguments.baseline_fock_classes,
+            _argument_environment_overrides(arguments, "baseline"),
         ),
         "candidate_selection": _selection_payload(
-            arguments.candidate_classes, arguments.candidate_fock_classes
+            arguments.candidate_classes,
+            arguments.candidate_fock_classes,
+            _argument_environment_overrides(arguments, "candidate"),
         ),
         "measurement_order": list(
             interleaved_selection_order(arguments.repeats, arguments.order)
@@ -736,6 +873,20 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--baseline-fock-classes", type=_class_list)
     parser.add_argument("--candidate-fock-classes", type=_class_list)
+    parser.add_argument(
+        "--baseline-env",
+        action="append",
+        default=[],
+        metavar="NAME=VALUE",
+        help="temporarily set a runtime environment variable for baseline samples",
+    )
+    parser.add_argument(
+        "--candidate-env",
+        action="append",
+        default=[],
+        metavar="NAME=VALUE",
+        help="temporarily set a runtime environment variable for candidate samples",
+    )
     parser.add_argument(
         "--order",
         choices=("abba", "ab"),
@@ -793,6 +944,15 @@ def _validate_arguments(
     ):
         if getattr(arguments, name) <= 0.0:
             parser.error(f"--{name.replace('_', '-')} must be positive")
+    try:
+        arguments.baseline_environment_overrides = _parse_environment_overrides(
+            getattr(arguments, "baseline_env", ())
+        )
+        arguments.candidate_environment_overrides = _parse_environment_overrides(
+            getattr(arguments, "candidate_env", ())
+        )
+    except ValueError as error:
+        parser.error(str(error))
 
 
 def main() -> None:
@@ -830,10 +990,14 @@ def main() -> None:
         "protocol": "fixed_dm0_interleaved_ab",
         "case": arguments.case,
         "baseline_selection": _selection_payload(
-            arguments.baseline_classes, arguments.baseline_fock_classes
+            arguments.baseline_classes,
+            arguments.baseline_fock_classes,
+            arguments.baseline_environment_overrides,
         ),
         "candidate_selection": _selection_payload(
-            arguments.candidate_classes, arguments.candidate_fock_classes
+            arguments.candidate_classes,
+            arguments.candidate_fock_classes,
+            arguments.candidate_environment_overrides,
         ),
         "settings": {
             "warmups": arguments.warmups,
@@ -890,6 +1054,10 @@ def main() -> None:
                 cp,
                 union_classes,
                 fock_classes=union_fock_classes,
+                # Prime with the candidate runtime too: a candidate-only
+                # dispatch path may allocate a larger task arena than the
+                # baseline even when both sides share the same shell union.
+                environment_overrides=arguments.candidate_environment_overrides,
             )
             prepared.clear_warm_starts()
             capacity_payload = {
@@ -900,6 +1068,9 @@ def main() -> None:
                     None
                     if union_fock_classes is None
                     else list(union_fock_classes)
+                ),
+                "environment_overrides": dict(
+                    arguments.candidate_environment_overrides
                 ),
                 **_result_payload(capacity_prime),
             }
@@ -913,6 +1084,12 @@ def main() -> None:
                 warmups=arguments.warmups,
                 baseline_fock_classes=arguments.baseline_fock_classes,
                 candidate_fock_classes=arguments.candidate_fock_classes,
+                baseline_environment_overrides=(
+                    arguments.baseline_environment_overrides
+                ),
+                candidate_environment_overrides=(
+                    arguments.candidate_environment_overrides
+                ),
                 maximum_energy_error=arguments.maximum_energy_error,
                 maximum_force_error=arguments.maximum_force_error,
                 minimum_speedup=arguments.minimum_speedup,
