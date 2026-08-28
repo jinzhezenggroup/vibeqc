@@ -179,7 +179,8 @@ def test_existing_production_rows_default_to_subset_wick():
         selection.spec.name: selection.recurrence for selection in selections
     }
     assert all(
-        recurrences[name] == "rys4" for name in ("dppp", "dpdp", "dpds")
+        recurrences[name] == "rys4"
+        for name in ("dppp", "dpdp", "dpds", "ddpp", "ddps", "ddds")
     )
     assert all(
         recurrences[name] == "rys3"
@@ -193,6 +194,9 @@ def test_existing_production_rows_default_to_subset_wick():
             "dppp",
             "dpdp",
             "dpds",
+            "ddpp",
+            "ddps",
+            "ddds",
             "dpps",
             "dpss",
             "dsps",
@@ -312,6 +316,9 @@ def test_production_rys3_uniform_force_retains_component_fock(
     (
         ("dpdp", "component_lanes", 352, "tiled_components", 64),
         ("dpds", "subgroup_tasks", 256, "component_lanes", 128),
+        ("ddpp", "component_lanes", 352, "tiled_components", 64),
+        ("ddps", "subgroup_tasks", 256, "component_lanes", 128),
+        ("ddds", "component_lanes", 224, "tiled_components", 64),
     ),
 )
 def test_production_rys4_force_retains_explicit_fock_schedule(

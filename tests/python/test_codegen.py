@@ -638,7 +638,9 @@ def test_ppps_rys_recurrence_matches_every_symbolic_component():
                 )
 
 
-@pytest.mark.parametrize("name", ("dppp", "dpdp", "dpds"))
+@pytest.mark.parametrize(
+    "name", ("dppp", "dpdp", "dpds", "ddpp", "ddps", "ddds")
+)
 def test_cooperative_rys4_recurrence_matches_every_symbolic_component(
     name: str,
 ):
@@ -1858,6 +1860,30 @@ def test_ddps_fused_cuda_generates_order_four_double_matchings():
     assert "Dual3" not in source
 
 
+def test_rys4_component_lanes_raise_a_second_center_d_shell():
+    """Generate the exact b=3 HRR state needed by a d-center derivative."""
+
+    schedule = ScheduleIR(
+        kind=ScheduleKind.COMPONENT_LANES,
+        block_threads=128,
+        component_tile=DDPS_SPEC.component_count,
+        tasks_per_warp=1,
+        shared_coulomb=True,
+        minimum_blocks_per_sm=1,
+    )
+    plan = build_fused_shell_plan(
+        DDPS_SPEC,
+        schedule=schedule,
+        recurrence="rys4",
+    )
+    source = emit_shell_class_fused_cuda(DDPS_SPEC, plan)
+    assert "if (b == 2U)" in source
+    assert "trr, a + 3U, c, d, cd" in source
+    assert "3.0 * ab * raised_twice" in source
+    assert "__noinline__ void\ngenerated_ddps_rys4_component_lane_task" in source
+    assert "generated_ddps_shell_class_force_rhf_kernel" in source
+
+
 def test_psps_weighted_cuda_uses_one_thread_per_complete_shell_task():
     """Keep low-order work dense instead of assigning three lanes per block."""
 
@@ -2099,7 +2125,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     header = emit_registry_header(selections)
     assert '{"dppp", 12U, 5U, 256U, 3U, 162U}' in header
     assert '{"dpds", 13U, 5U, 256U, 3U, 108U}' in header
-    assert '{"ddps", 16U, 5U, 128U, 3U, 108U}' in header
+    assert '{"ddps", 16U, 5U, 256U, 3U, 108U}' in header
     assert '{"ppps", 4U, 3U, 32U, 3U, 27U}' in header
     assert '{"dsps", 7U, 3U, 32U, 3U, 18U}' in header
     assert '{"dpdp", 14U, 6U, 352U, 3U, 324U}' in header
@@ -2107,8 +2133,8 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     assert '{"dpss", 10U, 3U, 32U, 2U, 18U}' in header
     assert '{"dsds", 9U, 4U, 64U, 3U, 36U}' in header
     assert '{"ddss", 15U, 4U, 64U, 3U, 36U}' in header
-    assert '{"ddpp", 17U, 6U, 64U, 3U, 64U}' in header
-    assert '{"ddds", 18U, 6U, 64U, 3U, 64U}' in header
+    assert '{"ddpp", 17U, 6U, 352U, 3U, 324U}' in header
+    assert '{"ddds", 18U, 6U, 224U, 3U, 216U}' in header
     assert '{"dspp", 8U, 4U, 256U, 3U, 54U}' in header
     assert '{"dpps", 11U, 4U, 256U, 3U, 54U}' in header
     assert '{"pppp", 5U, 4U, 256U, 3U, 81U}' in header
@@ -2725,6 +2751,54 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
             (254, 112, 36872),
             (254, 112, 36872),
         ),
+        (
+            "ddpp",
+            ScheduleIR(
+                kind=ScheduleKind.COMPONENT_LANES,
+                block_threads=352,
+                component_tile=324,
+                tasks_per_warp=1,
+                shared_coulomb=True,
+                pair_orientation=PairOrientation.SWAPPED,
+                pair_storage=PairStorage.RECOMPUTED,
+                unroll_pair_terms=False,
+                minimum_blocks_per_sm=1,
+            ),
+            (168, 192, 1312),
+            (167, 192, 1320),
+        ),
+        (
+            "ddps",
+            ScheduleIR(
+                kind=ScheduleKind.SUBGROUP_TASKS,
+                block_threads=256,
+                component_tile=108,
+                tasks_per_warp=4,
+                shared_coulomb=True,
+                pair_orientation=PairOrientation.CANONICAL,
+                pair_storage=PairStorage.MATERIALIZED,
+                unroll_pair_terms=True,
+                minimum_blocks_per_sm=1,
+            ),
+            (254, 112, 36872),
+            (254, 112, 36872),
+        ),
+        (
+            "ddds",
+            ScheduleIR(
+                kind=ScheduleKind.COMPONENT_LANES,
+                block_threads=224,
+                component_tile=216,
+                tasks_per_warp=1,
+                shared_coulomb=True,
+                pair_orientation=PairOrientation.SWAPPED,
+                pair_storage=PairStorage.RECOMPUTED,
+                unroll_pair_terms=False,
+                minimum_blocks_per_sm=1,
+            ),
+            (254, 192, 1024),
+            (254, 192, 1032),
+        ),
     ),
 )
 def test_batched_rys4_hot_classes_compile_without_spills_when_nvcc_is_configured(
@@ -2796,6 +2870,16 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
                     persistent_limit
                 ),
             },
+        )
+        helper_records = re.findall(
+            r"\d+ bytes stack frame, (\d+) bytes spill stores, "
+            r"(\d+) bytes spill loads",
+            output,
+        )
+        assert helper_records
+        assert all(
+            int(spill_stores) == 0 and int(spill_loads) == 0
+            for spill_stores, spill_loads in helper_records
         )
 
 
