@@ -2077,11 +2077,10 @@ def _emit_rys_component_lane_force_consumer_cuda(
         raise ValueError(
             "cooperative fixed-root Rys requires one lane per component"
         )
-    if max(spec.angular) > 2 or spec.angular[1] > 1 or spec.angular[3] > 1:
+    if max(spec.angular) > 2 or spec.angular[3] > 1:
         raise ValueError(
             "runtime-indexed fixed-root lowering currently supports s/p/d "
-            "shells with at most p angular momentum on the second and "
-            "fourth centers"
+            "shells with at most p angular momentum on the fourth center"
         )
 
     task_component_setup = _generic_task_component_setup(spec)
@@ -2110,6 +2109,13 @@ def _emit_rys_component_lane_force_consumer_cuda(
     component_axis_counts = tuple(
         tuple(axis_count(center, axis) for axis in range(3))
         for center in range(4)
+    )
+    # A raised derivative on a second-center d shell expands the HRR task
+    # enough that inlining it into the persistent queue keeps queue state live
+    # across the whole recurrence. Keep that new path behind one device-call
+    # boundary; existing p-second-center production kernels remain unchanged.
+    task_qualifier = (
+        "__noinline__" if spec.angular[1] == 2 else "__forceinline__"
     )
     kernel_qualifier = (
         f"__launch_bounds__({plan.schedule.block_threads}, "
@@ -2178,7 +2184,16 @@ __device__ __forceinline__ double generated_dppp_{symbol_tag}_state(
   if (b == 1U) return raised - ab * base;
   const double raised_twice = generated_dppp_{symbol_tag}_ket_hrr(
       trr, a + 2U, c, d, cd);
-  return raised_twice - 2.0 * ab * raised + ab * ab * base;
+  if (b == 2U) {{
+    return raised_twice - 2.0 * ab * raised + ab * ab * base;
+  }}
+  // A d shell on the second center needs b=3 only for its raised first
+  // derivative. The exact shell bound keeps a+3 inside the addressed TRR
+  // table without introducing a runtime HRR loop.
+  const double raised_thrice = generated_dppp_{symbol_tag}_ket_hrr(
+      trr, a + 3U, c, d, cd);
+  return raised_thrice - 3.0 * ab * raised_twice +
+      3.0 * ab * ab * raised - ab * ab * ab * base;
 }}
 
 /**
@@ -2247,7 +2262,7 @@ generated_dppp_{symbol_tag}_axis(
 }}
 
 template <bool Unrestricted>
-__device__ __forceinline__ void
+__device__ {task_qualifier} void
 generated_dppp_{symbol_tag}_component_lane_task(
     const GeneratedDpppShellTask* tasks,
     const GeneratedDpppPrimitivePairData* primitive_pairs,

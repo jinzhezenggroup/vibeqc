@@ -425,6 +425,42 @@ and force errors are `1.46e-11 Eh` and `3.15e-8 Eh/bohr`; the 96- and 192-AO
 checks improve by 3.50% and 5.15%. Complete evidence is retained in the
 [batched DPDP/DPDS Rys4 artifact](../benchmarks/results/rtx5090-dcff605-issue-41-dpdp-dpds-rys4.json).
 
+### Batched DDPP, DDPS, and DDDS Rys4 promotion
+
+The next batch generalized the runtime-indexed Rys component worker from a
+`p` to a `d` shell on the second center. A raised first derivative needs the
+exact third-order HRR state, so the generator now emits the bounded cubic HRR
+formula while retaining the existing addressed TRR table. The larger task is
+kept behind a device-call boundary only for second-center `d` shells; this
+removed the final 16 B persistent spill from DDPP without changing the earlier
+DPPP/DPDP/DPDS code shape.
+
+PTXAS and reduced 2048-task isolated gates screened all three classes before
+the shared production build. DDPP selects a 352-thread component-lane worker
+and improves from 535.169800 ms to 122.601616 ms (`4.365x`). DDPS selects the
+same 32-task/eight-component-warp geometry as DPDS and improves from
+45.304180 ms to 8.872075 ms (`5.106x`); its safe component-lane alternative
+reached only 40.866753 ms. DDDS selects a 224-thread component-lane worker and
+improves from 358.775848 ms to 76.304947 ms (`4.702x`). Maximum isolated force
+differences remain below `4.44e-12 Eh/bohr`.
+
+The selected DDPP kernels use at most 168 registers, a 192 B stack,
+1,312--1,320 B shared memory, and no spills. DDPS uses 254 registers, a 112 B
+stack, 36,872 B shared memory, and no spills. DDDS uses 254 registers, a 192 B
+stack, 1,024--1,032 B shared memory, and no spills. Uniform-warp DDPP and DDDS
+were rejected before endpoint testing: DDPP generated roughly 9.3/10.0 KiB of
+helper spill stores/loads, while DDDS still spilled roughly 0.46/0.60 KiB.
+
+In the three-replay 384-AO profile, DDPP falls from 118.711 ms to 30.322 ms,
+DDPS from 47.369 ms to 15.490 ms, and DDDS from 44.560 ms to 11.027 ms. They
+jointly save 153.801 ms, while total two-electron force device time falls from
+1137.411 ms to 983.954 ms. The five-repeat endpoint improves from 2.565502 s
+to 2.411606 s; GPU4PySCF measures 2.144806 s, leaving a `1.124x` ratio.
+Maximum energy and force errors are `1.64e-11 Eh` and
+`3.15e-8 Eh/bohr`. The 96- and 192-AO checks improve by 13.55% and 7.38%.
+Complete evidence is retained in the
+[batched DDPP/DDPS/DDDS Rys4 artifact](../benchmarks/results/rtx5090-541acc3-issue-41-ddpp-ddps-ddds-rys4.json).
+
 ## Architecture autotuning
 
 `tools/vibeqc_codegen/autotune.py` emits every CUDA-supported schedule variant
