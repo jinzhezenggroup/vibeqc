@@ -17,7 +17,9 @@ void require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
 
-vibeqc::core::System hydrogen_molecular_ion(double distance) {
+vibeqc::core::System hydrogen_system(double distance,
+                                     int charge,
+                                     int multiplicity) {
   vibeqc::core::System system;
   system.atoms = {
       {1, {0.0, 0.0, -0.5 * distance}},
@@ -31,13 +33,24 @@ vibeqc::core::System hydrogen_molecular_ion(double distance) {
               {0.62391373, 0.53532814},
               {0.16885540, 0.44463454}}},
   };
-  system.charge = 1;
-  system.multiplicity = 2;
+  system.charge = charge;
+  system.multiplicity = multiplicity;
   std::string detail;
   require(vibeqc::molecule::validate_and_normalize(system, detail) ==
               VIBEQC_STATUS_SUCCESS,
-          "H2+ UHF system normalization failed");
+          "H2 UHF system normalization failed");
   return system;
+}
+
+vibeqc::core::System hydrogen_molecular_ion(double distance) {
+  return hydrogen_system(distance, 1, 2);
+}
+
+vibeqc::core::System hydrogen_molecular_singlet(double distance) {
+  // A neutral H2 UHF state has one occupied orbital in each spin channel.
+  // It is the smallest public workload that can expose rejection of either
+  // alpha or beta external-density trace independently.
+  return hydrogen_system(distance, 0, 1);
 }
 
 vibeqc::scf::ScfResult evaluate(double distance,
@@ -47,6 +60,47 @@ vibeqc::scf::ScfResult evaluate(double distance,
   options.energy_tolerance = 1.0e-12;
   options.density_tolerance = 1.0e-10;
   return vibeqc::scf::run_uhf(hydrogen_molecular_ion(distance), options, warm);
+}
+
+void require_cpu_rejects_invalid_spin_trace(
+    const vibeqc::core::System& system,
+    const vibeqc::scf::ScfOptions& options,
+    const std::vector<double>& density,
+    std::size_t spin_offset,
+    const char* message) {
+  const std::size_t matrix_size = density.size() / 2;
+  std::vector<double> invalid = density;
+  for (std::size_t element = 0; element < matrix_size; ++element) {
+    invalid[spin_offset + element] = -invalid[spin_offset + element];
+  }
+  try {
+    (void)vibeqc::scf::run_uhf(system, options, &invalid);
+  } catch (const std::invalid_argument&) {
+    return;
+  }
+  require(false, message);
+}
+
+void verify_cpu_external_spin_trace_validation() {
+  const vibeqc::core::System system = hydrogen_molecular_singlet(1.4);
+  vibeqc::scf::ScfOptions options;
+  options.max_iterations = 100;
+  options.energy_tolerance = 1.0e-12;
+  options.density_tolerance = 1.0e-10;
+  const vibeqc::scf::ScfResult cold =
+      vibeqc::scf::run_uhf(system, options);
+  require(cold.converged && cold.density.size() == 8,
+          "CPU neutral-H2 UHF trace fixture did not converge");
+  const vibeqc::scf::ScfResult warm =
+      vibeqc::scf::run_uhf(system, options, &cold.density);
+  require(warm.converged && warm.initial_density_used,
+          "CPU neutral-H2 UHF valid external density was rejected");
+  require_cpu_rejects_invalid_spin_trace(
+      system, options, cold.density, 0,
+      "CPU accepted an invalid alpha-spin electron trace");
+  require_cpu_rejects_invalid_spin_trace(
+      system, options, cold.density, cold.density.size() / 2,
+      "CPU accepted an invalid beta-spin electron trace");
 }
 
 #if VIBEQC_HAS_CUDA
@@ -81,6 +135,61 @@ vibeqc::core::System large_ao_atom(bool unrestricted) {
               VIBEQC_STATUS_SUCCESS,
           "large-AO atomic test system normalization failed");
   return system;
+}
+
+void verify_cuda_external_spin_trace_validation() {
+  const vibeqc::core::System system = hydrogen_molecular_singlet(1.4);
+  vibeqc::scf::ScfOptions options;
+  options.max_iterations = 100;
+  options.energy_tolerance = 1.0e-12;
+  options.density_tolerance = 1.0e-10;
+  options.screening_tolerance = 1.0e-14;
+
+  vibeqc::scf::CudaRhfBucketPlan* plan = nullptr;
+  const std::vector<vibeqc::core::System> systems{system};
+  const std::vector<const std::vector<double>*> cold_input{nullptr};
+  const auto run_cached = [&](
+      const std::vector<const std::vector<double>*>& density) {
+    return vibeqc::scf::run_uhf_cuda_bucket_cached(
+        &plan, systems, options, density, 0, false);
+  };
+
+  const std::vector<vibeqc::scf::RhfBucketItem> cold =
+      run_cached(cold_input);
+  require(cold.size() == 1 && cold[0].status == VIBEQC_STATUS_SUCCESS &&
+              cold[0].scf.converged && cold[0].scf.density.size() == 8,
+          "CUDA neutral-H2 UHF trace fixture did not converge");
+  const std::vector<double> valid_density = cold[0].scf.density;
+  const std::vector<const std::vector<double>*> valid_input{&valid_density};
+  const std::vector<vibeqc::scf::RhfBucketItem> warm =
+      run_cached(valid_input);
+  require(warm.size() == 1 && warm[0].status == VIBEQC_STATUS_SUCCESS &&
+              warm[0].scf.converged && warm[0].scf.initial_density_used,
+          "CUDA neutral-H2 UHF valid external density was rejected");
+
+  const std::size_t matrix_size = valid_density.size() / 2;
+  std::vector<double> invalid_alpha = valid_density;
+  for (std::size_t element = 0; element < matrix_size; ++element) {
+    invalid_alpha[element] = -invalid_alpha[element];
+  }
+  const std::vector<const std::vector<double>*> alpha_input{&invalid_alpha};
+  const std::vector<vibeqc::scf::RhfBucketItem> alpha_result =
+      run_cached(alpha_input);
+  require(alpha_result.size() == 1 &&
+              alpha_result[0].status == VIBEQC_STATUS_INVALID_ARGUMENT,
+          "CUDA accepted an invalid alpha-spin electron trace");
+
+  std::vector<double> invalid_beta = valid_density;
+  for (std::size_t element = 0; element < matrix_size; ++element) {
+    invalid_beta[matrix_size + element] = -invalid_beta[matrix_size + element];
+  }
+  const std::vector<const std::vector<double>*> beta_input{&invalid_beta};
+  const std::vector<vibeqc::scf::RhfBucketItem> beta_result =
+      run_cached(beta_input);
+  require(beta_result.size() == 1 &&
+              beta_result[0].status == VIBEQC_STATUS_INVALID_ARGUMENT,
+          "CUDA accepted an invalid beta-spin electron trace");
+  vibeqc::scf::destroy_rhf_cuda_bucket_plan(plan);
 }
 
 void verify_cached_cuda_warm_density_sequence(bool unrestricted) {
@@ -247,6 +356,7 @@ int main() {
             "UHF packed spin density was not accepted as a warm start");
     require(std::abs(warm.energy - center.energy) < 2.0e-12,
             "warm UHF energy changed the converged state");
+    verify_cpu_external_spin_trace_validation();
 
 #if VIBEQC_HAS_CUDA
     if (cuda_device_available()) {
@@ -271,6 +381,7 @@ int main() {
           hydrogen_molecular_ion(1.4), cuda_options, 0, &cuda.density);
       require(cuda_warm.converged && cuda_warm.initial_density_used,
               "CUDA UHF packed spin density was not accepted as a warm start");
+      verify_cuda_external_spin_trace_validation();
       verify_cached_cuda_warm_density_sequence(false);
       verify_cached_cuda_warm_density_sequence(true);
       verify_fleet_fixed_warm_start();
