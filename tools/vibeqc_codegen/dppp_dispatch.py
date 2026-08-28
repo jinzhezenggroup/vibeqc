@@ -2106,7 +2106,9 @@ def _emit_ppps_resident_bra_rys3_force_consumer_cuda(
     )
     weight_code = "\n".join(weight_blocks)
     independent_atomics = []
-    for center in range(3):
+    # The two pp-bra centers are reduced uniformly across each warp below.
+    # Only the task-varying ket center remains an immediate global update.
+    for center in range(2, 3):
         for coordinate in range(3):
             slot = center * 3 + coordinate
             independent_atomics.append(
@@ -2132,6 +2134,22 @@ def _emit_ppps_resident_bra_rys3_force_consumer_cuda(
         )
     force_declarations = "\n".join(
         f"  double force_{slot} = 0.0;" for slot in range(9)
+    )
+    bra_force_reductions = "\n".join(
+        f"    force_{slot} += __shfl_down_sync("
+        f"0xffffffffU, force_{slot}, delta);"
+        for slot in range(6)
+    )
+    bra_force_atomics = "\n".join(
+        f"""    if (force_{slot} != 0.0) {{
+      atomicAdd(
+          context.forces +
+              static_cast<std::size_t>(
+                  context.ket_tasks[resident.ket_begin].atom[{slot // 3}]) * 3U +
+              {slot % 3}U,
+          force_{slot});
+    }}"""
+        for slot in range(6)
     )
     independent_atomic_code = "\n".join(independent_atomics)
     fourth_atomic_code = "\n".join(fourth_atomics)
@@ -2185,18 +2203,22 @@ __device__ __forceinline__ void generated_ppps_resident_force_task(
     unsigned resident_bra_pair_count,
     double (&roots_weights)[6][kGeneratedPppsResidentBlockThreads]) {{
   const unsigned lane = threadIdx.x;
-  for (unsigned local_ket = lane;
-       local_ket < resident.ket_count;
-       local_ket += kGeneratedPppsResidentBlockThreads) {{
+  // Advance in uniform 256-task rounds. Ragged tail lanes still execute the
+  // warp reduction with zero force, keeping the full-warp shuffle mask valid.
+  for (unsigned ket_base = 0U; ket_base < resident.ket_count;
+       ket_base += kGeneratedPppsResidentBlockThreads) {{
+    const unsigned local_ket = ket_base + lane;
+{force_declarations}
+    if (local_ket < resident.ket_count) {{
     const std::size_t task_index =
         static_cast<std::size_t>(resident.ket_begin) + local_ket;
     const GeneratedDpppShellTask& task = context.ket_tasks[task_index];
-    if (task.shell_pair[0] != resident.bra_pair) continue;
+    if (task.shell_pair[0] == resident.bra_pair) {{
 
 {weight_declarations}
   bool any_component = false;
 {weight_code}
-  if (!any_component) continue;
+  if (any_component) {{
   const GeneratedDpppVec3 first = context.atom_positions[task.atom[0]];
   const GeneratedDpppVec3 second = context.atom_positions[task.atom[1]];
   const GeneratedDpppVec3 third = context.atom_positions[task.atom[2]];
@@ -2204,7 +2226,6 @@ __device__ __forceinline__ void generated_ppps_resident_force_task(
       (task.reversed_shell_pair_mask & 1U) != 0U;
   const bool second_pair_reversed =
       (task.reversed_shell_pair_mask & 2U) != 0U;
-{force_declarations}
 
   const std::int64_t second_pair_begin =
       context.primitive_pair_offsets[task.shell_pair[1]];
@@ -2273,8 +2294,19 @@ __device__ __forceinline__ void generated_ppps_resident_force_task(
       }}
     }}
   }}
+  }}
 {independent_atomic_code}
 {fourth_atomic_code}
+    }}
+    }}
+    // Reduce one round's common-bra contribution before the next round can
+    // overwrite the task-local force scalars.
+    for (unsigned delta = 16U; delta != 0U; delta >>= 1U) {{
+{bra_force_reductions}
+    }}
+    if ((lane & 31U) == 0U) {{
+{bra_force_atomics}
+    }}
   }}
 }}
 
