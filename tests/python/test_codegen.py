@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import json
 import math
 import os
@@ -1514,6 +1515,85 @@ def test_dppp_fused_cuda_emits_one_shared_shell_class_schedule():
     assert source.count("boys_values<6>") == 1
     assert "__noinline__" not in source
     assert "generated_dppp_orbit_" not in source
+    density_helper = source[
+        source.index("double generated_dppp_density_coefficient(") :
+        source.index("/** Combine two reusable shell-pair records")
+    ]
+    assert "orbit_scale" in density_helper
+    assert "4.0 * density[offset + ij] * density[offset + kl]" in density_helper
+    assert "for (unsigned permutation" not in density_helper
+
+
+@pytest.mark.parametrize("unrestricted", (False, True))
+def test_closed_density_orbit_matches_unique_permutations(unrestricted: bool):
+    """Prove the closed force coefficient for every AO equality pattern."""
+
+    order = 4
+    alpha = [
+        [float((min(row, column) + 1) * 7 + max(row, column)) for column in range(order)]
+        for row in range(order)
+    ]
+    beta = [
+        [float((min(row, column) + 2) * 11 - max(row, column)) for column in range(order)]
+        for row in range(order)
+    ]
+
+    for i, j, k, l in itertools.product(range(order), repeat=4):
+        permutations = (
+            (i, j, k, l),
+            (j, i, k, l),
+            (i, j, l, k),
+            (j, i, l, k),
+            (k, l, i, j),
+            (l, k, i, j),
+            (k, l, j, i),
+            (l, k, j, i),
+        )
+        old = 0.0
+        seen: set[tuple[int, int, int, int]] = set()
+        for a, b, c, d in permutations:
+            if (a, b, c, d) in seen:
+                continue
+            seen.add((a, b, c, d))
+            if unrestricted:
+                old += 0.5 * (alpha[a][b] + beta[a][b]) * (
+                    alpha[c][d] + beta[c][d]
+                )
+                old -= 0.5 * (
+                    alpha[a][c] * alpha[b][d]
+                    + beta[a][c] * beta[b][d]
+                )
+            else:
+                old += (
+                    0.5 * alpha[a][b] * alpha[c][d]
+                    - 0.25 * alpha[a][c] * alpha[b][d]
+                )
+
+        orbit_scale = 0.5 if i == j else 1.0
+        if k == l:
+            orbit_scale *= 0.5
+        if (i == k and j == l) or (i == l and j == k):
+            orbit_scale *= 0.5
+        if unrestricted:
+            closed = orbit_scale * (
+                4.0
+                * (alpha[i][j] + beta[i][j])
+                * (alpha[k][l] + beta[k][l])
+                - 2.0
+                * (
+                    alpha[i][k] * alpha[j][l]
+                    + alpha[i][l] * alpha[j][k]
+                    + beta[i][k] * beta[j][l]
+                    + beta[i][l] * beta[j][k]
+                )
+            )
+        else:
+            closed = orbit_scale * (
+                4.0 * alpha[i][j] * alpha[k][l]
+                - alpha[i][k] * alpha[j][l]
+                - alpha[i][l] * alpha[j][k]
+            )
+        assert closed == pytest.approx(old, abs=1.0e-12)
 
 
 def test_equal_shell_pair_component_domain_matches_active_tile_triangle():
@@ -1659,6 +1739,12 @@ def test_psps_weighted_cuda_uses_one_thread_per_complete_shell_task():
     assert "double component_weight[9]" in source
     assert "boys_values<3>" in source
     assert "generated_psps_density_coefficient<Unrestricted>" in source
+    density_helper = source[
+        source.index("double generated_psps_density_coefficient(") :
+        source.index("generated_psps_contract_weighted_coulomb")
+    ]
+    assert "orbit_scale" in density_helper
+    assert "for (unsigned permutation" not in density_helper
     assert "generated_psps_shell_class_force_rhf_persistent_kernel" in source
     assert "generated_psps_shell_class_force_uhf_persistent_kernel" in source
     assert "__noinline__" not in source

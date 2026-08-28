@@ -171,6 +171,23 @@ improvement rather than a claim that the large-system gap is closed. Raw
 evidence is retained in the [accepted endpoint](../benchmarks/results/rtx5090-259c256-384ao-dpps-dsps-rys3.json)
 and [candidate kernel summary](../benchmarks/results/rtx5090-259c256-384ao-cooperative-rys3-kernel-summary_cuda_gpu_kern_sum.csv).
 
+The force-only density contraction now algebraically collapses the generic
+eight-permutation orbit before entering each generated recurrence. Direct SCF
+symmetrizes every accepted external or internally generated density, so the
+orbit is exactly one Coulomb product and two exchange products, multiplied by
+the diagonal and pair-equality orbit factors. This preserves the former
+unique-permutation semantics while removing its nested comparison loop from
+every Cartesian component. Exhaustive AO-index equality patterns agree with
+the old RHF/UHF expressions to roundoff, and the allocated CUDA suites cover
+the resulting production kernels. In the 384-AO fixed-`dm0` profile, `ppps`,
+`psps`, `dppp`, `dpps`, and `dsps` move from
+182.462/141.303/139.335/124.349/129.825 ms to
+178.344/140.030/137.922/122.614/127.782 ms. The matching three-repeat endpoint
+median is 3.258 s versus the preceding 3.269 s observation, with the same
+one-iteration branch and existing energy/force limits. This is a small
+instruction-path improvement; it does not close the remaining direct-force
+architecture gap.
+
 ## Architecture autotuning
 
 `tools/vibeqc_codegen/autotune.py` emits every CUDA-supported schedule variant

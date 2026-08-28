@@ -4403,35 +4403,46 @@ __device__ __forceinline__ double generated_dppp_density_coefficient(
     const double* density) {{
   const std::size_t n = static_cast<std::size_t>(task.matrix_order);
   const std::size_t matrix_size = n * n;
-  double coefficient = 0.0;
-#pragma unroll
-  for (unsigned permutation = 0; permutation < 8U; ++permutation) {{
-    std::size_t a = 0, b = 0, c = 0, d = 0;
-    generated_dppp_eri_permutation(permutation, i, j, k, l, a, b, c, d);
-    if (!generated_dppp_unique_permutation(
-            permutation, i, j, k, l, a, b, c, d)) continue;
-    const std::size_t ab = generated_dppp_matrix_index(a, b, n);
-    const std::size_t ac = generated_dppp_matrix_index(a, c, n);
-    const std::size_t cd = generated_dppp_matrix_index(c, d, n);
-    const std::size_t bd = generated_dppp_matrix_index(b, d, n);
-    if constexpr (Unrestricted) {{
-      const double total_ab = density[task.spin_offset + ab] +
-          density[task.spin_offset + matrix_size + ab];
-      const double total_cd = density[task.spin_offset + cd] +
-          density[task.spin_offset + matrix_size + cd];
-      coefficient += 0.5 * total_ab * total_cd;
-      coefficient -= 0.5 *
-          (density[task.spin_offset + ac] * density[task.spin_offset + bd] +
-           density[task.spin_offset + matrix_size + ac] *
-               density[task.spin_offset + matrix_size + bd]);
-    }} else {{
-      coefficient += 0.5 * density[task.density_offset + ab] *
-          density[task.density_offset + cd] -
-          0.25 * density[task.density_offset + ac] *
-          density[task.density_offset + bd];
-    }}
+  const std::size_t ij = generated_dppp_matrix_index(i, j, n);
+  const std::size_t kl = generated_dppp_matrix_index(k, l, n);
+  const std::size_t ik = generated_dppp_matrix_index(i, k, n);
+  const std::size_t jl = generated_dppp_matrix_index(j, l, n);
+  const std::size_t il = generated_dppp_matrix_index(i, l, n);
+  const std::size_t jk = generated_dppp_matrix_index(j, k, n);
+
+  // SCF densities are symmetrized before entering direct J/K.  Under that
+  // invariant the eight ERI permutations collapse exactly to two exchange
+  // products and one Coulomb product.  Degenerate AO pairs reduce the orbit
+  // by one half each; retaining these factors preserves the old unique-
+  // permutation semantics without executing its nested comparison loop for
+  // every Cartesian component.
+  double orbit_scale = i == j ? 0.5 : 1.0;
+  if (k == l) orbit_scale *= 0.5;
+  if ((i == k && j == l) || (i == l && j == k)) orbit_scale *= 0.5;
+  if constexpr (Unrestricted) {{
+    const double alpha_ij = density[task.spin_offset + ij];
+    const double alpha_kl = density[task.spin_offset + kl];
+    const double beta_ij =
+        density[task.spin_offset + matrix_size + ij];
+    const double beta_kl =
+        density[task.spin_offset + matrix_size + kl];
+    const double coulomb =
+        4.0 * (alpha_ij + beta_ij) * (alpha_kl + beta_kl);
+    const double exchange = 2.0 * (
+        density[task.spin_offset + ik] * density[task.spin_offset + jl] +
+        density[task.spin_offset + il] * density[task.spin_offset + jk] +
+        density[task.spin_offset + matrix_size + ik] *
+            density[task.spin_offset + matrix_size + jl] +
+        density[task.spin_offset + matrix_size + il] *
+            density[task.spin_offset + matrix_size + jk]);
+    return orbit_scale * (coulomb - exchange);
+  }} else {{
+    const std::size_t offset = task.density_offset;
+    return orbit_scale * (
+        4.0 * density[offset + ij] * density[offset + kl] -
+        density[offset + ik] * density[offset + jl] -
+        density[offset + il] * density[offset + jk]);
   }}
-  return coefficient;
 }}
 
 /** Combine two reusable shell-pair records into one primitive quartet. */
