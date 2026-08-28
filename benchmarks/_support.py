@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import shutil
 import subprocess
 import sys
 from typing import Any, Iterable
@@ -41,6 +42,108 @@ def _distribution_version(names: Iterable[str]) -> str | None:
         except metadata.PackageNotFoundError:
             continue
     return None
+
+
+def _command_output(arguments: tuple[str, ...]) -> str | None:
+    """Return normalized tool output without making metadata collection fatal."""
+
+    try:
+        completed = subprocess.run(
+            arguments,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return None
+    output = completed.stdout.strip() or completed.stderr.strip()
+    return "\n".join(line.rstrip() for line in output.splitlines()) or None
+
+
+def _cuda_tool_path(name: str) -> str | None:
+    """Resolve one CUDA tool from the selected toolkit before consulting PATH."""
+
+    cuda_path = os.environ.get("CUDA_PATH")
+    if cuda_path:
+        candidate = Path(cuda_path) / "bin" / name
+        if candidate.is_file():
+            return str(candidate)
+    return shutil.which(name)
+
+
+def _toolchain_metadata() -> dict[str, Any]:
+    """Record the compilers that make a GPU benchmark reproducible."""
+
+    tools: dict[str, Any] = {}
+    for name in ("nvcc", "ptxas", "cuobjdump"):
+        path = _cuda_tool_path(name)
+        tools[name] = {
+            "path": path,
+            "version": _command_output((path, "--version")) if path else None,
+        }
+    cxx = os.environ.get("CXX") or shutil.which("c++")
+    tools["host_cxx"] = {
+        "path": cxx,
+        "version": _command_output((cxx, "--version")) if cxx else None,
+    }
+    return tools
+
+
+def _visible_nvidia_device(device_id: int) -> str:
+    """Map a process-local CUDA ordinal to the scheduler-visible GPU token."""
+
+    visible = os.environ.get("CUDA_VISIBLE_DEVICES")
+    if visible:
+        devices = tuple(item.strip() for item in visible.split(","))
+        if device_id < len(devices) and devices[device_id]:
+            return devices[device_id]
+    return str(device_id)
+
+
+def _nvidia_smi_state(device_id: int) -> dict[str, Any] | None:
+    """Capture post-benchmark clocks, power, temperature, and performance state."""
+
+    nvidia_smi = shutil.which("nvidia-smi")
+    if nvidia_smi is None:
+        return None
+    fields = (
+        "pstate",
+        "power.draw",
+        "power.limit",
+        "clocks.current.sm",
+        "clocks.current.memory",
+        "temperature.gpu",
+    )
+    output = _command_output(
+        (
+            nvidia_smi,
+            f"--id={_visible_nvidia_device(device_id)}",
+            f"--query-gpu={','.join(fields)}",
+            "--format=csv,noheader,nounits",
+        )
+    )
+    if output is None:
+        return None
+    row = tuple(item.strip() for item in output.splitlines()[0].split(","))
+    if len(row) != len(fields):
+        return None
+
+    def number(value: str) -> float | None:
+        try:
+            return float(value)
+        except ValueError:
+            return None
+
+    return {
+        "performance_state": row[0],
+        "power_draw_watts": number(row[1]),
+        "power_limit_watts": number(row[2]),
+        "sm_clock_mhz": number(row[3]),
+        "memory_clock_mhz": number(row[4]),
+        "temperature_celsius": number(row[5]),
+        "sampling_point": "after benchmark measurements",
+    }
 
 
 def _source_status_payload(
@@ -117,6 +220,7 @@ def environment_metadata(
             "vibeqc_library": os.environ.get("VIBEQC_LIBRARY"),
             "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
         },
+        "toolchain": _toolchain_metadata(),
         "accelerator": accelerator,
     }
 
@@ -142,6 +246,7 @@ def cuda_accelerator_metadata(cupy_module: Any) -> dict[str, Any]:
         "clock_rate_khz": properties.get("clockRate"),
         "driver_version": cupy_module.cuda.runtime.driverGetVersion(),
         "runtime_version": cupy_module.cuda.runtime.runtimeGetVersion(),
+        "nvidia_smi": _nvidia_smi_state(device_id),
     }
 
 

@@ -131,6 +131,76 @@ def test_benchmark_source_status_ignores_only_pending_result_json():
     }
 
 
+def test_benchmark_toolchain_metadata_prefers_cuda_path(monkeypatch, tmp_path):
+    """Tie CUDA resource and timing artifacts to the selected toolkit."""
+
+    support = _benchmark_support_module()
+    cuda_bin = tmp_path / "bin"
+    cuda_bin.mkdir()
+    for name in ("nvcc", "ptxas", "cuobjdump"):
+        (cuda_bin / name).write_text("", encoding="utf-8")
+    monkeypatch.setenv("CUDA_PATH", str(tmp_path))
+    monkeypatch.setattr(support.shutil, "which", lambda name: "/usr/bin/c++")
+    monkeypatch.setattr(
+        support,
+        "_command_output",
+        lambda arguments: f"version:{Path(arguments[0]).name}",
+    )
+
+    metadata = support._toolchain_metadata()
+    assert metadata["nvcc"] == {
+        "path": str(cuda_bin / "nvcc"),
+        "version": "version:nvcc",
+    }
+    assert metadata["ptxas"]["path"] == str(cuda_bin / "ptxas")
+    assert metadata["cuobjdump"]["path"] == str(cuda_bin / "cuobjdump")
+    assert metadata["host_cxx"]["version"] == "version:c++"
+
+
+def test_cuda_metadata_records_scheduler_visible_power_state(monkeypatch):
+    """Preserve the post-run GPU state required by the issue-41 protocol."""
+
+    support = _benchmark_support_module()
+    monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "3,5")
+    monkeypatch.setattr(support.shutil, "which", lambda name: "/usr/bin/nvidia-smi")
+    observed = []
+
+    def command_output(arguments):
+        observed.append(arguments)
+        return "P2, 421.5, 575.0, 2407, 1750, 61"
+
+    monkeypatch.setattr(support, "_command_output", command_output)
+    cupy = SimpleNamespace(
+        cuda=SimpleNamespace(
+            Device=lambda: SimpleNamespace(id=1),
+            runtime=SimpleNamespace(
+                getDeviceProperties=lambda device: {
+                    "name": b"RTX 5090\x00",
+                    "major": 12,
+                    "minor": 0,
+                    "totalGlobalMem": 32,
+                    "multiProcessorCount": 170,
+                    "clockRate": 2407000,
+                },
+                driverGetVersion=lambda: 13000,
+                runtimeGetVersion=lambda: 12090,
+            ),
+        )
+    )
+
+    metadata = support.cuda_accelerator_metadata(cupy)
+    assert "--id=5" in observed[0]
+    assert metadata["nvidia_smi"] == {
+        "performance_state": "P2",
+        "power_draw_watts": 421.5,
+        "power_limit_watts": 575.0,
+        "sm_clock_mhz": 2407.0,
+        "memory_clock_mhz": 1750.0,
+        "temperature_celsius": 61.0,
+        "sampling_point": "after benchmark measurements",
+    }
+
+
 def test_gpu_comparison_help_does_not_require_an_allocated_device():
     """Keep benchmark discovery usable on scheduler login nodes."""
 

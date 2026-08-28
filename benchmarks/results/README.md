@@ -31,6 +31,14 @@ engines and selects the shared one-iteration warm branch. VibeQC reaches
 passes the issue's `<=1.05x` gate. The maximum paired differences are
 `1.82e-11 Eh` in energy and `3.15e-08 Eh/bohr` in force.
 
+A clean completion-audit replay from metadata-only commit `2335e71` leaves the
+native implementation unchanged and independently passes at `2.236320 s`
+versus `2.144024 s`, or `1.043048x`. Its
+[`raw artifact`](rtx5090-2335e71-issue-41-completion-evidence.json) publishes
+all five ABBA samples per engine, per-replay iterations and final residuals,
+the fixed engine-local warm-start policy, CUDA and host compiler versions, and
+the post-measurement GPU clocks, power, temperature, and performance state.
+
 | Result | Issue baseline | Final | Change |
 | --- | ---: | ---: | ---: |
 | VibeQC endpoint | 3.181492 s | 2.234283 s | -29.77% |
