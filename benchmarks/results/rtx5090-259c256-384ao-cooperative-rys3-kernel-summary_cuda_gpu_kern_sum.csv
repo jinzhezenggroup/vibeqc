@@ -1,0 +1,242 @@
+Time (%),Total Time (ns),Instances,Avg (ns),Med (ns),Min (ns),Max (ns),StdDev (ns),Name
+4.7,182461820,1,182461820.0,182461820.0,182461820,182461820,0.0,generated_sm120_ppps_resident_bra_force_rhf_kernel
+3.9,150129630,50,3002592.6,2418766.5,178177,11910407,2523804.2,"rys_k_0000(RysIntEnvVars, JKMatrix, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, int *)"
+3.8,148009971,72,2055694.0,1566697.5,121952,6944905,1637759.6,"rys_k_1000(RysIntEnvVars, JKMatrix, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, int *)"
+3.7,141303273,1,141303273.0,141303273.0,141303273,141303273,0.0,generated_sm120_psps_shell_class_force_rhf_persistent_kernel
+3.6,139335068,1,139335068.0,139335068.0,139335068,139335068,0.0,generated_sm120_dppp_shell_class_force_rhf_persistent_kernel
+3.6,137195248,1,137195248.0,137195248.0,137195248,137195248,0.0,"void vibeqc::scf::<unnamed>::two_electron_force_psss_resident_bra_kernel<(bool)0>(vibeqc::scf::<unnamed>::DeviceBatch, const vibeqc::scf::<unnamed>::PsssResidentTask *, const unsigned int *, unsigned long, double, const double *, const vibeqc::scf::<unnamed>::ShellPairDensityBounds *, bool, const double *, const double *, const unsigned char *, double *, unsigned long)"
+3.4,129825220,1,129825220.0,129825220.0,129825220,129825220,0.0,generated_sm120_dsps_shell_class_force_rhf_persistent_kernel
+3.2,124349252,1,124349252.0,124349252.0,124349252,124349252,0.0,generated_sm120_dpps_shell_class_force_rhf_persistent_kernel
+3.1,119010980,4,29752745.0,31670924.5,21865858,33803273,5536892.2,"md_j_2_1(RysIntEnvVars, JKMatrix, MDBoundsInfo, float *, float *)"
+3.1,117616252,1,117616252.0,117616252.0,117616252,117616252,0.0,generated_sm120_ddpp_shell_class_force_rhf_persistent_kernel
+3.0,114090341,1,114090341.0,114090341.0,114090341,114090341,0.0,generated_sm120_dpdp_shell_class_force_rhf_persistent_kernel
+2.8,108331397,18,6018410.9,5128014.5,1186631,14378037,3761189.9,"rys_ejk_ip1_kernel(RysIntEnvVars, JKEnergy, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, int *, double *, int, int)"
+2.6,102041055,1,102041055.0,102041055.0,102041055,102041055,0.0,generated_sm120_pppp_shell_class_force_rhf_persistent_kernel
+2.6,100252148,36,2784781.9,2458190.5,609988,6434662,1383445.1,"rys_ejk_ip1_1000(RysIntEnvVars, JKEnergy, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, double *, int *)"
+2.4,91619873,1,91619873.0,91619873.0,91619873,91619873,0.0,generated_sm120_ppss_shell_class_force_rhf_persistent_kernel
+2.3,88037929,54,1630332.0,1130310.0,148225,5193087,1268465.2,"rys_k_1010(RysIntEnvVars, JKMatrix, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, int *)"
+2.1,81101122,1,81101122.0,81101122.0,81101122,81101122,0.0,generated_sm120_dspp_shell_class_force_rhf_persistent_kernel
+1.9,72340590,1,72340590.0,72340590.0,72340590,72340590,0.0,generated_sm120_dpss_shell_class_force_rhf_persistent_kernel
+1.8,70741924,27,2620071.3,2244461.0,1161607,6080388,1343237.9,"rys_ejk_ip1_1010(RysIntEnvVars, JKEnergy, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, double *, int *)"
+1.7,66051049,1,66051049.0,66051049.0,66051049,66051049,0.0,"void vibeqc::scf::<unnamed>::two_electron_force_quartet_packed_persistent_kernel<(bool)0, (unsigned int)0>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned int *, double, const double *, const double *, const unsigned char *, double *, unsigned long)"
+1.7,63855772,1,63855772.0,63855772.0,63855772,63855772,0.0,generated_sm120_dpds_shell_class_force_rhf_persistent_kernel
+1.6,60608199,15,4040546.6,3058674.0,1194695,10388958,2785271.7,"rys_ejk_ip1_1110(RysIntEnvVars, JKEnergy, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, double *, int *)"
+1.5,59123231,1,59123231.0,59123231.0,59123231,59123231,0.0,generated_sm120_dddp_shell_class_force_rhf_persistent_kernel
+1.5,56659313,25,2266372.5,1575689.0,501603,7179467,1532921.4,"rys_ejk_ip1_0000(RysIntEnvVars, JKEnergy, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, double *, int *)"
+1.5,56349714,12,4695809.5,4034888.5,1230888,9960604,3140150.0,"rys_ejk_ip1_1011(RysIntEnvVars, JKEnergy, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, double *, int *)"
+1.4,52252150,10,5225215.0,3415972.5,310081,21127645,6026615.1,"md_j_1dm_kernel(RysIntEnvVars, JKMatrix, MDBoundsInfo, float *, float *, int, int, int, int, unsigned short *, signed char *)"
+1.3,48677698,4,12169424.5,12508362.5,10097500,13563473,1536639.4,"md_j_2_0(RysIntEnvVars, JKMatrix, MDBoundsInfo, float *, float *)"
+1.3,48380926,36,1343914.6,1082934.5,108865,4314106,1060522.6,"rys_k_1100(RysIntEnvVars, JKMatrix, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, int *)"
+1.2,47786748,1,47786748.0,47786748.0,47786748,47786748,0.0,generated_sm120_ddps_shell_class_force_rhf_persistent_kernel
+1.2,47514075,4,11878518.8,11551989.0,6569895,17840202,5980121.1,"md_j_3_2(RysIntEnvVars, JKMatrix, MDBoundsInfo, float *, float *)"
+1.2,47332505,12,3944375.4,3108802.5,1606249,7795886,1975853.0,"rys_ejk_ip1_2110(RysIntEnvVars, JKEnergy, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, double *, int *)"
+1.2,45207309,1,45207309.0,45207309.0,45207309,45207309,0.0,generated_sm120_ddds_shell_class_force_rhf_persistent_kernel
+1.1,44161062,18,2453392.3,2069228.5,840581,5158238,1416831.1,"rys_ejk_ip1_1100(RysIntEnvVars, JKEnergy, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, double *, int *)"
+1.1,41883384,2,20941692.0,20941692.0,11735813,30147571,13019078.9,"md_j_3_0(RysIntEnvVars, JKMatrix, MDBoundsInfo, float *, float *)"
+1.1,40596338,2,20298169.0,20298169.0,14092340,26503998,8776367.5,"md_j_1_0(RysIntEnvVars, JKMatrix, MDBoundsInfo, float *, float *)"
+1.0,40044590,18,2224699.4,2025516.0,940965,4004312,867016.3,"rys_ejk_ip1_2010(RysIntEnvVars, JKEnergy, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, double *, int *)"
+1.0,39075687,6,6512614.5,6171269.0,3127570,12401961,3357250.7,"rys_ejk_ip1_2111(RysIntEnvVars, JKEnergy, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, double *, int *)"
+1.0,38520965,6,6420160.8,6754072.0,4372890,7048074,1011543.5,"md_j_2_2(RysIntEnvVars, JKMatrix, MDBoundsInfo, float *, float *)"
+1.0,38160419,1,38160419.0,38160419.0,38160419,38160419,0.0,generated_sm120_dsss_shell_class_force_rhf_persistent_kernel
+0.9,34253516,7,4893359.4,3706518.0,1765418,10996386,3040886.3,"rys_ejk_ip1_1111(RysIntEnvVars, JKEnergy, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, double *, int *)"
+0.9,33655656,36,934879.3,732196.0,103297,2885489,708206.7,"rys_k_2000(RysIntEnvVars, JKMatrix, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, int *)"
+0.9,33340423,2,16670211.5,16670211.5,9204855,24135568,10557608.4,"md_j_3_1(RysIntEnvVars, JKMatrix, MDBoundsInfo, float *, float *)"
+0.8,31459867,1,31459867.0,31459867.0,31459867,31459867,0.0,"void vibeqc::scf::<unnamed>::two_electron_force_quartet_kernel<(bool)0, (unsigned int)8>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, double, const double *, const double *, const unsigned char *, double *, unsigned long)"
+0.7,28055111,9,3117234.6,3066451.0,1765706,5685825,1213039.6,"rys_ejk_ip1_2011(RysIntEnvVars, JKEnergy, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, double *, int *)"
+0.7,27622244,1,27622244.0,27622244.0,27622244,27622244,0.0,"vibeqc::scf::<unnamed>::one_electron_force_cooperative_kernel(vibeqc::scf::<unnamed>::DeviceBatch, const int *, const int *, unsigned long, const double *, const double *, const unsigned char *, double *)"
+0.7,25626616,6,4271102.7,4763996.0,1518601,6096164,1694507.1,"rys_ejk_ip1_2210(RysIntEnvVars, JKEnergy, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, double *, int *)"
+0.6,24934295,36,692619.3,600371.5,131233,1920108,443746.2,"rys_k_2010(RysIntEnvVars, JKMatrix, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, int *)"
+0.6,23797262,1,23797262.0,23797262.0,23797262,23797262,0.0,generated_sm120_dsds_shell_class_force_rhf_persistent_kernel
+0.6,23090889,12,1924240.8,1866715.0,726084,3406004,868780.2,"rys_ejk_ip1_2100(RysIntEnvVars, JKEnergy, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, double *, int *)"
+0.6,22644263,18,1258014.6,1055238.5,551651,2639280,584153.7,"rys_ejk_ip1_2000(RysIntEnvVars, JKEnergy, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, double *, int *)"
+0.6,21772227,24,907176.1,741092.5,93025,2151597,659165.0,"rys_k_1011(RysIntEnvVars, JKMatrix, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, int *)"
+0.5,21118046,30,703934.9,514787.0,117569,2007724,551036.3,"rys_k_1110(RysIntEnvVars, JKMatrix, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, int *)"
+0.5,19026449,1,19026449.0,19026449.0,19026449,19026449,0.0,generated_sm120_ddss_shell_class_force_rhf_persistent_kernel
+0.4,16607875,6,2767979.2,1832347.0,1118503,5559777,1871572.2,"rys_ejk_ip1_2120(RysIntEnvVars, JKEnergy, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, double *, int *)"
+0.4,16272480,2,8136240.0,8136240.0,5207007,11065473,4142561.0,"md_j_0_0(RysIntEnvVars, JKMatrix, MDBoundsInfo, float *, float *)"
+0.4,15091769,24,628823.7,524419.0,94016,1794955,435133.1,"rys_k_2100(RysIntEnvVars, JKMatrix, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, int *)"
+0.4,14680056,36,407779.3,260353.0,93313,1133799,290291.6,"rys_k_kernel(RysIntEnvVars, JKMatrix, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, int *, int, int)"
+0.4,14330388,24,597099.5,549667.5,144417,1199336,314209.6,"rys_k_2110(RysIntEnvVars, JKMatrix, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, int *)"
+0.4,13916082,6,2319347.0,2378574.0,1191847,3518357,977404.8,"rys_ejk_ip1_2021(RysIntEnvVars, JKEnergy, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, double *, int *)"
+0.4,13734033,14,981002.4,702036.5,129760,2571215,904201.4,"rys_k_1111(RysIntEnvVars, JKMatrix, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, int *)"
+0.3,11794918,9,1310546.4,1321544.0,572003,2193997,538470.0,"rys_ejk_ip1_2020(RysIntEnvVars, JKEnergy, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, double *, int *)"
+0.3,11167970,18,620442.8,600179.0,108545,1398472,389360.7,"rys_k_2011(RysIntEnvVars, JKMatrix, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, int *)"
+0.3,10340574,1,10340574.0,10340574.0,10340574,10340574,0.0,"sum_ejk_int3c2e_ip1_kernel(double *, double *, double *, double *, int, RysIntEnvVars, int *, unsigned int *, int *, int *, int *, int, int)"
+0.3,10295102,1,10295102.0,10295102.0,10295102,10295102,0.0,"void vibeqc::scf::<unnamed>::compact_active_shell_quartet_tiles_kernel<(bool)0, (vibeqc::scf::<unnamed>::DirectScreeningPurpose)1>(vibeqc::scf::<unnamed>::DeviceBatch, double, const double *, const vibeqc::scf::<unnamed>::ShellPairDensityBounds *, const unsigned char *, const unsigned int *, unsigned int *, vibeqc::scf::<unnamed>::ActiveShellQuartetTile *)"
+0.2,9604921,2,4802460.5,4802460.5,1839563,7765358,4190169.8,"md_j_1_1(RysIntEnvVars, JKMatrix, MDBoundsInfo, float *, float *)"
+0.2,8904596,1,8904596.0,8904596.0,8904596,8904596,0.0,"vibeqc::scf::<unnamed>::materialize_generated_shell_tasks_kernel(vibeqc::scf::<unnamed>::DeviceBatch, unsigned long, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, const unsigned char *, const unsigned int *, unsigned int *, vibeqc::scf::detail::GeneratedShellTask *)"
+0.2,8096304,1,8096304.0,8096304.0,8096304,8096304,0.0,"void vibeqc::scf::<unnamed>::two_electron_force_quartet_kernel<(bool)0, (unsigned int)7>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, double, const double *, const double *, const unsigned char *, double *, unsigned long)"
+0.2,7971791,6,1328631.8,1275991.5,700420,1864555,402848.9,"rys_ejk_ip1_2200(RysIntEnvVars, JKEnergy, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, double *, int *)"
+0.2,7814896,24,325620.7,323874.0,308290,352226,10426.7,"void sytrd4_gpu<sytrd_params<double, (int)32, (int)8, (int)512, (int)32, (int)1, (int)1, (int)2>>(int, T1::data_type *, int, int, T1::pod_type *, T1::data_type *, int, int, int, int, T1::data_type *, unsigned int *, T1::data_type *, T1::data_type *, int, int, int)"
+0.2,7510189,12,625849.1,683828.0,174081,1302280,322781.2,"rys_k_2111(RysIntEnvVars, JKMatrix, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, int *)"
+0.2,6243205,3,2081068.3,2107948.0,2027148,2108109,46696.4,"void sytrd4_cta<sytrd_params<double, (int)16, (int)32, (int)128, (int)32, (int)0, (int)1, (int)2>, (int)1>(int, T1::data_type *, int, int, T1::pod_type *, int, T1::pod_type *, int, T1::data_type *, int, int)"
+0.2,6138821,1,6138821.0,6138821.0,6138821,6138821,0.0,"contract_int3c2e_auxvec_kernel(double *, double *, int, int, RysIntEnvVars, int *, unsigned int *, int *, int *)"
+0.2,5864996,18,325833.1,327858.0,84801,666628,163966.9,"rys_k_2020(RysIntEnvVars, JKMatrix, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, int *)"
+0.1,5275231,12,439602.6,348354.0,133633,858373,247047.5,"rys_k_2210(RysIntEnvVars, JKMatrix, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, int *)"
+0.1,5191038,1,5191038.0,5191038.0,5191038,5191038,0.0,"vibeqc::scf::<unnamed>::classify_generated_shell_tasks_kernel(vibeqc::scf::<unnamed>::DeviceBatch, unsigned long, const unsigned int *, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned long, const unsigned long *, bool, unsigned int *, unsigned char *)"
+0.1,4241689,2,2120844.5,2120844.5,1065030,3176659,1493147.2,"md_j_4_0(RysIntEnvVars, JKMatrix, MDBoundsInfo, float *, float *)"
+0.1,4191257,2,2095628.5,2095628.5,1971500,2219757,175544.2,"int2e_qcond_kernel(float *, RysIntEnvVars, unsigned int *, int *, int *, double, double, double)"
+0.1,4025751,12,335479.3,322450.0,91168,821829,214325.6,"rys_k_2120(RysIntEnvVars, JKMatrix, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, int *)"
+0.1,3862585,12,321882.1,312801.5,116609,597827,149112.7,"rys_k_2200(RysIntEnvVars, JKMatrix, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, int *)"
+0.1,3688726,2,1844363.0,1844363.0,880389,2808337,1363265.1,"md_j_4_1(RysIntEnvVars, JKMatrix, MDBoundsInfo, float *, float *)"
+0.1,3351123,12,279260.3,284993.5,73952,575236,140910.6,"rys_k_2021(RysIntEnvVars, JKMatrix, BoundsInfo, float *, float *, float, float *, float *, float *, unsigned int *, int *)"
+0.1,3206579,1,3206579.0,3206579.0,3206579,3206579,0.0,"void vibeqc::scf::<unnamed>::two_electron_force_quartet_persistent_kernel<(bool)0, (unsigned int)2>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned int *, double, const double *, const double *, const unsigned char *, double *, unsigned long)"
+0.1,2719536,1,2719536.0,2719536.0,2719536,2719536,0.0,"void vibeqc::scf::<unnamed>::two_electron_force_quartet_persistent_kernel<(bool)0, (unsigned int)4>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned int *, double, const double *, const double *, const unsigned char *, double *, unsigned long)"
+0.1,2481455,1,2481455.0,2481455.0,2481455,2481455,0.0,"void vibeqc::scf::<unnamed>::two_electron_force_quartet_persistent_kernel<(bool)0, (unsigned int)3>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned int *, double, const double *, const double *, const unsigned char *, double *, unsigned long)"
+0.1,1968427,1,1968427.0,1968427.0,1968427,1968427,0.0,"vibeqc::scf::<unnamed>::compute_energy_kernel(int, int, const double *, const double *, const double *, const double *, const unsigned char *, double *)"
+0.0,1809193,3,603064.3,587267.0,584963,636963,29379.7,"void laed2_par<stedc_params_<double2, double, (int)8, (int)512, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int *, int *, int *, int *, int *, T1::data_type *, int *, T1::data_type *, int, int)"
+0.0,1624297,1,1624297.0,1624297.0,1624297,1624297,0.0,"vibeqc::scf::<unnamed>::nuclear_force_kernel(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned char *, double *)"
+0.0,1318054,3,439351.3,436802.0,426178,455074,14615.7,"void laed2_par<stedc_params_<double2, double, (int)8, (int)256, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int *, int *, int *, int *, int *, T1::data_type *, int *, T1::data_type *, int, int)"
+0.0,1169479,1,1169479.0,1169479.0,1169479,1169479,0.0,"vibeqc::scf::<unnamed>::materialize_ppps_resident_bra_tasks_kernel(vibeqc::scf::<unnamed>::DeviceBatch, unsigned long, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, const unsigned int *, unsigned int *, vibeqc::scf::detail::GeneratedShellTask *)"
+0.0,865670,34,25460.9,15200.0,14528,89761,16406.4,void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_32x32_16x5_nn_align1>(T1::Params)
+0.0,849605,1,849605.0,849605.0,849605,849605,0.0,"vibeqc::scf::<unnamed>::prefix_ppps_resident_bra_tasks_kernel(unsigned long, const unsigned int *, unsigned int *, unsigned int *, vibeqc::scf::detail::GeneratedPppsResidentTask *)"
+0.0,807299,6,134549.8,134160.0,106496,164001,27839.5,void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_64x32_16x4_nn_align1>(T1::Params)
+0.0,753318,3,251106.0,227042.0,167457,358819,97924.3,"void laed4_par<stedc_params_<double2, double, (int)8, (int)256, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int, int *, int)"
+0.0,744809,653,1140.6,1152.0,1024,1600,84.7,cupy_scan_naive
+0.0,720133,3,240044.3,268226.0,166977,284930,63827.0,"void laed4_par<stedc_params_<double2, double, (int)8, (int)512, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int, int *, int)"
+0.0,706949,2,353474.5,353474.5,335170,371779,25886.5,"dm_to_Rt_kernel(double *, double *, int, RysIntEnvVars, unsigned int *, int *, int, int *)"
+0.0,660389,12,55032.4,54176.5,27712,82784,27849.7,void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_32x32_16x5_tn_align1>(T1::Params)
+0.0,623332,1,623332.0,623332.0,623332,623332,0.0,"void vibeqc::scf::<unnamed>::two_electron_force_quartet_persistent_kernel<(bool)0, (unsigned int)6>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned int *, double, const double *, const double *, const unsigned char *, double *, unsigned long)"
+0.0,586947,1,586947.0,586947.0,586947,586947,0.0,"vibeqc::scf::<unnamed>::count_ppps_resident_bra_tasks_kernel(vibeqc::scf::<unnamed>::DeviceBatch, unsigned long, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned long, unsigned int *)"
+0.0,573664,9,63740.4,60288.0,54176,80352,9691.7,"ket_sorted2sph_kernel(double *, double *, double *, int *, int *, int *, int *, int, int, int)"
+0.0,528642,2,264321.0,264321.0,261313,267329,4254.0,"Rt_to_dm_kernel(double *, double *, int, RysIntEnvVars, unsigned int *, int *, int, int *)"
+0.0,462243,1,462243.0,462243.0,462243,462243,0.0,"vibeqc::scf::<unnamed>::apply_warm_density_kernel(int, int, const int *, const unsigned char *, const double *, const double *, double *, unsigned char *)"
+0.0,458562,3,152854.0,133281.0,122848,202433,43252.4,"void laed4_par<stedc_params_<double2, double, (int)8, (int)128, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int, int *, int)"
+0.0,436514,5,87302.8,39584.0,36033,163713,67154.1,void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_64x32_16x4_tn_align1>(T1::Params)
+0.0,410178,3,136726.0,137792.0,132513,139873,3794.0,"void laed2_par<stedc_params_<double2, double, (int)8, (int)128, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int *, int *, int *, int *, int *, T1::data_type *, int *, T1::data_type *, int, int)"
+0.0,397443,42,9462.9,9488.0,8864,10112,558.3,"void cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::radix_sort::DeviceRadixSortSingleTileKernel<cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::radix::policy_hub<unsigned int, cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::NullType, unsigned long long>::Policy1000, (cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::SortOrder)0, unsigned int, cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::NullType, unsigned long long, cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::identity_decomposer_t>(const T3 *, T3 *, const T4 *, T4 *, T5, int, int, T6)"
+0.0,352066,1,352066.0,352066.0,352066,352066,0.0,"void vibeqc::scf::<unnamed>::two_electron_force_pair_order2_grid_stride_kernel<(bool)0, (unsigned int)6>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, double, const double *, const double *, const unsigned char *, double *, unsigned long)"
+0.0,350851,3,116950.3,116385.0,115745,118721,1566.5,"void steqr_ker<stedc_params_<double2, double, (int)8, (int)16, (int)128>, double, (int)0>(long, T1::data_type *, T1::data_type *, T2 *, long, int *, int *, long, long, T1::data_type, T1::data_type, int *, int)"
+0.0,346018,1,346018.0,346018.0,346018,346018,0.0,"void vibeqc::scf::<unnamed>::two_electron_force_psps_grid_stride_kernel<(bool)0>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, double, const double *, const double *, const unsigned char *, double *, unsigned long)"
+0.0,338433,7,48347.6,47392.0,1792,77632,24175.9,"ket_sph2sorted_kernel(double *, double *, double *, int *, int *, int *, int *, int, int, int)"
+0.0,329858,1,329858.0,329858.0,329858,329858,0.0,"void vibeqc::scf::<unnamed>::two_electron_force_pair_order2_grid_stride_kernel<(bool)0, (unsigned int)3>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, double, const double *, const double *, const unsigned char *, double *, unsigned long)"
+0.0,313889,378,830.4,832.0,736,960,40.9,cupy_equal__int64_int_bool
+0.0,291713,384,759.7,768.0,640,832,37.3,cupy_arange__int_int_int32
+0.0,249699,3,83233.0,81921.0,78145,89633,5855.3,"void laed4_par<stedc_params_<double2, double, (int)8, (int)64, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int, int *, int)"
+0.0,244705,3,81568.3,73216.0,67072,104417,20024.6,"void laed4_par<stedc_params_<double2, double, (int)8, (int)16, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int, int *, int)"
+0.0,242944,242,1003.9,1024.0,896,1088,48.5,cupy_bsum_shfl
+0.0,238273,9,26474.8,26752.0,25728,26944,518.8,"void larft_T_64_batch<double>(int, T1 *, int, long, const T1 *, long)"
+0.0,231937,1,231937.0,231937.0,231937,231937,0.0,"int1e_ipkin_kernel(double *, PBCIntEnvVars, int *, int *, int *)"
+0.0,208930,3,69643.3,69857.0,68288,70785,1262.1,"void laed4_par<stedc_params_<double2, double, (int)8, (int)32, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int, int *, int)"
+0.0,206465,12,17205.4,17152.0,17120,17408,97.8,"void syherk_kernel_ldgsts<int, double, (int)32, (int)16, (int)3, (int)32, (int)8, (int)32, (int)8, (int)2, (int)4, (bool)1, (bool)1, (bool)0, (bool)0>(cublasSyherkParams<T2>)"
+0.0,191904,3,63968.0,64608.0,62144,65152,1602.9,"void laed2_par<stedc_params_<double2, double, (int)8, (int)64, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int *, int *, int *, int *, int *, T1::data_type *, int *, T1::data_type *, int, int)"
+0.0,179746,169,1063.6,1056.0,896,2816,175.6,cupy_getitem_mask
+0.0,164033,1,164033.0,164033.0,164033,164033,0.0,void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_64x32_16x4_nt_align1>(T1::Params)
+0.0,162786,134,1214.8,1216.0,1120,1344,65.7,cupy_nonzero_kernel_incomplete_scan
+0.0,154209,1,154209.0,154209.0,154209,154209,0.0,"int1e_kin_kernel(double *, PBCIntEnvVars, int *, int *, int *)"
+0.0,151264,141,1072.8,1056.0,896,1504,104.3,cupy_take
+0.0,150721,3,50240.3,50688.0,49312,50721,804.1,"void laed3_epi2<stedc_params_<double2, double, (int)8, (int)512, (int)256>>(int, int, int, int *, T1::data_type *, int, int *, T1::data_type *, int *, T1::data_type *, T1::data_type *, int, int)"
+0.0,139681,144,970.0,960.0,864,1152,46.4,cupy_nonzero_kernel
+0.0,135936,156,871.4,864.0,768,1088,42.7,cupy_multiply__int32_int_int32
+0.0,134081,1,134081.0,134081.0,134081,134081,0.0,"int1e_ipovlp_kernel(double *, PBCIntEnvVars, int *, int *, int *)"
+0.0,111264,122,912.0,896.0,800,1376,112.3,cupy_copy__bool_bool
+0.0,107072,3,35690.7,35872.0,33536,37664,2070.0,"void laed3_epi1<stedc_params_<double2, double, (int)8, (int)512, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, int *, int *, T1::data_type *, T1::data_type *, T1::data_type *, int *, int, int)"
+0.0,101504,6,16917.3,16912.0,16832,17024,80.1,"void syherk_kernel_ldgsts<int, double, (int)32, (int)16, (int)3, (int)32, (int)8, (int)32, (int)8, (int)2, (int)4, (bool)0, (bool)0, (bool)0, (bool)0>(cublasSyherkParams<T2>)"
+0.0,96416,3,32138.7,32448.0,31168,32800,858.8,"void laed2_par<stedc_params_<double2, double, (int)8, (int)32, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int *, int *, int *, int *, int *, T1::data_type *, int *, T1::data_type *, int, int)"
+0.0,95296,116,821.5,800.0,704,1440,95.2,cupy_add__int32_int32_int32
+0.0,89664,9,9962.7,9024.0,8032,12704,1751.0,"bra_sorted2sph_kernel(double *, double *, double *, int *, int *, int *, int *, int, int, int)"
+0.0,89472,1,89472.0,89472.0,89472,89472,0.0,void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_32x32_16x5_nt_align1>(T1::Params)
+0.0,82498,55,1500.0,1440.0,1280,1888,178.3,cupy_concatenate
+0.0,81153,1,81153.0,81153.0,81153,81153,0.0,"int1e_ovlp_kernel(double *, PBCIntEnvVars, int *, int *, int *)"
+0.0,74433,1,74433.0,74433.0,74433,74433,0.0,"vibeqc::scf::<unnamed>::compact_generic_order5_tiles_kernel(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned long, const unsigned long *, unsigned int *, vibeqc::scf::<unnamed>::ActiveShellQuartetTile *)"
+0.0,69344,4,17336.0,17344.0,17280,17376,48.0,"void syherk_kernel_ldgsts<int, double, (int)32, (int)32, (int)3, (int)8, (int)32, (int)8, (int)32, (int)4, (int)2, (bool)1, (bool)1, (bool)0, (bool)0>(cublasSyherkParams<T2>)"
+0.0,61920,42,1474.3,1504.0,1120,1728,122.9,cupy_searchsorted_kernel
+0.0,61824,60,1030.4,1024.0,960,1280,58.6,"void cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::reduce::DeviceFixedSizeSegmentedReduceKernel<cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::fixed_size_segmented_reduce::policy_hub<float, int, nan_handling_max<float>>::Policy500, float *, float *, int, nan_handling_max<float>, float, float>(T2, T3, T4, int, T5, T6)"
+0.0,61440,84,731.4,736.0,640,832,47.7,cupy_arange__uint_uint_uint32
+0.0,55648,6,9274.7,7664.0,7584,13056,2564.3,"bra_sph2sorted_kernel(double *, double *, double *, int *, int *, int *, int *, int, int, int)"
+0.0,53312,3,17770.7,17728.0,17696,17888,102.9,"void laed3_epi2<stedc_params_<double2, double, (int)8, (int)256, (int)256>>(int, int, int, int *, T1::data_type *, int, int *, T1::data_type *, int *, T1::data_type *, T1::data_type *, int, int)"
+0.0,52769,3,17589.7,23105.0,4544,25120,11342.7,"void laed3_epi1<stedc_params_<double2, double, (int)8, (int)256, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, int *, int *, T1::data_type *, T1::data_type *, T1::data_type *, int *, int, int)"
+0.0,51008,60,850.1,832.0,800,960,39.2,cupy_copy__float32_float32
+0.0,50784,3,16928.0,17152.0,16480,17152,388.0,"void laed2_par<stedc_params_<double2, double, (int)8, (int)16, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int *, int *, int *, int *, int *, T1::data_type *, int *, T1::data_type *, int, int)"
+0.0,50209,1,50209.0,50209.0,50209,50209,0.0,"vibeqc::scf::<unnamed>::build_weighted_density_kernel(int, int, const int *, const double *, const double *, const unsigned char *, double *)"
+0.0,47776,42,1137.5,1136.0,1056,1248,56.2,cupy_true_divide__int_int32_float64
+0.0,47008,56,839.4,832.0,736,960,46.5,cupy_copy__uint32_uint32
+0.0,39744,42,946.3,944.0,864,1024,45.9,"sort_pair_ij_kernel(long *, int *, int *, int, int, int, int)"
+0.0,39072,42,930.3,928.0,864,992,42.6,cupy_floor_divide__int_int32_int32
+0.0,37889,3,12629.7,12416.0,12193,13280,574.1,"void laed3_epi1<stedc_params_<double2, double, (int)8, (int)128, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, int *, int *, T1::data_type *, T1::data_type *, T1::data_type *, int *, int, int)"
+0.0,36929,42,879.3,880.0,800,960,44.3,cupy_equal__float64_float_bool
+0.0,36256,42,863.2,864.0,800,960,37.7,cupy_add__int_int32_int32
+0.0,35264,42,839.6,832.0,736,992,52.8,cupy_copy__int64_uint32
+0.0,35073,15,2338.2,2496.0,832,2560,437.2,cupy_copy__float64_float64
+0.0,35040,2,17520.0,17520.0,17408,17632,158.4,"void syherk_kernel_ldgsts<int, double, (int)32, (int)32, (int)3, (int)8, (int)32, (int)8, (int)32, (int)4, (int)2, (bool)0, (bool)0, (bool)0, (bool)0>(cublasSyherkParams<T2>)"
+0.0,35040,21,1668.6,1600.0,1216,2272,331.8,"void transpose<sytrd_params<double, (int)32, (int)8, (int)512, (int)32, (int)16, (int)1, (int)2>, (int)128, (int)1, (int)1>(int, int, T1::data_type *, T1::data_type *, int, int)"
+0.0,34593,5,6918.6,6880.0,6752,7297,219.1,dabsmax_condense
+0.0,28480,3,9493.3,9504.0,9120,9856,368.1,"void laed3_epi2<stedc_params_<double2, double, (int)8, (int)128, (int)256>>(int, int, int, int *, T1::data_type *, int, int *, T1::data_type *, int *, T1::data_type *, T1::data_type *, int, int)"
+0.0,26048,3,8682.7,8768.0,8480,8800,176.2,"void scale_max<double, (int)32, (int)32, (int)1>(long, long, T1 *, T1 *, T1 *, int *)"
+0.0,22914,18,1273.0,1184.0,1089,1825,236.7,"void laed2_copy<double2, double, (int)128>(int, int, T2 *, int, int *, int *, T2 *, int, int)"
+0.0,19872,5,3974.4,2720.0,2624,6240,1817.2,cupy_log__float64_float64
+0.0,16448,6,2741.3,2800.0,2464,2816,138.3,"ovlp_mask_estimation_kernel(signed char *, float *, float *, PBCIntEnvVars, int, float)"
+0.0,15617,7,2231.0,2240.0,2081,2336,100.5,"void dot_kernel<double, (int)128, (int)0, cublasDotParams<cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>>>(T4)"
+0.0,15072,7,2153.1,2176.0,2016,2240,77.8,"void reduce_1Block_kernel<double, (int)128, (int)7, cublasGemvTensorStridedBatched<double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>>(const T1 *, T1, T4, int, const T1 *, T1, T5, T6, cublasPointerMode_t, cublasLtEpilogue_t, cublasGemvTensorStridedBatched<const biasType<T6::value_type, T1>::type>)"
+0.0,14432,3,4810.7,4736.0,4672,5024,187.5,"void laed3_epi2<stedc_params_<double2, double, (int)8, (int)64, (int)256>>(int, int, int, int *, T1::data_type *, int, int *, T1::data_type *, int *, T1::data_type *, T1::data_type *, int, int)"
+0.0,14240,1,14240.0,14240.0,14240,14240,0.0,"void cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::radix_sort::DeviceRadixSortSingleTileKernel<cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::radix::policy_hub<double, unsigned long, unsigned long long>::Policy1000, (cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::SortOrder)0, double, unsigned long, unsigned long long, cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::identity_decomposer_t>(const T3 *, T3 *, const T4 *, T4 *, T5, int, int, T6)"
+0.0,11936,14,852.6,848.0,768,928,42.8,cupy_where__bool_bool_bool_bool
+0.0,11648,4,2912.0,2912.0,2144,3680,833.2,"_transpose_dsum(double *, int, int, int)"
+0.0,11648,12,970.7,944.0,800,1216,152.8,cupy_add__float32_float32_float32
+0.0,11520,3,3840.0,2368.0,2336,6816,2577.3,"void laed3_epi1<stedc_params_<double2, double, (int)8, (int)64, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, int *, int *, T1::data_type *, T1::data_type *, T1::data_type *, int *, int, int)"
+0.0,11264,12,938.7,928.0,832,1056,107.7,"void setup_vhat_l_kernel<double, (int)16>(long, long, const T1 *, long, long, T1 *, long, long)"
+0.0,11040,3,3680.0,3872.0,3104,4064,508.0,"void laed3_epi2<stedc_params_<double2, double, (int)8, (int)32, (int)256>>(int, int, int, int *, T1::data_type *, int, int *, T1::data_type *, int *, T1::data_type *, T1::data_type *, int, int)"
+0.0,10880,14,777.1,768.0,704,864,42.4,cupy_tri
+0.0,9952,3,3317.3,3328.0,3232,3392,80.5,"void epilogue<sytrd_params<double, (int)32, (int)8, (int)512, (int)32, (int)16, (int)1, (int)2>, (int)128, (int)0, (int)1>(int, int, T1::data_type *, int, int, T1::pod_type *, int, T1::pod_type *, int, T1::data_type *, int, T1::data_type *, int, int)"
+0.0,9280,7,1325.7,1376.0,832,1504,222.4,cupy_add__float64_float64_float64
+0.0,9120,3,3040.0,3008.0,2976,3136,84.7,"void transpose<sytrd_params<double, (int)32, (int)8, (int)512, (int)32, (int)16, (int)1, (int)2>, (int)128, (int)0, (int)1>(int, int, T1::data_type *, T1::data_type *, int, int)"
+0.0,9088,10,908.8,912.0,864,960,30.9,cupy_equal__int32_int_bool
+0.0,9056,12,754.7,768.0,704,800,31.9,cupy_copy__float_float32
+0.0,8864,6,1477.3,1344.0,832,2208,603.9,cupy_multiply__float64_float_float64
+0.0,8736,2,4368.0,4368.0,4352,4384,22.6,"std::enable_if<T7, void>::type internal::gemvx::kernel<int, int, double, double, double, double, (bool)1, (bool)1, (bool)0, (bool)0, (int)7, (bool)0, cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>, double>>(T13)"
+0.0,7936,3,2645.3,2656.0,2592,2688,48.9,"void laed3_epi2<stedc_params_<double2, double, (int)8, (int)16, (int)256>>(int, int, int, int *, T1::data_type *, int, int *, T1::data_type *, int *, T1::data_type *, T1::data_type *, int, int)"
+0.0,7168,2,3584.0,3584.0,3520,3648,90.5,"void cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::scan::DeviceScanKernel<cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::scan::policy_hub<int, int, int, unsigned int, cuda::std::__4::plus<void>>::Policy1000, int *, int *, cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::ScanTileState<int, (bool)1>, cuda::std::__4::plus<void>, cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::NullType, unsigned int, int, (bool)0, cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::NullType>(T2, T3, T4, int, T5, T6, T7)"
+0.0,7072,2,3536.0,3536.0,3488,3584,67.9,"void cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::reduce::DeviceReduceKernel<cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::reduce::policy_hub<double, unsigned int, cuda::std::__4::plus<void>>::Policy1000, double *, unsigned int, cuda::std::__4::plus<void>, double, cuda::std::__4::identity>(T2, T5 *, T3, cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::GridEvenShare<T3>, T4, T6)"
+0.0,6912,6,1152.0,1216.0,864,1344,196.2,cupy_multiply__float64_float64_float64
+0.0,6272,3,2090.7,2112.0,2048,2112,37.0,"void laed3_epi1<stedc_params_<double2, double, (int)8, (int)32, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, int *, int *, T1::data_type *, T1::data_type *, T1::data_type *, int *, int, int)"
+0.0,6176,2,3088.0,3088.0,2816,3360,384.7,"vibeqc::scf::<unnamed>::copy_selected_matrices_kernel(int, int, int, const unsigned char *, const double *, double *)"
+0.0,6081,9,675.7,672.0,640,705,25.2,"copy_info_kernel(int, int *)"
+0.0,6080,7,868.6,864.0,832,896,28.8,cupy_greater__float64_float_bool
+0.0,5952,3,1984.0,1984.0,1952,2016,32.0,"void laed3_epi1<stedc_params_<double2, double, (int)8, (int)16, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, int *, int *, T1::data_type *, T1::data_type *, T1::data_type *, int *, int, int)"
+0.0,5760,2,2880.0,2880.0,2880,2880,0.0,"void lansy_M_stage1<double, double, (int)8>(long, const T1 *, unsigned long, T2 *, int)"
+0.0,5568,5,1113.6,992.0,960,1344,183.0,cupy_copy__float64_float32
+0.0,5408,7,772.6,768.0,736,800,22.1,cupy_fill
+0.0,5216,5,1043.2,928.0,896,1248,173.2,cupy_add__float64_float_float64
+0.0,5120,6,853.3,864.0,800,896,43.7,cupy_log__float32_float32
+0.0,5056,6,842.7,848.0,800,864,26.1,cupy_add__int32_int_int32
+0.0,5056,6,842.7,848.0,800,896,38.8,cupy_copy__int32_int32
+0.0,4928,6,821.3,832.0,768,864,43.7,cupy_absolute__float32_float32
+0.0,4800,2,2400.0,2400.0,2368,2432,45.3,"void cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::reduce::DeviceReduceSingleTileKernel<cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::reduce::policy_hub<double, unsigned int, cuda::std::__4::plus<void>>::Policy1000, double *, double *, int, cuda::std::__4::plus<void>, double, double, cuda::std::__4::identity>(T2, T3, T4, T5, T6, T8)"
+0.0,4576,3,1525.3,1536.0,1504,1536,18.5,"void merge_ker<double, double, (int)128, (int)0, (int)1>(long, long, T2 *, T2 *, long, int *, T2 *, T2 *, long, int, int)"
+0.0,4256,2,2128.0,2128.0,2080,2176,67.9,"void lansy_M_stage2<double, (int)8>(long, T1 *)"
+0.0,3968,3,1322.7,1376.0,1216,1376,92.4,"_dfill_triu(double *, unsigned long, int, int)"
+0.0,3872,3,1290.7,1280.0,1280,1312,18.5,"void merge_ker<double, double, (int)128, (int)1, (int)1>(long, long, T2 *, T2 *, long, int *, T2 *, T2 *, long, int, int)"
+0.0,3840,2,1920.0,1920.0,1920,1920,0.0,"void cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::reduce::DeviceReduceKernel<cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::reduce::policy_hub<float, unsigned int, nan_handling_max<float>>::Policy1000, float *, unsigned int, nan_handling_max<float>, float, cuda::std::__4::identity>(T2, T5 *, T3, cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::GridEvenShare<T3>, T4, T6)"
+0.0,3776,1,3776.0,3776.0,3776,3776,0.0,"vibeqc::scf::<unnamed>::prefix_generated_shell_task_counts_kernel(const unsigned int *, unsigned int *, unsigned int *, unsigned int *)"
+0.0,3616,4,904.0,880.0,832,1024,91.9,cupy_multiply__int32_int32_int32
+0.0,3552,3,1184.0,1152.0,1152,1248,55.4,"void lacpy_kernel<double, double, (int)5, (int)3>(long, long, const T1 *, long, long, T2 *, long, long, int, int, long)"
+0.0,3424,3,1141.3,1152.0,1056,1216,80.5,cupy_sqrt__float64_float64
+0.0,3424,4,856.0,864.0,800,896,48.0,cupy_copy__uint32_int32
+0.0,3232,2,1616.0,1616.0,800,2432,1154.0,cupy_negative__float64_float64
+0.0,2880,1,2880.0,2880.0,2880,2880,0.0,cupy_true_divide__float64_float64_float64
+0.0,2784,1,2784.0,2784.0,2784,2784,0.0,"void lansy_M_stage1<double, double, (int)8>(long, const T1 *, long, long, T2 *, long, int)"
+0.0,2752,2,1376.0,1376.0,1376,1376,0.0,cupy_subtract__float64_float64_float64
+0.0,2720,3,906.7,896.0,896,928,18.5,"void scale_max<double, (int)32, (int)128, (int)0>(long, long, T1 *, T1 *, T1 *, int *)"
+0.0,2400,1,2400.0,2400.0,2400,2400,0.0,"void lansy_M_stage2<double, (int)8>(T1, T1, long, T1 *, long, T1 *, T1 *)"
+0.0,2304,1,2304.0,2304.0,2304,2304,0.0,generated_sm120_fpps_shell_class_force_rhf_persistent_kernel
+0.0,2304,2,1152.0,1152.0,1152,1152,0.0,"void cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::reduce::DeviceReduceSingleTileKernel<cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::reduce::policy_hub<float, unsigned int, nan_handling_max<float>>::Policy1000, float *, float *, int, nan_handling_max<float>, float, float, cuda::std::__4::identity>(T2, T3, T4, T5, T6, T8)"
+0.0,2080,3,693.3,704.0,672,704,18.5,"void zero_lower_kernel<double, (int)5, (int)3>(int, int, T1 *, long, long)"
+0.0,2080,3,693.3,704.0,672,704,18.5,"xx_set_info_ker(int, int *, int)"
+0.0,1888,2,944.0,944.0,928,960,22.6,cupy_floor_divide__int32_int_int32
+0.0,1856,1,1856.0,1856.0,1856,1856,0.0,generated_sm120_ppps_shell_class_force_rhf_persistent_kernel
+0.0,1760,1,1760.0,1760.0,1760,1760,0.0,"void vibeqc::scf::<unnamed>::two_electron_force_quartet_persistent_kernel<(bool)0, (unsigned int)5>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned int *, double, const double *, const double *, const unsigned char *, double *, unsigned long)"
+0.0,1632,2,816.0,816.0,800,832,22.6,cupy_arange__float_float_float64
+0.0,1504,2,752.0,752.0,736,768,22.6,"void cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::scan::DeviceScanInitKernel<cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::ScanTileState<int, (bool)1>>(T1, int)"
+0.0,1280,1,1280.0,1280.0,1280,1280,0.0,cupy_concatenate_same_size
+0.0,1248,1,1248.0,1248.0,1248,1248,0.0,"vibeqc::scf::<unnamed>::select_final_fock_rebuild_kernel(int, double, const double *, const unsigned char *, const unsigned char *, unsigned char *, unsigned char *, unsigned int *)"
+0.0,1216,1,1216.0,1216.0,1216,1216,0.0,"void lascl_kernel<double, double, (int)8>(long, long, T1 *, long, long, T2 *, int, int)"
+0.0,1152,1,1152.0,1152.0,1152,1152,0.0,"vibeqc::scf::<unnamed>::initialize_state_kernel(int, bool, const double *, unsigned char *, unsigned char *, unsigned char *, unsigned int *, double *, double *, double *, unsigned int *, unsigned int *)"
+0.0,1120,1,1120.0,1120.0,1120,1120,0.0,cupy_scatter_update
+0.0,960,1,960.0,960.0,960,960,0.0,cupy_less__float64_float_bool
+0.0,896,1,896.0,896.0,896,896,0.0,"vibeqc::scf::<unnamed>::select_converged_kernel(int, const unsigned char *, const unsigned char *, unsigned char *)"
+0.0,864,1,864.0,864.0,864,864,0.0,"vibeqc::scf::<unnamed>::inspect_solver_kernel(int, const int *, unsigned char *, unsigned char *, unsigned char *)"
+0.0,832,1,832.0,832.0,832,832,0.0,cupy_absolute__float64_float64
+0.0,832,1,832.0,832.0,832,832,0.0,cupy_invert__bool_bool
+0.0,832,1,832.0,832.0,832,832,0.0,"void cuds_scal_batch_kernel<double, (int)256>(int, const T1 *, T1 *, long long, int)"
+0.0,800,1,800.0,800.0,800,800,0.0,"void cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::transform::transform_kernel<cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::transform::policy_hub<(bool)0, cuda::std::__4::tuple<thrust::THRUST_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200_NS::counting_iterator<unsigned long, thrust::THRUST_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200_NS::use_default, thrust::THRUST_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200_NS::use_default, thrust::THRUST_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200_NS::use_default, thrust::THRUST_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200_NS::compile_time_value<(int)1>>, thrust::THRUST_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200_NS::constant_iterator<long, thrust::THRUST_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200_NS::use_default, thrust::THRUST_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200_NS::use_default>>, thrust::THRUST_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200_NS::device_ptr<unsigned long>>::policy1000, int, cuda::std::__4::modulus<unsigned long>, unsigned long *, thrust::THRUST_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200_NS::counting_iterator<unsigned long, thrust::THRUST_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200_NS::use_default, thrust::THRUST_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200_NS::use_default, thrust::THRUST_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200_NS::use_default, thrust::THRUST_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200_NS::compile_time_value<(int)1>>, thrust::THRUST_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200_NS::constant_iterator<long, thrust::THRUST_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200_NS::use_default, thrust::THRUST_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200_NS::use_default>>(T2, int, bool, T3, T4, cub::CUB_300102_SM_500_520_600_610_700_750_800_860_890_900_1000_1200::detail::transform::kernel_arg<T5>...)"
+0.0,704,1,704.0,704.0,704,704,0.0,"vibeqc::scf::<unnamed>::clear_active_shell_quartet_tile_counts_kernel(unsigned int *, unsigned int *)"

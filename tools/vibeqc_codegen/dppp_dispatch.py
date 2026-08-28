@@ -28,6 +28,7 @@ from .fused_schedule import (
 )
 from .ir import KernelConsumer
 from .rys import (
+    build_rys_force_program,
     emit_ppps_rys3_root_body_cuda,
     emit_rys3_roots_cuda,
     emit_rys4_roots_cuda,
@@ -2041,33 +2042,79 @@ def _emit_rys_component_lane_force_consumer_cuda(
     plan: FusedShellPlan,
     minimum_blocks_per_sm: int,
 ) -> str:
-    """Emit one cooperative DPPP Rys4 task across component lanes.
+    """Emit one cooperative fixed-root Rys task across component lanes.
 
-    All 192 threads execute the same bounded one-dimensional recurrence.  A
-    lane selects only the small angular indices used to read a fixed ``5x4``
-    TRR table, avoiding both the shell-wide scalar DAG and a divergent
-    component-function switch.  Lane zero evaluates the four roots once per
-    primitive quartet; the other lanes retain only nine force accumulators and
-    three compact axis results.
+    All scheduled threads execute the same bounded one-dimensional recurrence.
+    A component lane selects only the small angular indices used to read its
+    fixed-size TRR table, avoiding both the shell-wide scalar DAG and a
+    divergent component-function switch.  Lane zero evaluates the fixed roots
+    once per primitive quartet; the other lanes retain only nine force
+    accumulators and three compact axis results.
     """
 
-    if spec.name != "dppp" or plan.kernel.integral.recurrence != "rys4":
-        raise ValueError("cooperative Rys4 lowering requires a dppp rys4 plan")
+    program = build_rys_force_program(spec)
+    recurrence = f"rys{program.nroots}"
+    if plan.kernel.integral.recurrence != recurrence:
+        raise ValueError(
+            f"cooperative fixed-root lowering for {spec.name} requires "
+            f"a {recurrence} plan"
+        )
     if plan.schedule.kind != ScheduleKind.COMPONENT_LANES:
-        raise ValueError("cooperative dppp Rys4 requires component lanes")
+        raise ValueError("cooperative fixed-root Rys requires component lanes")
     if plan.schedule.block_threads < spec.component_count:
-        raise ValueError("cooperative dppp Rys4 requires one lane per component")
+        raise ValueError(
+            "cooperative fixed-root Rys requires one lane per component"
+        )
+    if max(spec.angular) > 2 or spec.angular[1] > 1 or spec.angular[3] > 1:
+        raise ValueError(
+            "runtime-indexed fixed-root lowering currently supports s/p/d "
+            "shells with at most p angular momentum on the second and "
+            "fourth centers"
+        )
 
     task_component_setup = _generic_task_component_setup(spec)
     component_names = _emitted_component_names(spec)
+    nroots = program.nroots
+    class_tag = f"Rys{nroots}"
+    symbol_tag = f"rys{nroots}"
+    root_symbol = f"generated_dppp_{symbol_tag}"
+    bra_extent = sum(spec.angular[:2]) + 2
+    ket_extent = sum(spec.angular[2:]) + 2
+
+    def axis_count(center: int, axis: int) -> str:
+        """Return one runtime Cartesian exponent from a component ordinal."""
+
+        order = spec.angular[center]
+        component_name = component_names[center]
+        if order == 0:
+            return "0U"
+        if order == 1:
+            return f"({component_name} == {axis}U)"
+        return (
+            f"(generated_dppp_d_axes[{component_name}][0] == {axis}U) + "
+            f"(generated_dppp_d_axes[{component_name}][1] == {axis}U)"
+        )
+
+    component_axis_counts = tuple(
+        tuple(axis_count(center, axis) for axis in range(3))
+        for center in range(4)
+    )
     kernel_qualifier = (
         f"__launch_bounds__({plan.schedule.block_threads}, "
         f"{minimum_blocks_per_sm})"
     )
-    roots_cuda = emit_rys4_roots_cuda()
+    if nroots == 3:
+        roots_cuda = emit_rys3_roots_cuda(symbol_prefix=root_symbol)
+    elif nroots == 4:
+        roots_cuda = emit_rys4_roots_cuda(symbol_prefix=root_symbol)
+    else:
+        raise ValueError(
+            "cooperative component-lane lowering currently embeds only "
+            "three- and four-root tables"
+        )
     return roots_cuda + f"""
 /** Scalars shared by all component lanes for one primitive quartet. */
-struct GeneratedDpppRys4Primitive {{
+struct GeneratedDppp{class_tag}Primitive {{
   double p;
   double q;
   double alpha2;
@@ -2092,29 +2139,32 @@ struct GeneratedDpppRys4Primitive {{
 }};
 
 /** Base and three independent first derivatives for one Cartesian axis. */
-struct GeneratedDpppRys4Axis {{
+struct GeneratedDppp{class_tag}Axis {{
   double base;
   double first;
   double second;
   double third;
 }};
 
-__device__ __forceinline__ double generated_dppp_rys4_ket_hrr(
-    const volatile double (&trr)[5][4], unsigned a, unsigned c, unsigned d,
+__device__ __forceinline__ double generated_dppp_{symbol_tag}_ket_hrr(
+    const volatile double (&trr)[{bra_extent}][{ket_extent}], unsigned a,
+    unsigned c, unsigned d,
     double cd) {{
   const double base = trr[a][c];
   return d == 0U ? base : trr[a][c + 1U] - cd * base;
 }}
 
-__device__ __forceinline__ double generated_dppp_rys4_state(
-    const volatile double (&trr)[5][4], unsigned a, unsigned b, unsigned c,
+__device__ __forceinline__ double generated_dppp_{symbol_tag}_state(
+    const volatile double (&trr)[{bra_extent}][{ket_extent}], unsigned a,
+    unsigned b, unsigned c,
     unsigned d, double ab, double cd) {{
-  const double base = generated_dppp_rys4_ket_hrr(trr, a, c, d, cd);
+  const double base = generated_dppp_{symbol_tag}_ket_hrr(
+      trr, a, c, d, cd);
   if (b == 0U) return base;
-  const double raised = generated_dppp_rys4_ket_hrr(
+  const double raised = generated_dppp_{symbol_tag}_ket_hrr(
       trr, a + 1U, c, d, cd);
   if (b == 1U) return raised - ab * base;
-  const double raised_twice = generated_dppp_rys4_ket_hrr(
+  const double raised_twice = generated_dppp_{symbol_tag}_ket_hrr(
       trr, a + 2U, c, d, cd);
   return raised_twice - 2.0 * ab * raised + ab * ab * base;
 }}
@@ -2122,31 +2172,33 @@ __device__ __forceinline__ double generated_dppp_rys4_state(
 /**
  * Evaluate all one-axis values required for A/B/C first derivatives.
  *
- * DPPP bounds are exact: after one derivative, ``a+b <= 4`` and
- * ``c+d <= 3``.  Keeping this helper noinline makes its 20-double addressed
+ * {spec.name.upper()} bounds are exact: after one derivative,
+ * ``a+b <= {bra_extent - 1}`` and ``c+d <= {ket_extent - 1}``. Keeping this
+ * helper noinline makes its bounded addressed
  * table reusable across x/y/z calls instead of tripling caller register
  * pressure.
  */
-__device__ __noinline__ GeneratedDpppRys4Axis generated_dppp_rys4_axis(
+__device__ __noinline__ GeneratedDppp{class_tag}Axis
+generated_dppp_{symbol_tag}_axis(
     unsigned a, unsigned b, unsigned c, unsigned d,
     double c0, double cp, double ab, double cd,
     double b10, double b00, double b01, double seed,
     double alpha2, double beta2, double gamma2) {{
   // Runtime component indices would otherwise make PTXAS retain the complete
   // table in registers across every state lookup.  An explicitly addressed
-  // local table trades a bounded 160-byte frame for much higher occupancy.
-  volatile double trr[5][4];
+  // local table trades a bounded frame for much higher occupancy.
+  volatile double trr[{bra_extent}][{ket_extent}];
   trr[0][0] = seed;
 #pragma unroll
-  for (unsigned bra = 1U; bra < 5U; ++bra) {{
+  for (unsigned bra = 1U; bra < {bra_extent}U; ++bra) {{
     double value = c0 * trr[bra - 1U][0];
     if (bra > 1U) value += (bra - 1U) * b10 * trr[bra - 2U][0];
     trr[bra][0] = value;
   }}
 #pragma unroll
-  for (unsigned ket = 1U; ket < 4U; ++ket) {{
+  for (unsigned ket = 1U; ket < {ket_extent}U; ++ket) {{
 #pragma unroll
-    for (unsigned bra = 0U; bra < 5U; ++bra) {{
+    for (unsigned bra = 0U; bra < {bra_extent}U; ++bra) {{
       double value = cp * trr[bra][ket - 1U];
       if (ket > 1U) value +=
           (ket - 1U) * b01 * trr[bra][ket - 2U];
@@ -2156,30 +2208,35 @@ __device__ __noinline__ GeneratedDpppRys4Axis generated_dppp_rys4_axis(
     }}
   }}
 
-  GeneratedDpppRys4Axis result;
-  result.base = generated_dppp_rys4_state(trr, a, b, c, d, ab, cd);
-  const double raised_first = generated_dppp_rys4_state(
+  GeneratedDppp{class_tag}Axis result;
+  result.base = generated_dppp_{symbol_tag}_state(
+      trr, a, b, c, d, ab, cd);
+  const double raised_first = generated_dppp_{symbol_tag}_state(
       trr, a + 1U, b, c, d, ab, cd);
   const double lowered_first = a == 0U ? 0.0 :
-      generated_dppp_rys4_state(trr, a - 1U, b, c, d, ab, cd);
+      generated_dppp_{symbol_tag}_state(
+          trr, a - 1U, b, c, d, ab, cd);
   result.first = alpha2 * raised_first - static_cast<double>(a) * lowered_first;
-  const double raised_second = generated_dppp_rys4_state(
+  const double raised_second = generated_dppp_{symbol_tag}_state(
       trr, a, b + 1U, c, d, ab, cd);
   const double lowered_second = b == 0U ? 0.0 :
-      generated_dppp_rys4_state(trr, a, b - 1U, c, d, ab, cd);
+      generated_dppp_{symbol_tag}_state(
+          trr, a, b - 1U, c, d, ab, cd);
   result.second =
       beta2 * raised_second - static_cast<double>(b) * lowered_second;
-  const double raised_third = generated_dppp_rys4_state(
+  const double raised_third = generated_dppp_{symbol_tag}_state(
       trr, a, b, c + 1U, d, ab, cd);
   const double lowered_third = c == 0U ? 0.0 :
-      generated_dppp_rys4_state(trr, a, b, c - 1U, d, ab, cd);
+      generated_dppp_{symbol_tag}_state(
+          trr, a, b, c - 1U, d, ab, cd);
   result.third =
       gamma2 * raised_third - static_cast<double>(c) * lowered_third;
   return result;
 }}
 
 template <bool Unrestricted>
-__device__ __forceinline__ void generated_dppp_rys4_component_lane_task(
+__device__ __forceinline__ void
+generated_dppp_{symbol_tag}_component_lane_task(
     const GeneratedDpppShellTask* tasks,
     const GeneratedDpppPrimitivePairData* primitive_pairs,
     const std::int64_t* primitive_pair_offsets,
@@ -2193,8 +2250,8 @@ __device__ __forceinline__ void generated_dppp_rys4_component_lane_task(
   struct Shared {{
     GeneratedDpppShellTask task;
     GeneratedDpppVec3 positions[4];
-    GeneratedDpppRys4Primitive primitive;
-    double roots_weights[8];
+    GeneratedDppp{class_tag}Primitive primitive;
+    double roots_weights[{2 * nroots}];
     double warp_sums[kGeneratedDpppWarpCount][9];
   }};
   __shared__ Shared shared;
@@ -2242,20 +2299,18 @@ __device__ __forceinline__ void generated_dppp_rys4_component_lane_task(
   const double density_weight = density_coefficient * angular_coefficient;
   if (!__syncthreads_or(density_weight != 0.0)) return;
 
-  const unsigned d_axis_0 = generated_dppp_d_axes[d_component][0];
-  const unsigned d_axis_1 = generated_dppp_d_axes[d_component][1];
-  const unsigned ax = (d_axis_0 == 0U) + (d_axis_1 == 0U);
-  const unsigned ay = (d_axis_0 == 1U) + (d_axis_1 == 1U);
-  const unsigned az = (d_axis_0 == 2U) + (d_axis_1 == 2U);
-  const unsigned bx = first_p == 0U;
-  const unsigned by = first_p == 1U;
-  const unsigned bz = first_p == 2U;
-  const unsigned cx = third_p == 0U;
-  const unsigned cy = third_p == 1U;
-  const unsigned cz = third_p == 2U;
-  const unsigned dx_order = fourth_p == 0U;
-  const unsigned dy_order = fourth_p == 1U;
-  const unsigned dz_order = fourth_p == 2U;
+  const unsigned ax = {component_axis_counts[0][0]};
+  const unsigned ay = {component_axis_counts[0][1]};
+  const unsigned az = {component_axis_counts[0][2]};
+  const unsigned bx = {component_axis_counts[1][0]};
+  const unsigned by = {component_axis_counts[1][1]};
+  const unsigned bz = {component_axis_counts[1][2]};
+  const unsigned cx = {component_axis_counts[2][0]};
+  const unsigned cy = {component_axis_counts[2][1]};
+  const unsigned cz = {component_axis_counts[2][2]};
+  const unsigned dx_order = {component_axis_counts[3][0]};
+  const unsigned dy_order = {component_axis_counts[3][1]};
+  const unsigned dz_order = {component_axis_counts[3][2]};
   double component_force[9]{{}};
 
   const std::int64_t first_pair_begin =
@@ -2275,7 +2330,7 @@ __device__ __forceinline__ void generated_dppp_rys4_component_lane_task(
             primitive_pairs[first_primitive];
         const GeneratedDpppPrimitivePairData second_pair =
             primitive_pairs[second_primitive];
-        GeneratedDpppRys4Primitive& primitive = shared.primitive;
+        GeneratedDppp{class_tag}Primitive& primitive = shared.primitive;
         primitive.p = first_pair.exponent_sum;
         primitive.q = second_pair.exponent_sum;
         const bool first_pair_reversed =
@@ -2311,7 +2366,7 @@ __device__ __forceinline__ void generated_dppp_rys4_component_lane_task(
             second_pair.product_center.z;
         const double rho =
             primitive.p * primitive.q / (primitive.p + primitive.q);
-        generated_dppp_rys4_roots(
+        {root_symbol}_roots(
             rho * (primitive.dx * primitive.dx +
                    primitive.dy * primitive.dy +
                    primitive.dz * primitive.dz),
@@ -2323,9 +2378,9 @@ __device__ __forceinline__ void generated_dppp_rys4_component_lane_task(
       }}
       __syncthreads();
       if (density_weight != 0.0) {{
-        const GeneratedDpppRys4Primitive& primitive = shared.primitive;
+        const GeneratedDppp{class_tag}Primitive& primitive = shared.primitive;
 #pragma unroll 1
-        for (unsigned root_index = 0U; root_index < 4U; ++root_index) {{
+        for (unsigned root_index = 0U; root_index < {nroots}U; ++root_index) {{
           const double root = shared.roots_weights[2U * root_index];
           const double weighted_root =
               shared.roots_weights[2U * root_index + 1U] *
@@ -2336,19 +2391,22 @@ __device__ __forceinline__ void generated_dppp_rys4_component_lane_task(
           const double b10 = 0.5 / primitive.p * (1.0 - root_bra);
           const double b00 = 0.5 * root_over_sum;
           const double b01 = 0.5 / primitive.q * (1.0 - root_ket);
-          const GeneratedDpppRys4Axis x = generated_dppp_rys4_axis(
+          const GeneratedDppp{class_tag}Axis x =
+              generated_dppp_{symbol_tag}_axis(
               ax, bx, cx, dx_order,
               primitive.pax - primitive.dx * root_bra,
               primitive.qcx + primitive.dx * root_ket,
               primitive.abx, primitive.cdx, b10, b00, b01, 1.0,
               primitive.alpha2, primitive.beta2, primitive.gamma2);
-          const GeneratedDpppRys4Axis y = generated_dppp_rys4_axis(
+          const GeneratedDppp{class_tag}Axis y =
+              generated_dppp_{symbol_tag}_axis(
               ay, by, cy, dy_order,
               primitive.pay - primitive.dy * root_bra,
               primitive.qcy + primitive.dy * root_ket,
               primitive.aby, primitive.cdy, b10, b00, b01, 1.0,
               primitive.alpha2, primitive.beta2, primitive.gamma2);
-          const GeneratedDpppRys4Axis z = generated_dppp_rys4_axis(
+          const GeneratedDppp{class_tag}Axis z =
+              generated_dppp_{symbol_tag}_axis(
               az, bz, cz, dz_order,
               primitive.paz - primitive.dz * root_bra,
               primitive.qcz + primitive.dz * root_ket,
@@ -2425,7 +2483,7 @@ void generated_dppp_shell_class_force_rhf_kernel(
     double* forces,
     std::size_t task_count) {{
   if (blockIdx.x >= task_count) return;
-  generated_dppp_rys4_component_lane_task<false>(
+  generated_dppp_{symbol_tag}_component_lane_task<false>(
       tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
       atom_positions, screening_tolerance, schwarz_bounds, density, forces,
       static_cast<std::size_t>(blockIdx.x));
@@ -2444,14 +2502,15 @@ void generated_dppp_shell_class_force_uhf_kernel(
     double* forces,
     std::size_t task_count) {{
   if (blockIdx.x >= task_count) return;
-  generated_dppp_rys4_component_lane_task<true>(
+  generated_dppp_{symbol_tag}_component_lane_task<true>(
       tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
       atom_positions, screening_tolerance, schwarz_bounds, density, forces,
       static_cast<std::size_t>(blockIdx.x));
 }}
 
 template <bool Unrestricted>
-__device__ __forceinline__ void generated_dppp_rys4_component_lane_persistent(
+__device__ __forceinline__ void
+generated_dppp_{symbol_tag}_component_lane_persistent(
     const GeneratedDpppShellTask* tasks,
     const GeneratedDpppPrimitivePairData* primitive_pairs,
     const std::int64_t* primitive_pair_offsets,
@@ -2470,7 +2529,7 @@ __device__ __forceinline__ void generated_dppp_rys4_component_lane_persistent(
     __syncthreads();
     const std::uint32_t task_index = shared_task_index;
     if (task_index >= *task_count) return;
-    generated_dppp_rys4_component_lane_task<Unrestricted>(
+    generated_dppp_{symbol_tag}_component_lane_task<Unrestricted>(
         tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
         atom_positions, screening_tolerance, schwarz_bounds, density, forces,
         static_cast<std::size_t>(*task_offset + task_index));
@@ -2492,7 +2551,7 @@ void generated_dppp_shell_class_force_rhf_persistent_kernel(
     const std::uint32_t* task_offset,
     const std::uint32_t* task_count,
     std::uint32_t* task_head) {{
-  generated_dppp_rys4_component_lane_persistent<false>(
+  generated_dppp_{symbol_tag}_component_lane_persistent<false>(
       tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
       atom_positions, screening_tolerance, schwarz_bounds, density, forces,
       task_offset, task_count, task_head);
@@ -2512,7 +2571,7 @@ void generated_dppp_shell_class_force_uhf_persistent_kernel(
     const std::uint32_t* task_offset,
     const std::uint32_t* task_count,
     std::uint32_t* task_head) {{
-  generated_dppp_rys4_component_lane_persistent<true>(
+  generated_dppp_{symbol_tag}_component_lane_persistent<true>(
       tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
       atom_positions, screening_tolerance, schwarz_bounds, density, forces,
       task_offset, task_count, task_head);
@@ -4706,7 +4765,7 @@ void generated_dppp_shell_class_force_uhf_persistent_kernel(
 """
     if (
         plan.schedule.kind == ScheduleKind.COMPONENT_LANES
-        and plan.kernel.integral.recurrence == "rys4"
+        and plan.kernel.integral.recurrence in ("rys3", "rys4")
     ):
         force_marker = """template <bool Unrestricted>
 __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
@@ -4739,11 +4798,16 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
         force_begin = source.find(force_marker)
         if force_begin < 0:
             raise RuntimeError("generated force task marker changed unexpectedly")
-        if plan.kernel.integral.recurrence in ("rys3", "rys4"):
+        if plan.kernel.integral.recurrence == "rys3":
             force_consumer = _emit_rys_thread_force_consumer_cuda(
                 spec,
                 plan,
                 minimum_blocks_per_sm,
+            )
+        elif plan.kernel.integral.recurrence == "rys4":
+            raise ValueError(
+                "thread-task Rys4 lowering is unsupported; use cooperative "
+                "component lanes"
             )
         else:
             force_consumer = _emit_scalar_thread_force_consumer_cuda(

@@ -294,9 +294,12 @@ exchange magnitudes. A device pass then compacts only shell quartets whose
 shell-level Schwarz product survives both the configured threshold and at
 least one of the two Coulomb or four crossed exchange density blocks. This
 reduction and compaction are part of the captured SCF Graph. Every converged
-system retains `P_n` and its raw `F(P_n)`. A final density step at most `1e-12`
-RMS reuses that pair; a looser system alone restores `P_{n+1}` and enters the
-legacy Fock builder. Multi-system buckets then regenerate only the transformed
+system retains `P_n` and its raw `F(P_n)`. Tight accuracy requests reuse that
+pair only when the final density step is at most `1e-12` RMS. The normal
+`1e-8` density-tolerance endpoint uses a separately validated `2e-9` RMS cap,
+whose 384-AO reuse-versus-rebuild force drift remains below `3e-8 Eh/bohr`.
+A looser system alone restores `P_{n+1}` and enters the legacy Fock builder.
+Multi-system buckets then regenerate only the transformed
 direct densities, shell-pair bounds, and compact quartet metadata for all
 selected final snapshots. This repairs the shared task list after peers stop
 on different device-tail Graph launches without reevaluating J/K for the tight

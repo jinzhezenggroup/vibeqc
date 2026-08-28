@@ -614,6 +614,29 @@ def test_dppp_rys4_recurrence_matches_every_symbolic_component():
                 )
 
 
+@pytest.mark.parametrize("name", ("dpps", "dsps", "pppp"))
+def test_cooperative_rys3_recurrence_matches_every_symbolic_component(
+    name: str,
+):
+    """Lock each promoted three-root recurrence against symbolic lowering."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
+    values = factored_dppp_variables(sample_variables())
+    for component in spec.components:
+        actual = evaluate_rys_component(spec, component, values)
+        expected = evaluate_fused_shell_observables(spec, component, values)
+        assert actual.value == pytest.approx(
+            expected.value, rel=8.0e-13, abs=8.0e-13
+        )
+        for center in range(4):
+            for axis in range(3):
+                assert actual.gradients[center][axis] == pytest.approx(
+                    expected.gradients[center][axis],
+                    rel=2.0e-12,
+                    abs=2.0e-12,
+                )
+
+
 def test_dppp_cooperative_rys4_uses_uniform_runtime_indexed_axis_recurrence():
     """Prevent regression to a divergent 162-way component dispatcher."""
 
@@ -643,6 +666,43 @@ def test_dppp_cooperative_rys4_uses_uniform_runtime_indexed_axis_recurrence():
     assert "component_weights[kGeneratedDpppComponentCount][32]" not in source
     assert "GeneratedDpppPrimitiveGeometry primitive" not in source
     assert "generated_dppp_rys4_roots" in source
+
+
+@pytest.mark.parametrize(
+    ("name", "block_threads", "trr_shape"),
+    (
+        ("dpps", 64, "volatile double trr[5][3]"),
+        ("dsps", 32, "volatile double trr[4][3]"),
+        ("pppp", 96, "volatile double trr[4][4]"),
+    ),
+)
+def test_cooperative_rys3_hot_classes_use_uniform_component_lanes(
+    name: str,
+    block_threads: int,
+    trr_shape: str,
+):
+    """Promote measured Rys3 hotspots without changing their direct Fock."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
+    schedule = ScheduleIR(
+        kind=ScheduleKind.COMPONENT_LANES,
+        block_threads=block_threads,
+        component_tile=spec.component_count,
+        tasks_per_warp=1,
+        shared_coulomb=True,
+    )
+    plan = build_fused_shell_plan(
+        spec,
+        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+        schedule=schedule,
+        recurrence="rys3",
+    )
+    source = emit_shell_class_fused_cuda(spec, plan)
+    assert f"generated_{name}_rys3_component_lane_task" in source
+    assert f"generated_{name}_rys3_roots" in source
+    assert trr_shape in source
+    assert "switch (component)" not in source
+    assert f"generated_{name}_shell_class_fock_rhf_kernel" in source
 
 
 @pytest.mark.parametrize(
@@ -2378,6 +2438,95 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
         )
 
 
+@pytest.mark.parametrize(
+    ("name", "block_threads", "resource_limit"),
+    (
+        ("dpps", 64, (168, 120, 656)),
+        ("dsps", 32, (166, 96, 584)),
+        ("pppp", 96, (168, 128, 728)),
+    ),
+)
+def test_cooperative_rys3_hot_classes_compile_without_spills_when_nvcc_is_configured(
+    tmp_path: Path,
+    name: str,
+    block_threads: int,
+    resource_limit: tuple[int, int, int],
+):
+    """Apply a zero-spill sm_120 gate to every promoted Rys3 force class."""
+
+    nvcc = os.environ.get("VIBEQC_NVCC")
+    if nvcc is None:
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
+    schedule = ScheduleIR(
+        kind=ScheduleKind.COMPONENT_LANES,
+        block_threads=block_threads,
+        component_tile=spec.component_count,
+        tasks_per_warp=1,
+        shared_coulomb=True,
+    )
+    plan = build_fused_shell_plan(
+        spec,
+        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+        schedule=schedule,
+        recurrence="rys3",
+    )
+    source = tmp_path / f"generated_{name}_cooperative_rys3.cu"
+    source.write_text(
+        """
+template <unsigned MaximumOrder>
+__device__ __forceinline__ void boys_values(double argument, double* values) {
+  for (unsigned order = 0; order <= MaximumOrder; ++order) {
+    values[order] = 1.0 / (2.0 * static_cast<double>(order) + 1.0 + argument);
+  }
+}
+"""
+        + emit_shell_class_fused_cuda(spec, plan),
+        encoding="utf-8",
+    )
+    cubin = tmp_path / f"generated_{name}_cooperative_rys3.cubin"
+    result = subprocess.run(
+        [
+            nvcc,
+            "-std=c++17",
+            f"-arch={cuda_architecture}",
+            "-O3",
+            "-cubin",
+            "-Xptxas=-v",
+            str(source),
+            "-o",
+            str(cubin),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=240,
+    )
+    output = result.stdout + result.stderr
+    if os.environ.get("VIBEQC_NVCC_VERBOSE"):
+        print(output)
+    assert result.returncode == 0, output
+    if cuda_architecture == "sm_120":
+        class_name = name[0].upper() + name[1:]
+        assert_rtx5090_resources(
+            output,
+            {
+                f"generated_{name}_shell_class_force_rhf_kernel": resource_limit,
+                f"generated_{name}_shell_class_force_uhf_kernel": resource_limit,
+                f"generated_{name}_shell_class_force_rhf_persistent_kernel": (
+                    resource_limit
+                ),
+                f"generated_{name}_shell_class_force_uhf_persistent_kernel": (
+                    resource_limit
+                ),
+            },
+        )
+        assert f"Generated{class_name}Rys3Primitive" in source.read_text(
+            encoding="utf-8"
+        )
+
+
 def test_ppps_rys3_benchmark_runs_against_component_lanes_when_nvcc_is_configured(
     tmp_path: Path,
 ):
@@ -2600,6 +2749,109 @@ def test_dppp_cooperative_rys4_benchmark_runs_against_component_lanes_when_nvcc_
             sort_keys=True,
         )
     )
+
+
+@pytest.mark.parametrize("name", ("dpps", "dsps", "pppp"))
+def test_cooperative_rys3_benchmark_runs_against_component_lanes_when_nvcc_is_configured(
+    tmp_path: Path,
+    name: str,
+):
+    """Gate each promoted Rys3 class against its accepted force recurrence."""
+
+    nvcc = os.environ.get("VIBEQC_NVCC")
+    if nvcc is None:
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA benchmark gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
+    selection = next(
+        selection
+        for selection in load_production_kernel_selections(
+            REPOSITORY_ROOT
+            / "tools"
+            / "vibeqc_codegen"
+            / "production_shell_classes.json",
+            "sm_120",
+        )
+        if selection.spec == spec
+    )
+    rys3_plan = build_fused_shell_plan(
+        spec,
+        schedule=selection.schedule,
+        recurrence="rys3",
+    )
+    baseline_plan = build_fused_shell_plan(
+        spec,
+        schedule=selection.schedule,
+        recurrence="subset_wick",
+    )
+    environment = dict(os.environ)
+
+    def compile_and_run(label: str, plan) -> dict[str, object]:
+        source = tmp_path / f"generated_{name}_{label}_benchmark.cu"
+        source.write_text(
+            emit_shell_class_benchmark_cuda(
+                spec,
+                task_count=8192,
+                primitive_count=3,
+                warmups=1,
+                iterations=3,
+                samples=3,
+                plan=plan,
+                benchmark_kernel_only=True,
+                persistent_kernel=True,
+            ),
+            encoding="utf-8",
+        )
+        executable = tmp_path / f"generated_{name}_{label}_benchmark"
+        compiled = subprocess.run(
+            [
+                nvcc,
+                "-std=c++17",
+                f"-arch={cuda_architecture}",
+                "-O3",
+                str(source),
+                "-o",
+                str(executable),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=240,
+        )
+        assert compiled.returncode == 0, compiled.stdout + compiled.stderr
+        run = subprocess.run(
+            [
+                "srun",
+                "--partition=main",
+                "--gres=gpu:5090:1",
+                "--nodes=1",
+                "--ntasks=1",
+                "--time=00:05:00",
+                str(executable),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=330,
+            env=environment,
+        )
+        assert run.returncode == 0, run.stdout + run.stderr
+        payload = json.loads(run.stdout.strip().splitlines()[-1])
+        assert payload["maximum_force_error"] <= (
+            2.0e-10 * max(1.0, payload["maximum_force"])
+        )
+        return payload
+
+    rys3 = compile_and_run("cooperative_rys3", rys3_plan)
+    baseline = compile_and_run("component_lanes", baseline_plan)
+    result = {
+        "shell_class": name,
+        "cooperative_rys3": rys3,
+        "component_lanes": baseline,
+        "speedup_vs_component_lanes": baseline["fused_ms"] / rys3["fused_ms"],
+    }
+    print(json.dumps(result, sort_keys=True))
+    assert result["speedup_vs_component_lanes"] > 1.0
 
 
 @pytest.mark.parametrize(
