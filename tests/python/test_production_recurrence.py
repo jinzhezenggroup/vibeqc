@@ -177,11 +177,13 @@ def test_existing_production_rows_default_to_subset_wick():
         selection.spec.name: selection.recurrence for selection in selections
     }
     assert recurrences["dppp"] == "rys4"
-    assert all(recurrences[name] == "rys3" for name in ("dpps", "dsps"))
+    assert all(
+        recurrences[name] == "rys3" for name in ("dpps", "dsps", "pppp")
+    )
     assert all(
         selection.recurrence == "subset_wick"
         for selection in selections
-        if selection.spec.name not in {"dppp", "dpps", "dsps"}
+        if selection.spec.name not in {"dppp", "dpps", "dsps", "pppp"}
     )
     assert next(
         selection for selection in selections if selection.spec.name == "ppps"
@@ -253,8 +255,13 @@ def test_production_dsps_promotes_scalar_force_but_retains_component_fock():
     assert "generated_sm120_dsps_scalar_thread_fock" not in shard
 
 
-def test_production_dpps_promotes_uniform_force_but_retains_component_fock():
-    """Keep the DPPS force mapping independent of the value consumer."""
+@pytest.mark.parametrize(
+    ("shell_class", "fock_block_threads"), (("dpps", 64), ("pppp", 96))
+)
+def test_production_rys3_uniform_force_retains_component_fock(
+    shell_class: str, fock_block_threads: int
+):
+    """Keep uniform-warp force mappings independent of value consumers."""
 
     repository_root = Path(__file__).resolve().parents[2]
     manifest = (
@@ -265,14 +272,18 @@ def test_production_dpps_promotes_uniform_force_but_retains_component_fock():
     )
     resolved = resolve_production_profile(manifest, "sm_120")
     selection = next(
-        item for item in resolved.selections if item.spec.name == "dpps"
+        item for item in resolved.selections if item.spec.name == shell_class
     )
     assert selection.schedule.kind.value == "subgroup_tasks"
     assert selection.schedule.tasks_per_block == 32
     shard = emit_profile_shard(resolved, (selection,))
-    assert "kGeneratedSm120DppsRys3TaskCount = 32U" in shard
-    assert "generated_sm120_dpps_shell_class_fock_rhf_kernel" in shard
-    assert "kGeneratedSm120DppsFockBlockThreads = 64U" in shard
+    class_name = shell_class[0].upper() + shell_class[1:]
+    assert f"kGeneratedSm120{class_name}Rys3TaskCount = 32U" in shard
+    assert f"generated_sm120_{shell_class}_shell_class_fock_rhf_kernel" in shard
+    assert (
+        f"kGeneratedSm120{class_name}FockBlockThreads = "
+        f"{fock_block_threads}U" in shard
+    )
 
 
 def test_ppps_resident_option_keeps_ordinary_fock_force_fallback(tmp_path: Path):
