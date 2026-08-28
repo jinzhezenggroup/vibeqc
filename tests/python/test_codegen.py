@@ -1777,7 +1777,8 @@ def test_tiled_component_schedule_covers_force_fock_and_benchmark_oracle():
     source = emit_shell_class_fused_cuda(DPPP_SPEC, plan)
     assert "kGeneratedDpppBlockThreads = 64U" in source
     assert source.count("component_tile_begin += 64U") == 2
-    assert source.count("state += kGeneratedDpppBlockThreads") == 2
+    assert source.count("state += kGeneratedDpppBlockThreads") == 1
+    assert source.count("state += kGeneratedDpppFockBlockThreads") == 1
     assert "generated_dppp_component_gradient<true>" in source
     assert "generated_dppp_component_value<true>" in source
 
