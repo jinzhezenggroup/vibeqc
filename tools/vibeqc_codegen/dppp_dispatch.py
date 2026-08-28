@@ -1838,7 +1838,10 @@ def _emit_rys_thread_force_consumer_cuda(
     independent_atomic_code = "\n".join(independent_atomics)
     fourth_atomic_code = "\n".join(fourth_atomics)
     kernel_qualifier = f"__launch_bounds__(32, {minimum_blocks_per_sm})"
-    roots_cuda = emit_rys3_roots_cuda()
+    # Start from the shared DPPP skeleton so shell specialization also renames
+    # this helper.  A PPPS-specific global symbol collides as soon as a second
+    # scalar Rys3 shell is emitted into another production shard.
+    roots_cuda = emit_rys3_roots_cuda(symbol_prefix="generated_dppp_rys3")
     return roots_cuda + f"""
 /** Immutable pointers shared by all lanes in the persistent Rys worker. */
 struct GeneratedDpppRysThreadContext {{
@@ -1928,7 +1931,7 @@ __device__ __forceinline__ void generated_dppp_rys3_force_task(
       const double dz = first_pair.product_center.z -
           second_pair.product_center.z;
       const double rho = p * q / (p + q);
-      generated_ppps_rys3_roots(
+      generated_dppp_rys3_roots(
           rho * (dx * dx + dy * dy + dz * dz),
           &roots_weights[0][lane], 32U);
       const double primitive_prefactor =

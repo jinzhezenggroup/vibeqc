@@ -11,7 +11,9 @@ from enum import Enum
 
 from .shell_spec import ShellClassSpec
 
-_COOPERATIVE_RYS3_SHELLS = frozenset(("dpps", "dsps", "pppp"))
+_COOPERATIVE_RYS3_SHELLS = frozenset(
+    ("dpps", "dpss", "dsps", "dspp", "pppp")
+)
 
 
 class KernelConsumer(str, Enum):

@@ -178,12 +178,14 @@ def test_existing_production_rows_default_to_subset_wick():
     }
     assert recurrences["dppp"] == "rys4"
     assert all(
-        recurrences[name] == "rys3" for name in ("dpps", "dsps", "pppp")
+        recurrences[name] == "rys3"
+        for name in ("dpps", "dpss", "dsps", "dspp", "pppp")
     )
     assert all(
         selection.recurrence == "subset_wick"
         for selection in selections
-        if selection.spec.name not in {"dppp", "dpps", "dsps", "pppp"}
+        if selection.spec.name
+        not in {"dppp", "dpps", "dpss", "dsps", "dspp", "pppp"}
     )
     assert next(
         selection for selection in selections if selection.spec.name == "ppps"

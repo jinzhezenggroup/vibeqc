@@ -368,6 +368,32 @@ by 0.91%, below the 2% gate, while the 192-AO check improves by 1.31%. Full
 evidence is retained in the
 [PPPP uniform Rys3 artifact](../benchmarks/results/rtx5090-6a9f20d-issue-41-pppp-uniform-rys3.json).
 
+### Batched DSPP and DPSS Rys3 promotion
+
+DSPP and DPSS were screened together so their independent PTXAS and isolated
+force gates could share one production build, endpoint, profile, and pair of
+small-system checks. DSPP uses the same 32-task/eight-component-warp Rys3
+mapping as DPPS and PPPP while retaining its accepted 64-thread Fock worker.
+DPSS uses one complete Rys3 quartet per lane with 32 lanes and an
+eight-block-per-SM launch bound. Generalizing the scalar path also exposed and
+fixed a cross-shard helper collision: fixed-root symbols are now shell-scoped
+rather than hard-coded to PPPS.
+
+The isolated DSPP force gate improves from 47.847149 ms to 8.043763 ms
+(`5.948x`), while DPSS improves from 22.699392 ms to 6.103693 ms (`3.719x`).
+Both remain within `1.24e-11 Eh/bohr` of their oracles. DSPP compiles with
+214--216 registers, a 56 B stack, 36,360 B shared memory, and no spills; DPSS
+uses 252 registers, 6,224 B shared memory, no stack, and no spills.
+
+In the three-replay 384-AO profile, DSPP falls from 79.903 ms to 55.288 ms and
+DPSS from 71.554 ms to 29.451 ms, jointly saving 66.718 ms. Total two-electron
+force device time falls from 1,323.313 ms to 1,256.506 ms. The five-repeat
+endpoint correspondingly improves from 2.751221 s to 2.684645 s while
+GPU4PySCF measures 2.136467 s, leaving a `1.257x` ratio. Maximum energy and
+force errors are `1.55e-11 Eh` and `3.15e-8 Eh/bohr`; the 96- and 192-AO
+checks both improve by about 1.6%. Complete evidence is retained in the
+[batched DSPP/DPSS Rys3 artifact](../benchmarks/results/rtx5090-31c3cd7-issue-41-dspp-dpss-rys3.json).
+
 ## Architecture autotuning
 
 `tools/vibeqc_codegen/autotune.py` emits every CUDA-supported schedule variant
