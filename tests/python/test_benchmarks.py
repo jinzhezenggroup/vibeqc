@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -58,6 +59,18 @@ def _results_summary_module():
     spec = importlib.util.spec_from_file_location("vibeqc_results_summary", path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _aot_shell_gate_module():
+    """Load the AOT endpoint helpers without importing a GPU backend."""
+
+    path = REPOSITORY_ROOT / "benchmarks" / "aot_shell_batch_gate.py"
+    spec = importlib.util.spec_from_file_location("vibeqc_aot_shell_gate", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
@@ -157,6 +170,232 @@ def test_gpu_comparison_help_does_not_require_an_allocated_device():
             assert "--reference-gradient-tolerance" in completed.stdout
             assert "--screening-tolerance" in completed.stdout
             assert "--max-iterations" in completed.stdout
+
+
+def test_aot_endpoint_order_and_class_parser_are_deterministic():
+    """Keep the endpoint's pair count and typo rejection independent of CUDA."""
+
+    endpoint = _aot_shell_gate_module()
+    assert endpoint.interleaved_selection_order(2) == (
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline",
+    )
+    order = endpoint.interleaved_selection_order(5, "abba")
+    assert len(order) == 10
+    assert order.count("baseline") == 5
+    assert order.count("candidate") == 5
+    assert endpoint.interleaved_selection_order(3, "ab") == (
+        "baseline",
+        "candidate",
+        "baseline",
+        "candidate",
+        "baseline",
+        "candidate",
+    )
+    assert endpoint._class_list(" dppp, dpds ") == ("dppp", "dpds")
+    for value in ("", "   ", "dppp,", ",dppp", "dppp,,dpds", "dppp,dppp"):
+        with pytest.raises(Exception, match="non-empty and unique"):
+            endpoint._class_list(value)
+    assert endpoint._capacity_fock_selection(None, ("psps",)) is None
+    assert endpoint._capacity_fock_selection(("dppp",), None) is None
+    assert endpoint._capacity_fock_selection(
+        ("dppp", "dpds"), ("dpds", "psps")
+    ) == ("dppp", "dpds", "psps")
+
+
+def test_aot_endpoint_default_fock_selection_ignores_ambient_filter(monkeypatch):
+    """Make an omitted Fock CLI selection mean the reproducible full registry."""
+
+    endpoint = _aot_shell_gate_module()
+    monkeypatch.setenv("VIBEQC_AOT_FOCK_SHELL_CLASSES", "ambient-only")
+    with endpoint._aot_selection(("dppp",), None):
+        assert os.environ["VIBEQC_AOT_SHELL_CLASSES"] == "dppp"
+        assert "VIBEQC_AOT_FOCK_SHELL_CLASSES" not in os.environ
+    assert os.environ["VIBEQC_AOT_FOCK_SHELL_CLASSES"] == "ambient-only"
+
+
+def test_aot_endpoint_freezes_after_one_cold_baseline_and_records_schema():
+    """Verify fixed-dm0 control flow with a fake prepared batch."""
+
+    endpoint = _aot_shell_gate_module()
+
+    class FakeStream:
+        @staticmethod
+        def synchronize():
+            return None
+
+    fake_cupy = SimpleNamespace(
+        cuda=SimpleNamespace(Stream=SimpleNamespace(null=FakeStream()))
+    )
+
+    class FakeItem:
+        converged = True
+        iterations = 1
+        energy_change = 0.0
+        density_rms = 0.0
+        warm_start_used = True
+        warm_start_fallback = False
+        executed_backend = "cuda"
+        bucket_id = 0
+        energy = -1.0
+        forces = np.zeros((1, 3))
+
+    class FakeResult:
+        items = (FakeItem(),)
+        energies = np.asarray([-1.0])
+
+    class FakeBatch:
+        def __init__(self):
+            self.executions = []
+            self.freeze_calls = []
+
+        def execute(self, *, strict):
+            self.executions.append(
+                (
+                    strict,
+                    os.environ.get("VIBEQC_AOT_SHELL_CLASSES"),
+                    os.environ.get("VIBEQC_AOT_FOCK_SHELL_CLASSES"),
+                )
+            )
+            return FakeResult()
+
+        def set_warm_start_updates(self, enabled):
+            self.freeze_calls.append(enabled)
+
+    batch = FakeBatch()
+    measurement, warmups = endpoint._fixed_dm0_measurement(
+        batch,
+        fake_cupy,
+        ("dppp",),
+        ("dppp", "ppps"),
+        2,
+        order_style="abba",
+        warmups=1,
+        maximum_energy_error=1.0e-12,
+        maximum_force_error=1.0e-12,
+        minimum_speedup=0.1,
+    )
+
+    assert batch.freeze_calls == [False]
+    assert len(warmups) == 1
+    # cold baseline, one unmeasured warmup, then four ABBA samples
+    assert [entry[1] for entry in batch.executions] == [
+        "dppp",
+        "dppp",
+        "dppp",
+        "dppp,ppps",
+        "dppp,ppps",
+        "dppp",
+    ]
+    assert all(entry[0] for entry in batch.executions)
+    assert measurement["fixed_dm0"] == {
+        "enabled": True,
+        "source": "measured baseline cold result",
+        "warm_start_updates": False,
+    }
+    assert measurement["measurement_order"] == [
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline",
+    ]
+    assert len(measurement["raw_samples"]) == 4
+    assert len(measurement["pairwise_accuracy"]) == 2
+    assert measurement["accuracy"]["maximum_energy_error_hartree"] == 0.0
+    assert measurement["gate"]["passed"]
+
+
+def test_aot_endpoint_pairwise_accuracy_and_median_speedup():
+    """Check branch-aware parity and robust median speedup arithmetic."""
+
+    endpoint = _aot_shell_gate_module()
+
+    def sample(seconds, energy, iterations):
+        return {
+            "seconds": seconds,
+            "energies_hartree": [energy],
+            "forces_hartree_per_bohr": [[[0.0, 0.0, energy]]],
+            "iteration_branches": [iterations],
+            "convergence": [{"converged": True}],
+            "shell_classes": ["dppp"],
+        }
+
+    baseline = [sample(3.0, -1.0, 1), sample(1.0, -1.0, 2)]
+    candidate = [sample(2.0, -1.0 + 2.0e-12, 1), sample(4.0, -1.0, 3)]
+    pairs = endpoint.pairwise_accuracy(baseline, candidate)
+    assert pairs[0]["iteration_branches_match"]
+    assert not pairs[1]["iteration_branches_match"]
+    assert pairs[0]["maximum_energy_error_hartree"] == pytest.approx(2.0e-12)
+    assert pairs[0]["maximum_force_error_hartree_per_bohr"] == pytest.approx(
+        2.0e-12
+    )
+    assert endpoint.timing_summary(baseline)["median_seconds"] == 2.0
+    assert endpoint.timing_summary(candidate)["median_seconds"] == 3.0
+    measurement = {
+        "baseline_samples": baseline,
+        "candidate_samples": candidate,
+        "pairwise_accuracy": pairs,
+        "iteration_branches": {
+            "baseline": [[1], [2]],
+            "candidate": [[1], [3]],
+        },
+        "timing_summary": {
+            "baseline": endpoint.timing_summary(baseline),
+            "candidate": endpoint.timing_summary(candidate),
+            "speedup": 2.0 / 3.0,
+        },
+    }
+    endpoint._gate_measurement(
+        measurement,
+        maximum_energy_error=1.0e-9,
+        maximum_force_error=1.0e-9,
+        minimum_speedup=0.1,
+    )
+    assert not measurement["gate"]["passed"]
+    assert "SCF iteration branch parity" in measurement["gate"]["failures"]
+
+
+def test_aot_endpoint_dry_run_does_not_import_gpu_packages(tmp_path):
+    """Make --dry-run safe on login nodes with no CUDA/PySCF installation."""
+
+    script = REPOSITORY_ROOT / "benchmarks" / "aot_shell_batch_gate.py"
+    output = tmp_path / "aot-plan.json"
+    code = """
+import builtins
+import runpy
+import sys
+
+real_import = builtins.__import__
+blocked = ("cupy", "vibeqc", "gpu4pyscf", "pyscf", "_cases", "_support")
+output_path = sys.argv[1]
+script_path = sys.argv[2]
+
+def guarded_import(name, *args, **kwargs):
+    if name in blocked or name.startswith(tuple(item + "." for item in blocked)):
+        raise AssertionError("GPU package imported during dry-run: " + name)
+    return real_import(name, *args, **kwargs)
+
+builtins.__import__ = guarded_import
+sys.argv = [sys.argv[0], "--dry-run", "--batch", "1", "--repeats", "2", "--output", output_path]
+runpy.run_path(script_path, run_name="__main__")
+"""
+    # Pass the script path as a separate argv item to keep the guard readable.
+    completed = subprocess.run(
+        (sys.executable, "-c", code, str(output), str(script)),
+        cwd=REPOSITORY_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert "JSON result:" in completed.stdout
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["protocol"] == "fixed_dm0_interleaved_ab"
+    assert payload["baseline_selection"]["shell_classes"] == ["dppp", "dpds"]
+    assert payload["candidate_selection"]["shell_classes"][-1] == "dspp"
+    assert payload["measurement_order"].count("baseline") == 2
+    assert payload["measurement_order"].count("candidate") == 2
 
 
 def test_real_molecule_gate_has_four_explicit_dry_run_points(tmp_path):
