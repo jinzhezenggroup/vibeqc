@@ -102,6 +102,44 @@ typedef struct vibeqc_shell_class_profile_entry {
   uint64_t primitive_quartets;
 } vibeqc_shell_class_profile_entry;
 
+#define VIBEQC_PPPS_PROFILE_BLOCK_SIZE_COUNT 4u
+#define VIBEQC_PPPS_PROFILE_ORIENTATION_COUNT 2u
+#define VIBEQC_PPPS_PROFILE_PRIMITIVE_PAIR_BUCKET_COUNT 65u
+
+/**
+ * Final-density statistics for the exact resident PPPS production queue.
+ *
+ * Block-size arrays are ordered as 32, 64, 128, and 256 threads. Orientation
+ * arrays are ordered as 1110 then 1011. Primitive-pair buckets 0..63 are
+ * exact; bucket 64 contains 64 or more primitive pairs.
+ */
+typedef struct vibeqc_ppps_queue_profile {
+  uint64_t descriptor_slots;
+  uint64_t non_empty_descriptors;
+  uint64_t empty_descriptors;
+  uint64_t tasks;
+  uint64_t primitive_work;
+  uint32_t ket_count_min;
+  uint32_t ket_count_median;
+  uint32_t ket_count_p90;
+  uint32_t ket_count_p99;
+  uint32_t ket_count_max;
+  double lane_efficiency[VIBEQC_PPPS_PROFILE_BLOCK_SIZE_COUNT];
+  double primitive_warp_efficiency;
+  double task_tail_imbalance[VIBEQC_PPPS_PROFILE_BLOCK_SIZE_COUNT];
+  double primitive_tail_imbalance[VIBEQC_PPPS_PROFILE_BLOCK_SIZE_COUNT];
+  uint64_t orientation_tasks[VIBEQC_PPPS_PROFILE_ORIENTATION_COUNT];
+  uint64_t orientation_primitive_work[VIBEQC_PPPS_PROFILE_ORIENTATION_COUNT];
+  uint64_t bra_primitive_tasks[
+      VIBEQC_PPPS_PROFILE_PRIMITIVE_PAIR_BUCKET_COUNT];
+  uint64_t bra_primitive_work[
+      VIBEQC_PPPS_PROFILE_PRIMITIVE_PAIR_BUCKET_COUNT];
+  uint64_t ket_primitive_tasks[
+      VIBEQC_PPPS_PROFILE_PRIMITIVE_PAIR_BUCKET_COUNT];
+  uint64_t ket_primitive_work[
+      VIBEQC_PPPS_PROFILE_PRIMITIVE_PAIR_BUCKET_COUNT];
+} vibeqc_ppps_queue_profile;
+
 typedef struct vibeqc_context_descriptor {
   uint32_t struct_size;
   uint32_t abi_version;
@@ -274,6 +312,11 @@ VIBEQC_API vibeqc_status vibeqc_batch_get_last_shell_class_profile(
     const vibeqc_batch* batch,
     vibeqc_shell_class_profile_entry* entries,
     uint32_t entry_count);
+
+/** Copy PPPS queue statistics from the most recent profiled CUDA execution. */
+VIBEQC_API vibeqc_status vibeqc_batch_get_last_ppps_queue_profile(
+    const vibeqc_batch* batch,
+    vibeqc_ppps_queue_profile* profile);
 
 /** Discard all retained per-system converged-density warm starts. */
 VIBEQC_API vibeqc_status vibeqc_batch_clear_warm_starts(vibeqc_batch* batch);

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sqlite3
 from collections import defaultdict
@@ -11,7 +12,22 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
+from _support import cuda_accelerator_metadata, environment_metadata
+
 ANGULAR_LABELS = "spdfgh"
+
+
+def runtime_switch_enabled(value: str | None) -> bool:
+    """Match the native opt-out convention used by experimental CUDA paths."""
+
+    return value is None or value not in {"0", "none"}
+
+
+def ppps_block_threads(value: str | None) -> int:
+    """Return the native scalar PPPS CTA width, or zero for an invalid value."""
+
+    selected = "256" if value is None else value
+    return int(selected) if selected in {"32", "64", "128", "256"} else 0
 
 # GPU4PySCF's unrolled Rys gradient symbols encode the four shell angular
 # momenta in the final four digits.  The same physical shell class can be
@@ -296,6 +312,65 @@ def summarize_active_shell_classes(
     ]
 
 
+def summarize_ppps_queue_profile(profile: object) -> dict[str, object]:
+    """Serialize native PPPS queue counters with explicit bucket semantics."""
+
+    block_threads = (32, 64, 128, 256)
+    orientations = ("1110", "1011")
+
+    def primitive_groups(tasks, work):
+        return [
+            {
+                "primitive_pairs": index if index < 64 else "64+",
+                "tasks": int(task_count),
+                "primitive_work": int(work[index]),
+            }
+            for index, task_count in enumerate(tasks)
+            if task_count != 0
+        ]
+
+    return {
+        "descriptor_slots": profile.descriptor_slots,
+        "non_empty_descriptors": profile.non_empty_descriptors,
+        "empty_descriptors": profile.empty_descriptors,
+        "hole_rate": profile.hole_rate,
+        "tasks": profile.tasks,
+        "primitive_work": profile.primitive_work,
+        "ket_count": {
+            "min": profile.ket_count_min,
+            "median": profile.ket_count_median,
+            "p90": profile.ket_count_p90,
+            "p99": profile.ket_count_p99,
+            "max": profile.ket_count_max,
+        },
+        "lane_efficiency": {
+            str(block): profile.lane_efficiency[index]
+            for index, block in enumerate(block_threads)
+        },
+        "primitive_work_warp_efficiency": profile.primitive_warp_efficiency,
+        "predicted_tail_imbalance": {
+            str(block): {
+                "task_rounds": profile.task_tail_imbalance[index],
+                "primitive_weighted": profile.primitive_tail_imbalance[index],
+            }
+            for index, block in enumerate(block_threads)
+        },
+        "orientation": {
+            orientation: {
+                "tasks": profile.orientation_tasks[index],
+                "primitive_work": profile.orientation_primitive_work[index],
+            }
+            for index, orientation in enumerate(orientations)
+        },
+        "bra_primitive_pair_groups": primitive_groups(
+            profile.bra_primitive_tasks, profile.bra_primitive_work
+        ),
+        "ket_primitive_pair_groups": primitive_groups(
+            profile.ket_primitive_tasks, profile.ket_primitive_work
+        ),
+    }
+
+
 def scaled_geometries(
     atoms: tuple[tuple[str, tuple[float, float, float]], ...],
     batch_size: int,
@@ -387,12 +462,15 @@ def main() -> None:
             )
         )
     payload: dict[str, object] = {
+        "schema_version": 2,
+        "benchmark": "shell_class_histogram",
         "angular_order": None if arguments.all_orders else arguments.angular_order,
         "basis": case.pyscf_basis,
         "case": arguments.case,
         "direct_cartesian_ao_count": molecule.nao_nr(cart=True),
     }
     if arguments.active:
+        import cupy as cp
         from vibeqc import Calculator
 
         systems = scaled_geometries(case.atoms, arguments.batch)
@@ -417,10 +495,45 @@ def main() -> None:
             for _ in range(arguments.warm_repeats):
                 result = batch.execute(strict=True)
             profile = batch.last_shell_class_profile()
+            ppps_queue_profile = batch.last_ppps_queue_profile()
         payload.update(
             {
+                "environment": environment_metadata(
+                    distributions={
+                        "cupy": ("cupy-cuda12x", "cupy"),
+                        "numpy": ("numpy",),
+                        "pyscf": ("pyscf",),
+                    },
+                    accelerator=cuda_accelerator_metadata(cp),
+                ),
                 "batch_size": arguments.batch,
                 "iterations": [item.iterations for item in result.items],
+                "settings": {
+                    "ppps_resident_bra": {
+                        "enabled": runtime_switch_enabled(
+                            os.environ.get("VIBEQC_PPPS_RESIDENT_BRA")
+                        ),
+                        "environment_value": os.environ.get(
+                            "VIBEQC_PPPS_RESIDENT_BRA"
+                        ),
+                    },
+                    "ppps_signature_bucketing": {
+                        "enabled": runtime_switch_enabled(
+                            os.environ.get("VIBEQC_PPPS_SIGNATURE_BUCKETING")
+                        ),
+                        "environment_value": os.environ.get(
+                            "VIBEQC_PPPS_SIGNATURE_BUCKETING"
+                        ),
+                    },
+                    "ppps_block_threads": {
+                        "effective": ppps_block_threads(
+                            os.environ.get("VIBEQC_PPPS_BLOCK_THREADS")
+                        ),
+                        "environment_value": os.environ.get(
+                            "VIBEQC_PPPS_BLOCK_THREADS"
+                        ),
+                    },
+                },
                 "methodology": (
                     "VIBEQC final converged-density direct task compaction after "
                     "Schwarz and density screening; counters aggregate the "
@@ -431,6 +544,7 @@ def main() -> None:
                     profile,
                     None if arguments.all_orders else arguments.angular_order,
                 ),
+                "ppps_queue": summarize_ppps_queue_profile(ppps_queue_profile),
             }
         )
     else:

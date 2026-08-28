@@ -934,3 +934,63 @@ def test_active_shell_class_histogram_ranks_screened_primitive_work():
     assert sum(row["primitive_work_fraction"] for row in all_rows) == pytest.approx(
         1.0
     )
+
+
+def test_ppps_queue_summary_labels_block_orientation_and_overflow_buckets():
+    histogram = _shell_histogram_module()
+    profile = SimpleNamespace(
+        descriptor_slots=10,
+        non_empty_descriptors=4,
+        empty_descriptors=6,
+        hole_rate=0.6,
+        tasks=40,
+        primitive_work=400,
+        ket_count_min=2,
+        ket_count_median=8,
+        ket_count_p90=16,
+        ket_count_p99=16,
+        ket_count_max=16,
+        lane_efficiency=(0.5, 0.25, 0.125, 0.0625),
+        primitive_warp_efficiency=0.75,
+        task_tail_imbalance=(0.1, 0.2, 0.3, 0.4),
+        primitive_tail_imbalance=(0.2, 0.3, 0.4, 0.5),
+        orientation_tasks=(30, 10),
+        orientation_primitive_work=(250, 150),
+        bra_primitive_tasks=(0,) * 2 + (40,) + (0,) * 62,
+        bra_primitive_work=(0,) * 2 + (400,) + (0,) * 62,
+        ket_primitive_tasks=(0,) * 64 + (40,),
+        ket_primitive_work=(0,) * 64 + (400,),
+    )
+
+    summary = histogram.summarize_ppps_queue_profile(profile)
+    assert summary["lane_efficiency"] == {
+        "32": 0.5,
+        "64": 0.25,
+        "128": 0.125,
+        "256": 0.0625,
+    }
+    assert summary["orientation"]["1011"] == {
+        "tasks": 10,
+        "primitive_work": 150,
+    }
+    assert summary["bra_primitive_pair_groups"] == [
+        {"primitive_pairs": 2, "tasks": 40, "primitive_work": 400}
+    ]
+    assert summary["ket_primitive_pair_groups"] == [
+        {"primitive_pairs": "64+", "tasks": 40, "primitive_work": 400}
+    ]
+
+
+def test_shell_histogram_runtime_switch_matches_native_opt_out():
+    histogram = _shell_histogram_module()
+    assert histogram.runtime_switch_enabled(None)
+    assert histogram.runtime_switch_enabled("1")
+    assert histogram.runtime_switch_enabled("enabled")
+    assert not histogram.runtime_switch_enabled("0")
+    assert not histogram.runtime_switch_enabled("none")
+    assert histogram.ppps_block_threads(None) == 256
+    assert histogram.ppps_block_threads("32") == 32
+    assert histogram.ppps_block_threads("64") == 64
+    assert histogram.ppps_block_threads("128") == 128
+    assert histogram.ppps_block_threads("256") == 256
+    assert histogram.ppps_block_threads("96") == 0

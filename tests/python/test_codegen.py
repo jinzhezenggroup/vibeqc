@@ -2298,6 +2298,24 @@ def test_batched_finalization_reuses_each_converged_raw_fock():
     assert "update_uhf_convergence_kernel<true>" in source
 
 
+def test_ppps_queue_buckets_orientation_and_primitive_signature_on_device():
+    """Keep Phase-3 bucketing on the compact production queue and A/B-able."""
+
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
+        encoding="utf-8"
+    )
+    assert "kPppsSignatureBucketCount" in source
+    assert "resident_ppps_signature_bucket" in source
+    assert "prefix_ppps_resident_signature_buckets_kernel" in source
+    assert 'std::getenv("VIBEQC_PPPS_SIGNATURE_BUCKETING")' in source
+    assert 'std::getenv("VIBEQC_PPPS_BLOCK_THREADS")' in source
+    assert "ppps_resident_block_threads_requested" in source
+    assert "resident_signature_offsets[bucket_index]" in source
+    assert "atomicAdd(resident_signature_write_counts + bucket_index" in source
+    assert "std::uint32_t* generated_ppps_resident_signatures =" in source
+    assert "shell_class_profiling\n      ? arena_pointer<std::uint32_t>" in source
+
+
 def test_warm_density_validation_parallelizes_each_system_matrix():
     """Keep fixed-dm0 setup from regressing to one serial N^2 worker."""
 

@@ -1,0 +1,466 @@
+{
+  "angular_order": null,
+  "basis": "def2-svp",
+  "batch_size": 1,
+  "benchmark": "shell_class_histogram",
+  "case": "water-hexadecamer-2s4-def2-svp-spherical",
+  "direct_cartesian_ao_count": 400,
+  "environment": {
+    "accelerator": {
+      "backend": "cuda",
+      "clock_rate_khz": 2407000,
+      "compute_capability": [
+        12,
+        0
+      ],
+      "device_id": 0,
+      "driver_version": 13000,
+      "multiprocessor_count": 170,
+      "name": "NVIDIA GeForce RTX 5090",
+      "runtime_version": 12090,
+      "total_global_memory_bytes": 33666498560
+    },
+    "git": {
+      "commit": "0b6a5733f3242b5b0d9c7f73a0d208108c14d7de",
+      "dirty": true,
+      "pending_generated_benchmark_artifacts": 0
+    },
+    "host": {
+      "machine": "x86_64",
+      "node": "node3",
+      "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+      "processor": "x86_64"
+    },
+    "packages": {
+      "cupy": "14.2.0",
+      "numpy": "2.4.6",
+      "pyscf": "2.14.0"
+    },
+    "python": {
+      "executable": "/home/jzzeng/codes/qc/build/gpu4pyscf-venv/bin/python",
+      "version": "3.11.14"
+    },
+    "runtime": {
+      "cuda_visible_devices": "0",
+      "vibeqc_library": "/home/jzzeng/codes/qc/build/libvibeqc.so.0.1.0"
+    },
+    "timestamp_utc": "2026-08-28T07:41:11.253286+00:00"
+  },
+  "iterations": [
+    1
+  ],
+  "methodology": "VIBEQC final converged-density direct task compaction after Schwarz and density screening; counters aggregate the most recent execution across the native batch",
+  "ppps_queue": {
+    "bra_primitive_pair_groups": [
+      {
+        "primitive_pairs": 1,
+        "primitive_work": 2885140,
+        "tasks": 1120964
+      },
+      {
+        "primitive_pairs": 3,
+        "primitive_work": 4879566,
+        "tasks": 636738
+      },
+      {
+        "primitive_pairs": 9,
+        "primitive_work": 2535624,
+        "tasks": 105540
+      }
+    ],
+    "descriptor_slots": 18528,
+    "empty_descriptors": 17634,
+    "hole_rate": 0.9517487046632125,
+    "ket_count": {
+      "max": 3272,
+      "median": 2401,
+      "min": 2,
+      "p90": 3010,
+      "p99": 3266
+    },
+    "ket_primitive_pair_groups": [
+      {
+        "primitive_pairs": 1,
+        "primitive_work": 2008734,
+        "tasks": 942118
+      },
+      {
+        "primitive_pairs": 3,
+        "primitive_work": 4397280,
+        "tasks": 688256
+      },
+      {
+        "primitive_pairs": 5,
+        "primitive_work": 1136410,
+        "tasks": 103206
+      },
+      {
+        "primitive_pairs": 9,
+        "primitive_work": 2146536,
+        "tasks": 112408
+      },
+      {
+        "primitive_pairs": 15,
+        "primitive_work": 611370,
+        "tasks": 17254
+      }
+    ],
+    "lane_efficiency": {
+      "128": 0.970697394305148,
+      "256": 0.9429056953620936,
+      "32": 0.9924544904464027,
+      "64": 0.9842175878972279
+    },
+    "non_empty_descriptors": 894,
+    "orientation": {
+      "1011": {
+        "primitive_work": 5264369,
+        "tasks": 939999
+      },
+      "1110": {
+        "primitive_work": 5035961,
+        "tasks": 923243
+      }
+    },
+    "predicted_tail_imbalance": {
+      "128": {
+        "primitive_weighted": 1.0279801468667458,
+        "task_rounds": 0.16764470525473452
+      },
+      "256": {
+        "primitive_weighted": 0.9627121708473059,
+        "task_rounds": 0.1672496437362352
+      },
+      "32": {
+        "primitive_weighted": 1.138287932149788,
+        "task_rounds": 0.16773764679813863
+      },
+      "64": {
+        "primitive_weighted": 1.0893141945773523,
+        "task_rounds": 0.16666666666666674
+      }
+    },
+    "primitive_work": 10300330,
+    "primitive_work_warp_efficiency": 0.2599503273553067,
+    "tasks": 1863242
+  },
+  "schema_version": 2,
+  "screening_tolerance": 1e-14,
+  "shell_classes": [
+    {
+      "class": "ppps",
+      "primitive_quartets": 262512864,
+      "primitive_work_fraction": 0.1772415278660403,
+      "shell_angular": [
+        1,
+        1,
+        1,
+        0
+      ],
+      "shell_quartets": 1863242,
+      "tile_fraction": 0.08184417943395958,
+      "tiles": 1863242,
+      "unique_ao_quartets": 48516264
+    },
+    {
+      "class": "psps",
+      "primitive_quartets": 205140408,
+      "primitive_work_fraction": 0.13850520994271304,
+      "shell_angular": [
+        1,
+        0,
+        1,
+        0
+      ],
+      "shell_quartets": 3487874,
+      "tile_fraction": 0.15320725139248811,
+      "tiles": 3487874,
+      "unique_ao_quartets": 31383060
+    },
+    {
+      "class": "psss",
+      "primitive_quartets": 185625726,
+      "primitive_work_fraction": 0.12532942876080527,
+      "shell_angular": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "shell_quartets": 6823562,
+      "tile_fraction": 0.29972962862942554,
+      "tiles": 6823562,
+      "unique_ao_quartets": 20470686
+    },
+    {
+      "class": "dpps",
+      "primitive_quartets": 126978624,
+      "primitive_work_fraction": 0.08573250461389752,
+      "shell_angular": [
+        2,
+        1,
+        1,
+        0
+      ],
+      "shell_quartets": 659140,
+      "tile_fraction": 0.0289531753964864,
+      "tiles": 659140,
+      "unique_ao_quartets": 35593560
+    },
+    {
+      "class": "ppss",
+      "primitive_quartets": 116701836,
+      "primitive_work_fraction": 0.07879389757224264,
+      "shell_angular": [
+        1,
+        1,
+        0,
+        0
+      ],
+      "shell_quartets": 1818102,
+      "tile_fraction": 0.07986137405513657,
+      "tiles": 1818102,
+      "unique_ao_quartets": 15796116
+    },
+    {
+      "class": "dsps",
+      "primitive_quartets": 104457132,
+      "primitive_work_fraction": 0.07052660730631718,
+      "shell_angular": [
+        2,
+        0,
+        1,
+        0
+      ],
+      "shell_quartets": 1407498,
+      "tile_fraction": 0.061825312474138756,
+      "tiles": 1407498,
+      "unique_ao_quartets": 25334964
+    },
+    {
+      "class": "pppp",
+      "primitive_quartets": 82861038,
+      "primitive_work_fraction": 0.05594551349562063,
+      "shell_angular": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "shell_quartets": 249258,
+      "tile_fraction": 0.010948828159385575,
+      "tiles": 249258,
+      "unique_ao_quartets": 18706098
+    },
+    {
+      "class": "dppp",
+      "primitive_quartets": 79656156,
+      "primitive_work_fraction": 0.053781664556353526,
+      "shell_angular": [
+        2,
+        1,
+        1,
+        1
+      ],
+      "shell_quartets": 177342,
+      "tile_fraction": 0.0077898686639616644,
+      "tiles": 177342,
+      "unique_ao_quartets": 27518940
+    },
+    {
+      "class": "dspp",
+      "primitive_quartets": 65425284,
+      "primitive_work_fraction": 0.04417336781343256,
+      "shell_angular": [
+        2,
+        0,
+        1,
+        1
+      ],
+      "shell_quartets": 369086,
+      "tile_fraction": 0.016212355029868588,
+      "tiles": 369086,
+      "unique_ao_quartets": 19168740
+    },
+    {
+      "class": "dpss",
+      "primitive_quartets": 57312864,
+      "primitive_work_fraction": 0.03869608302981517,
+      "shell_angular": [
+        2,
+        1,
+        0,
+        0
+      ],
+      "shell_quartets": 651968,
+      "tile_fraction": 0.02863814039035174,
+      "tiles": 651968,
+      "unique_ao_quartets": 11735424
+    },
+    {
+      "class": "dsss",
+      "primitive_quartets": 47056164,
+      "primitive_work_fraction": 0.03177103885802321,
+      "shell_angular": [
+        2,
+        0,
+        0,
+        0
+      ],
+      "shell_quartets": 1386530,
+      "tile_fraction": 0.06090427873060396,
+      "tiles": 1386530,
+      "unique_ao_quartets": 8319180
+    },
+    {
+      "class": "ssss",
+      "primitive_quartets": 41235366,
+      "primitive_work_fraction": 0.02784099476342375,
+      "shell_angular": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "shell_quartets": 3330830,
+      "tile_fraction": 0.14630898626373579,
+      "tiles": 3330830,
+      "unique_ao_quartets": 3330830
+    },
+    {
+      "class": "dpds",
+      "primitive_quartets": 31434480,
+      "primitive_work_fraction": 0.02122370377580615,
+      "shell_angular": [
+        2,
+        1,
+        2,
+        0
+      ],
+      "shell_quartets": 126628,
+      "tile_fraction": 0.005562221522144431,
+      "tiles": 126628,
+      "unique_ao_quartets": 13675824
+    },
+    {
+      "class": "dpdp",
+      "primitive_quartets": 18833040,
+      "primitive_work_fraction": 0.012715555089758388,
+      "shell_angular": [
+        2,
+        1,
+        2,
+        1
+      ],
+      "shell_quartets": 29222,
+      "tile_fraction": 0.0025577047319031015,
+      "tiles": 58228,
+      "unique_ao_quartets": 9434880
+    },
+    {
+      "class": "ddps",
+      "primitive_quartets": 16067340,
+      "primitive_work_fraction": 0.010848229861768388,
+      "shell_angular": [
+        2,
+        2,
+        1,
+        0
+      ],
+      "shell_quartets": 79050,
+      "tile_fraction": 0.0034723253255639925,
+      "tiles": 79050,
+      "unique_ao_quartets": 6454260
+    },
+    {
+      "class": "dsds",
+      "primitive_quartets": 13353072,
+      "primitive_work_fraction": 0.009015630117788219,
+      "shell_angular": [
+        2,
+        0,
+        2,
+        0
+      ],
+      "shell_quartets": 139028,
+      "tile_fraction": 0.006106900004585841,
+      "tiles": 139028,
+      "unique_ao_quartets": 4996608
+    },
+    {
+      "class": "ddpp",
+      "primitive_quartets": 10182888,
+      "primitive_work_fraction": 0.006875208322014907,
+      "shell_angular": [
+        2,
+        2,
+        1,
+        1
+      ],
+      "shell_quartets": 21232,
+      "tile_fraction": 0.0012281621265372452,
+      "tiles": 27960,
+      "unique_ao_quartets": 4898088
+    },
+    {
+      "class": "ddss",
+      "primitive_quartets": 7066704,
+      "primitive_work_fraction": 0.0047712458538300756,
+      "shell_angular": [
+        2,
+        2,
+        0,
+        0
+      ],
+      "shell_quartets": 76810,
+      "tile_fraction": 0.003373931793251996,
+      "tiles": 76810,
+      "unique_ao_quartets": 2105280
+    },
+    {
+      "class": "dddp",
+      "primitive_quartets": 4796928,
+      "primitive_work_fraction": 0.0032387549883398817,
+      "shell_angular": [
+        2,
+        2,
+        2,
+        1
+      ],
+      "shell_quartets": 7328,
+      "tile_fraction": 0.0007632526863630605,
+      "tiles": 17376,
+      "unique_ao_quartets": 3504384
+    },
+    {
+      "class": "ddds",
+      "primitive_quartets": 4057632,
+      "primitive_work_fraction": 0.002739602487435194,
+      "shell_angular": [
+        2,
+        2,
+        2,
+        0
+      ],
+      "shell_quartets": 14804,
+      "tile_fraction": 0.0006502758269405357,
+      "tiles": 14804,
+      "unique_ao_quartets": 2296224
+    },
+    {
+      "class": "dddd",
+      "primitive_quartets": 346920,
+      "primitive_work_fraction": 0.0002342309245739923,
+      "shell_angular": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "shell_quartets": 520,
+      "tile_fraction": 6.184736316754082e-05,
+      "tiles": 1408,
+      "unique_ao_quartets": 346920
+    }
+  ]
+}

@@ -1,0 +1,118 @@
+{
+  "benchmark": "issue_41_low_order_signature_bucketing",
+  "case": "water-hexadecamer-2s4-def2-svp-spherical",
+  "environment": {
+    "accelerator": {
+      "compute_capability": [12, 0],
+      "driver_version": 13000,
+      "multiprocessor_count": 170,
+      "name": "NVIDIA GeForce RTX 5090",
+      "runtime_version": 12090,
+      "total_global_memory_bytes": 33666498560
+    },
+    "git": {
+      "commit": "0b6a5733f3242b5b0d9c7f73a0d208108c14d7de",
+      "dirty": true
+    },
+    "host": {
+      "node": "node3",
+      "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35"
+    },
+    "packages": {
+      "cupy": "14.2.0",
+      "numpy": "2.4.6"
+    },
+    "python": "3.11.14",
+    "timestamp_utc": "2026-08-28T09:41:27.866789+00:00"
+  },
+  "gates": {
+    "maximum_energy_error_hartree": 1e-10,
+    "maximum_force_error_hartree_per_bohr": 1e-7,
+    "minimum_endpoint_saving_seconds": 0.025
+  },
+  "protocol": {
+    "density_tolerance": 1e-10,
+    "energy_tolerance": 1e-12,
+    "fixed_dm0": true,
+    "max_iterations": 100,
+    "measurement_order": [
+      "baseline",
+      "candidate",
+      "candidate",
+      "baseline",
+      "baseline",
+      "candidate",
+      "candidate",
+      "baseline",
+      "baseline",
+      "candidate"
+    ],
+    "repeats": 5,
+    "screening_tolerance": 1e-14,
+    "warmups": 1
+  },
+  "results": {
+    "psps": {
+      "baseline_environment": {
+        "VIBEQC_PSPS_SIGNATURE_BUCKETING": "0"
+      },
+      "baseline_seconds": [
+        5.208502314984798,
+        5.206105903023854,
+        5.210366834013257,
+        5.2154973419965245,
+        5.215260513010435
+      ],
+      "candidate_environment": {
+        "VIBEQC_PSPS_SIGNATURE_BUCKETING": "1"
+      },
+      "candidate_seconds": [
+        5.098863641964272,
+        5.099539720977191,
+        5.101461906975601,
+        5.10239046998322,
+        5.105383186019026
+      ],
+      "endpoint_saving_seconds": 0.10890492703765631,
+      "iteration_branches_match": true,
+      "maximum_energy_error_hartree": 9.094947017729282e-13,
+      "maximum_force_error_hartree_per_bohr": 1.7745839520078022e-12,
+      "median_baseline_seconds": 5.210366834013257,
+      "median_candidate_seconds": 5.101461906975601,
+      "passed": true,
+      "shell_quartets": 3487874,
+      "speedup": 1.0213477879524577
+    },
+    "ppss": {
+      "baseline_environment": {
+        "VIBEQC_PPSS_SIGNATURE_BUCKETING": "0"
+      },
+      "baseline_seconds": [
+        5.104650050052442,
+        5.106537948013283,
+        5.105690498021431,
+        5.116608572017867,
+        5.110515638021752
+      ],
+      "candidate_environment": {
+        "VIBEQC_PPSS_SIGNATURE_BUCKETING": "1"
+      },
+      "candidate_seconds": [
+        5.0311673359829,
+        5.031206712999847,
+        5.036536024010275,
+        5.037878638016991,
+        5.045301512000151
+      ],
+      "endpoint_saving_seconds": 0.07000192400300875,
+      "iteration_branches_match": true,
+      "maximum_energy_error_hartree": 9.094947017729282e-13,
+      "maximum_force_error_hartree_per_bohr": 1.4708408102581672e-12,
+      "median_baseline_seconds": 5.106537948013283,
+      "median_candidate_seconds": 5.036536024010275,
+      "passed": true,
+      "shell_quartets": 1818102,
+      "speedup": 1.0138988232525876
+    }
+  }
+}

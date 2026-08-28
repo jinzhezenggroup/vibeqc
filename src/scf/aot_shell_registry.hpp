@@ -91,7 +91,7 @@ cudaError_t launch_ppps_resident(
     const void* primitive_pairs, const double* ao_coefficients,
     const void* atom_positions, double screening_tolerance,
     const double* schwarz_bounds, const double* density, double* forces,
-    std::size_t task_count) noexcept;
+    unsigned block_threads, std::size_t task_count) noexcept;
 
 }  // namespace vibeqc::scf::generated
 

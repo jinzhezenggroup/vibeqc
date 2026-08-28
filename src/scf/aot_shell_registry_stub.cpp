@@ -47,7 +47,7 @@ cudaError_t launch_shell_class_fock(
 cudaError_t launch_ppps_resident(
     cudaStream_t, bool, const void*, const void*, const std::int64_t*,
     const void*, const double*, const void*, double, const double*,
-    const double*, double*, std::size_t) noexcept {
+    const double*, double*, unsigned, std::size_t) noexcept {
   return cudaErrorNotSupported;
 }
 

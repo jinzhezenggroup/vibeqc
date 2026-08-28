@@ -848,8 +848,13 @@ extern "C" cudaError_t {symbol or "vibeqc_launch_ppps_resident"}(
     const std::int64_t* primitive_pair_offsets, const void* primitive_pairs,
     const double* ao_coefficients, const void* atom_positions,
     double screening_tolerance, const double* schwarz_bounds,
-    const double* density, double* forces, std::size_t task_count) {{
+    const double* density, double* forces, unsigned block_threads,
+    std::size_t task_count) {{
   if (task_count == 0U) return cudaSuccess;
+  if (block_threads != 32U && block_threads != 64U &&
+      block_threads != 128U && block_threads != 256U) {{
+    return cudaErrorInvalidValue;
+  }}
   if (task_count > static_cast<std::size_t>(
           std::numeric_limits<unsigned>::max())) return cudaErrorInvalidValue;
   const auto* typed_resident_tasks =
@@ -863,14 +868,14 @@ extern "C" cudaError_t {symbol or "vibeqc_launch_ppps_resident"}(
   if (unrestricted) {{
     generated_ppps_resident_bra_force_uhf_kernel<<<
         static_cast<unsigned>(task_count),
-        kGeneratedPppsResidentBlockThreads, 0, stream>>>(
+        block_threads, 0, stream>>>(
         typed_resident_tasks, typed_ket_tasks, typed_primitive_pairs,
         primitive_pair_offsets, ao_coefficients, typed_positions,
         screening_tolerance, schwarz_bounds, density, forces, task_count);
   }} else {{
     generated_ppps_resident_bra_force_rhf_kernel<<<
         static_cast<unsigned>(task_count),
-        kGeneratedPppsResidentBlockThreads, 0, stream>>>(
+        block_threads, 0, stream>>>(
         typed_resident_tasks, typed_ket_tasks, typed_primitive_pairs,
         primitive_pair_offsets, ao_coefficients, typed_positions,
         screening_tolerance, schwarz_bounds, density, forces, task_count);
@@ -1488,7 +1493,8 @@ def _resident_launch_parameter_declaration() -> str:
     const std::int64_t* primitive_pair_offsets, const void* primitive_pairs,
     const double* ao_coefficients, const void* atom_positions,
     double screening_tolerance, const double* schwarz_bounds,
-    const double* density, double* forces, std::size_t task_count"""
+    const double* density, double* forces, unsigned block_threads,
+    std::size_t task_count"""
 
 
 def _launch_argument_list() -> str:
@@ -1504,7 +1510,7 @@ def _resident_launch_argument_list() -> str:
     return """stream, unrestricted, resident_tasks, ket_tasks,
           primitive_pair_offsets, primitive_pairs, ao_coefficients,
           atom_positions, screening_tolerance, schwarz_bounds, density,
-          forces, task_count"""
+          forces, block_threads, task_count"""
 
 
 def emit_multi_registry_source(

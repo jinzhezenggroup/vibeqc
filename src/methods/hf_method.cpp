@@ -4,7 +4,9 @@
 #include "scf/mean_field.hpp"
 #include "scf/types.hpp"
 
+#include <algorithm>
 #include <memory>
+#include <numeric>
 #include <utility>
 
 namespace vibeqc::methods::detail {
@@ -34,6 +36,75 @@ Result adapt_result(scf::ScfResult native, vibeqc_backend backend) {
   result.convergence.converged = native.converged;
   result.executed_backend = backend;
   return result;
+}
+
+std::uint32_t histogram_quantile(
+    const std::vector<std::uint64_t>& histogram,
+    std::uint64_t numerator,
+    std::uint64_t denominator) {
+  const std::uint64_t count =
+      std::accumulate(histogram.begin(), histogram.end(), std::uint64_t{0});
+  if (count == 0U) return 0U;
+  const std::uint64_t rank =
+      (count * numerator + denominator - 1U) / denominator;
+  std::uint64_t cumulative = 0U;
+  for (std::size_t value = 0; value < histogram.size(); ++value) {
+    cumulative += histogram[value];
+    if (cumulative >= rank) return static_cast<std::uint32_t>(value);
+  }
+  return static_cast<std::uint32_t>(histogram.size() - 1U);
+}
+
+DirectPppsQueueProfile adapt_ppps_queue_profile(
+    const scf::CudaPppsQueueProfile& native) {
+  DirectPppsQueueProfile profile;
+  profile.descriptor_slots = native.descriptor_slots;
+  profile.non_empty_descriptors = native.non_empty_descriptors;
+  profile.empty_descriptors =
+      native.descriptor_slots - native.non_empty_descriptors;
+  profile.tasks = native.tasks;
+  profile.primitive_work = native.primitive_work;
+  profile.ket_count_min = histogram_quantile(
+      native.ket_count_histogram, 1U, native.non_empty_descriptors);
+  profile.ket_count_median =
+      histogram_quantile(native.ket_count_histogram, 1U, 2U);
+  profile.ket_count_p90 =
+      histogram_quantile(native.ket_count_histogram, 9U, 10U);
+  profile.ket_count_p99 =
+      histogram_quantile(native.ket_count_histogram, 99U, 100U);
+  profile.ket_count_max = histogram_quantile(
+      native.ket_count_histogram, native.non_empty_descriptors,
+      native.non_empty_descriptors);
+  for (std::size_t index = 0;
+       index < scf::kPppsProfileBlockThreads.size(); ++index) {
+    profile.lane_efficiency[index] = native.lane_slots[index] == 0U
+        ? 0.0
+        : static_cast<double>(native.tasks) /
+              static_cast<double>(native.lane_slots[index]);
+    profile.task_tail_imbalance[index] =
+        native.task_schedule_ideal[index] == 0.0
+        ? 0.0
+        : native.task_schedule_makespan[index] /
+                  native.task_schedule_ideal[index] -
+              1.0;
+    profile.primitive_tail_imbalance[index] =
+        native.primitive_schedule_ideal[index] == 0.0
+        ? 0.0
+        : native.primitive_schedule_makespan[index] /
+                  native.primitive_schedule_ideal[index] -
+              1.0;
+  }
+  profile.primitive_warp_efficiency = native.primitive_warp_slots == 0U
+      ? 0.0
+      : static_cast<double>(native.primitive_work) /
+            static_cast<double>(native.primitive_warp_slots);
+  profile.orientation_tasks = native.orientation_tasks;
+  profile.orientation_primitive_work = native.orientation_primitive_work;
+  profile.bra_primitive_tasks = native.bra_primitive_tasks;
+  profile.bra_primitive_work = native.bra_primitive_work;
+  profile.ket_primitive_tasks = native.ket_primitive_tasks;
+  profile.ket_primitive_work = native.ket_primitive_work;
+  return profile;
 }
 
 class HfPreparedCalculation final : public PreparedCalculation {
@@ -130,6 +201,13 @@ class HfPreparedBatch final : public PreparedBatch {
                          entry.primitive_quartets});
     }
     return profile;
+  }
+
+  [[nodiscard]] std::optional<DirectPppsQueueProfile>
+  last_direct_ppps_queue_profile() const override {
+    const auto& native = plan_.last_ppps_queue_profile();
+    if (!native.has_value()) return std::nullopt;
+    return adapt_ppps_queue_profile(*native);
   }
 
  private:

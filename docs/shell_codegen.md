@@ -188,6 +188,110 @@ one-iteration branch and existing energy/force limits. This is a small
 instruction-path improvement; it does not close the remaining direct-force
 architecture gap.
 
+Issue #41 adds an opt-in final-density PPPS queue profile alongside the shell
+class counters. The diagnostic preserves the actual device materialization
+order in one compact signature per ket task, so its lane and primitive-warp
+efficiencies describe the production queue rather than a topology estimate.
+On the 384-AO fixed-`dm0` workload it reproduces all 1,863,242 screened PPPS
+shell tasks and reports 18,528 descriptor slots, but only 894 non-empty
+descriptors. Those live descriptors are large: the ket-count median/p90/p99 is
+2,401/3,010/3,266. Consequently, scalar lane efficiency remains 94.29% at 256
+threads and rises only to 97.07% at 128 and 98.42% at 64 threads. The original
+average over holes therefore does not demonstrate an underfilled live CTA.
+
+The stronger signal is mixed primitive work. With
+`p_t = nprim_bra * nprim_ket`, the measured production ordering has only
+25.995% primitive-work warp efficiency. The 1110 and 1011 orientations are
+balanced at 923,243 and 939,999 tasks, while primitive-weighted descriptor
+tail estimates remain roughly one ideal makespan beyond the mean. This rejects
+smaller whole-descriptor CTAs as the primary PPPS remedy and prioritizes
+primitive-signature bucketing plus compile-time orientation specialization.
+The complete counters, histograms, environment, and active class ledger are
+retained in the
+[issue #41 queue artifact](../benchmarks/results/rtx5090-0b6a573-issue-41-ppps-queue-profile.json).
+
+The promoted Phase-3 path buckets each fixed-bra queue by the original
+`1110`/`1011` orientation and exact ket primitive-pair count. Its two-pass
+device histogram/prefix/scatter adds no host synchronization, global worker
+head, primitive-loop barrier, or component reduction. It is enabled by
+default and can be disabled for same-binary A/B measurements with
+`VIBEQC_PPPS_SIGNATURE_BUCKETING=0`.
+
+On the same 384-AO queue, bucketing raises primitive-work warp efficiency from
+25.995% to 86.813% while preserving all 1,863,242 tasks and 10,300,330 units
+of primitive work. A five-repeat fixed-`dm0` ABBA endpoint comparison changed
+the median from 5.289540 s to 5.168806 s, saving 120.733 ms (2.34%). All
+samples retained the one-iteration branch; the maximum A/B differences were
+`1.36e-12 Eh` for energy and `2.21e-12 Eh/bohr` for force. The same protocol
+also improved the 96-AO endpoint by 2.89% and the 192-AO endpoint by 3.39%, so
+the preparation pass does not consume the smaller-case 2% regression budget.
+The compact raw
+timings, queue invariants, gates, and machine metadata are retained in the
+[signature-bucketing artifact](../benchmarks/results/rtx5090-0b6a573-issue-41-ppps-signature-bucketing.json).
+
+The generated scalar worker also accepts 32, 64, 128, or 256 threads from the
+same binary via `VIBEQC_PPPS_BLOCK_THREADS`; 256 remains the default. With
+signature bucketing enabled on both sides, five-repeat whole-descriptor ABBA
+comparisons found 128 threads 0.07% slower, 64 threads 0.40% slower, and the
+diagnostic 32-thread CTA 1.59% slower than 256. These measured results agree
+with the live-descriptor lane-efficiency counters and reject smaller
+whole-descriptor CTAs as a production follow-up. The variants do not change
+scalar quartet ownership, generated recurrence code, or primitive-loop
+synchronization and remain available for reproducible A/B checks.
+
+A device-side chunked-descriptor candidate was also implemented and measured,
+then fully reverted under the issue gate. At 256 threads, chunking improved
+the endpoint by 13.70 ms. At 128 threads it recovered 28.93 ms relative to the
+slower unchunked 128-thread mode, but the decisive interleaved comparison of
+the production 256-thread whole descriptor against 128-thread chunks saved
+only 20.86 ms (5.178864 s to 5.158004 s). That misses the required 25 ms
+standalone promotion threshold. The rejected candidate retained numerical and
+iteration parity; its raw samples remain in the signature-bucketing artifact.
+
+The same device histogram/prefix/scatter strategy now covers the scalar
+whole-task `psps` and `ppss` force workers. Each exact-class slice is grouped
+by the ordered primitive-pair counts `(nprim_pair0, nprim_pair1)` in a 65x65
+signature space; counts through 63 are exact and 64 is the overflow bucket.
+The two classes share one small 66 KiB metadata allocation but retain separate
+histograms and class offsets, so no task queue is duplicated and all other
+generated classes keep their existing order. Both paths are enabled by default
+and can be disabled independently with `VIBEQC_PSPS_SIGNATURE_BUCKETING=0` and
+`VIBEQC_PPSS_SIGNATURE_BUCKETING=0`.
+
+On the 384-AO fixed-`dm0` endpoint, five-repeat ABBA comparisons measured
+`psps` at 5.210367 s versus 5.101462 s, saving 108.905 ms (2.13%), and `ppss`
+at 5.106538 s versus 5.036536 s, saving 70.002 ms (1.39%). The maximum A/B
+differences were respectively `9.09e-13 Eh`/`1.77e-12 Eh/bohr` and
+`9.09e-13 Eh`/`1.47e-12 Eh/bohr`; every sample retained the one-iteration
+branch. The comparisons are independent and their endpoint savings should not
+be added. Raw samples and promotion gates are retained in the
+[low-order signature-bucketing artifact](../benchmarks/results/rtx5090-0b6a573-issue-41-low-order-signature-bucketing.json).
+
+The current-head Phase-0 ledger joins an unprofiled, iteration-matched endpoint
+with five Nsight warm replays and the exact final-density shell-class profile.
+At 384 AOs, the accepted endpoint is 2.887663 s for VibeQC versus 2.139527 s
+for GPU4PySCF (`1.350x`). Relative to the issue baseline, the VibeQC endpoint
+is 293.829 ms lower and the engine gap is 290.173 ms smaller. Maximum energy
+and force errors are `1.55e-11 Eh` and `3.15e-8 Eh/bohr`, respectively.
+
+The profiled VibeQC host interval is 2886.001 ms per replay. Device kernels
+account for 1526.090 ms: 1458.804 ms in two-electron force, 27.542 ms in
+one-electron force, 27.447 ms in screening and queue preparation, and 12.297 ms
+in the remaining measured components. The remaining 1359.911 ms is explicitly
+reported as host/API/synchronization/idle time that cannot be assigned from a
+kernel summary. The range contains only the 0.001 ms final-Fock-rebuild
+selector; no Fock-build kernel ran because the replay reused the converged
+cold-path Fock state.
+
+The largest exact force classes are now `psss` at 137.054 ms, `dsps` at
+127.806 ms, `dpps` at 122.625 ms, `ddpp` at 118.595 ms, and `dpdp` at
+114.502 ms per replay. `ppps`, `psps`, and `ppss` account for 55.983, 33.695,
+and 19.696 ms, respectively. This establishes `dsps` and `dpps` as the next
+generalized roots-at-most-three queue/backend targets; the larger `psss` entry
+remains on its separate resident-kernel path. The complete joined evidence is
+retained in the
+[current-head component ledger](../benchmarks/results/rtx5090-0b6a573-issue-41-current-head-component-ledger.json).
+
 ## Architecture autotuning
 
 `tools/vibeqc_codegen/autotune.py` emits every CUDA-supported schedule variant
