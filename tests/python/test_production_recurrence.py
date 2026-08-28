@@ -157,9 +157,7 @@ def test_rys4_manifest_rejects_noncooperative_schedule(tmp_path: Path):
     )
     manifest.write_text(json.dumps(payload), encoding="utf-8")
 
-    with pytest.raises(
-        ValueError, match="production rys4 requires a supported shell"
-    ):
+    with pytest.raises(ValueError, match="production rys4 requires a supported shell"):
         load_production_kernel_selections(manifest, "sm_120")
 
 
@@ -168,10 +166,7 @@ def test_existing_production_rows_default_to_subset_wick():
 
     repository_root = Path(__file__).resolve().parents[2]
     manifest = (
-        repository_root
-        / "tools"
-        / "vibeqc_codegen"
-        / "production_shell_classes.json"
+        repository_root / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
     )
     selections = load_production_kernel_selections(manifest, "sm_120")
     assert selections
@@ -183,9 +178,9 @@ def test_existing_production_rows_default_to_subset_wick():
         for name in ("dppp", "dpdp", "dpds", "ddpp", "ddps", "ddds")
     )
     assert all(
-        recurrences[name] == "rys3"
-        for name in ("dpps", "dpss", "dsps", "dspp", "pppp")
+        recurrences[name] == "rys3" for name in ("dpps", "dpss", "dsps", "dspp", "pppp")
     )
+    assert all(recurrences[name] == "rys2" for name in ("psps", "ppss", "dsss"))
     assert all(
         selection.recurrence == "subset_wick"
         for selection in selections
@@ -202,11 +197,17 @@ def test_existing_production_rows_default_to_subset_wick():
             "dsps",
             "dspp",
             "pppp",
+            "psps",
+            "ppss",
+            "dsss",
         }
     )
-    assert next(
-        selection for selection in selections if selection.spec.name == "ppps"
-    ).resident_force_recurrence == "rys3"
+    assert (
+        next(
+            selection for selection in selections if selection.spec.name == "ppps"
+        ).resident_force_recurrence
+        == "rys3"
+    )
 
 
 @pytest.mark.parametrize("shell_class", ("dsps", "dpps"))
@@ -258,15 +259,10 @@ def test_production_dsps_promotes_scalar_force_but_retains_component_fock():
 
     repository_root = Path(__file__).resolve().parents[2]
     manifest = (
-        repository_root
-        / "tools"
-        / "vibeqc_codegen"
-        / "production_shell_classes.json"
+        repository_root / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
     )
     resolved = resolve_production_profile(manifest, "sm_120")
-    selection = next(
-        item for item in resolved.selections if item.spec.name == "dsps"
-    )
+    selection = next(item for item in resolved.selections if item.spec.name == "dsps")
     assert selection.schedule.kind.value == "thread_tasks"
     shard = emit_profile_shard(resolved, (selection,))
     assert "generated_sm120_dsps_rys3_force_task" in shard
@@ -275,19 +271,16 @@ def test_production_dsps_promotes_scalar_force_but_retains_component_fock():
 
 
 @pytest.mark.parametrize(
-    ("shell_class", "fock_block_threads"), (("dpps", 64), ("pppp", 96))
+    ("shell_class", "fock_block_threads"), (("dpps", 64), ("pppp", 128))
 )
-def test_production_rys3_uniform_force_retains_component_fock(
+def test_production_rys3_uniform_force_keeps_independent_fock_schedule(
     shell_class: str, fock_block_threads: int
 ):
-    """Keep uniform-warp force mappings independent of value consumers."""
+    """Allow each accepted value path to use its independently tuned mapping."""
 
     repository_root = Path(__file__).resolve().parents[2]
     manifest = (
-        repository_root
-        / "tools"
-        / "vibeqc_codegen"
-        / "production_shell_classes.json"
+        repository_root / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
     )
     resolved = resolve_production_profile(manifest, "sm_120")
     selection = next(
@@ -300,8 +293,7 @@ def test_production_rys3_uniform_force_retains_component_fock(
     assert f"kGeneratedSm120{class_name}Rys3TaskCount = 32U" in shard
     assert f"generated_sm120_{shell_class}_shell_class_fock_rhf_kernel" in shard
     assert (
-        f"kGeneratedSm120{class_name}FockBlockThreads = "
-        f"{fock_block_threads}U" in shard
+        f"kGeneratedSm120{class_name}FockBlockThreads = {fock_block_threads}U" in shard
     )
 
 
@@ -332,10 +324,7 @@ def test_production_rys4_force_retains_explicit_fock_schedule(
 
     repository_root = Path(__file__).resolve().parents[2]
     manifest = (
-        repository_root
-        / "tools"
-        / "vibeqc_codegen"
-        / "production_shell_classes.json"
+        repository_root / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
     )
     resolved = resolve_production_profile(manifest, "sm_120")
     selection = next(
@@ -350,13 +339,9 @@ def test_production_rys4_force_retains_explicit_fock_schedule(
 
     shard = emit_profile_shard(resolved, (selection,))
     class_name = shell_class[0].upper() + shell_class[1:]
+    assert f"kGeneratedSm120{class_name}BlockThreads = {force_block_threads}U" in shard
     assert (
-        f"kGeneratedSm120{class_name}BlockThreads = "
-        f"{force_block_threads}U" in shard
-    )
-    assert (
-        f"kGeneratedSm120{class_name}FockBlockThreads = "
-        f"{fock_block_threads}U" in shard
+        f"kGeneratedSm120{class_name}FockBlockThreads = {fock_block_threads}U" in shard
     )
     assert f"generated_sm120_{shell_class}_rys4" in shard
     assert f"generated_sm120_{shell_class}_shell_class_fock_rhf_kernel" in shard
@@ -364,14 +349,8 @@ def test_production_rys4_force_retains_explicit_fock_schedule(
         "/** Coefficient-only pair term used by the SCF Fock recurrence. */",
         maxsplit=1,
     )[1]
-    assert (
-        f"state += kGeneratedSm120{class_name}FockBlockThreads"
-        in fock_fragment
-    )
-    assert (
-        f"state += kGeneratedSm120{class_name}BlockThreads"
-        not in fock_fragment
-    )
+    assert f"state += kGeneratedSm120{class_name}FockBlockThreads" in fock_fragment
+    assert f"state += kGeneratedSm120{class_name}BlockThreads" not in fock_fragment
 
 
 def test_ppps_resident_option_keeps_ordinary_fock_force_fallback(tmp_path: Path):

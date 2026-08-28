@@ -22,6 +22,17 @@ from enum import Enum
 import numpy as np
 
 from .fused_schedule import FusedShellResult
+from .rys2_data import (
+    RYS2_DEGREE,
+    RYS2_INTERVALS,
+    RYS2_LARGEX_R_DATA,
+    RYS2_LARGEX_W_DATA,
+    RYS2_RW_DATA,
+    RYS2_SMALLX_R0,
+    RYS2_SMALLX_R1,
+    RYS2_SMALLX_W0,
+    RYS2_SMALLX_W1,
+)
 from .rys3_data import (
     RYS3_DEGREE,
     RYS3_INTERVALS,
@@ -126,9 +137,7 @@ def _instruction_for_state(state: RysState) -> RysRecurrenceInstruction:
         if state.c > 1:
             dependency_list.append(state.replace(c=state.c - 2))
         if state.a:
-            dependency_list.append(
-                state.replace(a=state.a - 1, c=state.c - 1)
-            )
+            dependency_list.append(state.replace(a=state.a - 1, c=state.c - 1))
         dependencies = tuple(dependency_list)
         kind = RysRecurrenceKind.TRR_KET
     elif state.a:
@@ -230,17 +239,10 @@ def boys_values(argument: float, count: int) -> tuple[float, ...]:
             )
             for order in range(count)
         )
-    values = [
-        0.5
-        * math.sqrt(math.pi / argument)
-        * math.erf(math.sqrt(argument))
-    ]
+    values = [0.5 * math.sqrt(math.pi / argument) * math.erf(math.sqrt(argument))]
     exponential = math.exp(-argument)
     for order in range(count - 1):
-        values.append(
-            ((2 * order + 1) * values[-1] - exponential)
-            / (2.0 * argument)
-        )
+        values.append(((2 * order + 1) * values[-1] - exponential) / (2.0 * argument))
     return tuple(values)
 
 
@@ -258,10 +260,7 @@ def _moment_roots_weights(
         raise ValueError("a Rys rule requires at least one root")
     moments = np.asarray(boys_values(argument, 2 * nroots), dtype=np.float64)
     moment_matrix = np.asarray(
-        [
-            [moments[row + column] for column in range(nroots)]
-            for row in range(nroots)
-        ]
+        [[moments[row + column] for column in range(nroots)] for row in range(nroots)]
     )
     shifted_matrix = np.asarray(
         [
@@ -276,6 +275,14 @@ def _moment_roots_weights(
     vandermonde = np.vstack([roots**order for order in range(nroots)])
     weights = np.linalg.solve(vandermonde, moments[:nroots])
     return tuple(map(float, roots)), tuple(map(float, weights))
+
+
+def rys2_roots_weights(
+    argument: float,
+) -> tuple[tuple[float, ...], tuple[float, ...]]:
+    """Construct a two-point Rys rule from its first four Boys moments."""
+
+    return _moment_roots_weights(argument, 2)
 
 
 def rys3_roots_weights(
@@ -314,12 +321,10 @@ def _table_roots_weights(
         raise ValueError("the Rys argument must be non-negative")
     if argument < 3.0e-7:
         roots = tuple(
-            small_r0[index] + small_r1[index] * argument
-            for index in range(nroots)
+            small_r0[index] + small_r1[index] * argument for index in range(nroots)
         )
         weights = tuple(
-            small_w0[index] + small_w1[index] * argument
-            for index in range(nroots)
+            small_w0[index] + small_w1[index] * argument for index in range(nroots)
         )
         return roots, weights
     if argument > 35.0 + 5.0 * nroots:
@@ -337,18 +342,34 @@ def _table_roots_weights(
         c0 = table[offset + interval + degree * intervals]
         c1 = table[offset + interval + (degree - 1) * intervals]
         for polynomial_degree in range(degree - 2, 0, -2):
-            c2 = table[
-                offset + interval + polynomial_degree * intervals
-            ] - c1
+            c2 = table[offset + interval + polynomial_degree * intervals] - c1
             c3 = c0 + c1 * twice_transformed
             c1 = c2 + c3 * twice_transformed
-            c0 = table[
-                offset + interval + (polynomial_degree - 1) * intervals
-            ] - c3
+            c0 = table[offset + interval + (polynomial_degree - 1) * intervals] - c3
         return c0 + c1 * transformed
 
     values = tuple(interpolate(series) for series in range(2 * nroots))
     return values[::2], values[1::2]
+
+
+def rys2_table_roots_weights(
+    argument: float,
+) -> tuple[tuple[float, ...], tuple[float, ...]]:
+    """Evaluate the GPU4PySCF-compatible two-root interpolation table."""
+
+    return _table_roots_weights(
+        argument,
+        nroots=2,
+        degree=RYS2_DEGREE,
+        intervals=RYS2_INTERVALS,
+        small_r0=RYS2_SMALLX_R0,
+        small_r1=RYS2_SMALLX_R1,
+        small_w0=RYS2_SMALLX_W0,
+        small_w1=RYS2_SMALLX_W1,
+        large_r=RYS2_LARGEX_R_DATA,
+        large_w=RYS2_LARGEX_W_DATA,
+        table=RYS2_RW_DATA,
+    )
 
 
 def rys3_table_roots_weights(
@@ -508,9 +529,26 @@ __device__ __noinline__ void {symbol_prefix}_roots(
 """
 
 
-def emit_rys3_roots_cuda(
-    *, symbol_prefix: str = "generated_ppps_rys3"
-) -> str:
+def emit_rys2_roots_cuda(*, symbol_prefix: str = "generated_low_order_rys2") -> str:
+    """Emit an attributed Rys2 evaluator under a caller-owned CUDA prefix."""
+
+    return _emit_fixed_roots_cuda(
+        nroots=2,
+        degree=RYS2_DEGREE,
+        intervals=RYS2_INTERVALS,
+        symbol_prefix=symbol_prefix,
+        description="Two-root",
+        small_r0_values=RYS2_SMALLX_R0,
+        small_r1_values=RYS2_SMALLX_R1,
+        small_w0_values=RYS2_SMALLX_W0,
+        small_w1_values=RYS2_SMALLX_W1,
+        large_r_values=RYS2_LARGEX_R_DATA,
+        large_w_values=RYS2_LARGEX_W_DATA,
+        table_values=RYS2_RW_DATA,
+    )
+
+
+def emit_rys3_roots_cuda(*, symbol_prefix: str = "generated_ppps_rys3") -> str:
     """Emit an attributed Rys3 evaluator under a caller-owned CUDA prefix."""
 
     return _emit_fixed_roots_cuda(
@@ -529,9 +567,7 @@ def emit_rys3_roots_cuda(
     )
 
 
-def emit_rys4_roots_cuda(
-    *, symbol_prefix: str = "generated_dppp_rys4"
-) -> str:
+def emit_rys4_roots_cuda(*, symbol_prefix: str = "generated_dppp_rys4") -> str:
     """Emit an attributed Rys4 evaluator under a caller-owned CUDA prefix."""
 
     return _emit_fixed_roots_cuda(
@@ -572,9 +608,7 @@ def _state_expression(
         expression = f"cp{axis} * {dependency[0]}"
         dependency_index = 1
         if state.c > 1:
-            expression += (
-                f" + {state.c - 1}.0 * b01 * {dependency[dependency_index]}"
-            )
+            expression += f" + {state.c - 1}.0 * b01 * {dependency[dependency_index]}"
             dependency_index += 1
         if state.a:
             expression += f" + {state.a}.0 * b00 * {dependency[dependency_index]}"
@@ -732,17 +766,13 @@ def emit_rys_force_root_body_cuda(
                 slots[key] = slot
                 active[key] = slot
             expired = [
-                key
-                for key in active
-                if last_use.get(key, event_index) == event_index
+                key for key in active if last_use.get(key, event_index) == event_index
             ]
             for key in expired:
                 available.append(active.pop(key))
 
         lines = ["    {"]
-        lines.extend(
-            f"      double rys_state_{slot};" for slot in range(next_slot)
-        )
+        lines.extend(f"      double rys_state_{slot};" for slot in range(next_slot))
         for event in events:
             if event["kind"] == "define":
                 key = event["key"]
@@ -783,9 +813,7 @@ def emit_rys_force_root_body_cuda(
                     ]
                     expression = f"{exponent} * rys_state_{slots[raised]}"
                     if lowered is not None:
-                        expression += (
-                            f" - {angular}.0 * rys_state_{slots[lowered]}"
-                        )
+                        expression += f" - {angular}.0 * rys_state_{slots[lowered]}"
                     force = center * 3 + coordinate
                     lines.append(
                         f"        force_{force} += ({expression}) * "
@@ -797,9 +825,7 @@ def emit_rys_force_root_body_cuda(
 
     lines: list[str] = []
     for begin in range(0, len(component_entries), component_group):
-        lines.extend(
-            emit_group(component_entries[begin : begin + component_group])
-        )
+        lines.extend(emit_group(component_entries[begin : begin + component_group]))
     return "\n".join(lines)
 
 
@@ -849,21 +875,17 @@ def _evaluate_axis_state(
         elif instruction.kind == RysRecurrenceKind.TRR_BRA:
             value = c0 * evaluate(instruction.dependencies[0])
             if state.a > 1:
-                value += (state.a - 1) * b10 * evaluate(
-                    instruction.dependencies[1]
-                )
+                value += (state.a - 1) * b10 * evaluate(instruction.dependencies[1])
         elif instruction.kind == RysRecurrenceKind.TRR_KET:
             value = cp * evaluate(instruction.dependencies[0])
             dependency = 1
             if state.c > 1:
-                value += (state.c - 1) * b01 * evaluate(
-                    instruction.dependencies[dependency]
+                value += (
+                    (state.c - 1) * b01 * evaluate(instruction.dependencies[dependency])
                 )
                 dependency += 1
             if state.a:
-                value += state.a * b00 * evaluate(
-                    instruction.dependencies[dependency]
-                )
+                value += state.a * b00 * evaluate(instruction.dependencies[dependency])
         elif instruction.kind == RysRecurrenceKind.HRR_BRA:
             value = evaluate(instruction.dependencies[0]) - ab * evaluate(
                 instruction.dependencies[1]
@@ -917,8 +939,10 @@ def evaluate_rys_component(
                 base = base_states[coordinate]
                 values = [base.a, base.b, base.c, base.d]
                 values[center] += 1
-                derivative = 2.0 * exponents[center] * _evaluate_axis_state(
-                    RysState(*values), axis, root, variables
+                derivative = (
+                    2.0
+                    * exponents[center]
+                    * _evaluate_axis_state(RysState(*values), axis, root, variables)
                 )
                 angular_order = (base.a, base.b, base.c, base.d)[center]
                 if angular_order:
@@ -926,9 +950,7 @@ def evaluate_rys_component(
                     derivative -= angular_order * _evaluate_axis_state(
                         RysState(*values), axis, root, variables
                     )
-                other_axes = tuple(
-                    index for index in range(3) if index != coordinate
-                )
+                other_axes = tuple(index for index in range(3) if index != coordinate)
                 gradients[center][coordinate] += (
                     weight
                     * derivative
@@ -941,8 +963,7 @@ def evaluate_rys_component(
         for center in range(3)
     )
     fourth = tuple(
-        -sum(independent[center][axis] for center in range(3))
-        for axis in range(3)
+        -sum(independent[center][axis] for center in range(3)) for axis in range(3)
     )
     return FusedShellResult(
         value=prefactor * value,

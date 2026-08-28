@@ -11,12 +11,9 @@ from enum import Enum
 
 from .shell_spec import ShellClassSpec
 
-_COOPERATIVE_RYS3_SHELLS = frozenset(
-    ("dpps", "dpss", "dsps", "dspp", "pppp")
-)
-_COOPERATIVE_RYS4_SHELLS = frozenset(
-    ("dppp", "dpdp", "dpds", "ddpp", "ddps", "ddds")
-)
+_SCALAR_RYS2_SHELLS = frozenset(("psss", "psps", "ppss", "dsss"))
+_COOPERATIVE_RYS3_SHELLS = frozenset(("dpps", "dpss", "dsps", "dspp", "pppp"))
+_COOPERATIVE_RYS4_SHELLS = frozenset(("dppp", "dpdp", "dpds", "ddpp", "ddps", "ddds"))
 
 
 class KernelConsumer(str, Enum):
@@ -46,12 +43,19 @@ class IntegralIR:
             raise ValueError("an integral IR requires at least one consumer")
         if not self.consumers <= frozenset(KernelConsumer):
             raise ValueError("integral IR contains an unsupported consumer")
-        if self.recurrence not in ("subset_wick", "rys3", "rys4"):
+        if self.recurrence not in ("subset_wick", "rys2", "rys3", "rys4"):
             raise ValueError(f"unsupported integral recurrence {self.recurrence!r}")
+        if self.recurrence == "rys2" and (
+            self.spec.name not in _SCALAR_RYS2_SHELLS
+            or KernelConsumer.FORCE not in self.consumers
+        ):
+            raise ValueError(
+                "the direct two-root recurrence requires a supported "
+                "low-order force shell"
+            )
         if self.recurrence == "rys3":
-            ppps_force_only = (
-                self.spec.name == "ppps"
-                and self.consumers == frozenset((KernelConsumer.FORCE,))
+            ppps_force_only = self.spec.name == "ppps" and self.consumers == frozenset(
+                (KernelConsumer.FORCE,)
             )
             cooperative_force = (
                 self.spec.name in _COOPERATIVE_RYS3_SHELLS

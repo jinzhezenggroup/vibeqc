@@ -211,7 +211,26 @@ def build_ledger(
     range_medians = _range_medians(nvtx_summary_path)
     profiled_vibeqc_ms = range_medians[VIBEQC_RANGE]
     device_total_ms = sum(components.values())
-    unattributed_ms = profiled_vibeqc_ms - device_total_ms
+    raw_unattributed_ms = profiled_vibeqc_ms - device_total_ms
+    # Nsight projects GPU timestamps into the host NVTX range. Small clock
+    # conversion and graph-node attribution differences can make summed
+    # kernel durations slightly exceed the enclosing host interval; never
+    # publish that measurement artifact as a negative residual.
+    unattributed_ms = max(raw_unattributed_ms, 0.0)
+    projection_excess_ms = max(-raw_unattributed_ms, 0.0)
+    if components.get("direct_jk_and_fock_transforms", 0.0) > 0.0:
+        fock_rebuild_observation = (
+            "CUDA Graph node tracing exposed the captured direct-J/K Fock "
+            "kernels, so their device time is reported explicitly instead "
+            "of being folded into the host/API/synchronization remainder."
+        )
+    else:
+        fock_rebuild_observation = (
+            "Only the final-Fock-rebuild selector was visible in the "
+            "captured one-iteration warm range. CUDA Graph node tracing was "
+            "not available, so graph-contained Fock work remains in the "
+            "unattributed remainder."
+        )
     timing = endpoint["timing_summary"]["iteration_matched"]
     vibeqc_seconds = float(timing["vibeqc_median_seconds"])
     gpu4pyscf_seconds = float(timing["gpu4pyscf_median_seconds"])
@@ -278,6 +297,8 @@ def build_ledger(
             "vibeqc_device_kernel_milliseconds": device_total_ms,
             "vibeqc_host_api_sync_and_idle_unattributed_milliseconds":
                 unattributed_ms,
+            "vibeqc_device_projection_excess_milliseconds":
+                projection_excess_ms,
             "vibeqc_device_components_milliseconds": components,
             "gpu4pyscf_unprofiled_host_component_medians_milliseconds":
                 _gpu4pyscf_component_medians(endpoint),
@@ -285,12 +306,7 @@ def build_ledger(
                 "scf": range_medians[GPU4PYSCF_SCF_RANGE],
                 "force": range_medians[GPU4PYSCF_FORCE_RANGE],
             },
-            "fock_rebuild_observation": (
-                "Only the 0.001 ms final-Fock-rebuild selector occurred in "
-                "the captured one-iteration warm range; no Fock-build "
-                "kernel ran because the replay reused the converged "
-                "cold-path Fock state."
-            ),
+            "fock_rebuild_observation": fock_rebuild_observation,
         },
         "shell_classes": _shell_class_ledger(
             shell_profile, shell_device_ms

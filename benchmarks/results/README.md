@@ -23,6 +23,28 @@ This table is generated from the newest clean accepted artifacts with at least f
 When a shared branch exists, the speed gate uses its iteration-matched median. Otherwise the ordinary median is explicitly labeled unmatched and remains a timing observation rather than a parity claim.
 <!-- END GENERATED PARITY TABLE -->
 
+## Issue #41 384-AO direct parity
+
+The final five-repeat, interleaved ABBA comparison uses direct SCF on both
+engines and selects the shared one-iteration warm branch. VibeQC reaches
+`2.234283 s` versus GPU4PySCF 1.8.1 at `2.133739 s`, a `1.047121x` ratio that
+passes the issue's `<=1.05x` gate. The maximum paired differences are
+`1.82e-11 Eh` in energy and `3.15e-08 Eh/bohr` in force.
+
+| Result | Issue baseline | Final | Change |
+| --- | ---: | ---: | ---: |
+| VibeQC endpoint | 3.181492 s | 2.234283 s | -29.77% |
+| VibeQC minus GPU4PySCF | 1.038310 s | 0.100545 s | -0.937765 s |
+| 96-AO VibeQC guard | 0.149300 s | 0.149290 s | -0.0068% |
+| 192-AO VibeQC guard | 0.630290 s | 0.612374 s | -2.84% |
+
+The accepted batch promotes Fock schedules for `dppp`, `dpss`, `ppps`,
+`dsps`, and `pppp`; it also retains the accepted multi-shell force schedules.
+The [final component ledger](rtx5090-1b385af-issue-41-final-384ao-parity.json)
+contains the endpoint, device-component attribution, shell-class work ledger,
+and top kernels. Static PTXAS and cuobjdump maxima are recorded alongside the
+production schedules in `production_shell_classes.json`.
+
 ## Current 192-AO batch-1 device profile
 
 The clean current-head Nsight Systems capture isolates the
