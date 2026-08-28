@@ -37,6 +37,49 @@ DIRECT_SHELL_CLASS_COUNT = 55
 PPPS_PROFILE_BLOCK_SIZE_COUNT = 4
 PPPS_PROFILE_ORIENTATION_COUNT = 2
 PPPS_PROFILE_PRIMITIVE_PAIR_BUCKET_COUNT = 65
+EIGENSOLVER_FAMILY_NAMES = (
+    "small_native",
+    "jacobi_batched",
+    "xsyev_batched",
+    "graph_native",
+)
+EIGENSOLVER_SELECTION_SOURCE_NAMES = (
+    "dimension_policy",
+    "exact_probe",
+    "exact_probe_fallback",
+)
+XSYEV_ELIGIBILITY_REASON_NAMES = (
+    "eligible",
+    "zero_dimension",
+    "invalid_leading_dimension",
+    "documented_dimension_limit",
+    "solver_batch_limit",
+    "documented_product_limit",
+)
+XSYEV_GRAPH_PROBE_STAGE_NAMES = (
+    "none",
+    "api_eligibility",
+    "select_device",
+    "device_identity",
+    "create_stream",
+    "create_solver",
+    "create_parameters",
+    "allocate_probe_data",
+    "query_workspace",
+    "insufficient_device_memory",
+    "allocate_workspace",
+    "ordinary_execution",
+    "ordinary_validation",
+    "begin_capture",
+    "capture_provider",
+    "end_capture",
+    "instantiate_device_launch_graph",
+    "upload_graph",
+    "host_graph_replay",
+    "host_graph_validation",
+    "device_tail_replay",
+    "device_tail_validation",
+)
 
 
 class ContextDescriptor(ctypes.Structure):
@@ -215,6 +258,43 @@ class PppsQueueProfile(ctypes.Structure):
     ]
 
 
+class EigensolverDiagnostic(ctypes.Structure):
+    _fields_ = [
+        ("bucket_id", ctypes.c_uint32),
+        ("ordinary_family", ctypes.c_int32),
+        ("graph_family", ctypes.c_int32),
+        ("selection_source", ctypes.c_int32),
+        ("matrix_dimension", ctypes.c_uint64),
+        ("physical_system_count", ctypes.c_uint64),
+        ("solver_batch_count", ctypes.c_uint64),
+        ("api_eligible", ctypes.c_int32),
+        ("api_reason", ctypes.c_int32),
+        ("matrix_batch_product", ctypes.c_uint64),
+        ("probe_failure_stage", ctypes.c_int32),
+        ("device_workspace_bytes", ctypes.c_uint64),
+        ("host_workspace_bytes", ctypes.c_uint64),
+        ("available_device_bytes", ctypes.c_uint64),
+        ("device_id", ctypes.c_int32),
+        ("device_uuid", ctypes.c_uint8 * 16),
+        ("device_name", ctypes.c_char * 256),
+        ("compute_capability_major", ctypes.c_int32),
+        ("compute_capability_minor", ctypes.c_int32),
+        ("cuda_runtime_version", ctypes.c_int32),
+        ("cuda_driver_version", ctypes.c_int32),
+        ("cusolver_version", ctypes.c_int32),
+        ("cuda_error", ctypes.c_int32),
+        ("cusolver_error", ctypes.c_int32),
+        ("ordinary_execution_passed", ctypes.c_int32),
+        ("graph_capture_passed", ctypes.c_int32),
+        ("host_graph_replay_passed", ctypes.c_int32),
+        ("device_tail_replay_passed", ctypes.c_int32),
+        ("graph_eligible", ctypes.c_int32),
+        ("maximum_eigenvalue_error", ctypes.c_double),
+        ("maximum_residual", ctypes.c_double),
+        ("maximum_orthogonality_error", ctypes.c_double),
+    ]
+
+
 def _candidate_paths() -> list[Path]:
     candidates: list[Path] = []
     if configured := os.environ.get("VIBEQC_LIBRARY"):
@@ -293,6 +373,13 @@ def load_library() -> ctypes.CDLL:
         ctypes.POINTER(PppsQueueProfile),
     ]
     library.vibeqc_batch_get_last_ppps_queue_profile.restype = ctypes.c_int
+    library.vibeqc_batch_get_last_eigensolver_diagnostics.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(EigensolverDiagnostic),
+        ctypes.c_uint32,
+        ctypes.POINTER(ctypes.c_uint32),
+    ]
+    library.vibeqc_batch_get_last_eigensolver_diagnostics.restype = ctypes.c_int
     library.vibeqc_batch_clear_warm_starts.argtypes = [ctypes.c_void_p]
     library.vibeqc_batch_clear_warm_starts.restype = ctypes.c_int
     library.vibeqc_batch_set_warm_start_updates.argtypes = [

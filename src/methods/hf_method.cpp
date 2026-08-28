@@ -5,6 +5,7 @@
 #include "scf/types.hpp"
 
 #include <algorithm>
+#include <iterator>
 #include <memory>
 #include <numeric>
 #include <utility>
@@ -105,6 +106,49 @@ DirectPppsQueueProfile adapt_ppps_queue_profile(
   profile.ket_primitive_tasks = native.ket_primitive_tasks;
   profile.ket_primitive_work = native.ket_primitive_work;
   return profile;
+}
+
+EigensolverDiagnostic adapt_eigensolver_diagnostic(
+    const scf::CudaEigensolverDiagnostic& native) {
+  const scf::XsyevBatchedGraphProbeResult& probe = native.xsyev_probe;
+  EigensolverDiagnostic diagnostic;
+  diagnostic.bucket_id = static_cast<std::uint32_t>(native.bucket_id);
+  diagnostic.ordinary_family =
+      static_cast<std::uint32_t>(native.ordinary_family);
+  diagnostic.graph_family = static_cast<std::uint32_t>(native.family);
+  diagnostic.selection_source =
+      static_cast<std::uint32_t>(native.selection_source);
+  diagnostic.matrix_dimension = native.matrix_dimension;
+  diagnostic.physical_system_count = native.physical_system_count;
+  diagnostic.solver_batch_count = native.solver_batch_count;
+  diagnostic.api_eligible = probe.api.eligible;
+  diagnostic.api_reason = static_cast<std::uint32_t>(probe.api.reason);
+  diagnostic.matrix_batch_product = probe.api.matrix_batch_product;
+  diagnostic.probe_failure_stage =
+      static_cast<std::uint32_t>(probe.failure_stage);
+  diagnostic.device_workspace_bytes = probe.device_workspace_bytes;
+  diagnostic.host_workspace_bytes = probe.host_workspace_bytes;
+  diagnostic.available_device_bytes = probe.available_device_bytes;
+  diagnostic.device_id = probe.device_id;
+  diagnostic.device_uuid = probe.device_uuid;
+  diagnostic.device_name = probe.device_name;
+  diagnostic.compute_capability_major = probe.compute_capability_major;
+  diagnostic.compute_capability_minor = probe.compute_capability_minor;
+  diagnostic.cuda_runtime_version = probe.cuda_runtime_version;
+  diagnostic.cuda_driver_version = probe.cuda_driver_version;
+  diagnostic.cusolver_version = probe.cusolver_version;
+  diagnostic.cuda_error = probe.cuda_error;
+  diagnostic.cusolver_error = probe.cusolver_error;
+  diagnostic.ordinary_execution_passed = probe.ordinary_execution_passed;
+  diagnostic.graph_capture_passed = probe.graph_capture_passed;
+  diagnostic.host_graph_replay_passed = probe.host_graph_replay_passed;
+  diagnostic.device_tail_replay_passed = probe.device_tail_replay_passed;
+  diagnostic.graph_eligible = probe.graph_eligible;
+  diagnostic.maximum_eigenvalue_error = probe.maximum_eigenvalue_error;
+  diagnostic.maximum_residual = probe.maximum_residual;
+  diagnostic.maximum_orthogonality_error =
+      probe.maximum_orthogonality_error;
+  return diagnostic;
 }
 
 class HfPreparedCalculation final : public PreparedCalculation {
@@ -208,6 +252,17 @@ class HfPreparedBatch final : public PreparedBatch {
     const auto& native = plan_.last_ppps_queue_profile();
     if (!native.has_value()) return std::nullopt;
     return adapt_ppps_queue_profile(*native);
+  }
+
+  [[nodiscard]] std::vector<EigensolverDiagnostic>
+  last_eigensolver_diagnostics() const override {
+    const auto& native = plan_.last_eigensolver_diagnostics();
+    std::vector<EigensolverDiagnostic> diagnostics;
+    diagnostics.reserve(native.size());
+    std::transform(native.begin(), native.end(),
+                   std::back_inserter(diagnostics),
+                   adapt_eigensolver_diagnostic);
+    return diagnostics;
   }
 
  private:

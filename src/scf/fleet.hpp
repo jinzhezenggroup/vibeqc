@@ -70,6 +70,12 @@ class FleetPlan {
     return last_ppps_queue_profile_;
   }
 
+  /** Return one setup-time eigensolver decision for every executed bucket. */
+  [[nodiscard]] const std::vector<CudaEigensolverDiagnostic>&
+  last_eigensolver_diagnostics() const noexcept {
+    return last_eigensolver_diagnostics_;
+  }
+
  private:
   std::vector<core::System> systems_;
   vibeqc_method method_{VIBEQC_METHOD_RHF};
@@ -84,6 +90,7 @@ class FleetPlan {
   std::vector<std::optional<std::vector<double>>> warm_densities_;
   std::optional<CudaRhfShellClassProfile> last_shell_class_profile_;
   std::optional<CudaPppsQueueProfile> last_ppps_queue_profile_;
+  std::vector<CudaEigensolverDiagnostic> last_eigensolver_diagnostics_;
   // One allocation/Graph owner per workload bucket. Raw opaque pointers keep
   // CUDA headers out of this public C++ translation unit; the destructor owns
   // them through the backend-specific destroy function.

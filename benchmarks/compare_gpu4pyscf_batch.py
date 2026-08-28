@@ -523,6 +523,7 @@ def main() -> None:
     )
     vibeqc_samples: list[dict[str, Any]] = []
     gpu_samples: list[dict[str, Any]] = []
+    eigensolver_diagnostics: list[dict[str, object]] = []
     measurement_order = interleaved_engine_order(args.repeats)
 
     with calculator.prepare_batch(
@@ -589,6 +590,10 @@ def main() -> None:
         finally:
             if args.capture_warm_range:
                 cp.cuda.profiler.stop()
+        eigensolver_diagnostics = [
+            diagnostic.to_dict()
+            for diagnostic in batch.last_eigensolver_diagnostics()
+        ]
 
     repeat_accuracy = pair_repeat_accuracy(vibeqc_samples, gpu_samples)
     maximum_energy_error = max(
@@ -749,6 +754,7 @@ def main() -> None:
                 ),
             },
             "vibeqc": {
+                "eigensolver_diagnostics": eigensolver_diagnostics,
                 "energies_hartree": final_vibeqc["energies_hartree"],
                 "forces_hartree_per_bohr": final_vibeqc[
                     "forces_hartree_per_bohr"

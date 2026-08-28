@@ -140,6 +140,93 @@ typedef struct vibeqc_ppps_queue_profile {
       VIBEQC_PPPS_PROFILE_PRIMITIVE_PAIR_BUCKET_COUNT];
 } vibeqc_ppps_queue_profile;
 
+typedef int32_t vibeqc_eigensolver_family;
+enum {
+  VIBEQC_EIGENSOLVER_SMALL_NATIVE = 0,
+  VIBEQC_EIGENSOLVER_JACOBI_BATCHED = 1,
+  VIBEQC_EIGENSOLVER_XSYEV_BATCHED = 2,
+  VIBEQC_EIGENSOLVER_GRAPH_NATIVE = 3
+};
+
+typedef int32_t vibeqc_eigensolver_selection_source;
+enum {
+  VIBEQC_EIGENSOLVER_SELECTION_DIMENSION_POLICY = 0,
+  VIBEQC_EIGENSOLVER_SELECTION_EXACT_PROBE = 1,
+  VIBEQC_EIGENSOLVER_SELECTION_EXACT_PROBE_FALLBACK = 2
+};
+
+typedef int32_t vibeqc_xsyev_eligibility_reason;
+enum {
+  VIBEQC_XSYEV_ELIGIBLE = 0,
+  VIBEQC_XSYEV_ZERO_DIMENSION = 1,
+  VIBEQC_XSYEV_INVALID_LEADING_DIMENSION = 2,
+  VIBEQC_XSYEV_DOCUMENTED_DIMENSION_LIMIT = 3,
+  VIBEQC_XSYEV_SOLVER_BATCH_LIMIT = 4,
+  VIBEQC_XSYEV_DOCUMENTED_PRODUCT_LIMIT = 5
+};
+
+typedef int32_t vibeqc_xsyev_graph_probe_stage;
+enum {
+  VIBEQC_XSYEV_PROBE_NONE = 0,
+  VIBEQC_XSYEV_PROBE_API_ELIGIBILITY = 1,
+  VIBEQC_XSYEV_PROBE_SELECT_DEVICE = 2,
+  VIBEQC_XSYEV_PROBE_DEVICE_IDENTITY = 3,
+  VIBEQC_XSYEV_PROBE_CREATE_STREAM = 4,
+  VIBEQC_XSYEV_PROBE_CREATE_SOLVER = 5,
+  VIBEQC_XSYEV_PROBE_CREATE_PARAMETERS = 6,
+  VIBEQC_XSYEV_PROBE_ALLOCATE_DATA = 7,
+  VIBEQC_XSYEV_PROBE_QUERY_WORKSPACE = 8,
+  VIBEQC_XSYEV_PROBE_INSUFFICIENT_DEVICE_MEMORY = 9,
+  VIBEQC_XSYEV_PROBE_ALLOCATE_WORKSPACE = 10,
+  VIBEQC_XSYEV_PROBE_ORDINARY_EXECUTION = 11,
+  VIBEQC_XSYEV_PROBE_ORDINARY_VALIDATION = 12,
+  VIBEQC_XSYEV_PROBE_BEGIN_CAPTURE = 13,
+  VIBEQC_XSYEV_PROBE_CAPTURE_PROVIDER = 14,
+  VIBEQC_XSYEV_PROBE_END_CAPTURE = 15,
+  VIBEQC_XSYEV_PROBE_INSTANTIATE_DEVICE_LAUNCH_GRAPH = 16,
+  VIBEQC_XSYEV_PROBE_UPLOAD_GRAPH = 17,
+  VIBEQC_XSYEV_PROBE_HOST_GRAPH_REPLAY = 18,
+  VIBEQC_XSYEV_PROBE_HOST_GRAPH_VALIDATION = 19,
+  VIBEQC_XSYEV_PROBE_DEVICE_TAIL_REPLAY = 20,
+  VIBEQC_XSYEV_PROBE_DEVICE_TAIL_VALIDATION = 21
+};
+
+/** Exact setup-time eigensolver selection evidence for one workload bucket. */
+typedef struct vibeqc_eigensolver_diagnostic {
+  uint32_t bucket_id;
+  vibeqc_eigensolver_family ordinary_family;
+  vibeqc_eigensolver_family graph_family;
+  vibeqc_eigensolver_selection_source selection_source;
+  uint64_t matrix_dimension;
+  uint64_t physical_system_count;
+  uint64_t solver_batch_count;
+  int32_t api_eligible;
+  vibeqc_xsyev_eligibility_reason api_reason;
+  uint64_t matrix_batch_product;
+  vibeqc_xsyev_graph_probe_stage probe_failure_stage;
+  uint64_t device_workspace_bytes;
+  uint64_t host_workspace_bytes;
+  uint64_t available_device_bytes;
+  int32_t device_id;
+  uint8_t device_uuid[16];
+  char device_name[256];
+  int32_t compute_capability_major;
+  int32_t compute_capability_minor;
+  int32_t cuda_runtime_version;
+  int32_t cuda_driver_version;
+  int32_t cusolver_version;
+  int32_t cuda_error;
+  int32_t cusolver_error;
+  int32_t ordinary_execution_passed;
+  int32_t graph_capture_passed;
+  int32_t host_graph_replay_passed;
+  int32_t device_tail_replay_passed;
+  int32_t graph_eligible;
+  double maximum_eigenvalue_error;
+  double maximum_residual;
+  double maximum_orthogonality_error;
+} vibeqc_eigensolver_diagnostic;
+
 typedef struct vibeqc_context_descriptor {
   uint32_t struct_size;
   uint32_t abi_version;
@@ -317,6 +404,19 @@ VIBEQC_API vibeqc_status vibeqc_batch_get_last_shell_class_profile(
 VIBEQC_API vibeqc_status vibeqc_batch_get_last_ppps_queue_profile(
     const vibeqc_batch* batch,
     vibeqc_ppps_queue_profile* profile);
+
+/**
+ * Copy setup-time eigensolver evidence for every bucket in the last execution.
+ *
+ * Pass `entries = NULL` and `entry_count = 0` to query the required count in
+ * `written_count`. A later warm replay returns the cached setup decision and
+ * never performs another capability probe.
+ */
+VIBEQC_API vibeqc_status vibeqc_batch_get_last_eigensolver_diagnostics(
+    const vibeqc_batch* batch,
+    vibeqc_eigensolver_diagnostic* entries,
+    uint32_t entry_count,
+    uint32_t* written_count);
 
 /** Discard all retained per-system converged-density warm starts. */
 VIBEQC_API vibeqc_status vibeqc_batch_clear_warm_starts(vibeqc_batch* batch);

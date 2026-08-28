@@ -162,6 +162,7 @@ std::vector<FleetItemResult> FleetPlan::execute(
   }
   last_shell_class_profile_.reset();
   last_ppps_queue_profile_.reset();
+  last_eigensolver_diagnostics_.clear();
   std::vector<FleetItemResult> results(systems_.size());
   const auto execute_one = [&](std::size_t system_index) {
     FleetItemResult& item = results[system_index];
@@ -274,6 +275,12 @@ std::vector<FleetItemResult> FleetPlan::execute(
                   &cuda_bucket_plans_[bucket], cuda_systems, options_,
                   initial_densities, device_id_,
                   shell_class_profiling_enabled_);
+        CudaEigensolverDiagnostic eigensolver_diagnostic;
+        if (get_rhf_cuda_eigensolver_diagnostic(
+                cuda_bucket_plans_[bucket], eigensolver_diagnostic)) {
+          eigensolver_diagnostic.bucket_id = bucket;
+          last_eigensolver_diagnostics_.push_back(eigensolver_diagnostic);
+        }
         if (shell_class_profiling_enabled_) {
           CudaRhfShellClassProfile bucket_profile{};
           if (get_rhf_cuda_shell_class_profile(

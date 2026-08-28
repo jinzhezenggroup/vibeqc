@@ -3,6 +3,7 @@
 
 #include "core/types.hpp"
 #include "scf/direct_task_layout.hpp"
+#include "scf/cuda_eigensolver_policy.hpp"
 #include "scf/types.hpp"
 
 #include <array>
@@ -85,6 +86,35 @@ struct CudaRhfBasisLayoutStats {
   std::size_t device_basis_bytes{};
 };
 
+enum class CudaEigensolverFamily : std::uint32_t {
+  small_native = 0,
+  jacobi_batched,
+  xsyev_batched,
+  graph_native,
+};
+
+enum class CudaEigensolverSelectionSource : std::uint32_t {
+  dimension_policy = 0,
+  exact_probe,
+  exact_probe_fallback,
+};
+
+/** Setup-time provider selection and exact Graph qualification evidence. */
+struct CudaEigensolverDiagnostic {
+  /** Provider used by setup/finalization calls outside the iteration Graph. */
+  CudaEigensolverFamily ordinary_family{
+      CudaEigensolverFamily::small_native};
+  /** Provider captured into the device-tail iteration Graph. */
+  CudaEigensolverFamily family{CudaEigensolverFamily::small_native};
+  CudaEigensolverSelectionSource selection_source{
+      CudaEigensolverSelectionSource::dimension_policy};
+  std::uint64_t bucket_id{};
+  std::uint64_t matrix_dimension{};
+  std::uint64_t physical_system_count{};
+  std::uint64_t solver_batch_count{};
+  XsyevBatchedGraphProbeResult xsyev_probe;
+};
+
 CudaRhfBasisLayoutStats inspect_rhf_cuda_basis_layout(
     const std::vector<core::System>& systems);
 
@@ -125,6 +155,10 @@ bool get_rhf_cuda_shell_class_profile(
 bool get_rhf_cuda_ppps_queue_profile(
     const CudaRhfBucketPlan* plan,
     CudaPppsQueueProfile& profile) noexcept;
+
+bool get_rhf_cuda_eigensolver_diagnostic(
+    const CudaRhfBucketPlan* plan,
+    CudaEigensolverDiagnostic& diagnostic) noexcept;
 
 void destroy_rhf_cuda_bucket_plan(CudaRhfBucketPlan* plan) noexcept;
 

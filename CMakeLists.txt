@@ -122,6 +122,7 @@ if(VIBEQC_ENABLE_CUDA)
   target_sources(vibeqc PRIVATE
     src/runtime/cuda_runtime.cu
     src/scf/cuda_density_fitting.cu
+    src/scf/cuda_eigensolver_probe.cu
     src/scf/cuda_rhf.cu
   )
   if(NOT VIBEQC_CUDA_SPLIT_COMPILE_THREADS STREQUAL "1")
@@ -308,6 +309,14 @@ if(VIBEQC_BUILD_TESTS)
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
   add_test(NAME vibeqc_density_fitting_tests
     COMMAND vibeqc_density_fitting_tests)
+
+  add_executable(vibeqc_cuda_eigensolver_policy_tests
+    tests/native/test_cuda_eigensolver_policy.cpp)
+  target_link_libraries(vibeqc_cuda_eigensolver_policy_tests PRIVATE vibeqc)
+  target_include_directories(vibeqc_cuda_eigensolver_policy_tests
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  add_test(NAME vibeqc_cuda_eigensolver_policy_tests
+    COMMAND vibeqc_cuda_eigensolver_policy_tests)
 
   add_executable(vibeqc_uhf_tests tests/native/test_uhf.cpp)
   target_link_libraries(vibeqc_uhf_tests PRIVATE vibeqc)
