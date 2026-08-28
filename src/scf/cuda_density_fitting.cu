@@ -138,7 +138,8 @@ struct SetupBuffers {
   double* scaled_eigenvectors{};
   double* inverse_square_roots{};
   double* raw_three_center{};
-  double* solver_workspace{};
+  void* solver_workspace{};
+  std::vector<unsigned char> solver_host_workspace;
   int* solver_info{};
 
   ~SetupBuffers() {
@@ -166,6 +167,7 @@ struct CudaDensityFittingJkPlan {
   cudaStream_t stream{};
   cublasHandle_t blas{};
   cusolverDnHandle_t solver{};
+  cusolverDnParams_t solver_parameters{};
   double* three_center{};
   double* primary_density{};
   double* secondary_density{};
@@ -194,6 +196,9 @@ void release(CudaDensityFittingJkPlan& plan) noexcept {
   (void)cudaFree(plan.auxiliary_tile_values);
   (void)cudaFree(plan.exchange_intermediate);
   (void)cudaFree(plan.exchange_contributions);
+  if (plan.solver_parameters != nullptr) {
+    (void)cusolverDnDestroyParams(plan.solver_parameters);
+  }
   if (plan.solver != nullptr) (void)cusolverDnDestroy(plan.solver);
   if (plan.blas != nullptr) (void)cublasDestroy(plan.blas);
   if (plan.stream != nullptr) (void)cudaStreamDestroy(plan.stream);
@@ -440,6 +445,9 @@ vibeqc_status create_cuda_density_fitting_jk_plan(
   if (solver_status == CUSOLVER_STATUS_SUCCESS) {
     solver_status = cusolverDnSetStream(candidate->solver, candidate->stream);
   }
+  if (solver_status == CUSOLVER_STATUS_SUCCESS) {
+    solver_status = cusolverDnCreateParams(&candidate->solver_parameters);
+  }
   if (solver_status != CUSOLVER_STATUS_SUCCESS) {
     return fail_plan(
         candidate,
@@ -563,31 +571,45 @@ vibeqc_status create_cuda_density_fitting_jk_plan(
         cuda_failure(cuda_error, "symmetrize CUDA DF metrics", detail));
   }
 
-  int solver_lwork = 0;
-  solver_status = cusolverDnDsyevd_bufferSize(
-      candidate->solver, CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER,
-      static_cast<int>(naux), setup.metrics, static_cast<int>(naux),
-      setup.eigenvalues, &solver_lwork);
+  std::size_t solver_device_workspace_bytes = 0;
+  std::size_t solver_host_workspace_bytes = 0;
+  solver_status = cusolverDnXsyevd_bufferSize(
+      candidate->solver, candidate->solver_parameters,
+      CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER,
+      static_cast<std::int64_t>(naux), CUDA_R_64F, setup.metrics,
+      static_cast<std::int64_t>(naux), CUDA_R_64F, setup.eigenvalues,
+      CUDA_R_64F, &solver_device_workspace_bytes,
+      &solver_host_workspace_bytes);
   if (solver_status != CUSOLVER_STATUS_SUCCESS) {
     return fail_plan(candidate,
                      solver_failure(solver_status,
                                     "size CUDA DF metric eigensolver", detail));
   }
-  if (solver_lwork <= 0) {
-    detail = "CUDA DF metric eigensolver returned an invalid workspace size";
-    return fail_plan(candidate, VIBEQC_STATUS_CUDA_ERROR);
+  if (solver_device_workspace_bytes != 0) {
+    status = allocate_setup(&setup.solver_workspace,
+                            solver_device_workspace_bytes,
+                            "allocate CUDA DF metric solver workspace");
+    if (status != VIBEQC_STATUS_SUCCESS) return fail_plan(candidate, status);
   }
-  status =
-      allocate_setup(reinterpret_cast<void**>(&setup.solver_workspace),
-                     static_cast<std::size_t>(solver_lwork) * sizeof(double),
-                     "allocate CUDA DF metric solver workspace");
-  if (status != VIBEQC_STATUS_SUCCESS) return fail_plan(candidate, status);
+  try {
+    setup.solver_host_workspace.resize(solver_host_workspace_bytes);
+  } catch (const std::bad_alloc&) {
+    detail = "host allocation for CUDA DF metric solver workspace failed";
+    return fail_plan(candidate, VIBEQC_STATUS_OUT_OF_MEMORY);
+  }
   for (std::size_t system = 0; system < batch_size; ++system) {
-    solver_status = cusolverDnDsyevd(
-        candidate->solver, CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER,
-        static_cast<int>(naux), setup.metrics + system * metric_elements,
-        static_cast<int>(naux), setup.eigenvalues + system * naux,
-        setup.solver_workspace, solver_lwork, setup.solver_info + system);
+    solver_status = cusolverDnXsyevd(
+        candidate->solver, candidate->solver_parameters,
+        CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER,
+        static_cast<std::int64_t>(naux), CUDA_R_64F,
+        setup.metrics + system * metric_elements,
+        static_cast<std::int64_t>(naux), CUDA_R_64F,
+        setup.eigenvalues + system * naux, CUDA_R_64F,
+        setup.solver_workspace, solver_device_workspace_bytes,
+        setup.solver_host_workspace.empty()
+            ? nullptr
+            : setup.solver_host_workspace.data(),
+        solver_host_workspace_bytes, setup.solver_info + system);
     if (solver_status != CUSOLVER_STATUS_SUCCESS) {
       return fail_plan(
           candidate,
@@ -637,6 +659,9 @@ vibeqc_status create_cuda_density_fitting_jk_plan(
       return fail_plan(candidate, VIBEQC_STATUS_INVALID_ARGUMENT);
     }
     auto& diagnostic = diagnostics[system];
+    diagnostic.solver_device_workspace_bytes =
+        solver_device_workspace_bytes;
+    diagnostic.solver_host_workspace_bytes = solver_host_workspace_bytes;
     diagnostic.absolute_threshold = relative_threshold * largest;
     double smallest_retained = largest;
     for (std::size_t item = 0; item < naux; ++item) {
@@ -715,6 +740,8 @@ vibeqc_status create_cuda_density_fitting_jk_plan(
         cuda_failure(cuda_error, "finish CUDA DF plan preparation", detail));
   }
 
+  (void)cusolverDnDestroyParams(candidate->solver_parameters);
+  candidate->solver_parameters = nullptr;
   (void)cusolverDnDestroy(candidate->solver);
   candidate->solver = nullptr;
   *plan = candidate;
