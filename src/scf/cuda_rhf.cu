@@ -6682,6 +6682,176 @@ __global__ void copy_selected_matrices_kernel(
   if (selected[system] != 0) destination[element] = source[element];
 }
 
+/** Compact device record retained only by the opt-in profiling Graph. */
+struct DeviceInactiveEigensolverProfileEntry {
+  std::uint64_t solver_start_nanoseconds;
+  std::uint64_t solver_elapsed_nanoseconds;
+  std::uint32_t iteration;
+  std::uint32_t family;
+  std::uint32_t physical_system_count;
+  std::uint32_t solver_batch_count;
+  std::uint32_t active_physical_count;
+  std::uint32_t active_solver_count;
+  std::uint32_t inactive_input_nonfinite_count;
+  std::uint32_t inactive_submission_nonfinite_count;
+  std::uint32_t inactive_info_nonzero_count;
+  std::uint32_t inactive_touch_flags;
+  std::uint32_t provider_invoked;
+};
+
+__device__ __forceinline__ std::uint64_t globaltimer_nanoseconds() {
+  std::uint64_t value;
+  asm volatile("mov.u64 %0, %%globaltimer;" : "=l"(value));
+  return value;
+}
+
+/** Allocate and initialize the record owned by this sequential Graph replay. */
+__global__ void begin_inactive_eigensolver_profile_kernel(
+    std::int32_t physical_batch_size,
+    std::int32_t solver_batch_size,
+    std::uint32_t family,
+    bool provider_invoked,
+    bool cublas_transformed_inactive,
+    const std::uint8_t* physical_active,
+    const std::uint8_t* solver_active,
+    std::uint32_t capacity,
+    std::uint32_t* count,
+    DeviceInactiveEigensolverProfileEntry* entries) {
+  if (blockIdx.x != 0 || threadIdx.x != 0) return;
+  const std::uint32_t index = atomicAdd(count, 1U);
+  if (index >= capacity) return;
+  std::uint32_t active_physical_count = 0;
+  std::uint32_t active_solver_count = 0;
+  for (std::int32_t system = 0; system < physical_batch_size; ++system) {
+    active_physical_count += physical_active[system] != 0 ? 1U : 0U;
+  }
+  for (std::int32_t state = 0; state < solver_batch_size; ++state) {
+    active_solver_count += solver_active[state] != 0 ? 1U : 0U;
+  }
+  const bool has_inactive =
+      active_solver_count < static_cast<std::uint32_t>(solver_batch_size);
+  DeviceInactiveEigensolverProfileEntry& entry = entries[index];
+  entry.solver_start_nanoseconds = 0U;
+  entry.solver_elapsed_nanoseconds = 0U;
+  entry.iteration = index + 1U;
+  entry.family = family;
+  entry.physical_system_count =
+      static_cast<std::uint32_t>(physical_batch_size);
+  entry.solver_batch_count = static_cast<std::uint32_t>(solver_batch_size);
+  entry.active_physical_count = active_physical_count;
+  entry.active_solver_count = active_solver_count;
+  entry.inactive_input_nonfinite_count = 0U;
+  entry.inactive_submission_nonfinite_count = 0U;
+  entry.inactive_info_nonzero_count = 0U;
+  entry.inactive_touch_flags =
+      has_inactive && cublas_transformed_inactive
+      ? VIBEQC_EIGENSOLVER_INACTIVE_TOUCH_CUBLAS_TRANSFORM
+      : 0U;
+  entry.provider_invoked = provider_invoked ? 1U : 0U;
+}
+
+/**
+ * Replace every inactive provider input with an identity matrix.
+ *
+ * cuSOLVER providers cannot consume the active mask. Identity substitution
+ * guarantees finite, well-conditioned input without changing the fixed batch
+ * size. The optional diagnostic counts non-finite values before replacement;
+ * it is not part of the production fast path when profiling is disabled.
+ */
+__global__ void sanitize_inactive_solver_input_kernel(
+    std::int32_t solver_batch_size,
+    std::int32_t nbf,
+    const std::uint8_t* solver_active,
+    double* matrices,
+    int* info,
+    std::uint32_t profile_capacity,
+    const std::uint32_t* profile_count,
+    DeviceInactiveEigensolverProfileEntry* profile_entries) {
+  const std::int32_t state = static_cast<std::int32_t>(blockIdx.x);
+  if (state >= solver_batch_size) return;
+  if (threadIdx.x == 0) info[state] = 0;
+  if (solver_active[state] != 0) return;
+  __shared__ unsigned matrix_nonfinite;
+  __shared__ unsigned submission_nonfinite;
+  if (threadIdx.x == 0) {
+    matrix_nonfinite = 0U;
+    submission_nonfinite = 0U;
+  }
+  __syncthreads();
+  DeviceInactiveEigensolverProfileEntry* profile = nullptr;
+  if (profile_entries != nullptr && profile_count != nullptr &&
+      *profile_count != 0U && *profile_count <= profile_capacity) {
+    profile = profile_entries + (*profile_count - 1U);
+    if (threadIdx.x == 0) {
+      atomicOr(&profile->inactive_touch_flags,
+               VIBEQC_EIGENSOLVER_INACTIVE_TOUCH_IDENTITY_SANITIZE);
+    }
+  }
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t matrix_size = n * n;
+  const std::size_t offset = static_cast<std::size_t>(state) * matrix_size;
+  for (std::size_t element = threadIdx.x; element < matrix_size;
+       element += blockDim.x) {
+    const double input = matrices[offset + element];
+    if (profile != nullptr && !isfinite(input)) {
+      atomicExch(&matrix_nonfinite, 1U);
+    }
+    const std::size_t row = element % n;
+    const std::size_t column = element / n;
+    matrices[offset + element] = row == column ? 1.0 : 0.0;
+  }
+  __syncthreads();
+  if (profile != nullptr && threadIdx.x == 0 && matrix_nonfinite != 0U) {
+    atomicAdd(&profile->inactive_input_nonfinite_count, 1U);
+  }
+  if (profile != nullptr) {
+    for (std::size_t element = threadIdx.x; element < matrix_size;
+         element += blockDim.x) {
+      if (!isfinite(matrices[offset + element])) {
+        atomicExch(&submission_nonfinite, 1U);
+      }
+    }
+    __syncthreads();
+    if (threadIdx.x == 0 && submission_nonfinite != 0U) {
+      atomicAdd(&profile->inactive_submission_nonfinite_count, 1U);
+    }
+  }
+}
+
+__global__ void start_inactive_eigensolver_timer_kernel(
+    std::uint32_t capacity,
+    const std::uint32_t* count,
+    DeviceInactiveEigensolverProfileEntry* entries) {
+  if (blockIdx.x != 0 || threadIdx.x != 0 || *count == 0U ||
+      *count > capacity) {
+    return;
+  }
+  entries[*count - 1U].solver_start_nanoseconds = globaltimer_nanoseconds();
+}
+
+__global__ void finish_inactive_eigensolver_profile_kernel(
+    std::int32_t solver_batch_size,
+    const std::uint8_t* solver_active,
+    const int* info,
+    std::uint32_t capacity,
+    const std::uint32_t* count,
+    DeviceInactiveEigensolverProfileEntry* entries) {
+  if (blockIdx.x != 0 || threadIdx.x != 0 || *count == 0U ||
+      *count > capacity) {
+    return;
+  }
+  DeviceInactiveEigensolverProfileEntry& entry = entries[*count - 1U];
+  const std::uint64_t stop = globaltimer_nanoseconds();
+  entry.solver_elapsed_nanoseconds = stop - entry.solver_start_nanoseconds;
+  std::uint32_t inactive_info_nonzero_count = 0U;
+  for (std::int32_t state = 0; state < solver_batch_size; ++state) {
+    if (solver_active[state] == 0 && info[state] != 0) {
+      ++inactive_info_nonzero_count;
+    }
+  }
+  entry.inactive_info_nonzero_count = inactive_info_nonzero_count;
+}
+
 __global__ void inspect_solver_kernel(std::int32_t batch_size,
                                       const int* info,
                                       std::uint8_t* active,
@@ -6689,7 +6859,9 @@ __global__ void inspect_solver_kernel(std::int32_t batch_size,
                                       std::uint8_t* converged) {
   const std::int32_t system = static_cast<std::int32_t>(
       static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x);
-  if (system >= batch_size || info[system] == 0) return;
+  // An inactive state has already converged or failed. Provider writes to its
+  // fixed-batch info slot must never overwrite that terminal status.
+  if (system >= batch_size || active[system] == 0 || info[system] == 0) return;
   active[system] = 0;
   failed[system] = 1;
   converged[system] = 0;
@@ -6713,7 +6885,7 @@ __global__ void inspect_spin_solver_kernel(std::int32_t batch_size,
                                            std::uint8_t* converged) {
   const std::int32_t system = static_cast<std::int32_t>(
       static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x);
-  if (system >= batch_size) return;
+  if (system >= batch_size || active[system] == 0) return;
   for (std::int32_t spin = 0; spin < spin_count; ++spin) {
     if (info[system * spin_count + spin] != 0) {
       active[system] = 0;
@@ -12262,6 +12434,8 @@ struct ArenaLayout {
   std::size_t spin_active{};
   std::size_t iterations{};
   std::size_t solver_info{};
+  std::size_t inactive_eigensolver_profile_count{};
+  std::size_t inactive_eigensolver_profile{};
 };
 
 template <typename T>
@@ -12290,10 +12464,12 @@ bool make_layout(std::size_t batch_size,
                  std::size_t generic_order5_tile_capacity,
                  std::size_t primitives,
                  std::size_t diis_history,
+                 std::size_t eigensolver_profile_capacity,
                  std::size_t spin_count,
                  bool persistent_eri,
                  bool transformed_direct,
                  bool shell_class_profiling,
+                 bool inactive_eigensolver_profiling,
                  ArenaLayout& layout) {
   std::size_t matrix_size = 0;
   std::size_t eri_size = 0;
@@ -12547,7 +12723,14 @@ bool make_layout(std::size_t batch_size,
                                   made.spin_active) ||
       !append_array<std::uint32_t>(batch_size, cursor, made.iterations) ||
       !append_array<int>(batch_size * spin_count, cursor,
-                         made.solver_info)) return false;
+                         made.solver_info) ||
+      !append_array<std::uint32_t>(
+          inactive_eigensolver_profiling ? 1 : 0, cursor,
+          made.inactive_eigensolver_profile_count) ||
+      !append_array<DeviceInactiveEigensolverProfileEntry>(
+          inactive_eigensolver_profiling ? eigensolver_profile_capacity : 0,
+          cursor,
+          made.inactive_eigensolver_profile)) return false;
   made.bytes = cursor;
   layout = made;
   return true;
@@ -13171,6 +13354,20 @@ vibeqc_status launch_spin_matrix_product(CudaResources& resources,
   return VIBEQC_STATUS_SUCCESS;
 }
 
+struct EigensolverProfileLaunch {
+  std::int32_t physical_batch_size{};
+  const std::uint8_t* physical_active{};
+  bool cublas_transformed_inactive{};
+  std::uint32_t capacity{};
+  std::uint32_t* count{};
+  DeviceInactiveEigensolverProfileEntry* entries{};
+};
+
+bool provider_eigensolver(CudaEigensolverFamily family) {
+  return family == CudaEigensolverFamily::jacobi_batched ||
+      family == CudaEigensolverFamily::xsyev_batched;
+}
+
 vibeqc_status launch_solver(CudaResources& resources,
                             CudaEigensolverFamily family,
                             int nbf,
@@ -13180,23 +13377,55 @@ vibeqc_status launch_solver(CudaResources& resources,
                             double* eigenvalues,
                             int lwork,
                             int* info,
-                            const std::uint8_t* active) {
+                            const std::uint8_t* active,
+                            const EigensolverProfileLaunch* profile = nullptr) {
+  const bool provider_invoked = provider_eigensolver(family);
+  if (profile != nullptr) {
+    begin_inactive_eigensolver_profile_kernel<<<1, 1, 0,
+                                                resources.stream_>>>(
+        profile->physical_batch_size, batch_size,
+        static_cast<std::uint32_t>(family), provider_invoked,
+        profile->cublas_transformed_inactive, profile->physical_active, active,
+        profile->capacity, profile->count, profile->entries);
+    const cudaError_t profile_error = cudaPeekAtLastError();
+    if (profile_error != cudaSuccess) return cuda_status(profile_error);
+  }
+  if (provider_invoked) {
+    // One block per solver state returns immediately for active matrices. The
+    // homogeneous fast path therefore pays one tiny mask kernel while a
+    // divergent provider batch receives finite identity placeholders.
+    sanitize_inactive_solver_input_kernel<<<
+        static_cast<unsigned>(batch_size), kCaptureSafeKernelThreads, 0,
+        resources.stream_>>>(
+        batch_size, nbf, active, matrices, info,
+        profile == nullptr ? 0U : profile->capacity,
+        profile == nullptr ? nullptr : profile->count,
+        profile == nullptr ? nullptr : profile->entries);
+    const cudaError_t sanitize_error = cudaPeekAtLastError();
+    if (sanitize_error != cudaSuccess) return cuda_status(sanitize_error);
+  }
+  if (profile != nullptr) {
+    start_inactive_eigensolver_timer_kernel<<<1, 1, 0, resources.stream_>>>(
+        profile->capacity, profile->count, profile->entries);
+    const cudaError_t profile_error = cudaPeekAtLastError();
+    if (profile_error != cudaSuccess) return cuda_status(profile_error);
+  }
+  vibeqc_status status = VIBEQC_STATUS_SUCCESS;
   if (family == CudaEigensolverFamily::small_native) {
     symmetric_eigen_small_kernel<<<static_cast<unsigned>(batch_size), 1, 0,
                                    resources.stream_>>>(
         batch_size, nbf, matrices, eigenvalues, info, active);
-    return cuda_status(cudaPeekAtLastError());
-  }
-  if (family == CudaEigensolverFamily::jacobi_batched) {
+    status = cuda_status(cudaPeekAtLastError());
+  } else if (family == CudaEigensolverFamily::jacobi_batched) {
     const cusolverStatus_t status = cusolverDnDsyevjBatched(
         resources.solver_, CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER,
         nbf, matrices, nbf, eigenvalues,
         static_cast<double*>(resources.solver_workspace_), lwork, info,
         resources.jacobi_, batch_size);
-    return status == CUSOLVER_STATUS_SUCCESS ? VIBEQC_STATUS_SUCCESS
-                                             : solver_status(status);
-  }
-  if (family == CudaEigensolverFamily::xsyev_batched) {
+    if (status != CUSOLVER_STATUS_SUCCESS) {
+      return solver_status(status);
+    }
+  } else if (family == CudaEigensolverFamily::xsyev_batched) {
     // The setup-time exact-stack probe has already captured, instantiated,
     // host-replayed, and device-tail-replayed this signature.
     const cusolverStatus_t status = cusolverDnXsyevBatched(
@@ -13206,18 +13435,29 @@ vibeqc_status launch_solver(CudaResources& resources,
         resources.solver_workspace_, resources.solver_workspace_bytes_,
         resources.solver_host_workspace_,
         resources.solver_host_workspace_bytes_, info, batch_size);
-    return status == CUSOLVER_STATUS_SUCCESS ? VIBEQC_STATUS_SUCCESS
-                                             : solver_status(status);
+    if (status != CUSOLVER_STATUS_SUCCESS) {
+      return solver_status(status);
+    }
+  } else {
+    // API-ineligible or Graph-rejected signatures retain the unbounded native
+    // implementation without treating a provider limitation as a calculation
+    // failure.
+    symmetric_eigen_graph_maximum_pivot_kernel<<<
+        static_cast<unsigned>(batch_size), kGraphEigensolverThreads, 0,
+        resources.stream_>>>(
+        batch_size, nbf, matrices, eigenvector_workspace, eigenvalues, info,
+        active);
+    status = cuda_status(cudaPeekAtLastError());
   }
-  // API-ineligible or Graph-rejected signatures retain the unbounded native
-  // implementation without treating a provider limitation as a calculation
-  // failure.
-  symmetric_eigen_graph_maximum_pivot_kernel<<<
-      static_cast<unsigned>(batch_size), kGraphEigensolverThreads, 0,
-      resources.stream_>>>(
-      batch_size, nbf, matrices, eigenvector_workspace, eigenvalues, info,
-      active);
-  return cuda_status(cudaPeekAtLastError());
+  if (status != VIBEQC_STATUS_SUCCESS) return status;
+  if (profile != nullptr) {
+    finish_inactive_eigensolver_profile_kernel<<<1, 1, 0,
+                                                 resources.stream_>>>(
+        batch_size, active, info, profile->capacity, profile->count,
+        profile->entries);
+    status = cuda_status(cudaPeekAtLastError());
+  }
+  return status;
 }
 
 }  // namespace
@@ -13241,6 +13481,8 @@ struct CudaRhfBucketPlan {
   std::vector<double> frozen_previous_energy;
   std::optional<CudaRhfShellClassProfile> last_shell_class_profile;
   std::optional<CudaPppsQueueProfile> last_ppps_queue_profile;
+  std::optional<CudaInactiveEigensolverProfile>
+      last_inactive_eigensolver_profile;
   CudaEigensolverDiagnostic eigensolver_diagnostic;
   ScfOptions options;
   std::size_t batch_size{};
@@ -13268,6 +13510,8 @@ struct CudaRhfBucketPlan {
   bool transformed_direct{};
   bool unrestricted{};
   bool shell_class_profiling{};
+  bool inactive_eigensolver_profiling{};
+  bool graph_native_eigensolver_override{};
   bool reuse_converged_fock{};
   bool warm_start_updates_enabled{true};
   bool cublas_enabled{true};
@@ -13282,6 +13526,14 @@ bool reuse_converged_fock_requested() {
   const char* force_rebuild = std::getenv("VIBEQC_FINAL_FOCK_REBUILD");
   return force_rebuild == nullptr || std::strcmp(force_rebuild, "0") == 0 ||
       std::strcmp(force_rebuild, "none") == 0;
+}
+
+/** Select the mask-aware solver for controlled issue-51 A/B measurements. */
+bool graph_native_eigensolver_override_requested() {
+  const char* selection =
+      std::getenv("VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE");
+  return selection != nullptr &&
+      std::strcmp(selection, "graph_native") == 0;
 }
 
 /** Select the validated final-Fock reuse gate for one requested accuracy. */
@@ -13393,11 +13645,13 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     const ScfOptions& options,
     int device_id,
     bool unrestricted,
-    bool shell_class_profiling) {
+    bool shell_class_profiling,
+    bool inactive_eigensolver_profiling) {
   const std::size_t batch_size = host.warm_mask.size();
   std::vector<RhfBucketItem> outputs(batch_size);
   plan.last_shell_class_profile.reset();
   plan.last_ppps_queue_profile.reset();
+  plan.last_inactive_eigensolver_profile.reset();
 
   const std::size_t nbf = host.nbf;
   const std::size_t direct_nbf = host.direct_nbf;
@@ -13495,6 +13749,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       std::strcmp(scalar_one_electron_force_environment, "0") == 0;
   const bool requested_reuse_converged_fock =
       reuse_converged_fock_requested();
+  const bool requested_graph_native_eigensolver_override =
+      graph_native_eigensolver_override_requested();
   // Read this on every cached execution so one prepared batch can provide a
   // fixed-dm0 old/new A/B without rebuilding its immutable topology plan.
   const bool force_density_product_screening =
@@ -13570,6 +13826,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
        !same_options(plan.options, options) ||
        plan.unrestricted != unrestricted ||
        plan.shell_class_profiling != shell_class_profiling ||
+       plan.inactive_eigensolver_profiling !=
+           inactive_eigensolver_profiling ||
+       plan.graph_native_eigensolver_override !=
+           requested_graph_native_eigensolver_override ||
        plan.reuse_converged_fock != requested_reuse_converged_fock)) {
     fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
     return outputs;
@@ -13637,10 +13897,12 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                      resident_ppps_ket_task_capacity,
                      generic_order5_tile_capacity,
                      host.primitive_exponents.size(), diis_history,
+                     options.max_iterations,
                      host.spin_count,
                      requested_persistent_eri,
                      requested_transformed_direct,
                      shell_class_profiling,
+                     inactive_eigensolver_profiling,
                      plan.layout)) {
       fill_global_failure(outputs, VIBEQC_STATUS_OUT_OF_MEMORY);
       return outputs;
@@ -13695,6 +13957,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     plan.transformed_direct = requested_transformed_direct;
     plan.unrestricted = unrestricted;
     plan.shell_class_profiling = shell_class_profiling;
+    plan.inactive_eigensolver_profiling =
+        inactive_eigensolver_profiling;
+    plan.graph_native_eigensolver_override =
+        requested_graph_native_eigensolver_override;
     plan.reuse_converged_fock = requested_reuse_converged_fock;
     plan.options = options;
     plan.topology = host;
@@ -13745,13 +14011,20 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           ? CudaEigensolverSelectionSource::exact_probe
           : CudaEigensolverSelectionSource::exact_probe_fallback;
     }
+    if (requested_graph_native_eigensolver_override) {
+      plan.eigensolver_diagnostic.family =
+          CudaEigensolverFamily::graph_native;
+      plan.eigensolver_diagnostic.selection_source =
+          CudaEigensolverSelectionSource::benchmark_override;
+    }
   }
   const CudaEigensolverFamily graph_eigensolver_family =
       plan.eigensolver_diagnostic.family;
   const CudaEigensolverFamily ordinary_eigensolver_family =
       plan.eigensolver_diagnostic.ordinary_family;
   const bool use_jacobi =
-      graph_eigensolver_family == CudaEigensolverFamily::jacobi_batched;
+      graph_eigensolver_family == CudaEigensolverFamily::jacobi_batched ||
+      ordinary_eigensolver_family == CudaEigensolverFamily::jacobi_batched;
   const bool use_cusolver = use_jacobi ||
       ordinary_eigensolver_family == CudaEigensolverFamily::xsyev_batched;
   const bool geometry_changed =
@@ -14063,6 +14336,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       arena_pointer<std::uint8_t>(resources.arena_, layout.spin_active);
   auto iterations = arena_pointer<std::uint32_t>(resources.arena_, layout.iterations);
   auto solver_info = arena_pointer<int>(resources.arena_, layout.solver_info);
+  std::uint32_t* inactive_eigensolver_profile_count =
+      inactive_eigensolver_profiling
+      ? arena_pointer<std::uint32_t>(
+            resources.arena_, layout.inactive_eigensolver_profile_count)
+      : nullptr;
+  DeviceInactiveEigensolverProfileEntry* inactive_eigensolver_profile =
+      inactive_eigensolver_profiling
+      ? arena_pointer<DeviceInactiveEigensolverProfileEntry>(
+            resources.arena_, layout.inactive_eigensolver_profile)
+      : nullptr;
 
   std::vector<std::int32_t> host_pair_first;
   std::vector<std::int32_t> host_pair_second;
@@ -14791,6 +15074,17 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     }
   }
 
+  const EigensolverProfileLaunch graph_eigensolver_profile{
+      static_cast<std::int32_t>(batch_size),
+      active,
+      use_cublas,
+      static_cast<std::uint32_t>(options.max_iterations),
+      inactive_eigensolver_profile_count,
+      inactive_eigensolver_profile,
+  };
+  const EigensolverProfileLaunch* graph_eigensolver_profile_pointer =
+      inactive_eigensolver_profiling ? &graph_eigensolver_profile : nullptr;
+
   if (first_setup) {
     // Graph construction is allocation-permitted setup work. Synchronize once
     // so capture cannot race the initial guess; fixed-topology replays reuse
@@ -14857,7 +15151,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                                static_cast<int>(nbf),
                                static_cast<int>(spin_batch_size), eigensystem,
                                temporary, eigenvalues, lwork, solver_info,
-                               spin_active);
+                               spin_active,
+                               graph_eigensolver_profile_pointer);
       }
     } else {
       status = multiply_matrices(
@@ -14871,7 +15166,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                                static_cast<int>(nbf),
                                static_cast<int>(batch_size), eigensystem,
                                temporary, eigenvalues, lwork, solver_info,
-                               active);
+                               active,
+                               graph_eigensolver_profile_pointer);
       }
     }
     if (status == VIBEQC_STATUS_SUCCESS) {
@@ -14972,6 +15268,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       return outputs;
     }
     plan.initialized = true;
+  }
+  if (inactive_eigensolver_profiling) {
+    cuda_error = cudaMemsetAsync(inactive_eigensolver_profile_count, 0,
+                                 sizeof(std::uint32_t), resources.stream_);
   }
   if (cuda_error == cudaSuccess) {
     cuda_error = cudaGraphLaunch(resources.iteration_graph_exec_, resources.stream_);
@@ -15371,6 +15671,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   std::vector<std::uint8_t> host_converged(batch_size);
   std::vector<std::uint8_t> host_failed(batch_size);
   std::vector<std::uint32_t> host_iterations(batch_size);
+  std::uint32_t host_inactive_eigensolver_profile_count = 0U;
+  std::vector<DeviceInactiveEigensolverProfileEntry>
+      host_inactive_eigensolver_profile(
+          inactive_eigensolver_profiling ? options.max_iterations : 0U);
   CudaRhfShellClassProfile host_shell_class_profile{};
   const bool collect_ppps_queue_profile =
       shell_class_profiling && quartet_direct && resident_ppps_bra &&
@@ -15398,6 +15702,25 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   for (const Download& download : downloads) {
     cuda_error = cudaMemcpyAsync(download.host, download.device, download.bytes,
                                  cudaMemcpyDeviceToHost, resources.stream_);
+    if (cuda_error != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
+  }
+  if (inactive_eigensolver_profiling) {
+    cuda_error = cudaMemcpyAsync(
+        &host_inactive_eigensolver_profile_count,
+        inactive_eigensolver_profile_count, sizeof(std::uint32_t),
+        cudaMemcpyDeviceToHost, resources.stream_);
+    if (cuda_error == cudaSuccess &&
+        !host_inactive_eigensolver_profile.empty()) {
+      cuda_error = cudaMemcpyAsync(
+          host_inactive_eigensolver_profile.data(),
+          inactive_eigensolver_profile,
+          host_inactive_eigensolver_profile.size() *
+              sizeof(DeviceInactiveEigensolverProfileEntry),
+          cudaMemcpyDeviceToHost, resources.stream_);
+    }
     if (cuda_error != cudaSuccess) {
       fill_global_failure(outputs, cuda_status(cuda_error));
       return outputs;
@@ -15438,6 +15761,39 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   }
   if (shell_class_profiling && quartet_direct) {
     plan.last_shell_class_profile = host_shell_class_profile;
+  }
+  if (inactive_eigensolver_profiling) {
+    if (host_inactive_eigensolver_profile_count >
+        host_inactive_eigensolver_profile.size()) {
+      fill_global_failure(outputs, VIBEQC_STATUS_INTERNAL_ERROR);
+      return outputs;
+    }
+    CudaInactiveEigensolverProfile profile;
+    profile.reserve(host_inactive_eigensolver_profile_count);
+    for (std::uint32_t index = 0;
+         index < host_inactive_eigensolver_profile_count; ++index) {
+      const DeviceInactiveEigensolverProfileEntry& input =
+          host_inactive_eigensolver_profile[index];
+      CudaInactiveEigensolverProfileEntry output;
+      output.iteration = input.iteration;
+      output.family = static_cast<CudaEigensolverFamily>(input.family);
+      output.physical_system_count = input.physical_system_count;
+      output.solver_batch_count = input.solver_batch_count;
+      output.active_physical_count = input.active_physical_count;
+      output.active_solver_count = input.active_solver_count;
+      output.solver_elapsed_nanoseconds =
+          input.solver_elapsed_nanoseconds;
+      output.inactive_input_nonfinite_count =
+          input.inactive_input_nonfinite_count;
+      output.inactive_submission_nonfinite_count =
+          input.inactive_submission_nonfinite_count;
+      output.inactive_info_nonzero_count =
+          input.inactive_info_nonzero_count;
+      output.inactive_touch_flags = input.inactive_touch_flags;
+      output.provider_invoked = input.provider_invoked != 0U;
+      profile.push_back(output);
+    }
+    plan.last_inactive_eigensolver_profile = std::move(profile);
   }
   if (collect_ppps_queue_profile) {
     const unsigned multiprocessor_count = std::max(
@@ -15565,7 +15921,8 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
     bool unrestricted,
-    bool shell_class_profiling) {
+    bool shell_class_profiling,
+    bool inactive_eigensolver_profiling) {
   if (plan == nullptr) {
     std::vector<RhfBucketItem> outputs(systems.size());
     fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
@@ -15579,12 +15936,18 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
   }
   const bool reuse_converged_fock =
       reuse_converged_fock_requested();
+  const bool graph_native_eigensolver_override =
+      graph_native_eigensolver_override_requested();
   if (*plan != nullptr && (*plan)->initialized &&
       ((*plan)->resources.device_id_ != device_id ||
        !same_topology((*plan)->topology, candidate) ||
        !same_options((*plan)->options, options) ||
        (*plan)->unrestricted != unrestricted ||
        (*plan)->shell_class_profiling != shell_class_profiling ||
+       (*plan)->inactive_eigensolver_profiling !=
+           inactive_eigensolver_profiling ||
+       (*plan)->graph_native_eigensolver_override !=
+           graph_native_eigensolver_override ||
        (*plan)->reuse_converged_fock != reuse_converged_fock)) {
     delete *plan;
     *plan = nullptr;
@@ -15599,7 +15962,7 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
   }
   std::vector<RhfBucketItem> outputs = execute_hf_cuda_bucket(
       **plan, candidate, options, device_id, unrestricted,
-      shell_class_profiling);
+      shell_class_profiling, inactive_eigensolver_profiling);
   const bool retry_without_cublas =
       !(*plan)->initialized && (*plan)->retry_without_cublas;
   if (!(*plan)->initialized) {
@@ -15618,7 +15981,7 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
     (*plan)->cublas_enabled = false;
     outputs = execute_hf_cuda_bucket(
         **plan, candidate, options, device_id, unrestricted,
-        shell_class_profiling);
+        shell_class_profiling, inactive_eigensolver_profiling);
     if (!(*plan)->initialized) {
       delete *plan;
       *plan = nullptr;
@@ -15635,10 +15998,11 @@ std::vector<RhfBucketItem> run_rhf_cuda_bucket_cached(
     const ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
-    bool shell_class_profiling) {
+    bool shell_class_profiling,
+    bool inactive_eigensolver_profiling) {
   return run_hf_cuda_bucket_cached(
       plan, systems, options, initial_densities, device_id, false,
-      shell_class_profiling);
+      shell_class_profiling, inactive_eigensolver_profiling);
 }
 
 std::vector<RhfBucketItem> run_uhf_cuda_bucket_cached(
@@ -15647,10 +16011,11 @@ std::vector<RhfBucketItem> run_uhf_cuda_bucket_cached(
     const ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
-    bool shell_class_profiling) {
+    bool shell_class_profiling,
+    bool inactive_eigensolver_profiling) {
   return run_hf_cuda_bucket_cached(
       plan, systems, options, initial_densities, device_id, true,
-      shell_class_profiling);
+      shell_class_profiling, inactive_eigensolver_profiling);
 }
 
 void destroy_rhf_cuda_bucket_plan(CudaRhfBucketPlan* plan) noexcept {
@@ -15713,16 +16078,28 @@ bool get_rhf_cuda_eigensolver_diagnostic(
   return true;
 }
 
+bool get_rhf_cuda_inactive_eigensolver_profile(
+    const CudaRhfBucketPlan* plan,
+    CudaInactiveEigensolverProfile& profile) noexcept {
+  if (plan == nullptr ||
+      !plan->last_inactive_eigensolver_profile.has_value()) {
+    return false;
+  }
+  profile = *plan->last_inactive_eigensolver_profile;
+  return true;
+}
+
 std::vector<RhfBucketItem> run_rhf_cuda_bucket(
     const std::vector<core::System>& systems,
     const ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
-    bool shell_class_profiling) {
+    bool shell_class_profiling,
+    bool inactive_eigensolver_profiling) {
   CudaRhfBucketPlan* plan = nullptr;
   std::vector<RhfBucketItem> outputs = run_rhf_cuda_bucket_cached(
       &plan, systems, options, initial_densities, device_id,
-      shell_class_profiling);
+      shell_class_profiling, inactive_eigensolver_profiling);
   destroy_rhf_cuda_bucket_plan(plan);
   return outputs;
 }
@@ -15732,11 +16109,12 @@ std::vector<RhfBucketItem> run_uhf_cuda_bucket(
     const ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
-    bool shell_class_profiling) {
+    bool shell_class_profiling,
+    bool inactive_eigensolver_profiling) {
   CudaRhfBucketPlan* plan = nullptr;
   std::vector<RhfBucketItem> outputs = run_uhf_cuda_bucket_cached(
       &plan, systems, options, initial_densities, device_id,
-      shell_class_profiling);
+      shell_class_profiling, inactive_eigensolver_profiling);
   destroy_rhf_cuda_bucket_plan(plan);
   return outputs;
 }

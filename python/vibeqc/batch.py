@@ -205,6 +205,77 @@ class EigensolverDiagnostic:
         }
 
 
+@dataclass(frozen=True)
+class InactiveEigensolverProfileEntry:
+    """One device-timed eigensolve from the device-tail SCF loop."""
+
+    bucket_id: int
+    iteration: int
+    family: str
+    physical_system_count: int
+    solver_batch_count: int
+    active_physical_count: int
+    active_solver_count: int
+    solver_elapsed_nanoseconds: int
+    inactive_input_nonfinite_count: int
+    inactive_submission_nonfinite_count: int
+    inactive_info_nonzero_count: int
+    inactive_touch_flags: int
+    provider_invoked: bool
+
+    @property
+    def inactive_solver_count(self) -> int:
+        return self.solver_batch_count - self.active_solver_count
+
+    @property
+    def inactive_fraction(self) -> float:
+        if self.solver_batch_count == 0:
+            return 0.0
+        return self.inactive_solver_count / self.solver_batch_count
+
+    @property
+    def inactive_touches(self) -> tuple[str, ...]:
+        names = []
+        if self.inactive_touch_flags & _native.EIGENSOLVER_INACTIVE_TOUCH_COPY:
+            names.append("copy")
+        if (
+            self.inactive_touch_flags
+            & _native.EIGENSOLVER_INACTIVE_TOUCH_CUBLAS_TRANSFORM
+        ):
+            names.append("cublas_transform")
+        if (
+            self.inactive_touch_flags
+            & _native.EIGENSOLVER_INACTIVE_TOUCH_IDENTITY_SANITIZE
+        ):
+            names.append("identity_sanitize")
+        return tuple(names)
+
+    def to_dict(self) -> dict[str, object]:
+        """Return a JSON-ready record with derived inactive work."""
+
+        return {
+            "bucket_id": self.bucket_id,
+            "iteration": self.iteration,
+            "family": self.family,
+            "physical_system_count": self.physical_system_count,
+            "solver_batch_count": self.solver_batch_count,
+            "active_physical_count": self.active_physical_count,
+            "active_solver_count": self.active_solver_count,
+            "inactive_solver_count": self.inactive_solver_count,
+            "inactive_fraction": self.inactive_fraction,
+            "solver_elapsed_nanoseconds": self.solver_elapsed_nanoseconds,
+            "inactive_input_nonfinite_count": (
+                self.inactive_input_nonfinite_count
+            ),
+            "inactive_submission_nonfinite_count": (
+                self.inactive_submission_nonfinite_count
+            ),
+            "inactive_info_nonzero_count": self.inactive_info_nonzero_count,
+            "inactive_touches": list(self.inactive_touches),
+            "provider_invoked": self.provider_invoked,
+        }
+
+
 class PreparedBatch:
     """Persistent topology-aware native fleet plan.
 
@@ -223,6 +294,7 @@ class PreparedBatch:
         multiplicities: Sequence[int] | None = None,
         warm_start: bool = True,
         shell_class_profiling: bool = False,
+        inactive_eigensolver_profiling: bool = False,
     ) -> None:
         if not systems:
             raise ValueError("a batch requires at least one system")
@@ -247,6 +319,7 @@ class PreparedBatch:
         self._context = ctypes.c_void_p()
         self._batch = ctypes.c_void_p()
         self._shell_class_profiling = shell_class_profiling
+        self._inactive_eigensolver_profiling = inactive_eigensolver_profiling
 
         _native.check(
             self._library,
@@ -271,6 +344,8 @@ class PreparedBatch:
             flags = _native.BATCH_ENABLE_WARM_STARTS if warm_start else 0
             if shell_class_profiling:
                 flags |= _native.BATCH_ENABLE_SHELL_CLASS_PROFILING
+            if inactive_eigensolver_profiling:
+                flags |= _native.BATCH_ENABLE_INACTIVE_EIGENSOLVER_PROFILING
             _native.check(
                 self._library,
                 self._library.vibeqc_batch_prepare(
@@ -636,6 +711,62 @@ class PreparedBatch:
                 )
             )
         return tuple(diagnostics)
+
+    def last_inactive_eigensolver_profile(
+        self,
+    ) -> tuple[InactiveEigensolverProfileEntry, ...]:
+        """Return device-timed iteration records from the last CUDA run."""
+
+        self._ensure_open()
+        if not self._inactive_eigensolver_profiling:
+            raise RuntimeError(
+                "the batch was not prepared with "
+                "inactive_eigensolver_profiling=True"
+            )
+        count = ctypes.c_uint32()
+        _native.check(
+            self._library,
+            self._library.vibeqc_batch_get_last_inactive_eigensolver_profile(
+                self._batch, None, 0, ctypes.byref(count)
+            ),
+        )
+        native_entries = (_native.InactiveEigensolverProfileEntry * count.value)()
+        written = ctypes.c_uint32()
+        _native.check(
+            self._library,
+            self._library.vibeqc_batch_get_last_inactive_eigensolver_profile(
+                self._batch,
+                native_entries,
+                len(native_entries),
+                ctypes.byref(written),
+            ),
+        )
+        if written.value != count.value:
+            raise RuntimeError("inactive eigensolver profile count changed during copy")
+        return tuple(
+            InactiveEigensolverProfileEntry(
+                bucket_id=int(native.bucket_id),
+                iteration=int(native.iteration),
+                family=_native.EIGENSOLVER_FAMILY_NAMES[native.family],
+                physical_system_count=int(native.physical_system_count),
+                solver_batch_count=int(native.solver_batch_count),
+                active_physical_count=int(native.active_physical_count),
+                active_solver_count=int(native.active_solver_count),
+                solver_elapsed_nanoseconds=int(native.solver_elapsed_nanoseconds),
+                inactive_input_nonfinite_count=int(
+                    native.inactive_input_nonfinite_count
+                ),
+                inactive_submission_nonfinite_count=int(
+                    native.inactive_submission_nonfinite_count
+                ),
+                inactive_info_nonzero_count=int(
+                    native.inactive_info_nonzero_count
+                ),
+                inactive_touch_flags=int(native.inactive_touch_flags),
+                provider_invoked=bool(native.provider_invoked),
+            )
+            for native in native_entries
+        )
 
     def close(self) -> None:
         if self._batch.value:

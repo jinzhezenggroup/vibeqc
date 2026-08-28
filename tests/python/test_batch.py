@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-
 from vibeqc import Calculator, Primitive, Shell
 
 
@@ -81,6 +80,13 @@ def test_shell_class_profile_requires_explicit_opt_in():
             prepared.last_shell_class_profile()
         with pytest.raises(RuntimeError, match="shell_class_profiling=True"):
             prepared.last_ppps_queue_profile()
+
+
+def test_inactive_eigensolver_profile_requires_explicit_opt_in():
+    with Calculator().prepare_batch(systems()[:1]) as prepared, pytest.raises(
+        RuntimeError, match="inactive_eigensolver_profiling=True"
+    ):
+        prepared.last_inactive_eigensolver_profile()
 
 
 def test_nonconverged_item_does_not_abort_converged_neighbor():

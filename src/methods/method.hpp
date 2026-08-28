@@ -121,6 +121,23 @@ struct EigensolverDiagnostic {
   double maximum_orthogonality_error{};
 };
 
+/** Method-neutral per-iteration inactive-eigensolver measurement. */
+struct InactiveEigensolverProfileEntry {
+  std::uint32_t bucket_id{};
+  std::uint32_t iteration{};
+  std::uint32_t family{};
+  std::uint32_t physical_system_count{};
+  std::uint32_t solver_batch_count{};
+  std::uint32_t active_physical_count{};
+  std::uint32_t active_solver_count{};
+  std::uint64_t solver_elapsed_nanoseconds{};
+  std::uint32_t inactive_input_nonfinite_count{};
+  std::uint32_t inactive_submission_nonfinite_count{};
+  std::uint32_t inactive_info_nonzero_count{};
+  std::uint32_t inactive_touch_flags{};
+  bool provider_invoked{};
+};
+
 using Coordinates = std::vector<std::optional<std::vector<double>>>;
 
 /** Prepared single-system method execution, independent of the public C ABI. */
@@ -146,6 +163,8 @@ class PreparedBatch {
   last_direct_ppps_queue_profile() const = 0;
   [[nodiscard]] virtual std::vector<EigensolverDiagnostic>
   last_eigensolver_diagnostics() const = 0;
+  [[nodiscard]] virtual std::vector<InactiveEigensolverProfileEntry>
+  last_inactive_eigensolver_profile() const = 0;
 };
 
 /** Exception carrying an exact public status across the C++ method boundary. */

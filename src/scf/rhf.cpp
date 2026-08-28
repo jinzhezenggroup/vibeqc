@@ -871,6 +871,7 @@ std::vector<RhfBucketItem> run_rhf_cuda_bucket(
     const ScfOptions&,
     const std::vector<const std::vector<double>*>&,
     int,
+    bool,
     bool) {
   std::vector<RhfBucketItem> outputs(systems.size());
   for (RhfBucketItem& output : outputs) {
@@ -885,6 +886,7 @@ std::vector<RhfBucketItem> run_rhf_cuda_bucket_cached(
     const ScfOptions&,
     const std::vector<const std::vector<double>*>&,
     int,
+    bool,
     bool) {
   std::vector<RhfBucketItem> outputs(systems.size());
   for (RhfBucketItem& output : outputs) {
@@ -898,6 +900,7 @@ std::vector<RhfBucketItem> run_uhf_cuda_bucket(
     const ScfOptions&,
     const std::vector<const std::vector<double>*>&,
     int,
+    bool,
     bool) {
   std::vector<RhfBucketItem> outputs(systems.size());
   for (RhfBucketItem& output : outputs) {
@@ -912,6 +915,7 @@ std::vector<RhfBucketItem> run_uhf_cuda_bucket_cached(
     const ScfOptions&,
     const std::vector<const std::vector<double>*>&,
     int,
+    bool,
     bool) {
   std::vector<RhfBucketItem> outputs(systems.size());
   for (RhfBucketItem& output : outputs) {
@@ -939,6 +943,11 @@ bool get_rhf_cuda_ppps_queue_profile(
 
 bool get_rhf_cuda_eigensolver_diagnostic(
     const CudaRhfBucketPlan*, CudaEigensolverDiagnostic&) noexcept {
+  return false;
+}
+
+bool get_rhf_cuda_inactive_eigensolver_profile(
+    const CudaRhfBucketPlan*, CudaInactiveEigensolverProfile&) noexcept {
   return false;
 }
 #endif
