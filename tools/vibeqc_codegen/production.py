@@ -37,13 +37,10 @@ _THREAD_TASK_FORCE_EMITTERS = {
     "psps": (PSPS_BLOCK_THREADS, emit_psps_weighted_force_cuda),
 }
 
-_SUPPORTED_RECURRENCES = frozenset(("subset_wick", "rys3", "rys4"))
-_COOPERATIVE_RYS3_SHELLS = frozenset(
-    ("dpps", "dpss", "dsps", "dspp", "pppp")
-)
-_COOPERATIVE_RYS4_SHELLS = frozenset(
-    ("dppp", "dpdp", "dpds", "ddpp", "ddps", "ddds")
-)
+_SUPPORTED_RECURRENCES = frozenset(("subset_wick", "rys2", "rys3", "rys4"))
+_SCALAR_RYS2_SHELLS = frozenset(("psss", "psps", "ppss", "dsss"))
+_COOPERATIVE_RYS3_SHELLS = frozenset(("dpps", "dpss", "dsps", "dspp", "pppp"))
+_COOPERATIVE_RYS4_SHELLS = frozenset(("dppp", "dpdp", "dpds", "ddpp", "ddps", "ddds"))
 
 _PRODUCTION_PRELUDE = r"""#include "scf/generated_shell_task.hpp"
 
@@ -120,8 +117,19 @@ class KernelSelection:
             not isinstance(self.recurrence, str)
             or self.recurrence not in _SUPPORTED_RECURRENCES
         ):
+            raise ValueError(f"unsupported production recurrence {self.recurrence!r}")
+        scalar_thread_tasks = (
+            self.schedule.kind == ScheduleKind.THREAD_TASKS
+            and self.schedule.block_threads == 32
+            and self.schedule.tasks_per_warp == 32
+            and not self.schedule.shared_coulomb
+        )
+        if self.recurrence == "rys2" and (
+            self.spec.name not in _SCALAR_RYS2_SHELLS or not scalar_thread_tasks
+        ):
             raise ValueError(
-                f"unsupported production recurrence {self.recurrence!r}"
+                "production rys2 requires a supported low-order shell using "
+                "one scalar task per lane"
             )
         if self.recurrence == "rys3":
             if self.spec.name == "ppps" and KernelConsumer.FOCK in self.consumers:
@@ -129,21 +137,15 @@ class KernelSelection:
                     "production ppps rys3 recurrence is force-only and cannot "
                     "include the Fock consumer"
                 )
-            scalar_thread_tasks = (
-                self.schedule.kind == ScheduleKind.THREAD_TASKS
-                and self.schedule.block_threads == 32
-                and self.schedule.tasks_per_warp == 32
-                and not self.schedule.shared_coulomb
-            )
             component_lanes = (
                 self.schedule.kind == ScheduleKind.COMPONENT_LANES
                 and self.schedule.block_threads >= self.spec.component_count
             )
             uniform_warps = (
                 self.schedule.kind == ScheduleKind.SUBGROUP_TASKS
-                and self.schedule.block_threads == 256
-                and self.schedule.tasks_per_warp == 4
-                and self.schedule.subgroup_lanes == 8
+                and self.schedule.block_threads in (128, 256)
+                and self.schedule.tasks_per_block == 32
+                and self.schedule.subgroup_lanes == self.schedule.warp_count
             )
             if self.spec.name != "ppps" and (
                 self.spec.name not in _COOPERATIVE_RYS3_SHELLS
@@ -160,9 +162,9 @@ class KernelSelection:
         )
         rys4_uniform_warps = (
             self.schedule.kind == ScheduleKind.SUBGROUP_TASKS
-            and self.schedule.block_threads == 256
-            and self.schedule.tasks_per_warp == 4
-            and self.schedule.subgroup_lanes == 8
+            and self.schedule.block_threads in (128, 256)
+            and self.schedule.tasks_per_block == 32
+            and self.schedule.subgroup_lanes == self.schedule.warp_count
         )
         if self.recurrence == "rys4" and (
             self.spec.name not in _COOPERATIVE_RYS4_SHELLS
@@ -173,10 +175,7 @@ class KernelSelection:
                 "one component lane per Cartesian component or 32 quartets "
                 "across eight uniform component warps"
             )
-        if (
-            self.fock_schedule is not None
-            and KernelConsumer.FOCK not in self.consumers
-        ):
+        if self.fock_schedule is not None and KernelConsumer.FOCK not in self.consumers:
             raise ValueError("a separate Fock schedule requires a Fock consumer")
         if self.resident_force_recurrence is not None:
             if self.spec.name != "ppps":
@@ -189,9 +188,7 @@ class KernelSelection:
                     "resident force recurrence requires the force consumer"
                 )
             if self.resident_force_recurrence != "rys3":
-                raise ValueError(
-                    "resident ppps force recurrence must be rys3"
-                )
+                raise ValueError("resident ppps force recurrence must be rys3")
         # Force owns the canonical task ABI. Fock may share that source, but a
         # value-only entry cannot yet be emitted without its force companion.
         if KernelConsumer.FORCE not in self.consumers:
@@ -265,7 +262,10 @@ def _portable_profile(
 
     portable = []
     for name, raw_profile in architectures.items():
-        if isinstance(raw_profile, dict) and _profile_kind(name, raw_profile) == "portable":
+        if (
+            isinstance(raw_profile, dict)
+            and _profile_kind(name, raw_profile) == "portable"
+        ):
             portable.append((name, raw_profile))
     if len(portable) > 1:
         raise ValueError("production manifest declares multiple portable profiles")
@@ -286,13 +286,19 @@ def _resolve_profile_payload(
     if requested_profile in ("portable", "portable_cuda"):
         portable = _portable_profile(architectures)
         if portable is None:
-            return "portable_cuda", {"kind": "portable", "kernels": []}, ProfileMatch.PORTABLE
+            return (
+                "portable_cuda",
+                {"kind": "portable", "kernels": []},
+                ProfileMatch.PORTABLE,
+            )
         return portable[0], portable[1], ProfileMatch.PORTABLE
 
     if requested_profile != "auto":
         raw_profile = architectures.get(requested_profile)
         if not isinstance(raw_profile, dict):
-            raise ValueError(f"production manifest has no profile {requested_profile!r}")
+            raise ValueError(
+                f"production manifest has no profile {requested_profile!r}"
+            )
         kind = _profile_kind(requested_profile, raw_profile)
         if kind == "portable":
             return requested_profile, raw_profile, ProfileMatch.PORTABLE
@@ -439,17 +445,14 @@ def _recurrence_from_row(
         )
     if recurrence == "rys3" and name == "ppps" and KernelConsumer.FOCK in consumers:
         raise ValueError(
-            "ppps recurrence 'rys3' is force-only and cannot include the "
-            "Fock consumer"
+            "ppps recurrence 'rys3' is force-only and cannot include the Fock consumer"
         )
     if recurrence == "rys3" and name not in {"ppps", *_COOPERATIVE_RYS3_SHELLS}:
-        raise ValueError(
-            f"{name} does not support the production rys3 recurrence"
-        )
+        raise ValueError(f"{name} does not support the production rys3 recurrence")
+    if recurrence == "rys2" and name not in _SCALAR_RYS2_SHELLS:
+        raise ValueError(f"{name} does not support the production rys2 recurrence")
     if recurrence == "rys4" and name not in _COOPERATIVE_RYS4_SHELLS:
-        raise ValueError(
-            f"{name} does not support the production rys4 recurrence"
-        )
+        raise ValueError(f"{name} does not support the production rys4 recurrence")
     return recurrence
 
 
@@ -470,9 +473,7 @@ def _resident_force_recurrence_from_row(
     if recurrence is None:
         return None
     if name != "ppps":
-        raise ValueError(
-            f"{name} does not support a resident force recurrence"
-        )
+        raise ValueError(f"{name} does not support a resident force recurrence")
     if KernelConsumer.FORCE not in consumers:
         raise ValueError(
             f"{name} resident force recurrence requires the force consumer"
@@ -480,9 +481,7 @@ def _resident_force_recurrence_from_row(
     if not isinstance(recurrence, str):
         raise ValueError(f"{name} resident_force_recurrence must be a string")
     if recurrence != "rys3":
-        raise ValueError(
-            f"{name} resident force recurrence must be rys3"
-        )
+        raise ValueError(f"{name} resident force recurrence must be rys3")
     return recurrence
 
 
@@ -543,9 +542,7 @@ def _selections_from_rows(
             fock_schedule = None
         else:
             if KernelConsumer.FOCK not in consumers:
-                raise ValueError(
-                    f"{name} fock_schedule requires a Fock consumer"
-                )
+                raise ValueError(f"{name} fock_schedule requires a Fock consumer")
             fock_schedule = _schedule_from_payload(fock_schedule_payload)
             # A fixed-root force promotion may use a very different execution
             # geometry. Validate the retained value path independently so the
@@ -586,9 +583,7 @@ def resolve_production_profile(
         raise TypeError("production shell manifest must be a JSON object")
     schema_version = payload.get("schema_version")
     default_architecture = (
-        "sm_120"
-        if schema_version == 1
-        else _default_architecture(payload)
+        "sm_120" if schema_version == 1 else _default_architecture(payload)
     )
     selected_architecture = normalize_cuda_architecture(
         architecture or default_architecture
@@ -600,9 +595,7 @@ def resolve_production_profile(
             raise ValueError("production manifest requires shell_classes")
         acceptance = payload.get("acceptance")
         accepted_architecture = (
-            acceptance.get("architecture")
-            if isinstance(acceptance, dict)
-            else "sm_120"
+            acceptance.get("architecture") if isinstance(acceptance, dict) else "sm_120"
         )
         accepted_architecture = normalize_cuda_architecture(
             accepted_architecture
@@ -649,9 +642,10 @@ def resolve_production_profile(
         profile,
     )
     _validate_measured_target(profile_name, profile_payload, target, match)
-    tuned = match == ProfileMatch.EXACT and _profile_kind(
-        profile_name, profile_payload
-    ) == "tuned"
+    tuned = (
+        match == ProfileMatch.EXACT
+        and _profile_kind(profile_name, profile_payload) == "tuned"
+    )
     rows = profile_payload.get("kernels", [])
     selections = _selections_from_rows(
         rows,
@@ -702,9 +696,7 @@ def load_production_manifest(
 
     return tuple(
         selection.spec
-        for selection in load_production_kernel_selections(
-            path, architecture, profile
-        )
+        for selection in load_production_kernel_selections(path, architecture, profile)
     )
 
 
@@ -717,9 +709,7 @@ def load_production_fock_manifest(
 
     return tuple(
         selection.spec
-        for selection in load_production_kernel_selections(
-            path, architecture, profile
-        )
+        for selection in load_production_kernel_selections(path, architecture, profile)
         if KernelConsumer.FOCK in selection.consumers
     )
 
@@ -987,7 +977,7 @@ def emit_production_shard(
     for selection in selections:
         if (
             selection.schedule.kind == ScheduleKind.THREAD_TASKS
-            and selection.recurrence != "rys3"
+            and selection.recurrence not in ("rys2", "rys3")
         ):
             configuration = _THREAD_TASK_FORCE_EMITTERS.get(selection.spec.name)
             if configuration is None:
@@ -1060,14 +1050,9 @@ def emit_registry_header(
         spec = selection.spec
         angular_order = sum(spec.angular)
         value_state_count = (
-            (angular_order + 1)
-            * (angular_order + 2)
-            * (angular_order + 3)
-            // 6
+            (angular_order + 1) * (angular_order + 2) * (angular_order + 3) // 6
         )
-        block_threads = (
-            (max(spec.component_count, value_state_count) + 31) // 32
-        ) * 32
+        block_threads = ((max(spec.component_count, value_state_count) + 31) // 32) * 32
         fock_rows.append(
             f'    {{"{spec.name}", {shell_class_index(spec)}U, '
             f"{angular_order}U, {block_threads}U, 1U, "
@@ -1157,16 +1142,10 @@ def emit_registry_source(
     selections = tuple(map(_as_selection, specifications))
     specs = tuple(item.spec for item in selections)
     fock_specs = tuple(
-        item.spec
-        for item in selections
-        if KernelConsumer.FOCK in item.consumers
+        item.spec for item in selections if KernelConsumer.FOCK in item.consumers
     )
     resident_selection = next(
-        (
-            item
-            for item in selections
-            if item.resident_force_recurrence is not None
-        ),
+        (item for item in selections if item.resident_force_recurrence is not None),
         None,
     )
     declarations = "\n".join(
@@ -1208,12 +1187,11 @@ def emit_registry_source(
     resident_launch = "return cudaErrorNotSupported;"
     if resident_selection is not None:
         resident_declaration = (
-            "extern \"C\" cudaError_t vibeqc_launch_ppps_resident("
+            'extern "C" cudaError_t vibeqc_launch_ppps_resident('
             f"{_resident_launch_parameter_declaration()});"
         )
         resident_launch = (
-            "return vibeqc_launch_ppps_resident("
-            f"{_resident_launch_argument_list()});"
+            f"return vibeqc_launch_ppps_resident({_resident_launch_argument_list()});"
         )
     return f"""#include "vibeqc_generated_shell_registry.hpp"
 
@@ -1351,18 +1329,20 @@ def _scope_profile_identifiers(
     # prefix, then restore it verbatim.
     host_resident_task = "vibeqc::scf::detail::GeneratedPppsResidentTask"
     host_resident_task_placeholder = "VIBEQC_STABLE_PPPS_RESIDENT_TASK_ABI"
-    source = source.replace(
-        host_resident_task, host_resident_task_placeholder
-    )
+    source = source.replace(host_resident_task, host_resident_task_placeholder)
     class_name = selection.spec.name[0].upper() + selection.spec.name[1:]
     profile_class = "".join(part.capitalize() for part in identifier.split("_"))
-    return source.replace(
-        f"generated_{selection.spec.name}",
-        f"generated_{identifier}_{selection.spec.name}",
-    ).replace(
-        f"Generated{class_name}",
-        f"Generated{profile_class}{class_name}",
-    ).replace(host_resident_task_placeholder, host_resident_task)
+    return (
+        source.replace(
+            f"generated_{selection.spec.name}",
+            f"generated_{identifier}_{selection.spec.name}",
+        )
+        .replace(
+            f"Generated{class_name}",
+            f"Generated{profile_class}{class_name}",
+        )
+        .replace(host_resident_task_placeholder, host_resident_task)
+    )
 
 
 def emit_profile_shard(
@@ -1378,7 +1358,7 @@ def emit_profile_shard(
     for selection in items:
         if (
             selection.schedule.kind == ScheduleKind.THREAD_TASKS
-            and selection.recurrence != "rys3"
+            and selection.recurrence not in ("rys2", "rys3")
         ):
             configuration = _THREAD_TASK_FORCE_EMITTERS.get(selection.spec.name)
             if configuration is None:
@@ -1408,9 +1388,7 @@ def emit_profile_shard(
                 plan,
                 fock_schedule=selection.fock_schedule,
             )
-        force_symbol = (
-            f"vibeqc_launch_{identifier}_generated_{selection.spec.name}"
-        )
+        force_symbol = f"vibeqc_launch_{identifier}_generated_{selection.spec.name}"
         body.append(
             _scope_profile_identifiers(
                 _strip_emitter_includes(source), selection, identifier
@@ -1607,9 +1585,7 @@ def emit_multi_registry_source(
                 1 << list(KernelConsumer).index(consumer)
                 for consumer in selection.consumers
             )
-            force_symbol = (
-                f"vibeqc_launch_{identifier}_generated_{selection.spec.name}"
-            )
+            force_symbol = f"vibeqc_launch_{identifier}_generated_{selection.spec.name}"
             declarations.append(
                 f'extern "C" cudaError_t {force_symbol}('
                 "cudaStream_t, bool, unsigned, const void*, const std::uint32_t*, "
@@ -1670,11 +1646,13 @@ cudaError_t launch_{identifier}_fock({launch_parameters}) noexcept {{
 
 cudaError_t launch_{identifier}_resident(
     {_resident_launch_parameter_declaration()}) noexcept {{
-  """ + (
+  """
+            + (
                 f"return {resident_symbol}({_resident_launch_argument_list()});"
                 if resident_symbol is not None
                 else "return cudaErrorNotSupported;"
-            ) + """
+            )
+            + """
 }
 """
         )
@@ -1904,9 +1882,7 @@ def write_production_bundles(
         identifier = _profile_identifier(profile.target.architecture)
         profile_directory = output_directory / profile.target.architecture
         profile_directory.mkdir(parents=True, exist_ok=True)
-        shards = _partition_production_selections(
-            profile.selections, shard_count
-        )
+        shards = _partition_production_selections(profile.selections, shard_count)
         for index, shard in enumerate(shards):
             path = profile_directory / (
                 f"vibeqc_generated_shell_{identifier}_shard_{index}.cu"
@@ -1940,13 +1916,9 @@ def _partition_production_selections(
     invalidating their compiler-cache entries.
     """
 
-    shards: list[list[KernelSelection]] = [
-        [] for _ in range(shard_count)
-    ]
+    shards: list[list[KernelSelection]] = [[] for _ in range(shard_count)]
     for selection in selections:
-        shards[shell_class_index(selection.spec) % shard_count].append(
-            selection
-        )
+        shards[shell_class_index(selection.spec) % shard_count].append(selection)
     return tuple(tuple(shard) for shard in shards)
 
 
@@ -1961,9 +1933,7 @@ def write_production_bundle(
 
     if shard_count < 1:
         raise ValueError("production shard count must be positive")
-    selections = load_production_kernel_selections(
-        manifest, architecture, profile
-    )
+    selections = load_production_kernel_selections(manifest, architecture, profile)
     shards = _partition_production_selections(selections, shard_count)
     output_directory.mkdir(parents=True, exist_ok=True)
     outputs = []

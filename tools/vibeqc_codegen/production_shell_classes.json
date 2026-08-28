@@ -27,14 +27,24 @@
           "recurrence": "rys4",
           "schedule": {
             "kind": "subgroup_tasks",
-            "block_threads": 256,
+            "block_threads": 128,
             "component_tile": 162,
-            "tasks_per_warp": 4,
+            "tasks_per_warp": 8,
             "shared_coulomb": true,
             "pair_orientation": "swapped",
             "pair_storage": "materialized",
             "unroll_pair_terms": true,
             "minimum_blocks_per_sm": 1
+          },
+          "fock_schedule": {
+            "kind": "subgroup_tasks",
+            "block_threads": 128,
+            "component_tile": 162,
+            "tasks_per_warp": 2,
+            "shared_coulomb": true,
+            "pair_orientation": "swapped",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true
           }
         },
         {
@@ -79,7 +89,7 @@
         },
         {
           "shell_class": "dpss",
-          "consumers": ["force"],
+          "consumers": ["fock", "force"],
           "recurrence": "rys3",
           "schedule": {
             "kind": "thread_tasks",
@@ -91,6 +101,16 @@
             "pair_storage": "materialized",
             "unroll_pair_terms": true,
             "minimum_blocks_per_sm": 8
+          },
+          "fock_schedule": {
+            "kind": "subgroup_tasks",
+            "block_threads": 128,
+            "component_tile": 18,
+            "tasks_per_warp": 8,
+            "shared_coulomb": true,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true
           }
         },
         {
@@ -252,6 +272,16 @@
             "pair_orientation": "canonical",
             "pair_storage": "materialized",
             "unroll_pair_terms": true
+          },
+          "fock_schedule": {
+            "kind": "subgroup_tasks",
+            "block_threads": 128,
+            "component_tile": 27,
+            "tasks_per_warp": 8,
+            "shared_coulomb": true,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true
           }
         },
         {
@@ -260,9 +290,9 @@
           "recurrence": "rys3",
           "schedule": {
             "kind": "subgroup_tasks",
-            "block_threads": 256,
+            "block_threads": 128,
             "component_tile": 54,
-            "tasks_per_warp": 4,
+            "tasks_per_warp": 8,
             "shared_coulomb": true,
             "pair_orientation": "canonical",
             "pair_storage": "materialized",
@@ -284,6 +314,16 @@
             "pair_storage": "materialized",
             "unroll_pair_terms": true,
             "minimum_blocks_per_sm": 8
+          },
+          "fock_schedule": {
+            "kind": "subgroup_tasks",
+            "block_threads": 128,
+            "component_tile": 18,
+            "tasks_per_warp": 8,
+            "shared_coulomb": true,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true
           }
         },
         {
@@ -292,9 +332,9 @@
           "recurrence": "rys3",
           "schedule": {
             "kind": "subgroup_tasks",
-            "block_threads": 256,
+            "block_threads": 128,
             "component_tile": 54,
-            "tasks_per_warp": 4,
+            "tasks_per_warp": 8,
             "shared_coulomb": true,
             "pair_orientation": "canonical",
             "pair_storage": "materialized",
@@ -308,20 +348,42 @@
           "recurrence": "rys3",
           "schedule": {
             "kind": "subgroup_tasks",
-            "block_threads": 256,
+            "block_threads": 128,
             "component_tile": 81,
-            "tasks_per_warp": 4,
+            "tasks_per_warp": 8,
             "shared_coulomb": true,
             "pair_orientation": "canonical",
             "pair_storage": "materialized",
             "unroll_pair_terms": true,
             "minimum_blocks_per_sm": 1
+          },
+          "fock_schedule": {
+            "kind": "subgroup_tasks",
+            "block_threads": 128,
+            "component_tile": 81,
+            "tasks_per_warp": 2,
+            "shared_coulomb": true,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true
           }
         },
         {
           "shell_class": "psps",
           "consumers": ["fock", "force"],
+          "recurrence": "rys2",
           "schedule": {
+            "kind": "thread_tasks",
+            "block_threads": 32,
+            "component_tile": 9,
+            "tasks_per_warp": 32,
+            "shared_coulomb": false,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true,
+            "minimum_blocks_per_sm": 8
+          },
+          "fock_schedule": {
             "kind": "packed_tasks",
             "block_threads": 32,
             "component_tile": 9,
@@ -335,7 +397,19 @@
         {
           "shell_class": "ppss",
           "consumers": ["fock", "force"],
+          "recurrence": "rys2",
           "schedule": {
+            "kind": "thread_tasks",
+            "block_threads": 32,
+            "component_tile": 9,
+            "tasks_per_warp": 32,
+            "shared_coulomb": false,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true,
+            "minimum_blocks_per_sm": 8
+          },
+          "fock_schedule": {
             "kind": "packed_tasks",
             "block_threads": 32,
             "component_tile": 9,
@@ -349,7 +423,19 @@
         {
           "shell_class": "dsss",
           "consumers": ["fock", "force"],
+          "recurrence": "rys2",
           "schedule": {
+            "kind": "thread_tasks",
+            "block_threads": 32,
+            "component_tile": 6,
+            "tasks_per_warp": 32,
+            "shared_coulomb": false,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true,
+            "minimum_blocks_per_sm": 8
+          },
+          "fock_schedule": {
             "kind": "packed_tasks",
             "block_threads": 32,
             "component_tile": 6,
@@ -379,6 +465,8 @@
         "maximum_force_error_hartree_per_bohr": 7.174677518761996e-13
       },
       "fock_acceptance": {
+        "status": "superseded",
+        "superseded_by": "issue41_final_acceptance",
         "workload": "water-octamer-s4-def2-svp-spherical",
         "shell_classes": ["dpps"],
         "baseline_seconds": 4.596967296,
@@ -389,6 +477,8 @@
         "rejected_shell_classes": ["ppps", "dsps"]
       },
       "fock_order46_acceptance": {
+        "status": "superseded",
+        "superseded_by": "issue41_final_acceptance",
         "workload": "water-hexadecamer-2s4-def2-svp-spherical",
         "shell_classes": [
           "dpdp",
@@ -447,6 +537,91 @@
         "maximum_registers_per_thread": 164,
         "maximum_stack_bytes_per_thread": 40,
         "local_memory_bytes_per_thread": 0
+      },
+      "issue41_final_acceptance": {
+        "workload": "water-hexadecamer-2s4-def2-svp-spherical",
+        "ao_count": 384,
+        "batch_size": 1,
+        "comparison": "direct-vs-direct",
+        "measurement_order": "ABBA",
+        "repeats_per_engine": 5,
+        "matched_scf_iterations": [1],
+        "accepted_fock_shell_classes": ["dppp", "dpss", "ppps", "dsps", "pppp"],
+        "accepted_force_shell_classes": [
+          "dppp",
+          "dpps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "vibeqc_median_seconds": 2.234283452038653,
+        "gpu4pyscf_median_seconds": 2.1337385490187444,
+        "vibeqc_over_gpu4pyscf": 1.0471214728093783,
+        "required_maximum_ratio": 1.05,
+        "maximum_energy_error_hartree": 1.8189894035458565e-11,
+        "maximum_force_error_hartree_per_bohr": 3.153839315747642e-8,
+        "issue_baseline_vibeqc_seconds": 3.181492,
+        "vibeqc_endpoint_saving_seconds": 0.9472085479613468,
+        "issue_gap_reduction_seconds": 0.9377650969800913,
+        "small_case_guards": {
+          "96_ao": {
+            "baseline_median_seconds": 0.14930006451322697,
+            "candidate_median_seconds": 0.14928995500667952,
+            "relative_change": -0.00006771267367100542
+          },
+          "192_ao": {
+            "baseline_median_seconds": 0.6302902504976373,
+            "candidate_median_seconds": 0.6123741100018378,
+            "relative_change": -0.028425222318850807
+          }
+        },
+        "fock_resource_scope": "maximum across RHF/UHF and persistent/non-persistent variants",
+        "fock_ptxas_maximum_resources": {
+          "dppp": {
+            "registers_per_thread": 168,
+            "stack_bytes_per_thread": 64,
+            "spill_store_bytes_per_thread": 60,
+            "spill_load_bytes_per_thread": 72,
+            "static_shared_memory_bytes": 10240
+          },
+          "dpss": {
+            "registers_per_thread": 168,
+            "stack_bytes_per_thread": 0,
+            "spill_store_bytes_per_thread": 0,
+            "spill_load_bytes_per_thread": 0,
+            "static_shared_memory_bytes": 29184
+          },
+          "ppps": {
+            "registers_per_thread": 168,
+            "stack_bytes_per_thread": 16,
+            "spill_store_bytes_per_thread": 12,
+            "spill_load_bytes_per_thread": 12,
+            "static_shared_memory_bytes": 29184
+          },
+          "dsps": {
+            "registers_per_thread": 168,
+            "stack_bytes_per_thread": 0,
+            "spill_store_bytes_per_thread": 0,
+            "spill_load_bytes_per_thread": 0,
+            "static_shared_memory_bytes": 29184
+          },
+          "pppp": {
+            "registers_per_thread": 168,
+            "stack_bytes_per_thread": 8,
+            "spill_store_bytes_per_thread": 4,
+            "spill_load_bytes_per_thread": 4,
+            "static_shared_memory_bytes": 8576
+          }
+        },
+        "fock_cuobjdump_maximum_resources": {
+          "dppp": {"registers": 168, "stack_bytes": 64, "shared_bytes": 11264, "local_bytes": 0},
+          "dpss": {"registers": 168, "stack_bytes": 0, "shared_bytes": 30208, "local_bytes": 0},
+          "ppps": {"registers": 168, "stack_bytes": 16, "shared_bytes": 30208, "local_bytes": 0},
+          "dsps": {"registers": 168, "stack_bytes": 0, "shared_bytes": 30208, "local_bytes": 0},
+          "pppp": {"registers": 168, "stack_bytes": 8, "shared_bytes": 9600, "local_bytes": 0}
+        }
       }
     },
     "portable_cuda": {

@@ -31,6 +31,7 @@ from .ir import KernelConsumer
 from .rys import (
     build_rys_force_program,
     emit_ppps_rys3_root_body_cuda,
+    emit_rys2_roots_cuda,
     emit_rys3_roots_cuda,
     emit_rys4_roots_cuda,
     emit_rys_force_root_body_cuda,
@@ -210,9 +211,7 @@ def _component_axis_expression(
     )
 
 
-def _cuda_array_declaration(
-    declaration: str, values: Sequence[str]
-) -> list[str]:
+def _cuda_array_declaration(declaration: str, values: Sequence[str]) -> list[str]:
     """Format a small local CUDA initializer with stable indentation."""
 
     if not values:
@@ -269,14 +268,11 @@ def _generic_component_gradient_setup(spec: ShellClassSpec) -> str:
         gradients = []
         for pair_center, center in enumerate(centers):
             for quantum in range(spec.angular[center]):
-                axis = _component_axis_expression(
-                    spec, center, quantum, names[center]
-                )
+                axis = _component_axis_expression(spec, center, quantum, names[center])
                 axis_position = len(axes)
                 axes.append(axis)
                 shifts.append(
-                    f"geometry.pair_shifts[{center}]"
-                    f"[{pair_name}_axes[{axis_position}]]"
+                    f"geometry.pair_shifts[{center}][{pair_name}_axes[{axis_position}]]"
                 )
                 gradients.append(f"{scale} - 1.0" if pair_center == 0 else scale)
         order = sum(spec.angular[center] for center in centers)
@@ -312,14 +308,11 @@ def _generic_component_value_setup(spec: ShellClassSpec) -> str:
         shifts = []
         for center in centers:
             for quantum in range(spec.angular[center]):
-                axis = _component_axis_expression(
-                    spec, center, quantum, names[center]
-                )
+                axis = _component_axis_expression(spec, center, quantum, names[center])
                 axis_position = len(axes)
                 axes.append(axis)
                 shifts.append(
-                    f"geometry.pair_shifts[{center}]"
-                    f"[{pair_name}_axes[{axis_position}]]"
+                    f"geometry.pair_shifts[{center}][{pair_name}_axes[{axis_position}]]"
                 )
         order = sum(spec.angular[center] for center in centers)
         storage_order = max(order, 1)
@@ -338,9 +331,7 @@ def _generic_component_value_setup(spec: ShellClassSpec) -> str:
     return "\n".join(lines)
 
 
-def _emit_shell_class_fock_cuda(
-    spec: ShellClassSpec, plan: FusedShellPlan
-) -> str:
+def _emit_shell_class_fock_cuda(spec: ShellClassSpec, plan: FusedShellPlan) -> str:
     """Emit coefficient-only Fock workers beside an accepted force kernel.
 
     Fock construction reuses primitive geometry and the Cartesian Coulomb
@@ -369,9 +360,7 @@ def _emit_shell_class_fock_cuda(
     component_names = _emitted_component_names(spec)
     shared_coulomb = "true" if plan.schedule.shared_coulomb else "false"
     coulomb_storage_count = (
-        "kGeneratedDpppFockCoulombStateCount"
-        if plan.schedule.shared_coulomb
-        else "1"
+        "kGeneratedDpppFockCoulombStateCount" if plan.schedule.shared_coulomb else "1"
     )
     coulomb_setup = ""
     if plan.schedule.shared_coulomb:
@@ -963,8 +952,7 @@ def _emit_weighted_component_gradient_cuda(spec: ShellClassSpec) -> str:
     side = maximum_order + 1
     pair_shift_rows = 4 if spec.angular[3] != 0 else 3
     fourth_pair_shift = (
-        "    geometry.pair_shifts[3][axis] = "
-        "product_q - fourth_coordinate;"
+        "    geometry.pair_shifts[3][axis] = product_q - fourth_coordinate;"
         if pair_shift_rows == 4
         else ""
     )
@@ -1056,9 +1044,7 @@ __device__ __forceinline__ void generated_dppp_make_packed_force_geometry(
         "prefactor": "geometry.prefactor",
     }
     for axis_index, axis in enumerate(AXES):
-        variable_code[f"difference_{axis}"] = (
-            f"geometry.difference[{axis_index}]"
-        )
+        variable_code[f"difference_{axis}"] = f"geometry.difference[{axis_index}]"
         for center, prefix in enumerate(("pa", "pb", "qc", "qd")):
             variable_code[f"{prefix}_{axis}"] = (
                 f"geometry.pair_shifts[{center}][{axis_index}]"
@@ -1388,9 +1374,7 @@ def _emit_scalar_thread_force_consumer_cuda(
         setup = task_component_setup.replace(
             "  const unsigned component", "    const unsigned component"
         )
-        setup = "\n".join(
-            f"  {line}" if line else line for line in setup.splitlines()
-        )
+        setup = "\n".join(f"  {line}" if line else line for line in setup.splitlines())
         weight_blocks.append(
             f"""  storage.component_weights[{component}] = 0.0;
   {{
@@ -1445,13 +1429,10 @@ def _emit_scalar_thread_force_consumer_cuda(
             )
         for center_index, center in enumerate(("first", "second", "third")):
             variable_code[f"decay_{center}_{axis}"] = (
-                f"storage.primitive.decay_gradients[{center_index}]"
-                f"[{axis_index}]"
+                f"storage.primitive.decay_gradients[{center_index}][{axis_index}]"
             )
     for order in range(spec.maximum_force_coulomb_order + 1):
-        variable_code[f"boys_{order}"] = (
-            f"storage.primitive.boys[{order}]"
-        )
+        variable_code[f"boys_{order}"] = f"storage.primitive.boys[{order}]"
     for component in range(spec.component_count):
         variable_code[f"component_weight_{component}"] = (
             f"storage.component_weights[{component}]"
@@ -1478,15 +1459,13 @@ def _emit_scalar_thread_force_consumer_cuda(
             statements.append("      {")
             statements.extend("      " + line for line in emitter.lines)
             statements.append(
-                f"        force_{slot} += primitive_scale * "
-                f"{emitter.reference(root)};"
+                f"        force_{slot} += primitive_scale * {emitter.reference(root)};"
             )
             statements.append("      }")
         component_scopes.append("\n".join(statements))
 
     force_declarations = "\n".join(
-        f"  double force_{slot} = storage.task_force[{slot}];"
-        for slot in range(9)
+        f"  double force_{slot} = storage.task_force[{slot}];" for slot in range(9)
     )
     force_stores = "\n".join(
         f"  storage.task_force[{slot}] = force_{slot};" for slot in range(9)
@@ -1506,9 +1485,7 @@ def _emit_scalar_thread_force_consumer_cuda(
             "generated_dppp_scalar_thread_accumulate_components_"
             f"{group_begin}_{group_end}"
         )
-        group_component_code = "\n".join(
-            component_scopes[group_begin:group_end]
-        )
+        group_component_code = "\n".join(component_scopes[group_begin:group_end])
         primitive_helpers.append(
             f"""__device__ __noinline__ void {helper_name}(
     double primitive_scale,
@@ -1518,9 +1495,7 @@ def _emit_scalar_thread_force_consumer_cuda(
 {force_stores}
 }}"""
         )
-        primitive_calls.append(
-            f"      {helper_name}(primitive_scale, storage);"
-        )
+        primitive_calls.append(f"      {helper_name}(primitive_scale, storage);")
     independent_atomics = []
     for center in range(3):
         for coordinate in range(3):
@@ -1553,9 +1528,7 @@ def _emit_scalar_thread_force_consumer_cuda(
     primitive_call_code = "\n".join(primitive_calls)
     independent_atomic_code = "\n".join(independent_atomics)
     fourth_atomic_code = "\n".join(fourth_atomics)
-    kernel_qualifier = (
-        f"__launch_bounds__(32, {minimum_blocks_per_sm})"
-    )
+    kernel_qualifier = f"__launch_bounds__(32, {minimum_blocks_per_sm})"
     return f"""struct GeneratedDpppScalarThreadStorage {{
   GeneratedDpppVec3 positions[4];
   GeneratedDpppPrimitiveGeometry primitive;
@@ -1731,7 +1704,7 @@ def _emit_rys_thread_force_consumer_cuda(
     plan: FusedShellPlan,
     minimum_blocks_per_sm: int,
 ) -> str:
-    """Emit one complete three-root Rys task per lane.
+    """Emit one complete low-root Rys task per lane.
 
     The shell-task ABI, screening, density symmetry, and persistent queue are
     identical to the existing generated worker.  Only the primitive hot loop
@@ -1742,14 +1715,15 @@ def _emit_rys_thread_force_consumer_cuda(
 
     The mathematical Rys program is built from ``spec`` rather than from a
     PPPS-specific expression.  This makes PPPS, DSPS, DPPS, and other
-    three-root catalog classes share one scalar backend while preserving
+    two- and three-root catalog classes share one scalar backend while preserving
     shell-specific straight-line component contraction.
     """
 
     program = build_rys_force_program(spec)
-    if plan.kernel.integral.recurrence != "rys3" or program.nroots != 3:
+    recurrence = f"rys{program.nroots}"
+    if plan.kernel.integral.recurrence != recurrence or program.nroots not in (2, 3):
         raise ValueError(
-            "direct Rys thread lowering requires a three-root rys3 plan"
+            "direct Rys thread lowering requires a two- or three-root plan"
         )
     if plan.schedule.block_threads != 32:
         raise ValueError("direct Rys thread tasks currently use one CUDA warp")
@@ -1763,9 +1737,7 @@ def _emit_rys_thread_force_consumer_cuda(
         setup = task_component_setup.replace(
             "  const unsigned component", "    const unsigned component"
         )
-        setup = "\n".join(
-            f"  {line}" if line else line for line in setup.splitlines()
-        )
+        setup = "\n".join(f"  {line}" if line else line for line in setup.splitlines())
         weight_blocks.append(
             f"""  component_weights[{component}U][lane] = 0.0;
   {{
@@ -1801,9 +1773,7 @@ def _emit_rys_thread_force_consumer_cuda(
   }}"""
         )
 
-    force_declarations = "\n".join(
-        f"  double force_{slot} = 0.0;" for slot in range(9)
-    )
+    force_declarations = "\n".join(f"  double force_{slot} = 0.0;" for slot in range(9))
     independent_atomics = []
     for center in range(3):
         for coordinate in range(3):
@@ -1840,9 +1810,14 @@ def _emit_rys_thread_force_consumer_cuda(
     kernel_qualifier = f"__launch_bounds__(32, {minimum_blocks_per_sm})"
     # Start from the shared DPPP skeleton so shell specialization also renames
     # this helper.  A PPPS-specific global symbol collides as soon as a second
-    # scalar Rys3 shell is emitted into another production shard.
-    roots_cuda = emit_rys3_roots_cuda(symbol_prefix="generated_dppp_rys3")
-    return roots_cuda + f"""
+    # scalar Rys shell is emitted into another production shard.
+    roots_emitter = (
+        emit_rys2_roots_cuda if program.nroots == 2 else emit_rys3_roots_cuda
+    )
+    roots_cuda = roots_emitter(symbol_prefix="generated_dppp_rys3")
+    source = (
+        roots_cuda
+        + f"""
 /** Immutable pointers shared by all lanes in the persistent Rys worker. */
 struct GeneratedDpppRysThreadContext {{
   const GeneratedDpppShellTask* tasks;
@@ -1872,7 +1847,7 @@ __device__ __forceinline__ void generated_dppp_rys3_force_task(
     const GeneratedDpppRysThreadContext& context,
     std::size_t task_index,
     double (&component_weights)[kGeneratedDpppComponentCount][32],
-    double (&roots_weights)[6][32]) {{
+    double (&roots_weights)[{2 * program.nroots}][32]) {{
   const GeneratedDpppShellTask& task = context.tasks[task_index];
   if (!generated_dppp_rys3_fill_weights<Unrestricted>(
           task, context, component_weights)) {{
@@ -1938,7 +1913,7 @@ __device__ __forceinline__ void generated_dppp_rys3_force_task(
           -34.986836655249725 * first_pair.weighted_coefficient *
           second_pair.weighted_coefficient / (p * q * sqrt(p + q));
 #pragma unroll
-      for (unsigned root_index = 0; root_index < 3U; ++root_index) {{
+      for (unsigned root_index = 0; root_index < {program.nroots}U; ++root_index) {{
         const double root = roots_weights[2U * root_index][lane];
         const double weighted_root =
             roots_weights[2U * root_index + 1U][lane] * primitive_prefactor;
@@ -1979,7 +1954,7 @@ __device__ __forceinline__ void generated_dppp_rys3_force_persistent(
   __shared__ std::uint32_t task_base;
   __shared__ GeneratedDpppRysThreadContext context;
   __shared__ double component_weights[kGeneratedDpppComponentCount][32];
-  __shared__ double roots_weights[6][32];
+  __shared__ double roots_weights[{2 * program.nroots}][32];
   if (threadIdx.x == 0U) {{
     context.tasks = tasks;
     context.primitive_pairs = primitive_pairs;
@@ -2047,6 +2022,10 @@ void generated_dppp_shell_class_force_uhf_persistent_kernel(
       task_offset, task_count, task_head);
 }}
 """
+    )
+    # Retain one source template while keeping every generated symbol honest
+    # about the fixed-root evaluator embedded in its translation unit.
+    return source.replace("rys3", recurrence)
 
 
 def _emit_rys_component_lane_force_consumer_cuda(
@@ -2074,9 +2053,7 @@ def _emit_rys_component_lane_force_consumer_cuda(
     if plan.schedule.kind != ScheduleKind.COMPONENT_LANES:
         raise ValueError("cooperative fixed-root Rys requires component lanes")
     if plan.schedule.block_threads < spec.component_count:
-        raise ValueError(
-            "cooperative fixed-root Rys requires one lane per component"
-        )
+        raise ValueError("cooperative fixed-root Rys requires one lane per component")
     if max(spec.angular) > 2 or spec.angular[3] > 1:
         raise ValueError(
             "runtime-indexed fixed-root lowering currently supports s/p/d "
@@ -2107,19 +2084,15 @@ def _emit_rys_component_lane_force_consumer_cuda(
         )
 
     component_axis_counts = tuple(
-        tuple(axis_count(center, axis) for axis in range(3))
-        for center in range(4)
+        tuple(axis_count(center, axis) for axis in range(3)) for center in range(4)
     )
     # A raised derivative on a second-center d shell expands the HRR task
     # enough that inlining it into the persistent queue keeps queue state live
     # across the whole recurrence. Keep that new path behind one device-call
     # boundary; existing p-second-center production kernels remain unchanged.
-    task_qualifier = (
-        "__noinline__" if spec.angular[1] == 2 else "__forceinline__"
-    )
+    task_qualifier = "__noinline__" if spec.angular[1] == 2 else "__forceinline__"
     kernel_qualifier = (
-        f"__launch_bounds__({plan.schedule.block_threads}, "
-        f"{minimum_blocks_per_sm})"
+        f"__launch_bounds__({plan.schedule.block_threads}, {minimum_blocks_per_sm})"
     )
     if nroots == 3:
         roots_cuda = emit_rys3_roots_cuda(symbol_prefix=root_symbol)
@@ -2130,7 +2103,9 @@ def _emit_rys_component_lane_force_consumer_cuda(
             "cooperative component-lane lowering currently embeds only "
             "three- and four-root tables"
         )
-    return roots_cuda + f"""
+    return (
+        roots_cuda
+        + f"""
 /** Scalars shared by all component lanes for one primitive quartet. */
 struct GeneratedDppp{class_tag}Primitive {{
   double p;
@@ -2604,6 +2579,7 @@ void generated_dppp_shell_class_force_uhf_persistent_kernel(
       task_offset, task_count, task_head);
 }}
 """
+    )
 
 
 def _emit_rys_uniform_warp_force_consumer_cuda(
@@ -2633,15 +2609,17 @@ def _emit_rys_uniform_warp_force_consumer_cuda(
     if program.nroots not in (3, 4):
         raise ValueError("uniform-warp lowering requires three or four Rys roots")
     if plan.kernel.integral.recurrence != recurrence:
-        raise ValueError(
-            f"uniform-warp lowering for {spec.name} requires {recurrence}"
-        )
+        raise ValueError(f"uniform-warp lowering for {spec.name} requires {recurrence}")
     if plan.schedule.kind != ScheduleKind.SUBGROUP_TASKS:
         raise ValueError("uniform-warp Rys lowering requires subgroup tasks")
-    if plan.schedule.block_threads != 256 or plan.schedule.subgroup_lanes != 8:
+    if (
+        plan.schedule.block_threads not in (128, 256)
+        or plan.schedule.tasks_per_block != 32
+        or plan.schedule.subgroup_lanes != plan.schedule.warp_count
+    ):
         raise ValueError(
-            "uniform-warp Rys lowering requires 256 threads and eight lanes "
-            "per quartet"
+            "uniform-warp Rys lowering requires 32 quartets distributed "
+            "across one component lane per hardware warp"
         )
 
     task_count = plan.schedule.tasks_per_block
@@ -2692,11 +2670,12 @@ def _emit_rys_uniform_warp_force_consumer_cuda(
       const double cdz = primitive.cdz;
 """
     kernel_qualifier = (
-        "__launch_bounds__(kGeneratedDpppBlockThreads, "
-        f"{minimum_blocks_per_sm})"
+        f"__launch_bounds__(kGeneratedDpppBlockThreads, {minimum_blocks_per_sm})"
     )
 
-    source = roots_cuda + f"""
+    source = (
+        roots_cuda
+        + f"""
 constexpr unsigned kGeneratedDpppRys4TaskCount = {task_count}U;
 constexpr unsigned kGeneratedDpppRys4ComponentLanes = {component_lanes}U;
 constexpr unsigned kGeneratedDpppRys4ComponentsPerLane =
@@ -3150,6 +3129,7 @@ void generated_dppp_shell_class_force_uhf_persistent_kernel(
       task_offset, task_count, task_head);
 }}
 """
+    )
     if program.nroots == 3:
         # Keep generated identifiers truthful without perturbing the already
         # accepted DPPP Rys4 source or its resource profile.
@@ -3185,14 +3165,11 @@ def _emit_ppps_resident_bra_rys3_force_consumer_cuda(
     )
     component_names = _emitted_component_names(spec)
     component_weight_names = tuple(
-        f"component_weight_{component}"
-        for component in range(spec.component_count)
+        f"component_weight_{component}" for component in range(spec.component_count)
     )
     weight_blocks: list[str] = []
     for component in range(spec.component_count):
-        setup = "\n".join(
-            f"    {line}" for line in task_component_setup.splitlines()
-        )
+        setup = "\n".join(f"    {line}" for line in task_component_setup.splitlines())
         weight_blocks.append(
             f"""  {component_weight_names[component]} = 0.0;
   {{
@@ -3261,12 +3238,9 @@ def _emit_ppps_resident_bra_rys3_force_consumer_cuda(
         fourth_force_{coordinate});
   }}"""
         )
-    force_declarations = "\n".join(
-        f"  double force_{slot} = 0.0;" for slot in range(9)
-    )
+    force_declarations = "\n".join(f"  double force_{slot} = 0.0;" for slot in range(9))
     bra_force_reductions = "\n".join(
-        f"    force_{slot} += __shfl_down_sync("
-        f"0xffffffffU, force_{slot}, delta);"
+        f"    force_{slot} += __shfl_down_sync(0xffffffffU, force_{slot}, delta);"
         for slot in range(6)
     )
     bra_force_atomics = "\n".join(
@@ -3288,7 +3262,9 @@ def _emit_ppps_resident_bra_rys3_force_consumer_cuda(
     )
 
     roots = emit_rys3_roots_cuda() if include_rys3_roots else ""
-    return roots + f"""/*
+    return (
+        roots
+        + f"""/*
  * Canonical ppps (1110) resident-bra force worker.
  *
  * The descriptor remains profile-scoped in generated CUDA and is checked
@@ -3549,6 +3525,7 @@ void generated_ppps_resident_bra_force_uhf_kernel(
       density, forces, resident_task_count);
 }}
 """
+    )
 
 
 def emit_ppps_resident_bra_rys3_cuda(
@@ -3579,9 +3556,7 @@ def emit_ppps_resident_bra_rys3_cuda(
         tasks_per_warp=32,
         shared_coulomb=False,
     )
-    plan = build_fused_shell_plan(
-        spec, schedule=schedule, recurrence="rys3"
-    )
+    plan = build_fused_shell_plan(spec, schedule=schedule, recurrence="rys3")
     resident_tail = _emit_ppps_resident_bra_rys3_force_consumer_cuda(
         include_rys3_roots=include_rys3_roots
     )
@@ -3619,9 +3594,7 @@ def _emit_subgroup_force_consumer_cuda(
 
     subgroup_lanes = plan.schedule.subgroup_lanes
     subgroup_count = plan.schedule.tasks_per_block
-    components_per_lane = (
-        spec.component_count + subgroup_lanes - 1
-    ) // subgroup_lanes
+    components_per_lane = (spec.component_count + subgroup_lanes - 1) // subgroup_lanes
     subgroup_mask = (1 << subgroup_lanes) - 1
     task_component_setup = _generic_task_component_setup(spec)
     component_names = _emitted_component_names(spec)
@@ -3683,7 +3656,9 @@ void {name}(
       task_offset, task_count, task_head);
 }}
 """
-    return f"""
+
+    return (
+        f"""
 
 /** Task-local state for one independently progressing CUDA lane subgroup. */
 struct GeneratedDpppSubgroupForceStorage {{
@@ -3871,14 +3846,15 @@ __device__ __forceinline__ void generated_dppp_subgroup_force_persistent(
   }}
 }}
 
-""" + ordinary_wrapper(
-        "generated_dppp_shell_class_force_rhf_kernel", "false"
-    ) + ordinary_wrapper(
-        "generated_dppp_shell_class_force_uhf_kernel", "true"
-    ) + persistent_wrapper(
-        "generated_dppp_shell_class_force_rhf_persistent_kernel", "false"
-    ) + persistent_wrapper(
-        "generated_dppp_shell_class_force_uhf_persistent_kernel", "true"
+"""
+        + ordinary_wrapper("generated_dppp_shell_class_force_rhf_kernel", "false")
+        + ordinary_wrapper("generated_dppp_shell_class_force_uhf_kernel", "true")
+        + persistent_wrapper(
+            "generated_dppp_shell_class_force_rhf_persistent_kernel", "false"
+        )
+        + persistent_wrapper(
+            "generated_dppp_shell_class_force_uhf_persistent_kernel", "true"
+        )
     )
 
 
@@ -4117,9 +4093,7 @@ def _emit_subgroup_fock_consumer_cuda(
 
     subgroup_lanes = plan.schedule.subgroup_lanes
     subgroup_count = plan.schedule.tasks_per_block
-    components_per_lane = (
-        spec.component_count + subgroup_lanes - 1
-    ) // subgroup_lanes
+    components_per_lane = (spec.component_count + subgroup_lanes - 1) // subgroup_lanes
     subgroup_mask = (1 << subgroup_lanes) - 1
     task_component_setup = _generic_task_component_setup(spec)
     component_names = _emitted_component_names(spec)
@@ -4182,7 +4156,8 @@ void {name}(
 }}
 """
 
-    return f"""
+    return (
+        f"""
 
 /** Value-path state private to one independently progressing subgroup. */
 struct GeneratedDpppSubgroupFockStorage {{
@@ -4347,14 +4322,15 @@ __device__ __forceinline__ void generated_dppp_subgroup_fock_persistent(
     __syncwarp(subgroup_mask);
   }}
 }}
-""" + ordinary_wrapper(
-        "generated_dppp_shell_class_fock_rhf_kernel", "false"
-    ) + ordinary_wrapper(
-        "generated_dppp_shell_class_fock_uhf_kernel", "true"
-    ) + persistent_wrapper(
-        "generated_dppp_shell_class_fock_rhf_persistent_kernel", "false"
-    ) + persistent_wrapper(
-        "generated_dppp_shell_class_fock_uhf_persistent_kernel", "true"
+"""
+        + ordinary_wrapper("generated_dppp_shell_class_fock_rhf_kernel", "false")
+        + ordinary_wrapper("generated_dppp_shell_class_fock_uhf_kernel", "true")
+        + persistent_wrapper(
+            "generated_dppp_shell_class_fock_rhf_persistent_kernel", "false"
+        )
+        + persistent_wrapper(
+            "generated_dppp_shell_class_fock_uhf_persistent_kernel", "true"
+        )
     )
 
 
@@ -4386,18 +4362,13 @@ def emit_shell_class_fused_cuda(
         raise ValueError(
             "current CUDA emitter implements packed, scalar thread-task, subgroup-task, shell-task, component-lane, and tiled schedules"
         )
-    if (
-        plan.schedule.kind == ScheduleKind.PACKED_TASKS
-        and plan.schedule.shared_coulomb
-    ):
+    if plan.schedule.kind == ScheduleKind.PACKED_TASKS and plan.schedule.shared_coulomb:
         raise ValueError("packed tasks require lane-local Coulomb evaluation")
     if (
         plan.schedule.kind == ScheduleKind.TILED_COMPONENTS
         and plan.schedule.component_tile != plan.schedule.block_threads
     ):
-        raise ValueError(
-            "tiled CUDA lowering requires one component per block thread"
-        )
+        raise ValueError("tiled CUDA lowering requires one component per block thread")
     if any(order > 6 for order in spec.pair_orders):
         raise ValueError(
             "current fused CUDA candidate supports pair orders zero through six"
@@ -4408,23 +4379,17 @@ def emit_shell_class_fused_cuda(
     state_axis_bits = max(3, maximum_order.bit_length())
     state_mask = (1 << state_axis_bits) - 1
     packed_states = tuple(
-        x_order
-        | (y_order << state_axis_bits)
-        | (z_order << (2 * state_axis_bits))
+        x_order | (y_order << state_axis_bits) | (z_order << (2 * state_axis_bits))
         for x_order, y_order, z_order in plan.coulomb_states
     )
-    coulomb_index_type = (
-        "signed char" if len(plan.coulomb_states) <= 128 else "short"
-    )
+    coulomb_index_type = "signed char" if len(plan.coulomb_states) <= 128 else "short"
     d_axes = tuple(
         _AXIS_INDEX[axis]
         for component in DPPP_SPEC.center_components[0]
         for axis in component
     )
     f_axes = tuple(
-        _AXIS_INDEX[axis]
-        for component in cartesian_components(3)
-        for axis in component
+        _AXIS_INDEX[axis] for component in cartesian_components(3) for axis in component
     )
     f_axes_declaration = ""
     if any(order == 3 for order in spec.angular):
@@ -4535,9 +4500,7 @@ __device__ __constant__ unsigned char generated_dppp_f_axes[10][3] = {{
     )
     shared_coulomb = "true" if plan.schedule.shared_coulomb else "false"
     coulomb_storage_count = (
-        "kGeneratedDpppCoulombStateCount"
-        if plan.schedule.shared_coulomb
-        else "1"
+        "kGeneratedDpppCoulombStateCount" if plan.schedule.shared_coulomb else "1"
     )
     coulomb_setup = ""
     if plan.schedule.shared_coulomb:
@@ -5405,7 +5368,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
         force_begin = source.find(force_marker)
         if force_begin < 0:
             raise RuntimeError("generated force task marker changed unexpectedly")
-        if plan.kernel.integral.recurrence == "rys3":
+        if plan.kernel.integral.recurrence in ("rys2", "rys3"):
             force_consumer = _emit_rys_thread_force_consumer_cuda(
                 spec,
                 plan,
@@ -5466,8 +5429,8 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
                 plan.kernel.integral.value_coulomb_order + 3, 3
             )
             fock_block_threads = (
-                max(spec.component_count, value_state_count) + 31
-            ) // 32 * 32
+                (max(spec.component_count, value_state_count) + 31) // 32 * 32
+            )
             fock_schedule = ScheduleIR(
                 kind=ScheduleKind.COMPONENT_LANES,
                 block_threads=fock_block_threads,
@@ -5490,7 +5453,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
                 target=plan.kernel.target,
             )
         elif (
-            plan.kernel.integral.recurrence == "rys3"
+            plan.kernel.integral.recurrence in ("rys2", "rys3")
             and plan.schedule.kind == ScheduleKind.THREAD_TASKS
         ):
             # Scalar Rys3 is a force-only architecture experiment.  Retain the
@@ -5500,8 +5463,8 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
                 plan.kernel.integral.value_coulomb_order + 3, 3
             )
             fock_block_threads = (
-                max(spec.component_count, value_state_count) + 31
-            ) // 32 * 32
+                (max(spec.component_count, value_state_count) + 31) // 32 * 32
+            )
             fock_schedule = ScheduleIR(
                 kind=ScheduleKind.COMPONENT_LANES,
                 block_threads=fock_block_threads,
@@ -5522,9 +5485,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
             )
         source += _emit_shell_class_fock_cuda(spec, fock_plan)
     pair_unroll = (
-        "#pragma unroll"
-        if plan.schedule.unroll_pair_terms
-        else "#pragma unroll 1"
+        "#pragma unroll" if plan.schedule.unroll_pair_terms else "#pragma unroll 1"
     )
     source = source.replace("VIBEQC_PAIR_UNROLL", pair_unroll)
     return _specialize_dppp_identifiers(source, spec)
