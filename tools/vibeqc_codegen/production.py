@@ -123,15 +123,24 @@ class KernelSelection:
                     "production ppps rys3 recurrence is force-only and cannot "
                     "include the Fock consumer"
                 )
+            scalar_thread_tasks = (
+                self.schedule.kind == ScheduleKind.THREAD_TASKS
+                and self.schedule.block_threads == 32
+                and self.schedule.tasks_per_warp == 32
+                and not self.schedule.shared_coulomb
+            )
+            component_lanes = (
+                self.schedule.kind == ScheduleKind.COMPONENT_LANES
+                and self.schedule.block_threads >= self.spec.component_count
+            )
             if self.spec.name != "ppps" and (
                 self.spec.name not in _COOPERATIVE_RYS3_SHELLS
-                or self.schedule.kind != ScheduleKind.COMPONENT_LANES
-                or self.schedule.block_threads < self.spec.component_count
+                or not (scalar_thread_tasks or component_lanes)
             ):
                 raise ValueError(
                     "production rys3 currently requires force-only ppps or a "
-                    "supported component-lane shell with one lane per "
-                    "Cartesian component"
+                    "supported three-root shell using scalar thread tasks or "
+                    "one component lane per Cartesian component"
                 )
         rys4_component_lanes = (
             self.schedule.kind == ScheduleKind.COMPONENT_LANES

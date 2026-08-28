@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "benchmark": "issue_41_dsps_scalar_rys3",
+  "case": "water-hexadecamer-2s4-def2-svp-spherical",
+  "environment": {
+    "accelerator": {
+      "compute_capability": [
+        12,
+        0
+      ],
+      "driver_version": 13000,
+      "multiprocessor_count": 170,
+      "name": "NVIDIA GeForce RTX 5090",
+      "runtime_version": 12090,
+      "total_global_memory_bytes": 33666498560
+    },
+    "git": {
+      "base_commit": "176b07daea6b919878edc915a6878d0d3afb8f01",
+      "dirty_candidate": true
+    },
+    "host": {
+      "node": "node3",
+      "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35"
+    },
+    "packages": {
+      "cupy": "14.2.0",
+      "gpu4pyscf": "1.8.1",
+      "numpy": "2.4.6",
+      "pyscf": "2.14.0"
+    },
+    "python": "3.11.14",
+    "timestamp_utc": "2026-08-28T10:36:20.203551+00:00"
+  },
+  "implementation": {
+    "force": {
+      "block_threads": 32,
+      "minimum_blocks_per_sm": 8,
+      "recurrence": "rys3",
+      "schedule": "thread_tasks",
+      "tasks_per_warp": 32
+    },
+    "fock": {
+      "reason": "Retain the accepted value path so the endpoint isolates the force promotion.",
+      "recurrence": "rys3",
+      "schedule": "component_lanes"
+    }
+  },
+  "gates": {
+    "maximum_energy_error_hartree": 1e-10,
+    "maximum_force_error_hartree_per_bohr": 1e-7,
+    "minimum_small_system_speedup": 0.98
+  },
+  "results": {
+    "isolated_dsps_force": {
+      "component_lane_milliseconds": 19.122454,
+      "maximum_force_error_hartree_per_bohr": 1.13e-11,
+      "passed": true,
+      "scalar_thread_milliseconds": 6.183466,
+      "speedup": 3.092513810215824
+    },
+    "production_resources": {
+      "component_lane_fock": {
+        "registers_per_thread": 132,
+        "shared_bytes": 1936,
+        "stack_bytes": 0
+      },
+      "scalar_thread_force": {
+        "local_bytes": 0,
+        "registers_per_thread": 252,
+        "shared_bytes": 7248,
+        "stack_bytes": 0
+      }
+    },
+    "production_profile": {
+      "candidate_dsps_force_milliseconds_per_replay": 52.62135133333334,
+      "parent_dsps_force_milliseconds_per_replay": 127.8059702,
+      "saving_milliseconds_per_replay": 75.18461886666667,
+      "speedup": 2.4287854067145647
+    },
+    "endpoint": {
+      "candidate_vibeqc_median_seconds": 2.8101380660082214,
+      "energy_error_hartree": 1.6370904631912708e-11,
+      "force_error_hartree_per_bohr": 3.153644251990828e-8,
+      "gpu4pyscf_median_seconds": 2.1353717469610274,
+      "iteration_branch": [
+        1
+      ],
+      "parent_vibeqc_median_seconds": 2.8876633329782635,
+      "repeats_per_engine": 5,
+      "saving_seconds": 0.07752526697004214,
+      "vibeqc_over_gpu4pyscf": 1.3159947770253557
+    },
+    "small_system_guards": {
+      "96_ao": {
+        "baseline_median_seconds": 0.23662423097994179,
+        "candidate_median_seconds": 0.23837204498704523,
+        "maximum_energy_error_hartree": 1.7053025658242404e-13,
+        "maximum_force_error_hartree_per_bohr": 5.321264262558856e-13,
+        "passed": true,
+        "speedup": 0.9926677056145639
+      },
+      "192_ao": {
+        "baseline_median_seconds": 1.3401015349663794,
+        "candidate_median_seconds": 1.340008139028214,
+        "maximum_energy_error_hartree": 9.094947017729282e-13,
+        "maximum_force_error_hartree_per_bohr": 6.52443377102685e-13,
+        "passed": true,
+        "speedup": 1.0000696980379784
+      }
+    }
+  },
+  "rejected_candidates": {
+    "dpps_scalar_rys3": {
+      "reason": "Rejected before GPU timing because PTXAS reported stack traffic and spills.",
+      "registers_per_thread": 255,
+      "spill_load_bytes": 2752,
+      "spill_store_bytes": 1768,
+      "stack_bytes": 832
+    },
+    "dsps_primitive_signature_sorting": {
+      "baseline_seconds": 5.165269,
+      "candidate_seconds": 5.165528,
+      "reason": "The cooperative block worker did not benefit from PSPS-style task sorting."
+    },
+    "dpps_primitive_signature_sorting": {
+      "baseline_seconds": 5.165478,
+      "candidate_seconds": 5.167573,
+      "reason": "The cooperative block worker did not benefit from PSPS-style task sorting."
+    }
+  },
+  "current_gap": {
+    "gpu4pyscf_seconds": 2.1353717469610274,
+    "remaining_seconds": 0.674766319047194,
+    "required_vibeqc_reduction_fraction": 0.24011856471012972,
+    "two_electron_force_device_milliseconds": 1382.208835,
+    "vibeqc_seconds": 2.8101380660082214
+  }
+}

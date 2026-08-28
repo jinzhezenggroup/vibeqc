@@ -188,6 +188,71 @@ def test_existing_production_rows_default_to_subset_wick():
     ).resident_force_recurrence == "rys3"
 
 
+@pytest.mark.parametrize("shell_class", ("dsps", "dpps"))
+def test_three_root_classes_accept_shared_scalar_thread_backend(
+    tmp_path: Path, shell_class: str
+):
+    """Prove that one generator-level scalar Rys3 path covers both classes."""
+
+    component_count = {"dsps": 18, "dpps": 54}[shell_class]
+    manifest = tmp_path / f"{shell_class}_scalar_rys3.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "default_architecture": "sm_120",
+                "architectures": {
+                    "sm_120": {
+                        "kernels": [
+                            {
+                                "shell_class": shell_class,
+                                "consumers": ["fock", "force"],
+                                "recurrence": "rys3",
+                                "schedule": {
+                                    "kind": "thread_tasks",
+                                    "block_threads": 32,
+                                    "component_tile": component_count,
+                                    "tasks_per_warp": 32,
+                                    "shared_coulomb": False,
+                                    "minimum_blocks_per_sm": 1,
+                                },
+                            }
+                        ]
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    resolved = resolve_production_profile(manifest, "sm_120")
+    shard = emit_profile_shard(resolved, resolved.selections)
+    assert f"generated_sm120_{shell_class}_rys3_force_task" in shard
+    assert "generated_sm120_ppps_rys3_force_task" not in shard
+    assert f"generated_sm120_{shell_class}_shell_class_fock_rhf_kernel" in shard
+
+
+def test_production_dsps_promotes_scalar_force_but_retains_component_fock():
+    """Keep the measured force promotion independent of the value consumer."""
+
+    repository_root = Path(__file__).resolve().parents[2]
+    manifest = (
+        repository_root
+        / "tools"
+        / "vibeqc_codegen"
+        / "production_shell_classes.json"
+    )
+    resolved = resolve_production_profile(manifest, "sm_120")
+    selection = next(
+        item for item in resolved.selections if item.spec.name == "dsps"
+    )
+    assert selection.schedule.kind.value == "thread_tasks"
+    shard = emit_profile_shard(resolved, (selection,))
+    assert "generated_sm120_dsps_rys3_force_task" in shard
+    assert "generated_sm120_dsps_shell_class_fock_rhf_kernel" in shard
+    assert "generated_sm120_dsps_scalar_thread_fock" not in shard
+
+
 def test_ppps_resident_option_keeps_ordinary_fock_force_fallback(tmp_path: Path):
     """Emit resident Rys3 beside, rather than instead of, ppps force/Fock."""
 
