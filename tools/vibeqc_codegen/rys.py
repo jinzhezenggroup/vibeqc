@@ -508,14 +508,16 @@ __device__ __noinline__ void {symbol_prefix}_roots(
 """
 
 
-def emit_rys3_roots_cuda() -> str:
-    """Emit the Apache-attributed, GPU4PySCF-compatible Rys3 evaluator."""
+def emit_rys3_roots_cuda(
+    *, symbol_prefix: str = "generated_ppps_rys3"
+) -> str:
+    """Emit an attributed Rys3 evaluator under a caller-owned CUDA prefix."""
 
     return _emit_fixed_roots_cuda(
         nroots=3,
         degree=RYS3_DEGREE,
         intervals=RYS3_INTERVALS,
-        symbol_prefix="generated_ppps_rys3",
+        symbol_prefix=symbol_prefix,
         description="Three-root",
         small_r0_values=RYS3_SMALLX_R0,
         small_r1_values=RYS3_SMALLX_R1,
@@ -527,14 +529,16 @@ def emit_rys3_roots_cuda() -> str:
     )
 
 
-def emit_rys4_roots_cuda() -> str:
-    """Emit the Apache-attributed, GPU4PySCF-compatible Rys4 evaluator."""
+def emit_rys4_roots_cuda(
+    *, symbol_prefix: str = "generated_dppp_rys4"
+) -> str:
+    """Emit an attributed Rys4 evaluator under a caller-owned CUDA prefix."""
 
     return _emit_fixed_roots_cuda(
         nroots=4,
         degree=RYS4_DEGREE,
         intervals=RYS4_INTERVALS,
-        symbol_prefix="generated_dppp_rys4",
+        symbol_prefix=symbol_prefix,
         description="Four-root",
         small_r0_values=RYS4_SMALLX_R0,
         small_r1_values=RYS4_SMALLX_R1,

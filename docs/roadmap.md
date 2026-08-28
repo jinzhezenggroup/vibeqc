@@ -223,6 +223,13 @@ and performance measurements pass.
   broader hot-class set rather than treating `dppp` as the former 2.23-second
   monolithic gap. The endpoint and kernel-summary artifacts are linked from
   `docs/shell_codegen.md`.
+  The same cooperative fixed-root lowering now covers runtime-indexed Rys3
+  force recurrences. Real 384-AO profiling accepts `dpps` and `dsps`, reducing
+  their kernels from 148.233/139.192 to 124.349/129.825 ms. An isolatedly
+  faster `pppp` candidate regresses the endpoint kernel from 99.936 to 102.041
+  ms and is deliberately left on subset/Wick. The accepted fixed-`dm0` median
+  reaches 3.269 s, 28.9 ms below the preceding 3.298 s baseline, with stable
+  one-iteration branches and the existing accuracy gate satisfied.
   Order-aware virtual tiling now launches one subtile per active order-0--3
   shell quartet, three for order 4, six for order 5, and the full eight only
   for order 6 and above. The generic order-5 force queue is compacted away

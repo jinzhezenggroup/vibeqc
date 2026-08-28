@@ -162,7 +162,7 @@ def test_rys4_manifest_rejects_noncooperative_schedule(tmp_path: Path):
 
 
 def test_existing_production_rows_default_to_subset_wick():
-    """Keep unmodified rows on subset/Wick beside the promoted DPPP force."""
+    """Keep only explicitly promoted force rows on fixed-root Rys."""
 
     repository_root = Path(__file__).resolve().parents[2]
     manifest = (
@@ -173,13 +173,15 @@ def test_existing_production_rows_default_to_subset_wick():
     )
     selections = load_production_kernel_selections(manifest, "sm_120")
     assert selections
-    assert next(
-        selection for selection in selections if selection.spec.name == "dppp"
-    ).recurrence == "rys4"
+    recurrences = {
+        selection.spec.name: selection.recurrence for selection in selections
+    }
+    assert recurrences["dppp"] == "rys4"
+    assert all(recurrences[name] == "rys3" for name in ("dpps", "dsps"))
     assert all(
         selection.recurrence == "subset_wick"
         for selection in selections
-        if selection.spec.name != "dppp"
+        if selection.spec.name not in {"dppp", "dpps", "dsps"}
     )
     assert next(
         selection for selection in selections if selection.spec.name == "ppps"

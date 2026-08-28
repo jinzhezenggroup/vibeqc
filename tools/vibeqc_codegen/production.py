@@ -38,6 +38,7 @@ _THREAD_TASK_FORCE_EMITTERS = {
 }
 
 _SUPPORTED_RECURRENCES = frozenset(("subset_wick", "rys3", "rys4"))
+_COOPERATIVE_RYS3_SHELLS = frozenset(("dpps", "dsps", "pppp"))
 
 _PRODUCTION_PRELUDE = r"""#include "scf/generated_shell_task.hpp"
 
@@ -116,11 +117,22 @@ class KernelSelection:
             raise ValueError(
                 f"unsupported production recurrence {self.recurrence!r}"
             )
-        if self.recurrence == "rys3" and KernelConsumer.FOCK in self.consumers:
-            raise ValueError(
-                "production rys3 recurrence is force-only and cannot include "
-                "the Fock consumer"
-            )
+        if self.recurrence == "rys3":
+            if self.spec.name == "ppps" and KernelConsumer.FOCK in self.consumers:
+                raise ValueError(
+                    "production ppps rys3 recurrence is force-only and cannot "
+                    "include the Fock consumer"
+                )
+            if self.spec.name != "ppps" and (
+                self.spec.name not in _COOPERATIVE_RYS3_SHELLS
+                or self.schedule.kind != ScheduleKind.COMPONENT_LANES
+                or self.schedule.block_threads < self.spec.component_count
+            ):
+                raise ValueError(
+                    "production rys3 currently requires force-only ppps or a "
+                    "supported component-lane shell with one lane per "
+                    "Cartesian component"
+                )
         if self.recurrence == "rys4" and (
             self.spec.name != "dppp"
             or self.schedule.kind != ScheduleKind.COMPONENT_LANES
@@ -389,10 +401,14 @@ def _recurrence_from_row(
             f"{name} has unsupported recurrence {recurrence!r}; "
             f"expected one of {supported}"
         )
-    if recurrence == "rys3" and KernelConsumer.FOCK in consumers:
+    if recurrence == "rys3" and name == "ppps" and KernelConsumer.FOCK in consumers:
         raise ValueError(
-            f"{name} recurrence 'rys3' is force-only and cannot include "
-            "the Fock consumer"
+            "ppps recurrence 'rys3' is force-only and cannot include the "
+            "Fock consumer"
+        )
+    if recurrence == "rys3" and name not in {"ppps", *_COOPERATIVE_RYS3_SHELLS}:
+        raise ValueError(
+            f"{name} does not support the production rys3 recurrence"
         )
     return recurrence
 

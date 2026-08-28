@@ -11,6 +11,8 @@ from enum import Enum
 
 from .shell_spec import ShellClassSpec
 
+_COOPERATIVE_RYS3_SHELLS = frozenset(("dpps", "dsps", "pppp"))
+
 
 class KernelConsumer(str, Enum):
     """Observable contracted by a generated shell kernel."""
@@ -41,14 +43,20 @@ class IntegralIR:
             raise ValueError("integral IR contains an unsupported consumer")
         if self.recurrence not in ("subset_wick", "rys3", "rys4"):
             raise ValueError(f"unsupported integral recurrence {self.recurrence!r}")
-        if self.recurrence == "rys3" and (
-            self.spec.name != "ppps"
-            or self.consumers != frozenset((KernelConsumer.FORCE,))
-        ):
-            raise ValueError(
-                "the direct three-root recurrence currently supports only "
-                "force-only ppps kernels"
+        if self.recurrence == "rys3":
+            ppps_force_only = (
+                self.spec.name == "ppps"
+                and self.consumers == frozenset((KernelConsumer.FORCE,))
             )
+            cooperative_force = (
+                self.spec.name in _COOPERATIVE_RYS3_SHELLS
+                and KernelConsumer.FORCE in self.consumers
+            )
+            if not ppps_force_only and not cooperative_force:
+                raise ValueError(
+                    "the direct three-root recurrence requires force-only "
+                    "ppps or a supported cooperative force shell class"
+                )
         if self.recurrence == "rys4" and (
             self.spec.name != "dppp"
             or KernelConsumer.FORCE not in self.consumers

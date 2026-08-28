@@ -152,6 +152,25 @@ inside `dppp` alone. The raw evidence is the
 [384-AO endpoint](../benchmarks/results/rtx5090-26ef747-384ao-dppp-cooperative-rys4.json),
 and [kernel summary](../benchmarks/results/rtx5090-26ef747-384ao-dppp-cooperative-rys4-kernel-summary.csv).
 
+The fixed-root component-lane emitter is now generalized across the measured
+`dpps`, `dsps`, and `pppp` force classes, while their Fock consumers remain on
+the validated value recurrence. Isolated 8192-task gates improved by `1.239x`,
+`1.342x`, and `1.040x`, with maximum force disagreements of `6.51e-12`,
+`1.13e-11`, and `6.12e-12`, respectively. All generated RHF/UHF ordinary and
+persistent kernels remain spill-free on CUDA 12.9 `sm_120`.
+
+The production decision uses the real fixed-`dm0` endpoint rather than the
+isolated gate. In the three-class candidate profile, `dpps` fell from 148.233
+to 124.349 ms and `dsps` from 139.192 to 129.825 ms, but `pppp` regressed from
+99.936 to 102.041 ms. Production therefore promotes only `dpps` and `dsps` and
+keeps `pppp` on subset/Wick. The accepted 384-AO median falls from 3.298 to
+3.269 s; all three repeats use one SCF iteration on both engines, with maximum
+energy and force disagreements of `1.68e-11 Eh` and `3.15e-8 Eh/bohr`. The
+remaining endpoint is `0.655x` GPU4PySCF, so this is an incremental force
+improvement rather than a claim that the large-system gap is closed. Raw
+evidence is retained in the [accepted endpoint](../benchmarks/results/rtx5090-259c256-384ao-dpps-dsps-rys3.json)
+and [candidate kernel summary](../benchmarks/results/rtx5090-259c256-384ao-cooperative-rys3-kernel-summary_cuda_gpu_kern_sum.csv).
+
 ## Architecture autotuning
 
 `tools/vibeqc_codegen/autotune.py` emits every CUDA-supported schedule variant
