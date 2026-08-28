@@ -133,14 +133,24 @@ class KernelSelection:
                     "supported component-lane shell with one lane per "
                     "Cartesian component"
                 )
+        rys4_component_lanes = (
+            self.schedule.kind == ScheduleKind.COMPONENT_LANES
+            and self.schedule.block_threads >= self.spec.component_count
+        )
+        rys4_uniform_warps = (
+            self.schedule.kind == ScheduleKind.SUBGROUP_TASKS
+            and self.schedule.block_threads == 256
+            and self.schedule.tasks_per_warp == 4
+            and self.schedule.subgroup_lanes == 8
+        )
         if self.recurrence == "rys4" and (
             self.spec.name != "dppp"
-            or self.schedule.kind != ScheduleKind.COMPONENT_LANES
-            or self.schedule.block_threads < self.spec.component_count
+            or not (rys4_component_lanes or rys4_uniform_warps)
         ):
             raise ValueError(
-                "production rys4 currently requires a dppp component-lane "
-                "schedule with one lane per Cartesian component"
+                "production rys4 requires dppp with either one component "
+                "lane per Cartesian component or 32 quartets across eight "
+                "uniform component warps"
             )
         if self.resident_force_recurrence is not None:
             if self.spec.name != "ppps":

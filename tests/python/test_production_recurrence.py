@@ -157,7 +157,7 @@ def test_rys4_manifest_rejects_noncooperative_schedule(tmp_path: Path):
     )
     manifest.write_text(json.dumps(payload), encoding="utf-8")
 
-    with pytest.raises(ValueError, match="dppp component-lane schedule"):
+    with pytest.raises(ValueError, match="production rys4 requires dppp"):
         load_production_kernel_selections(manifest, "sm_120")
 
 

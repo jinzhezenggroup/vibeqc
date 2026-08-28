@@ -128,6 +128,23 @@ RTX5090_DPPP_RESOURCE_LIMITS = {
     "generated_dppp_shell_class_force_rhf_persistent_kernel": (164, 40, 2080),
     "generated_dppp_shell_class_force_uhf_persistent_kernel": (164, 40, 2080),
 }
+RTX5090_DPPP_UNIFORM_RYS4_RESOURCE_LIMITS = {
+    # Relocatable production shards retain the 1 KiB component-activity table
+    # that a whole-program cubin compile may fold into another shared region.
+    # Record the larger production-object envelope observed with CUDA 12.9.
+    "generated_dppp_shell_class_force_rhf_kernel": (255, 168, 37896),
+    "generated_dppp_shell_class_force_uhf_kernel": (255, 168, 37896),
+    "generated_dppp_shell_class_force_rhf_persistent_kernel": (
+        255,
+        168,
+        37896,
+    ),
+    "generated_dppp_shell_class_force_uhf_persistent_kernel": (
+        255,
+        168,
+        37896,
+    ),
+}
 RTX5090_DPDS_RESOURCE_LIMITS = {
     "generated_dpds_shell_class_force_rhf_kernel": (160, 40, 1880),
     "generated_dpds_shell_class_force_uhf_kernel": (160, 40, 1880),
@@ -667,6 +684,50 @@ def test_dppp_cooperative_rys4_uses_uniform_runtime_indexed_axis_recurrence():
     assert "component_weights[kGeneratedDpppComponentCount][32]" not in source
     assert "GeneratedDpppPrimitiveGeometry primitive" not in source
     assert "generated_dppp_rys4_roots" in source
+
+
+def test_dppp_rys4_uniform_warps_advance_32_quartets_per_block():
+    """Keep the 2111-style task and component coordinates explicit."""
+
+    schedule = ScheduleIR(
+        kind=ScheduleKind.SUBGROUP_TASKS,
+        block_threads=256,
+        component_tile=DPPP_SPEC.component_count,
+        tasks_per_warp=4,
+        shared_coulomb=True,
+        pair_orientation=PairOrientation.SWAPPED,
+        pair_storage=PairStorage.MATERIALIZED,
+        unroll_pair_terms=True,
+        minimum_blocks_per_sm=1,
+    )
+    plan = build_fused_shell_plan(
+        DPPP_SPEC,
+        schedule=schedule,
+        recurrence="rys4",
+    )
+    source = emit_shell_class_fused_cuda(DPPP_SPEC, plan)
+    assert schedule.tasks_per_block == 32
+    assert schedule.subgroup_lanes == 8
+    assert "kGeneratedDpppRys4TaskCount = 32U" in source
+    assert "kGeneratedDpppRys4ComponentLanes = 8U" in source
+    assert "const unsigned sq = thread & 31U" in source
+    assert "const unsigned component_lane = thread >> 5U" in source
+    assert "atomicAdd(task_head, kGeneratedDpppRys4TaskCount)" in source
+    assert "generated_dppp_rys4_uniform_warp_roots" in source
+    assert "switch (component_lane)" in source
+    assert "generated_dppp_subgroup_force_task" not in source
+    assert "generated_dppp_rys4_component_lane_task" not in source
+
+    mixed_plan = build_fused_shell_plan(
+        DPPP_SPEC,
+        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+        schedule=schedule,
+        recurrence="rys4",
+    )
+    mixed_source = emit_shell_class_fused_cuda(DPPP_SPEC, mixed_plan)
+    assert "kGeneratedDpppBlockThreads = 256U" in mixed_source
+    assert "kGeneratedDpppFockBlockThreads = 192U" in mixed_source
+    assert "GeneratedDpppSubgroupFockStorage" not in mixed_source
 
 
 @pytest.mark.parametrize(
@@ -1966,7 +2027,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
         assert first_path.read_bytes() == second_path.read_bytes()
         assert b"\0" not in first_path.read_bytes()
     header = emit_registry_header(selections)
-    assert '{"dppp", 12U, 5U, 192U, 3U, 162U}' in header
+    assert '{"dppp", 12U, 5U, 256U, 3U, 162U}' in header
     assert '{"dpds", 13U, 5U, 128U, 3U, 108U}' in header
     assert '{"ddps", 16U, 5U, 128U, 3U, 108U}' in header
     assert '{"ppps", 4U, 3U, 32U, 3U, 27U}' in header
@@ -2524,6 +2585,73 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
         )
 
 
+def test_dppp_rys4_uniform_warps_compile_when_nvcc_is_configured(
+    tmp_path: Path,
+):
+    """Compile the 32-task/eight-warp force worker before endpoint testing."""
+
+    nvcc = os.environ.get("VIBEQC_NVCC")
+    if nvcc is None:
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
+    schedule = ScheduleIR(
+        kind=ScheduleKind.SUBGROUP_TASKS,
+        block_threads=256,
+        component_tile=DPPP_SPEC.component_count,
+        tasks_per_warp=4,
+        shared_coulomb=True,
+        pair_orientation=PairOrientation.SWAPPED,
+        pair_storage=PairStorage.MATERIALIZED,
+        unroll_pair_terms=True,
+        minimum_blocks_per_sm=1,
+    )
+    plan = build_fused_shell_plan(
+        DPPP_SPEC,
+        schedule=schedule,
+        recurrence="rys4",
+    )
+    source = tmp_path / "generated_dppp_uniform_warp_rys4.cu"
+    source.write_text(
+        """
+template <unsigned MaximumOrder>
+__device__ __forceinline__ void boys_values(double argument, double* values) {
+  for (unsigned order = 0; order <= MaximumOrder; ++order) {
+    values[order] = 1.0 / (2.0 * static_cast<double>(order) + 1.0 + argument);
+  }
+}
+"""
+        + emit_shell_class_fused_cuda(DPPP_SPEC, plan),
+        encoding="utf-8",
+    )
+    cubin = tmp_path / "generated_dppp_uniform_warp_rys4.cubin"
+    result = subprocess.run(
+        [
+            nvcc,
+            "-std=c++17",
+            f"-arch={cuda_architecture}",
+            "-O3",
+            "-cubin",
+            "-Xptxas=-v",
+            str(source),
+            "-o",
+            str(cubin),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=240,
+    )
+    if os.environ.get("VIBEQC_NVCC_VERBOSE"):
+        print(result.stdout + result.stderr)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert cubin.exists()
+    if cuda_architecture == "sm_120":
+        assert_rtx5090_resources(
+            result.stdout + result.stderr,
+            RTX5090_DPPP_UNIFORM_RYS4_RESOURCE_LIMITS,
+        )
+
+
 @pytest.mark.parametrize(
     ("name", "block_threads", "resource_limit"),
     (
@@ -2730,7 +2858,7 @@ def test_ppps_rys3_benchmark_runs_against_component_lanes_when_nvcc_is_configure
 def test_dppp_cooperative_rys4_benchmark_runs_against_component_lanes_when_nvcc_is_configured(
     tmp_path: Path,
 ):
-    """Measure uniform cooperative Rys4 against the accepted DPPP force path."""
+    """Measure 192-lane cooperative Rys4 against its subset-Wick predecessor."""
 
     nvcc = os.environ.get("VIBEQC_NVCC")
     if nvcc is None:
@@ -2752,16 +2880,10 @@ def test_dppp_cooperative_rys4_benchmark_runs_against_component_lanes_when_nvcc_
         schedule=rys4_schedule,
         recurrence="rys4",
     )
-    production_plan = next(
-        build_fused_shell_plan(DPPP_SPEC, schedule=selection.schedule)
-        for selection in load_production_kernel_selections(
-            REPOSITORY_ROOT
-            / "tools"
-            / "vibeqc_codegen"
-            / "production_shell_classes.json",
-            "sm_120",
-        )
-        if selection.spec == DPPP_SPEC
+    baseline_plan = build_fused_shell_plan(
+        DPPP_SPEC,
+        schedule=rys4_schedule,
+        recurrence="subset_wick",
     )
     environment = dict(os.environ)
 
@@ -2822,19 +2944,133 @@ def test_dppp_cooperative_rys4_benchmark_runs_against_component_lanes_when_nvcc_
         return payload
 
     rys4 = compile_and_run("cooperative_rys4", rys4_plan)
-    production = compile_and_run("component_lanes", production_plan)
-    print(
-        json.dumps(
-            {
-                "cooperative_rys4": rys4,
-                "component_lanes": production,
-                "speedup_vs_component_lanes": (
-                    production["fused_ms"] / rys4["fused_ms"]
-                ),
-            },
-            sort_keys=True,
-        )
+    baseline = compile_and_run("component_lanes", baseline_plan)
+    result = {
+        "cooperative_rys4": rys4,
+        "component_lanes": baseline,
+        "speedup_vs_component_lanes": (
+            baseline["fused_ms"] / rys4["fused_ms"]
+        ),
+    }
+    print(json.dumps(result, sort_keys=True))
+    assert result["speedup_vs_component_lanes"] > 1.0
+
+
+def test_dppp_uniform_warp_rys4_benchmark_runs_against_component_lanes_when_nvcc_is_configured(
+    tmp_path: Path,
+):
+    """Compare the 32-task mapping with the previously accepted force path."""
+
+    nvcc = os.environ.get("VIBEQC_NVCC")
+    if nvcc is None:
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA benchmark gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
+    uniform_schedule = ScheduleIR(
+        kind=ScheduleKind.SUBGROUP_TASKS,
+        block_threads=256,
+        component_tile=DPPP_SPEC.component_count,
+        tasks_per_warp=4,
+        shared_coulomb=True,
+        pair_orientation=PairOrientation.SWAPPED,
+        pair_storage=PairStorage.MATERIALIZED,
+        unroll_pair_terms=True,
+        minimum_blocks_per_sm=1,
     )
+    uniform_plan = build_fused_shell_plan(
+        DPPP_SPEC,
+        schedule=uniform_schedule,
+        recurrence="rys4",
+    )
+    # Keep the comparison independent of the mutable production manifest.  If
+    # the candidate is promoted, loading the manifest here would silently
+    # benchmark the new kernel against itself and erase the rejection signal.
+    component_lane_schedule = ScheduleIR(
+        kind=ScheduleKind.COMPONENT_LANES,
+        block_threads=192,
+        component_tile=DPPP_SPEC.component_count,
+        tasks_per_warp=1,
+        shared_coulomb=True,
+        pair_orientation=PairOrientation.SWAPPED,
+        pair_storage=PairStorage.MATERIALIZED,
+        unroll_pair_terms=True,
+        minimum_blocks_per_sm=2,
+    )
+    component_lane_plan = build_fused_shell_plan(
+        DPPP_SPEC,
+        schedule=component_lane_schedule,
+        recurrence="rys4",
+    )
+    environment = dict(os.environ)
+
+    def compile_and_run(label: str, plan) -> dict[str, object]:
+        source = tmp_path / f"generated_dppp_{label}_benchmark.cu"
+        source.write_text(
+            emit_shell_class_benchmark_cuda(
+                DPPP_SPEC,
+                task_count=8192,
+                primitive_count=3,
+                warmups=1,
+                iterations=3,
+                samples=3,
+                plan=plan,
+                benchmark_kernel_only=True,
+                persistent_kernel=True,
+            ),
+            encoding="utf-8",
+        )
+        executable = tmp_path / f"generated_dppp_{label}_benchmark"
+        compiled = subprocess.run(
+            [
+                nvcc,
+                "-std=c++17",
+                f"-arch={cuda_architecture}",
+                "-O3",
+                str(source),
+                "-o",
+                str(executable),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=240,
+        )
+        assert compiled.returncode == 0, compiled.stdout + compiled.stderr
+        run = subprocess.run(
+            [
+                "srun",
+                "--partition=main",
+                "--gres=gpu:5090:1",
+                "--nodes=1",
+                "--ntasks=1",
+                "--time=00:05:00",
+                str(executable),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=330,
+            env=environment,
+        )
+        assert run.returncode == 0, run.stdout + run.stderr
+        payload = json.loads(run.stdout.strip().splitlines()[-1])
+        assert payload["maximum_force_error"] <= (
+            2.0e-10 * max(1.0, payload["maximum_force"])
+        )
+        return payload
+
+    uniform = compile_and_run("uniform_warp_rys4", uniform_plan)
+    component_lanes = compile_and_run(
+        "component_lane_rys4", component_lane_plan
+    )
+    result = {
+        "uniform_warp_rys4": uniform,
+        "component_lane_rys4": component_lanes,
+        "speedup_vs_component_lanes": (
+            component_lanes["fused_ms"] / uniform["fused_ms"]
+        ),
+    }
+    print(json.dumps(result, sort_keys=True))
+    assert result["speedup_vs_component_lanes"] > 1.0
 
 
 @pytest.mark.parametrize("name", ("dpps", "dsps", "pppp"))
