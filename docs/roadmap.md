@@ -211,6 +211,18 @@ and performance measurements pass.
   coverage stays limited to measured hot classes because generated expansion
   increases NVCC time, binary size, and instruction-cache pressure; the compact
   generic recurrence remains the oracle and long-tail fallback.
+  A cooperative four-root `dppp` lowering now replaces that class's force
+  recurrence without changing its direct Fock worker. Uniform component lanes
+  use a bounded runtime-indexed `5x4` axis table, while lane zero shares roots
+  and primitive geometry across the 192-thread block. It passes all allocated
+  CUDA and finite-difference regressions with zero PTXAS spills. The isolated
+  8192-task gate improves by `1.191x`; the 384-AO `dppp` kernel improves from
+  167.420 to 139.197 ms, moving the fixed-`dm0` endpoint from 3.327 to 3.298 s.
+  The refreshed profile measures 1906.5 ms of VibeQC force kernels versus
+  810.7 ms of GPU4PySCF IP1 kernels, so the next recurrence work must cover the
+  broader hot-class set rather than treating `dppp` as the former 2.23-second
+  monolithic gap. The endpoint and kernel-summary artifacts are linked from
+  `docs/shell_codegen.md`.
   Order-aware virtual tiling now launches one subtile per active order-0--3
   shell quartet, three for order 4, six for order 5, and the full eight only
   for order 6 and above. The generic order-5 force queue is compacted away

@@ -1,0 +1,37 @@
+{
+  "benchmark": "test_dppp_cooperative_rys4_benchmark_runs_against_component_lanes",
+  "command": "VIBEQC_NVCC=/group/software/cuda-12.9.1/bin/nvcc VIBEQC_CUDA_ARCH=sm_120 .venv/bin/python -m pytest tests/python/test_codegen.py -q -k dppp_cooperative_rys4_benchmark_runs_against_component_lanes -s",
+  "environment": {
+    "architecture": "sm_120",
+    "base_commit": "26ef747567ea1eaba73562dfa140e544b8db3690",
+    "cuda": "12.9",
+    "gpu": "NVIDIA GeForce RTX 5090"
+  },
+  "results": {
+    "component_lanes": {
+      "consumer": "force",
+      "fused_ms": 218.328506,
+      "maximum_force": 37.79006105977161,
+      "maximum_force_error": 4.884981308350689e-15,
+      "primitive_count_per_shell": 3,
+      "primitive_quartets_per_task": 81,
+      "recompute_ms": 794.804504,
+      "speedup": 3.64040637,
+      "task_count": 8192,
+      "topology": "persistent_shared"
+    },
+    "cooperative_rys4": {
+      "consumer": "force",
+      "fused_ms": 183.240555,
+      "maximum_force": 37.79006105977161,
+      "maximum_force_error": 8.320455435750773e-12,
+      "primitive_count_per_shell": 3,
+      "primitive_quartets_per_task": 81,
+      "recompute_ms": 791.855774,
+      "speedup": 4.32140017,
+      "task_count": 8192,
+      "topology": "persistent_shared"
+    },
+    "speedup_vs_component_lanes": 1.1914857275999846
+  }
+}

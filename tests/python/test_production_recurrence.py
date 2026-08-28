@@ -52,6 +52,42 @@ def _rys3_manifest(path: Path, consumers: list[str]) -> None:
     )
 
 
+def _rys4_manifest(path: Path) -> None:
+    """Write the mixed DPPP row used by production force/Fock dispatch."""
+
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "default_architecture": "sm_120",
+                "architectures": {
+                    "sm_120": {
+                        "kernels": [
+                            {
+                                "shell_class": "dppp",
+                                "consumers": ["fock", "force"],
+                                "recurrence": "rys4",
+                                "schedule": {
+                                    "kind": "component_lanes",
+                                    "block_threads": 192,
+                                    "component_tile": 162,
+                                    "tasks_per_warp": 1,
+                                    "shared_coulomb": True,
+                                    "pair_orientation": "swapped",
+                                    "pair_storage": "materialized",
+                                    "unroll_pair_terms": True,
+                                    "minimum_blocks_per_sm": 2,
+                                },
+                            }
+                        ]
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
 def test_force_only_rys3_manifest_reaches_every_production_emitter(
     tmp_path: Path,
 ):
@@ -82,8 +118,51 @@ def test_rys3_rejects_a_fock_consumer_at_manifest_boundary(tmp_path: Path):
         load_production_kernel_selections(manifest, "sm_120")
 
 
+def test_mixed_dppp_rys4_manifest_emits_rys_force_and_existing_fock(
+    tmp_path: Path,
+):
+    """Use Rys4 only for force while preserving the accepted direct Fock."""
+
+    manifest = tmp_path / "rys4.json"
+    _rys4_manifest(manifest)
+    resolved = resolve_production_profile(manifest, "sm_120")
+    selection = resolved.selections[0]
+    assert selection.recurrence == "rys4"
+    assert [consumer.value for consumer in selection.consumers] == [
+        "fock",
+        "force",
+    ]
+    shard = emit_production_shard(resolved.selections)
+    assert "generated_dppp_rys4_component_lane_task" in shard
+    assert "generated_dppp_shell_class_fock_rhf_kernel" in shard
+    profile_shard = emit_profile_shard(resolved, resolved.selections)
+    assert "generated_sm120_dppp_rys4_component_lane_task" in profile_shard
+    assert "generated_sm120_dppp_shell_class_fock_rhf_kernel" in profile_shard
+
+
+def test_rys4_manifest_rejects_noncooperative_schedule(tmp_path: Path):
+    """Fail at the manifest boundary instead of inside the CUDA emitter."""
+
+    manifest = tmp_path / "rys4_thread_tasks.json"
+    _rys4_manifest(manifest)
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    schedule = payload["architectures"]["sm_120"]["kernels"][0]["schedule"]
+    schedule.update(
+        {
+            "kind": "thread_tasks",
+            "block_threads": 192,
+            "tasks_per_warp": 32,
+            "shared_coulomb": False,
+        }
+    )
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="dppp component-lane schedule"):
+        load_production_kernel_selections(manifest, "sm_120")
+
+
 def test_existing_production_rows_default_to_subset_wick():
-    """Keep old manifests source-compatible without editing their rows."""
+    """Keep unmodified rows on subset/Wick beside the promoted DPPP force."""
 
     repository_root = Path(__file__).resolve().parents[2]
     manifest = (
@@ -94,7 +173,14 @@ def test_existing_production_rows_default_to_subset_wick():
     )
     selections = load_production_kernel_selections(manifest, "sm_120")
     assert selections
-    assert all(selection.recurrence == "subset_wick" for selection in selections)
+    assert next(
+        selection for selection in selections if selection.spec.name == "dppp"
+    ).recurrence == "rys4"
+    assert all(
+        selection.recurrence == "subset_wick"
+        for selection in selections
+        if selection.spec.name != "dppp"
+    )
     assert next(
         selection for selection in selections if selection.spec.name == "ppps"
     ).resident_force_recurrence == "rys3"

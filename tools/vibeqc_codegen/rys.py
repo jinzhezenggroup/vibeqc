@@ -6,9 +6,10 @@ it obscures the short-lived one-dimensional recurrence used by mature ERI
 kernels.  This module keeps the recurrence states explicit so CUDA lowering
 can generate each state once and contract it immediately with density weights.
 
-The initial implementation deliberately specializes the mathematical oracle
-to ``(p p|p s)`` and three Rys roots.  It preserves VibeQC's shell-task ABI and
-component order; only the primitive recurrence is different.
+The mathematical oracle supports arbitrary shell classes while production
+lowering deliberately specializes only measured hot paths.  It preserves
+VibeQC's shell-task ABI and component order; only the primitive recurrence is
+different.
 """
 
 from __future__ import annotations
@@ -31,6 +32,17 @@ from .rys3_data import (
     RYS3_SMALLX_R1,
     RYS3_SMALLX_W0,
     RYS3_SMALLX_W1,
+)
+from .rys4_data import (
+    RYS4_DEGREE,
+    RYS4_INTERVALS,
+    RYS4_LARGEX_R_DATA,
+    RYS4_LARGEX_W_DATA,
+    RYS4_RW_DATA,
+    RYS4_SMALLX_R0,
+    RYS4_SMALLX_R1,
+    RYS4_SMALLX_W0,
+    RYS4_SMALLX_W1,
 )
 from .shell_spec import AXES, FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec
 
@@ -232,54 +244,88 @@ def boys_values(argument: float, count: int) -> tuple[float, ...]:
     return tuple(values)
 
 
-def rys3_roots_weights(argument: float) -> tuple[tuple[float, ...], tuple[float, ...]]:
-    """Construct a three-point Rys rule from its first six Boys moments.
+def _moment_roots_weights(
+    argument: float, nroots: int
+) -> tuple[tuple[float, ...], tuple[float, ...]]:
+    """Construct an ``nroots`` Rys rule from its first Boys moments.
 
-    This moment-based solver is intentionally a host-side correctness oracle.
-    The CUDA performance path uses a dedicated three-root approximation table;
-    it must not lower this dense eigensolve into a device kernel.
+    The dense eigensolve is deliberately host-only.  It provides an
+    independent high-accuracy oracle for the fixed-root interpolation tables
+    and must never be lowered into a production device kernel.
     """
 
-    moments = np.asarray(boys_values(argument, 6), dtype=np.float64)
+    if nroots < 1:
+        raise ValueError("a Rys rule requires at least one root")
+    moments = np.asarray(boys_values(argument, 2 * nroots), dtype=np.float64)
     moment_matrix = np.asarray(
-        [[moments[row + column] for column in range(3)] for row in range(3)]
+        [
+            [moments[row + column] for column in range(nroots)]
+            for row in range(nroots)
+        ]
     )
     shifted_matrix = np.asarray(
         [
-            [moments[row + column + 1] for column in range(3)]
-            for row in range(3)
+            [moments[row + column + 1] for column in range(nroots)]
+            for row in range(nroots)
         ]
     )
     cholesky = np.linalg.cholesky(moment_matrix)
     jacobi = np.linalg.solve(cholesky, shifted_matrix)
     jacobi = np.linalg.solve(cholesky, jacobi.T).T
     roots = np.linalg.eigvalsh(jacobi)
-    vandermonde = np.vstack([roots**order for order in range(3)])
-    weights = np.linalg.solve(vandermonde, moments[:3])
+    vandermonde = np.vstack([roots**order for order in range(nroots)])
+    weights = np.linalg.solve(vandermonde, moments[:nroots])
     return tuple(map(float, roots)), tuple(map(float, weights))
 
 
-def rys3_table_roots_weights(
+def rys3_roots_weights(
     argument: float,
 ) -> tuple[tuple[float, ...], tuple[float, ...]]:
-    """Evaluate the GPU4PySCF-compatible three-root interpolation table."""
+    """Construct a three-point Rys rule from its first six Boys moments."""
+
+    return _moment_roots_weights(argument, 3)
+
+
+def rys4_roots_weights(
+    argument: float,
+) -> tuple[tuple[float, ...], tuple[float, ...]]:
+    """Construct a four-point Rys rule from its first eight Boys moments."""
+
+    return _moment_roots_weights(argument, 4)
+
+
+def _table_roots_weights(
+    argument: float,
+    *,
+    nroots: int,
+    degree: int,
+    intervals: int,
+    small_r0: Sequence[float],
+    small_r1: Sequence[float],
+    small_w0: Sequence[float],
+    small_w1: Sequence[float],
+    large_r: Sequence[float],
+    large_w: Sequence[float],
+    table: Sequence[float],
+) -> tuple[tuple[float, ...], tuple[float, ...]]:
+    """Evaluate one fixed-root slice of GPU4PySCF's interpolation table."""
 
     if argument < 0.0:
         raise ValueError("the Rys argument must be non-negative")
     if argument < 3.0e-7:
         roots = tuple(
-            RYS3_SMALLX_R0[index] + RYS3_SMALLX_R1[index] * argument
-            for index in range(3)
+            small_r0[index] + small_r1[index] * argument
+            for index in range(nroots)
         )
         weights = tuple(
-            RYS3_SMALLX_W0[index] + RYS3_SMALLX_W1[index] * argument
-            for index in range(3)
+            small_w0[index] + small_w1[index] * argument
+            for index in range(nroots)
         )
         return roots, weights
-    if argument > 50.0:
+    if argument > 35.0 + 5.0 * nroots:
         scale = math.sqrt(0.7853981633974483096 / argument)
-        roots = tuple(value / argument for value in RYS3_LARGEX_R_DATA)
-        weights = tuple(value * scale for value in RYS3_LARGEX_W_DATA)
+        roots = tuple(value / argument for value in large_r)
+        weights = tuple(value * scale for value in large_w)
         return roots, weights
 
     interval = int(argument * 0.4)
@@ -287,26 +333,62 @@ def rys3_table_roots_weights(
     twice_transformed = 2.0 * transformed
 
     def interpolate(series: int) -> float:
-        offset = series * (RYS3_DEGREE + 1) * RYS3_INTERVALS
-        c0 = RYS3_RW_DATA[
-            offset + interval + RYS3_DEGREE * RYS3_INTERVALS
-        ]
-        c1 = RYS3_RW_DATA[
-            offset + interval + (RYS3_DEGREE - 1) * RYS3_INTERVALS
-        ]
-        for degree in range(RYS3_DEGREE - 2, 0, -2):
-            c2 = RYS3_RW_DATA[
-                offset + interval + degree * RYS3_INTERVALS
+        offset = series * (degree + 1) * intervals
+        c0 = table[offset + interval + degree * intervals]
+        c1 = table[offset + interval + (degree - 1) * intervals]
+        for polynomial_degree in range(degree - 2, 0, -2):
+            c2 = table[
+                offset + interval + polynomial_degree * intervals
             ] - c1
             c3 = c0 + c1 * twice_transformed
             c1 = c2 + c3 * twice_transformed
-            c0 = RYS3_RW_DATA[
-                offset + interval + (degree - 1) * RYS3_INTERVALS
+            c0 = table[
+                offset + interval + (polynomial_degree - 1) * intervals
             ] - c3
         return c0 + c1 * transformed
 
-    values = tuple(interpolate(series) for series in range(6))
+    values = tuple(interpolate(series) for series in range(2 * nroots))
     return values[::2], values[1::2]
+
+
+def rys3_table_roots_weights(
+    argument: float,
+) -> tuple[tuple[float, ...], tuple[float, ...]]:
+    """Evaluate the GPU4PySCF-compatible three-root interpolation table."""
+
+    return _table_roots_weights(
+        argument,
+        nroots=3,
+        degree=RYS3_DEGREE,
+        intervals=RYS3_INTERVALS,
+        small_r0=RYS3_SMALLX_R0,
+        small_r1=RYS3_SMALLX_R1,
+        small_w0=RYS3_SMALLX_W0,
+        small_w1=RYS3_SMALLX_W1,
+        large_r=RYS3_LARGEX_R_DATA,
+        large_w=RYS3_LARGEX_W_DATA,
+        table=RYS3_RW_DATA,
+    )
+
+
+def rys4_table_roots_weights(
+    argument: float,
+) -> tuple[tuple[float, ...], tuple[float, ...]]:
+    """Evaluate the GPU4PySCF-compatible four-root interpolation table."""
+
+    return _table_roots_weights(
+        argument,
+        nroots=4,
+        degree=RYS4_DEGREE,
+        intervals=RYS4_INTERVALS,
+        small_r0=RYS4_SMALLX_R0,
+        small_r1=RYS4_SMALLX_R1,
+        small_w0=RYS4_SMALLX_W0,
+        small_w1=RYS4_SMALLX_W1,
+        large_r=RYS4_LARGEX_R_DATA,
+        large_w=RYS4_LARGEX_W_DATA,
+        table=RYS4_RW_DATA,
+    )
 
 
 def _format_cuda_values(values: Sequence[float], columns: int = 4) -> str:
@@ -322,65 +404,79 @@ def _format_cuda_values(values: Sequence[float], columns: int = 4) -> str:
     return "\n".join(lines)
 
 
-def emit_rys3_roots_cuda() -> str:
-    """Emit the Apache-attributed, GPU4PySCF-compatible Rys3 evaluator."""
+def _emit_fixed_roots_cuda(
+    *,
+    nroots: int,
+    degree: int,
+    intervals: int,
+    symbol_prefix: str,
+    description: str,
+    small_r0_values: Sequence[float],
+    small_r1_values: Sequence[float],
+    small_w0_values: Sequence[float],
+    small_w1_values: Sequence[float],
+    large_r_values: Sequence[float],
+    large_w_values: Sequence[float],
+    table_values: Sequence[float],
+) -> str:
+    """Emit one compact fixed-root GPU4PySCF-compatible CUDA evaluator."""
 
-    small_r0 = _format_cuda_values(RYS3_SMALLX_R0, columns=3)
-    small_r1 = _format_cuda_values(RYS3_SMALLX_R1, columns=3)
-    small_w0 = _format_cuda_values(RYS3_SMALLX_W0, columns=3)
-    small_w1 = _format_cuda_values(RYS3_SMALLX_W1, columns=3)
-    large_r = _format_cuda_values(RYS3_LARGEX_R_DATA, columns=3)
-    large_w = _format_cuda_values(RYS3_LARGEX_W_DATA, columns=3)
-    table = _format_cuda_values(RYS3_RW_DATA)
+    small_r0 = _format_cuda_values(small_r0_values, columns=nroots)
+    small_r1 = _format_cuda_values(small_r1_values, columns=nroots)
+    small_w0 = _format_cuda_values(small_w0_values, columns=nroots)
+    small_w1 = _format_cuda_values(small_w1_values, columns=nroots)
+    large_r = _format_cuda_values(large_r_values, columns=nroots)
+    large_w = _format_cuda_values(large_w_values, columns=nroots)
+    table = _format_cuda_values(table_values)
     return f"""/*
- * Three-root interpolation adapted from GPU4PySCF.
+ * {description} interpolation adapted from GPU4PySCF.
  * Copyright 2021-2024 The PySCF Developers. All Rights Reserved.
  * Licensed under the Apache License, Version 2.0.
  */
-__device__ double generated_ppps_rys3_small_r0[3] = {{
+__device__ double {symbol_prefix}_small_r0[{nroots}] = {{
 {small_r0}
 }};
-__device__ double generated_ppps_rys3_small_r1[3] = {{
+__device__ double {symbol_prefix}_small_r1[{nroots}] = {{
 {small_r1}
 }};
-__device__ double generated_ppps_rys3_small_w0[3] = {{
+__device__ double {symbol_prefix}_small_w0[{nroots}] = {{
 {small_w0}
 }};
-__device__ double generated_ppps_rys3_small_w1[3] = {{
+__device__ double {symbol_prefix}_small_w1[{nroots}] = {{
 {small_w1}
 }};
-__device__ double generated_ppps_rys3_large_r[3] = {{
+__device__ double {symbol_prefix}_large_r[{nroots}] = {{
 {large_r}
 }};
-__device__ double generated_ppps_rys3_large_w[3] = {{
+__device__ double {symbol_prefix}_large_w[{nroots}] = {{
 {large_w}
 }};
-__device__ double generated_ppps_rys3_rw[{len(RYS3_RW_DATA)}] = {{
+__device__ double {symbol_prefix}_rw[{len(table_values)}] = {{
 {table}
 }};
 
-__device__ __noinline__ void generated_ppps_rys3_roots(
+__device__ __noinline__ void {symbol_prefix}_roots(
     double argument, double* roots_weights, unsigned stride) {{
   if (argument < 3.0e-7) {{
 #pragma unroll
-    for (unsigned root = 0; root < 3U; ++root) {{
+    for (unsigned root = 0; root < {nroots}U; ++root) {{
       roots_weights[(2U * root) * stride] =
-          generated_ppps_rys3_small_r0[root] +
-          generated_ppps_rys3_small_r1[root] * argument;
+          {symbol_prefix}_small_r0[root] +
+          {symbol_prefix}_small_r1[root] * argument;
       roots_weights[(2U * root + 1U) * stride] =
-          generated_ppps_rys3_small_w0[root] +
-          generated_ppps_rys3_small_w1[root] * argument;
+          {symbol_prefix}_small_w0[root] +
+          {symbol_prefix}_small_w1[root] * argument;
     }}
     return;
   }}
-  if (argument > 50.0) {{
+  if (argument > {35 + nroots * 5}.0) {{
     const double scale = sqrt(0.7853981633974483096 / argument);
 #pragma unroll
-    for (unsigned root = 0; root < 3U; ++root) {{
+    for (unsigned root = 0; root < {nroots}U; ++root) {{
       roots_weights[(2U * root) * stride] =
-          generated_ppps_rys3_large_r[root] / argument;
+          {symbol_prefix}_large_r[root] / argument;
       roots_weights[(2U * root + 1U) * stride] =
-          generated_ppps_rys3_large_w[root] * scale;
+          {symbol_prefix}_large_w[root] * scale;
     }}
     return;
   }}
@@ -390,27 +486,64 @@ __device__ __noinline__ void generated_ppps_rys3_roots(
       (argument - static_cast<double>(interval) * 2.5) * 0.8 - 1.0;
   const double twice_transformed = 2.0 * transformed;
 #pragma unroll
-  for (unsigned series = 0; series < 6U; ++series) {{
-    const double* coefficients = generated_ppps_rys3_rw +
-        series * {RYS3_DEGREE + 1}U * {RYS3_INTERVALS}U;
-    double c0 = coefficients[
-        interval + {RYS3_DEGREE}U * {RYS3_INTERVALS}U];
-    double c1 = coefficients[
-        interval + {RYS3_DEGREE - 1}U * {RYS3_INTERVALS}U];
+  for (unsigned series = 0; series < {2 * nroots}U; ++series) {{
+    const double* coefficients = {symbol_prefix}_rw +
+        series * {degree + 1}U * {intervals}U;
+    double c0 = coefficients[interval + {degree}U * {intervals}U];
+    double c1 = coefficients[interval + {degree - 1}U * {intervals}U];
     double c2 = 0.0;
     double c3 = 0.0;
 #pragma unroll
-    for (int degree = {RYS3_DEGREE - 2}; degree > 0; degree -= 2) {{
-      c2 = coefficients[interval + degree * {RYS3_INTERVALS}] - c1;
+    for (int polynomial_degree = {degree - 2}; polynomial_degree > 0;
+         polynomial_degree -= 2) {{
+      c2 = coefficients[interval + polynomial_degree * {intervals}] - c1;
       c3 = c0 + c1 * twice_transformed;
       c1 = c2 + c3 * twice_transformed;
       c0 = coefficients[
-          interval + (degree - 1) * {RYS3_INTERVALS}] - c3;
+          interval + (polynomial_degree - 1) * {intervals}] - c3;
     }}
     roots_weights[series * stride] = c0 + c1 * transformed;
   }}
 }}
 """
+
+
+def emit_rys3_roots_cuda() -> str:
+    """Emit the Apache-attributed, GPU4PySCF-compatible Rys3 evaluator."""
+
+    return _emit_fixed_roots_cuda(
+        nroots=3,
+        degree=RYS3_DEGREE,
+        intervals=RYS3_INTERVALS,
+        symbol_prefix="generated_ppps_rys3",
+        description="Three-root",
+        small_r0_values=RYS3_SMALLX_R0,
+        small_r1_values=RYS3_SMALLX_R1,
+        small_w0_values=RYS3_SMALLX_W0,
+        small_w1_values=RYS3_SMALLX_W1,
+        large_r_values=RYS3_LARGEX_R_DATA,
+        large_w_values=RYS3_LARGEX_W_DATA,
+        table_values=RYS3_RW_DATA,
+    )
+
+
+def emit_rys4_roots_cuda() -> str:
+    """Emit the Apache-attributed, GPU4PySCF-compatible Rys4 evaluator."""
+
+    return _emit_fixed_roots_cuda(
+        nroots=4,
+        degree=RYS4_DEGREE,
+        intervals=RYS4_INTERVALS,
+        symbol_prefix="generated_dppp_rys4",
+        description="Four-root",
+        small_r0_values=RYS4_SMALLX_R0,
+        small_r1_values=RYS4_SMALLX_R1,
+        small_w0_values=RYS4_SMALLX_W0,
+        small_w1_values=RYS4_SMALLX_W1,
+        large_r_values=RYS4_LARGEX_R_DATA,
+        large_w_values=RYS4_LARGEX_W_DATA,
+        table_values=RYS4_RW_DATA,
+    )
 
 
 def _state_expression(
@@ -447,37 +580,51 @@ def _state_expression(
     return f"{dependency[0]} - cd{axis} * {dependency[1]}"
 
 
-def emit_ppps_rys3_root_body_cuda(
+def emit_rys_force_root_body_cuda(
+    spec: ShellClassSpec,
     *,
     component_weight_expression: str = "component_weights[{component}U][lane]",
+    component_group: int = 9,
+    component_indices: Sequence[int] | None = None,
 ) -> str:
-    """Emit one root's state-on-first-use recurrence and force contraction.
+    """Emit one root's shell-specific recurrence and force contraction.
 
     The caller provides compact primitive scalars, ``weighted_root`` (Rys
     weight times the signed primitive prefactor), component weights, and nine
     register force accumulators.  States are introduced immediately before
     their first component use so PTXAS can reuse slots after last use.
 
-    ``component_weight_expression`` is a format string containing
-    ``{component}``.  The default names the lane-major shared table used by
-    the original thread-task prototype.  Resident-bra lowering passes a
-    thread-local expression instead, avoiding a second 27-entry shared table
-    while keeping this mathematical recurrence body identical.
+    ``component_weight_expression`` may contain a ``{component}`` field.  The
+    default names the lane-major shared table used by the original thread-task
+    prototype; a one-component lowering may instead pass one scalar expression.
+    ``component_group`` bounds recurrence reuse so higher-order classes do not
+    keep an entire shell's state graph live at once.
     """
 
-    if "{component}" not in component_weight_expression:
-        raise ValueError(
-            "component_weight_expression must contain a {component} field"
-        )
+    if component_group < 1:
+        raise ValueError("a Rys recurrence component group must be positive")
 
-    program = build_ppps_rys_force_program()
+    program = build_rys_force_program(spec)
+    selected_indices = (
+        tuple(range(len(program.component_order)))
+        if component_indices is None
+        else tuple(component_indices)
+    )
+    if any(
+        component < 0 or component >= len(program.component_order)
+        for component in selected_indices
+    ):
+        raise ValueError("a Rys recurrence component index is out of range")
+    component_entries = tuple(
+        (component, program.component_order[component])
+        for component in selected_indices
+    )
 
     def emit_group(
-        component_begin: int,
-        components: Sequence[tuple[str, str, str, str]],
+        components: Sequence[tuple[int, tuple[str, str, str, str]]],
     ) -> list[str]:
-        # Nine adjacent components retain the useful i/j/k recurrence reuse.
-        # Explicit slot reuse bounds the group to roughly 31 state doubles.
+        # Adjacent components retain useful Cartesian recurrence reuse.
+        # Explicit last-use slot allocation bounds the live state scalars.
         emitted: set[tuple[str, RysState]] = set()
         events: list[dict[str, object]] = []
 
@@ -499,7 +646,7 @@ def emit_ppps_rys3_root_body_cuda(
             )
             return key
 
-        for local_index, component in enumerate(components):
+        for component_index, component in components:
             quantums = tuple(_angular_counts(label) for label in component)
             base_states = tuple(
                 RysState(*(item[coordinate] for item in quantums))
@@ -539,7 +686,7 @@ def emit_ppps_rys3_root_body_cuda(
             events.append(
                 {
                     "kind": "contract",
-                    "component": component_begin + local_index,
+                    "component": component_index,
                     "base": base,
                     "derivatives": derivatives,
                 }
@@ -616,12 +763,12 @@ def emit_ppps_rys3_root_body_cuda(
             lines.extend(
                 [
                     "      {",
-                    "        const double density_weight = "
+                    "        const double component_density_weight = "
                     + component_weight_expression.format(component=component_index)
                     + ";",
-                    f"        const double product_xy = {base_names[0]} * {base_names[1]} * density_weight;",
-                    f"        const double product_xz = {base_names[0]} * {base_names[2]} * density_weight;",
-                    f"        const double product_yz = {base_names[1]} * {base_names[2]} * density_weight;",
+                    f"        const double product_xy = {base_names[0]} * {base_names[1]} * component_density_weight;",
+                    f"        const double product_xz = {base_names[0]} * {base_names[2]} * component_density_weight;",
+                    f"        const double product_yz = {base_names[1]} * {base_names[2]} * component_density_weight;",
                 ]
             )
             products = ("product_yz", "product_xz", "product_xy")
@@ -645,15 +792,24 @@ def emit_ppps_rys3_root_body_cuda(
         return lines
 
     lines: list[str] = []
-    component_group = 9
-    for begin in range(0, len(program.component_order), component_group):
+    for begin in range(0, len(component_entries), component_group):
         lines.extend(
-            emit_group(
-                begin,
-                program.component_order[begin : begin + component_group],
-            )
+            emit_group(component_entries[begin : begin + component_group])
         )
     return "\n".join(lines)
+
+
+def emit_ppps_rys3_root_body_cuda(
+    *,
+    component_weight_expression: str = "component_weights[{component}U][lane]",
+) -> str:
+    """Emit the established three-root ``ppps`` recurrence body."""
+
+    return emit_rys_force_root_body_cuda(
+        FUSED_SHELL_SPEC_BY_NAME["ppps"],
+        component_weight_expression=component_weight_expression,
+        component_group=9,
+    )
 
 
 def _evaluate_axis_state(
@@ -718,19 +874,20 @@ def _evaluate_axis_state(
     return evaluate(requested)
 
 
-def evaluate_ppps_rys_component(
+def evaluate_rys_component(
+    spec: ShellClassSpec,
     component: Sequence[str],
     variables: Mapping[str, float],
 ) -> FusedShellResult:
-    """Evaluate one primitive ``ppps`` component through three-root Rys HRR."""
+    """Evaluate one primitive shell component through its fixed-root Rys HRR."""
 
-    program = build_ppps_rys_force_program()
+    program = build_rys_force_program(spec)
     normalized = program.spec.validate_component(component)
     quantums = tuple(_angular_counts(label) for label in normalized)
     argument = variables["rho"] * sum(
         variables[f"difference_{axis}"] ** 2 for axis in AXES
     )
-    roots, weights = rys3_roots_weights(argument)
+    roots, weights = _moment_roots_weights(argument, program.nroots)
     p = 0.5 / variables["inverse_two_p"]
     q = 0.5 / variables["inverse_two_q"]
     exponents = (
@@ -786,4 +943,15 @@ def evaluate_ppps_rys_component(
     return FusedShellResult(
         value=prefactor * value,
         gradients=independent + (fourth,),
+    )
+
+
+def evaluate_ppps_rys_component(
+    component: Sequence[str],
+    variables: Mapping[str, float],
+) -> FusedShellResult:
+    """Compatibility wrapper for the original three-root ``ppps`` oracle."""
+
+    return evaluate_rys_component(
+        FUSED_SHELL_SPEC_BY_NAME["ppps"], component, variables
     )

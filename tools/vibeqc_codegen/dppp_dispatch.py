@@ -27,7 +27,12 @@ from .fused_schedule import (
     evaluate_fused_shell_component,
 )
 from .ir import KernelConsumer
-from .rys import emit_ppps_rys3_root_body_cuda, emit_rys3_roots_cuda
+from .rys import (
+    emit_ppps_rys3_root_body_cuda,
+    emit_rys3_roots_cuda,
+    emit_rys4_roots_cuda,
+    emit_rys_force_root_body_cuda,
+)
 from .shell_class import build_weighted_shell_contraction_kernel
 from .shell_spec import (
     AXES,
@@ -1728,16 +1733,16 @@ def _emit_rys_thread_force_consumer_cuda(
 
     The shell-task ABI, screening, density symmetry, and persistent queue are
     identical to the existing generated worker.  Only the primitive hot loop
-    changes: three-root interpolation feeds a state-on-first-use TRR/HRR
+    changes: fixed-root interpolation feeds a state-on-first-use TRR/HRR
     program, and each component is contracted immediately into nine register
     force accumulators.  Density weights use lane-major shared SoA storage to
-    avoid carrying 27 additional doubles through the recurrence.
+    avoid carrying the entire shell's coefficients through the recurrence.
     """
 
     if spec.name != "ppps" or plan.kernel.integral.recurrence != "rys3":
         raise ValueError("direct Rys thread lowering requires a ppps rys3 plan")
     if plan.schedule.block_threads != 32:
-        raise ValueError("direct Rys ppps thread tasks currently use one warp")
+        raise ValueError("direct Rys ppps thread tasks currently use one CUDA warp")
 
     task_component_setup = _generic_task_component_setup(spec).replace(
         "shared.task", "task"
@@ -1816,7 +1821,10 @@ def _emit_rys_thread_force_consumer_cuda(
         )
 
     weight_code = "\n".join(weight_blocks)
-    root_body = emit_ppps_rys3_root_body_cuda()
+    root_body = emit_rys_force_root_body_cuda(
+        spec,
+        component_group=9,
+    )
     independent_atomic_code = "\n".join(independent_atomics)
     fourth_atomic_code = "\n".join(fourth_atomics)
     kernel_qualifier = f"__launch_bounds__(32, {minimum_blocks_per_sm})"
@@ -2021,6 +2029,490 @@ void generated_dppp_shell_class_force_uhf_persistent_kernel(
     const std::uint32_t* task_count,
     std::uint32_t* task_head) {{
   generated_dppp_rys3_force_persistent<true>(
+      tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+      atom_positions, screening_tolerance, schwarz_bounds, density, forces,
+      task_offset, task_count, task_head);
+}}
+"""
+
+
+def _emit_rys_component_lane_force_consumer_cuda(
+    spec: ShellClassSpec,
+    plan: FusedShellPlan,
+    minimum_blocks_per_sm: int,
+) -> str:
+    """Emit one cooperative DPPP Rys4 task across component lanes.
+
+    All 192 threads execute the same bounded one-dimensional recurrence.  A
+    lane selects only the small angular indices used to read a fixed ``5x4``
+    TRR table, avoiding both the shell-wide scalar DAG and a divergent
+    component-function switch.  Lane zero evaluates the four roots once per
+    primitive quartet; the other lanes retain only nine force accumulators and
+    three compact axis results.
+    """
+
+    if spec.name != "dppp" or plan.kernel.integral.recurrence != "rys4":
+        raise ValueError("cooperative Rys4 lowering requires a dppp rys4 plan")
+    if plan.schedule.kind != ScheduleKind.COMPONENT_LANES:
+        raise ValueError("cooperative dppp Rys4 requires component lanes")
+    if plan.schedule.block_threads < spec.component_count:
+        raise ValueError("cooperative dppp Rys4 requires one lane per component")
+
+    task_component_setup = _generic_task_component_setup(spec)
+    component_names = _emitted_component_names(spec)
+    kernel_qualifier = (
+        f"__launch_bounds__({plan.schedule.block_threads}, "
+        f"{minimum_blocks_per_sm})"
+    )
+    roots_cuda = emit_rys4_roots_cuda()
+    return roots_cuda + f"""
+/** Scalars shared by all component lanes for one primitive quartet. */
+struct GeneratedDpppRys4Primitive {{
+  double p;
+  double q;
+  double alpha2;
+  double beta2;
+  double gamma2;
+  double pax;
+  double pay;
+  double paz;
+  double qcx;
+  double qcy;
+  double qcz;
+  double abx;
+  double aby;
+  double abz;
+  double cdx;
+  double cdy;
+  double cdz;
+  double dx;
+  double dy;
+  double dz;
+  double primitive_prefactor;
+}};
+
+/** Base and three independent first derivatives for one Cartesian axis. */
+struct GeneratedDpppRys4Axis {{
+  double base;
+  double first;
+  double second;
+  double third;
+}};
+
+__device__ __forceinline__ double generated_dppp_rys4_ket_hrr(
+    const volatile double (&trr)[5][4], unsigned a, unsigned c, unsigned d,
+    double cd) {{
+  const double base = trr[a][c];
+  return d == 0U ? base : trr[a][c + 1U] - cd * base;
+}}
+
+__device__ __forceinline__ double generated_dppp_rys4_state(
+    const volatile double (&trr)[5][4], unsigned a, unsigned b, unsigned c,
+    unsigned d, double ab, double cd) {{
+  const double base = generated_dppp_rys4_ket_hrr(trr, a, c, d, cd);
+  if (b == 0U) return base;
+  const double raised = generated_dppp_rys4_ket_hrr(
+      trr, a + 1U, c, d, cd);
+  if (b == 1U) return raised - ab * base;
+  const double raised_twice = generated_dppp_rys4_ket_hrr(
+      trr, a + 2U, c, d, cd);
+  return raised_twice - 2.0 * ab * raised + ab * ab * base;
+}}
+
+/**
+ * Evaluate all one-axis values required for A/B/C first derivatives.
+ *
+ * DPPP bounds are exact: after one derivative, ``a+b <= 4`` and
+ * ``c+d <= 3``.  Keeping this helper noinline makes its 20-double addressed
+ * table reusable across x/y/z calls instead of tripling caller register
+ * pressure.
+ */
+__device__ __noinline__ GeneratedDpppRys4Axis generated_dppp_rys4_axis(
+    unsigned a, unsigned b, unsigned c, unsigned d,
+    double c0, double cp, double ab, double cd,
+    double b10, double b00, double b01, double seed,
+    double alpha2, double beta2, double gamma2) {{
+  // Runtime component indices would otherwise make PTXAS retain the complete
+  // table in registers across every state lookup.  An explicitly addressed
+  // local table trades a bounded 160-byte frame for much higher occupancy.
+  volatile double trr[5][4];
+  trr[0][0] = seed;
+#pragma unroll
+  for (unsigned bra = 1U; bra < 5U; ++bra) {{
+    double value = c0 * trr[bra - 1U][0];
+    if (bra > 1U) value += (bra - 1U) * b10 * trr[bra - 2U][0];
+    trr[bra][0] = value;
+  }}
+#pragma unroll
+  for (unsigned ket = 1U; ket < 4U; ++ket) {{
+#pragma unroll
+    for (unsigned bra = 0U; bra < 5U; ++bra) {{
+      double value = cp * trr[bra][ket - 1U];
+      if (ket > 1U) value +=
+          (ket - 1U) * b01 * trr[bra][ket - 2U];
+      if (bra > 0U) value +=
+          bra * b00 * trr[bra - 1U][ket - 1U];
+      trr[bra][ket] = value;
+    }}
+  }}
+
+  GeneratedDpppRys4Axis result;
+  result.base = generated_dppp_rys4_state(trr, a, b, c, d, ab, cd);
+  const double raised_first = generated_dppp_rys4_state(
+      trr, a + 1U, b, c, d, ab, cd);
+  const double lowered_first = a == 0U ? 0.0 :
+      generated_dppp_rys4_state(trr, a - 1U, b, c, d, ab, cd);
+  result.first = alpha2 * raised_first - static_cast<double>(a) * lowered_first;
+  const double raised_second = generated_dppp_rys4_state(
+      trr, a, b + 1U, c, d, ab, cd);
+  const double lowered_second = b == 0U ? 0.0 :
+      generated_dppp_rys4_state(trr, a, b - 1U, c, d, ab, cd);
+  result.second =
+      beta2 * raised_second - static_cast<double>(b) * lowered_second;
+  const double raised_third = generated_dppp_rys4_state(
+      trr, a, b, c + 1U, d, ab, cd);
+  const double lowered_third = c == 0U ? 0.0 :
+      generated_dppp_rys4_state(trr, a, b, c - 1U, d, ab, cd);
+  result.third =
+      gamma2 * raised_third - static_cast<double>(c) * lowered_third;
+  return result;
+}}
+
+template <bool Unrestricted>
+__device__ __forceinline__ void generated_dppp_rys4_component_lane_task(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    std::size_t task_index) {{
+  struct Shared {{
+    GeneratedDpppShellTask task;
+    GeneratedDpppVec3 positions[4];
+    GeneratedDpppRys4Primitive primitive;
+    double roots_weights[8];
+    double warp_sums[kGeneratedDpppWarpCount][9];
+  }};
+  __shared__ Shared shared;
+  const unsigned lane = threadIdx.x;
+  if (blockDim.x != kGeneratedDpppBlockThreads) return;
+  if (lane == 0U) {{
+    shared.task = tasks[task_index];
+#pragma unroll
+    for (unsigned center = 0U; center < 4U; ++center) {{
+      shared.positions[center] = atom_positions[shared.task.atom[center]];
+    }}
+  }}
+  __syncthreads();
+
+  const bool component_lane = lane < kGeneratedDpppComponentCount;
+  const unsigned component = component_lane ? lane : 0U;
+{task_component_setup}
+  const std::size_t matrix_order =
+      static_cast<std::size_t>(shared.task.matrix_order);
+  const double schwarz_product = schwarz_bounds == nullptr
+      ? 0.0
+      : schwarz_bounds[
+            shared.task.density_offset +
+            generated_dppp_matrix_index(i, j, matrix_order)] *
+        schwarz_bounds[
+            shared.task.density_offset +
+            generated_dppp_matrix_index(k, l, matrix_order)];
+  const bool retained_by_schwarz = schwarz_bounds == nullptr ||
+      schwarz_product >= screening_tolerance;
+  const double density_coefficient =
+      component_lane && unique_ket_component && retained_by_schwarz
+      ? generated_dppp_density_coefficient<Unrestricted>(
+            shared.task, i, j, k, l, density)
+      : 0.0;
+  const double angular_coefficient = component_lane
+      ? ao_coefficients[
+            shared.task.ao_coefficient_begin[0] + {component_names[0]}] *
+        ao_coefficients[
+            shared.task.ao_coefficient_begin[1] + {component_names[1]}] *
+        ao_coefficients[
+            shared.task.ao_coefficient_begin[2] + {component_names[2]}] *
+        ao_coefficients[
+            shared.task.ao_coefficient_begin[3] + {component_names[3]}]
+      : 0.0;
+  const double density_weight = density_coefficient * angular_coefficient;
+  if (!__syncthreads_or(density_weight != 0.0)) return;
+
+  const unsigned d_axis_0 = generated_dppp_d_axes[d_component][0];
+  const unsigned d_axis_1 = generated_dppp_d_axes[d_component][1];
+  const unsigned ax = (d_axis_0 == 0U) + (d_axis_1 == 0U);
+  const unsigned ay = (d_axis_0 == 1U) + (d_axis_1 == 1U);
+  const unsigned az = (d_axis_0 == 2U) + (d_axis_1 == 2U);
+  const unsigned bx = first_p == 0U;
+  const unsigned by = first_p == 1U;
+  const unsigned bz = first_p == 2U;
+  const unsigned cx = third_p == 0U;
+  const unsigned cy = third_p == 1U;
+  const unsigned cz = third_p == 2U;
+  const unsigned dx_order = fourth_p == 0U;
+  const unsigned dy_order = fourth_p == 1U;
+  const unsigned dz_order = fourth_p == 2U;
+  double component_force[9]{{}};
+
+  const std::int64_t first_pair_begin =
+      primitive_pair_offsets[shared.task.shell_pair[0]];
+  const std::int64_t first_pair_end =
+      primitive_pair_offsets[shared.task.shell_pair[0] + 1U];
+  const std::int64_t second_pair_begin =
+      primitive_pair_offsets[shared.task.shell_pair[1]];
+  const std::int64_t second_pair_end =
+      primitive_pair_offsets[shared.task.shell_pair[1] + 1U];
+  for (std::int64_t first_primitive = first_pair_begin;
+       first_primitive < first_pair_end; ++first_primitive) {{
+    for (std::int64_t second_primitive = second_pair_begin;
+         second_primitive < second_pair_end; ++second_primitive) {{
+      if (lane == 0U) {{
+        const GeneratedDpppPrimitivePairData first_pair =
+            primitive_pairs[first_primitive];
+        const GeneratedDpppPrimitivePairData second_pair =
+            primitive_pairs[second_primitive];
+        GeneratedDpppRys4Primitive& primitive = shared.primitive;
+        primitive.p = first_pair.exponent_sum;
+        primitive.q = second_pair.exponent_sum;
+        const bool first_pair_reversed =
+            (shared.task.reversed_shell_pair_mask & 1U) != 0U;
+        const bool second_pair_reversed =
+            (shared.task.reversed_shell_pair_mask & 2U) != 0U;
+        const double first_product_scale = first_pair_reversed
+            ? first_pair.second_product_scale : first_pair.first_product_scale;
+        const double second_product_scale = first_pair_reversed
+            ? first_pair.first_product_scale : first_pair.second_product_scale;
+        const double third_product_scale = second_pair_reversed
+            ? second_pair.second_product_scale : second_pair.first_product_scale;
+        primitive.alpha2 = 2.0 * primitive.p * first_product_scale;
+        primitive.beta2 = 2.0 * primitive.p * second_product_scale;
+        primitive.gamma2 = 2.0 * primitive.q * third_product_scale;
+        primitive.pax = first_pair.product_center.x - shared.positions[0].x;
+        primitive.pay = first_pair.product_center.y - shared.positions[0].y;
+        primitive.paz = first_pair.product_center.z - shared.positions[0].z;
+        primitive.qcx = second_pair.product_center.x - shared.positions[2].x;
+        primitive.qcy = second_pair.product_center.y - shared.positions[2].y;
+        primitive.qcz = second_pair.product_center.z - shared.positions[2].z;
+        primitive.abx = shared.positions[1].x - shared.positions[0].x;
+        primitive.aby = shared.positions[1].y - shared.positions[0].y;
+        primitive.abz = shared.positions[1].z - shared.positions[0].z;
+        primitive.cdx = shared.positions[3].x - shared.positions[2].x;
+        primitive.cdy = shared.positions[3].y - shared.positions[2].y;
+        primitive.cdz = shared.positions[3].z - shared.positions[2].z;
+        primitive.dx = first_pair.product_center.x -
+            second_pair.product_center.x;
+        primitive.dy = first_pair.product_center.y -
+            second_pair.product_center.y;
+        primitive.dz = first_pair.product_center.z -
+            second_pair.product_center.z;
+        const double rho =
+            primitive.p * primitive.q / (primitive.p + primitive.q);
+        generated_dppp_rys4_roots(
+            rho * (primitive.dx * primitive.dx +
+                   primitive.dy * primitive.dy +
+                   primitive.dz * primitive.dz),
+            shared.roots_weights, 1U);
+        primitive.primitive_prefactor =
+            -34.986836655249725 * first_pair.weighted_coefficient *
+            second_pair.weighted_coefficient /
+            (primitive.p * primitive.q * sqrt(primitive.p + primitive.q));
+      }}
+      __syncthreads();
+      if (density_weight != 0.0) {{
+        const GeneratedDpppRys4Primitive& primitive = shared.primitive;
+#pragma unroll 1
+        for (unsigned root_index = 0U; root_index < 4U; ++root_index) {{
+          const double root = shared.roots_weights[2U * root_index];
+          const double weighted_root =
+              shared.roots_weights[2U * root_index + 1U] *
+              primitive.primitive_prefactor * density_weight;
+          const double root_over_sum = root / (primitive.p + primitive.q);
+          const double root_bra = root_over_sum * primitive.q;
+          const double root_ket = root_over_sum * primitive.p;
+          const double b10 = 0.5 / primitive.p * (1.0 - root_bra);
+          const double b00 = 0.5 * root_over_sum;
+          const double b01 = 0.5 / primitive.q * (1.0 - root_ket);
+          const GeneratedDpppRys4Axis x = generated_dppp_rys4_axis(
+              ax, bx, cx, dx_order,
+              primitive.pax - primitive.dx * root_bra,
+              primitive.qcx + primitive.dx * root_ket,
+              primitive.abx, primitive.cdx, b10, b00, b01, 1.0,
+              primitive.alpha2, primitive.beta2, primitive.gamma2);
+          const GeneratedDpppRys4Axis y = generated_dppp_rys4_axis(
+              ay, by, cy, dy_order,
+              primitive.pay - primitive.dy * root_bra,
+              primitive.qcy + primitive.dy * root_ket,
+              primitive.aby, primitive.cdy, b10, b00, b01, 1.0,
+              primitive.alpha2, primitive.beta2, primitive.gamma2);
+          const GeneratedDpppRys4Axis z = generated_dppp_rys4_axis(
+              az, bz, cz, dz_order,
+              primitive.paz - primitive.dz * root_bra,
+              primitive.qcz + primitive.dz * root_ket,
+              primitive.abz, primitive.cdz, b10, b00, b01, weighted_root,
+              primitive.alpha2, primitive.beta2, primitive.gamma2);
+          component_force[0] += x.first * y.base * z.base;
+          component_force[1] += x.base * y.first * z.base;
+          component_force[2] += x.base * y.base * z.first;
+          component_force[3] += x.second * y.base * z.base;
+          component_force[4] += x.base * y.second * z.base;
+          component_force[5] += x.base * y.base * z.second;
+          component_force[6] += x.third * y.base * z.base;
+          component_force[7] += x.base * y.third * z.base;
+          component_force[8] += x.base * y.base * z.third;
+        }}
+      }}
+      __syncthreads();
+    }}
+  }}
+
+  const unsigned warp = lane / 32U;
+  const unsigned warp_lane = lane % 32U;
+#pragma unroll
+  for (unsigned slot = 0U; slot < 9U; ++slot) {{
+    double value = component_force[slot];
+#pragma unroll
+    for (unsigned offset = 16U; offset != 0U; offset /= 2U) {{
+      value += __shfl_down_sync(0xffffffffU, value, offset);
+    }}
+    if (warp_lane == 0U) shared.warp_sums[warp][slot] = value;
+  }}
+  __syncthreads();
+  if (lane < 9U) {{
+    double value = 0.0;
+#pragma unroll
+    for (unsigned source_warp = 0U;
+         source_warp < kGeneratedDpppWarpCount;
+         ++source_warp) {{
+      value += shared.warp_sums[source_warp][lane];
+    }}
+    shared.warp_sums[0][lane] = value;
+    if (value != 0.0) {{
+      const unsigned center = lane / 3U;
+      const unsigned coordinate = lane % 3U;
+      atomicAdd(
+          forces + static_cast<std::size_t>(shared.task.atom[center]) * 3U +
+              coordinate,
+          value);
+    }}
+  }}
+  __syncthreads();
+  if (lane < 3U) {{
+    const double fourth_value =
+        -shared.warp_sums[0][lane] - shared.warp_sums[0][3U + lane] -
+        shared.warp_sums[0][6U + lane];
+    if (fourth_value != 0.0) {{
+      atomicAdd(
+          forces + static_cast<std::size_t>(shared.task.atom[3]) * 3U + lane,
+          fourth_value);
+    }}
+  }}
+}}
+
+extern "C" __global__ {kernel_qualifier}
+void generated_dppp_shell_class_force_rhf_kernel(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    std::size_t task_count) {{
+  if (blockIdx.x >= task_count) return;
+  generated_dppp_rys4_component_lane_task<false>(
+      tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+      atom_positions, screening_tolerance, schwarz_bounds, density, forces,
+      static_cast<std::size_t>(blockIdx.x));
+}}
+
+extern "C" __global__ {kernel_qualifier}
+void generated_dppp_shell_class_force_uhf_kernel(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    std::size_t task_count) {{
+  if (blockIdx.x >= task_count) return;
+  generated_dppp_rys4_component_lane_task<true>(
+      tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+      atom_positions, screening_tolerance, schwarz_bounds, density, forces,
+      static_cast<std::size_t>(blockIdx.x));
+}}
+
+template <bool Unrestricted>
+__device__ __forceinline__ void generated_dppp_rys4_component_lane_persistent(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    const std::uint32_t* task_offset,
+    const std::uint32_t* task_count,
+    std::uint32_t* task_head) {{
+  __shared__ std::uint32_t shared_task_index;
+  while (true) {{
+    if (threadIdx.x == 0U) shared_task_index = atomicAdd(task_head, 1U);
+    __syncthreads();
+    const std::uint32_t task_index = shared_task_index;
+    if (task_index >= *task_count) return;
+    generated_dppp_rys4_component_lane_task<Unrestricted>(
+        tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+        atom_positions, screening_tolerance, schwarz_bounds, density, forces,
+        static_cast<std::size_t>(*task_offset + task_index));
+    __syncthreads();
+  }}
+}}
+
+extern "C" __global__ {kernel_qualifier}
+void generated_dppp_shell_class_force_rhf_persistent_kernel(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    const std::uint32_t* task_offset,
+    const std::uint32_t* task_count,
+    std::uint32_t* task_head) {{
+  generated_dppp_rys4_component_lane_persistent<false>(
+      tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
+      atom_positions, screening_tolerance, schwarz_bounds, density, forces,
+      task_offset, task_count, task_head);
+}}
+
+extern "C" __global__ {kernel_qualifier}
+void generated_dppp_shell_class_force_uhf_persistent_kernel(
+    const GeneratedDpppShellTask* tasks,
+    const GeneratedDpppPrimitivePairData* primitive_pairs,
+    const std::int64_t* primitive_pair_offsets,
+    const double* ao_coefficients,
+    const GeneratedDpppVec3* atom_positions,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    const std::uint32_t* task_offset,
+    const std::uint32_t* task_count,
+    std::uint32_t* task_head) {{
+  generated_dppp_rys4_component_lane_persistent<true>(
       tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
       atom_positions, screening_tolerance, schwarz_bounds, density, forces,
       task_offset, task_count, task_head);
@@ -4212,7 +4704,21 @@ void generated_dppp_shell_class_force_uhf_persistent_kernel(
       task_offset, task_count, task_head);
 }}
 """
-    if plan.schedule.kind == ScheduleKind.PACKED_TASKS:
+    if (
+        plan.schedule.kind == ScheduleKind.COMPONENT_LANES
+        and plan.kernel.integral.recurrence == "rys4"
+    ):
+        force_marker = """template <bool Unrestricted>
+__device__ __forceinline__ void generated_dppp_shell_class_force_task("""
+        force_begin = source.find(force_marker)
+        if force_begin < 0:
+            raise RuntimeError("generated force task marker changed unexpectedly")
+        source = source[:force_begin] + _emit_rys_component_lane_force_consumer_cuda(
+            spec,
+            plan,
+            minimum_blocks_per_sm,
+        )
+    elif plan.schedule.kind == ScheduleKind.PACKED_TASKS:
         force_marker = """template <bool Unrestricted>
 __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
         force_begin = source.find(force_marker)
@@ -4233,7 +4739,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
         force_begin = source.find(force_marker)
         if force_begin < 0:
             raise RuntimeError("generated force task marker changed unexpectedly")
-        if plan.kernel.integral.recurrence == "rys3":
+        if plan.kernel.integral.recurrence in ("rys3", "rys4"):
             force_consumer = _emit_rys_thread_force_consumer_cuda(
                 spec,
                 plan,

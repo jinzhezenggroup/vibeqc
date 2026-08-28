@@ -37,7 +37,7 @@ _THREAD_TASK_FORCE_EMITTERS = {
     "psps": (PSPS_BLOCK_THREADS, emit_psps_weighted_force_cuda),
 }
 
-_SUPPORTED_RECURRENCES = frozenset(("subset_wick", "rys3"))
+_SUPPORTED_RECURRENCES = frozenset(("subset_wick", "rys3", "rys4"))
 
 _PRODUCTION_PRELUDE = r"""#include "scf/generated_shell_task.hpp"
 
@@ -120,6 +120,15 @@ class KernelSelection:
             raise ValueError(
                 "production rys3 recurrence is force-only and cannot include "
                 "the Fock consumer"
+            )
+        if self.recurrence == "rys4" and (
+            self.spec.name != "dppp"
+            or self.schedule.kind != ScheduleKind.COMPONENT_LANES
+            or self.schedule.block_threads < self.spec.component_count
+        ):
+            raise ValueError(
+                "production rys4 currently requires a dppp component-lane "
+                "schedule with one lane per Cartesian component"
             )
         if self.resident_force_recurrence is not None:
             if self.spec.name != "ppps":
