@@ -430,7 +430,7 @@ def main() -> None:
         accelerator = cuda_accelerator_metadata(cp)
     except (ImportError, RuntimeError):
         accelerator = None
-    gate_met = any(
+    current_run_gate_met = any(
         workload["profiled_execution"]["summary"]["decision_gate"]["met"]
         for workload in workloads
     )
@@ -439,9 +439,27 @@ def main() -> None:
         for workload in workloads
     )
     comparisons = []
+    baseline_gate_met: bool | None = None
+    baseline_validation_passed: bool | None = None
     if args.comparison_baseline is not None:
         baseline = json.loads(args.comparison_baseline.read_text(encoding="utf-8"))
         comparisons = candidate_comparisons(baseline, workloads)
+        baseline_decision = baseline.get("decision", {})
+        baseline_gate_met = bool(
+            baseline_decision.get("any_workload_met_optimization_gate", False)
+        )
+        baseline_validation_passed = bool(
+            baseline_decision.get("all_safety_validations_passed", False)
+        )
+    # A masked-solver candidate has no provider records of its own. Its
+    # eligibility therefore comes from the provider measurement being compared,
+    # while its own records still prove convergence and timing behavior.
+    effective_gate_met = (
+        baseline_gate_met if baseline_gate_met is not None else current_run_gate_met
+    )
+    effective_validation_passed = validation_passed and (
+        baseline_validation_passed if baseline_validation_passed is not None else True
+    )
     candidate_improves_endpoint = any(
         comparison["candidate_improves_endpoint"] for comparison in comparisons
     )
@@ -450,7 +468,7 @@ def main() -> None:
             "reject the measured candidate because it did not improve any "
             "overlapping endpoint"
         )
-    elif gate_met:
+    elif effective_gate_met:
         decision_reason = (
             "the measurement gate permits candidate evaluation; promotion still "
             "requires a measured endpoint win and regression gates"
@@ -485,11 +503,17 @@ def main() -> None:
         "workloads": workloads,
         "candidate_comparisons": comparisons,
         "decision": {
-            "all_safety_validations_passed": validation_passed,
-            "any_workload_met_optimization_gate": gate_met,
-            "evaluate_scheduler_candidates": validation_passed and gate_met,
+            "all_safety_validations_passed": effective_validation_passed,
+            "current_run_any_workload_met_optimization_gate": (current_run_gate_met),
+            "baseline_met_optimization_gate": baseline_gate_met,
+            "any_workload_met_optimization_gate": effective_gate_met,
+            "evaluate_scheduler_candidates": (
+                effective_validation_passed and effective_gate_met
+            ),
             "promote_scheduler_change": (
-                validation_passed and candidate_improves_endpoint
+                effective_validation_passed
+                and effective_gate_met
+                and candidate_improves_endpoint
             ),
             "reason": decision_reason,
         },
