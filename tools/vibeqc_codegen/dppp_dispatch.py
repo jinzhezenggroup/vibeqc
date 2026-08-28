@@ -2588,18 +2588,19 @@ void generated_dppp_shell_class_force_uhf_persistent_kernel(
 """
 
 
-def _emit_rys4_uniform_warp_force_consumer_cuda(
+def _emit_rys_uniform_warp_force_consumer_cuda(
     spec: ShellClassSpec,
     plan: FusedShellPlan,
     minimum_blocks_per_sm: int,
 ) -> str:
-    """Emit 32 quartets across eight component-uniform warps.
+    """Emit 32 fixed-root quartets across eight component-uniform warps.
 
     The logical task coordinate is the hardware lane within each warp and the
     logical component coordinate is the warp ordinal.  Consequently, every
     hardware warp follows one straight-line recurrence slice for 32 independent
-    shell quartets, matching the execution geometry of GPU4PySCF's ``2111``
-    direct-IP1 worker without importing its implementation.
+    shell quartets.  This reuses the accepted DPPP execution geometry for other
+    fixed-root classes whose scalar whole-task program exceeds the register
+    file.
 
     Unlike the older independent-subgroup prototype, all 256 threads advance a
     32-task batch in lockstep.  Primitive-pair counts may differ between VibeQC
@@ -2610,15 +2611,18 @@ def _emit_rys4_uniform_warp_force_consumer_cuda(
     """
 
     program = build_rys_force_program(spec)
-    if spec != DPPP_SPEC or program.nroots != 4:
-        raise ValueError("uniform-warp Rys4 lowering currently supports dppp only")
-    if plan.kernel.integral.recurrence != "rys4":
-        raise ValueError("uniform-warp DPPP lowering requires the Rys4 recurrence")
+    recurrence = f"rys{program.nroots}"
+    if program.nroots not in (3, 4):
+        raise ValueError("uniform-warp lowering requires three or four Rys roots")
+    if plan.kernel.integral.recurrence != recurrence:
+        raise ValueError(
+            f"uniform-warp lowering for {spec.name} requires {recurrence}"
+        )
     if plan.schedule.kind != ScheduleKind.SUBGROUP_TASKS:
-        raise ValueError("uniform-warp Rys4 lowering requires subgroup tasks")
+        raise ValueError("uniform-warp Rys lowering requires subgroup tasks")
     if plan.schedule.block_threads != 256 or plan.schedule.subgroup_lanes != 8:
         raise ValueError(
-            "uniform-warp Rys4 lowering requires 256 threads and eight lanes "
+            "uniform-warp Rys lowering requires 256 threads and eight lanes "
             "per quartet"
         )
 
@@ -2628,7 +2632,7 @@ def _emit_rys4_uniform_warp_force_consumer_cuda(
         spec.component_count + component_lanes - 1
     ) // component_lanes
     if task_count != 32:
-        raise ValueError("uniform-warp Rys4 lowering requires 32 tasks per block")
+        raise ValueError("uniform-warp Rys lowering requires 32 tasks per block")
 
     task_component_setup = _generic_task_component_setup(spec).replace(
         "shared.task", "shared.tasks[sq]"
@@ -2657,15 +2661,24 @@ def _emit_rys4_uniform_warp_force_consumer_cuda(
         break;"""
         )
     root_switch = "\n".join(root_cases)
-    roots_cuda = emit_rys4_roots_cuda(
-        symbol_prefix="generated_dppp_rys4_uniform_warp"
+    roots_symbol = f"generated_dppp_rys{program.nroots}_uniform_warp"
+    roots_cuda = (
+        emit_rys3_roots_cuda(symbol_prefix=roots_symbol)
+        if program.nroots == 3
+        else emit_rys4_roots_cuda(symbol_prefix=roots_symbol)
     )
+    ket_difference_loads = ""
+    if spec.angular[3] > 0:
+        ket_difference_loads = """      const double cdx = primitive.cdx;
+      const double cdy = primitive.cdy;
+      const double cdz = primitive.cdz;
+"""
     kernel_qualifier = (
         "__launch_bounds__(kGeneratedDpppBlockThreads, "
         f"{minimum_blocks_per_sm})"
     )
 
-    return roots_cuda + f"""
+    source = roots_cuda + f"""
 constexpr unsigned kGeneratedDpppRys4TaskCount = {task_count}U;
 constexpr unsigned kGeneratedDpppRys4ComponentLanes = {component_lanes}U;
 constexpr unsigned kGeneratedDpppRys4ComponentsPerLane =
@@ -2708,7 +2721,7 @@ struct GeneratedDpppRys4UniformBatch {{
   GeneratedDpppVec3 positions[kGeneratedDpppRys4TaskCount][4];
   GeneratedDpppRys4UniformPrimitive
       primitive[kGeneratedDpppRys4TaskCount];
-  double roots_weights[8][kGeneratedDpppRys4TaskCount];
+  double roots_weights[{2 * program.nroots}][kGeneratedDpppRys4TaskCount];
   double force_partials[9][kGeneratedDpppRys4ComponentLanes]
                        [kGeneratedDpppRys4TaskCount];
   unsigned component_activity[kGeneratedDpppRys4ComponentLanes]
@@ -2904,7 +2917,7 @@ __device__ __noinline__ void generated_dppp_rys4_uniform_warp_batch(
           first_pair.product_center.z - second_pair.product_center.z;
       const double rho = primitive.p * primitive.q /
           (primitive.p + primitive.q);
-      generated_dppp_rys4_uniform_warp_roots(
+      {roots_symbol}_roots(
           rho * (primitive.dx * primitive.dx +
                  primitive.dy * primitive.dy +
                  primitive.dz * primitive.dz),
@@ -2927,11 +2940,10 @@ __device__ __noinline__ void generated_dppp_rys4_uniform_warp_batch(
       const double abx = primitive.abx;
       const double aby = primitive.aby;
       const double abz = primitive.abz;
-      const double cdx = primitive.cdx;
-      const double cdy = primitive.cdy;
-      const double cdz = primitive.cdz;
+{ket_difference_loads}
 #pragma unroll
-      for (unsigned root_index = 0U; root_index < 4U; ++root_index) {{
+      for (unsigned root_index = 0U;
+           root_index < {program.nroots}U; ++root_index) {{
         const double root = shared.roots_weights[2U * root_index][sq];
         const double weighted_root =
             shared.roots_weights[2U * root_index + 1U][sq] *
@@ -3120,6 +3132,11 @@ void generated_dppp_shell_class_force_uhf_persistent_kernel(
       task_offset, task_count, task_head);
 }}
 """
+    if program.nroots == 3:
+        # Keep generated identifiers truthful without perturbing the already
+        # accepted DPPP Rys4 source or its resource profile.
+        return source.replace("Rys4", "Rys3").replace("rys4", "rys3")
+    return source
 
 
 def _emit_ppps_resident_bra_rys3_force_consumer_cuda(
@@ -5392,8 +5409,8 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
         force_begin = source.find(force_marker)
         if force_begin < 0:
             raise RuntimeError("generated force task marker changed unexpectedly")
-        if plan.kernel.integral.recurrence == "rys4":
-            force_consumer = _emit_rys4_uniform_warp_force_consumer_cuda(
+        if plan.kernel.integral.recurrence in ("rys3", "rys4"):
+            force_consumer = _emit_rys_uniform_warp_force_consumer_cuda(
                 spec,
                 plan,
                 minimum_blocks_per_sm,
@@ -5407,23 +5424,30 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
         source = source[:force_begin] + force_consumer
     if KernelConsumer.FOCK in plan.kernel.integral.consumers:
         fock_plan = plan
-        if (
-            plan.kernel.integral.recurrence == "rys4"
-            and plan.schedule.kind == ScheduleKind.SUBGROUP_TASKS
+        if plan.schedule.kind == ScheduleKind.SUBGROUP_TASKS and (
+            plan.kernel.integral.recurrence in ("rys3", "rys4")
         ):
-            # The new schedule is a force-only experiment.  Keep the measured
-            # DPPP value path byte-for-byte on its accepted 192 component-lane
-            # mapping so an endpoint result isolates the force architecture.
+            # Uniform warps are a force-only architecture experiment.  Keep
+            # the accepted value path on its original component-lane mapping
+            # so an endpoint result isolates the force architecture.
+            value_state_count = math.comb(
+                plan.kernel.integral.value_coulomb_order + 3, 3
+            )
+            fock_block_threads = (
+                max(spec.component_count, value_state_count) + 31
+            ) // 32 * 32
             fock_schedule = ScheduleIR(
                 kind=ScheduleKind.COMPONENT_LANES,
-                block_threads=192,
+                block_threads=fock_block_threads,
                 component_tile=spec.component_count,
                 tasks_per_warp=1,
                 shared_coulomb=True,
                 pair_orientation=plan.schedule.pair_orientation,
                 pair_storage=plan.schedule.pair_storage,
                 unroll_pair_terms=plan.schedule.unroll_pair_terms,
-                minimum_blocks_per_sm=2,
+                minimum_blocks_per_sm=(
+                    2 if plan.kernel.integral.recurrence == "rys4" else 0
+                ),
                 warp_size=plan.schedule.warp_size,
             )
             fock_plan = build_fused_shell_plan(

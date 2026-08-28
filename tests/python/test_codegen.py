@@ -730,6 +730,34 @@ def test_dppp_rys4_uniform_warps_advance_32_quartets_per_block():
     assert "GeneratedDpppSubgroupFockStorage" not in mixed_source
 
 
+def test_dpps_rys3_uniform_warps_split_components_without_scalar_spills():
+    """Reuse the 32-task geometry when one DPPS thread owns too much state."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME["dpps"]
+    schedule = ScheduleIR(
+        kind=ScheduleKind.SUBGROUP_TASKS,
+        block_threads=256,
+        component_tile=spec.component_count,
+        tasks_per_warp=4,
+        shared_coulomb=True,
+        minimum_blocks_per_sm=1,
+    )
+    plan = build_fused_shell_plan(
+        spec,
+        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+        schedule=schedule,
+        recurrence="rys3",
+    )
+    source = emit_shell_class_fused_cuda(spec, plan)
+    assert "kGeneratedDppsRys3TaskCount = 32U" in source
+    assert "kGeneratedDppsRys3ComponentLanes = 8U" in source
+    assert "generated_dpps_rys3_uniform_warp_roots" in source
+    assert "root_index < 3U" in source
+    assert "kGeneratedDppsFockBlockThreads = 64U" in source
+    assert "generated_dpps_rys3_force_task" not in source
+    assert "generated_dpps_subgroup_force_task" not in source
+
+
 @pytest.mark.parametrize(
     ("name", "block_threads", "trr_shape"),
     (
@@ -2040,7 +2068,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     assert '{"ddpp", 17U, 6U, 64U, 3U, 64U}' in header
     assert '{"ddds", 18U, 6U, 64U, 3U, 64U}' in header
     assert '{"dspp", 8U, 4U, 64U, 3U, 54U}' in header
-    assert '{"dpps", 11U, 4U, 64U, 3U, 54U}' in header
+    assert '{"dpps", 11U, 4U, 256U, 3U, 54U}' in header
     assert '{"pppp", 5U, 4U, 96U, 3U, 81U}' in header
     assert '{"psps", 2U, 2U, 32U, 3U, 9U}' in header
     assert '{"ppss", 3U, 2U, 32U, 3U, 9U}' in header
@@ -2667,6 +2695,80 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
         assert_rtx5090_resources(
             result.stdout + result.stderr,
             RTX5090_DPPP_UNIFORM_RYS4_RESOURCE_LIMITS,
+        )
+
+
+def test_dpps_rys3_uniform_warps_compile_without_spills_when_nvcc_is_configured(
+    tmp_path: Path,
+):
+    """Reject the alternative DPPS mapping before spending GPU time on it."""
+
+    nvcc = os.environ.get("VIBEQC_NVCC")
+    if nvcc is None:
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
+    spec = FUSED_SHELL_SPEC_BY_NAME["dpps"]
+    schedule = ScheduleIR(
+        kind=ScheduleKind.SUBGROUP_TASKS,
+        block_threads=256,
+        component_tile=spec.component_count,
+        tasks_per_warp=4,
+        shared_coulomb=True,
+        minimum_blocks_per_sm=1,
+    )
+    plan = build_fused_shell_plan(spec, schedule=schedule, recurrence="rys3")
+    source = tmp_path / "generated_dpps_uniform_warp_rys3.cu"
+    source.write_text(
+        """
+template <unsigned MaximumOrder>
+__device__ __forceinline__ void boys_values(double argument, double* values) {
+  for (unsigned order = 0; order <= MaximumOrder; ++order) {
+    values[order] = 1.0 / (2.0 * static_cast<double>(order) + 1.0 + argument);
+  }
+}
+"""
+        + emit_shell_class_fused_cuda(spec, plan),
+        encoding="utf-8",
+    )
+    cubin = tmp_path / "generated_dpps_uniform_warp_rys3.cubin"
+    result = subprocess.run(
+        [
+            nvcc,
+            "-std=c++17",
+            f"-arch={cuda_architecture}",
+            "-O3",
+            "-cubin",
+            "-Xptxas=-v",
+            str(source),
+            "-o",
+            str(cubin),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=240,
+    )
+    if os.environ.get("VIBEQC_NVCC_VERBOSE"):
+        print(result.stdout + result.stderr)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert cubin.exists()
+    if cuda_architecture == "sm_120":
+        assert_rtx5090_resources(
+            result.stdout + result.stderr,
+            {
+                "generated_dpps_shell_class_force_rhf_kernel": (216, 56, 36360),
+                "generated_dpps_shell_class_force_uhf_kernel": (216, 56, 36360),
+                "generated_dpps_shell_class_force_rhf_persistent_kernel": (
+                    218,
+                    56,
+                    36360,
+                ),
+                "generated_dpps_shell_class_force_uhf_persistent_kernel": (
+                    218,
+                    56,
+                    36360,
+                ),
+            },
         )
 
 

@@ -133,14 +133,20 @@ class KernelSelection:
                 self.schedule.kind == ScheduleKind.COMPONENT_LANES
                 and self.schedule.block_threads >= self.spec.component_count
             )
+            uniform_warps = (
+                self.schedule.kind == ScheduleKind.SUBGROUP_TASKS
+                and self.schedule.block_threads == 256
+                and self.schedule.tasks_per_warp == 4
+                and self.schedule.subgroup_lanes == 8
+            )
             if self.spec.name != "ppps" and (
                 self.spec.name not in _COOPERATIVE_RYS3_SHELLS
-                or not (scalar_thread_tasks or component_lanes)
+                or not (scalar_thread_tasks or component_lanes or uniform_warps)
             ):
                 raise ValueError(
                     "production rys3 currently requires force-only ppps or a "
                     "supported three-root shell using scalar thread tasks or "
-                    "one component lane per Cartesian component"
+                    "a cooperative component mapping"
                 )
         rys4_component_lanes = (
             self.schedule.kind == ScheduleKind.COMPONENT_LANES

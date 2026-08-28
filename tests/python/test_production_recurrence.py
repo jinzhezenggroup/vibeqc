@@ -253,6 +253,28 @@ def test_production_dsps_promotes_scalar_force_but_retains_component_fock():
     assert "generated_sm120_dsps_scalar_thread_fock" not in shard
 
 
+def test_production_dpps_promotes_uniform_force_but_retains_component_fock():
+    """Keep the DPPS force mapping independent of the value consumer."""
+
+    repository_root = Path(__file__).resolve().parents[2]
+    manifest = (
+        repository_root
+        / "tools"
+        / "vibeqc_codegen"
+        / "production_shell_classes.json"
+    )
+    resolved = resolve_production_profile(manifest, "sm_120")
+    selection = next(
+        item for item in resolved.selections if item.spec.name == "dpps"
+    )
+    assert selection.schedule.kind.value == "subgroup_tasks"
+    assert selection.schedule.tasks_per_block == 32
+    shard = emit_profile_shard(resolved, (selection,))
+    assert "kGeneratedSm120DppsRys3TaskCount = 32U" in shard
+    assert "generated_sm120_dpps_shell_class_fock_rhf_kernel" in shard
+    assert "kGeneratedSm120DppsFockBlockThreads = 64U" in shard
+
+
 def test_ppps_resident_option_keeps_ordinary_fock_force_fallback(tmp_path: Path):
     """Emit resident Rys3 beside, rather than instead of, ppps force/Fock."""
 
