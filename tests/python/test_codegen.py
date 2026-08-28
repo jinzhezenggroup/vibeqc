@@ -638,10 +638,13 @@ def test_ppps_rys_recurrence_matches_every_symbolic_component():
                 )
 
 
-def test_dppp_rys4_recurrence_matches_every_symbolic_component():
-    """Lock the four-root DPPP oracle before CUDA performance promotion."""
+@pytest.mark.parametrize("name", ("dppp", "dpdp", "dpds"))
+def test_cooperative_rys4_recurrence_matches_every_symbolic_component(
+    name: str,
+):
+    """Lock each promoted four-root recurrence against symbolic lowering."""
 
-    spec = FUSED_SHELL_SPEC_BY_NAME["dppp"]
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
     values = factored_dppp_variables(sample_variables())
     for component in spec.components:
         actual = evaluate_rys_component(spec, component, values)
@@ -1445,7 +1448,9 @@ def factored_dppp_variables(values: dict[str, float]) -> dict[str, float]:
     argument = result["rho"] * sum(
         result[f"difference_{axis}"] ** 2 for axis in AXES
     )
-    for order, value in enumerate(boys_values(argument, 7)):
+    # Order-six shell quartets such as DPDP require the seventh Boys moment
+    # for their first derivative oracle.
+    for order, value in enumerate(boys_values(argument, 8)):
         result[f"boys_{order}"] = value
     return result
 
@@ -1772,7 +1777,8 @@ def test_tiled_component_schedule_covers_force_fock_and_benchmark_oracle():
     source = emit_shell_class_fused_cuda(DPPP_SPEC, plan)
     assert "kGeneratedDpppBlockThreads = 64U" in source
     assert source.count("component_tile_begin += 64U") == 2
-    assert source.count("state += kGeneratedDpppBlockThreads") == 2
+    assert source.count("state += kGeneratedDpppBlockThreads") == 1
+    assert source.count("state += kGeneratedDpppFockBlockThreads") == 1
     assert "generated_dppp_component_gradient<true>" in source
     assert "generated_dppp_component_value<true>" in source
 
@@ -2092,11 +2098,11 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
         assert b"\0" not in first_path.read_bytes()
     header = emit_registry_header(selections)
     assert '{"dppp", 12U, 5U, 256U, 3U, 162U}' in header
-    assert '{"dpds", 13U, 5U, 128U, 3U, 108U}' in header
+    assert '{"dpds", 13U, 5U, 256U, 3U, 108U}' in header
     assert '{"ddps", 16U, 5U, 128U, 3U, 108U}' in header
     assert '{"ppps", 4U, 3U, 32U, 3U, 27U}' in header
     assert '{"dsps", 7U, 3U, 32U, 3U, 18U}' in header
-    assert '{"dpdp", 14U, 6U, 64U, 3U, 64U}' in header
+    assert '{"dpdp", 14U, 6U, 352U, 3U, 324U}' in header
     assert '{"dddp", 19U, 7U, 64U, 2U, 64U}' in header
     assert '{"dpss", 10U, 3U, 32U, 2U, 18U}' in header
     assert '{"dsds", 9U, 4U, 64U, 3U, 36U}' in header
@@ -2679,6 +2685,115 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
                     168,
                     160,
                     1024,
+                ),
+            },
+        )
+
+
+@pytest.mark.parametrize(
+    ("name", "schedule", "ordinary_limit", "persistent_limit"),
+    (
+        (
+            "dpdp",
+            ScheduleIR(
+                kind=ScheduleKind.COMPONENT_LANES,
+                block_threads=352,
+                component_tile=324,
+                tasks_per_warp=1,
+                shared_coulomb=True,
+                pair_orientation=PairOrientation.SWAPPED,
+                pair_storage=PairStorage.RECOMPUTED,
+                unroll_pair_terms=False,
+                minimum_blocks_per_sm=1,
+            ),
+            (168, 200, 1312),
+            (168, 200, 1320),
+        ),
+        (
+            "dpds",
+            ScheduleIR(
+                kind=ScheduleKind.SUBGROUP_TASKS,
+                block_threads=256,
+                component_tile=108,
+                tasks_per_warp=4,
+                shared_coulomb=True,
+                pair_orientation=PairOrientation.CANONICAL,
+                pair_storage=PairStorage.MATERIALIZED,
+                unroll_pair_terms=True,
+                minimum_blocks_per_sm=1,
+            ),
+            (254, 112, 36872),
+            (254, 112, 36872),
+        ),
+    ),
+)
+def test_batched_rys4_hot_classes_compile_without_spills_when_nvcc_is_configured(
+    tmp_path: Path,
+    name: str,
+    schedule: ScheduleIR,
+    ordinary_limit: tuple[int, int, int],
+    persistent_limit: tuple[int, int, int],
+):
+    """Lock the sm_120 resource envelope for batched Rys4 promotions."""
+
+    nvcc = os.environ.get("VIBEQC_NVCC")
+    if nvcc is None:
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
+    plan = build_fused_shell_plan(
+        spec,
+        schedule=schedule,
+        recurrence="rys4",
+    )
+    source = tmp_path / f"generated_{name}_promoted_rys4.cu"
+    source.write_text(
+        """
+template <unsigned MaximumOrder>
+__device__ __forceinline__ void boys_values(double argument, double* values) {
+  for (unsigned order = 0; order <= MaximumOrder; ++order) {
+    values[order] = 1.0 / (2.0 * static_cast<double>(order) + 1.0 + argument);
+  }
+}
+"""
+        + emit_shell_class_fused_cuda(spec, plan),
+        encoding="utf-8",
+    )
+    cubin = tmp_path / f"generated_{name}_promoted_rys4.cubin"
+    result = subprocess.run(
+        [
+            nvcc,
+            "-std=c++17",
+            f"-arch={cuda_architecture}",
+            "-O3",
+            "-cubin",
+            "-Xptxas=-v",
+            str(source),
+            "-o",
+            str(cubin),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=240,
+    )
+    output = result.stdout + result.stderr
+    if os.environ.get("VIBEQC_NVCC_VERBOSE"):
+        print(output)
+    assert result.returncode == 0, output
+    assert cubin.exists()
+    if cuda_architecture == "sm_120":
+        function_prefix = f"generated_{name}_shell_class_force"
+        assert_rtx5090_resources(
+            output,
+            {
+                f"{function_prefix}_rhf_kernel": ordinary_limit,
+                f"{function_prefix}_uhf_kernel": ordinary_limit,
+                f"{function_prefix}_rhf_persistent_kernel": (
+                    persistent_limit
+                ),
+                f"{function_prefix}_uhf_persistent_kernel": (
+                    persistent_limit
                 ),
             },
         )

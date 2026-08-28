@@ -41,6 +41,7 @@ _SUPPORTED_RECURRENCES = frozenset(("subset_wick", "rys3", "rys4"))
 _COOPERATIVE_RYS3_SHELLS = frozenset(
     ("dpps", "dpss", "dsps", "dspp", "pppp")
 )
+_COOPERATIVE_RYS4_SHELLS = frozenset(("dppp", "dpdp", "dpds"))
 
 _PRODUCTION_PRELUDE = r"""#include "scf/generated_shell_task.hpp"
 
@@ -104,6 +105,7 @@ class KernelSelection:
     tuned: bool = True
     recurrence: str = "subset_wick"
     resident_force_recurrence: str | None = None
+    fock_schedule: ScheduleIR | None = None
 
     def __post_init__(self) -> None:
         if not self.architecture.startswith("sm_"):
@@ -161,14 +163,19 @@ class KernelSelection:
             and self.schedule.subgroup_lanes == 8
         )
         if self.recurrence == "rys4" and (
-            self.spec.name != "dppp"
+            self.spec.name not in _COOPERATIVE_RYS4_SHELLS
             or not (rys4_component_lanes or rys4_uniform_warps)
         ):
             raise ValueError(
-                "production rys4 requires dppp with either one component "
-                "lane per Cartesian component or 32 quartets across eight "
-                "uniform component warps"
+                "production rys4 requires a supported shell with either "
+                "one component lane per Cartesian component or 32 quartets "
+                "across eight uniform component warps"
             )
+        if (
+            self.fock_schedule is not None
+            and KernelConsumer.FOCK not in self.consumers
+        ):
+            raise ValueError("a separate Fock schedule requires a Fock consumer")
         if self.resident_force_recurrence is not None:
             if self.spec.name != "ppps":
                 raise ValueError(
@@ -437,6 +444,10 @@ def _recurrence_from_row(
         raise ValueError(
             f"{name} does not support the production rys3 recurrence"
         )
+    if recurrence == "rys4" and name not in _COOPERATIVE_RYS4_SHELLS:
+        raise ValueError(
+            f"{name} does not support the production rys4 recurrence"
+        )
     return recurrence
 
 
@@ -525,6 +536,25 @@ def _selections_from_rows(
                 recurrence=recurrence,
                 target=target,
             )
+        fock_schedule_payload = row.get("fock_schedule")
+        if fock_schedule_payload is None:
+            fock_schedule = None
+        else:
+            if KernelConsumer.FOCK not in consumers:
+                raise ValueError(
+                    f"{name} fock_schedule requires a Fock consumer"
+                )
+            fock_schedule = _schedule_from_payload(fock_schedule_payload)
+            # A fixed-root force promotion may use a very different execution
+            # geometry. Validate the retained value path independently so the
+            # manifest cannot silently retune Fock or inherit force recurrence.
+            build_fused_shell_plan(
+                spec,
+                consumers=(KernelConsumer.FOCK,),
+                schedule=fock_schedule,
+                recurrence="subset_wick",
+                target=target,
+            )
         selections.append(
             KernelSelection(
                 architecture=architecture,
@@ -535,6 +565,7 @@ def _selections_from_rows(
                 tuned=tuned,
                 recurrence=recurrence,
                 resident_force_recurrence=resident_force_recurrence,
+                fock_schedule=fock_schedule,
             )
         )
         seen.add(name)
@@ -978,7 +1009,13 @@ def emit_production_shard(
                 schedule=selection.schedule,
                 recurrence=selection.recurrence,
             )
-            body.append(emit_shell_class_fused_cuda(selection.spec, plan))
+            body.append(
+                emit_shell_class_fused_cuda(
+                    selection.spec,
+                    plan,
+                    fock_schedule=selection.fock_schedule,
+                )
+            )
         body.append(_launch_wrapper(selection.spec))
         if KernelConsumer.FOCK in selection.consumers:
             body.append(_fock_launch_wrapper(selection.spec))
@@ -1364,7 +1401,11 @@ def emit_profile_shard(
                 recurrence=selection.recurrence,
                 target=profile.target,
             )
-            source = emit_shell_class_fused_cuda(selection.spec, plan)
+            source = emit_shell_class_fused_cuda(
+                selection.spec,
+                plan,
+                fock_schedule=selection.fock_schedule,
+            )
         force_symbol = (
             f"vibeqc_launch_{identifier}_generated_{selection.spec.name}"
         )

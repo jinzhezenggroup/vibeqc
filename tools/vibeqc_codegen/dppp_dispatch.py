@@ -378,7 +378,7 @@ def _emit_shell_class_fock_cuda(
         if plan.schedule.kind == ScheduleKind.TILED_COMPONENTS:
             coulomb_setup = """          for (unsigned state = lane;
                state < kGeneratedDpppFockCoulombStateCount;
-               state += kGeneratedDpppBlockThreads) {
+               state += kGeneratedDpppFockBlockThreads) {
             shared.coulomb[state] = generated_dppp_coulomb(
                 generated_dppp_coulomb_states[state], shared.primitive);
           }
@@ -4346,6 +4346,8 @@ __device__ __forceinline__ void generated_dppp_subgroup_fock_persistent(
 def emit_shell_class_fused_cuda(
     spec: ShellClassSpec,
     plan: FusedShellPlan | None = None,
+    *,
+    fock_schedule: ScheduleIR | None = None,
 ) -> str:
     """Emit a complete cooperative force kernel from a shell specification.
 
@@ -5427,7 +5429,19 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
         source = source[:force_begin] + force_consumer
     if KernelConsumer.FOCK in plan.kernel.integral.consumers:
         fock_plan = plan
-        if plan.schedule.kind == ScheduleKind.SUBGROUP_TASKS and (
+        if fock_schedule is not None:
+            # Force and Fock need not share an execution geometry. In
+            # particular, high-component Rys4 force kernels can require a
+            # cooperative mapping while the accepted value path remains a
+            # compact tiled worker. Keep its subset/Wick recurrence explicit.
+            fock_plan = build_fused_shell_plan(
+                spec,
+                consumers=(KernelConsumer.FOCK,),
+                schedule=fock_schedule,
+                recurrence="subset_wick",
+                target=plan.kernel.target,
+            )
+        elif plan.schedule.kind == ScheduleKind.SUBGROUP_TASKS and (
             plan.kernel.integral.recurrence in ("rys3", "rys4")
         ):
             # Uniform warps are a force-only architecture experiment.  Keep

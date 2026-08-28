@@ -394,6 +394,37 @@ force errors are `1.55e-11 Eh` and `3.15e-8 Eh/bohr`; the 96- and 192-AO
 checks both improve by about 1.6%. Complete evidence is retained in the
 [batched DSPP/DPSS Rys3 artifact](../benchmarks/results/rtx5090-31c3cd7-issue-41-dspp-dpss-rys3.json).
 
+### Batched DPDP and DPDS Rys4 promotion
+
+DPDP and DPDS were screened in the same batch so four PTXAS candidates and
+three resource-safe isolated candidates could share one production build,
+endpoint, profile, and pair of small-system checks. Force and Fock now have
+independently selectable schedules: DPDP uses a 352-thread component-lane Rys4
+force worker while retaining its 64-thread tiled Fock worker, and DPDS uses 32
+tasks across eight uniform component warps while retaining its 128-thread
+component-lane Fock worker. This separation also fixed the tiled Fock Coulomb
+initialization stride, which must use the Fock block size rather than the
+unrelated force block size.
+
+The isolated DPDP force gate improves from 1308.244630 ms to 399.939026 ms
+(`3.271x`) with a `7.28e-12 Eh/bohr` maximum force difference. DPDS improves
+from 152.188477 ms to 15.383649 ms (`9.893x`) with a
+`6.38e-12 Eh/bohr` difference; its component-lane Rys4 alternative reached
+109.091446 ms and was not selected. DPDP compiles with 168 registers, a 200 B
+stack, 1,312--1,320 B shared memory, and no spills. DPDS uses 254 registers, a
+112 B stack, 36,872 B shared memory, and no spills. A DPDP uniform-warp mapping
+was rejected before endpoint work because it compiled with 255 registers, a
+1,048 B stack, and roughly 6.3/6.7 KiB of helper spill stores/loads.
+
+In the three-replay 384-AO profile, DPDP falls from 114.339 ms to 35.610 ms and
+DPDS from 63.136 ms to 23.361 ms, jointly saving 118.505 ms. Total
+two-electron force device time falls from 1256.506 ms to 1137.411 ms. The
+five-repeat endpoint correspondingly improves from 2.684645 s to 2.565502 s
+while GPU4PySCF measures 2.134699 s, leaving a `1.202x` ratio. Maximum energy
+and force errors are `1.46e-11 Eh` and `3.15e-8 Eh/bohr`; the 96- and 192-AO
+checks improve by 3.50% and 5.15%. Complete evidence is retained in the
+[batched DPDP/DPDS Rys4 artifact](../benchmarks/results/rtx5090-dcff605-issue-41-dpdp-dpds-rys4.json).
+
 ## Architecture autotuning
 
 `tools/vibeqc_codegen/autotune.py` emits every CUDA-supported schedule variant
@@ -678,5 +709,5 @@ python -m pytest tests/python/test_codegen.py -q -s
    retain endpoint rejection as a normal outcome.
 5. Generalize `IntegralIR` from first forces to explicit second/higher nuclear
    derivative orders before claiming Hessian automation.
-6. Consider per-consumer production schedules only after an endpoint workload
-   shows that the measured `dpps` Fock/force orientation tradeoff is material.
+6. Extend the per-consumer production schedule support only when an endpoint
+   workload demonstrates a material Fock/force execution-geometry tradeoff.
