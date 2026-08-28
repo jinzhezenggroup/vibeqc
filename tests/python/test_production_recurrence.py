@@ -157,7 +157,9 @@ def test_rys4_manifest_rejects_noncooperative_schedule(tmp_path: Path):
     )
     manifest.write_text(json.dumps(payload), encoding="utf-8")
 
-    with pytest.raises(ValueError, match="production rys4 requires dppp"):
+    with pytest.raises(
+        ValueError, match="production rys4 requires a supported shell"
+    ):
         load_production_kernel_selections(manifest, "sm_120")
 
 
@@ -176,7 +178,9 @@ def test_existing_production_rows_default_to_subset_wick():
     recurrences = {
         selection.spec.name: selection.recurrence for selection in selections
     }
-    assert recurrences["dppp"] == "rys4"
+    assert all(
+        recurrences[name] == "rys4" for name in ("dppp", "dpdp", "dpds")
+    )
     assert all(
         recurrences[name] == "rys3"
         for name in ("dpps", "dpss", "dsps", "dspp", "pppp")
@@ -185,7 +189,16 @@ def test_existing_production_rows_default_to_subset_wick():
         selection.recurrence == "subset_wick"
         for selection in selections
         if selection.spec.name
-        not in {"dppp", "dpps", "dpss", "dsps", "dspp", "pppp"}
+        not in {
+            "dppp",
+            "dpdp",
+            "dpds",
+            "dpps",
+            "dpss",
+            "dsps",
+            "dspp",
+            "pppp",
+        }
     )
     assert next(
         selection for selection in selections if selection.spec.name == "ppps"
@@ -285,6 +298,72 @@ def test_production_rys3_uniform_force_retains_component_fock(
     assert (
         f"kGeneratedSm120{class_name}FockBlockThreads = "
         f"{fock_block_threads}U" in shard
+    )
+
+
+@pytest.mark.parametrize(
+    (
+        "shell_class",
+        "force_schedule",
+        "force_block_threads",
+        "fock_schedule",
+        "fock_block_threads",
+    ),
+    (
+        ("dpdp", "component_lanes", 352, "tiled_components", 64),
+        ("dpds", "subgroup_tasks", 256, "component_lanes", 128),
+    ),
+)
+def test_production_rys4_force_retains_explicit_fock_schedule(
+    shell_class: str,
+    force_schedule: str,
+    force_block_threads: int,
+    fock_schedule: str,
+    fock_block_threads: int,
+):
+    """Keep Rys4 force promotions independent of accepted Fock geometry."""
+
+    repository_root = Path(__file__).resolve().parents[2]
+    manifest = (
+        repository_root
+        / "tools"
+        / "vibeqc_codegen"
+        / "production_shell_classes.json"
+    )
+    resolved = resolve_production_profile(manifest, "sm_120")
+    selection = next(
+        item for item in resolved.selections if item.spec.name == shell_class
+    )
+    assert selection.recurrence == "rys4"
+    assert selection.schedule.kind.value == force_schedule
+    assert selection.schedule.block_threads == force_block_threads
+    assert selection.fock_schedule is not None
+    assert selection.fock_schedule.kind.value == fock_schedule
+    assert selection.fock_schedule.block_threads == fock_block_threads
+
+    shard = emit_profile_shard(resolved, (selection,))
+    class_name = shell_class[0].upper() + shell_class[1:]
+    assert (
+        f"kGeneratedSm120{class_name}BlockThreads = "
+        f"{force_block_threads}U" in shard
+    )
+    assert (
+        f"kGeneratedSm120{class_name}FockBlockThreads = "
+        f"{fock_block_threads}U" in shard
+    )
+    assert f"generated_sm120_{shell_class}_rys4" in shard
+    assert f"generated_sm120_{shell_class}_shell_class_fock_rhf_kernel" in shard
+    fock_fragment = shard.split(
+        "/** Coefficient-only pair term used by the SCF Fock recurrence. */",
+        maxsplit=1,
+    )[1]
+    assert (
+        f"state += kGeneratedSm120{class_name}FockBlockThreads"
+        in fock_fragment
+    )
+    assert (
+        f"state += kGeneratedSm120{class_name}BlockThreads"
+        not in fock_fragment
     )
 
 

@@ -40,7 +40,19 @@
         {
           "shell_class": "dpdp",
           "consumers": ["fock", "force"],
+          "recurrence": "rys4",
           "schedule": {
+            "kind": "component_lanes",
+            "block_threads": 352,
+            "component_tile": 324,
+            "tasks_per_warp": 1,
+            "shared_coulomb": true,
+            "pair_orientation": "swapped",
+            "pair_storage": "recomputed",
+            "unroll_pair_terms": false,
+            "minimum_blocks_per_sm": 1
+          },
+          "fock_schedule": {
             "kind": "tiled_components",
             "block_threads": 64,
             "component_tile": 64,
@@ -140,7 +152,19 @@
         {
           "shell_class": "dpds",
           "consumers": ["fock", "force"],
+          "recurrence": "rys4",
           "schedule": {
+            "kind": "subgroup_tasks",
+            "block_threads": 256,
+            "component_tile": 108,
+            "tasks_per_warp": 4,
+            "shared_coulomb": true,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true,
+            "minimum_blocks_per_sm": 1
+          },
+          "fock_schedule": {
             "kind": "component_lanes",
             "block_threads": 128,
             "component_tile": 108,

@@ -14,6 +14,7 @@ from .shell_spec import ShellClassSpec
 _COOPERATIVE_RYS3_SHELLS = frozenset(
     ("dpps", "dpss", "dsps", "dspp", "pppp")
 )
+_COOPERATIVE_RYS4_SHELLS = frozenset(("dppp", "dpdp", "dpds"))
 
 
 class KernelConsumer(str, Enum):
@@ -60,12 +61,13 @@ class IntegralIR:
                     "ppps or a supported cooperative force shell class"
                 )
         if self.recurrence == "rys4" and (
-            self.spec.name != "dppp"
+            self.spec.name not in _COOPERATIVE_RYS4_SHELLS
             or KernelConsumer.FORCE not in self.consumers
         ):
             raise ValueError(
-                "the direct four-root recurrence requires a dppp force "
-                "consumer; its Fock consumer retains the value recurrence"
+                "the direct four-root recurrence requires a supported "
+                "cooperative force shell; its Fock consumer retains the "
+                "value recurrence"
             )
         if (
             KernelConsumer.FORCE in self.consumers
