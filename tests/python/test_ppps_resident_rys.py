@@ -48,7 +48,15 @@ def test_ppps_resident_bra_source_shape_is_complete():
     assert "generated_ppps_resident_bra_force_rhf_kernel" in source
     assert "generated_ppps_resident_bra_force_uhf_kernel" in source
     assert "-force_0 - force_3 - force_6" in source
-    assert "local_ket += kGeneratedPppsResidentBlockThreads" in source
+    assert "for (unsigned ket_base = 0U;" in source
+    assert "const unsigned local_ket = ket_base + lane;" in source
+    assert "force_0 += __shfl_down_sync" in source
+    assert "force_5 += __shfl_down_sync" in source
+    assert "__shfl_down_sync" in source
+    assert "if ((lane & 31U) == 0U)" in source
+    assert "resident.ket_begin].atom[0]" in source
+    assert "resident.ket_begin].atom[1]" in source
+    assert "local_ket += kGeneratedPppsResidentBlockThreads" not in source
     assert "resident.ket_count > kGeneratedPppsResidentBlockThreads" not in source
     assert source.index("if (resident.ket_count == 0U) return;") < source.index(
         "primitive_pair_offsets[resident.bra_pair]"

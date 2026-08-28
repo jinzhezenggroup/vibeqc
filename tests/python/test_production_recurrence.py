@@ -144,7 +144,7 @@ def test_ppps_resident_option_keeps_ordinary_fock_force_fallback(tmp_path: Path)
     assert "const void* resident_tasks" in source
     assert "const void* ket_tasks" in source
     assert "std::size_t task_count" in source
-    assert "local_ket += kGeneratedPppsResidentBlockThreads" in source
+    assert "ket_base += kGeneratedPppsResidentBlockThreads" in source
     assert "resident.ket_count > kGeneratedPppsResidentBlockThreads" not in source
 
     profile_source = emit_profile_shard(resolved, resolved.selections)
