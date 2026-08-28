@@ -346,6 +346,28 @@ energy and force errors are `1.59e-11 Eh` and `3.15e-8 Eh/bohr`. The 96- and
 The complete resource and timing evidence is retained in the
 [DPPS uniform Rys3 artifact](../benchmarks/results/rtx5090-908bc46-issue-41-dpps-uniform-rys3.json).
 
+### PPPP uniform component warps
+
+PPPP now uses the same 32-task/eight-component-warp force geometry as DPPS.
+This supersedes the earlier component-lane Rys3 experiment, which regressed
+the production PPPP kernel from 99.936 ms to 102.041 ms and was therefore not
+promoted. The new mapping assigns the 81 Cartesian components across eight
+uniform hardware warps while preserving the accepted 96-thread Fock worker.
+
+The isolated force gate improves from 63.000351 ms for component-lane Rys3 to
+10.214315 ms for uniform component warps (`6.168x`) with a `6.12e-12 Eh/bohr`
+maximum force difference. Production kernels use 230--232 registers, an 88 B
+explicit stack, 36,360 B shared memory, and no spills. On the real 384-AO
+profile, PPPP falls from 99.109 ms to 69.975 ms per replay (`1.416x`), saving
+29.134 ms.
+
+The five-repeat endpoint improves from 2.779508 s to 2.751221 s while
+GPU4PySCF measures 2.143309 s, leaving a `1.284x` ratio. Maximum energy and
+force errors are `1.64e-11 Eh` and `3.15e-8 Eh/bohr`. The 96-AO check regresses
+by 0.91%, below the 2% gate, while the 192-AO check improves by 1.31%. Full
+evidence is retained in the
+[PPPP uniform Rys3 artifact](../benchmarks/results/rtx5090-6a9f20d-issue-41-pppp-uniform-rys3.json).
+
 ## Architecture autotuning
 
 `tools/vibeqc_codegen/autotune.py` emits every CUDA-supported schedule variant

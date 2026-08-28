@@ -730,10 +730,15 @@ def test_dppp_rys4_uniform_warps_advance_32_quartets_per_block():
     assert "GeneratedDpppSubgroupFockStorage" not in mixed_source
 
 
-def test_dpps_rys3_uniform_warps_split_components_without_scalar_spills():
-    """Reuse the 32-task geometry when one DPPS thread owns too much state."""
+@pytest.mark.parametrize(
+    ("name", "fock_block_threads"), (("dpps", 64), ("pppp", 96))
+)
+def test_rys3_uniform_warps_split_components_without_scalar_spills(
+    name: str, fock_block_threads: int
+):
+    """Reuse the 32-task geometry when one Rys3 thread owns too much state."""
 
-    spec = FUSED_SHELL_SPEC_BY_NAME["dpps"]
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
     schedule = ScheduleIR(
         kind=ScheduleKind.SUBGROUP_TASKS,
         block_threads=256,
@@ -749,13 +754,17 @@ def test_dpps_rys3_uniform_warps_split_components_without_scalar_spills():
         recurrence="rys3",
     )
     source = emit_shell_class_fused_cuda(spec, plan)
-    assert "kGeneratedDppsRys3TaskCount = 32U" in source
-    assert "kGeneratedDppsRys3ComponentLanes = 8U" in source
-    assert "generated_dpps_rys3_uniform_warp_roots" in source
+    class_name = name[0].upper() + name[1:]
+    assert f"kGenerated{class_name}Rys3TaskCount = 32U" in source
+    assert f"kGenerated{class_name}Rys3ComponentLanes = 8U" in source
+    assert f"generated_{name}_rys3_uniform_warp_roots" in source
     assert "root_index < 3U" in source
-    assert "kGeneratedDppsFockBlockThreads = 64U" in source
-    assert "generated_dpps_rys3_force_task" not in source
-    assert "generated_dpps_subgroup_force_task" not in source
+    assert (
+        f"kGenerated{class_name}FockBlockThreads = {fock_block_threads}U"
+        in source
+    )
+    assert f"generated_{name}_rys3_force_task" not in source
+    assert f"generated_{name}_subgroup_force_task" not in source
 
 
 @pytest.mark.parametrize(
@@ -2069,7 +2078,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     assert '{"ddds", 18U, 6U, 64U, 3U, 64U}' in header
     assert '{"dspp", 8U, 4U, 64U, 3U, 54U}' in header
     assert '{"dpps", 11U, 4U, 256U, 3U, 54U}' in header
-    assert '{"pppp", 5U, 4U, 96U, 3U, 81U}' in header
+    assert '{"pppp", 5U, 4U, 256U, 3U, 81U}' in header
     assert '{"psps", 2U, 2U, 32U, 3U, 9U}' in header
     assert '{"ppss", 3U, 2U, 32U, 3U, 9U}' in header
     assert '{"dsss", 6U, 2U, 32U, 3U, 6U}' in header
@@ -2698,16 +2707,26 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
         )
 
 
-def test_dpps_rys3_uniform_warps_compile_without_spills_when_nvcc_is_configured(
+@pytest.mark.parametrize(
+    ("name", "ordinary_limit", "persistent_limit"),
+    (
+        ("dpps", (216, 56, 36360), (218, 56, 36360)),
+        ("pppp", (230, 88, 36360), (232, 88, 36360)),
+    ),
+)
+def test_rys3_uniform_warps_compile_without_spills_when_nvcc_is_configured(
     tmp_path: Path,
+    name: str,
+    ordinary_limit: tuple[int, int, int],
+    persistent_limit: tuple[int, int, int],
 ):
-    """Reject the alternative DPPS mapping before spending GPU time on it."""
+    """Reject uniform Rys3 mappings that exceed their resource envelope."""
 
     nvcc = os.environ.get("VIBEQC_NVCC")
     if nvcc is None:
         pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
     cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
-    spec = FUSED_SHELL_SPEC_BY_NAME["dpps"]
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
     schedule = ScheduleIR(
         kind=ScheduleKind.SUBGROUP_TASKS,
         block_threads=256,
@@ -2717,7 +2736,7 @@ def test_dpps_rys3_uniform_warps_compile_without_spills_when_nvcc_is_configured(
         minimum_blocks_per_sm=1,
     )
     plan = build_fused_shell_plan(spec, schedule=schedule, recurrence="rys3")
-    source = tmp_path / "generated_dpps_uniform_warp_rys3.cu"
+    source = tmp_path / f"generated_{name}_uniform_warp_rys3.cu"
     source.write_text(
         """
 template <unsigned MaximumOrder>
@@ -2730,7 +2749,7 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
         + emit_shell_class_fused_cuda(spec, plan),
         encoding="utf-8",
     )
-    cubin = tmp_path / "generated_dpps_uniform_warp_rys3.cubin"
+    cubin = tmp_path / f"generated_{name}_uniform_warp_rys3.cubin"
     result = subprocess.run(
         [
             nvcc,
@@ -2753,21 +2772,14 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
     assert result.returncode == 0, result.stdout + result.stderr
     assert cubin.exists()
     if cuda_architecture == "sm_120":
+        function_prefix = f"generated_{name}_shell_class_force"
         assert_rtx5090_resources(
             result.stdout + result.stderr,
             {
-                "generated_dpps_shell_class_force_rhf_kernel": (216, 56, 36360),
-                "generated_dpps_shell_class_force_uhf_kernel": (216, 56, 36360),
-                "generated_dpps_shell_class_force_rhf_persistent_kernel": (
-                    218,
-                    56,
-                    36360,
-                ),
-                "generated_dpps_shell_class_force_uhf_persistent_kernel": (
-                    218,
-                    56,
-                    36360,
-                ),
+                f"{function_prefix}_rhf_kernel": ordinary_limit,
+                f"{function_prefix}_uhf_kernel": ordinary_limit,
+                f"{function_prefix}_rhf_persistent_kernel": persistent_limit,
+                f"{function_prefix}_uhf_persistent_kernel": persistent_limit,
             },
         )
 

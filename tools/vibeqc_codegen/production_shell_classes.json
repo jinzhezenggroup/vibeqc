@@ -241,15 +241,17 @@
         {
           "shell_class": "pppp",
           "consumers": ["fock", "force"],
+          "recurrence": "rys3",
           "schedule": {
-            "kind": "component_lanes",
-            "block_threads": 96,
+            "kind": "subgroup_tasks",
+            "block_threads": 256,
             "component_tile": 81,
-            "tasks_per_warp": 1,
+            "tasks_per_warp": 4,
             "shared_coulomb": true,
             "pair_orientation": "canonical",
             "pair_storage": "materialized",
-            "unroll_pair_terms": true
+            "unroll_pair_terms": true,
+            "minimum_blocks_per_sm": 1
           }
         },
         {
