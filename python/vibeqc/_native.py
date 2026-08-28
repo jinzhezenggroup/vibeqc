@@ -34,6 +34,9 @@ BASIS_SPHERICAL = 1
 BATCH_ENABLE_WARM_STARTS = 1 << 0
 BATCH_ENABLE_SHELL_CLASS_PROFILING = 1 << 1
 DIRECT_SHELL_CLASS_COUNT = 55
+PPPS_PROFILE_BLOCK_SIZE_COUNT = 4
+PPPS_PROFILE_ORIENTATION_COUNT = 2
+PPPS_PROFILE_PRIMITIVE_PAIR_BUCKET_COUNT = 65
 
 
 class ContextDescriptor(ctypes.Structure):
@@ -160,6 +163,58 @@ class ShellClassProfileEntry(ctypes.Structure):
     ]
 
 
+class PppsQueueProfile(ctypes.Structure):
+    _fields_ = [
+        ("descriptor_slots", ctypes.c_uint64),
+        ("non_empty_descriptors", ctypes.c_uint64),
+        ("empty_descriptors", ctypes.c_uint64),
+        ("tasks", ctypes.c_uint64),
+        ("primitive_work", ctypes.c_uint64),
+        ("ket_count_min", ctypes.c_uint32),
+        ("ket_count_median", ctypes.c_uint32),
+        ("ket_count_p90", ctypes.c_uint32),
+        ("ket_count_p99", ctypes.c_uint32),
+        ("ket_count_max", ctypes.c_uint32),
+        (
+            "lane_efficiency",
+            ctypes.c_double * PPPS_PROFILE_BLOCK_SIZE_COUNT,
+        ),
+        ("primitive_warp_efficiency", ctypes.c_double),
+        (
+            "task_tail_imbalance",
+            ctypes.c_double * PPPS_PROFILE_BLOCK_SIZE_COUNT,
+        ),
+        (
+            "primitive_tail_imbalance",
+            ctypes.c_double * PPPS_PROFILE_BLOCK_SIZE_COUNT,
+        ),
+        (
+            "orientation_tasks",
+            ctypes.c_uint64 * PPPS_PROFILE_ORIENTATION_COUNT,
+        ),
+        (
+            "orientation_primitive_work",
+            ctypes.c_uint64 * PPPS_PROFILE_ORIENTATION_COUNT,
+        ),
+        (
+            "bra_primitive_tasks",
+            ctypes.c_uint64 * PPPS_PROFILE_PRIMITIVE_PAIR_BUCKET_COUNT,
+        ),
+        (
+            "bra_primitive_work",
+            ctypes.c_uint64 * PPPS_PROFILE_PRIMITIVE_PAIR_BUCKET_COUNT,
+        ),
+        (
+            "ket_primitive_tasks",
+            ctypes.c_uint64 * PPPS_PROFILE_PRIMITIVE_PAIR_BUCKET_COUNT,
+        ),
+        (
+            "ket_primitive_work",
+            ctypes.c_uint64 * PPPS_PROFILE_PRIMITIVE_PAIR_BUCKET_COUNT,
+        ),
+    ]
+
+
 def _candidate_paths() -> list[Path]:
     candidates: list[Path] = []
     if configured := os.environ.get("VIBEQC_LIBRARY"):
@@ -233,6 +288,11 @@ def load_library() -> ctypes.CDLL:
         ctypes.c_uint32,
     ]
     library.vibeqc_batch_get_last_shell_class_profile.restype = ctypes.c_int
+    library.vibeqc_batch_get_last_ppps_queue_profile.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(PppsQueueProfile),
+    ]
+    library.vibeqc_batch_get_last_ppps_queue_profile.restype = ctypes.c_int
     library.vibeqc_batch_clear_warm_starts.argtypes = [ctypes.c_void_p]
     library.vibeqc_batch_clear_warm_starts.restype = ctypes.c_int
     library.vibeqc_batch_set_warm_start_updates.argtypes = [

@@ -81,6 +81,57 @@ vibeqc_status vibeqc_batch_get_last_shell_class_profile(
   }
 }
 
+vibeqc_status vibeqc_batch_get_last_ppps_queue_profile(
+    const vibeqc_batch* batch,
+    vibeqc_ppps_queue_profile* profile) {
+  if (batch == nullptr || profile == nullptr) {
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  try {
+    const auto source = batch->plan->last_direct_ppps_queue_profile();
+    if (!source.has_value()) return VIBEQC_STATUS_NOT_IMPLEMENTED;
+    *profile = {};
+    profile->descriptor_slots = source->descriptor_slots;
+    profile->non_empty_descriptors = source->non_empty_descriptors;
+    profile->empty_descriptors = source->empty_descriptors;
+    profile->tasks = source->tasks;
+    profile->primitive_work = source->primitive_work;
+    profile->ket_count_min = source->ket_count_min;
+    profile->ket_count_median = source->ket_count_median;
+    profile->ket_count_p90 = source->ket_count_p90;
+    profile->ket_count_p99 = source->ket_count_p99;
+    profile->ket_count_max = source->ket_count_max;
+    std::copy(source->lane_efficiency.begin(),
+              source->lane_efficiency.end(), profile->lane_efficiency);
+    profile->primitive_warp_efficiency =
+        source->primitive_warp_efficiency;
+    std::copy(source->task_tail_imbalance.begin(),
+              source->task_tail_imbalance.end(),
+              profile->task_tail_imbalance);
+    std::copy(source->primitive_tail_imbalance.begin(),
+              source->primitive_tail_imbalance.end(),
+              profile->primitive_tail_imbalance);
+    std::copy(source->orientation_tasks.begin(),
+              source->orientation_tasks.end(), profile->orientation_tasks);
+    std::copy(source->orientation_primitive_work.begin(),
+              source->orientation_primitive_work.end(),
+              profile->orientation_primitive_work);
+    std::copy(source->bra_primitive_tasks.begin(),
+              source->bra_primitive_tasks.end(),
+              profile->bra_primitive_tasks);
+    std::copy(source->bra_primitive_work.begin(),
+              source->bra_primitive_work.end(), profile->bra_primitive_work);
+    std::copy(source->ket_primitive_tasks.begin(),
+              source->ket_primitive_tasks.end(),
+              profile->ket_primitive_tasks);
+    std::copy(source->ket_primitive_work.begin(),
+              source->ket_primitive_work.end(), profile->ket_primitive_work);
+    return VIBEQC_STATUS_SUCCESS;
+  } catch (...) {
+    return vibeqc::api::map_exception(&batch->context->last_detail);
+  }
+}
+
 vibeqc_status vibeqc_batch_clear_warm_starts(vibeqc_batch* batch) {
   if (batch == nullptr) return VIBEQC_STATUS_INVALID_ARGUMENT;
   try {

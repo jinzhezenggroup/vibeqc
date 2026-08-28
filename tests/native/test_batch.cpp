@@ -104,6 +104,13 @@ int main() {
                 batch, profile.data(), profile.size()) ==
                 VIBEQC_STATUS_NOT_IMPLEMENTED,
             "a non-profiled batch unexpectedly published shell-class data");
+    vibeqc_ppps_queue_profile ppps_profile{};
+    require(vibeqc_batch_get_last_ppps_queue_profile(batch, &ppps_profile) ==
+                VIBEQC_STATUS_NOT_IMPLEMENTED &&
+                vibeqc_batch_get_last_ppps_queue_profile(nullptr,
+                                                         &ppps_profile) ==
+                    VIBEQC_STATUS_INVALID_ARGUMENT,
+            "a non-profiled batch unexpectedly published PPPS queue data");
     for (const auto& item : first) {
       require(item.status == VIBEQC_STATUS_SUCCESS && item.converged == 1,
               "a valid first-run batch item failed");

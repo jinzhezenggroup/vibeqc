@@ -231,8 +231,11 @@ def test_ppps_resident_option_keeps_ordinary_fock_force_fallback(tmp_path: Path)
     assert "generated_ppps_resident_bra_force_uhf_kernel<<<" in source
     assert "const void* resident_tasks" in source
     assert "const void* ket_tasks" in source
+    assert "unsigned block_threads" in source
     assert "std::size_t task_count" in source
-    assert "ket_base += kGeneratedPppsResidentBlockThreads" in source
+    assert "ket_base += blockDim.x" in source
+    assert "block_threads != 32U" in source
+    assert "block_threads, 0, stream" in source
     assert "resident.ket_count > kGeneratedPppsResidentBlockThreads" not in source
 
     profile_source = emit_profile_shard(resolved, resolved.selections)

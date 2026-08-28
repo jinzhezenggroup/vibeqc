@@ -49,6 +49,8 @@ def test_ppps_resident_bra_source_shape_is_complete():
     assert "generated_ppps_resident_bra_force_uhf_kernel" in source
     assert "-force_0 - force_3 - force_6" in source
     assert "for (unsigned ket_base = 0U;" in source
+    assert "ket_base += blockDim.x" in source
+    assert "primitive +=\n           blockDim.x" in source
     assert "const unsigned local_ket = ket_base + lane;" in source
     assert "force_0 += __shfl_down_sync" in source
     assert "force_5 += __shfl_down_sync" in source

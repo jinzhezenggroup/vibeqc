@@ -64,6 +64,12 @@ class FleetPlan {
     return last_shell_class_profile_;
   }
 
+  /** Return PPPS queue statistics from the most recent profiled execution. */
+  [[nodiscard]] const std::optional<CudaPppsQueueProfile>&
+  last_ppps_queue_profile() const noexcept {
+    return last_ppps_queue_profile_;
+  }
+
  private:
   std::vector<core::System> systems_;
   vibeqc_method method_{VIBEQC_METHOD_RHF};
@@ -77,6 +83,7 @@ class FleetPlan {
   std::vector<std::size_t> bucket_ids_;
   std::vector<std::optional<std::vector<double>>> warm_densities_;
   std::optional<CudaRhfShellClassProfile> last_shell_class_profile_;
+  std::optional<CudaPppsQueueProfile> last_ppps_queue_profile_;
   // One allocation/Graph owner per workload bucket. Raw opaque pointers keep
   // CUDA headers out of this public C++ translation unit; the destructor owns
   // them through the backend-specific destroy function.

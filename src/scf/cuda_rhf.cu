@@ -20,6 +20,7 @@
 #include <cstring>
 #include <limits>
 #include <new>
+#include <numeric>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -105,6 +106,23 @@ constexpr unsigned kDsssShellClass = 6;
 // The generated resident ppps consumer stages one pp primitive-pair list in
 // shared memory.  Larger lists stay on the established ordinary task path.
 constexpr unsigned kGeneratedPppsResidentMaximumBraPrimitivePairs = 64;
+// Signature bucketing groups both ordered PPPS orientations by the ket
+// primitive-pair count. Counts 0..63 are exact and 64 is an overflow bucket;
+// bundled production bases currently use no more than 15 ket pairs here.
+constexpr unsigned kPppsSignaturePrimitivePairBuckets = 65;
+constexpr unsigned kPppsSignatureBucketCount =
+    2 * kPppsSignaturePrimitivePairBuckets;
+// The scalar PSPS and PPSS force workers assign one complete task to each
+// lane. Group both canonical pair loop lengths so a warp advances through
+// equal primitive work instead of serializing on the longest lane. Counts
+// 0..63 are exact and 64 is the overflow bucket, matching the PPPS convention.
+constexpr unsigned kLowOrderSignaturePrimitivePairBuckets = 65;
+constexpr unsigned kLowOrderSignatureBucketsPerClass =
+    kLowOrderSignaturePrimitivePairBuckets *
+    kLowOrderSignaturePrimitivePairBuckets;
+constexpr unsigned kLowOrderSignatureClassCount = 2;
+constexpr unsigned kLowOrderSignatureElementCount =
+    kLowOrderSignatureClassCount * kLowOrderSignatureBucketsPerClass;
 static_assert(detail::kDirectQuartetThreads == 32);
 // Generated order-five classes are removed from a compact generic fallback
 // queue. Keeping the order explicit avoids coupling runtime selection to one
@@ -7816,6 +7834,65 @@ __device__ __forceinline__ bool resident_ppps_bra_pair(
       kGeneratedPppsResidentMaximumBraPrimitivePairs);
 }
 
+/** Return the exact orientation/ket-primitive bucket for one resident tile. */
+__device__ __forceinline__ unsigned resident_ppps_signature_bucket(
+    const DeviceBatch& batch,
+    const ActiveShellQuartetTile& tile,
+    std::uint32_t bra_pair) {
+  const bool pair_exchanged = bra_pair == tile.second_pair;
+  const std::uint32_t ket_pair =
+      pair_exchanged ? tile.first_pair : tile.second_pair;
+  const std::int64_t ket_begin =
+      batch.shell_pair_primitive_offsets[ket_pair];
+  const std::int64_t ket_end =
+      batch.shell_pair_primitive_offsets[ket_pair + 1U];
+  const std::uint64_t ket_count = ket_end > ket_begin
+      ? static_cast<std::uint64_t>(ket_end - ket_begin)
+      : 0U;
+  const unsigned primitive_bucket = static_cast<unsigned>(min(
+      ket_count,
+      static_cast<std::uint64_t>(kPppsSignaturePrimitivePairBuckets - 1U)));
+  return (pair_exchanged ? kPppsSignaturePrimitivePairBuckets : 0U) +
+      primitive_bucket;
+}
+
+/** Return the ordered primitive-pair loop signature for one low-order tile. */
+__device__ __forceinline__ unsigned generated_low_order_signature_bucket(
+    const DeviceBatch& batch,
+    const ActiveShellQuartetTile& tile) {
+  const std::int64_t first_begin =
+      batch.shell_pair_primitive_offsets[tile.first_pair];
+  const std::int64_t first_end =
+      batch.shell_pair_primitive_offsets[tile.first_pair + 1U];
+  const std::int64_t second_begin =
+      batch.shell_pair_primitive_offsets[tile.second_pair];
+  const std::int64_t second_end =
+      batch.shell_pair_primitive_offsets[tile.second_pair + 1U];
+  const std::uint64_t first_count = first_end > first_begin
+      ? static_cast<std::uint64_t>(first_end - first_begin)
+      : 0U;
+  const std::uint64_t second_count = second_end > second_begin
+      ? static_cast<std::uint64_t>(second_end - second_begin)
+      : 0U;
+  const unsigned first_bucket = static_cast<unsigned>(min(
+      first_count,
+      static_cast<std::uint64_t>(
+          kLowOrderSignaturePrimitivePairBuckets - 1U)));
+  const unsigned second_bucket = static_cast<unsigned>(min(
+      second_count,
+      static_cast<std::uint64_t>(
+          kLowOrderSignaturePrimitivePairBuckets - 1U)));
+  return first_bucket * kLowOrderSignaturePrimitivePairBuckets + second_bucket;
+}
+
+/** Map each supported scalar class to its private signature histogram. */
+__device__ __forceinline__ unsigned generated_low_order_signature_index(
+    unsigned shell_class,
+    unsigned signature) {
+  const unsigned class_slot = shell_class == kPspsShellClass ? 0U : 1U;
+  return class_slot * kLowOrderSignatureBucketsPerClass + signature;
+}
+
 /**
  * Fill the stable generated task ABI from one canonicalized shell quartet.
  *
@@ -7917,7 +7994,9 @@ __global__ void classify_generated_shell_tasks_kernel(
     const std::uint64_t* enabled_shell_class_mask_pointer,
     bool exclude_resident_ppps,
     std::uint32_t* generated_task_counts,
-    std::uint8_t* generated_shell_classes) {
+    std::uint8_t* generated_shell_classes,
+    std::uint64_t low_order_signature_mask,
+    std::uint32_t* low_order_signature_counts) {
   const std::size_t slot =
       static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (slot >= total_tile_capacity) return;
@@ -7961,6 +8040,15 @@ __global__ void classify_generated_shell_tasks_kernel(
   }
   generated_shell_classes[slot] = static_cast<std::uint8_t>(shell_class);
   atomicAdd(generated_task_counts + shell_class, 1U);
+  if (low_order_signature_counts != nullptr &&
+      (low_order_signature_mask & (std::uint64_t{1} << shell_class)) != 0U) {
+    const unsigned signature =
+        generated_low_order_signature_bucket(batch, tile);
+    atomicAdd(
+        low_order_signature_counts + generated_low_order_signature_index(
+            shell_class, signature),
+        1U);
+  }
 }
 
 /** Build compact class slices and reset their materialization/worker cursors. */
@@ -7981,6 +8069,37 @@ __global__ void prefix_generated_shell_task_counts_kernel(
   }
 }
 
+/** Prefix selected scalar signature slices inside their exact-class ranges. */
+__global__ void prefix_low_order_signature_counts_kernel(
+    const std::uint32_t* generated_task_offsets,
+    std::uint64_t low_order_signature_mask,
+    std::uint32_t* low_order_signature_counts,
+    std::uint32_t* low_order_signature_offsets) {
+  if (blockIdx.x != 0U || threadIdx.x != 0U) return;
+  for (unsigned class_slot = 0; class_slot < kLowOrderSignatureClassCount;
+       ++class_slot) {
+    const unsigned shell_class =
+        class_slot == 0U ? kPspsShellClass : kPpssShellClass;
+    if ((low_order_signature_mask &
+         (std::uint64_t{1} << shell_class)) == 0U) {
+      continue;
+    }
+    std::uint32_t offset = generated_task_offsets[shell_class];
+    const unsigned signature_begin =
+        class_slot * kLowOrderSignatureBucketsPerClass;
+    for (unsigned signature = 0;
+         signature < kLowOrderSignatureBucketsPerClass; ++signature) {
+      const unsigned index = signature_begin + signature;
+      const std::uint32_t count = low_order_signature_counts[index];
+      low_order_signature_offsets[index] = offset;
+      // Reuse the count array as the scatter cursor after preserving the class
+      // total in generated_task_counts for the persistent worker.
+      low_order_signature_counts[index] = 0U;
+      offset += count;
+    }
+  }
+}
+
 /** Canonicalize classified quartets into contiguous exact-class slices. */
 __global__ void materialize_generated_shell_tasks_kernel(
     DeviceBatch batch,
@@ -7989,7 +8108,10 @@ __global__ void materialize_generated_shell_tasks_kernel(
     const std::uint8_t* generated_shell_classes,
     const std::uint32_t* generated_task_offsets,
     std::uint32_t* generated_task_write_counts,
-    GeneratedShellTask* generated_tasks) {
+    GeneratedShellTask* generated_tasks,
+    std::uint64_t low_order_signature_mask,
+    const std::uint32_t* low_order_signature_offsets,
+    std::uint32_t* low_order_signature_write_counts) {
   const std::size_t active_tile =
       static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (active_tile >= total_tile_capacity) return;
@@ -7997,8 +8119,21 @@ __global__ void materialize_generated_shell_tasks_kernel(
   if (shell_class == kNoGeneratedShellClass) return;
 
   const ActiveShellQuartetTile tile = active_shell_quartet_tiles[active_tile];
-  const std::uint32_t task_index = generated_task_offsets[shell_class] +
-      atomicAdd(generated_task_write_counts + shell_class, 1U);
+  std::uint32_t task_index = 0U;
+  if (low_order_signature_offsets != nullptr &&
+      low_order_signature_write_counts != nullptr &&
+      (low_order_signature_mask &
+       (std::uint64_t{1} << shell_class)) != 0U) {
+    const unsigned signature =
+        generated_low_order_signature_bucket(batch, tile);
+    const unsigned index = generated_low_order_signature_index(
+        shell_class, signature);
+    task_index = low_order_signature_offsets[index] +
+        atomicAdd(low_order_signature_write_counts + index, 1U);
+  } else {
+    task_index = generated_task_offsets[shell_class] +
+        atomicAdd(generated_task_write_counts + shell_class, 1U);
+  }
   populate_generated_shell_task(batch, tile, generated_tasks[task_index]);
 }
 
@@ -8016,7 +8151,8 @@ __global__ void count_ppps_resident_bra_tasks_kernel(
     const std::uint32_t* active_shell_quartet_tile_count,
     const ActiveShellQuartetTile* active_shell_quartet_tiles,
     std::uint64_t enabled_shell_class_mask,
-    std::uint32_t* resident_bra_counts) {
+    std::uint32_t* resident_bra_counts,
+    std::uint32_t* resident_signature_counts) {
   const std::size_t slot =
       static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (slot >= active_tile_capacity ||
@@ -8029,17 +8165,27 @@ __global__ void count_ppps_resident_bra_tasks_kernel(
   std::uint32_t bra_pair = 0;
   if (resident_ppps_bra_pair(batch, tile, bra_pair)) {
     atomicAdd(resident_bra_counts + bra_pair, 1U);
+    if (resident_signature_counts != nullptr) {
+      const unsigned signature =
+          resident_ppps_signature_bucket(batch, tile, bra_pair);
+      atomicAdd(
+          resident_signature_counts +
+              static_cast<std::size_t>(bra_pair) *
+                  kPppsSignatureBucketCount +
+              signature,
+          1U);
+    }
   }
 }
 
 /**
  * Prefix the ppps bra histogram and initialize one descriptor per bra.
  *
- * Descriptors are stored at their shell-pair ordinal.  Inactive ordinals have
+ * Descriptors are stored at their shell-pair ordinal. Inactive ordinals have
  * a zero ``ket_count`` and are harmless when the resident launch uses the
  * fixed shell-pair capacity; this avoids a device-to-host count readback and
- * keeps the force path graph/replay safe.  ``resident_bra_offsets`` indexes
- * the transient ppps-sized tail of the generated-task arena.  The final-force
+ * keeps the force path graph/replay safe. ``resident_bra_offsets`` indexes
+ * the transient ppps-sized tail of the generated-task arena. The final-force
  * stream launches the resident consumer before ordinary preparation is
  * allowed to overwrite that tail.
  */
@@ -8062,8 +8208,27 @@ __global__ void prefix_ppps_resident_bra_tasks_kernel(
     // capacity is checked before this kernel is launched.
     offset += count;
     resident_bra_offsets[bra_pair + 1U] = offset;
-    resident_tasks[bra_pair].ket_begin =
-        resident_bra_offsets[bra_pair];
+    resident_tasks[bra_pair].ket_begin = resident_bra_offsets[bra_pair];
+  }
+}
+
+/** Build per-bra orientation/primitive bucket offsets for stable scattering. */
+__global__ void prefix_ppps_resident_signature_buckets_kernel(
+    std::size_t total_shell_pairs,
+    const std::uint32_t* resident_bra_offsets,
+    std::uint32_t* resident_signature_counts,
+    std::uint32_t* resident_signature_offsets) {
+  const std::size_t bra_pair = blockIdx.x;
+  if (bra_pair >= total_shell_pairs || threadIdx.x != 0U) return;
+  std::uint32_t offset = resident_bra_offsets[bra_pair];
+  const std::size_t bucket_begin =
+      bra_pair * kPppsSignatureBucketCount;
+  for (unsigned bucket = 0U; bucket < kPppsSignatureBucketCount; ++bucket) {
+    const std::size_t index = bucket_begin + bucket;
+    const std::uint32_t count = resident_signature_counts[index];
+    resident_signature_offsets[index] = offset;
+    resident_signature_counts[index] = 0U;
+    offset += count;
   }
 }
 
@@ -8075,7 +8240,10 @@ __global__ void materialize_ppps_resident_bra_tasks_kernel(
     const ActiveShellQuartetTile* active_shell_quartet_tiles,
     const std::uint32_t* resident_bra_offsets,
     std::uint32_t* resident_bra_write_counts,
-    GeneratedShellTask* resident_ket_tasks) {
+    const std::uint32_t* resident_signature_offsets,
+    std::uint32_t* resident_signature_write_counts,
+    GeneratedShellTask* resident_ket_tasks,
+    std::uint32_t* resident_ket_signatures) {
   const std::size_t slot =
       static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (slot >= active_tile_capacity ||
@@ -8083,9 +8251,39 @@ __global__ void materialize_ppps_resident_bra_tasks_kernel(
   const ActiveShellQuartetTile tile = active_shell_quartet_tiles[slot];
   std::uint32_t bra_pair = 0;
   if (!resident_ppps_bra_pair(batch, tile, bra_pair)) return;
-  const std::uint32_t ket_index = resident_bra_offsets[bra_pair] +
-      atomicAdd(resident_bra_write_counts + bra_pair, 1U);
+  const bool pair_exchanged = bra_pair == tile.second_pair;
+  std::uint32_t ket_index = 0U;
+  if (resident_signature_offsets != nullptr &&
+      resident_signature_write_counts != nullptr) {
+    const unsigned signature =
+        resident_ppps_signature_bucket(batch, tile, bra_pair);
+    const std::size_t bucket_index =
+        static_cast<std::size_t>(bra_pair) * kPppsSignatureBucketCount +
+        signature;
+    ket_index = resident_signature_offsets[bucket_index] +
+        atomicAdd(resident_signature_write_counts + bucket_index, 1U);
+  } else {
+    ket_index = resident_bra_offsets[bra_pair] +
+        atomicAdd(resident_bra_write_counts + bra_pair, 1U);
+  }
   populate_generated_shell_task(batch, tile, resident_ket_tasks[ket_index]);
+  if (resident_ket_signatures != nullptr) {
+    const GeneratedShellTask& task = resident_ket_tasks[ket_index];
+    const std::int64_t ket_begin =
+        batch.shell_pair_primitive_offsets[task.shell_pair[1]];
+    const std::int64_t ket_end =
+        batch.shell_pair_primitive_offsets[task.shell_pair[1] + 1U];
+    const std::uint64_t ket_count = ket_end > ket_begin
+        ? static_cast<std::uint64_t>(ket_end - ket_begin)
+        : 0U;
+    constexpr std::uint32_t kCountMask = 0x7fffffffU;
+    const std::uint32_t encoded_count = ket_count > kCountMask
+        ? kCountMask
+        : static_cast<std::uint32_t>(ket_count);
+    const std::uint32_t orientation =
+        pair_exchanged ? 0x80000000U : 0U;
+    resident_ket_signatures[ket_index] = orientation | encoded_count;
+  }
 }
 
 /** Prepare the resident ppps histogram, prefix, descriptors, and ket records. */
@@ -8101,6 +8299,9 @@ cudaError_t prepare_ppps_resident_tasks(
     std::uint32_t* resident_bra_counts,
     std::uint32_t* resident_bra_offsets,
     std::uint32_t* resident_bra_write_counts,
+    std::uint32_t* resident_signature_counts,
+    std::uint32_t* resident_signature_offsets,
+    std::uint32_t* resident_ket_signatures,
     std::uint64_t enabled_mask) {
   if (active_tile_capacity == 0 || total_shell_pairs == 0 ||
       resident_tasks == nullptr || resident_ket_tasks == nullptr ||
@@ -8113,6 +8314,14 @@ cudaError_t prepare_ppps_resident_tasks(
       resident_bra_counts, 0, total_shell_pairs * sizeof(std::uint32_t),
       stream);
   if (error != cudaSuccess) return error;
+  if (resident_signature_counts != nullptr) {
+    error = cudaMemsetAsync(
+        resident_signature_counts, 0,
+        total_shell_pairs * kPppsSignatureBucketCount *
+            sizeof(std::uint32_t),
+        stream);
+    if (error != cudaSuccess) return error;
+  }
   constexpr unsigned preparation_threads = kCaptureSafeKernelThreads;
   const unsigned preparation_blocks = static_cast<unsigned>(
       (active_tile_capacity + preparation_threads - 1) /
@@ -8120,7 +8329,7 @@ cudaError_t prepare_ppps_resident_tasks(
   count_ppps_resident_bra_tasks_kernel<<<
       preparation_blocks, preparation_threads, 0, stream>>>(
       batch, active_tile_capacity, active_tile_count, active_tiles,
-      enabled_mask, resident_bra_counts);
+      enabled_mask, resident_bra_counts, resident_signature_counts);
   error = cudaPeekAtLastError();
   if (error != cudaSuccess) return error;
   prefix_ppps_resident_bra_tasks_kernel<<<1, 1, 0, stream>>>(
@@ -8128,11 +8337,21 @@ cudaError_t prepare_ppps_resident_tasks(
       resident_bra_write_counts, resident_tasks);
   error = cudaPeekAtLastError();
   if (error != cudaSuccess) return error;
+  if (resident_signature_counts != nullptr &&
+      resident_signature_offsets != nullptr) {
+    prefix_ppps_resident_signature_buckets_kernel<<<
+        static_cast<unsigned>(total_shell_pairs), 1, 0, stream>>>(
+        total_shell_pairs, resident_bra_offsets, resident_signature_counts,
+        resident_signature_offsets);
+    error = cudaPeekAtLastError();
+    if (error != cudaSuccess) return error;
+  }
   materialize_ppps_resident_bra_tasks_kernel<<<
       preparation_blocks, preparation_threads, 0, stream>>>(
       batch, active_tile_capacity, active_tile_count, active_tiles,
       resident_bra_offsets, resident_bra_write_counts,
-      resident_ket_tasks);
+      resident_signature_offsets, resident_signature_counts,
+      resident_ket_tasks, resident_ket_signatures);
   return cudaPeekAtLastError();
 }
 
@@ -11413,6 +11632,9 @@ cudaError_t prepare_generated_shell_tasks(
     std::uint32_t* generated_task_counts,
     std::uint32_t* generated_task_write_counts,
     std::uint32_t* generated_task_heads,
+    std::uint64_t low_order_signature_mask,
+    std::uint32_t* low_order_signature_counts,
+    std::uint32_t* low_order_signature_offsets,
     std::uint64_t enabled_mask,
     const std::uint64_t* enabled_mask_pointer,
     bool exclude_resident_ppps) {
@@ -11425,6 +11647,12 @@ cudaError_t prepare_generated_shell_tasks(
       generated_task_counts, 0,
       detail::kDirectQuartetShellClassCount * sizeof(std::uint32_t), stream);
   if (error != cudaSuccess) return error;
+  if (low_order_signature_counts != nullptr) {
+    error = cudaMemsetAsync(
+        low_order_signature_counts, 0,
+        kLowOrderSignatureElementCount * sizeof(std::uint32_t), stream);
+    if (error != cudaSuccess) return error;
+  }
   constexpr unsigned preparation_threads = kCaptureSafeKernelThreads;
   const unsigned preparation_blocks = static_cast<unsigned>(
       (total_tile_capacity + preparation_threads - 1) /
@@ -11433,7 +11661,8 @@ cudaError_t prepare_generated_shell_tasks(
       preparation_blocks, preparation_threads, 0, stream>>>(
       batch, total_tile_capacity, active_tile_offsets, active_tile_counts,
       active_tiles, enabled_mask, enabled_mask_pointer, exclude_resident_ppps,
-      generated_task_counts, generated_shell_classes);
+      generated_task_counts, generated_shell_classes,
+      low_order_signature_mask, low_order_signature_counts);
   error = cudaPeekAtLastError();
   if (error != cudaSuccess) return error;
   prefix_generated_shell_task_counts_kernel<<<1, 1, 0, stream>>>(
@@ -11441,10 +11670,20 @@ cudaError_t prepare_generated_shell_tasks(
       generated_task_write_counts, generated_task_heads);
   error = cudaPeekAtLastError();
   if (error != cudaSuccess) return error;
+  if (low_order_signature_counts != nullptr &&
+      low_order_signature_offsets != nullptr) {
+    prefix_low_order_signature_counts_kernel<<<1, 1, 0, stream>>>(
+        generated_task_offsets, low_order_signature_mask,
+        low_order_signature_counts, low_order_signature_offsets);
+    error = cudaPeekAtLastError();
+    if (error != cudaSuccess) return error;
+  }
   materialize_generated_shell_tasks_kernel<<<
       preparation_blocks, preparation_threads, 0, stream>>>(
       batch, total_tile_capacity, active_tiles, generated_shell_classes,
-      generated_task_offsets, generated_task_write_counts, generated_tasks);
+      generated_task_offsets, generated_task_write_counts, generated_tasks,
+      low_order_signature_mask, low_order_signature_offsets,
+      low_order_signature_counts);
   return cudaPeekAtLastError();
 }
 
@@ -11472,13 +11711,22 @@ cudaError_t launch_generated_shell_class_forces(
     std::uint32_t* generated_task_counts,
     std::uint32_t* generated_task_write_counts,
     std::uint32_t* generated_task_heads,
+    std::uint32_t* low_order_signature_counts,
+    std::uint32_t* low_order_signature_offsets,
     GeneratedPppsResidentTask* resident_ppps_tasks,
     GeneratedShellTask* resident_ppps_ket_tasks,
     std::uint32_t* resident_ppps_bra_counts,
     std::uint32_t* resident_ppps_bra_offsets,
     std::uint32_t* resident_ppps_bra_write_counts,
+    std::uint32_t* resident_ppps_signature_counts,
+    std::uint32_t* resident_ppps_signature_offsets,
+    std::uint32_t* resident_ppps_signatures,
     std::size_t total_shell_pairs,
     bool resident_ppps_enabled,
+    bool resident_ppps_signature_bucketing,
+    bool psps_signature_bucketing,
+    bool ppss_signature_bucketing,
+    unsigned resident_ppps_block_threads,
     unsigned persistent_worker_blocks,
     bool unrestricted,
     std::uint64_t enabled_mask,
@@ -11507,6 +11755,13 @@ cudaError_t launch_generated_shell_class_forces(
         active_tiles + ppps_tile_offset, resident_ppps_tasks,
         resident_ppps_ket_tasks, resident_ppps_bra_counts,
         resident_ppps_bra_offsets, resident_ppps_bra_write_counts,
+        resident_ppps_signature_bucketing
+            ? resident_ppps_signature_counts
+            : nullptr,
+        resident_ppps_signature_bucketing
+            ? resident_ppps_signature_offsets
+            : nullptr,
+        resident_ppps_signatures,
         enabled_mask);
     if (error != cudaSuccess) return error;
   }
@@ -11519,19 +11774,30 @@ cudaError_t launch_generated_shell_class_forces(
         stream, unrestricted, resident_ppps_tasks, resident_ppps_ket_tasks,
         batch.shell_pair_primitive_offsets, batch.shell_primitive_pairs,
         batch.direct_ao_coefficients, batch.positions, screening_tolerance,
-        schwarz_bounds, density, forces, total_shell_pairs);
+        schwarz_bounds, density, forces, resident_ppps_block_threads,
+        total_shell_pairs);
     if (error == cudaErrorNotSupported) {
       use_resident_ppps = false;
     } else if (error != cudaSuccess) {
       return error;
     }
   }
+  const std::uint64_t low_order_signature_mask =
+      (psps_signature_bucketing
+           ? (std::uint64_t{1} << kPspsShellClass)
+           : 0U) |
+      (ppss_signature_bucketing
+           ? (std::uint64_t{1} << kPpssShellClass)
+           : 0U);
   error = prepare_generated_shell_tasks(
       stream, total_tile_capacity, generated_task_capacity,
       active_tile_offsets, batch, active_tile_counts, active_tiles,
       generated_tasks, generated_shell_classes, generated_task_offsets,
       generated_task_counts, generated_task_write_counts,
-      generated_task_heads, enabled_mask, nullptr, use_resident_ppps);
+      generated_task_heads, low_order_signature_mask,
+      low_order_signature_mask != 0U ? low_order_signature_counts : nullptr,
+      low_order_signature_mask != 0U ? low_order_signature_offsets : nullptr,
+      enabled_mask, nullptr, use_resident_ppps);
   if (error != cudaSuccess) return error;
 
   std::size_t kernel_count = 0;
@@ -11596,7 +11862,7 @@ cudaError_t launch_generated_shell_class_focks(
       active_tile_offsets, batch, active_tile_counts, active_tiles,
       generated_tasks, generated_shell_classes, generated_task_offsets,
       generated_task_counts, generated_task_write_counts,
-      generated_task_heads, 0U, enabled_mask, false);
+      generated_task_heads, 0U, nullptr, nullptr, 0U, enabled_mask, false);
   if (error != cudaSuccess) return error;
 
   std::size_t kernel_count = 0;
@@ -11953,10 +12219,15 @@ struct ArenaLayout {
   std::size_t generated_shell_task_counts{};
   std::size_t generated_shell_task_write_counts{};
   std::size_t generated_shell_task_heads{};
+  std::size_t generated_low_order_signature_counts{};
+  std::size_t generated_low_order_signature_offsets{};
   std::size_t generated_ppps_resident_tasks{};
   std::size_t generated_ppps_resident_bra_counts{};
   std::size_t generated_ppps_resident_bra_offsets{};
   std::size_t generated_ppps_resident_bra_write_counts{};
+  std::size_t generated_ppps_resident_signature_counts{};
+  std::size_t generated_ppps_resident_signature_offsets{};
+  std::size_t generated_ppps_resident_signatures{};
   std::size_t generated_fock_shell_class_mask{};
   std::size_t generic_order5_tiles{};
   std::size_t generic_order5_tile_count{};
@@ -12039,6 +12310,7 @@ bool make_layout(std::size_t batch_size,
   std::size_t direct_spin_matrices = 0;
   std::size_t transform_elements = 0;
   std::size_t transform_temporaries = 0;
+  std::size_t ppps_signature_elements = 0;
   std::size_t nbf_plus_one = 0;
   std::size_t pair_product = 0;
   if (!checked_multiply(nbf, nbf, matrix_size) ||
@@ -12053,6 +12325,9 @@ bool make_layout(std::size_t batch_size,
       !checked_multiply(aos, direct_nbf, transform_elements) ||
       !checked_multiply(transform_elements, spin_count,
                         transform_temporaries) ||
+      !checked_multiply(
+          ppps_resident_ket_task_capacity == 0 ? 0 : shell_pair_count,
+          kPppsSignatureBucketCount, ppps_signature_elements) ||
       !checked_add(nbf, 1, nbf_plus_one) ||
       !checked_multiply(nbf, nbf_plus_one, pair_product)) return false;
   const std::size_t pair_count = pair_product / 2;
@@ -12192,6 +12467,16 @@ bool make_layout(std::size_t batch_size,
               ? 0
               : detail::kDirectQuartetShellClassCount,
           cursor, made.generated_shell_task_heads) ||
+      !append_array<std::uint32_t>(
+          generated_shell_task_capacity == 0
+              ? 0
+              : kLowOrderSignatureElementCount,
+          cursor, made.generated_low_order_signature_counts) ||
+      !append_array<std::uint32_t>(
+          generated_shell_task_capacity == 0
+              ? 0
+              : kLowOrderSignatureElementCount,
+          cursor, made.generated_low_order_signature_offsets) ||
       !append_array<GeneratedPppsResidentTask>(
           ppps_resident_ket_task_capacity == 0 ? 0 : shell_pair_count,
           cursor, made.generated_ppps_resident_tasks) ||
@@ -12204,6 +12489,15 @@ bool make_layout(std::size_t batch_size,
       !append_array<std::uint32_t>(
           ppps_resident_ket_task_capacity == 0 ? 0 : shell_pair_count,
           cursor, made.generated_ppps_resident_bra_write_counts) ||
+      !append_array<std::uint32_t>(
+          ppps_signature_elements,
+          cursor, made.generated_ppps_resident_signature_counts) ||
+      !append_array<std::uint32_t>(
+          ppps_signature_elements,
+          cursor, made.generated_ppps_resident_signature_offsets) ||
+      !append_array<std::uint32_t>(
+          shell_class_profiling ? ppps_resident_ket_task_capacity : 0,
+          cursor, made.generated_ppps_resident_signatures) ||
       !append_array<std::uint64_t>(
           shell_quartet_tile_count == 0 ? 0 : 1,
           cursor, made.generated_fock_shell_class_mask) ||
@@ -12303,6 +12597,148 @@ struct HostBatch {
   std::vector<std::uint8_t> warm_mask;
   std::vector<double> warm_density;
 };
+
+/** Simulate hardware CTA assignment with one descriptor at a time per SM. */
+double ppps_profile_schedule_makespan(const std::vector<double>& weights,
+                                      unsigned multiprocessor_count) {
+  if (weights.empty() || multiprocessor_count == 0U) return 0.0;
+  std::vector<double> loads(multiprocessor_count, 0.0);
+  for (const double weight : weights) {
+    auto next = std::min_element(loads.begin(), loads.end());
+    *next += weight;
+  }
+  return *std::max_element(loads.begin(), loads.end());
+}
+
+/**
+ * Summarize the exact compacted PPPS queue copied from the device.
+ *
+ * Signatures retain device materialization order, so the warp-divergence
+ * denominator measures the queue that the production kernel actually saw.
+ * The scheduling model intentionally stays descriptor-only: it estimates the
+ * fixed-bra tail across physical SMs without claiming to reproduce occupancy
+ * or instruction-level latency.
+ */
+CudaPppsQueueProfile build_ppps_queue_profile(
+    const HostBatch& host,
+    const std::vector<std::uint32_t>& descriptor_counts,
+    const std::vector<std::uint32_t>& ordered_signatures,
+    unsigned multiprocessor_count) {
+  CudaPppsQueueProfile profile;
+  profile.descriptor_slots = descriptor_counts.size();
+  std::array<std::vector<double>, kPppsProfileBlockThreads.size()>
+      task_schedule_weights;
+  std::array<std::vector<double>, kPppsProfileBlockThreads.size()>
+      primitive_schedule_weights;
+  std::size_t ket_begin = 0;
+  constexpr std::uint32_t kCountMask = 0x7fffffffU;
+  constexpr std::uint32_t kOrientationMask = 0x80000000U;
+
+  for (std::size_t bra_pair = 0; bra_pair < descriptor_counts.size();
+       ++bra_pair) {
+    const std::size_t ket_count = descriptor_counts[bra_pair];
+    if (ket_count == 0U) continue;
+    if (ket_begin > ordered_signatures.size() ||
+        ket_count > ordered_signatures.size() - ket_begin) {
+      // A truncated diagnostic must never be mistaken for valid queue data.
+      return {};
+    }
+    ++profile.non_empty_descriptors;
+    profile.tasks += ket_count;
+    if (profile.ket_count_histogram.size() <= ket_count) {
+      profile.ket_count_histogram.resize(ket_count + 1U, 0U);
+    }
+    ++profile.ket_count_histogram[ket_count];
+
+    const std::int64_t bra_begin =
+        host.shell_pair_primitive_offsets[bra_pair];
+    const std::int64_t bra_end =
+        host.shell_pair_primitive_offsets[bra_pair + 1U];
+    const std::uint64_t bra_primitives = bra_end > bra_begin
+        ? static_cast<std::uint64_t>(bra_end - bra_begin)
+        : 0U;
+    const std::size_t bra_bucket = std::min<std::uint64_t>(
+        bra_primitives,
+        CudaPppsQueueProfile::kPrimitivePairBucketCount - 1U);
+    std::vector<std::uint64_t> primitive_counts(ket_count, 0U);
+
+    for (std::size_t local_ket = 0; local_ket < ket_count; ++local_ket) {
+      const std::uint32_t signature =
+          ordered_signatures[ket_begin + local_ket];
+      const std::size_t orientation =
+          (signature & kOrientationMask) == 0U ? 0U : 1U;
+      const std::uint64_t ket_primitives = signature & kCountMask;
+      const std::uint64_t primitive_work =
+          bra_primitives * ket_primitives;
+      primitive_counts[local_ket] = primitive_work;
+      profile.primitive_work += primitive_work;
+      ++profile.orientation_tasks[orientation];
+      profile.orientation_primitive_work[orientation] += primitive_work;
+      ++profile.bra_primitive_tasks[bra_bucket];
+      profile.bra_primitive_work[bra_bucket] += primitive_work;
+      const std::size_t ket_bucket = std::min<std::uint64_t>(
+          ket_primitives,
+          CudaPppsQueueProfile::kPrimitivePairBucketCount - 1U);
+      ++profile.ket_primitive_tasks[ket_bucket];
+      profile.ket_primitive_work[ket_bucket] += primitive_work;
+    }
+
+    for (std::size_t warp_begin = 0; warp_begin < ket_count;
+         warp_begin += 32U) {
+      const std::size_t warp_end = std::min(ket_count, warp_begin + 32U);
+      const std::uint64_t maximum = *std::max_element(
+          primitive_counts.begin() + static_cast<std::ptrdiff_t>(warp_begin),
+          primitive_counts.begin() + static_cast<std::ptrdiff_t>(warp_end));
+      profile.primitive_warp_slots += 32U * maximum;
+    }
+
+    for (std::size_t candidate = 0;
+         candidate < kPppsProfileBlockThreads.size(); ++candidate) {
+      const std::size_t block_threads =
+          kPppsProfileBlockThreads[candidate];
+      const std::size_t rounds =
+          (ket_count + block_threads - 1U) / block_threads;
+      profile.lane_slots[candidate] += block_threads * rounds;
+      task_schedule_weights[candidate].push_back(
+          static_cast<double>(rounds));
+      std::uint64_t descriptor_primitive_time = 0U;
+      for (std::size_t round_begin = 0; round_begin < ket_count;
+           round_begin += block_threads) {
+        const std::size_t round_end =
+            std::min(ket_count, round_begin + block_threads);
+        descriptor_primitive_time += *std::max_element(
+            primitive_counts.begin() +
+                static_cast<std::ptrdiff_t>(round_begin),
+            primitive_counts.begin() +
+                static_cast<std::ptrdiff_t>(round_end));
+      }
+      primitive_schedule_weights[candidate].push_back(
+          static_cast<double>(descriptor_primitive_time));
+    }
+    ket_begin += ket_count;
+  }
+
+  for (std::size_t candidate = 0;
+       candidate < kPppsProfileBlockThreads.size(); ++candidate) {
+    const double task_total = std::accumulate(
+        task_schedule_weights[candidate].begin(),
+        task_schedule_weights[candidate].end(), 0.0);
+    const double primitive_total = std::accumulate(
+        primitive_schedule_weights[candidate].begin(),
+        primitive_schedule_weights[candidate].end(), 0.0);
+    profile.task_schedule_ideal[candidate] =
+        task_total / static_cast<double>(multiprocessor_count);
+    profile.task_schedule_makespan[candidate] =
+        ppps_profile_schedule_makespan(
+            task_schedule_weights[candidate], multiprocessor_count);
+    profile.primitive_schedule_ideal[candidate] =
+        primitive_total / static_cast<double>(multiprocessor_count);
+    profile.primitive_schedule_makespan[candidate] =
+        ppps_profile_schedule_makespan(
+            primitive_schedule_weights[candidate], multiprocessor_count);
+  }
+  return profile;
+}
 
 bool pack_host_batch(const std::vector<core::System>& systems,
                      const std::vector<const std::vector<double>*>& initial_densities,
@@ -12805,6 +13241,7 @@ struct CudaRhfBucketPlan {
   std::vector<double> frozen_warm_density;
   std::vector<double> frozen_previous_energy;
   std::optional<CudaRhfShellClassProfile> last_shell_class_profile;
+  std::optional<CudaPppsQueueProfile> last_ppps_queue_profile;
   ScfOptions options;
   std::size_t batch_size{};
   std::size_t nbf{};
@@ -12871,6 +13308,42 @@ bool resident_ppps_bra_requested() {
        std::strcmp(selection, "none") != 0);
 }
 
+/** Group PPPS ket tasks by ordered orientation and primitive-loop length. */
+bool ppps_signature_bucketing_requested() {
+  const char* selection = std::getenv("VIBEQC_PPPS_SIGNATURE_BUCKETING");
+  return selection == nullptr ||
+      (std::strcmp(selection, "0") != 0 &&
+       std::strcmp(selection, "none") != 0);
+}
+
+/** Keep the promoted PSPS pair-loop bucketing on unless A/B disables it. */
+bool psps_signature_bucketing_requested() {
+  const char* selection = std::getenv("VIBEQC_PSPS_SIGNATURE_BUCKETING");
+  return selection == nullptr ||
+      (std::strcmp(selection, "0") != 0 &&
+       std::strcmp(selection, "none") != 0);
+}
+
+/** Keep the promoted PPSS pair-loop bucketing on unless A/B disables it. */
+bool ppss_signature_bucketing_requested() {
+  const char* selection = std::getenv("VIBEQC_PPSS_SIGNATURE_BUCKETING");
+  return selection == nullptr ||
+      (std::strcmp(selection, "0") != 0 &&
+       std::strcmp(selection, "none") != 0);
+}
+
+/** Select one scalar whole-descriptor PPPS CTA width for same-binary sweeps. */
+unsigned ppps_resident_block_threads_requested() {
+  const char* selection = std::getenv("VIBEQC_PPPS_BLOCK_THREADS");
+  if (selection == nullptr || std::strcmp(selection, "256") == 0) return 256U;
+  if (std::strcmp(selection, "128") == 0) return 128U;
+  if (std::strcmp(selection, "64") == 0) return 64U;
+  if (std::strcmp(selection, "32") == 0) return 32U;
+  // The generated wrapper reports a CUDA invalid-value error for unsupported
+  // settings instead of silently benchmarking a different launch width.
+  return 0U;
+}
+
 bool same_topology(const HostBatch& first, const HostBatch& second) {
   return first.nbf == second.nbf &&
          first.direct_nbf == second.direct_nbf &&
@@ -12924,6 +13397,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   const std::size_t batch_size = host.warm_mask.size();
   std::vector<RhfBucketItem> outputs(batch_size);
   plan.last_shell_class_profile.reset();
+  plan.last_ppps_queue_profile.reset();
 
   const std::size_t nbf = host.nbf;
   const std::size_t direct_nbf = host.direct_nbf;
@@ -13028,6 +13502,14 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   // Read this per execution so one prepared topology can compare the new
   // route with the complete ordinary ppps queue in the same binary.
   const bool resident_ppps_bra = resident_ppps_bra_requested();
+  const bool resident_ppps_signature_bucketing =
+      ppps_signature_bucketing_requested();
+  const bool psps_signature_bucketing =
+      psps_signature_bucketing_requested();
+  const bool ppss_signature_bucketing =
+      ppss_signature_bucketing_requested();
+  const unsigned resident_ppps_block_threads =
+      ppps_resident_block_threads_requested();
   const bool first_setup = !plan.initialized;
   detail::DirectQuartetTaskLayout direct_task_layout{};
   std::size_t total_shell_quartet_tiles = 0;
@@ -13449,6 +13931,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       resources.arena_, layout.generated_shell_task_write_counts);
   auto generated_shell_task_heads = arena_pointer<std::uint32_t>(
       resources.arena_, layout.generated_shell_task_heads);
+  auto generated_low_order_signature_counts = arena_pointer<std::uint32_t>(
+      resources.arena_, layout.generated_low_order_signature_counts);
+  auto generated_low_order_signature_offsets = arena_pointer<std::uint32_t>(
+      resources.arena_, layout.generated_low_order_signature_offsets);
   auto generated_ppps_resident_tasks = arena_pointer<GeneratedPppsResidentTask>(
       resources.arena_, layout.generated_ppps_resident_tasks);
   // Final force preparation is ordered after the last Fock consumer on the
@@ -13467,6 +13953,21 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       resources.arena_, layout.generated_ppps_resident_bra_offsets);
   auto generated_ppps_resident_bra_write_counts = arena_pointer<std::uint32_t>(
       resources.arena_, layout.generated_ppps_resident_bra_write_counts);
+  auto generated_ppps_resident_signature_counts =
+      arena_pointer<std::uint32_t>(
+          resources.arena_,
+          layout.generated_ppps_resident_signature_counts);
+  auto generated_ppps_resident_signature_offsets =
+      arena_pointer<std::uint32_t>(
+          resources.arena_,
+          layout.generated_ppps_resident_signature_offsets);
+  // A zero-sized arena slice still has an offset, so do not turn it into a
+  // writable pointer when profiling did not allocate per-task signatures.
+  std::uint32_t* generated_ppps_resident_signatures =
+      shell_class_profiling
+      ? arena_pointer<std::uint32_t>(
+            resources.arena_, layout.generated_ppps_resident_signatures)
+      : nullptr;
   auto generated_fock_shell_class_mask = arena_pointer<std::uint64_t>(
       resources.arena_, layout.generated_fock_shell_class_mask);
   auto generic_order5_tiles = arena_pointer<ActiveShellQuartetTile>(
@@ -14703,11 +15204,20 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         generated_shell_tasks, generated_shell_classes,
         generated_shell_task_offsets, generated_shell_task_counts,
         generated_shell_task_write_counts, generated_shell_task_heads,
+        generated_low_order_signature_counts,
+        generated_low_order_signature_offsets,
         generated_ppps_resident_tasks, generated_ppps_resident_ket_tasks,
         generated_ppps_resident_bra_counts,
         generated_ppps_resident_bra_offsets,
-        generated_ppps_resident_bra_write_counts, total_shell_pairs,
+        generated_ppps_resident_bra_write_counts,
+        generated_ppps_resident_signature_counts,
+        generated_ppps_resident_signature_offsets,
+        generated_ppps_resident_signatures, total_shell_pairs,
         resident_ppps_bra && resident_ppps_ket_task_capacity != 0,
+        resident_ppps_signature_bucketing,
+        psps_signature_bucketing,
+        ppss_signature_bucketing,
+        resident_ppps_block_threads,
         plan.persistent_quartet_worker_blocks, true,
         generated_shell_class_mask, options.screening_tolerance,
         schwarz_bounds, transformed_direct ? direct_density : density, forces);
@@ -14748,11 +15258,20 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         generated_shell_tasks, generated_shell_classes,
         generated_shell_task_offsets, generated_shell_task_counts,
         generated_shell_task_write_counts, generated_shell_task_heads,
+        generated_low_order_signature_counts,
+        generated_low_order_signature_offsets,
         generated_ppps_resident_tasks, generated_ppps_resident_ket_tasks,
         generated_ppps_resident_bra_counts,
         generated_ppps_resident_bra_offsets,
-        generated_ppps_resident_bra_write_counts, total_shell_pairs,
+        generated_ppps_resident_bra_write_counts,
+        generated_ppps_resident_signature_counts,
+        generated_ppps_resident_signature_offsets,
+        generated_ppps_resident_signatures, total_shell_pairs,
         resident_ppps_bra && resident_ppps_ket_task_capacity != 0,
+        resident_ppps_signature_bucketing,
+        psps_signature_bucketing,
+        ppss_signature_bucketing,
+        resident_ppps_block_threads,
         plan.persistent_quartet_worker_blocks, false,
         generated_shell_class_mask, options.screening_tolerance,
         schwarz_bounds, transformed_direct ? direct_density : density, forces);
@@ -14809,6 +15328,15 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   std::vector<std::uint8_t> host_failed(batch_size);
   std::vector<std::uint32_t> host_iterations(batch_size);
   CudaRhfShellClassProfile host_shell_class_profile{};
+  const bool collect_ppps_queue_profile =
+      shell_class_profiling && quartet_direct && resident_ppps_bra &&
+      resident_ppps_ket_task_capacity != 0U &&
+      (generated_shell_class_mask &
+       (std::uint64_t{1} << kPppsShellClass)) != 0U;
+  std::vector<std::uint32_t> host_ppps_descriptor_counts(
+      collect_ppps_queue_profile ? total_shell_pairs : 0U);
+  std::vector<std::uint32_t> host_ppps_signatures(
+      collect_ppps_queue_profile ? resident_ppps_ket_task_capacity : 0U);
   const struct Download {
     void* host;
     const void* device;
@@ -14842,6 +15370,23 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       return outputs;
     }
   }
+  if (collect_ppps_queue_profile) {
+    cuda_error = cudaMemcpyAsync(
+        host_ppps_descriptor_counts.data(),
+        generated_ppps_resident_bra_counts,
+        host_ppps_descriptor_counts.size() * sizeof(std::uint32_t),
+        cudaMemcpyDeviceToHost, resources.stream_);
+    if (cuda_error == cudaSuccess) {
+      cuda_error = cudaMemcpyAsync(
+          host_ppps_signatures.data(), generated_ppps_resident_signatures,
+          host_ppps_signatures.size() * sizeof(std::uint32_t),
+          cudaMemcpyDeviceToHost, resources.stream_);
+    }
+    if (cuda_error != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
+  }
   cuda_error = cudaStreamSynchronize(resources.stream_);
   if (cuda_error != cudaSuccess) {
     fill_global_failure(outputs, cuda_status(cuda_error));
@@ -14849,6 +15394,17 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   }
   if (shell_class_profiling && quartet_direct) {
     plan.last_shell_class_profile = host_shell_class_profile;
+  }
+  if (collect_ppps_queue_profile) {
+    const unsigned multiprocessor_count = std::max(
+        1U, plan.persistent_quartet_worker_blocks /
+                kPersistentQuartetWarpsPerMultiprocessor);
+    CudaPppsQueueProfile ppps_profile = build_ppps_queue_profile(
+        host, host_ppps_descriptor_counts, host_ppps_signatures,
+        multiprocessor_count);
+    if (ppps_profile.descriptor_slots != 0U) {
+      plan.last_ppps_queue_profile = std::move(ppps_profile);
+    }
   }
   const bool no_system_failed =
       std::none_of(host_failed.begin(), host_failed.end(),
@@ -15092,6 +15648,16 @@ bool get_rhf_cuda_shell_class_profile(
     return false;
   }
   profile = *plan->last_shell_class_profile;
+  return true;
+}
+
+bool get_rhf_cuda_ppps_queue_profile(
+    const CudaRhfBucketPlan* plan,
+    CudaPppsQueueProfile& profile) noexcept {
+  if (plan == nullptr || !plan->last_ppps_queue_profile.has_value()) {
+    return false;
+  }
+  profile = *plan->last_ppps_queue_profile;
   return true;
 }
 

@@ -92,6 +92,45 @@ class ShellClassProfileEntry:
         return "".join(angular_labels[value] for value in self.shell_angular)
 
 
+@dataclass(frozen=True)
+class PppsQueueProfile:
+    """Final-density statistics for the exact resident PPPS force queue.
+
+    Block-indexed tuples use 32, 64, 128, then 256 threads. Orientation
+    tuples use ``1110`` then ``1011``. Primitive histograms use exact buckets
+    0..63 and an overflow bucket at index 64.
+    """
+
+    descriptor_slots: int
+    non_empty_descriptors: int
+    empty_descriptors: int
+    tasks: int
+    primitive_work: int
+    ket_count_min: int
+    ket_count_median: int
+    ket_count_p90: int
+    ket_count_p99: int
+    ket_count_max: int
+    lane_efficiency: tuple[float, ...]
+    primitive_warp_efficiency: float
+    task_tail_imbalance: tuple[float, ...]
+    primitive_tail_imbalance: tuple[float, ...]
+    orientation_tasks: tuple[int, int]
+    orientation_primitive_work: tuple[int, int]
+    bra_primitive_tasks: tuple[int, ...]
+    bra_primitive_work: tuple[int, ...]
+    ket_primitive_tasks: tuple[int, ...]
+    ket_primitive_work: tuple[int, ...]
+
+    @property
+    def hole_rate(self) -> float:
+        """Return the fraction of descriptor slots that launch as no-ops."""
+
+        if self.descriptor_slots == 0:
+            return 0.0
+        return self.empty_descriptors / self.descriptor_slots
+
+
 class PreparedBatch:
     """Persistent topology-aware native fleet plan.
 
@@ -378,6 +417,59 @@ class PreparedBatch:
                 )
             )
         return tuple(result)
+
+    def last_ppps_queue_profile(self) -> PppsQueueProfile:
+        """Return production PPPS occupancy and primitive-divergence data.
+
+        The batch must opt into ``shell_class_profiling``. Collection copies a
+        compact signature for every screened PPPS ket task and is therefore a
+        benchmark/debug operation, not part of normal endpoint timing.
+        """
+
+        self._ensure_open()
+        if not self._shell_class_profiling:
+            raise RuntimeError(
+                "the batch was not prepared with shell_class_profiling=True"
+            )
+        native = _native.PppsQueueProfile()
+        _native.check(
+            self._library,
+            self._library.vibeqc_batch_get_last_ppps_queue_profile(
+                self._batch, ctypes.byref(native)
+            ),
+        )
+        return PppsQueueProfile(
+            descriptor_slots=int(native.descriptor_slots),
+            non_empty_descriptors=int(native.non_empty_descriptors),
+            empty_descriptors=int(native.empty_descriptors),
+            tasks=int(native.tasks),
+            primitive_work=int(native.primitive_work),
+            ket_count_min=int(native.ket_count_min),
+            ket_count_median=int(native.ket_count_median),
+            ket_count_p90=int(native.ket_count_p90),
+            ket_count_p99=int(native.ket_count_p99),
+            ket_count_max=int(native.ket_count_max),
+            lane_efficiency=tuple(float(value) for value in native.lane_efficiency),
+            primitive_warp_efficiency=float(native.primitive_warp_efficiency),
+            task_tail_imbalance=tuple(
+                float(value) for value in native.task_tail_imbalance
+            ),
+            primitive_tail_imbalance=tuple(
+                float(value) for value in native.primitive_tail_imbalance
+            ),
+            orientation_tasks=tuple(int(value) for value in native.orientation_tasks),
+            orientation_primitive_work=tuple(
+                int(value) for value in native.orientation_primitive_work
+            ),
+            bra_primitive_tasks=tuple(
+                int(value) for value in native.bra_primitive_tasks
+            ),
+            bra_primitive_work=tuple(int(value) for value in native.bra_primitive_work),
+            ket_primitive_tasks=tuple(
+                int(value) for value in native.ket_primitive_tasks
+            ),
+            ket_primitive_work=tuple(int(value) for value in native.ket_primitive_work),
+        )
 
     def close(self) -> None:
         if self._batch.value:

@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <array>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -54,6 +55,36 @@ struct DirectShellClassProfileEntry {
   std::uint64_t primitive_quartets{};
 };
 
+/** Final-density statistics for the resident scalar PPPS force queue. */
+struct DirectPppsQueueProfile {
+  static constexpr std::size_t kBlockSizeCount = 4;
+  static constexpr std::size_t kOrientationCount = 2;
+  static constexpr std::size_t kPrimitivePairBucketCount = 65;
+
+  std::uint64_t descriptor_slots{};
+  std::uint64_t non_empty_descriptors{};
+  std::uint64_t empty_descriptors{};
+  std::uint64_t tasks{};
+  std::uint64_t primitive_work{};
+  std::uint32_t ket_count_min{};
+  std::uint32_t ket_count_median{};
+  std::uint32_t ket_count_p90{};
+  std::uint32_t ket_count_p99{};
+  std::uint32_t ket_count_max{};
+  std::array<double, kBlockSizeCount> lane_efficiency{};
+  double primitive_warp_efficiency{};
+  std::array<double, kBlockSizeCount> task_tail_imbalance{};
+  std::array<double, kBlockSizeCount> primitive_tail_imbalance{};
+  std::array<std::uint64_t, kOrientationCount> orientation_tasks{};
+  std::array<std::uint64_t, kOrientationCount> orientation_primitive_work{};
+  std::array<std::uint64_t, kPrimitivePairBucketCount> bra_primitive_tasks{};
+  std::array<std::uint64_t, kPrimitivePairBucketCount>
+      bra_primitive_work{};
+  std::array<std::uint64_t, kPrimitivePairBucketCount> ket_primitive_tasks{};
+  std::array<std::uint64_t, kPrimitivePairBucketCount>
+      ket_primitive_work{};
+};
+
 using Coordinates = std::vector<std::optional<std::vector<double>>>;
 
 /** Prepared single-system method execution, independent of the public C ABI. */
@@ -75,6 +106,8 @@ class PreparedBatch {
   virtual void set_warm_start_updates(bool enabled) = 0;
   [[nodiscard]] virtual std::optional<std::vector<DirectShellClassProfileEntry>>
   last_direct_shell_class_profile() const = 0;
+  [[nodiscard]] virtual std::optional<DirectPppsQueueProfile>
+  last_direct_ppps_queue_profile() const = 0;
 };
 
 /** Exception carrying an exact public status across the C++ method boundary. */

@@ -931,6 +931,11 @@ bool get_rhf_cuda_shell_class_profile(
     const CudaRhfBucketPlan*, CudaRhfShellClassProfile&) noexcept {
   return false;
 }
+
+bool get_rhf_cuda_ppps_queue_profile(
+    const CudaRhfBucketPlan*, CudaPppsQueueProfile&) noexcept {
+  return false;
+}
 #endif
 
 }  // namespace vibeqc::scf

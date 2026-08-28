@@ -63,6 +63,56 @@ void apply_coordinates(core::System& system, const std::vector<double>& coordina
   }
 }
 
+/** Merge additive PPPS counters without rounding derived efficiencies. */
+void merge_ppps_queue_profile(CudaPppsQueueProfile& aggregate,
+                              const CudaPppsQueueProfile& source) {
+  aggregate.descriptor_slots += source.descriptor_slots;
+  aggregate.non_empty_descriptors += source.non_empty_descriptors;
+  aggregate.tasks += source.tasks;
+  aggregate.primitive_work += source.primitive_work;
+  if (aggregate.ket_count_histogram.size() <
+      source.ket_count_histogram.size()) {
+    aggregate.ket_count_histogram.resize(
+        source.ket_count_histogram.size(), 0U);
+  }
+  for (std::size_t index = 0; index < source.ket_count_histogram.size();
+       ++index) {
+    aggregate.ket_count_histogram[index] += source.ket_count_histogram[index];
+  }
+  aggregate.primitive_warp_slots += source.primitive_warp_slots;
+  for (std::size_t index = 0; index < kPppsProfileBlockThreads.size();
+       ++index) {
+    aggregate.lane_slots[index] += source.lane_slots[index];
+    aggregate.task_schedule_ideal[index] +=
+        source.task_schedule_ideal[index];
+    aggregate.task_schedule_makespan[index] +=
+        source.task_schedule_makespan[index];
+    aggregate.primitive_schedule_ideal[index] +=
+        source.primitive_schedule_ideal[index];
+    aggregate.primitive_schedule_makespan[index] +=
+        source.primitive_schedule_makespan[index];
+  }
+  for (std::size_t orientation = 0;
+       orientation < CudaPppsQueueProfile::kOrientationCount;
+       ++orientation) {
+    aggregate.orientation_tasks[orientation] +=
+        source.orientation_tasks[orientation];
+    aggregate.orientation_primitive_work[orientation] +=
+        source.orientation_primitive_work[orientation];
+  }
+  for (std::size_t bucket = 0;
+       bucket < CudaPppsQueueProfile::kPrimitivePairBucketCount; ++bucket) {
+    aggregate.bra_primitive_tasks[bucket] +=
+        source.bra_primitive_tasks[bucket];
+    aggregate.bra_primitive_work[bucket] +=
+        source.bra_primitive_work[bucket];
+    aggregate.ket_primitive_tasks[bucket] +=
+        source.ket_primitive_tasks[bucket];
+    aggregate.ket_primitive_work[bucket] +=
+        source.ket_primitive_work[bucket];
+  }
+}
+
 }  // namespace
 
 FleetPlan::FleetPlan(std::vector<core::System> systems,
@@ -111,6 +161,7 @@ std::vector<FleetItemResult> FleetPlan::execute(
     throw std::invalid_argument("fleet coordinate list does not match system count");
   }
   last_shell_class_profile_.reset();
+  last_ppps_queue_profile_.reset();
   std::vector<FleetItemResult> results(systems_.size());
   const auto execute_one = [&](std::size_t system_index) {
     FleetItemResult& item = results[system_index];
@@ -239,6 +290,15 @@ std::vector<FleetItemResult> FleetPlan::execute(
               aggregate.ao_quartets += entry.ao_quartets;
               aggregate.primitive_quartets += entry.primitive_quartets;
             }
+          }
+          CudaPppsQueueProfile bucket_ppps_profile;
+          if (get_rhf_cuda_ppps_queue_profile(
+                  cuda_bucket_plans_[bucket], bucket_ppps_profile)) {
+            if (!last_ppps_queue_profile_.has_value()) {
+              last_ppps_queue_profile_.emplace();
+            }
+            merge_ppps_queue_profile(
+                *last_ppps_queue_profile_, bucket_ppps_profile);
           }
         }
         for (std::size_t slot = 0; slot < cuda_results.size(); ++slot) {

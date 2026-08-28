@@ -3257,6 +3257,8 @@ struct GeneratedPppsResidentTask {{
   std::uint32_t ket_count;
 }};
 
+// Maximum launch width and shared Rys-root pitch. The production wrapper may
+// launch 32, 64, 128, or 256 scalar task lanes for same-binary CTA sweeps.
 constexpr unsigned kGeneratedPppsResidentBlockThreads = 256U;
 constexpr unsigned kGeneratedPppsResidentMaximumBraPrimitivePairs = 64U;
 
@@ -3288,10 +3290,10 @@ __device__ __forceinline__ void generated_ppps_resident_force_task(
     unsigned resident_bra_pair_count,
     double (&roots_weights)[6][kGeneratedPppsResidentBlockThreads]) {{
   const unsigned lane = threadIdx.x;
-  // Advance in uniform 256-task rounds. Ragged tail lanes still execute the
+  // Advance in uniform CTA-sized rounds. Ragged tail lanes still execute the
   // warp reduction with zero force, keeping the full-warp shuffle mask valid.
   for (unsigned ket_base = 0U; ket_base < resident.ket_count;
-       ket_base += kGeneratedPppsResidentBlockThreads) {{
+       ket_base += blockDim.x) {{
     const unsigned local_ket = ket_base + lane;
 {force_declarations}
     if (local_ket < resident.ket_count) {{
@@ -3453,7 +3455,7 @@ __device__ __forceinline__ void generated_ppps_resident_bra_worker(
           kGeneratedPppsResidentMaximumBraPrimitivePairs)) return;
   for (std::int64_t primitive = threadIdx.x;
        primitive < bra_pair_count; primitive +=
-           kGeneratedPppsResidentBlockThreads) {{
+           blockDim.x) {{
     resident_bra_pairs[primitive] =
         primitive_pairs[bra_pair_begin + primitive];
   }}
@@ -3510,7 +3512,12 @@ def emit_ppps_resident_bra_rys3_cuda(
     include_shared_definitions: bool = True,
     include_rys3_roots: bool = True,
 ) -> str:
-    """Emit the canonical 256-thread ``ppps`` resident-bra Rys3 worker.
+    """Emit the scalar ``ppps`` resident-bra Rys3 worker.
+
+    The generated kernel has a 256-thread launch bound and shared-memory
+    capacity, while its task and bra-staging strides use the actual block
+    dimension. Production can therefore compare 32/64/128/256-thread CTAs
+    from one binary without changing scalar quartet ownership.
 
     ``include_shared_definitions`` keeps the standalone correctness harness
     self-contained.  Production AOT shards already contain the ordinary ppps
