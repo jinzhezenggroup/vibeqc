@@ -42,6 +42,7 @@ from .dppp_specialization import (
     emit_dppp_fused_cuda,
     evaluate_dppp_fused_component,
 )
+from .expr import SsaAnalysis, SsaValueLifetime
 from .fused_schedule import (
     FusedShellPlan,
     FusedShellResult,
@@ -183,6 +184,8 @@ __all__ = [
     "ShellClassContractionKernel",
     "ShellClassSpec",
     "SourceEmitter",
+    "SsaAnalysis",
+    "SsaValueLifetime",
     "TargetInfo",
     "TargetScheduleShape",
     "TranslationInvariant",
