@@ -310,9 +310,9 @@ def test_production_rys3_uniform_force_keeps_independent_fock_schedule(
         "explicit_fock_schedule",
     ),
     (
-        ("dpdp", "component_lanes", 352, "component_lanes", 352, False),
+        ("dpdp", "subgroup_tasks", 256, "component_lanes", 352, True),
         ("dpds", "subgroup_tasks", 256, "subgroup_tasks", 128, True),
-        ("ddpp", "component_lanes", 352, "component_lanes", 352, False),
+        ("ddpp", "subgroup_tasks", 256, "component_lanes", 352, True),
         ("ddps", "subgroup_tasks", 256, "subgroup_tasks", 128, True),
         ("ddds", "component_lanes", 224, "subgroup_tasks", 128, True),
     ),
@@ -342,6 +342,10 @@ def test_production_rys4_force_retains_explicit_fock_schedule(
     effective_fock_schedule = selection.fock_schedule or selection.schedule
     assert effective_fock_schedule.kind.value == fock_schedule
     assert effective_fock_schedule.block_threads == fock_block_threads
+    if shell_class in {"dpdp", "ddpp"}:
+        assert selection.schedule.pair_storage.value == "materialized"
+        assert effective_fock_schedule.pair_storage.value == "recomputed"
+        assert effective_fock_schedule.minimum_blocks_per_sm == 1
 
     shard = emit_profile_shard(resolved, (selection,))
     class_name = shell_class[0].upper() + shell_class[1:]
