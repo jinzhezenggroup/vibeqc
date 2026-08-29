@@ -4056,6 +4056,98 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+@pytest.mark.parametrize(
+    ("name", "recurrence", "schedule"),
+    (
+        (
+            "fsss",
+            "rys3",
+            ScheduleIR(
+                kind=ScheduleKind.THREAD_TASKS,
+                block_threads=32,
+                component_tile=10,
+                tasks_per_warp=32,
+                shared_coulomb=False,
+                minimum_blocks_per_sm=1,
+            ),
+        ),
+        (
+            "fpps",
+            "rys4",
+            ScheduleIR(
+                kind=ScheduleKind.SUBGROUP_TASKS,
+                block_threads=256,
+                component_tile=90,
+                tasks_per_warp=4,
+                shared_coulomb=True,
+                minimum_blocks_per_sm=1,
+            ),
+        ),
+    ),
+)
+def test_structural_rys_capability_examples_compile_when_nvcc_is_configured(
+    tmp_path: Path,
+    name: str,
+    recurrence: str,
+    schedule: ScheduleIR,
+):
+    """Compile f-shell candidates admitted without shell-name allowlists."""
+
+    nvcc = os.environ.get("VIBEQC_NVCC")
+    if nvcc is None:
+        pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
+    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
+    plan = build_fused_shell_plan(
+        spec,
+        schedule=schedule,
+        recurrence=recurrence,
+    )
+    source = tmp_path / f"generated_{name}_{recurrence}_capability.cu"
+    source.write_text(
+        """
+template <unsigned MaximumOrder>
+__device__ __forceinline__ void boys_values(double argument, double* values) {
+  for (unsigned order = 0; order <= MaximumOrder; ++order) {
+    values[order] = 1.0 / (2.0 * static_cast<double>(order) + 1.0 + argument);
+  }
+}
+"""
+        + emit_shell_class_fused_cuda(spec, plan),
+        encoding="utf-8",
+    )
+    cubin = tmp_path / f"generated_{name}_{recurrence}_capability.cubin"
+    result = subprocess.run(
+        [
+            nvcc,
+            "-std=c++17",
+            f"-arch={cuda_architecture}",
+            "-O3",
+            "-cubin",
+            "-Xptxas=-v",
+            str(source),
+            "-o",
+            str(cubin),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
+    if os.environ.get("VIBEQC_NVCC_VERBOSE"):
+        print(result.stdout + result.stderr)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert cubin.exists()
+    if cuda_architecture == "sm_120":
+        resource_records = re.findall(
+            r"\d+ bytes stack frame, (\d+) bytes spill stores, "
+            r"(\d+) bytes spill loads",
+            result.stdout + result.stderr,
+        )
+        assert resource_records
+        assert all(tuple(map(int, record)) == (0, 0) for record in resource_records)
+
+
 def test_psss_shell_task_cuda_compiles_when_nvcc_is_configured(tmp_path: Path):
     """Compile a zero-order ket pair through generated Fock/force lowering."""
 

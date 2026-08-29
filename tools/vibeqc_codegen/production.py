@@ -23,13 +23,10 @@ from .cuda_target import (
 )
 from .dppp_dispatch import emit_ppps_resident_bra_rys3_cuda
 from .fused_schedule import build_fused_shell_plan
-from .ir import KernelConsumer
+from .ir import KernelConsumer, build_integral_ir
 from .shell_spec import FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec, shell_pair_class
 
 _SUPPORTED_RECURRENCES = frozenset(("subset_wick", "rys2", "rys3", "rys4"))
-_SCALAR_RYS2_SHELLS = frozenset(("psss", "psps", "ppss", "dsss"))
-_COOPERATIVE_RYS3_SHELLS = frozenset(("dpps", "dpss", "dsps", "dspp", "pppp"))
-_COOPERATIVE_RYS4_SHELLS = frozenset(("dppp", "dpdp", "dpds", "ddpp", "ddps", "ddds"))
 _STREAMING_FOCK_SHELLS = frozenset(
     (
         "ssss",
@@ -55,6 +52,66 @@ _STREAMING_FOCK_SHELLS = frozenset(
         "dddd",
     )
 )
+
+
+def _supports_scalar_rys(
+    spec: ShellClassSpec,
+    schedule: ScheduleIR,
+) -> bool:
+    """Return whether the lane-local fixed-root backend can lower ``spec``.
+
+    Each lane owns one complete shell task, so the schedule must expose one
+    task per hardware lane and enough component storage for the full quartet.
+    Root-count legality is a mathematical-IR concern and is checked separately.
+    """
+
+    return (
+        schedule.kind == ScheduleKind.THREAD_TASKS
+        and schedule.warp_size == 32
+        and schedule.block_threads == 32
+        and schedule.tasks_per_warp == 32
+        and not schedule.shared_coulomb
+        and schedule.component_tile >= spec.component_count
+    )
+
+
+def _supports_component_lane_rys(
+    spec: ShellClassSpec,
+    schedule: ScheduleIR,
+) -> bool:
+    """Return whether runtime-indexed component lanes can lower ``spec``.
+
+    The current decoder has tables for s/p/d centers and supports at most a p
+    shell on the fourth center. Expressing those state-table bounds directly
+    avoids coupling recurrence eligibility to a list of promoted shell names.
+    """
+
+    return (
+        schedule.kind == ScheduleKind.COMPONENT_LANES
+        and schedule.warp_size == 32
+        and schedule.block_threads >= spec.component_count
+        and schedule.component_tile >= spec.component_count
+        and max(spec.angular) <= 2
+        and spec.angular[3] <= 1
+    )
+
+
+def _supports_uniform_warp_rys(
+    spec: ShellClassSpec,
+    schedule: ScheduleIR,
+) -> bool:
+    """Return whether uniform component warps can lower 32 shell tasks."""
+
+    return (
+        schedule.kind == ScheduleKind.SUBGROUP_TASKS
+        and schedule.warp_size == 32
+        and schedule.block_threads in (128, 256)
+        and schedule.tasks_per_block == 32
+        and schedule.subgroup_lanes == schedule.warp_count
+        and schedule.component_tile >= spec.component_count
+    )
+
+
 _PRODUCTION_PRELUDE = r"""#include "scf/generated_shell_task.hpp"
 
 #include <cuda_runtime.h>
@@ -131,18 +188,20 @@ class KernelSelection:
             or self.recurrence not in _SUPPORTED_RECURRENCES
         ):
             raise ValueError(f"unsupported production recurrence {self.recurrence!r}")
-        scalar_thread_tasks = (
-            self.schedule.kind == ScheduleKind.THREAD_TASKS
-            and self.schedule.block_threads == 32
-            and self.schedule.tasks_per_warp == 32
-            and not self.schedule.shared_coulomb
+        # IntegralIR owns scientific recurrence legality, including the exact
+        # root count implied by angular momentum and derivative order. The
+        # production layer only validates whether an implemented CUDA mapping
+        # can execute that already-legal recurrence.
+        build_integral_ir(
+            self.spec,
+            self.consumers,
+            recurrence=self.recurrence,
         )
-        if self.recurrence == "rys2" and (
-            self.spec.name not in _SCALAR_RYS2_SHELLS or not scalar_thread_tasks
-        ):
+        scalar_thread_tasks = _supports_scalar_rys(self.spec, self.schedule)
+        if self.recurrence == "rys2" and not scalar_thread_tasks:
             raise ValueError(
-                "production rys2 requires a supported low-order shell using "
-                "one scalar task per lane"
+                "production rys2 requires one complete scalar task per lane "
+                "in a single warp"
             )
         if self.recurrence == "rys3":
             if (
@@ -154,43 +213,21 @@ class KernelSelection:
                     "production ppps rys3 with a Fock consumer requires an "
                     "independent fock_schedule"
                 )
-            component_lanes = (
-                self.schedule.kind == ScheduleKind.COMPONENT_LANES
-                and self.schedule.block_threads >= self.spec.component_count
-            )
-            uniform_warps = (
-                self.schedule.kind == ScheduleKind.SUBGROUP_TASKS
-                and self.schedule.block_threads in (128, 256)
-                and self.schedule.tasks_per_block == 32
-                and self.schedule.subgroup_lanes == self.schedule.warp_count
-            )
-            if self.spec.name != "ppps" and (
-                self.spec.name not in _COOPERATIVE_RYS3_SHELLS
-                or not (scalar_thread_tasks or component_lanes or uniform_warps)
-            ):
+            component_lanes = _supports_component_lane_rys(self.spec, self.schedule)
+            uniform_warps = _supports_uniform_warp_rys(self.spec, self.schedule)
+            if not (scalar_thread_tasks or component_lanes or uniform_warps):
                 raise ValueError(
-                    "production rys3 currently requires ppps force or a "
-                    "supported three-root shell using scalar thread tasks or "
-                    "a cooperative component mapping"
+                    "production rys3 requires scalar thread tasks, supported "
+                    "runtime-indexed component lanes, or 32 uniform-warp tasks"
                 )
-        rys4_component_lanes = (
-            self.schedule.kind == ScheduleKind.COMPONENT_LANES
-            and self.schedule.block_threads >= self.spec.component_count
-        )
-        rys4_uniform_warps = (
-            self.schedule.kind == ScheduleKind.SUBGROUP_TASKS
-            and self.schedule.block_threads in (128, 256)
-            and self.schedule.tasks_per_block == 32
-            and self.schedule.subgroup_lanes == self.schedule.warp_count
-        )
-        if self.recurrence == "rys4" and (
-            self.spec.name not in _COOPERATIVE_RYS4_SHELLS
-            or not (rys4_component_lanes or rys4_uniform_warps)
+        rys4_component_lanes = _supports_component_lane_rys(self.spec, self.schedule)
+        rys4_uniform_warps = _supports_uniform_warp_rys(self.spec, self.schedule)
+        if self.recurrence == "rys4" and not (
+            rys4_component_lanes or rys4_uniform_warps
         ):
             raise ValueError(
-                "production rys4 requires a supported shell with either "
-                "one component lane per Cartesian component or 32 quartets "
-                "across eight uniform component warps"
+                "production rys4 requires supported runtime-indexed component "
+                "lanes or 32 uniform-warp tasks"
             )
         if self.fock_schedule is not None and KernelConsumer.FOCK not in self.consumers:
             raise ValueError("a separate Fock schedule requires a Fock consumer")
@@ -439,7 +476,7 @@ def _default_architecture(payload: dict[str, object]) -> str:
 
 
 def _recurrence_from_row(
-    name: str,
+    spec: ShellClassSpec,
     row: Mapping[str, object],
     consumers: tuple[KernelConsumer, ...],
 ) -> str:
@@ -451,6 +488,7 @@ def _recurrence_from_row(
     The default preserves the schema's historical subset/Wick lowering.
     """
 
+    name = spec.name
     recurrence = row.get("recurrence", "subset_wick")
     if not isinstance(recurrence, str):
         raise ValueError(f"{name} recurrence must be a string")
@@ -469,12 +507,10 @@ def _recurrence_from_row(
         raise ValueError(
             "ppps recurrence 'rys3' with a Fock consumer requires fock_schedule"
         )
-    if recurrence == "rys3" and name not in {"ppps", *_COOPERATIVE_RYS3_SHELLS}:
-        raise ValueError(f"{name} does not support the production rys3 recurrence")
-    if recurrence == "rys2" and name not in _SCALAR_RYS2_SHELLS:
-        raise ValueError(f"{name} does not support the production rys2 recurrence")
-    if recurrence == "rys4" and name not in _COOPERATIVE_RYS4_SHELLS:
-        raise ValueError(f"{name} does not support the production rys4 recurrence")
+    # Construct the mathematical IR at the manifest boundary so an incorrect
+    # fixed-root count or force/Fock combination fails independently of CUDA
+    # scheduling and without a shell-name eligibility table.
+    build_integral_ir(spec, consumers, recurrence=recurrence)
     return recurrence
 
 
@@ -537,7 +573,7 @@ def _selections_from_rows(
             consumers = tuple(KernelConsumer(item) for item in raw_consumers)
         except ValueError as error:
             raise ValueError(f"{name} has an unsupported consumer") from error
-        recurrence = _recurrence_from_row(name, row, consumers)
+        recurrence = _recurrence_from_row(spec, row, consumers)
         resident_force_recurrence = _resident_force_recurrence_from_row(
             name, row, consumers
         )
