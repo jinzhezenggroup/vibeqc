@@ -278,18 +278,7 @@ def _packed_force_geometry_analysis(pair_shift_rows: int):
     if pair_shift_rows not in (3, 4):
         raise ValueError("packed geometry analysis requires three or four shifts")
     geometry = build_packed_force_geometry_algebra()
-    roots = (
-        geometry.rho,
-        geometry.inverse_two_p,
-        geometry.inverse_two_q,
-        *(item for row in geometry.pair_shifts[:pair_shift_rows] for item in row),
-        *geometry.difference,
-        *(item for row in geometry.decay_gradients for item in row),
-        geometry.argument_squared_distance,
-        geometry.boys_argument,
-        geometry.prefactor,
-        geometry.primitive_coefficient,
-    )
+    roots = geometry.roots_for_pair_shift_rows(pair_shift_rows)
     graph, roots = geometry.graph.apply_algebra_form(
         roots,
         AlgebraForm.BINARY,
