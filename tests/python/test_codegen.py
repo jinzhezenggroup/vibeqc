@@ -22,6 +22,7 @@ from tools.vibeqc_codegen import (
     DPPP_SPEC,
     FDDD_SPEC,
     FFPS_SPEC,
+    FOUR_CENTER_ERI_OPERATOR,
     FUSED_SHELL_SPEC_BY_NAME,
     FUSED_SHELL_SPECS,
     PPSS_BLOCK_THREADS,
@@ -30,10 +31,17 @@ from tools.vibeqc_codegen import (
     PSPS_SPEC,
     PSSS_SPEC,
     SSSS_SPEC,
+    ContractionConsumer,
+    ContractionSpec,
     CudaTargetInfo,
+    DensityModel,
+    DerivativeSpec,
     IntegralIR,
     KernelConsumer,
+    NuclearCoordinates,
     NvrtcCacheSpec,
+    OperatorFamily,
+    OperatorSpec,
     PairOrientation,
     PairStorage,
     RysRecurrenceKind,
@@ -41,6 +49,7 @@ from tools.vibeqc_codegen import (
     ScheduleIR,
     ScheduleKind,
     ShellClassSpec,
+    TranslationInvariant,
     build_dppp_component_kernel,
     build_dppp_contraction_kernel,
     build_dppp_fused_plan,
@@ -213,8 +222,9 @@ def test_integral_ir_has_no_accelerator_schedule_fields():
 
     assert set(IntegralIR.__dataclass_fields__) == {
         "spec",
-        "consumers",
-        "independent_force_centers",
+        "operator",
+        "derivative",
+        "contractions",
         "recurrence",
     }
     synthetic = TargetInfo(
@@ -242,15 +252,30 @@ def test_cuda_target_catalog_covers_the_compile_matrix(architecture: str):
 
 
 def test_integral_and_schedule_irs_separate_math_from_cuda_mapping():
-    """Expose value/force intent independently from schedule selection."""
+    """Expose derivative/contraction intent independently from CUDA mapping."""
 
     integral = build_integral_ir(
         DPPP_SPEC,
         consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
     )
+    assert integral.operator == FOUR_CENTER_ERI_OPERATOR
+    assert integral.derivative == DerivativeSpec(
+        order=1,
+        parameters=NuclearCoordinates(),
+        invariants=(TranslationInvariant(),),
+    )
+    assert {item.consumer for item in integral.contractions} == {
+        ContractionConsumer.DIRECT_FOCK,
+        ContractionConsumer.DIRECT_FORCE,
+    }
+    assert all(
+        item.density == frozenset(DensityModel) for item in integral.contractions
+    )
     assert integral.value_coulomb_order == 5
     assert integral.maximum_coulomb_order == 6
+    assert integral.requested_derivative_centers == (0, 1, 2, 3)
     assert integral.independent_force_centers == (0, 1, 2)
+    assert integral.recovered_derivative_centers == (3,)
     candidates = schedule_candidates(integral)
     assert [item.kind for item in candidates] == [
         ScheduleKind.COMPONENT_LANES,
@@ -259,6 +284,62 @@ def test_integral_and_schedule_irs_separate_math_from_cuda_mapping():
     ]
     assert candidates[0].block_threads == 192
     assert [item.component_tile for item in candidates[1:]] == [64, 128]
+
+
+def test_operator_invariant_selects_derivative_recovery_without_force_magic():
+    """Drive Rys derivative centers from operator-declared translation semantics."""
+
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        DPPP_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    assert integral.independent_derivative_centers == (0, 2, 3)
+    assert integral.recovered_derivative_centers == (1,)
+
+    program = build_rys_force_program(DPPP_SPEC, integral=integral)
+    assert program.operator == operator
+    assert program.derivative == integral.derivative
+    assert program.independent_derivative_centers == (0, 2, 3)
+    assert program.recovered_derivative_centers == (1,)
+    assert program.independent_force_centers == (0, 2, 3)
+    assert program.recovered_force_centers == (1,)
+
+
+def test_fock_only_ir_has_no_implicit_derivative():
+    """Avoid increasing Coulomb order when only a value contraction is requested."""
+
+    integral = build_integral_ir(DPPP_SPEC, consumers=(KernelConsumer.FOCK,))
+    assert integral.derivative is None
+    assert integral.independent_derivative_centers == ()
+    assert integral.recovered_derivative_centers == ()
+    assert integral.maximum_coulomb_order == integral.value_coulomb_order
+
+    with pytest.raises(ValueError, match="requires at least one contraction"):
+        build_integral_ir(DPPP_SPEC, consumers=())
+
+
+def test_derivative_cannot_invent_an_operator_invariant():
+    """Require exact recovery relations to originate on the operator spec."""
+
+    undeclared_recovery = DerivativeSpec(
+        order=1,
+        parameters=NuclearCoordinates(),
+        invariants=(TranslationInvariant(dependent_center=0),),
+    )
+    with pytest.raises(ValueError, match="must be declared by the operator"):
+        build_integral_ir(DPPP_SPEC, derivative=undeclared_recovery)
 
 
 def test_small_shell_schedule_space_includes_packed_and_cooperative_variants():
@@ -394,6 +475,8 @@ def test_ppps_rys_program_is_a_compact_unique_state_recurrence():
     program = build_ppps_rys_force_program()
     assert program.spec == FUSED_SHELL_SPEC_BY_NAME["ppps"]
     assert program.nroots == 3
+    assert program.independent_derivative_centers == (0, 1, 2)
+    assert program.recovered_derivative_centers == (3,)
     assert program.independent_force_centers == (0, 1, 2)
     assert program.component_order == program.spec.components
     assert len(program.axis_program.requested_states) == 20
@@ -427,7 +510,7 @@ def test_ppps_rys_program_is_a_compact_unique_state_recurrence():
         recurrence="rys3",
     )
     assert plan.kernel.integral.recurrence == "rys3"
-    with pytest.raises(ValueError, match="ppps force"):
+    with pytest.raises(ValueError, match="requires rys4"):
         build_fused_shell_plan(DPPP_SPEC, recurrence="rys3")
 
 
