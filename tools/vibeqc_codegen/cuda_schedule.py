@@ -8,6 +8,7 @@ from math import comb
 
 from .backend import TargetScheduleShape
 from .cuda_target import DEFAULT_CUDA_TARGET, CudaTargetInfo
+from .expr import RematerializationPolicy
 from .ir import IntegralIR
 
 
@@ -36,6 +37,23 @@ class PairStorage(str, Enum):
     RECOMPUTED = "recomputed"
 
 
+class AlgebraPlacement(str, Enum):
+    """Source-level scalar CSE and rematerialization strategy."""
+
+    MATERIALIZED_CSE = "materialized_cse"
+    INLINE_SINGLE_USE = "inline_single_use"
+    PRESSURE_REMATERIALIZED = "pressure_rematerialized"
+
+    def materialization_policy(self) -> RematerializationPolicy:
+        """Return the expression-layer cost model for this schedule choice."""
+
+        if self == AlgebraPlacement.MATERIALIZED_CSE:
+            return RematerializationPolicy.materialized_cse()
+        if self == AlgebraPlacement.INLINE_SINGLE_USE:
+            return RematerializationPolicy.inline_single_use_values()
+        return RematerializationPolicy.pressure_rematerialized()
+
+
 @dataclass(frozen=True, slots=True)
 class CudaScheduleIR:
     """CUDA execution policy validated independently of integral intent."""
@@ -47,6 +65,7 @@ class CudaScheduleIR:
     shared_coulomb: bool = True
     pair_orientation: PairOrientation = PairOrientation.CANONICAL
     pair_storage: PairStorage = PairStorage.MATERIALIZED
+    algebra_placement: AlgebraPlacement = AlgebraPlacement.MATERIALIZED_CSE
     unroll_pair_terms: bool = True
     minimum_blocks_per_sm: int = 0
     maximum_registers: int = 0
@@ -71,6 +90,13 @@ class CudaScheduleIR:
             raise ValueError("launch bounds and maximum registers are mutually exclusive")
         if self.maximum_registers and self.kind != ScheduleKind.PACKED_TASKS:
             raise ValueError("maximum-register lowering currently supports packed tasks")
+        if (
+            self.algebra_placement != AlgebraPlacement.MATERIALIZED_CSE
+            and self.kind != ScheduleKind.PACKED_TASKS
+        ):
+            raise ValueError(
+                "non-baseline algebra placement currently supports packed tasks"
+            )
         if self.kind == ScheduleKind.PACKED_TASKS:
             if self.block_threads != self.warp_size:
                 raise ValueError("packed-task schedules currently use one warp")
@@ -295,24 +321,28 @@ def tuning_schedule_candidates(
             )
             for minimum_blocks_per_sm in occupancy_candidates:
                 for unroll_pair_terms in (True, False):
-                    candidates.append(
-                        replace(
-                            schedule,
-                            unroll_pair_terms=unroll_pair_terms,
-                            minimum_blocks_per_sm=minimum_blocks_per_sm,
+                    for algebra_placement in AlgebraPlacement:
+                        candidates.append(
+                            replace(
+                                schedule,
+                                algebra_placement=algebra_placement,
+                                unroll_pair_terms=unroll_pair_terms,
+                                minimum_blocks_per_sm=minimum_blocks_per_sm,
+                            )
                         )
-                    )
             for maximum_registers in target.packed_register_caps:
                 if maximum_registers > target.maximum_registers_per_thread:
                     continue
                 for unroll_pair_terms in (True, False):
-                    candidates.append(
-                        replace(
-                            schedule,
-                            unroll_pair_terms=unroll_pair_terms,
-                            maximum_registers=maximum_registers,
+                    for algebra_placement in AlgebraPlacement:
+                        candidates.append(
+                            replace(
+                                schedule,
+                                algebra_placement=algebra_placement,
+                                unroll_pair_terms=unroll_pair_terms,
+                                maximum_registers=maximum_registers,
+                            )
                         )
-                    )
         elif schedule.kind == ScheduleKind.SUBGROUP_TASKS:
             for pair_orientation in PairOrientation:
                 for unroll_pair_terms in (True, False):
