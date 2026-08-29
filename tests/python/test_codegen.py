@@ -343,6 +343,38 @@ def test_operator_invariant_selects_derivative_recovery_without_force_magic():
     assert program.recovered_force_centers == (1,)
 
 
+def test_fused_shell_plan_preserves_an_explicit_integral_ir():
+    """Carry derivative/contraction intent into scheduling without rebuilding it."""
+
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        DPPP_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    plan = build_fused_shell_plan(DPPP_SPEC, integral=integral)
+    assert plan.kernel.integral is integral
+    assert plan.kernel.integral.independent_derivative_centers == (0, 2, 3)
+    assert plan.kernel.integral.recovered_derivative_centers == (1,)
+
+    with pytest.raises(ValueError, match="consumer and integral"):
+        build_fused_shell_plan(
+            DPPP_SPEC,
+            integral=integral,
+            consumers=(KernelConsumer.FOCK,),
+        )
+
+
 def test_rys_root_body_packs_nonfinal_recovery_centers_by_ir_order():
     """Keep force slots dense when translation recovers a non-final center."""
 
