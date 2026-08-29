@@ -729,9 +729,17 @@ def _clone_expression(
             for identifier in node.arguments
         )
         if node.operation == "add":
-            cloned = target.add(arguments[0], arguments[1])
+            cloned = (
+                target.add(arguments[0], arguments[1])
+                if len(arguments) == 2
+                else target.add_many(arguments)
+            )
         elif node.operation == "multiply":
-            cloned = target.multiply(arguments[0], arguments[1])
+            cloned = (
+                target.multiply(arguments[0], arguments[1])
+                if len(arguments) == 2
+                else target.multiply_many(arguments)
+            )
         elif node.operation == "reciprocal":
             cloned = target.reciprocal(arguments[0])
         elif node.operation == "exp":

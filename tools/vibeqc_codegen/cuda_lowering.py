@@ -1454,19 +1454,23 @@ __device__ __forceinline__ void generated_dppp_make_packed_force_geometry(
             f"component_weights[{component}]"
         )
 
-    roots = [
+    binary_roots = tuple(
         kernel.gradients[center][coordinate]
         for center in range(3)
         for coordinate in range(3)
-    ]
-    materialization_plan = kernel.graph.materialization_plan(
+    )
+    graph, roots = kernel.graph.apply_algebra_form(
+        binary_roots,
+        schedule.algebra_form,
+    )
+    materialization_plan = graph.materialization_plan(
         roots,
         schedule.algebra_placement.materialization_policy(),
         schedule.algebra_ordering,
         schedule.algebra_fusion,
     )
     emitter = CudaEmitter(
-        kernel.graph,
+        graph,
         variable_code,
         materialization_plan=materialization_plan,
     )
@@ -1485,7 +1489,7 @@ __device__ __forceinline__ void generated_dppp_make_packed_force_geometry(
         for coordinate in range(3):
             lines.append(
                 f"  gradient[{center}][{coordinate}] = "
-                f"{emitter.reference(kernel.gradients[center][coordinate])};"
+                f"{emitter.reference(roots[center * 3 + coordinate])};"
             )
     lines.append("}")
     return "\n".join(lines) + "\n\n"

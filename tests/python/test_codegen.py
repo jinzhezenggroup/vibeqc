@@ -30,6 +30,7 @@ from tools.vibeqc_codegen import (
     PSPS_SPEC,
     PSSS_SPEC,
     SSSS_SPEC,
+    AlgebraForm,
     AlgebraFusion,
     AlgebraOrdering,
     AlgebraPlacement,
@@ -4897,6 +4898,7 @@ def test_autotune_static_model_records_operations_and_live_values():
     assert isinstance(packed_model, StaticAlgebraModel)
     assert packed_model is static_algebra_model(packed_force)
     assert packed_model.scope == "weighted_shell_dag"
+    assert packed_model.algebra_form == AlgebraForm.BINARY
     assert packed_model.algebra_fusion == AlgebraFusion.SEPARATE
     assert packed_model.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
     assert packed_model.component_count == 9
@@ -4953,15 +4955,22 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
             trial.schedule.algebra_placement,
             trial.schedule.algebra_ordering,
             trial.schedule.algebra_fusion,
+            trial.schedule.algebra_form,
         )
         for trial in packed
     } == set(
-        itertools.product(AlgebraPlacement, AlgebraOrdering, AlgebraFusion)
+        itertools.product(
+            AlgebraPlacement,
+            AlgebraOrdering,
+            AlgebraFusion,
+            AlgebraForm,
+        )
     )
     assert all(
         trial.schedule.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
         and trial.schedule.algebra_ordering == AlgebraOrdering.TOPOLOGICAL
         and trial.schedule.algebra_fusion == AlgebraFusion.SEPARATE
+        and trial.schedule.algebra_form == AlgebraForm.BINARY
         for trial in trials
         if trial.schedule.kind != ScheduleKind.PACKED_TASKS
     )
@@ -4973,6 +4982,8 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
         == trial.schedule.algebra_ordering.value
         and schedule_payload(trial.schedule)["algebra_fusion"]
         == trial.schedule.algebra_fusion.value
+        and schedule_payload(trial.schedule)["algebra_form"]
+        == trial.schedule.algebra_form.value
         for trial in packed
     )
 
@@ -4983,6 +4994,7 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
             if trial.schedule.algebra_placement == placement
             and trial.schedule.algebra_ordering == AlgebraOrdering.TOPOLOGICAL
             and trial.schedule.algebra_fusion == AlgebraFusion.SEPARATE
+            and trial.schedule.algebra_form == AlgebraForm.BINARY
             and trial.schedule.minimum_blocks_per_sm == 2
             and trial.schedule.unroll_pair_terms
         )
@@ -5032,6 +5044,7 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
             if trial.schedule.algebra_placement == placement
             and trial.schedule.algebra_ordering == AlgebraOrdering.PRESSURE_AWARE
             and trial.schedule.algebra_fusion == AlgebraFusion.SEPARATE
+            and trial.schedule.algebra_form == AlgebraForm.BINARY
             and trial.schedule.minimum_blocks_per_sm == 2
             and trial.schedule.unroll_pair_terms
         )
@@ -5055,6 +5068,7 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
             if trial.schedule.algebra_placement == placement
             and trial.schedule.algebra_ordering == AlgebraOrdering.TOPOLOGICAL
             and trial.schedule.algebra_fusion == AlgebraFusion.FMA
+            and trial.schedule.algebra_form == AlgebraForm.BINARY
             and trial.schedule.minimum_blocks_per_sm == 2
             and trial.schedule.unroll_pair_terms
         )
@@ -5080,6 +5094,44 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
     )
     assert " = fma(" in fused_source
 
+    forms = {
+        form: next(
+            trial
+            for trial in packed
+            if trial.schedule.algebra_placement
+            == AlgebraPlacement.MATERIALIZED_CSE
+            and trial.schedule.algebra_ordering == AlgebraOrdering.TOPOLOGICAL
+            and trial.schedule.algebra_fusion == AlgebraFusion.SEPARATE
+            and trial.schedule.algebra_form == form
+            and trial.schedule.minimum_blocks_per_sm == 2
+            and trial.schedule.unroll_pair_terms
+        )
+        for form in AlgebraForm
+    }
+    binary_model = forms[AlgebraForm.BINARY].static_model
+    canonical_model = forms[AlgebraForm.CANONICAL_NARY].static_model
+    factored_model = forms[AlgebraForm.FACTORED_NARY].static_model
+    assert canonical_model.materialized_value_count < (
+        binary_model.materialized_value_count
+    )
+    assert factored_model.arithmetic_operation_count < (
+        canonical_model.arithmetic_operation_count
+    )
+    assert factored_model.peak_live_values < binary_model.peak_live_values
+    canonical_source = emit_schedule_translation_unit(
+        forms[AlgebraForm.CANONICAL_NARY],
+        task_count=1,
+        primitive_count=1,
+        warmups=0,
+        iterations=1,
+        samples=1,
+    )
+    assert any(
+        line.count(" + ") >= 2 or line.count(" * ") >= 2
+        for line in canonical_source.splitlines()
+        if "const double v" in line
+    )
+
 
 def test_algebra_placement_schedule_payload_is_backward_compatible():
     """Round-trip tuned placement while defaulting older manifests safely."""
@@ -5091,6 +5143,7 @@ def test_algebra_placement_schedule_payload_is_backward_compatible():
         and trial.schedule.algebra_placement == AlgebraPlacement.INLINE_SINGLE_USE
         and trial.schedule.algebra_ordering == AlgebraOrdering.PRESSURE_AWARE
         and trial.schedule.algebra_fusion == AlgebraFusion.FMA
+        and trial.schedule.algebra_form == AlgebraForm.FACTORED_NARY
     )
     payload = schedule_payload(inline_schedule)
     assert _schedule_from_payload(payload) == inline_schedule
@@ -5098,6 +5151,7 @@ def test_algebra_placement_schedule_payload_is_backward_compatible():
     del payload["algebra_placement"]
     del payload["algebra_ordering"]
     del payload["algebra_fusion"]
+    del payload["algebra_form"]
     assert (
         _schedule_from_payload(payload).algebra_placement
         == AlgebraPlacement.MATERIALIZED_CSE
@@ -5110,6 +5164,7 @@ def test_algebra_placement_schedule_payload_is_backward_compatible():
         _schedule_from_payload(payload).algebra_fusion
         == AlgebraFusion.SEPARATE
     )
+    assert _schedule_from_payload(payload).algebra_form == AlgebraForm.BINARY
     with pytest.raises(ValueError, match="packed tasks"):
         replace(
             build_fused_shell_plan(DPDS_SPEC).schedule,
@@ -5124,6 +5179,11 @@ def test_algebra_placement_schedule_payload_is_backward_compatible():
         replace(
             build_fused_shell_plan(DPDS_SPEC).schedule,
             algebra_fusion=AlgebraFusion.FMA,
+        )
+    with pytest.raises(ValueError, match="packed tasks"):
+        replace(
+            build_fused_shell_plan(DPDS_SPEC).schedule,
+            algebra_form=AlgebraForm.CANONICAL_NARY,
         )
 
 

@@ -91,21 +91,22 @@ class CudaEmitter:
         fused_multiply = self._fma_by_add.get(identifier)
         if fused_multiply is not None:
             multiply = self.graph.nodes[fused_multiply]
-            other = (
-                node.arguments[1]
-                if node.arguments[0] == fused_multiply
-                else node.arguments[0]
+            remaining = list(node.arguments)
+            remaining.remove(fused_multiply)
+            accumulator = (
+                self._reference(remaining[0])
+                if len(remaining) == 1
+                else "(" + " + ".join(
+                    self._reference(item) for item in remaining
+                ) + ")"
             )
-            arguments = [
-                self._reference(item)
-                for item in (*multiply.arguments, other)
-            ]
-            return f"fma({arguments[0]}, {arguments[1]}, {arguments[2]})"
+            arguments = [self._reference(item) for item in multiply.arguments]
+            return f"fma({arguments[0]}, {arguments[1]}, {accumulator})"
         arguments = [self._reference(item) for item in node.arguments]
         if node.operation == "add":
-            return f"{arguments[0]} + {arguments[1]}"
+            return " + ".join(arguments)
         if node.operation == "multiply":
-            return f"{arguments[0]} * {arguments[1]}"
+            return " * ".join(arguments)
         if node.operation == "reciprocal":
             return f"1.0 / {arguments[0]}"
         if node.operation == "exp":
