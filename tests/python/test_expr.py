@@ -467,7 +467,7 @@ def test_small_integer_power_lowering_reuses_squares_and_preserves_other_powers(
     source = "\n".join(emitter.lines)
     assert "pow(x, 4" not in source
     assert "pow(x, -3" not in source
-    assert "pow(x, 0.5" in source
+    assert "sqrt(x)" in source
 
     psss = build_psss_kernel("x")
     psss_roots = (
@@ -483,6 +483,23 @@ def test_small_integer_power_lowering_reuses_squares_and_preserves_other_powers(
     assert lowered_psss.operation_counts(lowered_psss_roots)["power"] < (
         native_power_count
     )
+
+
+def test_cuda_emitter_assignment_binds_stored_root_for_later_cse():
+    """Use a structured output field as the next expression's CSE input."""
+
+    graph = Graph()
+    x = graph.variable("x")
+    stored = x + 1.0
+    consumer = stored * 2.0
+    emitter = CudaEmitter(graph, {})
+    emitter.emit_assignment(stored, "geometry.stored")
+    emitter.emit((consumer,))
+
+    source = "\n".join(emitter.lines)
+    assert "geometry.stored =" in source
+    assert emitter.reference(stored) == "geometry.stored"
+    assert "geometry.stored * 2" in source
 
 
 def test_packed_force_geometry_algebra_matches_scalar_formulas():

@@ -85,6 +85,19 @@ class CudaEmitter:
             self.names[identifier] = name
             self.lines.append(f"  const double {name} = {code};")
 
+    def emit_assignment(self, expression: Expr, target: str) -> None:
+        """Emit one expression and bind its root to an existing CUDA lvalue.
+
+        Binding the root after the assignment lets later expressions reuse the
+        stored field directly instead of retaining an otherwise dead temporary.
+        This is useful for structured geometry records whose fields form the
+        boundary between symbolic algebra and backend storage.
+        """
+
+        self.emit((expression,))
+        self.lines.append(f"  {target} = {self.reference(expression)};")
+        self.names[expression.identifier] = target
+
     def _operation_code(self, identifier: int) -> str:
         """Lower one arithmetic node using the plan's contraction decisions."""
 
@@ -113,9 +126,12 @@ class CudaEmitter:
         if node.operation == "exp":
             return f"exp({arguments[0]})"
         if node.operation == "power":
+            exponent = float(node.payload)
+            if exponent == 0.5:
+                return f"sqrt({arguments[0]})"
             return (
                 f"pow({arguments[0]}, "
-                f"{format_constant(float(node.payload))})"
+                f"{format_constant(exponent)})"
             )
         raise ValueError(f"unsupported CUDA operation {node.operation!r}")
 
