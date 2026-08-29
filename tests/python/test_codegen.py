@@ -235,6 +235,21 @@ def test_integral_ir_has_no_accelerator_schedule_fields():
         TargetScheduleShape(128, 32).validate_for(synthetic)
 
 
+def test_generic_cuda_emitter_uses_backend_lowering_not_dppp_compatibility():
+    """Keep generic compilation independent of historical shell adapters."""
+
+    emitter = (
+        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "cuda_emitter.py"
+    ).read_text(encoding="utf-8")
+    compatibility = (
+        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "dppp_dispatch.py"
+    ).read_text(encoding="utf-8")
+    assert "from . import cuda_lowering as _implementation" in emitter
+    assert "dppp_dispatch" not in emitter
+    assert "from .cuda_lowering import" in compatibility
+    assert "emit_shell_class_fused_cuda" not in compatibility
+
+
 @pytest.mark.parametrize("architecture", ("sm_80", "sm_86", "sm_89", "sm_90", "sm_120"))
 def test_cuda_target_catalog_covers_the_compile_matrix(architecture: str):
     """Expose target-derived scheduling and resource limits for supported SMs."""
@@ -2559,6 +2574,7 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs():
     source = (REPOSITORY_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
     for dependency in (
         "tools/vibeqc_codegen/cuda.py",
+        "tools/vibeqc_codegen/cuda_lowering.py",
         "tools/vibeqc_codegen/dppp_dispatch.py",
         "tools/vibeqc_codegen/expr.py",
         "tools/vibeqc_codegen/fused_schedule.py",

@@ -1,11 +1,10 @@
 """Generic CUDA shell lowering surface.
 
-The implementation is retained in ``dppp_dispatch`` while it is decomposed,
-but production and tuning code depend on this backend-named interface rather
-than on the historical pilot shell class.
+Production and tuning code depend on this backend-named interface rather than
+on historical shell-specific compatibility adapters.
 """
 
-from . import dppp_dispatch as _implementation
+from . import cuda_lowering as _implementation
 
 _emitted_component_names = _implementation._emitted_component_names
 _generic_task_component_setup = _implementation._generic_task_component_setup
