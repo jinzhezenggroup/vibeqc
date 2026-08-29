@@ -8,6 +8,7 @@
 #include "scf/aot_shell_registry.hpp"
 
 #include <cublas_v2.h>
+#include <cub/block/block_scan.cuh>
 #include <cuda_runtime_api.h>
 #include <cusolverDn.h>
 #include <math_constants.h>
@@ -103,6 +104,8 @@ constexpr unsigned kFusedPsssAngularOrder = 1;
 // Order two is fully covered by psps, ppss, and dsss. A single shell-task
 // worker can dispatch those three exact recurrences without another queue.
 constexpr unsigned kFusedOrderTwoAngularOrder = 2;
+constexpr unsigned kSsssShellClass = 0;
+constexpr unsigned kPsssShellClass = 1;
 // Triangular shell-class numbering maps (p s | p s) to class two. Keep the
 // exact value next to the order-two dispatch because the fused force worker
 // must also mask this class out of the generic AO-component fallback.
@@ -112,7 +115,15 @@ constexpr unsigned kPpssShellClass = 3;
 // pair(pp)=2 and pair(ps)=1, hence 2*(2+1)/2 + 1 == 4.
 constexpr unsigned kPppsShellClass = 4;
 constexpr unsigned kPppsAngularOrder = 3;
+constexpr unsigned kPpppShellClass = 5;
 constexpr unsigned kDsssShellClass = 6;
+constexpr unsigned kDspsShellClass = 7;
+constexpr unsigned kDsppShellClass = 8;
+constexpr unsigned kDpssShellClass = 10;
+constexpr unsigned kDppsShellClass = 11;
+constexpr unsigned kDpppShellClass = 12;
+constexpr unsigned kDpdsShellClass = 13;
+constexpr unsigned kDdpsShellClass = 16;
 constexpr unsigned kDdddShellClass = 20;
 constexpr unsigned kDdddAngularOrder = 8;
 constexpr std::uint64_t kDdddShellClassMask =
@@ -145,15 +156,36 @@ constexpr unsigned kGeneratedPppsResidentMaximumBraPrimitivePairs = 64;
 constexpr unsigned kPppsSignaturePrimitivePairBuckets = 65;
 constexpr unsigned kPppsSignatureBucketCount =
     2 * kPppsSignaturePrimitivePairBuckets;
-// The bounded ordinary PPPS worker advances 32 independent quartets in
-// lockstep.  Group both primitive-pair loop lengths and the p/s ket
-// orientation so every hardware warp executes one uniform recurrence slice.
-// This compact page-local histogram replaces topology-sized task sorting.
-constexpr unsigned kBoundedPppsSignatureOrientationCount = 2;
-constexpr unsigned kBoundedPppsSignatureBucketCount =
-    kBoundedPppsSignatureOrientationCount *
+// Whole-task and subgroup-task workers advance independent quartets in
+// lockstep. Group both primitive-pair loop lengths and both pair orientations
+// so each hardware warp executes a uniform recurrence slice. The same compact
+// page-local histogram serves all selected scalar classes and PPPS without a
+// topology-sized sort or a class-specific scientific fallback.
+constexpr unsigned kBoundedForceSignatureOrientationCount = 4;
+constexpr unsigned kBoundedForceSignatureBucketCount =
+    kBoundedForceSignatureOrientationCount *
     kPppsSignaturePrimitivePairBuckets *
     kPppsSignaturePrimitivePairBuckets;
+constexpr unsigned kBoundedForceSignatureScanThreads = 256;
+constexpr unsigned kBoundedForceSignatureScanBlockCount =
+    (kBoundedForceSignatureBucketCount +
+     kBoundedForceSignatureScanThreads - 1U) /
+    kBoundedForceSignatureScanThreads;
+constexpr std::uint64_t kBoundedForceSignatureShellClassMask =
+    (std::uint64_t{1} << kSsssShellClass) |
+    (std::uint64_t{1} << kPsssShellClass) |
+    (std::uint64_t{1} << kPspsShellClass) |
+    (std::uint64_t{1} << kPpssShellClass) |
+    (std::uint64_t{1} << kPppsShellClass) |
+    (std::uint64_t{1} << kPpppShellClass) |
+    (std::uint64_t{1} << kDsssShellClass) |
+    (std::uint64_t{1} << kDspsShellClass) |
+    (std::uint64_t{1} << kDsppShellClass) |
+    (std::uint64_t{1} << kDpssShellClass) |
+    (std::uint64_t{1} << kDppsShellClass) |
+    (std::uint64_t{1} << kDpppShellClass) |
+    (std::uint64_t{1} << kDpdsShellClass) |
+    (std::uint64_t{1} << kDdpsShellClass);
 // The scalar PSPS and PPSS force workers assign one complete task to each
 // lane. Group both canonical pair loop lengths so a warp advances through
 // equal primitive work instead of serializing on the longest lane. Counts
@@ -8204,39 +8236,48 @@ __device__ __forceinline__ unsigned resident_ppps_signature_bucket(
       primitive_bucket;
 }
 
-/** Return the page-local loop/orientation signature for ordinary PPPS work. */
-__device__ __forceinline__ unsigned bounded_ppps_signature_bucket(
+/** Return the page-local loop/orientation signature for one bounded task. */
+__device__ __forceinline__ unsigned bounded_force_signature_bucket(
     const DeviceBatch& batch,
-    std::uint32_t pp_pair,
-    std::uint32_t ps_pair) {
-  const std::int64_t pp_begin =
-      batch.shell_pair_primitive_offsets[pp_pair];
-  const std::int64_t pp_end =
-      batch.shell_pair_primitive_offsets[pp_pair + 1U];
-  const std::int64_t ps_begin =
-      batch.shell_pair_primitive_offsets[ps_pair];
-  const std::int64_t ps_end =
-      batch.shell_pair_primitive_offsets[ps_pair + 1U];
-  const std::uint64_t pp_count = pp_end > pp_begin
-      ? static_cast<std::uint64_t>(pp_end - pp_begin)
+    std::uint32_t first_pair,
+    std::uint32_t second_pair) {
+  const std::int64_t first_begin =
+      batch.shell_pair_primitive_offsets[first_pair];
+  const std::int64_t first_end =
+      batch.shell_pair_primitive_offsets[first_pair + 1U];
+  const std::int64_t second_begin =
+      batch.shell_pair_primitive_offsets[second_pair];
+  const std::int64_t second_end =
+      batch.shell_pair_primitive_offsets[second_pair + 1U];
+  const std::uint64_t first_count = first_end > first_begin
+      ? static_cast<std::uint64_t>(first_end - first_begin)
       : 0U;
-  const std::uint64_t ps_count = ps_end > ps_begin
-      ? static_cast<std::uint64_t>(ps_end - ps_begin)
+  const std::uint64_t second_count = second_end > second_begin
+      ? static_cast<std::uint64_t>(second_end - second_begin)
       : 0U;
-  const unsigned pp_bucket = static_cast<unsigned>(min(
-      pp_count,
+  const unsigned first_bucket = static_cast<unsigned>(min(
+      first_count,
       static_cast<std::uint64_t>(
           kPppsSignaturePrimitivePairBuckets - 1U)));
-  const unsigned ps_bucket = static_cast<unsigned>(min(
-      ps_count,
+  const unsigned second_bucket = static_cast<unsigned>(min(
+      second_count,
       static_cast<std::uint64_t>(
           kPppsSignaturePrimitivePairBuckets - 1U)));
-  const std::int32_t ps_first = batch.shell_pair_first[ps_pair];
-  const std::int32_t ps_second = batch.shell_pair_second[ps_pair];
+  const std::int32_t first_shell = batch.shell_pair_first[first_pair];
+  const std::int32_t second_shell = batch.shell_pair_second[first_pair];
+  const std::int32_t third_shell = batch.shell_pair_first[second_pair];
+  const std::int32_t fourth_shell = batch.shell_pair_second[second_pair];
   const unsigned orientation =
-      batch.shell_angular[ps_first] < batch.shell_angular[ps_second] ? 1U : 0U;
-  return (orientation * kPppsSignaturePrimitivePairBuckets + pp_bucket) *
-      kPppsSignaturePrimitivePairBuckets + ps_bucket;
+      (batch.shell_angular[first_shell] <
+           batch.shell_angular[second_shell]
+       ? 2U
+       : 0U) |
+      (batch.shell_angular[third_shell] <
+           batch.shell_angular[fourth_shell]
+       ? 1U
+       : 0U);
+  return (orientation * kPppsSignaturePrimitivePairBuckets + first_bucket) *
+      kPppsSignaturePrimitivePairBuckets + second_bucket;
 }
 
 /** Return the ordered primitive-pair loop signature for one low-order tile. */
@@ -12013,8 +12054,8 @@ __global__ void compact_bounded_exact_class_force_wave_kernel(
     std::uint32_t* bra_head,
     const std::uint32_t* overflow,
     bool force_execution,
-    std::uint32_t* ppps_signature_counts,
-    const std::uint32_t* ppps_signature_offsets) {
+    std::uint32_t* signature_counts,
+    const std::uint32_t* signature_offsets) {
   __shared__ std::uint32_t bra_ordinal;
   if (shell_class >= detail::kDirectQuartetShellClassCount ||
       (!force_execution && overflow[shell_class] == 0U)) {
@@ -12089,13 +12130,13 @@ __global__ void compact_bounded_exact_class_force_wave_kernel(
         continue;
       }
       std::uint32_t ordinal = 0U;
-      if (ppps_signature_counts != nullptr) {
+      if (signature_counts != nullptr) {
         const unsigned signature =
-            bounded_ppps_signature_bucket(batch, bra_pair, ket_pair);
+            bounded_force_signature_bucket(batch, bra_pair, ket_pair);
         const std::uint32_t signature_ordinal =
-            atomicAdd(ppps_signature_counts + signature, 1U);
-        if (ppps_signature_offsets == nullptr) continue;
-        ordinal = ppps_signature_offsets[signature] + signature_ordinal;
+            atomicAdd(signature_counts + signature, 1U);
+        if (signature_offsets == nullptr) continue;
+        ordinal = signature_offsets[signature] + signature_ordinal;
       } else {
         ordinal = atomicAdd(task_count, 1U);
       }
@@ -12106,21 +12147,56 @@ __global__ void compact_bounded_exact_class_force_wave_kernel(
   }
 }
 
-/** Prefix one bounded PPPS page and reset its histogram for stable scatter. */
-__global__ void prefix_bounded_ppps_signature_counts_kernel(
+/** Scan bounded signature chunks in parallel and reset them for scatter. */
+__global__ void scan_bounded_force_signature_counts_kernel(
     std::uint32_t* signature_counts,
     std::uint32_t* signature_offsets,
-    std::uint32_t* task_count) {
-  if (blockIdx.x != 0U || threadIdx.x != 0U) return;
-  std::uint32_t offset = 0U;
-  for (unsigned signature = 0U;
-       signature < kBoundedPppsSignatureBucketCount; ++signature) {
-    const std::uint32_t count = signature_counts[signature];
-    signature_offsets[signature] = offset;
+    std::uint32_t* block_offsets) {
+  using BlockScan = cub::BlockScan<
+      std::uint32_t, kBoundedForceSignatureScanThreads>;
+  __shared__ typename BlockScan::TempStorage scan_storage;
+  const unsigned signature =
+      blockIdx.x * kBoundedForceSignatureScanThreads + threadIdx.x;
+  const std::uint32_t count =
+      signature < kBoundedForceSignatureBucketCount
+      ? signature_counts[signature]
+      : 0U;
+  std::uint32_t local_offset = 0U;
+  std::uint32_t block_total = 0U;
+  BlockScan(scan_storage).ExclusiveSum(count, local_offset, block_total);
+  if (signature < kBoundedForceSignatureBucketCount) {
+    signature_offsets[signature] = local_offset;
     signature_counts[signature] = 0U;
-    offset += count;
   }
-  *task_count = offset;
+  if (threadIdx.x == 0U) block_offsets[blockIdx.x] = block_total;
+}
+
+/** Complete the chunk prefix and publish the bounded page task count. */
+__global__ void prefix_bounded_force_signature_blocks_kernel(
+    std::uint32_t* signature_offsets,
+    std::uint32_t* block_offsets,
+    std::uint32_t* task_count) {
+  using BlockScan = cub::BlockScan<
+      std::uint32_t, kBoundedForceSignatureScanThreads>;
+  __shared__ typename BlockScan::TempStorage scan_storage;
+  const std::uint32_t count =
+      threadIdx.x < kBoundedForceSignatureScanBlockCount
+      ? block_offsets[threadIdx.x]
+      : 0U;
+  std::uint32_t block_offset = 0U;
+  std::uint32_t page_total = 0U;
+  BlockScan(scan_storage).ExclusiveSum(count, block_offset, page_total);
+  if (threadIdx.x < kBoundedForceSignatureScanBlockCount) {
+    block_offsets[threadIdx.x] = block_offset;
+  }
+  __syncthreads();
+  for (unsigned signature = threadIdx.x;
+       signature < kBoundedForceSignatureBucketCount;
+       signature += blockDim.x) {
+    signature_offsets[signature] += block_offsets[
+        signature / kBoundedForceSignatureScanThreads];
+  }
+  if (threadIdx.x == 0U) *task_count = page_total;
 }
 
 template <DirectScreeningPurpose Purpose>
@@ -13542,8 +13618,9 @@ struct ArenaLayout {
   std::size_t bounded_direct_generated_overflow{};
   std::size_t bounded_direct_generated_retry_mask{};
   std::size_t bounded_direct_generated_retry_any{};
-  std::size_t bounded_ppps_signature_counts{};
-  std::size_t bounded_ppps_signature_offsets{};
+  std::size_t bounded_force_signature_counts{};
+  std::size_t bounded_force_signature_offsets{};
+  std::size_t bounded_force_signature_block_offsets{};
   std::size_t bounded_fock_class_timer_starts{};
   std::size_t bounded_fock_class_timer_elapsed{};
   std::size_t bounded_fock_class_timer_launches{};
@@ -13839,11 +13916,16 @@ bool make_layout(std::size_t batch_size,
           bounded_direct_streaming ? 1 : 0, cursor,
           made.bounded_direct_generated_retry_any) ||
       !append_array<std::uint32_t>(
-          bounded_direct_streaming ? kBoundedPppsSignatureBucketCount : 0,
-          cursor, made.bounded_ppps_signature_counts) ||
+          bounded_direct_streaming ? kBoundedForceSignatureBucketCount : 0,
+          cursor, made.bounded_force_signature_counts) ||
       !append_array<std::uint32_t>(
-          bounded_direct_streaming ? kBoundedPppsSignatureBucketCount : 0,
-          cursor, made.bounded_ppps_signature_offsets) ||
+          bounded_direct_streaming ? kBoundedForceSignatureBucketCount : 0,
+          cursor, made.bounded_force_signature_offsets) ||
+      !append_array<std::uint32_t>(
+          bounded_direct_streaming
+              ? kBoundedForceSignatureScanBlockCount
+              : 0,
+          cursor, made.bounded_force_signature_block_offsets) ||
       !append_array<std::uint64_t>(
           bounded_fock_class_timing
               ? detail::kDirectQuartetShellClassCount
@@ -15957,10 +16039,12 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       resources.arena_, layout.bounded_direct_generated_retry_mask);
   auto bounded_direct_generated_retry_any = arena_pointer<std::uint32_t>(
       resources.arena_, layout.bounded_direct_generated_retry_any);
-  auto bounded_ppps_signature_counts = arena_pointer<std::uint32_t>(
-      resources.arena_, layout.bounded_ppps_signature_counts);
-  auto bounded_ppps_signature_offsets = arena_pointer<std::uint32_t>(
-      resources.arena_, layout.bounded_ppps_signature_offsets);
+  auto bounded_force_signature_counts = arena_pointer<std::uint32_t>(
+      resources.arena_, layout.bounded_force_signature_counts);
+  auto bounded_force_signature_offsets = arena_pointer<std::uint32_t>(
+      resources.arena_, layout.bounded_force_signature_offsets);
+  auto bounded_force_signature_block_offsets = arena_pointer<std::uint32_t>(
+      resources.arena_, layout.bounded_force_signature_block_offsets);
   std::uint64_t* bounded_fock_class_timer_starts =
       bounded_fock_class_timing
       ? arena_pointer<std::uint64_t>(
@@ -17938,13 +18022,14 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       selected_force_shell_class_mask & ~kDdddShellClassMask;
   const std::uint64_t generated_queued_force_shell_class_mask =
       generated_shell_class_mask;
-  // PPPS uses a page-local primitive signature order before its 32-task
-  // uniform-warp worker.  Keep it out of the unsorted first/retry arenas and
-  // route it directly through the same exact-class bounded page stream.
+  // Whole-task and subgroup-task workers use page-local primitive signatures
+  // before advancing independent quartets in warp lockstep. Keep those exact
+  // classes out of the unsorted first/retry arenas and route them through the
+  // same bounded page stream used by their generated consumers.
   const std::uint64_t bounded_paged_force_shell_class_mask =
       bounded_direct_streaming
       ? generated_queued_force_shell_class_mask &
-          (std::uint64_t{1} << kPppsShellClass)
+          kBoundedForceSignatureShellClassMask
       : 0U;
   const std::uint64_t bounded_first_wave_force_shell_class_mask =
       generated_queued_force_shell_class_mask &
@@ -18211,8 +18296,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         }
         if (error == cudaSuccess && signature_paged) {
           error = cudaMemsetAsync(
-              bounded_ppps_signature_counts, 0,
-              kBoundedPppsSignatureBucketCount * sizeof(std::uint32_t),
+              bounded_force_signature_counts, 0,
+              kBoundedForceSignatureBucketCount * sizeof(std::uint32_t),
               resources.stream_);
         }
         if (error != cudaSuccess) return error;
@@ -18253,15 +18338,26 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         };
         if (signature_paged) {
           // Count and scatter the same exact candidate page without host
-          // readback.  The second scan trades a small compaction cost for
-          // primitive-uniform 32-task batches in the dominant PPPS worker.
+          // readback. The second scan trades a small compaction cost for
+          // primitive-uniform batches across all lockstep force workers.
           error = compact_page(
-              bounded_ppps_signature_counts, nullptr, true);
+              bounded_force_signature_counts, nullptr, true);
           if (error == cudaSuccess) {
-            prefix_bounded_ppps_signature_counts_kernel<<<
-                1, 1, 0, resources.stream_>>>(
-                bounded_ppps_signature_counts,
-                bounded_ppps_signature_offsets,
+            scan_bounded_force_signature_counts_kernel<<<
+                kBoundedForceSignatureScanBlockCount,
+                kBoundedForceSignatureScanThreads, 0,
+                resources.stream_>>>(
+                bounded_force_signature_counts,
+                bounded_force_signature_offsets,
+                bounded_force_signature_block_offsets);
+            error = cudaPeekAtLastError();
+          }
+          if (error == cudaSuccess) {
+            prefix_bounded_force_signature_blocks_kernel<<<
+                1, kBoundedForceSignatureScanThreads, 0,
+                resources.stream_>>>(
+                bounded_force_signature_offsets,
+                bounded_force_signature_block_offsets,
                 bounded_direct_generated_task_counts + shell_class);
             error = cudaPeekAtLastError();
           }
@@ -18272,8 +18368,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           }
           if (error == cudaSuccess) {
             error = compact_page(
-                bounded_ppps_signature_counts,
-                bounded_ppps_signature_offsets, true);
+                bounded_force_signature_counts,
+                bounded_force_signature_offsets, true);
           }
         } else {
           error = compact_page(nullptr, nullptr, false);

@@ -2368,11 +2368,42 @@ def test_ppps_queue_buckets_orientation_and_primitive_signature_on_device():
     assert "atomicAdd(resident_signature_write_counts + bucket_index" in source
     assert "std::uint32_t* generated_ppps_resident_signatures =" in source
     assert "shell_class_profiling\n      ? arena_pointer<std::uint32_t>" in source
-    assert "kBoundedPppsSignatureBucketCount" in source
-    assert "bounded_ppps_signature_bucket" in source
-    assert "prefix_bounded_ppps_signature_counts_kernel" in source
+    assert "kBoundedForceSignatureShellClassMask" in source
+    assert "bounded_force_signature_bucket" in source
+    assert "scan_bounded_force_signature_counts_kernel" in source
+    assert "prefix_bounded_force_signature_blocks_kernel" in source
     assert "bounded_paged_force_shell_class_mask" in source
-    assert "bounded_ppps_signature_offsets, true" in source
+    assert "bounded_force_signature_offsets, true" in source
+
+
+def test_bounded_force_signature_mask_tracks_warp_uniform_schedules():
+    """Keep page sorting aligned with every production lockstep task worker."""
+
+    manifest = (
+        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+    )
+    selections = load_production_kernel_selections(manifest, "sm_120")
+    lockstep_kinds = {
+        ScheduleKind.PACKED_TASKS,
+        ScheduleKind.THREAD_TASKS,
+        ScheduleKind.SUBGROUP_TASKS,
+    }
+    expected_constants = {
+        f"k{selection.spec.name.capitalize()}ShellClass"
+        for selection in selections
+        if selection.schedule.kind in lockstep_kinds
+    }
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
+        encoding="utf-8"
+    )
+    mask_begin = source.index(
+        "constexpr std::uint64_t kBoundedForceSignatureShellClassMask"
+    )
+    mask_end = source.index(";", mask_begin)
+    configured_constants = set(
+        re.findall(r"<< (k[A-Za-z0-9]+ShellClass)", source[mask_begin:mask_end])
+    )
+    assert configured_constants == expected_constants
 
 
 def test_warm_density_validation_parallelizes_each_system_matrix():
