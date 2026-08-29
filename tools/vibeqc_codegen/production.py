@@ -156,10 +156,14 @@ class KernelSelection:
                 "one scalar task per lane"
             )
         if self.recurrence == "rys3":
-            if self.spec.name == "ppps" and KernelConsumer.FOCK in self.consumers:
+            if (
+                self.spec.name == "ppps"
+                and KernelConsumer.FOCK in self.consumers
+                and self.fock_schedule is None
+            ):
                 raise ValueError(
-                    "production ppps rys3 recurrence is force-only and cannot "
-                    "include the Fock consumer"
+                    "production ppps rys3 with a Fock consumer requires an "
+                    "independent fock_schedule"
                 )
             component_lanes = (
                 self.schedule.kind == ScheduleKind.COMPONENT_LANES
@@ -176,7 +180,7 @@ class KernelSelection:
                 or not (scalar_thread_tasks or component_lanes or uniform_warps)
             ):
                 raise ValueError(
-                    "production rys3 currently requires force-only ppps or a "
+                    "production rys3 currently requires ppps force or a "
                     "supported three-root shell using scalar thread tasks or "
                     "a cooperative component mapping"
                 )
@@ -467,9 +471,14 @@ def _recurrence_from_row(
             f"{name} has unsupported recurrence {recurrence!r}; "
             f"expected one of {supported}"
         )
-    if recurrence == "rys3" and name == "ppps" and KernelConsumer.FOCK in consumers:
+    if (
+        recurrence == "rys3"
+        and name == "ppps"
+        and KernelConsumer.FOCK in consumers
+        and row.get("fock_schedule") is None
+    ):
         raise ValueError(
-            "ppps recurrence 'rys3' is force-only and cannot include the Fock consumer"
+            "ppps recurrence 'rys3' with a Fock consumer requires fock_schedule"
         )
     if recurrence == "rys3" and name not in {"ppps", *_COOPERATIVE_RYS3_SHELLS}:
         raise ValueError(f"{name} does not support the production rys3 recurrence")
@@ -1571,11 +1580,17 @@ def _emit_ppps_resident_source(selection: KernelSelection) -> str:
     if selection.resident_force_recurrence is None:
         return ""
     # The ordinary ppps source is emitted immediately before this tail.  A
-    # subset/Wick row needs the Rys evaluator appended; a force-only ordinary
-    # Rys row already contains the evaluator and must not define it twice.
+    # A subset/Wick row needs the resident Rys evaluator appended.  The scalar
+    # thread-task Rys3 force worker owns that exact symbol already, while the
+    # uniform-warp worker deliberately uses a schedule-qualified root symbol
+    # and therefore still needs the resident evaluator beside it.
+    ordinary_owns_resident_roots = (
+        selection.recurrence == "rys3"
+        and selection.schedule.kind == ScheduleKind.THREAD_TASKS
+    )
     return emit_ppps_resident_bra_rys3_cuda(
         include_shared_definitions=False,
-        include_rys3_roots=selection.recurrence != "rys3",
+        include_rys3_roots=not ordinary_owns_resident_roots,
     )
 
 

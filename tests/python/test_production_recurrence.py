@@ -271,7 +271,8 @@ def test_production_dsps_promotes_scalar_force_but_retains_component_fock():
 
 
 @pytest.mark.parametrize(
-    ("shell_class", "fock_block_threads"), (("dpps", 128), ("pppp", 128))
+    ("shell_class", "fock_block_threads"),
+    (("ppps", 128), ("dpps", 128), ("pppp", 128)),
 )
 def test_production_rys3_uniform_force_keeps_independent_fock_schedule(
     shell_class: str, fock_block_threads: int

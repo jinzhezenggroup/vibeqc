@@ -307,12 +307,13 @@
         {
           "shell_class": "ppps",
           "consumers": ["fock", "force"],
+          "recurrence": "rys3",
           "resident_force_recurrence": "rys3",
           "schedule": {
-            "kind": "component_lanes",
-            "block_threads": 32,
+            "kind": "subgroup_tasks",
+            "block_threads": 256,
             "component_tile": 27,
-            "tasks_per_warp": 1,
+            "tasks_per_warp": 4,
             "shared_coulomb": true,
             "pair_orientation": "canonical",
             "pair_storage": "materialized",
