@@ -71,6 +71,7 @@ from tools.vibeqc_codegen import (
     emit_rys2_roots_cuda,
     emit_rys3_roots_cuda,
     emit_rys4_roots_cuda,
+    emit_rys5_roots_cuda,
     emit_rys_force_root_body_cuda,
     emit_shell_class_fused_cuda,
     evaluate_dppp_fused_component,
@@ -85,6 +86,8 @@ from tools.vibeqc_codegen import (
     rys3_table_roots_weights,
     rys4_roots_weights,
     rys4_table_roots_weights,
+    rys5_roots_weights,
+    rys5_table_roots_weights,
     rys_boys_values,
     schedule_candidates,
 )
@@ -543,6 +546,43 @@ def test_dddd_rys_program_exposes_five_root_backend_requirements():
     assert len(program.axis_program.instructions) == 216
 
 
+def test_dddp_rys5_recurrence_matches_every_symbolic_component():
+    """Lock the first promoted five-root class against symbolic lowering."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME["dddp"]
+    values = factored_dppp_variables(sample_variables())
+    for component in spec.components:
+        actual = evaluate_rys_component(spec, component, values)
+        expected = evaluate_fused_shell_observables(spec, component, values)
+        assert actual.value == pytest.approx(expected.value, rel=8.0e-13, abs=8.0e-13)
+        for center in range(4):
+            for axis in range(3):
+                assert actual.gradients[center][axis] == pytest.approx(
+                    expected.gradients[center][axis],
+                    rel=2.0e-12,
+                    abs=2.0e-12,
+                )
+
+
+def test_dddd_rys5_recurrence_matches_representative_symbolic_components():
+    """Cover every Cartesian axis pattern without a 1296-case duplicate gate."""
+
+    spec = DDDD_SPEC
+    values = factored_dppp_variables(sample_variables())
+    for component_index in (0, 1, 17, 215, 647, 648, 1024, 1295):
+        component = spec.components[component_index]
+        actual = evaluate_rys_component(spec, component, values)
+        expected = evaluate_fused_shell_observables(spec, component, values)
+        assert actual.value == pytest.approx(expected.value, rel=8.0e-13, abs=8.0e-13)
+        for center in range(4):
+            for axis in range(3):
+                assert actual.gradients[center][axis] == pytest.approx(
+                    expected.gradients[center][axis],
+                    rel=2.0e-12,
+                    abs=2.0e-12,
+                )
+
+
 def test_dppp_rys_program_bounds_four_root_state_groups():
     """Expose the exact DPPP Rys4 surface before production integration."""
 
@@ -622,6 +662,34 @@ def test_gpu4pyscf_rys4_table_matches_moment_oracle(argument: float):
         ) == pytest.approx(expected, rel=4.0e-11, abs=5.0e-13)
 
 
+@pytest.mark.parametrize("argument", (0.0, 1.0e-10, 0.05, 1.0, 5.999))
+def test_rys5_rule_reproduces_first_ten_boys_moments(argument: float):
+    """Treat the host eigensolve only as a high-accuracy Rys5 oracle."""
+
+    roots, weights = rys5_roots_weights(argument)
+    assert all(0.0 < root < 1.0 for root in roots)
+    assert all(weight > 0.0 for weight in weights)
+    moments = rys_boys_values(argument, 10)
+    for order, expected in enumerate(moments):
+        assert sum(
+            weight * root**order for root, weight in zip(roots, weights, strict=True)
+        ) == pytest.approx(expected, rel=3.0e-11, abs=8.0e-13)
+
+
+@pytest.mark.parametrize(
+    "argument", (0.0, 1.0e-10, 0.05, 1.0, 5.999, 25.0, 60.0, 80.0)
+)
+def test_gpu4pyscf_rys5_table_matches_moment_oracle(argument: float):
+    """Verify the attributed nroots=5 slice before CUDA integration."""
+
+    roots, weights = rys5_table_roots_weights(argument)
+    moments = rys_boys_values(argument, 10)
+    for order, expected in enumerate(moments):
+        assert sum(
+            weight * root**order for root, weight in zip(roots, weights, strict=True)
+        ) == pytest.approx(expected, rel=5.0e-10, abs=5.0e-12)
+
+
 @pytest.mark.parametrize(
     "argument",
     (
@@ -658,6 +726,17 @@ def test_dppp_rys4_cuda_emits_only_the_fixed_root_slice():
     assert "generated_dppp_rys4_roots" in roots
     assert "series < 8U" in roots
     assert "argument > 55.0" in roots
+
+
+def test_dddp_rys5_cuda_emits_only_the_fixed_root_slice():
+    """Keep Rys5 tables compact enough for generated CUDA compilation."""
+
+    roots = emit_rys5_roots_cuda()
+    assert "Copyright 2021-2024 The PySCF Developers" in roots
+    assert "generated_dddp_rys5_rw[5600]" in roots
+    assert "generated_dddp_rys5_roots" in roots
+    assert "series < 10U" in roots
+    assert "argument > 60.0" in roots
 
 
 def test_low_order_rys2_cuda_emits_only_the_fixed_root_slice():
@@ -883,6 +962,37 @@ def test_dppp_rys4_uniform_warps_advance_32_quartets_per_block():
     assert "kGeneratedDpppBlockThreads = 256U" in mixed_source
     assert "kGeneratedDpppFockBlockThreads = 192U" in mixed_source
     assert "GeneratedDpppSubgroupFockStorage" not in mixed_source
+
+
+@pytest.mark.parametrize("name", ("dddp", "dddd"))
+def test_high_order_rys5_uniform_warps_advance_32_quartets_per_block(name: str):
+    """Keep each five-root task/component mapping explicit."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
+    schedule = ScheduleIR(
+        kind=ScheduleKind.SUBGROUP_TASKS,
+        block_threads=256,
+        component_tile=spec.component_count,
+        tasks_per_warp=4,
+        shared_coulomb=True,
+        pair_orientation=PairOrientation.SWAPPED,
+        pair_storage=PairStorage.MATERIALIZED,
+        unroll_pair_terms=True,
+        minimum_blocks_per_sm=1,
+    )
+    plan = build_fused_shell_plan(
+        spec,
+        consumers=(KernelConsumer.FORCE,),
+        schedule=schedule,
+        recurrence="rys5",
+    )
+    source = emit_shell_class_fused_cuda(spec, plan)
+    class_name = name[0].upper() + name[1:]
+    assert f"kGenerated{class_name}Rys5TaskCount = 32U" in source
+    assert f"kGenerated{class_name}Rys5ComponentLanes = 8U" in source
+    assert f"generated_{name}_rys5_uniform_warp_roots" in source
+    assert "root_index < 5U" in source
+    assert f"generated_{name}_subgroup_force_task" not in source
 
 
 @pytest.mark.parametrize(
@@ -1548,9 +1658,9 @@ def factored_dppp_variables(values: dict[str, float]) -> dict[str, float]:
         * math.exp(pair_distance_squared)
     )
     argument = result["rho"] * sum(result[f"difference_{axis}"] ** 2 for axis in AXES)
-    # Order-six shell quartets such as DPDP require the seventh Boys moment
-    # for their first derivative oracle.
-    for order, value in enumerate(boys_values(argument, 8)):
+    # Order-eight shell quartets such as DDDD require the ninth Boys moment
+    # for their first-derivative oracle.
+    for order, value in enumerate(boys_values(argument, 10)):
         result[f"boys_{order}"] = value
     return result
 
@@ -2091,6 +2201,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
         "dppp",
         "dpdp",
         "dddp",
+        "dddd",
         "dpss",
         "dsds",
         "ddss",
@@ -2177,7 +2288,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     }
     assert tuple(selection.consumers for selection in selections) == tuple(
         (KernelConsumer.FOCK,)
-        if selection.spec.name in ("ssss", "psss", "dddd")
+        if selection.spec.name in ("ssss", "psss")
         else (
             (KernelConsumer.FORCE,)
             if selection.spec.name == "fpps"
@@ -2200,7 +2311,8 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     assert '{"ppps", 4U, 3U, 256U, 3U, 27U}' in header
     assert '{"dsps", 7U, 3U, 32U, 3U, 18U}' in header
     assert '{"dpdp", 14U, 6U, 256U, 3U, 324U}' in header
-    assert '{"dddp", 19U, 7U, 64U, 3U, 64U}' in header
+    assert '{"dddp", 19U, 7U, 256U, 3U, 648U}' in header
+    assert '{"dddd", 20U, 8U, 256U, 3U, 1296U}' in header
     assert '{"dpss", 10U, 3U, 32U, 3U, 18U}' in header
     assert '{"dsds", 9U, 4U, 64U, 3U, 36U}' in header
     assert '{"ddss", 15U, 4U, 64U, 3U, 36U}' in header
@@ -2599,6 +2711,7 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs():
         "tools/vibeqc_codegen/production.py",
         "tools/vibeqc_codegen/rys.py",
         "tools/vibeqc_codegen/rys3_data.py",
+        "tools/vibeqc_codegen/rys5_data.py",
         "tools/vibeqc_codegen/shell_class.py",
         "tools/vibeqc_codegen/shell_spec.py",
     ):

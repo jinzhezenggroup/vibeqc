@@ -105,15 +105,17 @@
         {
           "shell_class": "dddp",
           "consumers": ["fock", "force"],
+          "recurrence": "rys5",
           "schedule": {
-            "kind": "tiled_components",
-            "block_threads": 64,
-            "component_tile": 64,
-            "tasks_per_warp": 1,
+            "kind": "subgroup_tasks",
+            "block_threads": 256,
+            "component_tile": 648,
+            "tasks_per_warp": 4,
             "shared_coulomb": true,
             "pair_orientation": "swapped",
             "pair_storage": "recomputed",
-            "unroll_pair_terms": true
+            "unroll_pair_terms": true,
+            "minimum_blocks_per_sm": 1
           },
           "fock_schedule": {
             "kind": "subgroup_tasks",
@@ -129,8 +131,20 @@
         },
         {
           "shell_class": "dddd",
-          "consumers": ["fock"],
+          "consumers": ["fock", "force"],
+          "recurrence": "rys5",
           "schedule": {
+            "kind": "subgroup_tasks",
+            "block_threads": 256,
+            "component_tile": 1296,
+            "tasks_per_warp": 4,
+            "shared_coulomb": true,
+            "pair_orientation": "swapped",
+            "pair_storage": "recomputed",
+            "unroll_pair_terms": true,
+            "minimum_blocks_per_sm": 1
+          },
+          "fock_schedule": {
             "kind": "tiled_components",
             "block_threads": 64,
             "component_tile": 64,

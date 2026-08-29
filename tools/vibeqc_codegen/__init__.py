@@ -88,6 +88,7 @@ from .rys import (
     emit_rys2_roots_cuda,
     emit_rys3_roots_cuda,
     emit_rys4_roots_cuda,
+    emit_rys5_roots_cuda,
     emit_rys_force_root_body_cuda,
     evaluate_ppps_rys_component,
     evaluate_rys_component,
@@ -97,6 +98,8 @@ from .rys import (
     rys3_table_roots_weights,
     rys4_roots_weights,
     rys4_table_roots_weights,
+    rys5_roots_weights,
+    rys5_table_roots_weights,
 )
 from .rys import (
     boys_values as rys_boys_values,
@@ -227,6 +230,7 @@ __all__ = [
     "emit_rys2_roots_cuda",
     "emit_rys3_roots_cuda",
     "emit_rys4_roots_cuda",
+    "emit_rys5_roots_cuda",
     "emit_rys_force_root_body_cuda",
     "emit_shell_class_fused_cuda",
     "enumerate_fused_shell_specs",
@@ -244,6 +248,8 @@ __all__ = [
     "rys3_table_roots_weights",
     "rys4_roots_weights",
     "rys4_table_roots_weights",
+    "rys5_roots_weights",
+    "rys5_table_roots_weights",
     "rys_boys_values",
     "schedule_candidates",
     "shell_class_name",

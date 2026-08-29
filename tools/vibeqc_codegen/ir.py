@@ -280,7 +280,13 @@ class IntegralIR:
         consumers = tuple(item.kernel_consumer for item in self.contractions)
         if len(set(consumers)) != len(consumers):
             raise ValueError("integral IR contains duplicate contraction consumers")
-        if self.recurrence not in ("subset_wick", "rys2", "rys3", "rys4"):
+        if self.recurrence not in (
+            "subset_wick",
+            "rys2",
+            "rys3",
+            "rys4",
+            "rys5",
+        ):
             raise ValueError(f"unsupported integral recurrence {self.recurrence!r}")
 
         force_requested = KernelConsumer.FORCE in consumers

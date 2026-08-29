@@ -62,6 +62,17 @@ from .rys4_data import (
     RYS4_SMALLX_W0,
     RYS4_SMALLX_W1,
 )
+from .rys5_data import (
+    RYS5_DEGREE,
+    RYS5_INTERVALS,
+    RYS5_LARGEX_R_DATA,
+    RYS5_LARGEX_W_DATA,
+    RYS5_RW_DATA,
+    RYS5_SMALLX_R0,
+    RYS5_SMALLX_R1,
+    RYS5_SMALLX_W0,
+    RYS5_SMALLX_W1,
+)
 from .shell_spec import AXES, FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec
 
 
@@ -336,6 +347,14 @@ def rys4_roots_weights(
     return _moment_roots_weights(argument, 4)
 
 
+def rys5_roots_weights(
+    argument: float,
+) -> tuple[tuple[float, ...], tuple[float, ...]]:
+    """Construct a five-point Rys rule from its first ten Boys moments."""
+
+    return _moment_roots_weights(argument, 5)
+
+
 def _table_roots_weights(
     argument: float,
     *,
@@ -444,6 +463,26 @@ def rys4_table_roots_weights(
         large_r=RYS4_LARGEX_R_DATA,
         large_w=RYS4_LARGEX_W_DATA,
         table=RYS4_RW_DATA,
+    )
+
+
+def rys5_table_roots_weights(
+    argument: float,
+) -> tuple[tuple[float, ...], tuple[float, ...]]:
+    """Evaluate the GPU4PySCF-compatible five-root interpolation table."""
+
+    return _table_roots_weights(
+        argument,
+        nroots=5,
+        degree=RYS5_DEGREE,
+        intervals=RYS5_INTERVALS,
+        small_r0=RYS5_SMALLX_R0,
+        small_r1=RYS5_SMALLX_R1,
+        small_w0=RYS5_SMALLX_W0,
+        small_w1=RYS5_SMALLX_W1,
+        large_r=RYS5_LARGEX_R_DATA,
+        large_w=RYS5_LARGEX_W_DATA,
+        table=RYS5_RW_DATA,
     )
 
 
@@ -618,6 +657,25 @@ def emit_rys4_roots_cuda(*, symbol_prefix: str = "generated_dppp_rys4") -> str:
         large_r_values=RYS4_LARGEX_R_DATA,
         large_w_values=RYS4_LARGEX_W_DATA,
         table_values=RYS4_RW_DATA,
+    )
+
+
+def emit_rys5_roots_cuda(*, symbol_prefix: str = "generated_dddp_rys5") -> str:
+    """Emit an attributed Rys5 evaluator under a caller-owned CUDA prefix."""
+
+    return _emit_fixed_roots_cuda(
+        nroots=5,
+        degree=RYS5_DEGREE,
+        intervals=RYS5_INTERVALS,
+        symbol_prefix=symbol_prefix,
+        description="Five-root",
+        small_r0_values=RYS5_SMALLX_R0,
+        small_r1_values=RYS5_SMALLX_R1,
+        small_w0_values=RYS5_SMALLX_W0,
+        small_w1_values=RYS5_SMALLX_W1,
+        large_r_values=RYS5_LARGEX_R_DATA,
+        large_w_values=RYS5_LARGEX_W_DATA,
+        table_values=RYS5_RW_DATA,
     )
 
 

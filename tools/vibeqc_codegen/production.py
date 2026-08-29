@@ -28,7 +28,9 @@ from .fused_schedule import build_fused_shell_plan
 from .ir import KernelConsumer, build_integral_ir
 from .shell_spec import FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec, shell_pair_class
 
-_SUPPORTED_RECURRENCES = frozenset(("subset_wick", "rys2", "rys3", "rys4"))
+_SUPPORTED_RECURRENCES = frozenset(
+    ("subset_wick", "rys2", "rys3", "rys4", "rys5")
+)
 _STREAMING_FOCK_SHELLS = frozenset(
     (
         "ssss",
@@ -222,14 +224,18 @@ class KernelSelection:
                     "production rys3 requires scalar thread tasks, supported "
                     "runtime-indexed component lanes, or 32 uniform-warp tasks"
                 )
-        rys4_component_lanes = _supports_component_lane_rys(self.spec, self.schedule)
-        rys4_uniform_warps = _supports_uniform_warp_rys(self.spec, self.schedule)
-        if self.recurrence == "rys4" and not (
-            rys4_component_lanes or rys4_uniform_warps
+        high_root_component_lanes = _supports_component_lane_rys(
+            self.spec, self.schedule
+        )
+        high_root_uniform_warps = _supports_uniform_warp_rys(
+            self.spec, self.schedule
+        )
+        if self.recurrence in ("rys4", "rys5") and not (
+            high_root_component_lanes or high_root_uniform_warps
         ):
             raise ValueError(
-                "production rys4 requires supported runtime-indexed component "
-                "lanes or 32 uniform-warp tasks"
+                f"production {self.recurrence} requires supported "
+                "runtime-indexed component lanes or 32 uniform-warp tasks"
             )
         if self.fock_schedule is not None and KernelConsumer.FOCK not in self.consumers:
             raise ValueError("a separate Fock schedule requires a Fock consumer")
@@ -934,7 +940,7 @@ def _streaming_fock_source(selection: KernelSelection) -> str:
     if (
         selection.fock_schedule is None
         and schedule.kind == ScheduleKind.SUBGROUP_TASKS
-        and selection.recurrence in ("rys3", "rys4")
+        and selection.recurrence in ("rys3", "rys4", "rys5")
     ):
         # Uniform subgroup warps are a force-only Rys experiment.  Mirror the
         # value emitter's established component-lane fallback exactly so the
@@ -955,7 +961,9 @@ def _streaming_fock_source(selection: KernelSelection) -> str:
             pair_orientation=schedule.pair_orientation,
             pair_storage=schedule.pair_storage,
             unroll_pair_terms=schedule.unroll_pair_terms,
-            minimum_blocks_per_sm=2 if selection.recurrence == "rys4" else 0,
+            minimum_blocks_per_sm=(
+                2 if selection.recurrence in ("rys4", "rys5") else 0
+            ),
             warp_size=schedule.warp_size,
         )
     if spec.name not in _STREAMING_FOCK_SHELLS:
