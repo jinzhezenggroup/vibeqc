@@ -88,6 +88,38 @@ def _rys4_manifest(path: Path) -> None:
     )
 
 
+def _structural_rys_manifest(
+    path: Path,
+    *,
+    shell_class: str,
+    recurrence: str,
+    schedule: dict[str, object],
+) -> None:
+    """Write one force-only row for recurrence capability-boundary tests."""
+
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "default_architecture": "sm_120",
+                "architectures": {
+                    "sm_120": {
+                        "kernels": [
+                            {
+                                "shell_class": shell_class,
+                                "consumers": ["force"],
+                                "recurrence": recurrence,
+                                "schedule": schedule,
+                            }
+                        ]
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
 def test_force_only_rys3_manifest_reaches_every_production_emitter(
     tmp_path: Path,
 ):
@@ -157,7 +189,102 @@ def test_rys4_manifest_rejects_noncooperative_schedule(tmp_path: Path):
     )
     manifest.write_text(json.dumps(payload), encoding="utf-8")
 
-    with pytest.raises(ValueError, match="production rys4 requires a supported shell"):
+    with pytest.raises(ValueError, match="production rys4 requires supported"):
+        load_production_kernel_selections(manifest, "sm_120")
+
+
+def test_scalar_rys3_accepts_structurally_legal_f_shell(tmp_path: Path):
+    """Accept FSSS from root count and scalar-backend shape, not a name list."""
+
+    manifest = tmp_path / "fsss_scalar_rys3.json"
+    _structural_rys_manifest(
+        manifest,
+        shell_class="fsss",
+        recurrence="rys3",
+        schedule={
+            "kind": "thread_tasks",
+            "block_threads": 32,
+            "component_tile": 10,
+            "tasks_per_warp": 32,
+            "shared_coulomb": False,
+            "minimum_blocks_per_sm": 1,
+        },
+    )
+
+    resolved = resolve_production_profile(manifest, "sm_120")
+    selection = resolved.selections[0]
+    assert selection.spec.name == "fsss"
+    assert selection.recurrence == "rys3"
+    shard = emit_profile_shard(resolved, resolved.selections)
+    assert "generated_sm120_fsss_rys3_force_task" in shard
+
+
+def test_uniform_warp_rys4_accepts_structurally_legal_f_shell(tmp_path: Path):
+    """Allow an f-shell Rys4 program when its mapping needs no d-only decoder."""
+
+    manifest = tmp_path / "fpps_uniform_rys4.json"
+    _structural_rys_manifest(
+        manifest,
+        shell_class="fpps",
+        recurrence="rys4",
+        schedule={
+            "kind": "subgroup_tasks",
+            "block_threads": 256,
+            "component_tile": 90,
+            "tasks_per_warp": 4,
+            "shared_coulomb": True,
+            "minimum_blocks_per_sm": 1,
+        },
+    )
+
+    resolved = resolve_production_profile(manifest, "sm_120")
+    selection = resolved.selections[0]
+    assert selection.spec.name == "fpps"
+    assert selection.recurrence == "rys4"
+    shard = emit_profile_shard(resolved, resolved.selections)
+    assert "generated_sm120_fpps_rys4_uniform_warp_batch" in shard
+
+
+def test_component_lane_rys4_rejects_f_shell_decoder_gap(tmp_path: Path):
+    """Keep the current runtime-indexed s/p/d table limit structural."""
+
+    manifest = tmp_path / "fpps_component_rys4.json"
+    _structural_rys_manifest(
+        manifest,
+        shell_class="fpps",
+        recurrence="rys4",
+        schedule={
+            "kind": "component_lanes",
+            "block_threads": 96,
+            "component_tile": 90,
+            "tasks_per_warp": 1,
+            "shared_coulomb": True,
+            "minimum_blocks_per_sm": 1,
+        },
+    )
+
+    with pytest.raises(ValueError, match="production rys4 requires supported"):
+        load_production_kernel_selections(manifest, "sm_120")
+
+
+def test_manifest_rys_root_count_comes_from_integral_ir(tmp_path: Path):
+    """Reject a fixed-root count mismatch before considering CUDA mapping."""
+
+    manifest = tmp_path / "fsss_wrong_roots.json"
+    _structural_rys_manifest(
+        manifest,
+        shell_class="fsss",
+        recurrence="rys2",
+        schedule={
+            "kind": "thread_tasks",
+            "block_threads": 32,
+            "component_tile": 10,
+            "tasks_per_warp": 32,
+            "shared_coulomb": False,
+        },
+    )
+
+    with pytest.raises(ValueError, match="fsss.*requires rys3, not rys2"):
         load_production_kernel_selections(manifest, "sm_120")
 
 
