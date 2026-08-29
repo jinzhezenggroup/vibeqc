@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from fractions import Fraction
+
 from tools.vibeqc_codegen import (
     PSSS_SPEC,
     AlgebraForm,
@@ -14,7 +16,7 @@ from tools.vibeqc_codegen import (
     SsaValueLifetime,
     build_weighted_shell_contraction_kernel,
 )
-from tools.vibeqc_codegen.cuda import CudaEmitter
+from tools.vibeqc_codegen.cuda import CudaEmitter, format_constant
 from tools.vibeqc_codegen.expr import Graph
 
 
@@ -395,6 +397,46 @@ def test_canonical_forms_ignore_binary_parenthesization():
             right_associative,
             form,
         )
+
+
+def test_exact_rational_coefficients_fold_before_cuda_lowering():
+    """Keep coefficient algebra exact until the final double literal."""
+
+    graph = Graph()
+    x = graph.variable("x")
+    one_tenth = graph.coerce(0.1)
+    two_tenths = graph.coerce(0.2)
+    folded = graph.add(one_tenth, two_tenths)
+
+    assert graph.node(one_tenth).payload == Fraction(1, 10)
+    assert graph.node(folded).payload == Fraction(3, 10)
+    assert format_constant(graph.node(folded).payload) == "0.29999999999999999"
+    assert format_constant(Fraction(1, 3)) == "0.33333333333333331"
+    rational = graph.constant(Fraction(2, 3))
+    assert graph.node(graph.reciprocal(rational)).payload == Fraction(3, 2)
+    assert graph.node(rational.pow(-2)).payload == Fraction(9, 4)
+
+    root = Fraction(1, 3) * x + Fraction(2, 3) * x
+    factored, roots = graph.apply_algebra_form(
+        (root,),
+        AlgebraForm.FACTORED_NARY,
+    )
+    assert factored.node(roots[0]).operation == "variable"
+    assert factored.evaluate(roots[0], {"x": 1.25}) == 1.25
+
+    transcendental = graph.exponential(graph.constant(1))
+    assert isinstance(graph.node(transcendental).payload, float)
+
+    weighted = build_weighted_shell_contraction_kernel(
+        PSSS_SPEC,
+        component_indices=(0,),
+    )
+    coefficients = (
+        node.payload
+        for node in weighted.graph.nodes
+        if node.operation == "constant"
+    )
+    assert all(isinstance(coefficient, Fraction) for coefficient in coefficients)
 
 
 def test_factored_nary_extracts_common_factors_and_collects_like_terms():

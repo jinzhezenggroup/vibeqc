@@ -716,7 +716,7 @@ def _clone_expression(
         return cached
     node = expression.graph.node(expression)
     if node.operation == "constant":
-        cloned = target.constant(float(node.payload))
+        cloned = target.clone_constant(node)
     elif node.operation == "variable":
         cloned = target.variable(str(node.payload))
     else:

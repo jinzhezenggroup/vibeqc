@@ -4,19 +4,20 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from .expr import Expr, Graph, MaterializationPlan
+from .expr import Coefficient, Expr, Graph, MaterializationPlan
 
 
-def format_constant(value: float) -> str:
-    """Emit an unambiguous double literal accepted by NVCC."""
+def format_constant(value: Coefficient) -> str:
+    """Lower an exact/approximate coefficient to one CUDA double literal."""
 
-    if value == 0.0:
+    numeric = float(value)
+    if numeric == 0.0:
         return "0.0"
-    if value == 1.0:
+    if numeric == 1.0:
         return "1.0"
-    if value == -1.0:
+    if numeric == -1.0:
         return "-1.0"
-    return f"{value:.17g}"
+    return f"{numeric:.17g}"
 
 
 class CudaEmitter:
