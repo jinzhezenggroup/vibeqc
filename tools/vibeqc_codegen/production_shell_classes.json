@@ -80,6 +80,17 @@
           "consumers": ["fock", "force"],
           "recurrence": "rys4",
           "schedule": {
+            "kind": "subgroup_tasks",
+            "block_threads": 256,
+            "component_tile": 324,
+            "tasks_per_warp": 4,
+            "shared_coulomb": true,
+            "pair_orientation": "swapped",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true,
+            "minimum_blocks_per_sm": 1
+          },
+          "fock_schedule": {
             "kind": "component_lanes",
             "block_threads": 352,
             "component_tile": 324,
@@ -200,6 +211,17 @@
           "consumers": ["fock", "force"],
           "recurrence": "rys4",
           "schedule": {
+            "kind": "subgroup_tasks",
+            "block_threads": 256,
+            "component_tile": 324,
+            "tasks_per_warp": 4,
+            "shared_coulomb": true,
+            "pair_orientation": "swapped",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true,
+            "minimum_blocks_per_sm": 1
+          },
+          "fock_schedule": {
             "kind": "component_lanes",
             "block_threads": 352,
             "component_tile": 324,
@@ -687,6 +709,36 @@
           "ppps": {"registers": 168, "stack_bytes": 16, "shared_bytes": 30208, "local_bytes": 0},
           "dsps": {"registers": 168, "stack_bytes": 0, "shared_bytes": 30208, "local_bytes": 0},
           "pppp": {"registers": 168, "stack_bytes": 8, "shared_bytes": 9600, "local_bytes": 0}
+        }
+      },
+      "issue52_dpdp_ddpp_subgroup_acceptance": {
+        "workload": "water-32mer-4s4-def2-svp-spherical",
+        "ao_count": 768,
+        "batch_size": 1,
+        "measurement_order": "interleaved ABBA",
+        "repeats_per_engine": 5,
+        "matched_scf_iterations": [1],
+        "force_shell_classes": ["dpdp", "ddpp"],
+        "force_schedule": "32-task subgroup Rys4",
+        "fock_schedule": "352-thread recomputed component lanes",
+        "previous_vibeqc_median_seconds": 5.596709468984045,
+        "candidate_vibeqc_median_seconds": 5.07190385897411,
+        "endpoint_speedup": 1.1034730989786716,
+        "gpu4pyscf_median_seconds": 3.7410319769987836,
+        "vibeqc_over_gpu4pyscf": 1.355749934819592,
+        "maximum_energy_error_hartree": 1.318767317570746e-11,
+        "maximum_force_error_hartree_per_bohr": 1.126631398590261e-7,
+        "profile_total_kernel_milliseconds": {
+          "previous": 2135.310,
+          "candidate": 1903.161
+        },
+        "force_kernel_milliseconds": {
+          "dpdp": {"previous": 137.491304, "candidate": 13.070499},
+          "ddpp": {"previous": 116.915985, "candidate": 9.674449}
+        },
+        "water_hexadecamer_48_atom_guard_seconds": {
+          "previous": 2.9040625339839607,
+          "candidate": 2.785928111989051
         }
       }
     },

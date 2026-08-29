@@ -123,7 +123,9 @@ constexpr unsigned kDpssShellClass = 10;
 constexpr unsigned kDppsShellClass = 11;
 constexpr unsigned kDpppShellClass = 12;
 constexpr unsigned kDpdsShellClass = 13;
+constexpr unsigned kDpdpShellClass = 14;
 constexpr unsigned kDdpsShellClass = 16;
+constexpr unsigned kDdppShellClass = 17;
 constexpr unsigned kDdddShellClass = 20;
 constexpr unsigned kDdddAngularOrder = 8;
 constexpr std::uint64_t kDdddShellClassMask =
@@ -185,7 +187,9 @@ constexpr std::uint64_t kBoundedForceSignatureShellClassMask =
     (std::uint64_t{1} << kDppsShellClass) |
     (std::uint64_t{1} << kDpppShellClass) |
     (std::uint64_t{1} << kDpdsShellClass) |
-    (std::uint64_t{1} << kDdpsShellClass);
+    (std::uint64_t{1} << kDpdpShellClass) |
+    (std::uint64_t{1} << kDdpsShellClass) |
+    (std::uint64_t{1} << kDdppShellClass);
 // The scalar PSPS and PPSS force workers assign one complete task to each
 // lane. Group both canonical pair loop lengths so a warp advances through
 // equal primitive work instead of serializing on the longest lane. Counts
