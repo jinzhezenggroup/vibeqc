@@ -49,6 +49,7 @@ from .dppp_specialization import (
 from .expr import (
     MaterializationDecision,
     MaterializationPlan,
+    PowerLowering,
     RematerializationPolicy,
     SsaAnalysis,
     SsaValueLifetime,
@@ -188,6 +189,7 @@ __all__ = [
     "OperatorSpec",
     "PairOrientation",
     "PairStorage",
+    "PowerLowering",
     "PppsRysForceProgram",
     "PsssKernel",
     "RegistryEmitter",
