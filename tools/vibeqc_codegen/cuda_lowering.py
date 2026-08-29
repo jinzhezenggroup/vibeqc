@@ -1463,6 +1463,7 @@ __device__ __forceinline__ void generated_dppp_make_packed_force_geometry(
         roots,
         schedule.algebra_placement.materialization_policy(),
         schedule.algebra_ordering,
+        schedule.algebra_fusion,
     )
     emitter = CudaEmitter(
         kernel.graph,

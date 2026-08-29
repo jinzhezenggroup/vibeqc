@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from tools.vibeqc_codegen import (
     PSSS_SPEC,
+    AlgebraFusion,
     AlgebraOrdering,
     MaterializationDecision,
     MaterializationPlan,
@@ -281,3 +282,64 @@ def test_pressure_aware_ordering_falls_back_when_exact_peak_does_not_improve():
     assert guarded.emission_order == topological.emission_order
     assert guarded.peak_live_values == topological.peak_live_values
     assert guarded.reordered_value_count == 0
+
+
+def test_fma_fusion_removes_one_use_multiply_and_counts_one_operation():
+    """Contract a direct multiply/add pair in both the plan and CUDA source."""
+
+    graph = Graph()
+    product = graph.variable("x") * graph.variable("y")
+    root = product + graph.variable("z")
+    roots = (root,)
+    plan = graph.materialization_plan(roots, fusion=AlgebraFusion.FMA)
+    product_decision = next(
+        item for item in plan.decisions if item.identifier == product.identifier
+    )
+
+    assert plan.fusion == AlgebraFusion.FMA
+    assert plan.fma_operations == ((root.identifier, product.identifier),)
+    assert plan.operation_counts == (("fma", 1),)
+    assert plan.arithmetic_operation_count == 1
+    assert plan.materialized_identifiers == frozenset({root.identifier})
+    assert plan.peak_live_values == 1
+    assert plan.fma_operation_count == 1
+    assert product_decision.reason == "fma_operand"
+
+    emitter = CudaEmitter(graph, {}, materialization_plan=plan)
+    emitter.emit(roots)
+    assert emitter.lines == ["  const double v0 = fma(x, y, z);"]
+    assert emitter.reference(root) == "v0"
+
+
+def test_fma_fusion_preserves_shared_multiply_cse_and_supports_inline_root():
+    """Do not duplicate shared products, but inline a fused single-use root."""
+
+    graph = Graph()
+    product = graph.variable("x") * graph.variable("y")
+    first = product + graph.variable("z")
+    shared_root = first + product
+    shared_plan = graph.materialization_plan(
+        (shared_root,),
+        fusion=AlgebraFusion.FMA,
+    )
+    assert product.identifier in shared_plan.materialized_identifiers
+    assert shared_plan.fma_operation_count == 0
+
+    inline_graph = Graph()
+    inline_root = (
+        inline_graph.variable("a") * inline_graph.variable("b")
+        + inline_graph.variable("c")
+    )
+    inline_plan = inline_graph.materialization_plan(
+        (inline_root,),
+        RematerializationPolicy.inline_single_use_values(),
+        fusion=AlgebraFusion.FMA,
+    )
+    emitter = CudaEmitter(
+        inline_graph,
+        {},
+        materialization_plan=inline_plan,
+    )
+    emitter.emit((inline_root,))
+    assert emitter.lines == []
+    assert emitter.reference(inline_root) == "fma(a, b, c)"

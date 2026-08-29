@@ -11,6 +11,7 @@ from pathlib import Path
 
 from .cuda_emitter import emit_shell_class_fused_cuda
 from .cuda_schedule import (
+    AlgebraFusion,
     AlgebraOrdering,
     AlgebraPlacement,
     PairOrientation,
@@ -471,6 +472,12 @@ def _schedule_from_payload(payload: object) -> ScheduleIR:
                 payload.get(
                     "algebra_ordering",
                     AlgebraOrdering.TOPOLOGICAL.value,
+                )
+            ),
+            algebra_fusion=AlgebraFusion(
+                payload.get(
+                    "algebra_fusion",
+                    AlgebraFusion.SEPARATE.value,
                 )
             ),
             unroll_pair_terms=bool(payload.get("unroll_pair_terms", True)),

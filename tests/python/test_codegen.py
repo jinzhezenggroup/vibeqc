@@ -30,6 +30,7 @@ from tools.vibeqc_codegen import (
     PSPS_SPEC,
     PSSS_SPEC,
     SSSS_SPEC,
+    AlgebraFusion,
     AlgebraOrdering,
     AlgebraPlacement,
     ContractionConsumer,
@@ -4896,6 +4897,7 @@ def test_autotune_static_model_records_operations_and_live_values():
     assert isinstance(packed_model, StaticAlgebraModel)
     assert packed_model is static_algebra_model(packed_force)
     assert packed_model.scope == "weighted_shell_dag"
+    assert packed_model.algebra_fusion == AlgebraFusion.SEPARATE
     assert packed_model.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
     assert packed_model.component_count == 9
     assert packed_model.sampled_component_count == 9
@@ -4947,12 +4949,19 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
         trial for trial in trials if trial.schedule.kind == ScheduleKind.PACKED_TASKS
     )
     assert {
-        (trial.schedule.algebra_placement, trial.schedule.algebra_ordering)
+        (
+            trial.schedule.algebra_placement,
+            trial.schedule.algebra_ordering,
+            trial.schedule.algebra_fusion,
+        )
         for trial in packed
-    } == set(itertools.product(AlgebraPlacement, AlgebraOrdering))
+    } == set(
+        itertools.product(AlgebraPlacement, AlgebraOrdering, AlgebraFusion)
+    )
     assert all(
         trial.schedule.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
         and trial.schedule.algebra_ordering == AlgebraOrdering.TOPOLOGICAL
+        and trial.schedule.algebra_fusion == AlgebraFusion.SEPARATE
         for trial in trials
         if trial.schedule.kind != ScheduleKind.PACKED_TASKS
     )
@@ -4962,6 +4971,8 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
         == trial.schedule.algebra_placement.value
         and schedule_payload(trial.schedule)["algebra_ordering"]
         == trial.schedule.algebra_ordering.value
+        and schedule_payload(trial.schedule)["algebra_fusion"]
+        == trial.schedule.algebra_fusion.value
         for trial in packed
     )
 
@@ -4971,6 +4982,7 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
             for trial in packed
             if trial.schedule.algebra_placement == placement
             and trial.schedule.algebra_ordering == AlgebraOrdering.TOPOLOGICAL
+            and trial.schedule.algebra_fusion == AlgebraFusion.SEPARATE
             and trial.schedule.minimum_blocks_per_sm == 2
             and trial.schedule.unroll_pair_terms
         )
@@ -5019,6 +5031,7 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
             for trial in packed
             if trial.schedule.algebra_placement == placement
             and trial.schedule.algebra_ordering == AlgebraOrdering.PRESSURE_AWARE
+            and trial.schedule.algebra_fusion == AlgebraFusion.SEPARATE
             and trial.schedule.minimum_blocks_per_sm == 2
             and trial.schedule.unroll_pair_terms
         )
@@ -5035,6 +5048,38 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
         assert ordered_model.peak_live_values < topological_model.peak_live_values
         assert ordered_model.reordered_value_count > 0
 
+    fused = {
+        placement: next(
+            trial
+            for trial in packed
+            if trial.schedule.algebra_placement == placement
+            and trial.schedule.algebra_ordering == AlgebraOrdering.TOPOLOGICAL
+            and trial.schedule.algebra_fusion == AlgebraFusion.FMA
+            and trial.schedule.minimum_blocks_per_sm == 2
+            and trial.schedule.unroll_pair_terms
+        )
+        for placement in AlgebraPlacement
+    }
+    for placement, fused_trial in fused.items():
+        separate_model = comparable[placement].static_model
+        fused_model = fused_trial.static_model
+        assert fused_model.arithmetic_operation_count < (
+            separate_model.arithmetic_operation_count
+        )
+        assert fused_model.fma_operation_count > 0
+        assert dict(fused_model.emitted_operation_counts)["fma"] == (
+            fused_model.fma_operation_count
+        )
+    fused_source = emit_schedule_translation_unit(
+        fused[AlgebraPlacement.MATERIALIZED_CSE],
+        task_count=1,
+        primitive_count=1,
+        warmups=0,
+        iterations=1,
+        samples=1,
+    )
+    assert " = fma(" in fused_source
+
 
 def test_algebra_placement_schedule_payload_is_backward_compatible():
     """Round-trip tuned placement while defaulting older manifests safely."""
@@ -5045,12 +5090,14 @@ def test_algebra_placement_schedule_payload_is_backward_compatible():
         if trial.schedule.kind == ScheduleKind.PACKED_TASKS
         and trial.schedule.algebra_placement == AlgebraPlacement.INLINE_SINGLE_USE
         and trial.schedule.algebra_ordering == AlgebraOrdering.PRESSURE_AWARE
+        and trial.schedule.algebra_fusion == AlgebraFusion.FMA
     )
     payload = schedule_payload(inline_schedule)
     assert _schedule_from_payload(payload) == inline_schedule
 
     del payload["algebra_placement"]
     del payload["algebra_ordering"]
+    del payload["algebra_fusion"]
     assert (
         _schedule_from_payload(payload).algebra_placement
         == AlgebraPlacement.MATERIALIZED_CSE
@@ -5058,6 +5105,10 @@ def test_algebra_placement_schedule_payload_is_backward_compatible():
     assert (
         _schedule_from_payload(payload).algebra_ordering
         == AlgebraOrdering.TOPOLOGICAL
+    )
+    assert (
+        _schedule_from_payload(payload).algebra_fusion
+        == AlgebraFusion.SEPARATE
     )
     with pytest.raises(ValueError, match="packed tasks"):
         replace(
@@ -5068,6 +5119,11 @@ def test_algebra_placement_schedule_payload_is_backward_compatible():
         replace(
             build_fused_shell_plan(DPDS_SPEC).schedule,
             algebra_ordering=AlgebraOrdering.PRESSURE_AWARE,
+        )
+    with pytest.raises(ValueError, match="packed tasks"):
+        replace(
+            build_fused_shell_plan(DPDS_SPEC).schedule,
+            algebra_fusion=AlgebraFusion.FMA,
         )
 
 
