@@ -145,6 +145,15 @@ constexpr unsigned kGeneratedPppsResidentMaximumBraPrimitivePairs = 64;
 constexpr unsigned kPppsSignaturePrimitivePairBuckets = 65;
 constexpr unsigned kPppsSignatureBucketCount =
     2 * kPppsSignaturePrimitivePairBuckets;
+// The bounded ordinary PPPS worker advances 32 independent quartets in
+// lockstep.  Group both primitive-pair loop lengths and the p/s ket
+// orientation so every hardware warp executes one uniform recurrence slice.
+// This compact page-local histogram replaces topology-sized task sorting.
+constexpr unsigned kBoundedPppsSignatureOrientationCount = 2;
+constexpr unsigned kBoundedPppsSignatureBucketCount =
+    kBoundedPppsSignatureOrientationCount *
+    kPppsSignaturePrimitivePairBuckets *
+    kPppsSignaturePrimitivePairBuckets;
 // The scalar PSPS and PPSS force workers assign one complete task to each
 // lane. Group both canonical pair loop lengths so a warp advances through
 // equal primitive work instead of serializing on the longest lane. Counts
@@ -8195,6 +8204,41 @@ __device__ __forceinline__ unsigned resident_ppps_signature_bucket(
       primitive_bucket;
 }
 
+/** Return the page-local loop/orientation signature for ordinary PPPS work. */
+__device__ __forceinline__ unsigned bounded_ppps_signature_bucket(
+    const DeviceBatch& batch,
+    std::uint32_t pp_pair,
+    std::uint32_t ps_pair) {
+  const std::int64_t pp_begin =
+      batch.shell_pair_primitive_offsets[pp_pair];
+  const std::int64_t pp_end =
+      batch.shell_pair_primitive_offsets[pp_pair + 1U];
+  const std::int64_t ps_begin =
+      batch.shell_pair_primitive_offsets[ps_pair];
+  const std::int64_t ps_end =
+      batch.shell_pair_primitive_offsets[ps_pair + 1U];
+  const std::uint64_t pp_count = pp_end > pp_begin
+      ? static_cast<std::uint64_t>(pp_end - pp_begin)
+      : 0U;
+  const std::uint64_t ps_count = ps_end > ps_begin
+      ? static_cast<std::uint64_t>(ps_end - ps_begin)
+      : 0U;
+  const unsigned pp_bucket = static_cast<unsigned>(min(
+      pp_count,
+      static_cast<std::uint64_t>(
+          kPppsSignaturePrimitivePairBuckets - 1U)));
+  const unsigned ps_bucket = static_cast<unsigned>(min(
+      ps_count,
+      static_cast<std::uint64_t>(
+          kPppsSignaturePrimitivePairBuckets - 1U)));
+  const std::int32_t ps_first = batch.shell_pair_first[ps_pair];
+  const std::int32_t ps_second = batch.shell_pair_second[ps_pair];
+  const unsigned orientation =
+      batch.shell_angular[ps_first] < batch.shell_angular[ps_second] ? 1U : 0U;
+  return (orientation * kPppsSignaturePrimitivePairBuckets + pp_bucket) *
+      kPppsSignaturePrimitivePairBuckets + ps_bucket;
+}
+
 /** Return the ordered primitive-pair loop signature for one low-order tile. */
 __device__ __forceinline__ unsigned generated_low_order_signature_bucket(
     const DeviceBatch& batch,
@@ -11967,10 +12011,13 @@ __global__ void compact_bounded_exact_class_force_wave_kernel(
     GeneratedShellTask* tasks,
     std::uint32_t* task_count,
     std::uint32_t* bra_head,
-    const std::uint32_t* overflow) {
+    const std::uint32_t* overflow,
+    bool force_execution,
+    std::uint32_t* ppps_signature_counts,
+    const std::uint32_t* ppps_signature_offsets) {
   __shared__ std::uint32_t bra_ordinal;
   if (shell_class >= detail::kDirectQuartetShellClassCount ||
-      overflow[shell_class] == 0U) {
+      (!force_execution && overflow[shell_class] == 0U)) {
     return;
   }
   const GeneratedShellPairStream& topology = *topology_pointer;
@@ -12041,12 +12088,39 @@ __global__ void compact_bounded_exact_class_force_wave_kernel(
               topology.shell_pair_bounds, density_bounds)) {
         continue;
       }
-      const std::uint32_t ordinal = atomicAdd(task_count, 1U);
+      std::uint32_t ordinal = 0U;
+      if (ppps_signature_counts != nullptr) {
+        const unsigned signature =
+            bounded_ppps_signature_bucket(batch, bra_pair, ket_pair);
+        const std::uint32_t signature_ordinal =
+            atomicAdd(ppps_signature_counts + signature, 1U);
+        if (ppps_signature_offsets == nullptr) continue;
+        ordinal = ppps_signature_offsets[signature] + signature_ordinal;
+      } else {
+        ordinal = atomicAdd(task_count, 1U);
+      }
       populate_generated_shell_task(
           batch, {bra_pair, ket_pair, 0U}, tasks[ordinal]);
     }
     __syncthreads();
   }
+}
+
+/** Prefix one bounded PPPS page and reset its histogram for stable scatter. */
+__global__ void prefix_bounded_ppps_signature_counts_kernel(
+    std::uint32_t* signature_counts,
+    std::uint32_t* signature_offsets,
+    std::uint32_t* task_count) {
+  if (blockIdx.x != 0U || threadIdx.x != 0U) return;
+  std::uint32_t offset = 0U;
+  for (unsigned signature = 0U;
+       signature < kBoundedPppsSignatureBucketCount; ++signature) {
+    const std::uint32_t count = signature_counts[signature];
+    signature_offsets[signature] = offset;
+    signature_counts[signature] = 0U;
+    offset += count;
+  }
+  *task_count = offset;
 }
 
 template <DirectScreeningPurpose Purpose>
@@ -13468,6 +13542,8 @@ struct ArenaLayout {
   std::size_t bounded_direct_generated_overflow{};
   std::size_t bounded_direct_generated_retry_mask{};
   std::size_t bounded_direct_generated_retry_any{};
+  std::size_t bounded_ppps_signature_counts{};
+  std::size_t bounded_ppps_signature_offsets{};
   std::size_t bounded_fock_class_timer_starts{};
   std::size_t bounded_fock_class_timer_elapsed{};
   std::size_t bounded_fock_class_timer_launches{};
@@ -13762,6 +13838,12 @@ bool make_layout(std::size_t batch_size,
       !append_array<std::uint32_t>(
           bounded_direct_streaming ? 1 : 0, cursor,
           made.bounded_direct_generated_retry_any) ||
+      !append_array<std::uint32_t>(
+          bounded_direct_streaming ? kBoundedPppsSignatureBucketCount : 0,
+          cursor, made.bounded_ppps_signature_counts) ||
+      !append_array<std::uint32_t>(
+          bounded_direct_streaming ? kBoundedPppsSignatureBucketCount : 0,
+          cursor, made.bounded_ppps_signature_offsets) ||
       !append_array<std::uint64_t>(
           bounded_fock_class_timing
               ? detail::kDirectQuartetShellClassCount
@@ -15875,6 +15957,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       resources.arena_, layout.bounded_direct_generated_retry_mask);
   auto bounded_direct_generated_retry_any = arena_pointer<std::uint32_t>(
       resources.arena_, layout.bounded_direct_generated_retry_any);
+  auto bounded_ppps_signature_counts = arena_pointer<std::uint32_t>(
+      resources.arena_, layout.bounded_ppps_signature_counts);
+  auto bounded_ppps_signature_offsets = arena_pointer<std::uint32_t>(
+      resources.arena_, layout.bounded_ppps_signature_offsets);
   std::uint64_t* bounded_fock_class_timer_starts =
       bounded_fock_class_timing
       ? arena_pointer<std::uint64_t>(
@@ -17852,6 +17938,17 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       selected_force_shell_class_mask & ~kDdddShellClassMask;
   const std::uint64_t generated_queued_force_shell_class_mask =
       generated_shell_class_mask;
+  // PPPS uses a page-local primitive signature order before its 32-task
+  // uniform-warp worker.  Keep it out of the unsorted first/retry arenas and
+  // route it directly through the same exact-class bounded page stream.
+  const std::uint64_t bounded_paged_force_shell_class_mask =
+      bounded_direct_streaming
+      ? generated_queued_force_shell_class_mask &
+          (std::uint64_t{1} << kPppsShellClass)
+      : 0U;
+  const std::uint64_t bounded_first_wave_force_shell_class_mask =
+      generated_queued_force_shell_class_mask &
+      ~bounded_paged_force_shell_class_mask;
   const std::uint64_t covered_force_shell_class_mask =
       generated_shell_class_mask | native_streaming_force_shell_class_mask;
   const std::uint64_t uncovered_force_shell_class_mask =
@@ -17874,7 +17971,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         detail::kDirectQuartetShellClassCount * sizeof(std::uint32_t),
         resources.stream_);
     if (error != cudaSuccess || bounded_force_kernel_count == 0) return error;
-    if (generated_queued_force_shell_class_mask == 0U) return cudaSuccess;
+    if (bounded_first_wave_force_shell_class_mask == 0U) return cudaSuccess;
     error = cudaMemsetAsync(
         bounded_direct_cursor, 0, sizeof(unsigned long long),
         resources.stream_);
@@ -17890,7 +17987,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         shell_pair_density_bounds, bounded_direct_shell_pair_order,       \
         bounded_direct_shell_pair_block_bounds,                           \
         bounded_direct_system_density_bounds, active, nullptr,            \
-        generated_queued_force_shell_class_mask, 0U,                      \
+        bounded_first_wave_force_shell_class_mask, 0U,                   \
         selected_classes, selected_any,                                   \
         bounded_direct_cursor,                                            \
         bounded_direct_generated_tasks,                                   \
@@ -17959,7 +18056,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
            kernel_index < bounded_force_kernel_count; ++kernel_index) {
         const generated::ShellKernelMetadata& kernel =
             bounded_force_kernels[kernel_index];
-        if ((generated_queued_force_shell_class_mask &
+        if ((bounded_first_wave_force_shell_class_mask &
              (std::uint64_t{1} << kernel.shell_class)) == 0U) {
           continue;
         }
@@ -17980,7 +18077,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
            kernel_index < bounded_force_kernel_count; ++kernel_index) {
         const unsigned shell_class =
             bounded_force_kernels[kernel_index].shell_class;
-        if ((generated_queued_force_shell_class_mask &
+        if ((bounded_first_wave_force_shell_class_mask &
              (std::uint64_t{1} << shell_class)) == 0U) {
           continue;
         }
@@ -18091,6 +18188,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       const std::uint32_t page_capacity = static_cast<std::uint32_t>(
           plan.bounded_generated_task_capacity);
       if (page_capacity == 0U) return cudaErrorInvalidValue;
+      const bool signature_paged =
+          (bounded_paged_force_shell_class_mask &
+           (std::uint64_t{1} << shell_class)) != 0U;
       const std::uint64_t page_domain =
           plan.bounded_generated_task_upper_bounds[shell_class] *
           (high_pair_class == low_pair_class ? 2U : 1U);
@@ -18109,36 +18209,75 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
               bounded_direct_generated_retry_task_offsets + shell_class, 0,
               sizeof(std::uint32_t), resources.stream_);
         }
+        if (error == cudaSuccess && signature_paged) {
+          error = cudaMemsetAsync(
+              bounded_ppps_signature_counts, 0,
+              kBoundedPppsSignatureBucketCount * sizeof(std::uint32_t),
+              resources.stream_);
+        }
         if (error != cudaSuccess) return error;
-#define VIBEQC_COMPACT_EXACT_OVERFLOW_FORCE(                             \
-    unrestricted_value, purpose_value)                                  \
-    compact_bounded_exact_class_force_wave_kernel<                       \
-        unrestricted_value, purpose_value><<<                            \
-            plan.persistent_quartet_worker_blocks,                       \
-            kBoundedDirectThreads, 0, resources.stream_>>>(              \
-        device_batch, bounded_stream_topology, shell_class,              \
-        high_pair_class, low_pair_class, options.screening_tolerance,    \
-        page_begin, page_capacity, bounded_direct_generated_tasks,       \
-        bounded_direct_generated_task_counts + shell_class,              \
-        bounded_direct_generated_task_heads + shell_class,               \
-        bounded_direct_generated_overflow)
-        if (is_unrestricted) {
-          if (purpose == DirectScreeningPurpose::Force) {
+        const auto compact_page = [&](
+            std::uint32_t* signature_counts,
+            const std::uint32_t* signature_offsets,
+            bool force_execution) -> cudaError_t {
+#define VIBEQC_COMPACT_EXACT_OVERFLOW_FORCE(                              \
+    unrestricted_value, purpose_value)                                   \
+    compact_bounded_exact_class_force_wave_kernel<                        \
+        unrestricted_value, purpose_value><<<                             \
+            plan.persistent_quartet_worker_blocks,                        \
+            kBoundedDirectThreads, 0, resources.stream_>>>(               \
+        device_batch, bounded_stream_topology, shell_class,               \
+        high_pair_class, low_pair_class, options.screening_tolerance,     \
+        page_begin, page_capacity, bounded_direct_generated_tasks,        \
+        bounded_direct_generated_task_counts + shell_class,               \
+        bounded_direct_generated_task_heads + shell_class,                \
+        bounded_direct_generated_overflow, force_execution,               \
+        signature_counts, signature_offsets)
+          if (is_unrestricted) {
+            if (purpose == DirectScreeningPurpose::Force) {
+              VIBEQC_COMPACT_EXACT_OVERFLOW_FORCE(
+                  true, DirectScreeningPurpose::Force);
+            } else {
+              VIBEQC_COMPACT_EXACT_OVERFLOW_FORCE(
+                  true, DirectScreeningPurpose::Fock);
+            }
+          } else if (purpose == DirectScreeningPurpose::Force) {
             VIBEQC_COMPACT_EXACT_OVERFLOW_FORCE(
-                true, DirectScreeningPurpose::Force);
+                false, DirectScreeningPurpose::Force);
           } else {
             VIBEQC_COMPACT_EXACT_OVERFLOW_FORCE(
-                true, DirectScreeningPurpose::Fock);
+                false, DirectScreeningPurpose::Fock);
           }
-        } else if (purpose == DirectScreeningPurpose::Force) {
-          VIBEQC_COMPACT_EXACT_OVERFLOW_FORCE(
-              false, DirectScreeningPurpose::Force);
-        } else {
-          VIBEQC_COMPACT_EXACT_OVERFLOW_FORCE(
-              false, DirectScreeningPurpose::Fock);
-        }
 #undef VIBEQC_COMPACT_EXACT_OVERFLOW_FORCE
-        error = cudaPeekAtLastError();
+          return cudaPeekAtLastError();
+        };
+        if (signature_paged) {
+          // Count and scatter the same exact candidate page without host
+          // readback.  The second scan trades a small compaction cost for
+          // primitive-uniform 32-task batches in the dominant PPPS worker.
+          error = compact_page(
+              bounded_ppps_signature_counts, nullptr, true);
+          if (error == cudaSuccess) {
+            prefix_bounded_ppps_signature_counts_kernel<<<
+                1, 1, 0, resources.stream_>>>(
+                bounded_ppps_signature_counts,
+                bounded_ppps_signature_offsets,
+                bounded_direct_generated_task_counts + shell_class);
+            error = cudaPeekAtLastError();
+          }
+          if (error == cudaSuccess) {
+            error = cudaMemsetAsync(
+                bounded_direct_generated_task_heads + shell_class, 0,
+                sizeof(std::uint32_t), resources.stream_);
+          }
+          if (error == cudaSuccess) {
+            error = compact_page(
+                bounded_ppps_signature_counts,
+                bounded_ppps_signature_offsets, true);
+          }
+        } else {
+          error = compact_page(nullptr, nullptr, false);
+        }
         if (error == cudaSuccess) {
           error = cudaMemsetAsync(
               bounded_direct_generated_task_heads + shell_class, 0,

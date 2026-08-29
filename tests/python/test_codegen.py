@@ -427,7 +427,7 @@ def test_ppps_rys_program_is_a_compact_unique_state_recurrence():
         recurrence="rys3",
     )
     assert plan.kernel.integral.recurrence == "rys3"
-    with pytest.raises(ValueError, match="force-only ppps"):
+    with pytest.raises(ValueError, match="ppps force"):
         build_fused_shell_plan(DPPP_SPEC, recurrence="rys3")
 
 
@@ -2088,7 +2088,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     assert '{"dppp", 12U, 5U, 128U, 3U, 162U}' in header
     assert '{"dpds", 13U, 5U, 256U, 3U, 108U}' in header
     assert '{"ddps", 16U, 5U, 256U, 3U, 108U}' in header
-    assert '{"ppps", 4U, 3U, 32U, 3U, 27U}' in header
+    assert '{"ppps", 4U, 3U, 256U, 3U, 27U}' in header
     assert '{"dsps", 7U, 3U, 32U, 3U, 18U}' in header
     assert '{"dpdp", 14U, 6U, 352U, 3U, 324U}' in header
     assert '{"dddp", 19U, 7U, 64U, 3U, 64U}' in header
@@ -2368,6 +2368,11 @@ def test_ppps_queue_buckets_orientation_and_primitive_signature_on_device():
     assert "atomicAdd(resident_signature_write_counts + bucket_index" in source
     assert "std::uint32_t* generated_ppps_resident_signatures =" in source
     assert "shell_class_profiling\n      ? arena_pointer<std::uint32_t>" in source
+    assert "kBoundedPppsSignatureBucketCount" in source
+    assert "bounded_ppps_signature_bucket" in source
+    assert "prefix_bounded_ppps_signature_counts_kernel" in source
+    assert "bounded_paged_force_shell_class_mask" in source
+    assert "bounded_ppps_signature_offsets, true" in source
 
 
 def test_warm_density_validation_parallelizes_each_system_matrix():

@@ -54,17 +54,21 @@ class IntegralIR:
                 "low-order force shell"
             )
         if self.recurrence == "rys3":
-            ppps_force_only = self.spec.name == "ppps" and self.consumers == frozenset(
-                (KernelConsumer.FORCE,)
+            # PPPS may carry an independent Fock consumer in production; its
+            # explicit fock_schedule retains the accepted value recurrence
+            # while only the force worker uses direct Rys3 lowering.
+            ppps_force = (
+                self.spec.name == "ppps"
+                and KernelConsumer.FORCE in self.consumers
             )
             cooperative_force = (
                 self.spec.name in _COOPERATIVE_RYS3_SHELLS
                 and KernelConsumer.FORCE in self.consumers
             )
-            if not ppps_force_only and not cooperative_force:
+            if not ppps_force and not cooperative_force:
                 raise ValueError(
-                    "the direct three-root recurrence requires force-only "
-                    "ppps or a supported cooperative force shell class"
+                    "the direct three-root recurrence requires ppps force "
+                    "or a supported cooperative force shell class"
                 )
         if self.recurrence == "rys4" and (
             self.spec.name not in _COOPERATIVE_RYS4_SHELLS

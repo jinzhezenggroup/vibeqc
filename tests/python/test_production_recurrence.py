@@ -114,7 +114,7 @@ def test_rys3_rejects_a_fock_consumer_at_manifest_boundary(tmp_path: Path):
     manifest = tmp_path / "rys3_fock.json"
     _rys3_manifest(manifest, ["fock", "force"])
 
-    with pytest.raises(ValueError, match="force-only"):
+    with pytest.raises(ValueError, match="requires fock_schedule"):
         load_production_kernel_selections(manifest, "sm_120")
 
 
@@ -178,7 +178,8 @@ def test_existing_production_rows_default_to_subset_wick():
         for name in ("dppp", "dpdp", "dpds", "ddpp", "ddps", "ddds")
     )
     assert all(
-        recurrences[name] == "rys3" for name in ("dpps", "dpss", "dsps", "dspp", "pppp")
+        recurrences[name] == "rys3"
+        for name in ("ppps", "dpps", "dpss", "dsps", "dspp", "pppp")
     )
     assert all(recurrences[name] == "rys2" for name in ("psps", "ppss", "dsss"))
     assert all(
@@ -192,6 +193,7 @@ def test_existing_production_rows_default_to_subset_wick():
             "ddpp",
             "ddps",
             "ddds",
+            "ppps",
             "dpps",
             "dpss",
             "dsps",
@@ -271,7 +273,8 @@ def test_production_dsps_promotes_scalar_force_but_retains_component_fock():
 
 
 @pytest.mark.parametrize(
-    ("shell_class", "fock_block_threads"), (("dpps", 128), ("pppp", 128))
+    ("shell_class", "fock_block_threads"),
+    (("ppps", 128), ("dpps", 128), ("pppp", 128)),
 )
 def test_production_rys3_uniform_force_keeps_independent_fock_schedule(
     shell_class: str, fock_block_threads: int
