@@ -13,6 +13,7 @@ from dataclasses import dataclass
 
 from .cuda import CudaEmitter
 from .expr import Expr, Graph
+from .ir import IntegralIR, build_integral_ir
 from .shell_spec import AXES, DPPP_SPEC, ShellClassSpec
 
 CENTERS = ("first", "second", "third", "fourth")
@@ -702,6 +703,8 @@ def build_dppp_component_kernel(
 def build_shell_class_contraction_kernel(
     spec: ShellClassSpec,
     component: Sequence[str],
+    *,
+    integral: IntegralIR | None = None,
 ) -> ShellClassContractionKernel:
     """Lower one shell component around shared primitive-shell geometry.
 
@@ -712,6 +715,9 @@ def build_shell_class_contraction_kernel(
     """
 
     normalized = spec.validate_component(component)
+    selected_integral = integral or build_integral_ir(spec)
+    if selected_integral.spec != spec:
+        raise ValueError("shell contraction spec does not match its integral IR")
     maximum_order = spec.maximum_force_coulomb_order
 
     graph = Graph()
@@ -733,12 +739,13 @@ def build_shell_class_contraction_kernel(
     first_product_scale = graph.variable("first_product_scale")
     second_product_scale = graph.variable("second_product_scale")
     third_product_scale = graph.variable("third_product_scale")
+    fourth_product_scale = graph.variable("fourth_product_scale")
     prefactor = graph.variable("prefactor")
     decay_gradients = {
         center: {
             axis: graph.variable(f"decay_{center}_{axis}") for axis in AXES
         }
-        for center in CENTERS[:3]
+        for center in CENTERS
     }
     variables: dict[str, Expr] = {
         "inverse_two_p": inverse_two_p,
@@ -747,6 +754,7 @@ def build_shell_class_contraction_kernel(
         "first_product_scale": first_product_scale,
         "second_product_scale": second_product_scale,
         "third_product_scale": third_product_scale,
+        "fourth_product_scale": fourth_product_scale,
         "prefactor": prefactor,
     }
     variables.update({f"difference_{axis}": difference[axis] for axis in AXES})
@@ -754,7 +762,7 @@ def build_shell_class_contraction_kernel(
         variables.update(
             {f"{prefix}_{axis}": shifts[prefix][axis] for axis in AXES}
         )
-    for center in CENTERS[:3]:
+    for center in CENTERS:
         variables.update(
             {
                 f"decay_{center}_{axis}": decay_gradients[center][axis]
@@ -773,8 +781,9 @@ def build_shell_class_contraction_kernel(
         boys,
     )
 
-    independent_gradients: list[tuple[Expr, Expr, Expr]] = []
-    for center_index, center in enumerate(CENTERS[:3]):
+    independent_gradients: dict[int, tuple[Expr, Expr, Expr]] = {}
+    independent_centers = selected_integral.independent_derivative_centers
+    for center_index in independent_centers:
         center_gradients = []
         for axis in AXES:
             argument_derivative = 2.0 * rho * difference[axis]
@@ -785,38 +794,78 @@ def build_shell_class_contraction_kernel(
             difference_gradient = graph.differentiate(
                 value, difference[axis], leaf_derivatives
             )
-            if center_index < 2:
-                pair_gradient = (
-                    (first_product_scale - 1.0)
-                    * graph.differentiate(value, shifts["pa"][axis])
-                    + first_product_scale
-                    * graph.differentiate(value, shifts["pb"][axis])
+            if center_index == 0:
+                first_shift_gradient = graph.differentiate(
+                    value, shifts["pa"][axis]
                 )
-                unscaled = (
-                    pair_gradient
-                    + first_product_scale * difference_gradient
-                    if center_index == 0
-                    else -pair_gradient
-                    + second_product_scale * difference_gradient
+                second_shift_gradient = graph.differentiate(
+                    value, shifts["pb"][axis]
                 )
-            else:
                 pair_gradient = (
-                    (third_product_scale - 1.0)
-                    * graph.differentiate(value, shifts["qc"][axis])
-                    + third_product_scale
-                    * graph.differentiate(value, shifts["qd"][axis])
+                    (first_product_scale - 1.0) * first_shift_gradient
+                    + first_product_scale * second_shift_gradient
+                )
+                unscaled = pair_gradient + first_product_scale * difference_gradient
+            elif center_index == 1:
+                first_shift_gradient = graph.differentiate(
+                    value, shifts["pa"][axis]
+                )
+                second_shift_gradient = graph.differentiate(
+                    value, shifts["pb"][axis]
+                )
+                pair_gradient = (
+                    second_product_scale * first_shift_gradient
+                    + (second_product_scale - 1.0) * second_shift_gradient
+                )
+                unscaled = pair_gradient + second_product_scale * difference_gradient
+            elif center_index == 2:
+                third_shift_gradient = graph.differentiate(
+                    value, shifts["qc"][axis]
+                )
+                fourth_shift_gradient = graph.differentiate(
+                    value, shifts["qd"][axis]
+                )
+                pair_gradient = (
+                    (third_product_scale - 1.0) * third_shift_gradient
+                    + third_product_scale * fourth_shift_gradient
                 )
                 unscaled = pair_gradient - third_product_scale * difference_gradient
+            elif center_index == 3:
+                third_shift_gradient = graph.differentiate(
+                    value, shifts["qc"][axis]
+                )
+                fourth_shift_gradient = graph.differentiate(
+                    value, shifts["qd"][axis]
+                )
+                pair_gradient = (
+                    fourth_product_scale * third_shift_gradient
+                    + (fourth_product_scale - 1.0) * fourth_shift_gradient
+                )
+                unscaled = pair_gradient - fourth_product_scale * difference_gradient
+            else:
+                raise ValueError(f"unsupported derivative center {center_index}")
             center_gradients.append(
                 prefactor
-                * (unscaled + value * decay_gradients[center][axis])
+                * (unscaled + value * decay_gradients[CENTERS[center_index]][axis])
             )
-        independent_gradients.append(tuple(center_gradients))
-    fourth_gradient = tuple(
-        -graph.sum(independent_gradients[center][axis] for center in range(3))
-        for axis in range(3)
+        independent_gradients[center_index] = tuple(center_gradients)
+    recovered_centers = selected_integral.recovered_derivative_centers
+    gradients_by_center = dict(independent_gradients)
+    for center in recovered_centers:
+        gradients_by_center[center] = tuple(
+            -graph.sum(independent_gradients[independent][axis] for independent in independent_centers)
+            for axis in range(3)
+        )
+    requested_centers = set(selected_integral.requested_derivative_centers)
+    gradients = tuple(
+        gradients_by_center.get(
+            center,
+            tuple(graph.constant(0.0) for _ in AXES),
+        )
+        if center in requested_centers
+        else tuple(graph.constant(0.0) for _ in AXES)
+        for center in range(len(CENTERS))
     )
-    gradients = tuple(independent_gradients) + (fourth_gradient,)
     return ShellClassContractionKernel(
         graph=graph,
         spec=spec,
@@ -878,6 +927,8 @@ def _clone_expression(
 def build_weighted_shell_contraction_kernel(
     spec: ShellClassSpec,
     component_indices: Sequence[int] | None = None,
+    *,
+    integral: IntegralIR | None = None,
 ) -> WeightedShellContractionKernel:
     """Build one density-weightable DAG spanning every shell component.
 
@@ -904,6 +955,10 @@ def build_weighted_shell_contraction_kernel(
     ):
         raise ValueError("weighted shell component index is out of range")
 
+    selected_integral = integral or build_integral_ir(spec)
+    if selected_integral.spec != spec:
+        raise ValueError("weighted shell spec does not match its integral IR")
+
     graph = Graph()
     component_weights = tuple(
         graph.variable(f"component_weight_{component}")
@@ -919,7 +974,11 @@ def build_weighted_shell_contraction_kernel(
         strict=True,
     ):
         component = spec.components[component_index]
-        kernel = build_shell_class_contraction_kernel(spec, component)
+        kernel = build_shell_class_contraction_kernel(
+            spec,
+            component,
+            integral=selected_integral,
+        )
         memo: dict[int, Expr] = {}
         weighted_values.append(
             weight * _clone_expression(kernel.value, graph, memo)
