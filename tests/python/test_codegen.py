@@ -408,6 +408,35 @@ def test_shell_contraction_kernel_uses_explicit_derivative_centers():
         component,
         integral=integral,
     )
+    custom_component = build_shell_class_component_kernel(
+        DPPP_SPEC,
+        component,
+        integral=integral,
+    )
+
+    for center in (0, 2, 3):
+        for axis in range(3):
+            assert custom_component.graph.evaluate(
+                custom_component.gradients[center][axis],
+                full_values,
+            ) == pytest.approx(
+                full.graph.evaluate(full.gradients[center][axis], full_values),
+                rel=1.0e-13,
+                abs=1.0e-13,
+            )
+    for axis in range(3):
+        recovered = custom_component.graph.evaluate(
+            custom_component.gradients[1][axis],
+            full_values,
+        )
+        independent_sum = sum(
+            custom_component.graph.evaluate(
+                custom_component.gradients[center][axis],
+                full_values,
+            )
+            for center in (0, 2, 3)
+        )
+        assert recovered == pytest.approx(-independent_sum, rel=1.0e-13, abs=1.0e-13)
 
     for center in (0, 2, 3):
         for axis in range(3):

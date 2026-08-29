@@ -550,16 +550,23 @@ def build_psss_kernel(p_axis: str) -> PsssKernel:
 def build_shell_class_component_kernel(
     spec: ShellClassSpec,
     component: Sequence[str],
+    *,
+    integral: IntegralIR | None = None,
 ) -> ShellClassComponentKernel:
     """Build one shell component and its compile-time symbolic derivatives.
 
     The value expression follows the same subset/Wick pair expansion and
     closed Cartesian Coulomb derivatives as the production oracle.  Automatic
     differentiation runs only in Python; emitted CUDA remains scalar analytic
-    code with no runtime AD types or tape.
+    code with no runtime AD types or tape.  When supplied, ``integral``
+    determines which center derivatives are materialized and which are
+    reconstructed from its declared invariants.
     """
 
     normalized = spec.validate_component(component)
+    selected_integral = integral or build_integral_ir(spec)
+    if selected_integral.spec != spec:
+        raise ValueError("shell component spec does not match its integral IR")
     maximum_order = spec.maximum_force_coulomb_order
 
     graph = Graph()
@@ -649,8 +656,9 @@ def build_shell_class_component_kernel(
     normalization = 2.0 * pi.pow(2.5) / (p * q * (p + q).pow(0.5))
     value = normalization * pair_decay * primitive_value
 
-    independent_gradients: list[tuple[Expr, Expr, Expr]] = []
-    for center in CENTERS[:3]:
+    independent_gradients: dict[int, tuple[Expr, Expr, Expr]] = {}
+    for center_index in selected_integral.independent_derivative_centers:
+        center = CENTERS[center_index]
         center_gradients = []
         for axis in AXES:
             variable = coordinates[center][axis]
@@ -662,12 +670,23 @@ def build_shell_class_component_kernel(
             center_gradients.append(
                 graph.differentiate(value, variable, leaf_derivatives)
             )
-        independent_gradients.append(tuple(center_gradients))
-    fourth_gradient = tuple(
-        -graph.sum(independent_gradients[center][axis] for center in range(3))
-        for axis in range(3)
+        independent_gradients[center_index] = tuple(center_gradients)
+    gradients_by_center = dict(independent_gradients)
+    for center in selected_integral.recovered_derivative_centers:
+        gradients_by_center[center] = tuple(
+            -graph.sum(independent_gradients[independent][axis] for independent in selected_integral.independent_derivative_centers)
+            for axis in range(3)
+        )
+    requested_centers = set(selected_integral.requested_derivative_centers)
+    gradients = tuple(
+        gradients_by_center.get(
+            center,
+            tuple(graph.constant(0.0) for _ in AXES),
+        )
+        if center in requested_centers
+        else tuple(graph.constant(0.0) for _ in AXES)
+        for center in range(len(CENTERS))
     )
-    gradients = tuple(independent_gradients) + (fourth_gradient,)
     return ShellClassComponentKernel(
         graph=graph,
         spec=spec,
@@ -682,12 +701,16 @@ def build_shell_class_component_kernel(
 def build_dppp_component_kernel(
     d_component: str,
     p_components: Sequence[str],
+    *,
+    integral: IntegralIR | None = None,
 ) -> DpppComponentKernel:
     """Build one canonical ``(d p|p p)`` component via the generic compiler."""
 
     normalized = _validated_dppp_components(d_component, p_components)
     kernel = build_shell_class_component_kernel(
-        DPPP_SPEC, (d_component, *normalized)
+        DPPP_SPEC,
+        (d_component, *normalized),
+        integral=integral,
     )
     return DpppComponentKernel(
         graph=kernel.graph,
@@ -1011,12 +1034,16 @@ def build_weighted_shell_contraction_kernel(
 def build_dppp_contraction_kernel(
     d_component: str,
     p_components: Sequence[str],
+    *,
+    integral: IntegralIR | None = None,
 ) -> DpppContractionKernel:
     """Lower one ``dppp`` component via the generic shell-class compiler."""
 
     normalized = _validated_dppp_components(d_component, p_components)
     kernel = build_shell_class_contraction_kernel(
-        DPPP_SPEC, (d_component, *normalized)
+        DPPP_SPEC,
+        (d_component, *normalized),
+        integral=integral,
     )
     return DpppContractionKernel(
         graph=kernel.graph,
