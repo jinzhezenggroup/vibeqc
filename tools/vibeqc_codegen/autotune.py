@@ -33,6 +33,7 @@ from .benchmark import (
 )
 from .cuda_adapter import CudaBenchmarkExecutor, CudaCompilerAdapter
 from .cuda_schedule import (
+    AlgebraPlacement,
     PairOrientation,
     PairStorage,
     ScheduleIR,
@@ -62,20 +63,27 @@ class StaticAlgebraModel:
     """Schedule-relevant symbolic operation and live-value estimates."""
 
     scope: str
+    algebra_placement: AlgebraPlacement
     component_count: int
     sampled_component_count: int
     recurrence_state_count: int
     root_count: int
     operation_counts: tuple[tuple[str, int], ...]
+    emitted_operation_counts: tuple[tuple[str, int], ...]
+    baseline_arithmetic_operation_count: int
+    baseline_materialized_value_count: int
+    baseline_peak_live_values: int
     arithmetic_operation_count: int
     materialized_value_count: int
     peak_live_values: int
+    rematerialized_value_count: int
 
     def to_payload(self) -> dict[str, object]:
         """Serialize deterministic fields into one autotuning candidate row."""
 
         return {
             "scope": self.scope,
+            "algebra_placement": self.algebra_placement.value,
             "component_count": self.component_count,
             "sampled_component_count": self.sampled_component_count,
             "recurrence_state_count": self.recurrence_state_count,
@@ -84,6 +92,31 @@ class StaticAlgebraModel:
             "arithmetic_operation_count": self.arithmetic_operation_count,
             "materialized_value_count": self.materialized_value_count,
             "estimated_peak_live_values": self.peak_live_values,
+            "pre_optimization": {
+                "operation_counts": {
+                    operation: count
+                    for operation, count in self.operation_counts
+                    if operation not in ("constant", "variable")
+                },
+                "arithmetic_operation_count": (
+                    self.baseline_arithmetic_operation_count
+                ),
+                "materialized_value_count": (
+                    self.baseline_materialized_value_count
+                ),
+                "estimated_peak_live_values": self.baseline_peak_live_values,
+            },
+            "post_optimization": {
+                "operation_counts": dict(self.emitted_operation_counts),
+                "arithmetic_operation_count": self.arithmetic_operation_count,
+                "materialized_value_count": self.materialized_value_count,
+                "estimated_peak_live_values": self.peak_live_values,
+            },
+            "inlined_value_count": (
+                self.baseline_materialized_value_count
+                - self.materialized_value_count
+            ),
+            "rematerialized_value_count": self.rematerialized_value_count,
         }
 
 
@@ -114,6 +147,7 @@ class ScheduleTrial:
                 unroll,
                 self.schedule.pair_orientation.value,
                 f"pairs_{self.schedule.pair_storage.value}",
+                self.schedule.algebra_placement.value,
             )
         )
 
@@ -159,6 +193,7 @@ def schedule_payload(schedule: ScheduleIR) -> dict[str, object]:
         "shared_coulomb": schedule.shared_coulomb,
         "pair_orientation": schedule.pair_orientation.value,
         "pair_storage": schedule.pair_storage.value,
+        "algebra_placement": schedule.algebra_placement.value,
         "unroll_pair_terms": schedule.unroll_pair_terms,
         "minimum_blocks_per_sm": schedule.minimum_blocks_per_sm,
         "maximum_registers": schedule.maximum_registers,
@@ -210,59 +245,109 @@ def _cached_static_algebra_model(
     spec: ShellClassSpec,
     consumer: KernelConsumer,
     weighted_shell: bool,
+    algebra_placement: AlgebraPlacement,
 ) -> StaticAlgebraModel:
     """Build one immutable model shared by same-class schedule variants."""
 
     if weighted_shell:
         kernel = build_weighted_shell_contraction_kernel(spec)
-        analyses = (kernel.graph.analyze_ssa(_analysis_roots(kernel, consumer)),)
+        roots = _analysis_roots(kernel, consumer)
+        analysis_pairs = (
+            (
+                kernel.graph.analyze_ssa(roots),
+                kernel.graph.materialization_plan(
+                    roots,
+                    algebra_placement.materialization_policy(),
+                ),
+            ),
+        )
         scope = "weighted_shell_dag"
         sampled_component_count = spec.component_count
     else:
         components = tuple(product(*_balanced_component_labels(spec)))
-        analyses = (
-            component_kernel.graph.analyze_ssa(
-                _analysis_roots(component_kernel, consumer)
+        analysis_pairs = (
+            (
+                component_kernel.graph.analyze_ssa(roots),
+                component_kernel.graph.materialization_plan(
+                    roots,
+                    algebra_placement.materialization_policy(),
+                ),
             )
             for component in components
             for component_kernel in (
                 build_shell_class_contraction_kernel(spec, component),
             )
+            for roots in (_analysis_roots(component_kernel, consumer),)
         )
         scope = "balanced_component_sample_envelope"
         sampled_component_count = len(components)
 
     operation_envelope: dict[str, int] = {}
+    emitted_operation_envelope: dict[str, int] = {}
     root_count = 0
+    baseline_arithmetic_operation_count = 0
+    baseline_materialized_value_count = 0
+    baseline_peak_live_values = 0
+    arithmetic_operation_count = 0
     materialized_value_count = 0
     peak_live_values = 0
-    for analysis in analyses:
+    rematerialized_value_count = 0
+    for analysis, plan in analysis_pairs:
         root_count = analysis.root_count
-        materialized_value_count = max(
-            materialized_value_count, analysis.materialized_value_count
+        baseline_arithmetic_operation_count = max(
+            baseline_arithmetic_operation_count,
+            analysis.arithmetic_operation_count,
         )
-        peak_live_values = max(peak_live_values, analysis.peak_live_values)
+        baseline_materialized_value_count = max(
+            baseline_materialized_value_count,
+            analysis.materialized_value_count,
+        )
+        baseline_peak_live_values = max(
+            baseline_peak_live_values,
+            analysis.peak_live_values,
+        )
+        arithmetic_operation_count = max(
+            arithmetic_operation_count,
+            plan.arithmetic_operation_count,
+        )
+        materialized_value_count = max(
+            materialized_value_count, plan.materialized_value_count
+        )
+        peak_live_values = max(peak_live_values, plan.peak_live_values)
+        rematerialized_value_count = max(
+            rematerialized_value_count,
+            plan.rematerialized_value_count,
+        )
         for operation, count in analysis.operation_counts:
             operation_envelope[operation] = max(
                 operation_envelope.get(operation, 0), count
             )
+        for operation, count in plan.operation_counts:
+            emitted_operation_envelope[operation] = max(
+                emitted_operation_envelope.get(operation, 0), count
+            )
     operation_counts = tuple(sorted(operation_envelope.items()))
+    emitted_operation_counts = tuple(sorted(emitted_operation_envelope.items()))
     derivative_order = 1 if consumer == KernelConsumer.FORCE else 0
     maximum_order = sum(spec.angular) + derivative_order
     return StaticAlgebraModel(
         scope=scope,
+        algebra_placement=algebra_placement,
         component_count=spec.component_count,
         sampled_component_count=sampled_component_count,
         recurrence_state_count=comb(maximum_order + 3, 3),
         root_count=root_count,
         operation_counts=operation_counts,
-        arithmetic_operation_count=sum(
-            count
-            for operation, count in operation_counts
-            if operation not in ("constant", "variable")
+        emitted_operation_counts=emitted_operation_counts,
+        baseline_arithmetic_operation_count=(
+            baseline_arithmetic_operation_count
         ),
+        baseline_materialized_value_count=baseline_materialized_value_count,
+        baseline_peak_live_values=baseline_peak_live_values,
+        arithmetic_operation_count=arithmetic_operation_count,
         materialized_value_count=materialized_value_count,
         peak_live_values=peak_live_values,
+        rematerialized_value_count=rematerialized_value_count,
     )
 
 
@@ -277,6 +362,7 @@ def static_algebra_model(trial: ScheduleTrial) -> StaticAlgebraModel:
         trial.spec,
         trial.consumer,
         weighted_shell,
+        trial.schedule.algebra_placement,
     )
 
 

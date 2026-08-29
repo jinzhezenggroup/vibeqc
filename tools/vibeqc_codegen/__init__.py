@@ -13,6 +13,7 @@ from .backend import (
 from .cache import NvrtcCacheSpec, nvrtc_cache_key
 from .cuda_emitter import emit_shell_class_fused_cuda
 from .cuda_schedule import (
+    AlgebraPlacement,
     CudaKernelIR,
     CudaScheduleIR,
     KernelIR,
@@ -42,7 +43,13 @@ from .dppp_specialization import (
     emit_dppp_fused_cuda,
     evaluate_dppp_fused_component,
 )
-from .expr import SsaAnalysis, SsaValueLifetime
+from .expr import (
+    MaterializationDecision,
+    MaterializationPlan,
+    RematerializationPolicy,
+    SsaAnalysis,
+    SsaValueLifetime,
+)
 from .fused_schedule import (
     FusedShellPlan,
     FusedShellResult,
@@ -144,6 +151,7 @@ __all__ = [
     "PSPS_SPEC",
     "PSSS_SPEC",
     "SSSS_SPEC",
+    "AlgebraPlacement",
     "BenchmarkExecutor",
     "CompilerAdapter",
     "ContractionConsumer",
@@ -163,6 +171,8 @@ __all__ = [
     "IntegralIR",
     "KernelConsumer",
     "KernelIR",
+    "MaterializationDecision",
+    "MaterializationPlan",
     "NuclearCoordinates",
     "NvrtcCacheSpec",
     "OperatorFamily",
@@ -172,6 +182,7 @@ __all__ = [
     "PppsRysForceProgram",
     "PsssKernel",
     "RegistryEmitter",
+    "RematerializationPolicy",
     "ResourceParser",
     "RysAxisProgram",
     "RysForceProgram",

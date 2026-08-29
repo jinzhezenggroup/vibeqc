@@ -30,6 +30,7 @@ from tools.vibeqc_codegen import (
     PSPS_SPEC,
     PSSS_SPEC,
     SSSS_SPEC,
+    AlgebraPlacement,
     ContractionConsumer,
     ContractionSpec,
     CudaTargetInfo,
@@ -94,6 +95,7 @@ from tools.vibeqc_codegen.autotune import (
     emit_schedule_oracle_translation_unit,
     emit_schedule_resource_translation_unit,
     emit_schedule_translation_unit,
+    schedule_payload,
     static_algebra_model,
     supported_schedule_trials,
     update_manifest_payload,
@@ -114,6 +116,7 @@ from tools.vibeqc_codegen.benchmark import (
 from tools.vibeqc_codegen.production import (
     _PRODUCTION_PRELUDE,
     _partition_production_selections,
+    _schedule_from_payload,
     emit_registry_header,
     load_production_fock_manifest,
     load_production_kernel_selections,
@@ -2136,6 +2139,11 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
         spec.name for spec in specifications
     )
     assert all(selection.architecture == "sm_120" for selection in selections)
+    assert all(
+        selection.schedule.algebra_placement
+        == AlgebraPlacement.MATERIALIZED_CSE
+        for selection in selections
+    )
     shards = _partition_production_selections(selections, shard_count=8)
     shard_by_name = {
         selection.spec.name: shard_index
@@ -4774,6 +4782,7 @@ def test_autotune_static_model_records_operations_and_live_values():
     assert isinstance(packed_model, StaticAlgebraModel)
     assert packed_model is static_algebra_model(packed_force)
     assert packed_model.scope == "weighted_shell_dag"
+    assert packed_model.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
     assert packed_model.component_count == 9
     assert packed_model.sampled_component_count == 9
     assert packed_model.recurrence_state_count == 20
@@ -4781,6 +4790,13 @@ def test_autotune_static_model_records_operations_and_live_values():
     assert packed_model.arithmetic_operation_count == (
         packed_model.materialized_value_count
     )
+    assert packed_model.baseline_arithmetic_operation_count == (
+        packed_model.arithmetic_operation_count
+    )
+    assert packed_model.baseline_materialized_value_count == (
+        packed_model.materialized_value_count
+    )
+    assert packed_model.baseline_peak_live_values == packed_model.peak_live_values
     assert 0 < packed_model.peak_live_values < packed_model.materialized_value_count
 
     component_trials = tuple(
@@ -4801,11 +4817,106 @@ def test_autotune_static_model_records_operations_and_live_values():
     payload = component_model.to_payload()
     assert payload["operation_counts"]["add"] > 0
     assert payload["estimated_peak_live_values"] == component_model.peak_live_values
+    assert payload["pre_optimization"] == payload["post_optimization"]
 
     fock_trial = supported_schedule_trials(DPDS_SPEC, KernelConsumer.FOCK)[0]
     fock_model = fock_trial.static_model
     assert fock_model.root_count == 1
     assert fock_model.recurrence_state_count == 56
+
+
+def test_packed_autotune_searches_real_algebra_placement_variants():
+    """Tie schedule IDs, payloads, source lowering, and static models together."""
+
+    trials = supported_schedule_trials(PSPS_SPEC)
+    packed = tuple(
+        trial for trial in trials if trial.schedule.kind == ScheduleKind.PACKED_TASKS
+    )
+    assert {trial.schedule.algebra_placement for trial in packed} == set(
+        AlgebraPlacement
+    )
+    assert all(
+        trial.schedule.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
+        for trial in trials
+        if trial.schedule.kind != ScheduleKind.PACKED_TASKS
+    )
+    assert len({trial.schedule_id for trial in trials}) == len(trials)
+    assert all(
+        schedule_payload(trial.schedule)["algebra_placement"]
+        == trial.schedule.algebra_placement.value
+        for trial in packed
+    )
+
+    comparable = {
+        placement: next(
+            trial
+            for trial in packed
+            if trial.schedule.algebra_placement == placement
+            and trial.schedule.minimum_blocks_per_sm == 2
+            and trial.schedule.unroll_pair_terms
+        )
+        for placement in AlgebraPlacement
+    }
+    baseline = comparable[AlgebraPlacement.MATERIALIZED_CSE].static_model
+    single_use = comparable[AlgebraPlacement.INLINE_SINGLE_USE].static_model
+    pressure = comparable[AlgebraPlacement.PRESSURE_REMATERIALIZED].static_model
+    assert single_use.baseline_arithmetic_operation_count == (
+        baseline.arithmetic_operation_count
+    )
+    assert single_use.arithmetic_operation_count == baseline.arithmetic_operation_count
+    assert single_use.materialized_value_count < baseline.materialized_value_count
+    assert single_use.peak_live_values < baseline.peak_live_values
+    assert pressure.arithmetic_operation_count <= int(
+        baseline.arithmetic_operation_count * 1.2
+    )
+    assert pressure.materialized_value_count < single_use.materialized_value_count
+    assert pressure.peak_live_values <= single_use.peak_live_values
+    assert pressure.rematerialized_value_count > 0
+
+    baseline_source = emit_schedule_translation_unit(
+        comparable[AlgebraPlacement.MATERIALIZED_CSE],
+        task_count=1,
+        primitive_count=1,
+        warmups=0,
+        iterations=1,
+        samples=1,
+    )
+    inline_source = emit_schedule_translation_unit(
+        comparable[AlgebraPlacement.INLINE_SINGLE_USE],
+        task_count=1,
+        primitive_count=1,
+        warmups=0,
+        iterations=1,
+        samples=1,
+    )
+    assert baseline_source != inline_source
+    assert baseline_source.count("  const double v") > inline_source.count(
+        "  const double v"
+    )
+
+
+def test_algebra_placement_schedule_payload_is_backward_compatible():
+    """Round-trip tuned placement while defaulting older manifests safely."""
+
+    inline_schedule = next(
+        trial.schedule
+        for trial in supported_schedule_trials(PSPS_SPEC)
+        if trial.schedule.kind == ScheduleKind.PACKED_TASKS
+        and trial.schedule.algebra_placement == AlgebraPlacement.INLINE_SINGLE_USE
+    )
+    payload = schedule_payload(inline_schedule)
+    assert _schedule_from_payload(payload) == inline_schedule
+
+    del payload["algebra_placement"]
+    assert (
+        _schedule_from_payload(payload).algebra_placement
+        == AlgebraPlacement.MATERIALIZED_CSE
+    )
+    with pytest.raises(ValueError, match="packed tasks"):
+        replace(
+            build_fused_shell_plan(DPDS_SPEC).schedule,
+            algebra_placement=AlgebraPlacement.INLINE_SINGLE_USE,
+        )
 
 
 def test_autotune_candidate_artifact_includes_static_model(

@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from tools.vibeqc_codegen import (
     PSSS_SPEC,
+    MaterializationDecision,
+    MaterializationPlan,
+    RematerializationPolicy,
     SsaAnalysis,
     SsaValueLifetime,
     build_weighted_shell_contraction_kernel,
@@ -118,3 +121,101 @@ def test_ssa_materialized_count_matches_current_cuda_emitter():
     assert rebuilt.graph.analyze_ssa(rebuilt_roots).to_payload() == (
         analysis.to_payload()
     )
+
+
+def test_materialized_cse_plan_preserves_existing_cuda_source_shape():
+    """Keep the default placement byte-compatible with the legacy emitter."""
+
+    graph = Graph()
+    shared = graph.variable("x") + graph.variable("y")
+    root = shared * graph.variable("z") + shared
+    roots = (root,)
+    plan = graph.materialization_plan(roots)
+
+    assert isinstance(plan, MaterializationPlan)
+    assert all(isinstance(item, MaterializationDecision) for item in plan.decisions)
+    assert plan.policy.name == "materialized_cse"
+    assert plan.baseline_arithmetic_operation_count == 3
+    assert plan.arithmetic_operation_count == 3
+    assert plan.baseline_materialized_value_count == 3
+    assert plan.materialized_value_count == 3
+    assert plan.inlined_value_count == 0
+    assert plan.rematerialized_value_count == 0
+
+    legacy = CudaEmitter(graph, {})
+    legacy.emit(roots)
+    planned = CudaEmitter(graph, {}, materialization_plan=plan)
+    planned.emit(roots)
+    assert planned.lines == legacy.lines
+    assert planned.reference(root) == legacy.reference(root)
+
+
+def test_single_use_plan_inlines_roots_with_exact_parentheses_and_metrics():
+    """Inline a one-use chain without changing its arithmetic operation count."""
+
+    graph = Graph()
+    summed = graph.variable("x") + graph.variable("y")
+    root = summed * graph.variable("z")
+    roots = (root,)
+    plan = graph.materialization_plan(
+        roots,
+        RematerializationPolicy.inline_single_use_values(),
+    )
+
+    assert plan.arithmetic_operation_count == 2
+    assert plan.materialized_value_count == 0
+    assert plan.peak_live_values == 0
+    assert plan.inlined_value_count == 2
+    assert {item.reason for item in plan.decisions} == {"single_use"}
+    assert plan.to_payload()["post_optimization"] == {
+        "operation_counts": {"add": 1, "multiply": 1},
+        "arithmetic_operation_count": 2,
+        "materialized_value_count": 0,
+        "estimated_peak_live_values": 0,
+    }
+
+    emitter = CudaEmitter(
+        graph,
+        {"x": "input_x", "y": "input_y", "z": "input_z"},
+        materialization_plan=plan,
+    )
+    emitter.emit(roots)
+    assert emitter.lines == []
+    assert emitter.reference(root) == "((input_x + input_y) * input_z)"
+
+
+def test_pressure_plan_trades_bounded_recomputation_for_a_shorter_live_set():
+    """Rematerialize a cheap long-lived shared value within the operation cap."""
+
+    graph = Graph()
+    shared = graph.variable("x") + graph.variable("y")
+    scaled = shared * graph.variable("z")
+    shifted = scaled + graph.variable("w")
+    stretched = shifted * graph.variable("q")
+    root = stretched + shared
+    roots = (root,)
+
+    single_use = graph.materialization_plan(
+        roots,
+        RematerializationPolicy.inline_single_use_values(),
+    )
+    pressure = graph.materialization_plan(
+        roots,
+        RematerializationPolicy.pressure_rematerialized(),
+    )
+    shared_decision = next(
+        item for item in pressure.decisions if item.identifier == shared.identifier
+    )
+
+    assert single_use.arithmetic_operation_count == 5
+    assert single_use.materialized_identifiers == frozenset({shared.identifier})
+    assert pressure.arithmetic_operation_count == 6
+    assert pressure.materialized_value_count == 0
+    assert pressure.peak_live_values < single_use.peak_live_values
+    assert pressure.rematerialized_value_count == 1
+    assert shared_decision.use_count == 2
+    assert shared_decision.lifetime_span >= 3
+    assert shared_decision.estimated_live_range_cost > (
+        shared_decision.estimated_recomputation_cost
+    )
+    assert shared_decision.reason == "live_range_benefit"

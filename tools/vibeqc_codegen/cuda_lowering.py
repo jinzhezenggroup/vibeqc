@@ -1335,7 +1335,10 @@ def _generic_task_component_setup(spec: ShellClassSpec) -> str:
     return "\n".join(lines)
 
 
-def _emit_weighted_component_gradient_cuda(spec: ShellClassSpec) -> str:
+def _emit_weighted_component_gradient_cuda(
+    spec: ShellClassSpec,
+    schedule: ScheduleIR,
+) -> str:
     """Emit one shell-wide weighted gradient with horizontal symbolic CSE."""
 
     maximum_order = spec.maximum_force_coulomb_order
@@ -1455,7 +1458,15 @@ __device__ __forceinline__ void generated_dppp_make_packed_force_geometry(
         for center in range(3)
         for coordinate in range(3)
     ]
-    emitter = CudaEmitter(kernel.graph, variable_code)
+    materialization_plan = kernel.graph.materialization_plan(
+        roots,
+        schedule.algebra_placement.materialization_policy(),
+    )
+    emitter = CudaEmitter(
+        kernel.graph,
+        variable_code,
+        materialization_plan=materialization_plan,
+    )
     emitter.emit(roots)
     lines = [
         compact_geometry.rstrip(),
@@ -5752,7 +5763,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
             raise RuntimeError("generated force task marker changed unexpectedly")
         source = (
             source[:force_begin]
-            + _emit_weighted_component_gradient_cuda(spec)
+            + _emit_weighted_component_gradient_cuda(spec, plan.schedule)
             + _emit_packed_force_consumer_cuda(
                 spec,
                 plan,

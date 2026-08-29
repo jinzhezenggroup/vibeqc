@@ -9,8 +9,10 @@ symbolically, simplified locally, and emitted as scalar temporaries.
 from __future__ import annotations
 
 import math
+from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from functools import cache
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,6 +74,153 @@ class SsaAnalysis:
             "arithmetic_operation_count": self.arithmetic_operation_count,
             "materialized_value_count": self.materialized_value_count,
             "estimated_peak_live_values": self.peak_live_values,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class RematerializationPolicy:
+    """Bounded cost model controlling scalar CSE placement.
+
+    ``inline_single_use`` shortens source-level live ranges without increasing
+    arithmetic. ``rematerialize_multi_use`` may additionally duplicate cheap
+    operations when their saved live range outweighs the configured operation
+    cost. The arithmetic-growth limit prevents nested decisions from causing
+    exponential expression expansion.
+    """
+
+    name: str
+    inline_single_use: bool = False
+    rematerialize_multi_use: bool = False
+    cheap_operations: tuple[str, ...] = ("add", "multiply")
+    operation_costs: tuple[tuple[str, float], ...] = (
+        ("add", 1.0),
+        ("multiply", 1.0),
+        ("reciprocal", 4.0),
+        ("power", 8.0),
+        ("exp", 12.0),
+    )
+    live_range_weight: float = 1.0
+    recomputation_weight: float = 1.0
+    minimum_lifetime_span: int = 3
+    maximum_extra_operation_fraction: float = 0.2
+
+    def __post_init__(self) -> None:
+        if not self.name:
+            raise ValueError("rematerialization policy requires a name")
+        if self.live_range_weight < 0.0 or self.recomputation_weight < 0.0:
+            raise ValueError("rematerialization weights must be non-negative")
+        if self.minimum_lifetime_span < 0:
+            raise ValueError("minimum lifetime span must be non-negative")
+        if self.maximum_extra_operation_fraction < 0.0:
+            raise ValueError("operation-growth limit must be non-negative")
+        if len(dict(self.operation_costs)) != len(self.operation_costs):
+            raise ValueError("operation costs must use unique operation names")
+        if any(cost < 0.0 for _, cost in self.operation_costs):
+            raise ValueError("operation costs must be non-negative")
+
+    @classmethod
+    def materialized_cse(cls) -> RematerializationPolicy:
+        """Preserve every structural CSE value as a scalar temporary."""
+
+        return cls(name="materialized_cse")
+
+    @classmethod
+    def inline_single_use_values(cls) -> RematerializationPolicy:
+        """Inline values that have exactly one source-level consumer."""
+
+        return cls(name="inline_single_use", inline_single_use=True)
+
+    @classmethod
+    def pressure_rematerialized(cls) -> RematerializationPolicy:
+        """Inline single-use values and selected cheap long-lived CSE nodes."""
+
+        return cls(
+            name="pressure_rematerialized",
+            inline_single_use=True,
+            rematerialize_multi_use=True,
+        )
+
+    def operation_cost(self, operation: str) -> float:
+        """Return the target-independent relative cost of one operation."""
+
+        return dict(self.operation_costs).get(operation, math.inf)
+
+
+@dataclass(frozen=True, slots=True)
+class MaterializationDecision:
+    """Explain whether one arithmetic DAG value remains a CUDA temporary."""
+
+    identifier: int
+    operation: str
+    materialized: bool
+    use_count: int
+    lifetime_span: int
+    operation_cost: float
+    estimated_recomputation_cost: float
+    estimated_live_range_cost: float
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class MaterializationPlan:
+    """Deterministic scalar placement plus exact emitted static metrics."""
+
+    policy: RematerializationPolicy
+    root_identifiers: tuple[int, ...]
+    decisions: tuple[MaterializationDecision, ...]
+    baseline_arithmetic_operation_count: int
+    baseline_materialized_value_count: int
+    baseline_peak_live_values: int
+    operation_counts: tuple[tuple[str, int], ...]
+    arithmetic_operation_count: int
+    materialized_value_count: int
+    peak_live_values: int
+
+    @property
+    def materialized_identifiers(self) -> frozenset[int]:
+        """Return arithmetic node identifiers assigned to scalar temporaries."""
+
+        return frozenset(
+            decision.identifier
+            for decision in self.decisions
+            if decision.materialized
+        )
+
+    @property
+    def inlined_value_count(self) -> int:
+        """Return the number of canonical DAG values expanded at their uses."""
+
+        return len(self.decisions) - self.materialized_value_count
+
+    @property
+    def rematerialized_value_count(self) -> int:
+        """Return the number of multi-use DAG values deliberately recomputed."""
+
+        return sum(
+            not decision.materialized and decision.use_count > 1
+            for decision in self.decisions
+        )
+
+    def to_payload(self) -> dict[str, object]:
+        """Serialize compact pre/post placement metrics for tuning artifacts."""
+
+        return {
+            "policy": self.policy.name,
+            "pre_optimization": {
+                "arithmetic_operation_count": (
+                    self.baseline_arithmetic_operation_count
+                ),
+                "materialized_value_count": self.baseline_materialized_value_count,
+                "estimated_peak_live_values": self.baseline_peak_live_values,
+            },
+            "post_optimization": {
+                "operation_counts": dict(self.operation_counts),
+                "arithmetic_operation_count": self.arithmetic_operation_count,
+                "materialized_value_count": self.materialized_value_count,
+                "estimated_peak_live_values": self.peak_live_values,
+            },
+            "inlined_value_count": self.inlined_value_count,
+            "rematerialized_value_count": self.rematerialized_value_count,
         }
 
 
@@ -375,6 +524,225 @@ class Graph:
             arithmetic_operation_count=arithmetic_operation_count,
             peak_live_values=peak_live_values,
         )
+
+    def materialization_plan(
+        self,
+        roots: Sequence[Expr],
+        policy: RematerializationPolicy | None = None,
+    ) -> MaterializationPlan:
+        """Choose scalar CSE values to retain under one bounded cost model.
+
+        Decisions are made from canonical SSA use counts and lifetime spans.
+        The returned post-plan operation and liveness metrics are then measured
+        from the actual expression expansions that :class:`CudaEmitter` uses,
+        including duplicated descendants of a rematerialized value.
+        """
+
+        normalized_roots = tuple(roots)
+        selected_policy = policy or RematerializationPolicy.materialized_cse()
+        baseline = self.analyze_ssa(normalized_roots)
+        lifetimes = {item.identifier: item for item in baseline.lifetimes}
+        materialized = set(lifetimes)
+        reasons = {identifier: "structural_cse" for identifier in materialized}
+
+        if selected_policy.inline_single_use:
+            for lifetime in baseline.lifetimes:
+                if lifetime.use_count == 1:
+                    materialized.remove(lifetime.identifier)
+                    reasons[lifetime.identifier] = "single_use"
+
+        if selected_policy.rematerialize_multi_use:
+            operation_budget = int(
+                baseline.arithmetic_operation_count
+                * selected_policy.maximum_extra_operation_fraction
+            )
+            candidates: list[tuple[float, int, int, int]] = []
+            for lifetime in baseline.lifetimes:
+                if lifetime.identifier not in materialized:
+                    continue
+                if lifetime.operation not in selected_policy.cheap_operations:
+                    continue
+                lifetime_span = lifetime.last_use_index - lifetime.definition_index
+                if lifetime_span < selected_policy.minimum_lifetime_span:
+                    continue
+                operation_cost = selected_policy.operation_cost(lifetime.operation)
+                recomputation_cost = (
+                    operation_cost
+                    * max(0, lifetime.use_count - 1)
+                    * selected_policy.recomputation_weight
+                )
+                live_range_cost = lifetime_span * selected_policy.live_range_weight
+                benefit = live_range_cost - recomputation_cost
+                if benefit <= 0.0:
+                    continue
+                # Higher benefit and longer spans win deterministic ties; a
+                # lower identifier keeps source stable across Python versions.
+                candidates.append(
+                    (
+                        benefit,
+                        lifetime_span,
+                        -lifetime.identifier,
+                        max(0, lifetime.use_count - 1),
+                    )
+                )
+
+            estimated_extra_operations = 0
+            accepted: list[int] = []
+            for _, _, negative_identifier, added_operations in sorted(
+                candidates, reverse=True
+            ):
+                if estimated_extra_operations + added_operations > operation_budget:
+                    continue
+                identifier = -negative_identifier
+                materialized.remove(identifier)
+                reasons[identifier] = "live_range_benefit"
+                accepted.append(identifier)
+                estimated_extra_operations += added_operations
+
+            # Nested inlining can duplicate more work than the local use-count
+            # estimate. Enforce the budget against exact expanded arithmetic,
+            # undoing the least valuable accepted decisions first.
+            operation_counts = self._emitted_operation_counts(
+                normalized_roots, materialized
+            )
+            while (
+                sum(operation_counts.values())
+                > baseline.arithmetic_operation_count + operation_budget
+                and accepted
+            ):
+                identifier = accepted.pop()
+                materialized.add(identifier)
+                reasons[identifier] = "operation_growth_limit"
+                operation_counts = self._emitted_operation_counts(
+                    normalized_roots, materialized
+                )
+        else:
+            operation_counts = self._emitted_operation_counts(
+                normalized_roots, materialized
+            )
+
+        peak_live_values = self._materialized_peak_live_values(
+            normalized_roots, materialized
+        )
+        decisions = []
+        for lifetime in baseline.lifetimes:
+            lifetime_span = lifetime.last_use_index - lifetime.definition_index
+            operation_cost = selected_policy.operation_cost(lifetime.operation)
+            decisions.append(
+                MaterializationDecision(
+                    identifier=lifetime.identifier,
+                    operation=lifetime.operation,
+                    materialized=lifetime.identifier in materialized,
+                    use_count=lifetime.use_count,
+                    lifetime_span=lifetime_span,
+                    operation_cost=operation_cost,
+                    estimated_recomputation_cost=(
+                        operation_cost * max(0, lifetime.use_count - 1)
+                    ),
+                    estimated_live_range_cost=(
+                        lifetime_span * selected_policy.live_range_weight
+                    ),
+                    reason=reasons[lifetime.identifier],
+                )
+            )
+        return MaterializationPlan(
+            policy=selected_policy,
+            root_identifiers=tuple(root.identifier for root in normalized_roots),
+            decisions=tuple(decisions),
+            baseline_arithmetic_operation_count=(
+                baseline.arithmetic_operation_count
+            ),
+            baseline_materialized_value_count=baseline.materialized_value_count,
+            baseline_peak_live_values=baseline.peak_live_values,
+            operation_counts=tuple(sorted(operation_counts.items())),
+            arithmetic_operation_count=sum(operation_counts.values()),
+            materialized_value_count=len(materialized),
+            peak_live_values=peak_live_values,
+        )
+
+    def _emitted_operation_counts(
+        self,
+        roots: Sequence[Expr],
+        materialized: set[int],
+    ) -> Counter[str]:
+        """Count arithmetic occurrences after selective expression expansion."""
+
+        @cache
+        def inline_counts(identifier: int) -> tuple[tuple[str, int], ...]:
+            node = self.nodes[identifier]
+            if identifier in materialized or node.operation in ("constant", "variable"):
+                return ()
+            counts = Counter({node.operation: 1})
+            for argument in node.arguments:
+                counts.update(dict(inline_counts(argument)))
+            return tuple(sorted(counts.items()))
+
+        counts: Counter[str] = Counter()
+        for identifier in self.topological_order(roots):
+            if identifier not in materialized:
+                continue
+            node = self.nodes[identifier]
+            counts[node.operation] += 1
+            for argument in node.arguments:
+                counts.update(dict(inline_counts(argument)))
+        for root in roots:
+            counts.update(dict(inline_counts(root.identifier)))
+        return counts
+
+    def _materialized_peak_live_values(
+        self,
+        roots: Sequence[Expr],
+        materialized: set[int],
+    ) -> int:
+        """Measure exact temporary liveness after inline references expand."""
+
+        ordered = tuple(
+            identifier
+            for identifier in self.topological_order(roots)
+            if identifier in materialized
+        )
+        definition_index = {
+            identifier: index for index, identifier in enumerate(ordered)
+        }
+        last_uses = dict(definition_index)
+
+        @cache
+        def referenced_values(identifier: int) -> tuple[tuple[int, int], ...]:
+            node = self.nodes[identifier]
+            if identifier in materialized:
+                return ((identifier, 1),)
+            if node.operation in ("constant", "variable"):
+                return ()
+            references: Counter[int] = Counter()
+            for argument in node.arguments:
+                references.update(dict(referenced_values(argument)))
+            return tuple(sorted(references.items()))
+
+        for consumer_index, consumer in enumerate(ordered):
+            for argument in self.nodes[consumer].arguments:
+                for identifier in dict(referenced_values(argument)):
+                    last_uses[identifier] = max(
+                        last_uses[identifier], consumer_index
+                    )
+        output_begin = len(ordered)
+        for offset, root in enumerate(roots):
+            for identifier in dict(referenced_values(root.identifier)):
+                last_uses[identifier] = max(
+                    last_uses[identifier], output_begin + offset
+                )
+
+        live_deltas: dict[int, int] = {}
+        for identifier in ordered:
+            definition = definition_index[identifier]
+            live_deltas[definition] = live_deltas.get(definition, 0) + 1
+            release = last_uses[identifier] + 1
+            live_deltas[release] = live_deltas.get(release, 0) - 1
+        live_values = 0
+        peak_live_values = 0
+        for event in sorted(live_deltas):
+            live_values += live_deltas[event]
+            peak_live_values = max(peak_live_values, live_values)
+        return peak_live_values
 
     def evaluate(self, expression: Expr, variables: Mapping[str, float]) -> float:
         """Evaluate one root for generator tests and finite-difference oracles."""
