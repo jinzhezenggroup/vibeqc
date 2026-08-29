@@ -1890,6 +1890,16 @@ def _emit_scalar_thread_force_consumer_cuda(
     if plan.schedule.block_threads != 32:
         raise ValueError("scalar ppps thread tasks currently use one CUDA warp")
 
+    selected_integral = _packed_force_integral(spec, plan.kernel.integral)
+    independent_centers = selected_integral.independent_derivative_centers
+    recovered_centers = selected_integral.recovered_derivative_centers
+    decay_gradient_rows = 4 if 3 in independent_centers else 3
+    if len(independent_centers) != 3 or len(recovered_centers) != 1:
+        raise ValueError(
+            "scalar thread force lowering currently requires three independent "
+            "and one recovered derivative center"
+        )
+
     task_component_setup = _generic_task_component_setup(spec).replace(
         "shared.task", "task"
     )
@@ -1934,7 +1944,10 @@ def _emit_scalar_thread_force_consumer_cuda(
   }}"""
         )
 
-    kernel = build_weighted_shell_contraction_kernel(spec)
+    kernel = build_weighted_shell_contraction_kernel(
+        spec,
+        integral=selected_integral,
+    )
     variable_code = {
         "inverse_two_p": "storage.primitive.inverse_two_p",
         "inverse_two_q": "storage.primitive.inverse_two_q",
@@ -1942,6 +1955,7 @@ def _emit_scalar_thread_force_consumer_cuda(
         "first_product_scale": "storage.primitive.product_scales[0]",
         "second_product_scale": "storage.primitive.product_scales[1]",
         "third_product_scale": "storage.primitive.product_scales[2]",
+        "fourth_product_scale": "1.0 - storage.primitive.product_scales[2]",
         "prefactor": "storage.primitive.prefactor",
     }
     for axis_index, axis in enumerate(AXES):
@@ -1952,7 +1966,11 @@ def _emit_scalar_thread_force_consumer_cuda(
             variable_code[f"{prefix}_{axis}"] = (
                 f"storage.primitive.pair_shifts[{center}][{axis_index}]"
             )
-        for center_index, center in enumerate(("first", "second", "third")):
+        for center_index, center in enumerate(
+            ("first", "second", "third", "fourth")
+        ):
+            if center_index >= decay_gradient_rows:
+                continue
             variable_code[f"decay_{center}_{axis}"] = (
                 f"storage.primitive.decay_gradients[{center_index}][{axis_index}]"
             )
@@ -1971,10 +1989,14 @@ def _emit_scalar_thread_force_consumer_cuda(
     # roots can be fused selectively where the resource gate shows headroom.
     component_scopes = []
     for component in range(spec.component_count):
-        kernel = build_weighted_shell_contraction_kernel(spec, (component,))
+        kernel = build_weighted_shell_contraction_kernel(
+            spec,
+            (component,),
+            integral=selected_integral,
+        )
         roots = [
             kernel.gradients[center][coordinate]
-            for center in range(3)
+            for center in selected_integral.independent_derivative_centers
             for coordinate in range(3)
         ]
         statements = []
@@ -2022,29 +2044,34 @@ def _emit_scalar_thread_force_consumer_cuda(
         )
         primitive_calls.append(f"      {helper_name}(primitive_scale, storage);")
     independent_atomics = []
-    for center in range(3):
+    for slot, center in enumerate(independent_centers):
         for coordinate in range(3):
-            slot = center * 3 + coordinate
+            force_slot = slot * 3 + coordinate
             independent_atomics.append(
-                f"""  if (storage.task_force[{slot}] != 0.0) {{
+                f"""  if (storage.task_force[{force_slot}] != 0.0) {{
     atomicAdd(
         context.forces + static_cast<std::size_t>(task.atom[{center}]) * 3U +
             {coordinate}U,
-        storage.task_force[{slot}]);
+        storage.task_force[{force_slot}]);
   }}"""
             )
-    fourth_atomics = []
-    for coordinate in range(3):
-        slots = [center * 3 + coordinate for center in range(3)]
-        fourth_atomics.append(
-            f"""  const double fourth_force_{coordinate} =
-      -storage.task_force[{slots[0]}] - storage.task_force[{slots[1]}] -
-      storage.task_force[{slots[2]}];
-  if (fourth_force_{coordinate} != 0.0) {{
-    atomicAdd(
-        context.forces + static_cast<std::size_t>(task.atom[3]) * 3U +
-            {coordinate}U,
-        fourth_force_{coordinate});
+    recovered_atomics = []
+    for recovered_index, center in enumerate(recovered_centers):
+        name = "recovered_force" if recovered_index else "fourth_force"
+        terms = " - ".join(
+            f"storage.task_force[{slot * 3} + coordinate]"
+            for slot in range(len(independent_centers))
+        )
+        recovered_atomics.append(
+            f"""#pragma unroll
+  for (unsigned coordinate = 0; coordinate < 3U; ++coordinate) {{
+    const double {name} = -{terms};
+    if ({name} != 0.0) {{
+      atomicAdd(
+          context.forces + static_cast<std::size_t>(task.atom[{center}]) * 3U +
+              coordinate,
+          {name});
+    }}
   }}"""
         )
 
@@ -2052,7 +2079,7 @@ def _emit_scalar_thread_force_consumer_cuda(
     primitive_helper_code = "\n\n".join(primitive_helpers)
     primitive_call_code = "\n".join(primitive_calls)
     independent_atomic_code = "\n".join(independent_atomics)
-    fourth_atomic_code = "\n".join(fourth_atomics)
+    fourth_atomic_code = "\n".join(recovered_atomics)
     kernel_qualifier = f"__launch_bounds__(32, {minimum_blocks_per_sm})"
     return f"""struct GeneratedDpppScalarThreadStorage {{
   GeneratedDpppVec3 positions[4];
@@ -5008,6 +5035,17 @@ def emit_shell_class_fused_cuda(
     if any(order > 3 for order in spec.angular):
         raise ValueError("current fused CUDA candidate supports s/p/d/f shells")
     maximum_order = spec.maximum_force_coulomb_order
+    force_integral = _packed_force_integral(spec, plan.kernel.integral)
+    decay_gradient_rows = (
+        4 if 3 in force_integral.independent_derivative_centers else 3
+    )
+    decay_fourth_assignment = (
+        "    geometry.decay_gradients[3][axis] =\n"
+        "        2.0 * second_pair.reduced_exponent *\n"
+        "        (third_coordinate - fourth_coordinate);\n"
+        if decay_gradient_rows == 4
+        else ""
+    )
     state_axis_bits = max(3, maximum_order.bit_length())
     state_mask = (1 << state_axis_bits) - 1
     packed_states = tuple(
@@ -5357,7 +5395,7 @@ struct GeneratedDpppPrimitiveGeometry {{
   double product_scales[3];
   double pair_shifts[4][3];
   double difference[3];
-  double decay_gradients[3][3];
+  double decay_gradients[{decay_gradient_rows}][3];
   double boys[{side}];
   double coordinate_powers[3][{side}];
   double negative_two_rho_powers[{side}];
@@ -5683,6 +5721,7 @@ __device__ __forceinline__ void generated_dppp_make_primitive_geometry(
     geometry.decay_gradients[2][axis] =
         -2.0 * second_pair.reduced_exponent *
         (third_coordinate - fourth_coordinate);
+{decay_fourth_assignment}
     argument_squared_distance +=
         geometry.difference[axis] * geometry.difference[axis];
     geometry.coordinate_powers[axis][0] = 1.0;
