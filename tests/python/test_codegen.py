@@ -2191,11 +2191,11 @@ def test_generated_fock_workers_use_value_only_shell_schedules(
     assert f"generated_{name}_density_coefficient" not in fock_fragment
 
 
-def test_only_dpps_emits_generated_mixed_fock_capability():
-    """Keep the first FP32 AOT specialization narrow and independently routed."""
+def test_high_impact_fock_classes_emit_generated_mixed_capability():
+    """Keep the profiled FP32 AOT set explicit and independently routed."""
 
     sources = {}
-    for name in ("dpps", "dspp"):
+    for name in ("ppps", "dpps", "ddds", "dspp"):
         spec = FUSED_SHELL_SPEC_BY_NAME[name]
         plan = build_fused_shell_plan(
             spec,
@@ -2211,11 +2211,13 @@ def test_only_dpps_emits_generated_mixed_fock_capability():
     assert "  float component_integral = 0.0F;" in dpps
     assert "const double* density" in dpps
     assert "double* fock" in dpps
+    assert "generated_ppps_shell_class_mixed_fock" in sources["ppps"]
+    assert "generated_ddds_shell_class_mixed_fock" in sources["ddds"]
     assert "generated_dspp_shell_class_mixed_fock" not in sources["dspp"]
 
 
-def test_simple_registry_dispatches_only_dpps_mixed_fock():
-    """Expose a capability mask and stable dispatch without promoting peers."""
+def test_simple_registry_dispatches_profiled_mixed_fock_classes():
+    """Expose a selectable capability mask for the profiled mixed workers."""
 
     manifest = (
         REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
@@ -2228,11 +2230,23 @@ def test_simple_registry_dispatches_only_dpps_mixed_fock():
     mixed_rows = header.split("kMixedFockShellKernels", maxsplit=1)[1].split(
         "}};", maxsplit=1
     )[0]
-    assert '"dpps"' in mixed_rows
+    expected = {
+        "ppps",
+        "dpps",
+        "dsps",
+        "dsds",
+        "ddss",
+        "ddps",
+        "ddds",
+        "pppp",
+    }
+    for name in expected:
+        assert f'"{name}"' in mixed_rows
+        assert f"vibeqc_launch_generated_{name}_mixed_fock" in source
     assert '"dspp"' not in mixed_rows
     assert "enabled_mixed_fock_shell_class_mask" in header
     assert "launch_shell_class_mixed_fock" in header
-    assert "vibeqc_launch_generated_dpps_mixed_fock" in source
+    assert "VIBEQC_AOT_MIXED_FOCK_SHELL_CLASSES" in source
     assert "vibeqc_launch_generated_dspp_mixed_fock" not in source
 
 
@@ -2717,6 +2731,26 @@ def test_cached_direct_plan_reuses_immutable_task_layout():
     assert "plan.total_shell_quartet_tiles" in layout_setup
     assert source.count("detail::make_direct_quartet_task_layout(") == 1
     assert "**plan, candidate, options" in source
+
+
+def test_bounded_streaming_fock_forwards_mixed_precision_policy():
+    """Keep bounded streaming eligible for mixed work and final FP64 rebuilds."""
+
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
+        encoding="utf-8"
+    )
+    threshold_begin = source.index(
+        "const std::optional<double> requested_mixed_precision_fock_threshold"
+    )
+    threshold_end = source.index(
+        "const bool requested_mixed_precision_fock", threshold_begin
+    )
+    assert "requested_quartet_direct\n      ? configured_mixed_precision_fock_threshold" in source[
+        threshold_begin:threshold_end
+    ]
+    assert "allow_mixed_precision && mixed_precision_fock" in source
+    # The finalization path must explicitly disable the iterative mixed route.
+    assert "launch_fock_builder(density, false)" in source
 
 
 def test_generated_order2_fock_masks_handwritten_fallback():

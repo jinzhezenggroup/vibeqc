@@ -49,7 +49,21 @@ from .shell_spec import (
 DpppComponent = tuple[str, str, str, str]
 _AXIS_INDEX = {axis: index for index, axis in enumerate(AXES)}
 _COMPONENT_COUNT = DPPP_SPEC.component_count
-_MIXED_FOCK_SHELLS = frozenset({"dpps"})
+# Bounded-streaming mixed Fock is enabled only for classes that showed a
+# positive end-to-end result on the 96-atom profile. ``dppp`` is deliberately
+# omitted: its duplicated FP32 recurrence was slower than the FP64 worker.
+_MIXED_FOCK_SHELLS = frozenset(
+    {
+        "ppps",
+        "dpps",
+        "dsps",
+        "dsds",
+        "ddss",
+        "ddps",
+        "ddds",
+        "pppp",
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)

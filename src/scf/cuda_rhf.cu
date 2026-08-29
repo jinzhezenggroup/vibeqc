@@ -15823,7 +15823,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         : plan.total_shell_quartet_tiles;
   }
   const std::optional<double> requested_mixed_precision_fock_threshold =
-      requested_quartet_direct && !requested_bounded_direct_streaming
+      requested_quartet_direct
       ? configured_mixed_precision_fock_threshold(
             options.screening_tolerance)
       : std::nullopt;
@@ -17138,7 +17138,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   const auto launch_bounded_streaming_fock =
       [&](bool is_unrestricted,
           const double* quartet_density,
-          double* quartet_fock) -> cudaError_t {
+          double* quartet_fock,
+          bool allow_mixed_precision) -> cudaError_t {
     for (std::size_t kernel_index = 0;
          kernel_index < bounded_fock_kernel_count; ++kernel_index) {
       const unsigned shell_class =
@@ -17164,7 +17165,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           device_batch.shell_pair_primitive_offsets,
           device_batch.shell_primitive_pairs,
           device_batch.direct_ao_coefficients, device_batch.positions,
-          options.screening_tolerance, schwarz_bounds, quartet_density,
+          options.screening_tolerance,
+          allow_mixed_precision && mixed_precision_fock &&
+              (host_generated_mixed_fock_shell_class_mask &
+               (std::uint64_t{1} << shell_class)) != 0U,
+          mixed_precision_fock_threshold, schwarz_bounds, quartet_density,
           quartet_fock,
           bounded_direct_generated_task_heads + shell_class);
       if (error != cudaSuccess) return error;
@@ -17227,7 +17232,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   const auto launch_bounded_generated_fock =
       [&](bool is_unrestricted,
           const double* quartet_density,
-          double* quartet_fock) -> cudaError_t {
+          double* quartet_fock,
+          bool allow_mixed_precision) -> cudaError_t {
     // The bounded Fock path follows the same hard routing invariant as force:
     // every present class must have a generated or native exact consumer.
     // Missing classes are unsupported instead of silently invoking the
@@ -17251,7 +17257,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         (host_generated_fock_shell_class_mask &
          ~host_streaming_fock_shell_class_mask) == 0U) {
       return launch_bounded_streaming_fock(
-          is_unrestricted, quartet_density, quartet_fock);
+          is_unrestricted, quartet_density, quartet_fock,
+          allow_mixed_precision);
     }
     error = cudaMemsetAsync(
         bounded_direct_cursor, 0, sizeof(unsigned long long),
@@ -17369,7 +17376,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     if (error != cudaSuccess) return error;
 
     return launch_bounded_streaming_fock(
-        is_unrestricted, quartet_density, quartet_fock);
+        is_unrestricted, quartet_density, quartet_fock,
+        allow_mixed_precision);
   };
   const auto launch_fock_builder =
       [&](const double* density_input,
@@ -17427,7 +17435,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       }
       if (bounded_direct_streaming) {
         cudaError_t streaming_error = launch_bounded_generated_fock(
-            true, quartet_density, quartet_fock);
+            true, quartet_density, quartet_fock, allow_mixed_precision);
         if (streaming_error != cudaSuccess ||
             bounded_direct_count_diagnostic) {
           return streaming_error;
@@ -17503,7 +17511,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       }
       if (bounded_direct_streaming) {
         cudaError_t streaming_error = launch_bounded_generated_fock(
-            false, quartet_density, quartet_fock);
+            false, quartet_density, quartet_fock, allow_mixed_precision);
         if (streaming_error != cudaSuccess ||
             bounded_direct_count_diagnostic) {
           return streaming_error;
@@ -19396,8 +19404,7 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
     return outputs;
   }
   const std::optional<double> mixed_precision_fock_threshold =
-      *plan != nullptr && (*plan)->quartet_direct &&
-          !(*plan)->bounded_direct_streaming
+      *plan != nullptr && (*plan)->quartet_direct
       ? configured_mixed_precision_fock_threshold(
             options.screening_tolerance)
       : std::nullopt;

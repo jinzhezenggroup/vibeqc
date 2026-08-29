@@ -715,8 +715,13 @@ def test_multi_profile_registry_dispatches_dpps_mixed_fock(tmp_path: Path):
 
     assert "vibeqc_launch_sm120_generated_dpps_mixed_fock" in shard
     assert "generated_sm120_dpps_shell_class_mixed_fock_rhf" in shard
+    assert "generated_sm120_dpps_shell_class_mixed_fock_task" in shard
+    assert "mixed_precision_enabled" in shard
+    assert "fp64_threshold" in shard
+    assert "stream_state == 3U" in shard
     assert "launch_sm120_mixed_fock" in source
     assert "UINT64_C(2048)" in source
+    assert "VIBEQC_AOT_MIXED_FOCK_SHELL_CLASSES" in source
     assert "enabled_mixed_fock_shell_class_mask" in source
     assert "launch_shell_class_mixed_fock" in source
 
