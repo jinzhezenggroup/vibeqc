@@ -18,7 +18,7 @@ from .cuda_schedule import (
     default_schedule,
 )
 from .cuda_target import DEFAULT_CUDA_TARGET, CudaTargetInfo
-from .ir import KernelConsumer, build_integral_ir
+from .ir import IntegralIR, KernelConsumer, build_integral_ir
 from .shell_spec import AXES, ShellClassSpec
 
 ShellComponent = tuple[str, str, str, str]
@@ -61,14 +61,39 @@ class FusedShellResult:
 def build_fused_shell_plan(
     spec: ShellClassSpec,
     *,
-    consumers: tuple[KernelConsumer | str, ...] = (KernelConsumer.FORCE,),
+    consumers: tuple[KernelConsumer | str, ...] | None = None,
     schedule: ScheduleIR | None = None,
-    recurrence: str = "subset_wick",
+    recurrence: str | None = None,
     target: CudaTargetInfo = DEFAULT_CUDA_TARGET,
+    integral: IntegralIR | None = None,
 ) -> FusedShellPlan:
-    """Lower integral and schedule IRs into deterministic CUDA lookup tables."""
+    """Lower integral and schedule IRs into deterministic CUDA lookup tables.
 
-    integral = build_integral_ir(spec, consumers, recurrence=recurrence)
+    ``integral`` lets compiler stages carry an explicit derivative and
+    contraction specification all the way into scheduling.  Legacy callers
+    may continue to provide ``consumers`` and ``recurrence``; when both forms
+    are supplied, they must agree rather than silently rebuilding the IR.
+    """
+
+    if integral is None:
+        selected_consumers = (
+            (KernelConsumer.FORCE,) if consumers is None else consumers
+        )
+        selected_recurrence = "subset_wick" if recurrence is None else recurrence
+        integral = build_integral_ir(
+            spec,
+            selected_consumers,
+            recurrence=selected_recurrence,
+        )
+    else:
+        if integral.spec != spec:
+            raise ValueError("fused shell plan spec does not match its integral IR")
+        if consumers is not None:
+            normalized = frozenset(KernelConsumer(item) for item in consumers)
+            if normalized != set(integral.consumers):
+                raise ValueError("consumer and integral specifications disagree")
+        if recurrence is not None and recurrence != integral.recurrence:
+            raise ValueError("recurrence and integral specifications disagree")
     selected_schedule = schedule or default_schedule(integral, target)
     kernel = KernelIR(
         integral=integral,
