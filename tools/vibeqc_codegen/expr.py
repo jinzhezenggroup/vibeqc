@@ -173,6 +173,13 @@ class AlgebraForm(str, Enum):
     FACTORED_NARY = "factored_nary"
 
 
+class PowerLowering(str, Enum):
+    """Compile-time representation of small integral powers."""
+
+    NATIVE = "native"
+    SMALL_INTEGER = "small_integer"
+
+
 @dataclass(frozen=True, slots=True)
 class MaterializationDecision:
     """Explain whether one arithmetic DAG value remains a CUDA temporary."""
@@ -655,18 +662,109 @@ class Graph:
         self,
         roots: Sequence[Expr],
         form: AlgebraForm,
+        power_lowering: PowerLowering = PowerLowering.NATIVE,
     ) -> tuple[Graph, tuple[Expr, ...]]:
-        """Return roots in the requested associative representation."""
+        """Return roots in the requested power and associative representation."""
 
         normalized_roots = tuple(roots)
+        graph = self
+        if power_lowering == PowerLowering.SMALL_INTEGER:
+            graph, normalized_roots = self.lower_small_integer_powers(
+                normalized_roots
+            )
+        elif power_lowering != PowerLowering.NATIVE:
+            raise ValueError(f"unsupported power lowering {power_lowering!r}")
         if form == AlgebraForm.BINARY:
             for root in normalized_roots:
-                self._require_graph(root)
-            return self, normalized_roots
-        return self.canonicalize_associative(
+                graph._require_graph(root)
+            return graph, normalized_roots
+        return graph.canonicalize_associative(
             normalized_roots,
             factor_common=form == AlgebraForm.FACTORED_NARY,
         )
+
+    def lower_small_integer_powers(
+        self,
+        roots: Sequence[Expr],
+        *,
+        maximum_absolute_power: int = 4,
+    ) -> tuple[Graph, tuple[Expr, ...]]:
+        """Rebuild roots with bounded integer powers expanded into scalar ops.
+
+        Positive powers use exponentiation by squaring, so fourth powers need
+        two multiplies rather than three. Negative powers reuse the same
+        positive addition chain beneath one reciprocal. Non-integral and
+        larger powers remain explicit ``power`` nodes for CUDA ``pow``.
+        """
+
+        if maximum_absolute_power < 1:
+            raise ValueError("maximum absolute power must be positive")
+        normalized_roots = tuple(roots)
+        for root in normalized_roots:
+            self._require_graph(root)
+        target = Graph()
+        rebuilt: dict[int, Expr] = {}
+        powers: dict[tuple[int, int], Expr] = {}
+
+        def positive_power(base: Expr, exponent: int) -> Expr:
+            key = (base.identifier, exponent)
+            cached = powers.get(key)
+            if cached is not None:
+                return cached
+            if exponent == 1:
+                result = base
+            else:
+                half = positive_power(base, exponent // 2)
+                result = target.multiply(half, half)
+                if exponent & 1:
+                    result = target.multiply(result, base)
+            powers[key] = result
+            return result
+
+        def visit(identifier: int) -> Expr:
+            cached = rebuilt.get(identifier)
+            if cached is not None:
+                return cached
+            node = self.nodes[identifier]
+            arguments = tuple(visit(item) for item in node.arguments)
+            if node.operation == "constant":
+                result = target.clone_constant(node)
+            elif node.operation == "variable":
+                result = target.variable(str(node.payload))
+            elif node.operation == "add":
+                result = (
+                    target.add(arguments[0], arguments[1])
+                    if len(arguments) == 2
+                    else target.add_many(arguments)
+                )
+            elif node.operation == "multiply":
+                result = (
+                    target.multiply(arguments[0], arguments[1])
+                    if len(arguments) == 2
+                    else target.multiply_many(arguments)
+                )
+            elif node.operation == "reciprocal":
+                result = target.reciprocal(arguments[0])
+            elif node.operation == "exp":
+                result = target.exponential(arguments[0])
+            elif node.operation == "power":
+                exponent = float(node.payload)
+                if (
+                    exponent.is_integer()
+                    and 1 <= abs(exponent) <= maximum_absolute_power
+                ):
+                    integer_exponent = int(exponent)
+                    result = positive_power(arguments[0], abs(integer_exponent))
+                    if integer_exponent < 0:
+                        result = target.reciprocal(result)
+                else:
+                    result = target.power(arguments[0], exponent)
+            else:
+                raise ValueError(f"unsupported operation {node.operation!r}")
+            rebuilt[identifier] = result
+            return result
+
+        return target, tuple(visit(root.identifier) for root in normalized_roots)
 
     def reciprocal(self, value: Expr) -> Expr:
         self._require_graph(value)

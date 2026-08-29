@@ -11,9 +11,11 @@ from tools.vibeqc_codegen import (
     AlgebraOrdering,
     MaterializationDecision,
     MaterializationPlan,
+    PowerLowering,
     RematerializationPolicy,
     SsaAnalysis,
     SsaValueLifetime,
+    build_psss_kernel,
     build_weighted_shell_contraction_kernel,
 )
 from tools.vibeqc_codegen.cuda import CudaEmitter, format_constant
@@ -437,6 +439,48 @@ def test_exact_rational_coefficients_fold_before_cuda_lowering():
         if node.operation == "constant"
     )
     assert all(isinstance(coefficient, Fraction) for coefficient in coefficients)
+
+
+def test_small_integer_power_lowering_reuses_squares_and_preserves_other_powers():
+    """Expand bounded integer powers without duplicating shared squares."""
+
+    graph = Graph()
+    x = graph.variable("x")
+    root = x.pow(4) + x.pow(-3) + x.pow(0.5)
+    lowered, roots = graph.apply_algebra_form(
+        (root,),
+        AlgebraForm.BINARY,
+        PowerLowering.SMALL_INTEGER,
+    )
+
+    counts = lowered.operation_counts(roots)
+    assert counts["multiply"] == 3
+    assert counts["reciprocal"] == 1
+    assert counts["power"] == 1
+    values = {"x": 1.75}
+    assert lowered.evaluate(roots[0], values) == graph.evaluate(root, values)
+
+    emitter = CudaEmitter(lowered, {})
+    emitter.emit(roots)
+    source = "\n".join(emitter.lines)
+    assert "pow(x, 4" not in source
+    assert "pow(x, -3" not in source
+    assert "pow(x, 0.5" in source
+
+    psss = build_psss_kernel("x")
+    psss_roots = (
+        psss.value,
+        *(gradient for center in psss.gradients for gradient in center),
+    )
+    native_power_count = psss.graph.operation_counts(psss_roots)["power"]
+    lowered_psss, lowered_psss_roots = psss.graph.apply_algebra_form(
+        psss_roots,
+        AlgebraForm.BINARY,
+        PowerLowering.SMALL_INTEGER,
+    )
+    assert lowered_psss.operation_counts(lowered_psss_roots)["power"] < (
+        native_power_count
+    )
 
 
 def test_factored_nary_extracts_common_factors_and_collects_like_terms():
