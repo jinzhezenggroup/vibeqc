@@ -95,6 +95,7 @@ from tools.vibeqc_codegen import (
 )
 from tools.vibeqc_codegen.autotune import (
     StaticAlgebraModel,
+    _analysis_roots,
     _compile_trial,
     _packed_force_geometry_analysis,
     _run_autotune,
@@ -4954,6 +4955,38 @@ def test_autotune_emits_unique_schedule_variants_and_manifest_records():
         "fock",
         "force",
     ]
+
+
+def test_autotune_analysis_roots_follow_declared_derivative_centers():
+    """Exclude recovered centers from the static force root envelope."""
+
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        DPPP_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    kernel = build_shell_class_contraction_kernel(
+        DPPP_SPEC,
+        DPPP_SPEC.components[0],
+    )
+    roots = _analysis_roots(kernel, KernelConsumer.FORCE, integral=integral)
+    expected = tuple(
+        kernel.gradients[center][coordinate]
+        for center in (0, 2, 3)
+        for coordinate in range(3)
+    )
+    assert roots == expected
 
 
 def test_autotune_static_model_records_operations_and_live_values():
