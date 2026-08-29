@@ -33,7 +33,7 @@ from .fused_schedule import (
     build_fused_shell_plan,
     evaluate_fused_shell_component,
 )
-from .ir import KernelConsumer
+from .ir import IntegralIR, KernelConsumer, build_integral_ir
 from .rys import (
     build_rys_force_program,
     emit_ppps_rys3_root_body_cuda,
@@ -1346,7 +1346,11 @@ def _generic_task_component_setup(spec: ShellClassSpec) -> str:
     return "\n".join(lines)
 
 
-def _emit_packed_force_geometry_algebra_cuda(spec: ShellClassSpec) -> str:
+def _emit_packed_force_geometry_algebra_cuda(
+    spec: ShellClassSpec,
+    *,
+    integral: IntegralIR | None = None,
+) -> str:
     """Lower backend-neutral packed geometry roots into CUDA field stores.
 
     Pair-product scales remain execution metadata because orientation chooses
@@ -1355,8 +1359,14 @@ def _emit_packed_force_geometry_algebra_cuda(spec: ShellClassSpec) -> str:
     coefficients is emitted from the shared mathematical geometry graph.
     """
 
+    selected_integral = integral or build_integral_ir(spec)
+    if selected_integral.spec != spec:
+        raise ValueError("packed geometry spec does not match its integral IR")
     algebra = build_packed_force_geometry_algebra()
     pair_shift_rows = 4 if spec.angular[3] != 0 else 3
+    decay_gradient_rows = (
+        4 if 3 in selected_integral.independent_derivative_centers else 3
+    )
     variable_code = {
         "p": "p",
         "q": "q",
@@ -1384,7 +1394,7 @@ def _emit_packed_force_geometry_algebra_cuda(spec: ShellClassSpec) -> str:
         *(f"geometry.difference[{axis}]" for axis in range(3)),
         *(
             f"geometry.decay_gradients[{center}][{axis}]"
-            for center in range(3)
+            for center in range(decay_gradient_rows)
             for axis in range(3)
         ),
         "argument_squared_distance",
@@ -1392,7 +1402,10 @@ def _emit_packed_force_geometry_algebra_cuda(spec: ShellClassSpec) -> str:
         "geometry.prefactor",
         "geometry.primitive_coefficient",
     )
-    source_roots = algebra.roots_for_pair_shift_rows(pair_shift_rows)
+    source_roots = algebra.roots_for_pair_shift_rows(
+        pair_shift_rows,
+        decay_gradient_rows=decay_gradient_rows,
+    )
     root_specs = tuple(zip(source_roots, field_targets, strict=True))
     graph, roots = algebra.graph.apply_algebra_form(
         source_roots,
@@ -1413,16 +1426,44 @@ def _emit_packed_force_geometry_algebra_cuda(spec: ShellClassSpec) -> str:
     return "\n".join(emitter.lines)
 
 
+def _packed_force_integral(
+    spec: ShellClassSpec,
+    integral: IntegralIR | None,
+) -> IntegralIR:
+    """Select force metadata for a packed helper beside value-only plans.
+
+    Production value-only shells still emit the compatibility force symbols
+    used by the registry, even though those symbols are never launched.  They
+    therefore need the historical default force IR rather than an empty
+    FOCK-only derivative basis.
+    """
+
+    if integral is None or KernelConsumer.FORCE not in integral.consumers:
+        return build_integral_ir(spec)
+    return integral
+
+
 def _emit_weighted_component_gradient_cuda(
     spec: ShellClassSpec,
     schedule: ScheduleIR,
+    *,
+    integral: IntegralIR | None = None,
 ) -> str:
     """Emit one shell-wide weighted gradient with horizontal symbolic CSE."""
 
+    selected_integral = _packed_force_integral(spec, integral)
+    if selected_integral.spec != spec:
+        raise ValueError("weighted gradient spec does not match its integral IR")
     maximum_order = spec.maximum_force_coulomb_order
     side = maximum_order + 1
     pair_shift_rows = 4 if spec.angular[3] != 0 else 3
-    geometry_algebra = _emit_packed_force_geometry_algebra_cuda(spec)
+    decay_gradient_rows = (
+        4 if 3 in selected_integral.independent_derivative_centers else 3
+    )
+    geometry_algebra = _emit_packed_force_geometry_algebra_cuda(
+        spec,
+        integral=selected_integral,
+    )
     compact_geometry = f"""/**
  * Geometry retained by packed force lanes.
  *
@@ -1436,11 +1477,11 @@ struct GeneratedDpppPackedForceGeometry {{
   double inverse_two_q;
   double rho;
   double product_scales[3];
-  // Only the first three center derivatives are evaluated explicitly; the
-  // fourth follows from translational invariance and needs no stored shift.
+  // The compact default stores three independent center decay rows.  An
+  // explicit IR that differentiates center four requests a fourth row.
   double pair_shifts[{pair_shift_rows}][3];
   double difference[3];
-  double decay_gradients[3][3];
+  double decay_gradients[{decay_gradient_rows}][3];
   double boys[{side}];
   double prefactor;
   double primitive_coefficient;
@@ -1467,7 +1508,10 @@ __device__ __forceinline__ void generated_dppp_make_packed_force_geometry(
 {geometry_algebra}
 }}
 """
-    kernel = build_weighted_shell_contraction_kernel(spec)
+    kernel = build_weighted_shell_contraction_kernel(
+        spec,
+        integral=selected_integral,
+    )
     variable_code = {
         "inverse_two_p": "geometry.inverse_two_p",
         "inverse_two_q": "geometry.inverse_two_q",
@@ -1475,6 +1519,9 @@ __device__ __forceinline__ void generated_dppp_make_packed_force_geometry(
         "first_product_scale": "geometry.product_scales[0]",
         "second_product_scale": "geometry.product_scales[1]",
         "third_product_scale": "geometry.product_scales[2]",
+        # The compact packed record stores one ket product scale.  The other
+        # is its exact complement, including reversed shell-pair orientation.
+        "fourth_product_scale": "1.0 - geometry.product_scales[2]",
         "prefactor": "geometry.prefactor",
     }
     for axis_index, axis in enumerate(AXES):
@@ -1483,7 +1530,11 @@ __device__ __forceinline__ void generated_dppp_make_packed_force_geometry(
             variable_code[f"{prefix}_{axis}"] = (
                 f"geometry.pair_shifts[{center}][{axis_index}]"
             )
-        for center_index, center in enumerate(("first", "second", "third")):
+        for center_index, center in enumerate(
+            ("first", "second", "third", "fourth")
+        ):
+            if center_index >= decay_gradient_rows:
+                continue
             variable_code[f"decay_{center}_{axis}"] = (
                 f"geometry.decay_gradients[{center_index}][{axis_index}]"
             )
@@ -1496,7 +1547,7 @@ __device__ __forceinline__ void generated_dppp_make_packed_force_geometry(
 
     binary_roots = tuple(
         kernel.gradients[center][coordinate]
-        for center in range(3)
+        for center in selected_integral.independent_derivative_centers
         for coordinate in range(3)
     )
     graph, roots = kernel.graph.apply_algebra_form(
@@ -1525,7 +1576,7 @@ __device__ __forceinline__ void generated_dppp_make_packed_force_geometry(
         "    double (&gradient)[3][3]) {",
         *emitter.lines,
     ]
-    for center in range(3):
+    for center in range(len(selected_integral.independent_derivative_centers)):
         for coordinate in range(3):
             lines.append(
                 f"  gradient[{center}][{coordinate}] = "
@@ -1546,6 +1597,50 @@ def _emit_packed_force_consumer_cuda(
     exact density permutation helpers emitted above it.  Only task ownership
     changes: a 32-thread block processes up to 32 unrelated shell quartets.
     """
+
+    selected_integral = _packed_force_integral(spec, plan.kernel.integral)
+    independent_centers = selected_integral.independent_derivative_centers
+    recovered_centers = selected_integral.recovered_derivative_centers
+    if len(independent_centers) != 3 or len(recovered_centers) != 1:
+        raise ValueError(
+            "packed force lowering currently requires three independent and "
+            "one recovered derivative center"
+        )
+    independent_center_table = ", ".join(
+        f"{center}U" for center in independent_centers
+    )
+    independent_atomic_code = f"""  constexpr unsigned derivative_centers[3] = {{
+      {independent_center_table}}};
+#pragma unroll
+  for (unsigned slot = 0; slot < 9U; ++slot) {{
+    const double value = task_force[slot];
+    if (value == 0.0) continue;
+    const unsigned center = derivative_centers[slot / 3U];
+    const unsigned coordinate = slot % 3U;
+    atomicAdd(
+        forces + static_cast<std::size_t>(task.atom[center]) * 3U + coordinate,
+        value);
+  }}"""
+    recovered_atomic_blocks = []
+    for recovered_index, center in enumerate(recovered_centers):
+        name = "recovered_force" if recovered_index else "fourth_force"
+        terms = " - ".join(
+            f"task_force[{slot * 3} + coordinate]"
+            for slot in range(len(independent_centers))
+        )
+        recovered_atomic_blocks.append(
+            f"""#pragma unroll
+  for (unsigned coordinate = 0; coordinate < 3U; ++coordinate) {{
+    const double {name} = -{terms};
+    if ({name} != 0.0) {{
+      atomicAdd(
+          forces + static_cast<std::size_t>(task.atom[{center}]) * 3U +
+              coordinate,
+          {name});
+    }}
+  }}"""
+        )
+    recovered_atomic_code = "\n".join(recovered_atomic_blocks)
 
     task_component_setup = _generic_task_component_setup(spec).replace(
         "shared.task", "task"
@@ -1650,26 +1745,8 @@ __device__ __forceinline__ void generated_dppp_packed_force_lane(
       }}
     }}
   }}
-#pragma unroll
-  for (unsigned slot = 0; slot < 9U; ++slot) {{
-    const double value = task_force[slot];
-    if (value == 0.0) continue;
-    const unsigned center = slot / 3U;
-    const unsigned coordinate = slot % 3U;
-    atomicAdd(
-        forces + static_cast<std::size_t>(task.atom[center]) * 3U + coordinate,
-        value);
-  }}
-#pragma unroll
-  for (unsigned coordinate = 0; coordinate < 3U; ++coordinate) {{
-    const double value = -task_force[coordinate] -
-        task_force[3U + coordinate] - task_force[6U + coordinate];
-    if (value != 0.0) {{
-      atomicAdd(
-          forces + static_cast<std::size_t>(task.atom[3]) * 3U + coordinate,
-          value);
-    }}
-  }}
+{independent_atomic_code}
+{recovered_atomic_code}
 }}
 
 extern "C" __global__ {kernel_qualifier}
@@ -5910,7 +5987,11 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
             raise RuntimeError("generated force task marker changed unexpectedly")
         source = (
             source[:force_begin]
-            + _emit_weighted_component_gradient_cuda(spec, plan.schedule)
+            + _emit_weighted_component_gradient_cuda(
+                spec,
+                plan.schedule,
+                integral=plan.kernel.integral,
+            )
             + _emit_packed_force_consumer_cuda(
                 spec,
                 plan,

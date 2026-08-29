@@ -124,18 +124,35 @@ class PackedForceGeometryAlgebra:
 
         return self.roots_for_pair_shift_rows(4)
 
-    def roots_for_pair_shift_rows(self, pair_shift_rows: int) -> tuple[Expr, ...]:
-        """Return roots matching the packed record's stored shift rows."""
+    def roots_for_pair_shift_rows(
+        self,
+        pair_shift_rows: int,
+        *,
+        decay_gradient_rows: int = 3,
+    ) -> tuple[Expr, ...]:
+        """Return roots matching the packed record's stored geometry rows.
+
+        The default three decay rows preserve the compact legacy packed-force
+        layout.  A derivative IR that differentiates center four requests the
+        optional fourth row explicitly; its expression is already part of the
+        backend-neutral algebra and only the storage policy changes.
+        """
 
         if pair_shift_rows not in (3, 4):
             raise ValueError("packed geometry requires three or four shift rows")
+        if decay_gradient_rows not in (3, 4):
+            raise ValueError("packed geometry requires three or four decay rows")
         return (
             self.rho,
             self.inverse_two_p,
             self.inverse_two_q,
             *(item for center in self.pair_shifts[:pair_shift_rows] for item in center),
             *self.difference,
-            *(item for center in self.decay_gradients for item in center),
+            *(
+                item
+                for center in self.decay_gradients[:decay_gradient_rows]
+                for item in center
+            ),
             self.argument_squared_distance,
             self.boys_argument,
             self.prefactor,
@@ -213,6 +230,7 @@ def build_packed_force_geometry_algebra() -> PackedForceGeometryAlgebra:
         tuple(-2 * first_reduced_exponent * item for item in first_separation),
         tuple(2 * first_reduced_exponent * item for item in first_separation),
         tuple(-2 * second_reduced_exponent * item for item in second_separation),
+        tuple(2 * second_reduced_exponent * item for item in second_separation),
     )
     argument_squared_distance = graph.sum(item.pow(2) for item in difference)
     boys_argument = rho * argument_squared_distance

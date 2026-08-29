@@ -2392,6 +2392,52 @@ def test_packed_force_geometry_cuda_is_lowered_from_backend_neutral_algebra(
     assert "sqrt(" in setup
 
 
+def test_packed_force_lowering_uses_explicit_derivative_center_slots():
+    """Route packed force atomics through non-final IR recovery metadata."""
+
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        PSPS_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    plan = build_fused_shell_plan(
+        PSPS_SPEC,
+        integral=integral,
+        schedule=ScheduleIR(
+            kind=ScheduleKind.PACKED_TASKS,
+            block_threads=32,
+            component_tile=PSPS_SPEC.component_count,
+            tasks_per_warp=32,
+            shared_coulomb=False,
+        ),
+    )
+    source = emit_shell_class_fused_cuda(PSPS_SPEC, plan)
+
+    # Independent slots are A/C/D, while the recovered force is accumulated
+    # into B.  Differentiating center D also requires retaining its decay row.
+    assert "decay_gradients[4][3]" in source
+    assert "geometry.decay_gradients[3][2]" in source
+    assert "0U, 2U, 3U};" in source
+    recovery_begin = source.index(
+        "const double fourth_force",
+        source.index("generated_psps_packed_force_lane"),
+    )
+    recovery = source[recovery_begin : recovery_begin + 600]
+    assert "static_cast<std::size_t>(task.atom[1])" in recovery
+    assert "static_cast<std::size_t>(task.atom[3])" not in recovery
+
+
 @pytest.mark.parametrize(
     ("name", "component_count", "state_count", "block_threads"),
     (
