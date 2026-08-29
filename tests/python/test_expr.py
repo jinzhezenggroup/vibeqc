@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from tools.vibeqc_codegen import (
     PSSS_SPEC,
+    AlgebraForm,
     AlgebraFusion,
     AlgebraOrdering,
     MaterializationDecision,
@@ -343,3 +344,105 @@ def test_fma_fusion_preserves_shared_multiply_cse_and_supports_inline_root():
     emitter.emit((inline_root,))
     assert emitter.lines == []
     assert emitter.reference(inline_root) == "fma(a, b, c)"
+
+
+def test_canonical_nary_rebuild_flattens_and_folds_associative_regions():
+    """Represent equal sums identically with one scalar-counted n-ary node."""
+
+    graph = Graph()
+    x = graph.variable("x")
+    y = graph.variable("y")
+    root = ((x + 2.0) + (y + 3.0)) + x
+    canonical, roots = graph.apply_algebra_form(
+        (root,),
+        AlgebraForm.CANONICAL_NARY,
+    )
+    rebuilt = roots[0]
+    node = canonical.node(rebuilt)
+
+    assert node.operation == "add"
+    assert len(node.arguments) == 4
+    assert sum(
+        canonical.nodes[item].operation == "constant" for item in node.arguments
+    ) == 1
+    assert canonical.analyze_ssa(roots).arithmetic_operation_count == 3
+    assert canonical.evaluate(rebuilt, {"x": 1.5, "y": -2.0}) == 6.0
+
+    emitter = CudaEmitter(canonical, {})
+    emitter.emit(roots)
+    assert len(emitter.lines) == 1
+    assert emitter.lines[0].count(" + ") == 3
+
+
+def test_canonical_forms_ignore_binary_parenthesization():
+    """Emit one stable associative form for equivalent binary source trees."""
+
+    graph = Graph()
+    x = graph.variable("x")
+    y = graph.variable("y")
+    z = graph.variable("z")
+    left_associative = (x + y) + z
+    right_associative = x + (y + z)
+
+    def emitted_form(root, form):
+        canonical, roots = graph.apply_algebra_form((root,), form)
+        emitter = CudaEmitter(canonical, {})
+        emitter.emit(roots)
+        return emitter.lines, emitter.reference(roots[0])
+
+    for form in (AlgebraForm.CANONICAL_NARY, AlgebraForm.FACTORED_NARY):
+        assert emitted_form(left_associative, form) == emitted_form(
+            right_associative,
+            form,
+        )
+
+
+def test_factored_nary_extracts_common_factors_and_collects_like_terms():
+    """Turn repeated multiplicative terms into deterministic Horner-like sums."""
+
+    graph = Graph()
+    x = graph.variable("x")
+    y = graph.variable("y")
+    z = graph.variable("z")
+    root = 2.0 * x * y + 3.0 * x * z + x + x
+    canonical, canonical_roots = graph.apply_algebra_form(
+        (root,),
+        AlgebraForm.CANONICAL_NARY,
+    )
+    factored, factored_roots = graph.apply_algebra_form(
+        (root,),
+        AlgebraForm.FACTORED_NARY,
+    )
+
+    values = {"x": 1.25, "y": -0.5, "z": 2.0}
+    assert factored.evaluate(factored_roots[0], values) == canonical.evaluate(
+        canonical_roots[0], values
+    )
+    assert factored.analyze_ssa(factored_roots).arithmetic_operation_count < (
+        canonical.analyze_ssa(canonical_roots).arithmetic_operation_count
+    )
+    root_node = factored.node(factored_roots[0])
+    assert root_node.operation == "multiply"
+    assert any(
+        factored.nodes[item].operation == "add" for item in root_node.arguments
+    )
+
+
+def test_nary_differentiation_and_fma_lowering_cover_variable_arity_nodes():
+    """Keep symbolic AD and explicit contraction correct beyond binary nodes."""
+
+    graph = Graph()
+    x = graph.variable("x")
+    y = graph.variable("y")
+    z = graph.variable("z")
+    product = graph.multiply_many((x, y, z))
+    derivative = graph.differentiate(product, x)
+    assert graph.evaluate(derivative, {"x": 2.0, "y": 3.0, "z": 4.0}) == 12.0
+
+    pair = x * y
+    root = graph.add_many((pair, z, graph.variable("w")))
+    plan = graph.materialization_plan((root,), fusion=AlgebraFusion.FMA)
+    emitter = CudaEmitter(graph, {}, materialization_plan=plan)
+    emitter.emit((root,))
+    assert emitter.lines == ["  const double v0 = fma(x, y, (z + w));"]
+    assert plan.operation_counts == (("add", 1), ("fma", 1))

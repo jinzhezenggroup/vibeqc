@@ -13,6 +13,7 @@ from .backend import (
 from .cache import NvrtcCacheSpec, nvrtc_cache_key
 from .cuda_emitter import emit_shell_class_fused_cuda
 from .cuda_schedule import (
+    AlgebraForm,
     AlgebraFusion,
     AlgebraOrdering,
     AlgebraPlacement,
@@ -156,6 +157,7 @@ __all__ = [
     "PSPS_SPEC",
     "PSSS_SPEC",
     "SSSS_SPEC",
+    "AlgebraForm",
     "AlgebraFusion",
     "AlgebraOrdering",
     "AlgebraPlacement",

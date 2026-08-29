@@ -33,6 +33,7 @@ from .benchmark import (
 )
 from .cuda_adapter import CudaBenchmarkExecutor, CudaCompilerAdapter
 from .cuda_schedule import (
+    AlgebraForm,
     AlgebraFusion,
     AlgebraOrdering,
     AlgebraPlacement,
@@ -68,6 +69,7 @@ class StaticAlgebraModel:
     algebra_placement: AlgebraPlacement
     algebra_ordering: AlgebraOrdering
     algebra_fusion: AlgebraFusion
+    algebra_form: AlgebraForm
     component_count: int
     sampled_component_count: int
     recurrence_state_count: int
@@ -92,6 +94,7 @@ class StaticAlgebraModel:
             "algebra_placement": self.algebra_placement.value,
             "algebra_ordering": self.algebra_ordering.value,
             "algebra_fusion": self.algebra_fusion.value,
+            "algebra_form": self.algebra_form.value,
             "component_count": self.component_count,
             "sampled_component_count": self.sampled_component_count,
             "recurrence_state_count": self.recurrence_state_count,
@@ -160,6 +163,7 @@ class ScheduleTrial:
                 self.schedule.algebra_placement.value,
                 self.schedule.algebra_ordering.value,
                 self.schedule.algebra_fusion.value,
+                self.schedule.algebra_form.value,
             )
         )
 
@@ -208,6 +212,7 @@ def schedule_payload(schedule: ScheduleIR) -> dict[str, object]:
         "algebra_placement": schedule.algebra_placement.value,
         "algebra_ordering": schedule.algebra_ordering.value,
         "algebra_fusion": schedule.algebra_fusion.value,
+        "algebra_form": schedule.algebra_form.value,
         "unroll_pair_terms": schedule.unroll_pair_terms,
         "minimum_blocks_per_sm": schedule.minimum_blocks_per_sm,
         "maximum_registers": schedule.maximum_registers,
@@ -262,16 +267,20 @@ def _cached_static_algebra_model(
     algebra_placement: AlgebraPlacement,
     algebra_ordering: AlgebraOrdering,
     algebra_fusion: AlgebraFusion,
+    algebra_form: AlgebraForm,
 ) -> StaticAlgebraModel:
     """Build one immutable model shared by same-class schedule variants."""
 
     if weighted_shell:
         kernel = build_weighted_shell_contraction_kernel(spec)
-        roots = _analysis_roots(kernel, consumer)
+        graph, roots = kernel.graph.apply_algebra_form(
+            _analysis_roots(kernel, consumer),
+            algebra_form,
+        )
         analysis_pairs = (
             (
-                kernel.graph.analyze_ssa(roots),
-                kernel.graph.materialization_plan(
+                graph.analyze_ssa(roots),
+                graph.materialization_plan(
                     roots,
                     algebra_placement.materialization_policy(),
                     algebra_ordering,
@@ -297,7 +306,13 @@ def _cached_static_algebra_model(
             for component_kernel in (
                 build_shell_class_contraction_kernel(spec, component),
             )
-            for roots in (_analysis_roots(component_kernel, consumer),)
+            for binary_roots in (_analysis_roots(component_kernel, consumer),)
+            for graph, roots in (
+                component_kernel.graph.apply_algebra_form(
+                    binary_roots,
+                    algebra_form,
+                ),
+            )
         )
         scope = "balanced_component_sample_envelope"
         sampled_component_count = len(components)
@@ -365,6 +380,7 @@ def _cached_static_algebra_model(
         algebra_placement=algebra_placement,
         algebra_ordering=algebra_ordering,
         algebra_fusion=algebra_fusion,
+        algebra_form=algebra_form,
         component_count=spec.component_count,
         sampled_component_count=sampled_component_count,
         recurrence_state_count=comb(maximum_order + 3, 3),
@@ -399,6 +415,7 @@ def static_algebra_model(trial: ScheduleTrial) -> StaticAlgebraModel:
         trial.schedule.algebra_placement,
         trial.schedule.algebra_ordering,
         trial.schedule.algebra_fusion,
+        trial.schedule.algebra_form,
     )
 
 
