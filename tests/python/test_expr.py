@@ -551,6 +551,8 @@ def test_packed_force_geometry_algebra_matches_scalar_formulas():
         PowerLowering.SMALL_INTEGER,
     )
     assert lowered.operation_counts(roots)["power"] == 1
+    assert len(geometry.roots_for_pair_shift_rows(3)) == 28
+    assert len(geometry.roots_for_pair_shift_rows(4)) == 31
 
 
 def test_factored_nary_extracts_common_factors_and_collects_like_terms():

@@ -26,7 +26,7 @@ from .cuda_schedule import (
     ScheduleIR,
     ScheduleKind,
 )
-from .expr import Expr, PowerLowering
+from .expr import PowerLowering
 from .fused_schedule import (
     CoulombState,
     FusedShellPlan,
@@ -1372,40 +1372,28 @@ def _emit_packed_force_geometry_algebra_cuda(spec: ShellClassSpec) -> str:
         variable_code[f"product_p_{axis}"] = f"first_pair.product_center.{axis}"
         variable_code[f"product_q_{axis}"] = f"second_pair.product_center.{axis}"
 
-    root_specs: list[tuple[Expr, str | None]] = [
-        (algebra.rho, "geometry.rho"),
-        (algebra.inverse_two_p, "geometry.inverse_two_p"),
-        (algebra.inverse_two_q, "geometry.inverse_two_q"),
-    ]
-    root_specs.extend(
-        (
-            expression,
-            f"geometry.pair_shifts[{center}][{axis}]",
-        )
-        for center, row in enumerate(algebra.pair_shifts[:pair_shift_rows])
-        for axis, expression in enumerate(row)
+    field_targets = (
+        "geometry.rho",
+        "geometry.inverse_two_p",
+        "geometry.inverse_two_q",
+        *(
+            f"geometry.pair_shifts[{center}][{axis}]"
+            for center in range(pair_shift_rows)
+            for axis in range(3)
+        ),
+        *(f"geometry.difference[{axis}]" for axis in range(3)),
+        *(
+            f"geometry.decay_gradients[{center}][{axis}]"
+            for center in range(3)
+            for axis in range(3)
+        ),
+        "argument_squared_distance",
+        None,
+        "geometry.prefactor",
+        "geometry.primitive_coefficient",
     )
-    root_specs.extend(
-        (expression, f"geometry.difference[{axis}]")
-        for axis, expression in enumerate(algebra.difference)
-    )
-    root_specs.extend(
-        (
-            expression,
-            f"geometry.decay_gradients[{center}][{axis}]",
-        )
-        for center, row in enumerate(algebra.decay_gradients)
-        for axis, expression in enumerate(row)
-    )
-    root_specs.extend(
-        (
-            (algebra.argument_squared_distance, "argument_squared_distance"),
-            (algebra.boys_argument, None),
-            (algebra.prefactor, "geometry.prefactor"),
-            (algebra.primitive_coefficient, "geometry.primitive_coefficient"),
-        )
-    )
-    source_roots = tuple(expression for expression, _ in root_specs)
+    source_roots = algebra.roots_for_pair_shift_rows(pair_shift_rows)
+    root_specs = tuple(zip(source_roots, field_targets, strict=True))
     graph, roots = algebra.graph.apply_algebra_form(
         source_roots,
         AlgebraForm.BINARY,

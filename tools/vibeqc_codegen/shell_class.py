@@ -121,11 +121,18 @@ class PackedForceGeometryAlgebra:
     def roots(self) -> tuple[Expr, ...]:
         """Return every computed scalar in deterministic storage order."""
 
+        return self.roots_for_pair_shift_rows(4)
+
+    def roots_for_pair_shift_rows(self, pair_shift_rows: int) -> tuple[Expr, ...]:
+        """Return roots matching the packed record's stored shift rows."""
+
+        if pair_shift_rows not in (3, 4):
+            raise ValueError("packed geometry requires three or four shift rows")
         return (
             self.rho,
             self.inverse_two_p,
             self.inverse_two_q,
-            *(item for center in self.pair_shifts for item in center),
+            *(item for center in self.pair_shifts[:pair_shift_rows] for item in center),
             *self.difference,
             *(item for center in self.decay_gradients for item in center),
             self.argument_squared_distance,
