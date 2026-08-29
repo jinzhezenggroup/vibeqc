@@ -96,6 +96,7 @@ from tools.vibeqc_codegen import (
 from tools.vibeqc_codegen.autotune import (
     StaticAlgebraModel,
     _compile_trial,
+    _packed_force_geometry_analysis,
     _run_autotune,
     emit_schedule_driver,
     emit_schedule_oracle_translation_unit,
@@ -4952,6 +4953,13 @@ def test_autotune_static_model_records_operations_and_live_values():
     )
     assert packed_model.baseline_peak_live_values == packed_model.peak_live_values
     assert 0 < packed_model.peak_live_values < packed_model.materialized_value_count
+    geometry_analysis, geometry_plan = _packed_force_geometry_analysis(3)
+    assert dict(packed_model.operation_counts)["power"] >= (
+        dict(geometry_analysis.operation_counts)["power"]
+    )
+    assert packed_model.arithmetic_operation_count >= (
+        geometry_plan.arithmetic_operation_count
+    )
 
     component_trials = tuple(
         trial

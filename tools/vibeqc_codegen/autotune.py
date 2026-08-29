@@ -49,12 +49,13 @@ from .cuda_target import (
     cuda_target_info,
     normalize_cuda_architecture,
 )
-from .expr import Expr
+from .expr import Expr, PowerLowering
 from .fused_schedule import build_fused_shell_plan
 from .ir import KernelConsumer, build_integral_ir
 from .shell_class import (
     ShellClassContractionKernel,
     WeightedShellContractionKernel,
+    build_packed_force_geometry_algebra,
     build_shell_class_contraction_kernel,
     build_weighted_shell_contraction_kernel,
 )
@@ -63,7 +64,12 @@ from .shell_spec import AXES, FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec
 
 @dataclass(frozen=True, slots=True)
 class StaticAlgebraModel:
-    """Schedule-relevant symbolic operation and live-value estimates."""
+    """Schedule-relevant symbolic operation and live-value estimates.
+
+    Packed-force rows include both the weighted contraction DAG and the fixed
+    backend-neutral geometry setup.  Other consumers retain their existing
+    component-envelope semantics because they do not emit that geometry path.
+    """
 
     scope: str
     algebra_placement: AlgebraPlacement
@@ -260,6 +266,42 @@ def _analysis_roots(
 
 
 @cache
+def _packed_force_geometry_analysis(pair_shift_rows: int):
+    """Return static metrics for the geometry setup emitted by packed force.
+
+    Geometry is lowered with a fixed binary/small-integer form in the CUDA
+    setup helper.  Keeping this analysis separate from the schedule-dependent
+    weighted contraction lets the tuner report both costs without pretending
+    that geometry placement is already an execution-policy knob.
+    """
+
+    if pair_shift_rows not in (3, 4):
+        raise ValueError("packed geometry analysis requires three or four shifts")
+    geometry = build_packed_force_geometry_algebra()
+    roots = (
+        geometry.rho,
+        geometry.inverse_two_p,
+        geometry.inverse_two_q,
+        *(item for row in geometry.pair_shifts[:pair_shift_rows] for item in row),
+        *geometry.difference,
+        *(item for row in geometry.decay_gradients for item in row),
+        geometry.argument_squared_distance,
+        geometry.boys_argument,
+        geometry.prefactor,
+        geometry.primitive_coefficient,
+    )
+    graph, roots = geometry.graph.apply_algebra_form(
+        roots,
+        AlgebraForm.BINARY,
+        PowerLowering.SMALL_INTEGER,
+    )
+    return (
+        graph.analyze_ssa(roots),
+        graph.materialization_plan(roots),
+    )
+
+
+@cache
 def _cached_static_algebra_model(
     spec: ShellClassSpec,
     consumer: KernelConsumer,
@@ -277,7 +319,7 @@ def _cached_static_algebra_model(
             _analysis_roots(kernel, consumer),
             algebra_form,
         )
-        analysis_pairs = (
+        analysis_pairs = [
             (
                 graph.analyze_ssa(roots),
                 graph.materialization_plan(
@@ -287,7 +329,10 @@ def _cached_static_algebra_model(
                     algebra_fusion,
                 ),
             ),
-        )
+            _packed_force_geometry_analysis(
+                4 if spec.angular[3] != 0 else 3
+            ),
+        ]
         scope = "weighted_shell_dag"
         sampled_component_count = spec.component_count
     else:
@@ -329,28 +374,44 @@ def _cached_static_algebra_model(
     rematerialized_value_count = 0
     reordered_value_count = 0
     fma_operation_count = 0
-    for analysis, plan in analysis_pairs:
-        root_count = analysis.root_count
-        baseline_arithmetic_operation_count = max(
-            baseline_arithmetic_operation_count,
-            analysis.arithmetic_operation_count,
-        )
-        baseline_materialized_value_count = max(
-            baseline_materialized_value_count,
-            analysis.materialized_value_count,
-        )
-        baseline_peak_live_values = max(
-            baseline_peak_live_values,
-            analysis.peak_live_values,
-        )
-        arithmetic_operation_count = max(
-            arithmetic_operation_count,
-            plan.arithmetic_operation_count,
-        )
-        materialized_value_count = max(
-            materialized_value_count, plan.materialized_value_count
-        )
-        peak_live_values = max(peak_live_values, plan.peak_live_values)
+    for pair_index, (analysis, plan) in enumerate(analysis_pairs):
+        if pair_index == 0:
+            # ``root_count`` describes the schedule's consumer roots.  The
+            # geometry setup is accounted for in the envelopes below, but is
+            # not another consumer output tensor.
+            root_count = analysis.root_count
+        combine = weighted_shell
+        if combine:
+            baseline_arithmetic_operation_count += analysis.arithmetic_operation_count
+            baseline_materialized_value_count += analysis.materialized_value_count
+            baseline_peak_live_values = max(
+                baseline_peak_live_values,
+                analysis.peak_live_values,
+            )
+            arithmetic_operation_count += plan.arithmetic_operation_count
+            materialized_value_count += plan.materialized_value_count
+            peak_live_values = max(peak_live_values, plan.peak_live_values)
+        else:
+            baseline_arithmetic_operation_count = max(
+                baseline_arithmetic_operation_count,
+                analysis.arithmetic_operation_count,
+            )
+            baseline_materialized_value_count = max(
+                baseline_materialized_value_count,
+                analysis.materialized_value_count,
+            )
+            baseline_peak_live_values = max(
+                baseline_peak_live_values,
+                analysis.peak_live_values,
+            )
+            arithmetic_operation_count = max(
+                arithmetic_operation_count,
+                plan.arithmetic_operation_count,
+            )
+            materialized_value_count = max(
+                materialized_value_count, plan.materialized_value_count
+            )
+            peak_live_values = max(peak_live_values, plan.peak_live_values)
         rematerialized_value_count = max(
             rematerialized_value_count,
             plan.rematerialized_value_count,
@@ -364,12 +425,16 @@ def _cached_static_algebra_model(
             plan.fma_operation_count,
         )
         for operation, count in analysis.operation_counts:
-            operation_envelope[operation] = max(
-                operation_envelope.get(operation, 0), count
+            operation_envelope[operation] = (
+                operation_envelope.get(operation, 0) + count
+                if combine
+                else max(operation_envelope.get(operation, 0), count)
             )
         for operation, count in plan.operation_counts:
-            emitted_operation_envelope[operation] = max(
-                emitted_operation_envelope.get(operation, 0), count
+            emitted_operation_envelope[operation] = (
+                emitted_operation_envelope.get(operation, 0) + count
+                if combine
+                else max(emitted_operation_envelope.get(operation, 0), count)
             )
     operation_counts = tuple(sorted(operation_envelope.items()))
     emitted_operation_counts = tuple(sorted(emitted_operation_envelope.items()))
