@@ -30,6 +30,7 @@ from tools.vibeqc_codegen import (
     PSPS_SPEC,
     PSSS_SPEC,
     SSSS_SPEC,
+    AlgebraOrdering,
     AlgebraPlacement,
     ContractionConsumer,
     ContractionSpec,
@@ -4832,11 +4833,13 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
     packed = tuple(
         trial for trial in trials if trial.schedule.kind == ScheduleKind.PACKED_TASKS
     )
-    assert {trial.schedule.algebra_placement for trial in packed} == set(
-        AlgebraPlacement
-    )
+    assert {
+        (trial.schedule.algebra_placement, trial.schedule.algebra_ordering)
+        for trial in packed
+    } == set(itertools.product(AlgebraPlacement, AlgebraOrdering))
     assert all(
         trial.schedule.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
+        and trial.schedule.algebra_ordering == AlgebraOrdering.TOPOLOGICAL
         for trial in trials
         if trial.schedule.kind != ScheduleKind.PACKED_TASKS
     )
@@ -4844,6 +4847,8 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
     assert all(
         schedule_payload(trial.schedule)["algebra_placement"]
         == trial.schedule.algebra_placement.value
+        and schedule_payload(trial.schedule)["algebra_ordering"]
+        == trial.schedule.algebra_ordering.value
         for trial in packed
     )
 
@@ -4852,6 +4857,7 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
             trial
             for trial in packed
             if trial.schedule.algebra_placement == placement
+            and trial.schedule.algebra_ordering == AlgebraOrdering.TOPOLOGICAL
             and trial.schedule.minimum_blocks_per_sm == 2
             and trial.schedule.unroll_pair_terms
         )
@@ -4894,6 +4900,28 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
         "  const double v"
     )
 
+    pressure_ordered = {
+        placement: next(
+            trial.static_model
+            for trial in packed
+            if trial.schedule.algebra_placement == placement
+            and trial.schedule.algebra_ordering == AlgebraOrdering.PRESSURE_AWARE
+            and trial.schedule.minimum_blocks_per_sm == 2
+            and trial.schedule.unroll_pair_terms
+        )
+        for placement in AlgebraPlacement
+    }
+    for placement, ordered_model in pressure_ordered.items():
+        topological_model = comparable[placement].static_model
+        assert ordered_model.arithmetic_operation_count == (
+            topological_model.arithmetic_operation_count
+        )
+        assert ordered_model.materialized_value_count == (
+            topological_model.materialized_value_count
+        )
+        assert ordered_model.peak_live_values < topological_model.peak_live_values
+        assert ordered_model.reordered_value_count > 0
+
 
 def test_algebra_placement_schedule_payload_is_backward_compatible():
     """Round-trip tuned placement while defaulting older manifests safely."""
@@ -4903,19 +4931,30 @@ def test_algebra_placement_schedule_payload_is_backward_compatible():
         for trial in supported_schedule_trials(PSPS_SPEC)
         if trial.schedule.kind == ScheduleKind.PACKED_TASKS
         and trial.schedule.algebra_placement == AlgebraPlacement.INLINE_SINGLE_USE
+        and trial.schedule.algebra_ordering == AlgebraOrdering.PRESSURE_AWARE
     )
     payload = schedule_payload(inline_schedule)
     assert _schedule_from_payload(payload) == inline_schedule
 
     del payload["algebra_placement"]
+    del payload["algebra_ordering"]
     assert (
         _schedule_from_payload(payload).algebra_placement
         == AlgebraPlacement.MATERIALIZED_CSE
+    )
+    assert (
+        _schedule_from_payload(payload).algebra_ordering
+        == AlgebraOrdering.TOPOLOGICAL
     )
     with pytest.raises(ValueError, match="packed tasks"):
         replace(
             build_fused_shell_plan(DPDS_SPEC).schedule,
             algebra_placement=AlgebraPlacement.INLINE_SINGLE_USE,
+        )
+    with pytest.raises(ValueError, match="packed tasks"):
+        replace(
+            build_fused_shell_plan(DPDS_SPEC).schedule,
+            algebra_ordering=AlgebraOrdering.PRESSURE_AWARE,
         )
 
 

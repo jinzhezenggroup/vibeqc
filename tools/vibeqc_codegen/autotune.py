@@ -33,6 +33,7 @@ from .benchmark import (
 )
 from .cuda_adapter import CudaBenchmarkExecutor, CudaCompilerAdapter
 from .cuda_schedule import (
+    AlgebraOrdering,
     AlgebraPlacement,
     PairOrientation,
     PairStorage,
@@ -64,6 +65,7 @@ class StaticAlgebraModel:
 
     scope: str
     algebra_placement: AlgebraPlacement
+    algebra_ordering: AlgebraOrdering
     component_count: int
     sampled_component_count: int
     recurrence_state_count: int
@@ -77,6 +79,7 @@ class StaticAlgebraModel:
     materialized_value_count: int
     peak_live_values: int
     rematerialized_value_count: int
+    reordered_value_count: int
 
     def to_payload(self) -> dict[str, object]:
         """Serialize deterministic fields into one autotuning candidate row."""
@@ -84,6 +87,7 @@ class StaticAlgebraModel:
         return {
             "scope": self.scope,
             "algebra_placement": self.algebra_placement.value,
+            "algebra_ordering": self.algebra_ordering.value,
             "component_count": self.component_count,
             "sampled_component_count": self.sampled_component_count,
             "recurrence_state_count": self.recurrence_state_count,
@@ -117,6 +121,7 @@ class StaticAlgebraModel:
                 - self.materialized_value_count
             ),
             "rematerialized_value_count": self.rematerialized_value_count,
+            "reordered_value_count": self.reordered_value_count,
         }
 
 
@@ -148,6 +153,7 @@ class ScheduleTrial:
                 self.schedule.pair_orientation.value,
                 f"pairs_{self.schedule.pair_storage.value}",
                 self.schedule.algebra_placement.value,
+                self.schedule.algebra_ordering.value,
             )
         )
 
@@ -194,6 +200,7 @@ def schedule_payload(schedule: ScheduleIR) -> dict[str, object]:
         "pair_orientation": schedule.pair_orientation.value,
         "pair_storage": schedule.pair_storage.value,
         "algebra_placement": schedule.algebra_placement.value,
+        "algebra_ordering": schedule.algebra_ordering.value,
         "unroll_pair_terms": schedule.unroll_pair_terms,
         "minimum_blocks_per_sm": schedule.minimum_blocks_per_sm,
         "maximum_registers": schedule.maximum_registers,
@@ -246,6 +253,7 @@ def _cached_static_algebra_model(
     consumer: KernelConsumer,
     weighted_shell: bool,
     algebra_placement: AlgebraPlacement,
+    algebra_ordering: AlgebraOrdering,
 ) -> StaticAlgebraModel:
     """Build one immutable model shared by same-class schedule variants."""
 
@@ -258,6 +266,7 @@ def _cached_static_algebra_model(
                 kernel.graph.materialization_plan(
                     roots,
                     algebra_placement.materialization_policy(),
+                    algebra_ordering,
                 ),
             ),
         )
@@ -271,6 +280,7 @@ def _cached_static_algebra_model(
                 component_kernel.graph.materialization_plan(
                     roots,
                     algebra_placement.materialization_policy(),
+                    algebra_ordering,
                 ),
             )
             for component in components
@@ -292,6 +302,7 @@ def _cached_static_algebra_model(
     materialized_value_count = 0
     peak_live_values = 0
     rematerialized_value_count = 0
+    reordered_value_count = 0
     for analysis, plan in analysis_pairs:
         root_count = analysis.root_count
         baseline_arithmetic_operation_count = max(
@@ -318,6 +329,10 @@ def _cached_static_algebra_model(
             rematerialized_value_count,
             plan.rematerialized_value_count,
         )
+        reordered_value_count = max(
+            reordered_value_count,
+            plan.reordered_value_count,
+        )
         for operation, count in analysis.operation_counts:
             operation_envelope[operation] = max(
                 operation_envelope.get(operation, 0), count
@@ -333,6 +348,7 @@ def _cached_static_algebra_model(
     return StaticAlgebraModel(
         scope=scope,
         algebra_placement=algebra_placement,
+        algebra_ordering=algebra_ordering,
         component_count=spec.component_count,
         sampled_component_count=sampled_component_count,
         recurrence_state_count=comb(maximum_order + 3, 3),
@@ -348,6 +364,7 @@ def _cached_static_algebra_model(
         materialized_value_count=materialized_value_count,
         peak_live_values=peak_live_values,
         rematerialized_value_count=rematerialized_value_count,
+        reordered_value_count=reordered_value_count,
     )
 
 
@@ -363,6 +380,7 @@ def static_algebra_model(trial: ScheduleTrial) -> StaticAlgebraModel:
         trial.consumer,
         weighted_shell,
         trial.schedule.algebra_placement,
+        trial.schedule.algebra_ordering,
     )
 
 

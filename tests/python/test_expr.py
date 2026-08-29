@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from tools.vibeqc_codegen import (
     PSSS_SPEC,
+    AlgebraOrdering,
     MaterializationDecision,
     MaterializationPlan,
     RematerializationPolicy,
@@ -219,3 +220,64 @@ def test_pressure_plan_trades_bounded_recomputation_for_a_shorter_live_set():
         shared_decision.estimated_recomputation_cost
     )
     assert shared_decision.reason == "live_range_benefit"
+
+
+def test_pressure_aware_ordering_reduces_exact_materialized_peak_liveness():
+    """Delay ready definitions and free effective inlined dependencies early."""
+
+    kernel = build_weighted_shell_contraction_kernel(PSSS_SPEC)
+    roots = tuple(
+        kernel.gradients[center][coordinate]
+        for center in range(3)
+        for coordinate in range(3)
+    )
+    policy = RematerializationPolicy.inline_single_use_values()
+    topological = kernel.graph.materialization_plan(
+        roots,
+        policy,
+        AlgebraOrdering.TOPOLOGICAL,
+    )
+    pressure_aware = kernel.graph.materialization_plan(
+        roots,
+        policy,
+        AlgebraOrdering.PRESSURE_AWARE,
+    )
+
+    assert pressure_aware.materialized_identifiers == (
+        topological.materialized_identifiers
+    )
+    assert pressure_aware.arithmetic_operation_count == (
+        topological.arithmetic_operation_count
+    )
+    assert pressure_aware.emission_order != topological.emission_order
+    assert pressure_aware.reordered_value_count > 0
+    assert pressure_aware.peak_live_values < topological.peak_live_values
+    assert pressure_aware.to_payload()["ordering"] == "pressure_aware"
+
+    emitter = CudaEmitter(
+        kernel.graph,
+        {},
+        materialization_plan=pressure_aware,
+    )
+    emitter.emit(roots)
+    assert len(emitter.lines) == pressure_aware.materialized_value_count
+    assert all(emitter.reference(root) for root in roots)
+
+
+def test_pressure_aware_ordering_falls_back_when_exact_peak_does_not_improve():
+    """Avoid source churn when the greedy candidate is not actually better."""
+
+    kernel = build_weighted_shell_contraction_kernel(PSSS_SPEC)
+    roots = tuple(
+        kernel.gradients[center][coordinate]
+        for center in range(3)
+        for coordinate in range(3)
+    )
+    topological = kernel.graph.materialization_plan(roots)
+    guarded = kernel.graph.materialization_plan(
+        roots,
+        ordering=AlgebraOrdering.PRESSURE_AWARE,
+    )
+    assert guarded.emission_order == topological.emission_order
+    assert guarded.peak_live_values == topological.peak_live_values
+    assert guarded.reordered_value_count == 0
