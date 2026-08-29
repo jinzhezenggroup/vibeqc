@@ -79,6 +79,12 @@ source and its CLI/production compatibility branches have been removed. Other
 measured specialized fallbacks remain until their common candidates pass the
 same correctness, resource, and endpoint gates.
 
+The generic `cuda_emitter` surface now delegates to the backend-named
+`cuda_lowering` implementation. `dppp_dispatch` is a narrow compatibility
+adapter for the original DPPP specialization and resident-PPPS APIs, so adding
+or tuning a generic shell no longer introduces a dependency on a historical
+shell-class module.
+
 The current CUDA backend still accepts only first nuclear derivatives of
 four-center ERIs and preserves the existing force-vector ABI. Higher derivative
 orders, one-electron operator lowering, and density-fitting operators need their
