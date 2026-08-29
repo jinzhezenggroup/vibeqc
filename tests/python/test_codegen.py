@@ -2156,6 +2156,42 @@ def test_packed_force_geometry_omits_component_coulomb_tables():
 
 
 @pytest.mark.parametrize(
+    ("spec", "pair_shift_rows"),
+    ((PSPS_SPEC, 3), (DPPP_SPEC, 4)),
+)
+def test_packed_force_geometry_cuda_is_lowered_from_backend_neutral_algebra(
+    spec, pair_shift_rows
+):
+    """Keep packed geometry setup derived from the shared scalar IR."""
+
+    source = emit_shell_class_fused_cuda(
+        spec,
+        build_fused_shell_plan(
+            spec,
+            consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+            schedule=ScheduleIR(
+                kind=ScheduleKind.PACKED_TASKS,
+                block_threads=32,
+                component_tile=spec.component_count,
+                tasks_per_warp=32,
+                shared_coulomb=False,
+            ),
+        ),
+    )
+    setup = source.split(
+        f"generated_{spec.name}_make_packed_force_geometry", maxsplit=1
+    )[1].split("/** Density-weighted shell gradient", maxsplit=1)[0]
+    assert f"pair_shifts[{pair_shift_rows}][3]" in source
+    assert "generated_dppp_axis(" not in setup
+    assert "argument_squared_distance +=" not in setup
+    assert "geometry.pair_shifts[0][0] =" in setup
+    assert "geometry.decay_gradients[2][2] =" in setup
+    assert "geometry.primitive_coefficient =" in setup
+    assert f"boys_values<{spec.maximum_force_coulomb_order}>" in setup
+    assert "sqrt(" in setup
+
+
+@pytest.mark.parametrize(
     ("name", "component_count", "state_count", "block_threads"),
     (
         ("ppps", 27, 20, 32),

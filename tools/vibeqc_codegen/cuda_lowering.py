@@ -19,7 +19,14 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from .cuda import CudaEmitter
-from .cuda_schedule import PairOrientation, PairStorage, ScheduleIR, ScheduleKind
+from .cuda_schedule import (
+    AlgebraForm,
+    PairOrientation,
+    PairStorage,
+    ScheduleIR,
+    ScheduleKind,
+)
+from .expr import Expr, PowerLowering
 from .fused_schedule import (
     CoulombState,
     FusedShellPlan,
@@ -36,7 +43,10 @@ from .rys import (
     emit_rys5_roots_cuda,
     emit_rys_force_root_body_cuda,
 )
-from .shell_class import build_weighted_shell_contraction_kernel
+from .shell_class import (
+    build_packed_force_geometry_algebra,
+    build_weighted_shell_contraction_kernel,
+)
 from .shell_spec import (
     AXES,
     DPPP_SPEC,
@@ -1336,6 +1346,85 @@ def _generic_task_component_setup(spec: ShellClassSpec) -> str:
     return "\n".join(lines)
 
 
+def _emit_packed_force_geometry_algebra_cuda(spec: ShellClassSpec) -> str:
+    """Lower backend-neutral packed geometry roots into CUDA field stores.
+
+    Pair-product scales remain execution metadata because orientation chooses
+    which input pair coefficient occupies each slot.  Every scalar derived
+    from the product centers, exponents, coordinates, and weighted primitive
+    coefficients is emitted from the shared mathematical geometry graph.
+    """
+
+    algebra = build_packed_force_geometry_algebra()
+    pair_shift_rows = 4 if spec.angular[3] != 0 else 3
+    variable_code = {
+        "p": "p",
+        "q": "q",
+        "first_reduced_exponent": "first_pair.reduced_exponent",
+        "second_reduced_exponent": "second_pair.reduced_exponent",
+        "first_weighted_coefficient": "first_pair.weighted_coefficient",
+        "second_weighted_coefficient": "second_pair.weighted_coefficient",
+    }
+    for center in ("first", "second", "third", "fourth"):
+        for axis in AXES:
+            variable_code[f"{center}_coordinate_{axis}"] = f"{center}.{axis}"
+    for axis in AXES:
+        variable_code[f"product_p_{axis}"] = f"first_pair.product_center.{axis}"
+        variable_code[f"product_q_{axis}"] = f"second_pair.product_center.{axis}"
+
+    root_specs: list[tuple[Expr, str | None]] = [
+        (algebra.rho, "geometry.rho"),
+        (algebra.inverse_two_p, "geometry.inverse_two_p"),
+        (algebra.inverse_two_q, "geometry.inverse_two_q"),
+    ]
+    root_specs.extend(
+        (
+            expression,
+            f"geometry.pair_shifts[{center}][{axis}]",
+        )
+        for center, row in enumerate(algebra.pair_shifts[:pair_shift_rows])
+        for axis, expression in enumerate(row)
+    )
+    root_specs.extend(
+        (expression, f"geometry.difference[{axis}]")
+        for axis, expression in enumerate(algebra.difference)
+    )
+    root_specs.extend(
+        (
+            expression,
+            f"geometry.decay_gradients[{center}][{axis}]",
+        )
+        for center, row in enumerate(algebra.decay_gradients)
+        for axis, expression in enumerate(row)
+    )
+    root_specs.extend(
+        (
+            (algebra.argument_squared_distance, "argument_squared_distance"),
+            (algebra.boys_argument, None),
+            (algebra.prefactor, "geometry.prefactor"),
+            (algebra.primitive_coefficient, "geometry.primitive_coefficient"),
+        )
+    )
+    source_roots = tuple(expression for expression, _ in root_specs)
+    graph, roots = algebra.graph.apply_algebra_form(
+        source_roots,
+        AlgebraForm.BINARY,
+        PowerLowering.SMALL_INTEGER,
+    )
+    emitter = CudaEmitter(graph, variable_code)
+    emitter.lines.append("  double argument_squared_distance;")
+    for (__, target), root in zip(root_specs, roots, strict=True):
+        if target is None:
+            emitter.emit((root,))
+            emitter.lines.append(
+                f"  boys_values<{spec.maximum_force_coulomb_order}>"
+                f"({emitter.reference(root)}, geometry.boys);"
+            )
+        else:
+            emitter.emit_assignment(root, target)
+    return "\n".join(emitter.lines)
+
+
 def _emit_weighted_component_gradient_cuda(
     spec: ShellClassSpec,
     schedule: ScheduleIR,
@@ -1345,11 +1434,7 @@ def _emit_weighted_component_gradient_cuda(
     maximum_order = spec.maximum_force_coulomb_order
     side = maximum_order + 1
     pair_shift_rows = 4 if spec.angular[3] != 0 else 3
-    fourth_pair_shift = (
-        "    geometry.pair_shifts[3][axis] = product_q - fourth_coordinate;"
-        if pair_shift_rows == 4
-        else ""
-    )
+    geometry_algebra = _emit_packed_force_geometry_algebra_cuda(spec)
     compact_geometry = f"""/**
  * Geometry retained by packed force lanes.
  *
@@ -1385,46 +1470,13 @@ __device__ __forceinline__ void generated_dppp_make_packed_force_geometry(
     GeneratedDpppPackedForceGeometry& geometry) {{
   const double p = first_pair.exponent_sum;
   const double q = second_pair.exponent_sum;
-  geometry.rho = p * q / (p + q);
-  geometry.inverse_two_p = 0.5 / p;
-  geometry.inverse_two_q = 0.5 / q;
   geometry.product_scales[0] = first_pair_reversed
       ? first_pair.second_product_scale : first_pair.first_product_scale;
   geometry.product_scales[1] = first_pair_reversed
       ? first_pair.first_product_scale : first_pair.second_product_scale;
   geometry.product_scales[2] = second_pair_reversed
       ? second_pair.second_product_scale : second_pair.first_product_scale;
-  double argument_squared_distance = 0.0;
-#pragma unroll
-  for (unsigned axis = 0; axis < 3U; ++axis) {{
-    const double first_coordinate = generated_dppp_axis(first, axis);
-    const double second_coordinate = generated_dppp_axis(second, axis);
-    const double third_coordinate = generated_dppp_axis(third, axis);
-    const double fourth_coordinate = generated_dppp_axis(fourth, axis);
-    const double product_p = generated_dppp_axis(first_pair.product_center, axis);
-    const double product_q = generated_dppp_axis(second_pair.product_center, axis);
-    geometry.pair_shifts[0][axis] = product_p - first_coordinate;
-    geometry.pair_shifts[1][axis] = product_p - second_coordinate;
-    geometry.pair_shifts[2][axis] = product_q - third_coordinate;
-{fourth_pair_shift}
-    geometry.difference[axis] = product_p - product_q;
-    geometry.decay_gradients[0][axis] =
-        -2.0 * first_pair.reduced_exponent *
-        (first_coordinate - second_coordinate);
-    geometry.decay_gradients[1][axis] =
-        2.0 * first_pair.reduced_exponent *
-        (first_coordinate - second_coordinate);
-    geometry.decay_gradients[2][axis] =
-        -2.0 * second_pair.reduced_exponent *
-        (third_coordinate - fourth_coordinate);
-    argument_squared_distance +=
-        geometry.difference[axis] * geometry.difference[axis];
-  }}
-  boys_values<{maximum_order}>(
-      geometry.rho * argument_squared_distance, geometry.boys);
-  geometry.prefactor = 34.986836655249725 / (p * q * sqrt(p + q));
-  geometry.primitive_coefficient =
-      first_pair.weighted_coefficient * second_pair.weighted_coefficient;
+{geometry_algebra}
 }}
 """
     kernel = build_weighted_shell_contraction_kernel(spec)
