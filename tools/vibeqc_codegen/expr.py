@@ -22,6 +22,59 @@ class Node:
     payload: str | float | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class SsaValueLifetime:
+    """Definition and final-consumption events for one materialized value."""
+
+    identifier: int
+    operation: str
+    definition_index: int
+    last_use_index: int
+    use_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class SsaAnalysis:
+    """Deterministic use/liveness summary for one ordered set of DAG roots.
+
+    Constants and external variables are not materialized by the CUDA scalar
+    emitter, so their dependency edges contribute to operation counts but not
+    to the live-value estimate. Root reads are modeled as ordered output events
+    after the last arithmetic definition, matching the current emitter shape.
+    """
+
+    root_count: int
+    reachable_node_count: int
+    operation_counts: tuple[tuple[str, int], ...]
+    lifetimes: tuple[SsaValueLifetime, ...]
+    arithmetic_operation_count: int
+    peak_live_values: int
+
+    @property
+    def materialized_value_count(self) -> int:
+        """Return the number of scalar temporaries emitted for these roots."""
+
+        return len(self.lifetimes)
+
+    @property
+    def operation_count_by_kind(self) -> dict[str, int]:
+        """Return reachable node counts keyed by deterministic operation name."""
+
+        return dict(self.operation_counts)
+
+    def to_payload(self) -> dict[str, object]:
+        """Serialize aggregate static-model fields for tuning artifacts."""
+
+        return {
+            "root_count": self.root_count,
+            "reachable_node_count": self.reachable_node_count,
+            "operation_counts": self.operation_count_by_kind,
+            "arithmetic_operation_count": self.arithmetic_operation_count,
+            "materialized_value_count": self.materialized_value_count,
+            "estimated_peak_live_values": self.peak_live_values,
+        }
+
+
 class Expr:
     """Lightweight handle into one expression graph."""
 
@@ -216,7 +269,9 @@ class Graph:
             elif node.operation == "multiply":
                 left = Expr(self, node.arguments[0])
                 right = Expr(self, node.arguments[1])
-                derivative = visit(left.identifier) * right + left * visit(right.identifier)
+                derivative = visit(left.identifier) * right + left * visit(
+                    right.identifier
+                )
             elif node.operation == "reciprocal":
                 operand = Expr(self, node.arguments[0])
                 derivative = -visit(operand.identifier) * operand.pow(-2.0)
@@ -226,8 +281,8 @@ class Graph:
             elif node.operation == "power":
                 operand = Expr(self, node.arguments[0])
                 exponent = float(node.payload)
-                derivative = exponent * operand.pow(exponent - 1.0) * visit(
-                    operand.identifier
+                derivative = (
+                    exponent * operand.pow(exponent - 1.0) * visit(operand.identifier)
                 )
             else:
                 raise ValueError(f"unsupported operation {node.operation!r}")
@@ -254,6 +309,72 @@ class Graph:
             self._require_graph(root)
             visit(root.identifier)
         return order
+
+    def analyze_ssa(self, roots: Sequence[Expr]) -> SsaAnalysis:
+        """Return use counts, last uses, and peak materialized live values.
+
+        The topological definition order is the same order consumed by
+        :class:`~tools.vibeqc_codegen.cuda.CudaEmitter`. An input remains live
+        through the event that defines its final consumer, so the estimate
+        conservatively includes both operands and the result of that operation.
+        """
+
+        normalized_roots = tuple(roots)
+        order = tuple(self.topological_order(normalized_roots))
+        definition_index = {identifier: index for index, identifier in enumerate(order)}
+        use_counts = {identifier: 0 for identifier in order}
+        last_uses = dict(definition_index)
+        for consumer in order:
+            consumer_index = definition_index[consumer]
+            for argument in self.nodes[consumer].arguments:
+                use_counts[argument] += 1
+                last_uses[argument] = max(last_uses[argument], consumer_index)
+
+        output_begin = len(order)
+        for offset, root in enumerate(normalized_roots):
+            output_index = output_begin + offset
+            use_counts[root.identifier] += 1
+            last_uses[root.identifier] = max(last_uses[root.identifier], output_index)
+
+        lifetimes = tuple(
+            SsaValueLifetime(
+                identifier=identifier,
+                operation=self.nodes[identifier].operation,
+                definition_index=definition_index[identifier],
+                last_use_index=last_uses[identifier],
+                use_count=use_counts[identifier],
+            )
+            for identifier in order
+            if self.nodes[identifier].operation not in ("constant", "variable")
+        )
+        live_deltas: dict[int, int] = {}
+        for lifetime in lifetimes:
+            live_deltas[lifetime.definition_index] = (
+                live_deltas.get(lifetime.definition_index, 0) + 1
+            )
+            release_index = lifetime.last_use_index + 1
+            live_deltas[release_index] = live_deltas.get(release_index, 0) - 1
+        live_values = 0
+        peak_live_values = 0
+        for event in sorted(live_deltas):
+            live_values += live_deltas[event]
+            peak_live_values = max(peak_live_values, live_values)
+
+        counts = self.operation_counts(normalized_roots)
+        operation_counts = tuple(sorted(counts.items()))
+        arithmetic_operation_count = sum(
+            count
+            for operation, count in operation_counts
+            if operation not in ("constant", "variable")
+        )
+        return SsaAnalysis(
+            root_count=len(normalized_roots),
+            reachable_node_count=len(order),
+            operation_counts=operation_counts,
+            lifetimes=lifetimes,
+            arithmetic_operation_count=arithmetic_operation_count,
+            peak_live_values=peak_live_values,
+        )
 
     def evaluate(self, expression: Expr, variables: Mapping[str, float]) -> float:
         """Evaluate one root for generator tests and finite-difference oracles."""
