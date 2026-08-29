@@ -126,14 +126,16 @@ constexpr unsigned kDpdsShellClass = 13;
 constexpr unsigned kDpdpShellClass = 14;
 constexpr unsigned kDdpsShellClass = 16;
 constexpr unsigned kDdppShellClass = 17;
+constexpr unsigned kDddpShellClass = 19;
 constexpr unsigned kDdddShellClass = 20;
 constexpr unsigned kDdddAngularOrder = 8;
 constexpr std::uint64_t kDdddShellClassMask =
     std::uint64_t{1} << kDdddShellClass;
 // The production profile covers the contiguous canonical class range from
 // ssss through dddd. Generated resident-bra Fock kernels own classes 0..19;
-// dddd uses the native exact recurrence below because the current generated
-// value/gradient consumer is not numerically reliable for production tasks.
+// dddd Fock uses the native exact recurrence below because the generated
+// value consumer is not numerically reliable for production tasks. A
+// separately qualified generated force consumer may still own dddd gradients.
 // Both routes enumerate pair-class segments directly and therefore avoid a
 // whole-topology generic fallback scan.
 constexpr std::uint64_t kStreamingFockShellClassMask =
@@ -189,7 +191,9 @@ constexpr std::uint64_t kBoundedForceSignatureShellClassMask =
     (std::uint64_t{1} << kDpdsShellClass) |
     (std::uint64_t{1} << kDpdpShellClass) |
     (std::uint64_t{1} << kDdpsShellClass) |
-    (std::uint64_t{1} << kDdppShellClass);
+    (std::uint64_t{1} << kDdppShellClass) |
+    (std::uint64_t{1} << kDddpShellClass) |
+    (std::uint64_t{1} << kDdddShellClass);
 // The scalar PSPS and PPSS force workers assign one complete task to each
 // lane. Group both canonical pair loop lengths so a warp advances through
 // equal primitive work instead of serializing on the longest lane. Counts
@@ -18011,8 +18015,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         unrestricted ? total_weighted_density : weighted_density, active,
         forces);
   }
+  const std::uint64_t explicit_generated_force_shell_class_mask =
+      generated::enabled_shell_class_mask() & host_present_shell_class_mask;
   const std::uint64_t selected_force_shell_class_mask =
-      (generated::enabled_shell_class_mask() |
+      (explicit_generated_force_shell_class_mask |
        (bounded_direct_streaming
             ? generated::enabled_fock_shell_class_mask() &
                   kStreamingFockShellClassMask
@@ -18020,10 +18026,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       host_present_shell_class_mask;
   const std::uint64_t native_streaming_force_shell_class_mask =
       bounded_direct_streaming
-      ? selected_force_shell_class_mask & kDdddShellClassMask
+      ? selected_force_shell_class_mask & kDdddShellClassMask &
+            ~explicit_generated_force_shell_class_mask
       : 0U;
   const std::uint64_t generated_shell_class_mask =
-      selected_force_shell_class_mask & ~kDdddShellClassMask;
+      selected_force_shell_class_mask & ~native_streaming_force_shell_class_mask;
   const std::uint64_t generated_queued_force_shell_class_mask =
       generated_shell_class_mask;
   // Whole-task and subgroup-task workers use page-local primitive signatures

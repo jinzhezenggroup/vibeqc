@@ -318,6 +318,7 @@ def test_existing_production_rows_default_to_subset_wick():
         )
     )
     assert all(recurrences[name] == "rys2" for name in ("psps", "ppss", "dsss"))
+    assert all(recurrences[name] == "rys5" for name in ("dddp", "dddd"))
     assert all(
         selection.recurrence == "subset_wick"
         for selection in selections
@@ -340,6 +341,8 @@ def test_existing_production_rows_default_to_subset_wick():
             "psps",
             "ppss",
             "dsss",
+            "dddp",
+            "dddd",
         }
     )
     assert (
@@ -505,6 +508,50 @@ def test_production_rys4_force_retains_explicit_fock_schedule(
         f"worker_blocks, kGeneratedSm120{class_name}BlockThreads, 0, stream"
         not in fock_launch
     )
+
+
+def test_production_dddp_rys5_retains_explicit_fock_schedule():
+    """Keep the measured DDDP value worker independent of Rys5 force."""
+
+    repository_root = Path(__file__).resolve().parents[2]
+    manifest = (
+        repository_root / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+    )
+    resolved = resolve_production_profile(manifest, "sm_120")
+    selection = next(item for item in resolved.selections if item.spec.name == "dddp")
+    assert selection.recurrence == "rys5"
+    assert selection.schedule.kind.value == "subgroup_tasks"
+    assert selection.schedule.block_threads == 256
+    assert selection.fock_schedule is not None
+    assert selection.fock_schedule.kind.value == "subgroup_tasks"
+    assert selection.fock_schedule.block_threads == 128
+
+    shard = emit_profile_shard(resolved, (selection,))
+    assert "generated_sm120_dddp_rys5_uniform_warp_batch" in shard
+    assert "kGeneratedSm120DddpBlockThreads = 256U" in shard
+    assert "kGeneratedSm120DddpFockBlockThreads = 128U" in shard
+
+
+def test_production_dddd_rys5_retains_native_fock_schedule():
+    """Promote only DDDD force while preserving its accepted value worker."""
+
+    repository_root = Path(__file__).resolve().parents[2]
+    manifest = (
+        repository_root / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+    )
+    resolved = resolve_production_profile(manifest, "sm_120")
+    selection = next(item for item in resolved.selections if item.spec.name == "dddd")
+    assert selection.recurrence == "rys5"
+    assert selection.schedule.kind.value == "subgroup_tasks"
+    assert selection.schedule.block_threads == 256
+    assert selection.fock_schedule is not None
+    assert selection.fock_schedule.kind.value == "tiled_components"
+    assert selection.fock_schedule.block_threads == 64
+
+    shard = emit_profile_shard(resolved, (selection,))
+    assert "generated_sm120_dddd_rys5_uniform_warp_batch" in shard
+    assert "kGeneratedSm120DdddBlockThreads = 256U" in shard
+    assert "kGeneratedSm120DdddFockBlockThreads = 64U" in shard
 
 
 def test_ppps_resident_option_keeps_ordinary_fock_force_fallback(tmp_path: Path):

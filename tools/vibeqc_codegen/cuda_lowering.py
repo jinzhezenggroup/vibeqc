@@ -33,6 +33,7 @@ from .rys import (
     emit_rys2_roots_cuda,
     emit_rys3_roots_cuda,
     emit_rys4_roots_cuda,
+    emit_rys5_roots_cuda,
     emit_rys_force_root_body_cuda,
 )
 from .shell_class import build_weighted_shell_contraction_kernel
@@ -1239,7 +1240,7 @@ void generated_dppp_shell_class_fock_uhf_persistent_kernel(
     if (
         spec.name in ("dpdp", "ddpp", "ddds")
         and plan.schedule.kind == ScheduleKind.COMPONENT_LANES
-        and plan.kernel.integral.recurrence in ("rys3", "rys4")
+        and plan.kernel.integral.recurrence in ("rys3", "rys4", "rys5")
         and plan.schedule.block_threads >= spec.component_count
     ):
         worker_marker = """template <bool Unrestricted>
@@ -2484,15 +2485,18 @@ def _emit_rys_component_lane_force_consumer_cuda(
     kernel_qualifier = (
         f"__launch_bounds__({plan.schedule.block_threads}, {minimum_blocks_per_sm})"
     )
-    if nroots == 3:
-        roots_cuda = emit_rys3_roots_cuda(symbol_prefix=root_symbol)
-    elif nroots == 4:
-        roots_cuda = emit_rys4_roots_cuda(symbol_prefix=root_symbol)
-    else:
+    roots_emitters = {
+        3: emit_rys3_roots_cuda,
+        4: emit_rys4_roots_cuda,
+        5: emit_rys5_roots_cuda,
+    }
+    roots_emitter = roots_emitters.get(nroots)
+    if roots_emitter is None:
         raise ValueError(
             "cooperative component-lane lowering currently embeds only "
-            "three- and four-root tables"
+            "three-, four-, and five-root tables"
         )
+    roots_cuda = roots_emitter(symbol_prefix=root_symbol)
     return (
         roots_cuda
         + f"""
@@ -2996,8 +3000,10 @@ def _emit_rys_uniform_warp_force_consumer_cuda(
 
     program = build_rys_force_program(spec, integral=plan.kernel.integral)
     recurrence = f"rys{program.nroots}"
-    if program.nroots not in (3, 4):
-        raise ValueError("uniform-warp lowering requires three or four Rys roots")
+    if program.nroots not in (3, 4, 5):
+        raise ValueError(
+            "uniform-warp lowering requires three, four, or five Rys roots"
+        )
     if plan.kernel.integral.recurrence != recurrence:
         raise ValueError(f"uniform-warp lowering for {spec.name} requires {recurrence}")
     if plan.schedule.kind != ScheduleKind.SUBGROUP_TASKS:
@@ -3048,11 +3054,11 @@ def _emit_rys_uniform_warp_force_consumer_cuda(
         )
     root_switch = "\n".join(root_cases)
     roots_symbol = f"generated_dppp_rys{program.nroots}_uniform_warp"
-    roots_cuda = (
-        emit_rys3_roots_cuda(symbol_prefix=roots_symbol)
-        if program.nroots == 3
-        else emit_rys4_roots_cuda(symbol_prefix=roots_symbol)
-    )
+    roots_cuda = {
+        3: emit_rys3_roots_cuda,
+        4: emit_rys4_roots_cuda,
+        5: emit_rys5_roots_cuda,
+    }[program.nroots](symbol_prefix=roots_symbol)
     ket_difference_loads = ""
     if spec.angular[3] > 0:
         ket_difference_loads = """      const double cdx = primitive.cdx;
@@ -3520,10 +3526,14 @@ void generated_dppp_shell_class_force_uhf_persistent_kernel(
 }}
 """
     )
-    if program.nroots == 3:
+    if program.nroots != 4:
         # Keep generated identifiers truthful without perturbing the already
         # accepted DPPP Rys4 source or its resource profile.
-        return source.replace("Rys4", "Rys3").replace("rys4", "rys3")
+        replacement = f"Rys{program.nroots}"
+        symbol_replacement = f"rys{program.nroots}"
+        return source.replace("Rys4", replacement).replace(
+            "rys4", symbol_replacement
+        )
     return source
 
 
@@ -5070,7 +5080,7 @@ VIBEQC_PAIR_UNROLL
         plan.schedule.kind == ScheduleKind.PACKED_TASKS
         or (
             plan.schedule.kind == ScheduleKind.SUBGROUP_TASKS
-            and plan.kernel.integral.recurrence == "rys4"
+            and plan.kernel.integral.recurrence in ("rys3", "rys4", "rys5")
         )
     )
     warp_count_declaration = (
@@ -5732,7 +5742,7 @@ void generated_dppp_shell_class_force_uhf_persistent_kernel(
 """
     if (
         plan.schedule.kind == ScheduleKind.COMPONENT_LANES
-        and plan.kernel.integral.recurrence in ("rys3", "rys4")
+        and plan.kernel.integral.recurrence in ("rys3", "rys4", "rys5")
     ):
         force_marker = """template <bool Unrestricted>
 __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
@@ -5771,10 +5781,10 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
                 plan,
                 minimum_blocks_per_sm,
             )
-        elif plan.kernel.integral.recurrence == "rys4":
+        elif plan.kernel.integral.recurrence in ("rys4", "rys5"):
             raise ValueError(
-                "thread-task Rys4 lowering is unsupported; use cooperative "
-                "component lanes"
+                "thread-task high-root Rys lowering is unsupported; use "
+                "cooperative component lanes"
             )
         else:
             force_consumer = _emit_scalar_thread_force_consumer_cuda(
@@ -5789,7 +5799,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
         force_begin = source.find(force_marker)
         if force_begin < 0:
             raise RuntimeError("generated force task marker changed unexpectedly")
-        if plan.kernel.integral.recurrence in ("rys3", "rys4"):
+        if plan.kernel.integral.recurrence in ("rys3", "rys4", "rys5"):
             force_consumer = _emit_rys_uniform_warp_force_consumer_cuda(
                 spec,
                 plan,
@@ -5817,7 +5827,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
                 target=plan.kernel.target,
             )
         elif plan.schedule.kind == ScheduleKind.SUBGROUP_TASKS and (
-            plan.kernel.integral.recurrence in ("rys3", "rys4")
+            plan.kernel.integral.recurrence in ("rys3", "rys4", "rys5")
         ):
             # Uniform warps are a force-only architecture experiment.  Keep
             # the accepted value path on its original component-lane mapping
@@ -5838,7 +5848,9 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
                 pair_storage=plan.schedule.pair_storage,
                 unroll_pair_terms=plan.schedule.unroll_pair_terms,
                 minimum_blocks_per_sm=(
-                    2 if plan.kernel.integral.recurrence == "rys4" else 0
+                    2
+                    if plan.kernel.integral.recurrence in ("rys4", "rys5")
+                    else 0
                 ),
                 warp_size=plan.schedule.warp_size,
             )
