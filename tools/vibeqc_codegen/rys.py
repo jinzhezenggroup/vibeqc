@@ -717,6 +717,7 @@ def emit_rys_force_root_body_cuda(
     component_weight_expression: str = "component_weights[{component}U][lane]",
     component_group: int = 9,
     component_indices: Sequence[int] | None = None,
+    integral: IntegralIR | None = None,
 ) -> str:
     """Emit one root's shell-specific recurrence and force contraction.
 
@@ -730,12 +731,32 @@ def emit_rys_force_root_body_cuda(
     prototype; a one-component lowering may instead pass one scalar expression.
     ``component_group`` bounds recurrence reuse so higher-order classes do not
     keep an entire shell's state graph live at once.
+
+    ``integral`` carries the operator's derivative and translation-recovery
+    semantics.  It is optional for compatibility with the default four-center
+    ERI, but callers that already own an ``IntegralIR`` should pass it so force
+    slots and center exponents follow that IR exactly.
     """
 
     if component_group < 1:
         raise ValueError("a Rys recurrence component group must be positive")
 
-    program = build_rys_force_program(spec)
+    # Keep the recurrence body driven by the same derivative/invariant IR as
+    # the schedule that owns it.  In particular, a translation invariant may
+    # recover any declared center; using the center label as a storage slot
+    # would leave gaps (or write past the nine independent-force scalars) when
+    # the recovered center is not the final operator center.
+    program = build_rys_force_program(spec, integral=integral)
+    if len(program.independent_derivative_centers) != 3:
+        raise ValueError(
+            "Rys force root emission currently requires three independent "
+            "derivative centers"
+        )
+    force_slot = {
+        center: slot
+        for slot, center in enumerate(program.independent_derivative_centers)
+    }
+    exponent_names = ("alpha2", "beta2", "gamma2", "delta2")
     selected_indices = (
         tuple(range(len(program.component_order)))
         if component_indices is None
@@ -802,7 +823,7 @@ def emit_rys_force_root_body_cuda(
                     values = [state.a, state.b, state.c, state.d]
                     values[center] += 1
                     raised = ensure(axis, RysState(*values))
-                    exponent = ("alpha2", "beta2", "gamma2")[center]
+                    exponent = exponent_names[center]
                     angular = (state.a, state.b, state.c, state.d)[center]
                     lowered = None
                     if angular:
@@ -907,7 +928,7 @@ def emit_rys_force_root_body_cuda(
                     expression = f"{exponent} * rys_state_{slots[raised]}"
                     if lowered is not None:
                         expression += f" - {angular}.0 * rys_state_{slots[lowered]}"
-                    force = center * 3 + coordinate
+                    force = force_slot[center] * 3 + coordinate
                     lines.append(
                         f"        force_{force} += ({expression}) * "
                         f"{products[coordinate]};"
