@@ -20,6 +20,9 @@ import tempfile
 from collections.abc import Iterable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, replace
+from functools import cache
+from itertools import product
+from math import comb
 from pathlib import Path
 
 from .batch_benchmark import KernelResources, parse_ptxas_resources
@@ -42,9 +45,46 @@ from .cuda_target import (
     cuda_target_info,
     normalize_cuda_architecture,
 )
+from .expr import Expr
 from .fused_schedule import build_fused_shell_plan
 from .ir import KernelConsumer, build_integral_ir
-from .shell_spec import FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec
+from .shell_class import (
+    ShellClassContractionKernel,
+    WeightedShellContractionKernel,
+    build_shell_class_contraction_kernel,
+    build_weighted_shell_contraction_kernel,
+)
+from .shell_spec import AXES, FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec
+
+
+@dataclass(frozen=True, slots=True)
+class StaticAlgebraModel:
+    """Schedule-relevant symbolic operation and live-value estimates."""
+
+    scope: str
+    component_count: int
+    sampled_component_count: int
+    recurrence_state_count: int
+    root_count: int
+    operation_counts: tuple[tuple[str, int], ...]
+    arithmetic_operation_count: int
+    materialized_value_count: int
+    peak_live_values: int
+
+    def to_payload(self) -> dict[str, object]:
+        """Serialize deterministic fields into one autotuning candidate row."""
+
+        return {
+            "scope": self.scope,
+            "component_count": self.component_count,
+            "sampled_component_count": self.sampled_component_count,
+            "recurrence_state_count": self.recurrence_state_count,
+            "root_count": self.root_count,
+            "operation_counts": dict(self.operation_counts),
+            "arithmetic_operation_count": self.arithmetic_operation_count,
+            "materialized_value_count": self.materialized_value_count,
+            "estimated_peak_live_values": self.peak_live_values,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,6 +141,12 @@ class ScheduleTrial:
             f"{self.schedule_id}"
         )
 
+    @property
+    def static_model(self) -> StaticAlgebraModel:
+        """Return the cached symbolic resource model for this schedule."""
+
+        return static_algebra_model(self)
+
 
 def schedule_payload(schedule: ScheduleIR) -> dict[str, object]:
     """Serialize all schedule decisions written to a v2 manifest."""
@@ -117,6 +163,121 @@ def schedule_payload(schedule: ScheduleIR) -> dict[str, object]:
         "minimum_blocks_per_sm": schedule.minimum_blocks_per_sm,
         "maximum_registers": schedule.maximum_registers,
     }
+
+
+def _balanced_component_labels(spec: ShellClassSpec) -> tuple[tuple[str, ...], ...]:
+    """Return axis-balanced labels for a compact resource-stressing sample.
+
+    Repeated-axis Cartesian labels create many rotationally equivalent DAGs.
+    Keeping the labels with the smallest axis-population spread retains all
+    p orientations, mixed d orientations, and the fully mixed f orientation.
+    Their Cartesian product is at most 81 components for a four-center class.
+    """
+
+    selected = []
+    for labels in spec.center_components:
+        spreads = {
+            label: max(label.count(axis) for axis in AXES)
+            - min(label.count(axis) for axis in AXES)
+            for label in labels
+        }
+        minimum_spread = min(spreads.values())
+        selected.append(
+            tuple(label for label in labels if spreads[label] == minimum_spread)
+        )
+    return tuple(selected)
+
+
+def _analysis_roots(
+    kernel: ShellClassContractionKernel | WeightedShellContractionKernel,
+    consumer: KernelConsumer,
+) -> tuple[Expr, ...]:
+    """Select value or independent-force roots from a symbolic kernel."""
+
+    if consumer == KernelConsumer.FOCK:
+        if not isinstance(kernel, ShellClassContractionKernel):
+            raise TypeError("Fock algebra analysis requires a component kernel")
+        return (kernel.variables["prefactor"] * kernel.value,)
+    return tuple(
+        kernel.gradients[center][coordinate]
+        for center in range(3)
+        for coordinate in range(3)
+    )
+
+
+@cache
+def _cached_static_algebra_model(
+    spec: ShellClassSpec,
+    consumer: KernelConsumer,
+    weighted_shell: bool,
+) -> StaticAlgebraModel:
+    """Build one immutable model shared by same-class schedule variants."""
+
+    if weighted_shell:
+        kernel = build_weighted_shell_contraction_kernel(spec)
+        analyses = (kernel.graph.analyze_ssa(_analysis_roots(kernel, consumer)),)
+        scope = "weighted_shell_dag"
+        sampled_component_count = spec.component_count
+    else:
+        components = tuple(product(*_balanced_component_labels(spec)))
+        analyses = (
+            component_kernel.graph.analyze_ssa(
+                _analysis_roots(component_kernel, consumer)
+            )
+            for component in components
+            for component_kernel in (
+                build_shell_class_contraction_kernel(spec, component),
+            )
+        )
+        scope = "balanced_component_sample_envelope"
+        sampled_component_count = len(components)
+
+    operation_envelope: dict[str, int] = {}
+    root_count = 0
+    materialized_value_count = 0
+    peak_live_values = 0
+    for analysis in analyses:
+        root_count = analysis.root_count
+        materialized_value_count = max(
+            materialized_value_count, analysis.materialized_value_count
+        )
+        peak_live_values = max(peak_live_values, analysis.peak_live_values)
+        for operation, count in analysis.operation_counts:
+            operation_envelope[operation] = max(
+                operation_envelope.get(operation, 0), count
+            )
+    operation_counts = tuple(sorted(operation_envelope.items()))
+    derivative_order = 1 if consumer == KernelConsumer.FORCE else 0
+    maximum_order = sum(spec.angular) + derivative_order
+    return StaticAlgebraModel(
+        scope=scope,
+        component_count=spec.component_count,
+        sampled_component_count=sampled_component_count,
+        recurrence_state_count=comb(maximum_order + 3, 3),
+        root_count=root_count,
+        operation_counts=operation_counts,
+        arithmetic_operation_count=sum(
+            count
+            for operation, count in operation_counts
+            if operation not in ("constant", "variable")
+        ),
+        materialized_value_count=materialized_value_count,
+        peak_live_values=peak_live_values,
+    )
+
+
+def static_algebra_model(trial: ScheduleTrial) -> StaticAlgebraModel:
+    """Return the symbolic static model appropriate to one schedule mapping."""
+
+    weighted_shell = (
+        trial.consumer == KernelConsumer.FORCE
+        and trial.schedule.kind == ScheduleKind.PACKED_TASKS
+    )
+    return _cached_static_algebra_model(
+        trial.spec,
+        trial.consumer,
+        weighted_shell,
+    )
 
 
 def supported_schedule_trials(
@@ -865,6 +1026,7 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 "consumer": trial.consumer.value,
                 "schedule_id": trial.schedule_id,
                 "schedule": schedule_payload(trial.schedule),
+                "static_model": trial.static_model.to_payload(),
                 "compile_succeeded": compile_row["returncode"] == 0,
                 "compile_timed_out": compile_row["timed_out"],
                 "compile_seconds": compile_row["duration_seconds"],
@@ -961,6 +1123,7 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                         "consumer": selected_consumer.value,
                         "schedule_id": trial.schedule_id,
                         "schedule": schedule_payload(trial.schedule),
+                        "static_model": trial.static_model.to_payload(),
                         "runtime": runtime,
                         "production_validation": production_validation,
                     }
