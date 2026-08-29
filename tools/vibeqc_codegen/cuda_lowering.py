@@ -2176,6 +2176,25 @@ def _emit_rys_thread_force_consumer_cuda(
     if plan.schedule.block_threads != 32:
         raise ValueError("direct Rys thread tasks currently use one CUDA warp")
 
+    recovered_atomic_lines = []
+    for recovered_index, center in enumerate(program.recovered_derivative_centers):
+        name = "fourth_force" if recovered_index == 0 else f"recovered_force_{center}"
+        for coordinate in range(3):
+            terms = " - ".join(
+                f"force_{slot * 3 + coordinate}"
+                for slot in range(len(program.independent_derivative_centers))
+            )
+            recovered_atomic_lines.append(
+                f"""  const double {name}_{coordinate} = -{terms};
+  if ({name}_{coordinate} != 0.0) {{
+    atomicAdd(
+        context.forces + static_cast<std::size_t>(task.atom[{center}]) * 3U +
+            {coordinate}U,
+        {name}_{coordinate});
+  }}"""
+            )
+    recovered_atomic_code = "\n".join(recovered_atomic_lines)
+
     task_component_setup = _generic_task_component_setup(spec).replace(
         "shared.task", "task"
     )
@@ -2223,38 +2242,26 @@ def _emit_rys_thread_force_consumer_cuda(
 
     force_declarations = "\n".join(f"  double force_{slot} = 0.0;" for slot in range(9))
     independent_atomics = []
-    for center in range(3):
+    for slot, center in enumerate(program.independent_derivative_centers):
         for coordinate in range(3):
-            slot = center * 3 + coordinate
+            force = slot * 3 + coordinate
             independent_atomics.append(
-                f"""  if (force_{slot} != 0.0) {{
+                f"""  if (force_{force} != 0.0) {{
     atomicAdd(
         context.forces + static_cast<std::size_t>(task.atom[{center}]) * 3U +
             {coordinate}U,
-        force_{slot});
+        force_{force});
   }}"""
             )
-    fourth_atomics = []
-    for coordinate in range(3):
-        slots = [center * 3 + coordinate for center in range(3)]
-        fourth_atomics.append(
-            f"""  const double fourth_force_{coordinate} =
-      -force_{slots[0]} - force_{slots[1]} - force_{slots[2]};
-  if (fourth_force_{coordinate} != 0.0) {{
-    atomicAdd(
-        context.forces + static_cast<std::size_t>(task.atom[3]) * 3U +
-            {coordinate}U,
-        fourth_force_{coordinate});
-  }}"""
-        )
+    independent_atomic_code = "\n".join(independent_atomics)
 
     weight_code = "\n".join(weight_blocks)
     root_body = emit_rys_force_root_body_cuda(
         spec,
         component_group=9,
+        integral=plan.kernel.integral,
     )
-    independent_atomic_code = "\n".join(independent_atomics)
-    fourth_atomic_code = "\n".join(fourth_atomics)
+    fourth_atomic_code = recovered_atomic_code
     kernel_qualifier = f"__launch_bounds__(32, {minimum_blocks_per_sm})"
     # Start from the shared DPPP skeleton so shell specialization also renames
     # this helper.  A PPPS-specific global symbol collides as soon as a second
@@ -2343,7 +2350,10 @@ __device__ __forceinline__ void generated_dppp_rys3_force_task(
       const double q = second_pair.exponent_sum;
       const double third_product_scale = second_pair_reversed
           ? second_pair.second_product_scale : second_pair.first_product_scale;
+      const double fourth_product_scale = second_pair_reversed
+          ? second_pair.first_product_scale : second_pair.second_product_scale;
       const double gamma2 = 2.0 * q * third_product_scale;
+      const double delta2 = 2.0 * q * fourth_product_scale;
       const double qcx = second_pair.product_center.x - third.x;
       const double qcy = second_pair.product_center.y - third.y;
       const double qcz = second_pair.product_center.z - third.z;
@@ -2508,6 +2518,15 @@ def _emit_rys_component_lane_force_consumer_cuda(
             "shells with at most p angular momentum on the fourth center"
         )
 
+    # Pack force scalars by the order of independent centers in the
+    # mathematical IR.  Center labels are not storage slots: translation
+    # recovery may select a non-final dependent center.
+    derivative_fields = ("first", "second", "third", "fourth")
+    needs_fourth_derivative = 3 in program.independent_derivative_centers
+    independent_center_table = ", ".join(
+        f"{center}U" for center in program.independent_derivative_centers
+    )
+
     task_component_setup = _generic_task_component_setup(spec)
     component_names = _emitted_component_names(spec)
     nroots = program.nroots
@@ -2554,6 +2573,70 @@ def _emit_rys_component_lane_force_consumer_cuda(
             "three-, four-, and five-root tables"
         )
     roots_cuda = roots_emitter(symbol_prefix=root_symbol)
+    component_force_lines = []
+    for slot, center in enumerate(program.independent_derivative_centers):
+        field = derivative_fields[center]
+        component_force_lines.extend(
+            (
+                (
+                    f"          component_force[{slot * 3}] += "
+                    f"x.{field} * y.base * z.base;"
+                ),
+                (
+                    f"          component_force[{slot * 3 + 1}] += "
+                    f"x.base * y.{field} * z.base;"
+                ),
+                (
+                    f"          component_force[{slot * 3 + 2}] += "
+                    f"x.base * y.base * z.{field};"
+                ),
+            )
+        )
+    component_force_code = "\n".join(component_force_lines)
+    primitive_delta_field = "  double delta2;\n" if needs_fourth_derivative else ""
+    primitive_delta_assignment = (
+        "        primitive.delta2 = 2.0 * primitive.q * fourth_product_scale;\n"
+        if needs_fourth_derivative
+        else ""
+    )
+    pair_fourth_scale_declaration = (
+        "        const double fourth_product_scale = second_pair_reversed\n"
+        "            ? second_pair.first_product_scale : second_pair.second_product_scale;\n"
+        if needs_fourth_derivative
+        else ""
+    )
+    axis_fourth_field = "  double fourth;\n" if needs_fourth_derivative else ""
+    axis_extra_parameter = ", double delta2" if needs_fourth_derivative else ""
+    axis_delta_call = ",\n              primitive.delta2" if needs_fourth_derivative else ""
+    axis_fourth_code = (
+        f"""  const double raised_fourth = generated_dppp_{symbol_tag}_state(
+      trr, a, b, c, d + 1U, ab, cd);
+  const double lowered_fourth = d == 0U ? 0.0 :
+      generated_dppp_{symbol_tag}_state(
+          trr, a, b, c, d - 1U, ab, cd);
+  result.fourth =
+      delta2 * raised_fourth - static_cast<double>(d) * lowered_fourth;
+"""
+        if needs_fourth_derivative
+        else ""
+    )
+    recovered_atomic_blocks = []
+    for recovered_index, center in enumerate(program.recovered_derivative_centers):
+        name = "fourth_value" if recovered_index == 0 else f"recovered_value_{center}"
+        recovered_atomic_blocks.append(
+            f"""  if (lane < 3U) {{
+    const double {name} =
+        -shared.warp_sums[0][lane] -
+        shared.warp_sums[0][3U + lane] -
+        shared.warp_sums[0][6U + lane];
+    if ({name} != 0.0) {{
+      atomicAdd(
+          forces + static_cast<std::size_t>(shared.task.atom[{center}]) * 3U + lane,
+          {name});
+    }}
+  }}"""
+        )
+    recovered_atomic_code = "\n".join(recovered_atomic_blocks)
     return (
         roots_cuda
         + f"""
@@ -2564,6 +2647,7 @@ struct GeneratedDppp{class_tag}Primitive {{
   double alpha2;
   double beta2;
   double gamma2;
+{primitive_delta_field}
   double pax;
   double pay;
   double paz;
@@ -2582,12 +2666,13 @@ struct GeneratedDppp{class_tag}Primitive {{
   double primitive_prefactor;
 }};
 
-/** Base and three independent first derivatives for one Cartesian axis. */
+/** Base and requested center first derivatives for one Cartesian axis. */
 struct GeneratedDppp{class_tag}Axis {{
   double base;
   double first;
   double second;
   double third;
+{axis_fourth_field}
 }};
 
 __device__ __forceinline__ double generated_dppp_{symbol_tag}_ket_hrr(
@@ -2623,7 +2708,7 @@ __device__ __forceinline__ double generated_dppp_{symbol_tag}_state(
 }}
 
 /**
- * Evaluate all one-axis values required for A/B/C first derivatives.
+ * Evaluate all one-axis values required for the requested center derivatives.
  *
  * {spec.name.upper()} bounds are exact: after one derivative,
  * ``a+b <= {bra_extent - 1}`` and ``c+d <= {ket_extent - 1}``. Keeping this
@@ -2636,7 +2721,7 @@ generated_dppp_{symbol_tag}_axis(
     unsigned a, unsigned b, unsigned c, unsigned d,
     double c0, double cp, double ab, double cd,
     double b10, double b00, double b01, double seed,
-    double alpha2, double beta2, double gamma2) {{
+    double alpha2, double beta2, double gamma2{axis_extra_parameter}) {{
   // Runtime component indices would otherwise make PTXAS retain the complete
   // table in registers across every state lookup.  An explicitly addressed
   // local table trades a bounded frame for much higher occupancy.
@@ -2684,6 +2769,7 @@ generated_dppp_{symbol_tag}_axis(
           trr, a, b, c - 1U, d, ab, cd);
   result.third =
       gamma2 * raised_third - static_cast<double>(c) * lowered_third;
+{axis_fourth_code}
   return result;
 }}
 
@@ -2796,9 +2882,11 @@ generated_dppp_{symbol_tag}_component_lane_task(
             ? first_pair.first_product_scale : first_pair.second_product_scale;
         const double third_product_scale = second_pair_reversed
             ? second_pair.second_product_scale : second_pair.first_product_scale;
+{pair_fourth_scale_declaration}
         primitive.alpha2 = 2.0 * primitive.p * first_product_scale;
         primitive.beta2 = 2.0 * primitive.p * second_product_scale;
         primitive.gamma2 = 2.0 * primitive.q * third_product_scale;
+{primitive_delta_assignment}
         primitive.pax = first_pair.product_center.x - shared.positions[0].x;
         primitive.pay = first_pair.product_center.y - shared.positions[0].y;
         primitive.paz = first_pair.product_center.z - shared.positions[0].z;
@@ -2850,30 +2938,22 @@ generated_dppp_{symbol_tag}_component_lane_task(
               primitive.pax - primitive.dx * root_bra,
               primitive.qcx + primitive.dx * root_ket,
               primitive.abx, primitive.cdx, b10, b00, b01, 1.0,
-              primitive.alpha2, primitive.beta2, primitive.gamma2);
+              primitive.alpha2, primitive.beta2, primitive.gamma2{axis_delta_call});
           const GeneratedDppp{class_tag}Axis y =
               generated_dppp_{symbol_tag}_axis(
               ay, by, cy, dy_order,
               primitive.pay - primitive.dy * root_bra,
               primitive.qcy + primitive.dy * root_ket,
               primitive.aby, primitive.cdy, b10, b00, b01, 1.0,
-              primitive.alpha2, primitive.beta2, primitive.gamma2);
+              primitive.alpha2, primitive.beta2, primitive.gamma2{axis_delta_call});
           const GeneratedDppp{class_tag}Axis z =
               generated_dppp_{symbol_tag}_axis(
               az, bz, cz, dz_order,
               primitive.paz - primitive.dz * root_bra,
               primitive.qcz + primitive.dz * root_ket,
               primitive.abz, primitive.cdz, b10, b00, b01, weighted_root,
-              primitive.alpha2, primitive.beta2, primitive.gamma2);
-          component_force[0] += x.first * y.base * z.base;
-          component_force[1] += x.base * y.first * z.base;
-          component_force[2] += x.base * y.base * z.first;
-          component_force[3] += x.second * y.base * z.base;
-          component_force[4] += x.base * y.second * z.base;
-          component_force[5] += x.base * y.base * z.second;
-          component_force[6] += x.third * y.base * z.base;
-          component_force[7] += x.base * y.third * z.base;
-          component_force[8] += x.base * y.base * z.third;
+              primitive.alpha2, primitive.beta2, primitive.gamma2{axis_delta_call});
+{component_force_code}
         }}
       }}
       __syncthreads();
@@ -2902,25 +2982,17 @@ generated_dppp_{symbol_tag}_component_lane_task(
     }}
     shared.warp_sums[0][lane] = value;
     if (value != 0.0) {{
-      const unsigned center = lane / 3U;
       const unsigned coordinate = lane % 3U;
+      constexpr unsigned derivative_centers[3] = {{{independent_center_table}}};
       atomicAdd(
-          forces + static_cast<std::size_t>(shared.task.atom[center]) * 3U +
+          forces + static_cast<std::size_t>(
+              shared.task.atom[derivative_centers[lane / 3U]]) * 3U +
               coordinate,
           value);
     }}
   }}
   __syncthreads();
-  if (lane < 3U) {{
-    const double fourth_value =
-        -shared.warp_sums[0][lane] - shared.warp_sums[0][3U + lane] -
-        shared.warp_sums[0][6U + lane];
-    if (fourth_value != 0.0) {{
-      atomicAdd(
-          forces + static_cast<std::size_t>(shared.task.atom[3]) * 3U + lane,
-          fourth_value);
-    }}
-  }}
+{recovered_atomic_code}
 }}
 
 extern "C" __global__ {kernel_qualifier}
@@ -3083,6 +3155,29 @@ def _emit_rys_uniform_warp_force_consumer_cuda(
     if task_count != 32:
         raise ValueError("uniform-warp Rys lowering requires 32 tasks per block")
 
+    independent_center_table = ", ".join(
+        f"{center}U" for center in program.independent_derivative_centers
+    )
+    recovered_atomic_lines = []
+    for recovered_index, center in enumerate(program.recovered_derivative_centers):
+        name = "fourth" if recovered_index == 0 else f"recovered_{center}"
+        for coordinate in range(3):
+            terms = " - ".join(
+                f"reduced[{slot * 3 + coordinate}]"
+                for slot in range(len(program.independent_derivative_centers))
+            )
+            recovered_atomic_lines.append(
+                f"""    const double {name}_{coordinate} = -{terms};
+    if ({name}_{coordinate} != 0.0) {{
+      atomicAdd(
+          forces +
+              static_cast<std::size_t>(shared.tasks[sq].atom[{center}]) * 3U +
+              {coordinate}U,
+          {name}_{coordinate});
+    }}"""
+            )
+    recovered_atomic_code = "\n".join(recovered_atomic_lines)
+
     task_component_setup = _generic_task_component_setup(spec).replace(
         "shared.task", "shared.tasks[sq]"
     )
@@ -3102,6 +3197,7 @@ def _emit_rys_uniform_warp_force_consumer_cuda(
             # across adjacent Cartesian components owned by one warp.
             component_group=3,
             component_indices=component_indices,
+            integral=plan.kernel.integral,
         )
         indented = "\n".join(f"        {line}" for line in root_body.splitlines())
         root_cases.append(
@@ -3141,6 +3237,7 @@ struct GeneratedDpppRys4UniformPrimitive {{
   double alpha2;
   double beta2;
   double gamma2;
+  double delta2;
   double pax;
   double pay;
   double paz;
@@ -3338,9 +3435,12 @@ __device__ __noinline__ void generated_dppp_rys4_uniform_warp_batch(
           ? first_pair.first_product_scale : first_pair.second_product_scale;
       const double third_product_scale = second_pair_reversed
           ? second_pair.second_product_scale : second_pair.first_product_scale;
+      const double fourth_product_scale = second_pair_reversed
+          ? second_pair.first_product_scale : second_pair.second_product_scale;
       primitive.alpha2 = 2.0 * primitive.p * first_product_scale;
       primitive.beta2 = 2.0 * primitive.p * second_product_scale;
       primitive.gamma2 = 2.0 * primitive.q * third_product_scale;
+      primitive.delta2 = 2.0 * primitive.q * fourth_product_scale;
       primitive.pax = first_pair.product_center.x - shared.positions[sq][0].x;
       primitive.pay = first_pair.product_center.y - shared.positions[sq][0].y;
       primitive.paz = first_pair.product_center.z - shared.positions[sq][0].z;
@@ -3387,6 +3487,7 @@ __device__ __noinline__ void generated_dppp_rys4_uniform_warp_batch(
       const double alpha2 = primitive.alpha2;
       const double beta2 = primitive.beta2;
       const double gamma2 = primitive.gamma2;
+      const double delta2 = primitive.delta2;
       const double abx = primitive.abx;
       const double aby = primitive.aby;
       const double abz = primitive.abz;
@@ -3441,28 +3542,18 @@ __device__ __noinline__ void generated_dppp_rys4_uniform_warp_batch(
         reduced[slot] += shared.force_partials[slot][source][sq];
       }}
       if (reduced[slot] != 0.0) {{
-        const unsigned center = slot / 3U;
         const unsigned coordinate = slot % 3U;
+        constexpr unsigned derivative_centers[3] = {{{independent_center_table}}};
         atomicAdd(
             forces +
-                static_cast<std::size_t>(shared.tasks[sq].atom[center]) * 3U +
+                static_cast<std::size_t>(
+                    shared.tasks[sq].atom[derivative_centers[slot / 3U]]) * 3U +
                 coordinate,
             reduced[slot]);
       }}
     }}
 #pragma unroll
-    for (unsigned coordinate = 0U; coordinate < 3U; ++coordinate) {{
-      const double fourth =
-          -reduced[coordinate] - reduced[3U + coordinate] -
-          reduced[6U + coordinate];
-      if (fourth != 0.0) {{
-        atomicAdd(
-            forces +
-                static_cast<std::size_t>(shared.tasks[sq].atom[3]) * 3U +
-                coordinate,
-            fourth);
-      }}
-    }}
+{recovered_atomic_code}
   }}
   __syncthreads();
 }}

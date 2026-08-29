@@ -342,6 +342,39 @@ def test_operator_invariant_selects_derivative_recovery_without_force_magic():
     assert program.recovered_force_centers == (1,)
 
 
+def test_rys_root_body_packs_nonfinal_recovery_centers_by_ir_order():
+    """Keep force slots dense when translation recovers a non-final center."""
+
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        DPPP_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    body = emit_rys_force_root_body_cuda(
+        DPPP_SPEC,
+        component_group=1,
+        integral=integral,
+    )
+
+    # Independent centers are A/C/D, so their force slots are 0..2, 3..5,
+    # and 6..8.  The D derivative must use its own exponent instead of being
+    # accidentally emitted at the old center*3 offset (or recovered as D).
+    assert "force_3 += (gamma2 *" in body
+    assert "force_6 += (delta2 *" in body
+    assert "force_9" not in body
+
+
 def test_fock_only_ir_has_no_implicit_derivative():
     """Avoid increasing Coulomb order when only a value contraction is requested."""
 
