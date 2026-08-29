@@ -73,6 +73,13 @@ _MIXED_FOCK_SHELLS = frozenset(
     }
 )
 
+# Packed streaming workers use one warp per block.  Keeping the task and
+# primitive geometry lane-private lets psss/psps scalarize these objects into
+# registers instead of reserving a 32-entry shared arena.  The other packed
+# classes were retained on the shared path because their larger state either
+# regressed or already approaches the register limit in profiling.
+_LOCAL_PACKED_STREAMING_FOCK_SHELLS = frozenset(("psss", "psps"))
+
 
 def _supports_scalar_rys(
     spec: ShellClassSpec,
@@ -1197,6 +1204,27 @@ __device__ __forceinline__ void {prefix}_stream_populate_task(
 """
 
     if schedule.kind == ScheduleKind.PACKED_TASKS:
+        local_lane_state = spec.name in _LOCAL_PACKED_STREAMING_FOCK_SHELLS
+        if local_lane_state:
+            state_declarations = f"""
+  // This consumer is force-inlined; lane-private state can be scalarized into
+  // registers and avoids a 32-entry shared-memory arena for one warp.
+  Generated{class_name}ShellTask stream_task;
+  Generated{class_name}PackedFockLaneStorage lane_storage;
+"""
+            task_reference = "stream_task"
+            task_pointer = "&stream_task"
+            task_index = "0U"
+            storage_reference = "lane_storage"
+        else:
+            state_declarations = f"""
+  __shared__ Generated{class_name}ShellTask stream_tasks[32];
+  __shared__ Generated{class_name}PackedFockLaneStorage lane_storage[32];
+"""
+            task_reference = "stream_tasks[threadIdx.x]"
+            task_pointer = "stream_tasks"
+            task_index = "static_cast<std::size_t>(threadIdx.x)"
+            storage_reference = "lane_storage[threadIdx.x]"
         worker = f"""
 template <bool Unrestricted>
 __device__ __forceinline__ void {prefix}_streaming_fock(
@@ -1209,8 +1237,7 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
     double fp64_threshold, const double* schwarz_bounds,
     const double* density, double* fock, std::uint32_t* bra_head) {{
   static_assert(kGenerated{class_name}FockBlockThreads == 32U);
-  __shared__ Generated{class_name}ShellTask stream_tasks[32];
-  __shared__ Generated{class_name}PackedFockLaneStorage lane_storage[32];
+{state_declarations}
   __shared__ std::uint32_t bra_ordinal;
   const auto& topology = *topology_pointer;
   const std::size_t stride = static_cast<std::size_t>(topology.batch_size) + 1U;
@@ -1257,21 +1284,19 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
       }}
       if (keep) {{
         {prefix}_stream_populate_task(
-            topology, bra_pair, ket_pair, stream_tasks[threadIdx.x]);
+            topology, bra_pair, ket_pair, {task_reference});
         if ({retained_state} == 3U) {{
           {f'''{prefix}_packed_mixed_fock_lane<Unrestricted>(
-              stream_tasks, primitive_pairs, primitive_pair_offsets,
+              {task_pointer}, primitive_pairs, primitive_pair_offsets,
               ao_coefficients, atom_positions, screening_tolerance,
               schwarz_bounds, density, fock,
-              static_cast<std::size_t>(threadIdx.x),
-              lane_storage[threadIdx.x]);''' if supports_mixed_fock else '/* This shell class has no generated mixed Fock helper. */'}
+              {task_index}, {storage_reference});''' if supports_mixed_fock else '/* This shell class has no generated mixed Fock helper. */'}
         }} else {{
           {prefix}_packed_fock_lane<Unrestricted>(
-              stream_tasks, primitive_pairs, primitive_pair_offsets,
+              {task_pointer}, primitive_pairs, primitive_pair_offsets,
               ao_coefficients, atom_positions, screening_tolerance,
               schwarz_bounds, density, fock,
-              static_cast<std::size_t>(threadIdx.x),
-              lane_storage[threadIdx.x]);
+              {task_index}, {storage_reference});
         }}
       }}
       __syncthreads();

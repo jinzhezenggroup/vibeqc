@@ -554,6 +554,67 @@ def test_production_dddd_rys5_retains_native_fock_schedule():
     assert "kGeneratedSm120DdddFockBlockThreads = 64U" in shard
 
 
+@pytest.mark.parametrize(
+    ("shell_class", "lane_local"),
+    (
+        ("ssss", False),
+        ("psss", True),
+        ("psps", True),
+        ("ppss", False),
+        ("dsss", False),
+    ),
+)
+def test_production_packed_streaming_fock_uses_profiled_lane_local_state(
+    shell_class: str, lane_local: bool
+):
+    """Keep lane-private packed state limited to the profiled winners."""
+
+    repository_root = Path(__file__).resolve().parents[2]
+    manifest = (
+        repository_root / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+    )
+    resolved = resolve_production_profile(manifest, "sm_120")
+    selection = next(
+        item for item in resolved.selections if item.spec.name == shell_class
+    )
+    shard = emit_profile_shard(resolved, (selection,))
+    class_name = shell_class[0].upper() + shell_class[1:]
+    streaming_worker = shard.split(
+        f"generated_sm120_{shell_class}_streaming_fock(", maxsplit=1
+    )[1].split('extern "C" __global__', maxsplit=1)[0]
+
+    local_task = f"GeneratedSm120{class_name}ShellTask stream_task;"
+    shared_tasks = (
+        f"__shared__ GeneratedSm120{class_name}ShellTask stream_tasks[32];"
+    )
+    if lane_local:
+        assert local_task in streaming_worker
+        assert shared_tasks not in streaming_worker
+        assert "&stream_task, primitive_pairs" in streaming_worker
+        assert "0U, lane_storage" in streaming_worker
+    else:
+        assert local_task not in streaming_worker
+        assert shared_tasks in streaming_worker
+        assert "stream_tasks, primitive_pairs" in streaming_worker
+
+
+def test_production_mixed_fock_uses_compact_fp32_geometry():
+    """Keep mixed Coulomb evaluation off the FP64 geometry conversion path."""
+
+    repository_root = Path(__file__).resolve().parents[2]
+    manifest = (
+        repository_root / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+    )
+    resolved = resolve_production_profile(manifest, "sm_120")
+    selection = next(item for item in resolved.selections if item.spec.name == "dpps")
+    shard = emit_profile_shard(resolved, (selection,))
+    mixed_begin = shard.index("GeneratedSm120DppsMixedPrimitiveGeometry")
+    mixed_source = shard[mixed_begin:]
+    assert "float coordinate_powers" in mixed_source
+    assert "generated_sm120_dpps_make_mixed_primitive_geometry" in mixed_source
+    assert "GeneratedSm120DppsPrimitiveGeometry" not in mixed_source
+
+
 def test_ppps_resident_option_keeps_ordinary_fock_force_fallback(tmp_path: Path):
     """Emit resident Rys3 beside, rather than instead of, ppps force/Fock."""
 
