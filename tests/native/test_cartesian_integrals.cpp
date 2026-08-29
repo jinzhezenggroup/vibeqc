@@ -76,6 +76,23 @@ vibeqc::core::System helium_hydrogen_sdf() {
   return system;
 }
 
+/** Reproduce the shell/pair cardinality of the issue-52 32-water case. */
+vibeqc::core::System bounded_streaming_topology() {
+  vibeqc::core::System system;
+  system.atoms = {{2, {0.0, 0.0, 0.0}}};
+  system.shells.reserve(384);
+  for (std::size_t shell = 0; shell < 384; ++shell) {
+    system.shells.push_back(
+        {0, 0, {{1.0 + 1.0e-4 * static_cast<double>(shell), 1.0}}});
+  }
+  system.multiplicity = 1;
+  std::string detail;
+  require(vibeqc::molecule::validate_and_normalize(system, detail) ==
+              VIBEQC_STATUS_SUCCESS,
+          "large streaming topology normalization failed");
+  return system;
+}
+
 vibeqc::scf::detail::DirectQuartetTaskLayout direct_task_layout(
     const vibeqc::core::System& system) {
   std::vector<std::int64_t> shell_ao_offsets{0};
@@ -109,6 +126,21 @@ vibeqc::scf::detail::DirectQuartetTaskLayout direct_task_layout(
 
 int main() {
   try {
+    require(vibeqc::scf::detail::kDirectFixedTopologyTileLimit ==
+                536870911ULL &&
+                !vibeqc::scf::detail::
+                    direct_topology_requires_bounded_streaming(536870911ULL) &&
+                vibeqc::scf::detail::
+                    direct_topology_requires_bounded_streaming(536870912ULL),
+            "bounded direct-topology crossover is inconsistent");
+    require(vibeqc::scf::detail::bounded_direct_queue_refill_count(0) == 0 &&
+                vibeqc::scf::detail::bounded_direct_queue_refill_count(256) ==
+                    1 &&
+                vibeqc::scf::detail::bounded_direct_queue_refill_count(257) ==
+                    2 &&
+                vibeqc::scf::detail::bounded_direct_queue_refill_count(
+                    2732120160ULL) == 10672345ULL,
+            "bounded direct queue does not resume after capacity refills");
     {
       const std::vector<std::int64_t> shell_ao_offsets{0, 1};
       const std::vector<std::int64_t> system_pair_offsets{0, 1};
@@ -138,6 +170,19 @@ int main() {
             "expanded primitive diagnostic has the wrong Cartesian count");
     require(layout.device_basis_bytes == 796,
             "CUDA basis topology payload changed unexpectedly");
+    require(!layout.bounded_direct_streaming &&
+                layout.direct_descriptor_capacity == 0,
+            "small CUDA basis unexpectedly selected bounded streaming");
+    const vibeqc::scf::CudaRhfBasisLayoutStats streaming_layout =
+        vibeqc::scf::inspect_rhf_cuda_basis_layout(
+            {bounded_streaming_topology()});
+    require(streaming_layout.shell_count == 384 &&
+                streaming_layout.shell_pair_count == 73920 &&
+                streaming_layout.shell_quartet_count == 2732120160ULL &&
+                streaming_layout.bounded_direct_streaming &&
+                streaming_layout.direct_descriptor_capacity ==
+                    vibeqc::scf::detail::kBoundedDirectQueueCapacity,
+            "issue-52 topology did not select the bounded descriptor queue");
     const vibeqc::scf::CudaRhfBasisLayoutStats sdf_layout =
         vibeqc::scf::inspect_rhf_cuda_basis_layout({helium_hydrogen_sdf()});
     require(sdf_layout.shell_count == 4 &&

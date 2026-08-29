@@ -271,7 +271,7 @@ def test_production_dsps_promotes_scalar_force_but_retains_component_fock():
 
 
 @pytest.mark.parametrize(
-    ("shell_class", "fock_block_threads"), (("dpps", 64), ("pppp", 128))
+    ("shell_class", "fock_block_threads"), (("dpps", 128), ("pppp", 128))
 )
 def test_production_rys3_uniform_force_keeps_independent_fock_schedule(
     shell_class: str, fock_block_threads: int
@@ -304,13 +304,14 @@ def test_production_rys3_uniform_force_keeps_independent_fock_schedule(
         "force_block_threads",
         "fock_schedule",
         "fock_block_threads",
+        "explicit_fock_schedule",
     ),
     (
-        ("dpdp", "component_lanes", 352, "tiled_components", 64),
-        ("dpds", "subgroup_tasks", 256, "component_lanes", 128),
-        ("ddpp", "component_lanes", 352, "tiled_components", 64),
-        ("ddps", "subgroup_tasks", 256, "component_lanes", 128),
-        ("ddds", "component_lanes", 224, "tiled_components", 64),
+        ("dpdp", "component_lanes", 352, "component_lanes", 352, False),
+        ("dpds", "subgroup_tasks", 256, "subgroup_tasks", 128, True),
+        ("ddpp", "component_lanes", 352, "component_lanes", 352, False),
+        ("ddps", "subgroup_tasks", 256, "subgroup_tasks", 128, True),
+        ("ddds", "component_lanes", 224, "subgroup_tasks", 128, True),
     ),
 )
 def test_production_rys4_force_retains_explicit_fock_schedule(
@@ -319,8 +320,9 @@ def test_production_rys4_force_retains_explicit_fock_schedule(
     force_block_threads: int,
     fock_schedule: str,
     fock_block_threads: int,
+    explicit_fock_schedule: bool,
 ):
-    """Keep Rys4 force promotions independent of accepted Fock geometry."""
+    """Keep each accepted Rys4 Fock mapping explicit or intentionally shared."""
 
     repository_root = Path(__file__).resolve().parents[2]
     manifest = (
@@ -333,9 +335,10 @@ def test_production_rys4_force_retains_explicit_fock_schedule(
     assert selection.recurrence == "rys4"
     assert selection.schedule.kind.value == force_schedule
     assert selection.schedule.block_threads == force_block_threads
-    assert selection.fock_schedule is not None
-    assert selection.fock_schedule.kind.value == fock_schedule
-    assert selection.fock_schedule.block_threads == fock_block_threads
+    assert (selection.fock_schedule is not None) == explicit_fock_schedule
+    effective_fock_schedule = selection.fock_schedule or selection.schedule
+    assert effective_fock_schedule.kind.value == fock_schedule
+    assert effective_fock_schedule.block_threads == fock_block_threads
 
     shard = emit_profile_shard(resolved, (selection,))
     class_name = shell_class[0].upper() + shell_class[1:]
@@ -345,12 +348,18 @@ def test_production_rys4_force_retains_explicit_fock_schedule(
     )
     assert f"generated_sm120_{shell_class}_rys4" in shard
     assert f"generated_sm120_{shell_class}_shell_class_fock_rhf_kernel" in shard
-    fock_fragment = shard.split(
-        "/** Coefficient-only pair term used by the SCF Fock recurrence. */",
+    fock_launch = shard.split(
+        f'extern "C" cudaError_t vibeqc_launch_sm120_generated_{shell_class}_fock(',
         maxsplit=1,
-    )[1]
-    assert f"state += kGeneratedSm120{class_name}FockBlockThreads" in fock_fragment
-    assert f"state += kGeneratedSm120{class_name}BlockThreads" not in fock_fragment
+    )[1].split('extern "C"', maxsplit=1)[0]
+    assert (
+        f"worker_blocks, kGeneratedSm120{class_name}FockBlockThreads, 0, stream"
+        in fock_launch
+    )
+    assert (
+        f"worker_blocks, kGeneratedSm120{class_name}BlockThreads, 0, stream"
+        not in fock_launch
+    )
 
 
 def test_ppps_resident_option_keeps_ordinary_fock_force_fallback(tmp_path: Path):
@@ -472,3 +481,51 @@ def test_multi_profile_resident_registry_tracks_each_profile(tmp_path: Path):
     assert "return cudaErrorNotSupported;" in source
     assert "launch_sm120_resident" in source
     assert "vibeqc_launch_sm120_ppps_resident" in source
+
+
+def test_multi_profile_registry_keeps_fock_only_force_symbols_dormant(
+    tmp_path: Path,
+):
+    """Do not make fixed topology reserve force tasks for Fock-only rows."""
+
+    manifest = tmp_path / "fock-only.json"
+    schedule = {
+        "kind": "packed_tasks",
+        "block_threads": 32,
+        "component_tile": 1,
+        "tasks_per_warp": 32,
+        "shared_coulomb": False,
+        "pair_orientation": "canonical",
+        "pair_storage": "materialized",
+        "unroll_pair_terms": True,
+    }
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "default_architecture": "sm_120",
+                "architectures": {
+                    "sm_120": {
+                        "kernels": [
+                            {
+                                "shell_class": "ssss",
+                                "consumers": ["fock"],
+                                "schedule": schedule,
+                            }
+                        ]
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    resolved = resolve_production_profile(manifest, "sm_120")
+    source = emit_multi_registry_source((resolved,))
+
+    # Bounded spd force dispatch can call the exact dormant symbol directly.
+    assert "vibeqc_launch_sm120_generated_ssss" in source
+    assert "case 0U:" in source
+    # Ordinary force selection and allocation must nevertheless remain empty.
+    assert "std::array<ShellKernelMetadata, 0> kForceNames0" in source
+    assert "UINT64_C(0)" in source
+    assert "std::array<ShellKernelMetadata, 1> kFockNames0" in source

@@ -56,6 +56,38 @@ inline constexpr std::uint8_t kDirectQuartetMaximumShellAngular = 3;
 inline constexpr std::size_t kDirectShellPairClassCount = 10;
 inline constexpr std::size_t kDirectQuartetShellClassCount = 55;
 
+/** Fixed descriptor queue shared by one bounded-streaming CUDA CTA. */
+inline constexpr std::size_t kBoundedDirectQueueCapacity = 256;
+
+/** Shell pairs grouped under one conservative bounded-path coarse gate. */
+inline constexpr std::size_t kBoundedDirectShellPairBlockSize = 32;
+
+/**
+ * Largest exact tile arena whose eight-subtile CUDA grids fit in `unsigned`.
+ *
+ * Every shell quartet owns at least one logical tile. A quartet count above
+ * this limit therefore proves that the exact topology cannot be represented,
+ * without first performing an O(N_shell^4) host enumeration.
+ */
+inline constexpr std::size_t kDirectFixedTopologyTileLimit =
+    std::numeric_limits<std::uint32_t>::max() /
+    kDirectQuartetSubtilesPerTile;
+
+inline constexpr bool direct_topology_requires_bounded_streaming(
+    std::size_t shell_quartet_count) noexcept {
+  return shell_quartet_count > kDirectFixedTopologyTileLimit;
+}
+
+/** Number of fixed-capacity cursor rounds needed to visit candidate work. */
+inline constexpr std::size_t bounded_direct_queue_refill_count(
+    std::size_t candidate_count,
+    std::size_t capacity = kBoundedDirectQueueCapacity) noexcept {
+  return capacity == 0
+      ? 0
+      : candidate_count / capacity +
+          (candidate_count % capacity == 0 ? 0 : 1);
+}
+
 /** Encode an unordered angular pair as ss, ps, pp, ds, ..., ff. */
 inline constexpr std::size_t direct_shell_pair_class(
     std::uint8_t first,

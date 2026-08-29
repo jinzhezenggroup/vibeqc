@@ -312,6 +312,33 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
         basis_representation="spherical",
         expected_ao_count=384,
     )
+    # Issue 52's large-topology gate uses four translated copies of the same
+    # octamer. Its 384 shells imply 2,732,120,160 symmetry-unique shell
+    # quartets, so it must exercise bounded device enumeration rather than an
+    # exact descriptor arena.
+    cases["water-32mer-4s4-def2-svp-spherical"] = BenchmarkCase(
+        description=(
+            "synthetic 2x2 translated WATER27 S4 octamer array, "
+            "768 real spherical AOs, def2-SVP bounded direct J/K"
+        ),
+        atoms=tuple(
+            (
+                element,
+                (
+                    position[0] + x_shift,
+                    position[1] + y_shift,
+                    position[2],
+                ),
+            )
+            for x_shift in (-half_separation, half_separation)
+            for y_shift in (-half_separation, half_separation)
+            for element, position in octamer
+        ),
+        vibeqc_basis="def2-svp",
+        pyscf_basis="def2-svp",
+        basis_representation="spherical",
+        expected_ao_count=768,
+    )
     return cases
 
 

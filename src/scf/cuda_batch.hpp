@@ -84,6 +84,10 @@ struct CudaRhfBasisLayoutStats {
   std::size_t unique_primitive_count{};
   std::size_t expanded_primitive_references{};
   std::size_t device_basis_bytes{};
+  /** True when exact O(N_shell^4) tile enumeration is intentionally skipped. */
+  bool bounded_direct_streaming{};
+  /** Bounded-path descriptor capacity; zero when the exact path is selected. */
+  std::size_t direct_descriptor_capacity{};
 };
 
 enum class CudaEigensolverFamily : std::uint32_t {

@@ -2005,8 +2005,12 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
         "dsss",
     )
     assert tuple(spec.name for spec in fock_specifications) == (
+        "ssss",
+        "psss",
         "dppp",
         "dpdp",
+        "dddp",
+        "dddd",
         "dpss",
         "dsds",
         "ddss",
@@ -2024,7 +2028,11 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
         "dsss",
     )
     selections = load_production_kernel_selections(manifest, "sm_120")
-    assert tuple(selection.spec.name for selection in selections) == tuple(
+    assert tuple(
+        selection.spec.name
+        for selection in selections
+        if KernelConsumer.FORCE in selection.consumers
+    ) == tuple(
         spec.name for spec in specifications
     )
     assert all(selection.architecture == "sm_120" for selection in selections)
@@ -2053,34 +2061,19 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     } == {
         spec.name: (
             PairStorage.RECOMPUTED
-            if spec.name in ("dpdp", "dddp", "ddpp", "ddds")
+            if spec.name in ("dpdp", "dddp", "dddd", "ddpp", "ddds")
             else PairStorage.MATERIALIZED
         )
-        for spec in specifications
+        for spec in (selection.spec for selection in selections)
     }
     assert tuple(selection.consumers for selection in selections) == tuple(
-        (KernelConsumer.FOCK, KernelConsumer.FORCE)
-        if selection.spec.name
-        in (
-            "dppp",
-            "dpdp",
-            "dpss",
-            "dsds",
-            "ddss",
-            "ddpp",
-            "ddds",
-            "dpds",
-            "ddps",
-            "ppps",
-            "dpps",
-            "dsps",
-            "dspp",
-            "pppp",
-            "psps",
-            "ppss",
-            "dsss",
+        (KernelConsumer.FOCK,)
+        if selection.spec.name in ("ssss", "psss", "dddd")
+        else (
+            (KernelConsumer.FORCE,)
+            if selection.spec.name == "fpps"
+            else (KernelConsumer.FOCK, KernelConsumer.FORCE)
         )
-        else (KernelConsumer.FORCE,)
         for selection in selections
     )
     first_directory = tmp_path / "first"
@@ -2098,7 +2091,7 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     assert '{"ppps", 4U, 3U, 32U, 3U, 27U}' in header
     assert '{"dsps", 7U, 3U, 32U, 3U, 18U}' in header
     assert '{"dpdp", 14U, 6U, 352U, 3U, 324U}' in header
-    assert '{"dddp", 19U, 7U, 64U, 2U, 64U}' in header
+    assert '{"dddp", 19U, 7U, 64U, 3U, 64U}' in header
     assert '{"dpss", 10U, 3U, 32U, 3U, 18U}' in header
     assert '{"dsds", 9U, 4U, 64U, 3U, 36U}' in header
     assert '{"ddss", 15U, 4U, 64U, 3U, 36U}' in header

@@ -849,7 +849,13 @@ CudaRhfBasisLayoutStats inspect_rhf_cuda_basis_layout(
       unique_primitives * 2 * sizeof(double);
   return {systems.size(), shell_count, shell_pair_count, shell_quartet_count,
           ao_count, unique_primitives,
-          expanded_primitives, device_basis_bytes};
+          expanded_primitives, device_basis_bytes,
+          detail::direct_topology_requires_bounded_streaming(
+              shell_quartet_count),
+          detail::direct_topology_requires_bounded_streaming(
+              shell_quartet_count)
+              ? detail::kBoundedDirectQueueCapacity
+              : 0};
 }
 
 ScfResult run_rhf_cuda(const core::System&,

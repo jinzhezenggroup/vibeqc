@@ -22,6 +22,34 @@
       },
       "kernels": [
         {
+          "shell_class": "ssss",
+          "consumers": ["fock"],
+          "schedule": {
+            "kind": "packed_tasks",
+            "block_threads": 32,
+            "component_tile": 1,
+            "tasks_per_warp": 32,
+            "shared_coulomb": false,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true
+          }
+        },
+        {
+          "shell_class": "psss",
+          "consumers": ["fock"],
+          "schedule": {
+            "kind": "packed_tasks",
+            "block_threads": 32,
+            "component_tile": 3,
+            "tasks_per_warp": 32,
+            "shared_coulomb": false,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true
+          }
+        },
+        {
           "shell_class": "dppp",
           "consumers": ["fock", "force"],
           "recurrence": "rys4",
@@ -61,21 +89,11 @@
             "pair_storage": "recomputed",
             "unroll_pair_terms": false,
             "minimum_blocks_per_sm": 1
-          },
-          "fock_schedule": {
-            "kind": "tiled_components",
-            "block_threads": 64,
-            "component_tile": 64,
-            "tasks_per_warp": 1,
-            "shared_coulomb": true,
-            "pair_orientation": "swapped",
-            "pair_storage": "recomputed",
-            "unroll_pair_terms": false
           }
         },
         {
           "shell_class": "dddp",
-          "consumers": ["force"],
+          "consumers": ["fock", "force"],
           "schedule": {
             "kind": "tiled_components",
             "block_threads": 64,
@@ -85,6 +103,32 @@
             "pair_orientation": "swapped",
             "pair_storage": "recomputed",
             "unroll_pair_terms": true
+          },
+          "fock_schedule": {
+            "kind": "subgroup_tasks",
+            "block_threads": 128,
+            "component_tile": 648,
+            "tasks_per_warp": 1,
+            "shared_coulomb": true,
+            "pair_orientation": "swapped",
+            "pair_storage": "recomputed",
+            "unroll_pair_terms": false,
+            "minimum_blocks_per_sm": 2
+          }
+        },
+        {
+          "shell_class": "dddd",
+          "consumers": ["fock"],
+          "schedule": {
+            "kind": "tiled_components",
+            "block_threads": 64,
+            "component_tile": 64,
+            "tasks_per_warp": 1,
+            "shared_coulomb": true,
+            "pair_orientation": "swapped",
+            "pair_storage": "recomputed",
+            "unroll_pair_terms": false,
+            "minimum_blocks_per_sm": 1
           }
         },
         {
@@ -139,6 +183,16 @@
             "pair_orientation": "canonical",
             "pair_storage": "materialized",
             "unroll_pair_terms": true
+          },
+          "fock_schedule": {
+            "kind": "subgroup_tasks",
+            "block_threads": 128,
+            "component_tile": 36,
+            "tasks_per_warp": 4,
+            "shared_coulomb": true,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true
           }
         },
         {
@@ -155,16 +209,6 @@
             "pair_storage": "recomputed",
             "unroll_pair_terms": false,
             "minimum_blocks_per_sm": 1
-          },
-          "fock_schedule": {
-            "kind": "tiled_components",
-            "block_threads": 64,
-            "component_tile": 64,
-            "tasks_per_warp": 1,
-            "shared_coulomb": true,
-            "pair_orientation": "swapped",
-            "pair_storage": "recomputed",
-            "unroll_pair_terms": false
           }
         },
         {
@@ -183,14 +227,15 @@
             "minimum_blocks_per_sm": 1
           },
           "fock_schedule": {
-            "kind": "tiled_components",
-            "block_threads": 64,
-            "component_tile": 64,
-            "tasks_per_warp": 1,
+            "kind": "subgroup_tasks",
+            "block_threads": 128,
+            "component_tile": 216,
+            "tasks_per_warp": 2,
             "shared_coulomb": true,
             "pair_orientation": "swapped",
             "pair_storage": "recomputed",
-            "unroll_pair_terms": false
+            "unroll_pair_terms": false,
+            "minimum_blocks_per_sm": 2
           }
         },
         {
@@ -209,10 +254,10 @@
             "minimum_blocks_per_sm": 1
           },
           "fock_schedule": {
-            "kind": "component_lanes",
+            "kind": "subgroup_tasks",
             "block_threads": 128,
             "component_tile": 108,
-            "tasks_per_warp": 1,
+            "tasks_per_warp": 4,
             "shared_coulomb": true,
             "pair_orientation": "canonical",
             "pair_storage": "materialized",
@@ -235,10 +280,10 @@
             "minimum_blocks_per_sm": 1
           },
           "fock_schedule": {
-            "kind": "component_lanes",
+            "kind": "subgroup_tasks",
             "block_threads": 128,
             "component_tile": 108,
-            "tasks_per_warp": 1,
+            "tasks_per_warp": 4,
             "shared_coulomb": true,
             "pair_orientation": "canonical",
             "pair_storage": "materialized",
@@ -298,6 +343,16 @@
             "pair_storage": "materialized",
             "unroll_pair_terms": true,
             "minimum_blocks_per_sm": 1
+          },
+          "fock_schedule": {
+            "kind": "subgroup_tasks",
+            "block_threads": 128,
+            "component_tile": 54,
+            "tasks_per_warp": 4,
+            "shared_coulomb": true,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true
           }
         },
         {
@@ -340,6 +395,16 @@
             "pair_storage": "materialized",
             "unroll_pair_terms": true,
             "minimum_blocks_per_sm": 1
+          },
+          "fock_schedule": {
+            "kind": "subgroup_tasks",
+            "block_threads": 128,
+            "component_tile": 54,
+            "tasks_per_warp": 4,
+            "shared_coulomb": true,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "unroll_pair_terms": true
           }
         },
         {
