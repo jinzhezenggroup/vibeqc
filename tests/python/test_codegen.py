@@ -692,6 +692,50 @@ def test_ppps_scalar_thread_schedule_emits_component_scoped_dag():
     assert source.count("force_0 += primitive_scale") == 27
 
 
+def test_ppps_scalar_thread_lowering_uses_explicit_derivative_center_slots():
+    """Route scalar-thread force atomics through non-final IR recovery."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        spec,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    schedule = ScheduleIR(
+        kind=ScheduleKind.THREAD_TASKS,
+        block_threads=32,
+        component_tile=spec.component_count,
+        tasks_per_warp=32,
+        shared_coulomb=False,
+        minimum_blocks_per_sm=8,
+    )
+    source = emit_shell_class_fused_cuda(
+        spec,
+        build_fused_shell_plan(spec, integral=integral, schedule=schedule),
+    )
+
+    assert "double decay_gradients[4][3];" in source
+    assert "storage.primitive.decay_gradients[3][2]" in source
+    recovery_begin = source.index(
+        "const double fourth_force",
+        source.index("generated_ppps_scalar_thread_force_task"),
+    )
+    recovery = source[recovery_begin : recovery_begin + 600]
+    assert "static_cast<std::size_t>(task.atom[1])" in recovery
+    assert "static_cast<std::size_t>(task.atom[3])" not in recovery
+
+
 def test_ppps_rys_program_is_a_compact_unique_state_recurrence():
     """Keep the independent backend at recurrence-state granularity."""
 
