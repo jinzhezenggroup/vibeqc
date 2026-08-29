@@ -35,6 +35,7 @@ class CudaEmitter:
         self.lines: list[str] = []
         self._temporary = 0
         self._materialized: set[int] = set()
+        self._fma_by_add: dict[int, int] = {}
 
     def emit(self, roots: Sequence[Expr]) -> None:
         normalized_roots = tuple(roots)
@@ -53,6 +54,7 @@ class CudaEmitter:
                 raise ValueError("materialization plan roots do not match emission roots")
             materialized = set(self.materialization_plan.materialized_identifiers)
             emission_order = self.materialization_plan.emission_order
+            self._fma_by_add = dict(self.materialization_plan.fma_operations)
             # Reordered definitions may reference leaves that occur later in
             # the canonical walk, so initialize every external name first.
             for identifier in topological_order:
@@ -76,17 +78,30 @@ class CudaEmitter:
                 continue
             if identifier not in materialized:
                 continue
-            arguments = [self._reference(item) for item in node.arguments]
-            code = self._operation_code(identifier, arguments)
+            code = self._operation_code(identifier)
             name = f"v{self._temporary}"
             self._temporary += 1
             self.names[identifier] = name
             self.lines.append(f"  const double {name} = {code};")
 
-    def _operation_code(self, identifier: int, arguments: Sequence[str]) -> str:
-        """Lower one arithmetic node using already parenthesized arguments."""
+    def _operation_code(self, identifier: int) -> str:
+        """Lower one arithmetic node using the plan's contraction decisions."""
 
         node = self.graph.nodes[identifier]
+        fused_multiply = self._fma_by_add.get(identifier)
+        if fused_multiply is not None:
+            multiply = self.graph.nodes[fused_multiply]
+            other = (
+                node.arguments[1]
+                if node.arguments[0] == fused_multiply
+                else node.arguments[0]
+            )
+            arguments = [
+                self._reference(item)
+                for item in (*multiply.arguments, other)
+            ]
+            return f"fma({arguments[0]}, {arguments[1]}, {arguments[2]})"
+        arguments = [self._reference(item) for item in node.arguments]
         if node.operation == "add":
             return f"{arguments[0]} + {arguments[1]}"
         if node.operation == "multiply":
@@ -113,9 +128,8 @@ class CudaEmitter:
             raise RuntimeError("expression leaf was not initialized before use")
         if identifier in self._materialized:
             raise RuntimeError("materialized dependency was not emitted before use")
-        arguments = [self._reference(item) for item in node.arguments]
-        code = self._operation_code(identifier, arguments)
-        if node.operation in ("exp", "power"):
+        code = self._operation_code(identifier)
+        if node.operation in ("exp", "power") or identifier in self._fma_by_add:
             return code
         return f"({code})"
 

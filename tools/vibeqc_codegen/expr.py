@@ -154,6 +154,13 @@ class AlgebraOrdering(str, Enum):
     PRESSURE_AWARE = "pressure_aware"
 
 
+class AlgebraFusion(str, Enum):
+    """Arithmetic contraction strategy used by scalar lowering."""
+
+    SEPARATE = "separate"
+    FMA = "fma"
+
+
 @dataclass(frozen=True, slots=True)
 class MaterializationDecision:
     """Explain whether one arithmetic DAG value remains a CUDA temporary."""
@@ -175,9 +182,11 @@ class MaterializationPlan:
 
     policy: RematerializationPolicy
     ordering: AlgebraOrdering
+    fusion: AlgebraFusion
     root_identifiers: tuple[int, ...]
     decisions: tuple[MaterializationDecision, ...]
     emission_order: tuple[int, ...]
+    fma_operations: tuple[tuple[int, int], ...]
     baseline_arithmetic_operation_count: int
     baseline_materialized_value_count: int
     baseline_peak_live_values: int
@@ -227,12 +236,19 @@ class MaterializationPlan:
             )
         )
 
+    @property
+    def fma_operation_count(self) -> int:
+        """Return the exact number of FMA occurrences in emitted expressions."""
+
+        return dict(self.operation_counts).get("fma", 0)
+
     def to_payload(self) -> dict[str, object]:
         """Serialize compact pre/post placement metrics for tuning artifacts."""
 
         return {
             "policy": self.policy.name,
             "ordering": self.ordering.value,
+            "fusion": self.fusion.value,
             "pre_optimization": {
                 "arithmetic_operation_count": (
                     self.baseline_arithmetic_operation_count
@@ -249,6 +265,7 @@ class MaterializationPlan:
             "inlined_value_count": self.inlined_value_count,
             "rematerialized_value_count": self.rematerialized_value_count,
             "reordered_value_count": self.reordered_value_count,
+            "fma_operation_count": self.fma_operation_count,
         }
 
 
@@ -558,6 +575,7 @@ class Graph:
         roots: Sequence[Expr],
         policy: RematerializationPolicy | None = None,
         ordering: AlgebraOrdering = AlgebraOrdering.TOPOLOGICAL,
+        fusion: AlgebraFusion = AlgebraFusion.SEPARATE,
     ) -> MaterializationPlan:
         """Choose scalar CSE values to retain under one bounded cost model.
 
@@ -579,6 +597,25 @@ class Graph:
                 if lifetime.use_count == 1:
                     materialized.remove(lifetime.identifier)
                     reasons[lifetime.identifier] = "single_use"
+
+        if fusion == AlgebraFusion.FMA:
+            # A direct multiply consumed only by one add can be contracted
+            # without recomputation. Select at most one multiply per binary add
+            # so the lowering remains an ordinary three-operand FMA.
+            for identifier in self.topological_order(normalized_roots):
+                node = self.nodes[identifier]
+                if node.operation != "add":
+                    continue
+                for argument in node.arguments:
+                    lifetime = lifetimes.get(argument)
+                    if (
+                        lifetime is not None
+                        and lifetime.operation == "multiply"
+                        and lifetime.use_count == 1
+                    ):
+                        materialized.discard(argument)
+                        reasons[argument] = "fma_operand"
+                        break
 
         if selected_policy.rematerialize_multi_use:
             operation_budget = int(
@@ -632,7 +669,7 @@ class Graph:
             # estimate. Enforce the budget against exact expanded arithmetic,
             # undoing the least valuable accepted decisions first.
             operation_counts = self._emitted_operation_counts(
-                normalized_roots, materialized
+                normalized_roots, materialized, fusion
             )
             while (
                 sum(operation_counts.values())
@@ -643,12 +680,18 @@ class Graph:
                 materialized.add(identifier)
                 reasons[identifier] = "operation_growth_limit"
                 operation_counts = self._emitted_operation_counts(
-                    normalized_roots, materialized
+                    normalized_roots, materialized, fusion
                 )
         else:
             operation_counts = self._emitted_operation_counts(
-                normalized_roots, materialized
+                normalized_roots, materialized, fusion
             )
+
+        fma_operations = self._fma_operations(
+            normalized_roots,
+            materialized,
+            fusion,
+        )
 
         baseline_emission_order = tuple(
             identifier
@@ -705,9 +748,11 @@ class Graph:
         return MaterializationPlan(
             policy=selected_policy,
             ordering=ordering,
+            fusion=fusion,
             root_identifiers=tuple(root.identifier for root in normalized_roots),
             decisions=tuple(decisions),
             emission_order=emission_order,
+            fma_operations=fma_operations,
             baseline_arithmetic_operation_count=(
                 baseline.arithmetic_operation_count
             ),
@@ -723,30 +768,70 @@ class Graph:
         self,
         roots: Sequence[Expr],
         materialized: set[int],
+        fusion: AlgebraFusion,
     ) -> Counter[str]:
         """Count arithmetic occurrences after selective expression expansion."""
 
+        fma_by_add = dict(self._fma_operations(roots, materialized, fusion))
+
         @cache
-        def inline_counts(identifier: int) -> tuple[tuple[str, int], ...]:
+        def expression_counts(
+            identifier: int,
+            emit_materialized_root: bool = False,
+        ) -> tuple[tuple[str, int], ...]:
             node = self.nodes[identifier]
-            if identifier in materialized or node.operation in ("constant", "variable"):
+            if node.operation in ("constant", "variable"):
                 return ()
+            if identifier in materialized and not emit_materialized_root:
+                return ()
+            fused_multiply = fma_by_add.get(identifier)
+            if fused_multiply is not None:
+                multiply = self.nodes[fused_multiply]
+                other = (
+                    node.arguments[1]
+                    if node.arguments[0] == fused_multiply
+                    else node.arguments[0]
+                )
+                counts = Counter({"fma": 1})
+                for argument in (*multiply.arguments, other):
+                    counts.update(dict(expression_counts(argument)))
+                return tuple(sorted(counts.items()))
             counts = Counter({node.operation: 1})
             for argument in node.arguments:
-                counts.update(dict(inline_counts(argument)))
+                counts.update(dict(expression_counts(argument)))
             return tuple(sorted(counts.items()))
 
         counts: Counter[str] = Counter()
         for identifier in self.topological_order(roots):
-            if identifier not in materialized:
-                continue
-            node = self.nodes[identifier]
-            counts[node.operation] += 1
-            for argument in node.arguments:
-                counts.update(dict(inline_counts(argument)))
+            if identifier in materialized:
+                counts.update(dict(expression_counts(identifier, True)))
         for root in roots:
-            counts.update(dict(inline_counts(root.identifier)))
+            counts.update(dict(expression_counts(root.identifier)))
         return counts
+
+    def _fma_operations(
+        self,
+        roots: Sequence[Expr],
+        materialized: set[int],
+        fusion: AlgebraFusion,
+    ) -> tuple[tuple[int, int], ...]:
+        """Return ``(add, multiply)`` pairs contracted by scalar lowering."""
+
+        if fusion != AlgebraFusion.FMA:
+            return ()
+        operations = []
+        for identifier in self.topological_order(roots):
+            node = self.nodes[identifier]
+            if node.operation != "add":
+                continue
+            for argument in node.arguments:
+                if (
+                    argument not in materialized
+                    and self.nodes[argument].operation == "multiply"
+                ):
+                    operations.append((identifier, argument))
+                    break
+        return tuple(operations)
 
     def _materialized_peak_live_values(
         self,

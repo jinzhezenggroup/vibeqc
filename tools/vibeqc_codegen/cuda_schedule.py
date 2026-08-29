@@ -8,7 +8,7 @@ from math import comb
 
 from .backend import TargetScheduleShape
 from .cuda_target import DEFAULT_CUDA_TARGET, CudaTargetInfo
-from .expr import AlgebraOrdering, RematerializationPolicy
+from .expr import AlgebraFusion, AlgebraOrdering, RematerializationPolicy
 from .ir import IntegralIR
 
 
@@ -67,6 +67,7 @@ class CudaScheduleIR:
     pair_storage: PairStorage = PairStorage.MATERIALIZED
     algebra_placement: AlgebraPlacement = AlgebraPlacement.MATERIALIZED_CSE
     algebra_ordering: AlgebraOrdering = AlgebraOrdering.TOPOLOGICAL
+    algebra_fusion: AlgebraFusion = AlgebraFusion.SEPARATE
     unroll_pair_terms: bool = True
     minimum_blocks_per_sm: int = 0
     maximum_registers: int = 0
@@ -104,6 +105,13 @@ class CudaScheduleIR:
         ):
             raise ValueError(
                 "non-baseline algebra ordering currently supports packed tasks"
+            )
+        if (
+            self.algebra_fusion != AlgebraFusion.SEPARATE
+            and self.kind != ScheduleKind.PACKED_TASKS
+        ):
+            raise ValueError(
+                "non-baseline algebra fusion currently supports packed tasks"
             )
         if self.kind == ScheduleKind.PACKED_TASKS:
             if self.block_threads != self.warp_size:
@@ -331,30 +339,34 @@ def tuning_schedule_candidates(
                 for unroll_pair_terms in (True, False):
                     for algebra_placement in AlgebraPlacement:
                         for algebra_ordering in AlgebraOrdering:
-                            candidates.append(
-                                replace(
-                                    schedule,
-                                    algebra_placement=algebra_placement,
-                                    algebra_ordering=algebra_ordering,
-                                    unroll_pair_terms=unroll_pair_terms,
-                                    minimum_blocks_per_sm=minimum_blocks_per_sm,
+                            for algebra_fusion in AlgebraFusion:
+                                candidates.append(
+                                    replace(
+                                        schedule,
+                                        algebra_placement=algebra_placement,
+                                        algebra_ordering=algebra_ordering,
+                                        algebra_fusion=algebra_fusion,
+                                        unroll_pair_terms=unroll_pair_terms,
+                                        minimum_blocks_per_sm=minimum_blocks_per_sm,
+                                    )
                                 )
-                            )
             for maximum_registers in target.packed_register_caps:
                 if maximum_registers > target.maximum_registers_per_thread:
                     continue
                 for unroll_pair_terms in (True, False):
                     for algebra_placement in AlgebraPlacement:
                         for algebra_ordering in AlgebraOrdering:
-                            candidates.append(
-                                replace(
-                                    schedule,
-                                    algebra_placement=algebra_placement,
-                                    algebra_ordering=algebra_ordering,
-                                    unroll_pair_terms=unroll_pair_terms,
-                                    maximum_registers=maximum_registers,
+                            for algebra_fusion in AlgebraFusion:
+                                candidates.append(
+                                    replace(
+                                        schedule,
+                                        algebra_placement=algebra_placement,
+                                        algebra_ordering=algebra_ordering,
+                                        algebra_fusion=algebra_fusion,
+                                        unroll_pair_terms=unroll_pair_terms,
+                                        maximum_registers=maximum_registers,
+                                    )
                                 )
-                            )
         elif schedule.kind == ScheduleKind.SUBGROUP_TASKS:
             for pair_orientation in PairOrientation:
                 for unroll_pair_terms in (True, False):
