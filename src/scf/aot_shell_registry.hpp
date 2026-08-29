@@ -74,6 +74,18 @@ cudaError_t launch_shell_class_fock(
     std::uint32_t* task_head) noexcept;
 
 /**
+ * Launch one generated Fock worker that enumerates a shell-pair class product
+ * directly from bounded topology storage instead of a materialized task list.
+ */
+cudaError_t launch_shell_class_streaming_fock(
+    unsigned shell_class, cudaStream_t stream, bool unrestricted,
+    unsigned worker_blocks, const void* shell_pair_stream,
+    const std::int64_t* primitive_pair_offsets, const void* primitive_pairs,
+    const double* ao_coefficients, const void* atom_positions,
+    double screening_tolerance, const double* schwarz_bounds,
+    const double* density, double* fock, std::uint32_t* bra_head) noexcept;
+
+/**
  * Launch the optional canonical ppps resident-bra force worker.
  *
  * ``resident_tasks`` contains one descriptor per block.  Each descriptor

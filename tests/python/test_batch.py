@@ -254,6 +254,61 @@ def test_cuda_direct_jk_batch_reuses_stable_pair_tasks():
         assert np.allclose(batched.forces, standalone.forces, atol=5.0e-10)
 
 
+@pytest.mark.parametrize(
+    ("method", "charge", "multiplicity"),
+    (("rhf", 1, 1), ("uhf", 0, 2)),
+)
+def test_cuda_bounded_direct_streaming_matches_exact_replay(
+    monkeypatch, method, charge, multiplicity
+):
+    """Compare exact and bounded spd force/Fock dispatch across replays."""
+
+    basis = (
+        Shell(0, 0, (Primitive(1.5, 1.0),)),
+        Shell(0, 1, (Primitive(1.0, 1.0),)),
+        Shell(0, 2, (Primitive(0.8, 1.0),)),
+        Shell(1, 0, (Primitive(1.2, 1.0),)),
+        Shell(1, 1, (Primitive(0.9, 1.0),)),
+        Shell(1, 2, (Primitive(0.7, 1.0),)),
+    )
+    system = [("He", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
+    moved = np.asarray([[0.01, 0.0, -0.7], [0.0, 0.0, 0.7]])
+    outputs = {}
+    for mode in ("exact", "streaming"):
+        if mode == "streaming":
+            monkeypatch.setenv("VIBEQC_BOUNDED_DIRECT_STREAMING", "force")
+        else:
+            monkeypatch.delenv("VIBEQC_BOUNDED_DIRECT_STREAMING", raising=False)
+        calculator = Calculator(
+            method=method,
+            basis=basis,
+            device="cuda",
+            energy_tolerance=1.0e-10,
+            density_tolerance=1.0e-8,
+            screening_tolerance=1.0e-14,
+        )
+        try:
+            with calculator.prepare_batch(
+                [system],
+                charges=[charge],
+                multiplicities=[multiplicity],
+                warm_start=True,
+            ) as prepared:
+                outputs[mode] = (
+                    prepared.execute(strict=True).items[0],
+                    prepared.execute([moved], strict=True).items[0],
+                )
+        except RuntimeError as error:
+            pytest.skip(f"CUDA device unavailable: {error}")
+
+    for exact, streaming in zip(
+        outputs["exact"], outputs["streaming"], strict=True
+    ):
+        assert streaming.iterations == exact.iterations
+        assert streaming.energy == pytest.approx(exact.energy, abs=3.0e-13)
+        assert np.allclose(streaming.forces, exact.forces, atol=1.0e-12)
+
+
 def test_cuda_uhf_ragged_batch_warm_start_and_failure_isolation():
     """Keep open-shell spin states independent inside a persistent GPU plan."""
 

@@ -82,8 +82,10 @@ class CudaScheduleIR:
             if self.shared_coulomb:
                 raise ValueError("thread-task schedules require lane-local Coulomb data")
         elif self.kind == ScheduleKind.SUBGROUP_TASKS:
-            if self.tasks_per_warp not in (2, 4, 8):
-                raise ValueError("subgroup-task schedules require 2, 4, or 8 tasks")
+            if self.tasks_per_warp not in (1, 2, 4, 8):
+                raise ValueError(
+                    "subgroup-task schedules require 1, 2, 4, or 8 tasks"
+                )
             if self.warp_size % self.tasks_per_warp != 0:
                 raise ValueError("subgroup tasks must divide the target warp")
             if not self.shared_coulomb:
