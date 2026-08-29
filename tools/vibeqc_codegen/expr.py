@@ -12,6 +12,7 @@ import math
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from enum import Enum
 from functools import cache
 
 
@@ -146,6 +147,13 @@ class RematerializationPolicy:
         return dict(self.operation_costs).get(operation, math.inf)
 
 
+class AlgebraOrdering(str, Enum):
+    """Ordering strategy for materialized scalar definitions."""
+
+    TOPOLOGICAL = "topological"
+    PRESSURE_AWARE = "pressure_aware"
+
+
 @dataclass(frozen=True, slots=True)
 class MaterializationDecision:
     """Explain whether one arithmetic DAG value remains a CUDA temporary."""
@@ -166,8 +174,10 @@ class MaterializationPlan:
     """Deterministic scalar placement plus exact emitted static metrics."""
 
     policy: RematerializationPolicy
+    ordering: AlgebraOrdering
     root_identifiers: tuple[int, ...]
     decisions: tuple[MaterializationDecision, ...]
+    emission_order: tuple[int, ...]
     baseline_arithmetic_operation_count: int
     baseline_materialized_value_count: int
     baseline_peak_live_values: int
@@ -201,11 +211,28 @@ class MaterializationPlan:
             for decision in self.decisions
         )
 
+    @property
+    def reordered_value_count(self) -> int:
+        """Return positions changed from the canonical topological order."""
+
+        baseline_order = tuple(
+            decision.identifier
+            for decision in self.decisions
+            if decision.materialized
+        )
+        return sum(
+            baseline != emitted
+            for baseline, emitted in zip(
+                baseline_order, self.emission_order, strict=True
+            )
+        )
+
     def to_payload(self) -> dict[str, object]:
         """Serialize compact pre/post placement metrics for tuning artifacts."""
 
         return {
             "policy": self.policy.name,
+            "ordering": self.ordering.value,
             "pre_optimization": {
                 "arithmetic_operation_count": (
                     self.baseline_arithmetic_operation_count
@@ -221,6 +248,7 @@ class MaterializationPlan:
             },
             "inlined_value_count": self.inlined_value_count,
             "rematerialized_value_count": self.rematerialized_value_count,
+            "reordered_value_count": self.reordered_value_count,
         }
 
 
@@ -529,6 +557,7 @@ class Graph:
         self,
         roots: Sequence[Expr],
         policy: RematerializationPolicy | None = None,
+        ordering: AlgebraOrdering = AlgebraOrdering.TOPOLOGICAL,
     ) -> MaterializationPlan:
         """Choose scalar CSE values to retain under one bounded cost model.
 
@@ -621,9 +650,37 @@ class Graph:
                 normalized_roots, materialized
             )
 
-        peak_live_values = self._materialized_peak_live_values(
-            normalized_roots, materialized
+        baseline_emission_order = tuple(
+            identifier
+            for identifier in self.topological_order(normalized_roots)
+            if identifier in materialized
         )
+        emission_order = baseline_emission_order
+        baseline_plan_peak = self._materialized_peak_live_values(
+            normalized_roots,
+            materialized,
+            baseline_emission_order,
+        )
+        if ordering == AlgebraOrdering.PRESSURE_AWARE:
+            candidate_order = self._pressure_aware_materialized_order(
+                normalized_roots,
+                materialized,
+                baseline_emission_order,
+            )
+            candidate_peak = self._materialized_peak_live_values(
+                normalized_roots,
+                materialized,
+                candidate_order,
+            )
+            # A heuristic order is only actionable when the exact model proves
+            # it lowers the peak; otherwise retain byte-stable topological code.
+            if candidate_peak < baseline_plan_peak:
+                emission_order = candidate_order
+                peak_live_values = candidate_peak
+            else:
+                peak_live_values = baseline_plan_peak
+        else:
+            peak_live_values = baseline_plan_peak
         decisions = []
         for lifetime in baseline.lifetimes:
             lifetime_span = lifetime.last_use_index - lifetime.definition_index
@@ -647,8 +704,10 @@ class Graph:
             )
         return MaterializationPlan(
             policy=selected_policy,
+            ordering=ordering,
             root_identifiers=tuple(root.identifier for root in normalized_roots),
             decisions=tuple(decisions),
+            emission_order=emission_order,
             baseline_arithmetic_operation_count=(
                 baseline.arithmetic_operation_count
             ),
@@ -693,14 +752,13 @@ class Graph:
         self,
         roots: Sequence[Expr],
         materialized: set[int],
+        emission_order: Sequence[int],
     ) -> int:
         """Measure exact temporary liveness after inline references expand."""
 
-        ordered = tuple(
-            identifier
-            for identifier in self.topological_order(roots)
-            if identifier in materialized
-        )
+        ordered = tuple(emission_order)
+        if set(ordered) != materialized or len(ordered) != len(materialized):
+            raise ValueError("emission order must contain every materialized value once")
         definition_index = {
             identifier: index for index, identifier in enumerate(ordered)
         }
@@ -743,6 +801,96 @@ class Graph:
             live_values += live_deltas[event]
             peak_live_values = max(peak_live_values, live_values)
         return peak_live_values
+
+    def _pressure_aware_materialized_order(
+        self,
+        roots: Sequence[Expr],
+        materialized: set[int],
+        baseline_order: Sequence[int],
+    ) -> tuple[int, ...]:
+        """List-schedule ready definitions to free their operands promptly.
+
+        Inlined nodes are transparent: a materialized definition depends on
+        every retained value reached through its expanded arguments. Candidate
+        priority first minimizes the immediate live-value delta, then favors
+        the longest downstream chain so independent subgraphs are not opened
+        prematurely. Canonical order resolves all remaining ties.
+        """
+
+        @cache
+        def referenced_values(identifier: int) -> frozenset[int]:
+            node = self.nodes[identifier]
+            if identifier in materialized:
+                return frozenset((identifier,))
+            if node.operation in ("constant", "variable"):
+                return frozenset()
+            references: set[int] = set()
+            for argument in node.arguments:
+                references.update(referenced_values(argument))
+            return frozenset(references)
+
+        dependencies: dict[int, frozenset[int]] = {}
+        consumers = {identifier: set() for identifier in materialized}
+        remaining_consumer_events = Counter[int]()
+        for identifier in materialized:
+            references: set[int] = set()
+            for argument in self.nodes[identifier].arguments:
+                references.update(referenced_values(argument))
+            dependencies[identifier] = frozenset(references)
+            for dependency in references:
+                consumers[dependency].add(identifier)
+                remaining_consumer_events[dependency] += 1
+        for root in roots:
+            for dependency in referenced_values(root.identifier):
+                remaining_consumer_events[dependency] += 1
+
+        canonical_index = {
+            identifier: index for index, identifier in enumerate(baseline_order)
+        }
+        downstream_height: dict[int, int] = {}
+        for identifier in reversed(tuple(baseline_order)):
+            downstream_height[identifier] = 1 + max(
+                (
+                    downstream_height[consumer]
+                    for consumer in consumers[identifier]
+                ),
+                default=0,
+            )
+
+        unscheduled = set(materialized)
+        ready = {
+            identifier
+            for identifier in materialized
+            if not dependencies[identifier]
+        }
+        order = []
+        while ready:
+            def priority(identifier: int) -> tuple[int, int, int]:
+                freed_operands = sum(
+                    remaining_consumer_events[dependency] == 1
+                    for dependency in dependencies[identifier]
+                )
+                return (
+                    1 - freed_operands,
+                    -downstream_height[identifier],
+                    canonical_index[identifier],
+                )
+
+            selected = min(ready, key=priority)
+            ready.remove(selected)
+            unscheduled.remove(selected)
+            order.append(selected)
+            for dependency in dependencies[selected]:
+                remaining_consumer_events[dependency] -= 1
+            for consumer in consumers[selected]:
+                if (
+                    consumer in unscheduled
+                    and dependencies[consumer].isdisjoint(unscheduled)
+                ):
+                    ready.add(consumer)
+        if unscheduled:
+            raise RuntimeError("materialized expression dependencies contain a cycle")
+        return tuple(order)
 
     def evaluate(self, expression: Expr, variables: Mapping[str, float]) -> float:
         """Evaluate one root for generator tests and finite-difference oracles."""

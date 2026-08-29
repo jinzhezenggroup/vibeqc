@@ -38,20 +38,32 @@ class CudaEmitter:
 
     def emit(self, roots: Sequence[Expr]) -> None:
         normalized_roots = tuple(roots)
+        topological_order = tuple(self.graph.topological_order(normalized_roots))
         if self.materialization_plan is None:
             materialized = {
                 identifier
-                for identifier in self.graph.topological_order(normalized_roots)
+                for identifier in topological_order
                 if self.graph.nodes[identifier].operation
                 not in ("constant", "variable")
             }
+            emission_order = topological_order
         else:
             root_identifiers = tuple(root.identifier for root in normalized_roots)
             if root_identifiers != self.materialization_plan.root_identifiers:
                 raise ValueError("materialization plan roots do not match emission roots")
             materialized = set(self.materialization_plan.materialized_identifiers)
+            emission_order = self.materialization_plan.emission_order
+            # Reordered definitions may reference leaves that occur later in
+            # the canonical walk, so initialize every external name first.
+            for identifier in topological_order:
+                node = self.graph.nodes[identifier]
+                if node.operation == "constant":
+                    self.names[identifier] = format_constant(float(node.payload))
+                elif node.operation == "variable":
+                    name = str(node.payload)
+                    self.names[identifier] = self.variables.get(name, name)
         self._materialized = materialized
-        for identifier in self.graph.topological_order(normalized_roots):
+        for identifier in emission_order:
             if identifier in self.names:
                 continue
             node = self.graph.nodes[identifier]
