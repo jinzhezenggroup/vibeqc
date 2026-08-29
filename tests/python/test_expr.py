@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from fractions import Fraction
 
 from tools.vibeqc_codegen import (
@@ -15,6 +16,7 @@ from tools.vibeqc_codegen import (
     RematerializationPolicy,
     SsaAnalysis,
     SsaValueLifetime,
+    build_packed_force_geometry_algebra,
     build_psss_kernel,
     build_weighted_shell_contraction_kernel,
 )
@@ -481,6 +483,57 @@ def test_small_integer_power_lowering_reuses_squares_and_preserves_other_powers(
     assert lowered_psss.operation_counts(lowered_psss_roots)["power"] < (
         native_power_count
     )
+
+
+def test_packed_force_geometry_algebra_matches_scalar_formulas():
+    """Describe packed geometry completely before choosing CUDA storage."""
+
+    geometry = build_packed_force_geometry_algebra()
+    values = {
+        "p": 1.7,
+        "q": 2.3,
+        "first_reduced_exponent": 0.4,
+        "second_reduced_exponent": 0.6,
+        "first_weighted_coefficient": 1.25,
+        "second_weighted_coefficient": -0.75,
+    }
+    coordinates = {
+        "first": (0.2, -0.3, 0.5),
+        "second": (-0.4, 0.1, 0.7),
+        "third": (0.8, -0.2, -0.6),
+        "fourth": (0.3, 0.9, -0.1),
+    }
+    product_p = (0.05, -0.1, 0.6)
+    product_q = (0.65, 0.25, -0.4)
+    for center, items in coordinates.items():
+        for axis, item in zip(("x", "y", "z"), items, strict=True):
+            values[f"{center}_coordinate_{axis}"] = item
+    for prefix, items in (("product_p", product_p), ("product_q", product_q)):
+        for axis, item in zip(("x", "y", "z"), items, strict=True):
+            values[f"{prefix}_{axis}"] = item
+
+    evaluate = lambda expression: geometry.graph.evaluate(expression, values)
+    expected_rho = values["p"] * values["q"] / (values["p"] + values["q"])
+    difference = tuple(product_p[index] - product_q[index] for index in range(3))
+    squared_distance = sum(item * item for item in difference)
+    assert evaluate(geometry.rho) == expected_rho
+    assert evaluate(geometry.inverse_two_p) == 0.5 / values["p"]
+    assert evaluate(geometry.inverse_two_q) == 0.5 / values["q"]
+    assert tuple(map(evaluate, geometry.difference)) == difference
+    assert evaluate(geometry.argument_squared_distance) == squared_distance
+    assert evaluate(geometry.boys_argument) == expected_rho * squared_distance
+    assert evaluate(geometry.prefactor) == (
+        34.986836655249725
+        / (values["p"] * values["q"] * math.sqrt(values["p"] + values["q"]))
+    )
+    assert evaluate(geometry.primitive_coefficient) == -0.9375
+
+    lowered, roots = geometry.graph.apply_algebra_form(
+        geometry.roots,
+        AlgebraForm.BINARY,
+        PowerLowering.SMALL_INTEGER,
+    )
+    assert lowered.operation_counts(roots)["power"] == 1
 
 
 def test_factored_nary_extracts_common_factors_and_collects_like_terms():

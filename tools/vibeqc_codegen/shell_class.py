@@ -100,6 +100,41 @@ class WeightedShellContractionKernel:
     gradients: tuple[tuple[Expr, Expr, Expr], ...]
 
 
+@dataclass(frozen=True, slots=True)
+class PackedForceGeometryAlgebra:
+    """Backend-neutral scalar geometry consumed by packed force kernels."""
+
+    graph: Graph
+    variables: Mapping[str, Expr]
+    rho: Expr
+    inverse_two_p: Expr
+    inverse_two_q: Expr
+    pair_shifts: tuple[tuple[Expr, Expr, Expr], ...]
+    difference: tuple[Expr, Expr, Expr]
+    decay_gradients: tuple[tuple[Expr, Expr, Expr], ...]
+    argument_squared_distance: Expr
+    boys_argument: Expr
+    prefactor: Expr
+    primitive_coefficient: Expr
+
+    @property
+    def roots(self) -> tuple[Expr, ...]:
+        """Return every computed scalar in deterministic storage order."""
+
+        return (
+            self.rho,
+            self.inverse_two_p,
+            self.inverse_two_q,
+            *(item for center in self.pair_shifts for item in center),
+            *self.difference,
+            *(item for center in self.decay_gradients for item in center),
+            self.argument_squared_distance,
+            self.boys_argument,
+            self.prefactor,
+            self.primitive_coefficient,
+        )
+
+
 def _squared_distance(
     graph: Graph,
     coordinates: Mapping[str, Mapping[str, Expr]],
@@ -109,6 +144,87 @@ def _squared_distance(
     return graph.sum(
         (coordinates[first][axis] - coordinates[second][axis]).pow(2.0)
         for axis in AXES
+    )
+
+
+def build_packed_force_geometry_algebra() -> PackedForceGeometryAlgebra:
+    """Describe packed primitive geometry without CUDA execution concepts."""
+
+    graph = Graph()
+    p = graph.variable("p")
+    q = graph.variable("q")
+    first_reduced_exponent = graph.variable("first_reduced_exponent")
+    second_reduced_exponent = graph.variable("second_reduced_exponent")
+    first_weighted_coefficient = graph.variable("first_weighted_coefficient")
+    second_weighted_coefficient = graph.variable("second_weighted_coefficient")
+    coordinates = {
+        center: tuple(
+            graph.variable(f"{center}_coordinate_{axis}") for axis in AXES
+        )
+        for center in CENTERS
+    }
+    product_p = tuple(graph.variable(f"product_p_{axis}") for axis in AXES)
+    product_q = tuple(graph.variable(f"product_q_{axis}") for axis in AXES)
+    variables = {
+        "p": p,
+        "q": q,
+        "first_reduced_exponent": first_reduced_exponent,
+        "second_reduced_exponent": second_reduced_exponent,
+        "first_weighted_coefficient": first_weighted_coefficient,
+        "second_weighted_coefficient": second_weighted_coefficient,
+        **{
+            f"{center}_coordinate_{axis}": coordinates[center][axis_index]
+            for center in CENTERS
+            for axis_index, axis in enumerate(AXES)
+        },
+        **{f"product_p_{axis}": product_p[index] for index, axis in enumerate(AXES)},
+        **{f"product_q_{axis}": product_q[index] for index, axis in enumerate(AXES)},
+    }
+
+    rho = p * q / (p + q)
+    inverse_two_p = 0.5 / p
+    inverse_two_q = 0.5 / q
+    pair_shifts = tuple(
+        tuple(
+            (product_p if center_index < 2 else product_q)[axis_index]
+            - coordinates[center][axis_index]
+            for axis_index in range(3)
+        )
+        for center_index, center in enumerate(CENTERS)
+    )
+    difference = tuple(product_p[index] - product_q[index] for index in range(3))
+    first_separation = tuple(
+        coordinates["first"][index] - coordinates["second"][index]
+        for index in range(3)
+    )
+    second_separation = tuple(
+        coordinates["third"][index] - coordinates["fourth"][index]
+        for index in range(3)
+    )
+    decay_gradients = (
+        tuple(-2 * first_reduced_exponent * item for item in first_separation),
+        tuple(2 * first_reduced_exponent * item for item in first_separation),
+        tuple(-2 * second_reduced_exponent * item for item in second_separation),
+    )
+    argument_squared_distance = graph.sum(item.pow(2) for item in difference)
+    boys_argument = rho * argument_squared_distance
+    prefactor = 34.986836655249725 / (p * q * (p + q).pow(0.5))
+    primitive_coefficient = (
+        first_weighted_coefficient * second_weighted_coefficient
+    )
+    return PackedForceGeometryAlgebra(
+        graph=graph,
+        variables=variables,
+        rho=rho,
+        inverse_two_p=inverse_two_p,
+        inverse_two_q=inverse_two_q,
+        pair_shifts=pair_shifts,
+        difference=difference,
+        decay_gradients=decay_gradients,
+        argument_squared_distance=argument_squared_distance,
+        boys_argument=boys_argument,
+        prefactor=prefactor,
+        primitive_coefficient=primitive_coefficient,
     )
 
 
