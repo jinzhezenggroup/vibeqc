@@ -454,6 +454,59 @@ def test_shell_contraction_kernel_uses_explicit_derivative_centers():
         assert recovered == pytest.approx(-independent_sum, rel=1.0e-13, abs=1.0e-13)
 
 
+def test_numeric_recurrence_oracles_follow_explicit_derivative_centers():
+    """Keep fused and Rys host oracles aligned with non-final recovery."""
+
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        DPPP_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    values = factored_dppp_variables(sample_variables())
+    component = DPPP_SPEC.components[0]
+
+    fused = evaluate_fused_shell_observables(
+        DPPP_SPEC,
+        component,
+        values,
+        integral=integral,
+    )
+    rys = evaluate_rys_component(
+        DPPP_SPEC,
+        component,
+        values,
+        integral=integral,
+    )
+    for actual in (fused, rys):
+        for center in (0, 2, 3):
+            for axis in range(3):
+                assert actual.gradients[center][axis] == pytest.approx(
+                    fused.gradients[center][axis],
+                    rel=2.0e-12,
+                    abs=2.0e-12,
+                )
+        for axis in range(3):
+            recovered = actual.gradients[1][axis]
+            independent_sum = sum(
+                actual.gradients[center][axis] for center in (0, 2, 3)
+            )
+            assert recovered == pytest.approx(
+                -independent_sum,
+                rel=2.0e-12,
+                abs=2.0e-12,
+            )
+
 def test_rys_root_body_packs_nonfinal_recovery_centers_by_ir_order():
     """Keep force slots dense when translation recovers a non-final center."""
 

@@ -273,117 +273,212 @@ def evaluate_fused_shell_observables(
     spec: ShellClassSpec,
     component: Sequence[str],
     variables: Mapping[str, float],
+    *,
+    integral: IntegralIR | None = None,
 ) -> FusedShellResult:
-    """Evaluate value and gradient using the fused recurrence execution shape."""
+    """Evaluate value and gradients using the fused recurrence execution shape.
+
+    The numerical oracle follows the same derivative basis as the supplied
+    mathematical IR.  In particular, an operator may recover any declared
+    center from translation invariance; the historical ``A/B/C`` plus
+    recovered ``D`` layout is only the default IntegralIR, not a property of
+    the recurrence itself.
+    """
 
     normalized = spec.validate_component(component)
+    selected_integral = integral or build_integral_ir(spec)
+    if selected_integral.spec != spec:
+        raise ValueError("fused shell spec does not match its integral IR")
     first_scale = variables["first_product_scale"]
     second_scale = variables["second_product_scale"]
     third_scale = variables["third_product_scale"]
-    first_axes, first_shifts, first_gradients = _pair_input(
+    # Older host callers supplied only the first three product scales.  The
+    # fourth scale is the exact complement for the canonical pair, so retain
+    # that compatibility while allowing explicit IRs to provide it directly.
+    fourth_scale = variables.get(
+        "fourth_product_scale", 1.0 - third_scale
+    )
+
+    # Build one pair-term stream per independent derivative center.  Pair
+    # coefficient derivatives depend on which center moves, while the value
+    # recurrence and the Coulomb state table remain shared mathematically.
+    zero_pair_gradient = (0.0, 0.0)
+    pair_gradients = {
+        0: ((first_scale - 1.0, first_scale), zero_pair_gradient),
+        1: ((second_scale, second_scale - 1.0), zero_pair_gradient),
+        2: (zero_pair_gradient, (third_scale - 1.0, third_scale)),
+        3: (zero_pair_gradient, (fourth_scale, fourth_scale - 1.0)),
+    }
+    pair_terms_by_center = {}
+    for center in selected_integral.independent_derivative_centers:
+        first_gradient, second_gradient = pair_gradients[center]
+        first_axes, first_shifts, first_shift_gradients = _pair_input(
+            normalized,
+            (0, 1),
+            ("pa", "pb"),
+            first_gradient,
+            variables,
+        )
+        second_axes, second_shifts, second_shift_gradients = _pair_input(
+            normalized,
+            (2, 3),
+            ("qc", "qd"),
+            second_gradient,
+            variables,
+        )
+        pair_terms_by_center[center] = (
+            _pair_terms(
+                first_axes,
+                first_shifts,
+                first_shift_gradients,
+                variables["inverse_two_p"],
+            ),
+            _pair_terms(
+                second_axes,
+                second_shifts,
+                second_shift_gradients,
+                variables["inverse_two_q"],
+            ),
+        )
+
+    # The value stream has no coefficient derivative and is independent of
+    # which derivative centers the consumer requested.
+    value_first_axes, value_first_shifts, _ = _pair_input(
         normalized,
         (0, 1),
         ("pa", "pb"),
-        (first_scale - 1.0, first_scale),
+        zero_pair_gradient,
         variables,
     )
-    second_axes, second_shifts, second_gradients = _pair_input(
+    value_second_axes, value_second_shifts, _ = _pair_input(
         normalized,
         (2, 3),
         ("qc", "qd"),
-        (third_scale - 1.0, third_scale),
+        zero_pair_gradient,
         variables,
     )
-    first_terms = _pair_terms(
-        first_axes,
-        first_shifts,
-        first_gradients,
+    value_first_terms = _pair_terms(
+        value_first_axes,
+        value_first_shifts,
+        (0.0,) * len(value_first_shifts),
         variables["inverse_two_p"],
     )
-    second_terms = _pair_terms(
-        second_axes,
-        second_shifts,
-        second_gradients,
+    value_second_terms = _pair_terms(
+        value_second_axes,
+        value_second_shifts,
+        (0.0,) * len(value_second_shifts),
         variables["inverse_two_q"],
     )
 
-    plan = build_fused_shell_plan(spec)
+    plan = build_fused_shell_plan(spec, integral=selected_integral)
     coulomb = {
         state: _coulomb_value(state, variables) for state in plan.coulomb_states
     }
     value = 0.0
-    value_gradients = [[0.0, 0.0, 0.0] for _ in range(3)]
-    for first_state, first_coefficient, first_gradient in first_terms:
-        for second_state, second_coefficient, second_gradient in second_terms:
+    for first_state, first_coefficient, _ in value_first_terms:
+        for second_state, second_coefficient, _ in value_second_terms:
             sign = -1.0 if sum(second_state) % 2 else 1.0
             state = tuple(
                 first_state[axis] + second_state[axis] for axis in range(3)
             )
-            state_value = coulomb[state]
-            coefficient = sign * first_coefficient * second_coefficient
-            value += coefficient * state_value
-            for coordinate in range(3):
-                derivative_state = list(state)
-                derivative_state[coordinate] += 1
-                scaled_derivative = coefficient * coulomb[tuple(derivative_state)]
-                first_coefficient_gradient = (
-                    sign * first_gradient[coordinate] * second_coefficient
+            value += sign * first_coefficient * second_coefficient * coulomb[state]
+
+    difference_scales = {
+        0: first_scale,
+        1: second_scale,
+        2: -third_scale,
+        3: -fourth_scale,
+    }
+    value_gradients = {
+        center: [0.0, 0.0, 0.0]
+        for center in selected_integral.independent_derivative_centers
+    }
+    for center, (first_terms, second_terms) in pair_terms_by_center.items():
+        difference_scale = difference_scales[center]
+        for first_state, first_coefficient, first_gradient in first_terms:
+            for second_state, second_coefficient, second_gradient in second_terms:
+                sign = -1.0 if sum(second_state) % 2 else 1.0
+                state = tuple(
+                    first_state[axis] + second_state[axis] for axis in range(3)
                 )
-                second_coefficient_gradient = (
-                    sign * first_coefficient * second_gradient[coordinate]
-                )
-                value_gradients[0][coordinate] += (
-                    first_coefficient_gradient * state_value
-                    + first_scale * scaled_derivative
-                )
-                value_gradients[1][coordinate] += (
-                    -first_coefficient_gradient * state_value
-                    + second_scale * scaled_derivative
-                )
-                value_gradients[2][coordinate] += (
-                    second_coefficient_gradient * state_value
-                    - third_scale * scaled_derivative
-                )
+                state_value = coulomb[state]
+                coefficient = sign * first_coefficient * second_coefficient
+                for coordinate in range(3):
+                    derivative_state = list(state)
+                    derivative_state[coordinate] += 1
+                    scaled_derivative = coefficient * difference_scale * coulomb[
+                        tuple(derivative_state)
+                    ]
+                    coefficient_gradient = sign * (
+                        first_gradient[coordinate] * second_coefficient
+                        + first_coefficient * second_gradient[coordinate]
+                    )
+                    value_gradients[center][coordinate] += (
+                        coefficient_gradient * state_value + scaled_derivative
+                    )
 
     prefactor = variables["prefactor"]
-    gradients = [
-        tuple(
+    gradients_by_center = {
+        center: tuple(
             prefactor
             * (
                 value_gradients[center][coordinate]
-                + value * variables[f"decay_{name}_{AXES[coordinate]}"]
+                + value
+                * variables[
+                    f"decay_{('first', 'second', 'third', 'fourth')[center]}_{AXES[coordinate]}"
+                ]
             )
             for coordinate in range(3)
         )
-        for center, name in enumerate(("first", "second", "third"))
-    ]
-    gradients.append(
-        tuple(
-            -sum(gradients[center][axis] for center in range(3))
+        for center in selected_integral.independent_derivative_centers
+    }
+    for center in selected_integral.recovered_derivative_centers:
+        gradients_by_center[center] = tuple(
+            -sum(
+                gradients_by_center[independent][axis]
+                for independent in selected_integral.independent_derivative_centers
+            )
             for axis in range(3)
         )
+    requested_centers = set(selected_integral.requested_derivative_centers)
+    gradients = tuple(
+        gradients_by_center.get(center, (0.0, 0.0, 0.0))
+        if center in requested_centers
+        else (0.0, 0.0, 0.0)
+        for center in range(len(spec.angular))
     )
-    return FusedShellResult(
-        value=prefactor * value,
-        gradients=tuple(gradients),
-    )
+    return FusedShellResult(value=prefactor * value, gradients=gradients)
 
 
 def evaluate_fused_shell_component(
     spec: ShellClassSpec,
     component: Sequence[str],
     variables: Mapping[str, float],
+    *,
+    integral: IntegralIR | None = None,
 ) -> tuple[tuple[float, float, float], ...]:
     """Compatibility view returning only all-center gradients."""
 
-    return evaluate_fused_shell_observables(spec, component, variables).gradients
+    return evaluate_fused_shell_observables(
+        spec,
+        component,
+        variables,
+        integral=integral,
+    ).gradients
 
 
 def evaluate_fused_shell_value(
     spec: ShellClassSpec,
     component: Sequence[str],
     variables: Mapping[str, float],
+    *,
+    integral: IntegralIR | None = None,
 ) -> float:
     """Return the ERI value consumed by generated Fock kernels."""
 
-    return evaluate_fused_shell_observables(spec, component, variables).value
+    return evaluate_fused_shell_observables(
+        spec,
+        component,
+        variables,
+        integral=integral,
+    ).value
