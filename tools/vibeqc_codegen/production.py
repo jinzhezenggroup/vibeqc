@@ -716,11 +716,12 @@ def load_production_manifest(
     architecture: str | None = None,
     profile: str = "auto",
 ) -> tuple[ShellClassSpec, ...]:
-    """Compatibility view returning the ordered shell specifications."""
+    """Compatibility view returning classes with generated force consumers."""
 
     return tuple(
         selection.spec
         for selection in load_production_kernel_selections(path, architecture, profile)
+        if KernelConsumer.FORCE in selection.consumers
     )
 
 
