@@ -1018,10 +1018,19 @@ def evaluate_rys_component(
     spec: ShellClassSpec,
     component: Sequence[str],
     variables: Mapping[str, float],
+    *,
+    integral: IntegralIR | None = None,
 ) -> FusedShellResult:
-    """Evaluate one primitive shell component through its fixed-root Rys HRR."""
+    """Evaluate one component through fixed-root Rys HRR and explicit IR.
 
-    program = build_rys_force_program(spec)
+    Rys states are generated only for the independent derivative centers in
+    ``integral``.  Recovered centers are assembled from the declared exact
+    invariant, so the host oracle and CUDA lowering share the same derivative
+    slot semantics even when recovery chooses a non-final center.
+    """
+
+    selected_integral = integral or build_integral_ir(spec)
+    program = build_rys_force_program(spec, integral=selected_integral)
     normalized = program.spec.validate_component(component)
     quantums = tuple(_angular_counts(label) for label in normalized)
     argument = variables["rho"] * sum(
@@ -1034,10 +1043,15 @@ def evaluate_rys_component(
         p * variables["first_product_scale"],
         p * variables["second_product_scale"],
         q * variables["third_product_scale"],
-        q * (1.0 - variables["third_product_scale"]),
+        q * variables.get(
+            "fourth_product_scale", 1.0 - variables["third_product_scale"]
+        ),
     )
     value = 0.0
-    gradients = [[0.0, 0.0, 0.0] for _ in range(3)]
+    gradients = {
+        center: [0.0, 0.0, 0.0]
+        for center in program.independent_derivative_centers
+    }
     for root, weight in zip(roots, weights, strict=True):
         base_states = tuple(
             RysState(*(item[coordinate] for item in quantums))
@@ -1072,25 +1086,44 @@ def evaluate_rys_component(
                     * base_values[other_axes[1]]
                 )
     prefactor = variables["prefactor"]
-    independent = tuple(
-        tuple(prefactor * gradients[center][axis] for axis in range(3))
-        for center in range(3)
+    gradients_by_center = {
+        center: tuple(prefactor * gradients[center][axis] for axis in range(3))
+        for center in program.independent_derivative_centers
+    }
+    for center in program.recovered_derivative_centers:
+        gradients_by_center[center] = tuple(
+            -sum(
+                gradients_by_center[independent][axis]
+                for independent in program.independent_derivative_centers
+            )
+            for axis in range(3)
+        )
+    requested_centers = set(
+        program.derivative.requested_centers(program.operator)
     )
-    fourth = tuple(
-        -sum(independent[center][axis] for center in range(3)) for axis in range(3)
+    all_gradients = tuple(
+        gradients_by_center.get(center, (0.0, 0.0, 0.0))
+        if center in requested_centers
+        else (0.0, 0.0, 0.0)
+        for center in range(len(spec.angular))
     )
     return FusedShellResult(
         value=prefactor * value,
-        gradients=independent + (fourth,),
+        gradients=all_gradients,
     )
 
 
 def evaluate_ppps_rys_component(
     component: Sequence[str],
     variables: Mapping[str, float],
+    *,
+    integral: IntegralIR | None = None,
 ) -> FusedShellResult:
     """Compatibility wrapper for the original three-root ``ppps`` oracle."""
 
     return evaluate_rys_component(
-        FUSED_SHELL_SPEC_BY_NAME["ppps"], component, variables
+        FUSED_SHELL_SPEC_BY_NAME["ppps"],
+        component,
+        variables,
+        integral=integral,
     )
