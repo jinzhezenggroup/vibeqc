@@ -375,6 +375,56 @@ def test_fused_shell_plan_preserves_an_explicit_integral_ir():
         )
 
 
+def test_shell_contraction_kernel_uses_explicit_derivative_centers():
+    """Generate direct center-D roots when the IR recovers center B."""
+
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        DPPP_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    component = DPPP_SPEC.components[0]
+    full = build_shell_class_component_kernel(DPPP_SPEC, component)
+    full_values = sample_variables()
+    argument = full.graph.evaluate(full.boys_argument, full_values)
+    for order, value in enumerate(
+        boys_values(argument, DPPP_SPEC.maximum_force_coulomb_order + 1)
+    ):
+        full_values[f"boys_{order}"] = value
+    factored_values = factored_dppp_variables(full_values)
+    custom = build_shell_class_contraction_kernel(
+        DPPP_SPEC,
+        component,
+        integral=integral,
+    )
+
+    for center in (0, 2, 3):
+        for axis in range(3):
+            assert custom.graph.evaluate(custom.gradients[center][axis], factored_values) == pytest.approx(
+                full.graph.evaluate(full.gradients[center][axis], full_values),
+                rel=3.0e-11,
+                abs=3.0e-11,
+            )
+    for axis in range(3):
+        recovered = custom.graph.evaluate(custom.gradients[1][axis], factored_values)
+        independent_sum = sum(
+            custom.graph.evaluate(custom.gradients[center][axis], factored_values)
+            for center in (0, 2, 3)
+        )
+        assert recovered == pytest.approx(-independent_sum, rel=1.0e-13, abs=1.0e-13)
+
+
 def test_rys_root_body_packs_nonfinal_recovery_centers_by_ir_order():
     """Keep force slots dense when translation recovers a non-final center."""
 
@@ -1695,6 +1745,7 @@ def factored_dppp_variables(values: dict[str, float]) -> dict[str, float]:
         "first_product_scale": alpha / p,
         "second_product_scale": beta / p,
         "third_product_scale": gamma / q,
+        "fourth_product_scale": delta / q,
     }
     product_p = {}
     product_q = {}
@@ -1720,6 +1771,7 @@ def factored_dppp_variables(values: dict[str, float]) -> dict[str, float]:
         result[f"decay_first_{axis}"] = -2.0 * mu * first_difference
         result[f"decay_second_{axis}"] = 2.0 * mu * first_difference
         result[f"decay_third_{axis}"] = -2.0 * nu * second_difference
+        result[f"decay_fourth_{axis}"] = 2.0 * nu * second_difference
     result["prefactor"] = (
         2.0
         * math.pi**2.5

@@ -319,7 +319,7 @@ def _cached_static_algebra_model(
     integral = build_integral_ir(spec, consumers=(consumer,))
 
     if weighted_shell:
-        kernel = build_weighted_shell_contraction_kernel(spec)
+        kernel = build_weighted_shell_contraction_kernel(spec, integral=integral)
         graph, roots = kernel.graph.apply_algebra_form(
             _analysis_roots(kernel, consumer, integral=integral),
             algebra_form,
@@ -354,7 +354,11 @@ def _cached_static_algebra_model(
             )
             for component in components
             for component_kernel in (
-                build_shell_class_contraction_kernel(spec, component),
+                build_shell_class_contraction_kernel(
+                    spec,
+                    component,
+                    integral=integral,
+                ),
             )
             for binary_roots in (
                 _analysis_roots(component_kernel, consumer, integral=integral),
