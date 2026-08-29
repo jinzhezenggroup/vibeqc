@@ -12,6 +12,7 @@ import sys
 import time
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -86,11 +87,14 @@ from tools.vibeqc_codegen import (
     schedule_candidates,
 )
 from tools.vibeqc_codegen.autotune import (
+    StaticAlgebraModel,
     _compile_trial,
+    _run_autotune,
     emit_schedule_driver,
     emit_schedule_oracle_translation_unit,
     emit_schedule_resource_translation_unit,
     emit_schedule_translation_unit,
+    static_algebra_model,
     supported_schedule_trials,
     update_manifest_payload,
 )
@@ -4756,6 +4760,127 @@ def test_autotune_emits_unique_schedule_variants_and_manifest_records():
         "fock",
         "force",
     ]
+
+
+def test_autotune_static_model_records_operations_and_live_values():
+    """Attach cached symbolic cost envelopes to every schedule candidate."""
+
+    packed_force = next(
+        trial
+        for trial in supported_schedule_trials(PSPS_SPEC)
+        if trial.schedule.kind == ScheduleKind.PACKED_TASKS
+    )
+    packed_model = packed_force.static_model
+    assert isinstance(packed_model, StaticAlgebraModel)
+    assert packed_model is static_algebra_model(packed_force)
+    assert packed_model.scope == "weighted_shell_dag"
+    assert packed_model.component_count == 9
+    assert packed_model.sampled_component_count == 9
+    assert packed_model.recurrence_state_count == 20
+    assert packed_model.root_count == 9
+    assert packed_model.arithmetic_operation_count == (
+        packed_model.materialized_value_count
+    )
+    assert 0 < packed_model.peak_live_values < packed_model.materialized_value_count
+
+    component_trials = tuple(
+        trial
+        for trial in supported_schedule_trials(DPDS_SPEC)
+        if trial.schedule.kind == ScheduleKind.COMPONENT_LANES
+    )
+    component_model = component_trials[0].static_model
+    assert component_model is component_trials[1].static_model
+    assert component_model.scope == "balanced_component_sample_envelope"
+    assert component_model.component_count == 108
+    assert component_model.sampled_component_count == 27
+    assert component_model.recurrence_state_count == 84
+    assert component_model.root_count == 9
+    assert component_model.arithmetic_operation_count > 0
+    assert component_model.materialized_value_count > 0
+    assert component_model.peak_live_values > 0
+    payload = component_model.to_payload()
+    assert payload["operation_counts"]["add"] > 0
+    assert payload["estimated_peak_live_values"] == component_model.peak_live_values
+
+    fock_trial = supported_schedule_trials(DPDS_SPEC, KernelConsumer.FOCK)[0]
+    fock_model = fock_trial.static_model
+    assert fock_model.root_count == 1
+    assert fock_model.recurrence_state_count == 56
+
+
+def test_autotune_candidate_artifact_includes_static_model(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Persist the static model even when compilation rejects a candidate."""
+
+    trial = next(
+        trial
+        for trial in supported_schedule_trials(PSPS_SPEC)
+        if trial.schedule.kind == ScheduleKind.PACKED_TASKS
+    )
+
+    def failed_compile(*args, **kwargs):
+        selected_trial = args[3]
+        return {
+            "key": selected_trial.key,
+            "object": tmp_path / "unused.o",
+            "returncode": 1,
+            "timed_out": False,
+            "duration_seconds": 0.01,
+            "diagnostics": "synthetic compiler rejection",
+            "resources": (),
+        }
+
+    monkeypatch.setattr(
+        "tools.vibeqc_codegen.autotune.supported_schedule_trials",
+        lambda *args, **kwargs: (trial,),
+    )
+    monkeypatch.setattr(
+        "tools.vibeqc_codegen.autotune._compile_trial",
+        failed_compile,
+    )
+    arguments = SimpleNamespace(
+        architecture="sm_120",
+        nvcc=Path("nvcc"),
+        compile_timeout=1.0,
+        timeout=1,
+        local=True,
+        srun="srun",
+        partition="main",
+        gres="gpu:5090:1",
+        slurm_time="00:01:00",
+        max_registers=None,
+        max_packed_registers=None,
+        max_stack_bytes=None,
+        max_shared_bytes=None,
+        shell_class=["psps"],
+        consumer=KernelConsumer.FORCE.value,
+        work_directory=tmp_path,
+        compile_jobs=1,
+        tasks=1,
+        primitives=1,
+        warmups=0,
+        iterations=1,
+        samples=1,
+        allow_experimental_subgroup_winner=True,
+        absolute_tolerance=1.0e-12,
+        relative_tolerance=1.0e-12,
+        minimum_speedup=1.0,
+        verbose=False,
+        manifest_output=None,
+        manifest=REPOSITORY_ROOT
+        / "tools"
+        / "vibeqc_codegen"
+        / "production_shell_classes.json",
+    )
+
+    report = _run_autotune(arguments)
+    assert report["winners"] == []
+    assert len(report["candidates"]) == 1
+    assert report["candidates"][0]["static_model"] == (
+        trial.static_model.to_payload()
+    )
 
 
 def test_autotune_same_class_variants_link_when_nvcc_is_configured(
