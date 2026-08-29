@@ -675,6 +675,52 @@ def test_multi_profile_resident_registry_tracks_each_profile(tmp_path: Path):
     assert "vibeqc_launch_sm120_ppps_resident" in source
 
 
+def test_multi_profile_registry_dispatches_dpps_mixed_fock(tmp_path: Path):
+    """Carry the mixed capability and wrapper through profile namespacing."""
+
+    manifest = tmp_path / "mixed.json"
+    schedule = {
+        "kind": "component_lanes",
+        "block_threads": 128,
+        "component_tile": 54,
+        "tasks_per_warp": 1,
+        "shared_coulomb": True,
+        "pair_orientation": "canonical",
+        "pair_storage": "materialized",
+        "unroll_pair_terms": True,
+    }
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "default_architecture": "sm_120",
+                "architectures": {
+                    "sm_120": {
+                        "kernels": [
+                            {
+                                "shell_class": "dpps",
+                                "consumers": ["fock", "force"],
+                                "schedule": schedule,
+                            }
+                        ]
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    resolved = resolve_production_profile(manifest, "sm_120")
+    shard = emit_profile_shard(resolved, resolved.selections)
+    source = emit_multi_registry_source((resolved,))
+
+    assert "vibeqc_launch_sm120_generated_dpps_mixed_fock" in shard
+    assert "generated_sm120_dpps_shell_class_mixed_fock_rhf" in shard
+    assert "launch_sm120_mixed_fock" in source
+    assert "UINT64_C(2048)" in source
+    assert "enabled_mixed_fock_shell_class_mask" in source
+    assert "launch_shell_class_mixed_fock" in source
+
+
 def test_multi_profile_registry_keeps_fock_only_force_symbols_dormant(
     tmp_path: Path,
 ):

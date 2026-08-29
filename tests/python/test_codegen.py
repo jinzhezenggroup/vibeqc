@@ -123,6 +123,7 @@ from tools.vibeqc_codegen.production import (
     _partition_production_selections,
     _schedule_from_payload,
     emit_registry_header,
+    emit_registry_source,
     load_production_fock_manifest,
     load_production_kernel_selections,
     load_production_manifest,
@@ -2190,6 +2191,51 @@ def test_generated_fock_workers_use_value_only_shell_schedules(
     assert f"generated_{name}_density_coefficient" not in fock_fragment
 
 
+def test_only_dpps_emits_generated_mixed_fock_capability():
+    """Keep the first FP32 AOT specialization narrow and independently routed."""
+
+    sources = {}
+    for name in ("dpps", "dspp"):
+        spec = FUSED_SHELL_SPEC_BY_NAME[name]
+        plan = build_fused_shell_plan(
+            spec,
+            consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+        )
+        sources[name] = emit_shell_class_fused_cuda(spec, plan)
+
+    dpps = sources["dpps"]
+    assert "generated_dpps_shell_class_mixed_fock_rhf_persistent_kernel" in dpps
+    assert "generated_dpps_shell_class_mixed_fock_uhf_persistent_kernel" in dpps
+    assert "kGeneratedDppsMixedFockBlockThreads" in dpps
+    assert "struct GeneratedDppsMixedValueTerm" in dpps
+    assert "  float component_integral = 0.0F;" in dpps
+    assert "const double* density" in dpps
+    assert "double* fock" in dpps
+    assert "generated_dspp_shell_class_mixed_fock" not in sources["dspp"]
+
+
+def test_simple_registry_dispatches_only_dpps_mixed_fock():
+    """Expose a capability mask and stable dispatch without promoting peers."""
+
+    manifest = (
+        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+    )
+    selections = load_production_kernel_selections(manifest, "sm_120")
+    header = emit_registry_header(selections)
+    source = emit_registry_source(selections)
+
+    assert "kMixedFockShellKernels" in header
+    mixed_rows = header.split("kMixedFockShellKernels", maxsplit=1)[1].split(
+        "}};", maxsplit=1
+    )[0]
+    assert '"dpps"' in mixed_rows
+    assert '"dspp"' not in mixed_rows
+    assert "enabled_mixed_fock_shell_class_mask" in header
+    assert "launch_shell_class_mixed_fock" in header
+    assert "vibeqc_launch_generated_dpps_mixed_fock" in source
+    assert "vibeqc_launch_generated_dspp_mixed_fock" not in source
+
+
 def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path):
     """Keep machine CUDA out of Git while retaining deterministic builds."""
 
@@ -2564,7 +2610,7 @@ def test_batched_finalization_reuses_each_converged_raw_fock():
     assert "kExpandedConvergedFockReuseDensityRms = 2.0e-9" in source
     assert "converged_fock_reuse_density_rms(options.density_tolerance)" in source
     assert "copy_selected_matrices_kernel" in source
-    assert "launch_direct_quartet_metadata(density)" in source
+    assert "launch_direct_quartet_metadata(density, false)" in source
     # A resident dm0 is already normalized for its cached overlap matrix, so a
     # geometry change must re-run the warm-density normalization path.
     assert "plan.resident_warm_positions == host.positions" in source

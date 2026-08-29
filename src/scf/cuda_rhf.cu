@@ -92,6 +92,14 @@ constexpr unsigned kPersistentFockAngularOrderCount = 6;
 static_assert(
     kPersistentFockAngularOrderCount <=
     detail::kDirectQuartetAngularOrderCount);
+// Orders zero through two retain their specialized FP64 workers.  Keeping the
+// mixed queue limited to the remaining partitions avoids duplicating the
+// dominant low-order topology capacity solely for records that can never be
+// routed to an FP32 recurrence.
+constexpr unsigned kMixedFockMinimumAngularOrder = 3;
+static_assert(
+    kMixedFockMinimumAngularOrder <
+    detail::kDirectQuartetAngularOrderCount);
 // An ssss shell quartet is exactly one Cartesian AO quartet. Assign one whole
 // shell task to each lane instead of leaving 31 lanes idle in the generic
 // one-tile-per-warp mapping. Higher classes require a genuinely shell-fused
@@ -216,6 +224,11 @@ constexpr unsigned kGenericOrderFiveAngularOrder = 5;
 // stationary. Add only a machine-precision-scaled comparison guard; the
 // requested absolute tolerance remains the dominant term for ordinary cases.
 constexpr double kDirectFockEnergyRoundoffFactor = 16.0;
+// Mixed precision is opt-in on the current production architecture.  The
+// final Fock reconstruction and analytic forces remain FP64, while an
+// environment override can select a conservative contribution boundary for
+// iterative fixed-topology direct J/K work.
+constexpr double kDefaultMixedPrecisionFockThreshold = 1.0e-6;
 constexpr double kDoubleMachineEpsilon = 2.2204460492503131e-16;
 // Tight requests retain the historical gate because analytic-force error is
 // first order in the remaining raw-Fock stationarity error. The default 1e-8
@@ -307,6 +320,52 @@ struct Dual3 {
   double derivative_z;
 };
 
+/**
+ * FP32 evaluation scalar that prevents double literals from promoting the
+ * mixed ERI recurrence back to FP64.
+ *
+ * Density reads, screening, shell contraction, Fock accumulation, and every
+ * derivative path remain double precision.  This wrapper is deliberately
+ * device-only so mixed precision cannot leak into the public or host ABI.
+ */
+struct MixedPrecisionFloat {
+  float value;
+
+  __device__ MixedPrecisionFloat() : value(0.0F) {}
+  __device__ MixedPrecisionFloat(double input)
+      : value(static_cast<float>(input)) {}
+};
+
+/** Use FP32 recurrence coefficients only for the mixed value evaluator. */
+template <typename Scalar>
+using EvaluationReal = std::conditional_t<
+    std::is_same_v<Scalar, MixedPrecisionFloat>, MixedPrecisionFloat, double>;
+
+__device__ __forceinline__ MixedPrecisionFloat operator+(
+    MixedPrecisionFloat a, MixedPrecisionFloat b) {
+  return static_cast<double>(a.value + b.value);
+}
+__device__ __forceinline__ MixedPrecisionFloat operator-(
+    MixedPrecisionFloat a, MixedPrecisionFloat b) {
+  return static_cast<double>(a.value - b.value);
+}
+__device__ __forceinline__ MixedPrecisionFloat operator*(
+    MixedPrecisionFloat a, MixedPrecisionFloat b) {
+  return static_cast<double>(a.value * b.value);
+}
+__device__ __forceinline__ MixedPrecisionFloat operator/(
+    MixedPrecisionFloat a, MixedPrecisionFloat b) {
+  return static_cast<double>(a.value / b.value);
+}
+__device__ __forceinline__ MixedPrecisionFloat operator*(
+    MixedPrecisionFloat a, double b) {
+  return a * MixedPrecisionFloat{b};
+}
+__device__ __forceinline__ MixedPrecisionFloat operator*(
+    double a, MixedPrecisionFloat b) {
+  return MixedPrecisionFloat{a} * b;
+}
+
 __device__ Dual operator+(Dual a, Dual b) {
   return {a.value + b.value, a.derivative + b.derivative};
 }
@@ -379,6 +438,8 @@ __device__ double scalar_value(Scalar value) {
     return value.value;
   } else if constexpr (std::is_same_v<Scalar, Dual3>) {
     return value.value;
+  } else if constexpr (std::is_same_v<Scalar, MixedPrecisionFloat>) {
+    return static_cast<double>(value.value);
   } else {
     return value;
   }
@@ -393,6 +454,8 @@ __device__ Scalar qexp(Scalar value) {
     const double result = exp(value.value);
     return {result, result * value.derivative_x,
             result * value.derivative_y, result * value.derivative_z};
+  } else if constexpr (std::is_same_v<Scalar, MixedPrecisionFloat>) {
+    return static_cast<double>(expf(value.value));
   } else {
     return exp(value);
   }
@@ -408,6 +471,8 @@ __device__ Scalar qsqrt(Scalar value) {
     const double scale = 0.5 / result;
     return {result, scale * value.derivative_x,
             scale * value.derivative_y, scale * value.derivative_z};
+  } else if constexpr (std::is_same_v<Scalar, MixedPrecisionFloat>) {
+    return static_cast<double>(sqrtf(value.value));
   } else {
     return sqrt(value);
   }
@@ -424,6 +489,8 @@ __device__ Scalar qerf(Scalar value) {
     const double factor = 2.0 / sqrt(kPi) * exp(-value.value * value.value);
     return {result, factor * value.derivative_x,
             factor * value.derivative_y, factor * value.derivative_z};
+  } else if constexpr (std::is_same_v<Scalar, MixedPrecisionFloat>) {
+    return static_cast<double>(erff(value.value));
   } else {
     return erf(value);
   }
@@ -675,10 +742,13 @@ __device__ Vec3<Scalar> product_center(double alpha,
                                       const Vec3<Scalar>& first,
                                       double beta,
                                       const Vec3<Scalar>& second) {
-  const double exponent = alpha + beta;
-  return {(alpha * first.x + beta * second.x) / exponent,
-          (alpha * first.y + beta * second.y) / exponent,
-          (alpha * first.z + beta * second.z) / exponent};
+  using Real = EvaluationReal<Scalar>;
+  const Real alpha_value{alpha};
+  const Real beta_value{beta};
+  const Real exponent = alpha_value + beta_value;
+  return {(alpha_value * first.x + beta_value * second.x) / exponent,
+          (alpha_value * first.y + beta_value * second.y) / exponent,
+          (alpha_value * first.z + beta_value * second.z) / exponent};
 }
 
 /** Precompute geometry shared by every primitive quartet using a shell pair. */
@@ -899,6 +969,17 @@ __device__ Scalar vec_axis(const Vec3<Scalar>& vector, int axis) {
 template <unsigned MaximumOrder, typename Scalar>
 __device__ void boys_values(Scalar argument, Scalar* values) {
   static_assert(MaximumOrder <= kMaximumCoulombOrder);
+  if constexpr (std::is_same_v<Scalar, MixedPrecisionFloat>) {
+    // The alternating high-order series loses too many digits in FP32 near
+    // its branch boundary.  Evaluate the small special-function table in FP64
+    // and round once before the substantially larger Cartesian recurrence.
+    double accurate_values[MaximumOrder + 1];
+    boys_values<MaximumOrder, double>(
+        static_cast<double>(argument.value), accurate_values);
+    for (unsigned order = 0; order <= MaximumOrder; ++order) {
+      values[order] = MixedPrecisionFloat{accurate_values[order]};
+    }
+  } else {
   for (unsigned order = 0; order <= MaximumOrder; ++order) {
     values[order] = scalar<Scalar>(0.0);
   }
@@ -943,6 +1024,7 @@ __device__ void boys_values(Scalar argument, Scalar* values) {
          exponential) /
         (2.0 * argument);
   }
+  }
 }
 
 template <typename Scalar>
@@ -971,13 +1053,16 @@ __device__ void fill_hermite(unsigned maximum_i,
        ++item) {
     coefficients.data[item] = scalar<Scalar>(0.0);
   }
-  const double p = alpha + beta;
-  const double mu = alpha * beta / p;
+  using Real = EvaluationReal<Scalar>;
+  const Real alpha_value{alpha};
+  const Real beta_value{beta};
+  const Real p = alpha_value + beta_value;
+  const Real mu = alpha_value * beta_value / p;
   const Scalar ab = center_a - center_b;
-  coefficients.at(0, 0, 0) = qexp(-mu * ab * ab);
+  coefficients.at(0, 0, 0) = qexp((-1.0 * mu) * ab * ab);
   const Scalar pa = product - center_a;
   const Scalar pb = product - center_b;
-  const double inverse_two_p = 0.5 / p;
+  const Real inverse_two_p = Real{0.5} / p;
 
   for (unsigned i = 0; i <= maximum_i; ++i) {
     for (unsigned j = 0; j <= maximum_j; ++j) {
@@ -1143,7 +1228,7 @@ static_assert(CoulombAuxiliary<double, 6>::kStateCount == 210);
 static_assert(CoulombAuxiliary<double, 12>::kStateCount == 1820);
 
 template <unsigned MaximumAngular, typename Scalar>
-__device__ void fill_coulomb(double exponent,
+__device__ void fill_coulomb(EvaluationReal<Scalar> exponent,
                              const Vec3<Scalar>& product,
                              const Vec3<Scalar>& center,
                              CoulombAuxiliary<Scalar, MaximumAngular>&
@@ -1157,10 +1242,10 @@ __device__ void fill_coulomb(double exponent,
   Scalar boys[MaximumAngular + 1];
   boys_values<MaximumAngular>(
       exponent * distance_squared(product, center), boys);
-  double factor = 1.0;
+  EvaluationReal<Scalar> factor{1.0};
   for (unsigned n = 0; n <= MaximumAngular; ++n) {
     auxiliary.at(n, 0, 0, 0) = factor * boys[n];
-    factor *= -2.0 * exponent;
+    factor = factor * (-2.0 * exponent);
   }
 
   for (unsigned v = 1; v <= MaximumAngular; ++v) {
@@ -1652,9 +1737,9 @@ template <unsigned MaximumAngular,
           typename FirstCoefficients,
           typename SecondCoefficients>
 __device__ __noinline__ Scalar eri_cartesian_value(
-    double p,
-    double q,
-    double rho,
+    EvaluationReal<Scalar> p,
+    EvaluationReal<Scalar> q,
+    EvaluationReal<Scalar> rho,
     const Vec3<Scalar>& product_p,
     const Vec3<Scalar>& product_q,
     const Angular& angular_first,
@@ -1696,7 +1781,10 @@ __device__ __noinline__ Scalar eri_cartesian_value(
       }
     }
   }
-  return 2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q)) * value;
+  const EvaluationReal<Scalar> prefactor =
+      EvaluationReal<Scalar>{2.0 * pow(kPi, 2.5)} /
+      (p * q * qsqrt(p + q));
+  return prefactor * value;
 }
 
 template <unsigned MaximumAngular, typename Scalar>
@@ -3062,9 +3150,14 @@ __device__ Scalar primitive_eri_cartesian_shell_class(
         alpha, first, angular_first, beta, second, angular_second,
         gamma, third, angular_third, delta, fourth, angular_fourth);
   } else {
-    const double p = alpha + beta;
-    const double q = gamma + delta;
-    const double rho = p * q / (p + q);
+    using Real = EvaluationReal<Scalar>;
+    const Real alpha_value{alpha};
+    const Real beta_value{beta};
+    const Real gamma_value{gamma};
+    const Real delta_value{delta};
+    const Real p = alpha_value + beta_value;
+    const Real q = gamma_value + delta_value;
+    const Real rho = p * q / (p + q);
     const Vec3<Scalar> product_p = product_center(alpha, first, beta, second);
     const Vec3<Scalar> product_q = product_center(gamma, third, delta, fourth);
     ShellPairHermiteCoefficients<
@@ -3824,11 +3917,13 @@ __device__ __noinline__ Scalar contracted_eri_cartesian_source_shell_class(
   const Angular angular_second = direct_ao_angular(batch, ao_j);
   const Angular angular_third = direct_ao_angular(batch, ao_k);
   const Angular angular_fourth = direct_ao_angular(batch, ao_l);
-  const double angular_coefficient =
+  using CoefficientScalar = std::conditional_t<
+      std::is_same_v<Scalar, MixedPrecisionFloat>, Scalar, double>;
+  const CoefficientScalar angular_coefficient = CoefficientScalar{
       batch.direct_ao_coefficients[ao_i] *
       batch.direct_ao_coefficients[ao_j] *
       batch.direct_ao_coefficients[ao_k] *
-      batch.direct_ao_coefficients[ao_l];
+      batch.direct_ao_coefficients[ao_l]};
 
   Scalar result = scalar<Scalar>(0.0);
   for (std::int64_t a = batch.shell_primitive_offsets[shell_i];
@@ -3839,7 +3934,7 @@ __device__ __noinline__ Scalar contracted_eri_cartesian_source_shell_class(
            c < batch.shell_primitive_offsets[shell_k + 1]; ++c) {
         for (std::int64_t d = batch.shell_primitive_offsets[shell_l];
              d < batch.shell_primitive_offsets[shell_l + 1]; ++d) {
-          const double weight = angular_coefficient *
+          const CoefficientScalar weight = angular_coefficient *
               batch.primitive_coefficients[a] *
               batch.primitive_coefficients[b] *
               batch.primitive_coefficients[c] *
@@ -8021,16 +8116,24 @@ __global__ void reduce_bounded_system_density_bounds_kernel(
 
 __global__ void clear_active_shell_quartet_tile_counts_kernel(
     std::uint32_t* active_shell_quartet_tile_counts,
-    std::uint32_t* persistent_fock_task_heads) {
+    std::uint32_t* persistent_fock_task_heads,
+    std::uint32_t* fp32_shell_quartet_tile_counts,
+    std::uint32_t* fp32_persistent_fock_task_heads) {
   const std::size_t order =
       static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (order < detail::kDirectQuartetAngularOrderCount) {
     active_shell_quartet_tile_counts[order] = 0;
+    if (fp32_shell_quartet_tile_counts != nullptr) {
+      fp32_shell_quartet_tile_counts[order] = 0;
+    }
   }
   // Reset queue state in the same captured Graph node as the active counts.
   // A separate tiny kernel here would be replayed for every SCF iteration.
   if (order < kPersistentFockAngularOrderCount) {
     persistent_fock_task_heads[order] = 0;
+    if (fp32_persistent_fock_task_heads != nullptr) {
+      fp32_persistent_fock_task_heads[order] = 0;
+    }
   }
 }
 
@@ -8042,7 +8145,8 @@ __device__ __forceinline__ bool direct_shell_quartet_survives_screening(
     std::size_t second_pair,
     double screening_tolerance,
     const double* shell_pair_bounds,
-    const ShellPairDensityBounds* shell_pair_density_bounds) {
+    const ShellPairDensityBounds* shell_pair_density_bounds,
+    double* fock_contribution_bound = nullptr) {
   const double quartet_bound =
       shell_pair_bounds[first_pair] * shell_pair_bounds[second_pair];
   if (quartet_bound < screening_tolerance) return false;
@@ -8085,7 +8189,11 @@ __device__ __forceinline__ bool direct_shell_quartet_survives_screening(
         fmax(bc.exchange_alpha, bd.exchange_alpha));
     fock_density_bound = fmax(fock_density_bound, 0.5 * exchange_bound);
   }
-  if (quartet_bound * fock_density_bound < screening_tolerance) return false;
+  const double contribution_bound = quartet_bound * fock_density_bound;
+  if (fock_contribution_bound != nullptr) {
+    *fock_contribution_bound = contribution_bound;
+  }
+  if (contribution_bound < screening_tolerance) return false;
   if constexpr (Purpose == DirectScreeningPurpose::Fock) return true;
 
   // Screen J and each same-spin K contraction independently. Combining the
@@ -8123,7 +8231,12 @@ __global__ void compact_active_shell_quartet_tiles_kernel(
     const std::uint8_t* active,
     const std::uint32_t* active_shell_quartet_tile_offsets,
     std::uint32_t* active_shell_quartet_tile_counts,
-    ActiveShellQuartetTile* active_shell_quartet_tiles) {
+    ActiveShellQuartetTile* active_shell_quartet_tiles,
+    bool mixed_precision_enabled,
+    double fp64_threshold,
+    const std::uint32_t* fp32_shell_quartet_tile_offsets,
+    std::uint32_t* fp32_shell_quartet_tile_counts,
+    ActiveShellQuartetTile* fp32_shell_quartet_tiles) {
   const std::size_t shell_quartet =
       static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (shell_quartet >=
@@ -8142,9 +8255,13 @@ __global__ void compact_active_shell_quartet_tiles_kernel(
       static_cast<std::size_t>(batch.system_shell_pair_offsets[system]);
   const std::size_t first_pair = pair_begin + first_pair_local;
   const std::size_t second_pair = pair_begin + second_pair_local;
+  double contribution_bound = 0.0;
   if (!direct_shell_quartet_survives_screening<Unrestricted, Purpose>(
           batch, first_pair, second_pair, screening_tolerance,
-          shell_pair_bounds, shell_pair_density_bounds)) return;
+          shell_pair_bounds, shell_pair_density_bounds,
+          Purpose == DirectScreeningPurpose::Fock
+              ? &contribution_bound
+              : nullptr)) return;
 
   const std::int32_t first_shell = batch.shell_pair_first[first_pair];
   const std::int32_t second_shell = batch.shell_pair_second[first_pair];
@@ -8172,10 +8289,28 @@ __global__ void compact_active_shell_quartet_tiles_kernel(
   // happens inside the consumer so Graph replay retains only 13 launch nodes.
   // Order within one partition need not be stable because consumers use
   // double atomics and promise numerical, rather than bitwise, replay.
-  const std::uint32_t slot = active_shell_quartet_tile_offsets[angular_order] +
-      atomicAdd(active_shell_quartet_tile_counts + angular_order, tile_count);
+  bool use_fp32 = false;
+  if constexpr (Purpose == DirectScreeningPurpose::Fock) {
+    // Low-order shell-fused workers remain FP64; routing them through the
+    // generic evaluator would conflate precision with a scheduling regression.
+    use_fp32 = mixed_precision_enabled &&
+        angular_order >= kMixedFockMinimumAngularOrder &&
+        fp32_shell_quartet_tile_counts != nullptr &&
+        contribution_bound < fp64_threshold;
+  }
+  std::uint32_t* selected_counts = use_fp32
+      ? fp32_shell_quartet_tile_counts
+      : active_shell_quartet_tile_counts;
+  ActiveShellQuartetTile* selected_tiles = use_fp32
+      ? fp32_shell_quartet_tiles
+      : active_shell_quartet_tiles;
+  const std::uint32_t* selected_offsets = use_fp32
+      ? fp32_shell_quartet_tile_offsets
+      : active_shell_quartet_tile_offsets;
+  const std::uint32_t slot = selected_offsets[angular_order] +
+      atomicAdd(selected_counts + angular_order, tile_count);
   for (std::uint32_t tile = 0; tile < tile_count; ++tile) {
-    active_shell_quartet_tiles[slot + tile] = {
+    selected_tiles[slot + tile] = {
         static_cast<std::uint32_t>(first_pair),
         static_cast<std::uint32_t>(second_pair), tile};
   }
@@ -9339,7 +9474,9 @@ __global__ void transform_direct_fock_right_kernel(
   fock[element] = value;
 }
 
-template <bool Unrestricted, unsigned AngularOrder>
+template <bool Unrestricted,
+          unsigned AngularOrder,
+          typename EvalScalar = double>
 __device__ __forceinline__ void contract_fock_direct_quartet_subtile(
     DeviceBatch batch,
     const std::uint32_t* active_shell_quartet_tile_count,
@@ -9422,12 +9559,13 @@ __device__ __forceinline__ void contract_fock_direct_quartet_subtile(
         screening_tolerance) {
       return;
     }
-    const double integral =
+    const EvalScalar evaluated_integral =
         dispatch_contracted_eri_cartesian_source_shell_class<
-            AngularOrder, double>(
+            AngularOrder, EvalScalar>(
             shell_class, batch, system, static_cast<std::int32_t>(i),
             static_cast<std::int32_t>(j), static_cast<std::int32_t>(k),
             static_cast<std::int32_t>(l), -1);
+    const double integral = scalar_value(evaluated_integral);
     if (integral == 0.0) return;
     accumulate_direct_fock_integral<Unrestricted>(
         n, physical_offset, spin_offset, density, fock,
@@ -9735,7 +9873,9 @@ __device__ __noinline__ void contract_fock_direct_order2_task(
 }
 
 /** Fixed-capacity wrapper retained for high-register angular orders. */
-template <bool Unrestricted, unsigned AngularOrder>
+template <bool Unrestricted,
+          unsigned AngularOrder,
+          typename EvalScalar = double>
 __global__ void build_fock_direct_quartet_kernel(
     DeviceBatch batch,
     const std::uint32_t* active_shell_quartet_tile_count,
@@ -9746,7 +9886,8 @@ __global__ void build_fock_direct_quartet_kernel(
     const std::uint8_t* active,
     double* fock,
     const std::uint64_t* generated_fock_shell_class_mask) {
-  contract_fock_direct_quartet_subtile<Unrestricted, AngularOrder>(
+  contract_fock_direct_quartet_subtile<
+      Unrestricted, AngularOrder, EvalScalar>(
       batch, active_shell_quartet_tile_count, active_shell_quartet_tiles,
       screening_tolerance, schwarz_bounds, density, active, fock,
       generated_fock_shell_class_mask,
@@ -9855,7 +9996,9 @@ __global__ void build_fock_direct_order2_persistent_kernel(
 }
 
 /** Consume only the active compacted Fock domain from a device queue. */
-template <bool Unrestricted, unsigned AngularOrder>
+template <bool Unrestricted,
+          unsigned AngularOrder,
+          typename EvalScalar = double>
 __global__ void build_fock_direct_quartet_persistent_kernel(
     DeviceBatch batch,
     const std::uint32_t* active_shell_quartet_tile_count,
@@ -9878,7 +10021,8 @@ __global__ void build_fock_direct_quartet_persistent_kernel(
     if (lane == 0) active_subtile = atomicAdd(task_head, 1U);
     active_subtile = __shfl_sync(0xffffffffU, active_subtile, 0);
     if (active_subtile >= work_count) return;
-    contract_fock_direct_quartet_subtile<Unrestricted, AngularOrder>(
+    contract_fock_direct_quartet_subtile<
+        Unrestricted, AngularOrder, EvalScalar>(
         batch, active_shell_quartet_tile_count, active_shell_quartet_tiles,
         screening_tolerance, schwarz_bounds, density, active, fock,
         generated_fock_shell_class_mask,
@@ -13290,7 +13434,69 @@ cudaError_t launch_generated_shell_class_focks(
   return cudaSuccess;
 }
 
-template <bool Unrestricted, unsigned AngularOrder = 0>
+/** Bucket the FP32 queue and launch only generated mixed-Fock capabilities. */
+cudaError_t launch_generated_shell_class_mixed_focks(
+    cudaStream_t stream,
+    std::size_t total_tile_capacity,
+    std::size_t generated_task_capacity,
+    const std::array<std::size_t,
+                     detail::kDirectQuartetAngularOrderCount>& capacities,
+    const std::uint32_t* active_tile_offsets,
+    DeviceBatch batch,
+    const std::uint32_t* active_tile_counts,
+    const ActiveShellQuartetTile* active_tiles,
+    GeneratedShellTask* generated_tasks,
+    std::uint8_t* generated_shell_classes,
+    std::uint32_t* generated_task_offsets,
+    std::uint32_t* generated_task_counts,
+    std::uint32_t* generated_task_write_counts,
+    std::uint32_t* generated_task_heads,
+    const std::uint64_t* enabled_mask,
+    unsigned persistent_worker_blocks,
+    bool unrestricted,
+    double screening_tolerance,
+    const double* schwarz_bounds,
+    const double* density,
+    double* fock) {
+  const std::uint64_t capability_mask =
+      generated::enabled_mixed_fock_shell_class_mask();
+  if (capability_mask == 0U) return cudaSuccess;
+  cudaError_t error = prepare_generated_shell_tasks(
+      stream, total_tile_capacity, generated_task_capacity,
+      active_tile_offsets, batch, active_tile_counts, active_tiles,
+      generated_tasks, generated_shell_classes, generated_task_offsets,
+      generated_task_counts, generated_task_write_counts,
+      generated_task_heads, 0U, nullptr, nullptr, 0U, enabled_mask, false);
+  if (error != cudaSuccess) return error;
+
+  std::size_t kernel_count = 0;
+  const generated::ShellKernelMetadata* kernels =
+      generated::selected_fock_shell_kernels(kernel_count);
+  for (std::size_t kernel_index = 0; kernel_index < kernel_count;
+       ++kernel_index) {
+    const generated::ShellKernelMetadata& kernel = kernels[kernel_index];
+    if ((capability_mask & (std::uint64_t{1} << kernel.shell_class)) == 0U) {
+      continue;
+    }
+    const unsigned worker_blocks = std::min(
+        static_cast<unsigned>(capacities[kernel.angular_order]),
+        persistent_worker_blocks);
+    error = generated::launch_shell_class_mixed_fock(
+        kernel.shell_class, stream, unrestricted, worker_blocks,
+        generated_tasks, generated_task_offsets + kernel.shell_class,
+        batch.shell_pair_primitive_offsets, batch.shell_primitive_pairs,
+        batch.direct_ao_coefficients, batch.positions, screening_tolerance,
+        schwarz_bounds, density, fock,
+        generated_task_counts + kernel.shell_class,
+        generated_task_heads + kernel.shell_class);
+    if (error != cudaSuccess) return error;
+  }
+  return cudaSuccess;
+}
+
+template <bool Unrestricted,
+          typename EvalScalar = double,
+          unsigned AngularOrder = 0>
 void launch_angular_fock_quartets(
     cudaStream_t stream,
     const std::array<std::size_t,
@@ -13316,14 +13522,45 @@ void launch_angular_fock_quartets(
           active_tile_counts + AngularOrder;
       const ActiveShellQuartetTile* order_tiles =
           active_tiles + offsets[AngularOrder];
-      if constexpr (AngularOrder == kGenericOrderFiveAngularOrder) {
+      if constexpr (
+          AngularOrder == kGenericOrderFiveAngularOrder &&
+          std::is_same_v<EvalScalar, double>) {
         // Every order-five class currently enabled for generated Fock owns an
         // exact queue. Avoid making the generic persistent worker claim all
         // six subtiles only to decode the class and return.
         order_tile_count = generic_order5_tile_count;
         order_tiles = generic_order5_tiles;
       }
-      if constexpr (AngularOrder < kPackedSsssAngularOrderCount) {
+      if constexpr (std::is_same_v<EvalScalar, MixedPrecisionFloat>) {
+        // Mixed work begins at order three.  It keeps an independent queue and
+        // persistent head so the ERI recurrence contains no per-warp precision
+        // branch and low-order shell-fused workers remain unchanged.
+        if constexpr (AngularOrder >= kMixedFockMinimumAngularOrder &&
+                      AngularOrder < kPersistentFockAngularOrderCount) {
+          const unsigned capacity_blocks = static_cast<unsigned>(
+              capacities[AngularOrder] *
+              detail::direct_quartet_subtiles_per_tile(AngularOrder));
+          build_fock_direct_quartet_persistent_kernel<
+              Unrestricted, AngularOrder, EvalScalar><<<
+                  std::min(capacity_blocks, persistent_worker_blocks),
+                  detail::kDirectQuartetThreads, 0, stream>>>(
+              batch, order_tile_count, order_tiles,
+              persistent_task_heads + AngularOrder, screening_tolerance,
+              schwarz_bounds, density, active, fock,
+              generated_fock_shell_class_mask);
+        } else if constexpr (AngularOrder >=
+                             kPersistentFockAngularOrderCount) {
+          build_fock_direct_quartet_kernel<
+              Unrestricted, AngularOrder, EvalScalar><<<
+                  static_cast<unsigned>(
+                      capacities[AngularOrder] *
+                      detail::direct_quartet_subtiles_per_tile(AngularOrder)),
+                  detail::kDirectQuartetThreads, 0, stream>>>(
+              batch, order_tile_count, order_tiles, screening_tolerance,
+              schwarz_bounds, density, active, fock,
+              generated_fock_shell_class_mask);
+        }
+      } else if constexpr (AngularOrder < kPackedSsssAngularOrderCount) {
         const unsigned capacity_workers = static_cast<unsigned>(
             (capacities[AngularOrder] + detail::kDirectQuartetThreads - 1) /
             detail::kDirectQuartetThreads);
@@ -13379,7 +13616,8 @@ void launch_angular_fock_quartets(
             generated_fock_shell_class_mask);
       }
     }
-    launch_angular_fock_quartets<Unrestricted, AngularOrder + 1>(
+    launch_angular_fock_quartets<
+        Unrestricted, EvalScalar, AngularOrder + 1>(
         stream, capacities, offsets, batch, active_tile_counts, active_tiles,
         generic_order5_tile_count, generic_order5_tiles,
         persistent_task_heads, persistent_worker_blocks,
@@ -13635,8 +13873,12 @@ struct ArenaLayout {
   std::size_t active_shell_quartet_tile_offsets{};
   std::size_t active_shell_quartet_tile_counts{};
   std::size_t active_shell_quartet_tiles{};
+  std::size_t fp32_shell_quartet_tile_offsets{};
+  std::size_t fp32_shell_quartet_tile_counts{};
+  std::size_t fp32_shell_quartet_tiles{};
   std::size_t shell_class_profile{};
   std::size_t persistent_fock_task_heads{};
+  std::size_t fp32_persistent_fock_task_heads{};
   std::size_t persistent_force_task_heads{};
   std::size_t generated_shell_tasks{};
   std::size_t generated_shell_classes{};
@@ -13654,6 +13896,7 @@ struct ArenaLayout {
   std::size_t generated_ppps_resident_signature_offsets{};
   std::size_t generated_ppps_resident_signatures{};
   std::size_t generated_fock_shell_class_mask{};
+  std::size_t generated_mixed_fock_shell_class_mask{};
   std::size_t generic_order5_tiles{};
   std::size_t generic_order5_tile_count{};
   std::size_t ao_pair_first{};
@@ -13718,6 +13961,7 @@ bool make_layout(std::size_t batch_size,
                  std::size_t psss_resident_task_count,
                  std::size_t psss_resident_ket_pair_count,
                  std::size_t shell_quartet_tile_count,
+                 std::size_t fp32_shell_quartet_tile_count,
                  std::size_t generated_shell_task_capacity,
                  std::size_t ppps_resident_ket_task_capacity,
                  std::size_t generic_order5_tile_capacity,
@@ -13731,6 +13975,7 @@ bool make_layout(std::size_t batch_size,
                  bool inactive_eigensolver_profiling,
                  bool bounded_fock_class_timing,
                  bool bounded_direct_streaming,
+                 bool mixed_precision_fock,
                  ArenaLayout& layout) {
   std::size_t matrix_size = 0;
   std::size_t eri_size = 0;
@@ -13965,6 +14210,19 @@ bool make_layout(std::size_t batch_size,
               : shell_quartet_tile_count,
           cursor,
           made.active_shell_quartet_tiles) ||
+      !append_array<std::uint32_t>(
+          mixed_precision_fock
+              ? detail::kDirectQuartetAngularOrderCount + 1
+              : 0,
+          cursor, made.fp32_shell_quartet_tile_offsets) ||
+      !append_array<std::uint32_t>(
+          mixed_precision_fock
+              ? detail::kDirectQuartetAngularOrderCount
+              : 0,
+          cursor, made.fp32_shell_quartet_tile_counts) ||
+      !append_array<ActiveShellQuartetTile>(
+          mixed_precision_fock ? fp32_shell_quartet_tile_count : 0,
+          cursor, made.fp32_shell_quartet_tiles) ||
       !append_array<DeviceShellClassProfileEntry>(
           shell_class_profiling ? detail::kDirectQuartetShellClassCount : 0,
           cursor, made.shell_class_profile) ||
@@ -13973,6 +14231,9 @@ bool make_layout(std::size_t batch_size,
               ? 0
               : kPersistentFockAngularOrderCount,
           cursor, made.persistent_fock_task_heads) ||
+      !append_array<std::uint32_t>(
+          mixed_precision_fock ? kPersistentFockAngularOrderCount : 0,
+          cursor, made.fp32_persistent_fock_task_heads) ||
       !append_array<std::uint32_t>(
           shell_quartet_tile_count == 0
               ? 0
@@ -14037,6 +14298,9 @@ bool make_layout(std::size_t batch_size,
       !append_array<std::uint64_t>(
           shell_quartet_tile_count == 0 && !bounded_direct_streaming ? 0 : 1,
           cursor, made.generated_fock_shell_class_mask) ||
+      !append_array<std::uint64_t>(
+          mixed_precision_fock ? 1 : 0,
+          cursor, made.generated_mixed_fock_shell_class_mask) ||
       !append_array<ActiveShellQuartetTile>(
           generic_order5_tile_capacity, cursor, made.generic_order5_tiles) ||
       !append_array<std::uint32_t>(
@@ -14926,6 +15190,9 @@ struct CudaRhfBucketPlan {
       shell_quartet_tile_capacities{};
   std::array<std::uint32_t, detail::kDirectQuartetAngularOrderCount + 1>
       shell_quartet_tile_offsets{};
+  std::size_t fp32_shell_quartet_tile_capacity{};
+  std::array<std::uint32_t, detail::kDirectQuartetAngularOrderCount + 1>
+      fp32_shell_quartet_tile_offsets{};
   unsigned persistent_quartet_worker_blocks{};
   std::size_t resident_psss_bra_primitive_pairs{};
   std::size_t resident_psss_task_count{};
@@ -14942,6 +15209,8 @@ struct CudaRhfBucketPlan {
   bool bounded_fock_class_timing{};
   bool graph_native_eigensolver_override{};
   bool reuse_converged_fock{};
+  bool mixed_precision_fock{};
+  double mixed_precision_fock_threshold{};
   bool warm_start_updates_enabled{true};
   bool cublas_enabled{true};
   bool retry_without_cublas{};
@@ -14955,6 +15224,38 @@ bool reuse_converged_fock_requested() {
   const char* force_rebuild = std::getenv("VIBEQC_FINAL_FOCK_REBUILD");
   return force_rebuild == nullptr || std::strcmp(force_rebuild, "0") == 0 ||
       std::strcmp(force_rebuild, "none") == 0;
+}
+
+/**
+ * Select the opt-in FP32 ERI recurrence threshold for iterative direct Fock.
+ *
+ * Screening, density contraction, atomic accumulation, and the final Fock
+ * rebuild remain FP64. Values at or below the screening tolerance cannot add
+ * work beyond the existing numerical gate, so they conservatively disable the
+ * mixed route instead of creating an empty second queue.
+ */
+std::optional<double> configured_mixed_precision_fock_threshold(
+    double screening_tolerance) {
+  const char* selection =
+      std::getenv("VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD");
+  if (selection == nullptr || std::strcmp(selection, "0") == 0 ||
+      std::strcmp(selection, "none") == 0) {
+    return std::nullopt;
+  }
+  double threshold = 0.0;
+  if (std::strcmp(selection, "auto") == 0) {
+    threshold = kDefaultMixedPrecisionFockThreshold;
+  } else {
+    char* end = nullptr;
+    threshold = std::strtod(selection, &end);
+    if (end == selection || end == nullptr || *end != '\0') {
+      return std::nullopt;
+    }
+  }
+  if (!std::isfinite(threshold) || threshold <= screening_tolerance) {
+    return std::nullopt;
+  }
+  return threshold;
 }
 
 /** Select the mask-aware solver for controlled issue-51 A/B measurements. */
@@ -15459,8 +15760,6 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   const bool cooperative_one_electron_force =
       scalar_one_electron_force_environment == nullptr ||
       std::strcmp(scalar_one_electron_force_environment, "0") == 0;
-  const bool requested_reuse_converged_fock =
-      reuse_converged_fock_requested();
   const bool requested_graph_native_eigensolver_override =
       graph_native_eigensolver_override_requested();
   const bool xsyev_probe_skip_diagnostic =
@@ -15523,6 +15822,18 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         ? 0
         : plan.total_shell_quartet_tiles;
   }
+  const std::optional<double> requested_mixed_precision_fock_threshold =
+      requested_quartet_direct && !requested_bounded_direct_streaming
+      ? configured_mixed_precision_fock_threshold(
+            options.screening_tolerance)
+      : std::nullopt;
+  const bool requested_mixed_precision_fock =
+      requested_mixed_precision_fock_threshold.has_value();
+  // An iterative mixed Fock is not the exact final matrix associated with the
+  // converged density. Force a complete FP64 rebuild before final energy,
+  // orbitals, and analytic forces consume it.
+  const bool requested_reuse_converged_fock =
+      reuse_converged_fock_requested() && !requested_mixed_precision_fock;
   // Direct consumers expand each compact logical tile into one-warp blocks;
   // validate the resulting fixed Graph grid before narrowing it to unsigned.
   if (total_shell_pairs > std::numeric_limits<unsigned>::max() ||
@@ -15571,7 +15882,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
        plan.bounded_fock_class_timing != bounded_fock_class_timing ||
        plan.graph_native_eigensolver_override !=
            requested_graph_native_eigensolver_override ||
-       plan.reuse_converged_fock != requested_reuse_converged_fock)) {
+       plan.reuse_converged_fock != requested_reuse_converged_fock ||
+       plan.mixed_precision_fock != requested_mixed_precision_fock ||
+       plan.mixed_precision_fock_threshold !=
+           requested_mixed_precision_fock_threshold.value_or(0.0))) {
     fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
     return outputs;
   }
@@ -15579,6 +15893,25 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       first_setup ? 0 : plan.generated_shell_task_capacity;
   std::size_t resident_ppps_ket_task_capacity =
       first_setup ? 0 : plan.resident_ppps_ket_task_capacity;
+  std::size_t fp32_shell_quartet_tile_capacity =
+      first_setup ? 0 : plan.fp32_shell_quartet_tile_capacity;
+  if (first_setup && requested_mixed_precision_fock) {
+    for (std::size_t order = kMixedFockMinimumAngularOrder;
+         order < detail::kDirectQuartetAngularOrderCount; ++order) {
+      if (!checked_add(
+              fp32_shell_quartet_tile_capacity,
+              direct_task_layout.angular_order_tile_counts[order],
+              fp32_shell_quartet_tile_capacity)) {
+        fill_global_failure(outputs, VIBEQC_STATUS_OUT_OF_MEMORY);
+        return outputs;
+      }
+    }
+    if (fp32_shell_quartet_tile_capacity >
+        static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max())) {
+      fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
+      return outputs;
+    }
+  }
   const std::size_t generic_order5_tile_capacity =
       requested_quartet_direct && !requested_bounded_direct_streaming
       ? (first_setup
@@ -15653,6 +15986,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                          ? host.psss_resident_ket_pairs.size()
                          : 0,
                      total_shell_quartet_tiles,
+                     fp32_shell_quartet_tile_capacity,
                      generated_shell_task_capacity,
                      resident_ppps_ket_task_capacity,
                      generic_order5_tile_capacity,
@@ -15665,6 +15999,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                      inactive_eigensolver_profiling,
                      bounded_fock_class_timing,
                      requested_bounded_direct_streaming,
+                     requested_mixed_precision_fock,
                      plan.layout)) {
       fill_global_failure(outputs, VIBEQC_STATUS_OUT_OF_MEMORY);
       return outputs;
@@ -15737,6 +16072,22 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       plan.shell_quartet_tile_offsets[order] = static_cast<std::uint32_t>(
           direct_task_layout.angular_order_tile_offsets[order]);
     }
+    plan.fp32_shell_quartet_tile_capacity =
+        fp32_shell_quartet_tile_capacity;
+    std::size_t fp32_tile_offset = 0;
+    for (std::size_t order = 0;
+         order < detail::kDirectQuartetAngularOrderCount; ++order) {
+      plan.fp32_shell_quartet_tile_offsets[order] =
+          static_cast<std::uint32_t>(fp32_tile_offset);
+      if (requested_mixed_precision_fock &&
+          order >= kMixedFockMinimumAngularOrder) {
+        fp32_tile_offset +=
+            direct_task_layout.angular_order_tile_counts[order];
+      }
+    }
+    plan.fp32_shell_quartet_tile_offsets[
+        detail::kDirectQuartetAngularOrderCount] =
+        static_cast<std::uint32_t>(fp32_tile_offset);
     plan.primitive_count = host.primitive_exponents.size();
     plan.diis_history = diis_history;
     plan.persistent_eri = requested_persistent_eri;
@@ -15752,6 +16103,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     plan.graph_native_eigensolver_override =
         requested_graph_native_eigensolver_override;
     plan.reuse_converged_fock = requested_reuse_converged_fock;
+    plan.mixed_precision_fock = requested_mixed_precision_fock;
+    plan.mixed_precision_fock_threshold =
+        requested_mixed_precision_fock_threshold.value_or(0.0);
     plan.options = options;
     plan.topology = host;
     // Positions and warm guesses are dynamic execution inputs, not part of
@@ -15768,6 +16122,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   const bool transformed_direct = plan.transformed_direct;
   const bool bounded_direct_streaming = plan.bounded_direct_streaming;
   const bool reuse_converged_fock = plan.reuse_converged_fock;
+  const bool mixed_precision_fock = plan.mixed_precision_fock;
+  const double mixed_precision_fock_threshold =
+      plan.mixed_precision_fock_threshold;
   if (first_setup) {
     plan.eigensolver_diagnostic = {};
     plan.eigensolver_diagnostic.matrix_dimension = nbf;
@@ -16074,10 +16431,26 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       resources.arena_, layout.active_shell_quartet_tile_counts);
   auto active_shell_quartet_tiles = arena_pointer<ActiveShellQuartetTile>(
       resources.arena_, layout.active_shell_quartet_tiles);
+  std::uint32_t* fp32_shell_quartet_tile_offsets = mixed_precision_fock
+      ? arena_pointer<std::uint32_t>(
+            resources.arena_, layout.fp32_shell_quartet_tile_offsets)
+      : nullptr;
+  std::uint32_t* fp32_shell_quartet_tile_counts = mixed_precision_fock
+      ? arena_pointer<std::uint32_t>(
+            resources.arena_, layout.fp32_shell_quartet_tile_counts)
+      : nullptr;
+  ActiveShellQuartetTile* fp32_shell_quartet_tiles = mixed_precision_fock
+      ? arena_pointer<ActiveShellQuartetTile>(
+            resources.arena_, layout.fp32_shell_quartet_tiles)
+      : nullptr;
   auto shell_class_profile = arena_pointer<DeviceShellClassProfileEntry>(
       resources.arena_, layout.shell_class_profile);
   auto persistent_fock_task_heads = arena_pointer<std::uint32_t>(
       resources.arena_, layout.persistent_fock_task_heads);
+  std::uint32_t* fp32_persistent_fock_task_heads = mixed_precision_fock
+      ? arena_pointer<std::uint32_t>(
+            resources.arena_, layout.fp32_persistent_fock_task_heads)
+      : nullptr;
   auto persistent_force_task_heads = arena_pointer<std::uint32_t>(
       resources.arena_, layout.persistent_force_task_heads);
   auto generated_shell_tasks = arena_pointer<GeneratedShellTask>(
@@ -16131,6 +16504,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       : nullptr;
   auto generated_fock_shell_class_mask = arena_pointer<std::uint64_t>(
       resources.arena_, layout.generated_fock_shell_class_mask);
+  std::uint64_t* generated_mixed_fock_shell_class_mask = mixed_precision_fock
+      ? arena_pointer<std::uint64_t>(
+            resources.arena_, layout.generated_mixed_fock_shell_class_mask)
+      : nullptr;
   auto generic_order5_tiles = arena_pointer<ActiveShellQuartetTile>(
       resources.arena_, layout.generic_order5_tiles);
   auto generic_order5_tile_count = arena_pointer<std::uint32_t>(
@@ -16218,6 +16595,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   const std::size_t shell_quartet_offset_bytes =
       quartet_direct && !bounded_direct_streaming
       ? plan.shell_quartet_tile_offsets.size() * sizeof(std::uint32_t)
+      : 0;
+  const std::size_t fp32_shell_quartet_offset_bytes = mixed_precision_fock
+      ? plan.fp32_shell_quartet_tile_offsets.size() * sizeof(std::uint32_t)
       : 0;
   const GeneratedShellPairStream host_bounded_stream_topology{
       static_cast<std::int32_t>(batch_size),
@@ -16319,6 +16699,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       {host.occupied.data(), {occupied, host.occupied.size() * sizeof(std::int32_t)}},
       {plan.shell_quartet_tile_offsets.data(),
        {active_shell_quartet_tile_offsets, shell_quartet_offset_bytes}},
+      {plan.fp32_shell_quartet_tile_offsets.data(),
+       {fp32_shell_quartet_tile_offsets,
+        fp32_shell_quartet_offset_bytes}},
       {plan.bounded_generated_task_offsets.data(),
        {bounded_direct_generated_task_offsets,
         bounded_direct_streaming
@@ -16363,6 +16746,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       (bounded_direct_streaming
            ? std::numeric_limits<std::uint64_t>::max()
            : ~kFixedTopologyGeneratedFockExclusionMask);
+  const std::uint64_t host_generated_mixed_fock_shell_class_mask =
+      mixed_precision_fock
+      ? generated::enabled_mixed_fock_shell_class_mask() &
+          host_generated_fock_shell_class_mask & host_present_shell_class_mask
+      : 0U;
   const std::uint64_t host_generated_streaming_fock_shell_class_mask =
       host_generated_fock_shell_class_mask &
       kGeneratedStreamingFockShellClassMask;
@@ -16390,6 +16778,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       {&host_generated_fock_shell_class_mask,
        {generated_fock_shell_class_mask,
         quartet_direct ? sizeof(std::uint64_t) : 0}},
+      {&host_generated_mixed_fock_shell_class_mask,
+       {generated_mixed_fock_shell_class_mask,
+        mixed_precision_fock ? sizeof(std::uint64_t) : 0}},
   };
   if (first_setup) {
     for (const auto& upload : static_uploads) {
@@ -16614,7 +17005,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     return cuda_status(cudaPeekAtLastError());
   };
   const auto launch_direct_quartet_metadata =
-      [&](const double* density_input) -> cudaError_t {
+      [&](const double* density_input,
+          bool allow_mixed_precision) -> cudaError_t {
     if (!quartet_direct) return cudaSuccess;
     const double* quartet_density = density_input;
     if (transformed_direct) {
@@ -16640,7 +17032,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       clear_active_shell_quartet_tile_counts_kernel<<<
           blocks_for(detail::kDirectQuartetAngularOrderCount), threads, 0,
           resources.stream_>>>(active_shell_quartet_tile_counts,
-                               persistent_fock_task_heads);
+                               persistent_fock_task_heads,
+                               fp32_shell_quartet_tile_counts,
+                               fp32_persistent_fock_task_heads);
     }
     if (unrestricted) {
       reduce_shell_pair_density_bounds_kernel<true><<<
@@ -16663,7 +17057,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           device_batch, options.screening_tolerance, shell_pair_bounds,
           shell_pair_density_bounds, active,
           active_shell_quartet_tile_offsets,
-          active_shell_quartet_tile_counts, active_shell_quartet_tiles);
+          active_shell_quartet_tile_counts, active_shell_quartet_tiles,
+          allow_mixed_precision && mixed_precision_fock,
+          mixed_precision_fock_threshold,
+          fp32_shell_quartet_tile_offsets,
+          fp32_shell_quartet_tile_counts, fp32_shell_quartet_tiles);
     } else {
       reduce_shell_pair_density_bounds_kernel<false><<<
           static_cast<unsigned>(total_shell_pairs), threads,
@@ -16685,7 +17083,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           device_batch, options.screening_tolerance, shell_pair_bounds,
           shell_pair_density_bounds, active,
           active_shell_quartet_tile_offsets,
-          active_shell_quartet_tile_counts, active_shell_quartet_tiles);
+          active_shell_quartet_tile_counts, active_shell_quartet_tiles,
+          allow_mixed_precision && mixed_precision_fock,
+          mixed_precision_fock_threshold,
+          fp32_shell_quartet_tile_offsets,
+          fp32_shell_quartet_tile_counts, fp32_shell_quartet_tiles);
     }
     return cudaPeekAtLastError();
   };
@@ -16704,7 +17106,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     clear_active_shell_quartet_tile_counts_kernel<<<
         blocks_for(detail::kDirectQuartetAngularOrderCount), threads, 0,
         resources.stream_>>>(active_shell_quartet_tile_counts,
-                             persistent_fock_task_heads);
+                             persistent_fock_task_heads,
+                             fp32_shell_quartet_tile_counts,
+                             fp32_persistent_fock_task_heads);
     if (unrestricted) {
       compact_active_shell_quartet_tiles_kernel<
           true, DirectScreeningPurpose::Force><<<
@@ -16713,7 +17117,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           device_batch, options.screening_tolerance, shell_pair_bounds,
           shell_pair_density_bounds, active,
           active_shell_quartet_tile_offsets,
-          active_shell_quartet_tile_counts, active_shell_quartet_tiles);
+          active_shell_quartet_tile_counts, active_shell_quartet_tiles,
+          false, 0.0, nullptr, nullptr, nullptr);
     } else {
       compact_active_shell_quartet_tiles_kernel<
           false, DirectScreeningPurpose::Force><<<
@@ -16722,7 +17127,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           device_batch, options.screening_tolerance, shell_pair_bounds,
           shell_pair_density_bounds, active,
           active_shell_quartet_tile_offsets,
-          active_shell_quartet_tile_counts, active_shell_quartet_tiles);
+          active_shell_quartet_tile_counts, active_shell_quartet_tiles,
+          false, 0.0, nullptr, nullptr, nullptr);
     }
     return cudaPeekAtLastError();
   };
@@ -16966,13 +17372,15 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         is_unrestricted, quartet_density, quartet_fock);
   };
   const auto launch_fock_builder =
-      [&](const double* density_input) -> cudaError_t {
+      [&](const double* density_input,
+          bool allow_mixed_precision) -> cudaError_t {
     const double* quartet_density =
         transformed_direct ? direct_density : density_input;
     double* quartet_fock = transformed_direct ? direct_fock : fock;
     if (quartet_direct) {
       cudaError_t metadata_error =
-          launch_direct_quartet_metadata(density_input);
+          launch_direct_quartet_metadata(
+              density_input, allow_mixed_precision);
       if (metadata_error != cudaSuccess) return metadata_error;
     }
     if (quartet_direct && transformed_direct) {
@@ -17049,6 +17457,30 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
             plan.persistent_quartet_worker_blocks,
             options.screening_tolerance, schwarz_bounds, quartet_density,
             active, quartet_fock, generated_fock_shell_class_mask);
+        if (allow_mixed_precision && mixed_precision_fock) {
+          generated_error = launch_generated_shell_class_mixed_focks(
+              resources.stream_, plan.fp32_shell_quartet_tile_capacity,
+              plan.generated_shell_task_capacity,
+              plan.shell_quartet_tile_capacities,
+              fp32_shell_quartet_tile_offsets, device_batch,
+              fp32_shell_quartet_tile_counts, fp32_shell_quartet_tiles,
+              generated_shell_tasks, generated_shell_classes,
+              generated_shell_task_offsets, generated_shell_task_counts,
+              generated_shell_task_write_counts, generated_shell_task_heads,
+              generated_mixed_fock_shell_class_mask,
+              plan.persistent_quartet_worker_blocks, true,
+              options.screening_tolerance, schwarz_bounds, quartet_density,
+              quartet_fock);
+          if (generated_error != cudaSuccess) return generated_error;
+          launch_angular_fock_quartets<true, MixedPrecisionFloat>(
+              resources.stream_, plan.shell_quartet_tile_capacities,
+              plan.fp32_shell_quartet_tile_offsets, device_batch,
+              fp32_shell_quartet_tile_counts, fp32_shell_quartet_tiles,
+              nullptr, nullptr, fp32_persistent_fock_task_heads,
+              plan.persistent_quartet_worker_blocks,
+              options.screening_tolerance, schwarz_bounds, quartet_density,
+              active, quartet_fock, generated_mixed_fock_shell_class_mask);
+        }
       }
     } else if (unrestricted) {
       build_uhf_fock_direct_packed_kernel<<<
@@ -17101,6 +17533,30 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
             plan.persistent_quartet_worker_blocks,
             options.screening_tolerance, schwarz_bounds, quartet_density,
             active, quartet_fock, generated_fock_shell_class_mask);
+        if (allow_mixed_precision && mixed_precision_fock) {
+          generated_error = launch_generated_shell_class_mixed_focks(
+              resources.stream_, plan.fp32_shell_quartet_tile_capacity,
+              plan.generated_shell_task_capacity,
+              plan.shell_quartet_tile_capacities,
+              fp32_shell_quartet_tile_offsets, device_batch,
+              fp32_shell_quartet_tile_counts, fp32_shell_quartet_tiles,
+              generated_shell_tasks, generated_shell_classes,
+              generated_shell_task_offsets, generated_shell_task_counts,
+              generated_shell_task_write_counts, generated_shell_task_heads,
+              generated_mixed_fock_shell_class_mask,
+              plan.persistent_quartet_worker_blocks, false,
+              options.screening_tolerance, schwarz_bounds, quartet_density,
+              quartet_fock);
+          if (generated_error != cudaSuccess) return generated_error;
+          launch_angular_fock_quartets<false, MixedPrecisionFloat>(
+              resources.stream_, plan.shell_quartet_tile_capacities,
+              plan.fp32_shell_quartet_tile_offsets, device_batch,
+              fp32_shell_quartet_tile_counts, fp32_shell_quartet_tiles,
+              nullptr, nullptr, fp32_persistent_fock_task_heads,
+              plan.persistent_quartet_worker_blocks,
+              options.screening_tolerance, schwarz_bounds, quartet_density,
+              active, quartet_fock, generated_mixed_fock_shell_class_mask);
+        }
       }
     } else {
       build_fock_direct_packed_kernel<<<
@@ -17389,7 +17845,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       graph_eigensolver_family != CudaEigensolverFamily::xsyev_batched;
 
   const auto launch_iteration_pre_eigensolver = [&]() -> vibeqc_status {
-    const cudaError_t fock_error = launch_fock_builder(density);
+    const cudaError_t fock_error = launch_fock_builder(density, true);
     if (fock_error != cudaSuccess) return cuda_status(fock_error);
     if (fock_only_iteration) return VIBEQC_STATUS_SUCCESS;
 
@@ -17822,7 +18278,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       return outputs;
     }
     if (host_final_fock_rebuild_count != 0) {
-      cuda_error = launch_fock_builder(density);
+      cuda_error = launch_fock_builder(density, false);
       if (cuda_error != cudaSuccess) {
         fill_global_failure(outputs, cuda_status(cuda_error));
         return outputs;
@@ -17837,7 +18293,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       // after an early peer converges. Recreate only density transforms,
       // shell-pair bounds, and task metadata for all final snapshots; do not
       // evaluate any two-electron integrals or modify retained Fock matrices.
-      cuda_error = launch_direct_quartet_metadata(density);
+      cuda_error = launch_direct_quartet_metadata(density, false);
       if (cuda_error != cudaSuccess) {
         fill_global_failure(outputs, cuda_status(cuda_error));
         return outputs;
@@ -17847,7 +18303,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     select_converged_kernel<<<blocks_for(batch_size), threads, 0,
                               resources.stream_>>>(
         static_cast<std::int32_t>(batch_size), converged, failed, active);
-    cuda_error = launch_fock_builder(density);
+    cuda_error = launch_fock_builder(density, false);
     if (cuda_error != cudaSuccess) {
       fill_global_failure(outputs, cuda_status(cuda_error));
       return outputs;
@@ -18939,8 +19395,16 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
     fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
     return outputs;
   }
+  const std::optional<double> mixed_precision_fock_threshold =
+      *plan != nullptr && (*plan)->quartet_direct &&
+          !(*plan)->bounded_direct_streaming
+      ? configured_mixed_precision_fock_threshold(
+            options.screening_tolerance)
+      : std::nullopt;
+  const bool mixed_precision_fock =
+      mixed_precision_fock_threshold.has_value();
   const bool reuse_converged_fock =
-      reuse_converged_fock_requested();
+      reuse_converged_fock_requested() && !mixed_precision_fock;
   const bool graph_native_eigensolver_override =
       graph_native_eigensolver_override_requested();
   if (*plan != nullptr && (*plan)->initialized &&
@@ -18953,7 +19417,10 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
            inactive_eigensolver_profiling ||
        (*plan)->graph_native_eigensolver_override !=
            graph_native_eigensolver_override ||
-       (*plan)->reuse_converged_fock != reuse_converged_fock)) {
+       (*plan)->reuse_converged_fock != reuse_converged_fock ||
+       (*plan)->mixed_precision_fock != mixed_precision_fock ||
+       (*plan)->mixed_precision_fock_threshold !=
+           mixed_precision_fock_threshold.value_or(0.0))) {
     delete *plan;
     *plan = nullptr;
   }

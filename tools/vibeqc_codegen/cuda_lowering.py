@@ -15,6 +15,7 @@ runtime differentiation objects.
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
@@ -48,6 +49,7 @@ from .shell_spec import (
 DpppComponent = tuple[str, str, str, str]
 _AXIS_INDEX = {axis: index for index, axis in enumerate(AXES)}
 _COMPONENT_COUNT = DPPP_SPEC.component_count
+_MIXED_FOCK_SHELLS = frozenset({"dpps"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -1276,6 +1278,228 @@ __device__ __forceinline__ void generated_dppp_shell_class_fock_task("""
             minimum_blocks_per_sm,
         )
     return source
+
+
+def _emit_shell_class_mixed_fock_cuda(
+    spec: ShellClassSpec, plan: FusedShellPlan
+) -> str:
+    """Emit an FP32 ERI specialization with FP64 Fock contraction.
+
+    The force-owned primitive geometry remains in double precision so the
+    generated FP32 worker can share the accepted task ABI and stable Boys
+    implementation. Coulomb values, pair coefficients, component recurrence,
+    and primitive contraction are rounded to float. Density contraction and
+    global Fock accumulation remain double precision.
+    """
+
+    state_axis_bits = max(3, spec.maximum_force_coulomb_order.bit_length())
+    state_mask = (1 << state_axis_bits) - 1
+    source = _emit_shell_class_fock_cuda(spec, plan)
+
+    # Give every emitted Fock symbol an independent mixed-precision sibling.
+    # Geometry, lookup tables, and permutation helpers remain shared with the
+    # FP64/force fragment that precedes this source.
+    symbol_replacements = (
+        ("GeneratedDpppValueTerm", "GeneratedDpppMixedValueTerm"),
+        (
+            "kGeneratedDpppFockCoulombStateCount",
+            "kGeneratedDpppMixedFockCoulombStateCount",
+        ),
+        (
+            "kGeneratedDpppFockBlockThreads",
+            "kGeneratedDpppMixedFockBlockThreads",
+        ),
+        (
+            "generated_dppp_add_value_matching",
+            "generated_dppp_mixed_add_value_matching",
+        ),
+        (
+            "generated_dppp_pair_value_term",
+            "generated_dppp_mixed_pair_value_term",
+        ),
+        (
+            "generated_dppp_component_coulomb",
+            "generated_dppp_mixed_component_coulomb",
+        ),
+        (
+            "generated_dppp_component_value",
+            "generated_dppp_mixed_component_value",
+        ),
+        (
+            "generated_dppp_accumulate_fock",
+            "generated_dppp_mixed_accumulate_fock",
+        ),
+        (
+            "generated_dppp_shell_class_fock",
+            "generated_dppp_shell_class_mixed_fock",
+        ),
+        (
+            "generated_dppp_packed_fock",
+            "generated_dppp_packed_mixed_fock",
+        ),
+        (
+            "GeneratedDpppSubgroupFockStorage",
+            "GeneratedDpppMixedSubgroupFockStorage",
+        ),
+        (
+            "generated_dppp_subgroup_fock_task",
+            "generated_dppp_mixed_subgroup_fock_task",
+        ),
+        (
+            "generated_dppp_subgroup_fock_persistent",
+            "generated_dppp_mixed_subgroup_fock_persistent",
+        ),
+    )
+    for original, replacement in symbol_replacements:
+        source = source.replace(original, replacement)
+
+    # Convert only the ERI-evaluation data flow. Density reads, Fock values,
+    # and atomics retain their double declarations in the duplicated
+    # accumulation helper and kernel ABI.
+    source = source.replace(
+        "struct GeneratedDpppMixedValueTerm {\n"
+        "  unsigned derivative_state;\n"
+        "  double coefficient;\n"
+        "};",
+        "struct GeneratedDpppMixedValueTerm {\n"
+        "  unsigned derivative_state;\n"
+        "  float coefficient;\n"
+        "};",
+    )
+    source = source.replace("    const double* shifts,", "    const float* shifts,")
+    source = source.replace(
+        "    double inverse_two_exponent,", "    float inverse_two_exponent,"
+    )
+    source = source.replace(
+        "  double coefficient = 1.0;", "  float coefficient = 1.0F;"
+    )
+    source = source.replace("  const double first_shifts", "  const float first_shifts")
+    source = source.replace(
+        "  const double second_shifts", "  const float second_shifts"
+    )
+    source = re.sub(
+        r"(?m)^(\s+)(geometry\.pair_shifts\[[^\n]+?)(,|};)$",
+        lambda match: (
+            f"{match.group(1)}static_cast<float>({match.group(2)}){match.group(3)}"
+        ),
+        source,
+    )
+    source = source.replace("  double value = 0.0;", "  float value = 0.0F;")
+    source = source.replace("      const double sign =", "      const float sign =")
+    source = source.replace("? 1.0 : -1.0;", "? 1.0F : -1.0F;")
+    source = source.replace(
+        "__device__ __forceinline__ double generated_dppp_mixed_component_value",
+        "__device__ __forceinline__ float generated_dppp_mixed_component_value",
+    )
+    source = source.replace(
+        "    const double* coulomb) {", "    const float* coulomb) {"
+    )
+    source = source.replace(
+        "  return geometry.prefactor * value;",
+        "  return static_cast<float>(geometry.prefactor) * value;",
+    )
+    source = source.replace(
+        "    double coulomb[kGeneratedDpppMixedFockCoulombStateCount];",
+        "    float coulomb[kGeneratedDpppMixedFockCoulombStateCount];",
+    )
+    source = source.replace(
+        "  double coulomb[kGeneratedDpppMixedFockCoulombStateCount];",
+        "  float coulomb[kGeneratedDpppMixedFockCoulombStateCount];",
+    )
+    source = source.replace(
+        "  double angular_coefficients[kGeneratedDpppComponentCount];",
+        "  float angular_coefficients[kGeneratedDpppComponentCount];",
+    )
+    source = re.sub(
+        r"(?m)^(\s*)double component_integrals\[([^\]]+)\]\{\};$",
+        r"\1float component_integrals[\2]{};",
+        source,
+    )
+    source = source.replace(
+        "        const double angular_coefficient =",
+        "        const float angular_coefficient =",
+    )
+    source = source.replace(
+        "        : 0.0;\n", "        : 0.0F;\n"
+    )
+    source = source.replace(
+        "if (angular_coefficient == 0.0) continue;",
+        "if (angular_coefficient == 0.0F) continue;",
+    )
+    source = source.replace(
+        "  const double angular_coefficient = retained_by_schwarz",
+        "  const float angular_coefficient = retained_by_schwarz",
+    )
+    source = source.replace(
+        "      : 0.0;\n  double component_integral = 0.0;",
+        "      : 0.0F;\n  float component_integral = 0.0F;",
+    )
+    source = source.replace(
+        "            shared.primitive.primitive_coefficient *\n"
+        "            generated_dppp_mixed_component_value",
+        "            static_cast<float>(\n"
+        "                shared.primitive.primitive_coefficient) *\n"
+        "            generated_dppp_mixed_component_value",
+    )
+    source = source.replace(
+        "/** Coefficient-only pair term used by the SCF Fock recurrence. */",
+        "/** FP32 coefficient-only pair term used by mixed SCF Fock. */",
+        1,
+    )
+
+    mixed_coulomb = f"""
+/** Evaluate one value-only Coulomb derivative in FP32. */
+__device__ __forceinline__ float generated_dppp_mixed_coulomb(
+    unsigned derivative_state,
+    const GeneratedDpppPrimitiveGeometry& geometry) {{
+  const unsigned x_order = derivative_state & {state_mask}U;
+  const unsigned y_order =
+      (derivative_state >> {state_axis_bits}U) & {state_mask}U;
+  const unsigned z_order =
+      (derivative_state >> {2 * state_axis_bits}U) & {state_mask}U;
+  const unsigned total_order = x_order + y_order + z_order;
+  float value = 0.0F;
+  for (unsigned x_pairs = 0; x_pairs <= x_order / 2U; ++x_pairs) {{
+    for (unsigned y_pairs = 0; y_pairs <= y_order / 2U; ++y_pairs) {{
+      for (unsigned z_pairs = 0; z_pairs <= z_order / 2U; ++z_pairs) {{
+        const unsigned contraction_count = x_pairs + y_pairs + z_pairs;
+        const unsigned boys_order = total_order - contraction_count;
+        const unsigned multiplicity =
+            generated_dppp_wick_multiplicity(x_order, x_pairs) *
+            generated_dppp_wick_multiplicity(y_order, y_pairs) *
+            generated_dppp_wick_multiplicity(z_order, z_pairs);
+        value += static_cast<float>(multiplicity) *
+            static_cast<float>(
+                geometry.negative_two_rho_powers[boys_order]) *
+            static_cast<float>(geometry.coordinate_powers[0][
+                x_order - 2U * x_pairs]) *
+            static_cast<float>(geometry.coordinate_powers[1][
+                y_order - 2U * y_pairs]) *
+            static_cast<float>(geometry.coordinate_powers[2][
+                z_order - 2U * z_pairs]) *
+            static_cast<float>(geometry.boys[boys_order]);
+      }}
+    }}
+  }}
+  return value;
+}}
+
+template <bool SharedCoulomb>
+__device__ __forceinline__ float generated_dppp_mixed_component_coulomb(
+    const GeneratedDpppPrimitiveGeometry& geometry,
+    const float* values,
+    unsigned state) {{
+  if constexpr (SharedCoulomb) {{
+    return values[generated_dppp_state_index(state)];
+  }}
+  return generated_dppp_mixed_coulomb(state, geometry);
+}}
+
+"""
+    source = source.replace(
+        "generated_dppp_coulomb(\n", "generated_dppp_mixed_coulomb(\n"
+    )
+    return mixed_coulomb + source
 
 
 def _generic_task_component_setup(spec: ShellClassSpec) -> str:
@@ -5906,6 +6130,8 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
                 target=plan.kernel.target,
             )
         source += _emit_shell_class_fock_cuda(spec, fock_plan)
+        if spec.name in _MIXED_FOCK_SHELLS:
+            source += _emit_shell_class_mixed_fock_cuda(spec, fock_plan)
     pair_unroll = (
         "#pragma unroll" if plan.schedule.unroll_pair_terms else "#pragma unroll 1"
     )

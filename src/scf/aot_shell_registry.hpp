@@ -51,6 +51,9 @@ std::uint64_t enabled_shell_class_mask() noexcept;
 /** Return the enabled exact-class Fock mask for the selected profile. */
 std::uint64_t enabled_fock_shell_class_mask() noexcept;
 
+/** Return exact classes with a generated mixed-precision Fock worker. */
+std::uint64_t enabled_mixed_fock_shell_class_mask() noexcept;
+
 /** Launch one generated persistent force worker by exact shell-class index. */
 cudaError_t launch_shell_class(
     unsigned shell_class, cudaStream_t stream, bool unrestricted,
@@ -64,6 +67,17 @@ cudaError_t launch_shell_class(
 
 /** Launch one generated persistent Fock worker by exact shell-class index. */
 cudaError_t launch_shell_class_fock(
+    unsigned shell_class, cudaStream_t stream, bool unrestricted,
+    unsigned worker_blocks, const void* tasks,
+    const std::uint32_t* task_offset,
+    const std::int64_t* primitive_pair_offsets, const void* primitive_pairs,
+    const double* ao_coefficients, const void* atom_positions,
+    double screening_tolerance, const double* schwarz_bounds,
+    const double* density, double* fock, const std::uint32_t* task_count,
+    std::uint32_t* task_head) noexcept;
+
+/** Launch one generated mixed-precision Fock worker by exact class index. */
+cudaError_t launch_shell_class_mixed_fock(
     unsigned shell_class, cudaStream_t stream, bool unrestricted,
     unsigned worker_blocks, const void* tasks,
     const std::uint32_t* task_offset,
