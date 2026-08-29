@@ -65,12 +65,6 @@ from .ir import (
     TranslationInvariant,
     build_integral_ir,
 )
-from .low_order_force import (
-    PPSS_BLOCK_THREADS,
-    PSPS_BLOCK_THREADS,
-    emit_ppss_weighted_force_cuda,
-    emit_psps_weighted_force_cuda,
-)
 from .rys import (
     PppsRysForceProgram,
     RysAxisProgram,
@@ -145,9 +139,7 @@ __all__ = [
     "FOUR_CENTER_ERI_OPERATOR",
     "FUSED_SHELL_SPECS",
     "FUSED_SHELL_SPEC_BY_NAME",
-    "PPSS_BLOCK_THREADS",
     "PPSS_SPEC",
-    "PSPS_BLOCK_THREADS",
     "PSPS_SPEC",
     "PSSS_SPEC",
     "SSSS_SPEC",
@@ -216,8 +208,6 @@ __all__ = [
     "emit_ppps_1110_resident_bra_cuda",
     "emit_ppps_resident_bra_rys3_cuda",
     "emit_ppps_rys3_root_body_cuda",
-    "emit_ppss_weighted_force_cuda",
-    "emit_psps_weighted_force_cuda",
     "emit_rys2_roots_cuda",
     "emit_rys3_roots_cuda",
     "emit_rys4_roots_cuda",

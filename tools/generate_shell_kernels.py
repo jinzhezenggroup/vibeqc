@@ -9,12 +9,6 @@ from pathlib import Path
 from vibeqc_codegen.cuda_emitter import emit_shell_class_fused_cuda
 from vibeqc_codegen.fused_schedule import build_fused_shell_plan
 from vibeqc_codegen.ir import KernelConsumer
-from vibeqc_codegen.low_order_force import (
-    PPSS_BLOCK_THREADS,
-    PSPS_BLOCK_THREADS,
-    emit_ppss_weighted_force_cuda,
-    emit_psps_weighted_force_cuda,
-)
 from vibeqc_codegen.production import (
     write_production_bundle,
     write_production_bundles,
@@ -206,15 +200,6 @@ def main() -> None:
             output = emit_dppp_component_cuda(kernel)
         elif arguments.lowering == "factored":
             output = emit_dppp_contraction_cuda(kernel)
-        elif arguments.shell_class in ("ppss", "psps"):
-            if consumers != (KernelConsumer.FORCE,):
-                parser.error(
-                    f"the weighted {arguments.shell_class} emitter is force-only"
-                )
-            output = {
-                "ppss": emit_ppss_weighted_force_cuda,
-                "psps": emit_psps_weighted_force_cuda,
-            }[arguments.shell_class]()
         else:
             specification = FUSED_SPECS[arguments.shell_class]
             output = emit_shell_class_fused_cuda(
@@ -229,19 +214,8 @@ def main() -> None:
             plan = build_fused_shell_plan(
                 specification, consumers=consumers
             )
-            if arguments.shell_class in ("ppss", "psps"):
-                if consumers != (KernelConsumer.FORCE,):
-                    parser.error(
-                        f"the weighted {arguments.shell_class} emitter is force-only"
-                    )
-                block_threads, emitter = {
-                    "ppss": (PPSS_BLOCK_THREADS, emit_ppss_weighted_force_cuda),
-                    "psps": (PSPS_BLOCK_THREADS, emit_psps_weighted_force_cuda),
-                }[arguments.shell_class]
-                source = emitter()
-            else:
-                source = emit_shell_class_fused_cuda(specification, plan)
-                block_threads = plan.block_threads
+            source = emit_shell_class_fused_cuda(specification, plan)
+            block_threads = plan.block_threads
             output = json.dumps(
                 {
                     **component_metadata,

@@ -25,9 +25,7 @@ from tools.vibeqc_codegen import (
     FOUR_CENTER_ERI_OPERATOR,
     FUSED_SHELL_SPEC_BY_NAME,
     FUSED_SHELL_SPECS,
-    PPSS_BLOCK_THREADS,
     PPSS_SPEC,
-    PSPS_BLOCK_THREADS,
     PSPS_SPEC,
     PSSS_SPEC,
     SSSS_SPEC,
@@ -67,8 +65,6 @@ from tools.vibeqc_codegen import (
     dppp_components,
     emit_dppp_fused_cuda,
     emit_ppps_rys3_root_body_cuda,
-    emit_ppss_weighted_force_cuda,
-    emit_psps_weighted_force_cuda,
     emit_rys2_roots_cuda,
     emit_rys3_roots_cuda,
     emit_rys4_roots_cuda,
@@ -169,12 +165,12 @@ RTX5090_DDPS_RESOURCE_LIMITS = {
     "generated_ddps_shell_class_force_uhf_persistent_kernel": (160, 64, 1888),
 }
 RTX5090_PSPS_RESOURCE_LIMITS = {
-    "generated_psps_shell_class_force_rhf_persistent_kernel": (220, 0, 0),
-    "generated_psps_shell_class_force_uhf_persistent_kernel": (220, 0, 0),
+    "generated_psps_shell_class_force_rhf_persistent_kernel": (246, 0, 3408),
+    "generated_psps_shell_class_force_uhf_persistent_kernel": (246, 0, 3408),
 }
 RTX5090_PPSS_RESOURCE_LIMITS = {
-    "generated_ppss_shell_class_force_rhf_persistent_kernel": (234, 0, 0),
-    "generated_ppss_shell_class_force_uhf_persistent_kernel": (234, 0, 0),
+    "generated_ppss_shell_class_force_rhf_persistent_kernel": (246, 0, 3408),
+    "generated_ppss_shell_class_force_uhf_persistent_kernel": (246, 0, 3408),
 }
 RTX5090_PPPS_SCALAR_THREAD_RESOURCE_LIMITS = {
     "generated_ppps_shell_class_force_rhf_persistent_kernel": (168, 0, 27000),
@@ -1948,28 +1944,42 @@ def test_rys4_component_lanes_raise_a_second_center_d_shell():
     assert "generated_ddps_shell_class_force_rhf_kernel" in source
 
 
-def test_psps_weighted_cuda_uses_one_thread_per_complete_shell_task():
-    """Keep low-order work dense instead of assigning three lanes per block."""
+@pytest.mark.parametrize("name", ("psps", "ppss"))
+def test_low_order_production_force_is_generated_by_common_rys2_pipeline(name: str):
+    """Keep low-order production ownership in the shared IR and CUDA emitter."""
 
-    source = emit_psps_weighted_force_cuda()
-    assert PSPS_SPEC.angular == (1, 0, 1, 0)
-    assert PSPS_BLOCK_THREADS == 256
-    assert "kGeneratedPspsBlockThreads = 256U" in source
-    assert "atomicAdd(task_head, 32U)" in source
-    assert "*task_offset + task_index" in source
-    assert "double component_weight[9]" in source
-    assert "boys_values<3>" in source
-    assert "generated_psps_density_coefficient<Unrestricted>" in source
-    density_helper = source[
-        source.index("double generated_psps_density_coefficient(") : source.index(
-            "generated_psps_contract_weighted_coulomb"
+    selection = next(
+        item
+        for item in load_production_kernel_selections(
+            REPOSITORY_ROOT
+            / "tools"
+            / "vibeqc_codegen"
+            / "production_shell_classes.json",
+            "sm_120",
         )
-    ]
-    assert "orbit_scale" in density_helper
-    assert "for (unsigned permutation" not in density_helper
-    assert "generated_psps_shell_class_force_rhf_persistent_kernel" in source
-    assert "generated_psps_shell_class_force_uhf_persistent_kernel" in source
-    assert "__noinline__" not in source
+        if item.spec.name == name
+    )
+    plan = build_fused_shell_plan(
+        selection.spec,
+        consumers=selection.consumers,
+        schedule=selection.schedule,
+        recurrence=selection.recurrence,
+    )
+    source = emit_shell_class_fused_cuda(
+        selection.spec,
+        plan,
+        fock_schedule=selection.fock_schedule,
+    )
+    assert selection.recurrence == "rys2"
+    assert selection.schedule.kind == ScheduleKind.THREAD_TASKS
+    assert selection.schedule.block_threads == 32
+    assert f"generated_{name}_rys2_force_task" in source
+    assert f"generated_{name}_shell_class_force_rhf_persistent_kernel" in source
+    assert f"generated_{name}_shell_class_force_uhf_persistent_kernel" in source
+    assert f"generated_{name}_shell_class_fock_rhf_persistent_kernel" in source
+    assert "atomicAdd(task_head, 32U)" in source
+    assert "VIBEQC_LOW_ORDER_TASK_BEGIN" not in source
+    assert f"generated_{name}_contract_weighted_coulomb" not in source
     assert "Dual3" not in source
 
 
@@ -2004,22 +2014,6 @@ def test_packed_force_geometry_omits_component_coulomb_tables():
     )
     assert "GeneratedPspsPackedForceLaneStorage" in source
     assert "GeneratedPspsPackedFockLaneStorage" in source
-
-
-def test_ppss_weighted_cuda_reuses_the_low_order_worker_shape():
-    """Generate ppss without routing its nine AO components through lanes."""
-
-    source = emit_ppss_weighted_force_cuda()
-    assert PPSS_SPEC.angular == (1, 1, 0, 0)
-    assert PPSS_BLOCK_THREADS == 256
-    assert "kGeneratedPpssBlockThreads = 256U" in source
-    assert "atomicAdd(task_head, 32U)" in source
-    assert "*task_offset + task_index" in source
-    assert "double component_weight[9]" in source
-    assert "generated_ppss_shell_class_force_rhf_persistent_kernel" in source
-    assert "generated_ppss_shell_class_force_uhf_persistent_kernel" in source
-    assert "__noinline__" not in source
-    assert "Dual3" not in source
 
 
 @pytest.mark.parametrize(
@@ -2569,7 +2563,6 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs():
         "tools/vibeqc_codegen/expr.py",
         "tools/vibeqc_codegen/fused_schedule.py",
         "tools/vibeqc_codegen/ir.py",
-        "tools/vibeqc_codegen/low_order_force.py",
         "tools/vibeqc_codegen/production.py",
         "tools/vibeqc_codegen/rys.py",
         "tools/vibeqc_codegen/rys3_data.py",
@@ -2577,6 +2570,7 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs():
         "tools/vibeqc_codegen/shell_spec.py",
     ):
         assert dependency in source
+    assert "tools/vibeqc_codegen/low_order_force.py" not in source
 
 
 def test_batch_screening_ranks_real_profile_and_emits_one_process_driver():
@@ -4151,20 +4145,50 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_psps_weighted_cuda_compiles_with_zero_stack_when_nvcc_is_configured(
+@pytest.mark.parametrize(
+    ("name", "resource_limits"),
+    (
+        ("psps", RTX5090_PSPS_RESOURCE_LIMITS),
+        ("ppss", RTX5090_PPSS_RESOURCE_LIMITS),
+    ),
+)
+def test_low_order_production_rys2_cuda_compiles_when_nvcc_is_configured(
     tmp_path: Path,
+    name: str,
+    resource_limits: dict[str, tuple[int, int, int]],
 ):
-    """Keep the low-order AOT worker out of the giant-TU stack path."""
+    """Compile the common production Rys2 source and reject spills."""
 
     nvcc = os.environ.get("VIBEQC_NVCC")
     if nvcc is None:
         pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
     cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
-    source = tmp_path / "generated_psps_weighted.cu"
+    selection = next(
+        item
+        for item in load_production_kernel_selections(
+            REPOSITORY_ROOT
+            / "tools"
+            / "vibeqc_codegen"
+            / "production_shell_classes.json",
+            "sm_120",
+        )
+        if item.spec.name == name
+    )
+    plan = build_fused_shell_plan(
+        selection.spec,
+        consumers=selection.consumers,
+        schedule=selection.schedule,
+        recurrence=selection.recurrence,
+    )
+    source = tmp_path / f"generated_{name}_production_rys2.cu"
     source.write_text(
         _PRODUCTION_PRELUDE.replace('#include "scf/generated_shell_task.hpp"\n', "")
         + "#include <cstddef>\n#include <cstdint>\n"
-        + emit_psps_weighted_force_cuda(),
+        + emit_shell_class_fused_cuda(
+            selection.spec,
+            plan,
+            fock_schedule=selection.fock_schedule,
+        ),
         encoding="utf-8",
     )
     result = subprocess.run(
@@ -4176,7 +4200,7 @@ def test_psps_weighted_cuda_compiles_with_zero_stack_when_nvcc_is_configured(
             "-Xptxas=-v",
             str(source),
             "-o",
-            str(tmp_path / "generated_psps_weighted.cubin"),
+            str(tmp_path / f"generated_{name}_production_rys2.cubin"),
         ],
         check=False,
         capture_output=True,
@@ -4187,48 +4211,7 @@ def test_psps_weighted_cuda_compiles_with_zero_stack_when_nvcc_is_configured(
         print(result.stdout + result.stderr)
     assert result.returncode == 0, result.stdout + result.stderr
     if cuda_architecture == "sm_120":
-        assert_rtx5090_resources(
-            result.stdout + result.stderr, RTX5090_PSPS_RESOURCE_LIMITS
-        )
-
-
-def test_ppss_weighted_cuda_compiles_when_nvcc_is_configured(tmp_path: Path):
-    """Compile the ppss prototype and reject spills before benchmarking it."""
-
-    nvcc = os.environ.get("VIBEQC_NVCC")
-    if nvcc is None:
-        pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
-    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
-    source = tmp_path / "generated_ppss_weighted.cu"
-    source.write_text(
-        _PRODUCTION_PRELUDE.replace('#include "scf/generated_shell_task.hpp"\n', "")
-        + "#include <cstddef>\n#include <cstdint>\n"
-        + emit_ppss_weighted_force_cuda(),
-        encoding="utf-8",
-    )
-    result = subprocess.run(
-        [
-            nvcc,
-            "-std=c++17",
-            f"-arch={cuda_architecture}",
-            "-cubin",
-            "-Xptxas=-v",
-            str(source),
-            "-o",
-            str(tmp_path / "generated_ppss_weighted.cubin"),
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
-    if os.environ.get("VIBEQC_NVCC_VERBOSE"):
-        print(result.stdout + result.stderr)
-    assert result.returncode == 0, result.stdout + result.stderr
-    if cuda_architecture == "sm_120":
-        assert_rtx5090_resources(
-            result.stdout + result.stderr, RTX5090_PPSS_RESOURCE_LIMITS
-        )
+        assert_rtx5090_resources(result.stdout + result.stderr, resource_limits)
 
 
 @pytest.mark.parametrize("shared_coulomb", (True, False))

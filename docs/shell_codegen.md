@@ -72,10 +72,12 @@ and reconstruct the remaining center.
 
 Rys root eligibility in the mathematical IR is derived from the required
 value/derivative order rather than shell-name allowlists. Backend and production
-promotion constraints remain separate: generated candidates cover the canonical
-s/p/d/f catalog, but measured specialized fallbacks, including the current
-`psps` and `ppss` workers, remain until the common pipeline passes correctness,
-resource, and endpoint gates.
+promotion constraints remain separate. The `psps` and `ppss` production rows
+now lower through the common Rys2 thread-task compiler for force and the common
+packed-task compiler for Fock; the former embedded `low_order_force.py` CUDA
+source and its CLI/production compatibility branches have been removed. Other
+measured specialized fallbacks remain until their common candidates pass the
+same correctness, resource, and endpoint gates.
 
 The current CUDA backend still accepts only first nuclear derivatives of
 four-center ERIs and preserves the existing force-vector ABI. Higher derivative
