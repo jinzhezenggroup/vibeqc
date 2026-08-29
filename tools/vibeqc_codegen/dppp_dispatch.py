@@ -346,7 +346,7 @@ def _emit_rys_component_lane_fock_consumer_cuda(
     canonical Fock scatter conventions.
     """
 
-    program = build_rys_force_program(spec)
+    program = build_rys_force_program(spec, integral=plan.kernel.integral)
     recurrence = f"rys{program.nroots}"
     if plan.kernel.integral.recurrence != recurrence:
         raise ValueError(
@@ -2110,7 +2110,7 @@ def _emit_rys_thread_force_consumer_cuda(
     shell-specific straight-line component contraction.
     """
 
-    program = build_rys_force_program(spec)
+    program = build_rys_force_program(spec, integral=plan.kernel.integral)
     recurrence = f"rys{program.nroots}"
     if plan.kernel.integral.recurrence != recurrence or program.nroots not in (2, 3):
         raise ValueError(
@@ -2434,7 +2434,7 @@ def _emit_rys_component_lane_force_consumer_cuda(
     accumulators and three compact axis results.
     """
 
-    program = build_rys_force_program(spec)
+    program = build_rys_force_program(spec, integral=plan.kernel.integral)
     recurrence = f"rys{program.nroots}"
     if plan.kernel.integral.recurrence != recurrence:
         raise ValueError(
@@ -2995,7 +2995,7 @@ def _emit_rys_uniform_warp_force_consumer_cuda(
     separately and is deliberately unaffected by this force-only schedule.
     """
 
-    program = build_rys_force_program(spec)
+    program = build_rys_force_program(spec, integral=plan.kernel.integral)
     recurrence = f"rys{program.nroots}"
     if program.nroots not in (3, 4):
         raise ValueError("uniform-warp lowering requires three or four Rys roots")

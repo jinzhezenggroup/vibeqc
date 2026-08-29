@@ -24,18 +24,7 @@ from .cuda_target import (
 from .dppp_dispatch import emit_ppps_resident_bra_rys3_cuda
 from .fused_schedule import build_fused_shell_plan
 from .ir import KernelConsumer
-from .low_order_force import (
-    PPSS_BLOCK_THREADS,
-    PSPS_BLOCK_THREADS,
-    emit_ppss_weighted_force_cuda,
-    emit_psps_weighted_force_cuda,
-)
 from .shell_spec import FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec, shell_pair_class
-
-_THREAD_TASK_FORCE_EMITTERS = {
-    "ppss": (PPSS_BLOCK_THREADS, emit_ppss_weighted_force_cuda),
-    "psps": (PSPS_BLOCK_THREADS, emit_psps_weighted_force_cuda),
-}
 
 _SUPPORTED_RECURRENCES = frozenset(("subset_wick", "rys2", "rys3", "rys4"))
 _SCALAR_RYS2_SHELLS = frozenset(("psss", "psps", "ppss", "dsss"))
@@ -1551,20 +1540,6 @@ def _as_selection(item: ShellClassSpec | KernelSelection) -> KernelSelection:
 
     if isinstance(item, KernelSelection):
         return item
-    if item.name in _THREAD_TASK_FORCE_EMITTERS:
-        block_threads, _ = _THREAD_TASK_FORCE_EMITTERS[item.name]
-        return KernelSelection(
-            architecture="sm_120",
-            spec=item,
-            consumers=(KernelConsumer.FORCE,),
-            schedule=ScheduleIR(
-                kind=ScheduleKind.THREAD_TASKS,
-                block_threads=block_threads,
-                component_tile=item.component_count,
-                tasks_per_warp=32,
-                shared_coulomb=False,
-            ),
-        )
     plan = build_fused_shell_plan(item)
     return KernelSelection(
         architecture="sm_120",
@@ -1602,39 +1577,19 @@ def emit_production_shard(
     selections = tuple(map(_as_selection, specifications))
     body = [_PRODUCTION_PRELUDE]
     for selection in selections:
-        if (
-            selection.schedule.kind == ScheduleKind.THREAD_TASKS
-            and selection.recurrence not in ("rys2", "rys3")
-        ):
-            configuration = _THREAD_TASK_FORCE_EMITTERS.get(selection.spec.name)
-            if configuration is None:
-                raise ValueError(
-                    "thread-task production lowering has no shell-specific emitter"
-                )
-            if selection.consumers != (KernelConsumer.FORCE,):
-                raise ValueError(
-                    f"the weighted {selection.spec.name} emitter is force-only"
-                )
-            block_threads, emitter = configuration
-            if selection.schedule.block_threads != block_threads:
-                raise ValueError(
-                    f"weighted {selection.spec.name} requires its accepted block size"
-                )
-            body.append(emitter())
-        else:
-            plan = build_fused_shell_plan(
+        plan = build_fused_shell_plan(
+            selection.spec,
+            consumers=selection.consumers,
+            schedule=selection.schedule,
+            recurrence=selection.recurrence,
+        )
+        body.append(
+            emit_shell_class_fused_cuda(
                 selection.spec,
-                consumers=selection.consumers,
-                schedule=selection.schedule,
-                recurrence=selection.recurrence,
+                plan,
+                fock_schedule=selection.fock_schedule,
             )
-            body.append(
-                emit_shell_class_fused_cuda(
-                    selection.spec,
-                    plan,
-                    fock_schedule=selection.fock_schedule,
-                )
-            )
+        )
         body.append(_launch_wrapper(selection.spec))
         if KernelConsumer.FOCK in selection.consumers:
             body.append(_fock_launch_wrapper(selection.spec))
@@ -2033,38 +1988,18 @@ def emit_profile_shard(
     namespace = f"vibeqc::scf::generated::profile_{identifier}"
     body = [_PRODUCTION_PRELUDE, f"\nnamespace {namespace} {{\n"]
     for selection in items:
-        if (
-            selection.schedule.kind == ScheduleKind.THREAD_TASKS
-            and selection.recurrence not in ("rys2", "rys3")
-        ):
-            configuration = _THREAD_TASK_FORCE_EMITTERS.get(selection.spec.name)
-            if configuration is None:
-                raise ValueError(
-                    "thread-task production lowering has no shell-specific emitter"
-                )
-            if selection.consumers != (KernelConsumer.FORCE,):
-                raise ValueError(
-                    f"the weighted {selection.spec.name} emitter is force-only"
-                )
-            block_threads, emitter = configuration
-            if selection.schedule.block_threads != block_threads:
-                raise ValueError(
-                    f"weighted {selection.spec.name} requires its accepted block size"
-                )
-            source = emitter()
-        else:
-            plan = build_fused_shell_plan(
-                selection.spec,
-                consumers=selection.consumers,
-                schedule=selection.schedule,
-                recurrence=selection.recurrence,
-                target=profile.target,
-            )
-            source = emit_shell_class_fused_cuda(
-                selection.spec,
-                plan,
-                fock_schedule=selection.fock_schedule,
-            )
+        plan = build_fused_shell_plan(
+            selection.spec,
+            consumers=selection.consumers,
+            schedule=selection.schedule,
+            recurrence=selection.recurrence,
+            target=profile.target,
+        )
+        source = emit_shell_class_fused_cuda(
+            selection.spec,
+            plan,
+            fock_schedule=selection.fock_schedule,
+        )
         force_symbol = f"vibeqc_launch_{identifier}_generated_{selection.spec.name}"
         body.append(
             _scope_profile_identifiers(

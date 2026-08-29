@@ -22,6 +22,13 @@ from enum import Enum
 import numpy as np
 
 from .fused_schedule import FusedShellResult
+from .ir import (
+    DerivativeSpec,
+    IntegralIR,
+    KernelConsumer,
+    OperatorSpec,
+    build_integral_ir,
+)
 from .rys2_data import (
     RYS2_DEGREE,
     RYS2_INTERVALS,
@@ -111,10 +118,25 @@ class RysForceProgram:
     """Backend-independent Rys state program for one shell-class force."""
 
     spec: ShellClassSpec
+    operator: OperatorSpec
+    derivative: DerivativeSpec
     nroots: int
-    independent_force_centers: tuple[int, ...]
+    independent_derivative_centers: tuple[int, ...]
+    recovered_derivative_centers: tuple[int, ...]
     component_order: tuple[tuple[str, str, str, str], ...]
     axis_program: RysAxisProgram
+
+    @property
+    def independent_force_centers(self) -> tuple[int, ...]:
+        """Compatibility alias for the original force-specific program API."""
+
+        return self.independent_derivative_centers
+
+    @property
+    def recovered_force_centers(self) -> tuple[int, ...]:
+        """Compatibility alias for the original force-specific program API."""
+
+        return self.recovered_derivative_centers
 
 
 def _instruction_for_state(state: RysState) -> RysRecurrenceInstruction:
@@ -179,32 +201,45 @@ def _angular_counts(label: str) -> tuple[int, int, int]:
     return tuple(label.count(axis) for axis in AXES)
 
 
-def build_rys_force_program(spec: ShellClassSpec) -> RysForceProgram:
+def build_rys_force_program(
+    spec: ShellClassSpec,
+    *,
+    integral: IntegralIR | None = None,
+) -> RysForceProgram:
     """Build compact value/first-derivative states for any catalog shell class.
 
-    Only centers A/B/C are requested explicitly.  Center D is recovered from
-    translation invariance, matching the existing VibeQC force ABI and avoiding
-    the extra ket-HRR states used by GPU4PySCF's twelve-output implementation.
+    The independent and recovered centers come from the derivative and
+    invariant records in ``IntegralIR``. The default four-center ERI declares
+    translation invariance, so centers A/B/C are evaluated and center D is
+    recovered without embedding that choice in the recurrence builder.
     """
 
+    selected = integral or build_integral_ir(spec)
+    if selected.spec != spec:
+        raise ValueError("Rys program spec does not match its integral IR")
+    if KernelConsumer.FORCE not in selected.consumers or selected.derivative is None:
+        raise ValueError("a Rys force program requires a derivative contraction")
+    independent_centers = selected.independent_derivative_centers
     requested: list[RysState] = []
     for component in spec.components:
         quantums = tuple(_angular_counts(label) for label in component)
         for coordinate in range(3):
             base = RysState(*(item[coordinate] for item in quantums))
             requested.append(base)
-            for center in range(3):
+            for center in independent_centers:
                 values = [base.a, base.b, base.c, base.d]
                 values[center] += 1
                 requested.append(RysState(*values))
                 if values[center] > 1:
                     values[center] -= 2
                     requested.append(RysState(*values))
-    maximum_polynomial_order = sum(spec.angular) + 1
     return RysForceProgram(
         spec=spec,
-        nroots=maximum_polynomial_order // 2 + 1,
-        independent_force_centers=(0, 1, 2),
+        operator=selected.operator,
+        derivative=selected.derivative,
+        nroots=selected.required_rys_roots,
+        independent_derivative_centers=independent_centers,
+        recovered_derivative_centers=selected.recovered_derivative_centers,
         component_order=spec.components,
         axis_program=build_rys_axis_program(requested),
     )
@@ -703,7 +738,7 @@ def emit_rys_force_root_body_cuda(
                     tuple[str, RysState] | None,
                 ],
             ] = {}
-            for center in program.independent_force_centers:
+            for center in program.independent_derivative_centers:
                 for coordinate, axis in enumerate(AXES):
                     state = base_states[coordinate]
                     values = [state.a, state.b, state.c, state.d]
@@ -806,7 +841,7 @@ def emit_rys_force_root_body_cuda(
                 ]
             )
             products = ("product_yz", "product_xz", "product_xy")
-            for center in program.independent_force_centers:
+            for center in program.independent_derivative_centers:
                 for coordinate in range(3):
                     exponent, raised, angular, lowered = derivatives[
                         (center, coordinate)
@@ -934,7 +969,7 @@ def evaluate_rys_component(
             for state, axis in zip(base_states, AXES, strict=True)
         )
         value += weight * math.prod(base_values)
-        for center in program.independent_force_centers:
+        for center in program.independent_derivative_centers:
             for coordinate, axis in enumerate(AXES):
                 base = base_states[coordinate]
                 values = [base.a, base.b, base.c, base.d]

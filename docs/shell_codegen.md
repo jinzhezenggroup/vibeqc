@@ -61,19 +61,29 @@ axis tables widen automatically for these classes.
 
 ### Automation boundary
 
-High-performance first nuclear gradients are now generator-owned for the full
-canonical s/p/d/f catalog: shell algebra, Cartesian component decoding,
-translation recovery of center 3, RHF/UHF density contraction, CUDA scheduling,
-resource inspection, and production source generation do not require a new
-handwritten kernel per class. Promotion is still measured rather than assumed;
-the handwritten fallback remains when a generated candidate loses end to end.
+The mathematical IR now represents four-center ERI operators, nuclear-coordinate
+derivatives, exact translation invariants, and consumer-directed RHF/UHF
+contractions separately. `KernelConsumer.FORCE` remains a compatibility input
+at generator and manifest boundaries; it is normalized to an order-one
+`DerivativeSpec` plus a `direct_force -> atomic_force` `ContractionSpec` before
+backend lowering. The logical request contains all four derivative centers,
+while the operator-declared translation invariant lets lowering evaluate three
+and reconstruct the remaining center.
 
-This is not yet a general Hessian or arbitrary derivative-order compiler.
-`KernelConsumer.FORCE` currently means one nuclear derivative, the output ABI
-is a force vector, and the oracle exploits first-derivative translation
-invariance. Second and higher nuclear derivatives would require an explicit
-derivative-order IR, tensor symmetry/layout, higher-order translation rules,
-new correctness oracles, and separate resource/timing gates.
+Rys root eligibility in the mathematical IR is derived from the required
+value/derivative order rather than shell-name allowlists. Backend and production
+promotion constraints remain separate. The `psps` and `ppss` production rows
+now lower through the common Rys2 thread-task compiler for force and the common
+packed-task compiler for Fock; the former embedded `low_order_force.py` CUDA
+source and its CLI/production compatibility branches have been removed. Other
+measured specialized fallbacks remain until their common candidates pass the
+same correctness, resource, and endpoint gates.
+
+The current CUDA backend still accepts only first nuclear derivatives of
+four-center ERIs and preserves the existing force-vector ABI. Higher derivative
+orders, one-electron operator lowering, and density-fitting operators need their
+own tensor layout, invariant application, correctness oracles, and resource and
+timing gates, but no longer require another redesign of derivative intent.
 
 ## Correctness model
 
