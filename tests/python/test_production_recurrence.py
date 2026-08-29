@@ -306,7 +306,16 @@ def test_existing_production_rows_default_to_subset_wick():
     )
     assert all(
         recurrences[name] == "rys3"
-        for name in ("ppps", "dpps", "dpss", "dsps", "dspp", "pppp")
+        for name in (
+            "ppps",
+            "dpps",
+            "dpss",
+            "dsps",
+            "dspp",
+            "dsds",
+            "ddss",
+            "pppp",
+        )
     )
     assert all(recurrences[name] == "rys2" for name in ("psps", "ppss", "dsss"))
     assert all(
@@ -325,6 +334,8 @@ def test_existing_production_rows_default_to_subset_wick():
             "dpss",
             "dsps",
             "dspp",
+            "dsds",
+            "ddss",
             "pppp",
             "psps",
             "ppss",

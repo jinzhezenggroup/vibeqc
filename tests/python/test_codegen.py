@@ -779,7 +779,9 @@ def test_cooperative_rys4_recurrence_matches_every_symbolic_component(
                 )
 
 
-@pytest.mark.parametrize("name", ("dpps", "dpss", "dsps", "dspp", "pppp"))
+@pytest.mark.parametrize(
+    "name", ("dpps", "dpss", "dsps", "dspp", "dsds", "ddss", "pppp")
+)
 def test_cooperative_rys3_recurrence_matches_every_symbolic_component(
     name: str,
 ):
@@ -915,6 +917,8 @@ def test_rys3_uniform_warps_split_components_without_scalar_spills(
     (
         ("dpps", 64, "volatile double trr[5][3]"),
         ("dsps", 32, "volatile double trr[4][3]"),
+        ("dsds", 64, "volatile double trr[4][4]"),
+        ("ddss", 64, "volatile double trr[6][2]"),
         ("pppp", 96, "volatile double trr[4][4]"),
     ),
 )
