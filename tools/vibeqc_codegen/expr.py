@@ -13,7 +13,11 @@ from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
+from fractions import Fraction
 from functools import cache
+
+Coefficient = Fraction | float
+Scalar = int | float | Fraction
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,7 +26,7 @@ class Node:
 
     operation: str
     arguments: tuple[int, ...] = ()
-    payload: str | float | None = None
+    payload: str | Coefficient | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -286,36 +290,36 @@ class Expr:
         self.graph = graph
         self.identifier = identifier
 
-    def __add__(self, other: Expr | float) -> Expr:
+    def __add__(self, other: Expr | Scalar) -> Expr:
         return self.graph.add(self, self.graph.coerce(other))
 
-    def __radd__(self, other: Expr | float) -> Expr:
+    def __radd__(self, other: Expr | Scalar) -> Expr:
         return self.graph.add(self.graph.coerce(other), self)
 
-    def __sub__(self, other: Expr | float) -> Expr:
+    def __sub__(self, other: Expr | Scalar) -> Expr:
         return self.graph.add(self, -self.graph.coerce(other))
 
-    def __rsub__(self, other: Expr | float) -> Expr:
+    def __rsub__(self, other: Expr | Scalar) -> Expr:
         return self.graph.add(self.graph.coerce(other), -self)
 
-    def __mul__(self, other: Expr | float) -> Expr:
+    def __mul__(self, other: Expr | Scalar) -> Expr:
         return self.graph.multiply(self, self.graph.coerce(other))
 
-    def __rmul__(self, other: Expr | float) -> Expr:
+    def __rmul__(self, other: Expr | Scalar) -> Expr:
         return self.graph.multiply(self.graph.coerce(other), self)
 
-    def __truediv__(self, other: Expr | float) -> Expr:
+    def __truediv__(self, other: Expr | Scalar) -> Expr:
         return self.graph.multiply(
             self, self.graph.reciprocal(self.graph.coerce(other))
         )
 
-    def __rtruediv__(self, other: Expr | float) -> Expr:
+    def __rtruediv__(self, other: Expr | Scalar) -> Expr:
         return self.graph.multiply(
             self.graph.coerce(other), self.graph.reciprocal(self)
         )
 
     def __neg__(self) -> Expr:
-        return self.graph.multiply(self.graph.constant(-1.0), self)
+        return self.graph.multiply(self.graph.constant(-1), self)
 
     def pow(self, exponent: float) -> Expr:
         """Raise this expression to one compile-time scalar exponent."""
@@ -329,7 +333,7 @@ class Graph:
     def __init__(self) -> None:
         self.nodes: list[Node] = []
         self._identifiers: dict[Node, int] = {}
-        self._constants: dict[float, Expr] = {}
+        self._constants: dict[Coefficient, Expr] = {}
         self._variables: dict[str, Expr] = {}
 
     def _intern(self, node: Node) -> Expr:
@@ -344,13 +348,43 @@ class Graph:
         self._require_graph(expression)
         return self.nodes[expression.identifier]
 
-    def constant(self, value: float) -> Expr:
-        value = float(value)
+    @staticmethod
+    @cache
+    def _exact_coefficient(value: Scalar) -> Coefficient:
+        """Return an exact rational for every finite source-level scalar."""
+
+        if isinstance(value, Fraction):
+            return value
+        if isinstance(value, int):
+            return Fraction(value)
+        numeric = float(value)
+        if not math.isfinite(numeric):
+            return numeric
+        if numeric.is_integer():
+            return Fraction(int(numeric))
+        return Fraction(str(numeric))
+
+    def _intern_constant(self, value: Coefficient) -> Expr:
         expression = self._constants.get(value)
         if expression is None:
             expression = self._intern(Node("constant", payload=value))
             self._constants[value] = expression
         return expression
+
+    def constant(self, value: Scalar) -> Expr:
+        """Intern one exact integer/decimal/rational algebra coefficient."""
+
+        return self._intern_constant(self._exact_coefficient(value))
+
+    def approximate_constant(self, value: float) -> Expr:
+        """Intern a float already rounded by non-rational constant folding."""
+
+        return self._intern_constant(float(value))
+
+    def clone_constant(self, node: Node) -> Expr:
+        """Copy one constant payload without reclassifying its exactness."""
+
+        return self._intern_constant(self._constant_value(node))
 
     def variable(self, name: str) -> Expr:
         expression = self._variables.get(name)
@@ -359,7 +393,7 @@ class Graph:
             self._variables[name] = expression
         return expression
 
-    def coerce(self, value: Expr | float) -> Expr:
+    def coerce(self, value: Expr | Scalar) -> Expr:
         if isinstance(value, Expr):
             self._require_graph(value)
             return value
@@ -374,7 +408,9 @@ class Graph:
         left_node = self.node(left)
         right_node = self.node(right)
         if left_node.operation == "constant" and right_node.operation == "constant":
-            return self.constant(float(left_node.payload) + float(right_node.payload))
+            return self._intern_constant(
+                self._constant_value(left_node) + self._constant_value(right_node)
+            )
         arguments = tuple(sorted((left.identifier, right.identifier)))
         return self._intern(Node("add", arguments))
 
@@ -382,7 +418,7 @@ class Graph:
         """Build one flattened, constant-folded, deterministically sorted sum."""
 
         operands: list[Expr] = []
-        constant = 0.0
+        constant: Coefficient = Fraction(0)
         pending = list(values)
         while pending:
             value = pending.pop()
@@ -391,13 +427,13 @@ class Graph:
             if node.operation == "add":
                 pending.extend(Expr(self, item) for item in node.arguments)
             elif node.operation == "constant":
-                constant += float(node.payload)
+                constant += self._constant_value(node)
             else:
                 operands.append(value)
-        if constant != 0.0:
-            operands.append(self.constant(constant))
+        if constant != 0:
+            operands.append(self._intern_constant(constant))
         if not operands:
-            return self.constant(0.0)
+            return self.constant(0)
         if len(operands) == 1:
             return operands[0]
         return self._intern(
@@ -407,7 +443,7 @@ class Graph:
     def multiply(self, left: Expr, right: Expr) -> Expr:
         self._require_graph(left, right)
         if self.is_constant(left, 0.0) or self.is_constant(right, 0.0):
-            return self.constant(0.0)
+            return self.constant(0)
         if self.is_constant(left, 1.0):
             return right
         if self.is_constant(right, 1.0):
@@ -415,7 +451,9 @@ class Graph:
         left_node = self.node(left)
         right_node = self.node(right)
         if left_node.operation == "constant" and right_node.operation == "constant":
-            return self.constant(float(left_node.payload) * float(right_node.payload))
+            return self._intern_constant(
+                self._constant_value(left_node) * self._constant_value(right_node)
+            )
         arguments = tuple(sorted((left.identifier, right.identifier)))
         return self._intern(Node("multiply", arguments))
 
@@ -423,7 +461,7 @@ class Graph:
         """Build one flattened, constant-folded, deterministically sorted product."""
 
         operands: list[Expr] = []
-        constant = 1.0
+        constant: Coefficient = Fraction(1)
         pending = list(values)
         while pending:
             value = pending.pop()
@@ -432,16 +470,16 @@ class Graph:
             if node.operation == "multiply":
                 pending.extend(Expr(self, item) for item in node.arguments)
             elif node.operation == "constant":
-                factor = float(node.payload)
-                if factor == 0.0:
-                    return self.constant(0.0)
+                factor = self._constant_value(node)
+                if factor == 0:
+                    return self.constant(0)
                 constant *= factor
             else:
                 operands.append(value)
-        if constant != 1.0:
-            operands.append(self.constant(constant))
+        if constant != 1:
+            operands.append(self._intern_constant(constant))
         if not operands:
-            return self.constant(1.0)
+            return self.constant(1)
         if len(operands) == 1:
             return operands[0]
         return self._intern(
@@ -486,7 +524,7 @@ class Graph:
             term = terms[index]
             term_node = self.node(term)
             if term_node.operation != "multiply":
-                remainders.append(self.constant(1.0))
+                remainders.append(self.constant(1))
                 continue
             remaining = list(term_node.arguments)
             remaining.remove(factor)
@@ -540,16 +578,25 @@ class Graph:
         @cache
         def structural_key(
             identifier: int,
-        ) -> tuple[str, str, tuple[object, ...]]:
+        ) -> tuple[str, tuple[str, str], tuple[object, ...]]:
             """Order equal algebra independently of binary parenthesization."""
 
             node = self.nodes[identifier]
             if node.payload is None:
-                payload = ""
+                payload = ("", "")
+            elif isinstance(node.payload, Fraction):
+                # Preserve the historical final-double ordering so exact
+                # coefficients do not perturb greedy factor tie-breaks. The
+                # rational suffix only resolves distinct exact values that
+                # lower to the same double.
+                payload = (
+                    float(node.payload).hex(),
+                    f"{node.payload.numerator}/{node.payload.denominator}",
+                )
             elif isinstance(node.payload, float):
-                payload = node.payload.hex()
+                payload = (node.payload.hex(), "")
             else:
-                payload = str(node.payload)
+                payload = (str(node.payload), "")
             if node.operation in ("add", "multiply"):
                 arguments = associative_arguments(identifier, node.operation)
                 child_keys = tuple(
@@ -567,7 +614,7 @@ class Graph:
                 return cached
             node = self.nodes[identifier]
             if node.operation == "constant":
-                result = target.constant(float(node.payload))
+                result = target.clone_constant(node)
             elif node.operation == "variable":
                 result = target.variable(str(node.payload))
             elif node.operation == "add":
@@ -625,39 +672,44 @@ class Graph:
         self._require_graph(value)
         node = self.node(value)
         if node.operation == "constant":
-            return self.constant(1.0 / float(node.payload))
+            return self._intern_constant(1 / self._constant_value(node))
         return self._intern(Node("reciprocal", (value.identifier,)))
 
     def exponential(self, value: Expr) -> Expr:
         self._require_graph(value)
         node = self.node(value)
         if node.operation == "constant":
-            return self.constant(math.exp(float(node.payload)))
+            return self.approximate_constant(
+                math.exp(float(self._constant_value(node)))
+            )
         return self._intern(Node("exp", (value.identifier,)))
 
     def power(self, value: Expr, exponent: float) -> Expr:
         self._require_graph(value)
         exponent = float(exponent)
         if exponent == 0.0:
-            return self.constant(1.0)
+            return self.constant(1)
         if exponent == 1.0:
             return value
         node = self.node(value)
         if node.operation == "constant":
-            return self.constant(float(node.payload) ** exponent)
+            constant = self._constant_value(node)
+            if isinstance(constant, Fraction) and exponent.is_integer():
+                return self._intern_constant(constant ** int(exponent))
+            return self.approximate_constant(float(constant) ** exponent)
         return self._intern(Node("power", (value.identifier,), exponent))
 
     def sum(self, values: Iterable[Expr]) -> Expr:
-        result = self.constant(0.0)
+        result = self.constant(0)
         for value in values:
             result = result + value
         return result
 
-    def is_constant(self, expression: Expr, value: float | None = None) -> bool:
+    def is_constant(self, expression: Expr, value: Scalar | None = None) -> bool:
         node = self.node(expression)
         if node.operation != "constant":
             return False
-        return value is None or float(node.payload) == value
+        return value is None or float(self._constant_value(node)) == float(value)
 
     def differentiate(
         self,
@@ -687,12 +739,12 @@ class Graph:
             node = self.nodes[identifier]
             current = Expr(self, identifier)
             if node.operation == "constant":
-                derivative = self.constant(0.0)
+                derivative = self.constant(0)
             elif node.operation == "variable":
                 name = str(node.payload)
                 derivative = custom.get(
                     name,
-                    self.constant(1.0 if identifier == variable.identifier else 0.0),
+                    self.constant(1 if identifier == variable.identifier else 0),
                 )
             elif node.operation == "add":
                 if len(node.arguments) == 2:
@@ -1254,7 +1306,7 @@ class Graph:
         for identifier in self.topological_order([expression]):
             node = self.nodes[identifier]
             if node.operation == "constant":
-                result = float(node.payload)
+                result = float(self._constant_value(node))
             elif node.operation == "variable":
                 result = float(variables[str(node.payload)])
             elif node.operation == "add":
@@ -1278,6 +1330,17 @@ class Graph:
             operation = self.nodes[identifier].operation
             counts[operation] = counts.get(operation, 0) + 1
         return counts
+
+    @staticmethod
+    def _constant_value(node: Node) -> Coefficient:
+        """Return the typed payload of one validated constant node."""
+
+        if node.operation != "constant" or not isinstance(
+            node.payload,
+            (Fraction, float),
+        ):
+            raise TypeError("constant node has an invalid coefficient payload")
+        return node.payload
 
     def _require_graph(self, *expressions: Expr) -> None:
         if any(expression.graph is not self for expression in expressions):
