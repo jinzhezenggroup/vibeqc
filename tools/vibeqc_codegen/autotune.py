@@ -51,7 +51,7 @@ from .cuda_target import (
 )
 from .expr import Expr, PowerLowering
 from .fused_schedule import build_fused_shell_plan
-from .ir import KernelConsumer, build_integral_ir
+from .ir import IntegralIR, KernelConsumer, build_integral_ir
 from .shell_class import (
     ShellClassContractionKernel,
     WeightedShellContractionKernel,
@@ -251,16 +251,30 @@ def _balanced_component_labels(spec: ShellClassSpec) -> tuple[tuple[str, ...], .
 def _analysis_roots(
     kernel: ShellClassContractionKernel | WeightedShellContractionKernel,
     consumer: KernelConsumer,
+    *,
+    integral: IntegralIR | None = None,
 ) -> tuple[Expr, ...]:
-    """Select value or independent-force roots from a symbolic kernel."""
+    """Select value or declared independent-force roots from a symbolic kernel.
+
+    The symbolic shell kernel retains all four center gradients so it can be
+    used as a correctness oracle.  Static force models, however, should count
+    only the centers that the owning mathematical IR evaluates; recovered
+    centers are reconstructed by the consumer and must not inflate the model.
+    """
 
     if consumer == KernelConsumer.FOCK:
         if not isinstance(kernel, ShellClassContractionKernel):
             raise TypeError("Fock algebra analysis requires a component kernel")
         return (kernel.variables["prefactor"] * kernel.value,)
+    selected = integral or build_integral_ir(
+        kernel.spec,
+        consumers=(consumer,),
+    )
+    if selected.spec != kernel.spec:
+        raise ValueError("analysis integral spec does not match its symbolic kernel")
     return tuple(
         kernel.gradients[center][coordinate]
-        for center in range(3)
+        for center in selected.independent_derivative_centers
         for coordinate in range(3)
     )
 
@@ -302,10 +316,12 @@ def _cached_static_algebra_model(
 ) -> StaticAlgebraModel:
     """Build one immutable model shared by same-class schedule variants."""
 
+    integral = build_integral_ir(spec, consumers=(consumer,))
+
     if weighted_shell:
         kernel = build_weighted_shell_contraction_kernel(spec)
         graph, roots = kernel.graph.apply_algebra_form(
-            _analysis_roots(kernel, consumer),
+            _analysis_roots(kernel, consumer, integral=integral),
             algebra_form,
         )
         analysis_pairs = [
@@ -340,7 +356,9 @@ def _cached_static_algebra_model(
             for component_kernel in (
                 build_shell_class_contraction_kernel(spec, component),
             )
-            for binary_roots in (_analysis_roots(component_kernel, consumer),)
+            for binary_roots in (
+                _analysis_roots(component_kernel, consumer, integral=integral),
+            )
             for graph, roots in (
                 component_kernel.graph.apply_algebra_form(
                     binary_roots,
