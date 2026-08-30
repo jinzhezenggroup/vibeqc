@@ -856,6 +856,36 @@ def test_ppps_scalar_thread_schedule_emits_component_scoped_dag():
     assert source.count("force_0 += primitive_scale") == 27
 
 
+@pytest.mark.parametrize("name", ("fsss", "fsps"))
+def test_scalar_thread_force_lowering_is_structural_for_f_shells(name: str):
+    """Generate scalar subset/Wick force code without a shell-name allowlist.
+
+    These classes intentionally are not production promotions.  Emitting them
+    here proves that the compiler-owned fallback can cover a new f-shell
+    derivative class from its component metadata and derivative IR alone.
+    """
+
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
+    schedule = ScheduleIR(
+        kind=ScheduleKind.THREAD_TASKS,
+        block_threads=32,
+        component_tile=spec.component_count,
+        tasks_per_warp=32,
+        shared_coulomb=False,
+        minimum_blocks_per_sm=1,
+    )
+    source = emit_shell_class_fused_cuda(
+        spec,
+        build_fused_shell_plan(spec, schedule=schedule, recurrence="subset_wick"),
+    )
+
+    class_name = name[0].upper() + name[1:]
+    assert f"generated_{name}_scalar_thread_force_task" in source
+    assert f"generated_{name}_scalar_thread_accumulate_components_" in source
+    assert f"Generated{class_name}ScalarThreadStorage" in source
+    assert "scalar thread-task force lowering is currently specialized" not in source
+
+
 def test_ppps_scalar_thread_lowering_uses_explicit_derivative_center_slots():
     """Route scalar-thread force atomics through non-final IR recovery."""
 

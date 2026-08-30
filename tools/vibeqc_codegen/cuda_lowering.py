@@ -1874,20 +1874,16 @@ def _emit_scalar_thread_force_consumer_cuda(
     """Emit a spill-resistant one-complete-task-per-thread force worker.
 
     The generic packed prototype passes component and gradient arrays through
-    one noinline shell-wide function.  For ``ppps`` that shape gives NVCC an
-    addressable 27-double weight table and keeps cross-coordinate CSE values
-    live until all nine independent force roots are consumed.  This lowering
-    instead names every long-lived value explicitly and emits one coordinate
-    scope at a time.  Geometry still resides in lane-private shared storage so
-    the thread does not materialize the large primitive structure on its stack.
+    one noinline shell-wide function.  A scalar task owns one complete shell
+    quartet, so this lowering instead names every long-lived value explicitly
+    and emits one coordinate scope at a time.  Geometry still resides in
+    lane-private shared storage so the thread does not materialize the large
+    primitive structure on its stack.  The component and derivative extents
+    come from ``spec`` and ``IntegralIR``; no shell-name dispatch is required.
     """
 
-    if spec.name != "ppps":
-        raise ValueError(
-            "scalar thread-task force lowering is currently specialized for ppps"
-        )
     if plan.schedule.block_threads != 32:
-        raise ValueError("scalar ppps thread tasks currently use one CUDA warp")
+        raise ValueError("scalar thread tasks currently use one CUDA warp")
 
     selected_integral = _packed_force_integral(spec, plan.kernel.integral)
     independent_centers = selected_integral.independent_derivative_centers
