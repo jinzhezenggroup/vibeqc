@@ -13,8 +13,8 @@ from dataclasses import dataclass
 
 from .cuda import CudaEmitter
 from .expr import Expr, Graph
-from .ir import IntegralIR, build_integral_ir
-from .shell_spec import AXES, DPPP_SPEC, ShellClassSpec
+from .ir import IntegralIR, KernelConsumer, build_integral_ir
+from .shell_spec import AXES, DPPP_SPEC, PSSS_SPEC, ShellClassSpec
 
 CENTERS = ("first", "second", "third", "fourth")
 # Compatibility alias for the component-level dppp inspection CLI.  The
@@ -464,11 +464,32 @@ def _shell_component_value(
     return graph.sum(terms)
 
 
-def build_psss_kernel(p_axis: str) -> PsssKernel:
-    """Build the canonical primitive value and symbolic nuclear derivatives."""
+def build_psss_kernel(
+    p_axis: str,
+    *,
+    integral: IntegralIR | None = None,
+) -> PsssKernel:
+    """Build the canonical primitive value and symbolic nuclear derivatives.
+
+    ``integral`` carries the same derivative-center and translation-recovery
+    semantics used by generated shell lowering.  The default remains the
+    historical four-center ERI force request (centers 0, 1, and 2 explicit;
+    center 3 recovered), while an explicit IR lets this independent oracle
+    exercise non-final recovery without embedding another center convention.
+    """
 
     if p_axis not in AXES:
         raise ValueError(f"unsupported p axis {p_axis!r}")
+    selected_integral = integral or build_integral_ir(
+        PSSS_SPEC,
+        consumers=(KernelConsumer.FORCE,),
+    )
+    if selected_integral.spec != PSSS_SPEC:
+        raise ValueError("psss kernel spec does not match its integral IR")
+    if KernelConsumer.FORCE not in selected_integral.consumers:
+        raise ValueError("psss kernel requires a direct-force integral")
+    if selected_integral.derivative is None:
+        raise ValueError("psss kernel requires derivative metadata")
     graph = Graph()
     alpha = graph.variable("alpha")
     beta = graph.variable("beta")
@@ -536,8 +557,9 @@ def build_psss_kernel(p_axis: str) -> PsssKernel:
     )
     value = normalization * pair_decay * primitive_value
 
-    independent_gradients: list[tuple[Expr, Expr, Expr]] = []
-    for center in CENTERS[:3]:
+    independent_gradients: dict[int, tuple[Expr, Expr, Expr]] = {}
+    for center_index in selected_integral.independent_derivative_centers:
+        center = CENTERS[center_index]
         center_gradients: list[Expr] = []
         for axis in AXES:
             variable = coordinates[center][axis]
@@ -549,12 +571,26 @@ def build_psss_kernel(p_axis: str) -> PsssKernel:
             center_gradients.append(
                 graph.differentiate(value, variable, leaf_derivatives)
             )
-        independent_gradients.append(tuple(center_gradients))
-    fourth_gradient = tuple(
-        -graph.sum(independent_gradients[center][axis] for center in range(3))
-        for axis in range(3)
+        independent_gradients[center_index] = tuple(center_gradients)
+    gradients_by_center = dict(independent_gradients)
+    for center in selected_integral.recovered_derivative_centers:
+        gradients_by_center[center] = tuple(
+            -graph.sum(
+                independent_gradients[independent][axis]
+                for independent in selected_integral.independent_derivative_centers
+            )
+            for axis in range(3)
+        )
+    requested_centers = set(selected_integral.requested_derivative_centers)
+    gradients = tuple(
+        gradients_by_center.get(
+            center,
+            tuple(graph.constant(0.0) for _ in AXES),
+        )
+        if center in requested_centers
+        else tuple(graph.constant(0.0) for _ in AXES)
+        for center in range(len(CENTERS))
     )
-    gradients = tuple(independent_gradients) + (fourth_gradient,)
     return PsssKernel(
         graph=graph,
         p_axis=p_axis,
