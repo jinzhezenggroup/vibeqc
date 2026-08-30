@@ -49,6 +49,7 @@ class ContractionOutput(str, Enum):
 
     FOCK_MATRIX = "fock_matrix"
     ATOMIC_FORCE = "atomic_force"
+    NUCLEAR_DERIVATIVE = "nuclear_derivative"
 
 
 @dataclass(frozen=True, slots=True)
@@ -212,13 +213,20 @@ class ContractionSpec:
         object.__setattr__(self, "output", output)
         if not density:
             raise ValueError("a contraction requires at least one density model")
-        expected = {
-            ContractionConsumer.DIRECT_FOCK: ContractionOutput.FOCK_MATRIX,
-            ContractionConsumer.DIRECT_FORCE: ContractionOutput.ATOMIC_FORCE,
-        }[consumer]
-        if output != expected:
+        if consumer == ContractionConsumer.DIRECT_FOCK:
+            valid_outputs = (ContractionOutput.FOCK_MATRIX,)
+        else:
+            # The derivative order is carried by ``DerivativeSpec`` on the
+            # surrounding IntegralIR, so the contraction only declares the
+            # tensor family here. IntegralIR performs the order-aware check.
+            valid_outputs = (
+                ContractionOutput.ATOMIC_FORCE,
+                ContractionOutput.NUCLEAR_DERIVATIVE,
+            )
+        if output not in valid_outputs:
             raise ValueError(
-                f"{consumer.value} contraction requires {expected.value} output"
+                f"{consumer.value} contraction requires one of "
+                f"{', '.join(item.value for item in valid_outputs)} outputs"
             )
 
     @property
@@ -255,9 +263,10 @@ _CONTRACTION_BY_CONSUMER = {
 class IntegralIR:
     """Mathematical definition shared by Fock and force contractions.
 
-    The current CUDA backend lowers four-center ERIs and first nuclear
-    derivatives. Those limitations are validated here without encoding CUDA
-    work mapping or treating FORCE as an implicit derivative specification.
+    The mathematical IR carries explicit nuclear derivative orders. The CUDA
+    backend currently lowers only first derivatives; that backend limitation is
+    validated at the CUDA kernel boundary without discarding higher-order
+    intent or treating FORCE as an implicit derivative specification.
     """
 
     spec: ShellClassSpec
@@ -293,10 +302,6 @@ class IntegralIR:
         if force_requested:
             if self.derivative is None:
                 raise ValueError("direct-force contraction requires a derivative spec")
-            if self.derivative.order != 1:
-                raise ValueError(
-                    "current direct-force lowering requires order-one derivatives"
-                )
             requested = self.derivative.requested_centers(self.operator)
             if requested != self.operator.centers:
                 raise ValueError(
@@ -307,6 +312,20 @@ class IntegralIR:
                     "derivative recovery invariants must be declared by the operator"
                 )
             self.derivative.recovered_centers(self.operator)
+            expected_output = (
+                ContractionOutput.ATOMIC_FORCE
+                if self.derivative.order == 1
+                else ContractionOutput.NUCLEAR_DERIVATIVE
+            )
+            for contraction in self.contractions:
+                if (
+                    contraction.kernel_consumer == KernelConsumer.FORCE
+                    and contraction.output != expected_output
+                ):
+                    raise ValueError(
+                        f"derivative order {self.derivative.order} requires "
+                        f"{expected_output.value} output"
+                    )
         elif self.derivative is not None:
             raise ValueError("a derivative spec requires a derivative contraction")
 
@@ -400,6 +419,17 @@ def build_integral_ir(
         explicit = frozenset(item.kernel_consumer for item in contractions)
         if normalized != explicit:
             raise ValueError("consumer and contraction specifications disagree")
+    force_requested = any(
+        item.kernel_consumer == KernelConsumer.FORCE
+        for item in contractions
+    ) if contractions is not None else any(
+        KernelConsumer(item) == KernelConsumer.FORCE
+        for item in ((KernelConsumer.FORCE,) if consumers is None else consumers)
+    )
+    selected_derivative = derivative
+    if force_requested and selected_derivative is None:
+        selected_derivative = operator.nuclear_derivative()
+
     if contractions is None:
         requested_consumers = (
             (KernelConsumer.FORCE,) if consumers is None else consumers
@@ -408,15 +438,22 @@ def build_integral_ir(
             KernelConsumer(item) for item in requested_consumers
         )
         contractions = tuple(
-            _CONTRACTION_BY_CONSUMER[consumer] for consumer in normalized_consumers
+            (
+                ContractionSpec(
+                    consumer=ContractionConsumer.DIRECT_FORCE,
+                    density=_DENSITY_MODELS,
+                    output=(
+                        ContractionOutput.ATOMIC_FORCE
+                        if selected_derivative is None
+                        or selected_derivative.order == 1
+                        else ContractionOutput.NUCLEAR_DERIVATIVE
+                    ),
+                )
+                if item == KernelConsumer.FORCE
+                else _CONTRACTION_BY_CONSUMER[item]
+            )
+            for item in normalized_consumers
         )
-
-    force_requested = any(
-        item.kernel_consumer == KernelConsumer.FORCE for item in contractions
-    )
-    selected_derivative = derivative
-    if force_requested and selected_derivative is None:
-        selected_derivative = operator.nuclear_derivative()
 
     return IntegralIR(
         spec=spec,
