@@ -85,6 +85,13 @@ adapter for the original DPPP specialization and resident-PPPS APIs, so adding
 or tuning a generic shell no longer introduces a dependency on a historical
 shell-class module.
 
+Scalar thread-task force lowering follows the same structural boundary.  Its
+component-scoped subset/Wick helpers are sized from `ShellClassSpec` and route
+derivative slots through the attached `IntegralIR`, so f-shell classes such as
+`fsss` and `fsps` can be emitted without adding a shell-name branch.  These
+fallback candidates remain outside the production manifest until they pass the
+independent resource and endpoint gates.
+
 The current CUDA backend still accepts only first nuclear derivatives of
 four-center ERIs and preserves the existing force-vector ABI. Higher derivative
 orders, one-electron operator lowering, and density-fitting operators need their
