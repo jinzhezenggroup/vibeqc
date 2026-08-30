@@ -86,6 +86,10 @@ bool bounded_fock_class_timing_requested() noexcept {
   return selected("VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE", "profile");
 }
 
+bool direct_tile_validation_requested() noexcept {
+  return selected("VIBEQC_DIRECT_TILE_VALIDATION", "validate");
+}
+
 double converged_fock_reuse_density_rms(double density_tolerance) noexcept {
   return density_tolerance >= kExpandedConvergedFockReuseDensityTolerance
       ? kExpandedConvergedFockReuseDensityRms
