@@ -557,6 +557,28 @@ report is still written but the manifest output is left untouched. This keeps
 synthetic batch results reviewable without accidentally installing a partial
 production update.
 
+When several classes are expected to benefit from the same mapping, restrict
+the batch to that schedule family instead of compiling every legal family for
+every class. For example, this searches the component-lane variants for three
+Fock classes and atomically promotes all three winners together:
+
+```bash
+python -m tools.vibeqc_codegen.autotune \
+  --nvcc /group/software/cuda-12.9.1/bin/nvcc \
+  --architecture sm_120 \
+  --shell-class dpps --shell-class ddds --shell-class dppp \
+  --consumer fock --schedule-kind component_lanes \
+  --partition main --gres gpu:5090:1 \
+  --output build/fock-component-lanes-batch.json \
+  --manifest-output build/production-shells-tuned.json \
+  --require-all-winners
+```
+
+Repeat `--schedule-kind` to combine a small number of related families. An
+omitted filter retains the exhaustive legal search. Manifest output is written
+through a temporary sibling and an atomic replacement, so interruption cannot
+leave a partially written JSON file.
+
 Use `--consumer fock` to tune the value-only SCF worker with the same resource,
 correctness, and timing gates. A Fock winner upgrades the manifest row to the
 joint `fock`/`force` consumer set because both kernels share the canonical task

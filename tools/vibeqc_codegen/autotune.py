@@ -587,6 +587,55 @@ def static_algebra_model(trial: ScheduleTrial) -> StaticAlgebraModel:
     )
 
 
+def _known_production_fock_subgroup_schedules(
+    spec: ShellClassSpec, target: CudaTargetInfo
+) -> tuple[ScheduleIR, ...]:
+    """Return accepted high-component Fock baselines absent from generic search.
+
+    ``schedule_candidates`` intentionally avoids subgroup mappings once a
+    shell class has more than 64 components.  Production nevertheless uses a
+    hand-validated subgroup Fock worker for a few high-order classes (for
+    example DPPP and DDDP).  Include those exact mappings as benchmark
+    baselines so a batch autotune compares a proposed schedule against the
+    schedule it would replace instead of selecting from an incomplete search
+    space.  The table is deliberately limited to existing production rows;
+    it is not an unbounded high-component search.
+    """
+
+    baseline = {
+        "dppp": (4, 0),
+        "dpdp": (2, 1),
+        "ddds": (2, 2),
+        "dddp": (1, 2),
+    }.get(spec.name)
+    if baseline is None:
+        return ()
+    tasks_per_warp, minimum_blocks_per_sm = baseline
+    block_threads = target.warp_size * 4
+    schedule = ScheduleIR(
+        kind=ScheduleKind.SUBGROUP_TASKS,
+        block_threads=block_threads,
+        component_tile=spec.component_count,
+        tasks_per_warp=tasks_per_warp,
+        shared_coulomb=True,
+        pair_orientation=(
+            PairOrientation.SWAPPED
+            if spec.name in ("dppp", "dpdp", "ddds", "dddp")
+            else PairOrientation.CANONICAL
+        ),
+        pair_storage=(
+            PairStorage.RECOMPUTED
+            if spec.name in ("dpdp", "ddds", "dddp")
+            else PairStorage.MATERIALIZED
+        ),
+        unroll_pair_terms=(spec.name == "dppp"),
+        minimum_blocks_per_sm=minimum_blocks_per_sm,
+        warp_size=target.warp_size,
+    )
+    schedule.validate_for(target)
+    return (schedule,)
+
+
 def supported_schedule_trials(
     spec: ShellClassSpec,
     consumer: KernelConsumer | str = KernelConsumer.FORCE,
@@ -625,14 +674,8 @@ def supported_schedule_trials(
             raise ValueError(
                 f"{selected_consumer.value} trial requires its integral consumer"
             )
-    return tuple(
-        ScheduleTrial(
-            spec=spec,
-            schedule=schedule,
-            consumer=selected_consumer,
-            target=target,
-            integral=explicit_integral,
-        )
+    schedules = [
+        schedule
         for schedule in tuning_schedule_candidates(integral, target)
         if schedule.kind
         in (
@@ -642,7 +685,24 @@ def supported_schedule_trials(
             ScheduleKind.COMPONENT_LANES,
             ScheduleKind.TILED_COMPONENTS,
         )
-    )
+    ]
+    if selected_consumer == KernelConsumer.FOCK:
+        schedules.extend(_known_production_fock_subgroup_schedules(spec, target))
+    trials: list[ScheduleTrial] = []
+    seen_schedule_ids: set[str] = set()
+    for schedule in schedules:
+        trial = ScheduleTrial(
+            spec=spec,
+            schedule=schedule,
+            consumer=selected_consumer,
+            target=target,
+            integral=explicit_integral,
+        )
+        if trial.schedule_id in seen_schedule_ids:
+            continue
+        seen_schedule_ids.add(trial.schedule_id)
+        trials.append(trial)
+    return tuple(trials)
 
 
 def _class_name(spec: ShellClassSpec) -> str:
@@ -1030,7 +1090,13 @@ def write_tuned_manifest(
     consumer: KernelConsumer | str = KernelConsumer.FORCE,
     provenance: Mapping[str, Mapping[str, object]] | None = None,
 ) -> None:
-    """Write architecture winners without mutating the source manifest in place."""
+    """Write architecture winners without mutating the source manifest in place.
+
+    The replacement is atomic within the destination directory.  A batch run
+    can therefore be interrupted (or fail after compiling a subset of
+    candidates) without leaving a truncated JSON manifest that looks
+    production-ready to the next build.
+    """
 
     payload = json.loads(input_path.read_text(encoding="utf-8"))
     updated = update_manifest_payload(
@@ -1041,10 +1107,29 @@ def write_tuned_manifest(
         provenance,
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
-        json.dumps(updated, indent=2, sort_keys=False) + "\n",
-        encoding="utf-8",
-    )
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=output_path.parent,
+            prefix=f".{output_path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as temporary:
+            temporary_path = Path(temporary.name)
+            temporary.write(json.dumps(updated, indent=2, sort_keys=False))
+            temporary.write("\n")
+            temporary.flush()
+            os.fsync(temporary.fileno())
+        os.replace(temporary_path, output_path)
+        temporary_path = None
+    finally:
+        if temporary_path is not None:
+            try:
+                temporary_path.unlink()
+            except OSError:
+                pass
 
 
 def _compile_trial(
@@ -1323,6 +1408,23 @@ def _requested_shell_class_names(arguments: argparse.Namespace) -> tuple[str, ..
     return tuple(names)
 
 
+def _requested_schedule_kinds(
+    arguments: argparse.Namespace,
+) -> tuple[ScheduleKind, ...]:
+    """Return the optional ordered schedule-family filter for a batch run."""
+
+    raw_kinds = getattr(arguments, "schedule_kind", None)
+    values = [raw_kinds] if isinstance(raw_kinds, str) else list(raw_kinds or ())
+    kinds: list[ScheduleKind] = []
+    seen: set[ScheduleKind] = set()
+    for value in values:
+        kind = ScheduleKind(value)
+        if kind not in seen:
+            kinds.append(kind)
+            seen.add(kind)
+    return tuple(kinds)
+
+
 def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
     """Generate, compile, run, rank, and optionally persist schedule winners."""
 
@@ -1355,11 +1457,21 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
     requested_names = _requested_shell_class_names(arguments)
     specifications = _resolve_specifications(requested_names)
     selected_consumer = KernelConsumer(arguments.consumer)
+    selected_schedule_kinds = _requested_schedule_kinds(arguments)
     trials = tuple(
         trial
         for spec in specifications
         for trial in supported_schedule_trials(spec, selected_consumer, target)
+        if not selected_schedule_kinds
+        or trial.schedule.kind in selected_schedule_kinds
     )
+    if not trials:
+        requested = ", ".join(spec.name for spec in specifications)
+        selected = ", ".join(kind.value for kind in selected_schedule_kinds)
+        raise ValueError(
+            f"no schedule trials remain for shell classes {requested} "
+            f"after filtering to {selected}"
+        )
     work_directory_owner = None
     if arguments.work_directory is None:
         work_directory_owner = tempfile.TemporaryDirectory(
@@ -1826,6 +1938,12 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 ),
                 "require_all_winners": require_all_winners,
             },
+            "search": {
+                "schedule_kinds": [
+                    kind.value for kind in selected_schedule_kinds
+                ],
+                "trial_count": len(trials),
+            },
             "requested_shell_classes": [spec.name for spec in specifications],
             "missing_winners": missing_winners,
             "manifest": {
@@ -1898,6 +2016,15 @@ def main() -> None:
         "--consumer",
         choices=tuple(item.value for item in KernelConsumer),
         default=KernelConsumer.FORCE.value,
+    )
+    parser.add_argument(
+        "--schedule-kind",
+        action="append",
+        choices=tuple(item.value for item in ScheduleKind),
+        help=(
+            "restrict the search to one schedule family; repeat to combine "
+            "families when tuning several classes with the same strategy"
+        ),
     )
     parser.add_argument("--tasks", type=int, default=512)
     parser.add_argument("--primitives", type=int, default=2)

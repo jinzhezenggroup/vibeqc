@@ -92,7 +92,7 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
 
 _UNFUSED_KERNEL = r"""
 /** Per-component recurrence baseline with no primitive/Coulomb sharing. */
-extern "C" __global__ __launch_bounds__(kGeneratedDpppBlockThreads)
+extern "C" __global__ __launch_bounds__(kVibeqcBaselineForceBlockThreads)
 void generated_dppp_component_recompute_rhf_kernel(
     const GeneratedDpppShellTask* tasks,
     const double* primitive_exponents,
@@ -109,11 +109,12 @@ void generated_dppp_component_recompute_rhf_kernel(
     // legacy force-worker warp-count symbol.  Derive the oracle's reduction
     // shape from the common launch geometry so the benchmark remains usable
     // for both old and new force consumers.
-    double warp_sums[kGeneratedDpppBlockThreads / 32U][12];
+    double warp_sums[kVibeqcBaselineForceBlockThreads / 32U][12];
   };
   __shared__ Shared shared;
   const unsigned lane = threadIdx.x;
-  if (blockDim.x != kGeneratedDpppBlockThreads || blockIdx.x >= task_count) return;
+  if (blockDim.x != kVibeqcBaselineForceBlockThreads ||
+      blockIdx.x >= task_count) return;
   if (lane == 0U) {
     shared.task = tasks[blockIdx.x];
 #pragma unroll
@@ -186,7 +187,7 @@ VIBEQC_ANGULAR_COEFFICIENT
     double value = 0.0;
 #pragma unroll
     for (unsigned source_warp = 0;
-         source_warp < kGeneratedDpppBlockThreads / 32U;
+         source_warp < kVibeqcBaselineForceBlockThreads / 32U;
          ++source_warp) {
       value += shared.warp_sums[source_warp][lane];
     }
@@ -205,7 +206,7 @@ VIBEQC_COMPONENT_SCHEDULE_CLOSE
 
 _UNFUSED_FOCK_KERNEL = r"""
 /** Per-component Fock baseline with no primitive/Coulomb sharing. */
-extern "C" __global__ __launch_bounds__(kGeneratedDpppFockBlockThreads)
+extern "C" __global__ __launch_bounds__(kVibeqcBaselineFockBlockThreads)
 void generated_dppp_component_recompute_fock_rhf_kernel(
     const GeneratedDpppShellTask* tasks,
     const double* primitive_exponents,
@@ -221,7 +222,7 @@ void generated_dppp_component_recompute_fock_rhf_kernel(
   };
   __shared__ Shared shared;
   const unsigned lane = threadIdx.x;
-  if (blockDim.x != kGeneratedDpppFockBlockThreads ||
+  if (blockDim.x != kVibeqcBaselineFockBlockThreads ||
       blockIdx.x >= task_count) return;
   if (lane == 0U) {
     shared.task = tasks[blockIdx.x];
@@ -464,7 +465,7 @@ VIBEQC_FUSED_LAUNCH
   };
   auto launch_recompute = [&]() {
     generated_dppp_component_recompute_rhf_kernel<<<kTaskCount,
-        kGeneratedDpppBlockThreads>>>(
+        kVibeqcBaselineForceBlockThreads>>>(
         device_tasks, device_exponents, device_primitive_coefficients,
         device_ao_coefficients, device_positions, device_density,
         device_forces, kTaskCount);
@@ -718,7 +719,7 @@ VIBEQC_FUSED_LAUNCH
   };
   auto launch_recompute = [&]() {
     generated_dppp_component_recompute_fock_rhf_kernel<<<kTaskCount,
-        kGeneratedDpppFockBlockThreads>>>(
+        kVibeqcBaselineFockBlockThreads>>>(
         device_tasks, device_exponents, device_primitive_coefficients,
         device_ao_coefficients, device_positions, device_density,
         device_fock, kTaskCount);
@@ -774,6 +775,12 @@ VIBEQC_PERSISTENT_FREE
 """
 
 
+def _baseline_component_block_threads(spec: ShellClassSpec) -> int:
+    """Return a warp-rounded oracle block that covers all shell components."""
+
+    return ((spec.component_count + 31) // 32) * 32
+
+
 def _benchmark_unfused_kernel(
     spec: ShellClassSpec, plan: FusedShellPlan
 ) -> str:
@@ -806,6 +813,14 @@ def _benchmark_unfused_kernel(
     source = source.replace(
         "VIBEQC_COMPONENT_SETUP", _generic_task_component_setup(spec)
     ).replace("VIBEQC_ANGULAR_COEFFICIENT", "\n".join(angular_lines))
+    # The oracle assigns one component to each lane.  High-component classes
+    # such as DPPP therefore need a baseline block larger than the candidate
+    # subgroup worker; otherwise the tail components would never contribute to
+    # the reference force and a correct candidate would fail its error gate.
+    baseline_block_threads = _baseline_component_block_threads(spec)
+    source = source.replace(
+        "kVibeqcBaselineForceBlockThreads", str(baseline_block_threads)
+    )
     return _specialize_dppp_identifiers(source, spec)
 
 
@@ -842,6 +857,13 @@ def _benchmark_unfused_fock_kernel(
     source = source.replace(
         "VIBEQC_COMPONENT_SETUP", _generic_task_component_setup(spec)
     ).replace("VIBEQC_ANGULAR_COEFFICIENT", "\n".join(angular_lines))
+    # Keep the value oracle mathematically complete even when the measured
+    # Fock schedule uses fewer threads than the shell has Cartesian
+    # components (for example DDDP/DDDS subgroup schedules).
+    baseline_block_threads = _baseline_component_block_threads(spec)
+    source = source.replace(
+        "kVibeqcBaselineFockBlockThreads", str(baseline_block_threads)
+    )
     return _specialize_dppp_identifiers(source, spec)
 
 
@@ -1049,6 +1071,10 @@ def _benchmark_host_harness(
         persistent_kernel=persistent_kernel,
     )
     source = source.replace("VIBEQC_FUSED_GRID_COUNT", fused_grid_count)
+    baseline_block_threads = _baseline_component_block_threads(spec)
+    source = source.replace(
+        "kVibeqcBaselineForceBlockThreads", str(baseline_block_threads)
+    )
     return _specialize_dppp_identifiers(source, spec)
 
 
@@ -1084,6 +1110,10 @@ def _benchmark_fock_host_harness(
         persistent_kernel=persistent_kernel,
     )
     source = source.replace("VIBEQC_FUSED_GRID_COUNT", fused_grid_count)
+    baseline_block_threads = _baseline_component_block_threads(spec)
+    source = source.replace(
+        "kVibeqcBaselineFockBlockThreads", str(baseline_block_threads)
+    )
     return _specialize_dppp_identifiers(source, spec)
 
 

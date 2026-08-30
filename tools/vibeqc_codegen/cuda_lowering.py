@@ -1563,6 +1563,15 @@ __device__ __forceinline__ void generated_dppp_make_mixed_primitive_geometry(
         "  double coulomb[kGeneratedDpppMixedFockCoulombStateCount];",
         "  float coulomb[kGeneratedDpppMixedFockCoulombStateCount];",
     )
+    # Component-lane schedules may deliberately recompute Coulomb values and
+    # therefore use a one-element scratch slot instead of the shared state
+    # table.  Keep that slot in FP32 as well; otherwise the generated mixed
+    # worker passes a ``double*`` to the FP32 component evaluator and fails
+    # only when a resource-valid schedule selects ``shared_coulomb=false``.
+    source = source.replace(
+        "    double coulomb[1];",
+        "    float coulomb[1];",
+    )
     source = source.replace(
         "  double angular_coefficients[kGeneratedDpppComponentCount];",
         "  float angular_coefficients[kGeneratedDpppComponentCount];",

@@ -102,8 +102,9 @@ from tools.vibeqc_codegen.autotune import (
     _oracle_symbol_prefix,
     _packed_force_geometry_analysis,
     _read_shell_class_file,
-    _resolve_specifications,
+    _requested_schedule_kinds,
     _requested_shell_class_names,
+    _resolve_specifications,
     _run_autotune,
     emit_schedule_driver,
     emit_schedule_oracle_translation_unit,
@@ -114,6 +115,7 @@ from tools.vibeqc_codegen.autotune import (
     static_algebra_model,
     supported_schedule_trials,
     update_manifest_payload,
+    write_tuned_manifest,
 )
 from tools.vibeqc_codegen.backend import TargetInfo, TargetScheduleShape
 from tools.vibeqc_codegen.batch_benchmark import (
@@ -2844,6 +2846,47 @@ def test_high_impact_fock_classes_emit_generated_mixed_capability():
     assert "generated_dspp_shell_class_mixed_fock" not in sources["dspp"]
 
 
+def test_mixed_fock_recomputed_coulomb_scratch_uses_fp32():
+    """Compile the mixed path when a Fock schedule recomputes Coulomb state."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME["ddds"]
+    force_schedule = ScheduleIR(
+        kind=ScheduleKind.COMPONENT_LANES,
+        block_threads=224,
+        component_tile=spec.component_count,
+        tasks_per_warp=1,
+        shared_coulomb=True,
+        pair_orientation=PairOrientation.SWAPPED,
+        pair_storage=PairStorage.RECOMPUTED,
+        unroll_pair_terms=False,
+        minimum_blocks_per_sm=1,
+    )
+    fock_schedule = replace(
+        force_schedule,
+        shared_coulomb=False,
+        pair_storage=PairStorage.MATERIALIZED,
+        unroll_pair_terms=True,
+        minimum_blocks_per_sm=0,
+    )
+    plan = build_fused_shell_plan(
+        spec,
+        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+        schedule=force_schedule,
+        recurrence="rys4",
+    )
+    source = emit_shell_class_fused_cuda(
+        spec,
+        plan,
+        fock_schedule=fock_schedule,
+        capabilities=(CAPABILITY_MIXED_FOCK,),
+    )
+    mixed = source.split(
+        "struct GeneratedDddsMixedPrimitiveGeometry", maxsplit=1
+    )[1]
+    assert "float coulomb[1];" in mixed
+    assert "double coulomb[1];" not in mixed
+
+
 def test_simple_registry_dispatches_profiled_mixed_fock_classes():
     """Expose a selectable capability mask for the profiled mixed workers."""
 
@@ -5413,6 +5456,39 @@ def test_fock_benchmark_compares_value_only_shared_and_recomputed_schedules():
     assert '\\"maximum_fock_error\\"' in source
 
 
+def test_high_component_fock_oracle_block_covers_every_component():
+    """Do not truncate the independent oracle for subgroup candidates."""
+
+    trial = next(
+        trial
+        for trial in supported_schedule_trials(
+            FUSED_SHELL_SPEC_BY_NAME["dppp"], KernelConsumer.FOCK
+        )
+        if trial.schedule.kind == ScheduleKind.SUBGROUP_TASKS
+        and trial.schedule.block_threads == 128
+        and trial.schedule.tasks_per_warp == 4
+        and trial.schedule.pair_orientation == PairOrientation.SWAPPED
+        and trial.schedule.pair_storage == PairStorage.MATERIALIZED
+        and trial.schedule.unroll_pair_terms
+        and trial.schedule.minimum_blocks_per_sm == 0
+    )
+    source = emit_shell_class_benchmark_cuda(
+        FUSED_SHELL_SPEC_BY_NAME["dppp"],
+        task_count=1,
+        primitive_count=1,
+        warmups=0,
+        iterations=1,
+        samples=1,
+        consumer=KernelConsumer.FOCK,
+        schedule=trial.schedule,
+    )
+    baseline = source.split(
+        "/** Per-component Fock baseline", maxsplit=1
+    )[1]
+    assert "__launch_bounds__(192)" in baseline
+    assert "<<<kTaskCount,\n        192>>>" in baseline
+
+
 def test_packed_order2_fock_oracle_drops_force_wrappers():
     """Keep packed low-order schedules available to Fock autotuning."""
 
@@ -5799,6 +5875,100 @@ def test_autotune_expands_shell_class_list_files_for_batch_runs(tmp_path: Path):
         "psps",
         "dpps",
     )
+
+
+def test_autotune_deduplicates_batch_schedule_family_filters():
+    """Keep a related-family batch small without changing request order."""
+
+    arguments = SimpleNamespace(
+        schedule_kind=[
+            ScheduleKind.COMPONENT_LANES.value,
+            ScheduleKind.COMPONENT_LANES.value,
+            ScheduleKind.SUBGROUP_TASKS.value,
+        ]
+    )
+    assert _requested_schedule_kinds(arguments) == (
+        ScheduleKind.COMPONENT_LANES,
+        ScheduleKind.SUBGROUP_TASKS,
+    )
+    assert _requested_schedule_kinds(SimpleNamespace()) == ()
+
+
+@pytest.mark.parametrize(
+    ("name", "tasks_per_warp", "minimum_blocks_per_sm", "pair_storage", "unroll"),
+    (
+        ("dppp", 4, 0, PairStorage.MATERIALIZED, True),
+        ("dpdp", 2, 1, PairStorage.RECOMPUTED, False),
+        ("ddds", 2, 2, PairStorage.RECOMPUTED, False),
+        ("dddp", 1, 2, PairStorage.RECOMPUTED, False),
+    ),
+)
+def test_fock_autotune_includes_high_component_production_baseline(
+    name, tasks_per_warp, minimum_blocks_per_sm, pair_storage, unroll
+):
+    """Compare high-component proposals against their accepted Fock worker."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
+    trials = supported_schedule_trials(spec, KernelConsumer.FOCK)
+    baselines = [
+        trial
+        for trial in trials
+        if trial.schedule.kind == ScheduleKind.SUBGROUP_TASKS
+        and trial.schedule.block_threads == 128
+        and trial.schedule.tasks_per_warp == tasks_per_warp
+        and trial.schedule.pair_storage == pair_storage
+        and trial.schedule.unroll_pair_terms is unroll
+        and trial.schedule.minimum_blocks_per_sm == minimum_blocks_per_sm
+    ]
+    assert len(baselines) == 1
+
+
+def test_autotune_manifest_replacement_is_atomic(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Preserve an existing batch manifest when the final replace fails."""
+
+    source = tmp_path / "source.json"
+    output = tmp_path / "tuned.json"
+    source.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "default_architecture": "sm_120",
+                "architectures": {
+                    "sm_120": {
+                        "kernels": [
+                            {
+                                "shell_class": "dpds",
+                                "consumers": ["force"],
+                                "schedule": {},
+                            }
+                        ]
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    output.write_text("existing production manifest\n", encoding="utf-8")
+    trial = supported_schedule_trials(DPDS_SPEC)[0]
+
+    def fail_replace(source_path: Path, output_path: Path) -> None:
+        assert Path(source_path).parent == tmp_path
+        assert Path(output_path) == output
+        raise OSError("synthetic atomic-replace failure")
+
+    monkeypatch.setattr("tools.vibeqc_codegen.autotune.os.replace", fail_replace)
+    with pytest.raises(OSError, match="synthetic atomic-replace failure"):
+        write_tuned_manifest(
+            source,
+            output,
+            "sm_120",
+            {"dpds": trial.schedule},
+        )
+
+    assert output.read_text(encoding="utf-8") == "existing production manifest\n"
+    assert list(tmp_path.glob(f".{output.name}.*.tmp")) == []
 
 
 def test_autotune_analysis_roots_follow_declared_derivative_centers():
@@ -6266,6 +6436,7 @@ def test_autotune_candidate_artifact_includes_static_model(
         max_stack_bytes=None,
         max_shared_bytes=None,
         shell_class=["psps"],
+        schedule_kind=[trial.schedule.kind.value],
         consumer=KernelConsumer.FORCE.value,
         work_directory=tmp_path,
         compile_jobs=1,
@@ -6298,6 +6469,10 @@ def test_autotune_candidate_artifact_includes_static_model(
     assert report["candidates"][0]["occupancy"]["available"] is False
     assert report["artifacts"]["linked_executable_bytes"] is None
     assert report["artifacts"]["schedule_objects"] == {trial.key: None}
+    assert report["search"] == {
+        "schedule_kinds": [trial.schedule.kind.value],
+        "trial_count": 1,
+    }
     assert report["manifest"]["write_skipped"] is True
     assert not (tmp_path / "manifest.json").exists()
 
