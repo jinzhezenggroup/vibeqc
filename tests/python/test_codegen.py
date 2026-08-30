@@ -376,6 +376,57 @@ def test_fused_shell_plan_preserves_an_explicit_integral_ir():
         )
 
 
+def test_symbolic_kernel_builders_preserve_explicit_integral_ir():
+    """Keep one mathematical request attached across every shell builder."""
+
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    dppp_integral = build_integral_ir(
+        DPPP_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    component = DPPP_SPEC.components[0]
+
+    assert build_shell_class_component_kernel(
+        DPPP_SPEC,
+        component,
+        integral=dppp_integral,
+    ).integral is dppp_integral
+    assert build_dppp_component_kernel(
+        component[0],
+        component[1:],
+        integral=dppp_integral,
+    ).integral is dppp_integral
+    assert build_shell_class_contraction_kernel(
+        DPPP_SPEC,
+        component,
+        integral=dppp_integral,
+    ).integral is dppp_integral
+    assert build_weighted_shell_contraction_kernel(
+        DPPP_SPEC,
+        component_indices=(0,),
+        integral=dppp_integral,
+    ).integral is dppp_integral
+
+    psss_integral = build_integral_ir(
+        PSSS_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    assert build_psss_kernel("x", integral=psss_integral).integral is psss_integral
+
+
 def test_shell_contraction_kernel_uses_explicit_derivative_centers():
     """Generate direct center-D roots when the IR recovers center B."""
 
