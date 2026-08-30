@@ -1509,6 +1509,39 @@ def test_cooperative_rys3_hot_classes_use_uniform_component_lanes(
 
 
 @pytest.mark.parametrize(
+    ("name", "recurrence", "block_threads"),
+    (("dpss", "rys3", 32), ("ddss", "rys3", 64)),
+)
+def test_component_lane_rys_fock_lowering_uses_structural_capabilities(
+    name: str, recurrence: str, block_threads: int
+):
+    """Use the fixed-root Fock worker for legal classes beyond the old list."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
+    schedule = ScheduleIR(
+        kind=ScheduleKind.COMPONENT_LANES,
+        block_threads=block_threads,
+        component_tile=spec.component_count,
+        tasks_per_warp=1,
+        shared_coulomb=True,
+        minimum_blocks_per_sm=1,
+    )
+    plan = build_fused_shell_plan(
+        spec,
+        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+        schedule=schedule,
+        recurrence=recurrence,
+    )
+    source = emit_shell_class_fused_cuda(spec, plan)
+
+    assert f"generated_{name}_rys3_value_axis" in source
+    assert f"generated_{name}_shell_class_fock_rhf_kernel" in source
+    fock_marker = f"generated_{name}_shell_class_fock_task("
+    fock_source = source[source.index(fock_marker) :]
+    assert f"generated_{name}_component_value" not in fock_source
+
+
+@pytest.mark.parametrize(
     "spec",
     (
         PSPS_SPEC,

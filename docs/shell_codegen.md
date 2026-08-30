@@ -92,6 +92,12 @@ derivative slots through the attached `IntegralIR`, so f-shell classes such as
 fallback candidates remain outside the production manifest until they pass the
 independent resource and endpoint gates.
 
+The component-lane fixed-root Fock worker follows the same capability boundary:
+it is selected when the schedule covers all components, the decoder supports
+the shell angular bounds, and the attached first-derivative IR requests a
+three- or four-root Rys program.  Classes such as `dpss` and `ddss` therefore
+share the backend path without being added to a promoted-name list.
+
 The current CUDA backend still accepts only first nuclear derivatives of
 four-center ERIs and preserves the existing force-vector ABI. Higher derivative
 orders, one-electron operator lowering, and density-fitting operators need their
