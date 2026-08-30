@@ -592,6 +592,29 @@ def test_fock_only_ir_has_no_implicit_derivative():
     assert integral.recovered_derivative_centers == ()
     assert integral.maximum_coulomb_order == integral.value_coulomb_order
 
+    # The symbolic builders consume the same boundary rather than silently
+    # constructing the extra first-derivative Boys state for a value-only IR.
+    component_kernel = build_shell_class_component_kernel(
+        DPPP_SPEC,
+        DPPP_SPEC.components[0],
+        integral=integral,
+    )
+    contraction_kernel = build_shell_class_contraction_kernel(
+        DPPP_SPEC,
+        DPPP_SPEC.components[0],
+        integral=integral,
+    )
+    for kernel in (component_kernel, contraction_kernel):
+        boys_variables = {
+            str(node.payload)
+            for node in kernel.graph.nodes
+            if node.operation == "variable"
+            and isinstance(node.payload, str)
+            and node.payload.startswith("boys_")
+        }
+        assert "boys_5" in boys_variables
+        assert "boys_6" not in boys_variables
+
     with pytest.raises(ValueError, match="requires at least one contraction"):
         build_integral_ir(DPPP_SPEC, consumers=())
 
