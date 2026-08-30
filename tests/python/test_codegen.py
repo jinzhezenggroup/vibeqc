@@ -101,6 +101,9 @@ from tools.vibeqc_codegen.autotune import (
     _compile_trial,
     _oracle_symbol_prefix,
     _packed_force_geometry_analysis,
+    _read_shell_class_file,
+    _resolve_specifications,
+    _requested_shell_class_names,
     _run_autotune,
     emit_schedule_driver,
     emit_schedule_oracle_translation_unit,
@@ -5762,6 +5765,38 @@ def test_autotune_emits_unique_schedule_variants_and_manifest_records():
     )
 
 
+def test_autotune_expands_shell_class_list_files_for_batch_runs(tmp_path: Path):
+    """Keep file-driven hotspot batches deterministic and comment-friendly."""
+
+    classes = tmp_path / "hotspots.txt"
+    classes.write_text(
+        "# measured warm classes\nppps, psps\n\n dpps # second group\n",
+        encoding="utf-8",
+    )
+
+    assert _read_shell_class_file(classes) == ("ppps", "psps", "dpps")
+    arguments = SimpleNamespace(
+        shell_class=["ppps"],
+        shell_class_file=[classes],
+    )
+    assert _requested_shell_class_names(arguments) == (
+        "ppps",
+        "ppps",
+        "psps",
+        "dpps",
+    )
+    # Specification resolution removes the repeated command-line entry while
+    # retaining the first appearance order used by the batch driver.
+    resolved = tuple(
+        spec.name for spec in _resolve_specifications(arguments.shell_class)
+    )
+    assert resolved == (
+        "ppps",
+        "psps",
+        "dpps",
+    )
+
+
 def test_autotune_analysis_roots_follow_declared_derivative_centers():
     """Exclude recovered centers from the static force root envelope."""
 
@@ -6240,7 +6275,8 @@ def test_autotune_candidate_artifact_includes_static_model(
         relative_tolerance=1.0e-12,
         minimum_speedup=1.0,
         verbose=False,
-        manifest_output=None,
+        manifest_output=tmp_path / "manifest.json",
+        require_all_winners=True,
         manifest=REPOSITORY_ROOT
         / "tools"
         / "vibeqc_codegen"
@@ -6258,6 +6294,8 @@ def test_autotune_candidate_artifact_includes_static_model(
     assert report["candidates"][0]["occupancy"]["available"] is False
     assert report["artifacts"]["linked_executable_bytes"] is None
     assert report["artifacts"]["schedule_objects"] == {trial.key: None}
+    assert report["manifest"]["write_skipped"] is True
+    assert not (tmp_path / "manifest.json").exists()
 
 
 def test_autotune_occupancy_artifact_is_resource_bounded():
