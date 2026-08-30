@@ -57,6 +57,10 @@ class DpppContractionKernel:
     variables: Mapping[str, Expr]
     value: Expr
     gradients: tuple[tuple[Expr, Expr, Expr], ...]
+    # Keep the mathematical derivative/recovery intent beside the lowered DAG.
+    # ``None`` preserves compatibility with callers that construct this
+    # inspection dataclass directly instead of using the builder.
+    integral: IntegralIR | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -1094,10 +1098,11 @@ def build_dppp_contraction_kernel(
     """Lower one ``dppp`` component via the generic shell-class compiler."""
 
     normalized = _validated_dppp_components(d_component, p_components)
+    selected_integral = integral or build_integral_ir(DPPP_SPEC)
     kernel = build_shell_class_contraction_kernel(
         DPPP_SPEC,
         (d_component, *normalized),
-        integral=integral,
+        integral=selected_integral,
     )
     return DpppContractionKernel(
         graph=kernel.graph,
@@ -1106,6 +1111,7 @@ def build_dppp_contraction_kernel(
         variables=kernel.variables,
         value=kernel.value,
         gradients=kernel.gradients,
+        integral=selected_integral,
     )
 
 
@@ -1217,6 +1223,7 @@ def emit_dppp_component_cuda(kernel: DpppComponentKernel) -> str:
 def emit_dppp_contraction_cuda(kernel: DpppContractionKernel) -> str:
     """Emit a component evaluator that consumes cooperative common geometry."""
 
+    selected_integral = kernel.integral or build_integral_ir(DPPP_SPEC)
     variable_code = {
         "inverse_two_p": "geometry.inverse_two_p",
         "inverse_two_q": "geometry.inverse_two_q",
@@ -1224,6 +1231,9 @@ def emit_dppp_contraction_cuda(kernel: DpppContractionKernel) -> str:
         "first_product_scale": "geometry.product_scales[0]",
         "second_product_scale": "geometry.product_scales[1]",
         "third_product_scale": "geometry.product_scales[2]",
+        # The compact geometry ABI stores only one ket-pair scale; the fourth
+        # center's scale is its exact complement, including pair reversal.
+        "fourth_product_scale": "1.0 - geometry.product_scales[2]",
         "prefactor": "geometry.prefactor",
         **{
             f"difference_{axis}": f"geometry.difference.{axis}"
@@ -1236,10 +1246,17 @@ def emit_dppp_contraction_cuda(kernel: DpppContractionKernel) -> str:
             variable_code[f"{prefix}_{axis}"] = (
                 f"geometry.pair_shifts[{center}].{axis}"
             )
-    for center_index, center in enumerate(CENTERS[:3]):
+    # Decay rows are packed in the same dense order as the independent
+    # derivative centers in the explicit IR.  This avoids treating the
+    # physical center index as a storage slot when translation recovery picks
+    # a non-final center (for example, independent centers A/C/D).
+    for row, center_index in enumerate(
+        selected_integral.independent_derivative_centers
+    ):
+        center = CENTERS[center_index]
         for axis_index, axis in enumerate(AXES):
             variable_code[f"decay_{center}_{axis}"] = (
-                f"geometry.decay_gradients[{center_index}][{axis_index}]"
+                f"geometry.decay_gradients[{row}][{axis_index}]"
             )
 
     emitter = CudaEmitter(kernel.graph, variable_code)
