@@ -106,6 +106,7 @@ from tools.vibeqc_codegen.autotune import (
     emit_schedule_oracle_translation_unit,
     emit_schedule_resource_translation_unit,
     emit_schedule_translation_unit,
+    estimate_occupancy,
     schedule_payload,
     static_algebra_model,
     supported_schedule_trials,
@@ -114,10 +115,14 @@ from tools.vibeqc_codegen.autotune import (
 from tools.vibeqc_codegen.backend import TargetInfo, TargetScheduleShape
 from tools.vibeqc_codegen.batch_benchmark import (
     DEFAULT_CANDIDATES,
+    KernelResources,
     candidate_specs,
     emit_batch_driver,
     emit_candidate_translation_unit,
     rank_profiled_candidates,
+)
+from tools.vibeqc_codegen.batch_benchmark import (
+    _compile_candidate as _compile_batch_candidate,
 )
 from tools.vibeqc_codegen.benchmark import (
     emit_dppp_benchmark_cuda,
@@ -5981,6 +5986,92 @@ def test_autotune_candidate_artifact_includes_static_model(
     assert report["candidates"][0]["static_model"] == (
         trial.static_model.to_payload()
     )
+    assert report["candidates"][0]["source_bytes"] is None
+    assert report["candidates"][0]["object_bytes"] is None
+    assert report["candidates"][0]["occupancy"]["available"] is False
+    assert report["artifacts"]["linked_executable_bytes"] is None
+    assert report["artifacts"]["schedule_objects"] == {trial.key: None}
+
+
+def test_autotune_occupancy_artifact_is_resource_bounded():
+    """Record an auditable occupancy upper bound beside PTXAS resources."""
+
+    trial = next(
+        trial
+        for trial in supported_schedule_trials(PSPS_SPEC)
+        if trial.schedule.kind == ScheduleKind.PACKED_TASKS
+    )
+    target = cuda_target_info("sm_120")
+    resources = (
+        KernelResources(
+            function="generated_psps_force_kernel",
+            registers=128,
+            stack_bytes=0,
+            spill_store_bytes=0,
+            spill_load_bytes=0,
+            shared_bytes=4096,
+        ),
+    )
+
+    payload = estimate_occupancy(resources, trial, target)
+
+    assert payload["available"] is True
+    assert payload["method"] == "resource_upper_bound"
+    assert payload["block_threads"] == trial.schedule.block_threads
+    kernel = payload["kernels"][0]
+    assert kernel["resident_blocks_per_sm"] == 16
+    assert kernel["active_threads_per_sm"] == 512
+    assert kernel["estimated_occupancy"] == pytest.approx(1 / 3)
+    assert kernel["limits"] == {
+        "threads": 48,
+        "registers": 16,
+        "shared_memory": 25,
+        "blocks": 24,
+    }
+
+
+def test_autotune_occupancy_artifact_preserves_missing_resource_records():
+    """Rejected compiles still expose why occupancy could not be estimated."""
+
+    trial = supported_schedule_trials(PSPS_SPEC)[0]
+    payload = estimate_occupancy((), trial, cuda_target_info("sm_120"))
+
+    assert payload == {
+        "available": False,
+        "method": "resource_upper_bound",
+        "block_threads": trial.schedule.block_threads,
+        "kernels": [],
+    }
+
+
+def test_batch_candidate_compile_records_artifact_provenance(tmp_path: Path):
+    """Keep batch screening reports auditable even with a failed PTXAS parse."""
+
+    source = tmp_path / f"{PSPS_SPEC.name}_candidate.cu"
+    source.write_text("// generated source\n", encoding="utf-8")
+    fake_nvcc = tmp_path / "fake-nvcc"
+    fake_nvcc.write_text(
+        """#!/bin/sh
+output=''
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "-o" ]; then
+    shift
+    output="$1"
+  fi
+  shift
+done
+printf 'fake object' > "$output"
+""",
+        encoding="utf-8",
+    )
+    fake_nvcc.chmod(0o755)
+
+    row = _compile_batch_candidate(fake_nvcc, "sm_120", tmp_path, PSPS_SPEC)
+
+    assert row["returncode"] == 0
+    assert row["compile_seconds"] >= 0.0
+    assert row["source_bytes"] == source.stat().st_size
+    assert row["object_bytes"] == len("fake object")
 
 
 def test_autotune_same_class_variants_link_when_nvcc_is_configured(

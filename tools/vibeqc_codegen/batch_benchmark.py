@@ -15,6 +15,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
@@ -214,6 +215,7 @@ def _compile_candidate(
 
     source = directory / f"{spec.name}_candidate.cu"
     obj = directory / f"{spec.name}_candidate.o"
+    started = time.monotonic()
     result = subprocess.run(
         [
             str(nvcc),
@@ -231,11 +233,15 @@ def _compile_candidate(
         text=True,
         timeout=300,
     )
+    duration_seconds = time.monotonic() - started
     diagnostics = result.stdout + result.stderr
     return {
         "name": spec.name,
         "object": obj,
         "returncode": result.returncode,
+        "compile_seconds": duration_seconds,
+        "source_bytes": _artifact_size(source),
+        "object_bytes": _artifact_size(obj),
         "diagnostics": diagnostics,
         "resources": parse_ptxas_resources(diagnostics, spec.name),
     }
@@ -253,6 +259,17 @@ def _runtime_environment(nvcc: Path) -> dict[str, str]:
         str(library) if not previous else f"{library}:{previous}"
     )
     return environment
+
+
+def _artifact_size(path: Path) -> int | None:
+    """Return a generated artifact's byte size, if compilation produced it."""
+
+    try:
+        if path.is_file():
+            return path.stat().st_size
+    except OSError:
+        pass
+    return None
 
 
 def _resource_gate(
@@ -329,6 +346,8 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
         runtime_rows: dict[str, dict[str, object]] = {}
         run_stderr = ""
         run_returncode = None
+        link_seconds: float | None = None
+        linked_binary_bytes: int | None = None
         if runnable_specs:
             driver = directory / "batch_driver.cu"
             driver.write_text(emit_batch_driver(runnable_specs), encoding="utf-8")
@@ -338,6 +357,7 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
                 for row in compile_rows
                 if row["returncode"] == 0
             ]
+            link_started = time.monotonic()
             link = subprocess.run(
                 [
                     str(arguments.nvcc),
@@ -354,8 +374,10 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
                 text=True,
                 timeout=300,
             )
+            link_seconds = time.monotonic() - link_started
             if link.returncode != 0:
                 raise RuntimeError(link.stdout + link.stderr)
+            linked_binary_bytes = _artifact_size(executable)
             run = subprocess.run(
                 [
                     arguments.srun,
@@ -421,6 +443,9 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
                     "component_count": spec.component_count,
                     "pair_orders": list(spec.pair_orders),
                     "compile_succeeded": compile_row["returncode"] == 0,
+                    "compile_seconds": compile_row.get("compile_seconds"),
+                    "source_bytes": compile_row.get("source_bytes"),
+                    "object_bytes": compile_row.get("object_bytes"),
                     "resources": [asdict(item) for item in resources],
                     "runtime": runtime,
                     "accepted": passed,
@@ -440,6 +465,13 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
                 "gres": arguments.gres,
                 "returncode": run_returncode,
                 "stderr": run_stderr,
+            },
+            "artifacts": {
+                "linked_executable_bytes": linked_binary_bytes,
+                "link_seconds": link_seconds,
+                "candidate_objects": {
+                    row["name"]: row.get("object_bytes") for row in compile_rows
+                },
             },
             "gates": {
                 "minimum_speedup": arguments.minimum_speedup,
