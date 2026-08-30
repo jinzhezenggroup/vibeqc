@@ -218,7 +218,6 @@ if(VIBEQC_ENABLE_CUDA)
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/cuda_schedule.py"
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/cuda_target.py"
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/dppp_specialization.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/dppp_dispatch.py"
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/expr.py"
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/fused_schedule.py"
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/ir.py"

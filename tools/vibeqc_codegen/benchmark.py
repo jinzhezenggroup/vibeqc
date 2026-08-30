@@ -27,8 +27,8 @@ from .cuda_emitter import (
     emit_shell_class_fused_cuda,
     emit_uncached_primitive_geometry_cuda,
 )
+from .cuda_lowering import emit_ppps_resident_bra_rys3_cuda
 from .cuda_schedule import ScheduleIR, ScheduleKind
-from .dppp_dispatch import emit_ppps_resident_bra_rys3_cuda
 from .dppp_specialization import _specialize_dppp_identifiers
 from .fused_schedule import FusedShellPlan, build_fused_shell_plan
 from .ir import KernelConsumer

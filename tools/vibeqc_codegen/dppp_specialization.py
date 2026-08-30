@@ -1,6 +1,6 @@
 """Compatibility specialization for the original ``dppp`` CUDA pilot."""
 
-from . import dppp_dispatch as _implementation
+from . import cuda_lowering as _implementation
 
 DpppFusedPlan = _implementation.DpppFusedPlan
 _specialize_dppp_identifiers = _implementation._specialize_dppp_identifiers
