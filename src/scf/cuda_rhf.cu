@@ -231,12 +231,13 @@ constexpr double kDirectFockEnergyRoundoffFactor = 16.0;
 constexpr double kDefaultMixedPrecisionFockThreshold = 1.0e-6;
 constexpr double kDoubleMachineEpsilon = 2.2204460492503131e-16;
 // Tight requests retain the historical gate because analytic-force error is
-// first order in the remaining raw-Fock stationarity error. The default 1e-8
-// density target admits a separately bounded fast path: its 2e-9 cap covers
-// the validated 384-AO fixed-dm0 branch while keeping the observed
-// reuse-versus-rebuild force drift below 3e-8 Eh/bohr.
+// first order in the remaining raw-Fock stationarity error. Requests at or
+// above 1e-9 admit a separately bounded fast path: its 2e-9 cap covers the
+// validated large-AO fixed-dm0 branch while keeping final-force drift below
+// the 1e-8 Eh/bohr endpoint error budget. The ordinary 1e-10 production gate
+// remains on the historical 1e-12 path.
 constexpr double kTightConvergedFockReuseDensityRms = 1.0e-12;
-constexpr double kExpandedConvergedFockReuseDensityTolerance = 1.0e-8;
+constexpr double kExpandedConvergedFockReuseDensityTolerance = 1.0e-9;
 constexpr double kExpandedConvergedFockReuseDensityRms = 2.0e-9;
 // Force-product screening is an additional approximation on top of the Fock
 // quartet gate. Do not inherit deliberately loose SCF screening thresholds:
