@@ -23,6 +23,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from .benchmark import emit_shell_class_benchmark_cuda
+from .ir import KernelConsumer
 from .production import load_production_manifest
 from .shell_spec import (
     FUSED_SHELL_SPEC_BY_NAME,
@@ -145,9 +146,16 @@ def emit_candidate_translation_unit(
     warmups: int,
     iterations: int,
     samples: int,
+    consumer: KernelConsumer | str = KernelConsumer.FORCE,
 ) -> str:
-    """Emit one independently compilable candidate benchmark translation unit."""
+    """Emit one independently compilable candidate benchmark translation unit.
 
+    The consumer is explicit so the same sparse/profile-driven screener can
+    measure coefficient-only Fock candidates as well as first-force kernels.
+    Both paths retain the shared task ABI and independent recompute oracle.
+    """
+
+    selected_consumer = KernelConsumer(consumer)
     source = emit_shell_class_benchmark_cuda(
         spec,
         task_count=task_count,
@@ -155,11 +163,15 @@ def emit_candidate_translation_unit(
         warmups=warmups,
         iterations=iterations,
         samples=samples,
+        consumer=selected_consumer,
     )
     entry = f'vibeqc_run_shell_class_{spec.name}'
     source = source.replace("int main() {", f'extern "C" int {entry}() {{', 1)
     marker = r'{\"task_count\":%u'
-    replacement = rf'{{\"shell_class\":\"{spec.name}\",\"task_count\":%u'
+    replacement = (
+        rf'{{\"shell_class\":\"{spec.name}\",'
+        rf'\"consumer\":\"{selected_consumer.value}\",\"task_count\":%u'
+    )
     if marker not in source:
         raise RuntimeError("benchmark JSON marker changed unexpectedly")
     return source.replace(marker, replacement, 1)
@@ -209,15 +221,20 @@ def parse_ptxas_resources(
     shell_class: str,
     *,
     symbol_prefix: str | None = None,
+    consumer: KernelConsumer | str = KernelConsumer.FORCE,
 ) -> tuple[KernelResources, ...]:
-    """Extract the four force kernels from verbose ``ptxas`` output.
+    """Extract the four selected-consumer kernels from verbose ``ptxas`` output.
 
     Autotuning translation units suffix every generated symbol so several
     schedules for the same shell class can coexist in one executable.
-    ``symbol_prefix`` lets that driver reuse the production resource parser.
+    ``symbol_prefix`` lets that driver reuse the production resource parser;
+    ``consumer`` selects the force or coefficient-only Fock symbol family.
     """
 
-    marker = symbol_prefix or f"generated_{shell_class}_shell_class_force_"
+    selected_consumer = KernelConsumer(consumer)
+    marker = symbol_prefix or (
+        f"generated_{shell_class}_shell_class_{selected_consumer.value}_"
+    )
     resources = []
     for match in _RESOURCE_PATTERN.finditer(output):
         function = match.group("function")
@@ -241,9 +258,11 @@ def _compile_candidate(
     architecture: str,
     directory: Path,
     spec: ShellClassSpec,
+    consumer: KernelConsumer | str = KernelConsumer.FORCE,
 ) -> dict[str, object]:
     """Compile one candidate TU and retain diagnostics for automatic gates."""
 
+    selected_consumer = KernelConsumer(consumer)
     source = directory / f"{spec.name}_candidate.cu"
     obj = directory / f"{spec.name}_candidate.o"
     started = time.monotonic()
@@ -274,7 +293,11 @@ def _compile_candidate(
         "source_bytes": _artifact_size(source),
         "object_bytes": _artifact_size(obj),
         "diagnostics": diagnostics,
-        "resources": parse_ptxas_resources(diagnostics, spec.name),
+        "resources": parse_ptxas_resources(
+            diagnostics,
+            spec.name,
+            consumer=selected_consumer,
+        ),
     }
 
 
@@ -329,6 +352,11 @@ def _resource_gate(
 def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
     """Generate, compile, run, and gate one candidate batch."""
 
+    # Keep direct Python callers compatible with the pre-consumer namespace;
+    # the CLI always supplies the explicit option.
+    selected_consumer = KernelConsumer(
+        getattr(arguments, "consumer", KernelConsumer.FORCE.value)
+    )
     if arguments.profile is not None:
         profile = json.loads(arguments.profile.read_text(encoding="utf-8"))
         specifications = rank_profiled_candidates(profile, arguments.limit)
@@ -354,6 +382,7 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
                 warmups=arguments.warmups,
                 iterations=arguments.iterations,
                 samples=arguments.samples,
+                consumer=selected_consumer,
             )
             (directory / f"{spec.name}_candidate.cu").write_text(
                 source, encoding="utf-8"
@@ -363,7 +392,11 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
             compile_rows = list(
                 executor.map(
                     lambda spec: _compile_candidate(
-                        arguments.nvcc, arguments.architecture, directory, spec
+                        arguments.nvcc,
+                        arguments.architecture,
+                        directory,
+                        spec,
+                        selected_consumer,
                     ),
                     specifications,
                 )
@@ -451,14 +484,16 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
             if runtime is None:
                 reasons.append("candidate did not produce a runtime result")
             else:
-                maximum_force = float(runtime["maximum_force"])
-                maximum_error = float(runtime["maximum_force_error"])
+                observable = selected_consumer.value
+                maximum_value = float(runtime[f"maximum_{observable}"])
+                maximum_error = float(runtime[f"maximum_{observable}_error"])
                 tolerance = arguments.absolute_tolerance + (
-                    arguments.relative_tolerance * maximum_force
+                    arguments.relative_tolerance * maximum_value
                 )
                 if maximum_error > tolerance:
                     reasons.append(
-                        f"force error {maximum_error:.3e} exceeds {tolerance:.3e}"
+                        f"{observable} error {maximum_error:.3e} exceeds "
+                        f"{tolerance:.3e}"
                     )
                 if float(runtime["speedup"]) < arguments.minimum_speedup:
                     reasons.append(
@@ -470,6 +505,7 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
             candidates.append(
                 {
                     "shell_class": spec.name,
+                    "consumer": selected_consumer.value,
                     "shell_angular": list(spec.angular),
                     "component_count": spec.component_count,
                     "pair_orders": list(spec.pair_orders),
@@ -489,6 +525,7 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
         return {
             "schema_version": 1,
             "architecture": arguments.architecture,
+            "consumer": selected_consumer.value,
             "nvcc": str(arguments.nvcc),
             "single_gpu_process": True,
             "srun": {
@@ -532,6 +569,12 @@ def main() -> None:
     parser.add_argument("--srun", default="srun")
     parser.add_argument("--partition", default="main")
     parser.add_argument("--gres", default="gpu:5090:1")
+    parser.add_argument(
+        "--consumer",
+        choices=tuple(item.value for item in KernelConsumer),
+        default=KernelConsumer.FORCE.value,
+        help="screen force or coefficient-only Fock candidates",
+    )
     parser.add_argument("--shell-class", action="append")
     parser.add_argument(
         "--profile",

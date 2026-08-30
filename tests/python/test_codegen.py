@@ -119,6 +119,7 @@ from tools.vibeqc_codegen.batch_benchmark import (
     candidate_specs,
     emit_batch_driver,
     emit_candidate_translation_unit,
+    parse_ptxas_resources,
     rank_profiled_candidates,
 )
 from tools.vibeqc_codegen.batch_benchmark import (
@@ -3375,6 +3376,43 @@ def test_batch_screening_sorts_unsorted_profile_work_and_deduplicates():
     ranked = rank_profiled_candidates(payload, limit=3)
 
     assert tuple(spec.name for spec in ranked) == ("fsps", "fddd", "fsss")
+
+
+def test_batch_screening_can_emit_coefficient_only_fock_candidates():
+    """Route Fock screening through the same generated task ABI."""
+
+    source = emit_candidate_translation_unit(
+        FUSED_SHELL_SPEC_BY_NAME["fsps"],
+        task_count=2,
+        primitive_count=1,
+        warmups=0,
+        iterations=1,
+        samples=1,
+        consumer=KernelConsumer.FOCK,
+    )
+
+    assert r'\"consumer\":\"fock\"' in source
+    assert "generated_fsps_shell_class_fock_rhf_kernel" in source
+    assert r'\"maximum_fock_error\"' in source
+
+
+def test_ptxas_resource_parser_selects_fock_symbol_family():
+    """Keep Fock resource gates independent from force resource records."""
+
+    diagnostics = (
+        "Function properties for generated_fsps_shell_class_fock_rhf_kernel\n"
+        "    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\n"
+        "ptxas info    : Used 64 registers, 0 bytes lmem, 0 bytes smem\n"
+    )
+
+    resources = parse_ptxas_resources(
+        diagnostics,
+        "fsps",
+        consumer=KernelConsumer.FOCK,
+    )
+
+    assert len(resources) == 1
+    assert resources[0].function.endswith("fock_rhf_kernel")
 
 
 @pytest.mark.parametrize(
