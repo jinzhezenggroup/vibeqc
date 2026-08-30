@@ -55,6 +55,7 @@ from .cuda_target import (
 from .expr import Expr, PowerLowering
 from .fused_schedule import build_fused_shell_plan
 from .ir import IntegralIR, KernelConsumer, build_integral_ir
+from .production import load_production_kernel_selections
 from .shell_class import (
     ShellClassContractionKernel,
     WeightedShellContractionKernel,
@@ -63,6 +64,8 @@ from .shell_class import (
     build_weighted_shell_contraction_kernel,
 )
 from .shell_spec import AXES, FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec
+
+_PRODUCTION_MANIFEST_PATH = Path(__file__).with_name("production_shell_classes.json")
 
 
 @dataclass(frozen=True, slots=True)
@@ -587,51 +590,41 @@ def static_algebra_model(trial: ScheduleTrial) -> StaticAlgebraModel:
     )
 
 
+@cache
+def _production_fock_schedule_index(
+    architecture: str,
+) -> tuple[tuple[str, ScheduleIR], ...]:
+    """Read explicit Fock baseline schedules from the production manifest.
+
+    Generic schedule discovery intentionally avoids subgroup mappings for very
+    large component envelopes.  A tuned manifest may still contain a
+    hand-validated value-only Fock mapping for such a class.  Reusing that row
+    keeps autotune comparisons honest without maintaining a second shell-name
+    allowlist in Python.
+    """
+
+    selections = load_production_kernel_selections(
+        _PRODUCTION_MANIFEST_PATH,
+        architecture=architecture,
+        profile="auto",
+    )
+    return tuple(
+        (selection.spec.name, selection.fock_schedule)
+        for selection in selections
+        if KernelConsumer.FOCK in selection.consumers
+        and selection.fock_schedule is not None
+    )
+
+
 def _known_production_fock_subgroup_schedules(
     spec: ShellClassSpec, target: CudaTargetInfo
 ) -> tuple[ScheduleIR, ...]:
-    """Return accepted high-component Fock baselines absent from generic search.
+    """Return manifest-declared Fock baselines absent from generic search."""
 
-    ``schedule_candidates`` intentionally avoids subgroup mappings once a
-    shell class has more than 64 components.  Production nevertheless uses a
-    hand-validated subgroup Fock worker for a few high-order classes (for
-    example DPPP and DDDP).  Include those exact mappings as benchmark
-    baselines so a batch autotune compares a proposed schedule against the
-    schedule it would replace instead of selecting from an incomplete search
-    space.  The table is deliberately limited to existing production rows;
-    it is not an unbounded high-component search.
-    """
-
-    baseline = {
-        "dppp": (4, 0),
-        "dpdp": (2, 1),
-        "ddds": (2, 2),
-        "dddp": (1, 2),
-    }.get(spec.name)
-    if baseline is None:
+    schedule_by_name = dict(_production_fock_schedule_index(target.architecture))
+    schedule = schedule_by_name.get(spec.name)
+    if schedule is None:
         return ()
-    tasks_per_warp, minimum_blocks_per_sm = baseline
-    block_threads = target.warp_size * 4
-    schedule = ScheduleIR(
-        kind=ScheduleKind.SUBGROUP_TASKS,
-        block_threads=block_threads,
-        component_tile=spec.component_count,
-        tasks_per_warp=tasks_per_warp,
-        shared_coulomb=True,
-        pair_orientation=(
-            PairOrientation.SWAPPED
-            if spec.name in ("dppp", "dpdp", "ddds", "dddp")
-            else PairOrientation.CANONICAL
-        ),
-        pair_storage=(
-            PairStorage.RECOMPUTED
-            if spec.name in ("dpdp", "ddds", "dddp")
-            else PairStorage.MATERIALIZED
-        ),
-        unroll_pair_terms=(spec.name == "dppp"),
-        minimum_blocks_per_sm=minimum_blocks_per_sm,
-        warp_size=target.warp_size,
-    )
     schedule.validate_for(target)
     return (schedule,)
 
