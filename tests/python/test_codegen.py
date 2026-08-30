@@ -116,6 +116,7 @@ from tools.vibeqc_codegen.backend import TargetInfo, TargetScheduleShape
 from tools.vibeqc_codegen.batch_benchmark import (
     DEFAULT_CANDIDATES,
     KernelResources,
+    benchmark_command,
     candidate_specs,
     emit_batch_driver,
     emit_candidate_translation_unit,
@@ -3394,6 +3395,30 @@ def test_batch_screening_can_emit_coefficient_only_fock_candidates():
     assert r'\"consumer\":\"fock\"' in source
     assert "generated_fsps_shell_class_fock_rhf_kernel" in source
     assert r'\"maximum_fock_error\"' in source
+
+
+def test_batch_benchmark_command_has_finite_slurm_allocation():
+    """Keep manual batch execution aligned with the CUDA adapter contract."""
+
+    command = benchmark_command(
+        Path("build/shell_batch_benchmark"),
+        srun="srun",
+        partition="main",
+        gres="gpu:5090:1",
+        slurm_time="00:07:00",
+    )
+
+    assert command == [
+        "srun",
+        "--partition=main",
+        "--gres=gpu:5090:1",
+        "--nodes=1",
+        "--ntasks=1",
+        "--time=00:07:00",
+        "build/shell_batch_benchmark",
+    ]
+    with pytest.raises(ValueError, match="non-empty"):
+        benchmark_command(Path("benchmark"), slurm_time=" ")
 
 
 def test_ptxas_resource_parser_selects_fock_symbol_family():
