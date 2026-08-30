@@ -5688,8 +5688,13 @@ def test_autotune_emits_unique_schedule_variants_and_manifest_records():
                     {
                         "shell_class": "dpds",
                         "consumers": ["force"],
-                        "schedule": {},
-                    }
+                        "schedule": {"force_marker": "preserve"},
+                    },
+                    {
+                        "shell_class": "dpps",
+                        "consumers": ["force"],
+                        "schedule": {"force_marker": "preserve-dpps"},
+                    },
                 ]
             }
         },
@@ -5697,13 +5702,22 @@ def test_autotune_emits_unique_schedule_variants_and_manifest_records():
     fock_updated = update_manifest_payload(
         fock_manifest,
         "sm_120",
-        {"dpds": fock_trials[0].schedule},
+        {"dpds": fock_trials[0].schedule, "dpps": fock_trials[1].schedule},
         KernelConsumer.FOCK,
     )
-    assert fock_updated["architectures"]["sm_120"]["kernels"][0]["consumers"] == [
-        "fock",
-        "force",
+    fock_rows = fock_updated["architectures"]["sm_120"]["kernels"]
+    assert [row["consumers"] for row in fock_rows] == [
+        ["fock", "force"],
+        ["fock", "force"],
     ]
+    assert fock_rows[0]["schedule"] == {"force_marker": "preserve"}
+    assert fock_rows[0]["fock_schedule"] == schedule_payload(
+        fock_trials[0].schedule
+    )
+    assert fock_rows[1]["schedule"] == {"force_marker": "preserve-dpps"}
+    assert fock_rows[1]["fock_schedule"] == schedule_payload(
+        fock_trials[1].schedule
+    )
 
 
 def test_autotune_analysis_roots_follow_declared_derivative_centers():

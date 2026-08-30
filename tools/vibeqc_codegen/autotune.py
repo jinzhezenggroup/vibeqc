@@ -965,6 +965,15 @@ def update_manifest_payload(
         raise TypeError("architecture profile requires a kernels list")
 
     selected_consumer = KernelConsumer(consumer)
+    # Force and Fock may deliberately use different execution geometries for
+    # the same shell class.  A Fock autotune must therefore update the
+    # optional ``fock_schedule`` field while preserving the force schedule;
+    # otherwise a batch Fock search silently retunes the force path too.
+    schedule_field = (
+        "fock_schedule"
+        if selected_consumer == KernelConsumer.FOCK
+        else "schedule"
+    )
     required_consumers = (
         (KernelConsumer.FOCK, KernelConsumer.FORCE)
         if selected_consumer == KernelConsumer.FOCK
@@ -976,7 +985,7 @@ def update_manifest_payload(
             raise TypeError("production kernel entry must be a JSON object")
         name = row.get("shell_class")
         if isinstance(name, str) and name in winners:
-            row["schedule"] = schedule_payload(winners[name])
+            row[schedule_field] = schedule_payload(winners[name])
             raw_consumers = row.get("consumers", [])
             if not isinstance(raw_consumers, list):
                 raise TypeError(f"{name} consumers must be a list")
@@ -999,8 +1008,11 @@ def update_manifest_payload(
             entry = {
                 "shell_class": name,
                 "consumers": [item.value for item in required_consumers],
-                "schedule": schedule_payload(schedule),
             }
+            # Omitting ``schedule`` for a newly added Fock row lets the
+            # production parser derive the canonical force plan, while the
+            # measured winner is installed only in ``fock_schedule``.
+            entry[schedule_field] = schedule_payload(schedule)
             if provenance is not None:
                 metrics = provenance.get(name, {})
                 if not isinstance(metrics, Mapping):
