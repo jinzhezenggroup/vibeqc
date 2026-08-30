@@ -4,19 +4,20 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from .expr import Expr, Graph, MaterializationPlan
+from .expr import Coefficient, Expr, Graph, MaterializationPlan
 
 
-def format_constant(value: float) -> str:
-    """Emit an unambiguous double literal accepted by NVCC."""
+def format_constant(value: Coefficient) -> str:
+    """Lower an exact/approximate coefficient to one CUDA double literal."""
 
-    if value == 0.0:
+    numeric = float(value)
+    if numeric == 0.0:
         return "0.0"
-    if value == 1.0:
+    if numeric == 1.0:
         return "1.0"
-    if value == -1.0:
+    if numeric == -1.0:
         return "-1.0"
-    return f"{value:.17g}"
+    return f"{numeric:.17g}"
 
 
 class CudaEmitter:
@@ -84,6 +85,19 @@ class CudaEmitter:
             self.names[identifier] = name
             self.lines.append(f"  const double {name} = {code};")
 
+    def emit_assignment(self, expression: Expr, target: str) -> None:
+        """Emit one expression and bind its root to an existing CUDA lvalue.
+
+        Binding the root after the assignment lets later expressions reuse the
+        stored field directly instead of retaining an otherwise dead temporary.
+        This is useful for structured geometry records whose fields form the
+        boundary between symbolic algebra and backend storage.
+        """
+
+        self.emit((expression,))
+        self.lines.append(f"  {target} = {self.reference(expression)};")
+        self.names[expression.identifier] = target
+
     def _operation_code(self, identifier: int) -> str:
         """Lower one arithmetic node using the plan's contraction decisions."""
 
@@ -91,29 +105,33 @@ class CudaEmitter:
         fused_multiply = self._fma_by_add.get(identifier)
         if fused_multiply is not None:
             multiply = self.graph.nodes[fused_multiply]
-            other = (
-                node.arguments[1]
-                if node.arguments[0] == fused_multiply
-                else node.arguments[0]
+            remaining = list(node.arguments)
+            remaining.remove(fused_multiply)
+            accumulator = (
+                self._reference(remaining[0])
+                if len(remaining) == 1
+                else "(" + " + ".join(
+                    self._reference(item) for item in remaining
+                ) + ")"
             )
-            arguments = [
-                self._reference(item)
-                for item in (*multiply.arguments, other)
-            ]
-            return f"fma({arguments[0]}, {arguments[1]}, {arguments[2]})"
+            arguments = [self._reference(item) for item in multiply.arguments]
+            return f"fma({arguments[0]}, {arguments[1]}, {accumulator})"
         arguments = [self._reference(item) for item in node.arguments]
         if node.operation == "add":
-            return f"{arguments[0]} + {arguments[1]}"
+            return " + ".join(arguments)
         if node.operation == "multiply":
-            return f"{arguments[0]} * {arguments[1]}"
+            return " * ".join(arguments)
         if node.operation == "reciprocal":
             return f"1.0 / {arguments[0]}"
         if node.operation == "exp":
             return f"exp({arguments[0]})"
         if node.operation == "power":
+            exponent = float(node.payload)
+            if exponent == 0.5:
+                return f"sqrt({arguments[0]})"
             return (
                 f"pow({arguments[0]}, "
-                f"{format_constant(float(node.payload))})"
+                f"{format_constant(exponent)})"
             )
         raise ValueError(f"unsupported CUDA operation {node.operation!r}")
 

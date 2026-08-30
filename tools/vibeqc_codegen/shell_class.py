@@ -13,7 +13,8 @@ from dataclasses import dataclass
 
 from .cuda import CudaEmitter
 from .expr import Expr, Graph
-from .shell_spec import AXES, DPPP_SPEC, ShellClassSpec
+from .ir import IntegralIR, KernelConsumer, build_integral_ir
+from .shell_spec import AXES, DPPP_SPEC, PSSS_SPEC, ShellClassSpec
 
 CENTERS = ("first", "second", "third", "fourth")
 # Compatibility alias for the component-level dppp inspection CLI.  The
@@ -31,6 +32,9 @@ class PsssKernel:
     boys_argument: Expr
     value: Expr
     gradients: tuple[tuple[Expr, Expr, Expr], ...]
+    # Preserve the mathematical request for downstream emitters and oracles.
+    # ``None`` keeps direct dataclass construction source-compatible.
+    integral: IntegralIR | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,6 +48,8 @@ class DpppComponentKernel:
     boys_argument: Expr
     value: Expr
     gradients: tuple[tuple[Expr, Expr, Expr], ...]
+    # Keep explicit derivative/recovery intent attached to the lowered DAG.
+    integral: IntegralIR | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,6 +62,10 @@ class DpppContractionKernel:
     variables: Mapping[str, Expr]
     value: Expr
     gradients: tuple[tuple[Expr, Expr, Expr], ...]
+    # Keep the mathematical derivative/recovery intent beside the lowered DAG.
+    # ``None`` preserves compatibility with callers that construct this
+    # inspection dataclass directly instead of using the builder.
+    integral: IntegralIR | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,6 +79,9 @@ class ShellClassComponentKernel:
     boys_argument: Expr
     value: Expr
     gradients: tuple[tuple[Expr, Expr, Expr], ...]
+    # ``None`` preserves compatibility for callers that instantiate kernels
+    # directly; builders always attach the selected mathematical IR.
+    integral: IntegralIR | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,6 +94,7 @@ class ShellClassContractionKernel:
     variables: Mapping[str, Expr]
     value: Expr
     gradients: tuple[tuple[Expr, Expr, Expr], ...]
+    integral: IntegralIR | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,6 +112,66 @@ class WeightedShellContractionKernel:
     component_weights: tuple[Expr, ...]
     value: Expr
     gradients: tuple[tuple[Expr, Expr, Expr], ...]
+    integral: IntegralIR | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PackedForceGeometryAlgebra:
+    """Backend-neutral scalar geometry consumed by packed force kernels."""
+
+    graph: Graph
+    variables: Mapping[str, Expr]
+    rho: Expr
+    inverse_two_p: Expr
+    inverse_two_q: Expr
+    pair_shifts: tuple[tuple[Expr, Expr, Expr], ...]
+    difference: tuple[Expr, Expr, Expr]
+    decay_gradients: tuple[tuple[Expr, Expr, Expr], ...]
+    argument_squared_distance: Expr
+    boys_argument: Expr
+    prefactor: Expr
+    primitive_coefficient: Expr
+
+    @property
+    def roots(self) -> tuple[Expr, ...]:
+        """Return every computed scalar in deterministic storage order."""
+
+        return self.roots_for_pair_shift_rows(4)
+
+    def roots_for_pair_shift_rows(
+        self,
+        pair_shift_rows: int,
+        *,
+        decay_gradient_rows: int = 3,
+    ) -> tuple[Expr, ...]:
+        """Return roots matching the packed record's stored geometry rows.
+
+        The default three decay rows preserve the compact legacy packed-force
+        layout.  A derivative IR that differentiates center four requests the
+        optional fourth row explicitly; its expression is already part of the
+        backend-neutral algebra and only the storage policy changes.
+        """
+
+        if pair_shift_rows not in (3, 4):
+            raise ValueError("packed geometry requires three or four shift rows")
+        if decay_gradient_rows not in (3, 4):
+            raise ValueError("packed geometry requires three or four decay rows")
+        return (
+            self.rho,
+            self.inverse_two_p,
+            self.inverse_two_q,
+            *(item for center in self.pair_shifts[:pair_shift_rows] for item in center),
+            *self.difference,
+            *(
+                item
+                for center in self.decay_gradients[:decay_gradient_rows]
+                for item in center
+            ),
+            self.argument_squared_distance,
+            self.boys_argument,
+            self.prefactor,
+            self.primitive_coefficient,
+        )
 
 
 def _squared_distance(
@@ -109,6 +183,88 @@ def _squared_distance(
     return graph.sum(
         (coordinates[first][axis] - coordinates[second][axis]).pow(2.0)
         for axis in AXES
+    )
+
+
+def build_packed_force_geometry_algebra() -> PackedForceGeometryAlgebra:
+    """Describe packed primitive geometry without CUDA execution concepts."""
+
+    graph = Graph()
+    p = graph.variable("p")
+    q = graph.variable("q")
+    first_reduced_exponent = graph.variable("first_reduced_exponent")
+    second_reduced_exponent = graph.variable("second_reduced_exponent")
+    first_weighted_coefficient = graph.variable("first_weighted_coefficient")
+    second_weighted_coefficient = graph.variable("second_weighted_coefficient")
+    coordinates = {
+        center: tuple(
+            graph.variable(f"{center}_coordinate_{axis}") for axis in AXES
+        )
+        for center in CENTERS
+    }
+    product_p = tuple(graph.variable(f"product_p_{axis}") for axis in AXES)
+    product_q = tuple(graph.variable(f"product_q_{axis}") for axis in AXES)
+    variables = {
+        "p": p,
+        "q": q,
+        "first_reduced_exponent": first_reduced_exponent,
+        "second_reduced_exponent": second_reduced_exponent,
+        "first_weighted_coefficient": first_weighted_coefficient,
+        "second_weighted_coefficient": second_weighted_coefficient,
+        **{
+            f"{center}_coordinate_{axis}": coordinates[center][axis_index]
+            for center in CENTERS
+            for axis_index, axis in enumerate(AXES)
+        },
+        **{f"product_p_{axis}": product_p[index] for index, axis in enumerate(AXES)},
+        **{f"product_q_{axis}": product_q[index] for index, axis in enumerate(AXES)},
+    }
+
+    rho = p * q / (p + q)
+    inverse_two_p = 0.5 / p
+    inverse_two_q = 0.5 / q
+    pair_shifts = tuple(
+        tuple(
+            (product_p if center_index < 2 else product_q)[axis_index]
+            - coordinates[center][axis_index]
+            for axis_index in range(3)
+        )
+        for center_index, center in enumerate(CENTERS)
+    )
+    difference = tuple(product_p[index] - product_q[index] for index in range(3))
+    first_separation = tuple(
+        coordinates["first"][index] - coordinates["second"][index]
+        for index in range(3)
+    )
+    second_separation = tuple(
+        coordinates["third"][index] - coordinates["fourth"][index]
+        for index in range(3)
+    )
+    decay_gradients = (
+        tuple(-2 * first_reduced_exponent * item for item in first_separation),
+        tuple(2 * first_reduced_exponent * item for item in first_separation),
+        tuple(-2 * second_reduced_exponent * item for item in second_separation),
+        tuple(2 * second_reduced_exponent * item for item in second_separation),
+    )
+    argument_squared_distance = graph.sum(item.pow(2) for item in difference)
+    boys_argument = rho * argument_squared_distance
+    prefactor = 34.986836655249725 / (p * q * (p + q).pow(0.5))
+    primitive_coefficient = (
+        first_weighted_coefficient * second_weighted_coefficient
+    )
+    return PackedForceGeometryAlgebra(
+        graph=graph,
+        variables=variables,
+        rho=rho,
+        inverse_two_p=inverse_two_p,
+        inverse_two_q=inverse_two_q,
+        pair_shifts=pair_shifts,
+        difference=difference,
+        decay_gradients=decay_gradients,
+        argument_squared_distance=argument_squared_distance,
+        boys_argument=boys_argument,
+        prefactor=prefactor,
+        primitive_coefficient=primitive_coefficient,
     )
 
 
@@ -322,11 +478,32 @@ def _shell_component_value(
     return graph.sum(terms)
 
 
-def build_psss_kernel(p_axis: str) -> PsssKernel:
-    """Build the canonical primitive value and symbolic nuclear derivatives."""
+def build_psss_kernel(
+    p_axis: str,
+    *,
+    integral: IntegralIR | None = None,
+) -> PsssKernel:
+    """Build the canonical primitive value and symbolic nuclear derivatives.
+
+    ``integral`` carries the same derivative-center and translation-recovery
+    semantics used by generated shell lowering.  The default remains the
+    historical four-center ERI force request (centers 0, 1, and 2 explicit;
+    center 3 recovered), while an explicit IR lets this independent oracle
+    exercise non-final recovery without embedding another center convention.
+    """
 
     if p_axis not in AXES:
         raise ValueError(f"unsupported p axis {p_axis!r}")
+    selected_integral = integral or build_integral_ir(
+        PSSS_SPEC,
+        consumers=(KernelConsumer.FORCE,),
+    )
+    if selected_integral.spec != PSSS_SPEC:
+        raise ValueError("psss kernel spec does not match its integral IR")
+    if KernelConsumer.FORCE not in selected_integral.consumers:
+        raise ValueError("psss kernel requires a direct-force integral")
+    if selected_integral.derivative is None:
+        raise ValueError("psss kernel requires derivative metadata")
     graph = Graph()
     alpha = graph.variable("alpha")
     beta = graph.variable("beta")
@@ -394,8 +571,9 @@ def build_psss_kernel(p_axis: str) -> PsssKernel:
     )
     value = normalization * pair_decay * primitive_value
 
-    independent_gradients: list[tuple[Expr, Expr, Expr]] = []
-    for center in CENTERS[:3]:
+    independent_gradients: dict[int, tuple[Expr, Expr, Expr]] = {}
+    for center_index in selected_integral.independent_derivative_centers:
+        center = CENTERS[center_index]
         center_gradients: list[Expr] = []
         for axis in AXES:
             variable = coordinates[center][axis]
@@ -407,12 +585,26 @@ def build_psss_kernel(p_axis: str) -> PsssKernel:
             center_gradients.append(
                 graph.differentiate(value, variable, leaf_derivatives)
             )
-        independent_gradients.append(tuple(center_gradients))
-    fourth_gradient = tuple(
-        -graph.sum(independent_gradients[center][axis] for center in range(3))
-        for axis in range(3)
+        independent_gradients[center_index] = tuple(center_gradients)
+    gradients_by_center = dict(independent_gradients)
+    for center in selected_integral.recovered_derivative_centers:
+        gradients_by_center[center] = tuple(
+            -graph.sum(
+                independent_gradients[independent][axis]
+                for independent in selected_integral.independent_derivative_centers
+            )
+            for axis in range(3)
+        )
+    requested_centers = set(selected_integral.requested_derivative_centers)
+    gradients = tuple(
+        gradients_by_center.get(
+            center,
+            tuple(graph.constant(0.0) for _ in AXES),
+        )
+        if center in requested_centers
+        else tuple(graph.constant(0.0) for _ in AXES)
+        for center in range(len(CENTERS))
     )
-    gradients = tuple(independent_gradients) + (fourth_gradient,)
     return PsssKernel(
         graph=graph,
         p_axis=p_axis,
@@ -420,23 +612,35 @@ def build_psss_kernel(p_axis: str) -> PsssKernel:
         boys_argument=boys_argument,
         value=value,
         gradients=gradients,
+        integral=selected_integral,
     )
 
 
 def build_shell_class_component_kernel(
     spec: ShellClassSpec,
     component: Sequence[str],
+    *,
+    integral: IntegralIR | None = None,
 ) -> ShellClassComponentKernel:
     """Build one shell component and its compile-time symbolic derivatives.
 
     The value expression follows the same subset/Wick pair expansion and
     closed Cartesian Coulomb derivatives as the production oracle.  Automatic
     differentiation runs only in Python; emitted CUDA remains scalar analytic
-    code with no runtime AD types or tape.
+    code with no runtime AD types or tape.  When supplied, ``integral``
+    determines which center derivatives are materialized and which are
+    reconstructed from its declared invariants.
     """
 
     normalized = spec.validate_component(component)
-    maximum_order = spec.maximum_force_coulomb_order
+    selected_integral = integral or build_integral_ir(spec)
+    if selected_integral.spec != spec:
+        raise ValueError("shell component spec does not match its integral IR")
+    # Value-only contractions must not inherit the extra Coulomb order needed
+    # by a first derivative.  The explicit integral IR owns this recurrence
+    # boundary so FOCK and FORCE consumers materialize only the states they
+    # actually request.
+    maximum_order = selected_integral.maximum_coulomb_order
 
     graph = Graph()
     alpha = graph.variable("alpha")
@@ -525,8 +729,9 @@ def build_shell_class_component_kernel(
     normalization = 2.0 * pi.pow(2.5) / (p * q * (p + q).pow(0.5))
     value = normalization * pair_decay * primitive_value
 
-    independent_gradients: list[tuple[Expr, Expr, Expr]] = []
-    for center in CENTERS[:3]:
+    independent_gradients: dict[int, tuple[Expr, Expr, Expr]] = {}
+    for center_index in selected_integral.independent_derivative_centers:
+        center = CENTERS[center_index]
         center_gradients = []
         for axis in AXES:
             variable = coordinates[center][axis]
@@ -538,12 +743,23 @@ def build_shell_class_component_kernel(
             center_gradients.append(
                 graph.differentiate(value, variable, leaf_derivatives)
             )
-        independent_gradients.append(tuple(center_gradients))
-    fourth_gradient = tuple(
-        -graph.sum(independent_gradients[center][axis] for center in range(3))
-        for axis in range(3)
+        independent_gradients[center_index] = tuple(center_gradients)
+    gradients_by_center = dict(independent_gradients)
+    for center in selected_integral.recovered_derivative_centers:
+        gradients_by_center[center] = tuple(
+            -graph.sum(independent_gradients[independent][axis] for independent in selected_integral.independent_derivative_centers)
+            for axis in range(3)
+        )
+    requested_centers = set(selected_integral.requested_derivative_centers)
+    gradients = tuple(
+        gradients_by_center.get(
+            center,
+            tuple(graph.constant(0.0) for _ in AXES),
+        )
+        if center in requested_centers
+        else tuple(graph.constant(0.0) for _ in AXES)
+        for center in range(len(CENTERS))
     )
-    gradients = tuple(independent_gradients) + (fourth_gradient,)
     return ShellClassComponentKernel(
         graph=graph,
         spec=spec,
@@ -552,18 +768,24 @@ def build_shell_class_component_kernel(
         boys_argument=boys_argument,
         value=value,
         gradients=gradients,
+        integral=selected_integral,
     )
 
 
 def build_dppp_component_kernel(
     d_component: str,
     p_components: Sequence[str],
+    *,
+    integral: IntegralIR | None = None,
 ) -> DpppComponentKernel:
     """Build one canonical ``(d p|p p)`` component via the generic compiler."""
 
     normalized = _validated_dppp_components(d_component, p_components)
+    selected_integral = integral or build_integral_ir(DPPP_SPEC)
     kernel = build_shell_class_component_kernel(
-        DPPP_SPEC, (d_component, *normalized)
+        DPPP_SPEC,
+        (d_component, *normalized),
+        integral=selected_integral,
     )
     return DpppComponentKernel(
         graph=kernel.graph,
@@ -573,12 +795,15 @@ def build_dppp_component_kernel(
         boys_argument=kernel.boys_argument,
         value=kernel.value,
         gradients=kernel.gradients,
+        integral=selected_integral,
     )
 
 
 def build_shell_class_contraction_kernel(
     spec: ShellClassSpec,
     component: Sequence[str],
+    *,
+    integral: IntegralIR | None = None,
 ) -> ShellClassContractionKernel:
     """Lower one shell component around shared primitive-shell geometry.
 
@@ -589,7 +814,13 @@ def build_shell_class_contraction_kernel(
     """
 
     normalized = spec.validate_component(component)
-    maximum_order = spec.maximum_force_coulomb_order
+    selected_integral = integral or build_integral_ir(spec)
+    if selected_integral.spec != spec:
+        raise ValueError("shell contraction spec does not match its integral IR")
+    # Keep symbolic component state construction aligned with the mathematical
+    # IR.  In particular, a FOCK-only integral has no implicit derivative and
+    # therefore must not allocate the additional force-order Boys state.
+    maximum_order = selected_integral.maximum_coulomb_order
 
     graph = Graph()
     inverse_two_p = graph.variable("inverse_two_p")
@@ -610,12 +841,13 @@ def build_shell_class_contraction_kernel(
     first_product_scale = graph.variable("first_product_scale")
     second_product_scale = graph.variable("second_product_scale")
     third_product_scale = graph.variable("third_product_scale")
+    fourth_product_scale = graph.variable("fourth_product_scale")
     prefactor = graph.variable("prefactor")
     decay_gradients = {
         center: {
             axis: graph.variable(f"decay_{center}_{axis}") for axis in AXES
         }
-        for center in CENTERS[:3]
+        for center in CENTERS
     }
     variables: dict[str, Expr] = {
         "inverse_two_p": inverse_two_p,
@@ -624,6 +856,7 @@ def build_shell_class_contraction_kernel(
         "first_product_scale": first_product_scale,
         "second_product_scale": second_product_scale,
         "third_product_scale": third_product_scale,
+        "fourth_product_scale": fourth_product_scale,
         "prefactor": prefactor,
     }
     variables.update({f"difference_{axis}": difference[axis] for axis in AXES})
@@ -631,7 +864,7 @@ def build_shell_class_contraction_kernel(
         variables.update(
             {f"{prefix}_{axis}": shifts[prefix][axis] for axis in AXES}
         )
-    for center in CENTERS[:3]:
+    for center in CENTERS:
         variables.update(
             {
                 f"decay_{center}_{axis}": decay_gradients[center][axis]
@@ -650,8 +883,9 @@ def build_shell_class_contraction_kernel(
         boys,
     )
 
-    independent_gradients: list[tuple[Expr, Expr, Expr]] = []
-    for center_index, center in enumerate(CENTERS[:3]):
+    independent_gradients: dict[int, tuple[Expr, Expr, Expr]] = {}
+    independent_centers = selected_integral.independent_derivative_centers
+    for center_index in independent_centers:
         center_gradients = []
         for axis in AXES:
             argument_derivative = 2.0 * rho * difference[axis]
@@ -662,38 +896,78 @@ def build_shell_class_contraction_kernel(
             difference_gradient = graph.differentiate(
                 value, difference[axis], leaf_derivatives
             )
-            if center_index < 2:
-                pair_gradient = (
-                    (first_product_scale - 1.0)
-                    * graph.differentiate(value, shifts["pa"][axis])
-                    + first_product_scale
-                    * graph.differentiate(value, shifts["pb"][axis])
+            if center_index == 0:
+                first_shift_gradient = graph.differentiate(
+                    value, shifts["pa"][axis]
                 )
-                unscaled = (
-                    pair_gradient
-                    + first_product_scale * difference_gradient
-                    if center_index == 0
-                    else -pair_gradient
-                    + second_product_scale * difference_gradient
+                second_shift_gradient = graph.differentiate(
+                    value, shifts["pb"][axis]
                 )
-            else:
                 pair_gradient = (
-                    (third_product_scale - 1.0)
-                    * graph.differentiate(value, shifts["qc"][axis])
-                    + third_product_scale
-                    * graph.differentiate(value, shifts["qd"][axis])
+                    (first_product_scale - 1.0) * first_shift_gradient
+                    + first_product_scale * second_shift_gradient
+                )
+                unscaled = pair_gradient + first_product_scale * difference_gradient
+            elif center_index == 1:
+                first_shift_gradient = graph.differentiate(
+                    value, shifts["pa"][axis]
+                )
+                second_shift_gradient = graph.differentiate(
+                    value, shifts["pb"][axis]
+                )
+                pair_gradient = (
+                    second_product_scale * first_shift_gradient
+                    + (second_product_scale - 1.0) * second_shift_gradient
+                )
+                unscaled = pair_gradient + second_product_scale * difference_gradient
+            elif center_index == 2:
+                third_shift_gradient = graph.differentiate(
+                    value, shifts["qc"][axis]
+                )
+                fourth_shift_gradient = graph.differentiate(
+                    value, shifts["qd"][axis]
+                )
+                pair_gradient = (
+                    (third_product_scale - 1.0) * third_shift_gradient
+                    + third_product_scale * fourth_shift_gradient
                 )
                 unscaled = pair_gradient - third_product_scale * difference_gradient
+            elif center_index == 3:
+                third_shift_gradient = graph.differentiate(
+                    value, shifts["qc"][axis]
+                )
+                fourth_shift_gradient = graph.differentiate(
+                    value, shifts["qd"][axis]
+                )
+                pair_gradient = (
+                    fourth_product_scale * third_shift_gradient
+                    + (fourth_product_scale - 1.0) * fourth_shift_gradient
+                )
+                unscaled = pair_gradient - fourth_product_scale * difference_gradient
+            else:
+                raise ValueError(f"unsupported derivative center {center_index}")
             center_gradients.append(
                 prefactor
-                * (unscaled + value * decay_gradients[center][axis])
+                * (unscaled + value * decay_gradients[CENTERS[center_index]][axis])
             )
-        independent_gradients.append(tuple(center_gradients))
-    fourth_gradient = tuple(
-        -graph.sum(independent_gradients[center][axis] for center in range(3))
-        for axis in range(3)
+        independent_gradients[center_index] = tuple(center_gradients)
+    recovered_centers = selected_integral.recovered_derivative_centers
+    gradients_by_center = dict(independent_gradients)
+    for center in recovered_centers:
+        gradients_by_center[center] = tuple(
+            -graph.sum(independent_gradients[independent][axis] for independent in independent_centers)
+            for axis in range(3)
+        )
+    requested_centers = set(selected_integral.requested_derivative_centers)
+    gradients = tuple(
+        gradients_by_center.get(
+            center,
+            tuple(graph.constant(0.0) for _ in AXES),
+        )
+        if center in requested_centers
+        else tuple(graph.constant(0.0) for _ in AXES)
+        for center in range(len(CENTERS))
     )
-    gradients = tuple(independent_gradients) + (fourth_gradient,)
     return ShellClassContractionKernel(
         graph=graph,
         spec=spec,
@@ -701,6 +975,7 @@ def build_shell_class_contraction_kernel(
         variables=variables,
         value=value,
         gradients=gradients,
+        integral=selected_integral,
     )
 
 
@@ -716,7 +991,7 @@ def _clone_expression(
         return cached
     node = expression.graph.node(expression)
     if node.operation == "constant":
-        cloned = target.constant(float(node.payload))
+        cloned = target.clone_constant(node)
     elif node.operation == "variable":
         cloned = target.variable(str(node.payload))
     else:
@@ -729,9 +1004,17 @@ def _clone_expression(
             for identifier in node.arguments
         )
         if node.operation == "add":
-            cloned = target.add(arguments[0], arguments[1])
+            cloned = (
+                target.add(arguments[0], arguments[1])
+                if len(arguments) == 2
+                else target.add_many(arguments)
+            )
         elif node.operation == "multiply":
-            cloned = target.multiply(arguments[0], arguments[1])
+            cloned = (
+                target.multiply(arguments[0], arguments[1])
+                if len(arguments) == 2
+                else target.multiply_many(arguments)
+            )
         elif node.operation == "reciprocal":
             cloned = target.reciprocal(arguments[0])
         elif node.operation == "exp":
@@ -747,6 +1030,8 @@ def _clone_expression(
 def build_weighted_shell_contraction_kernel(
     spec: ShellClassSpec,
     component_indices: Sequence[int] | None = None,
+    *,
+    integral: IntegralIR | None = None,
 ) -> WeightedShellContractionKernel:
     """Build one density-weightable DAG spanning every shell component.
 
@@ -773,6 +1058,10 @@ def build_weighted_shell_contraction_kernel(
     ):
         raise ValueError("weighted shell component index is out of range")
 
+    selected_integral = integral or build_integral_ir(spec)
+    if selected_integral.spec != spec:
+        raise ValueError("weighted shell spec does not match its integral IR")
+
     graph = Graph()
     component_weights = tuple(
         graph.variable(f"component_weight_{component}")
@@ -788,7 +1077,11 @@ def build_weighted_shell_contraction_kernel(
         strict=True,
     ):
         component = spec.components[component_index]
-        kernel = build_shell_class_contraction_kernel(spec, component)
+        kernel = build_shell_class_contraction_kernel(
+            spec,
+            component,
+            integral=selected_integral,
+        )
         memo: dict[int, Expr] = {}
         weighted_values.append(
             weight * _clone_expression(kernel.value, graph, memo)
@@ -815,18 +1108,24 @@ def build_weighted_shell_contraction_kernel(
         component_weights=component_weights,
         value=value,
         gradients=gradients,
+        integral=selected_integral,
     )
 
 
 def build_dppp_contraction_kernel(
     d_component: str,
     p_components: Sequence[str],
+    *,
+    integral: IntegralIR | None = None,
 ) -> DpppContractionKernel:
     """Lower one ``dppp`` component via the generic shell-class compiler."""
 
     normalized = _validated_dppp_components(d_component, p_components)
+    selected_integral = integral or build_integral_ir(DPPP_SPEC)
     kernel = build_shell_class_contraction_kernel(
-        DPPP_SPEC, (d_component, *normalized)
+        DPPP_SPEC,
+        (d_component, *normalized),
+        integral=selected_integral,
     )
     return DpppContractionKernel(
         graph=kernel.graph,
@@ -835,6 +1134,7 @@ def build_dppp_contraction_kernel(
         variables=kernel.variables,
         value=kernel.value,
         gradients=kernel.gradients,
+        integral=selected_integral,
     )
 
 
@@ -946,6 +1246,7 @@ def emit_dppp_component_cuda(kernel: DpppComponentKernel) -> str:
 def emit_dppp_contraction_cuda(kernel: DpppContractionKernel) -> str:
     """Emit a component evaluator that consumes cooperative common geometry."""
 
+    selected_integral = kernel.integral or build_integral_ir(DPPP_SPEC)
     variable_code = {
         "inverse_two_p": "geometry.inverse_two_p",
         "inverse_two_q": "geometry.inverse_two_q",
@@ -953,6 +1254,9 @@ def emit_dppp_contraction_cuda(kernel: DpppContractionKernel) -> str:
         "first_product_scale": "geometry.product_scales[0]",
         "second_product_scale": "geometry.product_scales[1]",
         "third_product_scale": "geometry.product_scales[2]",
+        # The compact geometry ABI stores only one ket-pair scale; the fourth
+        # center's scale is its exact complement, including pair reversal.
+        "fourth_product_scale": "1.0 - geometry.product_scales[2]",
         "prefactor": "geometry.prefactor",
         **{
             f"difference_{axis}": f"geometry.difference.{axis}"
@@ -965,10 +1269,17 @@ def emit_dppp_contraction_cuda(kernel: DpppContractionKernel) -> str:
             variable_code[f"{prefix}_{axis}"] = (
                 f"geometry.pair_shifts[{center}].{axis}"
             )
-    for center_index, center in enumerate(CENTERS[:3]):
+    # Decay rows are packed in the same dense order as the independent
+    # derivative centers in the explicit IR.  This avoids treating the
+    # physical center index as a storage slot when translation recovery picks
+    # a non-final center (for example, independent centers A/C/D).
+    for row, center_index in enumerate(
+        selected_integral.independent_derivative_centers
+    ):
+        center = CENTERS[center_index]
         for axis_index, axis in enumerate(AXES):
             variable_code[f"decay_{center}_{axis}"] = (
-                f"geometry.decay_gradients[{center_index}][{axis_index}]"
+                f"geometry.decay_gradients[{row}][{axis_index}]"
             )
 
     emitter = CudaEmitter(kernel.graph, variable_code)

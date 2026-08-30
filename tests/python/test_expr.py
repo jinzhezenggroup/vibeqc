@@ -2,18 +2,25 @@
 
 from __future__ import annotations
 
+import math
+from fractions import Fraction
+
 from tools.vibeqc_codegen import (
     PSSS_SPEC,
+    AlgebraForm,
     AlgebraFusion,
     AlgebraOrdering,
     MaterializationDecision,
     MaterializationPlan,
+    PowerLowering,
     RematerializationPolicy,
     SsaAnalysis,
     SsaValueLifetime,
+    build_packed_force_geometry_algebra,
+    build_psss_kernel,
     build_weighted_shell_contraction_kernel,
 )
-from tools.vibeqc_codegen.cuda import CudaEmitter
+from tools.vibeqc_codegen.cuda import CudaEmitter, format_constant
 from tools.vibeqc_codegen.expr import Graph
 
 
@@ -343,3 +350,257 @@ def test_fma_fusion_preserves_shared_multiply_cse_and_supports_inline_root():
     emitter.emit((inline_root,))
     assert emitter.lines == []
     assert emitter.reference(inline_root) == "fma(a, b, c)"
+
+
+def test_canonical_nary_rebuild_flattens_and_folds_associative_regions():
+    """Represent equal sums identically with one scalar-counted n-ary node."""
+
+    graph = Graph()
+    x = graph.variable("x")
+    y = graph.variable("y")
+    root = ((x + 2.0) + (y + 3.0)) + x
+    canonical, roots = graph.apply_algebra_form(
+        (root,),
+        AlgebraForm.CANONICAL_NARY,
+    )
+    rebuilt = roots[0]
+    node = canonical.node(rebuilt)
+
+    assert node.operation == "add"
+    assert len(node.arguments) == 4
+    assert sum(
+        canonical.nodes[item].operation == "constant" for item in node.arguments
+    ) == 1
+    assert canonical.analyze_ssa(roots).arithmetic_operation_count == 3
+    assert canonical.evaluate(rebuilt, {"x": 1.5, "y": -2.0}) == 6.0
+
+    emitter = CudaEmitter(canonical, {})
+    emitter.emit(roots)
+    assert len(emitter.lines) == 1
+    assert emitter.lines[0].count(" + ") == 3
+
+
+def test_canonical_forms_ignore_binary_parenthesization():
+    """Emit one stable associative form for equivalent binary source trees."""
+
+    graph = Graph()
+    x = graph.variable("x")
+    y = graph.variable("y")
+    z = graph.variable("z")
+    left_associative = (x + y) + z
+    right_associative = x + (y + z)
+
+    def emitted_form(root, form):
+        canonical, roots = graph.apply_algebra_form((root,), form)
+        emitter = CudaEmitter(canonical, {})
+        emitter.emit(roots)
+        return emitter.lines, emitter.reference(roots[0])
+
+    for form in (AlgebraForm.CANONICAL_NARY, AlgebraForm.FACTORED_NARY):
+        assert emitted_form(left_associative, form) == emitted_form(
+            right_associative,
+            form,
+        )
+
+
+def test_exact_rational_coefficients_fold_before_cuda_lowering():
+    """Keep coefficient algebra exact until the final double literal."""
+
+    graph = Graph()
+    x = graph.variable("x")
+    one_tenth = graph.coerce(0.1)
+    two_tenths = graph.coerce(0.2)
+    folded = graph.add(one_tenth, two_tenths)
+
+    assert graph.node(one_tenth).payload == Fraction(1, 10)
+    assert graph.node(folded).payload == Fraction(3, 10)
+    assert format_constant(graph.node(folded).payload) == "0.29999999999999999"
+    assert format_constant(Fraction(1, 3)) == "0.33333333333333331"
+    rational = graph.constant(Fraction(2, 3))
+    assert graph.node(graph.reciprocal(rational)).payload == Fraction(3, 2)
+    assert graph.node(rational.pow(-2)).payload == Fraction(9, 4)
+
+    root = Fraction(1, 3) * x + Fraction(2, 3) * x
+    factored, roots = graph.apply_algebra_form(
+        (root,),
+        AlgebraForm.FACTORED_NARY,
+    )
+    assert factored.node(roots[0]).operation == "variable"
+    assert factored.evaluate(roots[0], {"x": 1.25}) == 1.25
+
+    transcendental = graph.exponential(graph.constant(1))
+    assert isinstance(graph.node(transcendental).payload, float)
+
+    weighted = build_weighted_shell_contraction_kernel(
+        PSSS_SPEC,
+        component_indices=(0,),
+    )
+    coefficients = (
+        node.payload
+        for node in weighted.graph.nodes
+        if node.operation == "constant"
+    )
+    assert all(isinstance(coefficient, Fraction) for coefficient in coefficients)
+
+
+def test_small_integer_power_lowering_reuses_squares_and_preserves_other_powers():
+    """Expand bounded integer powers without duplicating shared squares."""
+
+    graph = Graph()
+    x = graph.variable("x")
+    root = x.pow(4) + x.pow(-3) + x.pow(0.5)
+    lowered, roots = graph.apply_algebra_form(
+        (root,),
+        AlgebraForm.BINARY,
+        PowerLowering.SMALL_INTEGER,
+    )
+
+    counts = lowered.operation_counts(roots)
+    assert counts["multiply"] == 3
+    assert counts["reciprocal"] == 1
+    assert counts["power"] == 1
+    values = {"x": 1.75}
+    assert lowered.evaluate(roots[0], values) == graph.evaluate(root, values)
+
+    emitter = CudaEmitter(lowered, {})
+    emitter.emit(roots)
+    source = "\n".join(emitter.lines)
+    assert "pow(x, 4" not in source
+    assert "pow(x, -3" not in source
+    assert "sqrt(x)" in source
+
+    psss = build_psss_kernel("x")
+    psss_roots = (
+        psss.value,
+        *(gradient for center in psss.gradients for gradient in center),
+    )
+    native_power_count = psss.graph.operation_counts(psss_roots)["power"]
+    lowered_psss, lowered_psss_roots = psss.graph.apply_algebra_form(
+        psss_roots,
+        AlgebraForm.BINARY,
+        PowerLowering.SMALL_INTEGER,
+    )
+    assert lowered_psss.operation_counts(lowered_psss_roots)["power"] < (
+        native_power_count
+    )
+
+
+def test_cuda_emitter_assignment_binds_stored_root_for_later_cse():
+    """Use a structured output field as the next expression's CSE input."""
+
+    graph = Graph()
+    x = graph.variable("x")
+    stored = x + 1.0
+    consumer = stored * 2.0
+    emitter = CudaEmitter(graph, {})
+    emitter.emit_assignment(stored, "geometry.stored")
+    emitter.emit((consumer,))
+
+    source = "\n".join(emitter.lines)
+    assert "geometry.stored =" in source
+    assert emitter.reference(stored) == "geometry.stored"
+    assert "geometry.stored * 2" in source
+
+
+def test_packed_force_geometry_algebra_matches_scalar_formulas():
+    """Describe packed geometry completely before choosing CUDA storage."""
+
+    geometry = build_packed_force_geometry_algebra()
+    values = {
+        "p": 1.7,
+        "q": 2.3,
+        "first_reduced_exponent": 0.4,
+        "second_reduced_exponent": 0.6,
+        "first_weighted_coefficient": 1.25,
+        "second_weighted_coefficient": -0.75,
+    }
+    coordinates = {
+        "first": (0.2, -0.3, 0.5),
+        "second": (-0.4, 0.1, 0.7),
+        "third": (0.8, -0.2, -0.6),
+        "fourth": (0.3, 0.9, -0.1),
+    }
+    product_p = (0.05, -0.1, 0.6)
+    product_q = (0.65, 0.25, -0.4)
+    for center, items in coordinates.items():
+        for axis, item in zip(("x", "y", "z"), items, strict=True):
+            values[f"{center}_coordinate_{axis}"] = item
+    for prefix, items in (("product_p", product_p), ("product_q", product_q)):
+        for axis, item in zip(("x", "y", "z"), items, strict=True):
+            values[f"{prefix}_{axis}"] = item
+
+    evaluate = lambda expression: geometry.graph.evaluate(expression, values)
+    expected_rho = values["p"] * values["q"] / (values["p"] + values["q"])
+    difference = tuple(product_p[index] - product_q[index] for index in range(3))
+    squared_distance = sum(item * item for item in difference)
+    assert evaluate(geometry.rho) == expected_rho
+    assert evaluate(geometry.inverse_two_p) == 0.5 / values["p"]
+    assert evaluate(geometry.inverse_two_q) == 0.5 / values["q"]
+    assert tuple(map(evaluate, geometry.difference)) == difference
+    assert evaluate(geometry.argument_squared_distance) == squared_distance
+    assert evaluate(geometry.boys_argument) == expected_rho * squared_distance
+    assert evaluate(geometry.prefactor) == (
+        34.986836655249725
+        / (values["p"] * values["q"] * math.sqrt(values["p"] + values["q"]))
+    )
+    assert evaluate(geometry.primitive_coefficient) == -0.9375
+
+    lowered, roots = geometry.graph.apply_algebra_form(
+        geometry.roots,
+        AlgebraForm.BINARY,
+        PowerLowering.SMALL_INTEGER,
+    )
+    assert lowered.operation_counts(roots)["power"] == 1
+    assert len(geometry.roots_for_pair_shift_rows(3)) == 28
+    assert len(geometry.roots_for_pair_shift_rows(4)) == 31
+
+
+def test_factored_nary_extracts_common_factors_and_collects_like_terms():
+    """Turn repeated multiplicative terms into deterministic Horner-like sums."""
+
+    graph = Graph()
+    x = graph.variable("x")
+    y = graph.variable("y")
+    z = graph.variable("z")
+    root = 2.0 * x * y + 3.0 * x * z + x + x
+    canonical, canonical_roots = graph.apply_algebra_form(
+        (root,),
+        AlgebraForm.CANONICAL_NARY,
+    )
+    factored, factored_roots = graph.apply_algebra_form(
+        (root,),
+        AlgebraForm.FACTORED_NARY,
+    )
+
+    values = {"x": 1.25, "y": -0.5, "z": 2.0}
+    assert factored.evaluate(factored_roots[0], values) == canonical.evaluate(
+        canonical_roots[0], values
+    )
+    assert factored.analyze_ssa(factored_roots).arithmetic_operation_count < (
+        canonical.analyze_ssa(canonical_roots).arithmetic_operation_count
+    )
+    root_node = factored.node(factored_roots[0])
+    assert root_node.operation == "multiply"
+    assert any(
+        factored.nodes[item].operation == "add" for item in root_node.arguments
+    )
+
+
+def test_nary_differentiation_and_fma_lowering_cover_variable_arity_nodes():
+    """Keep symbolic AD and explicit contraction correct beyond binary nodes."""
+
+    graph = Graph()
+    x = graph.variable("x")
+    y = graph.variable("y")
+    z = graph.variable("z")
+    product = graph.multiply_many((x, y, z))
+    derivative = graph.differentiate(product, x)
+    assert graph.evaluate(derivative, {"x": 2.0, "y": 3.0, "z": 4.0}) == 12.0
+
+    pair = x * y
+    root = graph.add_many((pair, z, graph.variable("w")))
+    plan = graph.materialization_plan((root,), fusion=AlgebraFusion.FMA)
+    emitter = CudaEmitter(graph, {}, materialization_plan=plan)
+    emitter.emit((root,))
+    assert emitter.lines == ["  const double v0 = fma(x, y, (z + w));"]
+    assert plan.operation_counts == (("add", 1), ("fma", 1))

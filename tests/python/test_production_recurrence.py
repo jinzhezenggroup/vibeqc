@@ -7,7 +7,18 @@ from pathlib import Path
 
 import pytest
 
+from tools.vibeqc_codegen import (
+    DPDS_SPEC,
+    ContractionSpec,
+    KernelConsumer,
+    OperatorFamily,
+    OperatorSpec,
+    TranslationInvariant,
+    build_fused_shell_plan,
+    build_integral_ir,
+)
 from tools.vibeqc_codegen.production import (
+    KernelSelection,
     emit_multi_registry_header,
     emit_multi_registry_source,
     emit_production_shard,
@@ -118,6 +129,39 @@ def _structural_rys_manifest(
         ),
         encoding="utf-8",
     )
+
+
+def test_production_selection_preserves_explicit_integral_ir():
+    """Carry non-final translation recovery through production emission."""
+
+    spec = DPDS_SPEC
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        spec,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    selection = KernelSelection(
+        architecture="sm_120",
+        spec=spec,
+        consumers=(KernelConsumer.FORCE,),
+        schedule=build_fused_shell_plan(spec, integral=integral).schedule,
+        integral=integral,
+    )
+
+    assert selection.integral is integral
+    source = emit_production_shard((selection,))
+    assert "constexpr unsigned derivative_centers[3] = {0U, 2U, 3U};" in source
 
 
 def test_force_only_rys3_manifest_reaches_every_production_emitter(

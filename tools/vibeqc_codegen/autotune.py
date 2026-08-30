@@ -11,6 +11,7 @@ winning schedule reproducible in the production manifest.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -33,6 +34,7 @@ from .benchmark import (
 )
 from .cuda_adapter import CudaBenchmarkExecutor, CudaCompilerAdapter
 from .cuda_schedule import (
+    AlgebraForm,
     AlgebraFusion,
     AlgebraOrdering,
     AlgebraPlacement,
@@ -48,12 +50,13 @@ from .cuda_target import (
     cuda_target_info,
     normalize_cuda_architecture,
 )
-from .expr import Expr
+from .expr import Expr, PowerLowering
 from .fused_schedule import build_fused_shell_plan
-from .ir import KernelConsumer, build_integral_ir
+from .ir import IntegralIR, KernelConsumer, build_integral_ir
 from .shell_class import (
     ShellClassContractionKernel,
     WeightedShellContractionKernel,
+    build_packed_force_geometry_algebra,
     build_shell_class_contraction_kernel,
     build_weighted_shell_contraction_kernel,
 )
@@ -62,12 +65,18 @@ from .shell_spec import AXES, FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec
 
 @dataclass(frozen=True, slots=True)
 class StaticAlgebraModel:
-    """Schedule-relevant symbolic operation and live-value estimates."""
+    """Schedule-relevant symbolic operation and live-value estimates.
+
+    Packed-force rows include both the weighted contraction DAG and the fixed
+    backend-neutral geometry setup.  Other consumers retain their existing
+    component-envelope semantics because they do not emit that geometry path.
+    """
 
     scope: str
     algebra_placement: AlgebraPlacement
     algebra_ordering: AlgebraOrdering
     algebra_fusion: AlgebraFusion
+    algebra_form: AlgebraForm
     component_count: int
     sampled_component_count: int
     recurrence_state_count: int
@@ -92,6 +101,7 @@ class StaticAlgebraModel:
             "algebra_placement": self.algebra_placement.value,
             "algebra_ordering": self.algebra_ordering.value,
             "algebra_fusion": self.algebra_fusion.value,
+            "algebra_form": self.algebra_form.value,
             "component_count": self.component_count,
             "sampled_component_count": self.sampled_component_count,
             "recurrence_state_count": self.recurrence_state_count,
@@ -130,6 +140,64 @@ class StaticAlgebraModel:
         }
 
 
+def _integral_signature(integral: IntegralIR) -> str:
+    """Return a deterministic short identifier for mathematical IR intent.
+
+    Schedule IDs intentionally describe only execution knobs.  Explicit
+    operator/recovery choices must nevertheless participate in trial identity,
+    otherwise two valid IRs can overwrite each other's oracle rows or CUDA
+    symbols.  Serialize enum and set-like fields canonically before hashing so
+    the suffix is stable across Python processes.
+    """
+
+    def coordinates(parameters) -> str | list[int]:
+        selected = parameters.centers
+        return selected if isinstance(selected, str) else list(selected)
+
+    def invariants(items) -> list[dict[str, object]]:
+        return [
+            {
+                "parameters": coordinates(item.parameters),
+                "dependent_center": item.dependent_center,
+            }
+            for item in items
+        ]
+
+    derivative = None
+    if integral.derivative is not None:
+        derivative = {
+            "order": integral.derivative.order,
+            "parameters": coordinates(integral.derivative.parameters),
+            "invariants": invariants(integral.derivative.invariants),
+        }
+    payload = {
+        "spec": {
+            "name": integral.spec.name,
+            "angular": list(integral.spec.angular),
+        },
+        "operator": {
+            "family": integral.operator.family.value,
+            "centers": list(integral.operator.centers),
+            "invariants": invariants(integral.operator.invariants),
+        },
+        "derivative": derivative,
+        "contractions": [
+            {
+                "consumer": item.consumer.value,
+                "density": sorted(model.value for model in item.density),
+                "output": item.output.value,
+            }
+            for item in sorted(
+                integral.contractions,
+                key=lambda item: item.consumer.value,
+            )
+        ],
+        "recurrence": integral.recurrence,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()[:12]
+
+
 @dataclass(frozen=True, slots=True)
 class ScheduleTrial:
     """One shell class and one concrete schedule compiled as a unit."""
@@ -138,6 +206,10 @@ class ScheduleTrial:
     schedule: ScheduleIR
     consumer: KernelConsumer = KernelConsumer.FORCE
     target: CudaTargetInfo = DEFAULT_CUDA_TARGET
+    # An explicit IR is optional for compatibility with the legacy CLI, but
+    # when present it must remain the source of mathematical intent throughout
+    # model construction and CUDA benchmark emission.
+    integral: IntegralIR | None = None
 
     @property
     def schedule_id(self) -> str:
@@ -160,14 +232,26 @@ class ScheduleTrial:
                 self.schedule.algebra_placement.value,
                 self.schedule.algebra_ordering.value,
                 self.schedule.algebra_fusion.value,
+                self.schedule.algebra_form.value,
             )
         )
+
+    @property
+    def integral_suffix(self) -> str:
+        """Return a stable symbol suffix for explicitly supplied IRs."""
+
+        if self.integral is None:
+            return ""
+        return f"_ir{_integral_signature(self.integral)}"
 
     @property
     def key(self) -> str:
         """Return the cross-class report key for this trial."""
 
-        return f"{self.spec.name}:{self.consumer.value}:{self.schedule_id}"
+        return (
+            f"{self.spec.name}:{self.consumer.value}:{self.schedule_id}"
+            f"{self.integral_suffix}"
+        )
 
     @property
     def entry_point(self) -> str:
@@ -175,7 +259,7 @@ class ScheduleTrial:
 
         return (
             f"vibeqc_run_schedule_{self.spec.name}_{self.consumer.value}_"
-            f"{self.schedule_id}"
+            f"{self.schedule_id}{self.integral_suffix}"
         )
 
     @property
@@ -184,7 +268,7 @@ class ScheduleTrial:
 
         return (
             f"generated_{self.spec.name}_{self.consumer.value}_"
-            f"{self.schedule_id}"
+            f"{self.schedule_id}{self.integral_suffix}"
         )
 
     @property
@@ -208,6 +292,7 @@ def schedule_payload(schedule: ScheduleIR) -> dict[str, object]:
         "algebra_placement": schedule.algebra_placement.value,
         "algebra_ordering": schedule.algebra_ordering.value,
         "algebra_fusion": schedule.algebra_fusion.value,
+        "algebra_form": schedule.algebra_form.value,
         "unroll_pair_terms": schedule.unroll_pair_terms,
         "minimum_blocks_per_sm": schedule.minimum_blocks_per_sm,
         "maximum_registers": schedule.maximum_registers,
@@ -240,17 +325,56 @@ def _balanced_component_labels(spec: ShellClassSpec) -> tuple[tuple[str, ...], .
 def _analysis_roots(
     kernel: ShellClassContractionKernel | WeightedShellContractionKernel,
     consumer: KernelConsumer,
+    *,
+    integral: IntegralIR | None = None,
 ) -> tuple[Expr, ...]:
-    """Select value or independent-force roots from a symbolic kernel."""
+    """Select value or declared independent-force roots from a symbolic kernel.
+
+    The symbolic shell kernel retains all four center gradients so it can be
+    used as a correctness oracle.  Static force models, however, should count
+    only the centers that the owning mathematical IR evaluates; recovered
+    centers are reconstructed by the consumer and must not inflate the model.
+    """
 
     if consumer == KernelConsumer.FOCK:
         if not isinstance(kernel, ShellClassContractionKernel):
             raise TypeError("Fock algebra analysis requires a component kernel")
         return (kernel.variables["prefactor"] * kernel.value,)
+    selected = integral or build_integral_ir(
+        kernel.spec,
+        consumers=(consumer,),
+    )
+    if selected.spec != kernel.spec:
+        raise ValueError("analysis integral spec does not match its symbolic kernel")
     return tuple(
         kernel.gradients[center][coordinate]
-        for center in range(3)
+        for center in selected.independent_derivative_centers
         for coordinate in range(3)
+    )
+
+
+@cache
+def _packed_force_geometry_analysis(pair_shift_rows: int):
+    """Return static metrics for the geometry setup emitted by packed force.
+
+    Geometry is lowered with a fixed binary/small-integer form in the CUDA
+    setup helper.  Keeping this analysis separate from the schedule-dependent
+    weighted contraction lets the tuner report both costs without pretending
+    that geometry placement is already an execution-policy knob.
+    """
+
+    if pair_shift_rows not in (3, 4):
+        raise ValueError("packed geometry analysis requires three or four shifts")
+    geometry = build_packed_force_geometry_algebra()
+    roots = geometry.roots_for_pair_shift_rows(pair_shift_rows)
+    graph, roots = geometry.graph.apply_algebra_form(
+        roots,
+        AlgebraForm.BINARY,
+        PowerLowering.SMALL_INTEGER,
+    )
+    return (
+        graph.analyze_ssa(roots),
+        graph.materialization_plan(roots),
     )
 
 
@@ -258,27 +382,35 @@ def _analysis_roots(
 def _cached_static_algebra_model(
     spec: ShellClassSpec,
     consumer: KernelConsumer,
+    integral: IntegralIR,
     weighted_shell: bool,
     algebra_placement: AlgebraPlacement,
     algebra_ordering: AlgebraOrdering,
     algebra_fusion: AlgebraFusion,
+    algebra_form: AlgebraForm,
 ) -> StaticAlgebraModel:
     """Build one immutable model shared by same-class schedule variants."""
 
     if weighted_shell:
-        kernel = build_weighted_shell_contraction_kernel(spec)
-        roots = _analysis_roots(kernel, consumer)
-        analysis_pairs = (
+        kernel = build_weighted_shell_contraction_kernel(spec, integral=integral)
+        graph, roots = kernel.graph.apply_algebra_form(
+            _analysis_roots(kernel, consumer, integral=integral),
+            algebra_form,
+        )
+        analysis_pairs = [
             (
-                kernel.graph.analyze_ssa(roots),
-                kernel.graph.materialization_plan(
+                graph.analyze_ssa(roots),
+                graph.materialization_plan(
                     roots,
                     algebra_placement.materialization_policy(),
                     algebra_ordering,
                     algebra_fusion,
                 ),
             ),
-        )
+            _packed_force_geometry_analysis(
+                4 if spec.angular[3] != 0 else 3
+            ),
+        ]
         scope = "weighted_shell_dag"
         sampled_component_count = spec.component_count
     else:
@@ -295,9 +427,21 @@ def _cached_static_algebra_model(
             )
             for component in components
             for component_kernel in (
-                build_shell_class_contraction_kernel(spec, component),
+                build_shell_class_contraction_kernel(
+                    spec,
+                    component,
+                    integral=integral,
+                ),
             )
-            for roots in (_analysis_roots(component_kernel, consumer),)
+            for binary_roots in (
+                _analysis_roots(component_kernel, consumer, integral=integral),
+            )
+            for graph, roots in (
+                component_kernel.graph.apply_algebra_form(
+                    binary_roots,
+                    algebra_form,
+                ),
+            )
         )
         scope = "balanced_component_sample_envelope"
         sampled_component_count = len(components)
@@ -314,28 +458,44 @@ def _cached_static_algebra_model(
     rematerialized_value_count = 0
     reordered_value_count = 0
     fma_operation_count = 0
-    for analysis, plan in analysis_pairs:
-        root_count = analysis.root_count
-        baseline_arithmetic_operation_count = max(
-            baseline_arithmetic_operation_count,
-            analysis.arithmetic_operation_count,
-        )
-        baseline_materialized_value_count = max(
-            baseline_materialized_value_count,
-            analysis.materialized_value_count,
-        )
-        baseline_peak_live_values = max(
-            baseline_peak_live_values,
-            analysis.peak_live_values,
-        )
-        arithmetic_operation_count = max(
-            arithmetic_operation_count,
-            plan.arithmetic_operation_count,
-        )
-        materialized_value_count = max(
-            materialized_value_count, plan.materialized_value_count
-        )
-        peak_live_values = max(peak_live_values, plan.peak_live_values)
+    for pair_index, (analysis, plan) in enumerate(analysis_pairs):
+        if pair_index == 0:
+            # ``root_count`` describes the schedule's consumer roots.  The
+            # geometry setup is accounted for in the envelopes below, but is
+            # not another consumer output tensor.
+            root_count = analysis.root_count
+        combine = weighted_shell
+        if combine:
+            baseline_arithmetic_operation_count += analysis.arithmetic_operation_count
+            baseline_materialized_value_count += analysis.materialized_value_count
+            baseline_peak_live_values = max(
+                baseline_peak_live_values,
+                analysis.peak_live_values,
+            )
+            arithmetic_operation_count += plan.arithmetic_operation_count
+            materialized_value_count += plan.materialized_value_count
+            peak_live_values = max(peak_live_values, plan.peak_live_values)
+        else:
+            baseline_arithmetic_operation_count = max(
+                baseline_arithmetic_operation_count,
+                analysis.arithmetic_operation_count,
+            )
+            baseline_materialized_value_count = max(
+                baseline_materialized_value_count,
+                analysis.materialized_value_count,
+            )
+            baseline_peak_live_values = max(
+                baseline_peak_live_values,
+                analysis.peak_live_values,
+            )
+            arithmetic_operation_count = max(
+                arithmetic_operation_count,
+                plan.arithmetic_operation_count,
+            )
+            materialized_value_count = max(
+                materialized_value_count, plan.materialized_value_count
+            )
+            peak_live_values = max(peak_live_values, plan.peak_live_values)
         rematerialized_value_count = max(
             rematerialized_value_count,
             plan.rematerialized_value_count,
@@ -349,22 +509,33 @@ def _cached_static_algebra_model(
             plan.fma_operation_count,
         )
         for operation, count in analysis.operation_counts:
-            operation_envelope[operation] = max(
-                operation_envelope.get(operation, 0), count
+            operation_envelope[operation] = (
+                operation_envelope.get(operation, 0) + count
+                if combine
+                else max(operation_envelope.get(operation, 0), count)
             )
         for operation, count in plan.operation_counts:
-            emitted_operation_envelope[operation] = max(
-                emitted_operation_envelope.get(operation, 0), count
+            emitted_operation_envelope[operation] = (
+                emitted_operation_envelope.get(operation, 0) + count
+                if combine
+                else max(emitted_operation_envelope.get(operation, 0), count)
             )
     operation_counts = tuple(sorted(operation_envelope.items()))
     emitted_operation_counts = tuple(sorted(emitted_operation_envelope.items()))
-    derivative_order = 1 if consumer == KernelConsumer.FORCE else 0
-    maximum_order = sum(spec.angular) + derivative_order
+    # The recurrence envelope belongs to the mathematical IR.  A Fock model
+    # may share a force-capable plan, but its value state count remains the
+    # value order rather than inheriting the force derivative order.
+    maximum_order = (
+        integral.maximum_coulomb_order
+        if consumer == KernelConsumer.FORCE
+        else integral.value_coulomb_order
+    )
     return StaticAlgebraModel(
         scope=scope,
         algebra_placement=algebra_placement,
         algebra_ordering=algebra_ordering,
         algebra_fusion=algebra_fusion,
+        algebra_form=algebra_form,
         component_count=spec.component_count,
         sampled_component_count=sampled_component_count,
         recurrence_state_count=comb(maximum_order + 3, 3),
@@ -388,6 +559,16 @@ def _cached_static_algebra_model(
 def static_algebra_model(trial: ScheduleTrial) -> StaticAlgebraModel:
     """Return the symbolic static model appropriate to one schedule mapping."""
 
+    model_integral = trial.integral or build_integral_ir(
+        trial.spec,
+        consumers=(trial.consumer,),
+    )
+    if model_integral.spec != trial.spec:
+        raise ValueError("trial integral spec does not match its shell specification")
+    if trial.consumer not in model_integral.consumers:
+        raise ValueError(
+            f"{trial.consumer.value} static model requires its integral consumer"
+        )
     weighted_shell = (
         trial.consumer == KernelConsumer.FORCE
         and trial.schedule.kind == ScheduleKind.PACKED_TASKS
@@ -395,10 +576,12 @@ def static_algebra_model(trial: ScheduleTrial) -> StaticAlgebraModel:
     return _cached_static_algebra_model(
         trial.spec,
         trial.consumer,
+        model_integral,
         weighted_shell,
         trial.schedule.algebra_placement,
         trial.schedule.algebra_ordering,
         trial.schedule.algebra_fusion,
+        trial.schedule.algebra_form,
     )
 
 
@@ -406,6 +589,8 @@ def supported_schedule_trials(
     spec: ShellClassSpec,
     consumer: KernelConsumer | str = KernelConsumer.FORCE,
     target: CudaTargetInfo = DEFAULT_CUDA_TARGET,
+    *,
+    integral: IntegralIR | None = None,
 ) -> tuple[ScheduleTrial, ...]:
     """Return the schedule variants implemented by the current CUDA emitter.
 
@@ -423,18 +608,28 @@ def supported_schedule_trials(
             f"{spec.name} exceeds the current s/p/d/f CUDA lowering"
         )
     selected_consumer = KernelConsumer(consumer)
-    consumers = (
-        (KernelConsumer.FOCK, KernelConsumer.FORCE)
-        if selected_consumer == KernelConsumer.FOCK
-        else (KernelConsumer.FORCE,)
-    )
-    integral = build_integral_ir(spec, consumers)
+    explicit_integral = integral
+    if integral is None:
+        consumers = (
+            (KernelConsumer.FOCK, KernelConsumer.FORCE)
+            if selected_consumer == KernelConsumer.FOCK
+            else (KernelConsumer.FORCE,)
+        )
+        integral = build_integral_ir(spec, consumers)
+    else:
+        if integral.spec != spec:
+            raise ValueError("trial integral spec does not match its shell specification")
+        if selected_consumer not in integral.consumers:
+            raise ValueError(
+                f"{selected_consumer.value} trial requires its integral consumer"
+            )
     return tuple(
         ScheduleTrial(
             spec=spec,
             schedule=schedule,
             consumer=selected_consumer,
             target=target,
+            integral=explicit_integral,
         )
         for schedule in tuning_schedule_candidates(integral, target)
         if schedule.kind
@@ -467,6 +662,11 @@ def _isolate_schedule_symbols(
 
     class_name = _class_name(trial.spec)
     suffix = type_suffix or _identifier_suffix(trial.schedule_id)
+    if trial.integral is not None:
+        # Explicit mathematical IRs can share every execution knob while
+        # still requiring different generated C++ types.  Keep their type
+        # names disjoint as well as their C entry points and kernel symbols.
+        suffix += _identifier_suffix(trial.integral_suffix)
     selected_prefix = symbol_prefix or trial.symbol_prefix
     source = source.replace(
         f"generated_{trial.spec.name}", selected_prefix
@@ -488,14 +688,17 @@ def emit_schedule_translation_unit(
 ) -> str:
     """Emit one uniquely named, independently compilable schedule benchmark."""
 
-    consumers = (
-        (KernelConsumer.FOCK, KernelConsumer.FORCE)
-        if trial.consumer == KernelConsumer.FOCK
-        else (KernelConsumer.FORCE,)
+    integral = trial.integral or build_integral_ir(
+        trial.spec,
+        consumers=(
+            (KernelConsumer.FOCK, KernelConsumer.FORCE)
+            if trial.consumer == KernelConsumer.FOCK
+            else (KernelConsumer.FORCE,)
+        ),
     )
     plan = build_fused_shell_plan(
         trial.spec,
-        consumers=consumers,
+        integral=integral,
         schedule=trial.schedule,
         target=trial.target,
     )
@@ -520,7 +723,8 @@ def emit_schedule_translation_unit(
     marker = r'{\"task_count\":%u'
     replacement = (
         rf'{{\"shell_class\":\"{trial.spec.name}\",'
-        rf'\"schedule_id\":\"{trial.schedule_id}\",\"task_count\":%u'
+        rf'\"schedule_id\":\"{trial.schedule_id}\",'
+        rf'\"trial_key\":\"{trial.key}\",\"task_count\":%u'
     )
     if marker not in source:
         raise RuntimeError("benchmark JSON marker changed unexpectedly")
@@ -552,6 +756,7 @@ def _oracle_schedule_trial(trial: ScheduleTrial) -> ScheduleTrial:
             maximum_registers=0,
         ),
         target=trial.target,
+        integral=trial.integral,
     )
 
 
@@ -562,6 +767,7 @@ def _oracle_symbol_prefix(trial: ScheduleTrial) -> str:
         f"vibeqc_oracle_{trial.spec.name}_{trial.consumer.value}_"
         f"{trial.schedule.kind.value}_b{trial.schedule.block_threads}_"
         f"t{trial.schedule.component_tile}_w{trial.schedule.tasks_per_warp}"
+        f"{trial.integral_suffix}"
     )
 
 
@@ -569,14 +775,17 @@ def emit_schedule_oracle_translation_unit(trial: ScheduleTrial) -> str:
     """Emit one separately compiled oracle shared by schedule code-shape knobs."""
 
     oracle_trial = _oracle_schedule_trial(trial)
-    consumers = (
-        (KernelConsumer.FOCK, KernelConsumer.FORCE)
-        if oracle_trial.consumer == KernelConsumer.FOCK
-        else (KernelConsumer.FORCE,)
+    integral = oracle_trial.integral or build_integral_ir(
+        oracle_trial.spec,
+        consumers=(
+            (KernelConsumer.FOCK, KernelConsumer.FORCE)
+            if oracle_trial.consumer == KernelConsumer.FOCK
+            else (KernelConsumer.FORCE,)
+        ),
     )
     plan = build_fused_shell_plan(
         oracle_trial.spec,
-        consumers=consumers,
+        integral=integral,
         schedule=oracle_trial.schedule,
         target=oracle_trial.target,
     )
@@ -596,14 +805,17 @@ def emit_schedule_oracle_translation_unit(trial: ScheduleTrial) -> str:
 def emit_schedule_resource_translation_unit(trial: ScheduleTrial) -> str:
     """Emit the complete production wrapper set for a measured candidate."""
 
-    consumers = (
-        (KernelConsumer.FOCK, KernelConsumer.FORCE)
-        if trial.consumer == KernelConsumer.FOCK
-        else (KernelConsumer.FORCE,)
+    integral = trial.integral or build_integral_ir(
+        trial.spec,
+        consumers=(
+            (KernelConsumer.FOCK, KernelConsumer.FORCE)
+            if trial.consumer == KernelConsumer.FOCK
+            else (KernelConsumer.FORCE,)
+        ),
     )
     plan = build_fused_shell_plan(
         trial.spec,
-        consumers=consumers,
+        integral=integral,
         schedule=trial.schedule,
         target=trial.target,
     )
@@ -785,7 +997,10 @@ def _compile_trial(
     candidates start.
     """
 
-    stem = f"{trial.spec.name}_{trial.schedule_id}{artifact_suffix}"
+    stem = (
+        f"{trial.spec.name}_{trial.schedule_id}"
+        f"{trial.integral_suffix}{artifact_suffix}"
+    )
     source = directory / f"{stem}.cu"
     obj = directory / f"{stem}.o"
     compiler = CudaCompilerAdapter(
@@ -951,7 +1166,8 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
         for oracle_trial in oracle_trials.values():
             oracle_source = emit_schedule_oracle_translation_unit(oracle_trial)
             oracle_path = directory / (
-                f"{oracle_trial.spec.name}_{oracle_trial.schedule_id}_oracle.cu"
+                f"{oracle_trial.spec.name}_{oracle_trial.schedule_id}"
+                f"{oracle_trial.integral_suffix}_oracle.cu"
             )
             oracle_path.write_text(oracle_source, encoding="utf-8")
         with ThreadPoolExecutor(max_workers=arguments.compile_jobs) as compile_pool:
@@ -987,10 +1203,11 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 samples=arguments.samples,
                 oracle_trial=oracle_by_trial[trial.key],
             )
-            (directory / f"{trial.spec.name}_{trial.schedule_id}.cu").write_text(
-                source,
-                encoding="utf-8",
+            source_path = directory / (
+                f"{trial.spec.name}_{trial.schedule_id}"
+                f"{trial.integral_suffix}.cu"
             )
+            source_path.write_text(source, encoding="utf-8")
 
         with ThreadPoolExecutor(max_workers=arguments.compile_jobs) as compile_pool:
             compile_rows = list(
@@ -1067,9 +1284,13 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                     and isinstance(consumer, str)
                     and isinstance(schedule_id, str)
                 ):
-                    runtime_rows[
-                        f"{shell_class}:{consumer}:{schedule_id}"
-                    ] = row
+                    trial_key = row.get("trial_key")
+                    if not isinstance(trial_key, str):
+                        # Accept benchmark executables emitted before explicit
+                        # IR identity was added; new sources always include
+                        # the full key so distinct IRs cannot overwrite rows.
+                        trial_key = f"{shell_class}:{consumer}:{schedule_id}"
+                    runtime_rows[trial_key] = row
 
         else:
             runtime_probe = None
@@ -1147,6 +1368,7 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 "shell_class": trial.spec.name,
                 "consumer": trial.consumer.value,
                 "schedule_id": trial.schedule_id,
+                "trial_key": trial.key,
                 "schedule": schedule_payload(trial.schedule),
                 "static_model": trial.static_model.to_payload(),
                 "compile_succeeded": compile_row["returncode"] == 0,
@@ -1183,7 +1405,8 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 resource_source = emit_schedule_resource_translation_unit(trial)
                 resource_suffix = "_production_resources"
                 resource_path = directory / (
-                    f"{trial.spec.name}_{trial.schedule_id}{resource_suffix}.cu"
+                    f"{trial.spec.name}_{trial.schedule_id}"
+                    f"{trial.integral_suffix}{resource_suffix}.cu"
                 )
                 resource_path.write_text(resource_source, encoding="utf-8")
                 resource_compile = _compile_trial(
@@ -1244,6 +1467,7 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                         "shell_class": spec.name,
                         "consumer": selected_consumer.value,
                         "schedule_id": trial.schedule_id,
+                        "trial_key": trial.key,
                         "schedule": schedule_payload(trial.schedule),
                         "static_model": trial.static_model.to_payload(),
                         "runtime": runtime,

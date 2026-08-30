@@ -12,7 +12,13 @@ from .backend import (
 )
 from .cache import NvrtcCacheSpec, nvrtc_cache_key
 from .cuda_emitter import emit_shell_class_fused_cuda
+from .cuda_lowering import (
+    emit_ppps_1110_resident_bra_cuda,
+    emit_ppps_resident_bra_rys3_cuda,
+    supports_component_lane_rys,
+)
 from .cuda_schedule import (
+    AlgebraForm,
     AlgebraFusion,
     AlgebraOrdering,
     AlgebraPlacement,
@@ -34,10 +40,6 @@ from .cuda_target import (
     cuda_target_info,
     normalize_cuda_architecture,
 )
-from .dppp_dispatch import (
-    emit_ppps_1110_resident_bra_cuda,
-    emit_ppps_resident_bra_rys3_cuda,
-)
 from .dppp_specialization import (
     DpppFusedPlan,
     build_dppp_fused_plan,
@@ -48,6 +50,7 @@ from .dppp_specialization import (
 from .expr import (
     MaterializationDecision,
     MaterializationPlan,
+    PowerLowering,
     RematerializationPolicy,
     SsaAnalysis,
     SsaValueLifetime,
@@ -108,12 +111,14 @@ from .rys import (
 from .shell_class import (
     DpppComponentKernel,
     DpppContractionKernel,
+    PackedForceGeometryAlgebra,
     PsssKernel,
     ShellClassComponentKernel,
     ShellClassContractionKernel,
     WeightedShellContractionKernel,
     build_dppp_component_kernel,
     build_dppp_contraction_kernel,
+    build_packed_force_geometry_algebra,
     build_psss_kernel,
     build_shell_class_component_kernel,
     build_shell_class_contraction_kernel,
@@ -156,6 +161,7 @@ __all__ = [
     "PSPS_SPEC",
     "PSSS_SPEC",
     "SSSS_SPEC",
+    "AlgebraForm",
     "AlgebraFusion",
     "AlgebraOrdering",
     "AlgebraPlacement",
@@ -184,8 +190,10 @@ __all__ = [
     "NvrtcCacheSpec",
     "OperatorFamily",
     "OperatorSpec",
+    "PackedForceGeometryAlgebra",
     "PairOrientation",
     "PairStorage",
+    "PowerLowering",
     "PppsRysForceProgram",
     "PsssKernel",
     "RegistryEmitter",
@@ -213,6 +221,7 @@ __all__ = [
     "build_dppp_fused_plan",
     "build_fused_shell_plan",
     "build_integral_ir",
+    "build_packed_force_geometry_algebra",
     "build_ppps_rys_force_program",
     "build_psss_kernel",
     "build_rys_axis_program",
@@ -256,5 +265,6 @@ __all__ = [
     "schedule_candidates",
     "shell_class_name",
     "shell_pair_class",
+    "supports_component_lane_rys",
     "tuning_schedule_candidates",
 ]

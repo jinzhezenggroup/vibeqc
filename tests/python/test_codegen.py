@@ -30,6 +30,7 @@ from tools.vibeqc_codegen import (
     PSPS_SPEC,
     PSSS_SPEC,
     SSSS_SPEC,
+    AlgebraForm,
     AlgebraFusion,
     AlgebraOrdering,
     AlgebraPlacement,
@@ -68,6 +69,7 @@ from tools.vibeqc_codegen import (
     cuda_target_info,
     dppp_components,
     emit_dppp_fused_cuda,
+    emit_ppps_resident_bra_rys3_cuda,
     emit_ppps_rys3_root_body_cuda,
     emit_rys2_roots_cuda,
     emit_rys3_roots_cuda,
@@ -91,10 +93,14 @@ from tools.vibeqc_codegen import (
     rys5_table_roots_weights,
     rys_boys_values,
     schedule_candidates,
+    supports_component_lane_rys,
 )
 from tools.vibeqc_codegen.autotune import (
     StaticAlgebraModel,
+    _analysis_roots,
     _compile_trial,
+    _oracle_symbol_prefix,
+    _packed_force_geometry_analysis,
     _run_autotune,
     emit_schedule_driver,
     emit_schedule_oracle_translation_unit,
@@ -257,10 +263,18 @@ def test_generic_cuda_emitter_uses_backend_lowering_not_dppp_compatibility():
     compatibility = (
         REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "dppp_dispatch.py"
     ).read_text(encoding="utf-8")
+    production = (
+        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "production.py"
+    ).read_text(encoding="utf-8")
+    benchmark = (
+        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "benchmark.py"
+    ).read_text(encoding="utf-8")
     assert "from . import cuda_lowering as _implementation" in emitter
     assert "dppp_dispatch" not in emitter
     assert "from .cuda_lowering import" in compatibility
     assert "emit_shell_class_fused_cuda" not in compatibility
+    assert "from .dppp_dispatch import" not in production
+    assert "from .dppp_dispatch import" not in benchmark
 
 
 @pytest.mark.parametrize("architecture", ("sm_80", "sm_86", "sm_89", "sm_90", "sm_120"))
@@ -341,6 +355,296 @@ def test_operator_invariant_selects_derivative_recovery_without_force_magic():
     assert program.recovered_force_centers == (1,)
 
 
+def test_fused_shell_plan_preserves_an_explicit_integral_ir():
+    """Carry derivative/contraction intent into scheduling without rebuilding it."""
+
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        DPPP_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    plan = build_fused_shell_plan(DPPP_SPEC, integral=integral)
+    assert plan.kernel.integral is integral
+    assert plan.kernel.integral.independent_derivative_centers == (0, 2, 3)
+    assert plan.kernel.integral.recovered_derivative_centers == (1,)
+
+    with pytest.raises(ValueError, match="consumer and integral"):
+        build_fused_shell_plan(
+            DPPP_SPEC,
+            integral=integral,
+            consumers=(KernelConsumer.FOCK,),
+        )
+
+
+def test_symbolic_kernel_builders_preserve_explicit_integral_ir():
+    """Keep one mathematical request attached across every shell builder."""
+
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    dppp_integral = build_integral_ir(
+        DPPP_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    component = DPPP_SPEC.components[0]
+
+    assert build_shell_class_component_kernel(
+        DPPP_SPEC,
+        component,
+        integral=dppp_integral,
+    ).integral is dppp_integral
+    assert build_dppp_component_kernel(
+        component[0],
+        component[1:],
+        integral=dppp_integral,
+    ).integral is dppp_integral
+    assert build_shell_class_contraction_kernel(
+        DPPP_SPEC,
+        component,
+        integral=dppp_integral,
+    ).integral is dppp_integral
+    assert build_weighted_shell_contraction_kernel(
+        DPPP_SPEC,
+        component_indices=(0,),
+        integral=dppp_integral,
+    ).integral is dppp_integral
+
+    psss_integral = build_integral_ir(
+        PSSS_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    assert build_psss_kernel("x", integral=psss_integral).integral is psss_integral
+
+
+def test_shell_contraction_kernel_uses_explicit_derivative_centers():
+    """Generate direct center-D roots when the IR recovers center B."""
+
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        DPPP_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    component = DPPP_SPEC.components[0]
+    full = build_shell_class_component_kernel(DPPP_SPEC, component)
+    full_values = sample_variables()
+    argument = full.graph.evaluate(full.boys_argument, full_values)
+    for order, value in enumerate(
+        boys_values(argument, DPPP_SPEC.maximum_force_coulomb_order + 1)
+    ):
+        full_values[f"boys_{order}"] = value
+    factored_values = factored_dppp_variables(full_values)
+    custom = build_shell_class_contraction_kernel(
+        DPPP_SPEC,
+        component,
+        integral=integral,
+    )
+    custom_component = build_shell_class_component_kernel(
+        DPPP_SPEC,
+        component,
+        integral=integral,
+    )
+
+    for center in (0, 2, 3):
+        for axis in range(3):
+            assert custom_component.graph.evaluate(
+                custom_component.gradients[center][axis],
+                full_values,
+            ) == pytest.approx(
+                full.graph.evaluate(full.gradients[center][axis], full_values),
+                rel=1.0e-13,
+                abs=1.0e-13,
+            )
+    for axis in range(3):
+        recovered = custom_component.graph.evaluate(
+            custom_component.gradients[1][axis],
+            full_values,
+        )
+        independent_sum = sum(
+            custom_component.graph.evaluate(
+                custom_component.gradients[center][axis],
+                full_values,
+            )
+            for center in (0, 2, 3)
+        )
+        assert recovered == pytest.approx(-independent_sum, rel=1.0e-13, abs=1.0e-13)
+
+    for center in (0, 2, 3):
+        for axis in range(3):
+            assert custom.graph.evaluate(custom.gradients[center][axis], factored_values) == pytest.approx(
+                full.graph.evaluate(full.gradients[center][axis], full_values),
+                rel=3.0e-11,
+                abs=3.0e-11,
+            )
+    for axis in range(3):
+        recovered = custom.graph.evaluate(custom.gradients[1][axis], factored_values)
+        independent_sum = sum(
+            custom.graph.evaluate(custom.gradients[center][axis], factored_values)
+            for center in (0, 2, 3)
+        )
+        assert recovered == pytest.approx(-independent_sum, rel=1.0e-13, abs=1.0e-13)
+
+
+def test_numeric_recurrence_oracles_follow_explicit_derivative_centers():
+    """Keep fused and Rys host oracles aligned with non-final recovery."""
+
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        DPPP_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    values = factored_dppp_variables(sample_variables())
+    component = DPPP_SPEC.components[0]
+
+    fused = evaluate_fused_shell_observables(
+        DPPP_SPEC,
+        component,
+        values,
+        integral=integral,
+    )
+    rys = evaluate_rys_component(
+        DPPP_SPEC,
+        component,
+        values,
+        integral=integral,
+    )
+    for actual in (fused, rys):
+        for center in (0, 2, 3):
+            for axis in range(3):
+                assert actual.gradients[center][axis] == pytest.approx(
+                    fused.gradients[center][axis],
+                    rel=2.0e-12,
+                    abs=2.0e-12,
+                )
+        for axis in range(3):
+            recovered = actual.gradients[1][axis]
+            independent_sum = sum(
+                actual.gradients[center][axis] for center in (0, 2, 3)
+            )
+            assert recovered == pytest.approx(
+                -independent_sum,
+                rel=2.0e-12,
+                abs=2.0e-12,
+            )
+
+def test_rys_root_body_packs_nonfinal_recovery_centers_by_ir_order():
+    """Keep force slots dense when translation recovers a non-final center."""
+
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        DPPP_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    body = emit_rys_force_root_body_cuda(
+        DPPP_SPEC,
+        component_group=1,
+        integral=integral,
+    )
+
+    # Independent centers are A/C/D, so their force slots are 0..2, 3..5,
+    # and 6..8.  The D derivative must use its own exponent instead of being
+    # accidentally emitted at the old center*3 offset (or recovered as D).
+    assert "force_3 += (gamma2 *" in body
+    assert "force_6 += (delta2 *" in body
+    assert "force_9" not in body
+
+
+def test_ppps_resident_rys_lowering_uses_nonfinal_recovery_centers():
+    """Keep resident Rys force slots and atomics aligned with explicit IR."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        spec,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+        recurrence="rys3",
+    )
+    source = emit_ppps_resident_bra_rys3_cuda(integral=integral)
+
+    # A/C/D are independent under center-B recovery and must occupy dense
+    # slots 0..8; the resident path must not regress to a force_9 write.
+    assert "force_3 += (gamma2 *" in source
+    assert "force_6 += (delta2 *" in source
+    assert "force_9" not in source
+    assert "const double cdx = fourth.x - third.x;" in source
+    assert "const double delta2 = 2.0 * q * fourth_product_scale;" in source
+
+    recovery_begin = source.index("const double fourth_force_0")
+    recovery = source[recovery_begin : recovery_begin + 900]
+    assert "static_cast<std::size_t>(task.atom[1])" in recovery
+    assert "static_cast<std::size_t>(task.atom[3])" not in recovery
+
+    # Only independent bra center A is warp-reduced now; center B is the
+    # recovered output and must not be treated as a resident bra slot.
+    assert "context.ket_tasks[resident.ket_begin].atom[0]" in source
+    assert "context.ket_tasks[resident.ket_begin].atom[1]" not in source
+
+
 def test_fock_only_ir_has_no_implicit_derivative():
     """Avoid increasing Coulomb order when only a value contraction is requested."""
 
@@ -349,6 +653,29 @@ def test_fock_only_ir_has_no_implicit_derivative():
     assert integral.independent_derivative_centers == ()
     assert integral.recovered_derivative_centers == ()
     assert integral.maximum_coulomb_order == integral.value_coulomb_order
+
+    # The symbolic builders consume the same boundary rather than silently
+    # constructing the extra first-derivative Boys state for a value-only IR.
+    component_kernel = build_shell_class_component_kernel(
+        DPPP_SPEC,
+        DPPP_SPEC.components[0],
+        integral=integral,
+    )
+    contraction_kernel = build_shell_class_contraction_kernel(
+        DPPP_SPEC,
+        DPPP_SPEC.components[0],
+        integral=integral,
+    )
+    for kernel in (component_kernel, contraction_kernel):
+        boys_variables = {
+            str(node.payload)
+            for node in kernel.graph.nodes
+            if node.operation == "variable"
+            and isinstance(node.payload, str)
+            and node.payload.startswith("boys_")
+        }
+        assert "boys_5" in boys_variables
+        assert "boys_6" not in boys_variables
 
     with pytest.raises(ValueError, match="requires at least one contraction"):
         build_integral_ir(DPPP_SPEC, consumers=())
@@ -417,6 +744,44 @@ def test_subgroup_schedule_advances_independent_ppps_tasks_per_block():
         not in source.split("GeneratedPppsSubgroupForceStorage", maxsplit=1)[1]
     )
     assert "blockIdx.x) * 32U + subgroup" in source
+
+
+def test_subgroup_force_lowering_uses_explicit_nonfinal_recovery_slots():
+    """Keep subgroup force output aligned with a center-B recovery IR."""
+
+    spec = PSPS_SPEC
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        spec,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    schedule = ScheduleIR(
+        kind=ScheduleKind.SUBGROUP_TASKS,
+        block_threads=128,
+        component_tile=spec.component_count,
+        tasks_per_warp=4,
+        shared_coulomb=True,
+    )
+    source = emit_shell_class_fused_cuda(
+        spec,
+        build_fused_shell_plan(spec, integral=integral, schedule=schedule),
+    )
+
+    assert "GeneratedPspsSubgroupForceStorage" in source
+    assert "double decay_gradients[4][3]" in source
+    assert "geometry.decay_gradients[3][coordinate]" in source
+    assert "gradient[1][coordinate] = -gradient[0][coordinate]" in source
 
 
 @pytest.mark.parametrize("name", ("dpss", "ppps", "dsps"))
@@ -491,6 +856,80 @@ def test_ppps_scalar_thread_schedule_emits_component_scoped_dag():
     )
     assert "__launch_bounds__(32, 8)" in source
     assert source.count("force_0 += primitive_scale") == 27
+
+
+@pytest.mark.parametrize("name", ("fsss", "fsps"))
+def test_scalar_thread_force_lowering_is_structural_for_f_shells(name: str):
+    """Generate scalar subset/Wick force code without a shell-name allowlist.
+
+    These classes intentionally are not production promotions.  Emitting them
+    here proves that the compiler-owned fallback can cover a new f-shell
+    derivative class from its component metadata and derivative IR alone.
+    """
+
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
+    schedule = ScheduleIR(
+        kind=ScheduleKind.THREAD_TASKS,
+        block_threads=32,
+        component_tile=spec.component_count,
+        tasks_per_warp=32,
+        shared_coulomb=False,
+        minimum_blocks_per_sm=1,
+    )
+    source = emit_shell_class_fused_cuda(
+        spec,
+        build_fused_shell_plan(spec, schedule=schedule, recurrence="subset_wick"),
+    )
+
+    class_name = name[0].upper() + name[1:]
+    assert f"generated_{name}_scalar_thread_force_task" in source
+    assert f"generated_{name}_scalar_thread_accumulate_components_" in source
+    assert f"Generated{class_name}ScalarThreadStorage" in source
+    assert "scalar thread-task force lowering is currently specialized" not in source
+
+
+def test_ppps_scalar_thread_lowering_uses_explicit_derivative_center_slots():
+    """Route scalar-thread force atomics through non-final IR recovery."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        spec,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    schedule = ScheduleIR(
+        kind=ScheduleKind.THREAD_TASKS,
+        block_threads=32,
+        component_tile=spec.component_count,
+        tasks_per_warp=32,
+        shared_coulomb=False,
+        minimum_blocks_per_sm=8,
+    )
+    source = emit_shell_class_fused_cuda(
+        spec,
+        build_fused_shell_plan(spec, integral=integral, schedule=schedule),
+    )
+
+    assert "double decay_gradients[4][3];" in source
+    assert "storage.primitive.decay_gradients[3][2]" in source
+    recovery_begin = source.index(
+        "const double fourth_force",
+        source.index("generated_ppps_scalar_thread_force_task"),
+    )
+    recovery = source[recovery_begin : recovery_begin + 600]
+    assert "static_cast<std::size_t>(task.atom[1])" in recovery
+    assert "static_cast<std::size_t>(task.atom[3])" not in recovery
 
 
 def test_ppps_rys_program_is_a_compact_unique_state_recurrence():
@@ -1072,6 +1511,40 @@ def test_cooperative_rys3_hot_classes_use_uniform_component_lanes(
 
 
 @pytest.mark.parametrize(
+    ("name", "recurrence", "block_threads"),
+    (("dpss", "rys3", 32), ("ddss", "rys3", 64)),
+)
+def test_component_lane_rys_fock_lowering_uses_structural_capabilities(
+    name: str, recurrence: str, block_threads: int
+):
+    """Use the fixed-root Fock worker for legal classes beyond the old list."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
+    schedule = ScheduleIR(
+        kind=ScheduleKind.COMPONENT_LANES,
+        block_threads=block_threads,
+        component_tile=spec.component_count,
+        tasks_per_warp=1,
+        shared_coulomb=True,
+        minimum_blocks_per_sm=1,
+    )
+    plan = build_fused_shell_plan(
+        spec,
+        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+        schedule=schedule,
+        recurrence=recurrence,
+    )
+    assert supports_component_lane_rys(spec, schedule)
+    source = emit_shell_class_fused_cuda(spec, plan)
+
+    assert f"generated_{name}_rys3_value_axis" in source
+    assert f"generated_{name}_shell_class_fock_rhf_kernel" in source
+    fock_marker = f"generated_{name}_shell_class_fock_task("
+    fock_source = source[source.index(fock_marker) :]
+    assert f"generated_{name}_component_value" not in fock_source
+
+
+@pytest.mark.parametrize(
     "spec",
     (
         PSPS_SPEC,
@@ -1628,6 +2101,7 @@ def factored_dppp_variables(values: dict[str, float]) -> dict[str, float]:
         "first_product_scale": alpha / p,
         "second_product_scale": beta / p,
         "third_product_scale": gamma / q,
+        "fourth_product_scale": delta / q,
     }
     product_p = {}
     product_q = {}
@@ -1653,6 +2127,7 @@ def factored_dppp_variables(values: dict[str, float]) -> dict[str, float]:
         result[f"decay_first_{axis}"] = -2.0 * mu * first_difference
         result[f"decay_second_{axis}"] = 2.0 * mu * first_difference
         result[f"decay_third_{axis}"] = -2.0 * nu * second_difference
+        result[f"decay_fourth_{axis}"] = 2.0 * nu * second_difference
     result["prefactor"] = (
         2.0
         * math.pi**2.5
@@ -1711,6 +2186,54 @@ def test_psss_fourth_center_uses_exact_translation_recovery():
             for center in range(4)
         )
         assert total == pytest.approx(0.0, abs=2.0e-14)
+
+
+def test_psss_oracle_uses_explicit_nonfinal_recovery_centers():
+    """Keep the handwritten psss oracle aligned with derivative IR metadata."""
+
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        PSSS_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    kernel = build_psss_kernel("x", integral=integral)
+    values = sample_variables()
+    argument = kernel.graph.evaluate(kernel.boys_argument, values)
+    for order, value in enumerate(boys_values(argument)):
+        values[f"boys_{order}"] = value
+
+    # Center B is recovered, so the independent oracle roots are A/C/D and
+    # the generated gradient tuple must retain the physical center positions.
+    for center in (0, 2, 3):
+        for axis, coordinate in enumerate(AXES):
+            variable = f"{CENTERS[center]}_{coordinate}"
+            plus = dict(values)
+            minus = dict(values)
+            plus[variable] += 2.0e-6
+            minus[variable] -= 2.0e-6
+            numerical = (
+                evaluate_value(kernel, plus) - evaluate_value(kernel, minus)
+            ) / 4.0e-6
+            analytic = kernel.graph.evaluate(kernel.gradients[center][axis], values)
+            assert analytic == pytest.approx(numerical, rel=2.0e-8, abs=2.0e-9)
+    for axis in range(3):
+        recovered = kernel.graph.evaluate(kernel.gradients[1][axis], values)
+        independent_sum = sum(
+            kernel.graph.evaluate(kernel.gradients[center][axis], values)
+            for center in (0, 2, 3)
+        )
+        assert recovered == pytest.approx(-independent_sum, abs=2.0e-14)
 
 
 @pytest.mark.parametrize(
@@ -2153,6 +2676,88 @@ def test_packed_force_geometry_omits_component_coulomb_tables():
     )
     assert "GeneratedPspsPackedForceLaneStorage" in source
     assert "GeneratedPspsPackedFockLaneStorage" in source
+
+
+@pytest.mark.parametrize(
+    ("spec", "pair_shift_rows"),
+    ((PSPS_SPEC, 3), (DPPP_SPEC, 4)),
+)
+def test_packed_force_geometry_cuda_is_lowered_from_backend_neutral_algebra(
+    spec, pair_shift_rows
+):
+    """Keep packed geometry setup derived from the shared scalar IR."""
+
+    source = emit_shell_class_fused_cuda(
+        spec,
+        build_fused_shell_plan(
+            spec,
+            consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+            schedule=ScheduleIR(
+                kind=ScheduleKind.PACKED_TASKS,
+                block_threads=32,
+                component_tile=spec.component_count,
+                tasks_per_warp=32,
+                shared_coulomb=False,
+            ),
+        ),
+    )
+    setup = source.split(
+        f"generated_{spec.name}_make_packed_force_geometry", maxsplit=1
+    )[1].split("/** Density-weighted shell gradient", maxsplit=1)[0]
+    assert f"pair_shifts[{pair_shift_rows}][3]" in source
+    assert "generated_dppp_axis(" not in setup
+    assert "argument_squared_distance +=" not in setup
+    assert "geometry.pair_shifts[0][0] =" in setup
+    assert "geometry.decay_gradients[2][2] =" in setup
+    assert "geometry.primitive_coefficient =" in setup
+    assert f"boys_values<{spec.maximum_force_coulomb_order}>" in setup
+    assert "sqrt(" in setup
+
+
+def test_packed_force_lowering_uses_explicit_derivative_center_slots():
+    """Route packed force atomics through non-final IR recovery metadata."""
+
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        PSPS_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    plan = build_fused_shell_plan(
+        PSPS_SPEC,
+        integral=integral,
+        schedule=ScheduleIR(
+            kind=ScheduleKind.PACKED_TASKS,
+            block_threads=32,
+            component_tile=PSPS_SPEC.component_count,
+            tasks_per_warp=32,
+            shared_coulomb=False,
+        ),
+    )
+    source = emit_shell_class_fused_cuda(PSPS_SPEC, plan)
+
+    # Independent slots are A/C/D, while the recovered force is accumulated
+    # into B.  Differentiating center D also requires retaining its decay row.
+    assert "decay_gradients[4][3]" in source
+    assert "geometry.decay_gradients[3][2]" in source
+    assert "0U, 2U, 3U};" in source
+    recovery_begin = source.index(
+        "const double fourth_force",
+        source.index("generated_psps_packed_force_lane"),
+    )
+    recovery = source[recovery_begin : recovery_begin + 600]
+    assert "static_cast<std::size_t>(task.atom[1])" in recovery
+    assert "static_cast<std::size_t>(task.atom[3])" not in recovery
 
 
 @pytest.mark.parametrize(
@@ -2785,7 +3390,6 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs():
     for dependency in (
         "tools/vibeqc_codegen/cuda.py",
         "tools/vibeqc_codegen/cuda_lowering.py",
-        "tools/vibeqc_codegen/dppp_dispatch.py",
         "tools/vibeqc_codegen/expr.py",
         "tools/vibeqc_codegen/fused_schedule.py",
         "tools/vibeqc_codegen/ir.py",
@@ -2797,6 +3401,7 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs():
         "tools/vibeqc_codegen/shell_spec.py",
     ):
         assert dependency in source
+    assert "tools/vibeqc_codegen/dppp_dispatch.py" not in source
     assert "tools/vibeqc_codegen/low_order_force.py" not in source
 
 
@@ -4965,6 +5570,116 @@ def test_autotune_emits_unique_schedule_variants_and_manifest_records():
     ]
 
 
+def test_autotune_analysis_roots_follow_declared_derivative_centers():
+    """Exclude recovered centers from the static force root envelope."""
+
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        DPPP_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    kernel = build_shell_class_contraction_kernel(
+        DPPP_SPEC,
+        DPPP_SPEC.components[0],
+    )
+    roots = _analysis_roots(kernel, KernelConsumer.FORCE, integral=integral)
+    expected = tuple(
+        kernel.gradients[center][coordinate]
+        for center in (0, 2, 3)
+        for coordinate in range(3)
+    )
+    assert roots == expected
+
+
+def test_autotune_trials_preserve_an_explicit_integral_ir():
+    """Route non-final translation recovery through schedule trial emission."""
+
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        DPDS_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    trials = supported_schedule_trials(DPDS_SPEC, integral=integral)
+    assert trials
+    assert all(trial.integral is integral for trial in trials)
+    assert trials[0].static_model.recurrence_state_count == 84
+
+    source = emit_schedule_oracle_translation_unit(trials[0])
+    assert "constexpr unsigned derivative_centers[3] = {0U, 2U, 3U};" in source
+
+
+def test_autotune_trial_identity_includes_explicit_integral_intent():
+    """Keep distinct recovery policies from sharing runtime or oracle symbols."""
+
+    default_integral = build_integral_ir(DPDS_SPEC)
+    center_one_operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    center_one_integral = build_integral_ir(
+        DPDS_SPEC,
+        operator=center_one_operator,
+        derivative=center_one_operator.nuclear_derivative(),
+    )
+
+    default_trial = supported_schedule_trials(
+        DPDS_SPEC,
+        integral=default_integral,
+    )[0]
+    center_one_trial = supported_schedule_trials(
+        DPDS_SPEC,
+        integral=center_one_integral,
+    )[0]
+    same_default_trial = supported_schedule_trials(
+        DPDS_SPEC,
+        integral=build_integral_ir(DPDS_SPEC),
+    )[0]
+
+    # Both trials use the same execution knobs; only mathematical recovery
+    # intent differs, so the schedule ID remains equal while every emitted
+    # identity that can index runtime/oracle artifacts stays disjoint.
+    assert default_trial.schedule_id == center_one_trial.schedule_id
+    assert default_trial.key != center_one_trial.key
+    assert default_trial.entry_point != center_one_trial.entry_point
+    assert default_trial.symbol_prefix != center_one_trial.symbol_prefix
+    assert _oracle_symbol_prefix(default_trial) != _oracle_symbol_prefix(
+        center_one_trial
+    )
+    assert default_trial.integral_suffix == same_default_trial.integral_suffix
+    source = emit_schedule_translation_unit(
+        center_one_trial,
+        task_count=1,
+        primitive_count=1,
+        warmups=0,
+        iterations=1,
+        samples=1,
+    )
+    assert f'\\"trial_key\\":\\"{center_one_trial.key}\\"' in source
+
+
 def test_autotune_static_model_records_operations_and_live_values():
     """Attach cached symbolic cost envelopes to every schedule candidate."""
 
@@ -4977,6 +5692,7 @@ def test_autotune_static_model_records_operations_and_live_values():
     assert isinstance(packed_model, StaticAlgebraModel)
     assert packed_model is static_algebra_model(packed_force)
     assert packed_model.scope == "weighted_shell_dag"
+    assert packed_model.algebra_form == AlgebraForm.BINARY
     assert packed_model.algebra_fusion == AlgebraFusion.SEPARATE
     assert packed_model.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
     assert packed_model.component_count == 9
@@ -4994,6 +5710,13 @@ def test_autotune_static_model_records_operations_and_live_values():
     )
     assert packed_model.baseline_peak_live_values == packed_model.peak_live_values
     assert 0 < packed_model.peak_live_values < packed_model.materialized_value_count
+    geometry_analysis, geometry_plan = _packed_force_geometry_analysis(3)
+    assert dict(packed_model.operation_counts)["power"] >= (
+        dict(geometry_analysis.operation_counts)["power"]
+    )
+    assert packed_model.arithmetic_operation_count >= (
+        geometry_plan.arithmetic_operation_count
+    )
 
     component_trials = tuple(
         trial
@@ -5033,15 +5756,22 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
             trial.schedule.algebra_placement,
             trial.schedule.algebra_ordering,
             trial.schedule.algebra_fusion,
+            trial.schedule.algebra_form,
         )
         for trial in packed
     } == set(
-        itertools.product(AlgebraPlacement, AlgebraOrdering, AlgebraFusion)
+        itertools.product(
+            AlgebraPlacement,
+            AlgebraOrdering,
+            AlgebraFusion,
+            AlgebraForm,
+        )
     )
     assert all(
         trial.schedule.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
         and trial.schedule.algebra_ordering == AlgebraOrdering.TOPOLOGICAL
         and trial.schedule.algebra_fusion == AlgebraFusion.SEPARATE
+        and trial.schedule.algebra_form == AlgebraForm.BINARY
         for trial in trials
         if trial.schedule.kind != ScheduleKind.PACKED_TASKS
     )
@@ -5053,6 +5783,8 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
         == trial.schedule.algebra_ordering.value
         and schedule_payload(trial.schedule)["algebra_fusion"]
         == trial.schedule.algebra_fusion.value
+        and schedule_payload(trial.schedule)["algebra_form"]
+        == trial.schedule.algebra_form.value
         for trial in packed
     )
 
@@ -5063,6 +5795,7 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
             if trial.schedule.algebra_placement == placement
             and trial.schedule.algebra_ordering == AlgebraOrdering.TOPOLOGICAL
             and trial.schedule.algebra_fusion == AlgebraFusion.SEPARATE
+            and trial.schedule.algebra_form == AlgebraForm.BINARY
             and trial.schedule.minimum_blocks_per_sm == 2
             and trial.schedule.unroll_pair_terms
         )
@@ -5112,6 +5845,7 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
             if trial.schedule.algebra_placement == placement
             and trial.schedule.algebra_ordering == AlgebraOrdering.PRESSURE_AWARE
             and trial.schedule.algebra_fusion == AlgebraFusion.SEPARATE
+            and trial.schedule.algebra_form == AlgebraForm.BINARY
             and trial.schedule.minimum_blocks_per_sm == 2
             and trial.schedule.unroll_pair_terms
         )
@@ -5135,6 +5869,7 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
             if trial.schedule.algebra_placement == placement
             and trial.schedule.algebra_ordering == AlgebraOrdering.TOPOLOGICAL
             and trial.schedule.algebra_fusion == AlgebraFusion.FMA
+            and trial.schedule.algebra_form == AlgebraForm.BINARY
             and trial.schedule.minimum_blocks_per_sm == 2
             and trial.schedule.unroll_pair_terms
         )
@@ -5160,6 +5895,44 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
     )
     assert " = fma(" in fused_source
 
+    forms = {
+        form: next(
+            trial
+            for trial in packed
+            if trial.schedule.algebra_placement
+            == AlgebraPlacement.MATERIALIZED_CSE
+            and trial.schedule.algebra_ordering == AlgebraOrdering.TOPOLOGICAL
+            and trial.schedule.algebra_fusion == AlgebraFusion.SEPARATE
+            and trial.schedule.algebra_form == form
+            and trial.schedule.minimum_blocks_per_sm == 2
+            and trial.schedule.unroll_pair_terms
+        )
+        for form in AlgebraForm
+    }
+    binary_model = forms[AlgebraForm.BINARY].static_model
+    canonical_model = forms[AlgebraForm.CANONICAL_NARY].static_model
+    factored_model = forms[AlgebraForm.FACTORED_NARY].static_model
+    assert canonical_model.materialized_value_count < (
+        binary_model.materialized_value_count
+    )
+    assert factored_model.arithmetic_operation_count < (
+        canonical_model.arithmetic_operation_count
+    )
+    assert factored_model.peak_live_values < binary_model.peak_live_values
+    canonical_source = emit_schedule_translation_unit(
+        forms[AlgebraForm.CANONICAL_NARY],
+        task_count=1,
+        primitive_count=1,
+        warmups=0,
+        iterations=1,
+        samples=1,
+    )
+    assert any(
+        line.count(" + ") >= 2 or line.count(" * ") >= 2
+        for line in canonical_source.splitlines()
+        if "const double v" in line
+    )
+
 
 def test_algebra_placement_schedule_payload_is_backward_compatible():
     """Round-trip tuned placement while defaulting older manifests safely."""
@@ -5171,6 +5944,7 @@ def test_algebra_placement_schedule_payload_is_backward_compatible():
         and trial.schedule.algebra_placement == AlgebraPlacement.INLINE_SINGLE_USE
         and trial.schedule.algebra_ordering == AlgebraOrdering.PRESSURE_AWARE
         and trial.schedule.algebra_fusion == AlgebraFusion.FMA
+        and trial.schedule.algebra_form == AlgebraForm.FACTORED_NARY
     )
     payload = schedule_payload(inline_schedule)
     assert _schedule_from_payload(payload) == inline_schedule
@@ -5178,6 +5952,7 @@ def test_algebra_placement_schedule_payload_is_backward_compatible():
     del payload["algebra_placement"]
     del payload["algebra_ordering"]
     del payload["algebra_fusion"]
+    del payload["algebra_form"]
     assert (
         _schedule_from_payload(payload).algebra_placement
         == AlgebraPlacement.MATERIALIZED_CSE
@@ -5190,6 +5965,7 @@ def test_algebra_placement_schedule_payload_is_backward_compatible():
         _schedule_from_payload(payload).algebra_fusion
         == AlgebraFusion.SEPARATE
     )
+    assert _schedule_from_payload(payload).algebra_form == AlgebraForm.BINARY
     with pytest.raises(ValueError, match="packed tasks"):
         replace(
             build_fused_shell_plan(DPDS_SPEC).schedule,
@@ -5204,6 +5980,11 @@ def test_algebra_placement_schedule_payload_is_backward_compatible():
         replace(
             build_fused_shell_plan(DPDS_SPEC).schedule,
             algebra_fusion=AlgebraFusion.FMA,
+        )
+    with pytest.raises(ValueError, match="packed tasks"):
+        replace(
+            build_fused_shell_plan(DPDS_SPEC).schedule,
+            algebra_form=AlgebraForm.CANONICAL_NARY,
         )
 
 
@@ -5375,6 +6156,43 @@ def test_dppp_cuda_emission_is_deterministic_and_runtime_ad_free():
     assert "generated_dppp_xy_xyz_factored_gradient" in factored
     assert "boys_values" not in factored
     assert "Dual3" not in factored
+
+
+def test_dppp_contraction_cuda_honors_explicit_nonfinal_recovery():
+    """Pack factored decay rows by IR order when center B is recovered."""
+
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        DPPP_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    kernel = build_dppp_contraction_kernel(
+        "xy",
+        tuple("xyz"),
+        integral=integral,
+    )
+    assert kernel.integral is integral
+    source = emit_dppp_contraction_cuda(kernel)
+
+    # The ket fourth-center derivative needs the complement of the stored
+    # third-center product scale.  Decay rows are dense A/C/D slots, not
+    # physical center indices A/B/C/D, so row 1 must remain present while
+    # row 3 is not referenced by this three-independent-center geometry ABI.
+    assert "1.0 - geometry.product_scales[2]" in source
+    assert "geometry.decay_gradients[1]" in source
+    assert "geometry.decay_gradients[2]" in source
+    assert "geometry.decay_gradients[3]" not in source
 
 
 def test_nvrtc_cache_key_covers_binary_compatibility_inputs():

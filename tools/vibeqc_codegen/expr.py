@@ -13,7 +13,11 @@ from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
+from fractions import Fraction
 from functools import cache
+
+Coefficient = Fraction | float
+Scalar = int | float | Fraction
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,7 +26,7 @@ class Node:
 
     operation: str
     arguments: tuple[int, ...] = ()
-    payload: str | float | None = None
+    payload: str | Coefficient | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,6 +165,21 @@ class AlgebraFusion(str, Enum):
     FMA = "fma"
 
 
+class AlgebraForm(str, Enum):
+    """Associative representation selected before scalar optimization."""
+
+    BINARY = "binary"
+    CANONICAL_NARY = "canonical_nary"
+    FACTORED_NARY = "factored_nary"
+
+
+class PowerLowering(str, Enum):
+    """Compile-time representation of small integral powers."""
+
+    NATIVE = "native"
+    SMALL_INTEGER = "small_integer"
+
+
 @dataclass(frozen=True, slots=True)
 class MaterializationDecision:
     """Explain whether one arithmetic DAG value remains a CUDA temporary."""
@@ -278,36 +297,36 @@ class Expr:
         self.graph = graph
         self.identifier = identifier
 
-    def __add__(self, other: Expr | float) -> Expr:
+    def __add__(self, other: Expr | Scalar) -> Expr:
         return self.graph.add(self, self.graph.coerce(other))
 
-    def __radd__(self, other: Expr | float) -> Expr:
+    def __radd__(self, other: Expr | Scalar) -> Expr:
         return self.graph.add(self.graph.coerce(other), self)
 
-    def __sub__(self, other: Expr | float) -> Expr:
+    def __sub__(self, other: Expr | Scalar) -> Expr:
         return self.graph.add(self, -self.graph.coerce(other))
 
-    def __rsub__(self, other: Expr | float) -> Expr:
+    def __rsub__(self, other: Expr | Scalar) -> Expr:
         return self.graph.add(self.graph.coerce(other), -self)
 
-    def __mul__(self, other: Expr | float) -> Expr:
+    def __mul__(self, other: Expr | Scalar) -> Expr:
         return self.graph.multiply(self, self.graph.coerce(other))
 
-    def __rmul__(self, other: Expr | float) -> Expr:
+    def __rmul__(self, other: Expr | Scalar) -> Expr:
         return self.graph.multiply(self.graph.coerce(other), self)
 
-    def __truediv__(self, other: Expr | float) -> Expr:
+    def __truediv__(self, other: Expr | Scalar) -> Expr:
         return self.graph.multiply(
             self, self.graph.reciprocal(self.graph.coerce(other))
         )
 
-    def __rtruediv__(self, other: Expr | float) -> Expr:
+    def __rtruediv__(self, other: Expr | Scalar) -> Expr:
         return self.graph.multiply(
             self.graph.coerce(other), self.graph.reciprocal(self)
         )
 
     def __neg__(self) -> Expr:
-        return self.graph.multiply(self.graph.constant(-1.0), self)
+        return self.graph.multiply(self.graph.constant(-1), self)
 
     def pow(self, exponent: float) -> Expr:
         """Raise this expression to one compile-time scalar exponent."""
@@ -321,7 +340,7 @@ class Graph:
     def __init__(self) -> None:
         self.nodes: list[Node] = []
         self._identifiers: dict[Node, int] = {}
-        self._constants: dict[float, Expr] = {}
+        self._constants: dict[Coefficient, Expr] = {}
         self._variables: dict[str, Expr] = {}
 
     def _intern(self, node: Node) -> Expr:
@@ -336,13 +355,43 @@ class Graph:
         self._require_graph(expression)
         return self.nodes[expression.identifier]
 
-    def constant(self, value: float) -> Expr:
-        value = float(value)
+    @staticmethod
+    @cache
+    def _exact_coefficient(value: Scalar) -> Coefficient:
+        """Return an exact rational for every finite source-level scalar."""
+
+        if isinstance(value, Fraction):
+            return value
+        if isinstance(value, int):
+            return Fraction(value)
+        numeric = float(value)
+        if not math.isfinite(numeric):
+            return numeric
+        if numeric.is_integer():
+            return Fraction(int(numeric))
+        return Fraction(str(numeric))
+
+    def _intern_constant(self, value: Coefficient) -> Expr:
         expression = self._constants.get(value)
         if expression is None:
             expression = self._intern(Node("constant", payload=value))
             self._constants[value] = expression
         return expression
+
+    def constant(self, value: Scalar) -> Expr:
+        """Intern one exact integer/decimal/rational algebra coefficient."""
+
+        return self._intern_constant(self._exact_coefficient(value))
+
+    def approximate_constant(self, value: float) -> Expr:
+        """Intern a float already rounded by non-rational constant folding."""
+
+        return self._intern_constant(float(value))
+
+    def clone_constant(self, node: Node) -> Expr:
+        """Copy one constant payload without reclassifying its exactness."""
+
+        return self._intern_constant(self._constant_value(node))
 
     def variable(self, name: str) -> Expr:
         expression = self._variables.get(name)
@@ -351,7 +400,7 @@ class Graph:
             self._variables[name] = expression
         return expression
 
-    def coerce(self, value: Expr | float) -> Expr:
+    def coerce(self, value: Expr | Scalar) -> Expr:
         if isinstance(value, Expr):
             self._require_graph(value)
             return value
@@ -366,14 +415,42 @@ class Graph:
         left_node = self.node(left)
         right_node = self.node(right)
         if left_node.operation == "constant" and right_node.operation == "constant":
-            return self.constant(float(left_node.payload) + float(right_node.payload))
+            return self._intern_constant(
+                self._constant_value(left_node) + self._constant_value(right_node)
+            )
         arguments = tuple(sorted((left.identifier, right.identifier)))
         return self._intern(Node("add", arguments))
+
+    def add_many(self, values: Iterable[Expr]) -> Expr:
+        """Build one flattened, constant-folded, deterministically sorted sum."""
+
+        operands: list[Expr] = []
+        constant: Coefficient = Fraction(0)
+        pending = list(values)
+        while pending:
+            value = pending.pop()
+            self._require_graph(value)
+            node = self.node(value)
+            if node.operation == "add":
+                pending.extend(Expr(self, item) for item in node.arguments)
+            elif node.operation == "constant":
+                constant += self._constant_value(node)
+            else:
+                operands.append(value)
+        if constant != 0:
+            operands.append(self._intern_constant(constant))
+        if not operands:
+            return self.constant(0)
+        if len(operands) == 1:
+            return operands[0]
+        return self._intern(
+            Node("add", tuple(sorted(item.identifier for item in operands)))
+        )
 
     def multiply(self, left: Expr, right: Expr) -> Expr:
         self._require_graph(left, right)
         if self.is_constant(left, 0.0) or self.is_constant(right, 0.0):
-            return self.constant(0.0)
+            return self.constant(0)
         if self.is_constant(left, 1.0):
             return right
         if self.is_constant(right, 1.0):
@@ -381,47 +458,356 @@ class Graph:
         left_node = self.node(left)
         right_node = self.node(right)
         if left_node.operation == "constant" and right_node.operation == "constant":
-            return self.constant(float(left_node.payload) * float(right_node.payload))
+            return self._intern_constant(
+                self._constant_value(left_node) * self._constant_value(right_node)
+            )
         arguments = tuple(sorted((left.identifier, right.identifier)))
         return self._intern(Node("multiply", arguments))
+
+    def multiply_many(self, values: Iterable[Expr]) -> Expr:
+        """Build one flattened, constant-folded, deterministically sorted product."""
+
+        operands: list[Expr] = []
+        constant: Coefficient = Fraction(1)
+        pending = list(values)
+        while pending:
+            value = pending.pop()
+            self._require_graph(value)
+            node = self.node(value)
+            if node.operation == "multiply":
+                pending.extend(Expr(self, item) for item in node.arguments)
+            elif node.operation == "constant":
+                factor = self._constant_value(node)
+                if factor == 0:
+                    return self.constant(0)
+                constant *= factor
+            else:
+                operands.append(value)
+        if constant != 1:
+            operands.append(self._intern_constant(constant))
+        if not operands:
+            return self.constant(1)
+        if len(operands) == 1:
+            return operands[0]
+        return self._intern(
+            Node("multiply", tuple(sorted(item.identifier for item in operands)))
+        )
+
+    def factor_sum(self, values: Iterable[Expr]) -> Expr:
+        """Greedily extract deterministic factors shared by two or more terms.
+
+        Each iteration selects the factor present in the most terms, with the
+        lowest graph identifier resolving ties. Replacing that group by one
+        product strictly reduces the number of top-level terms, so recursive
+        extraction terminates while exposing nested Horner-like structure.
+        """
+
+        flattened = self.add_many(values)
+        node = self.node(flattened)
+        if node.operation != "add":
+            return flattened
+        terms = [Expr(self, identifier) for identifier in node.arguments]
+        occurrences: dict[int, list[int]] = {}
+        for index, term in enumerate(terms):
+            term_node = self.node(term)
+            factors = (
+                set(term_node.arguments)
+                if term_node.operation == "multiply"
+                else {term.identifier}
+            )
+            for factor in factors:
+                occurrences.setdefault(factor, []).append(index)
+        candidates = [
+            (len(indices), -factor, factor, indices)
+            for factor, indices in occurrences.items()
+            if len(indices) >= 2
+        ]
+        if not candidates:
+            return flattened
+        _, _, factor, grouped_indices = max(candidates)
+        grouped = set(grouped_indices)
+        remainders = []
+        for index in grouped_indices:
+            term = terms[index]
+            term_node = self.node(term)
+            if term_node.operation != "multiply":
+                remainders.append(self.constant(1))
+                continue
+            remaining = list(term_node.arguments)
+            remaining.remove(factor)
+            remainders.append(
+                self.multiply_many(Expr(self, item) for item in remaining)
+            )
+        inner = self.factor_sum(remainders)
+        factored = self.multiply_many((Expr(self, factor), inner))
+        remaining_terms = [
+            term for index, term in enumerate(terms) if index not in grouped
+        ]
+        remaining_terms.append(factored)
+        return self.factor_sum(remaining_terms)
+
+    def canonicalize_associative(
+        self,
+        roots: Sequence[Expr],
+        *,
+        factor_common: bool = False,
+    ) -> tuple[Graph, tuple[Expr, ...]]:
+        """Rebuild roots with canonical n-ary Add/Mul nodes.
+
+        This pass runs after symbolic differentiation, so it can freely
+        reassociate scalar arithmetic without changing derivative ownership.
+        Constants are folded within each associative region and every operand
+        tuple is sorted by deterministic target-graph identifiers.
+        """
+
+        normalized_roots = tuple(roots)
+        for root in normalized_roots:
+            self._require_graph(root)
+        target = Graph()
+        rebuilt: dict[int, Expr] = {}
+
+        @cache
+        def associative_arguments(
+            identifier: int,
+            operation: str,
+        ) -> tuple[int, ...]:
+            """Flatten one complete source-graph associative region."""
+
+            node = self.nodes[identifier]
+            if node.operation != operation:
+                return (identifier,)
+            return tuple(
+                operand
+                for argument in node.arguments
+                for operand in associative_arguments(argument, operation)
+            )
+
+        @cache
+        def structural_key(
+            identifier: int,
+        ) -> tuple[str, tuple[str, str], tuple[object, ...]]:
+            """Order equal algebra independently of binary parenthesization."""
+
+            node = self.nodes[identifier]
+            if node.payload is None:
+                payload = ("", "")
+            elif isinstance(node.payload, Fraction):
+                # Preserve the historical final-double ordering so exact
+                # coefficients do not perturb greedy factor tie-breaks. The
+                # rational suffix only resolves distinct exact values that
+                # lower to the same double.
+                payload = (
+                    float(node.payload).hex(),
+                    f"{node.payload.numerator}/{node.payload.denominator}",
+                )
+            elif isinstance(node.payload, float):
+                payload = (node.payload.hex(), "")
+            else:
+                payload = (str(node.payload), "")
+            if node.operation in ("add", "multiply"):
+                arguments = associative_arguments(identifier, node.operation)
+                child_keys = tuple(
+                    sorted(structural_key(argument) for argument in arguments)
+                )
+            else:
+                child_keys = tuple(
+                    structural_key(argument) for argument in node.arguments
+                )
+            return node.operation, payload, child_keys
+
+        def visit(identifier: int) -> Expr:
+            cached = rebuilt.get(identifier)
+            if cached is not None:
+                return cached
+            node = self.nodes[identifier]
+            if node.operation == "constant":
+                result = target.clone_constant(node)
+            elif node.operation == "variable":
+                result = target.variable(str(node.payload))
+            elif node.operation == "add":
+                source_arguments = sorted(
+                    associative_arguments(identifier, "add"),
+                    key=structural_key,
+                )
+                arguments = tuple(visit(item) for item in source_arguments)
+                result = (
+                    target.factor_sum(arguments)
+                    if factor_common
+                    else target.add_many(arguments)
+                )
+            elif node.operation == "multiply":
+                source_arguments = sorted(
+                    associative_arguments(identifier, "multiply"),
+                    key=structural_key,
+                )
+                arguments = tuple(visit(item) for item in source_arguments)
+                result = target.multiply_many(arguments)
+            elif node.operation == "reciprocal":
+                result = target.reciprocal(visit(node.arguments[0]))
+            elif node.operation == "exp":
+                result = target.exponential(visit(node.arguments[0]))
+            elif node.operation == "power":
+                result = target.power(
+                    visit(node.arguments[0]),
+                    float(node.payload),
+                )
+            else:
+                raise ValueError(f"unsupported operation {node.operation!r}")
+            rebuilt[identifier] = result
+            return result
+
+        return target, tuple(visit(root.identifier) for root in normalized_roots)
+
+    def apply_algebra_form(
+        self,
+        roots: Sequence[Expr],
+        form: AlgebraForm,
+        power_lowering: PowerLowering = PowerLowering.NATIVE,
+    ) -> tuple[Graph, tuple[Expr, ...]]:
+        """Return roots in the requested power and associative representation."""
+
+        normalized_roots = tuple(roots)
+        graph = self
+        if power_lowering == PowerLowering.SMALL_INTEGER:
+            graph, normalized_roots = self.lower_small_integer_powers(
+                normalized_roots
+            )
+        elif power_lowering != PowerLowering.NATIVE:
+            raise ValueError(f"unsupported power lowering {power_lowering!r}")
+        if form == AlgebraForm.BINARY:
+            for root in normalized_roots:
+                graph._require_graph(root)
+            return graph, normalized_roots
+        return graph.canonicalize_associative(
+            normalized_roots,
+            factor_common=form == AlgebraForm.FACTORED_NARY,
+        )
+
+    def lower_small_integer_powers(
+        self,
+        roots: Sequence[Expr],
+        *,
+        maximum_absolute_power: int = 4,
+    ) -> tuple[Graph, tuple[Expr, ...]]:
+        """Rebuild roots with bounded integer powers expanded into scalar ops.
+
+        Positive powers use exponentiation by squaring, so fourth powers need
+        two multiplies rather than three. Negative powers reuse the same
+        positive addition chain beneath one reciprocal. Non-integral and
+        larger powers remain explicit ``power`` nodes for CUDA ``pow``.
+        """
+
+        if maximum_absolute_power < 1:
+            raise ValueError("maximum absolute power must be positive")
+        normalized_roots = tuple(roots)
+        for root in normalized_roots:
+            self._require_graph(root)
+        target = Graph()
+        rebuilt: dict[int, Expr] = {}
+        powers: dict[tuple[int, int], Expr] = {}
+
+        def positive_power(base: Expr, exponent: int) -> Expr:
+            key = (base.identifier, exponent)
+            cached = powers.get(key)
+            if cached is not None:
+                return cached
+            if exponent == 1:
+                result = base
+            else:
+                half = positive_power(base, exponent // 2)
+                result = target.multiply(half, half)
+                if exponent & 1:
+                    result = target.multiply(result, base)
+            powers[key] = result
+            return result
+
+        def visit(identifier: int) -> Expr:
+            cached = rebuilt.get(identifier)
+            if cached is not None:
+                return cached
+            node = self.nodes[identifier]
+            arguments = tuple(visit(item) for item in node.arguments)
+            if node.operation == "constant":
+                result = target.clone_constant(node)
+            elif node.operation == "variable":
+                result = target.variable(str(node.payload))
+            elif node.operation == "add":
+                result = (
+                    target.add(arguments[0], arguments[1])
+                    if len(arguments) == 2
+                    else target.add_many(arguments)
+                )
+            elif node.operation == "multiply":
+                result = (
+                    target.multiply(arguments[0], arguments[1])
+                    if len(arguments) == 2
+                    else target.multiply_many(arguments)
+                )
+            elif node.operation == "reciprocal":
+                result = target.reciprocal(arguments[0])
+            elif node.operation == "exp":
+                result = target.exponential(arguments[0])
+            elif node.operation == "power":
+                exponent = float(node.payload)
+                if (
+                    exponent.is_integer()
+                    and 1 <= abs(exponent) <= maximum_absolute_power
+                ):
+                    integer_exponent = int(exponent)
+                    result = positive_power(arguments[0], abs(integer_exponent))
+                    if integer_exponent < 0:
+                        result = target.reciprocal(result)
+                else:
+                    result = target.power(arguments[0], exponent)
+            else:
+                raise ValueError(f"unsupported operation {node.operation!r}")
+            rebuilt[identifier] = result
+            return result
+
+        return target, tuple(visit(root.identifier) for root in normalized_roots)
 
     def reciprocal(self, value: Expr) -> Expr:
         self._require_graph(value)
         node = self.node(value)
         if node.operation == "constant":
-            return self.constant(1.0 / float(node.payload))
+            return self._intern_constant(1 / self._constant_value(node))
         return self._intern(Node("reciprocal", (value.identifier,)))
 
     def exponential(self, value: Expr) -> Expr:
         self._require_graph(value)
         node = self.node(value)
         if node.operation == "constant":
-            return self.constant(math.exp(float(node.payload)))
+            return self.approximate_constant(
+                math.exp(float(self._constant_value(node)))
+            )
         return self._intern(Node("exp", (value.identifier,)))
 
     def power(self, value: Expr, exponent: float) -> Expr:
         self._require_graph(value)
         exponent = float(exponent)
         if exponent == 0.0:
-            return self.constant(1.0)
+            return self.constant(1)
         if exponent == 1.0:
             return value
         node = self.node(value)
         if node.operation == "constant":
-            return self.constant(float(node.payload) ** exponent)
+            constant = self._constant_value(node)
+            if isinstance(constant, Fraction) and exponent.is_integer():
+                return self._intern_constant(constant ** int(exponent))
+            return self.approximate_constant(float(constant) ** exponent)
         return self._intern(Node("power", (value.identifier,), exponent))
 
     def sum(self, values: Iterable[Expr]) -> Expr:
-        result = self.constant(0.0)
+        result = self.constant(0)
         for value in values:
             result = result + value
         return result
 
-    def is_constant(self, expression: Expr, value: float | None = None) -> bool:
+    def is_constant(self, expression: Expr, value: Scalar | None = None) -> bool:
         node = self.node(expression)
         if node.operation != "constant":
             return False
-        return value is None or float(node.payload) == value
+        return value is None or float(self._constant_value(node)) == float(value)
 
     def differentiate(
         self,
@@ -451,21 +837,35 @@ class Graph:
             node = self.nodes[identifier]
             current = Expr(self, identifier)
             if node.operation == "constant":
-                derivative = self.constant(0.0)
+                derivative = self.constant(0)
             elif node.operation == "variable":
                 name = str(node.payload)
                 derivative = custom.get(
                     name,
-                    self.constant(1.0 if identifier == variable.identifier else 0.0),
+                    self.constant(1 if identifier == variable.identifier else 0),
                 )
             elif node.operation == "add":
-                derivative = visit(node.arguments[0]) + visit(node.arguments[1])
+                if len(node.arguments) == 2:
+                    derivative = visit(node.arguments[0]) + visit(node.arguments[1])
+                else:
+                    derivative = self.add_many(visit(item) for item in node.arguments)
             elif node.operation == "multiply":
-                left = Expr(self, node.arguments[0])
-                right = Expr(self, node.arguments[1])
-                derivative = visit(left.identifier) * right + left * visit(
-                    right.identifier
-                )
+                if len(node.arguments) == 2:
+                    left = Expr(self, node.arguments[0])
+                    right = Expr(self, node.arguments[1])
+                    derivative = visit(left.identifier) * right + left * visit(
+                        right.identifier
+                    )
+                else:
+                    derivative = self.add_many(
+                        self.multiply_many(
+                            visit(argument) if index == differentiated else Expr(
+                                self, argument
+                            )
+                            for index, argument in enumerate(node.arguments)
+                        )
+                        for differentiated in range(len(node.arguments))
+                    )
             elif node.operation == "reciprocal":
                 operand = Expr(self, node.arguments[0])
                 derivative = -visit(operand.identifier) * operand.pow(-2.0)
@@ -557,9 +957,8 @@ class Graph:
         counts = self.operation_counts(normalized_roots)
         operation_counts = tuple(sorted(counts.items()))
         arithmetic_operation_count = sum(
-            count
-            for operation, count in operation_counts
-            if operation not in ("constant", "variable")
+            self._node_arithmetic_operation_count(self.nodes[identifier])
+            for identifier in order
         )
         return SsaAnalysis(
             root_count=len(normalized_roots),
@@ -612,6 +1011,7 @@ class Graph:
                         lifetime is not None
                         and lifetime.operation == "multiply"
                         and lifetime.use_count == 1
+                        and len(self.nodes[argument].arguments) == 2
                     ):
                         materialized.discard(argument)
                         reasons[argument] = "fma_operand"
@@ -631,7 +1031,11 @@ class Graph:
                 lifetime_span = lifetime.last_use_index - lifetime.definition_index
                 if lifetime_span < selected_policy.minimum_lifetime_span:
                     continue
-                operation_cost = selected_policy.operation_cost(lifetime.operation)
+                operation_cost = selected_policy.operation_cost(
+                    lifetime.operation
+                ) * self._node_arithmetic_operation_count(
+                    self.nodes[lifetime.identifier]
+                )
                 recomputation_cost = (
                     operation_cost
                     * max(0, lifetime.use_count - 1)
@@ -727,7 +1131,11 @@ class Graph:
         decisions = []
         for lifetime in baseline.lifetimes:
             lifetime_span = lifetime.last_use_index - lifetime.definition_index
-            operation_cost = selected_policy.operation_cost(lifetime.operation)
+            operation_cost = selected_policy.operation_cost(
+                lifetime.operation
+            ) * self._node_arithmetic_operation_count(
+                self.nodes[lifetime.identifier]
+            )
             decisions.append(
                 MaterializationDecision(
                     identifier=lifetime.identifier,
@@ -787,16 +1195,17 @@ class Graph:
             fused_multiply = fma_by_add.get(identifier)
             if fused_multiply is not None:
                 multiply = self.nodes[fused_multiply]
-                other = (
-                    node.arguments[1]
-                    if node.arguments[0] == fused_multiply
-                    else node.arguments[0]
-                )
                 counts = Counter({"fma": 1})
-                for argument in (*multiply.arguments, other):
+                remaining = list(node.arguments)
+                remaining.remove(fused_multiply)
+                if len(remaining) > 1:
+                    counts["add"] += len(remaining) - 1
+                for argument in (*multiply.arguments, *remaining):
                     counts.update(dict(expression_counts(argument)))
                 return tuple(sorted(counts.items()))
-            counts = Counter({node.operation: 1})
+            counts = Counter(
+                {node.operation: self._node_arithmetic_operation_count(node)}
+            )
             for argument in node.arguments:
                 counts.update(dict(expression_counts(argument)))
             return tuple(sorted(counts.items()))
@@ -828,10 +1237,21 @@ class Graph:
                 if (
                     argument not in materialized
                     and self.nodes[argument].operation == "multiply"
+                    and len(self.nodes[argument].arguments) == 2
                 ):
                     operations.append((identifier, argument))
                     break
         return tuple(operations)
+
+    @staticmethod
+    def _node_arithmetic_operation_count(node: Node) -> int:
+        """Return scalar instructions represented by one expression node."""
+
+        if node.operation in ("constant", "variable"):
+            return 0
+        if node.operation in ("add", "multiply"):
+            return len(node.arguments) - 1
+        return 1
 
     def _materialized_peak_live_values(
         self,
@@ -984,13 +1404,13 @@ class Graph:
         for identifier in self.topological_order([expression]):
             node = self.nodes[identifier]
             if node.operation == "constant":
-                result = float(node.payload)
+                result = float(self._constant_value(node))
             elif node.operation == "variable":
                 result = float(variables[str(node.payload)])
             elif node.operation == "add":
-                result = values[node.arguments[0]] + values[node.arguments[1]]
+                result = sum(values[item] for item in node.arguments)
             elif node.operation == "multiply":
-                result = values[node.arguments[0]] * values[node.arguments[1]]
+                result = math.prod(values[item] for item in node.arguments)
             elif node.operation == "reciprocal":
                 result = 1.0 / values[node.arguments[0]]
             elif node.operation == "exp":
@@ -1008,6 +1428,17 @@ class Graph:
             operation = self.nodes[identifier].operation
             counts[operation] = counts.get(operation, 0) + 1
         return counts
+
+    @staticmethod
+    def _constant_value(node: Node) -> Coefficient:
+        """Return the typed payload of one validated constant node."""
+
+        if node.operation != "constant" or not isinstance(
+            node.payload,
+            (Fraction, float),
+        ):
+            raise TypeError("constant node has an invalid coefficient payload")
+        return node.payload
 
     def _require_graph(self, *expressions: Expr) -> None:
         if any(expression.graph is not self for expression in expressions):
