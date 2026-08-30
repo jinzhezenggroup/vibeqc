@@ -102,6 +102,7 @@ from tools.vibeqc_codegen.autotune import (
     _compile_trial,
     _oracle_symbol_prefix,
     _packed_force_geometry_analysis,
+    _production_fock_schedule_index,
     _read_shell_class_file,
     _requested_schedule_kinds,
     _requested_shell_class_names,
@@ -361,6 +362,16 @@ def test_integral_ir_retains_higher_derivative_intent_until_cuda_boundary():
         match="CUDA force result ABI currently exposes only order-one derivatives",
     ):
         build_fused_shell_plan(DPPP_SPEC, integral=integral)
+
+
+def test_fock_autotune_reuses_manifest_declared_baseline_schedules():
+    """Keep high-component Fock baselines out of a second shell-name table."""
+
+    schedules = dict(_production_fock_schedule_index("sm_120"))
+    assert schedules["dppp"].tasks_per_warp == 4
+    assert schedules["dpdp"].pair_storage == PairStorage.RECOMPUTED
+    assert schedules["ddds"].tasks_per_warp == 2
+    assert schedules["dddp"].minimum_blocks_per_sm == 2
 
 
 def test_operator_invariant_selects_derivative_recovery_without_force_magic():

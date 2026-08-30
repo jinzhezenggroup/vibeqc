@@ -605,6 +605,10 @@ is explicitly an auditable upper bound rather than a replacement for a device
 occupancy API. The report additionally records link time and the final linked
 benchmark executable size, while the batch candidate screener emits the same
 source/object/compile and linked-binary provenance.
+When a production row declares a separate `fock_schedule` (including the
+high-component subgroup baselines omitted from generic schedule discovery),
+autotune reads that schedule directly from the manifest instead of maintaining
+a second shell-name allowlist.
 
 CMake selects profiles with `VIBEQC_AOT_PROFILE` or `VIBEQC_AOT_PROFILES`.
 `auto` resolves exact measured profile, explicitly compatible profile, empty
