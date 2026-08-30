@@ -5036,6 +5036,13 @@ def emit_shell_class_fused_cuda(
         raise ValueError("current fused CUDA candidate supports s/p/d/f shells")
     maximum_order = spec.maximum_force_coulomb_order
     force_integral = _packed_force_integral(spec, plan.kernel.integral)
+    independent_centers = force_integral.independent_derivative_centers
+    recovered_centers = force_integral.recovered_derivative_centers
+    if len(independent_centers) != 3 or len(recovered_centers) != 1:
+        raise ValueError(
+            "generic fused force lowering currently requires three independent "
+            "and one recovered derivative center"
+        )
     decay_gradient_rows = (
         4 if 3 in force_integral.independent_derivative_centers else 3
     )
@@ -5206,6 +5213,37 @@ __device__ __constant__ unsigned char generated_dppp_f_axes[10][3] = {{
   const unsigned component = component_lane ? lane : 0U;
 """
         component_schedule_close = ""
+    gradient_updates = []
+    for slot, center in enumerate(independent_centers):
+        if center == 0:
+            expression = (
+                "first_coefficient_gradient * state_value + "
+                "geometry.product_scales[0] * scaled_derivative"
+            )
+        elif center == 1:
+            expression = (
+                "-first_coefficient_gradient * state_value + "
+                "geometry.product_scales[1] * scaled_derivative"
+            )
+        elif center == 2:
+            expression = (
+                "second_coefficient_gradient * state_value - "
+                "geometry.product_scales[2] * scaled_derivative"
+            )
+        elif center == 3:
+            # The fourth ket center is independently differentiated only when
+            # the explicit IR recovers a different center. Its product scale
+            # is the complement of the stored third-center scale.
+            expression = (
+                "-second_coefficient_gradient * state_value - "
+                "(1.0 - geometry.product_scales[2]) * scaled_derivative"
+            )
+        else:
+            raise ValueError(f"unsupported derivative center {center}")
+        gradient_updates.append(
+            f"        value_gradient[{slot}][coordinate] += {expression};"
+        )
+    gradient_update_code = "\n".join(gradient_updates)
     pair_accumulation = f"""      const double sign =
           (generated_dppp_state_total(second_term.derivative_state) & 1U)
           == 0U ? 1.0 : -1.0;
@@ -5228,15 +5266,7 @@ __device__ __constant__ unsigned char generated_dppp_f_axes[10][3] = {{
         const double second_coefficient_gradient =
             sign * first_term.coefficient *
             second_term.first_center[coordinate];
-        value_gradient[0][coordinate] +=
-            first_coefficient_gradient * state_value +
-            geometry.product_scales[0] * scaled_derivative;
-        value_gradient[1][coordinate] +=
-            -first_coefficient_gradient * state_value +
-            geometry.product_scales[1] * scaled_derivative;
-        value_gradient[2][coordinate] +=
-            second_coefficient_gradient * state_value -
-            geometry.product_scales[2] * scaled_derivative;
+{gradient_update_code}
       }}
 """
     if plan.schedule.pair_storage == PairStorage.RECOMPUTED:
@@ -5351,6 +5381,78 @@ VIBEQC_PAIR_UNROLL
         if replaces_cooperative_force_body
         else f"constexpr unsigned kGeneratedDpppWarpCount = {plan.warp_count}U;\n"
     )
+    component_gradient_output_lines = []
+    for slot, center in enumerate(independent_centers):
+        component_gradient_output_lines.extend(
+            [
+                f"  // Independent derivative slot {slot} maps to physical center {center}.",
+                "#pragma unroll",
+                "  for (unsigned coordinate = 0; coordinate < 3U; ++coordinate) {",
+                f"    gradient[{center}][coordinate] = geometry.prefactor *",
+                f"        (value_gradient[{slot}][coordinate] +",
+                f"         value * geometry.decay_gradients[{center}][coordinate]);",
+                "  }",
+            ]
+        )
+    for center in recovered_centers:
+        component_gradient_output_lines.extend(
+            [
+                "#pragma unroll",
+                "  for (unsigned coordinate = 0; coordinate < 3U; ++coordinate) {",
+                f"    gradient[{center}][coordinate] = -"
+                + " - ".join(
+                    f"gradient[{independent}][coordinate]"
+                    for independent in independent_centers
+                )
+                + ";",
+                "  }",
+            ]
+        )
+    component_gradient_output = "\n".join(component_gradient_output_lines)
+    force_slot_count = 3 * len(independent_centers)
+    independent_center_table = ", ".join(
+        f"{center}U" for center in independent_centers
+    )
+    independent_reduction_code = f"""  if (lane < {force_slot_count}U) {{
+    double value = 0.0;
+#pragma unroll
+    for (unsigned source_warp = 0; source_warp < kGeneratedDpppWarpCount;
+         ++source_warp) {{
+      value += shared.warp_sums[source_warp][lane];
+    }}
+    // Keep the dense independent-slot totals available to recovery lanes.
+    shared.warp_sums[0][lane] = value;
+    if (value != 0.0) {{
+      constexpr unsigned derivative_centers[3] = {{{independent_center_table}}};
+      const unsigned center = derivative_centers[lane / 3U];
+      const unsigned coordinate = lane % 3U;
+      atomicAdd(forces + static_cast<std::size_t>(shared.task.atom[center]) * 3U +
+                    coordinate,
+                value);
+    }}
+  }}
+  __syncthreads();
+"""
+    recovered_reduction_lines = []
+    for recovered_index, center in enumerate(recovered_centers):
+        name = "fourth_value" if recovered_index == 0 else f"recovered_value_{center}"
+        terms = " - ".join(
+            f"shared.warp_sums[0][{slot * 3}U + lane]"
+            for slot in range(len(independent_centers))
+        )
+        recovered_reduction_lines.extend(
+            [
+                "  if (lane < 3U) {",
+                f"    const double {name} = -{terms};",
+                f"    if ({name} != 0.0) {{",
+                "      atomicAdd(",
+                f"          forces + static_cast<std::size_t>(shared.task.atom[{center}]) * 3U + lane,",
+                f"          {name});",
+                "    }",
+                "  }",
+            ]
+        )
+    recovered_reduction_code = "\n".join(recovered_reduction_lines)
     source = f"""/**
  * Generated cooperative AOT candidate for canonical (d p|p p) forces.
  *
@@ -5574,21 +5676,7 @@ __device__ __forceinline__ void generated_dppp_component_gradient(
 {component_gradient_setup}
 
 {gradient_contraction}
-#pragma unroll
-  for (unsigned center = 0; center < 3U; ++center) {{
-#pragma unroll
-    for (unsigned coordinate = 0; coordinate < 3U; ++coordinate) {{
-      gradient[center][coordinate] = geometry.prefactor *
-          (value_gradient[center][coordinate] +
-           value * geometry.decay_gradients[center][coordinate]);
-    }}
-  }}
-#pragma unroll
-  for (unsigned coordinate = 0; coordinate < 3U; ++coordinate) {{
-    gradient[3][coordinate] =
-        -gradient[0][coordinate] - gradient[1][coordinate] -
-        gradient[2][coordinate];
-  }}
+{component_gradient_output}
 }}
 
 __device__ __forceinline__ std::size_t generated_dppp_matrix_index(
@@ -5764,10 +5852,10 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task(
     GeneratedDpppVec3 positions[4];
     GeneratedDpppPrimitiveGeometry primitive;
     double coulomb[{coulomb_storage_count}];
-    // Accumulate only the three independent center derivatives.  The fourth
-    // center follows from translational invariance after the block reduction,
-    // avoiding three long-lived FP64 accumulators in every component lane.
-    double warp_sums[kGeneratedDpppWarpCount][9];
+    // Accumulate only the dense independent derivative slots.  Any declared
+    // recovered center is assembled from their translational sum after the
+    // block reduction, avoiding extra long-lived FP64 accumulators per lane.
+    double warp_sums[kGeneratedDpppWarpCount][{force_slot_count}];
   }};
   __shared__ Shared shared;
   const unsigned lane = threadIdx.x;
@@ -5808,7 +5896,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task(
         ao_coefficients[shared.task.ao_coefficient_begin[3] + {component_names[3]}]
       : 0.0;
   if (!__syncthreads_or(density_coefficient != 0.0)) return;
-  double component_force[9]{{}};
+  double component_force[{force_slot_count}]{{}};
 
   const std::int64_t first_pair_begin =
       primitive_pair_offsets[shared.task.shell_pair[0]];
@@ -5840,11 +5928,13 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task(
             primitive_gradient);
         const double scale = -density_coefficient * angular_coefficient *
             shared.primitive.primitive_coefficient;
+        constexpr unsigned derivative_centers[3] = {{{independent_center_table}}};
 #pragma unroll
-        for (unsigned center = 0; center < 3U; ++center) {{
+        for (unsigned slot = 0; slot < {len(independent_centers)}U; ++slot) {{
 #pragma unroll
           for (unsigned coordinate = 0; coordinate < 3U; ++coordinate) {{
-            component_force[center * 3U + coordinate] +=
+            const unsigned center = derivative_centers[slot];
+            component_force[slot * 3U + coordinate] +=
                 scale * primitive_gradient[center][coordinate];
           }}
         }}
@@ -5856,7 +5946,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task(
   const unsigned warp = lane / 32U;
   const unsigned warp_lane = lane % 32U;
 #pragma unroll
-  for (unsigned slot = 0; slot < 9U; ++slot) {{
+  for (unsigned slot = 0; slot < {force_slot_count}U; ++slot) {{
     double value = component_force[slot];
 #pragma unroll
     for (unsigned offset = 16U; offset != 0U; offset /= 2U) {{
@@ -5865,35 +5955,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task(
     if (warp_lane == 0U) shared.warp_sums[warp][slot] = value;
   }}
   __syncthreads();
-  if (lane < 9U) {{
-    double value = 0.0;
-#pragma unroll
-    for (unsigned source_warp = 0; source_warp < kGeneratedDpppWarpCount;
-         ++source_warp) {{
-      value += shared.warp_sums[source_warp][lane];
-    }}
-    // Preserve the independent totals for the translation-recovered center.
-    // Each lane reads and overwrites only its own slot before the next barrier.
-    shared.warp_sums[0][lane] = value;
-    if (value != 0.0) {{
-      const unsigned center = lane / 3U;
-      const unsigned coordinate = lane % 3U;
-      atomicAdd(forces + static_cast<std::size_t>(shared.task.atom[center]) * 3U +
-                    coordinate,
-                value);
-    }}
-  }}
-  __syncthreads();
-  if (lane < 3U) {{
-    const double fourth_value =
-        -shared.warp_sums[0][lane] - shared.warp_sums[0][3U + lane] -
-        shared.warp_sums[0][6U + lane];
-    if (fourth_value != 0.0) {{
-      atomicAdd(
-          forces + static_cast<std::size_t>(shared.task.atom[3]) * 3U + lane,
-          fourth_value);
-    }}
-  }}
+{independent_reduction_code}{recovered_reduction_code}
 {component_schedule_close}}}
 
 extern "C" __global__ __launch_bounds__(kGeneratedDpppBlockThreads, {minimum_blocks_per_sm})
