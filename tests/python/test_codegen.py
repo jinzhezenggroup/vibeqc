@@ -98,6 +98,7 @@ from tools.vibeqc_codegen.autotune import (
     StaticAlgebraModel,
     _analysis_roots,
     _compile_trial,
+    _oracle_symbol_prefix,
     _packed_force_geometry_analysis,
     _run_autotune,
     emit_schedule_driver,
@@ -5474,6 +5475,56 @@ def test_autotune_trials_preserve_an_explicit_integral_ir():
 
     source = emit_schedule_oracle_translation_unit(trials[0])
     assert "constexpr unsigned derivative_centers[3] = {0U, 2U, 3U};" in source
+
+
+def test_autotune_trial_identity_includes_explicit_integral_intent():
+    """Keep distinct recovery policies from sharing runtime or oracle symbols."""
+
+    default_integral = build_integral_ir(DPDS_SPEC)
+    center_one_operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    center_one_integral = build_integral_ir(
+        DPDS_SPEC,
+        operator=center_one_operator,
+        derivative=center_one_operator.nuclear_derivative(),
+    )
+
+    default_trial = supported_schedule_trials(
+        DPDS_SPEC,
+        integral=default_integral,
+    )[0]
+    center_one_trial = supported_schedule_trials(
+        DPDS_SPEC,
+        integral=center_one_integral,
+    )[0]
+    same_default_trial = supported_schedule_trials(
+        DPDS_SPEC,
+        integral=build_integral_ir(DPDS_SPEC),
+    )[0]
+
+    # Both trials use the same execution knobs; only mathematical recovery
+    # intent differs, so the schedule ID remains equal while every emitted
+    # identity that can index runtime/oracle artifacts stays disjoint.
+    assert default_trial.schedule_id == center_one_trial.schedule_id
+    assert default_trial.key != center_one_trial.key
+    assert default_trial.entry_point != center_one_trial.entry_point
+    assert default_trial.symbol_prefix != center_one_trial.symbol_prefix
+    assert _oracle_symbol_prefix(default_trial) != _oracle_symbol_prefix(
+        center_one_trial
+    )
+    assert default_trial.integral_suffix == same_default_trial.integral_suffix
+    source = emit_schedule_translation_unit(
+        center_one_trial,
+        task_count=1,
+        primitive_count=1,
+        warmups=0,
+        iterations=1,
+        samples=1,
+    )
+    assert f'\\"trial_key\\":\\"{center_one_trial.key}\\"' in source
 
 
 def test_autotune_static_model_records_operations_and_live_values():

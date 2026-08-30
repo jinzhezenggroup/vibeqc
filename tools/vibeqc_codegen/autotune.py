@@ -11,6 +11,7 @@ winning schedule reproducible in the production manifest.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -139,6 +140,64 @@ class StaticAlgebraModel:
         }
 
 
+def _integral_signature(integral: IntegralIR) -> str:
+    """Return a deterministic short identifier for mathematical IR intent.
+
+    Schedule IDs intentionally describe only execution knobs.  Explicit
+    operator/recovery choices must nevertheless participate in trial identity,
+    otherwise two valid IRs can overwrite each other's oracle rows or CUDA
+    symbols.  Serialize enum and set-like fields canonically before hashing so
+    the suffix is stable across Python processes.
+    """
+
+    def coordinates(parameters) -> str | list[int]:
+        selected = parameters.centers
+        return selected if isinstance(selected, str) else list(selected)
+
+    def invariants(items) -> list[dict[str, object]]:
+        return [
+            {
+                "parameters": coordinates(item.parameters),
+                "dependent_center": item.dependent_center,
+            }
+            for item in items
+        ]
+
+    derivative = None
+    if integral.derivative is not None:
+        derivative = {
+            "order": integral.derivative.order,
+            "parameters": coordinates(integral.derivative.parameters),
+            "invariants": invariants(integral.derivative.invariants),
+        }
+    payload = {
+        "spec": {
+            "name": integral.spec.name,
+            "angular": list(integral.spec.angular),
+        },
+        "operator": {
+            "family": integral.operator.family.value,
+            "centers": list(integral.operator.centers),
+            "invariants": invariants(integral.operator.invariants),
+        },
+        "derivative": derivative,
+        "contractions": [
+            {
+                "consumer": item.consumer.value,
+                "density": sorted(model.value for model in item.density),
+                "output": item.output.value,
+            }
+            for item in sorted(
+                integral.contractions,
+                key=lambda item: item.consumer.value,
+            )
+        ],
+        "recurrence": integral.recurrence,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()[:12]
+
+
 @dataclass(frozen=True, slots=True)
 class ScheduleTrial:
     """One shell class and one concrete schedule compiled as a unit."""
@@ -178,10 +237,21 @@ class ScheduleTrial:
         )
 
     @property
+    def integral_suffix(self) -> str:
+        """Return a stable symbol suffix for explicitly supplied IRs."""
+
+        if self.integral is None:
+            return ""
+        return f"_ir{_integral_signature(self.integral)}"
+
+    @property
     def key(self) -> str:
         """Return the cross-class report key for this trial."""
 
-        return f"{self.spec.name}:{self.consumer.value}:{self.schedule_id}"
+        return (
+            f"{self.spec.name}:{self.consumer.value}:{self.schedule_id}"
+            f"{self.integral_suffix}"
+        )
 
     @property
     def entry_point(self) -> str:
@@ -189,7 +259,7 @@ class ScheduleTrial:
 
         return (
             f"vibeqc_run_schedule_{self.spec.name}_{self.consumer.value}_"
-            f"{self.schedule_id}"
+            f"{self.schedule_id}{self.integral_suffix}"
         )
 
     @property
@@ -198,7 +268,7 @@ class ScheduleTrial:
 
         return (
             f"generated_{self.spec.name}_{self.consumer.value}_"
-            f"{self.schedule_id}"
+            f"{self.schedule_id}{self.integral_suffix}"
         )
 
     @property
@@ -592,6 +662,11 @@ def _isolate_schedule_symbols(
 
     class_name = _class_name(trial.spec)
     suffix = type_suffix or _identifier_suffix(trial.schedule_id)
+    if trial.integral is not None:
+        # Explicit mathematical IRs can share every execution knob while
+        # still requiring different generated C++ types.  Keep their type
+        # names disjoint as well as their C entry points and kernel symbols.
+        suffix += _identifier_suffix(trial.integral_suffix)
     selected_prefix = symbol_prefix or trial.symbol_prefix
     source = source.replace(
         f"generated_{trial.spec.name}", selected_prefix
@@ -648,7 +723,8 @@ def emit_schedule_translation_unit(
     marker = r'{\"task_count\":%u'
     replacement = (
         rf'{{\"shell_class\":\"{trial.spec.name}\",'
-        rf'\"schedule_id\":\"{trial.schedule_id}\",\"task_count\":%u'
+        rf'\"schedule_id\":\"{trial.schedule_id}\",'
+        rf'\"trial_key\":\"{trial.key}\",\"task_count\":%u'
     )
     if marker not in source:
         raise RuntimeError("benchmark JSON marker changed unexpectedly")
@@ -691,6 +767,7 @@ def _oracle_symbol_prefix(trial: ScheduleTrial) -> str:
         f"vibeqc_oracle_{trial.spec.name}_{trial.consumer.value}_"
         f"{trial.schedule.kind.value}_b{trial.schedule.block_threads}_"
         f"t{trial.schedule.component_tile}_w{trial.schedule.tasks_per_warp}"
+        f"{trial.integral_suffix}"
     )
 
 
@@ -920,7 +997,10 @@ def _compile_trial(
     candidates start.
     """
 
-    stem = f"{trial.spec.name}_{trial.schedule_id}{artifact_suffix}"
+    stem = (
+        f"{trial.spec.name}_{trial.schedule_id}"
+        f"{trial.integral_suffix}{artifact_suffix}"
+    )
     source = directory / f"{stem}.cu"
     obj = directory / f"{stem}.o"
     compiler = CudaCompilerAdapter(
@@ -1086,7 +1166,8 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
         for oracle_trial in oracle_trials.values():
             oracle_source = emit_schedule_oracle_translation_unit(oracle_trial)
             oracle_path = directory / (
-                f"{oracle_trial.spec.name}_{oracle_trial.schedule_id}_oracle.cu"
+                f"{oracle_trial.spec.name}_{oracle_trial.schedule_id}"
+                f"{oracle_trial.integral_suffix}_oracle.cu"
             )
             oracle_path.write_text(oracle_source, encoding="utf-8")
         with ThreadPoolExecutor(max_workers=arguments.compile_jobs) as compile_pool:
@@ -1122,10 +1203,11 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 samples=arguments.samples,
                 oracle_trial=oracle_by_trial[trial.key],
             )
-            (directory / f"{trial.spec.name}_{trial.schedule_id}.cu").write_text(
-                source,
-                encoding="utf-8",
+            source_path = directory / (
+                f"{trial.spec.name}_{trial.schedule_id}"
+                f"{trial.integral_suffix}.cu"
             )
+            source_path.write_text(source, encoding="utf-8")
 
         with ThreadPoolExecutor(max_workers=arguments.compile_jobs) as compile_pool:
             compile_rows = list(
@@ -1202,9 +1284,13 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                     and isinstance(consumer, str)
                     and isinstance(schedule_id, str)
                 ):
-                    runtime_rows[
-                        f"{shell_class}:{consumer}:{schedule_id}"
-                    ] = row
+                    trial_key = row.get("trial_key")
+                    if not isinstance(trial_key, str):
+                        # Accept benchmark executables emitted before explicit
+                        # IR identity was added; new sources always include
+                        # the full key so distinct IRs cannot overwrite rows.
+                        trial_key = f"{shell_class}:{consumer}:{schedule_id}"
+                    runtime_rows[trial_key] = row
 
         else:
             runtime_probe = None
@@ -1282,6 +1368,7 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 "shell_class": trial.spec.name,
                 "consumer": trial.consumer.value,
                 "schedule_id": trial.schedule_id,
+                "trial_key": trial.key,
                 "schedule": schedule_payload(trial.schedule),
                 "static_model": trial.static_model.to_payload(),
                 "compile_succeeded": compile_row["returncode"] == 0,
@@ -1318,7 +1405,8 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 resource_source = emit_schedule_resource_translation_unit(trial)
                 resource_suffix = "_production_resources"
                 resource_path = directory / (
-                    f"{trial.spec.name}_{trial.schedule_id}{resource_suffix}.cu"
+                    f"{trial.spec.name}_{trial.schedule_id}"
+                    f"{trial.integral_suffix}{resource_suffix}.cu"
                 )
                 resource_path.write_text(resource_source, encoding="utf-8")
                 resource_compile = _compile_trial(
@@ -1379,6 +1467,7 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                         "shell_class": spec.name,
                         "consumer": selected_consumer.value,
                         "schedule_id": trial.schedule_id,
+                        "trial_key": trial.key,
                         "schedule": schedule_payload(trial.schedule),
                         "static_model": trial.static_model.to_payload(),
                         "runtime": runtime,
