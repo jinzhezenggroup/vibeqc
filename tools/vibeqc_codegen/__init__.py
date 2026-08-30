@@ -12,6 +12,10 @@ from .backend import (
 )
 from .cache import NvrtcCacheSpec, nvrtc_cache_key
 from .cuda_emitter import emit_shell_class_fused_cuda
+from .cuda_lowering import (
+    emit_ppps_1110_resident_bra_cuda,
+    emit_ppps_resident_bra_rys3_cuda,
+)
 from .cuda_schedule import (
     AlgebraForm,
     AlgebraFusion,
@@ -34,10 +38,6 @@ from .cuda_target import (
     CudaTargetInfo,
     cuda_target_info,
     normalize_cuda_architecture,
-)
-from .dppp_dispatch import (
-    emit_ppps_1110_resident_bra_cuda,
-    emit_ppps_resident_bra_rys3_cuda,
 )
 from .dppp_specialization import (
     DpppFusedPlan,

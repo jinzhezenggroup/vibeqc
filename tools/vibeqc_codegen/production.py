@@ -10,6 +10,7 @@ from enum import Enum
 from pathlib import Path
 
 from .cuda_emitter import emit_shell_class_fused_cuda
+from .cuda_lowering import emit_ppps_resident_bra_rys3_cuda
 from .cuda_schedule import (
     AlgebraForm,
     AlgebraFusion,
@@ -25,7 +26,6 @@ from .cuda_target import (
     cuda_target_info,
     normalize_cuda_architecture,
 )
-from .dppp_dispatch import emit_ppps_resident_bra_rys3_cuda
 from .fused_schedule import build_fused_shell_plan
 from .ir import IntegralIR, KernelConsumer, build_integral_ir
 from .shell_spec import FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec, shell_pair_class

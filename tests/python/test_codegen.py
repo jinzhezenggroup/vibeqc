@@ -261,10 +261,18 @@ def test_generic_cuda_emitter_uses_backend_lowering_not_dppp_compatibility():
     compatibility = (
         REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "dppp_dispatch.py"
     ).read_text(encoding="utf-8")
+    production = (
+        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "production.py"
+    ).read_text(encoding="utf-8")
+    benchmark = (
+        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "benchmark.py"
+    ).read_text(encoding="utf-8")
     assert "from . import cuda_lowering as _implementation" in emitter
     assert "dppp_dispatch" not in emitter
     assert "from .cuda_lowering import" in compatibility
     assert "emit_shell_class_fused_cuda" not in compatibility
+    assert "from .dppp_dispatch import" not in production
+    assert "from .dppp_dispatch import" not in benchmark
 
 
 @pytest.mark.parametrize("architecture", ("sm_80", "sm_86", "sm_89", "sm_90", "sm_120"))
@@ -3237,7 +3245,6 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs():
     for dependency in (
         "tools/vibeqc_codegen/cuda.py",
         "tools/vibeqc_codegen/cuda_lowering.py",
-        "tools/vibeqc_codegen/dppp_dispatch.py",
         "tools/vibeqc_codegen/expr.py",
         "tools/vibeqc_codegen/fused_schedule.py",
         "tools/vibeqc_codegen/ir.py",
@@ -3249,6 +3256,7 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs():
         "tools/vibeqc_codegen/shell_spec.py",
     ):
         assert dependency in source
+    assert "tools/vibeqc_codegen/dppp_dispatch.py" not in source
     assert "tools/vibeqc_codegen/low_order_force.py" not in source
 
 
