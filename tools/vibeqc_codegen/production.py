@@ -27,7 +27,7 @@ from .cuda_target import (
 )
 from .dppp_dispatch import emit_ppps_resident_bra_rys3_cuda
 from .fused_schedule import build_fused_shell_plan
-from .ir import KernelConsumer, build_integral_ir
+from .ir import IntegralIR, KernelConsumer, build_integral_ir
 from .shell_spec import FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec, shell_pair_class
 
 _SUPPORTED_RECURRENCES = frozenset(
@@ -188,6 +188,11 @@ class KernelSelection:
     recurrence: str = "subset_wick"
     resident_force_recurrence: str | None = None
     fock_schedule: ScheduleIR | None = None
+    # Keep the mathematical request attached to a production selection.  The
+    # manifest compatibility path leaves this unset and receives the
+    # historical default IR, while compiler stages may supply a fully
+    # explicit operator/derivative/contraction definition.
+    integral: IntegralIR | None = None
 
     def __post_init__(self) -> None:
         if not self.architecture.startswith("sm_"):
@@ -204,12 +209,23 @@ class KernelSelection:
         # IntegralIR owns scientific recurrence legality, including the exact
         # root count implied by angular momentum and derivative order. The
         # production layer only validates whether an implemented CUDA mapping
-        # can execute that already-legal recurrence.
-        build_integral_ir(
+        # can execute that already-legal recurrence.  Preserve an explicit IR
+        # instead of silently rebuilding the historical default.
+        selected_integral = self.integral or build_integral_ir(
             self.spec,
             self.consumers,
             recurrence=self.recurrence,
         )
+        if selected_integral.spec != self.spec:
+            raise ValueError("production integral spec does not match selection")
+        if selected_integral.recurrence != self.recurrence:
+            raise ValueError(
+                "production recurrence does not match the selection integral"
+            )
+        if selected_integral.consumers != frozenset(self.consumers):
+            raise ValueError(
+                "production consumers do not match the selection integral"
+            )
         scalar_thread_tasks = _supports_scalar_rys(self.spec, self.schedule)
         if self.recurrence == "rys2" and not scalar_thread_tasks:
             raise ValueError(
@@ -264,6 +280,58 @@ class KernelSelection:
         # force symbols for Fock-only rows.  Consumer metadata keeps those
         # symbols out of the force registry while allowing low-order bounded
         # Fock classes to avoid the generic AO-quartet fallback.
+
+
+def _selection_integral(
+    selection: KernelSelection,
+    *,
+    consumers: tuple[KernelConsumer | str, ...] | None = None,
+    recurrence: str | None = None,
+) -> IntegralIR:
+    """Return the mathematical IR owned by a production selection.
+
+    Production manifests predate explicit operator metadata and therefore
+    continue to synthesize the canonical four-center IR when ``integral`` is
+    absent.  When a compiler stage supplies an IR, preserve its operator,
+    derivative, and contraction records; only rebuild when a companion path
+    intentionally changes consumers or recurrence (for example a Fock value
+    plan beside a force Rys plan).
+    """
+
+    selected_recurrence = (
+        selection.recurrence if recurrence is None else recurrence
+    )
+    base = selection.integral
+    if base is None:
+        selected_consumers = selection.consumers if consumers is None else consumers
+        return build_integral_ir(
+            selection.spec,
+            selected_consumers,
+            recurrence=selected_recurrence,
+        )
+    if consumers is None:
+        selected_consumers = selection.consumers
+    else:
+        selected_consumers = tuple(KernelConsumer(item) for item in consumers)
+    if (
+        frozenset(selected_consumers) == base.consumers
+        and selected_recurrence == base.recurrence
+    ):
+        return base
+    if frozenset(selected_consumers) == base.consumers:
+        return build_integral_ir(
+            selection.spec,
+            operator=base.operator,
+            derivative=base.derivative,
+            contractions=base.contractions,
+            recurrence=selected_recurrence,
+        )
+    return build_integral_ir(
+        selection.spec,
+        selected_consumers,
+        operator=base.operator,
+        recurrence=selected_recurrence,
+    )
 
 
 class ProfileMatch(str, Enum):
@@ -1662,11 +1730,7 @@ def _emit_ppps_resident_source(selection: KernelSelection) -> str:
         selection.recurrence == "rys3"
         and selection.schedule.kind == ScheduleKind.THREAD_TASKS
     )
-    resident_integral = build_integral_ir(
-        selection.spec,
-        selection.consumers,
-        recurrence="rys3",
-    )
+    resident_integral = _selection_integral(selection, recurrence="rys3")
     return emit_ppps_resident_bra_rys3_cuda(
         include_shared_definitions=False,
         include_rys3_roots=not ordinary_owns_resident_roots,
@@ -1682,11 +1746,11 @@ def emit_production_shard(
     selections = tuple(map(_as_selection, specifications))
     body = [_PRODUCTION_PRELUDE]
     for selection in selections:
+        integral = _selection_integral(selection)
         plan = build_fused_shell_plan(
             selection.spec,
-            consumers=selection.consumers,
+            integral=integral,
             schedule=selection.schedule,
-            recurrence=selection.recurrence,
         )
         body.append(
             emit_shell_class_fused_cuda(
@@ -1720,11 +1784,11 @@ def emit_registry_header(
         if KernelConsumer.FORCE not in selection.consumers:
             continue
         spec = selection.spec
+        integral = _selection_integral(selection)
         plan = build_fused_shell_plan(
             spec,
-            consumers=selection.consumers,
+            integral=integral,
             schedule=selection.schedule,
-            recurrence=selection.recurrence,
         )
         consumer_mask = sum(
             1 << list(KernelConsumer).index(consumer)
@@ -2093,11 +2157,11 @@ def emit_profile_shard(
     namespace = f"vibeqc::scf::generated::profile_{identifier}"
     body = [_PRODUCTION_PRELUDE, f"\nnamespace {namespace} {{\n"]
     for selection in items:
+        integral = _selection_integral(selection)
         plan = build_fused_shell_plan(
             selection.spec,
-            consumers=selection.consumers,
+            integral=integral,
             schedule=selection.schedule,
-            recurrence=selection.recurrence,
             target=profile.target,
         )
         source = emit_shell_class_fused_cuda(
@@ -2196,11 +2260,11 @@ def emit_multi_registry_header(
             f"{'true' if profile.match == ProfileMatch.COMPATIBLE else 'false'}}},"
         )
         for selection in profile.selections:
+            integral = _selection_integral(selection)
             plan = build_fused_shell_plan(
                 selection.spec,
-                consumers=selection.consumers,
+                integral=integral,
                 schedule=selection.schedule,
-                recurrence=selection.recurrence,
                 target=profile.target,
             )
             consumer_mask = sum(
@@ -2335,11 +2399,11 @@ def emit_multi_registry_source(
         fock_mask = 0
         for selection in profile.selections:
             shell_class = shell_class_index(selection.spec)
+            integral = _selection_integral(selection)
             plan = build_fused_shell_plan(
                 selection.spec,
-                consumers=selection.consumers,
+                integral=integral,
                 schedule=selection.schedule,
-                recurrence=selection.recurrence,
                 target=profile.target,
             )
             consumer_mask = sum(
