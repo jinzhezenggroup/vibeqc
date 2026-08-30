@@ -524,7 +524,13 @@ The manifest records every code-shape decision rather than relying on emitter
 defaults. The autotune driver queries the allocated device before invoking any
 trial and exits on an architecture mismatch. Its artifact records real device
 limits, driver/runtime versions, NVCC/PTXAS versions, generator ABI, and the
-target-derived resource gates.
+target-derived resource gates. Each candidate also records generated source
+bytes, relocatable object bytes, and compile time. PTXAS resources are
+translated into a per-kernel `resource_upper_bound` occupancy estimate; this
+is explicitly an auditable upper bound rather than a replacement for a device
+occupancy API. The report additionally records link time and the final linked
+benchmark executable size, while the batch candidate screener emits the same
+source/object/compile and linked-binary provenance.
 
 CMake selects profiles with `VIBEQC_AOT_PROFILE` or `VIBEQC_AOT_PROFILES`.
 `auto` resolves exact measured profile, explicitly compatible profile, empty
@@ -744,7 +750,12 @@ cmake --build build --target vibeqc_codegen_pilot
 Candidate batch screening is intentionally sparse: pass either an explicit
 `--shell-class` list or a real-profile `--profile` plus `--limit`. Omitting
 both is rejected so the tool cannot accidentally compile every uncovered
-class in one batch.
+class in one batch. Profile rows are ranked by measured `primitive_work`,
+falling back to `primitive_quartets` for older artifacts; duplicate canonical
+class rows are aggregated before applying `--limit`. The same screener accepts
+`--consumer fock` to time coefficient-only candidates through the shared
+device task slices; force remains the default and the endpoint gate is still
+independent of synthetic screening.
 
 Run Python gates:
 

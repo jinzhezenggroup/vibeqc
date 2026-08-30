@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from collections.abc import Iterable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, replace
@@ -1019,6 +1020,8 @@ def _compile_trial(
         "returncode": result.returncode,
         "timed_out": result.timed_out,
         "duration_seconds": result.duration_seconds,
+        "source_bytes": _artifact_size(source),
+        "object_bytes": _artifact_size(obj),
         "diagnostics": diagnostics,
         "resources": parse_ptxas_resources(
             diagnostics,
@@ -1057,6 +1060,103 @@ def _tool_version(command: Path) -> str:
         return ""
     lines = [line.strip() for line in (result.stdout + result.stderr).splitlines()]
     return next((line for line in reversed(lines) if line), "")
+
+
+def _artifact_size(path: Path) -> int | None:
+    """Return a generated artifact's byte size, or ``None`` if unavailable.
+
+    Failed or timed-out compiler invocations do not necessarily leave an
+    output file behind.  Keeping the absence explicit lets a tuning report
+    distinguish a zero-byte artifact from a compile that produced nothing.
+    """
+
+    try:
+        if path.is_file():
+            return path.stat().st_size
+    except OSError:
+        pass
+    return None
+
+
+def estimate_occupancy(
+    resources: tuple[KernelResources, ...],
+    trial: ScheduleTrial,
+    target: CudaTargetInfo,
+) -> dict[str, object]:
+    """Estimate resource-limited occupancy for one compiled schedule.
+
+    The estimate is deliberately conservative about what it claims: it uses
+    the integer limits visible in the target record and PTXAS resources, but
+    does not model register/shared-memory allocation granularity or compiler
+    partitioning.  It is therefore an auditable upper bound, not a substitute
+    for a device occupancy API.  A row is still emitted when no PTXAS record
+    exists so rejected candidates retain a complete diagnostic trail.
+    """
+
+    block_threads = trial.schedule.block_threads
+    if not resources:
+        return {
+            "available": False,
+            "method": "resource_upper_bound",
+            "block_threads": block_threads,
+            "kernels": [],
+        }
+
+    kernels = []
+    occupancies = []
+    for resource in resources:
+        thread_limit = target.maximum_threads_per_sm // block_threads
+        register_limit = (
+            target.registers_per_sm // (resource.registers * block_threads)
+            if resource.registers > 0
+            else target.maximum_blocks_per_sm
+        )
+        shared_limit = (
+            target.shared_memory_per_sm // resource.shared_bytes
+            if resource.shared_bytes > 0
+            else target.maximum_blocks_per_sm
+        )
+        resident_blocks = max(
+            0,
+            min(
+                target.maximum_blocks_per_sm,
+                thread_limit,
+                register_limit,
+                shared_limit,
+            ),
+        )
+        active_threads = resident_blocks * block_threads
+        occupancy = (
+            active_threads / target.maximum_threads_per_sm
+            if target.maximum_threads_per_sm > 0
+            else 0.0
+        )
+        occupancies.append(occupancy)
+        kernels.append(
+            {
+                "function": resource.function,
+                "registers_per_thread": resource.registers,
+                "stack_bytes": resource.stack_bytes,
+                "shared_bytes": resource.shared_bytes,
+                "resident_blocks_per_sm": resident_blocks,
+                "active_threads_per_sm": active_threads,
+                "estimated_occupancy": occupancy,
+                "limits": {
+                    "threads": thread_limit,
+                    "registers": register_limit,
+                    "shared_memory": shared_limit,
+                    "blocks": target.maximum_blocks_per_sm,
+                },
+            }
+        )
+    return {
+        "available": True,
+        "method": "resource_upper_bound",
+        "block_threads": block_threads,
+        "kernels": kernels,
+        "minimum_estimated_occupancy": min(occupancies),
+        "maximum_estimated_occupancy": max(occupancies),
+    }
 
 
 def _resource_rejections(
@@ -1235,6 +1335,8 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
         runtime_rows: dict[str, dict[str, object]] = {}
         run_returncode = None
         run_stderr = ""
+        link_seconds: float | None = None
+        linked_binary_bytes: int | None = None
         if runnable_trials:
             driver = directory / "autotune_driver.cu"
             driver.write_text(
@@ -1258,9 +1360,12 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                     Path(oracle_compile_by_prefix[prefix]["object"])
                     for prefix in sorted(used_oracle_prefixes)
                 )
+            link_started = time.monotonic()
             link = compiler.link(driver, objects, executable)
+            link_seconds = time.monotonic() - link_started
             if link.returncode != 0:
                 raise RuntimeError(link.stdout + link.stderr)
+            linked_binary_bytes = _artifact_size(executable)
             run = benchmark_executor.run(
                 executable,
                 _runtime_environment(arguments.nvcc),
@@ -1374,7 +1479,10 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 "compile_succeeded": compile_row["returncode"] == 0,
                 "compile_timed_out": compile_row["timed_out"],
                 "compile_seconds": compile_row["duration_seconds"],
+                "source_bytes": compile_row.get("source_bytes"),
+                "object_bytes": compile_row.get("object_bytes"),
                 "resources": [asdict(item) for item in resources],
+                "occupancy": estimate_occupancy(resources, trial, target),
                 "runtime": runtime,
                 "accepted": accepted,
                 "rejection_reasons": reasons,
@@ -1441,9 +1549,14 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                     "compile_succeeded": resource_compile["returncode"] == 0,
                     "compile_timed_out": resource_compile["timed_out"],
                     "compile_seconds": resource_compile["duration_seconds"],
+                    "source_bytes": resource_compile.get("source_bytes"),
+                    "object_bytes": resource_compile.get("object_bytes"),
                     "resources": [
                         asdict(item) for item in resource_compile["resources"]
                     ],
+                    "occupancy": estimate_occupancy(
+                        resource_compile["resources"], trial, target
+                    ),
                     "accepted": not production_reasons,
                     "rejection_reasons": production_reasons,
                 }
@@ -1471,6 +1584,9 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                         "schedule": schedule_payload(trial.schedule),
                         "static_model": trial.static_model.to_payload(),
                         "runtime": runtime,
+                        "source_bytes": candidate_row.get("source_bytes"),
+                        "object_bytes": candidate_row.get("object_bytes"),
+                        "occupancy": candidate_row.get("occupancy"),
                         "production_validation": production_validation,
                     }
                 )
@@ -1506,6 +1622,20 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 "stderr": run_stderr,
                 "device": runtime_probe,
             },
+            "artifacts": {
+                # The linked executable contains every runnable candidate and
+                # shared oracle.  Per-candidate object sizes below preserve a
+                # useful code-size comparison without retaining temp paths.
+                "linked_executable_bytes": linked_binary_bytes,
+                "link_seconds": link_seconds,
+                "schedule_objects": {
+                    row["key"]: row.get("object_bytes") for row in compile_rows
+                },
+                "oracle_objects": {
+                    prefix: row.get("object_bytes")
+                    for prefix, row in oracle_compile_by_prefix.items()
+                },
+            },
             "gates": {
                 "minimum_speedup": arguments.minimum_speedup,
                 "absolute_tolerance": arguments.absolute_tolerance,
@@ -1528,6 +1658,8 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                     "compile_succeeded": row["returncode"] == 0,
                     "compile_timed_out": row["timed_out"],
                     "compile_seconds": row["duration_seconds"],
+                    "source_bytes": row.get("source_bytes"),
+                    "object_bytes": row.get("object_bytes"),
                 }
                 for prefix, row in oracle_compile_by_prefix.items()
             ],
