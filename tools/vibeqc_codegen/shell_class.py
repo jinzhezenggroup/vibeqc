@@ -625,7 +625,11 @@ def build_shell_class_component_kernel(
     selected_integral = integral or build_integral_ir(spec)
     if selected_integral.spec != spec:
         raise ValueError("shell component spec does not match its integral IR")
-    maximum_order = spec.maximum_force_coulomb_order
+    # Value-only contractions must not inherit the extra Coulomb order needed
+    # by a first derivative.  The explicit integral IR owns this recurrence
+    # boundary so FOCK and FORCE consumers materialize only the states they
+    # actually request.
+    maximum_order = selected_integral.maximum_coulomb_order
 
     graph = Graph()
     alpha = graph.variable("alpha")
@@ -799,7 +803,10 @@ def build_shell_class_contraction_kernel(
     selected_integral = integral or build_integral_ir(spec)
     if selected_integral.spec != spec:
         raise ValueError("shell contraction spec does not match its integral IR")
-    maximum_order = spec.maximum_force_coulomb_order
+    # Keep symbolic component state construction aligned with the mathematical
+    # IR.  In particular, a FOCK-only integral has no implicit derivative and
+    # therefore must not allocate the additional force-order Boys state.
+    maximum_order = selected_integral.maximum_coulomb_order
 
     graph = Graph()
     inverse_two_p = graph.variable("inverse_two_p")
