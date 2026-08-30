@@ -569,8 +569,11 @@ production update.
 
 When several classes are expected to benefit from the same mapping, restrict
 the batch to that schedule family instead of compiling every legal family for
-every class. For example, this searches the component-lane variants for three
-Fock classes and atomically promotes all three winners together:
+every class. Fock batches still compile the manifest-declared production
+baseline beside the filtered proposals, so the synthetic gate cannot compare
+a replacement only against the independent recompute oracle. For example,
+this searches the component-lane variants for three Fock classes and
+atomically promotes all three winners together:
 
 ```bash
 python -m tools.vibeqc_codegen.autotune \
@@ -588,6 +591,11 @@ Repeat `--schedule-kind` to combine a small number of related families. An
 omitted filter retains the exhaustive legal search. Manifest output is written
 through a temporary sibling and an atomic replacement, so interruption cannot
 leave a partially written JSON file.
+
+For Fock batches, the search also includes the exact production subgroup
+baselines for ppps, pppp, dpps, dppp, dpdp, ddds, and dddp. This keeps a
+candidate's synthetic speedup relative to the worker it would replace; a
+candidate that only beats the independent recompute oracle is not sufficient.
 
 Use `--consumer fock` to tune the value-only SCF worker with the same resource,
 correctness, and timing gates. A Fock winner upgrades the manifest row to the
@@ -874,6 +882,27 @@ independent of synthetic screening. Production exclusion is consumer-specific:
 classes already promoted for force remain eligible for Fock screening until
 their value-only path is promoted, and the explicit `--shell-class` and
 profile-ranked paths apply the same rule.
+
+To reproduce the current 768-AO class timing without enabling the expensive
+descriptor-count compaction, run the focused profile through Slurm:
+
+```bash
+srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 \
+  --time=00:12:00 bash -lc \
+  'VIBEQC_LIBRARY=$PWD/build/libvibeqc.so.0.1.0 \
+   PYTHONPATH=$PWD/python:$PWD \
+   python -u benchmarks/issue52_current_fock_profile.py \
+   --output build/issue52-current-fock-profile.json \
+   2> build/issue52-current-fock-profile.stderr'
+```
+
+The script converges once, freezes the resulting density, and then reports
+the per-class `gpu_ms`/launch counters for fixed-`dm0` Fock replays. The
+native class rows are written to the redirected stderr file. `--fock-classes`
+can restrict warm profiling to a comma-separated subset while leaving the cold
+convergence on the complete production registry. The optional `--count` switch
+is intentionally separate because it routes through descriptor compaction and
+can be much slower on the 768-AO topology.
 
 Run Python gates:
 
