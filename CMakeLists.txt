@@ -329,6 +329,14 @@ if(VIBEQC_BUILD_TESTS)
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
   add_test(NAME vibeqc_spherical_tests COMMAND vibeqc_spherical_tests)
 
+  add_executable(vibeqc_mixed_precision_tests
+    tests/native/test_mixed_precision.cpp)
+  target_link_libraries(vibeqc_mixed_precision_tests PRIVATE vibeqc)
+  target_include_directories(vibeqc_mixed_precision_tests
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  add_test(NAME vibeqc_mixed_precision_tests
+    COMMAND vibeqc_mixed_precision_tests)
+
   if(VIBEQC_ENABLE_CUDA)
     add_executable(vibeqc_aot_profile_tests tests/native/test_aot_profile.cpp)
     target_link_libraries(vibeqc_aot_profile_tests PRIVATE vibeqc CUDA::cudart)

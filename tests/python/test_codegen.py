@@ -139,6 +139,7 @@ from tools.vibeqc_codegen.production import (
     _partition_production_selections,
     _schedule_from_payload,
     emit_registry_header,
+    emit_registry_source,
     load_production_fock_manifest,
     load_production_kernel_selections,
     load_production_manifest,
@@ -2805,6 +2806,65 @@ def test_generated_fock_workers_use_value_only_shell_schedules(
     assert f"generated_{name}_density_coefficient" not in fock_fragment
 
 
+def test_high_impact_fock_classes_emit_generated_mixed_capability():
+    """Keep the profiled FP32 AOT set explicit and independently routed."""
+
+    sources = {}
+    for name in ("ppps", "dpps", "ddds", "dspp"):
+        spec = FUSED_SHELL_SPEC_BY_NAME[name]
+        plan = build_fused_shell_plan(
+            spec,
+            consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+        )
+        sources[name] = emit_shell_class_fused_cuda(spec, plan)
+
+    dpps = sources["dpps"]
+    assert "generated_dpps_shell_class_mixed_fock_rhf_persistent_kernel" in dpps
+    assert "generated_dpps_shell_class_mixed_fock_uhf_persistent_kernel" in dpps
+    assert "kGeneratedDppsMixedFockBlockThreads" in dpps
+    assert "struct GeneratedDppsMixedValueTerm" in dpps
+    assert "  float component_integral = 0.0F;" in dpps
+    assert "const double* density" in dpps
+    assert "double* fock" in dpps
+    assert "generated_ppps_shell_class_mixed_fock" in sources["ppps"]
+    assert "generated_ddds_shell_class_mixed_fock" in sources["ddds"]
+    assert "generated_dspp_shell_class_mixed_fock" not in sources["dspp"]
+
+
+def test_simple_registry_dispatches_profiled_mixed_fock_classes():
+    """Expose a selectable capability mask for the profiled mixed workers."""
+
+    manifest = (
+        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+    )
+    selections = load_production_kernel_selections(manifest, "sm_120")
+    header = emit_registry_header(selections)
+    source = emit_registry_source(selections)
+
+    assert "kMixedFockShellKernels" in header
+    mixed_rows = header.split("kMixedFockShellKernels", maxsplit=1)[1].split(
+        "}};", maxsplit=1
+    )[0]
+    expected = {
+        "ppps",
+        "dpps",
+        "dsps",
+        "dsds",
+        "ddss",
+        "ddps",
+        "ddds",
+        "pppp",
+    }
+    for name in expected:
+        assert f'"{name}"' in mixed_rows
+        assert f"vibeqc_launch_generated_{name}_mixed_fock" in source
+    assert '"dspp"' not in mixed_rows
+    assert "enabled_mixed_fock_shell_class_mask" in header
+    assert "launch_shell_class_mixed_fock" in header
+    assert "VIBEQC_AOT_MIXED_FOCK_SHELL_CLASSES" in source
+    assert "vibeqc_launch_generated_dspp_mixed_fock" not in source
+
+
 def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path):
     """Keep machine CUDA out of Git while retaining deterministic builds."""
 
@@ -3179,7 +3239,7 @@ def test_batched_finalization_reuses_each_converged_raw_fock():
     assert "kExpandedConvergedFockReuseDensityRms = 2.0e-9" in source
     assert "converged_fock_reuse_density_rms(options.density_tolerance)" in source
     assert "copy_selected_matrices_kernel" in source
-    assert "launch_direct_quartet_metadata(density)" in source
+    assert "launch_direct_quartet_metadata(density, false)" in source
     # A resident dm0 is already normalized for its cached overlap matrix, so a
     # geometry change must re-run the warm-density normalization path.
     assert "plan.resident_warm_positions == host.positions" in source
@@ -3286,6 +3346,26 @@ def test_cached_direct_plan_reuses_immutable_task_layout():
     assert "plan.total_shell_quartet_tiles" in layout_setup
     assert source.count("detail::make_direct_quartet_task_layout(") == 1
     assert "**plan, candidate, options" in source
+
+
+def test_bounded_streaming_fock_forwards_mixed_precision_policy():
+    """Keep bounded streaming eligible for mixed work and final FP64 rebuilds."""
+
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
+        encoding="utf-8"
+    )
+    threshold_begin = source.index(
+        "const std::optional<double> requested_mixed_precision_fock_threshold"
+    )
+    threshold_end = source.index(
+        "const bool requested_mixed_precision_fock", threshold_begin
+    )
+    assert "requested_quartet_direct\n      ? configured_mixed_precision_fock_threshold" in source[
+        threshold_begin:threshold_end
+    ]
+    assert "allow_mixed_precision && mixed_precision_fock" in source
+    # The finalization path must explicitly disable the iterative mixed route.
+    assert "launch_fock_builder(density, false)" in source
 
 
 def test_generated_order2_fock_masks_handwritten_fallback():

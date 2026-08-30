@@ -28,6 +28,8 @@ std::uint64_t enabled_shell_class_mask() noexcept { return 0; }
 
 std::uint64_t enabled_fock_shell_class_mask() noexcept { return 0; }
 
+std::uint64_t enabled_mixed_fock_shell_class_mask() noexcept { return 0; }
+
 cudaError_t launch_shell_class(
     unsigned, cudaStream_t, bool, unsigned, const void*, const std::uint32_t*,
     const std::int64_t*, const void*, const double*, const void*, double,
@@ -37,6 +39,14 @@ cudaError_t launch_shell_class(
 }
 
 cudaError_t launch_shell_class_fock(
+    unsigned, cudaStream_t, bool, unsigned, const void*, const std::uint32_t*,
+    const std::int64_t*, const void*, const double*, const void*, double,
+    const double*, const double*, double*, const std::uint32_t*,
+    std::uint32_t*) noexcept {
+  return cudaErrorInvalidValue;
+}
+
+cudaError_t launch_shell_class_mixed_fock(
     unsigned, cudaStream_t, bool, unsigned, const void*, const std::uint32_t*,
     const std::int64_t*, const void*, const double*, const void*, double,
     const double*, const double*, double*, const std::uint32_t*,
@@ -54,7 +64,8 @@ cudaError_t launch_ppps_resident(
 cudaError_t launch_shell_class_streaming_fock(
     unsigned, cudaStream_t, bool, unsigned, const void*,
     const std::int64_t*, const void*, const double*, const void*, double,
-    const double*, const double*, double*, std::uint32_t*) noexcept {
+    bool, double, const double*, const double*, double*,
+    std::uint32_t*) noexcept {
   return cudaErrorNotSupported;
 }
 

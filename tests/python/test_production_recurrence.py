@@ -609,10 +609,9 @@ def test_production_dddd_rys5_retains_native_fock_schedule():
     ),
 )
 def test_production_packed_streaming_fock_uses_profiled_lane_local_state(
-    shell_class: str,
-    lane_local: bool,
+    shell_class: str, lane_local: bool
 ):
-    """Use lane-private state only for the shell classes that profile faster."""
+    """Keep lane-private packed state limited to the profiled winners."""
 
     repository_root = Path(__file__).resolve().parents[2]
     manifest = (
@@ -641,6 +640,23 @@ def test_production_packed_streaming_fock_uses_profiled_lane_local_state(
         assert local_task not in streaming_worker
         assert shared_tasks in streaming_worker
         assert "stream_tasks, primitive_pairs" in streaming_worker
+
+
+def test_production_mixed_fock_uses_compact_fp32_geometry():
+    """Keep mixed Coulomb evaluation off the FP64 geometry conversion path."""
+
+    repository_root = Path(__file__).resolve().parents[2]
+    manifest = (
+        repository_root / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+    )
+    resolved = resolve_production_profile(manifest, "sm_120")
+    selection = next(item for item in resolved.selections if item.spec.name == "dpps")
+    shard = emit_profile_shard(resolved, (selection,))
+    mixed_begin = shard.index("GeneratedSm120DppsMixedPrimitiveGeometry")
+    mixed_source = shard[mixed_begin:]
+    assert "float coordinate_powers" in mixed_source
+    assert "generated_sm120_dpps_make_mixed_primitive_geometry" in mixed_source
+    assert "GeneratedSm120DppsPrimitiveGeometry" not in mixed_source
 
 
 def test_ppps_resident_option_keeps_ordinary_fock_force_fallback(tmp_path: Path):
@@ -762,6 +778,57 @@ def test_multi_profile_resident_registry_tracks_each_profile(tmp_path: Path):
     assert "return cudaErrorNotSupported;" in source
     assert "launch_sm120_resident" in source
     assert "vibeqc_launch_sm120_ppps_resident" in source
+
+
+def test_multi_profile_registry_dispatches_dpps_mixed_fock(tmp_path: Path):
+    """Carry the mixed capability and wrapper through profile namespacing."""
+
+    manifest = tmp_path / "mixed.json"
+    schedule = {
+        "kind": "component_lanes",
+        "block_threads": 128,
+        "component_tile": 54,
+        "tasks_per_warp": 1,
+        "shared_coulomb": True,
+        "pair_orientation": "canonical",
+        "pair_storage": "materialized",
+        "unroll_pair_terms": True,
+    }
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "default_architecture": "sm_120",
+                "architectures": {
+                    "sm_120": {
+                        "kernels": [
+                            {
+                                "shell_class": "dpps",
+                                "consumers": ["fock", "force"],
+                                "schedule": schedule,
+                            }
+                        ]
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    resolved = resolve_production_profile(manifest, "sm_120")
+    shard = emit_profile_shard(resolved, resolved.selections)
+    source = emit_multi_registry_source((resolved,))
+
+    assert "vibeqc_launch_sm120_generated_dpps_mixed_fock" in shard
+    assert "generated_sm120_dpps_shell_class_mixed_fock_rhf" in shard
+    assert "generated_sm120_dpps_shell_class_mixed_fock_task" in shard
+    assert "mixed_precision_enabled" in shard
+    assert "fp64_threshold" in shard
+    assert "stream_state == 3U" in shard
+    assert "launch_sm120_mixed_fock" in source
+    assert "UINT64_C(2048)" in source
+    assert "VIBEQC_AOT_MIXED_FOCK_SHELL_CLASSES" in source
+    assert "enabled_mixed_fock_shell_class_mask" in source
+    assert "launch_shell_class_mixed_fock" in source
 
 
 def test_multi_profile_registry_keeps_fock_only_force_symbols_dormant(
