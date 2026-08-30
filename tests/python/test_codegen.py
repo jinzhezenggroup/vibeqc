@@ -618,6 +618,44 @@ def test_subgroup_schedule_advances_independent_ppps_tasks_per_block():
     assert "blockIdx.x) * 32U + subgroup" in source
 
 
+def test_subgroup_force_lowering_uses_explicit_nonfinal_recovery_slots():
+    """Keep subgroup force output aligned with a center-B recovery IR."""
+
+    spec = PSPS_SPEC
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        spec,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    schedule = ScheduleIR(
+        kind=ScheduleKind.SUBGROUP_TASKS,
+        block_threads=128,
+        component_tile=spec.component_count,
+        tasks_per_warp=4,
+        shared_coulomb=True,
+    )
+    source = emit_shell_class_fused_cuda(
+        spec,
+        build_fused_shell_plan(spec, integral=integral, schedule=schedule),
+    )
+
+    assert "GeneratedPspsSubgroupForceStorage" in source
+    assert "double decay_gradients[4][3]" in source
+    assert "geometry.decay_gradients[3][coordinate]" in source
+    assert "gradient[1][coordinate] = -gradient[0][coordinate]" in source
+
+
 @pytest.mark.parametrize("name", ("dpss", "ppps", "dsps"))
 def test_one_warp_component_schedule_strides_larger_coulomb_table(name):
     """Do not retain an idle second warp after a short Coulomb setup."""
