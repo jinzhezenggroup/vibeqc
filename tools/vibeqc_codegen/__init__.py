@@ -15,6 +15,7 @@ from .cuda_emitter import emit_shell_class_fused_cuda
 from .cuda_lowering import (
     emit_ppps_1110_resident_bra_cuda,
     emit_ppps_resident_bra_rys3_cuda,
+    supports_component_lane_rys,
 )
 from .cuda_schedule import (
     AlgebraForm,
@@ -264,5 +265,6 @@ __all__ = [
     "schedule_candidates",
     "shell_class_name",
     "shell_pair_class",
+    "supports_component_lane_rys",
     "tuning_schedule_candidates",
 ]

@@ -10,7 +10,10 @@ from enum import Enum
 from pathlib import Path
 
 from .cuda_emitter import emit_shell_class_fused_cuda
-from .cuda_lowering import emit_ppps_resident_bra_rys3_cuda
+from .cuda_lowering import (
+    emit_ppps_resident_bra_rys3_cuda,
+    supports_component_lane_rys,
+)
 from .cuda_schedule import (
     AlgebraForm,
     AlgebraFusion,
@@ -92,21 +95,9 @@ def _supports_component_lane_rys(
     spec: ShellClassSpec,
     schedule: ScheduleIR,
 ) -> bool:
-    """Return whether runtime-indexed component lanes can lower ``spec``.
+    """Return whether the backend decoder can lower ``spec`` component-wise."""
 
-    The current decoder has tables for s/p/d centers and supports at most a p
-    shell on the fourth center. Expressing those state-table bounds directly
-    avoids coupling recurrence eligibility to a list of promoted shell names.
-    """
-
-    return (
-        schedule.kind == ScheduleKind.COMPONENT_LANES
-        and schedule.warp_size == 32
-        and schedule.block_threads >= spec.component_count
-        and schedule.component_tile >= spec.component_count
-        and max(spec.angular) <= 2
-        and spec.angular[3] <= 1
-    )
+    return supports_component_lane_rys(spec, schedule)
 
 
 def _supports_uniform_warp_rys(
