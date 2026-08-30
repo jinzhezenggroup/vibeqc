@@ -7,18 +7,63 @@ from dataclasses import asdict, dataclass, replace
 from .backend import TargetInfo
 
 
-def normalize_cuda_architecture(architecture: str | int) -> str:
-    """Return a canonical ``sm_XX`` architecture name."""
+@dataclass(frozen=True, slots=True)
+class CudaArchitecture:
+    """Keep profile identity separate from NVCC code-generation intent.
+
+    CMake accepts architecture values such as ``120-real`` and
+    ``120-virtual``.  The production manifest, runtime registry, and cache
+    keys intentionally use the numeric ``sm_120`` identity, while NVCC must
+    retain the suffix because it controls whether a real cubin or PTX image is
+    emitted.  Passing a single normalized string through both layers used to
+    silently discard that distinction.
+    """
+
+    profile: str
+    compile: str
+
+    @property
+    def profile_architecture(self) -> str:
+        """Descriptive alias for callers that serialize build metadata."""
+
+        return self.profile
+
+    @property
+    def compile_architecture(self) -> str:
+        """Descriptive alias for the value passed to NVCC/CMake."""
+
+        return self.compile
+
+
+def cuda_architecture(architecture: str | int) -> CudaArchitecture:
+    """Parse one CUDA architecture into profile and compile representations."""
 
     value = str(architecture).strip().lower()
     if value.startswith("compute_"):
         value = value.removeprefix("compute_")
     elif value.startswith("sm_"):
         value = value.removeprefix("sm_")
-    value = value.replace("-real", "").replace("-virtual", "")
+    suffix = ""
+    if value.endswith("-real"):
+        value, suffix = value[:-5], "-real"
+    elif value.endswith("-virtual"):
+        value, suffix = value[:-8], "-virtual"
     if not value.isdigit() or len(value) < 2:
         raise ValueError(f"invalid CUDA architecture {architecture!r}")
-    return f"sm_{int(value)}"
+    numeric = str(int(value))
+    return CudaArchitecture(profile=f"sm_{numeric}", compile=f"{numeric}{suffix}")
+
+
+def normalize_cuda_architecture(architecture: str | int) -> str:
+    """Return a canonical ``sm_XX`` architecture name."""
+
+    return cuda_architecture(architecture).profile
+
+
+def normalize_cuda_compile_architecture(architecture: str | int) -> str:
+    """Return NVCC's numeric architecture while preserving ``real``/``virtual``."""
+
+    return cuda_architecture(architecture).compile
 
 
 def compute_capability_from_architecture(architecture: str | int) -> tuple[int, int]:

@@ -1,5 +1,17 @@
 # Published GPU benchmark artifacts
 
+The current build provenance snapshot is available in
+[`build-ledger-current.json`](build-ledger-current.json).  It records the
+repository state, host/toolchain versions, CMake CUDA architecture values,
+Ninja per-output timings, cache configuration, and explicit placeholders for
+scenarios that require a controlled clean checkout.  Regenerate it with:
+
+```bash
+PYTHONPATH=. python benchmarks/build_ledger.py \
+  --build-dir build --repository . \
+  --output benchmarks/results/build-ledger-current.json
+```
+
 These JSON files retain raw synchronized timing samples, accuracy differences,
 the clean source commit, package versions, and CUDA device metadata. The two
 engines use the same case-specific AO representation, SCF tolerances,

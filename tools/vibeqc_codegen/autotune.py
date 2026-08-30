@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -903,13 +904,51 @@ int main() {{
 """
 
 
+_PROVENANCE_FIELDS = (
+    "runtime_seconds",
+    "compile_seconds",
+    "source_bytes",
+    "object_bytes",
+)
+
+
+def _validated_provenance(
+    name: str, metrics: Mapping[str, object]
+) -> dict[str, object]:
+    """Validate compiler/runtime measurements before persisting a manifest row."""
+
+    validated: dict[str, object] = {}
+    for field in _PROVENANCE_FIELDS:
+        if field not in metrics:
+            continue
+        value = metrics[field]
+        if value is not None and (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(float(value))
+            or value < 0
+        ):
+            raise ValueError(
+                f"{name} provenance {field} must be finite and non-negative"
+            )
+        validated[field] = value
+    return validated
+
+
 def update_manifest_payload(
     payload: dict[str, object],
     architecture: str,
     winners: Mapping[str, ScheduleIR],
     consumer: KernelConsumer | str = KernelConsumer.FORCE,
+    provenance: Mapping[str, Mapping[str, object]] | None = None,
 ) -> dict[str, object]:
-    """Return a v2 manifest with measured winners installed for one GPU."""
+    """Return a v2 manifest with measured winners installed for one GPU.
+
+    ``provenance`` may carry endpoint and compiler measurements for each
+    winner.  Keeping those values beside the schedule lets a later promotion
+    apply the compile/runtime Pareto policy instead of silently optimizing only
+    a synthetic kernel timer.
+    """
 
     if payload.get("schema_version") != 2:
         raise ValueError("autotuning requires a schema-v2 production manifest")
@@ -946,16 +985,28 @@ def update_manifest_payload(
             row["consumers"] = [
                 item.value for item in KernelConsumer if item in current
             ]
+            if provenance is not None:
+                metrics = provenance.get(name, {})
+                if not isinstance(metrics, Mapping):
+                    raise TypeError(f"{name} provenance must be a mapping")
+                validated = _validated_provenance(name, metrics)
+                for field, value in validated.items():
+                    if value is not None:
+                        row[field] = value
             installed.add(name)
     for name, schedule in winners.items():
         if name not in installed:
-            kernels.append(
-                {
-                    "shell_class": name,
-                    "consumers": [item.value for item in required_consumers],
-                    "schedule": schedule_payload(schedule),
-                }
-            )
+            entry = {
+                "shell_class": name,
+                "consumers": [item.value for item in required_consumers],
+                "schedule": schedule_payload(schedule),
+            }
+            if provenance is not None:
+                metrics = provenance.get(name, {})
+                if not isinstance(metrics, Mapping):
+                    raise TypeError(f"{name} provenance must be a mapping")
+                entry.update(_validated_provenance(name, metrics))
+            kernels.append(entry)
     return payload
 
 
@@ -965,6 +1016,7 @@ def write_tuned_manifest(
     architecture: str,
     winners: Mapping[str, ScheduleIR],
     consumer: KernelConsumer | str = KernelConsumer.FORCE,
+    provenance: Mapping[str, Mapping[str, object]] | None = None,
 ) -> None:
     """Write architecture winners without mutating the source manifest in place."""
 
@@ -974,6 +1026,7 @@ def write_tuned_manifest(
         architecture,
         winners,
         consumer,
+        provenance,
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
@@ -1498,17 +1551,56 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
 
         winners: dict[str, ScheduleIR] = {}
         winner_rows = []
+        winner_provenance: dict[str, dict[str, object]] = {}
         for spec in specifications:
             passing = passing_by_class.get(spec.name, [])
             if not passing:
                 continue
-            ranked = sorted(
-                passing,
-                key=lambda item: (
-                    float(item[1]["fused_ms"]),
-                    item[0].schedule_id,
-                ),
-            )
+            fastest_ms = min(float(item[1]["fused_ms"]) for item in passing)
+
+            def winner_key(
+                item: tuple[ScheduleTrial, dict[str, object], dict[str, object]],
+                *,
+                fastest: float = fastest_ms,
+            ):
+                trial, runtime, candidate = item
+                elapsed_ms = float(runtime["fused_ms"])
+                def metric_or_inf(name: str) -> float:
+                    value = candidate.get(name)
+                    if (
+                        isinstance(value, (int, float))
+                        and not isinstance(value, bool)
+                        and math.isfinite(float(value))
+                        and value >= 0
+                    ):
+                        return float(value)
+                    return math.inf
+
+                # Within one percent of the fastest endpoint, compile time and
+                # binary footprint decide the winner. Once a candidate falls
+                # outside that noise band, endpoint runtime is the primary
+                # key again; otherwise a much slower but tiny artifact could
+                # displace a scientifically faster schedule.
+                near_fastest = elapsed_ms <= fastest * 1.01
+                if near_fastest:
+                    return (
+                        0,
+                        metric_or_inf("compile_seconds"),
+                        metric_or_inf("source_bytes"),
+                        metric_or_inf("object_bytes"),
+                        elapsed_ms,
+                        trial.schedule_id,
+                    )
+                return (
+                    1,
+                    elapsed_ms,
+                    metric_or_inf("compile_seconds"),
+                    metric_or_inf("source_bytes"),
+                    metric_or_inf("object_bytes"),
+                    trial.schedule_id,
+                )
+
+            ranked = sorted(passing, key=winner_key)
             for trial, runtime, candidate_row in ranked:
                 resource_source = emit_schedule_resource_translation_unit(trial)
                 resource_suffix = "_production_resources"
@@ -1590,6 +1682,12 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                         "production_validation": production_validation,
                     }
                 )
+                winner_provenance[spec.name] = {
+                    "runtime_seconds": float(runtime["fused_ms"]) / 1000.0,
+                    "compile_seconds": candidate_row.get("compile_seconds"),
+                    "source_bytes": candidate_row.get("source_bytes"),
+                    "object_bytes": candidate_row.get("object_bytes"),
+                }
                 break
 
         if arguments.manifest_output is not None and winners:
@@ -1599,6 +1697,7 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 arguments.architecture,
                 winners,
                 selected_consumer,
+                winner_provenance,
             )
 
         return {

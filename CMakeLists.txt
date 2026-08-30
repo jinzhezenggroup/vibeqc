@@ -8,10 +8,18 @@ option(VIBEQC_ENABLE_CUDA "Build the CUDA runtime backend" ON)
 option(VIBEQC_ENABLE_AOT_SHELLS
        "Build generated shell kernels in addition to the generic CUDA path" ON)
 option(VIBEQC_BUILD_TESTS "Build native tests" ON)
+option(VIBEQC_CUDA_SEPARABLE_COMPILATION
+       "Enable CUDA relocatable device code and the device-link stage" OFF)
+option(VIBEQC_CUDA_FAST_COMPILE
+       "Use compiler-oriented CUDA options (never for release measurements)" OFF)
 set(VIBEQC_COMPILER_CACHE "auto" CACHE STRING
     "Compiler cache launcher: auto, off, or an executable name/path")
 set(VIBEQC_CUDA_ARCHITECTURES "" CACHE STRING
     "CUDA architectures shipped by VibeQC; defaults to CMAKE_CUDA_ARCHITECTURES")
+set(VIBEQC_CUDA_COMPILE_ARCHITECTURES "" CACHE STRING
+    "NVCC architecture values, retaining 120-real/120-virtual intent")
+set(VIBEQC_CUDA_COMPILE_JOBS "2" CACHE STRING
+    "Maximum concurrent CUDA compiler jobs in the Ninja job pool")
 set(VIBEQC_CUDA_SPLIT_COMPILE_THREADS "1" CACHE STRING
     "NVCC split-compile threads for cuda_rhf.cu; 1 preserves production code generation")
 set(VIBEQC_AOT_PROFILE "auto" CACHE STRING
@@ -20,6 +28,9 @@ set(VIBEQC_AOT_PROFILES "" CACHE STRING
     "Optional explicit list of AOT profiles, independent of architecture order")
 set(VIBEQC_AOT_SHARDS "8" CACHE STRING
     "Number of independently compiled CUDA shards per AOT architecture")
+set(VIBEQC_AOT_UNIT_MODE "stable-shards" CACHE STRING
+    "Generated source layout: stable-shards (release) or class (development)")
+set_property(CACHE VIBEQC_AOT_UNIT_MODE PROPERTY STRINGS stable-shards class)
 
 # Repeated CUDA experiments frequently return to byte-identical source after an
 # A/B test or branch switch.  Reuse those expensive objects automatically when
@@ -62,6 +73,13 @@ endif()
 if(NOT VIBEQC_AOT_SHARDS MATCHES "^[1-9][0-9]*$")
   message(FATAL_ERROR "VIBEQC_AOT_SHARDS must be a positive integer")
 endif()
+if(NOT VIBEQC_CUDA_COMPILE_JOBS MATCHES "^[1-9][0-9]*$")
+  message(FATAL_ERROR "VIBEQC_CUDA_COMPILE_JOBS must be a positive integer")
+endif()
+if(NOT VIBEQC_AOT_UNIT_MODE STREQUAL "stable-shards"
+   AND NOT VIBEQC_AOT_UNIT_MODE STREQUAL "class")
+  message(FATAL_ERROR "VIBEQC_AOT_UNIT_MODE must be stable-shards or class")
+endif()
 math(EXPR VIBEQC_AOT_LAST_SHARD "${VIBEQC_AOT_SHARDS} - 1")
 
 set(CMAKE_CXX_STANDARD 20)
@@ -76,12 +94,19 @@ if(VIBEQC_ENABLE_CUDA)
     enable_language(CUDA)
     set(CMAKE_CUDA_STANDARD 20)
     set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-    if(VIBEQC_CUDA_ARCHITECTURES)
+    if(VIBEQC_CUDA_COMPILE_ARCHITECTURES)
+      set(CMAKE_CUDA_ARCHITECTURES ${VIBEQC_CUDA_COMPILE_ARCHITECTURES})
+    elseif(VIBEQC_CUDA_ARCHITECTURES)
       set(CMAKE_CUDA_ARCHITECTURES ${VIBEQC_CUDA_ARCHITECTURES})
     endif()
     if(NOT CMAKE_CUDA_ARCHITECTURES)
       set(CMAKE_CUDA_ARCHITECTURES 120)
     endif()
+    # Preserve NVCC's real/virtual suffixes for compilation. A separate
+    # numeric profile identity is derived below for manifest and cache paths.
+    set(_vibeqc_cuda_compile_architectures ${CMAKE_CUDA_ARCHITECTURES})
+    set_property(GLOBAL PROPERTY JOB_POOLS
+                 vibeqc_cuda_compile=${VIBEQC_CUDA_COMPILE_JOBS})
     # XsyevBatched is the capture-safe production eigensolver for realistic
     # AO buckets and is available in the supported CUDA 12.9 toolkit.
     find_package(CUDAToolkit 12.9 REQUIRED)
@@ -120,11 +145,19 @@ target_compile_options(vibeqc PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-W
 
 if(VIBEQC_ENABLE_CUDA)
   target_sources(vibeqc PRIVATE
+    src/scf/cuda/rhf_policy.cpp
     src/runtime/cuda_runtime.cu
     src/scf/cuda_density_fitting.cu
     src/scf/cuda_eigensolver_probe.cu
     src/scf/cuda_rhf.cu
   )
+  set_property(TARGET vibeqc PROPERTY JOB_POOL_COMPILE vibeqc_cuda_compile)
+  if(VIBEQC_CUDA_FAST_COMPILE)
+    # Explicitly opt-in: this mode is for iteration speed and must not be used
+    # for release performance/resource measurements.
+    target_compile_options(vibeqc PRIVATE
+      $<$<COMPILE_LANGUAGE:CUDA>:--Ofast-compile=max>)
+  endif()
   if(NOT VIBEQC_CUDA_SPLIT_COMPILE_THREADS STREQUAL "1")
     # Split compilation is useful for syntax/resource experiments on the
     # monolithic fallback TU, but NVCC may make different optimization choices.
@@ -142,30 +175,62 @@ if(VIBEQC_ENABLE_CUDA)
     set(VIBEQC_AOT_GENERATED_DIRECTORY
         "${CMAKE_CURRENT_BINARY_DIR}/generated/production_shell_kernels")
 
+    # Class-mode development builds need a stable output list at configure
+    # time.  Read names from the manifest itself rather than relying on its
+    # ordering; profile resolution still decides which units contain code.
+    set(VIBEQC_AOT_CLASS_NAMES)
+    file(READ "${VIBEQC_AOT_SHELL_MANIFEST}" _vibeqc_manifest_text)
+    string(REGEX MATCHALL
+           "\"shell_class\"[ \t\r\n]*:[ \t\r\n]*\"[a-z]+\""
+           _vibeqc_manifest_class_matches "${_vibeqc_manifest_text}")
+    foreach(_vibeqc_class_match IN LISTS _vibeqc_manifest_class_matches)
+      string(REGEX REPLACE
+             ".*\"shell_class\"[ \t\r\n]*:[ \t\r\n]*\"([a-z]+)\".*"
+             "\\1" _vibeqc_class_name "${_vibeqc_class_match}")
+      list(APPEND VIBEQC_AOT_CLASS_NAMES "${_vibeqc_class_name}")
+    endforeach()
+    list(REMOVE_DUPLICATES VIBEQC_AOT_CLASS_NAMES)
+    list(SORT VIBEQC_AOT_CLASS_NAMES)
+
     # Normalize and sort the compile targets so generated behavior and source
     # assignment do not depend on CMAKE_CUDA_ARCHITECTURES list order.
     set(VIBEQC_AOT_TARGET_ARCHITECTURES)
-    foreach(architecture IN LISTS CMAKE_CUDA_ARCHITECTURES)
-      string(REGEX REPLACE "-(real|virtual)$" "" architecture "${architecture}")
+    foreach(compile_architecture IN LISTS _vibeqc_cuda_compile_architectures)
+      string(REGEX REPLACE "-(real|virtual)$" "" architecture
+             "${compile_architecture}")
       if(NOT architecture MATCHES "^[0-9]+$")
         message(FATAL_ERROR
                 "VibeQC AOT requires numeric CUDA architectures, got ${architecture}")
       endif()
       list(APPEND VIBEQC_AOT_TARGET_ARCHITECTURES "${architecture}")
+      set(_vibeqc_aot_compile_architecture_${architecture}
+          "${compile_architecture}")
     endforeach()
     list(REMOVE_DUPLICATES VIBEQC_AOT_TARGET_ARCHITECTURES)
     list(SORT VIBEQC_AOT_TARGET_ARCHITECTURES COMPARE NATURAL)
 
     set(VIBEQC_AOT_GENERATOR_ARGUMENTS)
+    set(_vibeqc_aot_unit_arguments
+        --unit-mode "${VIBEQC_AOT_UNIT_MODE}")
+    if(VIBEQC_AOT_UNIT_MODE STREQUAL "class")
+      list(APPEND _vibeqc_aot_unit_arguments --all-class-units)
+    endif()
     set(VIBEQC_AOT_GENERATED_PROFILE_SOURCES)
     foreach(architecture IN LISTS VIBEQC_AOT_TARGET_ARCHITECTURES)
       set(profile_architecture "sm_${architecture}")
       list(APPEND VIBEQC_AOT_GENERATOR_ARGUMENTS
            --target-architecture "${profile_architecture}")
-      foreach(shard RANGE 0 ${VIBEQC_AOT_LAST_SHARD})
-        list(APPEND VIBEQC_AOT_GENERATED_PROFILE_SOURCES
-             "${VIBEQC_AOT_GENERATED_DIRECTORY}/${profile_architecture}/vibeqc_generated_shell_sm${architecture}_shard_${shard}.cu")
-      endforeach()
+      if(VIBEQC_AOT_UNIT_MODE STREQUAL "class")
+        foreach(shell_class IN LISTS VIBEQC_AOT_CLASS_NAMES)
+          list(APPEND VIBEQC_AOT_GENERATED_PROFILE_SOURCES
+               "${VIBEQC_AOT_GENERATED_DIRECTORY}/${profile_architecture}/vibeqc_generated_shell_sm${architecture}_${shell_class}.cu")
+        endforeach()
+      else()
+        foreach(shard RANGE 0 ${VIBEQC_AOT_LAST_SHARD})
+          list(APPEND VIBEQC_AOT_GENERATED_PROFILE_SOURCES
+               "${VIBEQC_AOT_GENERATED_DIRECTORY}/${profile_architecture}/vibeqc_generated_shell_sm${architecture}_shard_${shard}.cu")
+        endforeach()
+      endif()
     endforeach()
     if(NOT VIBEQC_AOT_PROFILE STREQUAL "auto")
       list(APPEND VIBEQC_AOT_GENERATOR_ARGUMENTS
@@ -205,6 +270,7 @@ if(VIBEQC_ENABLE_CUDA)
               --production-manifest "${VIBEQC_AOT_SHELL_MANIFEST}"
               --output-directory "${VIBEQC_AOT_GENERATED_DIRECTORY}"
               --shards "${VIBEQC_AOT_SHARDS}"
+              ${_vibeqc_aot_unit_arguments}
               ${VIBEQC_AOT_GENERATOR_ARGUMENTS}
       DEPENDS
         "${VIBEQC_AOT_SHELL_MANIFEST}"
@@ -241,23 +307,65 @@ if(VIBEQC_ENABLE_CUDA)
     foreach(architecture IN LISTS VIBEQC_AOT_TARGET_ARCHITECTURES)
       set(profile_architecture "sm_${architecture}")
       set(profile_sources)
-      foreach(shard RANGE 0 ${VIBEQC_AOT_LAST_SHARD})
-        list(APPEND profile_sources
-             "${VIBEQC_AOT_GENERATED_DIRECTORY}/${profile_architecture}/vibeqc_generated_shell_sm${architecture}_shard_${shard}.cu")
-      endforeach()
-      add_library(vibeqc_aot_${profile_architecture} OBJECT ${profile_sources})
-      target_include_directories(vibeqc_aot_${profile_architecture} PRIVATE
-          "${CMAKE_CURRENT_SOURCE_DIR}/src"
-          "${VIBEQC_AOT_GENERATED_DIRECTORY}")
-      target_compile_definitions(vibeqc_aot_${profile_architecture}
-                                 PRIVATE VIBEQC_HAS_CUDA=1)
-      set_target_properties(vibeqc_aot_${profile_architecture} PROPERTIES
-          CUDA_ARCHITECTURES "${architecture}"
-          CUDA_STANDARD 20
-          CUDA_STANDARD_REQUIRED ON
-          POSITION_INDEPENDENT_CODE ON)
-      target_sources(vibeqc PRIVATE
-          $<TARGET_OBJECTS:vibeqc_aot_${profile_architecture}>)
+      if(VIBEQC_AOT_UNIT_MODE STREQUAL "class")
+        foreach(shell_class IN LISTS VIBEQC_AOT_CLASS_NAMES)
+          list(APPEND profile_sources
+               "${VIBEQC_AOT_GENERATED_DIRECTORY}/${profile_architecture}/vibeqc_generated_shell_sm${architecture}_${shell_class}.cu")
+        endforeach()
+      else()
+        foreach(shard RANGE 0 ${VIBEQC_AOT_LAST_SHARD})
+          list(APPEND profile_sources
+               "${VIBEQC_AOT_GENERATED_DIRECTORY}/${profile_architecture}/vibeqc_generated_shell_sm${architecture}_shard_${shard}.cu")
+        endforeach()
+      endif()
+      if(VIBEQC_AOT_UNIT_MODE STREQUAL "class")
+        # Give development builds a directly addressable object target per
+        # shell class.  A dddd edit can therefore be built with
+        # ``--target vibeqc_aot_sm_120_dddd`` without compiling neighboring
+        # generated classes.
+        foreach(shell_class IN LISTS VIBEQC_AOT_CLASS_NAMES)
+          set(class_source
+              "${VIBEQC_AOT_GENERATED_DIRECTORY}/${profile_architecture}/vibeqc_generated_shell_sm${architecture}_${shell_class}.cu")
+          set(class_target "vibeqc_aot_${profile_architecture}_${shell_class}")
+          add_library(${class_target} OBJECT "${class_source}")
+          target_include_directories(${class_target} PRIVATE
+              "${CMAKE_CURRENT_SOURCE_DIR}/src"
+              "${VIBEQC_AOT_GENERATED_DIRECTORY}")
+          target_compile_definitions(${class_target} PRIVATE VIBEQC_HAS_CUDA=1)
+          set_target_properties(${class_target} PROPERTIES
+              CUDA_ARCHITECTURES
+              "${_vibeqc_aot_compile_architecture_${architecture}}"
+              CUDA_STANDARD 20
+              CUDA_STANDARD_REQUIRED ON
+              POSITION_INDEPENDENT_CODE ON
+              JOB_POOL_COMPILE vibeqc_cuda_compile)
+          if(VIBEQC_CUDA_FAST_COMPILE)
+            target_compile_options(${class_target} PRIVATE
+              $<$<COMPILE_LANGUAGE:CUDA>:--Ofast-compile=max>)
+          endif()
+          target_sources(vibeqc PRIVATE $<TARGET_OBJECTS:${class_target}>)
+        endforeach()
+      else()
+        add_library(vibeqc_aot_${profile_architecture} OBJECT ${profile_sources})
+        target_include_directories(vibeqc_aot_${profile_architecture} PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/src"
+            "${VIBEQC_AOT_GENERATED_DIRECTORY}")
+        target_compile_definitions(vibeqc_aot_${profile_architecture}
+                                   PRIVATE VIBEQC_HAS_CUDA=1)
+        set_target_properties(vibeqc_aot_${profile_architecture} PROPERTIES
+            CUDA_ARCHITECTURES
+            "${_vibeqc_aot_compile_architecture_${architecture}}"
+            CUDA_STANDARD 20
+            CUDA_STANDARD_REQUIRED ON
+            POSITION_INDEPENDENT_CODE ON
+            JOB_POOL_COMPILE vibeqc_cuda_compile)
+        if(VIBEQC_CUDA_FAST_COMPILE)
+          target_compile_options(vibeqc_aot_${profile_architecture} PRIVATE
+            $<$<COMPILE_LANGUAGE:CUDA>:--Ofast-compile=max>)
+        endif()
+        target_sources(vibeqc PRIVATE
+            $<TARGET_OBJECTS:vibeqc_aot_${profile_architecture}>)
+      endif()
     endforeach()
     target_sources(vibeqc PRIVATE "${VIBEQC_AOT_GENERATED_REGISTRY_SOURCE}")
     target_include_directories(vibeqc PRIVATE
@@ -267,7 +375,8 @@ if(VIBEQC_ENABLE_CUDA)
   endif()
   target_link_libraries(vibeqc PRIVATE CUDA::cudart CUDA::cublas CUDA::cusolver)
   target_compile_definitions(vibeqc PUBLIC VIBEQC_HAS_CUDA=1)
-  set_target_properties(vibeqc PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+  set_target_properties(vibeqc PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ${VIBEQC_CUDA_SEPARABLE_COMPILATION})
 else()
   target_sources(vibeqc PRIVATE src/scf/cuda_density_fitting_stub.cpp)
   target_compile_definitions(vibeqc PUBLIC VIBEQC_HAS_CUDA=0)
