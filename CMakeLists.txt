@@ -91,6 +91,16 @@ if(VIBEQC_ENABLE_CUDA)
   include(CheckLanguage)
   check_language(CUDA)
   if(CMAKE_CUDA_COMPILER)
+    # Set the project default before enabling CUDA.  Once CUDA is enabled,
+    # CMake may populate CMAKE_CUDA_ARCHITECTURES from NVCC's legacy default
+    # (commonly sm_52), which cannot compile the FP64 atomic force consumers.
+    # An explicit VIBEQC_CUDA_ARCHITECTURES or CMAKE_CUDA_ARCHITECTURES value
+    # remains authoritative for callers targeting another supported device.
+    if(VIBEQC_CUDA_ARCHITECTURES)
+      set(CMAKE_CUDA_ARCHITECTURES ${VIBEQC_CUDA_ARCHITECTURES})
+    elseif(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+      set(CMAKE_CUDA_ARCHITECTURES 120)
+    endif()
     enable_language(CUDA)
     set(CMAKE_CUDA_STANDARD 20)
     set(CMAKE_CUDA_STANDARD_REQUIRED ON)
