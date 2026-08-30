@@ -836,6 +836,11 @@ python tools/report_codegen_capabilities.py \
 
 The report lists target-legal schedule families, recurrence failures, force
 derivative-order boundaries, and the production manifest state for every class.
+Its top-level `backend` object records the CUDA target, generator ABI, and the
+emitter used for validation; `recurrence_supported` and
+`force_derivative_supported` provide catalog-wide counts. Each production row
+also carries a `status` and `promotion_gate`, so a structurally compilable but
+unselected class cannot be mistaken for a production-ready kernel.
 The current CUDA force ABI is explicitly reported as order-one-only; a future
 Hessian implementation must add a result contract before enabling order two.
 To screen a bounded set of classes

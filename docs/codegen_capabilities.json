@@ -1,10 +1,29 @@
 {
   "architecture": "sm_120",
+  "backend": {
+    "architecture": "sm_120",
+    "compute_capability": "12.0",
+    "emitter_validation": "emit_shell_class_fused_cuda",
+    "generator_abi": 1,
+    "name": "cuda",
+    "schedule_source": "schedule_candidates"
+  },
   "compute_capability": "12.0",
+  "force_derivative_supported": {
+    "1": 55,
+    "2": 0
+  },
   "generic_fused_supported": 55,
   "manifest": "tools/vibeqc_codegen/production_shell_classes.json",
   "production_selected": 22,
   "profile": "auto",
+  "recurrence_supported": {
+    "rys2": 4,
+    "rys3": 11,
+    "rys4": 16,
+    "rys5": 14,
+    "subset_wick": 55
+  },
   "schema_version": 1,
   "shell_classes": [
     {
@@ -56,8 +75,10 @@
         "force": false,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "subset_wick",
-        "schedule": "packed_tasks"
+        "schedule": "packed_tasks",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -151,8 +172,10 @@
         "force": false,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "subset_wick",
-        "schedule": "packed_tasks"
+        "schedule": "packed_tasks",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -249,8 +272,10 @@
         "force": true,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "rys2",
-        "schedule": "thread_tasks"
+        "schedule": "thread_tasks",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -346,8 +371,10 @@
         "force": true,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "rys2",
-        "schedule": "thread_tasks"
+        "schedule": "thread_tasks",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -440,8 +467,10 @@
         "force": true,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "rys3",
-        "schedule": "subgroup_tasks"
+        "schedule": "subgroup_tasks",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -532,8 +561,10 @@
         "force": true,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "rys3",
-        "schedule": "subgroup_tasks"
+        "schedule": "subgroup_tasks",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -625,8 +656,10 @@
         "force": true,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "rys2",
-        "schedule": "thread_tasks"
+        "schedule": "thread_tasks",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -719,8 +752,10 @@
         "force": true,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "rys3",
-        "schedule": "thread_tasks"
+        "schedule": "thread_tasks",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -810,8 +845,10 @@
         "force": true,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "rys3",
-        "schedule": "subgroup_tasks"
+        "schedule": "subgroup_tasks",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -902,8 +939,10 @@
         "force": true,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "rys3",
-        "schedule": "component_lanes"
+        "schedule": "component_lanes",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -993,8 +1032,10 @@
         "force": true,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "rys3",
-        "schedule": "thread_tasks"
+        "schedule": "thread_tasks",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -1085,8 +1126,10 @@
         "force": true,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "rys3",
-        "schedule": "subgroup_tasks"
+        "schedule": "subgroup_tasks",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -1176,8 +1219,10 @@
         "force": true,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "rys4",
-        "schedule": "subgroup_tasks"
+        "schedule": "subgroup_tasks",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -1265,8 +1310,10 @@
         "force": true,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "rys4",
-        "schedule": "subgroup_tasks"
+        "schedule": "subgroup_tasks",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -1354,8 +1401,10 @@
         "force": true,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "rys4",
-        "schedule": "subgroup_tasks"
+        "schedule": "subgroup_tasks",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -1444,8 +1493,10 @@
         "force": true,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "rys3",
-        "schedule": "component_lanes"
+        "schedule": "component_lanes",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -1536,8 +1587,10 @@
         "force": true,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "rys4",
-        "schedule": "subgroup_tasks"
+        "schedule": "subgroup_tasks",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -1625,8 +1678,10 @@
         "force": true,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "rys4",
-        "schedule": "subgroup_tasks"
+        "schedule": "subgroup_tasks",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -1715,8 +1770,10 @@
         "force": true,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "rys4",
-        "schedule": "component_lanes"
+        "schedule": "component_lanes",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -1804,8 +1861,10 @@
         "force": true,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "rys5",
-        "schedule": "subgroup_tasks"
+        "schedule": "subgroup_tasks",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -1891,8 +1950,10 @@
         "force": true,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "rys5",
-        "schedule": "subgroup_tasks"
+        "schedule": "subgroup_tasks",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -1976,7 +2037,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -2064,7 +2127,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -2152,7 +2217,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -2239,7 +2306,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -2327,7 +2396,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -2414,7 +2485,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -2501,7 +2574,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -2588,7 +2663,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -2676,8 +2753,10 @@
         "force": true,
         "profile": "sm_120",
         "profile_match": "exact",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "recurrence": "subset_wick",
-        "schedule": "component_lanes"
+        "schedule": "component_lanes",
+        "status": "manifest_selected"
       },
       "recurrences": {
         "rys2": {
@@ -2764,7 +2843,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -2851,7 +2932,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -2938,7 +3021,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -3023,7 +3108,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -3107,7 +3194,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -3194,7 +3283,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -3281,7 +3372,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -3369,7 +3462,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -3456,7 +3551,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -3543,7 +3640,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -3628,7 +3727,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -3710,7 +3811,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -3794,7 +3897,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -3879,7 +3984,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -3961,7 +4068,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -4045,7 +4154,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -4132,7 +4243,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -4219,7 +4332,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -4306,7 +4421,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -4391,7 +4508,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -4473,7 +4592,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -4557,7 +4678,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -4640,7 +4763,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -4722,7 +4847,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {
@@ -4804,7 +4931,9 @@
         "force": false,
         "profile": null,
         "profile_match": null,
-        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": "not selected by the production manifest; endpoint/resource gates remain",
+        "status": "manifest_gap"
       },
       "recurrences": {
         "rys2": {

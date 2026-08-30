@@ -78,6 +78,30 @@ class CapabilityCheck:
         }
 
 
+def _production_gap_payload() -> dict[str, object]:
+    """Describe why an unselected class cannot enter production automatically.
+
+    Structural source emission is deliberately weaker than a production
+    promotion.  Keeping this policy in the report makes the distinction
+    machine-readable instead of requiring callers to infer it from an empty
+    manifest row.
+    """
+
+    return {
+        "profile": None,
+        "profile_match": None,
+        "force": False,
+        "fock": False,
+        "capabilities": [],
+        "status": "manifest_gap",
+        "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+        "reason": (
+            "not selected by the production manifest; endpoint/resource "
+            "gates remain"
+        ),
+    }
+
+
 @dataclass(frozen=True, slots=True)
 class ShellCapabilityReport:
     """Complete structural and production coverage for one shell class."""
@@ -219,6 +243,8 @@ def _production_index(
             "capabilities": sorted(selection.capabilities),
             "recurrence": selection.recurrence,
             "schedule": selection.schedule.kind.value,
+            "status": "manifest_selected",
+            "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         }
     return result
 
@@ -250,14 +276,7 @@ def build_capability_report(
         generic = dict(recurrence_rows)["subset_wick"]
         production_row = production.get(
             spec.name,
-            {
-                "profile": None,
-                "profile_match": None,
-                "force": False,
-                "fock": False,
-                "capabilities": [],
-                "reason": "not selected by the production manifest; endpoint/resource gates remain",
-            },
+            _production_gap_payload(),
         )
         rows.append(
             ShellCapabilityReport(
@@ -276,8 +295,32 @@ def build_capability_report(
             ).as_posix()
         except ValueError:
             manifest_label = str(manifest)
+    recurrence_supported = {
+        name: sum(
+            bool(row["recurrences"][name]["supported"])
+            for row in rows
+        )
+        for name in ("subset_wick", "rys2", "rys3", "rys4", "rys5")
+    }
+    force_derivative_supported = {
+        str(order): sum(
+            bool(row["force_derivative_orders"][str(order)]["supported"])
+            for row in rows
+        )
+        for order in (1, 2)
+    }
     return {
         "schema_version": 1,
+        "backend": {
+            "name": "cuda",
+            "architecture": target.architecture,
+            "compute_capability": (
+                f"{target.compute_capability_major}.{target.compute_capability_minor}"
+            ),
+            "generator_abi": target.generator_abi,
+            "schedule_source": "schedule_candidates",
+            "emitter_validation": "emit_shell_class_fused_cuda",
+        },
         "architecture": target.architecture,
         "compute_capability": (
             f"{target.compute_capability_major}.{target.compute_capability_minor}"
@@ -293,6 +336,8 @@ def build_capability_report(
             or bool(row["production"].get("fock"))
             for row in rows
         ),
+        "recurrence_supported": recurrence_supported,
+        "force_derivative_supported": force_derivative_supported,
         "shell_classes": rows,
     }
 
