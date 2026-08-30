@@ -5852,6 +5852,43 @@ def test_dppp_cuda_emission_is_deterministic_and_runtime_ad_free():
     assert "Dual3" not in factored
 
 
+def test_dppp_contraction_cuda_honors_explicit_nonfinal_recovery():
+    """Pack factored decay rows by IR order when center B is recovered."""
+
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        DPPP_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    kernel = build_dppp_contraction_kernel(
+        "xy",
+        tuple("xyz"),
+        integral=integral,
+    )
+    assert kernel.integral is integral
+    source = emit_dppp_contraction_cuda(kernel)
+
+    # The ket fourth-center derivative needs the complement of the stored
+    # third-center product scale.  Decay rows are dense A/C/D slots, not
+    # physical center indices A/B/C/D, so row 1 must remain present while
+    # row 3 is not referenced by this three-independent-center geometry ABI.
+    assert "1.0 - geometry.product_scales[2]" in source
+    assert "geometry.decay_gradients[1]" in source
+    assert "geometry.decay_gradients[2]" in source
+    assert "geometry.decay_gradients[3]" not in source
+
+
 def test_nvrtc_cache_key_covers_binary_compatibility_inputs():
     specification = NvrtcCacheSpec(
         generator_abi="1",
