@@ -537,6 +537,11 @@ CMake selects profiles with `VIBEQC_AOT_PROFILE` or `VIBEQC_AOT_PROFILES`.
 `portable_cuda`, then generic fallback. `VIBEQC_ENABLE_AOT_SHELLS=OFF` omits all
 generated shell objects.
 
+Optional production code shapes are declared per manifest row through the
+`capabilities` list. The current names are `streaming_fock`, `mixed_fock`, and
+`local_packed_streaming_fock`; an omitted list keeps those wrappers disabled.
+This metadata is profile-scoped and does not promote a candidate by itself.
+
 Large-shell tuning uses a staged compiler pipeline. Equivalent schedules share
 one separately compiled correctness oracle per component mapping; tiled oracle
 recurrences are noinline so NVVM does not expand the reference into every
@@ -747,10 +752,34 @@ python tools/generate_shell_kernels.py \
 cmake --build build --target vibeqc_codegen_pilot
 ```
 
-Candidate batch screening is intentionally sparse: pass either an explicit
-`--shell-class` list or a real-profile `--profile` plus `--limit`. Omitting
-both is rejected so the tool cannot accidentally compile every uncovered
-class in one batch. Profile rows are ranked by measured `primitive_work`,
+Generate the structural report for all 55 catalog classes:
+
+```bash
+python tools/report_codegen_capabilities.py \
+  --architecture sm_120 \
+  --output build/codegen-capabilities.json
+```
+
+The report lists target-legal schedule families, recurrence failures, and the
+production manifest state for every class. To screen a bounded set of classes
+that is automatically discovered from the consumer-specific manifest gap:
+
+```bash
+python -m tools.vibeqc_codegen.batch_benchmark \
+  --discover --consumer force --limit 12 \
+  --partition main --gres gpu:5090:1
+```
+
+Discovery only chooses synthetic candidates. A real molecular endpoint remains
+required before adding a capability or promoting a class in the manifest.
+The checked-in `docs/codegen_capabilities.json` is regenerated with the same
+command for the current `sm_120` manifest.
+
+Candidate batch screening is intentionally bounded: pass an explicit
+`--shell-class` list, a real-profile `--profile` plus `--limit`, or
+`--discover` to rank the consumer-specific manifest gap by static work.
+Omitting all three is rejected so the tool cannot accidentally compile every
+uncovered class in one batch. Profile rows are ranked by measured `primitive_work`,
 falling back to `primitive_quartets` for older artifacts; duplicate canonical
 class rows are aggregated before applying `--limit`. The same screener accepts
 `--consumer fock` to time coefficient-only candidates through the shared

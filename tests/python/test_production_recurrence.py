@@ -805,6 +805,7 @@ def test_multi_profile_registry_dispatches_dpps_mixed_fock(tmp_path: Path):
                             {
                                 "shell_class": "dpps",
                                 "consumers": ["fock", "force"],
+                                "capabilities": ["mixed_fock", "streaming_fock"],
                                 "schedule": schedule,
                             }
                         ]
@@ -829,6 +830,48 @@ def test_multi_profile_registry_dispatches_dpps_mixed_fock(tmp_path: Path):
     assert "VIBEQC_AOT_MIXED_FOCK_SHELL_CLASSES" in source
     assert "enabled_mixed_fock_shell_class_mask" in source
     assert "launch_shell_class_mixed_fock" in source
+
+
+def test_manifest_capabilities_control_optional_production_wrappers(
+    tmp_path: Path,
+):
+    """Keep optional wrappers opt-in and independent of shell-name heuristics."""
+
+    manifest = tmp_path / "capabilities.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "default_architecture": "sm_120",
+                "architectures": {
+                    "sm_120": {
+                        "kernels": [
+                            {
+                                "shell_class": "dpps",
+                                "consumers": ["fock", "force"],
+                                "capabilities": ["mixed_fock"],
+                                "schedule": {
+                                    "kind": "component_lanes",
+                                    "block_threads": 128,
+                                    "component_tile": 54,
+                                    "tasks_per_warp": 1,
+                                    "shared_coulomb": True,
+                                    "pair_orientation": "canonical",
+                                    "pair_storage": "materialized",
+                                    "unroll_pair_terms": True,
+                                },
+                            }
+                        ]
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    resolved = resolve_production_profile(manifest, "sm_120")
+    shard = emit_profile_shard(resolved, resolved.selections)
+    assert "generated_sm120_dpps_shell_class_mixed_fock" in shard
+    assert "generated_sm120_dpps_streaming_fock" not in shard
 
 
 def test_multi_profile_registry_keeps_fock_only_force_symbols_dormant(

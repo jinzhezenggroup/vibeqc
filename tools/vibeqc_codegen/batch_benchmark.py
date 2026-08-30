@@ -124,6 +124,39 @@ def candidate_specs(
     return tuple(specifications)
 
 
+def discover_candidate_specs(
+    consumer: KernelConsumer | str = KernelConsumer.FORCE,
+    *,
+    limit: int | None = None,
+) -> tuple[ShellClassSpec, ...]:
+    """Discover uncovered classes using only structural work estimates.
+
+    This is intentionally a discovery pass, not a promotion decision.  It
+    ranks the manifest gap by Cartesian component count and angular work so a
+    caller can screen a bounded prefix without hand-maintaining a shell-name
+    list.  Real molecular endpoint gates remain outside this synthetic batch
+    screener and are still required before production manifest edits.
+    """
+
+    selected_consumer = KernelConsumer(consumer)
+    excluded = _production_shell_classes(selected_consumer)
+    uncovered = [
+        spec for spec in FUSED_SHELL_SPECS if spec.name not in excluded
+    ]
+    uncovered.sort(
+        key=lambda spec: (
+            -spec.component_count,
+            -sum(spec.angular),
+            spec.name,
+        )
+    )
+    if limit is None:
+        return tuple(uncovered)
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1:
+        raise ValueError("candidate limit must be positive")
+    return tuple(uncovered[:limit])
+
+
 def rank_profiled_candidates(
     payload: dict[str, object],
     limit: int,
@@ -570,19 +603,28 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
     selected_consumer = KernelConsumer(
         getattr(arguments, "consumer", KernelConsumer.FORCE.value)
     )
-    if arguments.profile is not None:
+    discovery = bool(getattr(arguments, "discover", False))
+    if discovery:
+        specifications = discover_candidate_specs(
+            consumer=selected_consumer,
+            limit=arguments.limit,
+        )
+        selection_mode = "manifest_gap"
+    elif arguments.profile is not None:
         profile = json.loads(arguments.profile.read_text(encoding="utf-8"))
         ranker = (
             rank_compile_aware_candidates
             if getattr(arguments, "compile_aware", False)
             else rank_profiled_candidates
         )
+        selection_mode = "profile"
         specifications = ranker(profile, arguments.limit, consumer=selected_consumer)
     else:
         specifications = candidate_specs(
             arguments.shell_class or None,
             consumer=selected_consumer,
         )
+        selection_mode = "explicit"
 
     work_directory_owner = None
     if arguments.work_directory is None:
@@ -746,6 +788,10 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
             "schema_version": 1,
             "architecture": arguments.architecture,
             "consumer": selected_consumer.value,
+            "selection": {
+                "mode": selection_mode,
+                "discovered_count": len(specifications) if discovery else None,
+            },
             "nvcc": str(arguments.nvcc),
             "single_gpu_process": True,
             "srun": {
@@ -807,6 +853,14 @@ def main() -> None:
         help="rank candidates by an --all-orders active profile JSON",
     )
     parser.add_argument(
+        "--discover",
+        action="store_true",
+        help=(
+            "automatically select the highest-work classes missing from the "
+            "consumer-specific production manifest"
+        ),
+    )
+    parser.add_argument(
         "--compile-aware",
         action="store_true",
         help=(
@@ -834,10 +888,19 @@ def main() -> None:
     arguments = parser.parse_args()
     if arguments.compile_jobs < 1:
         parser.error("--compile-jobs must be positive")
-    if arguments.profile is not None and arguments.shell_class:
-        parser.error("pass either --profile or --shell-class, not both")
-    if arguments.profile is None and not arguments.shell_class:
-        parser.error("candidate screening requires --profile or --shell-class")
+    selected_modes = (
+        int(arguments.profile is not None)
+        + int(arguments.discover)
+        + int(bool(arguments.shell_class))
+    )
+    if selected_modes > 1:
+        parser.error("pass only one of --profile, --discover, or --shell-class")
+    if arguments.profile is None and not arguments.shell_class and not arguments.discover:
+        parser.error(
+            "candidate screening requires --profile, --discover, or --shell-class"
+        )
+    if arguments.limit < 1:
+        parser.error("--limit must be positive")
     report = _run_batch(arguments)
     output = json.dumps(report, indent=2, sort_keys=True) + "\n"
     if arguments.output is None:
