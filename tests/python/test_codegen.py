@@ -118,6 +118,7 @@ from tools.vibeqc_codegen.batch_benchmark import (
     KernelResources,
     benchmark_command,
     candidate_specs,
+    discover_candidate_specs,
     emit_batch_driver,
     emit_candidate_translation_unit,
     parse_ptxas_resources,
@@ -133,6 +134,11 @@ from tools.vibeqc_codegen.benchmark import (
     emit_dppp_benchmark_cuda,
     emit_shell_class_benchmark_cuda,
     emit_shell_class_oracle_cuda,
+)
+from tools.vibeqc_codegen.capabilities import (
+    CAPABILITY_MIXED_FOCK,
+    CAPABILITY_STREAMING_FOCK,
+    build_capability_report,
 )
 from tools.vibeqc_codegen.production import (
     _PRODUCTION_PRELUDE,
@@ -2816,7 +2822,11 @@ def test_high_impact_fock_classes_emit_generated_mixed_capability():
             spec,
             consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
         )
-        sources[name] = emit_shell_class_fused_cuda(spec, plan)
+        sources[name] = emit_shell_class_fused_cuda(
+            spec,
+            plan,
+            capabilities=(CAPABILITY_MIXED_FOCK,) if name != "dspp" else (),
+        )
 
     dpps = sources["dpps"]
     assert "generated_dpps_shell_class_mixed_fock_rhf_persistent_kernel" in dpps
@@ -3399,6 +3409,7 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs():
     source = (REPOSITORY_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
     for dependency in (
         "tools/vibeqc_codegen/cuda.py",
+        "tools/vibeqc_codegen/capabilities.py",
         "tools/vibeqc_codegen/cuda_lowering.py",
         "tools/vibeqc_codegen/expr.py",
         "tools/vibeqc_codegen/fused_schedule.py",
@@ -3442,6 +3453,37 @@ def test_batch_screening_ranks_real_profile_and_emits_one_process_driver():
     driver = emit_batch_driver((candidate,))
     assert "cudaFree(nullptr)" in driver
     assert f"vibeqc_run_shell_class_{candidate.name}()" in driver
+
+
+def test_batch_screening_discovers_consumer_specific_manifest_gap():
+    """Discover a bounded work-ranked gap without a hand-written name list."""
+
+    force = discover_candidate_specs(consumer=KernelConsumer.FORCE, limit=3)
+    assert tuple(spec.name for spec in force) == ("ffff", "fffd", "fdfd")
+    fock = discover_candidate_specs(consumer=KernelConsumer.FOCK, limit=3)
+    assert tuple(spec.name for spec in fock) == ("ffff", "fffd", "fdfd")
+    assert FUSED_SHELL_SPEC_BY_NAME["fpps"] in discover_candidate_specs(
+        consumer=KernelConsumer.FOCK
+    )
+
+
+def test_codegen_capability_report_covers_catalog_and_manifest():
+    """Report structural backend reasons for all 55 canonical shell classes."""
+
+    manifest = REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+    report = build_capability_report(
+        architecture="sm_120",
+        manifest=manifest,
+    )
+    assert report["total_shell_classes"] == 55
+    assert report["generic_fused_supported"] == 55
+    rows = {row["shell_class"]: row for row in report["shell_classes"]}
+    assert rows["psss"]["recurrences"]["rys2"]["supported"] is True
+    assert rows["dppp"]["recurrences"]["rys4"]["supported"] is True
+    assert rows["dppp"]["recurrences"]["rys3"]["supported"] is False
+    assert rows["fsps"]["production"]["force"] is False
+    assert rows["dpps"]["production"]["force"] is True
+    assert CAPABILITY_STREAMING_FOCK in rows["dpps"]["production"]["capabilities"]
 
 
 def test_batch_screening_sorts_unsorted_profile_work_and_deduplicates():

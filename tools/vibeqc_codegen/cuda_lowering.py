@@ -16,9 +16,10 @@ from __future__ import annotations
 
 import math
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
+from .capabilities import CAPABILITY_MIXED_FOCK
 from .cuda import CudaEmitter
 from .cuda_schedule import (
     AlgebraForm,
@@ -58,21 +59,6 @@ from .shell_spec import (
 DpppComponent = tuple[str, str, str, str]
 _AXIS_INDEX = {axis: index for index, axis in enumerate(AXES)}
 _COMPONENT_COUNT = DPPP_SPEC.component_count
-# Bounded-streaming mixed Fock is enabled only for classes that showed a
-# positive end-to-end result on the 96-atom profile. ``dppp`` is deliberately
-# omitted: its duplicated FP32 recurrence was slower than the FP64 worker.
-_MIXED_FOCK_SHELLS = frozenset(
-    {
-        "ppps",
-        "dpps",
-        "dsps",
-        "dsds",
-        "ddss",
-        "ddps",
-        "ddds",
-        "pppp",
-    }
-)
 
 
 @dataclass(frozen=True, slots=True)
@@ -5447,6 +5433,7 @@ def emit_shell_class_fused_cuda(
     plan: FusedShellPlan | None = None,
     *,
     fock_schedule: ScheduleIR | None = None,
+    capabilities: Iterable[str] = (),
 ) -> str:
     """Emit a complete cooperative force kernel from a shell specification.
 
@@ -5457,6 +5444,7 @@ def emit_shell_class_fused_cuda(
     """
 
     plan = build_fused_shell_plan(spec) if plan is None else plan
+    selected_capabilities = frozenset(capabilities)
     if plan.spec != spec:
         raise ValueError("fused plan and shell specification do not match")
     if plan.schedule.kind not in (
@@ -6672,7 +6660,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
                 target=plan.kernel.target,
             )
         source += _emit_shell_class_fock_cuda(spec, fock_plan)
-        if spec.name in _MIXED_FOCK_SHELLS:
+        if CAPABILITY_MIXED_FOCK in selected_capabilities:
             source += _emit_shell_class_mixed_fock_cuda(spec, fock_plan)
     pair_unroll = (
         "#pragma unroll" if plan.schedule.unroll_pair_terms else "#pragma unroll 1"

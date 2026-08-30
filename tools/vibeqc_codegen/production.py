@@ -10,6 +10,12 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
+from .capabilities import (
+    CAPABILITY_LOCAL_PACKED_STREAMING_FOCK,
+    CAPABILITY_MIXED_FOCK,
+    CAPABILITY_STREAMING_FOCK,
+    normalize_capabilities,
+)
 from .cuda_emitter import emit_shell_class_fused_cuda
 from .cuda_lowering import (
     emit_ppps_resident_bra_rys3_cuda,
@@ -37,55 +43,6 @@ from .shell_spec import FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec, shell_pair_cla
 _SUPPORTED_RECURRENCES = frozenset(
     ("subset_wick", "rys2", "rys3", "rys4", "rys5")
 )
-_STREAMING_FOCK_SHELLS = frozenset(
-    (
-        "ssss",
-        "psss",
-        "psps",
-        "ppss",
-        "ppps",
-        "pppp",
-        "dsss",
-        "dsps",
-        "dspp",
-        "dsds",
-        "dpss",
-        "dpps",
-        "dppp",
-        "dpds",
-        "dpdp",
-        "ddss",
-        "ddps",
-        "ddpp",
-        "ddds",
-        "dddp",
-        "dddd",
-    )
-)
-# Keep this list in lockstep with cuda_lowering.py. It is an explicit,
-# profiled production allow-list rather than an assumption that every shell
-# class benefits from the duplicated mixed-precision emitter.
-_MIXED_FOCK_SHELLS = frozenset(
-    {
-        "ppps",
-        "dpps",
-        "dsps",
-        "dsds",
-        "ddss",
-        "ddps",
-        "ddds",
-        "pppp",
-    }
-)
-
-# Packed streaming workers use one warp per block.  Keeping the task and
-# primitive geometry lane-private lets psss/psps scalarize these objects into
-# registers instead of reserving a 32-entry shared arena.  The other packed
-# classes were retained on the shared path because their larger state either
-# regressed or already approaches the register limit in profiling.
-_LOCAL_PACKED_STREAMING_FOCK_SHELLS = frozenset(("psss", "psps"))
-
-
 def _supports_scalar_rys(
     spec: ShellClassSpec,
     schedule: ScheduleIR,
@@ -195,6 +152,10 @@ class KernelSelection:
     recurrence: str = "subset_wick"
     resident_force_recurrence: str | None = None
     fock_schedule: ScheduleIR | None = None
+    # Optional production code-shape capabilities are measured per profile
+    # and persisted in the manifest.  An omitted list intentionally disables
+    # optional wrappers for legacy/custom manifests.
+    capabilities: frozenset[str] = frozenset()
     # Keep the mathematical request attached to a production selection.  The
     # manifest compatibility path leaves this unset and receives the
     # historical default IR, while compiler stages may supply a fully
@@ -207,6 +168,11 @@ class KernelSelection:
     source_bytes: int | None = None
     object_bytes: int | None = None
 
+    def has_capability(self, capability: str) -> bool:
+        """Return whether this profile explicitly enables one optional path."""
+
+        return capability in self.capabilities
+
     def __post_init__(self) -> None:
         if not self.architecture.startswith("sm_"):
             raise ValueError("production architecture must use CUDA sm_ notation")
@@ -214,6 +180,11 @@ class KernelSelection:
             object.__setattr__(self, "profile", self.architecture)
         if not self.consumers:
             raise ValueError("production kernel requires at least one consumer")
+        object.__setattr__(
+            self,
+            "capabilities",
+            normalize_capabilities(self.spec.name, list(self.capabilities)),
+        )
         if (
             not isinstance(self.recurrence, str)
             or self.recurrence not in _SUPPORTED_RECURRENCES
@@ -627,7 +598,11 @@ def _recurrence_from_row(
     name = spec.name
     recurrence = row.get("recurrence", "subset_wick")
     if not isinstance(recurrence, str):
-        raise ValueError(f"{name} recurrence must be a string")
+        # Manifest validation consistently reports malformed rows as
+        # ``ValueError`` so callers can handle schema failures uniformly.
+        raise ValueError(  # noqa: TRY004
+            f"{name} recurrence must be a string"
+        )
     if recurrence not in _SUPPORTED_RECURRENCES:
         supported = ", ".join(sorted(_SUPPORTED_RECURRENCES))
         raise ValueError(
@@ -673,7 +648,11 @@ def _resident_force_recurrence_from_row(
             f"{name} resident force recurrence requires the force consumer"
         )
     if not isinstance(recurrence, str):
-        raise ValueError(f"{name} resident_force_recurrence must be a string")
+        # Keep the public manifest-loading error type stable; this is a
+        # schema/value failure even though the offending value has a bad type.
+        raise ValueError(  # noqa: TRY004
+            f"{name} resident_force_recurrence must be a string"
+        )
     if recurrence != "rys3":
         raise ValueError(f"{name} resident force recurrence must be rys3")
     return recurrence
@@ -728,6 +707,10 @@ def _selections_from_rows(
         except ValueError as error:
             raise ValueError(f"{name} has an unsupported consumer") from error
         recurrence = _recurrence_from_row(spec, row, consumers)
+        capabilities = normalize_capabilities(
+            name,
+            row.get("capabilities"),
+        )
         resident_force_recurrence = _resident_force_recurrence_from_row(
             name, row, consumers
         )
@@ -778,6 +761,7 @@ def _selections_from_rows(
                 recurrence=recurrence,
                 resident_force_recurrence=resident_force_recurrence,
                 fock_schedule=fock_schedule,
+                capabilities=capabilities,
                 runtime_seconds=_optional_nonnegative_number(
                     name, row, "runtime_seconds"
                 ),
@@ -1151,7 +1135,7 @@ def _streaming_fock_source(selection: KernelSelection) -> str:
             ),
             warp_size=schedule.warp_size,
         )
-    if spec.name not in _STREAMING_FOCK_SHELLS:
+    if not selection.has_capability(CAPABILITY_STREAMING_FOCK):
         return ""
 
     class_name = spec.name[0].upper() + spec.name[1:]
@@ -1160,7 +1144,7 @@ def _streaming_fock_source(selection: KernelSelection) -> str:
     high_pair_class = max(first_pair_class, second_pair_class)
     low_pair_class = min(first_pair_class, second_pair_class)
     prefix = f"generated_{spec.name}"
-    supports_mixed_fock = spec.name in _MIXED_FOCK_SHELLS
+    supports_mixed_fock = selection.has_capability(CAPABILITY_MIXED_FOCK)
     retained_state = (
         "mixed_precision_enabled && contribution_bound < fp64_threshold "
         "? 3U : 1U"
@@ -1318,7 +1302,9 @@ __device__ __forceinline__ void {prefix}_stream_populate_task(
 """
 
     if schedule.kind == ScheduleKind.PACKED_TASKS:
-        local_lane_state = spec.name in _LOCAL_PACKED_STREAMING_FOCK_SHELLS
+        local_lane_state = selection.has_capability(
+            CAPABILITY_LOCAL_PACKED_STREAMING_FOCK
+        )
         if local_lane_state:
             state_declarations = f"""
   // This consumer is force-inlined; lane-private state can be scalarized into
@@ -1931,14 +1917,15 @@ def emit_production_shard(
                 selection.spec,
                 plan,
                 fock_schedule=selection.fock_schedule,
+                capabilities=selection.capabilities,
             )
         )
         body.append(_launch_wrapper(selection.spec))
         if KernelConsumer.FOCK in selection.consumers:
             body.append(_fock_launch_wrapper(selection.spec))
-            if selection.spec.name in _MIXED_FOCK_SHELLS:
+            if selection.has_capability(CAPABILITY_MIXED_FOCK):
                 body.append(_mixed_fock_launch_wrapper(selection.spec))
-            if selection.spec.name in _STREAMING_FOCK_SHELLS:
+            if selection.has_capability(CAPABILITY_STREAMING_FOCK):
                 body.append(_streaming_fock_source(selection))
                 body.append(_streaming_fock_launch_wrapper(selection.spec))
         if selection.resident_force_recurrence is not None:
@@ -1992,7 +1979,7 @@ def emit_registry_header(
             f"{spec.component_count}U}},"
         )
         fock_rows.append(row)
-        if spec.name in _MIXED_FOCK_SHELLS:
+        if selection.has_capability(CAPABILITY_MIXED_FOCK):
             mixed_fock_rows.append(row)
     return f"""#ifndef VIBEQC_GENERATED_SHELL_REGISTRY_HPP
 #define VIBEQC_GENERATED_SHELL_REGISTRY_HPP
@@ -2115,13 +2102,13 @@ def emit_registry_source(
         item.spec
         for item in selections
         if KernelConsumer.FOCK in item.consumers
-        and item.spec.name in _MIXED_FOCK_SHELLS
+        and item.has_capability(CAPABILITY_MIXED_FOCK)
     )
     streaming_fock_specs = tuple(
         item.spec
         for item in selections
         if KernelConsumer.FOCK in item.consumers
-        and item.spec.name in _STREAMING_FOCK_SHELLS
+        and item.has_capability(CAPABILITY_STREAMING_FOCK)
     )
     resident_selection = next(
         (item for item in selections if item.resident_force_recurrence is not None),
@@ -2429,6 +2416,7 @@ def emit_profile_shard(
             selection.spec,
             plan,
             fock_schedule=selection.fock_schedule,
+            capabilities=selection.capabilities,
         )
         force_symbol = f"vibeqc_launch_{identifier}_generated_{selection.spec.name}"
         body.append(
@@ -2459,7 +2447,7 @@ def emit_profile_shard(
                 fock_symbol,
             )
             body.append(fock_wrapper)
-            if selection.spec.name in _MIXED_FOCK_SHELLS:
+            if selection.has_capability(CAPABILITY_MIXED_FOCK):
                 mixed_fock_symbol = f"{force_symbol}_mixed_fock"
                 mixed_fock_wrapper = _scope_profile_identifiers(
                     _mixed_fock_launch_wrapper(
@@ -2475,7 +2463,7 @@ def emit_profile_shard(
                     mixed_fock_symbol,
                 )
                 body.append(mixed_fock_wrapper)
-            if selection.spec.name in _STREAMING_FOCK_SHELLS:
+            if selection.has_capability(CAPABILITY_STREAMING_FOCK):
                 body.append(
                     _scope_profile_identifiers(
                         _streaming_fock_source(selection), selection, identifier
@@ -2729,7 +2717,7 @@ def emit_multi_registry_source(
                     f"    case {shell_class}U:\n"
                     f"      return {fock_symbol}({launch_arguments});"
                 )
-                if selection.spec.name in _MIXED_FOCK_SHELLS:
+                if selection.has_capability(CAPABILITY_MIXED_FOCK):
                     mixed_fock_symbol = f"{force_symbol}_mixed_fock"
                     declarations.append(
                         f'extern "C" cudaError_t {mixed_fock_symbol}('
@@ -2749,7 +2737,7 @@ def emit_multi_registry_source(
                         f"{consumer_mask}U, {plan.schedule.component_tile}U}},"
                     )
                     mixed_fock_mask |= 1 << shell_class
-                if selection.spec.name in _STREAMING_FOCK_SHELLS:
+                if selection.has_capability(CAPABILITY_STREAMING_FOCK):
                     streaming_fock_symbol = f"{force_symbol}_streaming_fock"
                     declarations.append(
                         f'extern "C" cudaError_t {streaming_fock_symbol}('

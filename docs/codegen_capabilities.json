@@ -1,0 +1,3916 @@
+{
+  "architecture": "sm_120",
+  "compute_capability": "12.0",
+  "generic_fused_supported": 55,
+  "manifest": "tools/vibeqc_codegen/production_shell_classes.json",
+  "production_selected": 22,
+  "profile": "auto",
+  "schema_version": 1,
+  "shell_classes": [
+    {
+      "angular": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "component_count": 1,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "packed_tasks",
+          "shell_task",
+          "subgroup_tasks",
+          "component_lanes"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        0,
+        0
+      ],
+      "production": {
+        "capabilities": [
+          "streaming_fock"
+        ],
+        "fock": true,
+        "force": false,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "subset_wick",
+        "schedule": "packed_tasks"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ssss first-derivative lowering requires rys1, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ssss first-derivative lowering requires rys1, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "ssss first-derivative lowering requires rys1, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "ssss first-derivative lowering requires rys1, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ssss"
+    },
+    {
+      "angular": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "component_count": 3,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "packed_tasks",
+          "shell_task",
+          "subgroup_tasks",
+          "component_lanes"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        1,
+        0
+      ],
+      "production": {
+        "capabilities": [
+          "local_packed_streaming_fock",
+          "streaming_fock"
+        ],
+        "fock": true,
+        "force": false,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "subset_wick",
+        "schedule": "packed_tasks"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys3": {
+          "reasons": [
+            "psss first-derivative lowering requires rys2, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "psss first-derivative lowering requires rys2, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "psss first-derivative lowering requires rys2, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "psss"
+    },
+    {
+      "angular": [
+        1,
+        0,
+        1,
+        0
+      ],
+      "component_count": 9,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "packed_tasks",
+          "shell_task",
+          "subgroup_tasks",
+          "component_lanes"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        1,
+        1
+      ],
+      "production": {
+        "capabilities": [
+          "local_packed_streaming_fock",
+          "streaming_fock"
+        ],
+        "fock": true,
+        "force": true,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "rys2",
+        "schedule": "thread_tasks"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys3": {
+          "reasons": [
+            "psps first-derivative lowering requires rys2, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "psps first-derivative lowering requires rys2, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "psps first-derivative lowering requires rys2, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "psps"
+    },
+    {
+      "angular": [
+        1,
+        1,
+        0,
+        0
+      ],
+      "component_count": 9,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "packed_tasks",
+          "shell_task",
+          "subgroup_tasks",
+          "component_lanes"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        2,
+        0
+      ],
+      "production": {
+        "capabilities": [
+          "streaming_fock"
+        ],
+        "fock": true,
+        "force": true,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "rys2",
+        "schedule": "thread_tasks"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys3": {
+          "reasons": [
+            "ppss first-derivative lowering requires rys2, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "ppss first-derivative lowering requires rys2, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "ppss first-derivative lowering requires rys2, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ppss"
+    },
+    {
+      "angular": [
+        1,
+        1,
+        1,
+        0
+      ],
+      "component_count": 27,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "subgroup_tasks",
+          "component_lanes"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        2,
+        1
+      ],
+      "production": {
+        "capabilities": [
+          "mixed_fock",
+          "streaming_fock"
+        ],
+        "fock": true,
+        "force": true,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "rys3",
+        "schedule": "subgroup_tasks"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ppps first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "ppps first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "ppps first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ppps"
+    },
+    {
+      "angular": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "component_count": 81,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        2,
+        2
+      ],
+      "production": {
+        "capabilities": [
+          "mixed_fock",
+          "streaming_fock"
+        ],
+        "fock": true,
+        "force": true,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "rys3",
+        "schedule": "subgroup_tasks"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "pppp first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "pppp first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "pppp first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "pppp"
+    },
+    {
+      "angular": [
+        2,
+        0,
+        0,
+        0
+      ],
+      "component_count": 6,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "packed_tasks",
+          "shell_task",
+          "subgroup_tasks",
+          "component_lanes"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        2,
+        0
+      ],
+      "production": {
+        "capabilities": [
+          "streaming_fock"
+        ],
+        "fock": true,
+        "force": true,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "rys2",
+        "schedule": "thread_tasks"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys3": {
+          "reasons": [
+            "dsss first-derivative lowering requires rys2, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "dsss first-derivative lowering requires rys2, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "dsss first-derivative lowering requires rys2, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dsss"
+    },
+    {
+      "angular": [
+        2,
+        0,
+        1,
+        0
+      ],
+      "component_count": 18,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "subgroup_tasks",
+          "component_lanes"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        2,
+        1
+      ],
+      "production": {
+        "capabilities": [
+          "mixed_fock",
+          "streaming_fock"
+        ],
+        "fock": true,
+        "force": true,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "rys3",
+        "schedule": "thread_tasks"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "dsps first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "dsps first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "dsps first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dsps"
+    },
+    {
+      "angular": [
+        2,
+        0,
+        1,
+        1
+      ],
+      "component_count": 54,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "subgroup_tasks",
+          "component_lanes"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        2,
+        2
+      ],
+      "production": {
+        "capabilities": [
+          "streaming_fock"
+        ],
+        "fock": true,
+        "force": true,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "rys3",
+        "schedule": "subgroup_tasks"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "dspp first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "dspp first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "dspp first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dspp"
+    },
+    {
+      "angular": [
+        2,
+        0,
+        2,
+        0
+      ],
+      "component_count": 36,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "subgroup_tasks",
+          "component_lanes"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        2,
+        2
+      ],
+      "production": {
+        "capabilities": [
+          "mixed_fock",
+          "streaming_fock"
+        ],
+        "fock": true,
+        "force": true,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "rys3",
+        "schedule": "component_lanes"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "dsds first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "dsds first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "dsds first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dsds"
+    },
+    {
+      "angular": [
+        2,
+        1,
+        0,
+        0
+      ],
+      "component_count": 18,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "subgroup_tasks",
+          "component_lanes"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        3,
+        0
+      ],
+      "production": {
+        "capabilities": [
+          "streaming_fock"
+        ],
+        "fock": true,
+        "force": true,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "rys3",
+        "schedule": "thread_tasks"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "dpss first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "dpss first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "dpss first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dpss"
+    },
+    {
+      "angular": [
+        2,
+        1,
+        1,
+        0
+      ],
+      "component_count": 54,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "subgroup_tasks",
+          "component_lanes"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        3,
+        1
+      ],
+      "production": {
+        "capabilities": [
+          "mixed_fock",
+          "streaming_fock"
+        ],
+        "fock": true,
+        "force": true,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "rys3",
+        "schedule": "subgroup_tasks"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "dpps first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "dpps first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "dpps first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dpps"
+    },
+    {
+      "angular": [
+        2,
+        1,
+        1,
+        1
+      ],
+      "component_count": 162,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        3,
+        2
+      ],
+      "production": {
+        "capabilities": [
+          "streaming_fock"
+        ],
+        "fock": true,
+        "force": true,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "rys4",
+        "schedule": "subgroup_tasks"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "dppp first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "dppp first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "dppp first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dppp"
+    },
+    {
+      "angular": [
+        2,
+        1,
+        2,
+        0
+      ],
+      "component_count": 108,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        3,
+        2
+      ],
+      "production": {
+        "capabilities": [
+          "streaming_fock"
+        ],
+        "fock": true,
+        "force": true,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "rys4",
+        "schedule": "subgroup_tasks"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "dpds first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "dpds first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "dpds first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dpds"
+    },
+    {
+      "angular": [
+        2,
+        1,
+        2,
+        1
+      ],
+      "component_count": 324,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        3,
+        3
+      ],
+      "production": {
+        "capabilities": [
+          "streaming_fock"
+        ],
+        "fock": true,
+        "force": true,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "rys4",
+        "schedule": "subgroup_tasks"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "dpdp first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "dpdp first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "dpdp first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dpdp"
+    },
+    {
+      "angular": [
+        2,
+        2,
+        0,
+        0
+      ],
+      "component_count": 36,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "subgroup_tasks",
+          "component_lanes"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        4,
+        0
+      ],
+      "production": {
+        "capabilities": [
+          "mixed_fock",
+          "streaming_fock"
+        ],
+        "fock": true,
+        "force": true,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "rys3",
+        "schedule": "component_lanes"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ddss first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "ddss first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "ddss first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ddss"
+    },
+    {
+      "angular": [
+        2,
+        2,
+        1,
+        0
+      ],
+      "component_count": 108,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        4,
+        1
+      ],
+      "production": {
+        "capabilities": [
+          "mixed_fock",
+          "streaming_fock"
+        ],
+        "fock": true,
+        "force": true,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "rys4",
+        "schedule": "subgroup_tasks"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ddps first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ddps first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "ddps first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ddps"
+    },
+    {
+      "angular": [
+        2,
+        2,
+        1,
+        1
+      ],
+      "component_count": 324,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        4,
+        2
+      ],
+      "production": {
+        "capabilities": [
+          "streaming_fock"
+        ],
+        "fock": true,
+        "force": true,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "rys4",
+        "schedule": "subgroup_tasks"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ddpp first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ddpp first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "ddpp first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ddpp"
+    },
+    {
+      "angular": [
+        2,
+        2,
+        2,
+        0
+      ],
+      "component_count": 216,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        4,
+        2
+      ],
+      "production": {
+        "capabilities": [
+          "mixed_fock",
+          "streaming_fock"
+        ],
+        "fock": true,
+        "force": true,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "rys4",
+        "schedule": "component_lanes"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ddds first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ddds first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "ddds first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ddds"
+    },
+    {
+      "angular": [
+        2,
+        2,
+        2,
+        1
+      ],
+      "component_count": 648,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        4,
+        3
+      ],
+      "production": {
+        "capabilities": [
+          "streaming_fock"
+        ],
+        "fock": true,
+        "force": true,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "rys5",
+        "schedule": "subgroup_tasks"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "dddp first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "dddp first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "dddp first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dddp"
+    },
+    {
+      "angular": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "component_count": 1296,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        4,
+        4
+      ],
+      "production": {
+        "capabilities": [
+          "streaming_fock"
+        ],
+        "fock": true,
+        "force": true,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "rys5",
+        "schedule": "subgroup_tasks"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "dddd first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "dddd first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "dddd first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "dddd"
+    },
+    {
+      "angular": [
+        3,
+        0,
+        0,
+        0
+      ],
+      "component_count": 10,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "subgroup_tasks",
+          "component_lanes"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        3,
+        0
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fsss first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center",
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "fsss first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "fsss first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fsss"
+    },
+    {
+      "angular": [
+        3,
+        0,
+        1,
+        0
+      ],
+      "component_count": 30,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "subgroup_tasks",
+          "component_lanes"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        3,
+        1
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fsps first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center",
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "fsps first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "fsps first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fsps"
+    },
+    {
+      "angular": [
+        3,
+        0,
+        1,
+        1
+      ],
+      "component_count": 90,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        3,
+        2
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fspp first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fspp first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "fspp first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fspp"
+    },
+    {
+      "angular": [
+        3,
+        0,
+        2,
+        0
+      ],
+      "component_count": 60,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "subgroup_tasks",
+          "component_lanes"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        3,
+        2
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fsds first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fsds first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center",
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "fsds first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fsds"
+    },
+    {
+      "angular": [
+        3,
+        0,
+        2,
+        1
+      ],
+      "component_count": 180,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        3,
+        3
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fsdp first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fsdp first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "fsdp first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fsdp"
+    },
+    {
+      "angular": [
+        3,
+        0,
+        2,
+        2
+      ],
+      "component_count": 360,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        3,
+        4
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fsdd first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fsdd first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fsdd first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fsdd"
+    },
+    {
+      "angular": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "component_count": 100,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        3,
+        3
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fsfs first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fsfs first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "fsfs first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fsfs"
+    },
+    {
+      "angular": [
+        3,
+        1,
+        0,
+        0
+      ],
+      "component_count": 30,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "subgroup_tasks",
+          "component_lanes"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        4,
+        0
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fpss first-derivative lowering requires rys3, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center",
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks"
+          ],
+          "supported": true
+        },
+        "rys4": {
+          "reasons": [
+            "fpss first-derivative lowering requires rys3, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "fpss first-derivative lowering requires rys3, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fpss"
+    },
+    {
+      "angular": [
+        3,
+        1,
+        1,
+        0
+      ],
+      "component_count": 90,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        4,
+        1
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": true,
+        "profile": "sm_120",
+        "profile_match": "exact",
+        "recurrence": "subset_wick",
+        "schedule": "component_lanes"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fpps first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fpps first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "fpps first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fpps"
+    },
+    {
+      "angular": [
+        3,
+        1,
+        1,
+        1
+      ],
+      "component_count": 270,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        4,
+        2
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fppp first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fppp first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "fppp first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fppp"
+    },
+    {
+      "angular": [
+        3,
+        1,
+        2,
+        0
+      ],
+      "component_count": 180,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        4,
+        2
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fpds first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fpds first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "fpds first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fpds"
+    },
+    {
+      "angular": [
+        3,
+        1,
+        2,
+        1
+      ],
+      "component_count": 540,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        4,
+        3
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fpdp first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fpdp first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fpdp first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fpdp"
+    },
+    {
+      "angular": [
+        3,
+        1,
+        2,
+        2
+      ],
+      "component_count": 1080,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        4,
+        4
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fpdd first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fpdd first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fpdd first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fpdd"
+    },
+    {
+      "angular": [
+        3,
+        1,
+        3,
+        0
+      ],
+      "component_count": 300,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        4,
+        3
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fpfs first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fpfs first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fpfs first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fpfs"
+    },
+    {
+      "angular": [
+        3,
+        1,
+        3,
+        1
+      ],
+      "component_count": 900,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        4,
+        4
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fpfp first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fpfp first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fpfp first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fpfp"
+    },
+    {
+      "angular": [
+        3,
+        2,
+        0,
+        0
+      ],
+      "component_count": 60,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "subgroup_tasks",
+          "component_lanes"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        5,
+        0
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fdss first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fdss first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center",
+            "subgroup_tasks: uniform-warp Rys lowering requires 32 quartets distributed across one component lane per hardware warp"
+          ],
+          "schedules": [
+            "subgroup_tasks"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "fdss first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fdss"
+    },
+    {
+      "angular": [
+        3,
+        2,
+        1,
+        0
+      ],
+      "component_count": 180,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        5,
+        1
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fdps first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fdps first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "fdps first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fdps"
+    },
+    {
+      "angular": [
+        3,
+        2,
+        1,
+        1
+      ],
+      "component_count": 540,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        5,
+        2
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fdpp first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fdpp first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fdpp first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fdpp"
+    },
+    {
+      "angular": [
+        3,
+        2,
+        2,
+        0
+      ],
+      "component_count": 360,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        5,
+        2
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fdds first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fdds first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fdds first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fdds"
+    },
+    {
+      "angular": [
+        3,
+        2,
+        2,
+        1
+      ],
+      "component_count": 1080,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        5,
+        3
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fddp first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fddp first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fddp first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fddp"
+    },
+    {
+      "angular": [
+        3,
+        2,
+        2,
+        2
+      ],
+      "component_count": 2160,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        5,
+        4
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fddd first-derivative lowering requires rys6, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fddd first-derivative lowering requires rys6, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fddd first-derivative lowering requires rys6, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "fddd first-derivative lowering requires rys6, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fddd"
+    },
+    {
+      "angular": [
+        3,
+        2,
+        3,
+        0
+      ],
+      "component_count": 600,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        5,
+        3
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fdfs first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fdfs first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fdfs first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fdfs"
+    },
+    {
+      "angular": [
+        3,
+        2,
+        3,
+        1
+      ],
+      "component_count": 1800,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        5,
+        4
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fdfp first-derivative lowering requires rys6, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fdfp first-derivative lowering requires rys6, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fdfp first-derivative lowering requires rys6, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "fdfp first-derivative lowering requires rys6, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fdfp"
+    },
+    {
+      "angular": [
+        3,
+        2,
+        3,
+        2
+      ],
+      "component_count": 3600,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        5,
+        5
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fdfd first-derivative lowering requires rys6, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fdfd first-derivative lowering requires rys6, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fdfd first-derivative lowering requires rys6, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "fdfd first-derivative lowering requires rys6, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fdfd"
+    },
+    {
+      "angular": [
+        3,
+        3,
+        0,
+        0
+      ],
+      "component_count": 100,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        6,
+        0
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ffss first-derivative lowering requires rys4, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ffss first-derivative lowering requires rys4, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "rys5": {
+          "reasons": [
+            "ffss first-derivative lowering requires rys4, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ffss"
+    },
+    {
+      "angular": [
+        3,
+        3,
+        1,
+        0
+      ],
+      "component_count": 300,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        6,
+        1
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ffps first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ffps first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "ffps first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ffps"
+    },
+    {
+      "angular": [
+        3,
+        3,
+        1,
+        1
+      ],
+      "component_count": 900,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        6,
+        2
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ffpp first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ffpp first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "ffpp first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ffpp"
+    },
+    {
+      "angular": [
+        3,
+        3,
+        2,
+        0
+      ],
+      "component_count": 600,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        6,
+        2
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ffds first-derivative lowering requires rys5, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ffds first-derivative lowering requires rys5, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "ffds first-derivative lowering requires rys5, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "component_lanes: runtime-indexed fixed-root lowering currently supports s/p/d shells with at most p angular momentum on the fourth center"
+          ],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ffds"
+    },
+    {
+      "angular": [
+        3,
+        3,
+        2,
+        1
+      ],
+      "component_count": 1800,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        6,
+        3
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ffdp first-derivative lowering requires rys6, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ffdp first-derivative lowering requires rys6, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "ffdp first-derivative lowering requires rys6, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "ffdp first-derivative lowering requires rys6, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ffdp"
+    },
+    {
+      "angular": [
+        3,
+        3,
+        2,
+        2
+      ],
+      "component_count": 3600,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        6,
+        4
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ffdd first-derivative lowering requires rys6, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ffdd first-derivative lowering requires rys6, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "ffdd first-derivative lowering requires rys6, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "ffdd first-derivative lowering requires rys6, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ffdd"
+    },
+    {
+      "angular": [
+        3,
+        3,
+        3,
+        0
+      ],
+      "component_count": 1000,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "component_lanes",
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        6,
+        3
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fffs first-derivative lowering requires rys6, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fffs first-derivative lowering requires rys6, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fffs first-derivative lowering requires rys6, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "fffs first-derivative lowering requires rys6, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fffs"
+    },
+    {
+      "angular": [
+        3,
+        3,
+        3,
+        1
+      ],
+      "component_count": 3000,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        6,
+        4
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fffp first-derivative lowering requires rys6, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fffp first-derivative lowering requires rys6, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fffp first-derivative lowering requires rys6, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "fffp first-derivative lowering requires rys6, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fffp"
+    },
+    {
+      "angular": [
+        3,
+        3,
+        3,
+        2
+      ],
+      "component_count": 6000,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        6,
+        5
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "fffd first-derivative lowering requires rys7, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "fffd first-derivative lowering requires rys7, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "fffd first-derivative lowering requires rys7, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "fffd first-derivative lowering requires rys7, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "fffd"
+    },
+    {
+      "angular": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "component_count": 10000,
+      "generic_fused": {
+        "reasons": [],
+        "schedules": [
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "pair_orders": [
+        6,
+        6
+      ],
+      "production": {
+        "capabilities": [],
+        "fock": false,
+        "force": false,
+        "profile": null,
+        "profile_match": null,
+        "reason": "not selected by the production manifest; endpoint/resource gates remain"
+      },
+      "recurrences": {
+        "rys2": {
+          "reasons": [
+            "ffff first-derivative lowering requires rys7, not rys2"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys3": {
+          "reasons": [
+            "ffff first-derivative lowering requires rys7, not rys3"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys4": {
+          "reasons": [
+            "ffff first-derivative lowering requires rys7, not rys4"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "rys5": {
+          "reasons": [
+            "ffff first-derivative lowering requires rys7, not rys5"
+          ],
+          "schedules": [],
+          "supported": false
+        },
+        "subset_wick": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        }
+      },
+      "shell_class": "ffff"
+    }
+  ],
+  "total_shell_classes": 55
+}

@@ -287,6 +287,7 @@ if(VIBEQC_ENABLE_CUDA)
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_shell_kernels.py"
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/__init__.py"
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/backend.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/capabilities.py"
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/cuda.py"
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/cuda_adapter.py"
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/cuda_emitter.py"

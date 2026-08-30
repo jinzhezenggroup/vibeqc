@@ -24,6 +24,7 @@
         {
           "shell_class": "ssss",
           "consumers": ["fock"],
+          "capabilities": ["streaming_fock"],
           "schedule": {
             "kind": "packed_tasks",
             "block_threads": 32,
@@ -38,6 +39,7 @@
         {
           "shell_class": "psss",
           "consumers": ["fock"],
+          "capabilities": ["streaming_fock", "local_packed_streaming_fock"],
           "schedule": {
             "kind": "packed_tasks",
             "block_threads": 32,
@@ -52,6 +54,7 @@
         {
           "shell_class": "dppp",
           "consumers": ["fock", "force"],
+          "capabilities": ["streaming_fock"],
           "recurrence": "rys4",
           "schedule": {
             "kind": "subgroup_tasks",
@@ -78,6 +81,7 @@
         {
           "shell_class": "dpdp",
           "consumers": ["fock", "force"],
+          "capabilities": ["streaming_fock"],
           "recurrence": "rys4",
           "schedule": {
             "kind": "subgroup_tasks",
@@ -105,6 +109,7 @@
         {
           "shell_class": "dddp",
           "consumers": ["fock", "force"],
+          "capabilities": ["streaming_fock"],
           "recurrence": "rys5",
           "schedule": {
             "kind": "subgroup_tasks",
@@ -132,6 +137,7 @@
         {
           "shell_class": "dddd",
           "consumers": ["fock", "force"],
+          "capabilities": ["streaming_fock"],
           "recurrence": "rys5",
           "schedule": {
             "kind": "subgroup_tasks",
@@ -159,6 +165,7 @@
         {
           "shell_class": "dpss",
           "consumers": ["fock", "force"],
+          "capabilities": ["streaming_fock"],
           "recurrence": "rys3",
           "schedule": {
             "kind": "thread_tasks",
@@ -185,6 +192,7 @@
         {
           "shell_class": "dsds",
           "consumers": ["fock", "force"],
+          "capabilities": ["streaming_fock", "mixed_fock"],
           "recurrence": "rys3",
           "schedule": {
             "kind": "component_lanes",
@@ -210,6 +218,7 @@
         {
           "shell_class": "ddss",
           "consumers": ["fock", "force"],
+          "capabilities": ["streaming_fock", "mixed_fock"],
           "recurrence": "rys3",
           "schedule": {
             "kind": "component_lanes",
@@ -235,6 +244,7 @@
         {
           "shell_class": "ddpp",
           "consumers": ["fock", "force"],
+          "capabilities": ["streaming_fock"],
           "recurrence": "rys4",
           "schedule": {
             "kind": "subgroup_tasks",
@@ -262,6 +272,7 @@
         {
           "shell_class": "ddds",
           "consumers": ["fock", "force"],
+          "capabilities": ["streaming_fock", "mixed_fock"],
           "recurrence": "rys4",
           "schedule": {
             "kind": "component_lanes",
@@ -289,6 +300,7 @@
         {
           "shell_class": "dpds",
           "consumers": ["fock", "force"],
+          "capabilities": ["streaming_fock"],
           "recurrence": "rys4",
           "schedule": {
             "kind": "subgroup_tasks",
@@ -315,6 +327,7 @@
         {
           "shell_class": "ddps",
           "consumers": ["fock", "force"],
+          "capabilities": ["streaming_fock", "mixed_fock"],
           "recurrence": "rys4",
           "schedule": {
             "kind": "subgroup_tasks",
@@ -355,6 +368,7 @@
         {
           "shell_class": "ppps",
           "consumers": ["fock", "force"],
+          "capabilities": ["streaming_fock", "mixed_fock"],
           "recurrence": "rys3",
           "resident_force_recurrence": "rys3",
           "schedule": {
@@ -381,6 +395,7 @@
         {
           "shell_class": "dpps",
           "consumers": ["fock", "force"],
+          "capabilities": ["streaming_fock", "mixed_fock"],
           "recurrence": "rys3",
           "schedule": {
             "kind": "subgroup_tasks",
@@ -407,6 +422,7 @@
         {
           "shell_class": "dsps",
           "consumers": ["fock", "force"],
+          "capabilities": ["streaming_fock", "mixed_fock"],
           "recurrence": "rys3",
           "schedule": {
             "kind": "thread_tasks",
@@ -433,6 +449,7 @@
         {
           "shell_class": "dspp",
           "consumers": ["fock", "force"],
+          "capabilities": ["streaming_fock"],
           "recurrence": "rys3",
           "schedule": {
             "kind": "subgroup_tasks",
@@ -459,6 +476,7 @@
         {
           "shell_class": "pppp",
           "consumers": ["fock", "force"],
+          "capabilities": ["streaming_fock", "mixed_fock"],
           "recurrence": "rys3",
           "schedule": {
             "kind": "subgroup_tasks",
@@ -485,6 +503,7 @@
         {
           "shell_class": "psps",
           "consumers": ["fock", "force"],
+          "capabilities": ["streaming_fock", "local_packed_streaming_fock"],
           "recurrence": "rys2",
           "schedule": {
             "kind": "thread_tasks",
@@ -511,6 +530,7 @@
         {
           "shell_class": "ppss",
           "consumers": ["fock", "force"],
+          "capabilities": ["streaming_fock"],
           "recurrence": "rys2",
           "schedule": {
             "kind": "thread_tasks",
@@ -537,6 +557,7 @@
         {
           "shell_class": "dsss",
           "consumers": ["fock", "force"],
+          "capabilities": ["streaming_fock"],
           "recurrence": "rys2",
           "schedule": {
             "kind": "thread_tasks",
