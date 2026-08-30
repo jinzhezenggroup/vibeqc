@@ -15935,15 +15935,39 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   }
   if (requested_quartet_direct && first_setup &&
       !requested_bounded_direct_streaming) {
-    std::size_t kernel_count = 0;
-    const generated::ShellKernelMetadata* kernels =
-        generated::selected_shell_kernels(kernel_count);
-    for (std::size_t kernel_index = 0; kernel_index < kernel_count;
-         ++kernel_index) {
-      const generated::ShellKernelMetadata& kernel = kernels[kernel_index];
+    // The shared generated-task arena serves both exact Fock and force
+    // consumers.  Their registries are intentionally not identical: for
+    // example, `ssss` has a generated Fock consumer but remains on the
+    // handwritten force path.  Build the capacity from their union so a
+    // Fock-only class cannot leave its persistent kernel with a zero-sized
+    // task arena.
+    std::array<bool, detail::kDirectQuartetShellClassCount>
+        generated_task_classes{};
+    const auto include_generated_task_classes =
+        [&](const generated::ShellKernelMetadata* kernels,
+            std::size_t kernel_count) {
+          for (std::size_t kernel_index = 0; kernel_index < kernel_count;
+               ++kernel_index) {
+            const unsigned shell_class = kernels[kernel_index].shell_class;
+            if (shell_class < generated_task_classes.size()) {
+              generated_task_classes[shell_class] = true;
+            }
+          }
+        };
+    std::size_t force_kernel_count = 0;
+    const generated::ShellKernelMetadata* force_kernels =
+        generated::selected_shell_kernels(force_kernel_count);
+    include_generated_task_classes(force_kernels, force_kernel_count);
+    std::size_t fock_kernel_count = 0;
+    const generated::ShellKernelMetadata* fock_kernels =
+        generated::selected_fock_shell_kernels(fock_kernel_count);
+    include_generated_task_classes(fock_kernels, fock_kernel_count);
+    for (std::size_t shell_class = 0;
+         shell_class < generated_task_classes.size(); ++shell_class) {
+      if (!generated_task_classes[shell_class]) continue;
       if (!checked_add(
               generated_shell_task_capacity,
-              direct_task_layout.shell_class_tile_counts[kernel.shell_class],
+              direct_task_layout.shell_class_tile_counts[shell_class],
               generated_shell_task_capacity)) {
         fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
         return outputs;
@@ -15955,9 +15979,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     // arena only when the selected AOT bundle contains a ppps force consumer;
     // portable/stub builds then retain their original arena footprint.
     bool ppps_force_available = false;
-    for (std::size_t kernel_index = 0; kernel_index < kernel_count;
+    for (std::size_t kernel_index = 0; kernel_index < force_kernel_count;
          ++kernel_index) {
-      if (kernels[kernel_index].shell_class == kPppsShellClass) {
+      if (force_kernels[kernel_index].shell_class == kPppsShellClass) {
         ppps_force_available = true;
         break;
       }
