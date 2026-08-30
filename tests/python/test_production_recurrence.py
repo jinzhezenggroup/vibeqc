@@ -457,6 +457,27 @@ def test_production_dsps_promotes_scalar_force_but_retains_component_fock():
     assert "generated_sm120_dsps_scalar_thread_fock" not in shard
 
 
+@pytest.mark.parametrize("shell_class", ("dsds", "ddss"))
+def test_production_rys3_component_force_uses_subgroup_fock(shell_class: str):
+    """Keep the shared Rys3 value schedule explicit for d-shell pairs."""
+
+    repository_root = Path(__file__).resolve().parents[2]
+    manifest = (
+        repository_root / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+    )
+    resolved = resolve_production_profile(manifest, "sm_120")
+    selection = next(
+        item for item in resolved.selections if item.spec.name == shell_class
+    )
+    assert selection.recurrence == "rys3"
+    assert selection.schedule.kind.value == "component_lanes"
+    assert selection.schedule.block_threads == 64
+    assert selection.fock_schedule is not None
+    assert selection.fock_schedule.kind.value == "subgroup_tasks"
+    assert selection.fock_schedule.block_threads == 128
+    assert selection.fock_schedule.tasks_per_warp == 4
+
+
 @pytest.mark.parametrize(
     ("shell_class", "fock_block_threads"),
     (("ppps", 128), ("dpps", 128), ("pppp", 128)),
@@ -495,7 +516,7 @@ def test_production_rys3_uniform_force_keeps_independent_fock_schedule(
         "explicit_fock_schedule",
     ),
     (
-        ("dpdp", "subgroup_tasks", 256, "component_lanes", 352, True),
+        ("dpdp", "subgroup_tasks", 256, "subgroup_tasks", 128, True),
         ("dpds", "subgroup_tasks", 256, "subgroup_tasks", 128, True),
         ("ddpp", "subgroup_tasks", 256, "component_lanes", 352, True),
         ("ddps", "subgroup_tasks", 256, "subgroup_tasks", 128, True),

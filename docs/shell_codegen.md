@@ -490,6 +490,25 @@ Maximum energy and force errors are `1.64e-11 Eh` and
 Complete evidence is retained in the
 [batched DDPP/DDPS/DDDS Rys4 artifact](../benchmarks/results/rtx5090-541acc3-issue-41-ddpp-ddps-ddds-rys4.json).
 
+### 768-AO Fock follow-up for issue #52
+
+The 96-atom/768-AO warm profile is dominated by bounded streaming Fock, so
+similar-looking classes are screened as groups but promoted independently. The
+accepted changes are DSDS (Rys3, 128-thread subgroup, four tasks per warp,
+materialized pair terms) and DPDP (Rys4, 128-thread subgroup, two tasks per
+warp, recomputed pair terms with unrolling disabled). DPDP's isolated Fock
+timer fell from a five-run median of about 131 ms to 104 ms; DSDS fell from
+about 314 ms to roughly 40 ms in the same diagnostic.
+
+The final 768-AO endpoint (five interleaved one-iteration warm replays, loose
+`1e-8` SCF tolerances) measures 4.442 s for VibeQC versus 3.727 s for
+GPU4PySCF. All replays converge in one iteration; the maximum paired errors are
+`1.41e-11 Eh` and `1.13e-7 Eh/bohr`. Alternative shared candidates are not
+promoted solely from a common lowering shape: DDPP's subgroup variant regressed
+its Fock timer, DDDP's higher task count exceeded the 49,152 B static shared
+memory limit, and PPPS with four tasks per warp was slower than its eight-task
+schedule.
+
 ## Architecture autotuning
 
 `tools/vibeqc_codegen/autotune.py` emits every CUDA-supported schedule variant
