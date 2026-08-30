@@ -3359,6 +3359,24 @@ def test_batch_screening_ranks_real_profile_and_emits_one_process_driver():
     assert f"vibeqc_run_shell_class_{candidate.name}()" in driver
 
 
+def test_batch_screening_sorts_unsorted_profile_work_and_deduplicates():
+    """Choose f-shell candidates by measured work, not profile row order."""
+
+    payload = {
+        "shell_classes": [
+            {"class": "fsss", "primitive_quartets": 10},
+            {"class": "fsps", "primitive_work": 70},
+            {"class": "fddd", "primitive_quartets": 600},
+            # A duplicate row can occur when profiles combine orientations.
+            {"class": "fsps", "primitive_work": 700},
+        ]
+    }
+
+    ranked = rank_profiled_candidates(payload, limit=3)
+
+    assert tuple(spec.name for spec in ranked) == ("fsps", "fddd", "fsss")
+
+
 @pytest.mark.parametrize(
     ("name", "recurrence", "resource_limits"),
     (

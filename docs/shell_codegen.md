@@ -750,7 +750,9 @@ cmake --build build --target vibeqc_codegen_pilot
 Candidate batch screening is intentionally sparse: pass either an explicit
 `--shell-class` list or a real-profile `--profile` plus `--limit`. Omitting
 both is rejected so the tool cannot accidentally compile every uncovered
-class in one batch.
+class in one batch. Profile rows are ranked by measured `primitive_work`,
+falling back to `primitive_quartets` for older artifacts; duplicate canonical
+class rows are aggregated before applying `--limit`.
 
 Run Python gates:
 
