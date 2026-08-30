@@ -93,6 +93,7 @@ from tools.vibeqc_codegen import (
     rys5_table_roots_weights,
     rys_boys_values,
     schedule_candidates,
+    supports_component_lane_rys,
 )
 from tools.vibeqc_codegen.autotune import (
     StaticAlgebraModel,
@@ -1532,6 +1533,7 @@ def test_component_lane_rys_fock_lowering_uses_structural_capabilities(
         schedule=schedule,
         recurrence=recurrence,
     )
+    assert supports_component_lane_rys(spec, schedule)
     source = emit_shell_class_fused_cuda(spec, plan)
 
     assert f"generated_{name}_rys3_value_axis" in source

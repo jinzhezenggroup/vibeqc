@@ -340,6 +340,29 @@ def _generic_component_value_setup(spec: ShellClassSpec) -> str:
     return "\n".join(lines)
 
 
+def supports_component_lane_rys(
+    spec: ShellClassSpec,
+    schedule: ScheduleIR,
+) -> bool:
+    """Return whether the runtime-indexed Rys decoder covers ``spec``.
+
+    This is a backend capability, not a production promotion decision.  The
+    decoder uses one lane per Cartesian component and currently has exact
+    tables for s/p/d centers, with no more than a p shell on the fourth center.
+    Keeping the predicate beside the lowering prevents manifest validation and
+    source emission from silently growing different shell-class boundaries.
+    """
+
+    return (
+        schedule.kind == ScheduleKind.COMPONENT_LANES
+        and schedule.warp_size == 32
+        and schedule.block_threads >= spec.component_count
+        and schedule.component_tile >= spec.component_count
+        and max(spec.angular) <= 2
+        and spec.angular[3] <= 1
+    )
+
+
 def _supports_rys_component_lane_fock(
     spec: ShellClassSpec,
     plan: FusedShellPlan,
@@ -357,11 +380,8 @@ def _supports_rys_component_lane_fock(
     integral = plan.kernel.integral
     return (
         KernelConsumer.FORCE in integral.consumers
-        and plan.schedule.kind == ScheduleKind.COMPONENT_LANES
-        and plan.schedule.block_threads >= spec.component_count
+        and supports_component_lane_rys(spec, plan.schedule)
         and integral.recurrence in ("rys3", "rys4")
-        and max(spec.angular) <= 2
-        and spec.angular[3] <= 1
     )
 
 
