@@ -2846,6 +2846,38 @@ def test_generated_fock_workers_use_value_only_shell_schedules(
     assert f"generated_{name}_density_coefficient" not in fock_fragment
 
 
+def test_explicit_component_lane_fock_width_reaches_streaming_wrapper():
+    """Keep a wider tuned ppps Fock CTA consistent across generated entry points."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
+    force_schedule = ScheduleIR(
+        kind=ScheduleKind.SUBGROUP_TASKS,
+        block_threads=256,
+        component_tile=spec.component_count,
+        tasks_per_warp=4,
+        shared_coulomb=True,
+    )
+    fock_schedule = ScheduleIR(
+        kind=ScheduleKind.COMPONENT_LANES,
+        block_threads=64,
+        component_tile=spec.component_count,
+        shared_coulomb=True,
+    )
+    plan = build_fused_shell_plan(
+        spec,
+        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+        schedule=force_schedule,
+        recurrence="rys3",
+    )
+    source = emit_shell_class_fused_cuda(
+        spec,
+        plan,
+        fock_schedule=fock_schedule,
+        capabilities=("streaming_fock",),
+    )
+    assert "kGeneratedPppsFockBlockThreads = 64U" in source
+
+
 def test_high_impact_fock_classes_emit_generated_mixed_capability():
     """Keep the profiled FP32 AOT set explicit and independently routed."""
 
@@ -5965,32 +5997,17 @@ def test_autotune_deduplicates_batch_schedule_family_filters():
 
 
 @pytest.mark.parametrize(
-    ("name", "tasks_per_warp", "minimum_blocks_per_sm", "pair_storage", "unroll"),
-    (
-        ("dppp", 4, 0, PairStorage.MATERIALIZED, True),
-        ("dpdp", 2, 1, PairStorage.RECOMPUTED, False),
-        ("ddds", 2, 2, PairStorage.RECOMPUTED, False),
-        ("dddp", 1, 2, PairStorage.RECOMPUTED, False),
-    ),
+    "name",
+    ("ppps", "pppp", "dpps", "dppp", "dpdp", "ddds", "dddp"),
 )
-def test_fock_autotune_includes_high_component_production_baseline(
-    name, tasks_per_warp, minimum_blocks_per_sm, pair_storage, unroll
-):
-    """Compare high-component proposals against their accepted Fock worker."""
+def test_fock_autotune_includes_high_component_production_baseline(name):
+    """Compare high-component proposals against the manifest Fock worker."""
 
     spec = FUSED_SHELL_SPEC_BY_NAME[name]
+    expected = dict(_production_fock_schedule_index("sm_120"))[name]
     trials = supported_schedule_trials(spec, KernelConsumer.FOCK)
-    baselines = [
-        trial
-        for trial in trials
-        if trial.schedule.kind == ScheduleKind.SUBGROUP_TASKS
-        and trial.schedule.block_threads == 128
-        and trial.schedule.tasks_per_warp == tasks_per_warp
-        and trial.schedule.pair_storage == pair_storage
-        and trial.schedule.unroll_pair_terms is unroll
-        and trial.schedule.minimum_blocks_per_sm == minimum_blocks_per_sm
-    ]
-    assert len(baselines) == 1
+    baselines = [trial for trial in trials if trial.schedule == expected]
+    assert len(baselines) == 1, f"missing manifest baseline for {name}"
 
 
 def test_autotune_manifest_replacement_is_atomic(
@@ -6545,6 +6562,139 @@ def test_autotune_candidate_artifact_includes_static_model(
     }
     assert report["manifest"]["write_skipped"] is True
     assert not (tmp_path / "manifest.json").exists()
+
+
+def test_fock_autotune_rejects_candidates_without_baseline_runtime(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Never promote a Fock proposal when its shipped baseline was absent."""
+
+    trials = supported_schedule_trials(PSPS_SPEC, KernelConsumer.FOCK)
+    baseline, candidate = trials[:2]
+
+    monkeypatch.setattr(
+        "tools.vibeqc_codegen.autotune._production_fock_schedule_index",
+        lambda architecture: ((PSPS_SPEC.name, baseline.schedule),),
+    )
+    monkeypatch.setattr(
+        "tools.vibeqc_codegen.autotune.supported_schedule_trials",
+        lambda *args, **kwargs: (baseline, candidate),
+    )
+    monkeypatch.setattr(
+        "tools.vibeqc_codegen.autotune.emit_schedule_oracle_translation_unit",
+        lambda *args, **kwargs: "// oracle\n",
+    )
+    monkeypatch.setattr(
+        "tools.vibeqc_codegen.autotune.emit_schedule_translation_unit",
+        lambda *args, **kwargs: "// candidate\n",
+    )
+    monkeypatch.setattr(
+        "tools.vibeqc_codegen.autotune.emit_schedule_driver",
+        lambda *args, **kwargs: "// driver\n",
+    )
+    monkeypatch.setattr(
+        "tools.vibeqc_codegen.autotune.emit_schedule_resource_translation_unit",
+        lambda *args, **kwargs: "// resource\n",
+    )
+    monkeypatch.setattr(
+        "tools.vibeqc_codegen.autotune._resource_rejections",
+        lambda *args, **kwargs: [],
+    )
+    # The gate is independent of symbolic envelope construction; keep this
+    # focused test from spending time building the large Fock component graph.
+    monkeypatch.setattr(
+        "tools.vibeqc_codegen.autotune.static_algebra_model",
+        lambda trial: SimpleNamespace(to_payload=dict),
+    )
+
+    def successful_compile(*args, **kwargs):
+        selected_trial = args[3]
+        return {
+            "key": selected_trial.key,
+            "object": tmp_path / f"{selected_trial.schedule_id}.o",
+            "returncode": 0,
+            "timed_out": False,
+            "duration_seconds": 0.01,
+            "diagnostics": "",
+            "resources": (),
+        }
+
+    monkeypatch.setattr(
+        "tools.vibeqc_codegen.autotune._compile_trial", successful_compile
+    )
+    monkeypatch.setattr(
+        "tools.vibeqc_codegen.autotune.CudaCompilerAdapter.link",
+        lambda *args, **kwargs: subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="", stderr=""
+        ),
+    )
+    runtime = {
+        "shell_class": candidate.spec.name,
+        "consumer": candidate.consumer.value,
+        "schedule_id": candidate.schedule_id,
+        "trial_key": candidate.key,
+        "maximum_fock": 0.0,
+        "maximum_fock_error": 0.0,
+        "speedup": 1.2,
+        "fused_ms": 1.0,
+    }
+    monkeypatch.setattr(
+        "tools.vibeqc_codegen.autotune.CudaBenchmarkExecutor.run",
+        lambda *args, **kwargs: subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=json.dumps(runtime) + "\n",
+            stderr="",
+        ),
+    )
+    arguments = SimpleNamespace(
+        architecture="sm_120",
+        nvcc=Path("nvcc"),
+        compile_timeout=1.0,
+        timeout=1,
+        local=True,
+        srun="srun",
+        partition="main",
+        gres="gpu:5090:1",
+        slurm_time="00:01:00",
+        max_registers=None,
+        max_packed_registers=None,
+        max_stack_bytes=None,
+        max_shared_bytes=None,
+        shell_class=[PSPS_SPEC.name],
+        schedule_kind=[],
+        consumer=KernelConsumer.FOCK.value,
+        work_directory=tmp_path,
+        compile_jobs=1,
+        tasks=1,
+        primitives=1,
+        warmups=0,
+        iterations=1,
+        samples=1,
+        allow_experimental_subgroup_winner=True,
+        absolute_tolerance=1.0e-12,
+        relative_tolerance=1.0e-12,
+        minimum_speedup=1.0,
+        verbose=False,
+        manifest_output=None,
+        require_all_winners=False,
+        manifest=REPOSITORY_ROOT
+        / "tools"
+        / "vibeqc_codegen"
+        / "production_shell_classes.json",
+    )
+
+    report = _run_autotune(arguments)
+
+    candidate_row = next(
+        row for row in report["candidates"] if row["trial_key"] == candidate.key
+    )
+    assert candidate_row["accepted"] is False
+    assert (
+        "production baseline did not produce a runtime result"
+        in candidate_row["rejection_reasons"]
+    )
+    assert report["winners"] == []
 
 
 def test_autotune_occupancy_artifact_is_resource_bounded():

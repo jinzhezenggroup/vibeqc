@@ -754,12 +754,19 @@ void generated_dppp_shell_class_fock_uhf_persistent_kernel(
 """
 
 
-def _emit_shell_class_fock_cuda(spec: ShellClassSpec, plan: FusedShellPlan) -> str:
+def _emit_shell_class_fock_cuda(
+    spec: ShellClassSpec,
+    plan: FusedShellPlan,
+    *,
+    honor_schedule_block_threads: bool = False,
+) -> str:
     """Emit coefficient-only Fock workers beside an accepted force kernel.
 
     Fock construction reuses primitive geometry and the Cartesian Coulomb
     table, but deliberately omits shift gradients and the raised derivative
-    order required only by analytic forces.
+    order required only by analytic forces.  Implicit Rys fallbacks retain the
+    historical minimum CTA width; an explicit manifest Fock schedule can opt
+    into its tuned width so the ordinary and streaming wrappers agree.
     """
 
     first_pair_order, second_pair_order = spec.pair_orders
@@ -775,11 +782,16 @@ def _emit_shell_class_fock_cuda(spec: ShellClassSpec, plan: FusedShellPlan) -> s
     coulomb_state_count = (
         (maximum_order + 1) * (maximum_order + 2) * (maximum_order + 3) // 6
     )
-    if plan.schedule.kind == ScheduleKind.COMPONENT_LANES:
+    if plan.schedule.kind == ScheduleKind.COMPONENT_LANES and not honor_schedule_block_threads:
+        # The implicit component-lane fallback uses the smallest block that
+        # covers all component and Coulomb states.  Preserve this established
+        # code shape for callers that did not provide a separate Fock policy.
         block_threads = (
             (max(spec.component_count, coulomb_state_count) + 31) // 32
         ) * 32
     else:
+        # An explicitly tuned Fock mapping owns its CTA width.  Schedule
+        # validation guarantees a warp-aligned, target-legal value.
         block_threads = plan.schedule.block_threads
     minimum_blocks_per_sm = plan.schedule.minimum_blocks_per_sm or (
         (384 + block_threads - 1) // block_threads
@@ -6668,7 +6680,11 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
                 recurrence=plan.kernel.integral.recurrence,
                 target=plan.kernel.target,
             )
-        source += _emit_shell_class_fock_cuda(spec, fock_plan)
+        source += _emit_shell_class_fock_cuda(
+            spec,
+            fock_plan,
+            honor_schedule_block_threads=fock_schedule is not None,
+        )
         if CAPABILITY_MIXED_FOCK in selected_capabilities:
             source += _emit_shell_class_mixed_fock_cuda(spec, fock_plan)
     pair_unroll = (

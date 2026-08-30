@@ -1451,12 +1451,27 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
     specifications = _resolve_specifications(requested_names)
     selected_consumer = KernelConsumer(arguments.consumer)
     selected_schedule_kinds = _requested_schedule_kinds(arguments)
+    # Keep the measured production mapping in the same candidate set as new
+    # proposals.  This gives every Fock proposal an explicit replacement
+    # target and prevents the independent recompute oracle from becoming an
+    # accidentally weaker baseline for an already-promoted class.
+    production_baselines = (
+        dict(_production_fock_schedule_index(arguments.architecture))
+        if selected_consumer == KernelConsumer.FOCK
+        else {}
+    )
     trials = tuple(
         trial
         for spec in specifications
         for trial in supported_schedule_trials(spec, selected_consumer, target)
-        if not selected_schedule_kinds
-        or trial.schedule.kind in selected_schedule_kinds
+        if (
+            not selected_schedule_kinds
+            or trial.schedule.kind in selected_schedule_kinds
+            or (
+                selected_consumer == KernelConsumer.FOCK
+                and production_baselines.get(spec.name) == trial.schedule
+            )
+        )
     )
     if not trials:
         requested = ", ".join(spec.name for spec in specifications)
@@ -1465,6 +1480,18 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
             f"no schedule trials remain for shell classes {requested} "
             f"after filtering to {selected}"
         )
+    production_baseline_keys = {
+        name: next(
+            (
+                trial.key
+                for trial in trials
+                if trial.spec.name == name and trial.schedule == schedule
+            ),
+            None,
+        )
+        for name, schedule in production_baselines.items()
+        if any(trial.spec.name == name for trial in trials)
+    }
     work_directory_owner = None
     if arguments.work_directory is None:
         work_directory_owner = tempfile.TemporaryDirectory(
@@ -1630,17 +1657,37 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
             oracle_compile = oracle_compile_by_prefix[
                 _oracle_symbol_prefix(oracle_by_trial[trial.key])
             ]
+            is_production_baseline = (
+                selected_consumer == KernelConsumer.FOCK
+                and production_baselines.get(trial.spec.name) == trial.schedule
+            )
             maximum_registers = (
                 arguments.max_packed_registers
                 if trial.schedule.kind == ScheduleKind.PACKED_TASKS
                 else arguments.max_registers
             )
+            if is_production_baseline:
+                # Existing production rows may intentionally use the full
+                # target register envelope (for example DDDS on sm_120).
+                # Keep spills and compile failures hard errors, but do not
+                # reject the baseline solely because the exploratory tuning
+                # cap is narrower than the code shape already shipped.
+                maximum_registers = max(
+                    maximum_registers,
+                    target.maximum_registers_per_thread,
+                )
+                maximum_shared_bytes = max(
+                    arguments.max_shared_bytes,
+                    target.shared_memory_per_block,
+                )
+            else:
+                maximum_shared_bytes = arguments.max_shared_bytes
             reasons = _resource_rejections(
                 resources,
                 consumer=trial.consumer,
                 maximum_registers=maximum_registers,
                 maximum_stack_bytes=arguments.max_stack_bytes,
-                maximum_shared_bytes=arguments.max_shared_bytes,
+                maximum_shared_bytes=maximum_shared_bytes,
             )
             if (
                 trial.schedule.kind == ScheduleKind.SUBGROUP_TASKS
@@ -1665,6 +1712,27 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
             elif oracle_compile["returncode"] != 0:
                 reasons.append("oracle NVCC compilation failed")
             runtime = runtime_rows.get(trial.key)
+            speedup_vs_baseline = None
+            baseline_key = production_baseline_keys.get(trial.spec.name)
+            baseline_runtime = (
+                runtime_rows.get(baseline_key)
+                if baseline_key is not None
+                else None
+            )
+            if (
+                selected_consumer == KernelConsumer.FOCK
+                and baseline_key is not None
+                and not is_production_baseline
+                and baseline_runtime is None
+            ):
+                # A proposal is only production-comparable when the shipped
+                # mapping ran in the same executable.  Without this guard a
+                # missing baseline row silently turns the independent oracle
+                # into the acceptance baseline and can promote an unsafe or
+                # slower mapping after a partial runtime failure.
+                reasons.append(
+                    "production baseline did not produce a runtime result"
+                )
             if run_returncode == 5:
                 reasons.append("compile and runtime CUDA targets differ")
             if runtime is None:
@@ -1684,9 +1752,31 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                         f"{trial.consumer.value} error {maximum_error:.3e} "
                         f"exceeds {tolerance:.3e}"
                     )
-                if float(runtime["speedup"]) < arguments.minimum_speedup:
+                oracle_speedup = float(runtime["speedup"])
+                if (
+                    not is_production_baseline
+                    and oracle_speedup < arguments.minimum_speedup
+                ):
                     reasons.append(
                         f"speedup is below {arguments.minimum_speedup:.3f}x"
+                    )
+                if baseline_runtime is not None:
+                    baseline_ms = float(baseline_runtime["fused_ms"])
+                    if float(runtime["fused_ms"]) > 0.0:
+                        speedup_vs_baseline = baseline_ms / float(
+                            runtime["fused_ms"]
+                        )
+                    if (
+                        not is_production_baseline
+                        and speedup_vs_baseline < arguments.minimum_speedup
+                    ):
+                        reasons.append(
+                            "speedup versus production baseline is below "
+                            f"{arguments.minimum_speedup:.3f}x"
+                        )
+                else:
+                    speedup_vs_baseline = (
+                        1.0 if is_production_baseline else None
                     )
             accepted = not reasons
             row = {
@@ -1704,6 +1794,8 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 "resources": [asdict(item) for item in resources],
                 "occupancy": estimate_occupancy(resources, trial, target),
                 "runtime": runtime,
+                "production_baseline": is_production_baseline,
+                "speedup_vs_production_baseline": speedup_vs_baseline,
                 "accepted": accepted,
                 "rejection_reasons": reasons,
                 "production_validation": None,
@@ -1789,12 +1881,26 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                     if trial.schedule.kind == ScheduleKind.PACKED_TASKS
                     else arguments.max_registers
                 )
+                production_max_shared_bytes = arguments.max_shared_bytes
+                if (
+                    selected_consumer == KernelConsumer.FOCK
+                    and production_baselines.get(trial.spec.name)
+                    == trial.schedule
+                ):
+                    maximum_registers = max(
+                        maximum_registers,
+                        target.maximum_registers_per_thread,
+                    )
+                    production_max_shared_bytes = max(
+                        production_max_shared_bytes,
+                        target.shared_memory_per_block,
+                    )
                 production_reasons = _resource_rejections(
                     resource_compile["resources"],
                     consumer=trial.consumer,
                     maximum_registers=maximum_registers,
                     maximum_stack_bytes=arguments.max_stack_bytes,
-                    maximum_shared_bytes=arguments.max_shared_bytes,
+                    maximum_shared_bytes=production_max_shared_bytes,
                     expected_kernel_records=4,
                 )
                 if resource_compile["timed_out"]:

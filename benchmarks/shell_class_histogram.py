@@ -198,62 +198,89 @@ def summarize_shell_classes(
     angular_order: int | None,
     tile_size: int = 256,
 ) -> list[dict[str, int | float | str | list[int]]]:
-    """Match the host planner's exact pre-screen AO tile enumeration."""
+    """Match pre-screen work without iterating every pair-of-pairs quartet.
+
+    The original reference implementation visited every unordered pair of
+    shell pairs.  A 768-AO water topology has roughly 74k shell pairs, so
+    that otherwise useful diagnostic would itself perform billions of Python
+    iterations.  Pair records with the same angular pair, AO-pair count, and
+    primitive-pair count are interchangeable for this histogram.  Grouping
+    them reduces the work to the square of the small number of distinct basis
+    shapes while retaining the diagonal ``pair == pair`` correction exactly.
+    """
 
     shell_list = list(shells)
-    pairs: list[tuple[int, int, ShellWork, ShellWork, int, int]] = []
+    pair_groups: dict[tuple[int, int, int, int], int] = defaultdict(int)
     for first_shell, first in enumerate(shell_list):
         for second_shell in range(first_shell + 1):
             second = shell_list[second_shell]
+            angular_pair = (
+                max(first.angular, second.angular),
+                min(first.angular, second.angular),
+            )
             ao_count = (
                 first.ao_count * (first.ao_count + 1) // 2
                 if first_shell == second_shell
                 else first.ao_count * second.ao_count
             )
-            pairs.append(
-                (
-                    first_shell,
-                    second_shell,
-                    first,
-                    second,
-                    ao_count,
-                    first.primitive_count * second.primitive_count,
-                )
-            )
+            primitive_count = first.primitive_count * second.primitive_count
+            pair_groups[
+                (*angular_pair, ao_count, primitive_count)
+            ] += 1
 
     totals: dict[tuple[int, int, int, int], list[int]] = defaultdict(
         lambda: [0, 0, 0, 0]
     )
-    for first_pair_index, first_pair in enumerate(pairs):
-        for second_pair_index in range(first_pair_index + 1):
-            second_pair = pairs[second_pair_index]
-            angular = sum(
-                (
-                    first_pair[2].angular,
-                    first_pair[3].angular,
-                    second_pair[2].angular,
-                    second_pair[3].angular,
-                )
-            )
+    groups = tuple(pair_groups.items())
+    for high_index, (high_key, high_count) in enumerate(groups):
+        high_angular = (high_key[0], high_key[1])
+        high_ao_count = high_key[2]
+        high_primitive_count = high_key[3]
+        for low_index in range(high_index + 1):
+            low_key, low_count = groups[low_index]
+            angular = sum((*high_angular, low_key[0], low_key[1]))
             if angular_order is not None and angular != angular_order:
                 continue
             shell_class = canonical_shell_class(
-                (first_pair[2].angular, first_pair[3].angular),
-                (second_pair[2].angular, second_pair[3].angular),
-            )
-            ao_quartets = (
-                first_pair[4] * (first_pair[4] + 1) // 2
-                if first_pair_index == second_pair_index
-                else first_pair[4] * second_pair[4]
-            )
-            primitive_quartets = (
-                ao_quartets * first_pair[5] * second_pair[5]
+                high_angular, (low_key[0], low_key[1])
             )
             row = totals[shell_class]
-            row[0] += 1
-            row[1] += ao_quartets
-            row[2] += primitive_quartets
-            row[3] += (ao_quartets + tile_size - 1) // tile_size
+
+            # Distinct pair records use a Cartesian product.  Records from
+            # the same group additionally have one diagonal contribution per
+            # record, whose AO-pair count is triangular rather than squared.
+            distinct_count = (
+                high_count * (high_count - 1) // 2
+                if high_index == low_index
+                else high_count * low_count
+            )
+            if distinct_count:
+                ao_quartets = high_ao_count * low_key[2]
+                row[0] += distinct_count
+                row[1] += distinct_count * ao_quartets
+                row[2] += (
+                    distinct_count
+                    * ao_quartets
+                    * high_primitive_count
+                    * low_key[3]
+                )
+                row[3] += distinct_count * (
+                    (ao_quartets + tile_size - 1) // tile_size
+                )
+
+            if high_index == low_index:
+                diagonal_ao_quartets = high_ao_count * (high_ao_count + 1) // 2
+                row[0] += high_count
+                row[1] += high_count * diagonal_ao_quartets
+                row[2] += (
+                    high_count
+                    * diagonal_ao_quartets
+                    * high_primitive_count
+                    * high_primitive_count
+                )
+                row[3] += high_count * (
+                    (diagonal_ao_quartets + tile_size - 1) // tile_size
+                )
 
     primitive_total = sum(row[2] for row in totals.values())
     result = []

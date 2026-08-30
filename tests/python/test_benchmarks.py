@@ -882,6 +882,66 @@ def test_shell_class_histogram_matches_direct_pair_symmetry():
     assert sum(row["primitive_work_fraction"] for row in rows) == pytest.approx(1.0)
 
 
+def test_shell_class_histogram_grouping_preserves_diagonal_correction():
+    """Aggregate pair-shape groups exactly like the reference enumeration."""
+
+    histogram = _shell_histogram_module()
+    shells = [
+        histogram.ShellWork(angular=2, ao_count=6, primitive_count=1),
+        histogram.ShellWork(angular=2, ao_count=10, primitive_count=2),
+        histogram.ShellWork(angular=1, ao_count=3, primitive_count=2),
+        histogram.ShellWork(angular=0, ao_count=1, primitive_count=3),
+    ]
+
+    # Keep a tiny O(P^2) oracle in the test so the production diagnostic can
+    # use grouped pair shapes without losing the pair==pair triangular term.
+    pairs = []
+    for first_index, first in enumerate(shells):
+        for second_index in range(first_index + 1):
+            second = shells[second_index]
+            ao_count = (
+                first.ao_count * (first.ao_count + 1) // 2
+                if first_index == second_index
+                else first.ao_count * second.ao_count
+            )
+            pairs.append(
+                (
+                    first.angular,
+                    second.angular,
+                    ao_count,
+                    first.primitive_count * second.primitive_count,
+                )
+            )
+    expected = {}
+    for first_index, first in enumerate(pairs):
+        for second_index in range(first_index + 1):
+            second = pairs[second_index]
+            shell_class = histogram.canonical_shell_class(
+                (first[0], first[1]), (second[0], second[1])
+            )
+            ao_quartets = (
+                first[2] * (first[2] + 1) // 2
+                if first_index == second_index
+                else first[2] * second[2]
+            )
+            row = expected.setdefault(shell_class, [0, 0, 0, 0])
+            row[0] += 1
+            row[1] += ao_quartets
+            row[2] += ao_quartets * first[3] * second[3]
+            row[3] += (ao_quartets + 256 - 1) // 256
+
+    actual = {
+        tuple(row["shell_angular"]): [
+            row["shell_quartets"],
+            row["unique_ao_quartets"],
+            row["primitive_quartets"],
+            row["tiles"],
+        ]
+        for row in histogram.summarize_shell_classes(shells, angular_order=None)
+    }
+    assert actual == expected
+
+
 def test_gpu4pyscf_rys_ip1_canonicalization_merges_all_orientations():
     """Map pair/within-pair Rys directions to one generic class key."""
 
