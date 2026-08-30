@@ -5448,6 +5448,34 @@ def test_autotune_analysis_roots_follow_declared_derivative_centers():
     assert roots == expected
 
 
+def test_autotune_trials_preserve_an_explicit_integral_ir():
+    """Route non-final translation recovery through schedule trial emission."""
+
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        DPDS_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    trials = supported_schedule_trials(DPDS_SPEC, integral=integral)
+    assert trials
+    assert all(trial.integral is integral for trial in trials)
+    assert trials[0].static_model.recurrence_state_count == 84
+
+    source = emit_schedule_oracle_translation_unit(trials[0])
+    assert "constexpr unsigned derivative_centers[3] = {0U, 2U, 3U};" in source
+
+
 def test_autotune_static_model_records_operations_and_live_values():
     """Attach cached symbolic cost envelopes to every schedule candidate."""
 

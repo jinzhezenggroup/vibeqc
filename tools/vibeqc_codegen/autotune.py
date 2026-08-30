@@ -147,6 +147,10 @@ class ScheduleTrial:
     schedule: ScheduleIR
     consumer: KernelConsumer = KernelConsumer.FORCE
     target: CudaTargetInfo = DEFAULT_CUDA_TARGET
+    # An explicit IR is optional for compatibility with the legacy CLI, but
+    # when present it must remain the source of mathematical intent throughout
+    # model construction and CUDA benchmark emission.
+    integral: IntegralIR | None = None
 
     @property
     def schedule_id(self) -> str:
@@ -308,6 +312,7 @@ def _packed_force_geometry_analysis(pair_shift_rows: int):
 def _cached_static_algebra_model(
     spec: ShellClassSpec,
     consumer: KernelConsumer,
+    integral: IntegralIR,
     weighted_shell: bool,
     algebra_placement: AlgebraPlacement,
     algebra_ordering: AlgebraOrdering,
@@ -315,8 +320,6 @@ def _cached_static_algebra_model(
     algebra_form: AlgebraForm,
 ) -> StaticAlgebraModel:
     """Build one immutable model shared by same-class schedule variants."""
-
-    integral = build_integral_ir(spec, consumers=(consumer,))
 
     if weighted_shell:
         kernel = build_weighted_shell_contraction_kernel(spec, integral=integral)
@@ -449,8 +452,14 @@ def _cached_static_algebra_model(
             )
     operation_counts = tuple(sorted(operation_envelope.items()))
     emitted_operation_counts = tuple(sorted(emitted_operation_envelope.items()))
-    derivative_order = 1 if consumer == KernelConsumer.FORCE else 0
-    maximum_order = sum(spec.angular) + derivative_order
+    # The recurrence envelope belongs to the mathematical IR.  A Fock model
+    # may share a force-capable plan, but its value state count remains the
+    # value order rather than inheriting the force derivative order.
+    maximum_order = (
+        integral.maximum_coulomb_order
+        if consumer == KernelConsumer.FORCE
+        else integral.value_coulomb_order
+    )
     return StaticAlgebraModel(
         scope=scope,
         algebra_placement=algebra_placement,
@@ -480,6 +489,16 @@ def _cached_static_algebra_model(
 def static_algebra_model(trial: ScheduleTrial) -> StaticAlgebraModel:
     """Return the symbolic static model appropriate to one schedule mapping."""
 
+    model_integral = trial.integral or build_integral_ir(
+        trial.spec,
+        consumers=(trial.consumer,),
+    )
+    if model_integral.spec != trial.spec:
+        raise ValueError("trial integral spec does not match its shell specification")
+    if trial.consumer not in model_integral.consumers:
+        raise ValueError(
+            f"{trial.consumer.value} static model requires its integral consumer"
+        )
     weighted_shell = (
         trial.consumer == KernelConsumer.FORCE
         and trial.schedule.kind == ScheduleKind.PACKED_TASKS
@@ -487,6 +506,7 @@ def static_algebra_model(trial: ScheduleTrial) -> StaticAlgebraModel:
     return _cached_static_algebra_model(
         trial.spec,
         trial.consumer,
+        model_integral,
         weighted_shell,
         trial.schedule.algebra_placement,
         trial.schedule.algebra_ordering,
@@ -499,6 +519,8 @@ def supported_schedule_trials(
     spec: ShellClassSpec,
     consumer: KernelConsumer | str = KernelConsumer.FORCE,
     target: CudaTargetInfo = DEFAULT_CUDA_TARGET,
+    *,
+    integral: IntegralIR | None = None,
 ) -> tuple[ScheduleTrial, ...]:
     """Return the schedule variants implemented by the current CUDA emitter.
 
@@ -516,18 +538,28 @@ def supported_schedule_trials(
             f"{spec.name} exceeds the current s/p/d/f CUDA lowering"
         )
     selected_consumer = KernelConsumer(consumer)
-    consumers = (
-        (KernelConsumer.FOCK, KernelConsumer.FORCE)
-        if selected_consumer == KernelConsumer.FOCK
-        else (KernelConsumer.FORCE,)
-    )
-    integral = build_integral_ir(spec, consumers)
+    explicit_integral = integral
+    if integral is None:
+        consumers = (
+            (KernelConsumer.FOCK, KernelConsumer.FORCE)
+            if selected_consumer == KernelConsumer.FOCK
+            else (KernelConsumer.FORCE,)
+        )
+        integral = build_integral_ir(spec, consumers)
+    else:
+        if integral.spec != spec:
+            raise ValueError("trial integral spec does not match its shell specification")
+        if selected_consumer not in integral.consumers:
+            raise ValueError(
+                f"{selected_consumer.value} trial requires its integral consumer"
+            )
     return tuple(
         ScheduleTrial(
             spec=spec,
             schedule=schedule,
             consumer=selected_consumer,
             target=target,
+            integral=explicit_integral,
         )
         for schedule in tuning_schedule_candidates(integral, target)
         if schedule.kind
@@ -581,14 +613,17 @@ def emit_schedule_translation_unit(
 ) -> str:
     """Emit one uniquely named, independently compilable schedule benchmark."""
 
-    consumers = (
-        (KernelConsumer.FOCK, KernelConsumer.FORCE)
-        if trial.consumer == KernelConsumer.FOCK
-        else (KernelConsumer.FORCE,)
+    integral = trial.integral or build_integral_ir(
+        trial.spec,
+        consumers=(
+            (KernelConsumer.FOCK, KernelConsumer.FORCE)
+            if trial.consumer == KernelConsumer.FOCK
+            else (KernelConsumer.FORCE,)
+        ),
     )
     plan = build_fused_shell_plan(
         trial.spec,
-        consumers=consumers,
+        integral=integral,
         schedule=trial.schedule,
         target=trial.target,
     )
@@ -645,6 +680,7 @@ def _oracle_schedule_trial(trial: ScheduleTrial) -> ScheduleTrial:
             maximum_registers=0,
         ),
         target=trial.target,
+        integral=trial.integral,
     )
 
 
@@ -662,14 +698,17 @@ def emit_schedule_oracle_translation_unit(trial: ScheduleTrial) -> str:
     """Emit one separately compiled oracle shared by schedule code-shape knobs."""
 
     oracle_trial = _oracle_schedule_trial(trial)
-    consumers = (
-        (KernelConsumer.FOCK, KernelConsumer.FORCE)
-        if oracle_trial.consumer == KernelConsumer.FOCK
-        else (KernelConsumer.FORCE,)
+    integral = oracle_trial.integral or build_integral_ir(
+        oracle_trial.spec,
+        consumers=(
+            (KernelConsumer.FOCK, KernelConsumer.FORCE)
+            if oracle_trial.consumer == KernelConsumer.FOCK
+            else (KernelConsumer.FORCE,)
+        ),
     )
     plan = build_fused_shell_plan(
         oracle_trial.spec,
-        consumers=consumers,
+        integral=integral,
         schedule=oracle_trial.schedule,
         target=oracle_trial.target,
     )
@@ -689,14 +728,17 @@ def emit_schedule_oracle_translation_unit(trial: ScheduleTrial) -> str:
 def emit_schedule_resource_translation_unit(trial: ScheduleTrial) -> str:
     """Emit the complete production wrapper set for a measured candidate."""
 
-    consumers = (
-        (KernelConsumer.FOCK, KernelConsumer.FORCE)
-        if trial.consumer == KernelConsumer.FOCK
-        else (KernelConsumer.FORCE,)
+    integral = trial.integral or build_integral_ir(
+        trial.spec,
+        consumers=(
+            (KernelConsumer.FOCK, KernelConsumer.FORCE)
+            if trial.consumer == KernelConsumer.FOCK
+            else (KernelConsumer.FORCE,)
+        ),
     )
     plan = build_fused_shell_plan(
         trial.spec,
-        consumers=consumers,
+        integral=integral,
         schedule=trial.schedule,
         target=trial.target,
     )
