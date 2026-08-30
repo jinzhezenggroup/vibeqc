@@ -3542,6 +3542,22 @@ def test_codegen_capability_report_covers_catalog_and_manifest():
     )
     assert report["total_shell_classes"] == 55
     assert report["generic_fused_supported"] == 55
+    assert report["backend"] == {
+        "name": "cuda",
+        "architecture": "sm_120",
+        "compute_capability": "12.0",
+        "generator_abi": 1,
+        "schedule_source": "schedule_candidates",
+        "emitter_validation": "emit_shell_class_fused_cuda",
+    }
+    assert report["recurrence_supported"] == {
+        "subset_wick": 55,
+        "rys2": 4,
+        "rys3": 11,
+        "rys4": 16,
+        "rys5": 14,
+    }
+    assert report["force_derivative_supported"] == {"1": 55, "2": 0}
     rows = {row["shell_class"]: row for row in report["shell_classes"]}
     assert rows["psss"]["recurrences"]["rys2"]["supported"] is True
     assert rows["dppp"]["recurrences"]["rys4"]["supported"] is True
@@ -3551,7 +3567,13 @@ def test_codegen_capability_report_covers_catalog_and_manifest():
     assert second_force["supported"] is False
     assert "order-one derivatives" in second_force["reasons"][0]
     assert rows["fsps"]["production"]["force"] is False
+    assert rows["fsps"]["production"]["status"] == "manifest_gap"
+    assert (
+        rows["fsps"]["production"]["promotion_gate"]
+        == "real_molecular_endpoint_and_resource_gates"
+    )
     assert rows["dpps"]["production"]["force"] is True
+    assert rows["dpps"]["production"]["status"] == "manifest_selected"
     assert CAPABILITY_STREAMING_FOCK in rows["dpps"]["production"]["capabilities"]
 
 
