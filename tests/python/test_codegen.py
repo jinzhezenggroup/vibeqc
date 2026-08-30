@@ -2921,6 +2921,25 @@ def test_simple_registry_dispatches_profiled_mixed_fock_classes():
     assert "vibeqc_launch_generated_dspp_mixed_fock" not in source
 
 
+def test_direct_tile_validation_is_opt_in_and_reports_descriptor_context():
+    """Keep the large-AO queue validator diagnostic-only and actionable."""
+
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
+        encoding="utf-8"
+    )
+    policy = (REPOSITORY_ROOT / "src" / "scf" / "cuda" / "rhf_policy.cpp").read_text(
+        encoding="utf-8"
+    )
+    assert '"VIBEQC_DIRECT_TILE_VALIDATION"' in policy
+    assert "validate_direct_tile_descriptors_kernel" in source
+    assert "DirectTileValidationRecord" in source
+    assert "direct-tile-validation error=" in source
+    # The validator must stop before a consumer can turn a bad descriptor into
+    # a secondary illegal access; normal runs never enter this branch.
+    assert "if (direct_tile_validation &&" in source
+    assert "return cudaSuccess;" in source
+
+
 def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path):
     """Keep machine CUDA out of Git while retaining deterministic builds."""
 

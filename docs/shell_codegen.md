@@ -104,6 +104,16 @@ orders, one-electron operator lowering, and density-fitting operators need their
 own tensor layout, invariant application, correctness oracles, and resource and
 timing gates, but no longer require another redesign of derivative intent.
 
+For large-AO direct-J/K failures, set `VIBEQC_DIRECT_TILE_VALIDATION=validate`
+to run an opt-in device validator immediately after shell-quartet compaction.
+It checks partition counts and capacities, pair and shell IDs, Cartesian AO
+ranges, and the first decoded AO quartet before any generated or handwritten
+consumer runs. The diagnostic stops before Fock evaluation and prints one
+first-writer-wins record containing the order, slot, pair/shell IDs,
+`direct_nbf`, pair counts, decoded `(i,j,k,l)`, and partition metadata. The
+record lives in a separate one-record CUDA allocation, so normal builds and
+replays pay no queue or arena overhead when the variable is unset.
+
 ## Correctness model
 
 The host oracle evaluates the same factored recurrence independently of CUDA.

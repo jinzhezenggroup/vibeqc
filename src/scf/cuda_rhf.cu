@@ -55,6 +55,7 @@ using cuda_policy::bounded_direct_streaming_override_requested;
 using cuda_policy::bounded_fock_class_timing_requested;
 using cuda_policy::configured_mixed_precision_fock_threshold;
 using cuda_policy::converged_fock_reuse_density_rms;
+using cuda_policy::direct_tile_validation_requested;
 using cuda_policy::force_density_product_screening_requested;
 using cuda_policy::graph_native_eigensolver_override_requested;
 using cuda_policy::ppps_resident_block_threads_requested;
@@ -281,6 +282,45 @@ struct ActiveShellQuartetTile {
 };
 
 static_assert(sizeof(ActiveShellQuartetTile) == 3 * sizeof(std::uint32_t));
+
+/**
+ * First invalid descriptor found by the optional post-compaction validator.
+ *
+ * The validator writes one record with an atomic first-writer-wins protocol,
+ * so it can run on the same stream as compaction without device printf or a
+ * host synchronization in the captured graph.  ``error`` is initialized to
+ * ``kDirectTileValidationNoError`` before each replay.
+ */
+struct DirectTileValidationRecord {
+  std::uint32_t error;
+  std::uint32_t angular_order;
+  std::uint32_t slot;
+  std::uint32_t tile;
+  std::uint32_t first_pair;
+  std::uint32_t second_pair;
+  std::int32_t shell[4];
+  std::uint32_t direct_nbf;
+  std::uint32_t first_pair_count;
+  std::uint32_t second_pair_count;
+  std::uint32_t i;
+  std::uint32_t j;
+  std::uint32_t k;
+  std::uint32_t l;
+  std::uint32_t active_tile_count;
+  std::uint32_t partition_capacity;
+  std::uint32_t partition_begin;
+};
+
+static_assert(sizeof(DirectTileValidationRecord) == 20 * sizeof(std::uint32_t));
+constexpr std::uint32_t kDirectTileValidationNoError =
+    std::numeric_limits<std::uint32_t>::max();
+enum class DirectTileValidationError : std::uint32_t {
+  count_exceeds_capacity = 1,
+  pair_out_of_bounds = 2,
+  shell_out_of_bounds = 3,
+  tile_out_of_bounds = 4,
+  ao_range_invalid = 5,
+};
 
 /** One static resident-bra task over a compact contiguous ket-pair chunk. */
 struct PsssResidentTask {
@@ -700,6 +740,233 @@ __device__ void decode_shell_ao_pair(const DeviceBatch& batch,
   }
   first = first_begin + first_component - system_ao_begin;
   second = second_begin + second_component - system_ao_begin;
+}
+
+__device__ bool direct_shell_ao_range_valid(
+    const DeviceBatch& batch,
+    std::int32_t shell,
+    std::size_t system_ao_begin,
+    std::size_t direct_nbf,
+    std::size_t& count) {
+  const std::int64_t begin_value = batch.shell_direct_ao_offsets[shell];
+  const std::int64_t end_value = batch.shell_direct_ao_offsets[shell + 1];
+  if (begin_value < 0 || end_value < begin_value) return false;
+  const std::size_t begin = static_cast<std::size_t>(begin_value);
+  const std::size_t end = static_cast<std::size_t>(end_value);
+  if (begin < system_ao_begin || end < begin ||
+      end - system_ao_begin > direct_nbf) {
+    return false;
+  }
+  count = end - begin;
+  return true;
+}
+
+/** Record one validation failure without perturbing the production path. */
+__device__ void record_direct_tile_validation_failure(
+    DirectTileValidationRecord* record,
+    DirectTileValidationError error,
+    unsigned angular_order,
+    std::size_t slot,
+    const ActiveShellQuartetTile& tile,
+    const std::int32_t* shells,
+    std::size_t direct_nbf,
+    std::size_t first_pair_count,
+    std::size_t second_pair_count,
+    std::size_t i,
+    std::size_t j,
+    std::size_t k,
+    std::size_t l,
+    std::size_t active_tile_count,
+    std::size_t partition_capacity,
+    std::size_t partition_begin) {
+  const std::uint32_t code = static_cast<std::uint32_t>(error);
+  if (atomicCAS(&record->error, kDirectTileValidationNoError, code) !=
+      kDirectTileValidationNoError) {
+    return;
+  }
+  record->angular_order = angular_order;
+  record->slot = static_cast<std::uint32_t>(slot);
+  record->tile = tile.tile;
+  record->first_pair = tile.first_pair;
+  record->second_pair = tile.second_pair;
+#pragma unroll
+  for (unsigned center = 0; center < 4U; ++center) {
+    record->shell[center] = shells == nullptr ? -1 : shells[center];
+  }
+  record->direct_nbf = static_cast<std::uint32_t>(direct_nbf);
+  record->first_pair_count = static_cast<std::uint32_t>(first_pair_count);
+  record->second_pair_count = static_cast<std::uint32_t>(second_pair_count);
+  record->i = static_cast<std::uint32_t>(i);
+  record->j = static_cast<std::uint32_t>(j);
+  record->k = static_cast<std::uint32_t>(k);
+  record->l = static_cast<std::uint32_t>(l);
+  record->active_tile_count = static_cast<std::uint32_t>(active_tile_count);
+  record->partition_capacity = static_cast<std::uint32_t>(partition_capacity);
+  record->partition_begin = static_cast<std::uint32_t>(partition_begin);
+}
+
+__device__ bool decode_direct_tile_ao_ordinal(
+    const DeviceBatch& batch,
+    const ActiveShellQuartetTile& tile,
+    std::size_t ordinal,
+    std::size_t first_pair_ao_count,
+    std::size_t second_pair_ao_count,
+    std::size_t system_ao_begin,
+    std::size_t direct_nbf,
+    std::size_t& i,
+    std::size_t& j,
+    std::size_t& k,
+    std::size_t& l) {
+  std::size_t first_ao_pair = ordinal / second_pair_ao_count;
+  std::size_t second_ao_pair = ordinal % second_pair_ao_count;
+  if (tile.first_pair == tile.second_pair) {
+    decode_lower_triangle(ordinal, first_ao_pair, second_ao_pair);
+  }
+  decode_shell_ao_pair(batch, tile.first_pair, first_ao_pair,
+                       system_ao_begin, i, j);
+  decode_shell_ao_pair(batch, tile.second_pair, second_ao_pair,
+                       system_ao_begin, k, l);
+  return i < direct_nbf && j < direct_nbf && k < direct_nbf &&
+      l < direct_nbf;
+}
+
+/** Validate compact direct tiles before any generated or handwritten consumer. */
+__global__ void validate_direct_tile_descriptors_kernel(
+    DeviceBatch batch,
+    const std::uint32_t* active_tile_offsets,
+    const std::uint32_t* active_tile_counts,
+    const ActiveShellQuartetTile* active_tiles,
+    std::size_t total_tile_capacity,
+    DirectTileValidationRecord* record) {
+  const std::size_t slot =
+      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (slot >= total_tile_capacity) return;
+
+  unsigned angular_order = 0;
+  while (angular_order + 1U < detail::kDirectQuartetAngularOrderCount &&
+         slot >= active_tile_offsets[angular_order + 1U]) {
+    ++angular_order;
+  }
+  const std::size_t partition_begin = active_tile_offsets[angular_order];
+  const std::size_t partition_end = active_tile_offsets[angular_order + 1U];
+  const std::size_t partition_capacity = partition_end >= partition_begin
+      ? partition_end - partition_begin
+      : 0U;
+  const std::size_t active_tile_count = active_tile_counts[angular_order];
+  ActiveShellQuartetTile empty_tile{};
+  if (partition_end < partition_begin || active_tile_count > partition_capacity) {
+    record_direct_tile_validation_failure(
+        record, DirectTileValidationError::count_exceeds_capacity,
+        angular_order, slot, empty_tile, nullptr,
+        static_cast<std::size_t>(batch.direct_nbf), 0, 0, 0, 0, 0, 0,
+        active_tile_count, partition_capacity, partition_begin);
+    return;
+  }
+  if (slot - partition_begin >= active_tile_count) return;
+
+  const ActiveShellQuartetTile tile = active_tiles[slot];
+  if (tile.first_pair >= static_cast<std::uint32_t>(batch.total_shell_pairs) ||
+      tile.second_pair >= static_cast<std::uint32_t>(batch.total_shell_pairs)) {
+    record_direct_tile_validation_failure(
+        record, DirectTileValidationError::pair_out_of_bounds,
+        angular_order, slot, tile, nullptr,
+        static_cast<std::size_t>(batch.direct_nbf), 0, 0, 0, 0, 0, 0,
+        active_tile_count, partition_capacity, partition_begin);
+    return;
+  }
+
+  const std::int32_t shells[4] = {
+      batch.shell_pair_first[tile.first_pair],
+      batch.shell_pair_second[tile.first_pair],
+      batch.shell_pair_first[tile.second_pair],
+      batch.shell_pair_second[tile.second_pair],
+  };
+  for (unsigned center = 0; center < 4U; ++center) {
+    if (shells[center] < 0 ||
+        shells[center] >= static_cast<std::int32_t>(batch.total_shells)) {
+      record_direct_tile_validation_failure(
+          record, DirectTileValidationError::shell_out_of_bounds,
+          angular_order, slot, tile, shells,
+          static_cast<std::size_t>(batch.direct_nbf), 0, 0, 0, 0, 0, 0,
+          active_tile_count, partition_capacity, partition_begin);
+      return;
+    }
+  }
+
+  const std::int32_t system = batch.shell_pair_systems[tile.first_pair];
+  const std::int32_t second_system = batch.shell_pair_systems[tile.second_pair];
+  if (system < 0 || system >= batch.batch_size || second_system != system) {
+    record_direct_tile_validation_failure(
+        record, DirectTileValidationError::shell_out_of_bounds,
+        angular_order, slot, tile, shells,
+        static_cast<std::size_t>(batch.direct_nbf), 0, 0, 0, 0, 0, 0,
+        active_tile_count, partition_capacity, partition_begin);
+    return;
+  }
+  const std::size_t direct_nbf = static_cast<std::size_t>(batch.direct_nbf);
+  const std::size_t system_ao_begin =
+      static_cast<std::size_t>(system) * direct_nbf;
+  std::size_t shell_counts[4]{};
+  for (unsigned center = 0; center < 4U; ++center) {
+    if (!direct_shell_ao_range_valid(batch, shells[center], system_ao_begin,
+                                     direct_nbf, shell_counts[center])) {
+      record_direct_tile_validation_failure(
+          record, DirectTileValidationError::ao_range_invalid,
+          angular_order, slot, tile, shells, direct_nbf, 0, 0, 0, 0, 0, 0,
+          active_tile_count, partition_capacity, partition_begin);
+      return;
+    }
+  }
+  const std::size_t first_pair_ao_count = shells[0] == shells[1]
+      ? shell_counts[0] * (shell_counts[0] + 1U) / 2U
+      : shell_counts[0] * shell_counts[1];
+  const std::size_t second_pair_ao_count = shells[2] == shells[3]
+      ? shell_counts[2] * (shell_counts[2] + 1U) / 2U
+      : shell_counts[2] * shell_counts[3];
+  const std::size_t ao_quartet_count = tile.first_pair == tile.second_pair
+      ? first_pair_ao_count * (first_pair_ao_count + 1U) / 2U
+      : first_pair_ao_count * second_pair_ao_count;
+  const std::size_t expected_tiles =
+      (ao_quartet_count + detail::kDirectQuartetTileSize - 1U) /
+      detail::kDirectQuartetTileSize;
+  if (tile.tile >= expected_tiles || first_pair_ao_count == 0U ||
+      second_pair_ao_count == 0U) {
+    record_direct_tile_validation_failure(
+        record, DirectTileValidationError::tile_out_of_bounds,
+        angular_order, slot, tile, shells, direct_nbf, first_pair_ao_count,
+        second_pair_ao_count, 0, 0, 0, 0, active_tile_count,
+        partition_capacity, partition_begin);
+    return;
+  }
+
+  const std::size_t ordinal = static_cast<std::size_t>(tile.tile) *
+      detail::kDirectQuartetTileSize;
+  std::size_t i = 0;
+  std::size_t j = 0;
+  std::size_t k = 0;
+  std::size_t l = 0;
+  if (!decode_direct_tile_ao_ordinal(
+          batch, tile, ordinal, first_pair_ao_count, second_pair_ao_count,
+          system_ao_begin, direct_nbf, i, j, k, l)) {
+    record_direct_tile_validation_failure(
+        record, DirectTileValidationError::ao_range_invalid,
+        angular_order, slot, tile, shells, direct_nbf, first_pair_ao_count,
+        second_pair_ao_count, i, j, k, l, active_tile_count,
+        partition_capacity, partition_begin);
+    return;
+  }
+  const std::size_t last_ordinal = min(
+      ao_quartet_count - 1U,
+      ordinal + detail::kDirectQuartetTileSize - 1U);
+  if (!decode_direct_tile_ao_ordinal(
+          batch, tile, last_ordinal, first_pair_ao_count,
+          second_pair_ao_count, system_ao_begin, direct_nbf, i, j, k, l)) {
+    record_direct_tile_validation_failure(
+        record, DirectTileValidationError::ao_range_invalid,
+        angular_order, slot, tile, shells, direct_nbf, first_pair_ao_count,
+        second_pair_ao_count, i, j, k, l, active_tile_count,
+        partition_capacity, partition_begin);
+  }
 }
 
 /** Return the packed lower-triangle index for two shells in one system. */
@@ -14927,6 +15194,9 @@ class CudaResources {
       if (solver_workspace_ != nullptr) {
         (void)cudaFreeAsync(solver_workspace_, stream_);
       }
+      if (direct_tile_validation_ != nullptr) {
+        (void)cudaFreeAsync(direct_tile_validation_, stream_);
+      }
       if (arena_ != nullptr) (void)cudaFreeAsync(arena_, stream_);
       (void)cudaStreamSynchronize(stream_);
       (void)cudaStreamDestroy(stream_);
@@ -14949,6 +15219,7 @@ class CudaResources {
   cudaGraph_t post_eigensolver_graph_{};
   cudaGraphExec_t post_eigensolver_graph_exec_{};
   void* arena_{};
+  DirectTileValidationRecord* direct_tile_validation_{};
   void* solver_workspace_{};
   std::size_t solver_workspace_bytes_{};
   void* solver_host_workspace_{};
@@ -15632,6 +15903,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       bounded_direct_fock_only_diagnostic_requested();
   const bool bounded_fock_class_timing =
       bounded_fock_class_timing_requested();
+  const bool direct_tile_validation = direct_tile_validation_requested();
   // Read this per execution so one prepared topology can compare the new
   // route with the complete ordinary ppps queue in the same binary.
   const bool resident_ppps_bra = resident_ppps_bra_requested();
@@ -16124,6 +16396,14 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                                                  cudaStreamNonBlocking)) != cudaSuccess ||
         (cuda_error = cudaMallocAsync(
              &resources.arena_, layout.bytes, resources.stream_)) != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
+    if (quartet_direct &&
+        (cuda_error = cudaMallocAsync(
+             &resources.direct_tile_validation_,
+             sizeof(DirectTileValidationRecord), resources.stream_)) !=
+            cudaSuccess) {
       fill_global_failure(outputs, cuda_status(cuda_error));
       return outputs;
     }
@@ -16883,6 +17163,13 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       [&](const double* density_input,
           bool allow_mixed_precision) -> cudaError_t {
     if (!quartet_direct) return cudaSuccess;
+    if (direct_tile_validation &&
+        resources.direct_tile_validation_ != nullptr) {
+      cudaError_t validation_error = cudaMemsetAsync(
+          resources.direct_tile_validation_, 0xff,
+          sizeof(DirectTileValidationRecord), resources.stream_);
+      if (validation_error != cudaSuccess) return validation_error;
+    }
     const double* quartet_density = density_input;
     if (transformed_direct) {
       transform_density_to_direct_right_kernel<<<
@@ -16963,6 +17250,15 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           mixed_precision_fock_threshold,
           fp32_shell_quartet_tile_offsets,
           fp32_shell_quartet_tile_counts, fp32_shell_quartet_tiles);
+    }
+    if (direct_tile_validation &&
+        resources.direct_tile_validation_ != nullptr) {
+      validate_direct_tile_descriptors_kernel<<<
+          blocks_for(plan.total_shell_quartet_tiles), threads, 0,
+          resources.stream_>>>(
+          device_batch, active_shell_quartet_tile_offsets,
+          active_shell_quartet_tile_counts, active_shell_quartet_tiles,
+          plan.total_shell_quartet_tiles, resources.direct_tile_validation_);
     }
     return cudaPeekAtLastError();
   };
@@ -17271,6 +17567,13 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           launch_direct_quartet_metadata(
               density_input, allow_mixed_precision);
       if (metadata_error != cudaSuccess) return metadata_error;
+      // Validation mode intentionally stops after compaction.  Continuing
+      // into a consumer would turn a descriptor report into a secondary
+      // illegal access and would obscure whether the queue itself is valid.
+      if (direct_tile_validation &&
+          resources.direct_tile_validation_ != nullptr) {
+        return cudaSuccess;
+      }
     }
     if (quartet_direct && transformed_direct) {
       clear_active_matrices_kernel<<<
@@ -18012,6 +18315,61 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   } else if (cuda_error == cudaSuccess) {
     cuda_error = cudaGraphLaunch(
         resources.iteration_graph_exec_, resources.stream_);
+  }
+  if (cuda_error == cudaSuccess && direct_tile_validation &&
+      resources.direct_tile_validation_ != nullptr) {
+    cuda_error = cudaStreamSynchronize(resources.stream_);
+    DirectTileValidationRecord host_validation{};
+    if (cuda_error == cudaSuccess) {
+      cuda_error = cudaMemcpy(
+          &host_validation, resources.direct_tile_validation_,
+          sizeof(host_validation), cudaMemcpyDeviceToHost);
+    }
+    if (cuda_error == cudaSuccess) {
+      if (host_validation.error == kDirectTileValidationNoError) {
+        std::fprintf(stderr, "direct-tile-validation error=none\n");
+        std::fflush(stderr);
+      } else {
+        const char* error_name = "none";
+        switch (static_cast<DirectTileValidationError>(
+            host_validation.error)) {
+          case DirectTileValidationError::count_exceeds_capacity:
+            error_name = "count-exceeds-capacity";
+            break;
+          case DirectTileValidationError::pair_out_of_bounds:
+            error_name = "pair-out-of-bounds";
+            break;
+          case DirectTileValidationError::shell_out_of_bounds:
+            error_name = "shell-out-of-bounds";
+            break;
+          case DirectTileValidationError::tile_out_of_bounds:
+            error_name = "tile-out-of-bounds";
+            break;
+          case DirectTileValidationError::ao_range_invalid:
+            error_name = "ao-range-invalid";
+            break;
+          default:
+            break;
+        }
+        std::fprintf(
+            stderr,
+            "direct-tile-validation error=%s order=%u slot=%u tile=%u "
+            "pairs=(%u,%u) shells=(%d,%d,%d,%d) direct_nbf=%u "
+            "pair_counts=(%u,%u) ao=(%u,%u,%u,%u) count=%u capacity=%u "
+            "partition_begin=%u\n",
+            error_name, host_validation.angular_order, host_validation.slot,
+            host_validation.tile, host_validation.first_pair,
+            host_validation.second_pair, host_validation.shell[0],
+            host_validation.shell[1], host_validation.shell[2],
+            host_validation.shell[3], host_validation.direct_nbf,
+            host_validation.first_pair_count, host_validation.second_pair_count,
+            host_validation.i, host_validation.j, host_validation.k,
+            host_validation.l, host_validation.active_tile_count,
+            host_validation.partition_capacity,
+            host_validation.partition_begin);
+        std::fflush(stderr);
+      }
+    }
   }
   if (cuda_error == cudaSuccess && bounded_direct_count_diagnostic &&
       bounded_direct_streaming) {
