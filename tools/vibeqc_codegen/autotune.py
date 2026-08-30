@@ -1274,6 +1274,55 @@ def _resolve_specifications(names: Iterable[str]) -> tuple[ShellClassSpec, ...]:
     return tuple(specifications)
 
 
+def _read_shell_class_file(path: Path) -> tuple[str, ...]:
+    """Read shell-class names for a batch run.
+
+    Accept one name per line and comma-separated names so a hotspot list stays
+    easy to edit.  ``#`` starts a comment.  Parsing in the tuner keeps the
+    expanded order visible in the report and avoids shell-wrapper differences.
+    """
+
+    try:
+        contents = path.read_text(encoding="utf-8")
+    except OSError as error:
+        raise ValueError(f"cannot read shell-class file {path}") from error
+    names: list[str] = []
+    for raw_line in contents.splitlines():
+        line = raw_line.split("#", 1)[0]
+        names.extend(line.replace(",", " ").split())
+    if not names:
+        raise ValueError(f"shell-class file {path} does not contain any names")
+    return tuple(names)
+
+
+def _requested_shell_class_names(arguments: argparse.Namespace) -> tuple[str, ...]:
+    """Combine repeated CLI names and list files into one ordered batch."""
+
+    raw_names = getattr(arguments, "shell_class", None)
+    names = (
+        [raw_names]
+        if isinstance(raw_names, str)
+        else list(raw_names or ())
+    )
+    raw_files = getattr(arguments, "shell_class_file", None)
+    files = (
+        [raw_files]
+        if isinstance(raw_files, (str, Path))
+        else list(raw_files or ())
+    )
+    for path in files:
+        names.extend(_read_shell_class_file(Path(path)))
+    if not names:
+        raise ValueError(
+            "batch autotune requires at least one --shell-class or "
+            "--shell-class-file"
+        )
+    # Keep the expanded list available to ``main`` for the all-winners exit
+    # gate, including names that came from a file.
+    arguments.shell_class = names
+    return tuple(names)
+
+
 def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
     """Generate, compile, run, rank, and optionally persist schedule winners."""
 
@@ -1303,7 +1352,8 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
             target.tuning_maximum_shared_bytes,
             target.shared_memory_per_block,
         )
-    specifications = _resolve_specifications(arguments.shell_class)
+    requested_names = _requested_shell_class_names(arguments)
+    specifications = _resolve_specifications(requested_names)
     selected_consumer = KernelConsumer(arguments.consumer)
     trials = tuple(
         trial
@@ -1702,15 +1752,29 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 }
                 break
 
-        if arguments.manifest_output is not None and winners:
-            write_tuned_manifest(
-                arguments.manifest,
-                arguments.manifest_output,
-                arguments.architecture,
-                winners,
-                selected_consumer,
-                winner_provenance,
-            )
+        requested_set = {spec.name for spec in specifications}
+        missing_winners = sorted(requested_set - set(winners))
+        require_all_winners = bool(
+            getattr(arguments, "require_all_winners", False)
+        )
+        manifest_written = False
+        manifest_write_skipped = False
+        if arguments.manifest_output is not None:
+            if require_all_winners and missing_winners:
+                # Do not leave a partially tuned production manifest behind
+                # when one class fails a compile/resource/correctness gate.
+                # The report still preserves diagnostics for a focused rerun.
+                manifest_write_skipped = True
+            elif winners:
+                write_tuned_manifest(
+                    arguments.manifest,
+                    arguments.manifest_output,
+                    arguments.architecture,
+                    winners,
+                    selected_consumer,
+                    winner_provenance,
+                )
+                manifest_written = True
 
         return {
             "schema_version": 1,
@@ -1760,6 +1824,18 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 "experimental_subgroup_winners_allowed": (
                     arguments.allow_experimental_subgroup_winner
                 ),
+                "require_all_winners": require_all_winners,
+            },
+            "requested_shell_classes": [spec.name for spec in specifications],
+            "missing_winners": missing_winners,
+            "manifest": {
+                "output": (
+                    str(arguments.manifest_output)
+                    if arguments.manifest_output is not None
+                    else None
+                ),
+                "written": manifest_written,
+                "write_skipped": manifest_write_skipped,
             },
             "winners": winner_rows,
             "candidates": candidates,
@@ -1803,7 +1879,21 @@ def main() -> None:
         action="store_true",
         help="run directly on an already allocated/visible GPU",
     )
-    parser.add_argument("--shell-class", action="append", required=True)
+    parser.add_argument(
+        "--shell-class",
+        action="append",
+        help="shell class to tune; repeat for a single-process batch",
+    )
+    parser.add_argument(
+        "--shell-class-file",
+        action="append",
+        type=Path,
+        metavar="PATH",
+        help=(
+            "file containing shell classes (one per line or comma-separated); "
+            "repeat to combine lists"
+        ),
+    )
     parser.add_argument(
         "--consumer",
         choices=tuple(item.value for item in KernelConsumer),
@@ -1844,6 +1934,14 @@ def main() -> None:
         type=Path,
         help="write winners into this schema-v2 manifest path",
     )
+    parser.add_argument(
+        "--require-all-winners",
+        action="store_true",
+        help=(
+            "write --manifest-output only when every requested shell class "
+            "passes all autotune gates"
+        ),
+    )
     parser.add_argument("--output", type=Path)
     parser.add_argument("--verbose", action="store_true")
     arguments = parser.parse_args()
@@ -1851,6 +1949,8 @@ def main() -> None:
         parser.error("--compile-jobs must be positive")
     if arguments.compile_timeout <= 0:
         parser.error("--compile-timeout must be positive")
+    if not (arguments.shell_class or arguments.shell_class_file):
+        parser.error("autotune requires --shell-class or --shell-class-file")
     report = _run_autotune(arguments)
     output = json.dumps(report, indent=2, sort_keys=True) + "\n"
     if arguments.output is None:

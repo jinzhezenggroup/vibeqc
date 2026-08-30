@@ -17015,6 +17015,17 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           const double* quartet_density,
           double* quartet_fock,
           bool allow_mixed_precision) -> cudaError_t {
+    // Every selected class owns one independent queue head.  Reset the
+    // complete fixed-size head array in one asynchronous memset before the
+    // class-major launches instead of issuing one host API call per class.
+    // The heads are disjoint, so this preserves launch ordering and atomic
+    // accumulation semantics while removing serial dispatch overhead from
+    // the bounded warm path.
+    cudaError_t error = cudaMemsetAsync(
+        bounded_direct_generated_task_heads, 0,
+        detail::kDirectQuartetShellClassCount * sizeof(std::uint32_t),
+        resources.stream_);
+    if (error != cudaSuccess) return error;
     for (std::size_t kernel_index = 0;
          kernel_index < bounded_fock_kernel_count; ++kernel_index) {
       const unsigned shell_class =
@@ -17023,10 +17034,6 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
            (std::uint64_t{1} << shell_class)) == 0U) {
         continue;
       }
-      cudaError_t error = cudaMemsetAsync(
-          bounded_direct_generated_task_heads + shell_class, 0,
-          sizeof(std::uint32_t), resources.stream_);
-      if (error != cudaSuccess) return error;
       if (bounded_fock_class_timing) {
         start_bounded_fock_class_timer_kernel<<<1, 1, 0,
                                                 resources.stream_>>>(
@@ -17062,10 +17069,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
          kDdddShellClassMask) == 0U) {
       return cudaSuccess;
     }
-    cudaError_t error = cudaMemsetAsync(
-        bounded_direct_generated_task_heads + kDdddShellClass, 0,
-        sizeof(std::uint32_t), resources.stream_);
-    if (error != cudaSuccess) return error;
+    // The complete head-array reset above also covers native DDDD.  Do not
+    // issue a second class-specific memset here: the native fallback uses the
+    // same disjoint head slot as generated classes.
     if (bounded_fock_class_timing) {
       start_bounded_fock_class_timer_kernel<<<1, 1, 0,
                                               resources.stream_>>>(

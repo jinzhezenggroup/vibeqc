@@ -534,6 +534,29 @@ python -m tools.vibeqc_codegen.autotune \
   --manifest-output build/production-shells-tuned.json
 ```
 
+Related hotspot classes can be tuned in one compiler/link/Slurm process by
+repeating `--shell-class`, or by supplying a list file. The list-file form
+accepts one class per line, comma-separated names, and `#` comments:
+
+```bash
+python -m tools.vibeqc_codegen.autotune \
+  --nvcc /group/software/cuda-12.9.1/bin/nvcc \
+  --architecture sm_120 \
+  --shell-class-file benchmarks/issue52-hotspots.txt \
+  --consumer fock \
+  --allow-experimental-subgroup-winner \
+  --partition main --gres gpu:5090:1 \
+  --output build/issue52-fock-batch.json \
+  --manifest-output build/production-shells-tuned.json \
+  --require-all-winners
+```
+
+`--require-all-winners` makes manifest promotion all-or-nothing: if any
+requested class fails compilation, resource, correctness, or timing gates, the
+report is still written but the manifest output is left untouched. This keeps
+synthetic batch results reviewable without accidentally installing a partial
+production update.
+
 Use `--consumer fock` to tune the value-only SCF worker with the same resource,
 correctness, and timing gates. A Fock winner upgrades the manifest row to the
 joint `fock`/`force` consumer set because both kernels share the canonical task
