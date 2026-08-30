@@ -127,6 +127,9 @@ from tools.vibeqc_codegen.batch_benchmark import (
     _compile_candidate as _compile_batch_candidate,
 )
 from tools.vibeqc_codegen.benchmark import (
+    benchmark_command as standalone_benchmark_command,
+)
+from tools.vibeqc_codegen.benchmark import (
     emit_dppp_benchmark_cuda,
     emit_shell_class_benchmark_cuda,
     emit_shell_class_oracle_cuda,
@@ -3419,6 +3422,23 @@ def test_batch_benchmark_command_has_finite_slurm_allocation():
     ]
     with pytest.raises(ValueError, match="non-empty"):
         benchmark_command(Path("benchmark"), slurm_time=" ")
+
+
+def test_standalone_benchmark_command_has_finite_slurm_allocation():
+    """Keep the standalone CUDA benchmark under the same scheduler guard."""
+
+    assert standalone_benchmark_command(
+        Path("build/dppp_benchmark"),
+        slurm_time="00:05:00",
+    ) == [
+        "srun",
+        "--partition=main",
+        "--gres=gpu:5090:1",
+        "--nodes=1",
+        "--ntasks=1",
+        "--time=00:05:00",
+        "build/dppp_benchmark",
+    ]
 
 
 def test_ptxas_resource_parser_selects_fock_symbol_family():
