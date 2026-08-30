@@ -3462,6 +3462,36 @@ def test_batch_screening_sorts_unsorted_profile_work_and_deduplicates():
     assert tuple(spec.name for spec in ranked) == ("fsps", "fddd", "fsss")
 
 
+def test_batch_screening_excludes_production_classes_per_consumer():
+    """Allow a force-only production class to enter the Fock screener."""
+
+    # FPPS is promoted for force but not for coefficient-only Fock.  The
+    # explicit and profiled paths must therefore agree that it is a Fock
+    # candidate while still rejecting it from force screening.
+    with pytest.raises(ValueError, match="fpps.*force production AOT"):
+        candidate_specs(("fpps",), consumer=KernelConsumer.FORCE)
+    assert tuple(
+        spec.name
+        for spec in candidate_specs(
+            ("fpps", "fpps"),
+            consumer=KernelConsumer.FOCK,
+        )
+    ) == ("fpps",)
+
+    payload = {
+        "shell_classes": [
+            {"class": "ssss", "primitive_work": 900},
+            {"class": "fpps", "primitive_work": 1000},
+        ]
+    }
+    ranked = rank_profiled_candidates(
+        payload,
+        limit=2,
+        consumer=KernelConsumer.FOCK,
+    )
+    assert tuple(spec.name for spec in ranked) == ("fpps",)
+
+
 def test_batch_screening_can_emit_coefficient_only_fock_candidates():
     """Route Fock screening through the same generated task ABI."""
 

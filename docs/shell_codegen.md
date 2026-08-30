@@ -755,7 +755,10 @@ falling back to `primitive_quartets` for older artifacts; duplicate canonical
 class rows are aggregated before applying `--limit`. The same screener accepts
 `--consumer fock` to time coefficient-only candidates through the shared
 device task slices; force remains the default and the endpoint gate is still
-independent of synthetic screening.
+independent of synthetic screening. Production exclusion is consumer-specific:
+classes already promoted for force remain eligible for Fock screening until
+their value-only path is promoted, and the explicit `--shell-class` and
+profile-ranked paths apply the same rule.
 
 Run Python gates:
 

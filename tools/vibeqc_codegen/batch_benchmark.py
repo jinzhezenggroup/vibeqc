@@ -24,22 +24,34 @@ from pathlib import Path
 
 from .benchmark import emit_shell_class_benchmark_cuda
 from .ir import KernelConsumer
-from .production import load_production_manifest
+from .production import load_production_fock_manifest, load_production_manifest
 from .shell_spec import (
     FUSED_SHELL_SPEC_BY_NAME,
     FUSED_SHELL_SPECS,
     ShellClassSpec,
 )
 
+_PRODUCTION_MANIFEST_PATH = Path(__file__).with_name("production_shell_classes.json")
 PRODUCTION_SHELL_CLASSES = frozenset(
-    spec.name
-    for spec in load_production_manifest(
-        Path(__file__).with_name("production_shell_classes.json")
-    )
+    spec.name for spec in load_production_manifest(_PRODUCTION_MANIFEST_PATH)
 )
+PRODUCTION_FOCK_SHELL_CLASSES = frozenset(
+    spec.name for spec in load_production_fock_manifest(_PRODUCTION_MANIFEST_PATH)
+)
+_PRODUCTION_SHELL_CLASSES_BY_CONSUMER = {
+    KernelConsumer.FORCE: PRODUCTION_SHELL_CLASSES,
+    KernelConsumer.FOCK: PRODUCTION_FOCK_SHELL_CLASSES,
+}
 DEFAULT_CANDIDATES = tuple(
     spec for spec in FUSED_SHELL_SPECS if spec.name not in PRODUCTION_SHELL_CLASSES
 )
+
+
+def _production_shell_classes(consumer: KernelConsumer | str) -> frozenset[str]:
+    """Return the manifest classes already generated for one consumer."""
+
+    selected_consumer = KernelConsumer(consumer)
+    return _PRODUCTION_SHELL_CLASSES_BY_CONSUMER[selected_consumer]
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,13 +68,21 @@ class KernelResources:
 
 def candidate_specs(
     names: Iterable[str] | None = None,
+    consumer: KernelConsumer | str = KernelConsumer.FORCE,
 ) -> tuple[ShellClassSpec, ...]:
-    """Resolve an explicit sparse list of uncovered s/p/d/f candidates."""
+    """Resolve an explicit sparse list of uncovered s/p/d/f candidates.
+
+    Production coverage is consumer-specific: a force-only class remains a
+    valid Fock candidate, and vice versa.  Keep the explicit and profile-driven
+    paths on the same exclusion policy by resolving it here.
+    """
 
     if names is None:
         raise ValueError(
             "candidate screening requires --profile or an explicit --shell-class"
         )
+    selected_consumer = KernelConsumer(consumer)
+    production_shell_classes = _production_shell_classes(selected_consumer)
     specifications = []
     seen = set()
     for name in names:
@@ -73,8 +93,10 @@ def candidate_specs(
         except KeyError as error:
             choices = ", ".join(FUSED_SHELL_SPEC_BY_NAME)
             raise ValueError(f"unknown shell class {name!r}; choose from {choices}") from error
-        if name in PRODUCTION_SHELL_CLASSES:
-            raise ValueError(f"{name} is already covered by production AOT")
+        if name in production_shell_classes:
+            raise ValueError(
+                f"{name} is already covered by {selected_consumer.value} production AOT"
+            )
         specifications.append(specification)
         seen.add(name)
     if not specifications:
@@ -83,7 +105,9 @@ def candidate_specs(
 
 
 def rank_profiled_candidates(
-    payload: dict[str, object], limit: int
+    payload: dict[str, object],
+    limit: int,
+    consumer: KernelConsumer | str = KernelConsumer.FORCE,
 ) -> tuple[ShellClassSpec, ...]:
     """Select uncovered classes by descending measured primitive work.
 
@@ -95,6 +119,8 @@ def rank_profiled_candidates(
     may emit one row per orientation for a canonical shell class.
     """
 
+    selected_consumer = KernelConsumer(consumer)
+    production_shell_classes = _production_shell_classes(selected_consumer)
     if limit < 1:
         raise ValueError("candidate limit must be positive")
     rows = payload.get("shell_classes")
@@ -107,7 +133,7 @@ def rank_profiled_candidates(
         name = row.get("class")
         if (
             isinstance(name, str)
-            and name not in PRODUCTION_SHELL_CLASSES
+            and name not in production_shell_classes
             and name in FUSED_SHELL_SPEC_BY_NAME
         ):
             work = 0.0
@@ -382,9 +408,16 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
     )
     if arguments.profile is not None:
         profile = json.loads(arguments.profile.read_text(encoding="utf-8"))
-        specifications = rank_profiled_candidates(profile, arguments.limit)
+        specifications = rank_profiled_candidates(
+            profile,
+            arguments.limit,
+            consumer=selected_consumer,
+        )
     else:
-        specifications = candidate_specs(arguments.shell_class or None)
+        specifications = candidate_specs(
+            arguments.shell_class or None,
+            consumer=selected_consumer,
+        )
 
     work_directory_owner = None
     if arguments.work_directory is None:
