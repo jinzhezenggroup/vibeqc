@@ -35,6 +35,7 @@ from tools.vibeqc_codegen import (
     AlgebraOrdering,
     AlgebraPlacement,
     ContractionConsumer,
+    ContractionOutput,
     ContractionSpec,
     CudaTargetInfo,
     DensityModel,
@@ -343,6 +344,23 @@ def test_integral_and_schedule_irs_separate_math_from_cuda_mapping():
     ]
     assert candidates[0].block_threads == 192
     assert [item.component_tile for item in candidates[1:]] == [64, 128]
+
+
+def test_integral_ir_retains_higher_derivative_intent_until_cuda_boundary():
+    """Keep Hessian intent explicit while rejecting the first-gradient ABI."""
+
+    derivative = FOUR_CENTER_ERI_OPERATOR.nuclear_derivative(order=2)
+    integral = build_integral_ir(DPPP_SPEC, derivative=derivative)
+
+    assert integral.derivative == derivative
+    assert integral.contractions[0].output == ContractionOutput.NUCLEAR_DERIVATIVE
+    assert integral.maximum_coulomb_order == 7
+    assert integral.required_rys_roots == 4
+    with pytest.raises(
+        ValueError,
+        match="CUDA force result ABI currently exposes only order-one derivatives",
+    ):
+        build_fused_shell_plan(DPPP_SPEC, integral=integral)
 
 
 def test_operator_invariant_selects_derivative_recovery_without_force_magic():

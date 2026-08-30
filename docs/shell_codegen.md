@@ -897,7 +897,8 @@ python -m pytest tests/python/test_codegen.py -q -s
    synthetic shell tasks.
 4. Profile additional value-only Fock classes through the shared device slices;
    retain endpoint rejection as a normal outcome.
-5. Generalize `IntegralIR` from first forces to explicit second/higher nuclear
-   derivative orders before claiming Hessian automation.
+5. Add a tensor-shaped nuclear-derivative result ABI and corresponding CUDA
+   lowering before claiming Hessian automation; `IntegralIR` now preserves
+   explicit second/higher-order intent and reports this backend boundary.
 6. Extend the per-consumer production schedule support only when an endpoint
    workload demonstrates a material Fock/force execution-geometry tradeoff.

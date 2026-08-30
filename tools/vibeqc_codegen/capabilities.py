@@ -211,8 +211,8 @@ def _check_force_derivative_order(
             False,
             reasons=(
                 (
-                    "CUDA shell force lowering currently exposes only "
-                    "order-one derivatives"
+                    "CUDA force result ABI currently exposes only order-one "
+                    "derivatives"
                 ),
             ),
         )
