@@ -18,7 +18,7 @@ from pathlib import Path
 from .cuda_schedule import schedule_candidates
 from .cuda_target import DEFAULT_CUDA_TARGET, CudaTargetInfo, cuda_target_info
 from .fused_schedule import build_fused_shell_plan
-from .ir import KernelConsumer, build_integral_ir
+from .ir import FOUR_CENTER_ERI_OPERATOR, KernelConsumer, build_integral_ir
 from .shell_spec import FUSED_SHELL_SPECS, ShellClassSpec
 
 CAPABILITY_STREAMING_FOCK = "streaming_fock"
@@ -85,6 +85,7 @@ class ShellCapabilityReport:
     spec: ShellClassSpec
     generic_fused: CapabilityCheck
     recurrences: tuple[tuple[str, CapabilityCheck], ...]
+    force_derivative_orders: tuple[tuple[int, CapabilityCheck], ...]
     production: Mapping[str, object]
 
     def to_payload(self) -> dict[str, object]:
@@ -98,6 +99,10 @@ class ShellCapabilityReport:
             "generic_fused": self.generic_fused.to_payload(),
             "recurrences": {
                 name: check.to_payload() for name, check in self.recurrences
+            },
+            "force_derivative_orders": {
+                str(order): check.to_payload()
+                for order, check in self.force_derivative_orders
             },
             "production": dict(self.production),
         }
@@ -154,6 +159,42 @@ def _check_recurrence(
     return CapabilityCheck(bool(schedules), tuple(schedules), reasons)
 
 
+def _check_force_derivative_order(
+    spec: ShellClassSpec,
+    order: int,
+    target: CudaTargetInfo,
+) -> CapabilityCheck:
+    """Report one force derivative order without widening the CUDA ABI.
+
+    The current force result ABI and all shell emitters expose first nuclear
+    derivatives only.  Validate the mathematical IR first so the report
+    preserves a useful distinction when a future IR accepts higher orders but
+    the backend still has no Hessian/result representation.
+    """
+
+    derivative = FOUR_CENTER_ERI_OPERATOR.nuclear_derivative(order=order)
+    try:
+        build_integral_ir(
+            spec,
+            consumers=(KernelConsumer.FORCE,),
+            derivative=derivative,
+            recurrence="subset_wick",
+        )
+    except (TypeError, ValueError) as error:
+        return CapabilityCheck(False, reasons=(str(error),))
+    if order != 1:
+        return CapabilityCheck(
+            False,
+            reasons=(
+                (
+                    "CUDA shell force lowering currently exposes only "
+                    "order-one derivatives"
+                ),
+            ),
+        )
+    return _check_recurrence(spec, "subset_wick", target)
+
+
 def _production_index(
     manifest: Path | None,
     architecture: str,
@@ -202,6 +243,10 @@ def build_capability_report(
             (name, _check_recurrence(spec, name, target))
             for name in ("subset_wick", "rys2", "rys3", "rys4", "rys5")
         )
+        derivative_rows = tuple(
+            (order, _check_force_derivative_order(spec, order, target))
+            for order in (1, 2)
+        )
         generic = dict(recurrence_rows)["subset_wick"]
         production_row = production.get(
             spec.name,
@@ -219,6 +264,7 @@ def build_capability_report(
                 spec=spec,
                 generic_fused=generic,
                 recurrences=recurrence_rows,
+                force_derivative_orders=derivative_rows,
                 production=production_row,
             ).to_payload()
         )

@@ -802,8 +802,11 @@ python tools/report_codegen_capabilities.py \
   --output build/codegen-capabilities.json
 ```
 
-The report lists target-legal schedule families, recurrence failures, and the
-production manifest state for every class. To screen a bounded set of classes
+The report lists target-legal schedule families, recurrence failures, force
+derivative-order boundaries, and the production manifest state for every class.
+The current CUDA force ABI is explicitly reported as order-one-only; a future
+Hessian implementation must add a result contract before enabling order two.
+To screen a bounded set of classes
 that is automatically discovered from the consumer-specific manifest gap:
 
 ```bash
