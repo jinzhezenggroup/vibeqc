@@ -315,6 +315,29 @@ def _runtime_environment(nvcc: Path) -> dict[str, str]:
     return environment
 
 
+def benchmark_command(
+    executable: Path,
+    *,
+    srun: str = "srun",
+    partition: str = "main",
+    gres: str = "gpu:5090:1",
+    slurm_time: str = "00:10:00",
+) -> list[str]:
+    """Build the finite Slurm command used for one GPU benchmark process."""
+
+    if not slurm_time or not slurm_time.strip():
+        raise ValueError("Slurm benchmark time must be non-empty")
+    return [
+        srun,
+        f"--partition={partition}",
+        f"--gres={gres}",
+        "--nodes=1",
+        "--ntasks=1",
+        f"--time={slurm_time}",
+        str(executable),
+    ]
+
+
 def _artifact_size(path: Path) -> int | None:
     """Return a generated artifact's byte size, if compilation produced it."""
 
@@ -443,14 +466,13 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
                 raise RuntimeError(link.stdout + link.stderr)
             linked_binary_bytes = _artifact_size(executable)
             run = subprocess.run(
-                [
-                    arguments.srun,
-                    f"--partition={arguments.partition}",
-                    f"--gres={arguments.gres}",
-                    "--nodes=1",
-                    "--ntasks=1",
-                    str(executable),
-                ],
+                benchmark_command(
+                    executable,
+                    srun=arguments.srun,
+                    partition=arguments.partition,
+                    gres=arguments.gres,
+                    slurm_time=arguments.slurm_time,
+                ),
                 check=False,
                 capture_output=True,
                 text=True,
@@ -569,6 +591,11 @@ def main() -> None:
     parser.add_argument("--srun", default="srun")
     parser.add_argument("--partition", default="main")
     parser.add_argument("--gres", default="gpu:5090:1")
+    parser.add_argument(
+        "--slurm-time",
+        default="00:10:00",
+        help="finite Slurm allocation time used for the benchmark process",
+    )
     parser.add_argument(
         "--consumer",
         choices=tuple(item.value for item in KernelConsumer),
