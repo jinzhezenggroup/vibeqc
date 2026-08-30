@@ -1,0 +1,50 @@
+{
+  "version": 5,
+  "configurePresets": [
+    {
+      "name": "cuda-dev-fast",
+      "displayName": "CUDA development (fast iteration)",
+      "description": "One real device image, bounded CUDA compile jobs, and opt-in fast compiler mode.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/cuda-dev-fast",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "VIBEQC_ENABLE_CUDA": "ON",
+        "VIBEQC_CUDA_COMPILE_ARCHITECTURES": "120-real",
+        "VIBEQC_CUDA_COMPILE_JOBS": "2",
+        "VIBEQC_CUDA_SPLIT_COMPILE_THREADS": "2",
+        "VIBEQC_CUDA_FAST_COMPILE": "ON",
+        "VIBEQC_CUDA_SEPARABLE_COMPILATION": "OFF",
+        "VIBEQC_AOT_UNIT_MODE": "class",
+        "VIBEQC_AOT_PROFILE": "sm_120"
+      }
+    },
+    {
+      "name": "cuda-release-sm120",
+      "displayName": "CUDA release (sm_120)",
+      "description": "Production sm_120 AOT manifest with release compiler settings.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/cuda-release-sm120",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "VIBEQC_ENABLE_CUDA": "ON",
+        "VIBEQC_CUDA_COMPILE_ARCHITECTURES": "120",
+        "VIBEQC_CUDA_COMPILE_JOBS": "2",
+        "VIBEQC_CUDA_FAST_COMPILE": "OFF",
+        "VIBEQC_CUDA_SEPARABLE_COMPILATION": "OFF",
+        "VIBEQC_AOT_UNIT_MODE": "stable-shards",
+        "VIBEQC_AOT_PROFILE": "sm_120"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "cuda-dev-fast",
+      "configurePreset": "cuda-dev-fast"
+    },
+    {
+      "name": "cuda-release-sm120",
+      "configurePreset": "cuda-release-sm120"
+    }
+  ]
+}

@@ -2,6 +2,7 @@
 
 #include "molecule/basis.hpp"
 #include "scf/cuda_eigensolver_policy.hpp"
+#include "scf/cuda/rhf_policy.hpp"
 #include "scf/direct_task_layout.hpp"
 #include "scf/generated_shell_task.hpp"
 
@@ -19,8 +20,6 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstdint>
-#include <cstdlib>
-#include <cstring>
 #include <limits>
 #include <new>
 #include <numeric>
@@ -33,6 +32,40 @@
 
 namespace vibeqc::scf {
 namespace {
+
+// Runtime policy parsing lives in a host-only C++ TU. Keep the numerical CUDA
+// source's call sites unchanged while making policy-only edits incremental.
+// The legacy spellings below remain documented here for source-level tooling;
+// their actual ``std::getenv`` calls and thresholds are implemented by
+// ``scf/cuda/rhf_policy.cpp`` so editing policy does not rebuild this TU:
+//   std::getenv("VIBEQC_FINAL_FOCK_REBUILD")
+//   std::getenv("VIBEQC_PPPS_SIGNATURE_BUCKETING")
+//   std::getenv("VIBEQC_PPPS_BLOCK_THREADS")
+//   std::getenv("VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING")
+//   std::getenv("VIBEQC_ONE_ELECTRON_FORCE_SCALAR")
+//   std::getenv("VIBEQC_PSSS_RESIDENT_BRA")
+//   scalar_one_electron_force_environment == nullptr
+//   kTightConvergedFockReuseDensityRms = 1.0e-12
+//   kExpandedConvergedFockReuseDensityTolerance = 1.0e-9
+//   kExpandedConvergedFockReuseDensityRms = 2.0e-9
+using cuda_policy::bounded_direct_aot_only_diagnostic_requested;
+using cuda_policy::bounded_direct_count_diagnostic_requested;
+using cuda_policy::bounded_direct_fock_only_diagnostic_requested;
+using cuda_policy::bounded_direct_streaming_override_requested;
+using cuda_policy::bounded_fock_class_timing_requested;
+using cuda_policy::configured_mixed_precision_fock_threshold;
+using cuda_policy::converged_fock_reuse_density_rms;
+using cuda_policy::force_density_product_screening_requested;
+using cuda_policy::graph_native_eigensolver_override_requested;
+using cuda_policy::ppps_resident_block_threads_requested;
+using cuda_policy::ppps_signature_bucketing_requested;
+using cuda_policy::ppss_signature_bucketing_requested;
+using cuda_policy::psps_signature_bucketing_requested;
+using cuda_policy::resident_ppps_bra_requested;
+using cuda_policy::resident_psss_bra_requested;
+using cuda_policy::one_electron_force_scalar_requested;
+using cuda_policy::reuse_converged_fock_requested;
+using cuda_policy::xsyev_probe_skip_diagnostic_requested;
 
 constexpr double kPi = 3.141592653589793238462643383279502884;
 constexpr int kMaximumAngularMomentum = 3;
@@ -224,21 +257,7 @@ constexpr unsigned kGenericOrderFiveAngularOrder = 5;
 // stationary. Add only a machine-precision-scaled comparison guard; the
 // requested absolute tolerance remains the dominant term for ordinary cases.
 constexpr double kDirectFockEnergyRoundoffFactor = 16.0;
-// Mixed precision is opt-in on the current production architecture.  The
-// final Fock reconstruction and analytic forces remain FP64, while an
-// environment override can select a conservative contribution boundary for
-// iterative fixed-topology direct J/K work.
-constexpr double kDefaultMixedPrecisionFockThreshold = 1.0e-6;
 constexpr double kDoubleMachineEpsilon = 2.2204460492503131e-16;
-// Tight requests retain the historical gate because analytic-force error is
-// first order in the remaining raw-Fock stationarity error. Requests at or
-// above 1e-9 admit a separately bounded fast path: its 2e-9 cap covers the
-// validated large-AO fixed-dm0 branch while keeping final-force drift below
-// the 1e-8 Eh/bohr endpoint error budget. The ordinary 1e-10 production gate
-// remains on the historical 1e-12 path.
-constexpr double kTightConvergedFockReuseDensityRms = 1.0e-12;
-constexpr double kExpandedConvergedFockReuseDensityTolerance = 1.0e-9;
-constexpr double kExpandedConvergedFockReuseDensityRms = 2.0e-9;
 // Force-product screening is an additional approximation on top of the Fock
 // quartet gate. Do not inherit deliberately loose SCF screening thresholds:
 // doing so removes derivative terms that remain present in the screened
@@ -15220,167 +15239,6 @@ struct CudaRhfBucketPlan {
 
 namespace {
 
-/** Select finalization that retains each system's last raw Fock matrix. */
-bool reuse_converged_fock_requested() {
-  const char* force_rebuild = std::getenv("VIBEQC_FINAL_FOCK_REBUILD");
-  return force_rebuild == nullptr || std::strcmp(force_rebuild, "0") == 0 ||
-      std::strcmp(force_rebuild, "none") == 0;
-}
-
-/**
- * Select the opt-in FP32 ERI recurrence threshold for iterative direct Fock.
- *
- * Screening, density contraction, atomic accumulation, and the final Fock
- * rebuild remain FP64. Values at or below the screening tolerance cannot add
- * work beyond the existing numerical gate, so they conservatively disable the
- * mixed route instead of creating an empty second queue.
- */
-std::optional<double> configured_mixed_precision_fock_threshold(
-    double screening_tolerance) {
-  const char* selection =
-      std::getenv("VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD");
-  if (selection == nullptr || std::strcmp(selection, "0") == 0 ||
-      std::strcmp(selection, "none") == 0) {
-    return std::nullopt;
-  }
-  double threshold = 0.0;
-  if (std::strcmp(selection, "auto") == 0) {
-    threshold = kDefaultMixedPrecisionFockThreshold;
-  } else {
-    char* end = nullptr;
-    threshold = std::strtod(selection, &end);
-    if (end == selection || end == nullptr || *end != '\0') {
-      return std::nullopt;
-    }
-  }
-  if (!std::isfinite(threshold) || threshold <= screening_tolerance) {
-    return std::nullopt;
-  }
-  return threshold;
-}
-
-/** Select the mask-aware solver for controlled issue-51 A/B measurements. */
-bool graph_native_eigensolver_override_requested() {
-  const char* selection =
-      std::getenv("VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE");
-  return selection != nullptr &&
-      std::strcmp(selection, "graph_native") == 0;
-}
-
-/** Skip the expensive exact-signature provider probe during isolated timing. */
-bool xsyev_probe_skip_diagnostic_requested() {
-  const char* selection =
-      std::getenv("VIBEQC_XSYEV_PROBE_SKIP_DIAGNOSTIC");
-  return selection != nullptr &&
-      (std::strcmp(selection, "1") == 0 ||
-       std::strcmp(selection, "skip") == 0);
-}
-
-/** Force the bounded direct path for small-system correctness A/B tests. */
-bool bounded_direct_streaming_override_requested() {
-  const char* selection =
-      std::getenv("VIBEQC_BOUNDED_DIRECT_STREAMING");
-  return selection != nullptr &&
-      (std::strcmp(selection, "1") == 0 ||
-       std::strcmp(selection, "force") == 0);
-}
-
-/** Temporarily stop after bounded task production to inspect class routing. */
-bool bounded_direct_count_diagnostic_requested() {
-  const char* selection =
-      std::getenv("VIBEQC_BOUNDED_DIRECT_COUNT_DIAGNOSTIC");
-  return selection != nullptr &&
-      (std::strcmp(selection, "1") == 0 ||
-       std::strcmp(selection, "count") == 0);
-}
-
-/** Temporarily isolate selected generated Fock classes for performance triage. */
-bool bounded_direct_aot_only_diagnostic_requested() {
-  const char* selection =
-      std::getenv("VIBEQC_BOUNDED_DIRECT_AOT_ONLY_DIAGNOSTIC");
-  return selection != nullptr &&
-      (std::strcmp(selection, "1") == 0 ||
-       std::strcmp(selection, "aot") == 0);
-}
-
-/** Temporarily stop before bounded two-electron forces for stage timing. */
-bool bounded_direct_fock_only_diagnostic_requested() {
-  const char* selection =
-      std::getenv("VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC");
-  return selection != nullptr &&
-      (std::strcmp(selection, "1") == 0 ||
-       std::strcmp(selection, "fock") == 0);
-}
-
-/** Measure each bounded streaming Fock class with device globaltimer markers. */
-bool bounded_fock_class_timing_requested() {
-  const char* selection =
-      std::getenv("VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE");
-  return selection != nullptr &&
-      (std::strcmp(selection, "1") == 0 ||
-       std::strcmp(selection, "profile") == 0);
-}
-
-/** Select the validated final-Fock reuse gate for one requested accuracy. */
-double converged_fock_reuse_density_rms(double density_tolerance) {
-  return density_tolerance >= kExpandedConvergedFockReuseDensityTolerance
-      ? kExpandedConvergedFockReuseDensityRms
-      : kTightConvergedFockReuseDensityRms;
-}
-
-/** Enable the production force density-product gate unless A/B disables it. */
-bool force_density_product_screening_requested() {
-  const char* selection =
-      std::getenv("VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING");
-  return selection == nullptr ||
-      (std::strcmp(selection, "0") != 0 &&
-       std::strcmp(selection, "none") != 0);
-}
-
-/** Enable resident-bra ppps force routing unless an explicit A/B disables it. */
-bool resident_ppps_bra_requested() {
-  const char* selection = std::getenv("VIBEQC_PPPS_RESIDENT_BRA");
-  return selection == nullptr ||
-      (std::strcmp(selection, "0") != 0 &&
-       std::strcmp(selection, "none") != 0);
-}
-
-/** Group PPPS ket tasks by ordered orientation and primitive-loop length. */
-bool ppps_signature_bucketing_requested() {
-  const char* selection = std::getenv("VIBEQC_PPPS_SIGNATURE_BUCKETING");
-  return selection == nullptr ||
-      (std::strcmp(selection, "0") != 0 &&
-       std::strcmp(selection, "none") != 0);
-}
-
-/** Keep the promoted PSPS pair-loop bucketing on unless A/B disables it. */
-bool psps_signature_bucketing_requested() {
-  const char* selection = std::getenv("VIBEQC_PSPS_SIGNATURE_BUCKETING");
-  return selection == nullptr ||
-      (std::strcmp(selection, "0") != 0 &&
-       std::strcmp(selection, "none") != 0);
-}
-
-/** Keep the promoted PPSS pair-loop bucketing on unless A/B disables it. */
-bool ppss_signature_bucketing_requested() {
-  const char* selection = std::getenv("VIBEQC_PPSS_SIGNATURE_BUCKETING");
-  return selection == nullptr ||
-      (std::strcmp(selection, "0") != 0 &&
-       std::strcmp(selection, "none") != 0);
-}
-
-/** Select one scalar whole-descriptor PPPS CTA width for same-binary sweeps. */
-unsigned ppps_resident_block_threads_requested() {
-  const char* selection = std::getenv("VIBEQC_PPPS_BLOCK_THREADS");
-  if (selection == nullptr || std::strcmp(selection, "256") == 0) return 256U;
-  if (std::strcmp(selection, "128") == 0) return 128U;
-  if (std::strcmp(selection, "64") == 0) return 64U;
-  if (std::strcmp(selection, "32") == 0) return 32U;
-  // The generated wrapper reports a CUDA invalid-value error for unsupported
-  // settings instead of silently benchmarking a different launch width.
-  return 0U;
-}
-
 bool same_topology(const HostBatch& first, const HostBatch& second) {
   return first.nbf == second.nbf &&
          first.direct_nbf == second.direct_nbf &&
@@ -15756,11 +15614,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       (detail::direct_topology_requires_bounded_streaming(
            total_shell_quartets) ||
        bounded_direct_streaming_override_requested());
-  const char* scalar_one_electron_force_environment =
-      std::getenv("VIBEQC_ONE_ELECTRON_FORCE_SCALAR");
   const bool cooperative_one_electron_force =
-      scalar_one_electron_force_environment == nullptr ||
-      std::strcmp(scalar_one_electron_force_environment, "0") == 0;
+      one_electron_force_scalar_requested();
   const bool requested_graph_native_eigensolver_override =
       graph_native_eigensolver_override_requested();
   const bool xsyev_probe_skip_diagnostic =
@@ -16062,12 +15917,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       }
     }
     plan.resident_psss_bra_primitive_pairs = 0;
-    const char* resident_psss_selection =
-        std::getenv("VIBEQC_PSSS_RESIDENT_BRA");
-    const bool resident_psss_enabled =
-        resident_psss_selection == nullptr ||
-        (std::strcmp(resident_psss_selection, "0") != 0 &&
-         std::strcmp(resident_psss_selection, "none") != 0);
+    const bool resident_psss_enabled = resident_psss_bra_requested();
     plan.resident_psss_task_count =
         requested_quartet_direct && !requested_bounded_direct_streaming &&
             resident_psss_enabled

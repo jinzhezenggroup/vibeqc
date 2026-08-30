@@ -36,9 +36,12 @@ from .cuda_schedule import (
 from .cuda_target import (
     CUDA_TARGETS,
     DEFAULT_CUDA_TARGET,
+    CudaArchitecture,
     CudaTargetInfo,
+    cuda_architecture,
     cuda_target_info,
     normalize_cuda_architecture,
+    normalize_cuda_compile_architecture,
 )
 from .dppp_specialization import (
     DpppFusedPlan,
@@ -77,6 +80,11 @@ from .ir import (
     OperatorSpec,
     TranslationInvariant,
     build_integral_ir,
+)
+from .production import (
+    KernelSelection,
+    production_compile_cost,
+    stable_aot_shard_slot,
 )
 from .rys import (
     PppsRysForceProgram,
@@ -170,6 +178,7 @@ __all__ = [
     "ContractionConsumer",
     "ContractionOutput",
     "ContractionSpec",
+    "CudaArchitecture",
     "CudaKernelIR",
     "CudaScheduleIR",
     "CudaTargetInfo",
@@ -184,6 +193,7 @@ __all__ = [
     "IntegralIR",
     "KernelConsumer",
     "KernelIR",
+    "KernelSelection",
     "MaterializationDecision",
     "MaterializationPlan",
     "NuclearCoordinates",
@@ -231,6 +241,7 @@ __all__ = [
     "build_weighted_shell_contraction_kernel",
     "canonical_shell_angular",
     "cartesian_components",
+    "cuda_architecture",
     "cuda_target_info",
     "default_schedule",
     "dppp_components",
@@ -252,7 +263,9 @@ __all__ = [
     "evaluate_ppps_rys_component",
     "evaluate_rys_component",
     "normalize_cuda_architecture",
+    "normalize_cuda_compile_architecture",
     "nvrtc_cache_key",
+    "production_compile_cost",
     "rys2_roots_weights",
     "rys2_table_roots_weights",
     "rys3_roots_weights",
@@ -265,6 +278,7 @@ __all__ = [
     "schedule_candidates",
     "shell_class_name",
     "shell_pair_class",
+    "stable_aot_shard_slot",
     "supports_component_lane_rys",
     "tuning_schedule_candidates",
 ]

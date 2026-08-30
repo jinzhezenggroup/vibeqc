@@ -78,6 +78,20 @@ def main() -> None:
         help="stable CUDA translation-unit count for production generation",
     )
     parser.add_argument(
+        "--unit-mode",
+        choices=("stable-shards", "class"),
+        default="stable-shards",
+        help=(
+            "production source layout: versioned cost-aware shards for release, "
+            "or one shell-class translation unit for development"
+        ),
+    )
+    parser.add_argument(
+        "--all-class-units",
+        action="store_true",
+        help="also emit deterministic empty units for classes absent from a profile",
+    )
+    parser.add_argument(
         "--architecture",
         help="select an architecture profile from a v2 production manifest",
     )
@@ -135,6 +149,8 @@ def main() -> None:
                 arguments.shards,
                 arguments.target_architecture,
                 profile_by_architecture,
+                arguments.unit_mode,
+                arguments.all_class_units,
             )
         else:
             write_production_bundle(
@@ -143,6 +159,8 @@ def main() -> None:
                 arguments.shards,
                 arguments.architecture,
                 arguments.profile,
+                arguments.unit_mode,
+                arguments.all_class_units,
             )
         return
     if arguments.output_directory is not None:

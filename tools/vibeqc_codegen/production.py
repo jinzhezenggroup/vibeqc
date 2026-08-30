@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
@@ -199,6 +200,12 @@ class KernelSelection:
     # historical default IR, while compiler stages may supply a fully
     # explicit operator/derivative/contraction definition.
     integral: IntegralIR | None = None
+    # Optional compiler provenance carried by newer manifests.  These values
+    # are advisory and fall back to the structural cost model when absent.
+    runtime_seconds: float | None = None
+    compile_seconds: float | None = None
+    source_bytes: int | None = None
+    object_bytes: int | None = None
 
     def __post_init__(self) -> None:
         if not self.architecture.startswith("sm_"):
@@ -232,6 +239,20 @@ class KernelSelection:
             raise ValueError(
                 "production consumers do not match the selection integral"
             )
+        for field_name in (
+            "runtime_seconds",
+            "compile_seconds",
+            "source_bytes",
+            "object_bytes",
+        ):
+            value = getattr(self, field_name)
+            if value is not None and (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(float(value))
+                or value < 0
+            ):
+                raise ValueError(f"{field_name} must be a non-negative number")
         scalar_thread_tasks = _supports_scalar_rys(self.spec, self.schedule)
         if self.recurrence == "rys2" and not scalar_thread_tasks:
             raise ValueError(
@@ -658,6 +679,24 @@ def _resident_force_recurrence_from_row(
     return recurrence
 
 
+def _optional_nonnegative_number(
+    name: str, row: Mapping[str, object], field: str
+) -> float | int | None:
+    """Validate optional compiler provenance attached to a manifest row."""
+
+    value = row.get(field)
+    if value is None:
+        return None
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(float(value))
+        or value < 0
+    ):
+        raise ValueError(f"{name} {field} must be a finite non-negative number")
+    return value
+
+
 def _selections_from_rows(
     rows: object,
     *,
@@ -727,6 +766,7 @@ def _selections_from_rows(
                 recurrence="subset_wick",
                 target=target,
             )
+
         selections.append(
             KernelSelection(
                 architecture=architecture,
@@ -738,6 +778,14 @@ def _selections_from_rows(
                 recurrence=recurrence,
                 resident_force_recurrence=resident_force_recurrence,
                 fock_schedule=fock_schedule,
+                runtime_seconds=_optional_nonnegative_number(
+                    name, row, "runtime_seconds"
+                ),
+                compile_seconds=_optional_nonnegative_number(
+                    name, row, "compile_seconds"
+                ),
+                source_bytes=_optional_nonnegative_number(name, row, "source_bytes"),
+                object_bytes=_optional_nonnegative_number(name, row, "object_bytes"),
             )
         )
         seen.add(name)
@@ -1826,6 +1874,19 @@ def _as_selection(item: ShellClassSpec | KernelSelection) -> KernelSelection:
     )
 
 
+def _stable_selection_order(
+    specifications: Iterable[ShellClassSpec | KernelSelection],
+) -> tuple[KernelSelection, ...]:
+    """Materialize selections in canonical class order for registry sources."""
+
+    return tuple(
+        sorted(
+            map(_as_selection, specifications),
+            key=lambda item: (shell_class_index(item.spec), item.spec.name),
+        )
+    )
+
+
 def _emit_ppps_resident_source(selection: KernelSelection) -> str:
     """Emit only the resident ppps tail for an opted-in production row."""
 
@@ -1853,8 +1914,11 @@ def emit_production_shard(
 ) -> str:
     """Emit one CUDA TU containing a deterministic subset of accepted classes."""
 
-    selections = tuple(map(_as_selection, specifications))
-    body = [_PRODUCTION_PRELUDE]
+    selections = _stable_selection_order(specifications)
+    body = [
+        f"// Stable AOT shard map version: {_STABLE_AOT_SHARD_MAP_VERSION}\n",
+        _PRODUCTION_PRELUDE,
+    ]
     for selection in selections:
         integral = _selection_integral(selection)
         plan = build_fused_shell_plan(
@@ -1890,7 +1954,7 @@ def emit_registry_header(
 ) -> str:
     """Emit production metadata and the host launch API consumed by cuda_rhf."""
 
-    selections = tuple(map(_as_selection, specifications))
+    selections = _stable_selection_order(specifications)
     rows = []
     for selection in selections:
         if KernelConsumer.FORCE not in selection.consumers:
@@ -2042,7 +2106,7 @@ def emit_registry_source(
 ) -> str:
     """Emit environment-controlled dispatch without handwritten class switches."""
 
-    selections = tuple(map(_as_selection, specifications))
+    selections = _stable_selection_order(specifications)
     specs = tuple(item.spec for item in selections)
     fock_specs = tuple(
         item.spec for item in selections if KernelConsumer.FOCK in item.consumers
@@ -2348,7 +2412,11 @@ def emit_profile_shard(
     items = tuple(selections)
     identifier = _profile_identifier(profile.target.architecture)
     namespace = f"vibeqc::scf::generated::profile_{identifier}"
-    body = [_PRODUCTION_PRELUDE, f"\nnamespace {namespace} {{\n"]
+    body = [
+        f"// Stable AOT shard map version: {_STABLE_AOT_SHARD_MAP_VERSION}\n",
+        _PRODUCTION_PRELUDE,
+        f"\nnamespace {namespace} {{\n",
+    ]
     for selection in items:
         integral = _selection_integral(selection)
         plan = build_fused_shell_plan(
@@ -2468,7 +2536,7 @@ def emit_multi_registry_header(
             f"{'true' if profile.portable else 'false'}, "
             f"{'true' if profile.match == ProfileMatch.COMPATIBLE else 'false'}}},"
         )
-        for selection in profile.selections:
+        for selection in _stable_selection_order(profile.selections):
             integral = _selection_integral(selection)
             plan = build_fused_shell_plan(
                 selection.spec,
@@ -2610,7 +2678,7 @@ def emit_multi_registry_source(
         force_mask = 0
         fock_mask = 0
         mixed_fock_mask = 0
-        for selection in profile.selections:
+        for selection in _stable_selection_order(profile.selections):
             shell_class = shell_class_index(selection.spec)
             integral = _selection_integral(selection)
             plan = build_fused_shell_plan(
@@ -2981,11 +3049,23 @@ def write_production_bundles(
     shard_count: int,
     architectures: Sequence[str],
     profile_by_architecture: Mapping[str, str] | None = None,
+    unit_mode: str = "stable-shards",
+    all_class_units: bool = False,
 ) -> tuple[Path, ...]:
-    """Write independent, namespaced AOT bundles and one runtime registry."""
+    """Write independent, namespaced AOT bundles and one runtime registry.
 
+    ``stable-shards`` is the release-compatible layout.  ``class`` is a
+    development layout that emits one translation unit per shell class, which
+    is useful when iterating on a heavy generated class without compiling its
+    neighbors.  Both layouts use the same symbols and registry ABI.
+    """
+
+    if isinstance(shard_count, bool) or not isinstance(shard_count, int):
+        raise TypeError("shard_count must be an integer")
     if shard_count < 1:
         raise ValueError("production shard count must be positive")
+    if unit_mode not in ("stable-shards", "class"):
+        raise ValueError("unit_mode must be 'stable-shards' or 'class'")
     normalized = tuple(
         sorted(
             {normalize_cuda_architecture(item) for item in architectures},
@@ -3012,13 +3092,33 @@ def write_production_bundles(
         identifier = _profile_identifier(profile.target.architecture)
         profile_directory = output_directory / profile.target.architecture
         profile_directory.mkdir(parents=True, exist_ok=True)
-        shards = _partition_production_selections(profile.selections, shard_count)
-        for index, shard in enumerate(shards):
-            path = profile_directory / (
-                f"vibeqc_generated_shell_{identifier}_shard_{index}.cu"
+        if unit_mode == "class":
+            selected_by_name = {
+                selection.spec.name: selection for selection in profile.selections
+            }
+            names = (
+                tuple(sorted(FUSED_SHELL_SPEC_BY_NAME))
+                if all_class_units
+                else tuple(sorted(selected_by_name))
             )
-            _write_if_changed(path, emit_profile_shard(profile, shard))
-            outputs.append(path)
+            units = tuple(
+                (name, ((selected_by_name[name],) if name in selected_by_name else ()))
+                for name in names
+            )
+            for name, unit in units:
+                path = profile_directory / (
+                    f"vibeqc_generated_shell_{identifier}_{name}.cu"
+                )
+                _write_if_changed(path, emit_profile_shard(profile, unit))
+                outputs.append(path)
+        else:
+            shards = _partition_production_selections(profile.selections, shard_count)
+            for index, shard in enumerate(shards):
+                path = profile_directory / (
+                    f"vibeqc_generated_shell_{identifier}_shard_{index}.cu"
+                )
+                _write_if_changed(path, emit_profile_shard(profile, shard))
+                outputs.append(path)
     header = output_directory / "vibeqc_generated_shell_registry.hpp"
     source = output_directory / "vibeqc_generated_shell_registry.cu"
     _write_if_changed(header, emit_multi_registry_header(profiles))
@@ -3035,20 +3135,112 @@ def _write_if_changed(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
+_STABLE_AOT_SHARD_MAP_VERSION = 1
+
+# The map is intentionally keyed by shell name rather than manifest position.
+# Its slots were chosen from the measured component/recurrence/consumer cost
+# of the sm_120 production profile.  Keeping this small, versioned table in
+# source means adding or removing a manifest row cannot move an unrelated class
+# to another translation unit (the failure mode of both manifest-order and
+# whole-profile greedy partitioners).  A future measurement refresh should
+# increment the version and deliberately invalidate the affected cache keys.
+_STABLE_AOT_SHARD_SLOTS: dict[str, int] = {
+    "ssss": 0,
+    "psss": 1,
+    "psps": 2,
+    "ppss": 2,
+    "ppps": 4,
+    "pppp": 7,
+    "dsss": 6,
+    "dsps": 5,
+    "dspp": 7,
+    "dpss": 2,
+    "dpps": 5,
+    "dppp": 4,
+    "dpds": 5,
+    "dpdp": 3,
+    "dsds": 3,
+    "ddss": 6,
+    "ddps": 6,
+    "ddpp": 2,
+    "ddds": 7,
+    "dddp": 1,
+    "dddd": 0,
+    "fpps": 7,
+}
+
+
+def production_compile_cost(selection: KernelSelection) -> float:
+    """Estimate the relative cold-compile cost of one production selection.
+
+    Real compiler timings, when attached to a manifest row, are preferred.
+    Older manifests have no such measurements, so this deterministic estimate
+    uses the generated component count, recurrence root count, and number of
+    emitted consumers.  It is a partitioning signal only; it must never be
+    used as a runtime or scientific quality metric.
+    """
+
+    if selection.compile_seconds is not None:
+        return float(selection.compile_seconds)
+    recurrence_factor = {
+        "subset_wick": 1.0,
+        "rys2": 1.15,
+        "rys3": 1.35,
+        "rys4": 1.7,
+        "rys5": 2.0,
+    }[selection.recurrence]
+    consumer_factor = 1.0 + 0.65 * max(len(selection.consumers) - 1, 0)
+    schedule_factor = max(selection.schedule.block_threads / 32.0, 1.0)
+    structural = (
+        selection.spec.component_count
+        * (selection.spec.maximum_force_coulomb_order + 1)
+        * recurrence_factor
+        * consumer_factor
+    )
+    # Keep measured source/object sizes useful without allowing a stale size
+    # estimate to dominate the mathematical structure of a new class.
+    artifact_factor = 1.0
+    if selection.source_bytes is not None:
+        artifact_factor += min(selection.source_bytes / 1.0e6, 4.0) * 0.05
+    if selection.object_bytes is not None:
+        artifact_factor += min(selection.object_bytes / 1.0e6, 4.0) * 0.05
+    return float(structural * artifact_factor * schedule_factor)
+
+
+def stable_aot_shard_slot(selection: KernelSelection) -> int:
+    """Return the versioned, manifest-order-independent virtual shard slot."""
+
+    slot = _STABLE_AOT_SHARD_SLOTS.get(selection.spec.name)
+    if slot is not None:
+        return slot
+    # Unknown classes remain stable across manifest edits.  The triangular
+    # index is part of the canonical shell ABI, unlike list ordering.
+    return shell_class_index(selection.spec)
+
+
 def _partition_production_selections(
     selections: Iterable[KernelSelection], shard_count: int
 ) -> tuple[tuple[KernelSelection, ...], ...]:
-    """Assign shell classes to stable translation units.
+    """Assign classes to versioned, compile-cost-aware stable translation units.
 
-    The production shell-class index is independent of manifest membership and
-    ordering.  Using it as the shard key prevents an inserted or temporarily
-    disabled class from moving unrelated kernels to new CUDA source files and
-    invalidating their compiler-cache entries.
+    Slots are deliberately not recomputed from the current manifest.  A
+    weighted greedy pass would balance a clean build but would also move every
+    class after an insertion/removal, destroying the cache identity this layer
+    is meant to preserve.  The checked-in slot map is therefore the stable
+    result of that pass over the current measured profile; unknown classes use
+    their canonical shell-class index as a deterministic fallback.
     """
 
+    if isinstance(shard_count, bool) or not isinstance(shard_count, int):
+        raise TypeError("shard_count must be an integer")
+    if shard_count < 1:
+        raise ValueError("shard_count must be positive")
     shards: list[list[KernelSelection]] = [[] for _ in range(shard_count)]
-    for selection in selections:
-        shards[shell_class_index(selection.spec) % shard_count].append(selection)
+    for selection in sorted(
+        selections,
+        key=lambda item: (stable_aot_shard_slot(item) % shard_count, item.spec.name),
+    ):
+        shards[stable_aot_shard_slot(selection) % shard_count].append(selection)
     return tuple(tuple(shard) for shard in shards)
 
 
@@ -3058,19 +3250,41 @@ def write_production_bundle(
     shard_count: int,
     architecture: str | None = None,
     profile: str = "auto",
+    unit_mode: str = "stable-shards",
+    all_class_units: bool = False,
 ) -> tuple[Path, ...]:
     """Write deterministic build artifacts and return every generated path."""
 
+    if isinstance(shard_count, bool) or not isinstance(shard_count, int):
+        raise TypeError("shard_count must be an integer")
     if shard_count < 1:
         raise ValueError("production shard count must be positive")
+    if unit_mode not in ("stable-shards", "class"):
+        raise ValueError("unit_mode must be 'stable-shards' or 'class'")
     selections = load_production_kernel_selections(manifest, architecture, profile)
-    shards = _partition_production_selections(selections, shard_count)
     output_directory.mkdir(parents=True, exist_ok=True)
     outputs = []
-    for index, shard in enumerate(shards):
-        path = output_directory / f"vibeqc_generated_shell_shard_{index}.cu"
-        _write_if_changed(path, emit_production_shard(shard))
-        outputs.append(path)
+    if unit_mode == "class":
+        selected_by_name = {selection.spec.name: selection for selection in selections}
+        names = (
+            tuple(sorted(FUSED_SHELL_SPEC_BY_NAME))
+            if all_class_units
+            else tuple(sorted(selected_by_name))
+        )
+        units = tuple(
+            (name, ((selected_by_name[name],) if name in selected_by_name else ()))
+            for name in names
+        )
+        for name, unit in units:
+            path = output_directory / f"vibeqc_generated_shell_{name}.cu"
+            _write_if_changed(path, emit_production_shard(unit))
+            outputs.append(path)
+    else:
+        shards = _partition_production_selections(selections, shard_count)
+        for index, shard in enumerate(shards):
+            path = output_directory / f"vibeqc_generated_shell_shard_{index}.cu"
+            _write_if_changed(path, emit_production_shard(shard))
+            outputs.append(path)
     header = output_directory / "vibeqc_generated_shell_registry.hpp"
     source = output_directory / "vibeqc_generated_shell_registry.cu"
     _write_if_changed(header, emit_registry_header(selections))

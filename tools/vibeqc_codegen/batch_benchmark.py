@@ -54,6 +54,26 @@ def _production_shell_classes(consumer: KernelConsumer | str) -> frozenset[str]:
     return _PRODUCTION_SHELL_CLASSES_BY_CONSUMER[selected_consumer]
 
 
+def _row_matches_consumer(
+    row: dict[str, object], consumer: KernelConsumer
+) -> bool:
+    """Keep profile rows scoped to the consumer being promoted.
+
+    Older workload histograms omit ``consumer`` and are intentionally treated
+    as compatible with either ranking path.  New batch/autotune artifacts may
+    use either one string or a list of consumers, both of which are accepted.
+    """
+
+    value = row.get("consumer")
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return value == consumer.value
+    if isinstance(value, list):
+        return consumer.value in value
+    return False
+
+
 @dataclass(frozen=True, slots=True)
 class KernelResources:
     """Static resources reported by CUDA 12.9 ``ptxas`` for one kernel."""
@@ -132,7 +152,8 @@ def rank_profiled_candidates(
             continue
         name = row.get("class")
         if (
-            isinstance(name, str)
+            _row_matches_consumer(row, selected_consumer)
+            and isinstance(name, str)
             and name not in production_shell_classes
             and name in FUSED_SHELL_SPEC_BY_NAME
         ):
@@ -162,6 +183,149 @@ def rank_profiled_candidates(
     ranked = list(aggregated.values())
     ranked.sort(key=lambda item: (-item[0], item[1]))
     return tuple(spec for _, _, spec in ranked[:limit])
+
+
+def pareto_front(
+    candidates: Iterable[dict[str, object]],
+    *,
+    runtime_key: str = "runtime_seconds",
+    compile_key: str = "compile_seconds",
+    source_key: str = "source_bytes",
+    object_key: str = "object_bytes",
+    timing_noise: float = 0.01,
+) -> tuple[dict[str, object], ...]:
+    """Return candidates not dominated by runtime, compile cost, or size.
+
+    Runtime is the scientific objective and is therefore allowed to improve
+    by ``timing_noise`` before a smaller/faster-compiling candidate wins.  A
+    candidate with no provenance remains eligible (old benchmark artifacts are
+    still valid); missing dimensions simply do not participate in dominance.
+    The function is pure so autotune and batch screening can share the same
+    promotion policy without changing their compiler drivers.
+    """
+
+    if (
+        isinstance(timing_noise, bool)
+        or not isinstance(timing_noise, (int, float))
+        or not 0.0 <= timing_noise < 1.0
+    ):
+        raise ValueError("timing_noise must be in [0, 1)")
+    rows = tuple(row for row in candidates if isinstance(row, dict))
+
+    def numeric(row: dict[str, object], key: str) -> float | None:
+        value = row.get(key)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return None
+        value = float(value)
+        return value if math.isfinite(value) and value >= 0.0 else None
+
+    def dominates(first: dict[str, object], second: dict[str, object]) -> bool:
+        first_runtime, second_runtime = numeric(first, runtime_key), numeric(second, runtime_key)
+        if first_runtime is None and second_runtime is not None:
+            # An unmeasured candidate cannot dominate a measured scientific
+            # result merely because its compiler metadata is smaller.
+            return False
+        if first_runtime is not None and second_runtime is not None:
+            # Faster by less than measurement noise is treated as a tie. This
+            # permits compile/size dimensions to decide without promoting a
+            # scientifically slower candidate by accident.
+            runtime_better = first_runtime <= second_runtime * (1.0 + timing_noise)
+            runtime_strict = first_runtime < second_runtime * (1.0 - timing_noise)
+        else:
+            runtime_better, runtime_strict = True, False
+        no_worse = runtime_better
+        strict = runtime_strict
+        for key in (compile_key, source_key, object_key):
+            first_value, second_value = numeric(first, key), numeric(second, key)
+            if first_value is None or second_value is None:
+                continue
+            if first_value > second_value:
+                no_worse = False
+                break
+            strict |= first_value < second_value
+        return no_worse and strict
+
+    return tuple(
+        row
+        for row in rows
+        if not any(dominates(other, row) for other in rows if other is not row)
+    )
+
+
+def rank_compile_aware_candidates(
+    payload: dict[str, object],
+    limit: int,
+    consumer: KernelConsumer | str = KernelConsumer.FORCE,
+    *,
+    timing_noise: float = 0.01,
+) -> tuple[ShellClassSpec, ...]:
+    """Rank profile rows using endpoint runtime and compile-cost provenance.
+
+    This is an opt-in companion to :func:`rank_profiled_candidates`.  It keeps
+    the historical primitive-work ranking when an artifact predates runtime or
+    compiler measurements, and applies the Pareto policy only when those
+    dimensions are present.
+    """
+
+    if limit < 1:
+        raise ValueError("candidate limit must be positive")
+    selected_consumer = KernelConsumer(consumer)
+    excluded = _production_shell_classes(selected_consumer)
+    rows = payload.get("shell_classes")
+    if not isinstance(rows, list):
+        raise TypeError("profile JSON does not contain a shell_classes list")
+    aggregated: dict[str, dict[str, object]] = {}
+    for index, row in enumerate(rows):
+        if not isinstance(row, dict):
+            continue
+        name = row.get("class")
+        if (
+            not _row_matches_consumer(row, selected_consumer)
+            or not isinstance(name, str)
+            or name in excluded
+            or name not in FUSED_SHELL_SPEC_BY_NAME
+        ):
+            continue
+        item = aggregated.setdefault(
+            name,
+            {"class": name, "first_index": index, "primitive_work": 0.0},
+        )
+        for key in ("primitive_work", "primitive_quartets", "primitive_work_fraction"):
+            value = row.get(key)
+            if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(float(value)):
+                item["primitive_work"] = float(item["primitive_work"]) + float(value)
+                break
+        for key in ("runtime_seconds", "compile_seconds", "source_bytes", "object_bytes"):
+            value = row.get(key)
+            if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(float(value)) and value >= 0:
+                # Runtime and compile/size rows are conservatively aggregated
+                # across duplicate orientations: runtime is best observed,
+                # compiler cost is the largest unit that must be rebuilt.
+                if key == "runtime_seconds":
+                    previous = item.get(key)
+                    item[key] = float(value) if previous is None else min(float(previous), float(value))
+                else:
+                    previous = item.get(key)
+                    item[key] = float(value) if previous is None else max(float(previous), float(value))
+    if not aggregated:
+        raise ValueError("profile contains no uncovered compilable shell classes")
+    materialized = tuple(aggregated.values())
+    measured = any(row.get("runtime_seconds") is not None for row in materialized)
+    if measured:
+        selected = pareto_front(materialized, timing_noise=timing_noise)
+    else:
+        selected = materialized
+    selected = sorted(
+        selected,
+        key=lambda row: (
+            float(row.get("runtime_seconds", math.inf)),
+            float(row.get("compile_seconds", math.inf)),
+            float(row.get("source_bytes", math.inf)),
+            -float(row.get("primitive_work", 0.0)),
+            int(row["first_index"]),
+        ),
+    )
+    return tuple(FUSED_SHELL_SPEC_BY_NAME[str(row["class"])] for row in selected[:limit])
 
 
 def emit_candidate_translation_unit(
@@ -408,11 +572,12 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
     )
     if arguments.profile is not None:
         profile = json.loads(arguments.profile.read_text(encoding="utf-8"))
-        specifications = rank_profiled_candidates(
-            profile,
-            arguments.limit,
-            consumer=selected_consumer,
+        ranker = (
+            rank_compile_aware_candidates
+            if getattr(arguments, "compile_aware", False)
+            else rank_profiled_candidates
         )
+        specifications = ranker(profile, arguments.limit, consumer=selected_consumer)
     else:
         specifications = candidate_specs(
             arguments.shell_class or None,
@@ -640,6 +805,14 @@ def main() -> None:
         "--profile",
         type=Path,
         help="rank candidates by an --all-orders active profile JSON",
+    )
+    parser.add_argument(
+        "--compile-aware",
+        action="store_true",
+        help=(
+            "include endpoint runtime, compile seconds, and artifact sizes in "
+            "Pareto candidate promotion"
+        ),
     )
     parser.add_argument("--limit", type=int, default=12)
     parser.add_argument("--tasks", type=int, default=512)
