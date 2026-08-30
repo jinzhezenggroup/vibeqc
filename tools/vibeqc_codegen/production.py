@@ -1662,9 +1662,15 @@ def _emit_ppps_resident_source(selection: KernelSelection) -> str:
         selection.recurrence == "rys3"
         and selection.schedule.kind == ScheduleKind.THREAD_TASKS
     )
+    resident_integral = build_integral_ir(
+        selection.spec,
+        selection.consumers,
+        recurrence="rys3",
+    )
     return emit_ppps_resident_bra_rys3_cuda(
         include_shared_definitions=False,
         include_rys3_roots=not ordinary_owns_resident_roots,
+        integral=resident_integral,
     )
 
 

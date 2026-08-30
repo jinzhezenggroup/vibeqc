@@ -36,7 +36,6 @@ from .fused_schedule import (
 from .ir import IntegralIR, KernelConsumer, build_integral_ir
 from .rys import (
     build_rys_force_program,
-    emit_ppps_rys3_root_body_cuda,
     emit_rys2_roots_cuda,
     emit_rys3_roots_cuda,
     emit_rys4_roots_cuda,
@@ -3790,7 +3789,7 @@ void generated_dppp_shell_class_force_uhf_persistent_kernel(
 
 
 def _emit_ppps_resident_bra_rys3_force_consumer_cuda(
-    *, include_rys3_roots: bool = True
+    *, include_rys3_roots: bool = True, integral: IntegralIR | None = None
 ) -> str:
     """Emit the isolated canonical ``(p p|p s)`` resident-bra prototype.
 
@@ -3808,10 +3807,45 @@ def _emit_ppps_resident_bra_rys3_force_consumer_cuda(
     Rys roots remain in shared SoA storage to avoid an addressable six-double
     local array; the straight-line TRR/HRR body immediately folds each
     component into nine scalar force accumulators and recovers center D by
-    translation invariance.
+    translation invariance.  When ``integral`` is supplied, its explicit
+    derivative centers and recovery relation drive every force slot and
+    atomic destination in this topology.
     """
 
     spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
+    selected_integral = integral or build_integral_ir(spec, recurrence="rys3")
+    if selected_integral.spec != spec:
+        raise ValueError("resident ppps integral spec does not match ppps")
+    if selected_integral.recurrence != "rys3":
+        raise ValueError("resident ppps lowering requires an rys3 integral")
+    independent_centers = selected_integral.independent_derivative_centers
+    recovered_centers = selected_integral.recovered_derivative_centers
+    if len(independent_centers) != 3 or len(recovered_centers) != 1:
+        raise ValueError(
+            "resident ppps lowering currently requires three independent "
+            "and one recovered derivative center"
+        )
+    # The canonical resident topology stages a ``p p`` bra and streams a
+    # ``p s`` ket.  Center D is normally recovered, so its pair displacement
+    # and exponent are only materialized when an explicit IR makes D
+    # independent (for example, when center B is recovered instead).
+    needs_fourth_derivative = 3 in independent_centers
+    fourth_position_setup = (
+        "  const GeneratedDpppVec3 fourth = context.atom_positions[task.atom[3]];\n"
+        "  const double cdx = fourth.x - third.x;\n"
+        "  const double cdy = fourth.y - third.y;\n"
+        "  const double cdz = fourth.z - third.z;"
+        if needs_fourth_derivative
+        else ""
+    )
+    fourth_scale_setup = (
+        "      const double fourth_product_scale = second_pair_reversed\n"
+        "          ? second_pair.first_product_scale : "
+        "second_pair.second_product_scale;\n"
+        "      const double delta2 = 2.0 * q * fourth_product_scale;"
+        if needs_fourth_derivative
+        else ""
+    )
     task_component_setup = _generic_task_component_setup(spec).replace(
         "shared.task", "task"
     )
@@ -3859,52 +3893,71 @@ def _emit_ppps_resident_bra_rys3_force_consumer_cuda(
   }}"""
         )
 
-    root_body = emit_ppps_rys3_root_body_cuda(
-        component_weight_expression="component_weight_{component}"
+    root_body = emit_rys_force_root_body_cuda(
+        spec,
+        component_weight_expression="component_weight_{component}",
+        integral=selected_integral,
     )
     weight_code = "\n".join(weight_blocks)
     independent_atomics = []
-    # The two pp-bra centers are reduced uniformly across each warp below.
-    # Only the task-varying ket center remains an immediate global update.
-    for center in range(2, 3):
+    # Contributions for independent ket centers vary by lane and can be
+    # committed immediately.  Independent bra centers are reduced uniformly
+    # below because every lane shares the same staged bra pair.
+    for slot, center in enumerate(independent_centers):
+        if center < 2:
+            continue
         for coordinate in range(3):
-            slot = center * 3 + coordinate
+            force_slot = slot * 3 + coordinate
             independent_atomics.append(
-                f"""  if (force_{slot} != 0.0) {{
+                f"""  if (force_{force_slot} != 0.0) {{
     atomicAdd(
         context.forces + static_cast<std::size_t>(task.atom[{center}]) * 3U +
             {coordinate}U,
-        force_{slot});
+        force_{force_slot});
   }}"""
             )
     fourth_atomics = []
-    for coordinate in range(3):
-        slots = [center * 3 + coordinate for center in range(3)]
-        fourth_atomics.append(
-            f"""  const double fourth_force_{coordinate} =
-      -force_{slots[0]} - force_{slots[1]} - force_{slots[2]};
-  if (fourth_force_{coordinate} != 0.0) {{
+    for recovered_index, center in enumerate(recovered_centers):
+        name = "fourth_force" if recovered_index == 0 else f"recovered_force_{center}"
+        for coordinate in range(3):
+            slots = [slot * 3 + coordinate for slot in range(len(independent_centers))]
+            terms = " - ".join(f"force_{slot}" for slot in slots)
+            fourth_atomics.append(
+                f"""  const double {name}_{coordinate} = -{terms};
+  if ({name}_{coordinate} != 0.0) {{
     atomicAdd(
-        context.forces + static_cast<std::size_t>(task.atom[3]) * 3U +
+        context.forces + static_cast<std::size_t>(task.atom[{center}]) * 3U +
             {coordinate}U,
-        fourth_force_{coordinate});
+        {name}_{coordinate});
   }}"""
-        )
-    force_declarations = "\n".join(f"  double force_{slot} = 0.0;" for slot in range(9))
+            )
+    force_declarations = "\n".join(
+        f"  double force_{slot} = 0.0;"
+        for slot in range(3 * len(independent_centers))
+    )
+    bra_force_slots = tuple(
+        slot
+        for slot, center in enumerate(independent_centers)
+        if center < 2
+    )
     bra_force_reductions = "\n".join(
-        f"    force_{slot} += __shfl_down_sync(0xffffffffU, force_{slot}, delta);"
-        for slot in range(6)
+        f"    force_{slot * 3 + coordinate} += "
+        f"__shfl_down_sync(0xffffffffU, force_{slot * 3 + coordinate}, delta);"
+        for slot in bra_force_slots
+        for coordinate in range(3)
     )
     bra_force_atomics = "\n".join(
         f"""    if (force_{slot} != 0.0) {{
       atomicAdd(
           context.forces +
               static_cast<std::size_t>(
-                  context.ket_tasks[resident.ket_begin].atom[{slot // 3}]) * 3U +
+                  context.ket_tasks[resident.ket_begin].atom[{center}]) * 3U +
               {slot % 3}U,
           force_{slot});
     }}"""
-        for slot in range(6)
+        for bra_slot in bra_force_slots
+        for center in (independent_centers[bra_slot],)
+        for slot in range(bra_slot * 3, bra_slot * 3 + 3)
     )
     independent_atomic_code = "\n".join(independent_atomics)
     fourth_atomic_code = "\n".join(fourth_atomics)
@@ -3981,6 +4034,7 @@ __device__ __forceinline__ void generated_ppps_resident_force_task(
   const GeneratedDpppVec3 first = context.atom_positions[task.atom[0]];
   const GeneratedDpppVec3 second = context.atom_positions[task.atom[1]];
   const GeneratedDpppVec3 third = context.atom_positions[task.atom[2]];
+{fourth_position_setup}
   const bool first_pair_reversed =
       (task.reversed_shell_pair_mask & 1U) != 0U;
   const bool second_pair_reversed =
@@ -4015,6 +4069,7 @@ __device__ __forceinline__ void generated_ppps_resident_force_task(
       const double third_product_scale = second_pair_reversed
           ? second_pair.second_product_scale : second_pair.first_product_scale;
       const double gamma2 = 2.0 * q * third_product_scale;
+{fourth_scale_setup}
       const double qcx = second_pair.product_center.x - third.x;
       const double qcy = second_pair.product_center.y - third.y;
       const double qcz = second_pair.product_center.z - third.z;
@@ -4184,6 +4239,7 @@ def emit_ppps_resident_bra_rys3_cuda(
     *,
     include_shared_definitions: bool = True,
     include_rys3_roots: bool = True,
+    integral: IntegralIR | None = None,
 ) -> str:
     """Emit the scalar ``ppps`` resident-bra Rys3 worker.
 
@@ -4191,6 +4247,11 @@ def emit_ppps_resident_bra_rys3_cuda(
     capacity, while its task and bra-staging strides use the actual block
     dimension. Production can therefore compare 32/64/128/256-thread CTAs
     from one binary without changing scalar quartet ownership.
+
+    ``integral`` carries explicit derivative-center and translation-recovery
+    metadata into both the ordinary shared-definition prefix and the resident
+    force consumer. Omitting it preserves the canonical four-center ERI
+    default (centers 0, 1, and 2 independent; center 3 recovered).
 
     ``include_shared_definitions`` keeps the standalone correctness harness
     self-contained.  Production AOT shards already contain the ordinary ppps
@@ -4201,6 +4262,11 @@ def emit_ppps_resident_bra_rys3_cuda(
     """
 
     spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
+    selected_integral = integral or build_integral_ir(spec, recurrence="rys3")
+    if selected_integral.spec != spec:
+        raise ValueError("resident ppps integral spec does not match ppps")
+    if selected_integral.recurrence != "rys3":
+        raise ValueError("resident ppps lowering requires an rys3 integral")
     schedule = ScheduleIR(
         kind=ScheduleKind.THREAD_TASKS,
         block_threads=32,
@@ -4208,9 +4274,10 @@ def emit_ppps_resident_bra_rys3_cuda(
         tasks_per_warp=32,
         shared_coulomb=False,
     )
-    plan = build_fused_shell_plan(spec, schedule=schedule, recurrence="rys3")
+    plan = build_fused_shell_plan(spec, integral=selected_integral, schedule=schedule)
     resident_tail = _emit_ppps_resident_bra_rys3_force_consumer_cuda(
-        include_rys3_roots=include_rys3_roots
+        include_rys3_roots=include_rys3_roots,
+        integral=selected_integral,
     )
     if include_shared_definitions:
         source = emit_shell_class_fused_cuda(spec, plan)

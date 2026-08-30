@@ -69,6 +69,7 @@ from tools.vibeqc_codegen import (
     cuda_target_info,
     dppp_components,
     emit_dppp_fused_cuda,
+    emit_ppps_resident_bra_rys3_cuda,
     emit_ppps_rys3_root_body_cuda,
     emit_rys2_roots_cuda,
     emit_rys3_roots_cuda,
@@ -538,6 +539,48 @@ def test_rys_root_body_packs_nonfinal_recovery_centers_by_ir_order():
     assert "force_3 += (gamma2 *" in body
     assert "force_6 += (delta2 *" in body
     assert "force_9" not in body
+
+
+def test_ppps_resident_rys_lowering_uses_nonfinal_recovery_centers():
+    """Keep resident Rys force slots and atomics aligned with explicit IR."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        spec,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+        recurrence="rys3",
+    )
+    source = emit_ppps_resident_bra_rys3_cuda(integral=integral)
+
+    # A/C/D are independent under center-B recovery and must occupy dense
+    # slots 0..8; the resident path must not regress to a force_9 write.
+    assert "force_3 += (gamma2 *" in source
+    assert "force_6 += (delta2 *" in source
+    assert "force_9" not in source
+    assert "const double cdx = fourth.x - third.x;" in source
+    assert "const double delta2 = 2.0 * q * fourth_product_scale;" in source
+
+    recovery_begin = source.index("const double fourth_force_0")
+    recovery = source[recovery_begin : recovery_begin + 900]
+    assert "static_cast<std::size_t>(task.atom[1])" in recovery
+    assert "static_cast<std::size_t>(task.atom[3])" not in recovery
+
+    # Only independent bra center A is warp-reduced now; center B is the
+    # recovered output and must not be treated as a resident bra slot.
+    assert "context.ket_tasks[resident.ket_begin].atom[0]" in source
+    assert "context.ket_tasks[resident.ket_begin].atom[1]" not in source
 
 
 def test_fock_only_ir_has_no_implicit_derivative():
