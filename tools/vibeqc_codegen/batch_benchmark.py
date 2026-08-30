@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import subprocess
@@ -83,15 +84,23 @@ def candidate_specs(
 def rank_profiled_candidates(
     payload: dict[str, object], limit: int
 ) -> tuple[ShellClassSpec, ...]:
-    """Select the highest active primitive-work classes from a real profile."""
+    """Select uncovered classes by descending measured primitive work.
+
+    Runtime shell profiles are not required to be sorted: some producers keep
+    canonical catalog order while others preserve discovery order.  Prefer
+    ``primitive_work`` when available, fall back to ``primitive_quartets`` for
+    older artifacts, and use the original row order as a deterministic tie
+    breaker.  Duplicate class rows are aggregated because profile producers
+    may emit one row per orientation for a canonical shell class.
+    """
 
     if limit < 1:
         raise ValueError("candidate limit must be positive")
     rows = payload.get("shell_classes")
     if not isinstance(rows, list):
         raise TypeError("profile JSON does not contain a shell_classes list")
-    ranked = []
-    for row in rows:
+    aggregated: dict[str, tuple[float, int, ShellClassSpec]] = {}
+    for index, row in enumerate(rows):
         if not isinstance(row, dict):
             continue
         name = row.get("class")
@@ -100,10 +109,32 @@ def rank_profiled_candidates(
             and name not in PRODUCTION_SHELL_CLASSES
             and name in FUSED_SHELL_SPEC_BY_NAME
         ):
-            ranked.append(FUSED_SHELL_SPEC_BY_NAME[name])
-    if not ranked:
+            work = 0.0
+            for field in (
+                "primitive_work",
+                "primitive_quartets",
+                "primitive_work_fraction",
+            ):
+                value = row.get(field)
+                if isinstance(value, (int, float)) and not isinstance(value, bool):
+                    numeric = float(value)
+                    if math.isfinite(numeric) and numeric >= 0.0:
+                        work = numeric
+                        break
+            previous = aggregated.get(name)
+            if previous is None:
+                aggregated[name] = (work, index, FUSED_SHELL_SPEC_BY_NAME[name])
+            else:
+                aggregated[name] = (
+                    previous[0] + work,
+                    previous[1],
+                    previous[2],
+                )
+    if not aggregated:
         raise ValueError("profile contains no uncovered compilable shell classes")
-    return tuple(ranked[:limit])
+    ranked = list(aggregated.values())
+    ranked.sort(key=lambda item: (-item[0], item[1]))
+    return tuple(spec for _, _, spec in ranked[:limit])
 
 
 def emit_candidate_translation_unit(
