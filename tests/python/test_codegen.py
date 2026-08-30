@@ -2039,6 +2039,54 @@ def test_psss_fourth_center_uses_exact_translation_recovery():
         assert total == pytest.approx(0.0, abs=2.0e-14)
 
 
+def test_psss_oracle_uses_explicit_nonfinal_recovery_centers():
+    """Keep the handwritten psss oracle aligned with derivative IR metadata."""
+
+    operator = OperatorSpec(
+        family=OperatorFamily.FOUR_CENTER_ERI,
+        centers=(0, 1, 2, 3),
+        invariants=(TranslationInvariant(dependent_center=1),),
+    )
+    force = ContractionSpec(
+        consumer="direct_force",
+        density="rhf|uhf",
+        output="atomic_force",
+    )
+    integral = build_integral_ir(
+        PSSS_SPEC,
+        operator=operator,
+        derivative=operator.nuclear_derivative(),
+        contractions=(force,),
+    )
+    kernel = build_psss_kernel("x", integral=integral)
+    values = sample_variables()
+    argument = kernel.graph.evaluate(kernel.boys_argument, values)
+    for order, value in enumerate(boys_values(argument)):
+        values[f"boys_{order}"] = value
+
+    # Center B is recovered, so the independent oracle roots are A/C/D and
+    # the generated gradient tuple must retain the physical center positions.
+    for center in (0, 2, 3):
+        for axis, coordinate in enumerate(AXES):
+            variable = f"{CENTERS[center]}_{coordinate}"
+            plus = dict(values)
+            minus = dict(values)
+            plus[variable] += 2.0e-6
+            minus[variable] -= 2.0e-6
+            numerical = (
+                evaluate_value(kernel, plus) - evaluate_value(kernel, minus)
+            ) / 4.0e-6
+            analytic = kernel.graph.evaluate(kernel.gradients[center][axis], values)
+            assert analytic == pytest.approx(numerical, rel=2.0e-8, abs=2.0e-9)
+    for axis in range(3):
+        recovered = kernel.graph.evaluate(kernel.gradients[1][axis], values)
+        independent_sum = sum(
+            kernel.graph.evaluate(kernel.gradients[center][axis], values)
+            for center in (0, 2, 3)
+        )
+        assert recovered == pytest.approx(-independent_sum, abs=2.0e-14)
+
+
 @pytest.mark.parametrize(
     ("d_component", "p_components"),
     (("xx", "xxx"), ("xy", "xyz"), ("zz", "zyx")),
