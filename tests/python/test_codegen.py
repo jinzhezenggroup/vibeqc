@@ -3481,6 +3481,10 @@ def test_codegen_capability_report_covers_catalog_and_manifest():
     assert rows["psss"]["recurrences"]["rys2"]["supported"] is True
     assert rows["dppp"]["recurrences"]["rys4"]["supported"] is True
     assert rows["dppp"]["recurrences"]["rys3"]["supported"] is False
+    assert rows["dppp"]["force_derivative_orders"]["1"]["supported"] is True
+    second_force = rows["dppp"]["force_derivative_orders"]["2"]
+    assert second_force["supported"] is False
+    assert "order-one derivatives" in second_force["reasons"][0]
     assert rows["fsps"]["production"]["force"] is False
     assert rows["dpps"]["production"]["force"] is True
     assert CAPABILITY_STREAMING_FOCK in rows["dpps"]["production"]["capabilities"]

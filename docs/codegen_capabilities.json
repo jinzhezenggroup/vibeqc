@@ -15,6 +15,25 @@
         0
       ],
       "component_count": 1,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -90,6 +109,25 @@
         0
       ],
       "component_count": 3,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -169,6 +207,25 @@
         0
       ],
       "component_count": 9,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -248,6 +305,25 @@
         0
       ],
       "component_count": 9,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -326,6 +402,23 @@
         0
       ],
       "component_count": 27,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -401,6 +494,23 @@
         1
       ],
       "component_count": 81,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -474,6 +584,25 @@
         0
       ],
       "component_count": 6,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "packed_tasks",
+            "shell_task",
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -552,6 +681,23 @@
         0
       ],
       "component_count": 18,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -627,6 +773,23 @@
         1
       ],
       "component_count": 54,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -701,6 +864,23 @@
         0
       ],
       "component_count": 36,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -776,6 +956,23 @@
         0
       ],
       "component_count": 18,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -850,6 +1047,23 @@
         0
       ],
       "component_count": 54,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -925,6 +1139,23 @@
         1
       ],
       "component_count": 162,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -997,6 +1228,23 @@
         0
       ],
       "component_count": 108,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -1069,6 +1317,23 @@
         1
       ],
       "component_count": 324,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -1141,6 +1406,23 @@
         0
       ],
       "component_count": 36,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -1216,6 +1498,23 @@
         0
       ],
       "component_count": 108,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -1289,6 +1588,23 @@
         1
       ],
       "component_count": 324,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -1361,6 +1677,23 @@
         0
       ],
       "component_count": 216,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -1434,6 +1767,23 @@
         1
       ],
       "component_count": 648,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -1506,6 +1856,22 @@
         2
       ],
       "component_count": 1296,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -1575,6 +1941,23 @@
         0
       ],
       "component_count": 10,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -1646,6 +2029,23 @@
         0
       ],
       "component_count": 30,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -1717,6 +2117,23 @@
         1
       ],
       "component_count": 90,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -1787,6 +2204,23 @@
         0
       ],
       "component_count": 60,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -1858,6 +2292,23 @@
         1
       ],
       "component_count": 180,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -1928,6 +2379,23 @@
         2
       ],
       "component_count": 360,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -1998,6 +2466,23 @@
         0
       ],
       "component_count": 100,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -2068,6 +2553,23 @@
         0
       ],
       "component_count": 30,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -2139,6 +2641,23 @@
         0
       ],
       "component_count": 90,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -2210,6 +2729,23 @@
         1
       ],
       "component_count": 270,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -2280,6 +2816,23 @@
         0
       ],
       "component_count": 180,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -2350,6 +2903,23 @@
         1
       ],
       "component_count": 540,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -2420,6 +2990,22 @@
         2
       ],
       "component_count": 1080,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -2486,6 +3072,23 @@
         0
       ],
       "component_count": 300,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -2556,6 +3159,23 @@
         1
       ],
       "component_count": 900,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -2626,6 +3246,23 @@
         0
       ],
       "component_count": 60,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "subgroup_tasks",
+            "component_lanes"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -2697,6 +3334,23 @@
         0
       ],
       "component_count": 180,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -2767,6 +3421,23 @@
         1
       ],
       "component_count": 540,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -2837,6 +3508,23 @@
         0
       ],
       "component_count": 360,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -2907,6 +3595,22 @@
         1
       ],
       "component_count": 1080,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -2973,6 +3677,22 @@
         2
       ],
       "component_count": 2160,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -3039,6 +3759,23 @@
         0
       ],
       "component_count": 600,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -3109,6 +3846,22 @@
         1
       ],
       "component_count": 1800,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -3175,6 +3928,22 @@
         2
       ],
       "component_count": 3600,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -3241,6 +4010,23 @@
         0
       ],
       "component_count": 100,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -3311,6 +4097,23 @@
         0
       ],
       "component_count": 300,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -3381,6 +4184,23 @@
         1
       ],
       "component_count": 900,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -3451,6 +4271,23 @@
         0
       ],
       "component_count": 600,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -3521,6 +4358,22 @@
         1
       ],
       "component_count": 1800,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -3587,6 +4440,22 @@
         2
       ],
       "component_count": 3600,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -3653,6 +4522,23 @@
         0
       ],
       "component_count": 1000,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "component_lanes",
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -3721,6 +4607,22 @@
         1
       ],
       "component_count": 3000,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -3787,6 +4689,22 @@
         2
       ],
       "component_count": 6000,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
@@ -3853,6 +4771,22 @@
         3
       ],
       "component_count": 10000,
+      "force_derivative_orders": {
+        "1": {
+          "reasons": [],
+          "schedules": [
+            "tiled_components"
+          ],
+          "supported": true
+        },
+        "2": {
+          "reasons": [
+            "current direct-force lowering requires order-one derivatives"
+          ],
+          "schedules": [],
+          "supported": false
+        }
+      },
       "generic_fused": {
         "reasons": [],
         "schedules": [
