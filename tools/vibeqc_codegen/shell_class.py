@@ -32,6 +32,9 @@ class PsssKernel:
     boys_argument: Expr
     value: Expr
     gradients: tuple[tuple[Expr, Expr, Expr], ...]
+    # Preserve the mathematical request for downstream emitters and oracles.
+    # ``None`` keeps direct dataclass construction source-compatible.
+    integral: IntegralIR | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,6 +48,8 @@ class DpppComponentKernel:
     boys_argument: Expr
     value: Expr
     gradients: tuple[tuple[Expr, Expr, Expr], ...]
+    # Keep explicit derivative/recovery intent attached to the lowered DAG.
+    integral: IntegralIR | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +79,9 @@ class ShellClassComponentKernel:
     boys_argument: Expr
     value: Expr
     gradients: tuple[tuple[Expr, Expr, Expr], ...]
+    # ``None`` preserves compatibility for callers that instantiate kernels
+    # directly; builders always attach the selected mathematical IR.
+    integral: IntegralIR | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,6 +94,7 @@ class ShellClassContractionKernel:
     variables: Mapping[str, Expr]
     value: Expr
     gradients: tuple[tuple[Expr, Expr, Expr], ...]
+    integral: IntegralIR | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,6 +112,7 @@ class WeightedShellContractionKernel:
     component_weights: tuple[Expr, ...]
     value: Expr
     gradients: tuple[tuple[Expr, Expr, Expr], ...]
+    integral: IntegralIR | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -602,6 +612,7 @@ def build_psss_kernel(
         boys_argument=boys_argument,
         value=value,
         gradients=gradients,
+        integral=selected_integral,
     )
 
 
@@ -757,6 +768,7 @@ def build_shell_class_component_kernel(
         boys_argument=boys_argument,
         value=value,
         gradients=gradients,
+        integral=selected_integral,
     )
 
 
@@ -769,10 +781,11 @@ def build_dppp_component_kernel(
     """Build one canonical ``(d p|p p)`` component via the generic compiler."""
 
     normalized = _validated_dppp_components(d_component, p_components)
+    selected_integral = integral or build_integral_ir(DPPP_SPEC)
     kernel = build_shell_class_component_kernel(
         DPPP_SPEC,
         (d_component, *normalized),
-        integral=integral,
+        integral=selected_integral,
     )
     return DpppComponentKernel(
         graph=kernel.graph,
@@ -782,6 +795,7 @@ def build_dppp_component_kernel(
         boys_argument=kernel.boys_argument,
         value=kernel.value,
         gradients=kernel.gradients,
+        integral=selected_integral,
     )
 
 
@@ -961,6 +975,7 @@ def build_shell_class_contraction_kernel(
         variables=variables,
         value=value,
         gradients=gradients,
+        integral=selected_integral,
     )
 
 
@@ -1093,6 +1108,7 @@ def build_weighted_shell_contraction_kernel(
         component_weights=component_weights,
         value=value,
         gradients=gradients,
+        integral=selected_integral,
     )
 
 
