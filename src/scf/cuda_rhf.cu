@@ -237,6 +237,12 @@ constexpr std::uint64_t kBoundedForceSignatureShellClassMask =
     (std::uint64_t{1} << kDdppShellClass) |
     (std::uint64_t{1} << kDddpShellClass) |
     (std::uint64_t{1} << kDdddShellClass);
+// ``ssss`` and ``psss`` remain on the validated handwritten force path.  In
+// bounded mode they use the same exact page stream as generated classes, so
+// neither class is accidentally hidden by the AOT force capability mask.
+constexpr std::uint64_t kBoundedNativePagedForceShellClassMask =
+    (std::uint64_t{1} << kSsssShellClass) |
+    (std::uint64_t{1} << kPsssShellClass);
 // The scalar PSPS and PPSS force workers assign one complete task to each
 // lane. Group both canonical pair loop lengths so a warp advances through
 // equal primitive work instead of serializing on the longest lane. Counts
@@ -12669,6 +12675,105 @@ void bounded_direct_dddd_streaming_kernel(
 }
 
 /**
+ * Bound the density factors for one exact pair-class page.
+ *
+ * Pair pages are sorted by Schwarz bound, so a fixed density upper bound lets
+ * the compactor stop at the first failing ket.  The previous implementation
+ * used the maximum over the whole system.  That is safe but particularly
+ * loose for force pages: a dense d/d pair could keep a sparse s/p page alive
+ * until its final ket.  The per-class maxima already maintained in the
+ * bounded topology are sufficient to tighten both the Fock and force tails.
+ * For exchange, enumerate both orientations of the low pair class; this is
+ * a conservative bound for every physical ket in that class while remaining
+ * independent of the ket row, and therefore preserves the monotonic break.
+ */
+struct BoundedPageDensityTails {
+  double fock{};
+  double force{};
+};
+
+__device__ __forceinline__ double bounded_page_class_density_bound(
+    const GeneratedShellPairStream& topology,
+    std::int32_t system,
+    unsigned pair_class) {
+  return pair_class < detail::kDirectShellPairClassCount
+      ? topology.system_pair_density_bounds[
+            static_cast<std::size_t>(system) *
+                detail::kDirectShellPairClassCount + pair_class]
+      : 0.0;
+}
+
+__device__ __forceinline__ BoundedPageDensityTails bounded_page_density_tails(
+    const DeviceBatch& batch,
+    const GeneratedShellPairStream& topology,
+    std::int32_t system,
+    std::uint32_t bra_pair,
+    unsigned high_pair_class,
+    unsigned low_pair_class) {
+  const bool has_pair_class_bounds =
+      topology.system_pair_density_bounds != nullptr;
+  const bool has_system_bound = topology.system_density_bounds != nullptr;
+  if (!has_pair_class_bounds) {
+    if (!has_system_bound) return {};
+    const double maximum = topology.system_density_bounds[system];
+    return {maximum, maximum * maximum};
+  }
+
+  const unsigned bra_first_shell = static_cast<unsigned>(
+      batch.shell_pair_first[bra_pair]);
+  const unsigned bra_second_shell = static_cast<unsigned>(
+      batch.shell_pair_second[bra_pair]);
+  const unsigned bra_first_angular = batch.shell_angular[bra_first_shell];
+  const unsigned bra_second_angular = batch.shell_angular[bra_second_shell];
+  const unsigned low_high = direct_triangular_class_high(low_pair_class);
+  const unsigned low_low = low_pair_class -
+      low_high * (low_high + 1U) / 2U;
+
+  double fock_maximum = fmax(
+      bounded_page_class_density_bound(topology, system, high_pair_class),
+      bounded_page_class_density_bound(topology, system, low_pair_class));
+  double force_maximum =
+      bounded_page_class_density_bound(topology, system, high_pair_class) *
+      bounded_page_class_density_bound(topology, system, low_pair_class);
+  // The pair-class maxima include both Coulomb and exchange density terms.
+  // RHF exchange carries a one-half coefficient, while UHF does not; using
+  // the larger UHF factor remains a valid conservative tail for both.
+  for (unsigned orientation = 0U; orientation < 2U; ++orientation) {
+    const unsigned ket_first_angular = orientation == 0U
+        ? low_high : low_low;
+    const unsigned ket_second_angular = orientation == 0U
+        ? low_low : low_high;
+    const unsigned ac = direct_shell_pair_class_cuda(
+        bra_first_angular, ket_first_angular);
+    const unsigned ad = direct_shell_pair_class_cuda(
+        bra_first_angular, ket_second_angular);
+    const unsigned bc = direct_shell_pair_class_cuda(
+        bra_second_angular, ket_first_angular);
+    const unsigned bd = direct_shell_pair_class_cuda(
+        bra_second_angular, ket_second_angular);
+    fock_maximum = fmax(
+        fock_maximum,
+        fmax(fmax(bounded_page_class_density_bound(
+                      topology, system, ac),
+                  bounded_page_class_density_bound(topology, system, ad)),
+             fmax(bounded_page_class_density_bound(
+                      topology, system, bc),
+                  bounded_page_class_density_bound(topology, system, bd))));
+    force_maximum = fmax(force_maximum,
+                         fmax(
+                             bounded_page_class_density_bound(
+                                 topology, system, ac) *
+                                 bounded_page_class_density_bound(
+                                     topology, system, bd),
+                             bounded_page_class_density_bound(
+                                 topology, system, ad) *
+                                 bounded_page_class_density_bound(
+                                     topology, system, bc)));
+  }
+  return {fock_maximum, force_maximum};
+}
+
+/**
  * Materialize one page of an overflowed exact class for its generated kernel.
  *
  * Page membership is determined by the unscreened candidate ordinal so every
@@ -12687,6 +12792,9 @@ __global__ void compact_bounded_exact_class_force_wave_kernel(
     double screening_tolerance,
     std::uint64_t page_begin,
     std::uint32_t page_capacity,
+    std::uint32_t bra_ordinal_begin,
+    std::uint32_t bra_ordinal_end,
+    bool same_pair_class,
     GeneratedShellTask* tasks,
     std::uint32_t* task_count,
     std::uint32_t* bra_head,
@@ -12704,22 +12812,35 @@ __global__ void compact_bounded_exact_class_force_wave_kernel(
       static_cast<std::size_t>(topology.batch_size) + 1U;
   const std::uint32_t bra_begin =
       topology.pair_class_offsets[high_pair_class * stride];
-  const std::uint32_t bra_end = topology.pair_class_offsets[
-      high_pair_class * stride + topology.batch_size];
   const auto* density_bounds =
       reinterpret_cast<const ShellPairDensityBounds*>(
           topology.shell_pair_density_bounds);
 
   while (true) {
-    if (threadIdx.x == 0U) bra_ordinal = atomicAdd(bra_head, 1U);
+    if (threadIdx.x == 0U) {
+      // ``bra_head`` is reset for every page.  Starting the scheduler at the
+      // first bra row that intersects this page avoids replaying all earlier
+      // rows when a class spans many pages.  The page range is conservative:
+      // the first row may begin before ``page_begin`` and the last row may
+      // extend beyond ``page_end``; the ket loop below clips both edges.
+      bra_ordinal = bra_ordinal_begin + atomicAdd(bra_head, 1U);
+    }
     __syncthreads();
-    if (bra_ordinal >= bra_end - bra_begin) return;
+    if (bra_ordinal >= bra_ordinal_end) return;
     const std::uint32_t bra_pair =
         topology.pair_order[bra_begin + bra_ordinal];
     const std::int32_t system = topology.shell_pair_systems[bra_pair];
     if (topology.active != nullptr && topology.active[system] == 0U) {
       continue;
     }
+    // This tail is fixed for the bra row and pair class.  Ket shell-pair
+    // bounds are descending, so a failure is a safe monotonic stop for the
+    // remainder of the page row.  Force uses the product bound for all J/K
+    // terms; Fock uses the largest single density factor.
+    const BoundedPageDensityTails page_density_tails =
+        bounded_page_density_tails(
+            batch, topology, system, bra_pair, high_pair_class,
+            low_pair_class);
     const std::uint32_t ket_begin = topology.pair_class_offsets[
         low_pair_class * stride + static_cast<std::size_t>(system)];
     const std::uint32_t ket_end = topology.pair_class_offsets[
@@ -12745,17 +12866,28 @@ __global__ void compact_bounded_exact_class_force_wave_kernel(
           topology.pair_class_offsets[
               low_pair_class * stride +
               static_cast<std::size_t>(previous) + 1U];
-      system_candidate_begin +=
-          static_cast<std::uint64_t>(previous_bra_end - previous_bra_begin) *
-          static_cast<std::uint64_t>(previous_ket_end - previous_ket_begin);
+      const std::uint64_t previous_bra_count = previous_bra_end -
+          previous_bra_begin;
+      const std::uint64_t previous_ket_count = previous_ket_end -
+          previous_ket_begin;
+      system_candidate_begin += same_pair_class
+          ? previous_bra_count * (previous_bra_count + 1U) / 2U
+          : previous_bra_count * previous_ket_count;
     }
-    // Candidate ordinals are contiguous first by system, then by bra pair.
-    // Restrict each page to the bra/ket rectangle that intersects its ordinal
-    // interval; otherwise every page would rescan all bra rows and turn a
-    // bounded queue into an O(number_of_pages * topology) traversal.
-    const std::uint64_t bra_candidate_begin =
-        system_candidate_begin + bra_local * ket_count;
-    const std::uint64_t bra_candidate_end = bra_candidate_begin + ket_count;
+    // Candidate ordinals are contiguous first by system, then by bra pair;
+    // same-class streams pack each bra row as a lower-triangle row. Restrict
+    // each page to the bra/ket rows that intersect its ordinal interval;
+    // otherwise every page would rescan all bra rows and turn a bounded queue
+    // into an O(number_of_pages * topology) traversal.
+    const std::uint64_t bra_candidate_begin = system_candidate_begin +
+        (same_pair_class
+             ? bra_local * (bra_local + 1U) / 2U
+             : bra_local * ket_count);
+    const std::uint64_t row_candidate_count = same_pair_class
+        ? bra_local + 1U
+        : ket_count;
+    const std::uint64_t bra_candidate_end = bra_candidate_begin +
+        row_candidate_count;
     const std::uint64_t page_end = page_begin + page_capacity;
     if (bra_candidate_end <= page_begin) continue;
     if (bra_candidate_begin >= page_end) return;
@@ -12766,35 +12898,31 @@ __global__ void compact_bounded_exact_class_force_wave_kernel(
     const std::uint64_t last_page_offset =
         page_end < bra_candidate_end
         ? page_end - bra_candidate_begin
-        : ket_count;
+        : row_candidate_count;
     const std::uint32_t ket_first = ket_begin + static_cast<std::uint32_t>(
         first_page_offset);
     const std::uint32_t ket_last = ket_begin + static_cast<std::uint32_t>(
         last_page_offset);
-    const bool has_system_density_bound =
+    const bool has_density_bound =
+        topology.system_pair_density_bounds != nullptr ||
         topology.system_density_bounds != nullptr;
-    const double system_density_bound = has_system_density_bound
-        ? topology.system_density_bounds[system]
-        : 0.0;
     for (std::uint32_t ket_ordinal = ket_first + threadIdx.x;
          ket_ordinal < ket_last; ket_ordinal += blockDim.x) {
       const std::uint32_t ket_pair = topology.pair_order[ket_ordinal];
       const double quartet_bound = topology.shell_pair_bounds[bra_pair] *
           topology.shell_pair_bounds[ket_pair];
-      if (has_system_density_bound &&
-          quartet_bound * system_density_bound < screening_tolerance) {
-        break;
-      }
       if constexpr (Purpose == DirectScreeningPurpose::Force) {
         const double force_tolerance = fmin(
             screening_tolerance, kForceDensityProductScreeningTolerance);
-        if (has_system_density_bound &&
-            quartet_bound * system_density_bound * system_density_bound <
+        if (has_density_bound && quartet_bound * page_density_tails.force <
                 force_tolerance) {
           break;
         }
+      } else if (has_density_bound &&
+                 quartet_bound * page_density_tails.fock <
+                     screening_tolerance) {
+        break;
       }
-      if (high_pair_class == low_pair_class && bra_pair < ket_pair) continue;
       if (!direct_shell_quartet_survives_screening<Unrestricted, Purpose>(
               batch, bra_pair, ket_pair, screening_tolerance,
               topology.shell_pair_bounds, density_bounds)) {
@@ -12813,6 +12941,150 @@ __global__ void compact_bounded_exact_class_force_wave_kernel(
       }
       populate_generated_shell_task(
           batch, {bra_pair, ket_pair, 0U}, tasks[ordinal]);
+    }
+    __syncthreads();
+  }
+}
+
+/**
+ * Consume one paged exact class through the handwritten low-order force path.
+ *
+ * The production AOT bundle deliberately does not advertise generated
+ * ``ssss``/``psss`` force consumers; their validated implementations are the
+ * scalar handwritten contractions below.  Bounded streaming still needs to
+ * avoid the topology-wide fallback, so enumerate only the page's exact
+ * shell-pair rectangle and contract each surviving low-order quartet in place.
+ */
+template <bool Unrestricted, DirectScreeningPurpose Purpose>
+__global__ void contract_bounded_exact_low_order_force_page_kernel(
+    DeviceBatch batch,
+    const GeneratedShellPairStream* topology_pointer,
+    unsigned shell_class,
+    unsigned high_pair_class,
+    unsigned low_pair_class,
+    double screening_tolerance,
+    std::uint64_t page_begin,
+    std::uint32_t page_capacity,
+    std::uint32_t bra_ordinal_begin,
+    std::uint32_t bra_ordinal_end,
+    bool same_pair_class,
+    const double* schwarz_bounds,
+    const double* density,
+    double* forces,
+    std::uint32_t* bra_head) {
+  __shared__ std::uint32_t bra_ordinal;
+  if (shell_class != kSsssShellClass && shell_class != kPsssShellClass) {
+    return;
+  }
+  const GeneratedShellPairStream& topology = *topology_pointer;
+  const std::size_t stride =
+      static_cast<std::size_t>(topology.batch_size) + 1U;
+  const std::uint32_t bra_begin = topology.pair_class_offsets[
+      high_pair_class * stride];
+  const auto* density_bounds = reinterpret_cast<const ShellPairDensityBounds*>(
+      topology.shell_pair_density_bounds);
+
+  while (true) {
+    if (threadIdx.x == 0U) {
+      bra_ordinal = bra_ordinal_begin + atomicAdd(bra_head, 1U);
+    }
+    __syncthreads();
+    if (bra_ordinal >= bra_ordinal_end) return;
+
+    const std::uint32_t bra_pair =
+        topology.pair_order[bra_begin + bra_ordinal];
+    const std::int32_t system = topology.shell_pair_systems[bra_pair];
+    if (topology.active != nullptr && topology.active[system] == 0U) {
+      continue;
+    }
+    const std::uint32_t ket_begin = topology.pair_class_offsets[
+        low_pair_class * stride + static_cast<std::size_t>(system)];
+    const std::uint32_t ket_end = topology.pair_class_offsets[
+        low_pair_class * stride + static_cast<std::size_t>(system) + 1U];
+    const std::uint32_t system_bra_begin = topology.pair_class_offsets[
+        high_pair_class * stride + static_cast<std::size_t>(system)];
+    const std::uint64_t bra_local =
+        bra_begin + bra_ordinal - system_bra_begin;
+    const std::uint64_t ket_count = ket_end - ket_begin;
+    std::uint64_t system_candidate_begin = 0U;
+    for (std::int32_t previous = 0; previous < system; ++previous) {
+      const std::uint32_t previous_bra_begin = topology.pair_class_offsets[
+          high_pair_class * stride + static_cast<std::size_t>(previous)];
+      const std::uint32_t previous_bra_end = topology.pair_class_offsets[
+          high_pair_class * stride + static_cast<std::size_t>(previous) + 1U];
+      const std::uint32_t previous_ket_begin = topology.pair_class_offsets[
+          low_pair_class * stride + static_cast<std::size_t>(previous)];
+      const std::uint32_t previous_ket_end = topology.pair_class_offsets[
+          low_pair_class * stride + static_cast<std::size_t>(previous) + 1U];
+      const std::uint64_t previous_bra_count =
+          previous_bra_end - previous_bra_begin;
+      const std::uint64_t previous_ket_count =
+          previous_ket_end - previous_ket_begin;
+      system_candidate_begin += same_pair_class
+          ? previous_bra_count * (previous_bra_count + 1U) / 2U
+          : previous_bra_count * previous_ket_count;
+    }
+    const std::uint64_t bra_candidate_begin = system_candidate_begin +
+        (same_pair_class
+             ? bra_local * (bra_local + 1U) / 2U
+             : bra_local * ket_count);
+    const std::uint64_t row_candidate_count = same_pair_class
+        ? bra_local + 1U
+        : ket_count;
+    const std::uint64_t bra_candidate_end =
+        bra_candidate_begin + row_candidate_count;
+    const std::uint64_t page_end = page_begin + page_capacity;
+    if (bra_candidate_end <= page_begin) continue;
+    if (bra_candidate_begin >= page_end) return;
+    const std::uint64_t first_page_offset = page_begin > bra_candidate_begin
+        ? page_begin - bra_candidate_begin
+        : 0U;
+    const std::uint64_t last_page_offset = page_end < bra_candidate_end
+        ? page_end - bra_candidate_begin
+        : row_candidate_count;
+    const std::uint32_t ket_first = ket_begin + static_cast<std::uint32_t>(
+        first_page_offset);
+    const std::uint32_t ket_last = ket_begin + static_cast<std::uint32_t>(
+        last_page_offset);
+    const BoundedPageDensityTails page_density_tails =
+        bounded_page_density_tails(
+            batch, topology, system, bra_pair, high_pair_class,
+            low_pair_class);
+    const bool has_density_bound =
+        topology.system_pair_density_bounds != nullptr ||
+        topology.system_density_bounds != nullptr;
+    for (std::uint32_t ket_ordinal = ket_first + threadIdx.x;
+         ket_ordinal < ket_last; ket_ordinal += blockDim.x) {
+      const std::uint32_t ket_pair = topology.pair_order[ket_ordinal];
+      const double quartet_bound = topology.shell_pair_bounds[bra_pair] *
+          topology.shell_pair_bounds[ket_pair];
+      if constexpr (Purpose == DirectScreeningPurpose::Force) {
+        const double force_tolerance = fmin(
+            screening_tolerance, kForceDensityProductScreeningTolerance);
+        if (has_density_bound && quartet_bound * page_density_tails.force <
+                force_tolerance) {
+          break;
+        }
+      } else if (has_density_bound &&
+                 quartet_bound * page_density_tails.fock <
+                     screening_tolerance) {
+        break;
+      }
+      if (!direct_shell_quartet_survives_screening<Unrestricted, Purpose>(
+              batch, bra_pair, ket_pair, screening_tolerance,
+              topology.shell_pair_bounds, density_bounds)) {
+        continue;
+      }
+      const ActiveShellQuartetTile task{bra_pair, ket_pair, 0U};
+      if (shell_class == kSsssShellClass) {
+        contract_two_electron_force_ssss_task<Unrestricted>(
+            batch, task, screening_tolerance, schwarz_bounds,
+            density, topology.active, forces, 0U);
+      } else {
+        contract_two_electron_force_psss_task<Unrestricted>(
+            batch, task, screening_tolerance, schwarz_bounds,
+            density, topology.active, forces, 0U);
+      }
     }
     __syncthreads();
   }
@@ -16032,6 +16304,132 @@ bool make_bounded_stream_shell_pair_order(
   return pair_order.size() == host.shell_pair_first.size();
 }
 
+/**
+ * Resolve one bounded generated page to the bra rows it can intersect.
+ *
+ * Generated force pages are ordered by system, then by bra shell pair, then
+ * by ket shell pair.  The old page kernel restarted its bra scheduler at zero
+ * for every page and discarded the prefix with a bounds check.  On a large
+ * class this turned a bounded page stream into repeated O(N_pair) work.  The
+ * host already owns the class-major pair offsets, so derive the first and
+ * last relevant bra rows once per page and pass that narrow range to CUDA.
+ * Same-class products use the packed lower triangle directly, while mixed
+ * pair classes retain their rectangular stream. This keeps page boundaries
+ * disjoint without materializing a second class-specific index array.
+ */
+struct BoundedGeneratedPageRange {
+  std::uint64_t candidate_count{};
+  std::uint32_t bra_begin{};
+  std::uint32_t bra_end{};
+};
+
+/** Return the row containing one packed lower-triangle ordinal. */
+std::uint64_t bounded_lower_triangle_row(
+    std::uint64_t ordinal, std::uint64_t row_count) {
+  std::uint64_t lower = 0U;
+  std::uint64_t upper = row_count;
+  while (lower < upper) {
+    const std::uint64_t middle = lower + (upper - lower) / 2U;
+    if (middle * (middle + 1U) / 2U <= ordinal) {
+      lower = middle + 1U;
+    } else {
+      upper = middle;
+    }
+  }
+  return lower == 0U ? 0U : lower - 1U;
+}
+
+/** Return the number of triangle rows whose start is below a prefix. */
+std::uint64_t bounded_lower_triangle_row_end(
+    std::uint64_t prefix, std::uint64_t row_count) {
+  std::uint64_t lower = 0U;
+  std::uint64_t upper = row_count;
+  while (lower < upper) {
+    const std::uint64_t middle = lower + (upper - lower) / 2U;
+    if (middle * (middle + 1U) / 2U < prefix) {
+      lower = middle + 1U;
+    } else {
+      upper = middle;
+    }
+  }
+  return lower;
+}
+
+BoundedGeneratedPageRange bounded_generated_page_range(
+    const std::vector<std::uint32_t>& pair_class_offsets,
+    std::size_t batch_size,
+    unsigned high_pair_class,
+    unsigned low_pair_class,
+    std::uint64_t page_begin,
+    std::uint32_t page_capacity) {
+  const std::size_t stride = batch_size + 1U;
+  const std::uint64_t page_end =
+      page_begin > std::numeric_limits<std::uint64_t>::max() -
+              static_cast<std::uint64_t>(page_capacity)
+          ? std::numeric_limits<std::uint64_t>::max()
+          : page_begin + static_cast<std::uint64_t>(page_capacity);
+  std::uint64_t candidate_cursor = 0U;
+  std::uint64_t bra_cursor = 0U;
+  bool found_begin = false;
+  std::uint64_t bra_begin = 0U;
+  std::uint64_t bra_end = 0U;
+  for (std::size_t system = 0; system < batch_size; ++system) {
+    const std::uint32_t high_begin = pair_class_offsets[
+        high_pair_class * stride + system];
+    const std::uint32_t high_end = pair_class_offsets[
+        high_pair_class * stride + system + 1U];
+    const std::uint32_t low_begin = pair_class_offsets[
+        low_pair_class * stride + system];
+    const std::uint32_t low_end = pair_class_offsets[
+        low_pair_class * stride + system + 1U];
+    const std::uint64_t high_count = high_end - high_begin;
+    const std::uint64_t low_count = low_end - low_begin;
+    const bool same_pair_class = high_pair_class == low_pair_class;
+    const std::uint64_t system_candidates = same_pair_class
+        ? high_count * (high_count + 1U) / 2U
+        : high_count * low_count;
+    if (system_candidates == 0U) {
+      bra_cursor += high_count;
+      continue;
+    }
+
+    const std::uint64_t system_end = candidate_cursor + system_candidates;
+    if (!found_begin && page_begin < system_end) {
+      const std::uint64_t local_begin = page_begin > candidate_cursor
+          ? page_begin - candidate_cursor
+          : 0U;
+      const std::uint64_t local_bra = same_pair_class
+          ? bounded_lower_triangle_row(local_begin, high_count)
+          : local_begin / low_count;
+      bra_begin = bra_cursor + std::min(high_count, local_bra);
+      found_begin = true;
+    }
+    if (found_begin && bra_end == 0U && page_end > candidate_cursor) {
+      const std::uint64_t local_end = std::min(
+          system_candidates, page_end - candidate_cursor);
+      // ``ceil`` keeps a row whose final ket falls inside the page.  The
+      // exact ket loop clips the row to the page interval below.
+      const std::uint64_t rows_end = same_pair_class
+          ? bounded_lower_triangle_row_end(local_end, high_count)
+          : std::min(high_count, (local_end + low_count - 1U) / low_count);
+      bra_end = bra_cursor + rows_end;
+    }
+    candidate_cursor = system_end;
+    bra_cursor += high_count;
+  }
+  if (!found_begin) {
+    bra_begin = bra_cursor;
+    bra_end = bra_cursor;
+  } else if (bra_end == 0U) {
+    bra_end = bra_cursor;
+  }
+  return {
+      candidate_cursor,
+      static_cast<std::uint32_t>(bra_begin),
+      static_cast<std::uint32_t>(bra_end),
+  };
+}
+
 std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     CudaRhfBucketPlan& plan,
     const HostBatch& host,
@@ -17708,11 +18106,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       }
       const unsigned low_pair_class = shell_class -
           high_pair_class * (high_pair_class + 1U) / 2U;
-      const std::uint64_t page_domain =
-          plan.bounded_generated_task_upper_bounds[shell_class] *
-          (high_pair_class == low_pair_class ? 2U : 1U);
+      const std::uint64_t page_domain = bounded_generated_page_range(
+          plan.bounded_stream_pair_class_offsets, plan.batch_size,
+          high_pair_class, low_pair_class, 0U, page_capacity).candidate_count;
       for (std::uint64_t page_begin = 0U;
            page_begin < page_domain; page_begin += page_capacity) {
+        const BoundedGeneratedPageRange page_range =
+            bounded_generated_page_range(
+                plan.bounded_stream_pair_class_offsets, plan.batch_size,
+                high_pair_class, low_pair_class, page_begin, page_capacity);
+        if (page_range.bra_begin >= page_range.bra_end) continue;
         cudaError_t error = cudaMemsetAsync(
             bounded_direct_generated_task_counts + shell_class, 0,
             sizeof(std::uint32_t), resources.stream_);
@@ -17735,7 +18138,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                 kBoundedDirectThreads, 0, resources.stream_>>>(            \
             device_batch, bounded_stream_topology, shell_class,           \
             high_pair_class, low_pair_class, options.screening_tolerance, \
-            page_begin, page_capacity, bounded_direct_generated_tasks,     \
+            page_begin, page_capacity, page_range.bra_begin,             \
+            page_range.bra_end, high_pair_class == low_pair_class,        \
+            bounded_direct_generated_tasks,                               \
             bounded_direct_generated_task_counts + shell_class,           \
             bounded_direct_generated_task_heads + shell_class, nullptr,   \
             true, nullptr, nullptr)
@@ -19110,11 +19515,17 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   }
   const std::uint64_t explicit_generated_force_shell_class_mask =
       generated::enabled_shell_class_mask() & host_present_shell_class_mask;
+  const std::uint64_t bounded_native_paged_force_shell_class_mask =
+      bounded_direct_streaming
+      ? host_present_shell_class_mask & kBoundedNativePagedForceShellClassMask &
+            ~explicit_generated_force_shell_class_mask
+      : 0U;
   const std::uint64_t selected_force_shell_class_mask =
       (explicit_generated_force_shell_class_mask |
        (bounded_direct_streaming
             ? generated::enabled_fock_shell_class_mask() &
-                  kStreamingFockShellClassMask
+                  kStreamingFockShellClassMask &
+                  ~kBoundedNativePagedForceShellClassMask
             : 0U)) &
       host_present_shell_class_mask;
   const std::uint64_t native_streaming_force_shell_class_mask =
@@ -19139,12 +19550,13 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       generated_queued_force_shell_class_mask &
       ~bounded_paged_force_shell_class_mask;
   const std::uint64_t covered_force_shell_class_mask =
-      generated_shell_class_mask | native_streaming_force_shell_class_mask;
+      generated_shell_class_mask | native_streaming_force_shell_class_mask |
+      bounded_native_paged_force_shell_class_mask;
   const std::uint64_t uncovered_force_shell_class_mask =
       host_present_shell_class_mask & ~covered_force_shell_class_mask;
   std::size_t bounded_force_kernel_count = 0;
   const generated::ShellKernelMetadata* bounded_force_kernels =
-      generated::selected_fock_shell_kernels(bounded_force_kernel_count);
+      generated::selected_shell_kernels(bounded_force_kernel_count);
   const auto launch_bounded_generated_force =
       [&](bool is_unrestricted,
           DirectScreeningPurpose purpose,
@@ -19359,6 +19771,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       [&](bool is_unrestricted,
           DirectScreeningPurpose purpose,
           const double* quartet_density) -> cudaError_t {
+    // This routine is the normal force queue, despite the historical
+    // ``overflow`` name.  Every generated force class is enumerated exactly
+    // once in disjoint candidate pages; the optional signature pass only
+    // changes task order within a page for lockstep consumers.
     for (std::size_t kernel_index = 0;
          kernel_index < bounded_force_kernel_count; ++kernel_index) {
       const unsigned shell_class =
@@ -19380,11 +19796,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       const bool signature_paged =
           (bounded_paged_force_shell_class_mask &
            (std::uint64_t{1} << shell_class)) != 0U;
-      const std::uint64_t page_domain =
-          plan.bounded_generated_task_upper_bounds[shell_class] *
-          (high_pair_class == low_pair_class ? 2U : 1U);
+      const std::uint64_t page_domain = bounded_generated_page_range(
+          plan.bounded_stream_pair_class_offsets, plan.batch_size,
+          high_pair_class, low_pair_class, 0U, page_capacity).candidate_count;
       for (std::uint64_t page_begin = 0U;
            page_begin < page_domain; page_begin += page_capacity) {
+        const BoundedGeneratedPageRange page_range =
+            bounded_generated_page_range(
+                plan.bounded_stream_pair_class_offsets, plan.batch_size,
+                high_pair_class, low_pair_class, page_begin, page_capacity);
+        if (page_range.bra_begin >= page_range.bra_end) continue;
         cudaError_t error = cudaMemsetAsync(
             bounded_direct_generated_task_counts + shell_class, 0,
             sizeof(std::uint32_t), resources.stream_);
@@ -19417,7 +19838,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
             kBoundedDirectThreads, 0, resources.stream_>>>(               \
         device_batch, bounded_stream_topology, shell_class,               \
         high_pair_class, low_pair_class, options.screening_tolerance,     \
-        page_begin, page_capacity, bounded_direct_generated_tasks,        \
+        page_begin, page_capacity, page_range.bra_begin,                  \
+        page_range.bra_end, high_pair_class == low_pair_class,             \
+        bounded_direct_generated_tasks,                                    \
         bounded_direct_generated_task_counts + shell_class,               \
         bounded_direct_generated_task_heads + shell_class,                \
         bounded_direct_generated_overflow, force_execution,               \
@@ -19551,6 +19974,76 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
 #undef VIBEQC_LAUNCH_NATIVE_DDDD_FORCE
     return cudaPeekAtLastError();
   };
+  const auto launch_bounded_paged_native_force =
+      [&](bool is_unrestricted,
+          DirectScreeningPurpose purpose,
+          const double* quartet_density) -> cudaError_t {
+    const std::uint64_t native_mask =
+        bounded_native_paged_force_shell_class_mask;
+    if (native_mask == 0U) return cudaSuccess;
+    const std::uint32_t page_capacity = static_cast<std::uint32_t>(
+        plan.bounded_generated_task_capacity);
+    if (page_capacity == 0U) return cudaErrorInvalidValue;
+    for (unsigned shell_class = kSsssShellClass;
+         shell_class <= kPsssShellClass; ++shell_class) {
+      if ((native_mask & (std::uint64_t{1} << shell_class)) == 0U) {
+        continue;
+      }
+      const unsigned high_pair_class = shell_class == kSsssShellClass
+          ? 0U
+          : 1U;
+      const unsigned low_pair_class = shell_class == kSsssShellClass
+          ? 0U
+          : 0U;
+      const std::uint64_t page_domain = bounded_generated_page_range(
+          plan.bounded_stream_pair_class_offsets, plan.batch_size,
+          high_pair_class, low_pair_class, 0U, page_capacity).candidate_count;
+      for (std::uint64_t page_begin = 0U;
+           page_begin < page_domain; page_begin += page_capacity) {
+        const BoundedGeneratedPageRange page_range =
+            bounded_generated_page_range(
+                plan.bounded_stream_pair_class_offsets, plan.batch_size,
+                high_pair_class, low_pair_class, page_begin, page_capacity);
+        if (page_range.bra_begin >= page_range.bra_end) continue;
+        cudaError_t error = cudaMemsetAsync(
+            bounded_direct_generated_task_heads + shell_class, 0,
+            sizeof(std::uint32_t), resources.stream_);
+        if (error != cudaSuccess) return error;
+#define VIBEQC_LAUNCH_BOUNDED_NATIVE_PAGE(unrestricted_value, purpose_value) \
+        contract_bounded_exact_low_order_force_page_kernel<                 \
+            unrestricted_value, purpose_value><<<                           \
+                plan.persistent_quartet_worker_blocks,                     \
+                kBoundedDirectThreads, 0, resources.stream_>>>(              \
+            device_batch, bounded_stream_topology, shell_class,             \
+            high_pair_class, low_pair_class, options.screening_tolerance,   \
+            page_begin, page_capacity, page_range.bra_begin,                \
+            page_range.bra_end, high_pair_class == low_pair_class,           \
+            schwarz_bounds, quartet_density, forces,                         \
+            bounded_direct_generated_task_heads + shell_class)
+        if (purpose == DirectScreeningPurpose::Force) {
+          if (is_unrestricted) {
+            VIBEQC_LAUNCH_BOUNDED_NATIVE_PAGE(
+                true, DirectScreeningPurpose::Force);
+          } else {
+            VIBEQC_LAUNCH_BOUNDED_NATIVE_PAGE(
+                false, DirectScreeningPurpose::Force);
+          }
+        } else {
+          if (is_unrestricted) {
+            VIBEQC_LAUNCH_BOUNDED_NATIVE_PAGE(
+                true, DirectScreeningPurpose::Fock);
+          } else {
+            VIBEQC_LAUNCH_BOUNDED_NATIVE_PAGE(
+                false, DirectScreeningPurpose::Fock);
+          }
+        }
+#undef VIBEQC_LAUNCH_BOUNDED_NATIVE_PAGE
+        error = cudaPeekAtLastError();
+        if (error != cudaSuccess) return error;
+      }
+    }
+    return cudaSuccess;
+  };
   const auto launch_bounded_force =
       [&](bool is_unrestricted,
           DirectScreeningPurpose purpose,
@@ -19562,10 +20055,20 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     if (uncovered_force_shell_class_mask != 0U) {
       return cudaErrorNotSupported;
     }
-    cudaError_t error = launch_bounded_generated_force(
+    // Force pages are the lossless queue for every generated force class.
+    // Unlike Fock, force consumers have several independent density-product
+    // and derivative schedules; mixing a first/retry arena with the page
+    // stream would replay the first wave when the page loop starts at ordinal
+    // zero.  Keep the legacy compactor only for its explicit count diagnostic,
+    // and route normal execution directly through disjoint exact pages.
+    if (bounded_direct_count_diagnostic) {
+      return launch_bounded_generated_force(
+          is_unrestricted, purpose, quartet_density);
+    }
+    cudaError_t error = launch_bounded_overflow_force(
         is_unrestricted, purpose, quartet_density);
-    if (error != cudaSuccess || bounded_direct_count_diagnostic) return error;
-    error = launch_bounded_overflow_force(
+    if (error != cudaSuccess) return error;
+    error = launch_bounded_paged_native_force(
         is_unrestricted, purpose, quartet_density);
     if (error != cudaSuccess) return error;
     error = launch_bounded_native_force(
