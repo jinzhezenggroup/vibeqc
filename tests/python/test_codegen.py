@@ -3472,6 +3472,23 @@ def test_bounded_streaming_fock_forwards_mixed_precision_policy():
     assert "launch_fock_builder(density, false)" in source
 
 
+def test_bounded_streaming_uses_monotonic_system_density_tail():
+    """Prune large class segments with a conservative density coarse bound."""
+
+    topology = (
+        REPOSITORY_ROOT / "src" / "scf" / "generated_shell_task.hpp"
+    ).read_text(encoding="utf-8")
+    generator = (
+        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "production.py"
+    ).read_text(encoding="utf-8")
+    assert "const double* system_density_bounds" in topology
+    assert "const double* system_pair_density_bounds" in topology
+    assert "const std::uint32_t* generated_overflow" in topology
+    assert "topology.system_pair_density_bounds[" in generator
+    assert "system_density_bound < screening_tolerance" in generator
+    assert "topology.generated_overflow[{shell_class}U]" in generator
+
+
 def test_generated_order2_fock_masks_handwritten_fallback():
     """Prevent generated order-two Fock quartets from being scattered twice."""
 

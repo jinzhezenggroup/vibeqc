@@ -1143,6 +1143,26 @@ def _streaming_fock_source(selection: KernelSelection) -> str:
     second_pair_class = shell_pair_class(*spec.angular[2:])
     high_pair_class = max(first_pair_class, second_pair_class)
     low_pair_class = min(first_pair_class, second_pair_class)
+    shell_class = shell_class_index(selection.spec)
+    first_angular, second_angular, third_angular, fourth_angular = spec.angular
+    density_pair_classes = tuple(dict.fromkeys((
+        first_pair_class,
+        second_pair_class,
+        shell_pair_class(first_angular, third_angular),
+        shell_pair_class(first_angular, fourth_angular),
+        shell_pair_class(second_angular, third_angular),
+        shell_pair_class(second_angular, fourth_angular),
+    )))
+    system_density_bound = "topology.system_pair_density_bounds[" \
+        "static_cast<std::size_t>(system) * 10U + " \
+        f"{density_pair_classes[0]}U]"
+    for pair_class in density_pair_classes[1:]:
+        system_density_bound = (
+            f"fmax({system_density_bound}, "
+            "topology.system_pair_density_bounds["
+            "static_cast<std::size_t>(system) * 10U + "
+            f"{pair_class}U])"
+        )
     prefix = f"generated_{spec.name}"
     supports_mixed_fock = selection.has_capability(CAPABILITY_MIXED_FOCK)
     retained_state = (
@@ -1340,6 +1360,8 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
 {state_declarations}
   __shared__ std::uint32_t bra_ordinal;
   const auto& topology = *topology_pointer;
+  if (topology.generated_overflow != nullptr &&
+      topology.generated_overflow[{shell_class}U] == 0U) return;
   const std::size_t stride = static_cast<std::size_t>(topology.batch_size) + 1U;
   const std::uint32_t bra_begin = topology.pair_class_offsets[
       {high_pair_class}U * stride];
@@ -1356,6 +1378,7 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
         {low_pair_class}U * stride + system];
     const std::uint32_t ket_end = topology.pair_class_offsets[
         {low_pair_class}U * stride + system + 1U];
+    const double system_density_bound = {system_density_bound};
     for (std::uint32_t ket_base = ket_begin; ket_base < ket_end;
          ket_base += 32U) {{
       const std::uint32_t ket_ordinal = ket_base + threadIdx.x;
@@ -1365,10 +1388,12 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
         ket_pair = topology.pair_order[ket_ordinal];
         past_schwarz_tail =
             topology.shell_pair_bounds[bra_pair] *
-                topology.shell_pair_bounds[ket_pair] < screening_tolerance;
+                topology.shell_pair_bounds[ket_pair] *
+                system_density_bound < screening_tolerance;
       }}
-      // Every class/system ket segment is Schwarz-descending.  Once a whole
-      // warp is below the geometry-only gate, no later ket can survive.
+      // Every class/system ket segment is Schwarz-descending.  The system
+      // density maximum makes this a conservative monotonic coarse gate, so
+      // once a whole warp is below it no later ket can survive.
       if (__all_sync(0xffffffffU, past_schwarz_tail)) break;
       bool keep = !past_schwarz_tail;
       if (keep) {{
@@ -1440,6 +1465,8 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
   const unsigned subgroup_mask =
       0x{subgroup_mask:08x}U << (subgroup_in_warp * {subgroup_lanes}U);
   const auto& topology = *topology_pointer;
+  if (topology.generated_overflow != nullptr &&
+      topology.generated_overflow[{shell_class}U] == 0U) return;
   const std::size_t stride = static_cast<std::size_t>(topology.batch_size) + 1U;
   const std::uint32_t bra_begin = topology.pair_class_offsets[
       {high_pair_class}U * stride];
@@ -1456,18 +1483,20 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
         {low_pair_class}U * stride + system];
     const std::uint32_t ket_end = topology.pair_class_offsets[
         {low_pair_class}U * stride + system + 1U];
+    const double system_density_bound = {system_density_bound};
     for (std::uint32_t ket_base = ket_begin; ket_base < ket_end;
          ket_base += {tasks_per_block}U) {{
       if (lane == 0U) {{
         const std::uint32_t ket_ordinal = ket_base + subgroup;
-        // State 2 marks the monotonic Schwarz tail, 1 retained work, and 0
-        // an exact-density or canonical-triangle rejection.
+        // State 2 marks the monotonic Schwarz/density tail, 1 retained work,
+        // and 0 an exact-density or canonical-triangle rejection.
         std::uint32_t state = 2U;
         if (ket_ordinal < ket_end) {{
           const std::uint32_t ket_pair = topology.pair_order[ket_ordinal];
           const bool past_schwarz_tail =
               topology.shell_pair_bounds[bra_pair] *
-                  topology.shell_pair_bounds[ket_pair] < screening_tolerance;
+                  topology.shell_pair_bounds[ket_pair] *
+                  system_density_bound < screening_tolerance;
           bool keep = !past_schwarz_tail;
           if (keep &&
               {str(high_pair_class == low_pair_class).lower()}) {{
@@ -1544,6 +1573,8 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
   __shared__ std::uint32_t candidate_ordinal;
   __shared__ std::uint32_t stream_state;
   const auto& topology = *topology_pointer;
+  if (topology.generated_overflow != nullptr &&
+      topology.generated_overflow[{shell_class}U] == 0U) return;
   const std::size_t stride = static_cast<std::size_t>(topology.batch_size) + 1U;
   while (true) {{
     if (threadIdx.x == 0U) {{
@@ -1586,11 +1617,17 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
             high_begin + static_cast<std::uint32_t>(high_local)];
         const std::uint32_t ket_pair = topology.pair_order[
             low_begin + static_cast<std::uint32_t>(low_local)];
+        const bool past_schwarz_tail =
+            topology.shell_pair_bounds[bra_pair] *
+                topology.shell_pair_bounds[ket_pair] *
+                {system_density_bound} < screening_tolerance;
         double contribution_bound = 0.0;
-        const bool keep = {prefix}_stream_survives<Unrestricted>(
-            topology, bra_pair, ket_pair, screening_tolerance,
-            &contribution_bound);
+        const bool keep = !past_schwarz_tail &&
+            {prefix}_stream_survives<Unrestricted>(
+                topology, bra_pair, ket_pair, screening_tolerance,
+                &contribution_bound);
         stream_state = keep ? {retained_state} : 0U;
+        if (past_schwarz_tail) stream_state = 2U;
         if (keep) {{
           {prefix}_stream_populate_task(
               topology, bra_pair, ket_pair, stream_task[0]);
@@ -1634,6 +1671,8 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
   __shared__ std::uint32_t stream_state;
   __shared__ std::uint32_t bra_ordinal;
   const auto& topology = *topology_pointer;
+  if (topology.generated_overflow != nullptr &&
+      topology.generated_overflow[{shell_class}U] == 0U) return;
   const std::size_t stride = static_cast<std::size_t>(topology.batch_size) + 1U;
   const std::uint32_t bra_begin = topology.pair_class_offsets[
       {high_pair_class}U * stride];
@@ -1650,13 +1689,15 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
         {low_pair_class}U * stride + system];
     const std::uint32_t ket_end = topology.pair_class_offsets[
         {low_pair_class}U * stride + system + 1U];
+    const double system_density_bound = {system_density_bound};
     for (std::uint32_t ket_ordinal = ket_begin; ket_ordinal < ket_end;
          ++ket_ordinal) {{
       if (threadIdx.x == 0U) {{
         const std::uint32_t ket_pair = topology.pair_order[ket_ordinal];
         const bool past_schwarz_tail =
             topology.shell_pair_bounds[bra_pair] *
-                topology.shell_pair_bounds[ket_pair] < screening_tolerance;
+                topology.shell_pair_bounds[ket_pair] *
+                system_density_bound < screening_tolerance;
         bool keep = !past_schwarz_tail;
         if (keep && {str(high_pair_class == low_pair_class).lower()}) {{
           keep = bra_pair >= ket_pair;
