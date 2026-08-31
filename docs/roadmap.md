@@ -369,11 +369,12 @@ and performance measurements pass.
 - Method-level CPU/CUDA/AUTO DF selectors now dispatch RHF/UHF energy and force
   calculations through the reusable auxiliary topology, persistent CUDA RI-J/K
   contractions, and a device-resident SCF iteration loop with host fallback.
-  Public batch diagnostics now expose metric rank/conditioning and conservative
-  host/device allocation accounting per CUDA DF plan slot. Remaining
-  density-fitting work is accelerator-native batched integral generation,
-  planner-driven raw AO-pair streaming, graph/stream integration, and broader
-  device-side force-response batching.
+  Prepared fleet buckets retain SCF buffers and Graph executables across fixed
+  geometry replays, while geometry updates invalidate only the affected
+  geometry-dependent plan. Public batch diagnostics expose metric
+  rank/conditioning and conservative host/device allocation accounting per CUDA
+  DF plan slot. Streamed AO-pair tiles remain intentionally host-staged because
+  pageable tile transfers are not safely capturable on all CUDA providers.
   See [density fitting](density_fitting.md) for the exact supported boundary.
 - Extend the implemented CUDA J/K active set with persistent device ERIs,
   streams, CUDA graphs where profitable, and batched small-matrix operations;

@@ -63,6 +63,20 @@ void apply_coordinates(core::System& system, const std::vector<double>& coordina
   }
 }
 
+// Capture the actual geometry used to build a DF bucket.  Keeping this
+// snapshot alongside the opaque CUDA plan lets FleetPlan distinguish a warm
+// replay (same coordinates and topology) from a geometry update that requires
+// rebuilding geometry-derived metric/three-center tensors.
+void append_geometry_positions(const core::System& system,
+                               std::vector<double>& positions) {
+  positions.reserve(positions.size() + system.atoms.size() * 3);
+  for (const auto& atom : system.atoms) {
+    positions.push_back(atom.position[0]);
+    positions.push_back(atom.position[1]);
+    positions.push_back(atom.position[2]);
+  }
+}
+
 /**
  * Reuse an auxiliary shell topology at the coordinates of one fleet item.
  * The auxiliary basis is fixed for a prepared batch, while its Gaussian
@@ -171,11 +185,18 @@ FleetPlan::FleetPlan(std::vector<core::System> systems,
     bucket_ids_[system_index] = iterator->second;
   }
   cuda_bucket_plans_.resize(buckets.size(), nullptr);
+  cuda_density_fitting_plans_.resize(buckets.size(), nullptr);
+  cuda_density_fitting_positions_.resize(buckets.size());
+  cuda_density_fitting_batch_sizes_.resize(buckets.size(), 0);
+  cuda_density_fitting_diagnostics_.resize(buckets.size());
 }
 
 FleetPlan::~FleetPlan() {
   for (CudaRhfBucketPlan* plan : cuda_bucket_plans_) {
     destroy_rhf_cuda_bucket_plan(plan);
+  }
+  for (CudaDensityFittingJkPlan* plan : cuda_density_fitting_plans_) {
+    destroy_cuda_density_fitting_jk_plan(plan);
   }
 }
 
@@ -448,6 +469,8 @@ std::vector<FleetItemResult> FleetPlan::execute(
       std::vector<core::System> df_systems;
       std::vector<std::size_t> original_indices;
       std::vector<const std::vector<double>*> initial_densities;
+      std::vector<double> bucket_positions;
+      bool malformed_coordinate = false;
       df_systems.reserve(bucket_size);
       original_indices.reserve(bucket_size);
       initial_densities.reserve(bucket_size);
@@ -461,6 +484,7 @@ std::vector<FleetItemResult> FleetPlan::execute(
           if (!valid_coordinates(*coordinates[system_index],
                                  execution_system.atoms.size())) {
             item.status = VIBEQC_STATUS_INVALID_ARGUMENT;
+            malformed_coordinate = true;
             continue;
           }
           apply_coordinates(execution_system, *coordinates[system_index]);
@@ -472,18 +496,60 @@ std::vector<FleetItemResult> FleetPlan::execute(
         original_indices.push_back(system_index);
         initial_densities.push_back(
             has_warm_density ? &*warm_densities_[system_index] : nullptr);
+        append_geometry_positions(df_systems.back(), bucket_positions);
       }
 
       if (!df_systems.empty()) {
+        // A malformed item changes the batch shape.  Invalidate any previous
+        // plan before executing the surviving items so a later corrected
+        // replay cannot accidentally reuse a plan for a different subset.
+        if (malformed_coordinate ||
+            bucket_positions != cuda_density_fitting_positions_[bucket] ||
+            cuda_density_fitting_batch_sizes_[bucket] != df_systems.size()) {
+          destroy_cuda_density_fitting_jk_plan(
+              cuda_density_fitting_plans_[bucket]);
+          cuda_density_fitting_plans_[bucket] = nullptr;
+          cuda_density_fitting_positions_[bucket].clear();
+          cuda_density_fitting_batch_sizes_[bucket] = 0;
+          cuda_density_fitting_diagnostics_[bucket].clear();
+        }
         std::vector<CudaDensityFittingMetricDiagnostic>
             bucket_metric_diagnostics;
         std::vector<RhfBucketItem> df_results = method_ == VIBEQC_METHOD_UHF
-            ? run_uhf_density_fitting_cuda_bucket(
-                  df_systems, auxiliary_template_, options_, initial_densities,
-                  device_id_, &bucket_metric_diagnostics)
-            : run_rhf_density_fitting_cuda_bucket(
-                  df_systems, auxiliary_template_, options_, initial_densities,
-                  device_id_, &bucket_metric_diagnostics);
+            ? run_uhf_density_fitting_cuda_bucket_cached(
+                  &cuda_density_fitting_plans_[bucket], df_systems,
+                  auxiliary_template_, options_, initial_densities, device_id_,
+                  &bucket_metric_diagnostics)
+            : run_rhf_density_fitting_cuda_bucket_cached(
+                  &cuda_density_fitting_plans_[bucket], df_systems,
+                  auxiliary_template_, options_, initial_densities, device_id_,
+                  &bucket_metric_diagnostics);
+        if (!malformed_coordinate &&
+            std::all_of(df_results.begin(), df_results.end(),
+                        [](const RhfBucketItem& result) {
+                          return result.status == VIBEQC_STATUS_SUCCESS;
+                        })) {
+          cuda_density_fitting_positions_[bucket] = std::move(bucket_positions);
+          cuda_density_fitting_batch_sizes_[bucket] = df_systems.size();
+        } else {
+          // Keep a failed batch from being mistaken for a complete cached
+          // topology on the next replay.  The item results themselves remain
+          // isolated and are still returned in caller order.
+          destroy_cuda_density_fitting_jk_plan(
+              cuda_density_fitting_plans_[bucket]);
+          cuda_density_fitting_plans_[bucket] = nullptr;
+          cuda_density_fitting_positions_[bucket].clear();
+          cuda_density_fitting_batch_sizes_[bucket] = 0;
+          cuda_density_fitting_diagnostics_[bucket].clear();
+        }
+        if (bucket_metric_diagnostics.empty()) {
+          // Cached plans skip metric setup, so surface the original records
+          // consistently on every replay.
+          last_density_fitting_metric_diagnostics_.insert(
+              last_density_fitting_metric_diagnostics_.end(),
+              cuda_density_fitting_diagnostics_[bucket].begin(),
+              cuda_density_fitting_diagnostics_[bucket].end());
+        }
         for (auto& diagnostic : bucket_metric_diagnostics) {
           diagnostic.bucket_id = bucket;
           // The CUDA bucket may omit malformed coordinate items before plan
@@ -495,6 +561,9 @@ std::vector<FleetItemResult> FleetPlan::execute(
                 original_indices[diagnostic.system_index];
           }
           last_density_fitting_metric_diagnostics_.push_back(diagnostic);
+        }
+        if (!bucket_metric_diagnostics.empty()) {
+          cuda_density_fitting_diagnostics_[bucket] = bucket_metric_diagnostics;
         }
         for (std::size_t slot = 0; slot < df_results.size(); ++slot) {
           const std::size_t system_index = original_indices[slot];

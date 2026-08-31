@@ -1750,7 +1750,8 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
     const ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
-    std::vector<CudaDensityFittingMetricDiagnostic>* output_diagnostics) {
+    std::vector<CudaDensityFittingMetricDiagnostic>* output_diagnostics,
+    CudaDensityFittingJkPlan** cached_plan) {
   if (systems.size() != initial_densities.size()) {
     throw std::invalid_argument(
         "CUDA density-fitting RHF bucket density count mismatch");
@@ -1859,13 +1860,22 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
   }
   if (data.empty()) return outputs;
 
-  CudaDensityFittingPlanPtr plan(nullptr, &destroy_cuda_density_fitting_jk_plan);
+  CudaDensityFittingPlanPtr owned_plan(
+      nullptr, &destroy_cuda_density_fitting_jk_plan);
+  CudaDensityFittingJkPlan* plan =
+      cached_plan == nullptr ? nullptr : *cached_plan;
   std::vector<CudaDensityFittingMetricDiagnostic> metric_diagnostics;
   try {
-    const std::size_t occupied = static_cast<std::size_t>(
-        systems[source_indices.front()].electron_count / 2);
-    plan = make_cuda_density_fitting_batch_plan(
-        data, options, device_id, occupied, &metric_diagnostics);
+    if (plan == nullptr) {
+      const std::size_t occupied = static_cast<std::size_t>(
+          systems[source_indices.front()].electron_count / 2);
+      owned_plan = make_cuda_density_fitting_batch_plan(
+          data, options, device_id, occupied, &metric_diagnostics);
+      plan = owned_plan.get();
+      if (cached_plan != nullptr) {
+        *cached_plan = owned_plan.release();
+      }
+    }
   } catch (const std::bad_alloc&) {
     for (const std::size_t source : source_indices) {
       outputs[source].status = VIBEQC_STATUS_OUT_OF_MEMORY;
@@ -1918,7 +1928,7 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
     std::string device_detail;
     const vibeqc_status device_status =
         run_cuda_density_fitting_rhf_device_scf(
-            plan.get(), hcore, orthogonalizer, initial_density, occupied,
+            plan, hcore, orthogonalizer, initial_density, occupied,
             nuclear, options.max_iterations, options.energy_tolerance,
             options.density_tolerance, device_final_density, device_records,
             device_detail);
@@ -1945,7 +1955,7 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
           finalize_density_fitting_rhf(
               data[slot], orthogonalizers[slot],
               static_cast<std::size_t>(occupied[slot]), densities[slot],
-              options, result, plan.get());
+              options, result, plan);
           outputs[source].status = VIBEQC_STATUS_SUCCESS;
         } catch (const std::bad_alloc&) {
           outputs[source].status = VIBEQC_STATUS_OUT_OF_MEMORY;
@@ -1974,7 +1984,7 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
     std::vector<double> exchange;
     std::string detail;
     const vibeqc_status jk_status = execute_cuda_density_fitting_rhf_jk(
-        plan.get(), batch_density, coulomb, exchange, detail);
+        plan, batch_density, coulomb, exchange, detail);
     if (jk_status != VIBEQC_STATUS_SUCCESS) {
       for (std::size_t slot = 0; slot < source_indices.size(); ++slot) {
         if (active[slot]) outputs[source_indices[slot]].status = jk_status;
@@ -2049,7 +2059,7 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
       finalize_density_fitting_rhf(
           data[slot], orthogonalizers[slot],
           static_cast<std::size_t>(systems[source].electron_count / 2),
-          densities[slot], options, result, plan.get());
+          densities[slot], options, result, plan);
       outputs[source].status = VIBEQC_STATUS_SUCCESS;
     } catch (const std::bad_alloc&) {
       outputs[source].status = VIBEQC_STATUS_OUT_OF_MEMORY;
@@ -2068,7 +2078,8 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
     const ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
-    std::vector<CudaDensityFittingMetricDiagnostic>* output_diagnostics) {
+    std::vector<CudaDensityFittingMetricDiagnostic>* output_diagnostics,
+    CudaDensityFittingJkPlan** cached_plan) {
   if (systems.size() != initial_densities.size()) {
     throw std::invalid_argument(
         "CUDA density-fitting UHF bucket density count mismatch");
@@ -2182,14 +2193,23 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
   }
   if (data.empty()) return outputs;
 
-  CudaDensityFittingPlanPtr plan(nullptr, &destroy_cuda_density_fitting_jk_plan);
+  CudaDensityFittingPlanPtr owned_plan(
+      nullptr, &destroy_cuda_density_fitting_jk_plan);
+  CudaDensityFittingJkPlan* plan =
+      cached_plan == nullptr ? nullptr : *cached_plan;
   std::vector<CudaDensityFittingMetricDiagnostic> metric_diagnostics;
   try {
-    const auto [alpha_occupied, beta_occupied] =
-        spin_occupations(systems[source_indices.front()]);
-    plan = make_cuda_density_fitting_batch_plan(
-        data, options, device_id, std::max(alpha_occupied, beta_occupied),
-        &metric_diagnostics);
+    if (plan == nullptr) {
+      const auto [alpha_occupied, beta_occupied] =
+          spin_occupations(systems[source_indices.front()]);
+      owned_plan = make_cuda_density_fitting_batch_plan(
+          data, options, device_id, std::max(alpha_occupied, beta_occupied),
+          &metric_diagnostics);
+      plan = owned_plan.get();
+      if (cached_plan != nullptr) {
+        *cached_plan = owned_plan.release();
+      }
+    }
   } catch (const std::bad_alloc&) {
     for (const std::size_t source : source_indices) {
       outputs[source].status = VIBEQC_STATUS_OUT_OF_MEMORY;
@@ -2243,7 +2263,7 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
     std::string device_detail;
     const vibeqc_status device_status =
         run_cuda_density_fitting_uhf_device_scf(
-            plan.get(), hcore, orthogonalizer, initial_alpha, initial_beta,
+            plan, hcore, orthogonalizer, initial_alpha, initial_beta,
             alpha_occupied, beta_occupied, nuclear, options.max_iterations,
             options.energy_tolerance, options.density_tolerance,
             device_final_alpha, device_final_beta, device_records,
@@ -2275,7 +2295,7 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
           finalize_density_fitting_uhf(
               data[slot], orthogonalizers[slot], occupations.first,
               occupations.second, alpha_densities[slot], beta_densities[slot],
-              options, result, plan.get());
+              options, result, plan);
           outputs[source].status = VIBEQC_STATUS_SUCCESS;
         } catch (const std::bad_alloc&) {
           outputs[source].status = VIBEQC_STATUS_OUT_OF_MEMORY;
@@ -2308,7 +2328,7 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
     std::vector<double> beta_exchange;
     std::string detail;
     const vibeqc_status jk_status = execute_cuda_density_fitting_uhf_jk(
-        plan.get(), batch_alpha, batch_beta, coulomb, alpha_exchange,
+        plan, batch_alpha, batch_beta, coulomb, alpha_exchange,
         beta_exchange, detail);
     if (jk_status != VIBEQC_STATUS_SUCCESS) {
       for (std::size_t slot = 0; slot < source_indices.size(); ++slot) {
@@ -2406,7 +2426,7 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
       finalize_density_fitting_uhf(
           data[slot], orthogonalizers[slot], alpha_occupied, beta_occupied,
           alpha_densities[slot], beta_densities[slot], options, result,
-          plan.get());
+          plan);
       outputs[source].status = VIBEQC_STATUS_SUCCESS;
     } catch (const std::bad_alloc&) {
       outputs[source].status = VIBEQC_STATUS_OUT_OF_MEMORY;
@@ -2450,7 +2470,20 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket(
     std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics) {
   return run_rhf_density_fitting_cuda_bucket_impl(
       systems, auxiliary_template, options, initial_densities, device_id,
-      diagnostics);
+      diagnostics, nullptr);
+}
+
+std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_cached(
+    CudaDensityFittingJkPlan** plan,
+    const std::vector<core::System>& systems,
+    const std::optional<core::System>& auxiliary_template,
+    const ScfOptions& options,
+    const std::vector<const std::vector<double>*>& initial_densities,
+    int device_id,
+    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics) {
+  return run_rhf_density_fitting_cuda_bucket_impl(
+      systems, auxiliary_template, options, initial_densities, device_id,
+      diagnostics, plan);
 }
 
 std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket(
@@ -2462,7 +2495,20 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket(
     std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics) {
   return run_uhf_density_fitting_cuda_bucket_impl(
       systems, auxiliary_template, options, initial_densities, device_id,
-      diagnostics);
+      diagnostics, nullptr);
+}
+
+std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_cached(
+    CudaDensityFittingJkPlan** plan,
+    const std::vector<core::System>& systems,
+    const std::optional<core::System>& auxiliary_template,
+    const ScfOptions& options,
+    const std::vector<const std::vector<double>*>& initial_densities,
+    int device_id,
+    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics) {
+  return run_uhf_density_fitting_cuda_bucket_impl(
+      systems, auxiliary_template, options, initial_densities, device_id,
+      diagnostics, plan);
 }
 
 #endif  // VIBEQC_HAS_CUDA
@@ -2578,7 +2624,39 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket(
   return outputs;
 }
 
+std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_cached(
+    CudaDensityFittingJkPlan**,
+    const std::vector<core::System>& systems,
+    const std::optional<core::System>&,
+    const ScfOptions&,
+    const std::vector<const std::vector<double>*>&,
+    int,
+    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics) {
+  if (diagnostics != nullptr) diagnostics->clear();
+  std::vector<RhfBucketItem> outputs(systems.size());
+  for (RhfBucketItem& output : outputs) {
+    output.status = VIBEQC_STATUS_NOT_IMPLEMENTED;
+  }
+  return outputs;
+}
+
 std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket(
+    const std::vector<core::System>& systems,
+    const std::optional<core::System>&,
+    const ScfOptions&,
+    const std::vector<const std::vector<double>*>&,
+    int,
+    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics) {
+  if (diagnostics != nullptr) diagnostics->clear();
+  std::vector<RhfBucketItem> outputs(systems.size());
+  for (RhfBucketItem& output : outputs) {
+    output.status = VIBEQC_STATUS_NOT_IMPLEMENTED;
+  }
+  return outputs;
+}
+
+std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_cached(
+    CudaDensityFittingJkPlan**,
     const std::vector<core::System>& systems,
     const std::optional<core::System>&,
     const ScfOptions&,

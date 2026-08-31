@@ -11,6 +11,7 @@
 namespace vibeqc::scf {
 
 struct CudaDensityFittingMetricDiagnostic;
+struct CudaDensityFittingJkPlan;
 
 /** Run closed-shell RHF and assemble its variational analytic gradient. */
 ScfResult run_rhf(const core::System& system,
@@ -81,8 +82,32 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket(
     int device_id,
     std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics = nullptr);
 
+/**
+ * Cached counterpart used by a persistent FleetPlan. The pointed-to plan is
+ * retained by the caller across same-topology replays and may be replaced
+ * when the caller invalidates its geometry cache.
+ */
+std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_cached(
+    CudaDensityFittingJkPlan** plan,
+    const std::vector<core::System>& systems,
+    const std::optional<core::System>& auxiliary_template,
+    const ScfOptions& options,
+    const std::vector<const std::vector<double>*>& initial_densities,
+    int device_id,
+    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics = nullptr);
+
 /** UHF counterpart of the batched CUDA DF bucket executor. */
 std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket(
+    const std::vector<core::System>& systems,
+    const std::optional<core::System>& auxiliary_template,
+    const ScfOptions& options,
+    const std::vector<const std::vector<double>*>& initial_densities,
+    int device_id,
+    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics = nullptr);
+
+/** Cached UHF counterpart for persistent FleetPlan replay. */
+std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_cached(
+    CudaDensityFittingJkPlan** plan,
     const std::vector<core::System>& systems,
     const std::optional<core::System>& auxiliary_template,
     const ScfOptions& options,

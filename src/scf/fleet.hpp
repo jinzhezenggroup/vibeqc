@@ -117,6 +117,19 @@ class FleetPlan {
   // CUDA headers out of this public C++ translation unit; the destructor owns
   // them through the backend-specific destroy function.
   std::vector<CudaRhfBucketPlan*> cuda_bucket_plans_;
+  // DF plans retain their CUDA stream, cuBLAS/cuSOLVER handles, and tiled
+  // contraction workspaces across same-coordinate replays. Geometry changes
+  // invalidate only the affected bucket cache; the next execution rebuilds
+  // its geometry-derived tensors into a fresh plan.
+  std::vector<CudaDensityFittingJkPlan*> cuda_density_fitting_plans_;
+  std::vector<std::vector<double>> cuda_density_fitting_positions_;
+  // Number of successfully prepared systems represented by each cached plan.
+  // This guards against reusing a full-bucket plan after item-level preparation
+  // failure temporarily shrinks the runnable subset.
+  std::vector<std::size_t> cuda_density_fitting_batch_sizes_;
+  // Re-publish setup diagnostics on warm calls without rebuilding the plan.
+  std::vector<std::vector<CudaDensityFittingMetricDiagnostic>>
+      cuda_density_fitting_diagnostics_;
 };
 
 }  // namespace vibeqc::scf

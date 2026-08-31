@@ -19,6 +19,7 @@ import sys
 from _cases import (
     BenchmarkGatePoint,
     benchmark_cases,
+    density_fitting_gate_points,
     real_molecule_gate_points,
 )
 
@@ -82,6 +83,12 @@ def main() -> None:
         default=5,
         help="interleaved warm samples collected per engine and gate point",
     )
+    parser.add_argument(
+        "--density-fitting",
+        choices=("none", "cuda"),
+        default="none",
+        help="run the unchanged direct matrix or the CUDA DF acceptance matrix",
+    )
     parser.add_argument("--output-directory", type=Path, required=True)
     parser.add_argument(
         "--dry-run",
@@ -93,9 +100,14 @@ def main() -> None:
         raise ValueError("--repeats must be positive")
 
     cases = benchmark_cases()
+    gate_points = (
+        density_fitting_gate_points()
+        if args.density_fitting == "cuda"
+        else real_molecule_gate_points()
+    )
     points = tuple(
         point
-        for point in real_molecule_gate_points()
+        for point in gate_points
         if args.size == "all" or point.expected_ao_count == int(args.size)
     )
     for point in points:
@@ -109,12 +121,13 @@ def main() -> None:
     commands = []
     for point in points:
         output = args.output_directory / (
-            f"{point.case}-b{point.batch_size}.json"
+            f"{point.case}-b{point.batch_size}-{args.density_fitting}.json"
         )
         commands.append((
             point,
             output,
-            _point_command(point, repeats=args.repeats, output=output),
+            _point_command(point, repeats=args.repeats, output=output)
+            + ["--density-fitting", args.density_fitting],
         ))
     if args.dry_run:
         for _, _, command in commands:
@@ -155,6 +168,7 @@ def main() -> None:
         "density_tolerance": _DENSITY_TOLERANCE,
         "screening_tolerance": _SCREENING_TOLERANCE,
         "gpu4pyscf_interface": "sequential single-system objects",
+        "density_fitting": args.density_fitting,
         "points": results,
         "passed": not failed,
     }

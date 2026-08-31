@@ -389,3 +389,65 @@ def real_molecule_gate_points() -> tuple[BenchmarkGatePoint, ...]:
             **accuracy_192,
         ),
     )
+
+
+def density_fitting_gate_points() -> tuple[BenchmarkGatePoint, ...]:
+    """Return the complete CUDA-DF 96/192-AO parity and speed matrix.
+
+    Direct-SCF gates intentionally keep their historical thresholds in
+    :func:`real_molecule_gate_points`; this separate matrix can evolve with
+    the DF implementation without weakening the direct-versus-direct gate.
+    """
+
+    accuracy_96 = {
+        "maximum_energy_error": 3.0e-11,
+        "maximum_force_error": 3.0e-11,
+        "reference_gradient_tolerance": 1.0e-9,
+    }
+    accuracy_192 = {
+        "maximum_energy_error": 1.0e-10,
+        "maximum_force_error": 5.0e-10,
+        "reference_gradient_tolerance": 1.0e-8,
+    }
+    return (
+        BenchmarkGatePoint(
+            case="water-tetramer-def2-svp-spherical",
+            batch_size=1,
+            expected_ao_count=96,
+            minimum_speedup=1.0,
+            **accuracy_96,
+        ),
+        BenchmarkGatePoint(
+            case="water-tetramer-def2-svp-spherical",
+            batch_size=4,
+            expected_ao_count=96,
+            minimum_speedup=1.0,
+            **accuracy_96,
+        ),
+        BenchmarkGatePoint(
+            case="water-octamer-s4-def2-svp-spherical",
+            batch_size=1,
+            expected_ao_count=192,
+            minimum_speedup=1.0,
+            **accuracy_192,
+        ),
+        BenchmarkGatePoint(
+            case="water-octamer-s4-def2-svp-spherical",
+            batch_size=4,
+            expected_ao_count=192,
+            minimum_speedup=1.0,
+            **accuracy_192,
+        ),
+        # The translated WATER27 16-mer is deliberately outside the direct
+        # parity matrix: its 384-AO four-center path is the scaling point at
+        # which DF must remain competitive rather than merely accurate.
+        BenchmarkGatePoint(
+            case="water-hexadecamer-2s4-def2-svp-spherical",
+            batch_size=1,
+            expected_ao_count=384,
+            maximum_energy_error=2.0e-9,
+            maximum_force_error=2.0e-8,
+            reference_gradient_tolerance=2.0e-8,
+            minimum_speedup=1.0,
+        ),
+    )
