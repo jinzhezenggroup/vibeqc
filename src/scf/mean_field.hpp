@@ -3,6 +3,7 @@
 
 #include "core/types.hpp"
 #include "scf/cuda_batch.hpp"
+#include "scf/density_fitting.hpp"
 #include "scf/types.hpp"
 
 #include <optional>
@@ -11,6 +12,7 @@
 namespace vibeqc::scf {
 
 struct CudaDensityFittingMetricDiagnostic;
+struct CudaDensityFittingJkPlan;
 
 /** Run closed-shell RHF and assemble its variational analytic gradient. */
 ScfResult run_rhf(const core::System& system,
@@ -81,6 +83,22 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket(
     int device_id,
     std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics = nullptr);
 
+/**
+ * Cached counterpart used by a persistent FleetPlan. The pointed-to plan is
+ * retained by the caller across same-topology replays and may be replaced
+ * when the caller invalidates its geometry cache.
+ */
+std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_cached(
+    CudaDensityFittingJkPlan** plan,
+    const std::vector<core::System>& systems,
+    const std::optional<core::System>& auxiliary_template,
+    const ScfOptions& options,
+    const std::vector<const std::vector<double>*>& initial_densities,
+    int device_id,
+    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics = nullptr,
+    std::vector<std::optional<DensityFittingScfData>>* prepared_cache =
+        nullptr);
+
 /** UHF counterpart of the batched CUDA DF bucket executor. */
 std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket(
     const std::vector<core::System>& systems,
@@ -89,6 +107,18 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket(
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
     std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics = nullptr);
+
+/** Cached UHF counterpart for persistent FleetPlan replay. */
+std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_cached(
+    CudaDensityFittingJkPlan** plan,
+    const std::vector<core::System>& systems,
+    const std::optional<core::System>& auxiliary_template,
+    const ScfOptions& options,
+    const std::vector<const std::vector<double>*>& initial_densities,
+    int device_id,
+    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics = nullptr,
+    std::vector<std::optional<DensityFittingScfData>>* prepared_cache =
+        nullptr);
 
 /** Execute RHF through the native CUDA scientific path. */
 ScfResult run_rhf_cuda(const core::System& system,

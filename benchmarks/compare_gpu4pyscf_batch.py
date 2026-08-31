@@ -425,6 +425,18 @@ def main() -> None:
     parser.add_argument("--energy-tolerance", type=float, default=1.0e-12)
     parser.add_argument("--density-tolerance", type=float, default=1.0e-10)
     parser.add_argument(
+        "--density-fitting",
+        choices=("none", "cuda"),
+        default="none",
+        help="select the independent direct gate or the CUDA DF gate",
+    )
+    parser.add_argument(
+        "--density-fitting-memory-budget-bytes",
+        type=int,
+        default=0,
+        help="planner budget for CUDA DF device/host staging (zero = default)",
+    )
+    parser.add_argument(
         "--reference-gradient-tolerance",
         type=float,
         default=1.0e-10,
@@ -449,6 +461,8 @@ def main() -> None:
     args = parser.parse_args()
     if args.batch < 1 or args.repeats < 1 or args.max_iterations < 1:
         raise ValueError("--batch, --repeats, and --max-iterations must be positive")
+    if args.density_fitting_memory_budget_bytes < 0:
+        raise ValueError("--density-fitting-memory-budget-bytes must be non-negative")
     if (
         args.energy_tolerance <= 0.0
         or args.density_tolerance <= 0.0
@@ -500,11 +514,16 @@ def main() -> None:
         )
         if molecule.nao_nr() != ao_count:
             raise ValueError("scaled fixed-topology geometry changed AO count")
-        engine = (
-            gpu_uhf.UHF(molecule)
-            if case.method == "uhf"
-            else scf.RHF(molecule).to_gpu()
-        )
+        if case.method == "uhf":
+            engine = gpu_uhf.UHF(molecule)
+        else:
+            engine = scf.RHF(molecule)
+        if args.density_fitting == "cuda":
+            # Match VibeQC's explicit auxiliary topology.  GPU4PySCF accepts
+            # the same PySCF basis description through density_fit(auxbasis=).
+            engine = engine.density_fit(auxbasis=case.pyscf_basis)
+        if hasattr(engine, "to_gpu"):
+            engine = engine.to_gpu()
         engine.conv_tol = args.energy_tolerance
         engine.conv_tol_grad = args.reference_gradient_tolerance
         engine.direct_scf_tol = 1.0e-14
@@ -520,6 +539,9 @@ def main() -> None:
         energy_tolerance=args.energy_tolerance,
         density_tolerance=args.density_tolerance,
         screening_tolerance=args.screening_tolerance,
+        density_fitting=args.density_fitting,
+        auxiliary_basis=case.vibeqc_basis if args.density_fitting == "cuda" else None,
+        density_fitting_memory_budget_bytes=args.density_fitting_memory_budget_bytes,
     )
     vibeqc_samples: list[dict[str, Any]] = []
     gpu_samples: list[dict[str, Any]] = []
@@ -537,6 +559,10 @@ def main() -> None:
         vibeqc_cold_result = batch.execute(strict=True)
         cp.cuda.Stream.null.synchronize()
         vibeqc_cold = time.perf_counter() - start
+        density_fitting_diagnostics = [
+            diagnostic.to_dict()
+            for diagnostic in batch.last_density_fitting_metric_diagnostics()
+        ] if args.density_fitting == "cuda" else []
         # Freeze the converged post-cold density before collecting either
         # engine's warm samples.  The benchmark compares the same replay from
         # one fixed dm0; allowing VibeQC to replace its retained density after
@@ -719,6 +745,18 @@ def main() -> None:
                 "max_iterations": args.max_iterations,
                 "vibeqc_screening_tolerance": args.screening_tolerance,
                 "direct_scf_tolerance": 1.0e-14,
+                "density_fitting": args.density_fitting,
+                "density_fitting_relative_threshold": (
+                    calculator._density_fitting_relative_threshold
+                    if args.density_fitting == "cuda" else None
+                ),
+                "density_fitting_memory_budget_bytes": (
+                    args.density_fitting_memory_budget_bytes
+                    if args.density_fitting == "cuda" else 0
+                ),
+                "auxiliary_basis": (
+                    "same as orbital basis" if args.density_fitting == "cuda" else None
+                ),
             },
             "settings": {
                 "repeats_per_engine": args.repeats,
@@ -726,6 +764,7 @@ def main() -> None:
                 "measurement_order": list(measurement_order),
                 "warm_start_policy": fixed_warm_start_policy(),
                 "warm_start_priming": warm_start_priming,
+                "density_fitting_metric_diagnostics": density_fitting_diagnostics,
                 "gates": {
                     "minimum_iteration_matched_speedup": args.minimum_speedup,
                     "maximum_energy_error_hartree": args.maximum_energy_error,
@@ -739,6 +778,14 @@ def main() -> None:
                 "gate_selection": gate_accuracy,
             },
             "timing_summary": {
+                "integral_contraction_breakdown": {
+                    "cold_setup_and_integral_generation_seconds": vibeqc_cold,
+                    "warm_contraction_and_force_seconds": vibeqc_warm_median,
+                    "note": (
+                        "CUDA DF integral setup is included in cold timing; "
+                        "warm timings contain resident-plan contractions"
+                    ),
+                },
                 "ordinary": {
                     "vibeqc_median_seconds": vibeqc_warm_median,
                     "gpu4pyscf_median_seconds": gpu_warm_median,

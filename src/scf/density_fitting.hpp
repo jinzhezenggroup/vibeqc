@@ -40,6 +40,13 @@ struct DensityFittingThreeCenter {
   std::vector<double> values;
 };
 
+/** Immutable integral state shared by all iterations of a DF SCF solve. */
+struct DensityFittingScfData {
+  integrals::IntegralData one_electron;
+  integrals::DensityFittingIntegralData raw;
+  DensityFittingThreeCenter three_center;
+};
+
 /**
  * Apply the symmetric Coulomb-metric inverse square root to (mu nu|P).
  *
@@ -203,7 +210,8 @@ struct DensityFittingTilePlan {
     std::size_t nbf,
     std::size_t naux,
     std::size_t occupied,
-    std::size_t memory_budget_bytes);
+    std::size_t memory_budget_bytes,
+    std::size_t fixed_device_bytes = 0);
 
 }  // namespace vibeqc::scf
 

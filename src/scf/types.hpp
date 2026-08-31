@@ -17,7 +17,7 @@ struct ScfOptions {
       VIBEQC_DENSITY_FITTING_NONE};
   /** Relative cutoff used when factoring the auxiliary Coulomb metric. */
   double density_fitting_relative_threshold{1.0e-10};
-  /** Byte budget for future blocked DF work; zero means implementation default. */
+  /** Byte budget for bounded DF plan/integral work; zero means implementation default. */
   std::size_t density_fitting_memory_budget_bytes{};
 };
 

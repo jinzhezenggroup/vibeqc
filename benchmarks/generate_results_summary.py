@@ -23,6 +23,18 @@ def _repeat_count(payload: dict[str, Any]) -> int:
     return int(settings.get("repeats_per_engine", settings.get("repeats", 0)))
 
 
+def _is_direct_density_fitting_artifact(payload: dict[str, Any]) -> bool:
+    """Keep the historical parity table scoped to direct-SCF artifacts.
+
+    Schema-v1/v2 direct artifacts predate the explicit density-fitting field,
+    so a missing value is treated as ``none``.  CUDA-DF artifacts use the same
+    workload keys and must not replace direct-SCF evidence merely because they
+    have a newer timestamp.
+    """
+
+    return payload.get("workload", {}).get("density_fitting", "none") == "none"
+
+
 def accepted_parity_artifacts(paths: Iterable[Path]) -> dict[tuple[int, int], tuple[Path, dict[str, Any]]]:
     """Select the newest clean five-repeat schema-v2 artifact per gate point."""
 
@@ -39,6 +51,7 @@ def accepted_parity_artifacts(paths: Iterable[Path]) -> dict[tuple[int, int], tu
             or payload.get("benchmark") != "compare_gpu4pyscf_batch"
             or key not in PARITY_CASES
             or workload.get("case") != PARITY_CASES[key]
+            or not _is_direct_density_fitting_artifact(payload)
             or _repeat_count(payload) < 5
             or not payload.get("gate", {}).get("passed", False)
             or payload.get("environment", {}).get("git", {}).get("dirty") is not False

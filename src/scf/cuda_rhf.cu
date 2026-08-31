@@ -22,6 +22,7 @@
 #include <cstdio>
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <new>
 #include <numeric>
 #include <optional>
@@ -32,6 +33,12 @@
 #include <vector>
 
 namespace vibeqc::scf {
+
+// Public opaque handle; the CUDA implementation stays private to this TU.
+struct CudaDensityFittingIntegralSource {
+  void* implementation{};
+};
+
 namespace {
 
 // Runtime policy parsing lives in a host-only C++ TU. Keep the numerical CUDA
@@ -7178,6 +7185,141 @@ __global__ void build_cuda_df_integrals_kernel(
   } else {
     three_center[local_system * three_center_elements + local] = value;
   }
+}
+
+/**
+ * Generate one public-basis three-center tile without materializing the raw
+ * Cartesian tensor.  The source recurrence is evaluated directly for each
+ * requested AO/auxiliary element and contracted with the already prepared
+ * metric inverse square root.  This intentionally trades redundant arithmetic
+ * for a strict O(pair_tile*aux_tile) device footprint in budgeted plans.
+ */
+template <bool Derivative>
+__global__ void build_cuda_df_transformed_tile_kernel(
+    DeviceBatch batch, std::size_t cartesian_orbital_count,
+    std::size_t cartesian_auxiliary_count, std::size_t public_nbf,
+    std::size_t public_naux, std::size_t dummy_index, std::size_t system,
+    std::size_t pair_begin, std::size_t pair_count,
+    std::size_t auxiliary_begin, std::size_t auxiliary_count,
+    std::int64_t derivative_coordinate, const double* orbital_to_cartesian,
+    const double* auxiliary_to_cartesian, const double* inverse_square_root,
+    bool apply_metric_transform, double* output) {
+  const std::size_t element = static_cast<std::size_t>(blockIdx.x) *
+      blockDim.x + threadIdx.x;
+  const std::size_t tile_elements = pair_count * auxiliary_count;
+  if (element >= tile_elements) return;
+  const std::size_t pair = pair_begin + element / auxiliary_count;
+  const std::size_t auxiliary = auxiliary_begin + element % auxiliary_count;
+  const std::size_t public_first = pair / public_nbf;
+  const std::size_t public_second = pair % public_nbf;
+  // The source stores transforms for every system contiguously.  A fleet can
+  // legitimately mix different shell layouts while keeping the same public
+  // AO dimensions, so never reuse system zero's transform for later items.
+  const std::size_t orbital_transform_stride =
+      public_nbf * cartesian_orbital_count;
+  const std::size_t auxiliary_transform_stride =
+      public_naux * cartesian_auxiliary_count;
+  const double* system_orbital_to_cartesian =
+      orbital_to_cartesian + system * orbital_transform_stride;
+  const double* system_auxiliary_to_cartesian =
+      auxiliary_to_cartesian + system * auxiliary_transform_stride;
+  double value = 0.0;
+  const std::size_t source_begin =
+      apply_metric_transform ? 0U : auxiliary;
+  const std::size_t source_end = apply_metric_transform
+                                     ? public_naux
+                                     : source_begin + 1U;
+  for (std::size_t source = source_begin; source < source_end; ++source) {
+    double transformed_raw = 0.0;
+    for (std::size_t first = 0; first < cartesian_orbital_count; ++first) {
+      const double first_coefficient = system_orbital_to_cartesian[
+          public_first * cartesian_orbital_count + first];
+      if (first_coefficient == 0.0) continue;
+      for (std::size_t second = 0; second < cartesian_orbital_count;
+           ++second) {
+        const double second_coefficient = system_orbital_to_cartesian[
+            public_second * cartesian_orbital_count + second];
+        if (second_coefficient == 0.0) continue;
+        for (std::size_t cartesian_auxiliary = 0;
+             cartesian_auxiliary < cartesian_auxiliary_count;
+             ++cartesian_auxiliary) {
+          const double auxiliary_coefficient = system_auxiliary_to_cartesian[
+              source * cartesian_auxiliary_count + cartesian_auxiliary];
+          if (auxiliary_coefficient == 0.0) continue;
+          using Scalar = std::conditional_t<Derivative, Dual, double>;
+          const Scalar raw = contracted_eri<Scalar>(
+              batch, static_cast<std::int32_t>(system),
+              static_cast<std::int32_t>(first),
+              static_cast<std::int32_t>(second),
+              static_cast<std::int32_t>(cartesian_orbital_count +
+                                         cartesian_auxiliary),
+              static_cast<std::int32_t>(dummy_index), derivative_coordinate);
+          if constexpr (Derivative) {
+            transformed_raw += first_coefficient * second_coefficient *
+                               auxiliary_coefficient * raw.derivative;
+          } else {
+            transformed_raw += first_coefficient * second_coefficient *
+                               auxiliary_coefficient * raw;
+          }
+        }
+      }
+    }
+    value += apply_metric_transform
+                 ? transformed_raw *
+                       inverse_square_root[auxiliary * public_naux + source]
+                 : transformed_raw;
+  }
+  output[(pair - pair_begin) * auxiliary_count +
+         (auxiliary - auxiliary_begin)] = value;
+}
+
+/** Generate one public-basis auxiliary metric (or its derivative). */
+template <bool Derivative>
+__global__ void build_cuda_df_metric_source_kernel(
+    DeviceBatch batch, std::size_t cartesian_orbital_count,
+    std::size_t cartesian_auxiliary_count,
+    std::size_t public_naux, std::size_t dummy_index, std::size_t system,
+    std::size_t auxiliary_row_begin, std::size_t auxiliary_row_count,
+    std::int64_t derivative_coordinate, const double* auxiliary_to_cartesian,
+    double* output) {
+  const std::size_t element = static_cast<std::size_t>(blockIdx.x) *
+      blockDim.x + threadIdx.x;
+  const std::size_t total = auxiliary_row_count * public_naux;
+  if (element >= total) return;
+  const std::size_t first = auxiliary_row_begin + element / public_naux;
+  const std::size_t second = element % public_naux;
+  const std::size_t auxiliary_transform_stride =
+      public_naux * cartesian_auxiliary_count;
+  const double* system_auxiliary_to_cartesian =
+      auxiliary_to_cartesian + system * auxiliary_transform_stride;
+  double value = 0.0;
+  for (std::size_t cartesian_first = 0;
+       cartesian_first < cartesian_auxiliary_count; ++cartesian_first) {
+    const double first_coefficient = system_auxiliary_to_cartesian[
+        first * cartesian_auxiliary_count + cartesian_first];
+    if (first_coefficient == 0.0) continue;
+    for (std::size_t cartesian_second = 0;
+         cartesian_second < cartesian_auxiliary_count; ++cartesian_second) {
+      const double second_coefficient = system_auxiliary_to_cartesian[
+          second * cartesian_auxiliary_count + cartesian_second];
+      if (second_coefficient == 0.0) continue;
+      using Scalar = std::conditional_t<Derivative, Dual, double>;
+      const Scalar raw = contracted_eri<Scalar>(
+          batch, static_cast<std::int32_t>(system),
+          static_cast<std::int32_t>(cartesian_orbital_count +
+                                     cartesian_first),
+          static_cast<std::int32_t>(dummy_index),
+          static_cast<std::int32_t>(cartesian_orbital_count +
+                                     cartesian_second),
+          static_cast<std::int32_t>(dummy_index), derivative_coordinate);
+      if constexpr (Derivative) {
+        value += first_coefficient * second_coefficient * raw.derivative;
+      } else {
+        value += first_coefficient * second_coefficient * raw;
+      }
+    }
+  }
+  output[element] = value;
 }
 
 /** Evaluate one-electron matrices and their first-coordinate response. */
@@ -15655,6 +15797,676 @@ bool pack_host_batch(const std::vector<core::System>& systems,
   return true;
 }
 
+/**
+ * Device-side metadata and public-basis transforms for budgeted DF replay.
+ *
+ * This object is intentionally separate from the ordinary HF bucket plan:
+ * the latter owns a large arena of Fock/SCF state, while this source owns only
+ * the immutable basis description needed to regenerate a requested DF tile.
+ */
+struct CudaDensityFittingIntegralSourceImpl {
+  int device_id{-1};
+  std::size_t batch_size{};
+  std::size_t public_nbf{};
+  std::size_t public_naux{};
+  std::size_t cartesian_nbf{};
+  std::size_t cartesian_naux{};
+  std::size_t dummy_index{};
+  DeviceBatch batch{};
+  const double* orbital_to_cartesian{};
+  const double* auxiliary_to_cartesian{};
+  // Host mirror used only to translate a public per-system derivative index;
+  // the packed DeviceBatch pointer cannot be dereferenced by host code.
+  std::vector<std::int64_t> host_atom_offsets;
+  std::vector<void*> allocations;
+  std::size_t device_bytes{};
+  std::size_t host_bytes{};
+  std::size_t host_peak_bytes{};
+
+  ~CudaDensityFittingIntegralSourceImpl() {
+    if (device_id >= 0) (void)cudaSetDevice(device_id);
+    for (void* pointer : allocations) (void)cudaFree(pointer);
+  }
+};
+
+namespace {
+
+vibeqc_status source_cuda_status(cudaError_t status) {
+  if (status == cudaSuccess) return VIBEQC_STATUS_SUCCESS;
+  return status == cudaErrorMemoryAllocation ? VIBEQC_STATUS_OUT_OF_MEMORY
+                                             : VIBEQC_STATUS_CUDA_ERROR;
+}
+
+std::vector<double> make_public_to_cartesian_transform(
+    const core::System& system) {
+  const std::size_t public_count = molecule::ao_count(system);
+  const std::size_t cartesian_count = molecule::cartesian_ao_count(system);
+  std::size_t transform_elements = 0;
+  if (!checked_multiply(public_count, cartesian_count, transform_elements)) {
+    throw std::overflow_error("DF public-basis transform dimensions overflow");
+  }
+  std::vector<double> transform(transform_elements, 0.0);
+  std::size_t public_offset = 0;
+  std::size_t cartesian_offset = 0;
+  for (const core::Shell& shell : system.shells) {
+    const std::vector<molecule::CartesianComponent> components =
+        molecule::cartesian_components(shell.angular_momentum);
+    const auto expansions = molecule::ao_expansions(
+        shell.angular_momentum, system.basis_representation);
+    for (const molecule::AoExpansion& expansion : expansions) {
+      for (const molecule::CartesianExpansionTerm& term : expansion) {
+        const auto component = std::find(
+            components.begin(), components.end(), term.component);
+        if (component == components.end()) {
+          throw std::invalid_argument(
+              "DF public-basis transform references an unknown Cartesian AO");
+        }
+        const std::size_t cartesian = cartesian_offset +
+            static_cast<std::size_t>(component - components.begin());
+        transform[public_offset * cartesian_count + cartesian] =
+            term.coefficient;
+      }
+      ++public_offset;
+    }
+    cartesian_offset += components.size();
+  }
+  if (public_offset != public_count || cartesian_offset != cartesian_count) {
+    throw std::invalid_argument(
+        "DF public-basis transform dimensions are inconsistent");
+  }
+  return transform;
+}
+
+vibeqc_status source_upload(CudaDensityFittingIntegralSourceImpl& source,
+                            const void* host, std::size_t bytes,
+                            void** device, std::string& detail) {
+  if (bytes == 0U) {
+    *device = nullptr;
+    return VIBEQC_STATUS_SUCCESS;
+  }
+  if (source.device_bytes >
+      std::numeric_limits<std::size_t>::max() - bytes) {
+    detail = "bounded DF source metadata bytes overflow size_t";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+  cudaError_t error = cudaMalloc(device, bytes);
+  if (error != cudaSuccess) {
+    detail = "CUDA allocation failed for bounded DF source metadata";
+    return source_cuda_status(error);
+  }
+  try {
+    source.allocations.push_back(*device);
+  } catch (const std::bad_alloc&) {
+    (void)cudaFree(*device);
+    *device = nullptr;
+    detail = "host allocation failed for bounded DF source metadata handles";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+  source.device_bytes += bytes;
+  error = cudaMemcpy(*device, host, bytes, cudaMemcpyHostToDevice);
+  if (error != cudaSuccess) {
+    detail = "CUDA upload failed for bounded DF source metadata";
+    return source_cuda_status(error);
+  }
+  return VIBEQC_STATUS_SUCCESS;
+}
+
+}  // namespace
+
+vibeqc_status create_cuda_density_fitting_integral_source_impl(
+    int device_id, const std::vector<core::System>& orbital_systems,
+    const std::vector<core::System>& auxiliary_systems,
+    CudaDensityFittingIntegralSourceImpl** source, std::vector<double>& metrics,
+    std::size_t& nbf, std::size_t& naux, std::string& detail) {
+  detail.clear();
+  metrics.clear();
+  nbf = 0U;
+  naux = 0U;
+  if (source == nullptr || device_id < 0 || orbital_systems.empty() ||
+      orbital_systems.size() != auxiliary_systems.size()) {
+    detail = "bounded DF source dimensions are invalid";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  *source = nullptr;
+  const std::size_t batch_size = orbital_systems.size();
+  const std::size_t public_nbf = molecule::ao_count(orbital_systems.front());
+  const std::size_t public_naux =
+      molecule::ao_count(auxiliary_systems.front());
+  const std::size_t cartesian_nbf =
+      molecule::cartesian_ao_count(orbital_systems.front());
+  const std::size_t cartesian_naux =
+      molecule::cartesian_ao_count(auxiliary_systems.front());
+  std::size_t metric_elements = 0;
+  std::size_t metric_total_elements = 0;
+  if (!checked_multiply(public_naux, public_naux, metric_elements) ||
+      !checked_multiply(batch_size, metric_elements, metric_total_elements)) {
+    detail = "bounded DF source metric dimensions overflow size_t";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+  if (public_nbf == 0U || public_naux == 0U || cartesian_nbf == 0U ||
+      cartesian_naux == 0U || batch_size >
+          static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max())) {
+    detail = "bounded DF source basis dimensions are invalid";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+
+  std::vector<core::System> combined;
+  try {
+    combined.reserve(batch_size);
+  } catch (const std::bad_alloc&) {
+    detail = "host allocation failed for bounded DF source systems";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+  for (std::size_t system = 0; system < batch_size; ++system) {
+    const core::System& orbital = orbital_systems[system];
+    const core::System& auxiliary = auxiliary_systems[system];
+    if (molecule::ao_count(orbital) != public_nbf ||
+        molecule::ao_count(auxiliary) != public_naux ||
+        molecule::cartesian_ao_count(orbital) != cartesian_nbf ||
+        molecule::cartesian_ao_count(auxiliary) != cartesian_naux ||
+        orbital.atoms.size() != auxiliary.atoms.size()) {
+      detail = "bounded DF source requires homogeneous AO dimensions";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+    for (std::size_t atom = 0; atom < orbital.atoms.size(); ++atom) {
+      if (orbital.atoms[atom].atomic_number !=
+              auxiliary.atoms[atom].atomic_number ||
+          orbital.atoms[atom].position != auxiliary.atoms[atom].position) {
+        detail = "bounded DF source orbital and auxiliary geometries differ";
+        return VIBEQC_STATUS_INVALID_ARGUMENT;
+      }
+    }
+    core::System item;
+    item.atoms = orbital.atoms;
+    item.shells = orbital.shells;
+    item.shells.insert(item.shells.end(), auxiliary.shells.begin(),
+                       auxiliary.shells.end());
+    item.shells.push_back({0, 0, {{0.0, 1.0}}});
+    item.charge = orbital.charge;
+    item.multiplicity = 1;
+    item.electron_count = 2;
+    item.basis_representation = VIBEQC_BASIS_CARTESIAN;
+    try {
+      combined.push_back(std::move(item));
+    } catch (const std::bad_alloc&) {
+      detail = "host allocation failed for bounded DF source systems";
+      return VIBEQC_STATUS_OUT_OF_MEMORY;
+    }
+  }
+
+  HostBatch host;
+  std::vector<const std::vector<double>*> no_warm(batch_size, nullptr);
+  try {
+    if (!pack_host_batch(combined, no_warm, host, false) ||
+        host.nbf != cartesian_nbf + cartesian_naux + 1U) {
+      detail = "bounded DF source Cartesian packing failed";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+  } catch (const std::bad_alloc&) {
+    detail = "host allocation failed while packing bounded DF source";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  } catch (const std::exception& error) {
+    detail = error.what();
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  const std::size_t int32_max =
+      static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max());
+  if (host.nbf > int32_max || host.direct_nbf > int32_max ||
+      cartesian_nbf > int32_max || cartesian_naux > int32_max ||
+      cartesian_nbf > int32_max - cartesian_naux) {
+    detail = "bounded DF source dimensions exceed CUDA int32 indexing";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  cudaError_t cuda_error = cudaSetDevice(device_id);
+  if (cuda_error != cudaSuccess) return source_cuda_status(cuda_error);
+  auto candidate = std::unique_ptr<CudaDensityFittingIntegralSourceImpl>(
+      new (std::nothrow) CudaDensityFittingIntegralSourceImpl{});
+  if (!candidate) return VIBEQC_STATUS_OUT_OF_MEMORY;
+  candidate->device_id = device_id;
+  candidate->batch_size = batch_size;
+  candidate->public_nbf = public_nbf;
+  candidate->public_naux = public_naux;
+  candidate->cartesian_nbf = cartesian_nbf;
+  candidate->cartesian_naux = cartesian_naux;
+  candidate->dummy_index = cartesian_nbf + cartesian_naux;
+  candidate->batch.batch_size = static_cast<std::int32_t>(batch_size);
+  candidate->batch.nbf = static_cast<std::int32_t>(host.nbf);
+  candidate->batch.direct_nbf = static_cast<std::int32_t>(host.direct_nbf);
+  candidate->batch.total_atoms = static_cast<std::int64_t>(host.atomic_numbers.size());
+  candidate->batch.total_shells = static_cast<std::int64_t>(host.shell_atoms.size());
+  try {
+    candidate->host_atom_offsets = host.atom_offsets;
+    // Only the atom-prefix mirror survives source construction.  Include the
+    // owning object and vector capacity in the retained-host diagnostic so a
+    // positive-budget plan cannot silently omit this metadata allocation.
+    std::size_t atom_offset_bytes = 0U;
+    if (!checked_multiply(candidate->host_atom_offsets.capacity(),
+                          sizeof(std::int64_t), atom_offset_bytes) ||
+        !checked_add(sizeof(*candidate), atom_offset_bytes,
+                     candidate->host_bytes)) {
+      detail = "bounded DF source host metadata bytes overflow size_t";
+      return VIBEQC_STATUS_OUT_OF_MEMORY;
+    }
+  } catch (const std::bad_alloc&) {
+    detail = "host allocation failed for bounded DF source atom offsets";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+
+  const auto source_vector_bytes_valid = [](const auto& values) {
+    return values.size() <=
+           std::numeric_limits<std::size_t>::max() / sizeof(values[0]);
+  };
+  if (!source_vector_bytes_valid(host.atom_offsets) ||
+      !source_vector_bytes_valid(host.atom_systems) ||
+      !source_vector_bytes_valid(host.atomic_numbers) ||
+      !source_vector_bytes_valid(host.positions) ||
+      !source_vector_bytes_valid(host.shell_atoms) ||
+      !source_vector_bytes_valid(host.shell_angular) ||
+      !source_vector_bytes_valid(host.shell_ao_offsets) ||
+      !source_vector_bytes_valid(host.shell_direct_ao_offsets) ||
+      !source_vector_bytes_valid(host.shell_primitive_offsets) ||
+      !source_vector_bytes_valid(host.ao_shells) ||
+      !source_vector_bytes_valid(host.ao_term_counts) ||
+      !source_vector_bytes_valid(host.ao_term_angular) ||
+      !source_vector_bytes_valid(host.ao_term_coefficients) ||
+      !source_vector_bytes_valid(host.direct_ao_shells) ||
+      !source_vector_bytes_valid(host.direct_ao_angular) ||
+      !source_vector_bytes_valid(host.direct_ao_coefficients) ||
+      !source_vector_bytes_valid(host.primitive_exponents) ||
+      !source_vector_bytes_valid(host.primitive_coefficients)) {
+    detail = "bounded DF source metadata size overflows size_t";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+
+#define VIBEQC_UPLOAD_SOURCE_FIELD(field, values)                              \
+  do {                                                                          \
+    void* uploaded = nullptr;                                                  \
+    const vibeqc_status upload_status = source_upload(                         \
+        *candidate, (values).data(), (values).size() * sizeof((values)[0]),     \
+        &uploaded, detail);                                                     \
+    if (upload_status != VIBEQC_STATUS_SUCCESS) return upload_status;           \
+    candidate->batch.field =                                                     \
+        static_cast<decltype(candidate->batch.field)>(uploaded);               \
+  } while (false)
+
+  VIBEQC_UPLOAD_SOURCE_FIELD(atom_offsets, host.atom_offsets);
+  VIBEQC_UPLOAD_SOURCE_FIELD(atom_systems, host.atom_systems);
+  VIBEQC_UPLOAD_SOURCE_FIELD(atomic_numbers, host.atomic_numbers);
+  VIBEQC_UPLOAD_SOURCE_FIELD(positions, host.positions);
+  VIBEQC_UPLOAD_SOURCE_FIELD(shell_atoms, host.shell_atoms);
+  VIBEQC_UPLOAD_SOURCE_FIELD(shell_angular, host.shell_angular);
+  VIBEQC_UPLOAD_SOURCE_FIELD(shell_ao_offsets, host.shell_ao_offsets);
+  VIBEQC_UPLOAD_SOURCE_FIELD(shell_direct_ao_offsets,
+                             host.shell_direct_ao_offsets);
+  VIBEQC_UPLOAD_SOURCE_FIELD(shell_primitive_offsets,
+                             host.shell_primitive_offsets);
+  VIBEQC_UPLOAD_SOURCE_FIELD(ao_shells, host.ao_shells);
+  VIBEQC_UPLOAD_SOURCE_FIELD(ao_term_counts, host.ao_term_counts);
+  VIBEQC_UPLOAD_SOURCE_FIELD(ao_term_angular, host.ao_term_angular);
+  VIBEQC_UPLOAD_SOURCE_FIELD(ao_term_coefficients, host.ao_term_coefficients);
+  VIBEQC_UPLOAD_SOURCE_FIELD(direct_ao_shells, host.direct_ao_shells);
+  VIBEQC_UPLOAD_SOURCE_FIELD(direct_ao_angular, host.direct_ao_angular);
+  VIBEQC_UPLOAD_SOURCE_FIELD(direct_ao_coefficients,
+                             host.direct_ao_coefficients);
+  VIBEQC_UPLOAD_SOURCE_FIELD(primitive_exponents, host.primitive_exponents);
+  VIBEQC_UPLOAD_SOURCE_FIELD(primitive_coefficients,
+                             host.primitive_coefficients);
+#undef VIBEQC_UPLOAD_SOURCE_FIELD
+
+  // Keep a transform per batch item.  Equal AO counts do not imply equal
+  // shell layouts (for example, two hetero-nuclear systems can have the same
+  // dimension but different contraction order), so a single front-item
+  // transform would silently corrupt every later source replay.
+  std::size_t orbital_transform_elements = 0;
+  std::size_t auxiliary_transform_elements = 0;
+  if (!checked_multiply(public_nbf, cartesian_nbf,
+                        orbital_transform_elements) ||
+      !checked_multiply(public_naux, cartesian_naux,
+                        auxiliary_transform_elements) ||
+      !checked_multiply(batch_size, orbital_transform_elements,
+                        orbital_transform_elements) ||
+      !checked_multiply(batch_size, auxiliary_transform_elements,
+                        auxiliary_transform_elements)) {
+    detail = "bounded DF source transform dimensions overflow size_t";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+  std::vector<double> orbital_transform;
+  std::vector<double> auxiliary_transform;
+  try {
+    orbital_transform.resize(orbital_transform_elements);
+    auxiliary_transform.resize(auxiliary_transform_elements);
+    for (std::size_t system = 0; system < batch_size; ++system) {
+      const std::vector<double> orbital_item =
+          make_public_to_cartesian_transform(orbital_systems[system]);
+      const std::vector<double> auxiliary_item =
+          make_public_to_cartesian_transform(auxiliary_systems[system]);
+      std::copy(orbital_item.begin(), orbital_item.end(),
+                orbital_transform.begin() +
+                    system * public_nbf * cartesian_nbf);
+      std::copy(auxiliary_item.begin(), auxiliary_item.end(),
+                auxiliary_transform.begin() +
+                    system * public_naux * cartesian_naux);
+    }
+  } catch (const std::bad_alloc&) {
+    detail = "host allocation failed for bounded DF source transforms";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  } catch (const std::exception& error) {
+    detail = error.what();
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  void* orbital_transform_device = nullptr;
+  vibeqc_status status = source_upload(
+      *candidate, orbital_transform.data(),
+      orbital_transform.size() * sizeof(double), &orbital_transform_device,
+      detail);
+  if (status != VIBEQC_STATUS_SUCCESS) return status;
+  void* auxiliary_transform_device = nullptr;
+  status = source_upload(
+      *candidate, auxiliary_transform.data(),
+      auxiliary_transform.size() * sizeof(double), &auxiliary_transform_device,
+      detail);
+  if (status != VIBEQC_STATUS_SUCCESS) return status;
+  candidate->orbital_to_cartesian =
+      static_cast<const double*>(orbital_transform_device);
+  candidate->auxiliary_to_cartesian =
+      static_cast<const double*>(auxiliary_transform_device);
+
+  try {
+    metrics.resize(metric_total_elements);
+  } catch (const std::bad_alloc&) {
+    detail = "host allocation failed for bounded DF metric";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+  cudaStream_t stream = nullptr;
+  cuda_error = cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
+  if (cuda_error != cudaSuccess) return source_cuda_status(cuda_error);
+  double* metric_device = nullptr;
+  if (metric_elements >
+      static_cast<std::size_t>(std::numeric_limits<unsigned>::max()) * 128U) {
+    (void)cudaStreamDestroy(stream);
+    detail = "bounded DF metric launch exceeds CUDA grid limits";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  cuda_error = cudaMalloc(&metric_device, metric_elements * sizeof(double));
+  if (cuda_error != cudaSuccess) {
+    (void)cudaStreamDestroy(stream);
+    return source_cuda_status(cuda_error);
+  }
+  for (std::size_t system = 0; system < batch_size &&
+       cuda_error == cudaSuccess; ++system) {
+    build_cuda_df_metric_source_kernel<false><<<
+        static_cast<unsigned>((metric_elements + 128U - 1U) / 128U),
+        128U, 0, stream>>>(
+        candidate->batch, cartesian_nbf, cartesian_naux, public_naux,
+        candidate->dummy_index, system, 0, public_naux, -1,
+        candidate->auxiliary_to_cartesian, metric_device);
+    cuda_error = cudaGetLastError();
+    if (cuda_error == cudaSuccess) cuda_error = cudaStreamSynchronize(stream);
+    if (cuda_error == cudaSuccess) {
+      cuda_error = cudaMemcpy(metrics.data() + system * metric_elements,
+                              metric_device, metric_elements * sizeof(double),
+                              cudaMemcpyDeviceToHost);
+    }
+  }
+  (void)cudaFree(metric_device);
+  (void)cudaStreamDestroy(stream);
+  if (cuda_error != cudaSuccess) {
+    detail = "CUDA bounded DF metric generation failed";
+    return source_cuda_status(cuda_error);
+  }
+  // Record the transient host setup footprint while the packed basis metadata,
+  // public-basis transforms, and generated metric are all alive.  Only the
+  // compact atom-offset mirror is retained after this function returns, but a
+  // positive-budget diagnostic must still expose the larger construction peak.
+  const auto capacity_bytes = [](const auto& values) -> long double {
+    return static_cast<long double>(values.capacity()) *
+           static_cast<long double>(sizeof(values[0]));
+  };
+  const auto system_capacity_bytes = [&](const core::System& system) {
+    long double bytes = static_cast<long double>(sizeof(system)) +
+                        capacity_bytes(system.atoms) +
+                        capacity_bytes(system.shells);
+    for (const core::Shell& shell : system.shells) {
+      bytes += capacity_bytes(shell.primitives);
+    }
+    return bytes;
+  };
+  long double host_peak = static_cast<long double>(sizeof(*candidate));
+#define VIBEQC_SOURCE_HOST_FIELD(field) host_peak += capacity_bytes(host.field)
+  VIBEQC_SOURCE_HOST_FIELD(atom_offsets);
+  VIBEQC_SOURCE_HOST_FIELD(atom_systems);
+  VIBEQC_SOURCE_HOST_FIELD(atomic_numbers);
+  VIBEQC_SOURCE_HOST_FIELD(positions);
+  VIBEQC_SOURCE_HOST_FIELD(system_shell_offsets);
+  VIBEQC_SOURCE_HOST_FIELD(shell_atoms);
+  VIBEQC_SOURCE_HOST_FIELD(shell_angular);
+  VIBEQC_SOURCE_HOST_FIELD(shell_ao_offsets);
+  VIBEQC_SOURCE_HOST_FIELD(shell_direct_ao_offsets);
+  VIBEQC_SOURCE_HOST_FIELD(shell_primitive_offsets);
+  VIBEQC_SOURCE_HOST_FIELD(system_shell_pair_offsets);
+  VIBEQC_SOURCE_HOST_FIELD(system_shell_quartet_offsets);
+  VIBEQC_SOURCE_HOST_FIELD(system_shell_pair_block_offsets);
+  VIBEQC_SOURCE_HOST_FIELD(system_shell_pair_block_quartet_offsets);
+  VIBEQC_SOURCE_HOST_FIELD(shell_pair_systems);
+  VIBEQC_SOURCE_HOST_FIELD(shell_pair_first);
+  VIBEQC_SOURCE_HOST_FIELD(shell_pair_second);
+  VIBEQC_SOURCE_HOST_FIELD(shell_pair_primitive_offsets);
+  VIBEQC_SOURCE_HOST_FIELD(psss_resident_tasks);
+  VIBEQC_SOURCE_HOST_FIELD(psss_resident_ket_pairs);
+  VIBEQC_SOURCE_HOST_FIELD(ao_shells);
+  VIBEQC_SOURCE_HOST_FIELD(ao_term_counts);
+  VIBEQC_SOURCE_HOST_FIELD(ao_term_angular);
+  VIBEQC_SOURCE_HOST_FIELD(ao_term_coefficients);
+  VIBEQC_SOURCE_HOST_FIELD(direct_ao_shells);
+  VIBEQC_SOURCE_HOST_FIELD(direct_ao_angular);
+  VIBEQC_SOURCE_HOST_FIELD(direct_ao_coefficients);
+  VIBEQC_SOURCE_HOST_FIELD(ao_to_direct_transform);
+  VIBEQC_SOURCE_HOST_FIELD(primitive_exponents);
+  VIBEQC_SOURCE_HOST_FIELD(primitive_coefficients);
+  VIBEQC_SOURCE_HOST_FIELD(occupied);
+  VIBEQC_SOURCE_HOST_FIELD(warm_mask);
+  VIBEQC_SOURCE_HOST_FIELD(warm_density);
+#undef VIBEQC_SOURCE_HOST_FIELD
+  host_peak += capacity_bytes(orbital_transform);
+  host_peak += capacity_bytes(auxiliary_transform);
+  host_peak += capacity_bytes(metrics);
+  host_peak += capacity_bytes(combined);
+  host_peak += capacity_bytes(no_warm);
+  host_peak += capacity_bytes(candidate->host_atom_offsets);
+  host_peak += capacity_bytes(candidate->allocations);
+  for (const core::System& system : combined) {
+    host_peak += system_capacity_bytes(system);
+  }
+  // Each transform helper briefly materializes one public-to-Cartesian item
+  // before copying it into the packed arrays. Charge that per-item temporary
+  // in addition to the retained batch transforms.
+  host_peak += static_cast<long double>(public_nbf) * cartesian_nbf *
+               sizeof(double);
+  host_peak += static_cast<long double>(public_naux) * cartesian_naux *
+               sizeof(double);
+  // Recompute retained bytes after all metadata uploads have populated the
+  // device-allocation pointer vector.  The dynamic pointer array is small but
+  // is still host state owned by the source and must not disappear from the
+  // resident-byte diagnostic.
+  const long double retained_host =
+      static_cast<long double>(sizeof(*candidate)) +
+      capacity_bytes(candidate->host_atom_offsets) +
+      capacity_bytes(candidate->allocations);
+  const long double size_limit = static_cast<long double>(
+      std::numeric_limits<std::size_t>::max());
+  candidate->host_bytes = retained_host >= size_limit
+                              ? std::numeric_limits<std::size_t>::max()
+                              : static_cast<std::size_t>(retained_host);
+  candidate->host_peak_bytes =
+      host_peak >= size_limit ? std::numeric_limits<std::size_t>::max()
+                              : static_cast<std::size_t>(host_peak);
+  *source = candidate.release();
+  nbf = public_nbf;
+  naux = public_naux;
+  return VIBEQC_STATUS_SUCCESS;
+}
+
+void destroy_cuda_density_fitting_integral_source_impl(
+    CudaDensityFittingIntegralSourceImpl* source) noexcept {
+  delete source;
+}
+
+std::size_t cuda_density_fitting_integral_source_device_bytes_impl(
+    const CudaDensityFittingIntegralSourceImpl* source) noexcept {
+  return source == nullptr ? 0U : source->device_bytes;
+}
+
+vibeqc_status generate_cuda_density_fitting_transformed_tile_impl(
+    CudaDensityFittingIntegralSourceImpl* source, std::size_t system,
+    std::size_t pair_begin, std::size_t pair_count, std::size_t auxiliary_begin,
+    std::size_t auxiliary_count, std::int64_t derivative_coordinate,
+    const double* inverse_square_root, void* stream_handle, double* output,
+    std::string& detail, bool apply_metric_transform) {
+  detail.clear();
+  std::size_t pair_total = 0;
+  if (source != nullptr &&
+      !checked_multiply(source->public_nbf, source->public_nbf, pair_total)) {
+    detail = "bounded DF transformed tile dimensions overflow size_t";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+  if (source == nullptr || output == nullptr ||
+      (apply_metric_transform && inverse_square_root == nullptr) ||
+      stream_handle == nullptr || system >= source->batch_size || pair_count == 0U ||
+      auxiliary_count == 0U || pair_begin > pair_total ||
+      pair_count > pair_total - pair_begin ||
+      auxiliary_begin > source->public_naux ||
+      auxiliary_count > source->public_naux - auxiliary_begin) {
+    detail = "bounded DF transformed tile dimensions are invalid";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  if (derivative_coordinate >= 0) {
+    // The public API indexes coordinates relative to the selected system,
+    // while the packed recurrence metadata uses fleet-global atom offsets.
+    // Validate against this system's atom span before translating below;
+    // validating against total_atoms would accept an out-of-range coordinate
+    // for every system after the first and could read a neighbor's geometry.
+    std::size_t coordinate_count = 0;
+    if (system + 1U >= source->host_atom_offsets.size() ||
+        source->host_atom_offsets[system] < 0 ||
+        source->host_atom_offsets[system + 1U] <
+            source->host_atom_offsets[system] ||
+        !checked_multiply(
+            static_cast<std::size_t>(source->host_atom_offsets[system + 1U] -
+                                     source->host_atom_offsets[system]),
+            3U, coordinate_count) ||
+        static_cast<std::size_t>(derivative_coordinate) >= coordinate_count) {
+      detail = "bounded DF transformed tile derivative coordinate is invalid";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+  }
+  cudaError_t cuda_error = cudaSetDevice(source->device_id);
+  if (cuda_error != cudaSuccess) return source_cuda_status(cuda_error);
+  const cudaStream_t stream = reinterpret_cast<cudaStream_t>(stream_handle);
+  constexpr unsigned source_threads = 128U;
+  std::size_t tile_elements = 0;
+  if (!checked_multiply(pair_count, auxiliary_count, tile_elements)) {
+    detail = "bounded DF transformed tile size overflows size_t";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+  if (tile_elements >
+      static_cast<std::size_t>(std::numeric_limits<unsigned>::max()) *
+          source_threads) {
+    detail = "bounded DF transformed tile launch exceeds CUDA grid limits";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  const unsigned blocks = static_cast<unsigned>(
+      (tile_elements + source_threads - 1U) / source_threads);
+  // Public callers address derivatives relative to one system.  The packed
+  // recurrence metadata is fleet-global, so translate the coordinate to the
+  // selected system's atom range before evaluating the tile.
+  if (derivative_coordinate >= 0 &&
+      (source->host_atom_offsets[system] >
+           (std::numeric_limits<std::int64_t>::max() -
+            derivative_coordinate) /
+               3)) {
+    detail = "bounded DF transformed tile derivative coordinate overflows";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  const std::int64_t system_derivative_coordinate =
+      derivative_coordinate < 0
+          ? derivative_coordinate
+          : derivative_coordinate + source->host_atom_offsets[system] * 3;
+  if (derivative_coordinate < 0) {
+    build_cuda_df_transformed_tile_kernel<false><<<blocks, source_threads, 0, stream>>>(
+        source->batch, source->cartesian_nbf, source->cartesian_naux,
+        source->public_nbf, source->public_naux, source->dummy_index, system,
+        pair_begin, pair_count, auxiliary_begin, auxiliary_count,
+        system_derivative_coordinate, source->orbital_to_cartesian,
+        source->auxiliary_to_cartesian, inverse_square_root,
+        apply_metric_transform, output);
+  } else {
+    build_cuda_df_transformed_tile_kernel<true><<<blocks, source_threads, 0, stream>>>(
+        source->batch, source->cartesian_nbf, source->cartesian_naux,
+        source->public_nbf, source->public_naux, source->dummy_index, system,
+        pair_begin, pair_count, auxiliary_begin, auxiliary_count,
+        system_derivative_coordinate, source->orbital_to_cartesian,
+        source->auxiliary_to_cartesian, inverse_square_root,
+        apply_metric_transform, output);
+  }
+  cuda_error = cudaPeekAtLastError();
+  return cuda_error == cudaSuccess ? VIBEQC_STATUS_SUCCESS : source_cuda_status(cuda_error);
+}
+
+vibeqc_status generate_cuda_density_fitting_metric_derivative_tile_impl(
+    CudaDensityFittingIntegralSourceImpl* source, std::size_t system,
+    std::size_t auxiliary_row_begin, std::size_t auxiliary_row_count,
+    std::int64_t derivative_coordinate, void* stream_handle, double* output,
+    std::string& detail) {
+  detail.clear();
+  if (source == nullptr || output == nullptr || stream_handle == nullptr ||
+      system >= source->batch_size || derivative_coordinate < 0 ||
+      system + 1U >= source->host_atom_offsets.size() ||
+      source->host_atom_offsets[system] < 0 ||
+      source->host_atom_offsets[system + 1U] < source->host_atom_offsets[system] ||
+      auxiliary_row_begin > source->public_naux ||
+      auxiliary_row_count > source->public_naux - auxiliary_row_begin) {
+    detail = "bounded DF metric derivative tile dimensions are invalid";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  const std::size_t atom_count = static_cast<std::size_t>(
+      source->host_atom_offsets[system + 1U] -
+      source->host_atom_offsets[system]);
+  std::size_t coordinate_count = 0;
+  if (!checked_multiply(atom_count, 3U, coordinate_count) ||
+      static_cast<std::size_t>(derivative_coordinate) >= coordinate_count) {
+    detail = "bounded DF metric derivative coordinate is invalid";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  std::size_t elements = 0;
+  if (!checked_multiply(auxiliary_row_count, source->public_naux, elements) ||
+      elements == 0U ||
+      elements > static_cast<std::size_t>(std::numeric_limits<unsigned>::max()) *
+                    128U) {
+    detail = "bounded DF metric derivative tile dimensions overflow";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  cudaError_t cuda_error = cudaSetDevice(source->device_id);
+  if (cuda_error != cudaSuccess) return source_cuda_status(cuda_error);
+  if (source->host_atom_offsets[system] >
+      (std::numeric_limits<std::int64_t>::max() - derivative_coordinate) / 3) {
+    detail = "bounded DF metric derivative coordinate overflows";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  const std::int64_t global_coordinate =
+      derivative_coordinate + source->host_atom_offsets[system] * 3;
+  const unsigned blocks = static_cast<unsigned>((elements + 127U) / 128U);
+  build_cuda_df_metric_source_kernel<true><<<blocks, 128U, 0,
+                                               reinterpret_cast<cudaStream_t>(
+                                                   stream_handle)>>>(
+      source->batch, source->cartesian_nbf, source->cartesian_naux,
+      source->public_naux, source->dummy_index, system, auxiliary_row_begin,
+      auxiliary_row_count, global_coordinate, source->auxiliary_to_cartesian,
+      output);
+  cuda_error = cudaPeekAtLastError();
+  return cuda_error == cudaSuccess ? VIBEQC_STATUS_SUCCESS
+                                   : source_cuda_status(cuda_error);
+}
+
 vibeqc_status cuda_status(cudaError_t status) {
   if (status == cudaSuccess) return VIBEQC_STATUS_SUCCESS;
   return status == cudaErrorMemoryAllocation ? VIBEQC_STATUS_OUT_OF_MEMORY
@@ -15943,6 +16755,157 @@ vibeqc_status launch_solver(CudaResources& resources,
 }
 
 }  // namespace
+
+vibeqc_status create_cuda_density_fitting_integral_source(
+    int device_id, const std::vector<core::System>& orbital_systems,
+    const std::vector<core::System>& auxiliary_systems,
+    CudaDensityFittingIntegralSource** source, std::vector<double>& metrics,
+    std::size_t& nbf, std::size_t& naux, std::string& detail) {
+  if (source == nullptr) {
+    detail = "bounded DF source output handle is null";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  *source = nullptr;
+  CudaDensityFittingIntegralSourceImpl* implementation = nullptr;
+  const vibeqc_status status = create_cuda_density_fitting_integral_source_impl(
+      device_id, orbital_systems, auxiliary_systems, &implementation, metrics,
+      nbf, naux, detail);
+  if (status != VIBEQC_STATUS_SUCCESS) return status;
+  auto* handle = new (std::nothrow) CudaDensityFittingIntegralSource{};
+  if (handle == nullptr) {
+    destroy_cuda_density_fitting_integral_source_impl(implementation);
+    detail = "bounded DF source handle allocation failed";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+  handle->implementation = implementation;
+  *source = handle;
+  return VIBEQC_STATUS_SUCCESS;
+}
+
+void destroy_cuda_density_fitting_integral_source(
+    CudaDensityFittingIntegralSource* source) noexcept {
+  if (source == nullptr) return;
+  destroy_cuda_density_fitting_integral_source_impl(
+      static_cast<CudaDensityFittingIntegralSourceImpl*>(source->implementation));
+  delete source;
+}
+
+std::size_t cuda_density_fitting_integral_source_device_bytes(
+    const CudaDensityFittingIntegralSource* source) noexcept {
+  if (source == nullptr) return 0U;
+  return cuda_density_fitting_integral_source_device_bytes_impl(
+      static_cast<const CudaDensityFittingIntegralSourceImpl*>(
+          source->implementation));
+}
+
+std::size_t cuda_density_fitting_integral_source_host_bytes(
+    const CudaDensityFittingIntegralSource* source) noexcept {
+  if (source == nullptr || source->implementation == nullptr) return 0U;
+  const auto* implementation =
+      static_cast<const CudaDensityFittingIntegralSourceImpl*>(
+          source->implementation);
+  const std::size_t handle_bytes = sizeof(CudaDensityFittingIntegralSource);
+  return implementation->host_bytes >
+                 std::numeric_limits<std::size_t>::max() - handle_bytes
+             ? std::numeric_limits<std::size_t>::max()
+             : implementation->host_bytes + handle_bytes;
+}
+
+std::size_t cuda_density_fitting_integral_source_host_peak_bytes(
+    const CudaDensityFittingIntegralSource* source) noexcept {
+  if (source == nullptr || source->implementation == nullptr) return 0U;
+  const auto* implementation =
+      static_cast<const CudaDensityFittingIntegralSourceImpl*>(
+          source->implementation);
+  const std::size_t handle_bytes = sizeof(CudaDensityFittingIntegralSource);
+  return implementation->host_peak_bytes >
+                 std::numeric_limits<std::size_t>::max() - handle_bytes
+             ? std::numeric_limits<std::size_t>::max()
+             : implementation->host_peak_bytes + handle_bytes;
+}
+
+std::size_t cuda_density_fitting_integral_source_coordinate_count(
+    const CudaDensityFittingIntegralSource* source) noexcept {
+  if (source == nullptr || source->implementation == nullptr) return 0U;
+  const auto* implementation =
+      static_cast<const CudaDensityFittingIntegralSourceImpl*>(
+          source->implementation);
+  if (implementation->host_atom_offsets.size() < 2U) return 0U;
+  std::size_t maximum = 0U;
+  for (std::size_t system = 0; system + 1U <
+                                 implementation->host_atom_offsets.size();
+       ++system) {
+    const std::int64_t begin = implementation->host_atom_offsets[system];
+    const std::int64_t end = implementation->host_atom_offsets[system + 1U];
+    if (begin < 0 || end < begin) return 0U;
+    const std::uint64_t atoms = static_cast<std::uint64_t>(end - begin);
+    if (atoms > std::numeric_limits<std::size_t>::max() / 3U) {
+      return std::numeric_limits<std::size_t>::max();
+    }
+    maximum = std::max(maximum,
+                       static_cast<std::size_t>(atoms) * std::size_t{3});
+  }
+  return maximum;
+}
+
+bool cuda_density_fitting_integral_source_matches(
+    const CudaDensityFittingIntegralSource* source, int device_id,
+    std::size_t batch_size, std::size_t nbf, std::size_t naux) noexcept {
+  if (source == nullptr || source->implementation == nullptr) return false;
+  const auto* implementation =
+      static_cast<const CudaDensityFittingIntegralSourceImpl*>(
+          source->implementation);
+  return implementation->device_id == device_id &&
+         implementation->batch_size == batch_size &&
+         implementation->public_nbf == nbf && implementation->public_naux == naux;
+}
+
+vibeqc_status generate_cuda_density_fitting_transformed_tile(
+    CudaDensityFittingIntegralSource* source, std::size_t system,
+    std::size_t pair_begin, std::size_t pair_count, std::size_t auxiliary_begin,
+    std::size_t auxiliary_count, std::int64_t derivative_coordinate,
+    const double* inverse_square_root, void* stream_handle, double* output,
+    std::string& detail) {
+  if (source == nullptr || source->implementation == nullptr) {
+    detail = "bounded DF source handle is null";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  return generate_cuda_density_fitting_transformed_tile_impl(
+      static_cast<CudaDensityFittingIntegralSourceImpl*>(source->implementation),
+      system, pair_begin, pair_count, auxiliary_begin, auxiliary_count,
+      derivative_coordinate, inverse_square_root, stream_handle, output, detail,
+      true);
+}
+
+vibeqc_status generate_cuda_density_fitting_raw_tile(
+    CudaDensityFittingIntegralSource* source, std::size_t system,
+    std::size_t pair_begin, std::size_t pair_count, std::size_t auxiliary_begin,
+    std::size_t auxiliary_count, std::int64_t derivative_coordinate,
+    void* stream_handle, double* output, std::string& detail) {
+  if (source == nullptr || source->implementation == nullptr) {
+    detail = "bounded DF source handle is null";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  return generate_cuda_density_fitting_transformed_tile_impl(
+      static_cast<CudaDensityFittingIntegralSourceImpl*>(source->implementation),
+      system, pair_begin, pair_count, auxiliary_begin, auxiliary_count,
+      derivative_coordinate, nullptr, stream_handle, output, detail, false);
+}
+
+vibeqc_status generate_cuda_density_fitting_metric_derivative_tile(
+    CudaDensityFittingIntegralSource* source, std::size_t system,
+    std::size_t auxiliary_row_begin, std::size_t auxiliary_row_count,
+    std::int64_t derivative_coordinate, void* stream_handle, double* output,
+    std::string& detail) {
+  if (source == nullptr || source->implementation == nullptr) {
+    detail = "bounded DF source handle is null";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  return generate_cuda_density_fitting_metric_derivative_tile_impl(
+      static_cast<CudaDensityFittingIntegralSourceImpl*>(source->implementation),
+      system, auxiliary_row_begin, auxiliary_row_count, derivative_coordinate,
+      stream_handle, output, detail);
+}
 
 struct CudaRhfBucketPlan {
   CudaResources resources;
@@ -20961,6 +21924,28 @@ vibeqc_status build_cuda_density_fitting_integrals_batch_impl(
     detail = "CUDA DF integral batch dimensions overflowed";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
+  std::size_t coordinate_count = 0;
+  if (!checked_multiply(atom_count, 3U, coordinate_count) ||
+      coordinate_count == std::numeric_limits<std::size_t>::max()) {
+    detail = "CUDA DF integral batch coordinate dimensions overflowed";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+  std::size_t output_elements_per_system = 0;
+  if (!checked_multiply(per_system, coordinate_count + 1U,
+                        output_elements_per_system)) {
+    detail = "CUDA DF integral batch output dimensions overflowed";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+  std::size_t per_system_bytes = 0;
+  if (!checked_multiply(output_elements_per_system, sizeof(double),
+                        per_system_bytes)) {
+    detail = "CUDA DF integral batch output bytes overflowed";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+  if (output_budget_bytes != 0U && output_budget_bytes < per_system_bytes) {
+    detail = "CUDA DF integral batch budget cannot hold one system output";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
   constexpr unsigned threads = 128U;
   constexpr std::size_t kDefaultOutputChunkBytes = 64U * 1024U * 1024U;
   const std::size_t output_chunk_bytes =
@@ -20968,7 +21953,7 @@ vibeqc_status build_cuda_density_fitting_integrals_batch_impl(
                                 : output_budget_bytes;
   const std::size_t chunk_systems = std::min(
       batch_size,
-      std::max<std::size_t>(1U, output_chunk_bytes / per_system));
+      std::max<std::size_t>(1U, output_chunk_bytes / per_system_bytes));
   const std::size_t chunk_elements = chunk_systems * per_system;
   if (chunk_elements > std::numeric_limits<unsigned>::max() *
                            static_cast<std::size_t>(threads) ||

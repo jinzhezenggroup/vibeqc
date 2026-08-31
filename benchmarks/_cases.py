@@ -290,14 +290,14 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
     # This synthetic scaling point reuses the physical WATER27 S4 octamer
     # topology while keeping the two copies far enough apart to avoid atomic
     # overlap. It is intentionally labeled synthetic: the case exists to make
-    # the 384-AO direct-J/K scaling regression reproducible, not to represent
+    # the 384-AO J/K scaling regression reproducible, not to represent
     # an optimized water-hexadecamer structure.
     octamer = cases["water-octamer-s4-def2-svp-spherical"].atoms
     half_separation = 5.0 * _ANGSTROM_TO_BOHR
     cases["water-hexadecamer-2s4-def2-svp-spherical"] = BenchmarkCase(
         description=(
             "synthetic pair of translated WATER27 S4 water octamers, "
-            "384 real spherical AOs, def2-SVP direct J/K"
+            "384 real spherical AOs, def2-SVP J/K"
         ),
         atoms=tuple(
             (
@@ -387,5 +387,67 @@ def real_molecule_gate_points() -> tuple[BenchmarkGatePoint, ...]:
             expected_ao_count=192,
             minimum_speedup=None,
             **accuracy_192,
+        ),
+    )
+
+
+def density_fitting_gate_points() -> tuple[BenchmarkGatePoint, ...]:
+    """Return the CUDA-DF 96/192-AO parity plus 384-AO scaling matrix.
+
+    Direct-SCF gates intentionally keep their historical thresholds in
+    :func:`real_molecule_gate_points`; this separate matrix can evolve with
+    the DF implementation without weakening the direct-versus-direct gate.
+    """
+
+    accuracy_96 = {
+        "maximum_energy_error": 3.0e-11,
+        "maximum_force_error": 3.0e-11,
+        "reference_gradient_tolerance": 1.0e-9,
+    }
+    accuracy_192 = {
+        "maximum_energy_error": 1.0e-10,
+        "maximum_force_error": 5.0e-10,
+        "reference_gradient_tolerance": 1.0e-8,
+    }
+    return (
+        BenchmarkGatePoint(
+            case="water-tetramer-def2-svp-spherical",
+            batch_size=1,
+            expected_ao_count=96,
+            minimum_speedup=1.0,
+            **accuracy_96,
+        ),
+        BenchmarkGatePoint(
+            case="water-tetramer-def2-svp-spherical",
+            batch_size=4,
+            expected_ao_count=96,
+            minimum_speedup=1.0,
+            **accuracy_96,
+        ),
+        BenchmarkGatePoint(
+            case="water-octamer-s4-def2-svp-spherical",
+            batch_size=1,
+            expected_ao_count=192,
+            minimum_speedup=1.0,
+            **accuracy_192,
+        ),
+        BenchmarkGatePoint(
+            case="water-octamer-s4-def2-svp-spherical",
+            batch_size=4,
+            expected_ao_count=192,
+            minimum_speedup=1.0,
+            **accuracy_192,
+        ),
+        # The translated WATER27 16-mer is deliberately outside the direct
+        # parity matrix: its 384-AO four-center path is the scaling point at
+        # which DF must remain competitive rather than merely accurate.
+        BenchmarkGatePoint(
+            case="water-hexadecamer-2s4-def2-svp-spherical",
+            batch_size=1,
+            expected_ao_count=384,
+            maximum_energy_error=2.0e-9,
+            maximum_force_error=2.0e-8,
+            reference_gradient_tolerance=2.0e-8,
+            minimum_speedup=1.0,
         ),
     )

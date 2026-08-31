@@ -1,10 +1,9 @@
-"""Run the explicit 96/192-AO real-molecule acceptance matrix.
+"""Run the explicit real-molecule acceptance matrix.
 
-The 96-AO direct-J/K points require parity with GPU4PySCF today. The 192-AO
-points currently gate only energy/force correctness; a 1.0x performance
-threshold is intentionally deferred until the DF J/K milestone is complete.
-GPU4PySCF still executes through sequential persistent single-system objects,
-as documented by ``compare_gpu4pyscf_batch.py`` and every child artifact.
+The direct matrix retains its historical GPU4PySCF parity requirements. The
+separate CUDA-DF matrix covers 96-, 192-, and 384-AO correctness/scaling points;
+external GPU4PySCF availability and provider-specific Graph replay are recorded
+in each artifact rather than silently changing the direct gate.
 """
 
 from __future__ import annotations
@@ -19,6 +18,7 @@ import sys
 from _cases import (
     BenchmarkGatePoint,
     benchmark_cases,
+    density_fitting_gate_points,
     real_molecule_gate_points,
 )
 
@@ -34,6 +34,7 @@ def _point_command(
     *,
     repeats: int,
     output: Path,
+    density_fitting_memory_budget_bytes: int,
 ) -> list[str]:
     """Build one child command without importing GPU packages in this runner."""
 
@@ -65,6 +66,11 @@ def _point_command(
     ]
     if point.minimum_speedup is not None:
         command.extend(("--minimum-speedup", str(point.minimum_speedup)))
+    if density_fitting_memory_budget_bytes:
+        command.extend((
+            "--density-fitting-memory-budget-bytes",
+            str(density_fitting_memory_budget_bytes),
+        ))
     return command
 
 
@@ -72,15 +78,27 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--size",
-        choices=("all", "96", "192"),
+        choices=("all", "96", "192", "384"),
         default="all",
-        help="run the full matrix or only one AO-size pair",
+        help="run the full matrix or only one AO-size gate",
     )
     parser.add_argument(
         "--repeats",
         type=int,
         default=5,
         help="interleaved warm samples collected per engine and gate point",
+    )
+    parser.add_argument(
+        "--density-fitting",
+        choices=("none", "cuda"),
+        default="none",
+        help="run the unchanged direct matrix or the CUDA DF acceptance matrix",
+    )
+    parser.add_argument(
+        "--density-fitting-memory-budget-bytes",
+        type=int,
+        default=0,
+        help="positive CUDA-DF planner budget forwarded to each gate point",
     )
     parser.add_argument("--output-directory", type=Path, required=True)
     parser.add_argument(
@@ -91,13 +109,27 @@ def main() -> None:
     args = parser.parse_args()
     if args.repeats < 1:
         raise ValueError("--repeats must be positive")
+    if args.density_fitting_memory_budget_bytes < 0:
+        raise ValueError(
+            "--density-fitting-memory-budget-bytes must be non-negative"
+        )
 
     cases = benchmark_cases()
+    gate_points = (
+        density_fitting_gate_points()
+        if args.density_fitting == "cuda"
+        else real_molecule_gate_points()
+    )
     points = tuple(
         point
-        for point in real_molecule_gate_points()
+        for point in gate_points
         if args.size == "all" or point.expected_ao_count == int(args.size)
     )
+    if not points:
+        raise ValueError(
+            f"no acceptance point for --size {args.size} with "
+            f"--density-fitting {args.density_fitting}"
+        )
     for point in points:
         case = cases[point.case]
         if case.expected_ao_count != point.expected_ao_count:
@@ -109,12 +141,21 @@ def main() -> None:
     commands = []
     for point in points:
         output = args.output_directory / (
-            f"{point.case}-b{point.batch_size}.json"
+            f"{point.case}-b{point.batch_size}-{args.density_fitting}.json"
         )
         commands.append((
             point,
             output,
-            _point_command(point, repeats=args.repeats, output=output),
+            _point_command(
+                point,
+                repeats=args.repeats,
+                output=output,
+                density_fitting_memory_budget_bytes=(
+                    args.density_fitting_memory_budget_bytes
+                    if args.density_fitting == "cuda" else 0
+                ),
+            )
+            + ["--density-fitting", args.density_fitting],
         ))
     if args.dry_run:
         for _, _, command in commands:
@@ -155,6 +196,10 @@ def main() -> None:
         "density_tolerance": _DENSITY_TOLERANCE,
         "screening_tolerance": _SCREENING_TOLERANCE,
         "gpu4pyscf_interface": "sequential single-system objects",
+        "density_fitting": args.density_fitting,
+        "density_fitting_memory_budget_bytes": (
+            args.density_fitting_memory_budget_bytes
+        ),
         "points": results,
         "passed": not failed,
     }
