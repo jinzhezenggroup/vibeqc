@@ -717,7 +717,8 @@ vibeqc_status build_coulomb(CudaDensityFittingJkPlan& plan,
 
 vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan,
                              const double* density, double* exchange,
-                             std::string& detail) {
+                             std::string& detail,
+                             bool density_is_column_major = false) {
   const std::size_t output_elements = plan.batch_size * plan.matrix_elements;
   cudaError_t cuda_error = cudaMemsetAsync(
       exchange, 0, output_elements * sizeof(double), plan.stream);
@@ -741,19 +742,26 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan,
       return VIBEQC_STATUS_OUT_OF_MEMORY;
     }
 
-    // cuBLAS sees the transposed, column-major density while the public API
-    // and streamed raw tensor remain row-major.  This explicit transpose is
-    // also what makes rectangular row-block GEMMs independent of density
-    // symmetry assumptions.
+    // cuBLAS consumes column-major matrices while public host densities and
+    // streamed raw tensors are row-major.  Transpose host inputs explicitly;
+    // device-resident SCF callers can opt out when their density is already
+    // in cuBLAS layout.  This keeps rectangular row-block GEMMs independent
+    // of density-symmetry assumptions.
     for (std::size_t system = 0; system < plan.batch_size; ++system) {
       const double* system_density = density + system * plan.matrix_elements;
-      transpose_density_kernel<<<blocks_for(plan.matrix_elements), kThreads, 0,
-                                 plan.stream>>>(
-          plan.nbf, system_density, plan.exchange_density_column_major);
-      cudaError_t transpose_error = cudaPeekAtLastError();
-      if (transpose_error != cudaSuccess) {
-        return cuda_failure(transpose_error,
-                            "transpose streamed DF exchange density", detail);
+      const double* density_column_major = system_density;
+      if (!density_is_column_major) {
+        density_column_major =
+            plan.exchange_density_column_major + system * plan.matrix_elements;
+        transpose_density_kernel<<<blocks_for(plan.matrix_elements), kThreads,
+                                   0, plan.stream>>>(
+            plan.nbf, system_density,
+            plan.exchange_density_column_major + system * plan.matrix_elements);
+        cudaError_t transpose_error = cudaPeekAtLastError();
+        if (transpose_error != cudaSuccess) {
+          return cuda_failure(transpose_error,
+                              "transpose streamed DF exchange density", detail);
+        }
       }
 
       const double* raw = plan.streamed_raw_three_center.data() +
@@ -764,13 +772,17 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan,
            auxiliary_begin += plan.auxiliary_tile) {
         const std::size_t auxiliary_count =
             std::min(plan.auxiliary_tile, plan.naux - auxiliary_begin);
-        const std::size_t auxiliary_stride = pair_capacity;
 
         for (std::size_t row_begin = 0; row_begin < plan.nbf;
              row_begin += plan.row_tile) {
           const std::size_t row_count =
               std::min(plan.row_tile, plan.nbf - row_begin);
           const std::size_t pair_count = row_count * plan.nbf;
+          // Use the compact stride for this (possibly partial) row block.
+          // The staging buffer is allocated for pair_capacity, but copying a
+          // partial final block with that larger stride would include gaps
+          // between auxiliary tiles and truncate the later tiles on device.
+          const std::size_t row_stride = pair_count;
 
           // Transform this AO-row block for the active auxiliary tile.  The
           // host staging layout is [auxiliary][row][column] row-major; cuBLAS
@@ -786,14 +798,14 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan,
                            inverse[(auxiliary_begin + auxiliary) * plan.naux +
                                    source];
                 }
-                host_tile[auxiliary * auxiliary_stride + row * plan.nbf +
+                host_tile[auxiliary * row_stride + row * plan.nbf +
                           column] = value;
               }
             }
           }
           cuda_error = cudaMemcpyAsync(
               plan.auxiliary_tile_values, host_tile.data(),
-              auxiliary_count * pair_count * sizeof(double),
+              auxiliary_count * row_stride * sizeof(double),
               cudaMemcpyHostToDevice, plan.stream);
           if (cuda_error != cudaSuccess) {
             return cuda_failure(cuda_error,
@@ -806,11 +818,11 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan,
               plan.blas, CUBLAS_OP_T, CUBLAS_OP_N,
               static_cast<int>(plan.nbf), static_cast<int>(row_count),
               static_cast<int>(plan.nbf), &one,
-              plan.exchange_density_column_major, static_cast<int>(plan.nbf),
+              density_column_major, static_cast<int>(plan.nbf),
               0, plan.auxiliary_tile_values, static_cast<int>(plan.nbf),
-              static_cast<long long>(auxiliary_stride), &zero,
+              static_cast<long long>(row_stride), &zero,
               plan.exchange_contributions, static_cast<int>(plan.nbf),
-              static_cast<long long>(auxiliary_stride),
+              static_cast<long long>(row_stride),
               static_cast<int>(auxiliary_count));
           if (blas_status != CUBLAS_STATUS_SUCCESS) {
             return blas_failure(blas_status,
@@ -822,6 +834,7 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan,
             const std::size_t column_count =
                 std::min(plan.row_tile, plan.nbf - column_begin);
             const std::size_t column_pair_count = column_count * plan.nbf;
+            const std::size_t column_stride = column_pair_count;
 
             for (std::size_t auxiliary = 0; auxiliary < auxiliary_count;
                  ++auxiliary) {
@@ -835,14 +848,14 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan,
                              inverse[(auxiliary_begin + auxiliary) *
                                           plan.naux + source];
                   }
-                  host_tile[auxiliary * auxiliary_stride + row * plan.nbf +
+                  host_tile[auxiliary * column_stride + row * plan.nbf +
                             column] = value;
                 }
               }
             }
             cuda_error = cudaMemcpyAsync(
                 plan.exchange_intermediate, host_tile.data(),
-                auxiliary_count * column_pair_count * sizeof(double),
+                auxiliary_count * column_stride * sizeof(double),
                 cudaMemcpyHostToDevice, plan.stream);
             if (cuda_error != cudaSuccess) {
               return cuda_failure(
@@ -860,9 +873,9 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan,
                 static_cast<int>(row_count), static_cast<int>(column_count),
                 static_cast<int>(plan.nbf), &one,
                 plan.exchange_contributions, static_cast<int>(plan.nbf),
-                static_cast<long long>(auxiliary_stride),
+                static_cast<long long>(row_stride),
                 plan.exchange_intermediate, static_cast<int>(plan.nbf),
-                static_cast<long long>(auxiliary_stride),
+                static_cast<long long>(column_stride),
                 &zero, plan.exchange_tile_output, static_cast<int>(row_count),
                 static_cast<long long>(output_stride),
                 static_cast<int>(auxiliary_count));
@@ -900,6 +913,20 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan,
   const long long matrix_stride = static_cast<long long>(plan.matrix_elements);
   for (std::size_t system = 0; system < plan.batch_size; ++system) {
     const double* system_density = density + system * plan.matrix_elements;
+    double* transposed_density =
+        plan.exchange_density_column_major + system * plan.matrix_elements;
+    const double* density_column_major = system_density;
+    if (!density_is_column_major) {
+      density_column_major = transposed_density;
+      transpose_density_kernel<<<blocks_for(plan.matrix_elements), kThreads, 0,
+                                 plan.stream>>>(
+          plan.nbf, system_density, transposed_density);
+      cuda_error = cudaPeekAtLastError();
+      if (cuda_error != cudaSuccess) {
+        return cuda_failure(cuda_error, "transpose CUDA DF exchange density",
+                            detail);
+      }
+    }
     for (std::size_t auxiliary_begin = 0; auxiliary_begin < plan.naux;
          auxiliary_begin += plan.auxiliary_tile) {
       const std::size_t auxiliary_count =
@@ -916,8 +943,12 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan,
 
       const int tile_count = static_cast<int>(auxiliary_count);
       cublasStatus_t blas_status = cublasDgemmStridedBatched(
-          plan.blas, CUBLAS_OP_N, CUBLAS_OP_N, nbf, nbf, nbf, &one,
-          system_density, nbf, 0, plan.auxiliary_tile_values, nbf,
+          // The gathered AO-pair tile is B^T in cuBLAS layout.  Use D^T as
+          // the first factor so the two GEMMs form B D B^T for both host
+          // row-major inputs (transposed above) and device column-major SCF
+          // densities.
+          plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, nbf, nbf, nbf, &one,
+          density_column_major, nbf, 0, plan.auxiliary_tile_values, nbf,
           matrix_stride, &zero, plan.exchange_intermediate, nbf, matrix_stride,
           tile_count);
       if (blas_status != CUBLAS_STATUS_SUCCESS) {
@@ -1178,7 +1209,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled(
     status = allocate_permanent(&candidate->exchange_tile_output, tile_bytes,
                                 "allocate CUDA DF exchange tile output");
   }
-  if (status == VIBEQC_STATUS_SUCCESS && candidate->streamed) {
+  if (status == VIBEQC_STATUS_SUCCESS) {
     status = allocate_permanent(
         &candidate->exchange_density_column_major, matrix_bytes,
         "allocate CUDA DF exchange density transpose");
@@ -1623,7 +1654,8 @@ vibeqc_status execute_cuda_density_fitting_rhf_jk_device(
   }
   vibeqc_status status = build_coulomb(*plan, density, detail);
   if (status == VIBEQC_STATUS_SUCCESS) {
-    status = build_exchange(*plan, density, plan->alpha_exchange, detail);
+    status = build_exchange(*plan, density, plan->alpha_exchange, detail,
+                            true);
   }
   if (status != VIBEQC_STATUS_SUCCESS) return status;
   const std::size_t bytes = plan->batch_size * plan->matrix_elements *
@@ -1665,10 +1697,12 @@ vibeqc_status execute_cuda_density_fitting_uhf_jk_device(
   }
   vibeqc_status status = build_coulomb(*plan, plan->total_density, detail);
   if (status == VIBEQC_STATUS_SUCCESS) {
-    status = build_exchange(*plan, alpha_density, plan->alpha_exchange, detail);
+    status = build_exchange(*plan, alpha_density, plan->alpha_exchange, detail,
+                            true);
   }
   if (status == VIBEQC_STATUS_SUCCESS) {
-    status = build_exchange(*plan, beta_density, plan->beta_exchange, detail);
+    status = build_exchange(*plan, beta_density, plan->beta_exchange, detail,
+                            true);
   }
   if (status != VIBEQC_STATUS_SUCCESS) return status;
   const std::size_t bytes = plan->batch_size * plan->matrix_elements *

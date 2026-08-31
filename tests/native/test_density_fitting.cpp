@@ -870,6 +870,39 @@ int main() {
       require_matrix_close(cuda_k, expected_rhf_k, 3.0e-11,
                            "CUDA RHF RI-K differs from the CPU oracle");
 
+      // The default planner keeps small auxiliary bases resident on device.
+      // Exercise that path with the intentionally non-symmetric RHF density
+      // above so the resident cuBLAS layout conversion is covered too.
+      vibeqc::scf::CudaDensityFittingJkPlan* resident_raw_plan = nullptr;
+      std::vector<vibeqc::scf::CudaDensityFittingMetricDiagnostic>
+          resident_diagnostics;
+      std::string resident_detail;
+      const vibeqc_status resident_create_status =
+          vibeqc::scf::create_cuda_density_fitting_jk_plan(
+              0, 1, integrals.nbf, integrals.naux, integrals.metric,
+              integrals.three_center, 1.0e-12, 0, &resident_raw_plan,
+              resident_diagnostics, resident_detail);
+      require(resident_create_status == VIBEQC_STATUS_SUCCESS,
+              resident_detail.c_str());
+      CudaPlan resident_plan(
+          resident_raw_plan,
+          &vibeqc::scf::destroy_cuda_density_fitting_jk_plan);
+      require(resident_diagnostics.size() == 1 &&
+                  !resident_diagnostics[0].streamed,
+              "CUDA DF resident diagnostics are inconsistent");
+      std::vector<double> resident_j;
+      std::vector<double> resident_k;
+      const vibeqc_status resident_status =
+          vibeqc::scf::execute_cuda_density_fitting_rhf_jk(
+              resident_plan.get(), rhf_density, resident_j, resident_k,
+              resident_detail);
+      require(resident_status == VIBEQC_STATUS_SUCCESS,
+              resident_detail.c_str());
+      require_matrix_close(resident_j, rhf_jk.coulomb, 3.0e-11,
+                           "resident CUDA RHF RI-J differs from the CPU oracle");
+      require_matrix_close(resident_k, rhf_jk.exchange, 3.0e-11,
+                           "resident CUDA RHF RI-K differs from the CPU oracle");
+
       std::vector<double> cuda_alpha_k;
       std::vector<double> cuda_beta_k;
       const vibeqc_status uhf_cuda_status =
