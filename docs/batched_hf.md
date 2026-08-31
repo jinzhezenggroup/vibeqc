@@ -133,3 +133,10 @@ provider families, selection source, dimensions, CUDA/cuSOLVER versions,
 workspace sizes, API decision, probe stage/status codes, and validation errors.
 Batch comparison JSON stores the same records under
 `vibeqc.eigensolver_diagnostics`.
+
+CUDA density-fitting batches expose an analogous metric/allocation record via
+`PreparedBatch.last_density_fitting_metric_diagnostics()` and
+`vibeqc_batch_get_last_density_fitting_metric_diagnostics`. Each record reports
+the effective metric rank, condition number, selected auxiliary tile, solver
+workspace, and conservative host/device resident and peak byte counts, along
+with the bucket id and original prepared-batch item index.

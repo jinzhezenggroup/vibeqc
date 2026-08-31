@@ -825,6 +825,133 @@ DensityFittingIntegralData build_density_fitting_integrals(
   return transformed;
 }
 
+DensityFittingIntegralData transform_density_fitting_integrals(
+    const DensityFittingIntegralData& cartesian,
+    const core::System& orbital_system,
+    const core::System& auxiliary_system) {
+  require_matching_density_fitting_geometry(orbital_system, auxiliary_system);
+  const std::size_t cartesian_nbf =
+      molecule::cartesian_ao_count(orbital_system);
+  const std::size_t cartesian_naux =
+      molecule::cartesian_ao_count(auxiliary_system);
+  const std::size_t ncoord = orbital_system.atoms.size() * 3;
+  const std::size_t metric_size = cartesian_naux * cartesian_naux;
+  const std::size_t tensor_size = cartesian_nbf * cartesian_nbf * cartesian_naux;
+  if (cartesian.nbf != cartesian_nbf || cartesian.naux != cartesian_naux ||
+      cartesian.ncoord != ncoord || cartesian.metric.size() != metric_size ||
+      cartesian.three_center.size() != tensor_size ||
+      cartesian.metric_derivative.size() != ncoord * metric_size ||
+      cartesian.three_center_derivative.size() != ncoord * tensor_size) {
+    throw std::invalid_argument(
+        "Cartesian density-fitting tensor dimensions are inconsistent");
+  }
+
+  const std::vector<GlobalAoExpansion> target_orbital_aos =
+      public_ao_expansions(orbital_system);
+  const std::vector<GlobalAoExpansion> target_auxiliary_aos =
+      public_ao_expansions(auxiliary_system);
+  if (target_orbital_aos.size() == cartesian_nbf &&
+      target_auxiliary_aos.size() == cartesian_naux) {
+    return cartesian;
+  }
+
+  DensityFittingIntegralData transformed;
+  transformed.nbf = target_orbital_aos.size();
+  transformed.naux = target_auxiliary_aos.size();
+  transformed.ncoord = ncoord;
+  transformed.metric = transform_matrix(
+      cartesian.metric.data(), cartesian_naux, target_auxiliary_aos);
+  transformed.three_center = transform_three_center(
+      cartesian.three_center.data(), cartesian_nbf, cartesian_naux,
+      target_orbital_aos, target_auxiliary_aos);
+  transformed.metric_derivative.reserve(ncoord * transformed.naux * transformed.naux);
+  transformed.three_center_derivative.reserve(
+      ncoord * transformed.nbf * transformed.nbf * transformed.naux);
+  for (std::size_t coordinate = 0; coordinate < ncoord; ++coordinate) {
+    const std::vector<double> metric_derivative = transform_matrix(
+        cartesian.metric_derivative.data() + coordinate * metric_size,
+        cartesian_naux, target_auxiliary_aos);
+    const std::vector<double> three_center_derivative = transform_three_center(
+        cartesian.three_center_derivative.data() + coordinate * tensor_size,
+        cartesian_nbf, cartesian_naux, target_orbital_aos,
+        target_auxiliary_aos);
+    transformed.metric_derivative.insert(
+        transformed.metric_derivative.end(), metric_derivative.begin(),
+        metric_derivative.end());
+    transformed.three_center_derivative.insert(
+        transformed.three_center_derivative.end(),
+        three_center_derivative.begin(), three_center_derivative.end());
+  }
+  return transformed;
+}
+
+IntegralData transform_integrals(const IntegralData& cartesian,
+                                 const core::System& system) {
+  const std::size_t cartesian_nbf = molecule::cartesian_ao_count(system);
+  const std::size_t ncoord = system.atoms.size() * 3;
+  const std::size_t matrix_size = cartesian_nbf * cartesian_nbf;
+  const std::size_t eri_size = matrix_size * matrix_size;
+  if (cartesian.nbf != cartesian_nbf || cartesian.ncoord != ncoord ||
+      cartesian.overlap.size() != matrix_size ||
+      cartesian.hcore.size() != matrix_size ||
+      cartesian.overlap_derivative.size() != ncoord * matrix_size ||
+      cartesian.hcore_derivative.size() != ncoord * matrix_size ||
+      (!cartesian.eri.empty() && cartesian.eri.size() != eri_size) ||
+      (!cartesian.eri_derivative.empty() &&
+       cartesian.eri_derivative.size() != ncoord * eri_size)) {
+    throw std::invalid_argument(
+        "Cartesian one-electron tensor dimensions are inconsistent");
+  }
+  const std::vector<GlobalAoExpansion> target_aos = public_ao_expansions(system);
+  if (target_aos.size() == cartesian_nbf) return cartesian;
+
+  IntegralData transformed;
+  transformed.nbf = target_aos.size();
+  transformed.ncoord = ncoord;
+  transformed.overlap = transform_matrix(
+      cartesian.overlap.data(), cartesian_nbf, target_aos);
+  transformed.hcore = transform_matrix(
+      cartesian.hcore.data(), cartesian_nbf, target_aos);
+  if (!cartesian.eri.empty()) {
+    transformed.eri = transform_eri(
+        cartesian.eri.data(), cartesian_nbf, target_aos);
+  }
+  const std::size_t transformed_matrix_size = transformed.nbf * transformed.nbf;
+  const std::size_t transformed_eri_size =
+      transformed_matrix_size * transformed_matrix_size;
+  transformed.overlap_derivative.reserve(ncoord * transformed_matrix_size);
+  transformed.hcore_derivative.reserve(ncoord * transformed_matrix_size);
+  if (!cartesian.eri_derivative.empty()) {
+    transformed.eri_derivative.reserve(ncoord * transformed_eri_size);
+  }
+  for (std::size_t coordinate = 0; coordinate < ncoord; ++coordinate) {
+    const std::vector<double> overlap_derivative = transform_matrix(
+        cartesian.overlap_derivative.data() + coordinate * matrix_size,
+        cartesian_nbf, target_aos);
+    const std::vector<double> hcore_derivative = transform_matrix(
+        cartesian.hcore_derivative.data() + coordinate * matrix_size,
+        cartesian_nbf, target_aos);
+    transformed.overlap_derivative.insert(
+        transformed.overlap_derivative.end(), overlap_derivative.begin(),
+        overlap_derivative.end());
+    transformed.hcore_derivative.insert(
+        transformed.hcore_derivative.end(), hcore_derivative.begin(),
+        hcore_derivative.end());
+    if (!cartesian.eri_derivative.empty()) {
+      const std::vector<double> eri_derivative = transform_eri(
+          cartesian.eri_derivative.data() + coordinate * eri_size,
+          cartesian_nbf, target_aos);
+      transformed.eri_derivative.insert(
+          transformed.eri_derivative.end(), eri_derivative.begin(),
+          eri_derivative.end());
+    }
+  }
+  transformed.nuclear_repulsion = cartesian.nuclear_repulsion;
+  transformed.nuclear_repulsion_derivative =
+      cartesian.nuclear_repulsion_derivative;
+  return transformed;
+}
+
 IntegralData build_integrals(const core::System& system) {
   IntegralData out;
   out.nbf = molecule::cartesian_ao_count(system);

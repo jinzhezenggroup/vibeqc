@@ -29,6 +29,10 @@ PROPERTY_FORCES = 1 << 1
 BACKEND_CPU_REFERENCE = 0
 BACKEND_CUDA = 1
 BACKEND_HYBRID_CUDA = 2
+DENSITY_FITTING_NONE = 0
+DENSITY_FITTING_CPU_REFERENCE = 1
+DENSITY_FITTING_CUDA = 2
+DENSITY_FITTING_AUTO = 3
 BASIS_CARTESIAN = 0
 BASIS_SPHERICAL = 1
 BATCH_ENABLE_WARM_STARTS = 1 << 0
@@ -144,6 +148,10 @@ class MethodDescriptor(ctypes.Structure):
         ("energy_tolerance", ctypes.c_double),
         ("density_tolerance", ctypes.c_double),
         ("screening_tolerance", ctypes.c_double),
+        ("density_fitting_mode", ctypes.c_int32),
+        ("density_fitting_auxiliary_basis", ctypes.c_void_p),
+        ("density_fitting_relative_threshold", ctypes.c_double),
+        ("density_fitting_memory_budget_bytes", ctypes.c_uint64),
     ]
 
 
@@ -208,6 +216,24 @@ class ShellClassProfileEntry(ctypes.Structure):
         ("tiles", ctypes.c_uint64),
         ("ao_quartets", ctypes.c_uint64),
         ("primitive_quartets", ctypes.c_uint64),
+    ]
+
+
+class DensityFittingMetricDiagnostic(ctypes.Structure):
+    _fields_ = [
+        ("bucket_id", ctypes.c_uint32),
+        ("system_index", ctypes.c_uint32),
+        ("effective_rank", ctypes.c_uint64),
+        ("absolute_threshold", ctypes.c_double),
+        ("condition_number", ctypes.c_double),
+        ("solver_device_workspace_bytes", ctypes.c_uint64),
+        ("solver_host_workspace_bytes", ctypes.c_uint64),
+        ("device_resident_bytes", ctypes.c_uint64),
+        ("peak_device_bytes", ctypes.c_uint64),
+        ("host_resident_bytes", ctypes.c_uint64),
+        ("peak_host_bytes", ctypes.c_uint64),
+        ("auxiliary_tile", ctypes.c_uint64),
+        ("streamed", ctypes.c_int32),
     ]
 
 
@@ -403,6 +429,15 @@ def load_library() -> ctypes.CDLL:
         ctypes.POINTER(ctypes.c_uint32),
     ]
     library.vibeqc_batch_get_last_eigensolver_diagnostics.restype = ctypes.c_int
+    library.vibeqc_batch_get_last_density_fitting_metric_diagnostics.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(DensityFittingMetricDiagnostic),
+        ctypes.c_uint32,
+        ctypes.POINTER(ctypes.c_uint32),
+    ]
+    library.vibeqc_batch_get_last_density_fitting_metric_diagnostics.restype = (
+        ctypes.c_int
+    )
     library.vibeqc_batch_get_last_inactive_eigensolver_profile.argtypes = [
         ctypes.c_void_p,
         ctypes.POINTER(InactiveEigensolverProfileEntry),

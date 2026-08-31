@@ -93,6 +93,44 @@ class ShellClassProfileEntry:
 
 
 @dataclass(frozen=True)
+class DensityFittingMetricDiagnostic:
+    """CUDA DF metric conditioning and allocation evidence for one plan slot."""
+
+    bucket_id: int
+    system_index: int
+    effective_rank: int
+    absolute_threshold: float
+    condition_number: float
+    solver_device_workspace_bytes: int
+    solver_host_workspace_bytes: int
+    device_resident_bytes: int
+    peak_device_bytes: int
+    host_resident_bytes: int
+    peak_host_bytes: int
+    auxiliary_tile: int
+    streamed: bool
+
+    def to_dict(self) -> dict[str, object]:
+        """Return JSON-ready diagnostics for benchmark and telemetry clients."""
+
+        return {
+            "bucket_id": self.bucket_id,
+            "system_index": self.system_index,
+            "effective_rank": self.effective_rank,
+            "absolute_threshold": self.absolute_threshold,
+            "condition_number": self.condition_number,
+            "solver_device_workspace_bytes": self.solver_device_workspace_bytes,
+            "solver_host_workspace_bytes": self.solver_host_workspace_bytes,
+            "device_resident_bytes": self.device_resident_bytes,
+            "peak_device_bytes": self.peak_device_bytes,
+            "host_resident_bytes": self.host_resident_bytes,
+            "peak_host_bytes": self.peak_host_bytes,
+            "auxiliary_tile": self.auxiliary_tile,
+            "streamed": self.streamed,
+        }
+
+
+@dataclass(frozen=True)
 class PppsQueueProfile:
     """Final-density statistics for the exact resident PPPS force queue.
 
@@ -318,6 +356,7 @@ class PreparedBatch:
         )
         self._context = ctypes.c_void_p()
         self._batch = ctypes.c_void_p()
+        auxiliary_handle = ctypes.c_void_p()
         self._shell_class_profiling = shell_class_profiling
         self._inactive_eigensolver_profiling = inactive_eigensolver_profiling
 
@@ -340,7 +379,17 @@ class PreparedBatch:
             handle_array = (ctypes.c_void_p * count)(
                 *(handle.value for handle in system_handles)
             )
-            method = calculator._method_descriptor()
+            if calculator._auxiliary_basis is not None:
+                auxiliary_handle = calculator._create_native_system(
+                    self._context,
+                    self._systems[0],
+                    self._charges[0],
+                    self._multiplicities[0],
+                    calculator._auxiliary_basis,
+                )
+            method = calculator._method_descriptor(
+                auxiliary_handle if auxiliary_handle.value else None
+            )
             flags = _native.BATCH_ENABLE_WARM_STARTS if warm_start else 0
             if shell_class_profiling:
                 flags |= _native.BATCH_ENABLE_SHELL_CLASS_PROFILING
@@ -361,6 +410,8 @@ class PreparedBatch:
             self.close()
             raise
         finally:
+            if auxiliary_handle.value:
+                self._library.vibeqc_system_destroy(auxiliary_handle)
             for handle in system_handles:
                 self._library.vibeqc_system_destroy(handle)
 
@@ -711,6 +762,55 @@ class PreparedBatch:
                 )
             )
         return tuple(diagnostics)
+
+    def last_density_fitting_metric_diagnostics(
+        self,
+    ) -> tuple[DensityFittingMetricDiagnostic, ...]:
+        """Return CUDA DF metric conditioning/allocation records from the last run."""
+
+        self._ensure_open()
+        count = ctypes.c_uint32()
+        _native.check(
+            self._library,
+            self._library.vibeqc_batch_get_last_density_fitting_metric_diagnostics(
+                self._batch, None, 0, ctypes.byref(count)
+            ),
+        )
+        native_entries = (
+            _native.DensityFittingMetricDiagnostic * count.value
+        )()
+        written = ctypes.c_uint32()
+        _native.check(
+            self._library,
+            self._library.vibeqc_batch_get_last_density_fitting_metric_diagnostics(
+                self._batch,
+                native_entries,
+                len(native_entries),
+                ctypes.byref(written),
+            ),
+        )
+        if written.value != count.value:
+            raise RuntimeError("DF metric diagnostic count changed during copy")
+        return tuple(
+            DensityFittingMetricDiagnostic(
+                bucket_id=int(native.bucket_id),
+                system_index=int(native.system_index),
+                effective_rank=int(native.effective_rank),
+                absolute_threshold=float(native.absolute_threshold),
+                condition_number=float(native.condition_number),
+                solver_device_workspace_bytes=int(
+                    native.solver_device_workspace_bytes
+                ),
+                solver_host_workspace_bytes=int(native.solver_host_workspace_bytes),
+                device_resident_bytes=int(native.device_resident_bytes),
+                peak_device_bytes=int(native.peak_device_bytes),
+                host_resident_bytes=int(native.host_resident_bytes),
+                peak_host_bytes=int(native.peak_host_bytes),
+                auxiliary_tile=int(native.auxiliary_tile),
+                streamed=bool(native.streamed),
+            )
+            for native in native_entries
+        )
 
     def last_inactive_eigensolver_profile(
         self,

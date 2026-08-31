@@ -24,7 +24,7 @@ vibeqc_status vibeqc_batch_prepare(
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   *batch = nullptr;
-  if (!vibeqc::api::valid_descriptor(descriptor)) {
+  if (!vibeqc::api::valid_method_descriptor(descriptor)) {
     return VIBEQC_STATUS_ABI_MISMATCH;
   }
 
@@ -196,6 +196,51 @@ vibeqc_status vibeqc_batch_get_last_eigensolver_diagnostics(
       output.maximum_residual = input.maximum_residual;
       output.maximum_orthogonality_error =
           input.maximum_orthogonality_error;
+    }
+    return VIBEQC_STATUS_SUCCESS;
+  } catch (...) {
+    return vibeqc::api::map_exception(&batch->context->last_detail);
+  }
+}
+
+vibeqc_status vibeqc_batch_get_last_density_fitting_metric_diagnostics(
+    const vibeqc_batch* batch,
+    vibeqc_density_fitting_metric_diagnostic* entries,
+    uint32_t entry_count,
+    uint32_t* written_count) {
+  if (batch == nullptr || written_count == nullptr ||
+      (entries == nullptr && entry_count != 0U)) {
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  *written_count = 0U;
+  try {
+    const auto& source =
+        batch->plan->last_density_fitting_metric_diagnostics();
+    if (source.empty()) return VIBEQC_STATUS_NOT_IMPLEMENTED;
+    if (source.size() > std::numeric_limits<uint32_t>::max()) {
+      return VIBEQC_STATUS_INTERNAL_ERROR;
+    }
+    *written_count = static_cast<uint32_t>(source.size());
+    if (entries == nullptr) return VIBEQC_STATUS_SUCCESS;
+    if (entry_count < source.size()) return VIBEQC_STATUS_INVALID_ARGUMENT;
+    for (std::size_t index = 0; index < source.size(); ++index) {
+      const auto& input = source[index];
+      auto& output = entries[index];
+      output = {};
+      output.bucket_id = static_cast<uint32_t>(input.bucket_id);
+      output.system_index = static_cast<uint32_t>(input.system_index);
+      output.effective_rank = input.effective_rank;
+      output.absolute_threshold = input.absolute_threshold;
+      output.condition_number = input.condition_number;
+      output.solver_device_workspace_bytes =
+          input.solver_device_workspace_bytes;
+      output.solver_host_workspace_bytes = input.solver_host_workspace_bytes;
+      output.device_resident_bytes = input.device_resident_bytes;
+      output.peak_device_bytes = input.peak_device_bytes;
+      output.host_resident_bytes = input.host_resident_bytes;
+      output.peak_host_bytes = input.peak_host_bytes;
+      output.auxiliary_tile = input.auxiliary_tile;
+      output.streamed = input.streamed ? 1 : 0;
     }
     return VIBEQC_STATUS_SUCCESS;
   } catch (...) {

@@ -63,6 +63,23 @@ void apply_coordinates(core::System& system, const std::vector<double>& coordina
   }
 }
 
+/**
+ * Reuse an auxiliary shell topology at the coordinates of one fleet item.
+ * The auxiliary basis is fixed for a prepared batch, while its Gaussian
+ * centers follow the item geometry on every replay.
+ */
+core::System auxiliary_for_geometry(
+    const std::optional<core::System>& auxiliary_template,
+    const core::System& system) {
+  if (!auxiliary_template.has_value()) return system;
+  core::System auxiliary = *auxiliary_template;
+  auxiliary.atoms = system.atoms;
+  auxiliary.charge = system.charge;
+  auxiliary.multiplicity = system.multiplicity;
+  auxiliary.electron_count = system.electron_count;
+  return auxiliary;
+}
+
 /** Merge additive PPPS counters without rounding derived efficiencies. */
 void merge_ppps_queue_profile(CudaPppsQueueProfile& aggregate,
                               const CudaPppsQueueProfile& source) {
@@ -122,16 +139,20 @@ FleetPlan::FleetPlan(std::vector<core::System> systems,
                      bool cuda_fock_enabled,
                      bool shell_class_profiling_enabled,
                      bool inactive_eigensolver_profiling_enabled,
-                     int device_id)
+                     int device_id,
+                     std::optional<core::System> auxiliary_template,
+                     bool cuda_density_fitting_enabled)
     : systems_(std::move(systems)),
       method_(method),
       options_(options),
       warm_starts_enabled_(warm_starts_enabled),
       cuda_fock_enabled_(cuda_fock_enabled),
+      cuda_density_fitting_enabled_(cuda_density_fitting_enabled),
       shell_class_profiling_enabled_(shell_class_profiling_enabled),
       inactive_eigensolver_profiling_enabled_(
           inactive_eigensolver_profiling_enabled),
       device_id_(device_id),
+      auxiliary_template_(std::move(auxiliary_template)),
       execution_order_(systems_.size()),
       bucket_ids_(systems_.size()),
       warm_densities_(systems_.size()) {
@@ -166,6 +187,7 @@ std::vector<FleetItemResult> FleetPlan::execute(
   last_shell_class_profile_.reset();
   last_ppps_queue_profile_.reset();
   last_eigensolver_diagnostics_.clear();
+  last_density_fitting_metric_diagnostics_.clear();
   last_inactive_eigensolver_profile_.clear();
   std::vector<FleetItemResult> results(systems_.size());
   const auto execute_one = [&](std::size_t system_index) {
@@ -184,20 +206,71 @@ std::vector<FleetItemResult> FleetPlan::execute(
     const bool has_warm_density =
         warm_starts_enabled_ && warm_densities_[system_index].has_value();
     item.warm_start_used = has_warm_density;
+    const bool use_cpu_density_fitting =
+        options_.density_fitting_mode == VIBEQC_DENSITY_FITTING_CPU_REFERENCE ||
+        (options_.density_fitting_mode == VIBEQC_DENSITY_FITTING_AUTO &&
+         !cuda_density_fitting_enabled_);
+    const bool use_cuda_density_fitting =
+        cuda_density_fitting_enabled_ &&
+        (options_.density_fitting_mode == VIBEQC_DENSITY_FITTING_CUDA ||
+         options_.density_fitting_mode == VIBEQC_DENSITY_FITTING_AUTO);
     try {
-      item.scf = method_ == VIBEQC_METHOD_UHF
-          ? run_uhf(execution_system, options_,
-                    has_warm_density ? &*warm_densities_[system_index] : nullptr)
-          : run_rhf(execution_system, options_,
-                    has_warm_density ? &*warm_densities_[system_index] : nullptr);
+      const std::vector<double>* initial_density =
+          has_warm_density ? &*warm_densities_[system_index] : nullptr;
+      if (use_cpu_density_fitting || use_cuda_density_fitting) {
+        const core::System auxiliary = auxiliary_for_geometry(
+            auxiliary_template_, execution_system);
+        if (use_cuda_density_fitting) {
+          item.scf = method_ == VIBEQC_METHOD_UHF
+              ? run_uhf_density_fitting_cuda(
+                    execution_system, auxiliary, options_, device_id_,
+                    initial_density)
+              : run_rhf_density_fitting_cuda(
+                    execution_system, auxiliary, options_, device_id_,
+                    initial_density);
+        } else {
+          item.scf = method_ == VIBEQC_METHOD_UHF
+              ? run_uhf_density_fitting(execution_system, auxiliary, options_,
+                                        initial_density)
+              : run_rhf_density_fitting(execution_system, auxiliary, options_,
+                                        initial_density);
+        }
+      } else {
+        item.scf = method_ == VIBEQC_METHOD_UHF
+            ? run_uhf(execution_system, options_, initial_density)
+            : run_rhf(execution_system, options_, initial_density);
+      }
+      if (use_cuda_density_fitting) {
+        item.executed_backend = VIBEQC_BACKEND_CUDA;
+      }
       if (has_warm_density && !item.scf.converged) {
         // A geometry change can make an otherwise topology-compatible density
         // a poor numerical guess. Retry cold so warm starts never reduce the
         // robustness of independent fleet items.
         item.warm_start_fallback = true;
-        item.scf = method_ == VIBEQC_METHOD_UHF
-            ? run_uhf(execution_system, options_, nullptr)
-            : run_rhf(execution_system, options_, nullptr);
+        if (use_cpu_density_fitting || use_cuda_density_fitting) {
+          const core::System auxiliary = auxiliary_for_geometry(
+              auxiliary_template_, execution_system);
+          if (use_cuda_density_fitting) {
+            item.scf = method_ == VIBEQC_METHOD_UHF
+                ? run_uhf_density_fitting_cuda(
+                      execution_system, auxiliary, options_, device_id_,
+                      nullptr)
+                : run_rhf_density_fitting_cuda(
+                      execution_system, auxiliary, options_, device_id_,
+                      nullptr);
+          } else {
+            item.scf = method_ == VIBEQC_METHOD_UHF
+                ? run_uhf_density_fitting(execution_system, auxiliary,
+                                          options_, nullptr)
+                : run_rhf_density_fitting(execution_system, auxiliary,
+                                          options_, nullptr);
+          }
+        } else {
+          item.scf = method_ == VIBEQC_METHOD_UHF
+              ? run_uhf(execution_system, options_, nullptr)
+              : run_rhf(execution_system, options_, nullptr);
+        }
       }
       item.status = item.scf.converged ? VIBEQC_STATUS_SUCCESS
                                        : VIBEQC_STATUS_SCF_NOT_CONVERGED;
@@ -205,9 +278,29 @@ std::vector<FleetItemResult> FleetPlan::execute(
       if (has_warm_density) {
         try {
           item.warm_start_fallback = true;
-          item.scf = method_ == VIBEQC_METHOD_UHF
-              ? run_uhf(execution_system, options_, nullptr)
-              : run_rhf(execution_system, options_, nullptr);
+          if (use_cpu_density_fitting || use_cuda_density_fitting) {
+            const core::System auxiliary = auxiliary_for_geometry(
+                auxiliary_template_, execution_system);
+            if (use_cuda_density_fitting) {
+              item.scf = method_ == VIBEQC_METHOD_UHF
+                  ? run_uhf_density_fitting_cuda(
+                        execution_system, auxiliary, options_, device_id_,
+                        nullptr)
+                  : run_rhf_density_fitting_cuda(
+                        execution_system, auxiliary, options_, device_id_,
+                        nullptr);
+            } else {
+              item.scf = method_ == VIBEQC_METHOD_UHF
+                  ? run_uhf_density_fitting(execution_system, auxiliary,
+                                            options_, nullptr)
+                  : run_rhf_density_fitting(execution_system, auxiliary,
+                                            options_, nullptr);
+            }
+          } else {
+            item.scf = method_ == VIBEQC_METHOD_UHF
+                ? run_uhf(execution_system, options_, nullptr)
+                : run_rhf(execution_system, options_, nullptr);
+          }
           item.status = item.scf.converged ? VIBEQC_STATUS_SUCCESS
                                            : VIBEQC_STATUS_SCF_NOT_CONVERGED;
         } catch (...) {
@@ -344,6 +437,95 @@ std::vector<FleetItemResult> FleetPlan::execute(
                       cold_system, options_, cold_density, device_id_, false);
             item.status = cold.front().status;
             item.scf = std::move(cold.front().scf);
+          }
+          if (item.status == VIBEQC_STATUS_SUCCESS && warm_starts_enabled_ &&
+              warm_start_updates_enabled_) {
+            warm_densities_[system_index] = item.scf.density;
+          }
+        }
+      }
+    } else if (cuda_density_fitting_enabled_) {
+      std::vector<core::System> df_systems;
+      std::vector<std::size_t> original_indices;
+      std::vector<const std::vector<double>*> initial_densities;
+      df_systems.reserve(bucket_size);
+      original_indices.reserve(bucket_size);
+      initial_densities.reserve(bucket_size);
+      for (std::size_t position = bucket_begin; position < bucket_end;
+           ++position) {
+        const std::size_t system_index = execution_order_[position];
+        FleetItemResult& item = results[system_index];
+        item.bucket_id = bucket_ids_[system_index];
+        core::System execution_system = systems_[system_index];
+        if (!coordinates.empty() && coordinates[system_index].has_value()) {
+          if (!valid_coordinates(*coordinates[system_index],
+                                 execution_system.atoms.size())) {
+            item.status = VIBEQC_STATUS_INVALID_ARGUMENT;
+            continue;
+          }
+          apply_coordinates(execution_system, *coordinates[system_index]);
+        }
+        const bool has_warm_density =
+            warm_starts_enabled_ && warm_densities_[system_index].has_value();
+        item.warm_start_used = has_warm_density;
+        df_systems.push_back(std::move(execution_system));
+        original_indices.push_back(system_index);
+        initial_densities.push_back(
+            has_warm_density ? &*warm_densities_[system_index] : nullptr);
+      }
+
+      if (!df_systems.empty()) {
+        std::vector<CudaDensityFittingMetricDiagnostic>
+            bucket_metric_diagnostics;
+        std::vector<RhfBucketItem> df_results = method_ == VIBEQC_METHOD_UHF
+            ? run_uhf_density_fitting_cuda_bucket(
+                  df_systems, auxiliary_template_, options_, initial_densities,
+                  device_id_, &bucket_metric_diagnostics)
+            : run_rhf_density_fitting_cuda_bucket(
+                  df_systems, auxiliary_template_, options_, initial_densities,
+                  device_id_, &bucket_metric_diagnostics);
+        for (auto& diagnostic : bucket_metric_diagnostics) {
+          diagnostic.bucket_id = bucket;
+          // The CUDA bucket may omit malformed coordinate items before plan
+          // construction. Translate the plan-local slot back to the caller's
+          // original input index so diagnostics remain actionable alongside
+          // `FleetItemResult` records.
+          if (diagnostic.system_index < original_indices.size()) {
+            diagnostic.system_index =
+                original_indices[diagnostic.system_index];
+          }
+          last_density_fitting_metric_diagnostics_.push_back(diagnostic);
+        }
+        for (std::size_t slot = 0; slot < df_results.size(); ++slot) {
+          const std::size_t system_index = original_indices[slot];
+          FleetItemResult& item = results[system_index];
+          item.status = df_results[slot].status;
+          item.scf = std::move(df_results[slot].scf);
+          item.executed_backend = VIBEQC_BACKEND_CUDA;
+
+          // A warm density can be a poor guess after a geometry replay. Keep
+          // the batch's failure isolation, but retry that one item cold when
+          // the failure is numerical rather than a shared CUDA/OOM failure.
+          if (item.warm_start_used && item.status != VIBEQC_STATUS_SUCCESS &&
+              item.status != VIBEQC_STATUS_CUDA_ERROR &&
+              item.status != VIBEQC_STATUS_OUT_OF_MEMORY) {
+            item.warm_start_fallback = true;
+            try {
+              const core::System auxiliary = auxiliary_for_geometry(
+                  auxiliary_template_, df_systems[slot]);
+              item.scf = method_ == VIBEQC_METHOD_UHF
+                  ? run_uhf_density_fitting_cuda(
+                        df_systems[slot], auxiliary, options_, device_id_,
+                        nullptr)
+                  : run_rhf_density_fitting_cuda(
+                        df_systems[slot], auxiliary, options_, device_id_,
+                        nullptr);
+              item.status = item.scf.converged
+                  ? VIBEQC_STATUS_SUCCESS
+                  : VIBEQC_STATUS_SCF_NOT_CONVERGED;
+            } catch (...) {
+              item.status = exception_status();
+            }
           }
           if (item.status == VIBEQC_STATUS_SUCCESS && warm_starts_enabled_ &&
               warm_start_updates_enabled_) {

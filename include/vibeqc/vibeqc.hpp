@@ -96,6 +96,23 @@ struct BatchItemResult {
   bool warm_start_fallback{};
 };
 
+/** CUDA density-fitting metric conditioning and allocation evidence. */
+struct DensityFittingMetricDiagnostic {
+  std::uint32_t bucket_id{};
+  std::uint32_t system_index{};
+  std::uint64_t effective_rank{};
+  double absolute_threshold{};
+  double condition_number{};
+  std::uint64_t solver_device_workspace_bytes{};
+  std::uint64_t solver_host_workspace_bytes{};
+  std::uint64_t device_resident_bytes{};
+  std::uint64_t peak_device_bytes{};
+  std::uint64_t host_resident_bytes{};
+  std::uint64_t peak_host_bytes{};
+  std::uint64_t auxiliary_tile{};
+  bool streamed{};
+};
+
 class Batch {
  public:
   Batch(Context& context,
@@ -174,6 +191,40 @@ class Batch {
 
   void set_warm_start_updates(bool enabled) {
     check(vibeqc_batch_set_warm_start_updates(handle_, enabled ? 1 : 0));
+  }
+
+  /** Return CUDA DF metric/allocation records from the most recent execution. */
+  std::vector<DensityFittingMetricDiagnostic>
+  last_density_fitting_metric_diagnostics() const {
+    std::uint32_t count = 0;
+    check(vibeqc_batch_get_last_density_fitting_metric_diagnostics(
+        handle_, nullptr, 0, &count));
+    std::vector<vibeqc_density_fitting_metric_diagnostic> native(count);
+    std::uint32_t written = 0;
+    check(vibeqc_batch_get_last_density_fitting_metric_diagnostics(
+        handle_, native.data(), count, &written));
+    if (written != count) {
+      throw Error(VIBEQC_STATUS_INTERNAL_ERROR,
+                  "CUDA DF metric diagnostic count changed during copy");
+    }
+    std::vector<DensityFittingMetricDiagnostic> result;
+    result.reserve(count);
+    for (const auto& input : native) {
+      result.push_back({input.bucket_id,
+                        input.system_index,
+                        input.effective_rank,
+                        input.absolute_threshold,
+                        input.condition_number,
+                        input.solver_device_workspace_bytes,
+                        input.solver_host_workspace_bytes,
+                        input.device_resident_bytes,
+                        input.peak_device_bytes,
+                        input.host_resident_bytes,
+                        input.peak_host_bytes,
+                        input.auxiliary_tile,
+                        input.streamed != 0});
+    }
+    return result;
   }
 
  private:
