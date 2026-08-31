@@ -363,11 +363,18 @@ and performance measurements pass.
 
 - Foundation implemented: independent CPU two-/three-center values and first
   nuclear derivatives, Cartesian/real-spherical transforms, Coulomb-metric
-  conditioning diagnostics, and a memory-bounded contraction tile planner.
-- Remaining density-fitting epic: accelerator-native batched integral kernels,
-  device metric factorization, RHF/UHF RI-J/K, complete auxiliary-basis gradient
-  response, and production SCF dispatch. See [density fitting](density_fitting.md)
-  for the exact supported boundary.
+  conditioning diagnostics, a memory-bounded contraction tile planner, and
+  host-reference RHF/UHF two-electron force response including metric/Pulay
+  terms.
+- Method-level CPU/CUDA/AUTO DF selectors now dispatch RHF/UHF energy and force
+  calculations through the reusable auxiliary topology, persistent CUDA RI-J/K
+  contractions, and a device-resident SCF iteration loop with host fallback.
+  Public batch diagnostics now expose metric rank/conditioning and conservative
+  host/device allocation accounting per CUDA DF plan slot. Remaining
+  density-fitting work is accelerator-native batched integral generation,
+  planner-driven raw AO-pair streaming, graph/stream integration, and broader
+  device-side force-response batching.
+  See [density fitting](density_fitting.md) for the exact supported boundary.
 - Extend the implemented CUDA J/K active set with persistent device ERIs,
   streams, CUDA graphs where profitable, and batched small-matrix operations;
   retain identical failure and result ordering.

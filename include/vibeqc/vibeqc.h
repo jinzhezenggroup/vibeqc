@@ -65,6 +65,19 @@ enum {
   VIBEQC_BACKEND_HYBRID_CUDA = 2
 };
 
+/** Density-fitting execution policy for Hartree-Fock methods. */
+typedef int32_t vibeqc_density_fitting_mode;
+enum {
+  /** Preserve the existing direct four-center J/K path (the default). */
+  VIBEQC_DENSITY_FITTING_NONE = 0,
+  /** Use the independent CPU density-fitting reference implementation. */
+  VIBEQC_DENSITY_FITTING_CPU_REFERENCE = 1,
+  /** Require the accelerator-native density-fitting path. */
+  VIBEQC_DENSITY_FITTING_CUDA = 2,
+  /** Select CUDA when requested by the context, otherwise use CPU reference. */
+  VIBEQC_DENSITY_FITTING_AUTO = 3
+};
+
 typedef int32_t vibeqc_basis_representation;
 enum {
   /** CCA-ordered Cartesian functions: 1, 3, 6, and 10 AOs for s-p-d-f. */
@@ -72,6 +85,29 @@ enum {
   /** Real spherical functions in PySCF/libcint order: 1, 3, 5, and 7 AOs. */
   VIBEQC_BASIS_SPHERICAL = 1
 };
+
+/**
+ * Setup-time CUDA density-fitting metric and allocation evidence.
+ *
+ * Records are returned in plan-slot order for the most recent CUDA DF batch
+ * execution. `system_index` identifies the original prepared-batch input and
+ * `bucket_id` identifies the fleet bucket that owns the plan.
+ */
+typedef struct vibeqc_density_fitting_metric_diagnostic {
+  uint32_t bucket_id;
+  uint32_t system_index;
+  uint64_t effective_rank;
+  double absolute_threshold;
+  double condition_number;
+  uint64_t solver_device_workspace_bytes;
+  uint64_t solver_host_workspace_bytes;
+  uint64_t device_resident_bytes;
+  uint64_t peak_device_bytes;
+  uint64_t host_resident_bytes;
+  uint64_t peak_host_bytes;
+  uint64_t auxiliary_tile;
+  int32_t streamed;
+} vibeqc_density_fitting_metric_diagnostic;
 
 typedef struct vibeqc_context vibeqc_context;
 typedef struct vibeqc_system vibeqc_system;
@@ -316,6 +352,14 @@ typedef struct vibeqc_method_descriptor {
   double energy_tolerance;
   double density_tolerance;
   double screening_tolerance;
+  /** Optional fields are ignored when struct_size ends before this member. */
+  vibeqc_density_fitting_mode density_fitting_mode;
+  /** Optional prepared system carrying the auxiliary-basis shell topology. */
+  const vibeqc_system* density_fitting_auxiliary_basis;
+  /** Relative eigenvalue threshold used for the auxiliary metric. */
+  double density_fitting_relative_threshold;
+  /** Planner budget in bytes; zero selects the implementation default. */
+  uint64_t density_fitting_memory_budget_bytes;
 } vibeqc_method_descriptor;
 
 /** Executable capabilities for one method identifier. */
@@ -454,6 +498,18 @@ VIBEQC_API vibeqc_status vibeqc_batch_get_last_ppps_queue_profile(
 VIBEQC_API vibeqc_status vibeqc_batch_get_last_eigensolver_diagnostics(
     const vibeqc_batch* batch,
     vibeqc_eigensolver_diagnostic* entries,
+    uint32_t entry_count,
+    uint32_t* written_count);
+
+/**
+ * Copy CUDA density-fitting metric conditioning and allocation diagnostics
+ * from the most recent batch execution. Pass `entries = NULL` and
+ * `entry_count = 0` to query the required count in `written_count`.
+ */
+VIBEQC_API vibeqc_status
+vibeqc_batch_get_last_density_fitting_metric_diagnostics(
+    const vibeqc_batch* batch,
+    vibeqc_density_fitting_metric_diagnostic* entries,
     uint32_t entry_count,
     uint32_t* written_count);
 

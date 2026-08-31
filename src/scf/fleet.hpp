@@ -3,6 +3,7 @@
 
 #include "core/types.hpp"
 #include "scf/cuda_batch.hpp"
+#include "scf/cuda_density_fitting.hpp"
 #include "scf/types.hpp"
 
 #include <cstddef>
@@ -39,7 +40,9 @@ class FleetPlan {
             bool cuda_fock_enabled,
             bool shell_class_profiling_enabled,
             bool inactive_eigensolver_profiling_enabled,
-            int device_id);
+            int device_id,
+            std::optional<core::System> auxiliary_template = std::nullopt,
+            bool cuda_density_fitting_enabled = false);
   ~FleetPlan();
 
   [[nodiscard]] std::size_t size() const noexcept { return systems_.size(); }
@@ -77,6 +80,12 @@ class FleetPlan {
     return last_eigensolver_diagnostics_;
   }
 
+  /** Return CUDA DF metric conditioning/allocation records from the last run. */
+  [[nodiscard]] const std::vector<CudaDensityFittingMetricDiagnostic>&
+  last_density_fitting_metric_diagnostics() const noexcept {
+    return last_density_fitting_metric_diagnostics_;
+  }
+
   /** Return device-timed iteration records from the most recent execution. */
   [[nodiscard]] const CudaInactiveEigensolverProfile&
   last_inactive_eigensolver_profile() const noexcept {
@@ -90,15 +99,19 @@ class FleetPlan {
   bool warm_starts_enabled_{};
   bool warm_start_updates_enabled_{true};
   bool cuda_fock_enabled_{};
+  bool cuda_density_fitting_enabled_{};
   bool shell_class_profiling_enabled_{};
   bool inactive_eigensolver_profiling_enabled_{};
   int device_id_{};
+  std::optional<core::System> auxiliary_template_;
   std::vector<std::size_t> execution_order_;
   std::vector<std::size_t> bucket_ids_;
   std::vector<std::optional<std::vector<double>>> warm_densities_;
   std::optional<CudaRhfShellClassProfile> last_shell_class_profile_;
   std::optional<CudaPppsQueueProfile> last_ppps_queue_profile_;
   std::vector<CudaEigensolverDiagnostic> last_eigensolver_diagnostics_;
+  std::vector<CudaDensityFittingMetricDiagnostic>
+      last_density_fitting_metric_diagnostics_;
   CudaInactiveEigensolverProfile last_inactive_eigensolver_profile_;
   // One allocation/Graph owner per workload bucket. Raw opaque pointers keep
   // CUDA headers out of this public C++ translation unit; the destructor owns

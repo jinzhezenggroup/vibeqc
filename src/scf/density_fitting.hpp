@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <vector>
 
+#include "integrals/s_integrals.hpp"
+
 namespace vibeqc::scf {
 
 /** Conditioning diagnostics and symmetric inverse square root of (P|Q). */
@@ -76,6 +78,95 @@ struct DensityFittingUhfJk {
 };
 
 /**
+ * Two-electron RHF density-fitting energy derivative.
+ *
+ * `derivative` is ordered by nuclear coordinate and contains dE2/dR. The
+ * matching `forces` vector contains -dE2/dR.  These are the DF two-electron
+ * contributions only; one-electron, nuclear-repulsion, and orbital-Pulay
+ * terms belong to the surrounding SCF gradient assembly.  The contraction is
+ * evaluated from the raw metric and three-center derivatives, so it includes
+ * the auxiliary-metric response (the derivative of the metric pseudoinverse)
+ * and is independent of the particular inverse-square-root eigenvector gauge.
+ */
+struct DensityFittingRhfGradient {
+  std::size_t ncoord{};
+  std::vector<double> derivative;
+  std::vector<double> forces;
+};
+
+/** Two-electron UHF density-fitting energy derivative for both spins. */
+struct DensityFittingUhfGradient {
+  std::size_t ncoord{};
+  std::vector<double> derivative;
+  std::vector<double> forces;
+};
+
+/**
+ * Build the RHF DF two-electron analytic gradient from raw integral data.
+ *
+ * The density uses the same closed-shell, doubly occupied convention as
+ * `build_density_fitting_rhf_jk`.  `relative_threshold` is applied to every
+ * metric before forming its pseudoinverse, matching the value contraction.
+ */
+[[nodiscard]] DensityFittingRhfGradient
+build_density_fitting_rhf_gradient(
+    const integrals::DensityFittingIntegralData& integrals,
+    const std::vector<double>& density,
+    double relative_threshold = 1.0e-10);
+
+/**
+ * Build the UHF DF two-electron analytic gradient from raw integral data.
+ *
+ * Coulomb uses alpha + beta density, while exchange response is evaluated
+ * independently for each matching-spin density.
+ */
+[[nodiscard]] DensityFittingUhfGradient
+build_density_fitting_uhf_gradient(
+    const integrals::DensityFittingIntegralData& integrals,
+    const std::vector<double>& alpha_density,
+    const std::vector<double>& beta_density,
+    double relative_threshold = 1.0e-10);
+
+/**
+ * Construct the thresholded Moore--Penrose inverse of a Coulomb metric.
+ *
+ * CUDA force-response consumers use this explicit factor so the expensive
+ * metric algebra is prepared once on the host while all density/tensor
+ * contractions remain device-resident.
+ */
+[[nodiscard]] std::vector<double> density_fitting_metric_pseudoinverse(
+    const integrals::DensityFittingIntegralData& integrals,
+    double relative_threshold = 1.0e-10);
+
+/** Construct d(M+) for one coordinate of a density-fitting metric. */
+[[nodiscard]] std::vector<double>
+density_fitting_metric_pseudoinverse_derivative(
+    const integrals::DensityFittingIntegralData& integrals,
+    const std::vector<double>& inverse, std::size_t coordinate);
+
+/**
+ * Assemble a complete RHF analytic force vector for a DF two-electron
+ * energy. This combines the DF response above with orbital one-electron
+ * derivatives, the orbital-basis Pulay overlap term, and nuclear repulsion.
+ */
+[[nodiscard]] std::vector<double> build_density_fitting_rhf_forces(
+    const integrals::IntegralData& one_electron,
+    const integrals::DensityFittingIntegralData& density_fitting,
+    const std::vector<double>& density,
+    const std::vector<double>& weighted_density,
+    double relative_threshold = 1.0e-10);
+
+/** Complete UHF analytic forces including one-electron and Pulay terms. */
+[[nodiscard]] std::vector<double> build_density_fitting_uhf_forces(
+    const integrals::IntegralData& one_electron,
+    const integrals::DensityFittingIntegralData& density_fitting,
+    const std::vector<double>& alpha_density,
+    const std::vector<double>& beta_density,
+    const std::vector<double>& alpha_weighted_density,
+    const std::vector<double>& beta_weighted_density,
+    double relative_threshold = 1.0e-10);
+
+/**
  * Build the host-reference UHF RI-J/K matrices.
  *
  * Coulomb uses alpha + beta density, while each exchange matrix uses only its
@@ -98,6 +189,10 @@ struct DensityFittingTilePlan {
 
 /**
  * Select batch, AO-pair, auxiliary, and occupied tiles under a byte budget.
+ *
+ * A zero budget selects the deterministic implementation defaults. Positive
+ * budgets are hard limits and fail when the metric plus one minimal tile does
+ * not fit.
  *
  * The permanent metric inverse square root is included in the budget. The
  * planner never requires the full `(mu nu|P)` tensor when one minimal tile

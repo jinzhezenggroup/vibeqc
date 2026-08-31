@@ -389,7 +389,9 @@ if(VIBEQC_ENABLE_CUDA)
   set_target_properties(vibeqc PROPERTIES
     CUDA_SEPARABLE_COMPILATION ${VIBEQC_CUDA_SEPARABLE_COMPILATION})
 else()
-  target_sources(vibeqc PRIVATE src/scf/cuda_density_fitting_stub.cpp)
+  target_sources(vibeqc PRIVATE
+    src/scf/cuda_density_fitting_stub.cpp
+    src/scf/cuda_density_fitting_integrals_stub.cpp)
   target_compile_definitions(vibeqc PUBLIC VIBEQC_HAS_CUDA=0)
 endif()
 

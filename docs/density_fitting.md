@@ -1,8 +1,10 @@
 # Density-fitting implementation boundary
 
-VibeQC currently provides the correctness and planning foundation for density
-fitting. Production RHF and UHF calculations still use the existing direct
-four-center J/K path; selecting a density-fitting SCF mode is not yet supported.
+VibeQC provides CPU-reference and CUDA density-fitting execution for RHF and
+UHF.  Single systems and homogeneous prepared-batch buckets share the same
+metric-factorization and RI-J/K implementation; the CUDA bucket path uses one
+batched plan for all compatible systems while retaining per-item convergence
+and failure status.
 
 ## Implemented foundation
 
@@ -20,29 +22,64 @@ four-center J/K path; selecting a density-fitting SCF mode is not yet supported.
   contractions. The density-based exchange schedule uses the same pair of
   matrix multiplications intended for blocked accelerator execution without
   materializing four-center ERIs.
+- Host-reference RHF/UHF two-electron analytic force response. The contraction
+  differentiates raw three-center values and the Coulomb metric through its
+  pseudoinverse, retaining auxiliary-basis and metric (Pulay) terms without
+  differentiating an eigenvector gauge.
+- `build_density_fitting_rhf_forces` and `build_density_fitting_uhf_forces`
+  combine that response with orbital one-electron derivatives, overlap Pulay
+  terms, and nuclear repulsion for callers assembling a complete force pass.
+- Hartree-Fock method descriptors can opt into `CPU_REFERENCE`, `CUDA`, or
+  `AUTO` density-fitting execution. The prepared single-system and ragged-batch
+  paths retain the optional auxiliary shell topology, follow replay geometries,
+  and preserve warm-start/result-order semantics. CUDA DF SCF uses a persistent
+  J/K plan for a single system and one batched plan per compatible fleet bucket;
+  densities, Fock assembly, batched eigensolves, and convergence reductions stay
+  on the device, with a host-orchestrated fallback for provider limitations.
+  CUDA finalization now dispatches the raw three-center, metric-response, and
+  exchange quadratic contractions through the persistent plan stream. The
+  one-electron/overlap Pulay assembly remains on the host, with the validated
+  host two-electron oracle retained as an automatic fallback for unsupported
+  devices or scratch-allocation failures.
 - A persistent homogeneous CUDA J/K plan performs device-side metric
   eigendecomposition and inverse-square-root construction, cuBLAS three-center
   transforms and RI-J, and auxiliary-tiled two-GEMM RI-K for RHF and UHF. The
-  transformed tensor remains resident across repeated density contractions.
+  transformed tensor remains resident across repeated density contractions when
+  it fits the selected tile policy. For memory-bounded plans, raw
+  three-center values and the metric inverse are retained on the host and one
+  transformed auxiliary tile is uploaded per contraction, avoiding a full
+  device-resident tensor.
 - A deterministic planner for batch, AO-pair, auxiliary, and occupied-orbital
   tiles. Its workspace estimate includes the permanent metric factor and does
   not require the full three-center tensor when that tensor exceeds the budget.
+- CUDA DF batch plans retain setup diagnostics for every compatible slot:
+  effective rank, metric condition number, solver workspace, selected auxiliary
+  tile, and conservative host/device resident and peak byte counts. Native
+  C++ callers use `FleetPlan::last_density_fitting_metric_diagnostics()`, C
+  callers use `vibeqc_batch_get_last_density_fitting_metric_diagnostics`, and
+  the Python equivalent is
+  `PreparedBatch.last_density_fitting_metric_diagnostics()`.
 
-The integral routines are a CPU numerical oracle for subsequent accelerator
-kernels. They intentionally do not provide a silent CPU fallback from a future
-GPU density-fitting mode.
+The CPU integral routines remain an independent numerical oracle. CUDA DF
+preparation now generates raw Cartesian metric/three-center values and first
+derivatives on device, then applies the shared public-basis transform; it does
+not silently fall back to CPU integral evaluation when CUDA generation fails.
 
 ## Remaining in issue #5
 
-- CUDA batched two-/three-center integral evaluation kernels.
-- Prepared, reusable auxiliary-basis topology and workspaces for fixed-topology
-  batches.
-- Device-resident SCF integration, CUDA Graph replay, and planner-driven
-  streaming when the complete transformed three-center tensor exceeds budget.
-- Complete RI-J/K analytic-force response, including all auxiliary and Pulay
-  terms.
-- Warm CUDA Graph replay, per-system failure isolation, memory measurements,
-  and the 96-/192-AO performance gates against GPU4PySCF density fitting.
+- CUDA two-/three-center integral evaluation kernels are now packed across
+  homogeneous fleet buckets, including coordinate-major derivative output;
+  one-electron generation is exposed through the same batch boundary but still
+  dispatches validated per-system launches internally.
+- CUDA Graph replay and planner-driven streaming of all raw/AO-pair work when
+  the complete transformed three-center tensor exceeds budget.
+- Device-resident raw RI-J/K analytic-force response is now implemented for
+  RHF and UHF, including metric pseudoinverse and auxiliary response terms;
+  one-electron and overlap-Pulay assembly remains host-side and uses the same
+  variational weighted-density convention as the CPU oracle.
+- Warm CUDA Graph replay for all providers, planner-driven streaming of raw
+  AO-pair work, and the 96-/192-AO performance gates against GPU4PySCF density
+  fitting remain open.
 
 Issue #5 remains open until those energy, force, integration, and performance
 acceptance criteria are met.

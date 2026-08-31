@@ -49,11 +49,30 @@ IntegralData build_integrals(const core::System& system);
  *
  * Orbital and auxiliary systems must describe the same atoms and geometry but
  * may use independent Cartesian or real-spherical shell sets. This host-only
- * implementation is the correctness oracle for future CUDA DF kernels.
+ * implementation remains the independent correctness oracle for CUDA DF
+ * integral-generation kernels.
  */
 DensityFittingIntegralData build_density_fitting_integrals(
     const core::System& orbital_system,
     const core::System& auxiliary_system);
+
+/**
+ * Transform Cartesian density-fitting tensors into the public AO
+ * representations selected by the two systems.
+ *
+ * This is intentionally separate from integral evaluation so accelerator
+ * backends can generate the Cartesian tensor on device and reuse the
+ * independent, numerically stable spherical transformation here.  Derivative
+ * tensors are transformed coordinate-by-coordinate with the same contractions.
+ */
+DensityFittingIntegralData transform_density_fitting_integrals(
+    const DensityFittingIntegralData& cartesian,
+    const core::System& orbital_system,
+    const core::System& auxiliary_system);
+
+/** Transform Cartesian one-electron tensors into a system's public AO basis. */
+IntegralData transform_integrals(const IntegralData& cartesian,
+                                 const core::System& system);
 
 /** Compatibility name retained for callers that explicitly request Cartesian. */
 inline IntegralData build_cartesian_integrals(const core::System& system) {

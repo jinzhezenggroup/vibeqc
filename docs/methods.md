@@ -12,7 +12,7 @@ forces are executable.
 | Hartree-Fock | RHF | Implemented: energy and analytic forces |
 | Hartree-Fock | UHF | Implemented: energy and analytic forces |
 | Hartree-Fock | ROHF, GHF, spinor HF | Planned |
-| Density fitting | Two-/three-center integral oracle, first nuclear derivatives, metric conditioning, memory planner | CPU correctness foundation implemented; accelerator RI-J/K and SCF integration planned |
+| Density fitting | Two-/three-center integral oracle, first nuclear derivatives, metric conditioning, memory planner | CPU oracle plus CUDA-native batched integral generation, RI-J/K, raw two-electron force-response contractions, and device-resident SCF integration implemented; broader streaming/graph/performance coverage remains planned |
 | Density functional theory | LDA, GGA, meta-GGA, hybrid, range-separated, nonlocal correlation | Planned |
 | Perturbation theory | MP2 and higher-order variants | Planned |
 | Coupled cluster | CCSD, perturbative triples, higher-rank variants | Planned |
@@ -43,11 +43,12 @@ A method becomes supported only when all of the following are true:
 ## Expansion strategy
 
 The current HF foundation supplies basis handling, integral validation,
-device-resident SCF, analytic gradients, and ragged fleet execution. The first
+device-resident SCF, analytic gradients, and ragged fleet execution. The
 density-fitting milestone adds a CPU correctness oracle, metric conditioning,
-and a memory-bounded tile planner; it does not yet change production SCF
-dispatch. Near-term work extends this foundation with accelerator RI-J/K and
-broader HF robustness.
+a memory-bounded tile planner, and CUDA RI-J/K with a device-resident SCF
+iteration path (plus an explicit host fallback for provider limitations).
+Near-term work extends this foundation with accelerator-native integral and
+force-response kernels and broader HF robustness.
 Method capability discovery and prepared execution are now registry-driven:
 the public API is independent of RHF/UHF dispatch, while each method family
 owns its validation, options, retained state, and batch policy.

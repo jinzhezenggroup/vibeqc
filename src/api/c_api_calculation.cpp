@@ -19,7 +19,7 @@ vibeqc_status vibeqc_calculation_prepare(
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   *calculation = nullptr;
-  if (!vibeqc::api::valid_descriptor(descriptor)) {
+  if (!vibeqc::api::valid_method_descriptor(descriptor)) {
     return VIBEQC_STATUS_ABI_MISMATCH;
   }
   try {

@@ -67,6 +67,14 @@ int main() {
             "C++ batch did not expose warm-start state");
     require(cold[0].forces.size() == 6 && cold[1].forces.size() == 3,
             "C++ batch introduced padded force storage");
+    try {
+      (void)batch.last_density_fitting_metric_diagnostics();
+      throw std::runtime_error(
+          "CPU C++ batch unexpectedly published CUDA DF diagnostics");
+    } catch (const vibeqc::Error& error) {
+      require(error.status() == VIBEQC_STATUS_NOT_IMPLEMENTED,
+              "C++ DF diagnostic getter returned the wrong status");
+    }
     std::cout << "C++ ragged batch API: PASS\n";
     return EXIT_SUCCESS;
   } catch (const std::exception& error) {

@@ -3,6 +3,7 @@
 from .batch import (
     BatchItemResult,
     BatchResult,
+    DensityFittingMetricDiagnostic,
     EigensolverDiagnostic,
     InactiveEigensolverProfileEntry,
     PppsQueueProfile,
@@ -24,6 +25,7 @@ __all__ = [
     "BatchItemResult",
     "BatchResult",
     "Calculator",
+    "DensityFittingMetricDiagnostic",
     "EigensolverDiagnostic",
     "InactiveEigensolverProfileEntry",
     "MethodCapabilities",

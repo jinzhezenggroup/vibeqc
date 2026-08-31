@@ -2,6 +2,7 @@
 #define VIBEQC_METHODS_METHOD_HPP
 
 #include "core/types.hpp"
+#include "scf/cuda_density_fitting.hpp"
 #include "vibeqc/vibeqc.h"
 
 #include <cstddef>
@@ -163,6 +164,8 @@ class PreparedBatch {
   last_direct_ppps_queue_profile() const = 0;
   [[nodiscard]] virtual std::vector<EigensolverDiagnostic>
   last_eigensolver_diagnostics() const = 0;
+  [[nodiscard]] virtual std::vector<scf::CudaDensityFittingMetricDiagnostic>
+  last_density_fitting_metric_diagnostics() const = 0;
   [[nodiscard]] virtual std::vector<InactiveEigensolverProfileEntry>
   last_inactive_eigensolver_profile() const = 0;
 };

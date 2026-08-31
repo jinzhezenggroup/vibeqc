@@ -201,12 +201,23 @@ class Calculator:
         device_id: int = 0,
         basis_representation: str = "cartesian",
         *,
+        density_fitting: str | bool = "none",
+        auxiliary_basis: str | Sequence[Shell] | None = None,
+        density_fitting_relative_threshold: float = 1.0e-10,
+        density_fitting_memory_budget_bytes: int = 0,
         max_iterations: int = 100,
         energy_tolerance: float = 1.0e-10,
         density_tolerance: float = 1.0e-8,
         diis_history: int = 8,
         screening_tolerance: float = 1.0e-12,
     ) -> None:
+        """Create a calculator, optionally selecting CPU or CUDA DF.
+
+        ``density_fitting_memory_budget_bytes`` is a device-workspace hint for
+        CUDA DF.  Positive values select smaller auxiliary tiles (and stream
+        transformed three-center values when needed); zero uses the backend's
+        default policy.
+        """
         if method.lower() not in _METHODS:
             raise ValueError(f"unknown method {method!r}")
         if device not in {"cpu", "cuda"}:
@@ -219,8 +230,37 @@ class Calculator:
             raise ValueError(
                 "basis_representation must be 'cartesian' or 'spherical'"
             )
+        if isinstance(density_fitting, bool):
+            density_fitting = "cpu" if density_fitting else "none"
+        density_fitting_modes = {
+            "none": _native.DENSITY_FITTING_NONE,
+            "cpu": _native.DENSITY_FITTING_CPU_REFERENCE,
+            "cpu_reference": _native.DENSITY_FITTING_CPU_REFERENCE,
+            "cuda": _native.DENSITY_FITTING_CUDA,
+            "auto": _native.DENSITY_FITTING_AUTO,
+        }
+        try:
+            density_fitting_mode = density_fitting_modes[str(density_fitting).lower()]
+        except KeyError as error:
+            raise ValueError(
+                "density_fitting must be 'none', 'cpu', 'cuda', or 'auto'"
+            ) from error
+        if auxiliary_basis is not None and density_fitting_mode == _native.DENSITY_FITTING_NONE:
+            raise ValueError("auxiliary_basis requires density_fitting to be enabled")
+        if not (0.0 < float(density_fitting_relative_threshold) < 1.0):
+            raise ValueError("density_fitting_relative_threshold must lie between zero and one")
+        if int(density_fitting_memory_budget_bytes) < 0:
+            raise ValueError("density_fitting_memory_budget_bytes must be non-negative")
         self._method = _METHODS[method.lower()]
         self._basis = basis
+        self._auxiliary_basis = auxiliary_basis
+        self._density_fitting_mode = density_fitting_mode
+        self._density_fitting_relative_threshold = float(
+            density_fitting_relative_threshold
+        )
+        self._density_fitting_memory_budget_bytes = int(
+            density_fitting_memory_budget_bytes
+        )
         self._basis_representation = representations[basis_representation]
         self._backend = (
             _native.BACKEND_CUDA if device == "cuda" else _native.BACKEND_CPU_REFERENCE
@@ -251,7 +291,9 @@ class Calculator:
             self._backend,
         )
 
-    def _method_descriptor(self) -> _native.MethodDescriptor:
+    def _method_descriptor(
+        self, auxiliary_basis: ctypes.c_void_p | None = None
+    ) -> _native.MethodDescriptor:
         return _native.MethodDescriptor(
             ctypes.sizeof(_native.MethodDescriptor),
             _native.ABI_VERSION,
@@ -261,12 +303,21 @@ class Calculator:
             self._energy_tolerance,
             self._density_tolerance,
             self._screening_tolerance,
+            self._density_fitting_mode,
+            auxiliary_basis,
+            self._density_fitting_relative_threshold,
+            self._density_fitting_memory_budget_bytes,
         )
 
-    def _shells_for_atoms(self, atoms: Sequence[Atom]) -> tuple[Shell, ...]:
-        if isinstance(self._basis, str):
-            return _named_basis_shells(self._basis, atoms)
-        return tuple(self._basis)
+    def _shells_for_atoms(
+        self,
+        atoms: Sequence[Atom],
+        basis: str | Sequence[Shell] | None = None,
+    ) -> tuple[Shell, ...]:
+        selected_basis = self._basis if basis is None else basis
+        if isinstance(selected_basis, str):
+            return _named_basis_shells(selected_basis, atoms)
+        return tuple(selected_basis)
 
     def _create_native_system(
         self,
@@ -274,8 +325,9 @@ class Calculator:
         atoms: Sequence[Atom],
         charge: int,
         multiplicity: int,
+        basis: str | Sequence[Shell] | None = None,
     ) -> ctypes.c_void_p:
-        shells = self._shells_for_atoms(atoms)
+        shells = self._shells_for_atoms(atoms, basis)
         atom_array = (_native.AtomDescriptor * len(atoms))(
             *(
                 _native.AtomDescriptor(atom.atomic_number, *atom.position)
@@ -390,12 +442,23 @@ class Calculator:
             ),
         )
         system = ctypes.c_void_p()
+        auxiliary_system = ctypes.c_void_p()
         calculation = ctypes.c_void_p()
         try:
             system = self._create_native_system(
                 context, native_atoms, charge, multiplicity
             )
-            method_descriptor = self._method_descriptor()
+            if self._auxiliary_basis is not None:
+                auxiliary_system = self._create_native_system(
+                    context,
+                    native_atoms,
+                    charge,
+                    multiplicity,
+                    self._auxiliary_basis,
+                )
+            method_descriptor = self._method_descriptor(
+                auxiliary_system if auxiliary_system.value else None
+            )
             _native.check(
                 self._library,
                 self._library.vibeqc_calculation_prepare(
@@ -444,4 +507,6 @@ class Calculator:
                 self._library.vibeqc_calculation_destroy(calculation)
             if system.value:
                 self._library.vibeqc_system_destroy(system)
+            if auxiliary_system.value:
+                self._library.vibeqc_system_destroy(auxiliary_system)
             self._library.vibeqc_context_destroy(context)
