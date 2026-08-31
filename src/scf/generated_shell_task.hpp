@@ -69,6 +69,17 @@ struct GeneratedShellPairStream {
   const std::uint32_t* pair_class_offsets;
   const double* shell_pair_bounds;
   const GeneratedShellPairDensityBounds* shell_pair_density_bounds;
+  // A per-system maximum over all Coulomb/exchange density blocks.  Generated
+  // streaming consumers use it as a monotonic coarse tail before loading the
+  // six pair-specific density bounds for an exact shell-quartet predicate.
+  const double* system_density_bounds;
+  // Pair-class maxima provide a tighter monotonic tail for generated class
+  // streams.  Each system owns kDirectShellPairClassCount entries.
+  const double* system_pair_density_bounds;
+  // When bounded generated tasks overflow their compact arena, only the
+  // classes marked here need the final streaming fallback.  A null pointer
+  // keeps the ordinary direct-streaming path unconditional.
+  const std::uint32_t* generated_overflow;
   const std::uint8_t* active;
 };
 
