@@ -3375,6 +3375,10 @@ def test_ppps_queue_buckets_orientation_and_primitive_signature_on_device():
     assert "prefix_bounded_force_signature_blocks_kernel" in source
     assert "bounded_paged_force_shell_class_mask" in source
     assert "bounded_force_signature_offsets, true" in source
+    # Force-only classes (for example fpps) are not part of the Fock registry;
+    # bounded force paging must enumerate the force registry itself.
+    assert "generated::selected_shell_kernels(bounded_force_kernel_count)" in source
+    assert "bounded_page_density_tails" in source
 
 
 def test_bounded_force_signature_mask_tracks_warp_uniform_schedules():
