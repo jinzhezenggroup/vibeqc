@@ -210,7 +210,8 @@ struct DensityFittingTilePlan {
     std::size_t nbf,
     std::size_t naux,
     std::size_t occupied,
-    std::size_t memory_budget_bytes);
+    std::size_t memory_budget_bytes,
+    std::size_t fixed_device_bytes = 0);
 
 }  // namespace vibeqc::scf
 

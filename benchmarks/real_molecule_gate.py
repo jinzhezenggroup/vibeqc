@@ -34,6 +34,7 @@ def _point_command(
     *,
     repeats: int,
     output: Path,
+    density_fitting_memory_budget_bytes: int,
 ) -> list[str]:
     """Build one child command without importing GPU packages in this runner."""
 
@@ -65,6 +66,11 @@ def _point_command(
     ]
     if point.minimum_speedup is not None:
         command.extend(("--minimum-speedup", str(point.minimum_speedup)))
+    if density_fitting_memory_budget_bytes:
+        command.extend((
+            "--density-fitting-memory-budget-bytes",
+            str(density_fitting_memory_budget_bytes),
+        ))
     return command
 
 
@@ -88,6 +94,12 @@ def main() -> None:
         default="none",
         help="run the unchanged direct matrix or the CUDA DF acceptance matrix",
     )
+    parser.add_argument(
+        "--density-fitting-memory-budget-bytes",
+        type=int,
+        default=0,
+        help="positive CUDA-DF planner budget forwarded to each gate point",
+    )
     parser.add_argument("--output-directory", type=Path, required=True)
     parser.add_argument(
         "--dry-run",
@@ -97,6 +109,10 @@ def main() -> None:
     args = parser.parse_args()
     if args.repeats < 1:
         raise ValueError("--repeats must be positive")
+    if args.density_fitting_memory_budget_bytes < 0:
+        raise ValueError(
+            "--density-fitting-memory-budget-bytes must be non-negative"
+        )
 
     cases = benchmark_cases()
     gate_points = (
@@ -130,7 +146,15 @@ def main() -> None:
         commands.append((
             point,
             output,
-            _point_command(point, repeats=args.repeats, output=output)
+            _point_command(
+                point,
+                repeats=args.repeats,
+                output=output,
+                density_fitting_memory_budget_bytes=(
+                    args.density_fitting_memory_budget_bytes
+                    if args.density_fitting == "cuda" else 0
+                ),
+            )
             + ["--density-fitting", args.density_fitting],
         ))
     if args.dry_run:
@@ -173,6 +197,9 @@ def main() -> None:
         "screening_tolerance": _SCREENING_TOLERANCE,
         "gpu4pyscf_interface": "sequential single-system objects",
         "density_fitting": args.density_fitting,
+        "density_fitting_memory_budget_bytes": (
+            args.density_fitting_memory_budget_bytes
+        ),
         "points": results,
         "passed": not failed,
     }

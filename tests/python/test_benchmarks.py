@@ -672,6 +672,63 @@ def test_density_fitting_gate_has_five_explicit_dry_run_points(tmp_path):
     assert "water-hexadecamer-2s4-def2-svp-spherical" in focused_commands[0]
 
 
+def test_density_fitting_gate_forwards_positive_memory_budget(tmp_path):
+    """Lock the bounded planner budget into every CUDA-DF child command."""
+
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = os.pathsep.join((
+        str(REPOSITORY_ROOT / "python"),
+        str(REPOSITORY_ROOT / "benchmarks"),
+    ))
+    completed = subprocess.run(
+        (
+            sys.executable,
+            str(REPOSITORY_ROOT / "benchmarks" / "real_molecule_gate.py"),
+            "--dry-run",
+            "--density-fitting",
+            "cuda",
+            "--density-fitting-memory-budget-bytes",
+            "1073741824",
+            "--output-directory",
+            str(tmp_path),
+        ),
+        cwd=REPOSITORY_ROOT,
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    commands = completed.stdout.splitlines()
+    assert len(commands) == 5
+    assert all(
+        "--density-fitting-memory-budget-bytes 1073741824" in line
+        for line in commands
+    )
+
+    direct = subprocess.run(
+        (
+            sys.executable,
+            str(REPOSITORY_ROOT / "benchmarks" / "real_molecule_gate.py"),
+            "--dry-run",
+            "--density-fitting",
+            "none",
+            "--density-fitting-memory-budget-bytes",
+            "1073741824",
+            "--output-directory",
+            str(tmp_path),
+        ),
+        cwd=REPOSITORY_ROOT,
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert all(
+        "--density-fitting-memory-budget-bytes" not in line
+        for line in direct.stdout.splitlines()
+    )
+
+
 def test_gpu_comparison_gate_reports_all_threshold_failures():
     """Keep allocated benchmark gates deterministic and independently testable."""
 

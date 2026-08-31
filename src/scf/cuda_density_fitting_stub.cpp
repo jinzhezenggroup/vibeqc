@@ -2,6 +2,58 @@
 
 namespace vibeqc::scf {
 
+vibeqc_status create_cuda_density_fitting_integral_source(
+    int, const std::vector<core::System>&,
+    const std::vector<core::System>&, CudaDensityFittingIntegralSource** source,
+    std::vector<double>& metrics, std::size_t& nbf, std::size_t& naux,
+    std::string& detail) {
+  if (source != nullptr) *source = nullptr;
+  metrics.clear();
+  nbf = 0;
+  naux = 0;
+  detail = "CUDA density-fitting support is unavailable in this build";
+  return VIBEQC_STATUS_NOT_IMPLEMENTED;
+}
+
+void destroy_cuda_density_fitting_integral_source(
+    CudaDensityFittingIntegralSource*) noexcept {}
+
+std::size_t cuda_density_fitting_integral_source_device_bytes(
+    const CudaDensityFittingIntegralSource*) noexcept {
+  return 0U;
+}
+
+std::size_t cuda_density_fitting_integral_source_host_bytes(
+    const CudaDensityFittingIntegralSource*) noexcept {
+  return 0U;
+}
+
+bool cuda_density_fitting_integral_source_matches(
+    const CudaDensityFittingIntegralSource*, int, std::size_t, std::size_t,
+    std::size_t) noexcept {
+  return false;
+}
+
+vibeqc_status create_cuda_density_fitting_jk_plan_from_source(
+    int, CudaDensityFittingIntegralSource**, std::size_t, std::size_t,
+    std::size_t, const std::vector<double>&, double, std::size_t, std::size_t,
+    CudaDensityFittingJkPlan** plan,
+    std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
+    std::string& detail) {
+  if (plan != nullptr) *plan = nullptr;
+  diagnostics.clear();
+  detail = "CUDA density-fitting support is unavailable in this build";
+  return VIBEQC_STATUS_NOT_IMPLEMENTED;
+}
+
+vibeqc_status generate_cuda_density_fitting_transformed_tile(
+    CudaDensityFittingIntegralSource*, std::size_t, std::size_t, std::size_t,
+    std::size_t, std::size_t, std::int64_t, const double*, void*, double*,
+    std::string& detail) {
+  detail = "CUDA density-fitting support is unavailable in this build";
+  return VIBEQC_STATUS_NOT_IMPLEMENTED;
+}
+
 std::size_t cuda_density_fitting_jk_plan_batch_size(
     const CudaDensityFittingJkPlan*) noexcept {
   return 0U;

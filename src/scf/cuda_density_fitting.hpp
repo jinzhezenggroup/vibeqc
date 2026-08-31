@@ -6,11 +6,61 @@
 #include <string>
 #include <vector>
 
+#include "core/types.hpp"
 #include "vibeqc/vibeqc.h"
 
 namespace vibeqc::scf {
 
 struct CudaDensityFittingJkPlan;
+struct CudaDensityFittingIntegralSource;
+struct CudaDensityFittingMetricDiagnostic;
+
+/**
+ * Prepare a device-resident source for bounded DF tile generation.
+ *
+ * The source owns only packed basis metadata and public-basis transforms. It
+ * intentionally does not allocate or retain the O(nbf^2*naux) three-center
+ * tensor; callers request individual transformed tiles on demand.
+ */
+vibeqc_status create_cuda_density_fitting_integral_source(
+    int device_id, const std::vector<core::System>& orbital_systems,
+    const std::vector<core::System>& auxiliary_systems,
+    CudaDensityFittingIntegralSource** source, std::vector<double>& metrics,
+    std::size_t& nbf, std::size_t& naux, std::string& detail);
+
+void destroy_cuda_density_fitting_integral_source(
+    CudaDensityFittingIntegralSource* source) noexcept;
+
+/** Device bytes retained by an opaque bounded DF integral source. */
+std::size_t cuda_density_fitting_integral_source_device_bytes(
+    const CudaDensityFittingIntegralSource* source) noexcept;
+
+/** Host bytes retained by an opaque bounded DF integral source. */
+std::size_t cuda_density_fitting_integral_source_host_bytes(
+    const CudaDensityFittingIntegralSource* source) noexcept;
+
+/** Validate the fixed dimensions/device associated with a source handle. */
+bool cuda_density_fitting_integral_source_matches(
+    const CudaDensityFittingIntegralSource* source, int device_id,
+    std::size_t batch_size, std::size_t nbf, std::size_t naux) noexcept;
+
+/** Prepare a streamed J/K plan that regenerates tiles from `source`. */
+vibeqc_status create_cuda_density_fitting_jk_plan_from_source(
+    int device_id, CudaDensityFittingIntegralSource** source,
+    std::size_t batch_size, std::size_t nbf, std::size_t naux,
+    const std::vector<double>& metrics, double relative_threshold,
+    std::size_t auxiliary_tile, std::size_t ao_pair_tile,
+    CudaDensityFittingJkPlan** plan,
+    std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
+    std::string& detail);
+
+/** Generate one public-basis transformed three-center tile on `stream`. */
+vibeqc_status generate_cuda_density_fitting_transformed_tile(
+    CudaDensityFittingIntegralSource* source, std::size_t system,
+    std::size_t pair_begin, std::size_t pair_count, std::size_t auxiliary_begin,
+    std::size_t auxiliary_count, std::int64_t derivative_coordinate,
+    const double* inverse_square_root, void* stream, double* output,
+    std::string& detail);
 
 /** Return the fixed batch cardinality owned by a prepared plan. */
 std::size_t cuda_density_fitting_jk_plan_batch_size(

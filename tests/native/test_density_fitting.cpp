@@ -226,6 +226,36 @@ vibeqc::core::System spherical_d_system(double exponent) {
   return system;
 }
 
+vibeqc::core::System spherical_ds_system(bool reverse_shell_order) {
+  vibeqc::core::System system;
+  system.atoms = {{1, {0.0, 0.0, 0.0}}};
+  const vibeqc::core::Shell d_shell{0, 2, {{0.9, 1.0}}};
+  const vibeqc::core::Shell s_shell{0, 0, {{0.6, 1.0}}};
+  system.shells = reverse_shell_order
+      ? std::vector<vibeqc::core::Shell>{s_shell, d_shell}
+      : std::vector<vibeqc::core::Shell>{d_shell, s_shell};
+  system.multiplicity = 1;
+  system.basis_representation = VIBEQC_BASIS_SPHERICAL;
+  std::string detail;
+  require(vibeqc::molecule::validate_and_normalize(system, detail) ==
+              VIBEQC_STATUS_SUCCESS,
+          "spherical s/d basis normalization failed");
+  return system;
+}
+
+vibeqc::core::System compact_auxiliary_system() {
+  vibeqc::core::System system;
+  system.atoms = {{1, {0.0, 0.0, 0.0}}};
+  system.shells = {{0, 0, {{0.5, 1.0}}}, {0, 0, {{0.3, 1.0}}}};
+  system.multiplicity = 1;
+  system.basis_representation = VIBEQC_BASIS_CARTESIAN;
+  std::string detail;
+  require(vibeqc::molecule::validate_and_normalize(system, detail) ==
+              VIBEQC_STATUS_SUCCESS,
+          "compact auxiliary basis normalization failed");
+  return system;
+}
+
 }  // namespace
 
 int main() {
@@ -714,16 +744,15 @@ int main() {
                            second_host_integrals.three_center_derivative,
                            3.0e-10,
                            "batched CUDA DF tensor derivative differs");
-      // A budget smaller than one system's packed tensor forces the bounded
-      // implementation through two one-system output chunks while preserving
-      // the same public results.
+      // A positive output budget exercises the bounded chunk-selection path
+      // while preserving the same public results.
       std::vector<vibeqc::integrals::DensityFittingIntegralData>
           chunked_batch_integrals;
       std::string chunked_batch_detail;
       require(vibeqc::scf::build_cuda_density_fitting_integrals_batch(
                   0, {orbital, second_orbital},
                   {auxiliary, second_auxiliary}, chunked_batch_integrals,
-                  chunked_batch_detail, 4096U) == VIBEQC_STATUS_SUCCESS,
+                  chunked_batch_detail, 32768U) == VIBEQC_STATUS_SUCCESS,
               chunked_batch_detail.c_str());
       require_matrix_close(chunked_batch_integrals[0].metric,
                            batch_integrals[0].metric, 3.0e-11,
@@ -976,6 +1005,130 @@ int main() {
       require_matrix_close(
           tiled_beta_k, expected_beta_k, 3.0e-11,
           "AO-pair tiled CUDA beta RI-K differs from the CPU oracle");
+
+      // Source-backed budget replay regenerates transformed tiles directly on
+      // the device instead of retaining the raw three-center tensor on host.
+      vibeqc::scf::CudaDensityFittingIntegralSource* source = nullptr;
+      std::vector<double> source_metrics;
+      std::size_t source_nbf = 0;
+      std::size_t source_naux = 0;
+      std::string source_detail;
+      require(vibeqc::scf::create_cuda_density_fitting_integral_source(
+                  0, {orbital}, {auxiliary}, &source, source_metrics,
+                  source_nbf, source_naux, source_detail) ==
+                  VIBEQC_STATUS_SUCCESS,
+              source_detail.c_str());
+      vibeqc::scf::CudaDensityFittingJkPlan* source_raw_plan = nullptr;
+      std::vector<vibeqc::scf::CudaDensityFittingMetricDiagnostic>
+          source_diagnostics;
+      require(vibeqc::scf::create_cuda_density_fitting_jk_plan_from_source(
+                  0, &source, 1, source_nbf, source_naux, source_metrics,
+                  1.0e-12, 3, 3, &source_raw_plan, source_diagnostics,
+                  source_detail) == VIBEQC_STATUS_SUCCESS,
+              source_detail.c_str());
+      vibeqc::scf::destroy_cuda_density_fitting_integral_source(source);
+      CudaPlan source_plan(
+          source_raw_plan, &vibeqc::scf::destroy_cuda_density_fitting_jk_plan);
+      require(source_diagnostics.size() == 1 && source_diagnostics[0].streamed,
+              "source-backed CUDA DF diagnostics are inconsistent");
+      std::vector<double> source_j;
+      std::vector<double> source_k;
+      require(vibeqc::scf::execute_cuda_density_fitting_rhf_jk(
+                  source_plan.get(), rhf_density, source_j, source_k,
+                  source_detail) == VIBEQC_STATUS_SUCCESS,
+              source_detail.c_str());
+      require_matrix_close(source_j, rhf_jk.coulomb, 3.0e-11,
+                           "source-backed CUDA RHF RI-J differs from oracle");
+      require_matrix_close(source_k, rhf_jk.exchange, 3.0e-11,
+                           "source-backed CUDA RHF RI-K differs from oracle");
+
+      // Exercise a genuinely heterogeneous source batch.  The two orbital
+      // systems have identical public dimensions but reverse their spherical
+      // s/d shell order, while the compact auxiliary basis has a different
+      // Cartesian count.  This catches both per-system transform reuse and
+      // the auxiliary-metric Cartesian offset in source replay.
+      const vibeqc::core::System source_orbital_a =
+          spherical_ds_system(false);
+      const vibeqc::core::System source_orbital_b =
+          spherical_ds_system(true);
+      const vibeqc::core::System source_auxiliary =
+          compact_auxiliary_system();
+      const auto source_host_a =
+          vibeqc::integrals::build_density_fitting_integrals(
+              source_orbital_a, source_auxiliary);
+      const auto source_host_b =
+          vibeqc::integrals::build_density_fitting_integrals(
+              source_orbital_b, source_auxiliary);
+      require(source_host_a.nbf == source_host_b.nbf &&
+                  source_host_a.naux == source_host_b.naux &&
+                  source_host_a.nbf !=
+                      vibeqc::molecule::cartesian_ao_count(source_auxiliary),
+              "heterogeneous source fixture dimensions are not diagnostic");
+      vibeqc::scf::CudaDensityFittingIntegralSource* batch_source = nullptr;
+      std::vector<double> batch_source_metrics;
+      std::size_t batch_source_nbf = 0;
+      std::size_t batch_source_naux = 0;
+      std::string batch_source_detail;
+      require(vibeqc::scf::create_cuda_density_fitting_integral_source(
+                  0, {source_orbital_a, source_orbital_b},
+                  {source_auxiliary, source_auxiliary}, &batch_source,
+                  batch_source_metrics, batch_source_nbf, batch_source_naux,
+                  batch_source_detail) == VIBEQC_STATUS_SUCCESS,
+              batch_source_detail.c_str());
+      vibeqc::scf::CudaDensityFittingJkPlan* batch_source_raw_plan = nullptr;
+      std::vector<vibeqc::scf::CudaDensityFittingMetricDiagnostic>
+          batch_source_diagnostics;
+      require(vibeqc::scf::create_cuda_density_fitting_jk_plan_from_source(
+                  0, &batch_source, 2, batch_source_nbf, batch_source_naux,
+                  batch_source_metrics, 1.0e-12, 2, 8,
+                  &batch_source_raw_plan, batch_source_diagnostics,
+                  batch_source_detail) == VIBEQC_STATUS_SUCCESS,
+              batch_source_detail.c_str());
+      vibeqc::scf::destroy_cuda_density_fitting_integral_source(batch_source);
+      CudaPlan batch_source_plan(
+          batch_source_raw_plan,
+          &vibeqc::scf::destroy_cuda_density_fitting_jk_plan);
+      const std::vector<double> source_density_a(source_host_a.nbf *
+                                                     source_host_a.nbf,
+                                                 0.0);
+      std::vector<double> source_density_b = source_density_a;
+      for (std::size_t diagonal = 0; diagonal < source_host_a.nbf;
+           ++diagonal) {
+        source_density_b[matrix_index(diagonal, diagonal,
+                                      source_host_a.nbf)] =
+            0.05 * static_cast<double>(diagonal + 1);
+      }
+      std::vector<double> batch_source_density = source_density_a;
+      append_values(batch_source_density, source_density_b);
+      std::vector<double> batch_source_j;
+      std::vector<double> batch_source_k;
+      require(vibeqc::scf::execute_cuda_density_fitting_rhf_jk(
+                  batch_source_plan.get(), batch_source_density,
+                  batch_source_j, batch_source_k, batch_source_detail) ==
+                  VIBEQC_STATUS_SUCCESS,
+              batch_source_detail.c_str());
+      const auto source_factor_a = vibeqc::scf::factor_density_fitting_metric(
+          source_host_a.metric, source_host_a.naux, 1.0e-12);
+      const auto source_factor_b = vibeqc::scf::factor_density_fitting_metric(
+          source_host_b.metric, source_host_b.naux, 1.0e-12);
+      const auto source_three_a =
+          vibeqc::scf::orthonormalize_density_fitting_three_center(
+              source_host_a.three_center, source_host_a.nbf, source_factor_a);
+      const auto source_three_b =
+          vibeqc::scf::orthonormalize_density_fitting_three_center(
+              source_host_b.three_center, source_host_b.nbf, source_factor_b);
+      const auto source_jk_a = vibeqc::scf::build_density_fitting_rhf_jk(
+          source_three_a, source_density_a);
+      const auto source_jk_b = vibeqc::scf::build_density_fitting_rhf_jk(
+          source_three_b, source_density_b);
+      std::vector<double> expected_source_j = source_jk_a.coulomb;
+      append_values(expected_source_j, source_jk_b.coulomb);
+      std::vector<double> expected_source_k = source_jk_a.exchange;
+      append_values(expected_source_k, source_jk_b.exchange);
+      require_matrix_close(batch_source_j, expected_source_j, 4.0e-10,
+                           "heterogeneous source RHF RI-J differs from oracle");
+      require_matrix_close(batch_source_k, expected_source_k, 4.0e-10,
+                           "heterogeneous source RHF RI-K differs from oracle");
 
       const vibeqc_status invalid_cuda_status =
           vibeqc::scf::execute_cuda_density_fitting_rhf_jk(

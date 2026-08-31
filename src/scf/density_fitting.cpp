@@ -538,9 +538,8 @@ std::size_t workspace_bytes(
     std::size_t batch_size,
     std::size_t nbf,
     std::size_t naux,
-    std::size_t metric_bytes) {
-  (void)batch_tile;
-  (void)occupied_tile;
+    std::size_t metric_bytes,
+    std::size_t fixed_device_bytes) {
   // The CUDA plan keeps seven AO matrices and one auxiliary vector for the
   // complete batch.  Its streamed tile rounds the logical AO-pair budget up
   // to a whole row, so account for that physical capacity rather than the
@@ -567,10 +566,23 @@ std::size_t workspace_bytes(
   // Force-response scratch is allocated one system/coordinate at a time by
   // the finalizer and is not part of the persistent contraction-plan budget.
   // It is still reported in CUDA diagnostics as part of peak_device_bytes.
-  const long double force_scratch_doubles = 0.0L;
-  const long double bytes = static_cast<long double>(metric_bytes) * batch_size +
+  // One-electron/Pulay assembly and the lazy device SCF driver retain up to
+  // nine AO matrices per active batch item (the unrestricted state is the
+  // upper bound).  Charge the full upper bound here so a positive budget
+  // cannot be consumed entirely by J/K before the SCF state is allocated.
+  const long double one_electron_doubles =
+      9.0L * static_cast<long double>(batch_size) *
+      static_cast<long double>(nbf) * nbf;
+  const long double force_scratch_doubles =
+      2.0L * tile_elements + 2.0L * naux * naux +
+      2.0L * static_cast<long double>(batch_tile) *
+      static_cast<long double>(nbf) * nbf +
+      static_cast<long double>(batch_tile) * occupied_tile * nbf;
+  const long double bytes = static_cast<long double>(fixed_device_bytes) +
+                            static_cast<long double>(metric_bytes) * batch_size +
                             (setup_doubles + contraction_doubles +
-                             force_scratch_doubles) * sizeof(double);
+                             one_electron_doubles + force_scratch_doubles) *
+                                sizeof(double);
   if (bytes > static_cast<long double>(
                   std::numeric_limits<std::size_t>::max())) {
     return std::numeric_limits<std::size_t>::max();
@@ -942,7 +954,8 @@ DensityFittingTilePlan plan_density_fitting_tiles(
     std::size_t nbf,
     std::size_t naux,
     std::size_t occupied,
-    std::size_t memory_budget_bytes) {
+    std::size_t memory_budget_bytes,
+    std::size_t fixed_device_bytes) {
   if (batch_size == 0 || nbf == 0 || naux == 0 || occupied == 0) {
     throw std::invalid_argument(
         "DF planner dimensions must all be positive");
@@ -974,7 +987,8 @@ DensityFittingTilePlan plan_density_fitting_tiles(
   auto update_bytes = [&]() {
     plan.peak_workspace_bytes = workspace_bytes(
         plan.batch_tile, plan.ao_pair_tile, plan.auxiliary_tile,
-        plan.occupied_tile, batch_size, nbf, naux, metric_bytes);
+        plan.occupied_tile, batch_size, nbf, naux, metric_bytes,
+        fixed_device_bytes);
   };
   update_bytes();
   // A zero budget is the documented sentinel for the implementation's
