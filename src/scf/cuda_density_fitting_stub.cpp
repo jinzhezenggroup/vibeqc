@@ -1,6 +1,12 @@
 #include "scf/cuda_density_fitting.hpp"
 
 namespace vibeqc::scf {
+
+std::size_t cuda_density_fitting_jk_plan_batch_size(
+    const CudaDensityFittingJkPlan*) noexcept {
+  return 0U;
+}
+
 namespace {
 
 vibeqc_status unavailable(CudaDensityFittingJkPlan** plan,

@@ -40,6 +40,13 @@ struct DensityFittingThreeCenter {
   std::vector<double> values;
 };
 
+/** Immutable integral state shared by all iterations of a DF SCF solve. */
+struct DensityFittingScfData {
+  integrals::IntegralData one_electron;
+  integrals::DensityFittingIntegralData raw;
+  DensityFittingThreeCenter three_center;
+};
+
 /**
  * Apply the symmetric Coulomb-metric inverse square root to (mu nu|P).
  *

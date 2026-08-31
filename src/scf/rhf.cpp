@@ -673,13 +673,6 @@ void finalize_uhf(const integrals::IntegralData& ints,
   result.density = concatenate(alpha_density, beta_density);
 }
 
-/** Immutable integral state shared by all iterations of a DF SCF solve. */
-struct DensityFittingScfData {
-  integrals::IntegralData one_electron;
-  integrals::DensityFittingIntegralData raw;
-  DensityFittingThreeCenter three_center;
-};
-
 /** Assemble immutable DF state from already-evaluated one- and three-center data. */
 DensityFittingScfData assemble_density_fitting_data(
     integrals::IntegralData one_electron,
@@ -1435,29 +1428,63 @@ prepare_cuda_density_fitting_batch(
       auxiliary_batch.push_back(auxiliaries[source]);
     }
 
-    std::vector<integrals::DensityFittingIntegralData> raw_batch;
-    std::string detail;
-    const vibeqc_status batch_status =
-        build_cuda_density_fitting_integrals_batch(
-            device_id, orbital_batch, auxiliary_batch, raw_batch, detail,
-            output_budget_bytes);
-    if (batch_status == VIBEQC_STATUS_SUCCESS &&
-        raw_batch.size() == group.size()) {
+    // Process homogeneous systems in bounded chunks. Each chunk's raw metric,
+    // three-center, derivative, and one-electron outputs are transformed into
+    // the retained per-system record before the next chunk is launched, so a
+    // large fleet never holds an additional full-batch raw-output temporary.
+    const std::size_t nbf_cart = molecule::cartesian_ao_count(orbital_batch.front());
+    const std::size_t naux_cart = molecule::cartesian_ao_count(auxiliary_batch.front());
+    const std::size_t coordinates = orbital_batch.front().atoms.size() * 3U;
+    const long double per_system_output_estimate =
+        (static_cast<long double>(naux_cart) * naux_cart +
+         static_cast<long double>(nbf_cart) * nbf_cart * naux_cart) *
+        (static_cast<long double>(coordinates) + 1.0L) * sizeof(double);
+    const std::size_t per_system_output =
+        per_system_output_estimate >=
+                static_cast<long double>(std::numeric_limits<std::size_t>::max())
+            ? std::numeric_limits<std::size_t>::max()
+            : static_cast<std::size_t>(per_system_output_estimate);
+    const std::size_t chunk_size = output_budget_bytes == 0U
+        ? group.size()
+        : std::max<std::size_t>(
+              1U, std::min(group.size(), output_budget_bytes /
+                                      std::max<std::size_t>(per_system_output, 1U)));
+    for (std::size_t chunk_begin = 0; chunk_begin < group.size();
+         chunk_begin += chunk_size) {
+      const std::size_t chunk_end =
+          std::min(group.size(), chunk_begin + chunk_size);
+      std::vector<core::System> orbital_chunk(
+          orbital_batch.begin() + static_cast<std::ptrdiff_t>(chunk_begin),
+          orbital_batch.begin() + static_cast<std::ptrdiff_t>(chunk_end));
+      std::vector<core::System> auxiliary_chunk(
+          auxiliary_batch.begin() + static_cast<std::ptrdiff_t>(chunk_begin),
+          auxiliary_batch.begin() + static_cast<std::ptrdiff_t>(chunk_end));
+      std::vector<integrals::DensityFittingIntegralData> raw_batch;
       std::vector<integrals::IntegralData> one_electron_batch;
+      std::string detail;
+      const vibeqc_status batch_status =
+          build_cuda_density_fitting_integrals_batch(
+              device_id, orbital_chunk, auxiliary_chunk, raw_batch, detail,
+              output_budget_bytes);
       const vibeqc_status one_electron_batch_status =
-          build_cuda_one_electron_integrals_batch(
-              device_id, orbital_batch, one_electron_batch, detail);
-      if (one_electron_batch_status == VIBEQC_STATUS_SUCCESS &&
-          one_electron_batch.size() == group.size()) {
-        for (std::size_t slot = 0; slot < group.size(); ++slot) {
+          batch_status == VIBEQC_STATUS_SUCCESS
+              ? build_cuda_one_electron_integrals_batch(
+                    device_id, orbital_chunk, one_electron_batch, detail)
+              : batch_status;
+      if (batch_status == VIBEQC_STATUS_SUCCESS &&
+          one_electron_batch_status == VIBEQC_STATUS_SUCCESS &&
+          raw_batch.size() == orbital_chunk.size() &&
+          one_electron_batch.size() == orbital_chunk.size()) {
+        for (std::size_t slot = chunk_begin; slot < chunk_end; ++slot) {
+          const std::size_t local = slot - chunk_begin;
           const std::size_t source = group[slot];
           try {
             integrals::IntegralData one_electron =
-                integrals::transform_integrals(one_electron_batch[slot],
+                integrals::transform_integrals(one_electron_batch[local],
                                                systems[source]);
             integrals::DensityFittingIntegralData raw =
                 integrals::transform_density_fitting_integrals(
-                    raw_batch[slot], systems[source], auxiliaries[source]);
+                    raw_batch[local], systems[source], auxiliaries[source]);
             prepared[source] = assemble_density_fitting_data(
                 std::move(one_electron), std::move(raw), relative_threshold);
           } catch (const std::bad_alloc&) {
@@ -1470,11 +1497,22 @@ prepare_cuda_density_fitting_batch(
         }
         continue;
       }
-    }
 
-    // A batch-level launch can fail for resource or topology reasons. Retry
-    // each item independently so one bad system never poisons its neighbors.
-    for (const std::size_t source : group) {
+      // A chunk-level launch can fail for resource or topology reasons. Retry
+      // each item independently so one bad system never poisons its neighbors.
+      const vibeqc_status bounded_failure_status =
+          batch_status != VIBEQC_STATUS_SUCCESS ? batch_status
+                                                  : one_electron_batch_status;
+      for (std::size_t slot = chunk_begin; slot < chunk_end; ++slot) {
+        const std::size_t source = group[slot];
+        if (output_budget_bytes != 0U) {
+          // The single-system compatibility API predates the output-budget
+          // contract and may allocate an unbounded derivative result. A
+          // budgeted caller therefore records the bounded batch failure
+          // instead of silently bypassing its memory limit.
+          statuses[source] = bounded_failure_status;
+          continue;
+        }
       try {
         integrals::DensityFittingIntegralData cartesian;
         std::string item_detail;
@@ -1507,6 +1545,7 @@ prepare_cuda_density_fitting_batch(
         statuses[source] = VIBEQC_STATUS_INVALID_ARGUMENT;
       } catch (...) {
         statuses[source] = VIBEQC_STATUS_NUMERICAL_FAILURE;
+      }
       }
     }
   }
@@ -1751,7 +1790,8 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
     std::vector<CudaDensityFittingMetricDiagnostic>* output_diagnostics,
-    CudaDensityFittingJkPlan** cached_plan) {
+    CudaDensityFittingJkPlan** cached_plan,
+    std::vector<std::optional<DensityFittingScfData>>* prepared_cache) {
   if (systems.size() != initial_densities.size()) {
     throw std::invalid_argument(
         "CUDA density-fitting RHF bucket density count mismatch");
@@ -1768,6 +1808,29 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
   std::vector<EigenResult> orbitals;
   std::vector<Diis> diis;
   std::vector<double> previous_energies;
+  if (prepared_cache != nullptr && prepared_cache->size() != systems.size()) {
+    prepared_cache->assign(systems.size(), std::nullopt);
+  }
+  struct PreparedCacheGuard {
+    std::vector<std::optional<DensityFittingScfData>>* cache{};
+    std::vector<DensityFittingScfData>* data{};
+    ~PreparedCacheGuard() {
+      if (cache == nullptr || data == nullptr) return;
+      if (cache->size() != data->size()) {
+        cache->clear();
+        return;
+      }
+      try {
+        for (std::size_t slot = 0; slot < data->size(); ++slot) {
+          (*cache)[slot] = std::move((*data)[slot]);
+        }
+      } catch (...) {
+        // Cache restoration is an optimization; never let an allocation
+        // failure during unwinding terminate an otherwise valid SCF result.
+        cache->clear();
+      }
+    }
+  } cache_guard{prepared_cache, &data};
   source_indices.reserve(systems.size());
   data.reserve(systems.size());
   orthogonalizers.reserve(systems.size());
@@ -1778,7 +1841,11 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
 
   std::vector<vibeqc_status> preparation_status;
   std::vector<std::optional<DensityFittingScfData>> batched_prepared;
-  if (device_id >= 0) {
+  const bool cached_data_complete =
+      prepared_cache != nullptr && prepared_cache->size() == systems.size() &&
+      std::all_of(prepared_cache->begin(), prepared_cache->end(),
+                  [](const auto& item) { return item.has_value(); });
+  if (device_id >= 0 && !cached_data_complete) {
     batched_prepared = prepare_cuda_density_fitting_batch(
         systems, auxiliary_template,
         options.density_fitting_relative_threshold,
@@ -1793,11 +1860,14 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
     try {
       DensityFittingScfData prepared;
       if (device_id >= 0) {
-        if (!batched_prepared[source].has_value()) {
+        if (cached_data_complete) {
+          prepared = std::move(*(*prepared_cache)[source]);
+        } else if (source >= batched_prepared.size() ||
+                   !batched_prepared[source].has_value()) {
           outputs[source].status = preparation_status[source];
           continue;
         }
-        prepared = std::move(*batched_prepared[source]);
+        if (!cached_data_complete) prepared = std::move(*batched_prepared[source]);
       } else {
         const core::System auxiliary = density_fitting_auxiliary_for_geometry(
             auxiliary_template, systems[source]);
@@ -1864,6 +1934,15 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
       nullptr, &destroy_cuda_density_fitting_jk_plan);
   CudaDensityFittingJkPlan* plan =
       cached_plan == nullptr ? nullptr : *cached_plan;
+  if (plan != nullptr &&
+      cuda_density_fitting_jk_plan_batch_size(plan) != data.size()) {
+    // Item-level preparation may shrink a runnable subset after a warm cache
+    // was created. Never submit vectors with a different fixed batch stride to
+    // the old plan; discard it and rebuild for the surviving systems.
+    destroy_cuda_density_fitting_jk_plan(plan);
+    plan = nullptr;
+    if (cached_plan != nullptr) *cached_plan = nullptr;
+  }
   std::vector<CudaDensityFittingMetricDiagnostic> metric_diagnostics;
   try {
     if (plan == nullptr) {
@@ -2079,7 +2158,8 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
     std::vector<CudaDensityFittingMetricDiagnostic>* output_diagnostics,
-    CudaDensityFittingJkPlan** cached_plan) {
+    CudaDensityFittingJkPlan** cached_plan,
+    std::vector<std::optional<DensityFittingScfData>>* prepared_cache) {
   if (systems.size() != initial_densities.size()) {
     throw std::invalid_argument(
         "CUDA density-fitting UHF bucket density count mismatch");
@@ -2096,9 +2176,34 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
   std::vector<EigenResult> beta_orbitals;
   std::vector<Diis> diis;
   std::vector<double> previous_energies;
+  if (prepared_cache != nullptr && prepared_cache->size() != systems.size()) {
+    prepared_cache->assign(systems.size(), std::nullopt);
+  }
+  struct PreparedCacheGuard {
+    std::vector<std::optional<DensityFittingScfData>>* cache{};
+    std::vector<DensityFittingScfData>* data{};
+    ~PreparedCacheGuard() {
+      if (cache == nullptr || data == nullptr) return;
+      if (cache->size() != data->size()) {
+        cache->clear();
+        return;
+      }
+      try {
+        for (std::size_t slot = 0; slot < data->size(); ++slot) {
+          (*cache)[slot] = std::move((*data)[slot]);
+        }
+      } catch (...) {
+        cache->clear();
+      }
+    }
+  } cache_guard{prepared_cache, &data};
   std::vector<vibeqc_status> preparation_status;
   std::vector<std::optional<DensityFittingScfData>> batched_prepared;
-  if (device_id >= 0) {
+  const bool cached_data_complete =
+      prepared_cache != nullptr && prepared_cache->size() == systems.size() &&
+      std::all_of(prepared_cache->begin(), prepared_cache->end(),
+                  [](const auto& item) { return item.has_value(); });
+  if (device_id >= 0 && !cached_data_complete) {
     batched_prepared = prepare_cuda_density_fitting_batch(
         systems, auxiliary_template,
         options.density_fitting_relative_threshold,
@@ -2112,11 +2217,14 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
     try {
       DensityFittingScfData prepared;
       if (device_id >= 0) {
-        if (!batched_prepared[source].has_value()) {
+        if (cached_data_complete) {
+          prepared = std::move(*(*prepared_cache)[source]);
+        } else if (source >= batched_prepared.size() ||
+                   !batched_prepared[source].has_value()) {
           outputs[source].status = preparation_status[source];
           continue;
         }
-        prepared = std::move(*batched_prepared[source]);
+        if (!cached_data_complete) prepared = std::move(*batched_prepared[source]);
       } else {
         const core::System auxiliary = density_fitting_auxiliary_for_geometry(
             auxiliary_template, systems[source]);
@@ -2197,6 +2305,12 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
       nullptr, &destroy_cuda_density_fitting_jk_plan);
   CudaDensityFittingJkPlan* plan =
       cached_plan == nullptr ? nullptr : *cached_plan;
+  if (plan != nullptr &&
+      cuda_density_fitting_jk_plan_batch_size(plan) != data.size()) {
+    destroy_cuda_density_fitting_jk_plan(plan);
+    plan = nullptr;
+    if (cached_plan != nullptr) *cached_plan = nullptr;
+  }
   std::vector<CudaDensityFittingMetricDiagnostic> metric_diagnostics;
   try {
     if (plan == nullptr) {
@@ -2470,7 +2584,7 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket(
     std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics) {
   return run_rhf_density_fitting_cuda_bucket_impl(
       systems, auxiliary_template, options, initial_densities, device_id,
-      diagnostics, nullptr);
+      diagnostics, nullptr, nullptr);
 }
 
 std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_cached(
@@ -2480,10 +2594,11 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_cached(
     const ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
-    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics) {
+    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics,
+    std::vector<std::optional<DensityFittingScfData>>* prepared_cache) {
   return run_rhf_density_fitting_cuda_bucket_impl(
       systems, auxiliary_template, options, initial_densities, device_id,
-      diagnostics, plan);
+      diagnostics, plan, prepared_cache);
 }
 
 std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket(
@@ -2495,7 +2610,7 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket(
     std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics) {
   return run_uhf_density_fitting_cuda_bucket_impl(
       systems, auxiliary_template, options, initial_densities, device_id,
-      diagnostics, nullptr);
+      diagnostics, nullptr, nullptr);
 }
 
 std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_cached(
@@ -2505,10 +2620,11 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_cached(
     const ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
-    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics) {
+    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics,
+    std::vector<std::optional<DensityFittingScfData>>* prepared_cache) {
   return run_uhf_density_fitting_cuda_bucket_impl(
       systems, auxiliary_template, options, initial_densities, device_id,
-      diagnostics, plan);
+      diagnostics, plan, prepared_cache);
 }
 
 #endif  // VIBEQC_HAS_CUDA
@@ -2631,7 +2747,8 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_cached(
     const ScfOptions&,
     const std::vector<const std::vector<double>*>&,
     int,
-    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics) {
+    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics,
+    std::vector<std::optional<DensityFittingScfData>>*) {
   if (diagnostics != nullptr) diagnostics->clear();
   std::vector<RhfBucketItem> outputs(systems.size());
   for (RhfBucketItem& output : outputs) {
@@ -2662,7 +2779,8 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_cached(
     const ScfOptions&,
     const std::vector<const std::vector<double>*>&,
     int,
-    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics) {
+    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics,
+    std::vector<std::optional<DensityFittingScfData>>*) {
   if (diagnostics != nullptr) diagnostics->clear();
   std::vector<RhfBucketItem> outputs(systems.size());
   for (RhfBucketItem& output : outputs) {

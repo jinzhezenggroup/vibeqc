@@ -12,6 +12,10 @@ namespace vibeqc::scf {
 
 struct CudaDensityFittingJkPlan;
 
+/** Return the fixed batch cardinality owned by a prepared plan. */
+std::size_t cuda_density_fitting_jk_plan_batch_size(
+    const CudaDensityFittingJkPlan* plan) noexcept;
+
 /** Scalar state returned by the device-resident DF SCF loop. */
 struct CudaDensityFittingDeviceScfItem {
   vibeqc_status status{VIBEQC_STATUS_INTERNAL_ERROR};
@@ -59,7 +63,8 @@ struct CudaDensityFittingMetricDiagnostic {
  * the device.
  *
  * `auxiliary_tile` bounds the two RI-K GEMM intermediates. Passing zero selects
- * a conservative default capped at 32 auxiliary functions.
+ * the resident full-auxiliary default; budgeted callers should use the tiled
+ * entry point to request a smaller streamed tile.
  */
 vibeqc_status create_cuda_density_fitting_jk_plan(
     int device_id, std::size_t batch_size, std::size_t nbf, std::size_t naux,

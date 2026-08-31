@@ -50,8 +50,10 @@ and failure status.
   transformed auxiliary tile is uploaded per contraction, avoiding a full
   device-resident tensor.
 - A deterministic planner for batch, AO-pair, auxiliary, and occupied-orbital
-  tiles. Its workspace estimate includes the permanent metric factor and does
-  not require the full three-center tensor when that tensor exceeds the budget.
+  tiles. Its positive budget bounds the persistent CUDA plan and bounded
+  generation/contraction tiles; force-response scratch is reported separately
+  in peak diagnostics, and budgeted Fleet calls deliberately do not retain
+  derivative tensors between executions.
 - CUDA DF batch plans retain setup diagnostics for every compatible slot:
   effective rank, metric condition number, solver workspace, selected auxiliary
   tile, and conservative host/device resident and peak byte counts. Native
@@ -65,7 +67,7 @@ preparation now generates raw Cartesian metric/three-center values and first
 derivatives on device, then applies the shared public-basis transform; it does
 not silently fall back to CPU integral evaluation when CUDA generation fails.
 
-## Remaining in issue #5
+## Execution notes and acceptance boundary
 
 - CUDA two-/three-center integral evaluation kernels are now packed across
   homogeneous fleet buckets, including coordinate-major derivative output;

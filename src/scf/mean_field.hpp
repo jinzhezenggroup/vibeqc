@@ -3,6 +3,7 @@
 
 #include "core/types.hpp"
 #include "scf/cuda_batch.hpp"
+#include "scf/density_fitting.hpp"
 #include "scf/types.hpp"
 
 #include <optional>
@@ -94,7 +95,9 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_cached(
     const ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
-    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics = nullptr);
+    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics = nullptr,
+    std::vector<std::optional<DensityFittingScfData>>* prepared_cache =
+        nullptr);
 
 /** UHF counterpart of the batched CUDA DF bucket executor. */
 std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket(
@@ -113,7 +116,9 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_cached(
     const ScfOptions& options,
     const std::vector<const std::vector<double>*>& initial_densities,
     int device_id,
-    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics = nullptr);
+    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics = nullptr,
+    std::vector<std::optional<DensityFittingScfData>>* prepared_cache =
+        nullptr);
 
 /** Execute RHF through the native CUDA scientific path. */
 ScfResult run_rhf_cuda(const core::System& system,

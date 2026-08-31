@@ -615,6 +615,63 @@ def test_real_molecule_gate_has_four_explicit_dry_run_points(tmp_path):
     assert sum("--maximum-force-error 5e-10" in line for line in commands) == 2
 
 
+def test_density_fitting_gate_has_five_explicit_dry_run_points(tmp_path):
+    """Lock the 96/192 parity plus the 384-AO DF scaling point."""
+
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = os.pathsep.join((
+        str(REPOSITORY_ROOT / "python"),
+        str(REPOSITORY_ROOT / "benchmarks"),
+    ))
+    script = REPOSITORY_ROOT / "benchmarks" / "real_molecule_gate.py"
+    completed = subprocess.run(
+        (
+            sys.executable,
+            str(script),
+            "--dry-run",
+            "--density-fitting",
+            "cuda",
+            "--output-directory",
+            str(tmp_path),
+        ),
+        cwd=REPOSITORY_ROOT,
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    commands = completed.stdout.splitlines()
+    assert len(commands) == 5
+    assert sum("water-tetramer-def2-svp-spherical" in line for line in commands) == 2
+    assert sum("water-octamer-s4-def2-svp-spherical" in line for line in commands) == 2
+    assert sum("water-hexadecamer-2s4-def2-svp-spherical" in line for line in commands) == 1
+    assert all("--density-fitting cuda" in line for line in commands)
+    assert sum("--minimum-speedup 1.0" in line for line in commands) == 5
+
+    focused = subprocess.run(
+        (
+            sys.executable,
+            str(script),
+            "--dry-run",
+            "--density-fitting",
+            "cuda",
+            "--size",
+            "384",
+            "--output-directory",
+            str(tmp_path),
+        ),
+        cwd=REPOSITORY_ROOT,
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    focused_commands = focused.stdout.splitlines()
+    assert len(focused_commands) == 1
+    assert "water-hexadecamer-2s4-def2-svp-spherical" in focused_commands[0]
+
+
 def test_gpu_comparison_gate_reports_all_threshold_failures():
     """Keep allocated benchmark gates deterministic and independently testable."""
 
@@ -867,6 +924,45 @@ def test_results_summary_selects_latest_clean_five_repeat_artifacts(tmp_path):
     assert not summary.update_readme(readme, section)
     with pytest.raises(ValueError, match="stale"):
         summary.update_readme(readme, section + "\nchanged", check=True)
+
+
+def test_results_summary_excludes_newer_density_fitting_artifacts(tmp_path):
+    """Prevent DF evidence from replacing the historical direct table."""
+
+    summary = _results_summary_module()
+    case = "water-tetramer-def2-svp-spherical"
+
+    def payload(mode: str, timestamp: str) -> dict[str, object]:
+        return {
+            "schema_version": 2,
+            "benchmark": "compare_gpu4pyscf_batch",
+            "environment": {
+                "timestamp_utc": timestamp,
+                "git": {"commit": "1" * 40, "dirty": False},
+            },
+            "workload": {
+                "case": case,
+                "ao_count": 96,
+                "batch_size": 1,
+                "density_fitting": mode,
+            },
+            "settings": {"repeats_per_engine": 5},
+            "gate": {"passed": True},
+        }
+
+    direct = tmp_path / "direct.json"
+    density_fitting = tmp_path / "density-fitting.json"
+    direct.write_text(
+        json.dumps(payload("none", "2026-01-01T00:00:00+00:00")),
+        encoding="utf-8",
+    )
+    density_fitting.write_text(
+        json.dumps(payload("cuda", "2026-08-31T00:00:00+00:00")),
+        encoding="utf-8",
+    )
+
+    selected = summary.accepted_parity_artifacts(tmp_path.glob("*.json"))
+    assert selected[(96, 1)][0] == direct
 
 
 def test_shell_class_histogram_matches_direct_pair_symmetry():

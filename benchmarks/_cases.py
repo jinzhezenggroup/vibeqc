@@ -290,14 +290,14 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
     # This synthetic scaling point reuses the physical WATER27 S4 octamer
     # topology while keeping the two copies far enough apart to avoid atomic
     # overlap. It is intentionally labeled synthetic: the case exists to make
-    # the 384-AO direct-J/K scaling regression reproducible, not to represent
+    # the 384-AO J/K scaling regression reproducible, not to represent
     # an optimized water-hexadecamer structure.
     octamer = cases["water-octamer-s4-def2-svp-spherical"].atoms
     half_separation = 5.0 * _ANGSTROM_TO_BOHR
     cases["water-hexadecamer-2s4-def2-svp-spherical"] = BenchmarkCase(
         description=(
             "synthetic pair of translated WATER27 S4 water octamers, "
-            "384 real spherical AOs, def2-SVP direct J/K"
+            "384 real spherical AOs, def2-SVP J/K"
         ),
         atoms=tuple(
             (
@@ -392,7 +392,7 @@ def real_molecule_gate_points() -> tuple[BenchmarkGatePoint, ...]:
 
 
 def density_fitting_gate_points() -> tuple[BenchmarkGatePoint, ...]:
-    """Return the complete CUDA-DF 96/192-AO parity and speed matrix.
+    """Return the CUDA-DF 96/192-AO parity plus 384-AO scaling matrix.
 
     Direct-SCF gates intentionally keep their historical thresholds in
     :func:`real_molecule_gate_points`; this separate matrix can evolve with

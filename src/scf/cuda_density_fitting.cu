@@ -410,6 +410,24 @@ __global__ void update_device_convergence_kernel(
   }
 }
 
+/** Device-side early-stop for captured DF SCF iterations. */
+__global__ void tail_cuda_density_fitting_scf_graph_kernel(
+    std::int32_t batch_size, std::uint32_t maximum_iterations,
+    const std::uint8_t* active, const std::uint32_t* iterations) {
+  if (blockIdx.x != 0 || threadIdx.x != 0) return;
+  bool continue_loop = false;
+  for (std::int32_t system = 0; system < batch_size; ++system) {
+    continue_loop = continue_loop ||
+                    (active[system] != 0 &&
+                     iterations[system] < maximum_iterations);
+  }
+  if (!continue_loop) return;
+  const cudaGraphExec_t current = cudaGetCurrentGraphExec();
+  if (current != nullptr) {
+    (void)cudaGraphLaunch(current, cudaStreamGraphTailLaunch);
+  }
+}
+
 /** UHF convergence update using both spin density differences. */
 __global__ void update_device_uhf_convergence_kernel(
     std::size_t batch_size, std::size_t nbf, double energy_tolerance,
@@ -1477,16 +1495,41 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled(
   // still live at this point, so the peak includes both permanent contraction
   // storage and metric-factorization workspace; host-side solver workspace is
   // intentionally excluded from the device-byte figures.
+  // Device SCF state is allocated lazily on the first solve. Reserve a
+  // conservative upper bound here so diagnostics remain valid before and
+  // after that allocation (RHF/UHF share this plan type).
+  const long double persistent_scf_estimate =
+      20.0L * static_cast<long double>(matrix_bytes) +
+      static_cast<long double>(batch_size) *
+          (16.0L * sizeof(double) + 2.0L * sizeof(std::int32_t) +
+           2.0L * sizeof(std::uint8_t) + sizeof(std::uint32_t)) +
+      solver_device_workspace_bytes + matrix_bytes;  // graph bookkeeping
+  const std::size_t persistent_scf_bytes =
+      persistent_scf_estimate >=
+              static_cast<long double>(std::numeric_limits<std::size_t>::max())
+          ? std::numeric_limits<std::size_t>::max()
+          : static_cast<std::size_t>(persistent_scf_estimate);
   const std::size_t persistent_device_bytes =
       6 * matrix_bytes + auxiliary_bytes +
       (candidate->streamed ? 0 : tensor_bytes) + 3 * tile_bytes +
-      matrix_bytes + (candidate->streamed ? tile_bytes : 0);
+      matrix_bytes + (candidate->streamed ? tile_bytes : 0) +
+      persistent_scf_bytes;
   const std::size_t setup_device_bytes =
       3 * metric_bytes + 2 * auxiliary_vector_bytes +
       (candidate->streamed ? 0 : tensor_bytes) +
       solver_device_workspace_bytes + solver_info_bytes;
+  const long double force_scratch_estimate =
+      8.0L * static_cast<long double>(tensor_bytes) +
+      4.0L * static_cast<long double>(metric_bytes) +
+      2.0L * static_cast<long double>(matrix_bytes) +
+      2.0L * static_cast<long double>(auxiliary_vector_bytes) + sizeof(double);
+  const long double peak_estimate =
+      static_cast<long double>(persistent_device_bytes) + setup_device_bytes +
+      force_scratch_estimate;
   const std::size_t peak_device_bytes =
-      persistent_device_bytes + setup_device_bytes;
+      peak_estimate >= static_cast<long double>(std::numeric_limits<std::size_t>::max())
+          ? std::numeric_limits<std::size_t>::max()
+          : static_cast<std::size_t>(peak_estimate);
   const std::size_t host_resident_bytes =
       candidate->streamed
           ? candidate->streamed_raw_three_center.size() * sizeof(double) +
@@ -1527,11 +1570,15 @@ vibeqc_status create_cuda_density_fitting_jk_plan(
     CudaDensityFittingJkPlan** plan,
     std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
     std::string& detail) {
-  // Preserve the original API's full-AO-pair staging semantics.  New planner
-  // callers use the tiled entry point below to bound the streamed path.
+  // The compatibility API is the resident/default path: keep the complete
+  // auxiliary dimension so large-AO warm replays can capture the SCF Graph.
+  // Budgeted callers use the tiled entry point directly and may select host
+  // streaming when the full transformed tensor cannot fit.
+  const std::size_t resident_auxiliary_tile =
+      auxiliary_tile == 0U ? naux : auxiliary_tile;
   return create_cuda_density_fitting_jk_plan_tiled(
       device_id, batch_size, nbf, naux, metrics, three_center,
-      relative_threshold, auxiliary_tile, 0, plan, diagnostics,
+      relative_threshold, resident_auxiliary_tile, 0, plan, diagnostics,
       detail);
 }
 
@@ -1789,6 +1836,7 @@ struct PersistentScfState {
   DeviceSolver solver;
   DeviceIterationGraph graph;
   bool graph_replay{};
+  unsigned max_iterations{};
   double energy_tolerance{};
   double density_tolerance{};
 
@@ -2619,6 +2667,7 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
   std::vector<std::uint32_t> host_iterations(batch_size);
   std::vector<int> host_info(batch_size);
   const bool options_changed =
+      state->max_iterations != max_iterations ||
       state->energy_tolerance != energy_tolerance ||
       state->density_tolerance != density_tolerance;
   if (options_changed) {
@@ -2627,6 +2676,7 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
     state->graph.stream = plan->stream;
     state->graph_replay = false;
   }
+  state->max_iterations = max_iterations;
   state->energy_tolerance = energy_tolerance;
   state->density_tolerance = density_tolerance;
   DeviceIterationGraph& iteration_graph = state->graph;
@@ -2671,6 +2721,9 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
         batch_size, plan->nbf, energy_tolerance, density_tolerance, d_energy,
         d_previous_energy, d_next_density, d_density, d_active, d_converged,
         d_iterations, d_energy_change, d_density_rms);
+    tail_cuda_density_fitting_scf_graph_kernel<<<1, 1, 0, plan->stream>>>(
+        static_cast<std::int32_t>(batch_size), max_iterations, d_active,
+        d_iterations);
     iteration_error = cudaPeekAtLastError();
     return iteration_error == cudaSuccess
                ? VIBEQC_STATUS_SUCCESS
@@ -2681,7 +2734,10 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
   // The streamed J/K path stages host tiles and fences between tiles, which is
   // intentionally outside Graph capture.  Fixed transformed tensors and the
   // Jacobi provider are Graph-safe and use one captured iteration replay.
-  if (!graph_replay && !plan->streamed && !state->solver.xsyev) {
+  if (!graph_replay && !plan->streamed) {
+    // A previous capture may have produced a graph but failed during
+    // instantiation/upload. Reset both handles before replacing them.
+    iteration_graph.reset();
     cuda_error = cudaStreamSynchronize(plan->stream);
     if (cuda_error == cudaSuccess) {
       cuda_error = cudaStreamBeginCapture(
@@ -2689,6 +2745,10 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
     }
     if (cuda_error == cudaSuccess) {
       status = launch_iteration();
+      // Stream capture records the iteration graph; CUDA does not execute the
+      // enclosed kernels until cudaGraphLaunch below. Consequently this setup
+      // call consumes zero SCF iterations and the normal max_iterations loop
+      // remains authoritative for convergence semantics.
       cudaGraph_t captured = nullptr;
       const cudaError_t end_error =
           cudaStreamEndCapture(plan->stream, &captured);
@@ -2706,8 +2766,13 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
           graph_replay = cuda_error == cudaSuccess;
           state->graph_replay = graph_replay;
         }
+        if (!graph_replay) iteration_graph.reset();
       } else {
-        if (captured != nullptr) (void)cudaGraphDestroy(captured);
+        if (captured != nullptr) {
+          (void)cudaGraphDestroy(captured);
+          iteration_graph.graph = nullptr;
+        }
+        iteration_graph.reset();
         cuda_error = end_error;
       }
     }
@@ -2994,6 +3059,7 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
   std::vector<std::uint32_t> host_iterations(batch_size);
   std::vector<int> host_alpha_info(batch_size), host_beta_info(batch_size);
   const bool options_changed =
+      state->max_iterations != max_iterations ||
       state->energy_tolerance != energy_tolerance ||
       state->density_tolerance != density_tolerance;
   if (options_changed) {
@@ -3002,6 +3068,7 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
     state->graph.stream = plan->stream;
     state->graph_replay = false;
   }
+  state->max_iterations = max_iterations;
   state->energy_tolerance = energy_tolerance;
   state->density_tolerance = density_tolerance;
   DeviceIterationGraph& iteration_graph = state->graph;
@@ -3082,6 +3149,9 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
           d_beta_density, d_active, d_converged, d_iterations,
           d_energy_change, d_density_rms);
     }
+    tail_cuda_density_fitting_scf_graph_kernel<<<1, 1, 0, plan->stream>>>(
+        static_cast<std::int32_t>(batch_size), max_iterations, d_active,
+        d_iterations);
     iteration_error = cudaPeekAtLastError();
     return iteration_error == cudaSuccess
                ? VIBEQC_STATUS_SUCCESS
@@ -3089,7 +3159,8 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
                               "advance CUDA DF device UHF SCF", detail);
   };
   bool graph_replay = state->graph_replay;
-  if (!graph_replay && !plan->streamed && !state->solver.xsyev) {
+  if (!graph_replay && !plan->streamed) {
+    iteration_graph.reset();
     cuda_error = cudaStreamSynchronize(plan->stream);
     if (cuda_error == cudaSuccess) {
       cuda_error = cudaStreamBeginCapture(
@@ -3097,6 +3168,7 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
     }
     if (cuda_error == cudaSuccess) {
       status = launch_iteration();
+      // As in RHF, capture records but does not execute an SCF update.
       cudaGraph_t captured = nullptr;
       const cudaError_t end_error =
           cudaStreamEndCapture(plan->stream, &captured);
@@ -3114,8 +3186,13 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
           graph_replay = cuda_error == cudaSuccess;
           state->graph_replay = graph_replay;
         }
+        if (!graph_replay) iteration_graph.reset();
       } else {
-        if (captured != nullptr) (void)cudaGraphDestroy(captured);
+        if (captured != nullptr) {
+          (void)cudaGraphDestroy(captured);
+          iteration_graph.graph = nullptr;
+        }
+        iteration_graph.reset();
         cuda_error = end_error;
       }
     }
@@ -3181,6 +3258,11 @@ void destroy_cuda_density_fitting_jk_plan(
   if (plan == nullptr) return;
   release(*plan);
   delete plan;
+}
+
+std::size_t cuda_density_fitting_jk_plan_batch_size(
+    const CudaDensityFittingJkPlan* plan) noexcept {
+  return plan == nullptr ? 0U : plan->batch_size;
 }
 
 }  // namespace vibeqc::scf

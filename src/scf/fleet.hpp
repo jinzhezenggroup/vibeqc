@@ -4,6 +4,7 @@
 #include "core/types.hpp"
 #include "scf/cuda_batch.hpp"
 #include "scf/cuda_density_fitting.hpp"
+#include "scf/density_fitting.hpp"
 #include "scf/types.hpp"
 
 #include <cstddef>
@@ -127,6 +128,12 @@ class FleetPlan {
   // This guards against reusing a full-bucket plan after item-level preparation
   // failure temporarily shrinks the runnable subset.
   std::vector<std::size_t> cuda_density_fitting_batch_sizes_;
+  // Prepared host-side DF tensors are retained with the geometry snapshot so
+  // warm replays can skip integral/derivative regeneration. The bucket runner
+  // temporarily moves these records out while executing and restores them on
+  // every return path, avoiding an additional full copy.
+  std::vector<std::vector<std::optional<DensityFittingScfData>>>
+      cuda_density_fitting_data_;
   // Re-publish setup diagnostics on warm calls without rebuilding the plan.
   std::vector<std::vector<CudaDensityFittingMetricDiagnostic>>
       cuda_density_fitting_diagnostics_;

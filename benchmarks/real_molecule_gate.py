@@ -1,10 +1,9 @@
-"""Run the explicit 96/192-AO real-molecule acceptance matrix.
+"""Run the explicit real-molecule acceptance matrix.
 
-The 96-AO direct-J/K points require parity with GPU4PySCF today. The 192-AO
-points currently gate only energy/force correctness; a 1.0x performance
-threshold is intentionally deferred until the DF J/K milestone is complete.
-GPU4PySCF still executes through sequential persistent single-system objects,
-as documented by ``compare_gpu4pyscf_batch.py`` and every child artifact.
+The direct matrix retains its historical GPU4PySCF parity requirements. The
+separate CUDA-DF matrix covers 96-, 192-, and 384-AO correctness/scaling points;
+external GPU4PySCF availability and provider-specific Graph replay are recorded
+in each artifact rather than silently changing the direct gate.
 """
 
 from __future__ import annotations
@@ -73,9 +72,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--size",
-        choices=("all", "96", "192"),
+        choices=("all", "96", "192", "384"),
         default="all",
-        help="run the full matrix or only one AO-size pair",
+        help="run the full matrix or only one AO-size gate",
     )
     parser.add_argument(
         "--repeats",
@@ -110,6 +109,11 @@ def main() -> None:
         for point in gate_points
         if args.size == "all" or point.expected_ao_count == int(args.size)
     )
+    if not points:
+        raise ValueError(
+            f"no acceptance point for --size {args.size} with "
+            f"--density-fitting {args.density_fitting}"
+        )
     for point in points:
         case = cases[point.case]
         if case.expected_ao_count != point.expected_ao_count:

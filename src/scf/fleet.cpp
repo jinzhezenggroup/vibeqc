@@ -188,6 +188,7 @@ FleetPlan::FleetPlan(std::vector<core::System> systems,
   cuda_density_fitting_plans_.resize(buckets.size(), nullptr);
   cuda_density_fitting_positions_.resize(buckets.size());
   cuda_density_fitting_batch_sizes_.resize(buckets.size(), 0);
+  cuda_density_fitting_data_.resize(buckets.size());
   cuda_density_fitting_diagnostics_.resize(buckets.size());
 }
 
@@ -511,19 +512,32 @@ std::vector<FleetItemResult> FleetPlan::execute(
           cuda_density_fitting_plans_[bucket] = nullptr;
           cuda_density_fitting_positions_[bucket].clear();
           cuda_density_fitting_batch_sizes_[bucket] = 0;
+          cuda_density_fitting_data_[bucket].clear();
           cuda_density_fitting_diagnostics_[bucket].clear();
         }
         std::vector<CudaDensityFittingMetricDiagnostic>
             bucket_metric_diagnostics;
+        // A positive memory budget opts into bounded transient preparation;
+        // retaining derivative tensors between calls would turn that budget
+        // into an unbounded Fleet-level host reservation. The default path
+        // keeps prepared records for warm replay, while budgeted calls rebuild
+        // only their bounded chunks.
+        auto* prepared_cache =
+            options_.density_fitting_memory_budget_bytes == 0
+                ? &cuda_density_fitting_data_[bucket]
+                : nullptr;
+        if (prepared_cache == nullptr) {
+          cuda_density_fitting_data_[bucket].clear();
+        }
         std::vector<RhfBucketItem> df_results = method_ == VIBEQC_METHOD_UHF
             ? run_uhf_density_fitting_cuda_bucket_cached(
                   &cuda_density_fitting_plans_[bucket], df_systems,
                   auxiliary_template_, options_, initial_densities, device_id_,
-                  &bucket_metric_diagnostics)
+                  &bucket_metric_diagnostics, prepared_cache)
             : run_rhf_density_fitting_cuda_bucket_cached(
                   &cuda_density_fitting_plans_[bucket], df_systems,
                   auxiliary_template_, options_, initial_densities, device_id_,
-                  &bucket_metric_diagnostics);
+                  &bucket_metric_diagnostics, prepared_cache);
         if (!malformed_coordinate &&
             std::all_of(df_results.begin(), df_results.end(),
                         [](const RhfBucketItem& result) {
@@ -540,6 +554,7 @@ std::vector<FleetItemResult> FleetPlan::execute(
           cuda_density_fitting_plans_[bucket] = nullptr;
           cuda_density_fitting_positions_[bucket].clear();
           cuda_density_fitting_batch_sizes_[bucket] = 0;
+          cuda_density_fitting_data_[bucket].clear();
           cuda_density_fitting_diagnostics_[bucket].clear();
         }
         if (bucket_metric_diagnostics.empty()) {

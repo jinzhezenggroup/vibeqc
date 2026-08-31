@@ -535,15 +535,42 @@ std::size_t workspace_bytes(
     std::size_t ao_pair_tile,
     std::size_t auxiliary_tile,
     std::size_t occupied_tile,
+    std::size_t batch_size,
     std::size_t nbf,
+    std::size_t naux,
     std::size_t metric_bytes) {
-  // Three-center input, metric-transformed tile, and occupied-orbital
-  // intermediates are simultaneously live in the conservative schedule.
-  const long double doubles =
-      2.0L * batch_tile * ao_pair_tile * auxiliary_tile +
-      batch_tile * nbf * occupied_tile * auxiliary_tile;
-  const long double bytes =
-      static_cast<long double>(metric_bytes) + doubles * sizeof(double);
+  (void)batch_tile;
+  (void)occupied_tile;
+  // The CUDA plan keeps seven AO matrices and one auxiliary vector for the
+  // complete batch.  Its streamed tile rounds the logical AO-pair budget up
+  // to a whole row, so account for that physical capacity rather than the
+  // planner's logical pair count. Setup/factorization storage is also charged
+  // for every batch metric. This makes the planner's byte budget a conservative
+  // bound on the actual device allocation, not just on one contraction tile.
+  const long double matrix_elements = static_cast<long double>(batch_size) *
+                                      static_cast<long double>(nbf) * nbf;
+  const long double tensor_elements = matrix_elements * naux;
+  const long double staged_rows = std::min<std::size_t>(
+      nbf, std::max<std::size_t>(1, ao_pair_tile / std::max<std::size_t>(1, nbf)));
+  const long double staged_pairs = staged_rows * nbf;
+  const long double tile_elements = staged_pairs * auxiliary_tile;
+  const long double setup_doubles =
+      static_cast<long double>(batch_size) * (3.0L * naux * naux + 2.0L * naux);
+  const long double contraction_doubles =
+      7.0L * matrix_elements +
+      static_cast<long double>(batch_size) * naux +
+      3.0L * tile_elements +
+      ((auxiliary_tile < naux || ao_pair_tile < nbf * nbf) ? tile_elements : 0.0L) +
+      ((auxiliary_tile < naux || ao_pair_tile < nbf * nbf)
+           ? 0.0L
+           : tensor_elements);
+  // Force-response scratch is allocated one system/coordinate at a time by
+  // the finalizer and is not part of the persistent contraction-plan budget.
+  // It is still reported in CUDA diagnostics as part of peak_device_bytes.
+  const long double force_scratch_doubles = 0.0L;
+  const long double bytes = static_cast<long double>(metric_bytes) * batch_size +
+                            (setup_doubles + contraction_doubles +
+                             force_scratch_doubles) * sizeof(double);
   if (bytes > static_cast<long double>(
                   std::numeric_limits<std::size_t>::max())) {
     return std::numeric_limits<std::size_t>::max();
@@ -929,22 +956,15 @@ DensityFittingTilePlan plan_density_fitting_tiles(
   if (nbf == std::numeric_limits<std::size_t>::max()) {
     throw std::overflow_error("DF AO-pair count overflows size_t");
   }
-  // Divide one consecutive factor first so the triangular number can be
-  // represented whenever its final value fits in size_t.
-  std::size_t pair_factor = nbf;
-  std::size_t consecutive_factor = nbf + 1;
-  if ((pair_factor & 1U) == 0) {
-    pair_factor /= 2;
-  } else {
-    consecutive_factor /= 2;
-  }
   std::size_t ao_pair_count = 0;
-  if (!checked_multiply(
-          pair_factor, consecutive_factor, ao_pair_count)) {
+  if (!checked_multiply(nbf, nbf, ao_pair_count)) {
     throw std::overflow_error("DF AO-pair count overflows size_t");
   }
   DensityFittingTilePlan plan{
-      std::min<std::size_t>(batch_size, 4),
+      // CUDA currently owns one persistent plan for the complete homogeneous
+      // bucket, so batch tiling is deliberately disabled until execution can
+      // submit independent sub-batches without changing result ordering.
+      batch_size,
       std::min<std::size_t>(ao_pair_count, 8192),
       std::min<std::size_t>(naux, 128),
       std::min<std::size_t>(occupied, 32),
@@ -954,7 +974,7 @@ DensityFittingTilePlan plan_density_fitting_tiles(
   auto update_bytes = [&]() {
     plan.peak_workspace_bytes = workspace_bytes(
         plan.batch_tile, plan.ao_pair_tile, plan.auxiliary_tile,
-        plan.occupied_tile, nbf, metric_bytes);
+        plan.occupied_tile, batch_size, nbf, naux, metric_bytes);
   };
   update_bytes();
   // A zero budget is the documented sentinel for the implementation's
@@ -971,8 +991,6 @@ DensityFittingTilePlan plan_density_fitting_tiles(
       plan.occupied_tile = (plan.occupied_tile + 1) / 2;
     } else if (plan.auxiliary_tile > 1) {
       plan.auxiliary_tile = (plan.auxiliary_tile + 1) / 2;
-    } else if (plan.batch_tile > 1) {
-      plan.batch_tile = (plan.batch_tile + 1) / 2;
     } else if (plan.ao_pair_tile > 1) {
       plan.ao_pair_tile = (plan.ao_pair_tile + 1) / 2;
     } else {
