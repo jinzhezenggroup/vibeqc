@@ -1670,17 +1670,52 @@ prepare_cuda_density_fitting_batch(
 
       // A chunk-level launch can fail for resource or topology reasons. Retry
       // each item independently so one bad system never poisons its neighbors.
-      const vibeqc_status bounded_failure_status =
-          batch_status != VIBEQC_STATUS_SUCCESS ? batch_status
-                                                  : one_electron_batch_status;
       for (std::size_t slot = chunk_begin; slot < chunk_end; ++slot) {
         const std::size_t source = group[slot];
         if (output_budget_bytes != 0U) {
-          // The single-system compatibility API predates the output-budget
-          // contract and may allocate an unbounded derivative result. A
-          // budgeted caller therefore records the bounded batch failure
-          // instead of silently bypassing its memory limit.
-          statuses[source] = bounded_failure_status;
+          // Retry through the bounded batch API with one item.  The legacy
+          // single-system entry point may allocate an unbounded derivative
+          // result, so it cannot be used here; a one-item batch preserves the
+          // output-budget contract while isolating a bad neighbor.
+          try {
+            std::vector<core::System> single_orbital{systems[source]};
+            std::vector<core::System> single_auxiliary{auxiliaries[source]};
+            std::vector<integrals::DensityFittingIntegralData> single_raw;
+            std::vector<integrals::IntegralData> single_one_electron;
+            std::string retry_detail;
+            const vibeqc_status retry_raw_status =
+                build_cuda_density_fitting_integrals_batch(
+                    device_id, single_orbital, single_auxiliary, single_raw,
+                    retry_detail, output_budget_bytes);
+            const vibeqc_status retry_one_electron_status =
+                retry_raw_status == VIBEQC_STATUS_SUCCESS
+                    ? build_cuda_one_electron_integrals_batch(
+                          device_id, single_orbital, single_one_electron,
+                          retry_detail)
+                    : retry_raw_status;
+            if (retry_raw_status == VIBEQC_STATUS_SUCCESS &&
+                retry_one_electron_status == VIBEQC_STATUS_SUCCESS &&
+                single_raw.size() == 1U && single_one_electron.size() == 1U) {
+              integrals::IntegralData one_electron =
+                  integrals::transform_integrals(single_one_electron.front(),
+                                                 systems[source]);
+              integrals::DensityFittingIntegralData raw =
+                  integrals::transform_density_fitting_integrals(
+                      single_raw.front(), systems[source], auxiliaries[source]);
+              prepared[source] = assemble_density_fitting_data(
+                  std::move(one_electron), std::move(raw), relative_threshold);
+              continue;
+            }
+            statuses[source] = retry_raw_status != VIBEQC_STATUS_SUCCESS
+                                   ? retry_raw_status
+                                   : retry_one_electron_status;
+          } catch (const std::bad_alloc&) {
+            statuses[source] = VIBEQC_STATUS_OUT_OF_MEMORY;
+          } catch (const std::invalid_argument&) {
+            statuses[source] = VIBEQC_STATUS_INVALID_ARGUMENT;
+          } catch (...) {
+            statuses[source] = VIBEQC_STATUS_NUMERICAL_FAILURE;
+          }
           continue;
         }
       try {

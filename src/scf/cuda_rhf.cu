@@ -15879,12 +15879,21 @@ vibeqc_status generate_cuda_density_fitting_transformed_tile_impl(
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   if (derivative_coordinate >= 0) {
+    // The public API indexes coordinates relative to the selected system,
+    // while the packed recurrence metadata uses fleet-global atom offsets.
+    // Validate against this system's atom span before translating below;
+    // validating against total_atoms would accept an out-of-range coordinate
+    // for every system after the first and could read a neighbor's geometry.
     std::size_t coordinate_count = 0;
-    if (source->batch.total_atoms < 0 ||
-        !checked_multiply(static_cast<std::size_t>(source->batch.total_atoms),
-                          3U, coordinate_count) ||
-        static_cast<std::size_t>(derivative_coordinate) >= coordinate_count ||
-        system + 1U >= source->host_atom_offsets.size()) {
+    if (system + 1U >= source->host_atom_offsets.size() ||
+        source->host_atom_offsets[system] < 0 ||
+        source->host_atom_offsets[system + 1U] <
+            source->host_atom_offsets[system] ||
+        !checked_multiply(
+            static_cast<std::size_t>(source->host_atom_offsets[system + 1U] -
+                                     source->host_atom_offsets[system]),
+            3U, coordinate_count) ||
+        static_cast<std::size_t>(derivative_coordinate) >= coordinate_count) {
       detail = "bounded DF transformed tile derivative coordinate is invalid";
       return VIBEQC_STATUS_INVALID_ARGUMENT;
     }
