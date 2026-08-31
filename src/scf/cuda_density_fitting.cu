@@ -944,9 +944,8 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan,
       const int tile_count = static_cast<int>(auxiliary_count);
       cublasStatus_t blas_status = cublasDgemmStridedBatched(
           // The gathered AO-pair tile is B^T in cuBLAS layout.  Use D^T as
-          // the first factor so the two GEMMs form B D B^T for both host
-          // row-major inputs (transposed above) and device column-major SCF
-          // densities.
+          // the first factor; the reduction below maps the column-major
+          // result back to row-major public storage, yielding B D B^T.
           plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, nbf, nbf, nbf, &one,
           density_column_major, nbf, 0, plan.auxiliary_tile_values, nbf,
           matrix_stride, &zero, plan.exchange_intermediate, nbf, matrix_stride,
@@ -1474,7 +1473,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled(
   const std::size_t persistent_device_bytes =
       6 * matrix_bytes + auxiliary_bytes +
       (candidate->streamed ? 0 : tensor_bytes) + 3 * tile_bytes +
-      (candidate->streamed ? tile_bytes + matrix_bytes : 0);
+      matrix_bytes + (candidate->streamed ? tile_bytes : 0);
   const std::size_t setup_device_bytes =
       3 * metric_bytes + 2 * auxiliary_vector_bytes +
       (candidate->streamed ? 0 : tensor_bytes) +
