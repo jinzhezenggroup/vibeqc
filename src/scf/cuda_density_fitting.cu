@@ -33,6 +33,24 @@ bool checked_bytes(std::size_t elements, std::size_t& bytes) {
   return checked_multiply(elements, sizeof(double), bytes);
 }
 
+// Diagnostics are deliberately conservative: vector capacity and temporary
+// setup buffers are part of the allocation peak even when their logical size
+// is smaller.  Saturate rather than wrapping so a very large plan reports an
+// impossible budget instead of appearing deceptively small.
+std::size_t saturating_bytes(long double bytes) {
+  if (!(bytes > 0.0L)) return 0U;
+  const long double limit = static_cast<long double>(
+      std::numeric_limits<std::size_t>::max());
+  return bytes >= limit ? std::numeric_limits<std::size_t>::max()
+                        : static_cast<std::size_t>(bytes);
+}
+
+template <typename T>
+std::size_t vector_capacity_bytes(const std::vector<T>& values) {
+  return saturating_bytes(static_cast<long double>(values.capacity()) *
+                          static_cast<long double>(sizeof(T)));
+}
+
 bool finite_values(const std::vector<double>& values) {
   return std::all_of(values.begin(), values.end(),
                      [](double value) { return std::isfinite(value); });
@@ -2121,11 +2139,31 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
     // coordinate at a time without reconstructing the full DF tensor.
     try {
       candidate->host_metrics = metrics;
-      std::vector<double> inverse_square_roots(all_metric_elements, 0.0);
       candidate->host_metric_inverse.assign(all_metric_elements, 0.0);
+      // The inverse square root already resides on the device.  Form the
+      // pseudoinverse there and copy it directly to its retained host buffer;
+      // this avoids a full batch-sized host inverse-square-root temporary
+      // during positive-budget source-plan setup.
+      blas_status = cublasDgemmStridedBatched(
+          candidate->blas, CUBLAS_OP_N, CUBLAS_OP_T,
+          static_cast<int>(naux), static_cast<int>(naux),
+          static_cast<int>(naux), &one, setup.inverse_square_roots,
+          static_cast<int>(naux), static_cast<long long>(metric_elements),
+          setup.inverse_square_roots, static_cast<int>(naux),
+          static_cast<long long>(metric_elements), &zero,
+          setup.scaled_eigenvectors, static_cast<int>(naux),
+          static_cast<long long>(metric_elements),
+          static_cast<int>(batch_size));
+      if (blas_status != CUBLAS_STATUS_SUCCESS) {
+        return fail_plan(
+            candidate,
+            blas_failure(blas_status,
+                         "construct source-backed CUDA DF metric inverse",
+                         detail));
+      }
       cuda_error = cudaMemcpyAsync(
-          inverse_square_roots.data(), setup.inverse_square_roots,
-          inverse_square_roots.size() * sizeof(double),
+          candidate->host_metric_inverse.data(), setup.scaled_eigenvectors,
+          candidate->host_metric_inverse.size() * sizeof(double),
           cudaMemcpyDeviceToHost, candidate->stream);
       if (cuda_error == cudaSuccess) {
         cuda_error = cudaStreamSynchronize(candidate->stream);
@@ -2135,20 +2173,6 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
             candidate,
             cuda_failure(cuda_error,
                          "read source-backed CUDA DF metric inverse", detail));
-      }
-      for (std::size_t system = 0; system < batch_size; ++system) {
-        const std::size_t offset = system * metric_elements;
-        for (std::size_t row = 0; row < naux; ++row) {
-          for (std::size_t column = 0; column < naux; ++column) {
-            double value = 0.0;
-            for (std::size_t item = 0; item < naux; ++item) {
-              value += inverse_square_roots[offset + row * naux + item] *
-                       inverse_square_roots[offset + column * naux + item];
-            }
-            candidate->host_metric_inverse[offset + row * naux + column] =
-                value;
-          }
-        }
       }
     } catch (const std::bad_alloc&) {
       detail = "host allocation for source-backed CUDA DF metric factors failed";
@@ -2203,27 +2227,63 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
       peak_estimate >= static_cast<long double>(std::numeric_limits<std::size_t>::max())
           ? std::numeric_limits<std::size_t>::max()
           : static_cast<std::size_t>(peak_estimate);
-  const std::size_t host_resident_bytes =
-      candidate->streamed
+  const long double host_resident_estimate =
+      static_cast<long double>(sizeof(*candidate)) +
+      (candidate->streamed
            ? (candidate->integral_source != nullptr
-                 ? cuda_density_fitting_integral_source_host_bytes(
-                       candidate->integral_source) +
-                       candidate->host_metrics.size() * sizeof(double) +
-                       candidate->host_metric_inverse.size() * sizeof(double)
-                 : candidate->streamed_raw_three_center.size() * sizeof(double) +
-                       candidate->streamed_inverse_square_roots.size() *
-                           sizeof(double))
-          : 0;
-  const std::size_t host_peak_bytes =
-      host_resident_bytes + metrics.size() * sizeof(double) +
-      three_center.size() * sizeof(double) +
-      eigenvalues.size() * sizeof(double) + scales.size() * sizeof(double) +
-      solver_info.size() * sizeof(int) + solver_host_workspace_bytes +
+                  ? static_cast<long double>(
+                        cuda_density_fitting_integral_source_host_bytes(
+                            candidate->integral_source)) +
+                        vector_capacity_bytes(candidate->host_metrics) +
+                        vector_capacity_bytes(candidate->host_metric_inverse)
+                  : static_cast<long double>(vector_capacity_bytes(
+                        candidate->streamed_raw_three_center)) +
+                        vector_capacity_bytes(
+                            candidate->streamed_inverse_square_roots))
+           : 0.0L);
+  const std::size_t host_resident_bytes =
+      saturating_bytes(host_resident_estimate);
+
+  // Setup vectors are live concurrently with the source's retained metrics.
+  // The source inverse is formed on-device above, so no full inverse-square-
+  // root host temporary is charged here.  Force response scratch is reported
+  // separately below and includes the complete metric-pseudoinverse
+  // derivative workset (the CPU helper uses several dense naux x naux
+  // temporaries), not just the tile buffers.
+  const long double setup_host_estimate =
+      static_cast<long double>(vector_capacity_bytes(metrics)) +
+      static_cast<long double>(vector_capacity_bytes(three_center)) +
+      static_cast<long double>(vector_capacity_bytes(eigenvalues)) +
+      static_cast<long double>(vector_capacity_bytes(scales)) +
+      static_cast<long double>(vector_capacity_bytes(solver_info)) +
+      static_cast<long double>(solver_host_workspace_bytes);
+  const long double source_force_host_estimate =
+      candidate->integral_source != nullptr
+          ? 2.0L * static_cast<long double>(tile_bytes) +
+                4.0L * static_cast<long double>(auxiliary_tile) *
+                    static_cast<long double>(matrix_elements) * sizeof(double) +
+                // b/db, metric derivative, quadratic/derivative quadratic,
+                // inverse derivative, metric/inverse slices, and the dense
+                // derivative helper's matrix workset.
+                20.0L * static_cast<long double>(metric_elements) *
+                    sizeof(double) +
+                4.0L * static_cast<long double>(naux) * sizeof(double) +
+                // UHF source-force combines three coordinate vectors and
+                // stages a total density while retaining the three results.
+                2.0L * static_cast<long double>(matrix_elements) *
+                    sizeof(double) +
+                3.0L * static_cast<long double>(
+                    cuda_density_fitting_integral_source_coordinate_count(
+                        candidate->integral_source)) * sizeof(double)
+          : 0.0L;
+  const std::size_t host_peak_bytes = saturating_bytes(
+      host_resident_estimate + setup_host_estimate +
       (candidate->integral_source != nullptr
-           ? (2 * tile_bytes +
-              4 * auxiliary_tile * matrix_elements * sizeof(double) +
-              6 * metric_bytes + 2 * naux * sizeof(double))
-           : 0U);
+           ? static_cast<long double>(
+                 cuda_density_fitting_integral_source_host_peak_bytes(
+                     candidate->integral_source))
+           : 0.0L) +
+      source_force_host_estimate);
   for (auto& diagnostic : diagnostics) {
     diagnostic.device_resident_bytes = persistent_device_bytes;
     diagnostic.peak_device_bytes = peak_device_bytes;
@@ -2416,6 +2476,170 @@ vibeqc_status execute_cuda_density_fitting_uhf_jk(
   return cuda_error == cudaSuccess
              ? VIBEQC_STATUS_SUCCESS
              : cuda_failure(cuda_error, "finish UHF CUDA DF J/K", detail);
+}
+
+vibeqc_status execute_cuda_density_fitting_rhf_jk_item(
+    CudaDensityFittingJkPlan* plan, std::size_t system,
+    const std::vector<double>& density, std::vector<double>& coulomb,
+    std::vector<double>& exchange, std::string& detail) {
+  detail.clear();
+  coulomb.clear();
+  exchange.clear();
+  if (plan == nullptr || system >= plan->batch_size ||
+      density.size() != plan->matrix_elements || !finite_values(density)) {
+    detail = "CUDA DF RHF item density dimensions or values are invalid";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  if (plan->batch_size == 1U) {
+    return execute_cuda_density_fitting_rhf_jk(
+        plan, density, coulomb, exchange, detail);
+  }
+  const std::size_t batch_elements = plan->batch_size * plan->matrix_elements;
+  const std::size_t item_bytes = plan->matrix_elements * sizeof(double);
+  const std::size_t batch_bytes = batch_elements * sizeof(double);
+  cudaError_t cuda_error = cudaSetDevice(plan->device_id);
+  if (cuda_error != cudaSuccess) {
+    return cuda_failure(cuda_error, "select CUDA DF device", detail);
+  }
+  cuda_error = cudaMemsetAsync(plan->primary_density, 0, batch_bytes,
+                               plan->stream);
+  if (cuda_error == cudaSuccess) {
+    cuda_error = cudaMemcpyAsync(
+        plan->primary_density + system * plan->matrix_elements, density.data(),
+        item_bytes, cudaMemcpyHostToDevice, plan->stream);
+  }
+  if (cuda_error != cudaSuccess) {
+    return cuda_failure(cuda_error, "upload bounded RHF CUDA DF item", detail);
+  }
+  vibeqc_status status = build_coulomb(*plan, plan->primary_density, detail);
+  if (status == VIBEQC_STATUS_SUCCESS) {
+    status = build_exchange(*plan, plan->primary_density, plan->alpha_exchange,
+                            detail);
+  }
+  if (status != VIBEQC_STATUS_SUCCESS) return status;
+  try {
+    coulomb.resize(plan->matrix_elements);
+    exchange.resize(plan->matrix_elements);
+  } catch (const std::bad_alloc&) {
+    detail = "host allocation for bounded RHF CUDA DF item failed";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+  const std::size_t offset_bytes = system * item_bytes;
+  cuda_error = cudaMemcpyAsync(coulomb.data(),
+                               reinterpret_cast<const unsigned char*>(
+                                   plan->coulomb) + offset_bytes,
+                               item_bytes, cudaMemcpyDeviceToHost, plan->stream);
+  if (cuda_error == cudaSuccess) {
+    cuda_error = cudaMemcpyAsync(
+        exchange.data(),
+        reinterpret_cast<const unsigned char*>(plan->alpha_exchange) +
+            offset_bytes,
+        item_bytes, cudaMemcpyDeviceToHost, plan->stream);
+  }
+  if (cuda_error == cudaSuccess) cuda_error = cudaStreamSynchronize(plan->stream);
+  return cuda_error == cudaSuccess
+             ? VIBEQC_STATUS_SUCCESS
+             : cuda_failure(cuda_error, "finish bounded RHF CUDA DF item", detail);
+}
+
+vibeqc_status execute_cuda_density_fitting_uhf_jk_item(
+    CudaDensityFittingJkPlan* plan, std::size_t system,
+    const std::vector<double>& alpha_density,
+    const std::vector<double>& beta_density, std::vector<double>& coulomb,
+    std::vector<double>& alpha_exchange, std::vector<double>& beta_exchange,
+    std::string& detail) {
+  detail.clear();
+  coulomb.clear();
+  alpha_exchange.clear();
+  beta_exchange.clear();
+  if (plan == nullptr || system >= plan->batch_size ||
+      alpha_density.size() != plan->matrix_elements ||
+      beta_density.size() != plan->matrix_elements ||
+      !finite_values(alpha_density) || !finite_values(beta_density)) {
+    detail = "CUDA DF UHF item density dimensions or values are invalid";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  if (plan->batch_size == 1U) {
+    return execute_cuda_density_fitting_uhf_jk(
+        plan, alpha_density, beta_density, coulomb, alpha_exchange,
+        beta_exchange, detail);
+  }
+  const std::size_t batch_elements = plan->batch_size * plan->matrix_elements;
+  const std::size_t item_bytes = plan->matrix_elements * sizeof(double);
+  const std::size_t batch_bytes = batch_elements * sizeof(double);
+  cudaError_t cuda_error = cudaSetDevice(plan->device_id);
+  if (cuda_error != cudaSuccess) {
+    return cuda_failure(cuda_error, "select CUDA DF device", detail);
+  }
+  cuda_error = cudaMemsetAsync(plan->primary_density, 0, batch_bytes,
+                               plan->stream);
+  if (cuda_error == cudaSuccess) {
+    cuda_error = cudaMemsetAsync(plan->secondary_density, 0, batch_bytes,
+                                 plan->stream);
+  }
+  if (cuda_error == cudaSuccess) {
+    cuda_error = cudaMemcpyAsync(
+        plan->primary_density + system * plan->matrix_elements,
+        alpha_density.data(), item_bytes, cudaMemcpyHostToDevice, plan->stream);
+  }
+  if (cuda_error == cudaSuccess) {
+    cuda_error = cudaMemcpyAsync(
+        plan->secondary_density + system * plan->matrix_elements,
+        beta_density.data(), item_bytes, cudaMemcpyHostToDevice, plan->stream);
+  }
+  if (cuda_error != cudaSuccess) {
+    return cuda_failure(cuda_error, "upload bounded UHF CUDA DF item", detail);
+  }
+  sum_spin_density_kernel<<<blocks_for(batch_elements), kThreads, 0,
+                            plan->stream>>>(
+      batch_elements, plan->primary_density, plan->secondary_density,
+      plan->total_density);
+  cuda_error = cudaPeekAtLastError();
+  if (cuda_error != cudaSuccess) {
+    return cuda_failure(cuda_error, "sum bounded UHF CUDA DF item density",
+                        detail);
+  }
+  vibeqc_status status = build_coulomb(*plan, plan->total_density, detail);
+  if (status == VIBEQC_STATUS_SUCCESS) {
+    status = build_exchange(*plan, plan->primary_density, plan->alpha_exchange,
+                            detail);
+  }
+  if (status == VIBEQC_STATUS_SUCCESS) {
+    status = build_exchange(*plan, plan->secondary_density, plan->beta_exchange,
+                            detail);
+  }
+  if (status != VIBEQC_STATUS_SUCCESS) return status;
+  try {
+    coulomb.resize(plan->matrix_elements);
+    alpha_exchange.resize(plan->matrix_elements);
+    beta_exchange.resize(plan->matrix_elements);
+  } catch (const std::bad_alloc&) {
+    detail = "host allocation for bounded UHF CUDA DF item failed";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+  const std::size_t offset_bytes = system * item_bytes;
+  cuda_error = cudaMemcpyAsync(coulomb.data(),
+                               reinterpret_cast<const unsigned char*>(
+                                   plan->coulomb) + offset_bytes,
+                               item_bytes, cudaMemcpyDeviceToHost, plan->stream);
+  if (cuda_error == cudaSuccess) {
+    cuda_error = cudaMemcpyAsync(
+        alpha_exchange.data(),
+        reinterpret_cast<const unsigned char*>(plan->alpha_exchange) +
+            offset_bytes,
+        item_bytes, cudaMemcpyDeviceToHost, plan->stream);
+  }
+  if (cuda_error == cudaSuccess) {
+    cuda_error = cudaMemcpyAsync(
+        beta_exchange.data(),
+        reinterpret_cast<const unsigned char*>(plan->beta_exchange) +
+            offset_bytes,
+        item_bytes, cudaMemcpyDeviceToHost, plan->stream);
+  }
+  if (cuda_error == cudaSuccess) cuda_error = cudaStreamSynchronize(plan->stream);
+  return cuda_error == cudaSuccess
+             ? VIBEQC_STATUS_SUCCESS
+             : cuda_failure(cuda_error, "finish bounded UHF CUDA DF item", detail);
 }
 
 vibeqc_status execute_cuda_density_fitting_rhf_jk_device(

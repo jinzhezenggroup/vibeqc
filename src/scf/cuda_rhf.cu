@@ -15479,6 +15479,7 @@ struct CudaDensityFittingIntegralSourceImpl {
   std::vector<void*> allocations;
   std::size_t device_bytes{};
   std::size_t host_bytes{};
+  std::size_t host_peak_bytes{};
 
   ~CudaDensityFittingIntegralSourceImpl() {
     if (device_id >= 0) (void)cudaSetDevice(device_id);
@@ -15693,8 +15694,17 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
   candidate->batch.total_shells = static_cast<std::int64_t>(host.shell_atoms.size());
   try {
     candidate->host_atom_offsets = host.atom_offsets;
-    candidate->host_bytes =
-        candidate->host_atom_offsets.size() * sizeof(std::int64_t);
+    // Only the atom-prefix mirror survives source construction.  Include the
+    // owning object and vector capacity in the retained-host diagnostic so a
+    // positive-budget plan cannot silently omit this metadata allocation.
+    std::size_t atom_offset_bytes = 0U;
+    if (!checked_multiply(candidate->host_atom_offsets.capacity(),
+                          sizeof(std::int64_t), atom_offset_bytes) ||
+        !checked_add(sizeof(*candidate), atom_offset_bytes,
+                     candidate->host_bytes)) {
+      detail = "bounded DF source host metadata bytes overflow size_t";
+      return VIBEQC_STATUS_OUT_OF_MEMORY;
+    }
   } catch (const std::bad_alloc&) {
     detail = "host allocation failed for bounded DF source atom offsets";
     return VIBEQC_STATUS_OUT_OF_MEMORY;
@@ -15862,6 +15872,92 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
     detail = "CUDA bounded DF metric generation failed";
     return source_cuda_status(cuda_error);
   }
+  // Record the transient host setup footprint while the packed basis metadata,
+  // public-basis transforms, and generated metric are all alive.  Only the
+  // compact atom-offset mirror is retained after this function returns, but a
+  // positive-budget diagnostic must still expose the larger construction peak.
+  const auto capacity_bytes = [](const auto& values) -> long double {
+    return static_cast<long double>(values.capacity()) *
+           static_cast<long double>(sizeof(values[0]));
+  };
+  const auto system_capacity_bytes = [&](const core::System& system) {
+    long double bytes = static_cast<long double>(sizeof(system)) +
+                        capacity_bytes(system.atoms) +
+                        capacity_bytes(system.shells);
+    for (const core::Shell& shell : system.shells) {
+      bytes += capacity_bytes(shell.primitives);
+    }
+    return bytes;
+  };
+  long double host_peak = static_cast<long double>(sizeof(*candidate));
+#define VIBEQC_SOURCE_HOST_FIELD(field) host_peak += capacity_bytes(host.field)
+  VIBEQC_SOURCE_HOST_FIELD(atom_offsets);
+  VIBEQC_SOURCE_HOST_FIELD(atom_systems);
+  VIBEQC_SOURCE_HOST_FIELD(atomic_numbers);
+  VIBEQC_SOURCE_HOST_FIELD(positions);
+  VIBEQC_SOURCE_HOST_FIELD(system_shell_offsets);
+  VIBEQC_SOURCE_HOST_FIELD(shell_atoms);
+  VIBEQC_SOURCE_HOST_FIELD(shell_angular);
+  VIBEQC_SOURCE_HOST_FIELD(shell_ao_offsets);
+  VIBEQC_SOURCE_HOST_FIELD(shell_direct_ao_offsets);
+  VIBEQC_SOURCE_HOST_FIELD(shell_primitive_offsets);
+  VIBEQC_SOURCE_HOST_FIELD(system_shell_pair_offsets);
+  VIBEQC_SOURCE_HOST_FIELD(system_shell_quartet_offsets);
+  VIBEQC_SOURCE_HOST_FIELD(system_shell_pair_block_offsets);
+  VIBEQC_SOURCE_HOST_FIELD(system_shell_pair_block_quartet_offsets);
+  VIBEQC_SOURCE_HOST_FIELD(shell_pair_systems);
+  VIBEQC_SOURCE_HOST_FIELD(shell_pair_first);
+  VIBEQC_SOURCE_HOST_FIELD(shell_pair_second);
+  VIBEQC_SOURCE_HOST_FIELD(shell_pair_primitive_offsets);
+  VIBEQC_SOURCE_HOST_FIELD(psss_resident_tasks);
+  VIBEQC_SOURCE_HOST_FIELD(psss_resident_ket_pairs);
+  VIBEQC_SOURCE_HOST_FIELD(ao_shells);
+  VIBEQC_SOURCE_HOST_FIELD(ao_term_counts);
+  VIBEQC_SOURCE_HOST_FIELD(ao_term_angular);
+  VIBEQC_SOURCE_HOST_FIELD(ao_term_coefficients);
+  VIBEQC_SOURCE_HOST_FIELD(direct_ao_shells);
+  VIBEQC_SOURCE_HOST_FIELD(direct_ao_angular);
+  VIBEQC_SOURCE_HOST_FIELD(direct_ao_coefficients);
+  VIBEQC_SOURCE_HOST_FIELD(ao_to_direct_transform);
+  VIBEQC_SOURCE_HOST_FIELD(primitive_exponents);
+  VIBEQC_SOURCE_HOST_FIELD(primitive_coefficients);
+  VIBEQC_SOURCE_HOST_FIELD(occupied);
+  VIBEQC_SOURCE_HOST_FIELD(warm_mask);
+  VIBEQC_SOURCE_HOST_FIELD(warm_density);
+#undef VIBEQC_SOURCE_HOST_FIELD
+  host_peak += capacity_bytes(orbital_transform);
+  host_peak += capacity_bytes(auxiliary_transform);
+  host_peak += capacity_bytes(metrics);
+  host_peak += capacity_bytes(combined);
+  host_peak += capacity_bytes(no_warm);
+  host_peak += capacity_bytes(candidate->host_atom_offsets);
+  host_peak += capacity_bytes(candidate->allocations);
+  for (const core::System& system : combined) {
+    host_peak += system_capacity_bytes(system);
+  }
+  // Each transform helper briefly materializes one public-to-Cartesian item
+  // before copying it into the packed arrays. Charge that per-item temporary
+  // in addition to the retained batch transforms.
+  host_peak += static_cast<long double>(public_nbf) * cartesian_nbf *
+               sizeof(double);
+  host_peak += static_cast<long double>(public_naux) * cartesian_naux *
+               sizeof(double);
+  // Recompute retained bytes after all metadata uploads have populated the
+  // device-allocation pointer vector.  The dynamic pointer array is small but
+  // is still host state owned by the source and must not disappear from the
+  // resident-byte diagnostic.
+  const long double retained_host =
+      static_cast<long double>(sizeof(*candidate)) +
+      capacity_bytes(candidate->host_atom_offsets) +
+      capacity_bytes(candidate->allocations);
+  const long double size_limit = static_cast<long double>(
+      std::numeric_limits<std::size_t>::max());
+  candidate->host_bytes = retained_host >= size_limit
+                              ? std::numeric_limits<std::size_t>::max()
+                              : static_cast<std::size_t>(retained_host);
+  candidate->host_peak_bytes =
+      host_peak >= size_limit ? std::numeric_limits<std::size_t>::max()
+                              : static_cast<std::size_t>(host_peak);
   *source = candidate.release();
   nbf = public_nbf;
   naux = public_naux;
@@ -16363,9 +16459,51 @@ std::size_t cuda_density_fitting_integral_source_device_bytes(
 std::size_t cuda_density_fitting_integral_source_host_bytes(
     const CudaDensityFittingIntegralSource* source) noexcept {
   if (source == nullptr || source->implementation == nullptr) return 0U;
-  return static_cast<const CudaDensityFittingIntegralSourceImpl*>(
-             source->implementation)
-      ->host_bytes;
+  const auto* implementation =
+      static_cast<const CudaDensityFittingIntegralSourceImpl*>(
+          source->implementation);
+  const std::size_t handle_bytes = sizeof(CudaDensityFittingIntegralSource);
+  return implementation->host_bytes >
+                 std::numeric_limits<std::size_t>::max() - handle_bytes
+             ? std::numeric_limits<std::size_t>::max()
+             : implementation->host_bytes + handle_bytes;
+}
+
+std::size_t cuda_density_fitting_integral_source_host_peak_bytes(
+    const CudaDensityFittingIntegralSource* source) noexcept {
+  if (source == nullptr || source->implementation == nullptr) return 0U;
+  const auto* implementation =
+      static_cast<const CudaDensityFittingIntegralSourceImpl*>(
+          source->implementation);
+  const std::size_t handle_bytes = sizeof(CudaDensityFittingIntegralSource);
+  return implementation->host_peak_bytes >
+                 std::numeric_limits<std::size_t>::max() - handle_bytes
+             ? std::numeric_limits<std::size_t>::max()
+             : implementation->host_peak_bytes + handle_bytes;
+}
+
+std::size_t cuda_density_fitting_integral_source_coordinate_count(
+    const CudaDensityFittingIntegralSource* source) noexcept {
+  if (source == nullptr || source->implementation == nullptr) return 0U;
+  const auto* implementation =
+      static_cast<const CudaDensityFittingIntegralSourceImpl*>(
+          source->implementation);
+  if (implementation->host_atom_offsets.size() < 2U) return 0U;
+  std::size_t maximum = 0U;
+  for (std::size_t system = 0; system + 1U <
+                                 implementation->host_atom_offsets.size();
+       ++system) {
+    const std::int64_t begin = implementation->host_atom_offsets[system];
+    const std::int64_t end = implementation->host_atom_offsets[system + 1U];
+    if (begin < 0 || end < begin) return 0U;
+    const std::uint64_t atoms = static_cast<std::uint64_t>(end - begin);
+    if (atoms > std::numeric_limits<std::size_t>::max() / 3U) {
+      return std::numeric_limits<std::size_t>::max();
+    }
+    maximum = std::max(maximum,
+                       static_cast<std::size_t>(atoms) * std::size_t{3});
+  }
+  return maximum;
 }
 
 bool cuda_density_fitting_integral_source_matches(

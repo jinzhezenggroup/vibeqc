@@ -39,6 +39,14 @@ std::size_t cuda_density_fitting_integral_source_device_bytes(
 std::size_t cuda_density_fitting_integral_source_host_bytes(
     const CudaDensityFittingIntegralSource* source) noexcept;
 
+/** Host allocation peak while constructing an opaque bounded DF source. */
+std::size_t cuda_density_fitting_integral_source_host_peak_bytes(
+    const CudaDensityFittingIntegralSource* source) noexcept;
+
+/** Maximum per-system nuclear-coordinate count represented by a source. */
+std::size_t cuda_density_fitting_integral_source_coordinate_count(
+    const CudaDensityFittingIntegralSource* source) noexcept;
+
 /** Validate the fixed dimensions/device associated with a source handle. */
 bool cuda_density_fitting_integral_source_matches(
     const CudaDensityFittingIntegralSource* source, int device_id,
@@ -188,6 +196,26 @@ vibeqc_status execute_cuda_density_fitting_rhf_jk(
  */
 vibeqc_status execute_cuda_density_fitting_uhf_jk(
     CudaDensityFittingJkPlan* plan, const std::vector<double>& alpha_density,
+    const std::vector<double>& beta_density, std::vector<double>& coulomb,
+    std::vector<double>& alpha_exchange, std::vector<double>& beta_exchange,
+    std::string& detail);
+
+/**
+ * Build one RHF J/K item without packing a complete batch on the host.
+ *
+ * The plan still owns the fixed batch-stride device buffers, but only the
+ * selected item's density and outputs cross the host/device boundary. This is
+ * used by bucket finalization under a positive memory budget.
+ */
+vibeqc_status execute_cuda_density_fitting_rhf_jk_item(
+    CudaDensityFittingJkPlan* plan, std::size_t system,
+    const std::vector<double>& density, std::vector<double>& coulomb,
+    std::vector<double>& exchange, std::string& detail);
+
+/** UHF counterpart of the bounded item-level J/K helper. */
+vibeqc_status execute_cuda_density_fitting_uhf_jk_item(
+    CudaDensityFittingJkPlan* plan, std::size_t system,
+    const std::vector<double>& alpha_density,
     const std::vector<double>& beta_density, std::vector<double>& coulomb,
     std::vector<double>& alpha_exchange, std::vector<double>& beta_exchange,
     std::string& detail);

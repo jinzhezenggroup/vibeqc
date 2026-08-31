@@ -28,6 +28,16 @@ std::size_t cuda_density_fitting_integral_source_host_bytes(
   return 0U;
 }
 
+std::size_t cuda_density_fitting_integral_source_host_peak_bytes(
+    const CudaDensityFittingIntegralSource*) noexcept {
+  return 0U;
+}
+
+std::size_t cuda_density_fitting_integral_source_coordinate_count(
+    const CudaDensityFittingIntegralSource*) noexcept {
+  return 0U;
+}
+
 bool cuda_density_fitting_integral_source_matches(
     const CudaDensityFittingIntegralSource*, int, std::size_t, std::size_t,
     std::size_t) noexcept {
@@ -130,6 +140,19 @@ vibeqc_status execute_cuda_density_fitting_rhf_jk(CudaDensityFittingJkPlan*,
 
 vibeqc_status execute_cuda_density_fitting_uhf_jk(
     CudaDensityFittingJkPlan*, const std::vector<double>&,
+    const std::vector<double>&, std::vector<double>&, std::vector<double>&,
+    std::vector<double>&, std::string& detail) {
+  return unavailable(nullptr, detail);
+}
+
+vibeqc_status execute_cuda_density_fitting_rhf_jk_item(
+    CudaDensityFittingJkPlan*, std::size_t, const std::vector<double>&,
+    std::vector<double>&, std::vector<double>&, std::string& detail) {
+  return unavailable(nullptr, detail);
+}
+
+vibeqc_status execute_cuda_density_fitting_uhf_jk_item(
+    CudaDensityFittingJkPlan*, std::size_t, const std::vector<double>&,
     const std::vector<double>&, std::vector<double>&, std::vector<double>&,
     std::vector<double>&, std::string& detail) {
   return unavailable(nullptr, detail);

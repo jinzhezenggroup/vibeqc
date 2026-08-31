@@ -720,7 +720,6 @@ DensityFittingScfData assemble_density_fitting_data(
   data.raw.nbf = raw.nbf;
   data.raw.naux = raw.naux;
   data.raw.ncoord = raw.ncoord;
-  data.raw.metric = std::move(raw.metric);
   data.three_center.nbf = raw.nbf;
   data.three_center.naux = raw.naux;
   return data;
@@ -730,7 +729,8 @@ DensityFittingScfData prepare_density_fitting_data(
     const core::System& system,
     const core::System& auxiliary_system,
     double relative_threshold,
-    int cuda_device_id = -1) {
+    int cuda_device_id = -1,
+    std::size_t output_budget_bytes = 0U) {
   // A non-negative device selects the CUDA Cartesian evaluator for the raw
   // metric/three-center tensors.  The default keeps CPU-reference callers
   // entirely on the existing oracle path.
@@ -740,6 +740,9 @@ DensityFittingScfData prepare_density_fitting_data(
         "DF metric relative threshold must lie strictly between zero and one");
   }
   DensityFittingScfData data;
+#if !VIBEQC_HAS_CUDA
+  (void)output_budget_bytes;
+#endif
 #if VIBEQC_HAS_CUDA
   if (cuda_device_id >= 0) {
     integrals::IntegralData cartesian_one_electron;
@@ -756,6 +759,20 @@ DensityFittingScfData prepare_density_fitting_data(
     }
     data.one_electron = integrals::transform_integrals(
         cartesian_one_electron, system);
+
+    // A positive budget uses the source-backed plan, which regenerates all DF
+    // values and derivatives from compact device metadata. Do not build the
+    // complete raw metric/three-center tensors just to discard them before
+    // plan creation; retaining only dimensions and one-electron response data
+    // keeps the setup peak bounded by the caller's request.
+    if (output_budget_bytes != 0U) {
+      integrals::DensityFittingIntegralData metadata;
+      metadata.nbf = molecule::ao_count(system);
+      metadata.naux = molecule::ao_count(auxiliary_system);
+      metadata.ncoord = system.atoms.size() * 3U;
+      return assemble_density_fitting_metadata(
+          std::move(data.one_electron), std::move(metadata));
+    }
 
     integrals::DensityFittingIntegralData cartesian;
     std::string detail;
@@ -845,20 +862,9 @@ void finalize_density_fitting_rhf(
       item_detail = "CUDA DF bucket item index or density dimensions are invalid";
       return VIBEQC_STATUS_INVALID_ARGUMENT;
     }
-    std::vector<double> packed(batch * item_density.size(), 0.0);
-    std::copy(item_density.begin(), item_density.end(),
-              packed.begin() + cuda_system * item_density.size());
-    std::vector<double> packed_coulomb;
-    std::vector<double> packed_exchange;
-    const vibeqc_status status = execute_cuda_density_fitting_rhf_jk(
-        cuda_plan, packed, packed_coulomb, packed_exchange, item_detail);
-    if (status != VIBEQC_STATUS_SUCCESS) return status;
-    const std::size_t offset = cuda_system * item_density.size();
-    item_coulomb.assign(packed_coulomb.begin() + offset,
-                        packed_coulomb.begin() + offset + item_density.size());
-    item_exchange.assign(packed_exchange.begin() + offset,
-                         packed_exchange.begin() + offset + item_density.size());
-    return VIBEQC_STATUS_SUCCESS;
+    return execute_cuda_density_fitting_rhf_jk_item(
+        cuda_plan, cuda_system, item_density, item_coulomb, item_exchange,
+        item_detail);
   };
   if (cuda_plan != nullptr) {
     std::vector<double> coulomb;
@@ -1024,29 +1030,9 @@ void finalize_density_fitting_uhf(
               "CUDA DF bucket item index or spin-density dimensions are invalid";
           return VIBEQC_STATUS_INVALID_ARGUMENT;
         }
-        std::vector<double> packed_alpha(batch * item_alpha.size(), 0.0);
-        std::vector<double> packed_beta(batch * item_beta.size(), 0.0);
-        std::copy(item_alpha.begin(), item_alpha.end(),
-                  packed_alpha.begin() + cuda_system * item_alpha.size());
-        std::copy(item_beta.begin(), item_beta.end(),
-                  packed_beta.begin() + cuda_system * item_beta.size());
-        std::vector<double> packed_coulomb;
-        std::vector<double> packed_alpha_exchange;
-        std::vector<double> packed_beta_exchange;
-        const vibeqc_status status = execute_cuda_density_fitting_uhf_jk(
-            cuda_plan, packed_alpha, packed_beta, packed_coulomb,
-            packed_alpha_exchange, packed_beta_exchange, item_detail);
-        if (status != VIBEQC_STATUS_SUCCESS) return status;
-        const std::size_t offset = cuda_system * item_alpha.size();
-        item_coulomb.assign(packed_coulomb.begin() + offset,
-                            packed_coulomb.begin() + offset + item_alpha.size());
-        item_alpha_exchange.assign(
-            packed_alpha_exchange.begin() + offset,
-            packed_alpha_exchange.begin() + offset + item_alpha.size());
-        item_beta_exchange.assign(
-            packed_beta_exchange.begin() + offset,
-            packed_beta_exchange.begin() + offset + item_alpha.size());
-        return VIBEQC_STATUS_SUCCESS;
+        return execute_cuda_density_fitting_uhf_jk_item(
+            cuda_plan, cuda_system, item_alpha, item_beta, item_coulomb,
+            item_alpha_exchange, item_beta_exchange, item_detail);
       };
   if (cuda_plan != nullptr) {
     std::vector<double> coulomb;
@@ -1735,26 +1721,67 @@ prepare_cuda_density_fitting_batch(
   }
 
   for (const auto& group : groups) {
-    std::vector<core::System> orbital_batch;
-    std::vector<core::System> auxiliary_batch;
-    orbital_batch.reserve(group.size());
-    auxiliary_batch.reserve(group.size());
-    for (const std::size_t source : group) {
-      orbital_batch.push_back(systems[source]);
-      auxiliary_batch.push_back(auxiliaries[source]);
+    // Process homogeneous systems in bounded chunks. Build only the current
+    // chunk vectors; retaining a second full copy of the entire group here
+    // would consume the same host budget that the chunking is meant to bound.
+    const std::size_t representative = group.front();
+    const std::size_t nbf_cart =
+        molecule::cartesian_ao_count(systems[representative]);
+    const std::size_t naux_cart =
+        molecule::cartesian_ao_count(auxiliaries[representative]);
+    const std::size_t coordinates = systems[representative].atoms.size() * 3U;
+    // Account for every host vector that can coexist while a chunk is being
+    // prepared: possible DF metric/three-center values and derivatives,
+    // one-electron values and derivatives, and the packed one-electron
+    // staging vectors used by the CUDA bridge.  The positive-budget source
+    // path skips the DF generator entirely, but retaining that component here
+    // keeps the estimate safe for the non-source fallback.
+    const long double matrix_elements =
+        static_cast<long double>(nbf_cart) * nbf_cart;
+    const long double metric_elements =
+        static_cast<long double>(naux_cart) * naux_cart;
+    const long double three_center_elements = matrix_elements * naux_cart;
+    const long double values_and_derivatives =
+        static_cast<long double>(coordinates) + 1.0L;
+    const long double density_fitting_output = output_budget_bytes == 0U
+        ? (metric_elements + three_center_elements) * values_and_derivatives
+        : 0.0L;
+    // IntegralData retains overlap/hcore plus coordinate-major derivatives;
+    // nuclear-repulsion derivatives contribute one scalar per coordinate.
+    const long double one_electron_output =
+        2.0L * matrix_elements * values_and_derivatives + coordinates;
+    // build_cuda_one_electron_integrals_batch keeps packed overlap, hcore,
+    // and nuclear vectors alive while copying each item into IntegralData.
+    const long double one_electron_staging =
+        2.0L * matrix_elements + 1.0L;
+    // pack_host_batch also retains basis/atom metadata, shell-pair indices,
+    // queue descriptors, and Cartesian system copies while the CUDA bridge is
+    // active.  Those vectors are irregular (and private to the CUDA TU), so
+    // use a deliberately conservative descriptor-count bound rather than
+    // pretending the numeric output estimate covers them.
+    const long double atoms =
+        static_cast<long double>(systems[representative].atoms.size());
+    const long double shells =
+        static_cast<long double>(systems[representative].shells.size());
+    long double primitives = 0.0L;
+    for (const core::Shell& shell : systems[representative].shells) {
+      primitives += static_cast<long double>(shell.primitives.size());
     }
-
-    // Process homogeneous systems in bounded chunks. Each chunk's raw metric,
-    // three-center, derivative, and one-electron outputs are transformed into
-    // the retained per-system record before the next chunk is launched, so a
-    // large fleet never holds an additional full-batch raw-output temporary.
-    const std::size_t nbf_cart = molecule::cartesian_ao_count(orbital_batch.front());
-    const std::size_t naux_cart = molecule::cartesian_ao_count(auxiliary_batch.front());
-    const std::size_t coordinates = orbital_batch.front().atoms.size() * 3U;
+    const long double shell_pairs = shells * (shells + 1.0L) / 2.0L;
+    const long double shell_quartets =
+        shell_pairs * (shell_pairs + 1.0L) / 2.0L;
+    const long double metadata_doubles_per_system =
+        64.0L * (1.0L + atoms + shells + primitives +
+                 static_cast<long double>(nbf_cart) +
+                 static_cast<long double>(molecule::ao_count(
+                     systems[representative])) + shell_pairs + shell_quartets);
+    // The one-electron bridge also keeps a Cartesian warm-density matrix and
+    // packed pair-index vectors even when no warm density is supplied.
+    const long double quadratic_staging_doubles = 2.0L * matrix_elements;
     const long double per_system_output_estimate =
-        (static_cast<long double>(naux_cart) * naux_cart +
-         static_cast<long double>(nbf_cart) * nbf_cart * naux_cart) *
-        (static_cast<long double>(coordinates) + 1.0L) * sizeof(double);
+        (density_fitting_output + one_electron_output +
+         one_electron_staging + metadata_doubles_per_system +
+         quadratic_staging_doubles) * sizeof(double);
     const std::size_t per_system_output =
         per_system_output_estimate >=
                 static_cast<long double>(std::numeric_limits<std::size_t>::max())
@@ -1765,23 +1792,40 @@ prepare_cuda_density_fitting_batch(
         : std::max<std::size_t>(
               1U, std::min(group.size(), output_budget_bytes /
                                       std::max<std::size_t>(per_system_output, 1U)));
+    if (output_budget_bytes != 0U &&
+        per_system_output > output_budget_bytes) {
+      for (const std::size_t source : group) {
+        statuses[source] = VIBEQC_STATUS_OUT_OF_MEMORY;
+      }
+      continue;
+    }
     for (std::size_t chunk_begin = 0; chunk_begin < group.size();
          chunk_begin += chunk_size) {
       const std::size_t chunk_end =
           std::min(group.size(), chunk_begin + chunk_size);
-      std::vector<core::System> orbital_chunk(
-          orbital_batch.begin() + static_cast<std::ptrdiff_t>(chunk_begin),
-          orbital_batch.begin() + static_cast<std::ptrdiff_t>(chunk_end));
-      std::vector<core::System> auxiliary_chunk(
-          auxiliary_batch.begin() + static_cast<std::ptrdiff_t>(chunk_begin),
-          auxiliary_batch.begin() + static_cast<std::ptrdiff_t>(chunk_end));
+      std::vector<core::System> orbital_chunk;
+      std::vector<core::System> auxiliary_chunk;
+      orbital_chunk.reserve(chunk_end - chunk_begin);
+      if (output_budget_bytes == 0U) {
+        auxiliary_chunk.reserve(chunk_end - chunk_begin);
+      }
+      for (std::size_t slot = chunk_begin; slot < chunk_end; ++slot) {
+        orbital_chunk.push_back(systems[group[slot]]);
+        if (output_budget_bytes == 0U) {
+          auxiliary_chunk.push_back(auxiliaries[group[slot]]);
+        }
+      }
       std::vector<integrals::DensityFittingIntegralData> raw_batch;
       std::vector<integrals::IntegralData> one_electron_batch;
       std::string detail;
-      const vibeqc_status batch_status =
-          build_cuda_density_fitting_integrals_batch(
-              device_id, orbital_chunk, auxiliary_chunk, raw_batch, detail,
-              output_budget_bytes);
+      // Source-backed positive-budget plans regenerate DF values on demand;
+      // generating a complete raw batch here only to discard it would defeat
+      // the budget. Keep this batch limited to one-electron response data.
+      const vibeqc_status batch_status = output_budget_bytes == 0U
+          ? build_cuda_density_fitting_integrals_batch(
+                device_id, orbital_chunk, auxiliary_chunk, raw_batch, detail,
+                output_budget_bytes)
+          : VIBEQC_STATUS_SUCCESS;
       const vibeqc_status one_electron_batch_status =
           batch_status == VIBEQC_STATUS_SUCCESS
               ? build_cuda_one_electron_integrals_batch(
@@ -1789,7 +1833,8 @@ prepare_cuda_density_fitting_batch(
               : batch_status;
       if (batch_status == VIBEQC_STATUS_SUCCESS &&
           one_electron_batch_status == VIBEQC_STATUS_SUCCESS &&
-          raw_batch.size() == orbital_chunk.size() &&
+          (output_budget_bytes != 0U ||
+           raw_batch.size() == orbital_chunk.size()) &&
           one_electron_batch.size() == orbital_chunk.size()) {
         for (std::size_t slot = chunk_begin; slot < chunk_end; ++slot) {
           const std::size_t local = slot - chunk_begin;
@@ -1798,9 +1843,15 @@ prepare_cuda_density_fitting_batch(
             integrals::IntegralData one_electron =
                 integrals::transform_integrals(one_electron_batch[local],
                                                systems[source]);
-            integrals::DensityFittingIntegralData raw =
-                integrals::transform_density_fitting_integrals(
-                    raw_batch[local], systems[source], auxiliaries[source]);
+            integrals::DensityFittingIntegralData raw;
+            if (output_budget_bytes != 0U) {
+              raw.nbf = molecule::ao_count(systems[source]);
+              raw.naux = molecule::ao_count(auxiliaries[source]);
+              raw.ncoord = systems[source].atoms.size() * 3U;
+            } else {
+              raw = integrals::transform_density_fitting_integrals(
+                  raw_batch[local], systems[source], auxiliaries[source]);
+            }
             prepared[source] = output_budget_bytes != 0U
                                    ? assemble_density_fitting_metadata(
                                          std::move(one_electron), std::move(raw))
@@ -1833,10 +1884,11 @@ prepare_cuda_density_fitting_batch(
             std::vector<integrals::DensityFittingIntegralData> single_raw;
             std::vector<integrals::IntegralData> single_one_electron;
             std::string retry_detail;
-            const vibeqc_status retry_raw_status =
-                build_cuda_density_fitting_integrals_batch(
-                    device_id, single_orbital, single_auxiliary, single_raw,
-                    retry_detail, output_budget_bytes);
+            const vibeqc_status retry_raw_status = output_budget_bytes == 0U
+                ? build_cuda_density_fitting_integrals_batch(
+                      device_id, single_orbital, single_auxiliary, single_raw,
+                      retry_detail, output_budget_bytes)
+                : VIBEQC_STATUS_SUCCESS;
             const vibeqc_status retry_one_electron_status =
                 retry_raw_status == VIBEQC_STATUS_SUCCESS
                     ? build_cuda_one_electron_integrals_batch(
@@ -1845,13 +1897,20 @@ prepare_cuda_density_fitting_batch(
                     : retry_raw_status;
             if (retry_raw_status == VIBEQC_STATUS_SUCCESS &&
                 retry_one_electron_status == VIBEQC_STATUS_SUCCESS &&
-                single_raw.size() == 1U && single_one_electron.size() == 1U) {
+                (output_budget_bytes != 0U || single_raw.size() == 1U) &&
+                single_one_electron.size() == 1U) {
               integrals::IntegralData one_electron =
                   integrals::transform_integrals(single_one_electron.front(),
                                                  systems[source]);
-              integrals::DensityFittingIntegralData raw =
-                  integrals::transform_density_fitting_integrals(
-                      single_raw.front(), systems[source], auxiliaries[source]);
+              integrals::DensityFittingIntegralData raw;
+              if (output_budget_bytes != 0U) {
+                raw.nbf = molecule::ao_count(systems[source]);
+                raw.naux = molecule::ao_count(auxiliaries[source]);
+                raw.ncoord = systems[source].atoms.size() * 3U;
+              } else {
+                raw = integrals::transform_density_fitting_integrals(
+                    single_raw.front(), systems[source], auxiliaries[source]);
+              }
               prepared[source] = output_budget_bytes != 0U
                                      ? assemble_density_fitting_metadata(
                                            std::move(one_electron), std::move(raw))
@@ -1923,7 +1982,7 @@ ScfResult run_rhf_density_fitting_cuda_impl(
     const std::vector<double>* initial_density) {
   DensityFittingScfData data = prepare_density_fitting_data(
       system, auxiliary_system, options.density_fitting_relative_threshold,
-      device_id);
+      device_id, options.density_fitting_memory_budget_bytes);
   const std::size_t n = data.one_electron.nbf;
   const std::size_t occupied =
       static_cast<std::size_t>(system.electron_count / 2);
@@ -2035,7 +2094,7 @@ ScfResult run_uhf_density_fitting_cuda_impl(
     const std::vector<double>* initial_density) {
   DensityFittingScfData data = prepare_density_fitting_data(
       system, auxiliary_system, options.density_fitting_relative_threshold,
-      device_id);
+      device_id, options.density_fitting_memory_budget_bytes);
   const std::size_t n = data.one_electron.nbf;
   const auto [alpha_occupied, beta_occupied] = spin_occupations(system);
   if (alpha_occupied > n || beta_occupied > n) {
