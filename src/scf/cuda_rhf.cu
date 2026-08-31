@@ -7197,7 +7197,7 @@ __global__ void build_cuda_df_transformed_tile_kernel(
     std::size_t auxiliary_begin, std::size_t auxiliary_count,
     std::int64_t derivative_coordinate, const double* orbital_to_cartesian,
     const double* auxiliary_to_cartesian, const double* inverse_square_root,
-    double* output) {
+    bool apply_metric_transform, double* output) {
   const std::size_t element = static_cast<std::size_t>(blockIdx.x) *
       blockDim.x + threadIdx.x;
   const std::size_t tile_elements = pair_count * auxiliary_count;
@@ -7218,7 +7218,12 @@ __global__ void build_cuda_df_transformed_tile_kernel(
   const double* system_auxiliary_to_cartesian =
       auxiliary_to_cartesian + system * auxiliary_transform_stride;
   double value = 0.0;
-  for (std::size_t source = 0; source < public_naux; ++source) {
+  const std::size_t source_begin =
+      apply_metric_transform ? 0U : auxiliary;
+  const std::size_t source_end = apply_metric_transform
+                                     ? public_naux
+                                     : source_begin + 1U;
+  for (std::size_t source = source_begin; source < source_end; ++source) {
     double transformed_raw = 0.0;
     for (std::size_t first = 0; first < cartesian_orbital_count; ++first) {
       const double first_coefficient = system_orbital_to_cartesian[
@@ -7253,8 +7258,10 @@ __global__ void build_cuda_df_transformed_tile_kernel(
         }
       }
     }
-    value += transformed_raw * inverse_square_root[
-        auxiliary * public_naux + source];
+    value += apply_metric_transform
+                 ? transformed_raw *
+                       inverse_square_root[auxiliary * public_naux + source]
+                 : transformed_raw;
   }
   output[(pair - pair_begin) * auxiliary_count +
          (auxiliary - auxiliary_begin)] = value;
@@ -7266,13 +7273,14 @@ __global__ void build_cuda_df_metric_source_kernel(
     DeviceBatch batch, std::size_t cartesian_orbital_count,
     std::size_t cartesian_auxiliary_count,
     std::size_t public_naux, std::size_t dummy_index, std::size_t system,
+    std::size_t auxiliary_row_begin, std::size_t auxiliary_row_count,
     std::int64_t derivative_coordinate, const double* auxiliary_to_cartesian,
     double* output) {
   const std::size_t element = static_cast<std::size_t>(blockIdx.x) *
       blockDim.x + threadIdx.x;
-  const std::size_t total = public_naux * public_naux;
+  const std::size_t total = auxiliary_row_count * public_naux;
   if (element >= total) return;
-  const std::size_t first = element / public_naux;
+  const std::size_t first = auxiliary_row_begin + element / public_naux;
   const std::size_t second = element % public_naux;
   const std::size_t auxiliary_transform_stride =
       public_naux * cartesian_auxiliary_count;
@@ -15658,6 +15666,14 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
     detail = error.what();
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
+  const std::size_t int32_max =
+      static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max());
+  if (host.nbf > int32_max || host.direct_nbf > int32_max ||
+      cartesian_nbf > int32_max || cartesian_naux > int32_max ||
+      cartesian_nbf > int32_max - cartesian_naux) {
+    detail = "bounded DF source dimensions exceed CUDA int32 indexing";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
   cudaError_t cuda_error = cudaSetDevice(device_id);
   if (cuda_error != cudaSuccess) return source_cuda_status(cuda_error);
   auto candidate = std::unique_ptr<CudaDensityFittingIntegralSourceImpl>(
@@ -15813,6 +15829,12 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
   cuda_error = cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
   if (cuda_error != cudaSuccess) return source_cuda_status(cuda_error);
   double* metric_device = nullptr;
+  if (metric_elements >
+      static_cast<std::size_t>(std::numeric_limits<unsigned>::max()) * 128U) {
+    (void)cudaStreamDestroy(stream);
+    detail = "bounded DF metric launch exceeds CUDA grid limits";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
   cuda_error = cudaMalloc(&metric_device, metric_elements * sizeof(double));
   if (cuda_error != cudaSuccess) {
     (void)cudaStreamDestroy(stream);
@@ -15824,8 +15846,8 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
         static_cast<unsigned>((metric_elements + 128U - 1U) / 128U),
         128U, 0, stream>>>(
         candidate->batch, cartesian_nbf, cartesian_naux, public_naux,
-        candidate->dummy_index, system, -1, candidate->auxiliary_to_cartesian,
-        metric_device);
+        candidate->dummy_index, system, 0, public_naux, -1,
+        candidate->auxiliary_to_cartesian, metric_device);
     cuda_error = cudaGetLastError();
     if (cuda_error == cudaSuccess) cuda_error = cudaStreamSynchronize(stream);
     if (cuda_error == cudaSuccess) {
@@ -15861,7 +15883,7 @@ vibeqc_status generate_cuda_density_fitting_transformed_tile_impl(
     std::size_t pair_begin, std::size_t pair_count, std::size_t auxiliary_begin,
     std::size_t auxiliary_count, std::int64_t derivative_coordinate,
     const double* inverse_square_root, void* stream_handle, double* output,
-    std::string& detail) {
+    std::string& detail, bool apply_metric_transform) {
   detail.clear();
   std::size_t pair_total = 0;
   if (source != nullptr &&
@@ -15869,7 +15891,8 @@ vibeqc_status generate_cuda_density_fitting_transformed_tile_impl(
     detail = "bounded DF transformed tile dimensions overflow size_t";
     return VIBEQC_STATUS_OUT_OF_MEMORY;
   }
-  if (source == nullptr || output == nullptr || inverse_square_root == nullptr ||
+  if (source == nullptr || output == nullptr ||
+      (apply_metric_transform && inverse_square_root == nullptr) ||
       stream_handle == nullptr || system >= source->batch_size || pair_count == 0U ||
       auxiliary_count == 0U || pair_begin > pair_total ||
       pair_count > pair_total - pair_begin ||
@@ -15907,11 +15930,25 @@ vibeqc_status generate_cuda_density_fitting_transformed_tile_impl(
     detail = "bounded DF transformed tile size overflows size_t";
     return VIBEQC_STATUS_OUT_OF_MEMORY;
   }
+  if (tile_elements >
+      static_cast<std::size_t>(std::numeric_limits<unsigned>::max()) *
+          source_threads) {
+    detail = "bounded DF transformed tile launch exceeds CUDA grid limits";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
   const unsigned blocks = static_cast<unsigned>(
       (tile_elements + source_threads - 1U) / source_threads);
   // Public callers address derivatives relative to one system.  The packed
   // recurrence metadata is fleet-global, so translate the coordinate to the
   // selected system's atom range before evaluating the tile.
+  if (derivative_coordinate >= 0 &&
+      (source->host_atom_offsets[system] >
+           (std::numeric_limits<std::int64_t>::max() -
+            derivative_coordinate) /
+               3)) {
+    detail = "bounded DF transformed tile derivative coordinate overflows";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
   const std::int64_t system_derivative_coordinate =
       derivative_coordinate < 0
           ? derivative_coordinate
@@ -15922,17 +15959,74 @@ vibeqc_status generate_cuda_density_fitting_transformed_tile_impl(
         source->public_nbf, source->public_naux, source->dummy_index, system,
         pair_begin, pair_count, auxiliary_begin, auxiliary_count,
         system_derivative_coordinate, source->orbital_to_cartesian,
-        source->auxiliary_to_cartesian, inverse_square_root, output);
+        source->auxiliary_to_cartesian, inverse_square_root,
+        apply_metric_transform, output);
   } else {
     build_cuda_df_transformed_tile_kernel<true><<<blocks, source_threads, 0, stream>>>(
         source->batch, source->cartesian_nbf, source->cartesian_naux,
         source->public_nbf, source->public_naux, source->dummy_index, system,
         pair_begin, pair_count, auxiliary_begin, auxiliary_count,
         system_derivative_coordinate, source->orbital_to_cartesian,
-        source->auxiliary_to_cartesian, inverse_square_root, output);
+        source->auxiliary_to_cartesian, inverse_square_root,
+        apply_metric_transform, output);
   }
   cuda_error = cudaPeekAtLastError();
   return cuda_error == cudaSuccess ? VIBEQC_STATUS_SUCCESS : source_cuda_status(cuda_error);
+}
+
+vibeqc_status generate_cuda_density_fitting_metric_derivative_tile_impl(
+    CudaDensityFittingIntegralSourceImpl* source, std::size_t system,
+    std::size_t auxiliary_row_begin, std::size_t auxiliary_row_count,
+    std::int64_t derivative_coordinate, void* stream_handle, double* output,
+    std::string& detail) {
+  detail.clear();
+  if (source == nullptr || output == nullptr || stream_handle == nullptr ||
+      system >= source->batch_size || derivative_coordinate < 0 ||
+      system + 1U >= source->host_atom_offsets.size() ||
+      source->host_atom_offsets[system] < 0 ||
+      source->host_atom_offsets[system + 1U] < source->host_atom_offsets[system] ||
+      auxiliary_row_begin > source->public_naux ||
+      auxiliary_row_count > source->public_naux - auxiliary_row_begin) {
+    detail = "bounded DF metric derivative tile dimensions are invalid";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  const std::size_t atom_count = static_cast<std::size_t>(
+      source->host_atom_offsets[system + 1U] -
+      source->host_atom_offsets[system]);
+  std::size_t coordinate_count = 0;
+  if (!checked_multiply(atom_count, 3U, coordinate_count) ||
+      static_cast<std::size_t>(derivative_coordinate) >= coordinate_count) {
+    detail = "bounded DF metric derivative coordinate is invalid";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  std::size_t elements = 0;
+  if (!checked_multiply(auxiliary_row_count, source->public_naux, elements) ||
+      elements == 0U ||
+      elements > static_cast<std::size_t>(std::numeric_limits<unsigned>::max()) *
+                    128U) {
+    detail = "bounded DF metric derivative tile dimensions overflow";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  cudaError_t cuda_error = cudaSetDevice(source->device_id);
+  if (cuda_error != cudaSuccess) return source_cuda_status(cuda_error);
+  if (source->host_atom_offsets[system] >
+      (std::numeric_limits<std::int64_t>::max() - derivative_coordinate) / 3) {
+    detail = "bounded DF metric derivative coordinate overflows";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  const std::int64_t global_coordinate =
+      derivative_coordinate + source->host_atom_offsets[system] * 3;
+  const unsigned blocks = static_cast<unsigned>((elements + 127U) / 128U);
+  build_cuda_df_metric_source_kernel<true><<<blocks, 128U, 0,
+                                               reinterpret_cast<cudaStream_t>(
+                                                   stream_handle)>>>(
+      source->batch, source->cartesian_nbf, source->cartesian_naux,
+      source->public_naux, source->dummy_index, system, auxiliary_row_begin,
+      auxiliary_row_count, global_coordinate, source->auxiliary_to_cartesian,
+      output);
+  cuda_error = cudaPeekAtLastError();
+  return cuda_error == cudaSuccess ? VIBEQC_STATUS_SUCCESS
+                                   : source_cuda_status(cuda_error);
 }
 
 vibeqc_status cuda_status(cudaError_t status) {
@@ -16299,7 +16393,38 @@ vibeqc_status generate_cuda_density_fitting_transformed_tile(
   return generate_cuda_density_fitting_transformed_tile_impl(
       static_cast<CudaDensityFittingIntegralSourceImpl*>(source->implementation),
       system, pair_begin, pair_count, auxiliary_begin, auxiliary_count,
-      derivative_coordinate, inverse_square_root, stream_handle, output, detail);
+      derivative_coordinate, inverse_square_root, stream_handle, output, detail,
+      true);
+}
+
+vibeqc_status generate_cuda_density_fitting_raw_tile(
+    CudaDensityFittingIntegralSource* source, std::size_t system,
+    std::size_t pair_begin, std::size_t pair_count, std::size_t auxiliary_begin,
+    std::size_t auxiliary_count, std::int64_t derivative_coordinate,
+    void* stream_handle, double* output, std::string& detail) {
+  if (source == nullptr || source->implementation == nullptr) {
+    detail = "bounded DF source handle is null";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  return generate_cuda_density_fitting_transformed_tile_impl(
+      static_cast<CudaDensityFittingIntegralSourceImpl*>(source->implementation),
+      system, pair_begin, pair_count, auxiliary_begin, auxiliary_count,
+      derivative_coordinate, nullptr, stream_handle, output, detail, false);
+}
+
+vibeqc_status generate_cuda_density_fitting_metric_derivative_tile(
+    CudaDensityFittingIntegralSource* source, std::size_t system,
+    std::size_t auxiliary_row_begin, std::size_t auxiliary_row_count,
+    std::int64_t derivative_coordinate, void* stream_handle, double* output,
+    std::string& detail) {
+  if (source == nullptr || source->implementation == nullptr) {
+    detail = "bounded DF source handle is null";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  return generate_cuda_density_fitting_metric_derivative_tile_impl(
+      static_cast<CudaDensityFittingIntegralSourceImpl*>(source->implementation),
+      system, auxiliary_row_begin, auxiliary_row_count, derivative_coordinate,
+      stream_handle, output, detail);
 }
 
 struct CudaRhfBucketPlan {

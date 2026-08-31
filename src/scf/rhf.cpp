@@ -697,6 +697,35 @@ DensityFittingScfData assemble_density_fitting_data(
   return data;
 }
 
+/**
+ * Release tensor-sized host storage after a source-backed CUDA plan has taken
+ * ownership of tile regeneration.  Dimensions and compact metric metadata
+ * remain available to finalization, while the source plan supplies all
+ * three-center and derivative values on demand under the caller's budget.
+ */
+[[maybe_unused]] void discard_density_fitting_tensor_storage(
+    DensityFittingScfData& data) {
+  std::vector<double>().swap(data.raw.three_center);
+  std::vector<double>().swap(data.raw.three_center_derivative);
+  std::vector<double>().swap(data.raw.metric_derivative);
+  std::vector<double>().swap(data.three_center.values);
+}
+
+/** Build a budgeted record without materializing transformed DF tensors. */
+[[maybe_unused]] DensityFittingScfData assemble_density_fitting_metadata(
+    integrals::IntegralData one_electron,
+    integrals::DensityFittingIntegralData raw) {
+  DensityFittingScfData data;
+  data.one_electron = std::move(one_electron);
+  data.raw.nbf = raw.nbf;
+  data.raw.naux = raw.naux;
+  data.raw.ncoord = raw.ncoord;
+  data.raw.metric = std::move(raw.metric);
+  data.three_center.nbf = raw.nbf;
+  data.three_center.naux = raw.naux;
+  return data;
+}
+
 DensityFittingScfData prepare_density_fitting_data(
     const core::System& system,
     const core::System& auxiliary_system,
@@ -794,19 +823,50 @@ void finalize_density_fitting_rhf(
     Matrix& density,
     const ScfOptions& options,
     ScfResult& result,
-    CudaDensityFittingJkPlan* cuda_plan = nullptr) {
+    CudaDensityFittingJkPlan* cuda_plan = nullptr,
+    std::size_t cuda_system = 0) {
 #if !VIBEQC_HAS_CUDA
   (void)cuda_plan;
 #endif
   const std::size_t n = data.one_electron.nbf;
   Matrix final_fock;
+  const auto execute_item_rhf_jk = [&](const Matrix& item_density,
+                                       std::vector<double>& item_coulomb,
+                                       std::vector<double>& item_exchange,
+                                       std::string& item_detail) -> vibeqc_status {
+    const std::size_t batch =
+        cuda_plan == nullptr ? 0U : cuda_density_fitting_jk_plan_batch_size(cuda_plan);
+    if (batch <= 1U) {
+      return execute_cuda_density_fitting_rhf_jk(
+          cuda_plan, item_density, item_coulomb, item_exchange, item_detail);
+    }
+    if (cuda_system >= batch || item_density.empty() ||
+        item_density.size() > std::numeric_limits<std::size_t>::max() / batch) {
+      item_detail = "CUDA DF bucket item index or density dimensions are invalid";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+    std::vector<double> packed(batch * item_density.size(), 0.0);
+    std::copy(item_density.begin(), item_density.end(),
+              packed.begin() + cuda_system * item_density.size());
+    std::vector<double> packed_coulomb;
+    std::vector<double> packed_exchange;
+    const vibeqc_status status = execute_cuda_density_fitting_rhf_jk(
+        cuda_plan, packed, packed_coulomb, packed_exchange, item_detail);
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
+    const std::size_t offset = cuda_system * item_density.size();
+    item_coulomb.assign(packed_coulomb.begin() + offset,
+                        packed_coulomb.begin() + offset + item_density.size());
+    item_exchange.assign(packed_exchange.begin() + offset,
+                         packed_exchange.begin() + offset + item_density.size());
+    return VIBEQC_STATUS_SUCCESS;
+  };
   if (cuda_plan != nullptr) {
     std::vector<double> coulomb;
     std::vector<double> exchange;
     std::string detail;
-    if (execute_cuda_density_fitting_rhf_jk(
-            cuda_plan, density, coulomb, exchange, detail) ==
-            VIBEQC_STATUS_SUCCESS &&
+    const vibeqc_status jk_status = execute_item_rhf_jk(
+        density, coulomb, exchange, detail);
+    if (jk_status == VIBEQC_STATUS_SUCCESS &&
         coulomb.size() == density.size() && exchange.size() == density.size()) {
       final_fock = data.one_electron.hcore;
       for (std::size_t item = 0; item < final_fock.size(); ++item) {
@@ -815,6 +875,10 @@ void finalize_density_fitting_rhf(
     }
   }
   if (final_fock.empty()) {
+    if (data.three_center.values.empty()) {
+      throw std::runtime_error(
+          "CUDA DF source-backed J/K failed after tensor storage was released");
+    }
     final_fock = build_density_fitting_rhf_fock(
         data.one_electron.hcore, data.three_center, density);
   }
@@ -824,15 +888,19 @@ void finalize_density_fitting_rhf(
     std::vector<double> coulomb;
     std::vector<double> exchange;
     std::string detail;
-    if (execute_cuda_density_fitting_rhf_jk(
-            cuda_plan, density, coulomb, exchange, detail) ==
-            VIBEQC_STATUS_SUCCESS &&
+    const vibeqc_status jk_status = execute_item_rhf_jk(
+        density, coulomb, exchange, detail);
+    if (jk_status == VIBEQC_STATUS_SUCCESS &&
         coulomb.size() == density.size() && exchange.size() == density.size()) {
       final_fock = data.one_electron.hcore;
       for (std::size_t item = 0; item < final_fock.size(); ++item) {
         final_fock[item] += coulomb[item] - 0.5 * exchange[item];
       }
     } else {
+      if (data.three_center.values.empty()) {
+        throw std::runtime_error(
+            "CUDA DF source-backed J/K failed after tensor storage was released");
+      }
       final_fock = build_density_fitting_rhf_fock(
           data.one_electron.hcore, data.three_center, density);
     }
@@ -849,25 +917,32 @@ void finalize_density_fitting_rhf(
 #if VIBEQC_HAS_CUDA
   if (cuda_plan != nullptr) {
     try {
-      const std::vector<double> inverse = density_fitting_metric_pseudoinverse(
-          data.raw, options.density_fitting_relative_threshold);
-      const std::size_t metric_elements = data.raw.naux * data.raw.naux;
-      const std::size_t derivative_elements = data.raw.ncoord * metric_elements;
-      std::vector<double> inverse_derivative(derivative_elements, 0.0);
-      for (std::size_t coordinate = 0; coordinate < data.raw.ncoord;
-           ++coordinate) {
-        const std::vector<double> response =
-            density_fitting_metric_pseudoinverse_derivative(
-                data.raw, inverse, coordinate);
-        std::copy(response.begin(), response.end(),
-                  inverse_derivative.begin() + coordinate * metric_elements);
-      }
       std::vector<double> two_electron_derivative;
       std::string detail;
-      const vibeqc_status status = execute_cuda_density_fitting_rhf_force_response(
-          cuda_plan, data.raw.three_center, inverse,
-          data.raw.three_center_derivative, inverse_derivative, data.raw.ncoord,
-          density, two_electron_derivative, detail);
+      vibeqc_status status =
+          execute_cuda_density_fitting_source_rhf_force_response(
+              cuda_plan, cuda_system, density, data.raw.ncoord,
+              two_electron_derivative, detail);
+      if (status != VIBEQC_STATUS_SUCCESS && !data.raw.three_center.empty()) {
+        const std::vector<double> inverse = density_fitting_metric_pseudoinverse(
+            data.raw, options.density_fitting_relative_threshold);
+        const std::size_t metric_elements = data.raw.naux * data.raw.naux;
+        const std::size_t derivative_elements =
+            data.raw.ncoord * metric_elements;
+        std::vector<double> inverse_derivative(derivative_elements, 0.0);
+        for (std::size_t coordinate = 0; coordinate < data.raw.ncoord;
+             ++coordinate) {
+          const std::vector<double> response =
+              density_fitting_metric_pseudoinverse_derivative(
+                  data.raw, inverse, coordinate);
+          std::copy(response.begin(), response.end(),
+                    inverse_derivative.begin() + coordinate * metric_elements);
+        }
+        status = execute_cuda_density_fitting_rhf_force_response(
+            cuda_plan, data.raw.three_center, inverse,
+            data.raw.three_center_derivative, inverse_derivative,
+            data.raw.ncoord, density, two_electron_derivative, detail);
+      }
       if (status == VIBEQC_STATUS_SUCCESS &&
           two_electron_derivative.size() == data.raw.ncoord) {
         result.forces.assign(data.raw.ncoord, 0.0);
@@ -898,6 +973,10 @@ void finalize_density_fitting_rhf(
   }
 #endif
   if (!device_force_response) {
+    if (data.raw.three_center.empty()) {
+      throw std::runtime_error(
+          "CUDA DF source-backed force response failed after tensor storage was released");
+    }
     result.forces = build_density_fitting_rhf_forces(
         data.one_electron, data.raw, density, weighted,
         options.density_fitting_relative_threshold);
@@ -914,20 +993,68 @@ void finalize_density_fitting_uhf(
     Matrix& beta_density,
     const ScfOptions& options,
     ScfResult& result,
-    CudaDensityFittingJkPlan* cuda_plan = nullptr) {
+    CudaDensityFittingJkPlan* cuda_plan = nullptr,
+    std::size_t cuda_system = 0) {
 #if !VIBEQC_HAS_CUDA
   (void)cuda_plan;
 #endif
   const std::size_t n = data.one_electron.nbf;
   Matrix alpha_fock;
   Matrix beta_fock;
+  const auto execute_item_uhf_jk =
+      [&](const Matrix& item_alpha, const Matrix& item_beta,
+          std::vector<double>& item_coulomb,
+          std::vector<double>& item_alpha_exchange,
+          std::vector<double>& item_beta_exchange,
+          std::string& item_detail) -> vibeqc_status {
+        const std::size_t batch = cuda_plan == nullptr
+                                      ? 0U
+                                      : cuda_density_fitting_jk_plan_batch_size(
+                                            cuda_plan);
+        if (batch <= 1U) {
+          return execute_cuda_density_fitting_uhf_jk(
+              cuda_plan, item_alpha, item_beta, item_coulomb,
+              item_alpha_exchange, item_beta_exchange, item_detail);
+        }
+        if (cuda_system >= batch || item_alpha.size() != item_beta.size() ||
+            item_alpha.empty() ||
+            item_alpha.size() >
+                std::numeric_limits<std::size_t>::max() / batch) {
+          item_detail =
+              "CUDA DF bucket item index or spin-density dimensions are invalid";
+          return VIBEQC_STATUS_INVALID_ARGUMENT;
+        }
+        std::vector<double> packed_alpha(batch * item_alpha.size(), 0.0);
+        std::vector<double> packed_beta(batch * item_beta.size(), 0.0);
+        std::copy(item_alpha.begin(), item_alpha.end(),
+                  packed_alpha.begin() + cuda_system * item_alpha.size());
+        std::copy(item_beta.begin(), item_beta.end(),
+                  packed_beta.begin() + cuda_system * item_beta.size());
+        std::vector<double> packed_coulomb;
+        std::vector<double> packed_alpha_exchange;
+        std::vector<double> packed_beta_exchange;
+        const vibeqc_status status = execute_cuda_density_fitting_uhf_jk(
+            cuda_plan, packed_alpha, packed_beta, packed_coulomb,
+            packed_alpha_exchange, packed_beta_exchange, item_detail);
+        if (status != VIBEQC_STATUS_SUCCESS) return status;
+        const std::size_t offset = cuda_system * item_alpha.size();
+        item_coulomb.assign(packed_coulomb.begin() + offset,
+                            packed_coulomb.begin() + offset + item_alpha.size());
+        item_alpha_exchange.assign(
+            packed_alpha_exchange.begin() + offset,
+            packed_alpha_exchange.begin() + offset + item_alpha.size());
+        item_beta_exchange.assign(
+            packed_beta_exchange.begin() + offset,
+            packed_beta_exchange.begin() + offset + item_alpha.size());
+        return VIBEQC_STATUS_SUCCESS;
+      };
   if (cuda_plan != nullptr) {
     std::vector<double> coulomb;
     std::vector<double> alpha_exchange;
     std::vector<double> beta_exchange;
     std::string detail;
-    if (execute_cuda_density_fitting_uhf_jk(
-            cuda_plan, alpha_density, beta_density, coulomb, alpha_exchange,
+    if (execute_item_uhf_jk(
+            alpha_density, beta_density, coulomb, alpha_exchange,
             beta_exchange, detail) == VIBEQC_STATUS_SUCCESS &&
         coulomb.size() == alpha_density.size() &&
         alpha_exchange.size() == alpha_density.size() &&
@@ -941,6 +1068,10 @@ void finalize_density_fitting_uhf(
     }
   }
   if (alpha_fock.empty() || beta_fock.empty()) {
+    if (data.three_center.values.empty()) {
+      throw std::runtime_error(
+          "CUDA DF source-backed J/K failed after tensor storage was released");
+    }
     std::tie(alpha_fock, beta_fock) = build_density_fitting_uhf_focks(
         data.one_electron.hcore, data.three_center, alpha_density,
         beta_density);
@@ -958,8 +1089,8 @@ void finalize_density_fitting_uhf(
     std::vector<double> alpha_exchange;
     std::vector<double> beta_exchange;
     std::string detail;
-    if (execute_cuda_density_fitting_uhf_jk(
-            cuda_plan, alpha_density, beta_density, coulomb, alpha_exchange,
+    if (execute_item_uhf_jk(
+            alpha_density, beta_density, coulomb, alpha_exchange,
             beta_exchange, detail) == VIBEQC_STATUS_SUCCESS &&
         coulomb.size() == alpha_density.size() &&
         alpha_exchange.size() == alpha_density.size() &&
@@ -971,6 +1102,10 @@ void finalize_density_fitting_uhf(
         beta_fock[item] += coulomb[item] - beta_exchange[item];
       }
     } else {
+      if (data.three_center.values.empty()) {
+        throw std::runtime_error(
+            "CUDA DF source-backed J/K failed after tensor storage was released");
+      }
       std::tie(alpha_fock, beta_fock) = build_density_fitting_uhf_focks(
           data.one_electron.hcore, data.three_center, alpha_density,
           beta_density);
@@ -991,25 +1126,32 @@ void finalize_density_fitting_uhf(
 #if VIBEQC_HAS_CUDA
   if (cuda_plan != nullptr) {
     try {
-      const std::vector<double> inverse = density_fitting_metric_pseudoinverse(
-          data.raw, options.density_fitting_relative_threshold);
-      const std::size_t metric_elements = data.raw.naux * data.raw.naux;
-      std::vector<double> inverse_derivative(data.raw.ncoord * metric_elements,
-                                              0.0);
-      for (std::size_t coordinate = 0; coordinate < data.raw.ncoord;
-           ++coordinate) {
-        const std::vector<double> response =
-            density_fitting_metric_pseudoinverse_derivative(
-                data.raw, inverse, coordinate);
-        std::copy(response.begin(), response.end(),
-                  inverse_derivative.begin() + coordinate * metric_elements);
-      }
       std::vector<double> two_electron_derivative;
       std::string detail;
-      const vibeqc_status status = execute_cuda_density_fitting_uhf_force_response(
-          cuda_plan, data.raw.three_center, inverse,
-          data.raw.three_center_derivative, inverse_derivative, data.raw.ncoord,
-          alpha_density, beta_density, two_electron_derivative, detail);
+      vibeqc_status status =
+          execute_cuda_density_fitting_source_uhf_force_response(
+              cuda_plan, cuda_system, alpha_density, beta_density,
+              data.raw.ncoord, two_electron_derivative, detail);
+      if (status != VIBEQC_STATUS_SUCCESS && !data.raw.three_center.empty()) {
+        const std::vector<double> inverse = density_fitting_metric_pseudoinverse(
+            data.raw, options.density_fitting_relative_threshold);
+        const std::size_t metric_elements = data.raw.naux * data.raw.naux;
+        std::vector<double> inverse_derivative(data.raw.ncoord * metric_elements,
+                                                0.0);
+        for (std::size_t coordinate = 0; coordinate < data.raw.ncoord;
+             ++coordinate) {
+          const std::vector<double> response =
+              density_fitting_metric_pseudoinverse_derivative(
+                  data.raw, inverse, coordinate);
+          std::copy(response.begin(), response.end(),
+                    inverse_derivative.begin() + coordinate * metric_elements);
+        }
+        status = execute_cuda_density_fitting_uhf_force_response(
+            cuda_plan, data.raw.three_center, inverse,
+            data.raw.three_center_derivative, inverse_derivative,
+            data.raw.ncoord, alpha_density, beta_density,
+            two_electron_derivative, detail);
+      }
       if (status == VIBEQC_STATUS_SUCCESS &&
           two_electron_derivative.size() == data.raw.ncoord) {
         result.forces.assign(data.raw.ncoord, 0.0);
@@ -1042,6 +1184,10 @@ void finalize_density_fitting_uhf(
   }
 #endif
   if (!device_force_response) {
+    if (data.raw.three_center.empty()) {
+      throw std::runtime_error(
+          "CUDA DF source-backed force response failed after tensor storage was released");
+    }
     result.forces = build_density_fitting_uhf_forces(
         data.one_electron, data.raw, alpha_density, beta_density,
         alpha_weighted, beta_weighted,
@@ -1655,8 +1801,12 @@ prepare_cuda_density_fitting_batch(
             integrals::DensityFittingIntegralData raw =
                 integrals::transform_density_fitting_integrals(
                     raw_batch[local], systems[source], auxiliaries[source]);
-            prepared[source] = assemble_density_fitting_data(
-                std::move(one_electron), std::move(raw), relative_threshold);
+            prepared[source] = output_budget_bytes != 0U
+                                   ? assemble_density_fitting_metadata(
+                                         std::move(one_electron), std::move(raw))
+                                   : assemble_density_fitting_data(
+                                         std::move(one_electron), std::move(raw),
+                                         relative_threshold);
           } catch (const std::bad_alloc&) {
             statuses[source] = VIBEQC_STATUS_OUT_OF_MEMORY;
           } catch (const std::invalid_argument&) {
@@ -1702,8 +1852,12 @@ prepare_cuda_density_fitting_batch(
               integrals::DensityFittingIntegralData raw =
                   integrals::transform_density_fitting_integrals(
                       single_raw.front(), systems[source], auxiliaries[source]);
-              prepared[source] = assemble_density_fitting_data(
-                  std::move(one_electron), std::move(raw), relative_threshold);
+              prepared[source] = output_budget_bytes != 0U
+                                     ? assemble_density_fitting_metadata(
+                                           std::move(one_electron), std::move(raw))
+                                     : assemble_density_fitting_data(
+                                           std::move(one_electron), std::move(raw),
+                                           relative_threshold);
               continue;
             }
             statuses[source] = retry_raw_status != VIBEQC_STATUS_SUCCESS
@@ -1742,8 +1896,12 @@ prepare_cuda_density_fitting_batch(
         integrals::DensityFittingIntegralData raw =
             integrals::transform_density_fitting_integrals(
                 cartesian, systems[source], auxiliaries[source]);
-        prepared[source] = assemble_density_fitting_data(
-            std::move(one_electron), std::move(raw), relative_threshold);
+        prepared[source] = output_budget_bytes != 0U
+                               ? assemble_density_fitting_metadata(
+                                     std::move(one_electron), std::move(raw))
+                               : assemble_density_fitting_data(
+                                     std::move(one_electron), std::move(raw),
+                                     relative_threshold);
       } catch (const std::bad_alloc&) {
         statuses[source] = VIBEQC_STATUS_OUT_OF_MEMORY;
       } catch (const std::invalid_argument&) {
@@ -1763,7 +1921,7 @@ ScfResult run_rhf_density_fitting_cuda_impl(
     const ScfOptions& options,
     int device_id,
     const std::vector<double>* initial_density) {
-  const DensityFittingScfData data = prepare_density_fitting_data(
+  DensityFittingScfData data = prepare_density_fitting_data(
       system, auxiliary_system, options.density_fitting_relative_threshold,
       device_id);
   const std::size_t n = data.one_electron.nbf;
@@ -1784,6 +1942,9 @@ ScfResult run_rhf_density_fitting_cuda_impl(
   const CudaDensityFittingPlanPtr plan =
       make_cuda_density_fitting_plan(data, options, device_id, occupied,
                                      nullptr, &system, &auxiliary_system);
+  if (options.density_fitting_memory_budget_bytes != 0) {
+    discard_density_fitting_tensor_storage(data);
+  }
 
   // Prefer the fully device-resident SCF loop.  It keeps the DF density,
   // Fock assembly, eigensolve, and convergence reductions on the plan stream;
@@ -1872,7 +2033,7 @@ ScfResult run_uhf_density_fitting_cuda_impl(
     const ScfOptions& options,
     int device_id,
     const std::vector<double>* initial_density) {
-  const DensityFittingScfData data = prepare_density_fitting_data(
+  DensityFittingScfData data = prepare_density_fitting_data(
       system, auxiliary_system, options.density_fitting_relative_threshold,
       device_id);
   const std::size_t n = data.one_electron.nbf;
@@ -1894,6 +2055,9 @@ ScfResult run_uhf_density_fitting_cuda_impl(
       make_cuda_density_fitting_plan(
           data, options, device_id, std::max(alpha_occupied, beta_occupied),
           nullptr, &system, &auxiliary_system);
+  if (options.density_fitting_memory_budget_bytes != 0) {
+    discard_density_fitting_tensor_storage(data);
+  }
   {
     std::vector<double> device_final_alpha;
     std::vector<double> device_final_beta;
@@ -2194,6 +2358,11 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
     }
     *output_diagnostics = metric_diagnostics;
   }
+  if (options.density_fitting_memory_budget_bytes != 0) {
+    for (DensityFittingScfData& item : data) {
+      discard_density_fitting_tensor_storage(item);
+    }
+  }
 
   // A compatible bucket can advance every density without host staging.  The
   // device driver returns only scalar convergence records and the final
@@ -2251,7 +2420,7 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
           finalize_density_fitting_rhf(
               data[slot], orthogonalizers[slot],
               static_cast<std::size_t>(occupied[slot]), densities[slot],
-              options, result, plan);
+              options, result, plan, slot);
           outputs[source].status = VIBEQC_STATUS_SUCCESS;
         } catch (const std::bad_alloc&) {
           outputs[source].status = VIBEQC_STATUS_OUT_OF_MEMORY;
@@ -2355,7 +2524,7 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
       finalize_density_fitting_rhf(
           data[slot], orthogonalizers[slot],
           static_cast<std::size_t>(systems[source].electron_count / 2),
-          densities[slot], options, result, plan);
+          densities[slot], options, result, plan, slot);
       outputs[source].status = VIBEQC_STATUS_SUCCESS;
     } catch (const std::bad_alloc&) {
       outputs[source].status = VIBEQC_STATUS_OUT_OF_MEMORY;
@@ -2573,6 +2742,12 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
     *output_diagnostics = metric_diagnostics;
   }
 
+  if (options.density_fitting_memory_budget_bytes != 0) {
+    for (DensityFittingScfData& item : data) {
+      discard_density_fitting_tensor_storage(item);
+    }
+  }
+
   {
     const std::size_t matrix_size = nbf * nbf;
     std::vector<double> hcore(data.size() * matrix_size);
@@ -2635,7 +2810,7 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
           finalize_density_fitting_uhf(
               data[slot], orthogonalizers[slot], occupations.first,
               occupations.second, alpha_densities[slot], beta_densities[slot],
-              options, result, plan);
+              options, result, plan, slot);
           outputs[source].status = VIBEQC_STATUS_SUCCESS;
         } catch (const std::bad_alloc&) {
           outputs[source].status = VIBEQC_STATUS_OUT_OF_MEMORY;
@@ -2766,7 +2941,7 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
       finalize_density_fitting_uhf(
           data[slot], orthogonalizers[slot], alpha_occupied, beta_occupied,
           alpha_densities[slot], beta_densities[slot], options, result,
-          plan);
+          plan, slot);
       outputs[source].status = VIBEQC_STATUS_SUCCESS;
     } catch (const std::bad_alloc&) {
       outputs[source].status = VIBEQC_STATUS_OUT_OF_MEMORY;

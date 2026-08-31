@@ -793,6 +793,19 @@ int main() {
       require(bucket_results[0].scf.converged &&
                   bucket_results[1].scf.converged,
               "CUDA DF bucket did not converge both systems");
+      bucket_options.density_fitting_memory_budget_bytes = 8U * 1024U * 1024U;
+      const auto bounded_bucket_results =
+          vibeqc::scf::run_rhf_density_fitting_cuda_bucket(
+              bucket_systems, auxiliary, bucket_options, bucket_initial, 0);
+      require(bounded_bucket_results.size() == 2 &&
+                  bounded_bucket_results[0].status == VIBEQC_STATUS_SUCCESS &&
+                  bounded_bucket_results[1].status == VIBEQC_STATUS_SUCCESS,
+              "bounded CUDA DF bucket SCF item failed");
+      require(bounded_bucket_results[0].scf.forces.size() ==
+                      orbital.atoms.size() * 3U &&
+                  bounded_bucket_results[1].scf.forces.size() ==
+                      second_orbital.atoms.size() * 3U,
+              "bounded CUDA DF bucket force dimensions are inconsistent");
 
       std::vector<double> second_metric = plus.metric;
       const std::size_t dependent = plus.naux - 1;
@@ -1041,6 +1054,38 @@ int main() {
                            "source-backed CUDA RHF RI-J differs from oracle");
       require_matrix_close(source_k, rhf_jk.exchange, 3.0e-11,
                            "source-backed CUDA RHF RI-K differs from oracle");
+      std::vector<double> source_rhf_force;
+      const vibeqc_status source_rhf_force_status =
+          vibeqc::scf::execute_cuda_density_fitting_source_rhf_force_response(
+              source_plan.get(), 0, rhf_density, integrals.ncoord,
+              source_rhf_force, source_detail);
+      require(source_rhf_force_status == VIBEQC_STATUS_SUCCESS,
+              (std::string("source RHF force failed status=") +
+               std::to_string(source_rhf_force_status) + " detail=" +
+               source_detail)
+                  .c_str());
+      const auto source_host_rhf_gradient =
+          vibeqc::scf::build_density_fitting_rhf_gradient(
+              integrals, rhf_density, 1.0e-12);
+      require_matrix_close(source_rhf_force,
+                           source_host_rhf_gradient.derivative, 8.0e-10,
+                           "source-backed CUDA RHF force response differs from oracle");
+      std::vector<double> source_uhf_force;
+      const vibeqc_status source_uhf_force_status =
+          vibeqc::scf::execute_cuda_density_fitting_source_uhf_force_response(
+              source_plan.get(), 0, alpha_density, beta_density,
+              integrals.ncoord, source_uhf_force, source_detail);
+      require(source_uhf_force_status == VIBEQC_STATUS_SUCCESS,
+              (std::string("source UHF force failed status=") +
+               std::to_string(source_uhf_force_status) + " detail=" +
+               source_detail)
+                  .c_str());
+      const auto source_host_uhf_gradient =
+          vibeqc::scf::build_density_fitting_uhf_gradient(
+              integrals, alpha_density, beta_density, 1.0e-12);
+      require_matrix_close(source_uhf_force,
+                           source_host_uhf_gradient.derivative, 8.0e-10,
+                           "source-backed CUDA UHF force response differs from oracle");
 
       // Exercise a genuinely heterogeneous source batch.  The two orbital
       // systems have identical public dimensions but reverse their spherical
@@ -1155,11 +1200,15 @@ int main() {
                       coordinate * integrals.naux * integrals.naux);
       }
       std::vector<double> cuda_rhf_derivative;
-      require(vibeqc::scf::execute_cuda_density_fitting_rhf_force_response(
-                  cuda_plan.get(), integrals.three_center, inverse,
-                  integrals.three_center_derivative, inverse_derivative,
-                  integrals.ncoord, rhf_density, cuda_rhf_derivative,
-                  cuda_detail) == VIBEQC_STATUS_SUCCESS,
+      // The legacy force API intentionally rejects non-source streamed plans
+      // because its scratch footprint is tensor-sized; exercise it with the
+      // resident plan while bounded force coverage uses source_plan above.
+      const vibeqc_status resident_rhf_force_status =
+          vibeqc::scf::execute_cuda_density_fitting_rhf_force_response(
+              resident_plan.get(), integrals.three_center, inverse,
+              integrals.three_center_derivative, inverse_derivative,
+              integrals.ncoord, rhf_density, cuda_rhf_derivative, cuda_detail);
+      require(resident_rhf_force_status == VIBEQC_STATUS_SUCCESS,
               cuda_detail.c_str());
       const auto host_rhf_gradient =
           vibeqc::scf::build_density_fitting_rhf_gradient(
@@ -1169,11 +1218,13 @@ int main() {
                            "CUDA RHF force response differs from oracle");
 
       std::vector<double> cuda_uhf_derivative;
-      require(vibeqc::scf::execute_cuda_density_fitting_uhf_force_response(
-                  cuda_plan.get(), integrals.three_center, inverse,
-                  integrals.three_center_derivative, inverse_derivative,
-                  integrals.ncoord, alpha_density, beta_density,
-                  cuda_uhf_derivative, cuda_detail) == VIBEQC_STATUS_SUCCESS,
+      const vibeqc_status resident_uhf_force_status =
+          vibeqc::scf::execute_cuda_density_fitting_uhf_force_response(
+              resident_plan.get(), integrals.three_center, inverse,
+              integrals.three_center_derivative, inverse_derivative,
+              integrals.ncoord, alpha_density, beta_density,
+              cuda_uhf_derivative, cuda_detail);
+      require(resident_uhf_force_status == VIBEQC_STATUS_SUCCESS,
               cuda_detail.c_str());
       const auto host_uhf_gradient =
           vibeqc::scf::build_density_fitting_uhf_gradient(
@@ -1213,9 +1264,22 @@ int main() {
       std::vector<double> packed_derivative_raw =
           integrals.three_center_derivative;
       append_values(packed_derivative_raw, integrals.three_center_derivative);
+      vibeqc::scf::CudaDensityFittingJkPlan* resident_batch_raw_plan = nullptr;
+      std::vector<vibeqc::scf::CudaDensityFittingMetricDiagnostic>
+          resident_batch_diagnostics;
+      std::string resident_batch_detail;
+      require(vibeqc::scf::create_cuda_density_fitting_jk_plan(
+                  0, 2, integrals.nbf, integrals.naux, batch_metrics,
+                  batch_three_center, 1.0e-12, 0, &resident_batch_raw_plan,
+                  resident_batch_diagnostics, resident_batch_detail) ==
+                  VIBEQC_STATUS_SUCCESS,
+              resident_batch_detail.c_str());
+      CudaPlan resident_batch_plan(
+          resident_batch_raw_plan,
+          &vibeqc::scf::destroy_cuda_density_fitting_jk_plan);
       std::vector<double> packed_cuda_derivative;
       require(vibeqc::scf::execute_cuda_density_fitting_rhf_force_response(
-                  cuda_plan.get(), batch_three_center, packed_inverse,
+                  resident_batch_plan.get(), batch_three_center, packed_inverse,
                   packed_derivative_raw, packed_inverse_derivative,
                   integrals.ncoord, batch_rhf_density, packed_cuda_derivative,
                   cuda_detail) == VIBEQC_STATUS_SUCCESS,
@@ -1236,7 +1300,7 @@ int main() {
       append_values(packed_beta_density, second_beta_density);
       std::vector<double> packed_cuda_uhf_derivative;
       require(vibeqc::scf::execute_cuda_density_fitting_uhf_force_response(
-                  cuda_plan.get(), batch_three_center, packed_inverse,
+                  resident_batch_plan.get(), batch_three_center, packed_inverse,
                   packed_derivative_raw, packed_inverse_derivative,
                   integrals.ncoord, packed_alpha_density,
                   packed_beta_density, packed_cuda_uhf_derivative,

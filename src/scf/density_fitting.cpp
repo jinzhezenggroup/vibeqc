@@ -555,6 +555,12 @@ std::size_t workspace_bytes(
   const long double tile_elements = staged_pairs * auxiliary_tile;
   const long double setup_doubles =
       static_cast<long double>(batch_size) * (3.0L * naux * naux + 2.0L * naux);
+  // cuSOLVER's Xsyevd metric factorization uses a device workspace whose
+  // exact size depends on the CUDA toolkit and eigensolver implementation.
+  // Reserve a conservative quadratic upper bound here; the runtime records
+  // the exact queried size in `solver_device_workspace_bytes` diagnostics.
+  const long double solver_workspace_doubles =
+      16.0L * static_cast<long double>(naux) * naux;
   const long double contraction_doubles =
       7.0L * matrix_elements +
       static_cast<long double>(batch_size) * naux +
@@ -580,7 +586,8 @@ std::size_t workspace_bytes(
       static_cast<long double>(batch_tile) * occupied_tile * nbf;
   const long double bytes = static_cast<long double>(fixed_device_bytes) +
                             static_cast<long double>(metric_bytes) * batch_size +
-                            (setup_doubles + contraction_doubles +
+                            (setup_doubles + solver_workspace_doubles +
+                             contraction_doubles +
                              one_electron_doubles + force_scratch_doubles) *
                                 sizeof(double);
   if (bytes > static_cast<long double>(

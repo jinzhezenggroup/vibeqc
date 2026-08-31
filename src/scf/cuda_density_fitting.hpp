@@ -62,6 +62,37 @@ vibeqc_status generate_cuda_density_fitting_transformed_tile(
     const double* inverse_square_root, void* stream, double* output,
     std::string& detail);
 
+/** Generate one public-basis raw three-center tile on `stream`. */
+vibeqc_status generate_cuda_density_fitting_raw_tile(
+    CudaDensityFittingIntegralSource* source, std::size_t system,
+    std::size_t pair_begin, std::size_t pair_count, std::size_t auxiliary_begin,
+    std::size_t auxiliary_count, std::int64_t derivative_coordinate,
+    void* stream, double* output, std::string& detail);
+
+/** Generate one auxiliary-metric derivative row tile on `stream`. */
+vibeqc_status generate_cuda_density_fitting_metric_derivative_tile(
+    CudaDensityFittingIntegralSource* source, std::size_t system,
+    std::size_t auxiliary_row_begin, std::size_t auxiliary_row_count,
+    std::int64_t derivative_coordinate, void* stream, double* output,
+    std::string& detail);
+
+/**
+ * Stream a source-backed RHF two-electron force response without materializing
+ * raw three-center values or their derivatives. `system` and coordinates are
+ * local to the selected item; only the compact derivative vector is returned.
+ */
+vibeqc_status execute_cuda_density_fitting_source_rhf_force_response(
+    CudaDensityFittingJkPlan* plan, std::size_t system,
+    const std::vector<double>& density, std::size_t coordinate_count,
+    std::vector<double>& derivative, std::string& detail);
+
+/** UHF counterpart of the bounded source-backed force response. */
+vibeqc_status execute_cuda_density_fitting_source_uhf_force_response(
+    CudaDensityFittingJkPlan* plan, std::size_t system,
+    const std::vector<double>& alpha_density,
+    const std::vector<double>& beta_density, std::size_t coordinate_count,
+    std::vector<double>& derivative, std::string& detail);
+
 /** Return the fixed batch cardinality owned by a prepared plan. */
 std::size_t cuda_density_fitting_jk_plan_batch_size(
     const CudaDensityFittingJkPlan* plan) noexcept;

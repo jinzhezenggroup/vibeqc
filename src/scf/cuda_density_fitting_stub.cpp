@@ -54,6 +54,36 @@ vibeqc_status generate_cuda_density_fitting_transformed_tile(
   return VIBEQC_STATUS_NOT_IMPLEMENTED;
 }
 
+vibeqc_status generate_cuda_density_fitting_raw_tile(
+    CudaDensityFittingIntegralSource*, std::size_t, std::size_t, std::size_t,
+    std::size_t, std::size_t, std::int64_t, void*, double*,
+    std::string& detail) {
+  detail = "CUDA density-fitting support is unavailable in this build";
+  return VIBEQC_STATUS_NOT_IMPLEMENTED;
+}
+
+vibeqc_status generate_cuda_density_fitting_metric_derivative_tile(
+    CudaDensityFittingIntegralSource*, std::size_t, std::size_t, std::size_t,
+    std::int64_t, void*, double*, std::string& detail) {
+  detail = "CUDA density-fitting support is unavailable in this build";
+  return VIBEQC_STATUS_NOT_IMPLEMENTED;
+}
+
+vibeqc_status execute_cuda_density_fitting_source_rhf_force_response(
+    CudaDensityFittingJkPlan*, std::size_t, const std::vector<double>&,
+    std::size_t, std::vector<double>&, std::string& detail) {
+  detail = "CUDA density-fitting support is unavailable in this build";
+  return VIBEQC_STATUS_NOT_IMPLEMENTED;
+}
+
+vibeqc_status execute_cuda_density_fitting_source_uhf_force_response(
+    CudaDensityFittingJkPlan*, std::size_t, const std::vector<double>&,
+    const std::vector<double>&, std::size_t, std::vector<double>&,
+    std::string& detail) {
+  detail = "CUDA density-fitting support is unavailable in this build";
+  return VIBEQC_STATUS_NOT_IMPLEMENTED;
+}
+
 std::size_t cuda_density_fitting_jk_plan_batch_size(
     const CudaDensityFittingJkPlan*) noexcept {
   return 0U;

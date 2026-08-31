@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "scf/cuda_density_fitting.hpp"
+#include "scf/density_fitting.hpp"
 
 namespace vibeqc::scf {
 namespace {
@@ -540,6 +541,12 @@ struct CudaDensityFittingJkPlan {
   double* exchange_contributions{};
   double* exchange_tile_output{};
   double* exchange_density_column_major{};
+  // Source-backed force response regenerates metric derivatives in bounded
+  // auxiliary-row tiles. Retain only compact metric factors on the host; no
+  // full three-center derivative tensor is kept between calls.
+  double* metric_derivative_tile{};
+  std::vector<double> host_metrics;
+  std::vector<double> host_metric_inverse;
   // Partial auxiliary tiles normally use host-backed raw values.  A source-
   // backed plan instead regenerates the requested transformed tile directly
   // on the device and retains only this inverse metric factor.
@@ -576,6 +583,7 @@ void release(CudaDensityFittingJkPlan& plan) noexcept {
   (void)cudaFree(plan.exchange_contributions);
   (void)cudaFree(plan.exchange_tile_output);
   (void)cudaFree(plan.exchange_density_column_major);
+  (void)cudaFree(plan.metric_derivative_tile);
   if (plan.solver_parameters != nullptr) {
     (void)cusolverDnDestroyParams(plan.solver_parameters);
   }
@@ -1228,7 +1236,379 @@ bool validate_execution_input(const CudaDensityFittingJkPlan* plan,
   return true;
 }
 
+/**
+ * Stream a source-backed two-electron force response through bounded tiles.
+ *
+ * The source generates raw three-center and derivative tiles on the plan stream.
+ * code retains only one AO-pair/auxiliary tile, one auxiliary response tile,
+ * and compact metric factors; this deliberately avoids the eight full
+ * tensor-sized buffers used by the legacy raw-force kernel.
+ */
+vibeqc_status source_force_response_impl(
+    CudaDensityFittingJkPlan& plan, std::size_t system,
+    const std::vector<double>& density, std::size_t coordinate_count,
+    double coulomb_coefficient, double exchange_coefficient,
+    std::vector<double>& derivative, std::string& detail) {
+  detail.clear();
+  derivative.clear();
+  if (plan.integral_source == nullptr || plan.inverse_square_roots == nullptr ||
+      system >= plan.batch_size || coordinate_count == 0U ||
+      density.size() != plan.matrix_elements ||
+      plan.host_metrics.size() != plan.batch_size * plan.naux * plan.naux ||
+      plan.host_metric_inverse.size() !=
+          plan.batch_size * plan.naux * plan.naux ||
+      !(coulomb_coefficient >= 0.0) ||
+      !(exchange_coefficient >= 0.0) ||
+      !std::isfinite(coulomb_coefficient) ||
+      !std::isfinite(exchange_coefficient) || !finite_values(density)) {
+    detail = "source-backed CUDA DF force-response arguments are invalid";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  const std::size_t nbf = plan.nbf;
+  const std::size_t naux = plan.naux;
+  const std::size_t matrix_elements = plan.matrix_elements;
+  const std::size_t pair_tile = std::min(
+      plan.ao_pair_tile,
+      std::max<std::size_t>(1U, plan.row_tile) * std::max<std::size_t>(1U, nbf));
+  const std::size_t pair_tile_capacity =
+      std::max<std::size_t>(1U, plan.row_tile) * nbf;
+  const std::size_t auxiliary_tile = std::max<std::size_t>(1U, plan.auxiliary_tile);
+  if (pair_tile == 0U || auxiliary_tile == 0U) {
+    detail = "source-backed CUDA DF force-response tile is empty";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+
+  std::size_t tile_elements = 0;
+  if (!checked_multiply(pair_tile_capacity, auxiliary_tile, tile_elements) ||
+      tile_elements == 0U) {
+    detail = "source-backed CUDA DF force-response tile overflows size_t";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+  std::size_t metric_elements = 0;
+  std::size_t response_elements = 0;
+  if (!checked_multiply(naux, naux, metric_elements) ||
+      !checked_multiply(plan.auxiliary_tile, matrix_elements,
+                        response_elements)) {
+    detail = "source-backed CUDA DF force-response storage overflows size_t";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+  std::vector<double> b_tile;
+  std::vector<double> db_tile;
+  std::vector<double> response_tile;
+  std::vector<double> derivative_response_tile;
+  std::vector<double> temporary_tile;
+  std::vector<double> derivative_temporary_tile;
+  std::vector<double> metric_derivative(metric_elements, 0.0);
+  std::vector<double> inverse_derivative;
+  std::vector<double> charge(naux, 0.0);
+  std::vector<double> derivative_charge(naux, 0.0);
+  std::vector<double> quadratic(metric_elements, 0.0);
+  std::vector<double> derivative_quadratic(metric_elements, 0.0);
+  try {
+    b_tile.resize(tile_elements);
+    db_tile.resize(tile_elements);
+    response_tile.assign(response_elements, 0.0);
+    derivative_response_tile.assign(response_elements, 0.0);
+    temporary_tile.assign(response_elements, 0.0);
+    derivative_temporary_tile.assign(response_elements, 0.0);
+    derivative.resize(coordinate_count, 0.0);
+  } catch (const std::bad_alloc&) {
+    detail = "host allocation for source-backed CUDA DF force tiles failed";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+
+  const auto load_tile = [&](std::size_t pair_begin, std::size_t pair_count,
+                             std::size_t auxiliary_begin,
+                             std::size_t auxiliary_count,
+                             std::int64_t derivative_coordinate,
+                             std::vector<double>& host_tile) -> vibeqc_status {
+    std::size_t elements = 0;
+    if (!checked_multiply(pair_count, auxiliary_count, elements) ||
+        elements > tile_elements) {
+      detail = "source-backed CUDA DF force tile dimensions are invalid";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+    host_tile.resize(elements);
+    const vibeqc_status status = generate_cuda_density_fitting_raw_tile(
+        plan.integral_source, system, pair_begin, pair_count, auxiliary_begin,
+        auxiliary_count, derivative_coordinate,
+        reinterpret_cast<void*>(plan.stream), plan.auxiliary_tile_values,
+        detail);
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
+    cudaError_t error = cudaMemcpyAsync(
+        host_tile.data(), plan.auxiliary_tile_values,
+        elements * sizeof(double), cudaMemcpyDeviceToHost, plan.stream);
+    if (error == cudaSuccess) error = cudaStreamSynchronize(plan.stream);
+    if (error != cudaSuccess) {
+      return cuda_failure(error, "read source-backed CUDA DF force tile", detail);
+    }
+    return finite_values(host_tile) ? VIBEQC_STATUS_SUCCESS
+                                    : VIBEQC_STATUS_NUMERICAL_FAILURE;
+  };
+
+  const auto load_metric_derivative = [&](std::size_t coordinate) -> vibeqc_status {
+    std::fill(metric_derivative.begin(), metric_derivative.end(), 0.0);
+    for (std::size_t row_begin = 0; row_begin < naux;
+         row_begin += auxiliary_tile) {
+      const std::size_t row_count =
+          std::min(auxiliary_tile, naux - row_begin);
+      std::size_t elements = 0;
+      std::size_t metric_tile_capacity = 0;
+      if (!checked_multiply(auxiliary_tile, naux, metric_tile_capacity) ||
+          !checked_multiply(row_count, naux, elements) ||
+          elements > metric_tile_capacity) {
+        detail = "source-backed CUDA DF metric derivative tile is invalid";
+        return VIBEQC_STATUS_OUT_OF_MEMORY;
+      }
+      const vibeqc_status status =
+          generate_cuda_density_fitting_metric_derivative_tile(
+              plan.integral_source, system, row_begin, row_count,
+              static_cast<std::int64_t>(coordinate),
+              reinterpret_cast<void*>(plan.stream), plan.metric_derivative_tile,
+              detail);
+      if (status != VIBEQC_STATUS_SUCCESS) return status;
+      cudaError_t error = cudaMemcpyAsync(
+          metric_derivative.data() + row_begin * naux,
+          plan.metric_derivative_tile, elements * sizeof(double),
+          cudaMemcpyDeviceToHost, plan.stream);
+      if (error == cudaSuccess) error = cudaStreamSynchronize(plan.stream);
+      if (error != cudaSuccess) {
+        return cuda_failure(error,
+                            "read source-backed CUDA DF metric derivative",
+                            detail);
+      }
+    }
+    return finite_values(metric_derivative) ? VIBEQC_STATUS_SUCCESS
+                                            : VIBEQC_STATUS_NUMERICAL_FAILURE;
+  };
+
+  std::size_t metric_offset = 0;
+  if (!checked_multiply(system, metric_elements, metric_offset)) {
+    detail = "source-backed CUDA DF metric offset overflows size_t";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+  for (std::size_t coordinate = 0; coordinate < coordinate_count; ++coordinate) {
+    std::fill(charge.begin(), charge.end(), 0.0);
+    std::fill(derivative_charge.begin(), derivative_charge.end(), 0.0);
+    std::fill(quadratic.begin(), quadratic.end(), 0.0);
+    std::fill(derivative_quadratic.begin(), derivative_quadratic.end(), 0.0);
+    const vibeqc_status metric_status = load_metric_derivative(coordinate);
+    if (metric_status != VIBEQC_STATUS_SUCCESS) return metric_status;
+
+    for (std::size_t auxiliary_begin = 0; auxiliary_begin < naux;
+         auxiliary_begin += plan.auxiliary_tile) {
+      const std::size_t auxiliary_count =
+          std::min(plan.auxiliary_tile, naux - auxiliary_begin);
+      if (auxiliary_count > plan.auxiliary_tile ||
+          auxiliary_count * matrix_elements > response_tile.size()) {
+        detail = "source-backed CUDA DF response tile exceeds its capacity";
+        return VIBEQC_STATUS_OUT_OF_MEMORY;
+      }
+      std::fill(response_tile.begin(), response_tile.end(), 0.0);
+      std::fill(derivative_response_tile.begin(), derivative_response_tile.end(),
+                0.0);
+      std::fill(temporary_tile.begin(), temporary_tile.end(), 0.0);
+      std::fill(derivative_temporary_tile.begin(),
+                derivative_temporary_tile.end(), 0.0);
+
+      for (std::size_t pair_begin = 0; pair_begin < matrix_elements;
+           pair_begin += pair_tile_capacity) {
+        const std::size_t pair_count =
+            std::min(pair_tile_capacity, matrix_elements - pair_begin);
+        vibeqc_status status = load_tile(pair_begin, pair_count, auxiliary_begin,
+                                         auxiliary_count, -1, b_tile);
+        if (status != VIBEQC_STATUS_SUCCESS) return status;
+        status = load_tile(pair_begin, pair_count, auxiliary_begin,
+                           auxiliary_count,
+                           static_cast<std::int64_t>(coordinate), db_tile);
+        if (status != VIBEQC_STATUS_SUCCESS) return status;
+        for (std::size_t local_pair = 0; local_pair < pair_count;
+             ++local_pair) {
+          const std::size_t pair = pair_begin + local_pair;
+          const std::size_t row = pair / nbf;
+          const std::size_t column = pair % nbf;
+          const double density_value = density[pair];
+          for (std::size_t auxiliary = 0; auxiliary < auxiliary_count;
+               ++auxiliary) {
+            const std::size_t local = local_pair * auxiliary_count + auxiliary;
+            const std::size_t p = auxiliary_begin + auxiliary;
+            charge[p] += density_value * b_tile[local];
+            derivative_charge[p] += density_value * db_tile[local];
+            for (std::size_t target = 0; target < nbf; ++target) {
+              temporary_tile[auxiliary * matrix_elements + row * nbf + target] +=
+                  b_tile[local] * density[column * nbf + target];
+              derivative_temporary_tile[auxiliary * matrix_elements +
+                                        row * nbf + target] +=
+                  db_tile[local] * density[column * nbf + target];
+            }
+          }
+        }
+      }
+      for (std::size_t auxiliary = 0; auxiliary < auxiliary_count; ++auxiliary) {
+        const std::size_t response_offset = auxiliary * matrix_elements;
+        for (std::size_t row = 0; row < nbf; ++row) {
+          for (std::size_t column = 0; column < nbf; ++column) {
+            double value = 0.0;
+            double derivative_value = 0.0;
+            for (std::size_t item = 0; item < nbf; ++item) {
+              value += density[item * nbf + row] *
+                       temporary_tile[response_offset + item * nbf + column];
+              derivative_value += density[item * nbf + row] *
+                                  derivative_temporary_tile[
+                                      response_offset + item * nbf + column];
+            }
+            response_tile[response_offset + row * nbf + column] = value;
+            derivative_response_tile[response_offset + row * nbf + column] =
+                derivative_value;
+          }
+        }
+      }
+
+      for (std::size_t second_begin = 0; second_begin < naux;
+           second_begin += plan.auxiliary_tile) {
+        const std::size_t second_count =
+            std::min(plan.auxiliary_tile, naux - second_begin);
+        for (std::size_t pair_begin = 0; pair_begin < matrix_elements;
+             pair_begin += pair_tile_capacity) {
+          const std::size_t pair_count =
+              std::min(pair_tile_capacity, matrix_elements - pair_begin);
+          vibeqc_status status = load_tile(pair_begin, pair_count, second_begin,
+                                           second_count, -1, b_tile);
+          if (status != VIBEQC_STATUS_SUCCESS) return status;
+          status = load_tile(pair_begin, pair_count, second_begin, second_count,
+                             static_cast<std::int64_t>(coordinate), db_tile);
+          if (status != VIBEQC_STATUS_SUCCESS) return status;
+          for (std::size_t local_pair = 0; local_pair < pair_count;
+               ++local_pair) {
+            const std::size_t pair = pair_begin + local_pair;
+            for (std::size_t first = 0; first < auxiliary_count; ++first) {
+              const double response_value =
+                  response_tile[first * matrix_elements + pair];
+              const double derivative_response_value =
+                  derivative_response_tile[first * matrix_elements + pair];
+              for (std::size_t second = 0; second < second_count; ++second) {
+                const std::size_t local = local_pair * second_count + second;
+                const std::size_t q = second_begin + second;
+                quadratic[(auxiliary_begin + first) * naux + q] +=
+                    response_value * b_tile[local];
+                derivative_quadratic[(auxiliary_begin + first) * naux + q] +=
+                    derivative_response_value * b_tile[local] +
+                    response_value * db_tile[local];
+              }
+            }
+          }
+        }
+      }
+    }
+
+    const std::vector<double> metric_slice(
+        plan.host_metrics.begin() + metric_offset,
+        plan.host_metrics.begin() + metric_offset + metric_elements);
+    integrals::DensityFittingIntegralData metric_data;
+    metric_data.nbf = 1U;
+    metric_data.naux = naux;
+    metric_data.ncoord = 1U;
+    metric_data.metric = metric_slice;
+    metric_data.three_center.assign(naux, 0.0);
+    metric_data.metric_derivative = metric_derivative;
+    metric_data.three_center_derivative.assign(naux, 0.0);
+    const std::vector<double> inverse(
+        plan.host_metric_inverse.begin() + metric_offset,
+        plan.host_metric_inverse.begin() + metric_offset + metric_elements);
+    try {
+      inverse_derivative = density_fitting_metric_pseudoinverse_derivative(
+          metric_data, inverse, 0U);
+    } catch (const std::bad_alloc&) {
+      detail = "host allocation for source-backed CUDA metric response failed";
+      return VIBEQC_STATUS_OUT_OF_MEMORY;
+    } catch (const std::exception& error) {
+      detail = error.what();
+      return VIBEQC_STATUS_NUMERICAL_FAILURE;
+    }
+    double coulomb_derivative = 0.0;
+    for (std::size_t row = 0; row < naux; ++row) {
+      double potential = 0.0;
+      for (std::size_t column = 0; column < naux; ++column) {
+        potential += inverse[row * naux + column] * charge[column];
+      }
+      coulomb_derivative += derivative_charge[row] * potential;
+    }
+    double metric_response = 0.0;
+    double exchange_response = 0.0;
+    for (std::size_t row = 0; row < naux; ++row) {
+      for (std::size_t column = 0; column < naux; ++column) {
+        const std::size_t item = row * naux + column;
+        metric_response += charge[row] * inverse_derivative[item] * charge[column];
+        exchange_response +=
+            derivative_quadratic[item] * inverse[item] +
+            quadratic[item] * inverse_derivative[item];
+      }
+    }
+    derivative[coordinate] =
+        coulomb_coefficient * (coulomb_derivative + 0.5 * metric_response) -
+        exchange_coefficient * exchange_response;
+  }
+  return finite_values(derivative) ? VIBEQC_STATUS_SUCCESS
+                                   : VIBEQC_STATUS_NUMERICAL_FAILURE;
+}
+
 }  // namespace
+
+vibeqc_status execute_cuda_density_fitting_source_rhf_force_response(
+    CudaDensityFittingJkPlan* plan, std::size_t system,
+    const std::vector<double>& density, std::size_t coordinate_count,
+    std::vector<double>& derivative, std::string& detail) {
+  derivative.clear();
+  if (plan == nullptr || plan->integral_source == nullptr) {
+    detail = "source-backed CUDA DF RHF force plan is invalid";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  return source_force_response_impl(*plan, system, density, coordinate_count,
+                                    1.0, 0.25, derivative, detail);
+}
+
+vibeqc_status execute_cuda_density_fitting_source_uhf_force_response(
+    CudaDensityFittingJkPlan* plan, std::size_t system,
+    const std::vector<double>& alpha_density,
+    const std::vector<double>& beta_density, std::size_t coordinate_count,
+    std::vector<double>& derivative, std::string& detail) {
+  derivative.clear();
+  if (plan == nullptr || plan->integral_source == nullptr ||
+      alpha_density.size() != beta_density.size()) {
+    detail = "source-backed CUDA DF UHF force plan or densities are invalid";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  std::vector<double> total_density(alpha_density.size(), 0.0);
+  for (std::size_t item = 0; item < total_density.size(); ++item) {
+    total_density[item] = alpha_density[item] + beta_density[item];
+  }
+  std::vector<double> coulomb;
+  std::vector<double> alpha_exchange;
+  std::vector<double> beta_exchange;
+  vibeqc_status status = source_force_response_impl(
+      *plan, system, total_density, coordinate_count, 1.0, 0.0, coulomb,
+      detail);
+  if (status != VIBEQC_STATUS_SUCCESS) return status;
+  status = source_force_response_impl(*plan, system, alpha_density,
+                                      coordinate_count, 0.0, 0.5,
+                                      alpha_exchange, detail);
+  if (status != VIBEQC_STATUS_SUCCESS) return status;
+  status = source_force_response_impl(*plan, system, beta_density,
+                                      coordinate_count, 0.0, 0.5,
+                                      beta_exchange, detail);
+  if (status != VIBEQC_STATUS_SUCCESS) return status;
+  if (coulomb.size() != alpha_exchange.size() ||
+      coulomb.size() != beta_exchange.size()) {
+    detail = "source-backed CUDA DF UHF force response dimensions mismatch";
+    return VIBEQC_STATUS_INTERNAL_ERROR;
+  }
+  derivative.resize(coulomb.size());
+  for (std::size_t item = 0; item < derivative.size(); ++item) {
+    derivative[item] = coulomb[item] + alpha_exchange[item] + beta_exchange[item];
+  }
+  return finite_values(derivative) ? VIBEQC_STATUS_SUCCESS
+                                   : VIBEQC_STATUS_NUMERICAL_FAILURE;
+}
 
 vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
     int device_id, std::size_t batch_size, std::size_t nbf, std::size_t naux,
@@ -1321,6 +1701,8 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
                 nbf, std::max<std::size_t>(1, ao_pair_tile / nbf))
           : nbf;
   std::size_t staged_pair_capacity = 0;
+  std::size_t metric_tile_elements = 0;
+  std::size_t metric_tile_bytes = 0;
   std::size_t auxiliary_vector_elements = 0;
   std::size_t auxiliary_vector_bytes = 0;
   std::size_t solver_info_bytes = 0;
@@ -1334,7 +1716,9 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
       !checked_multiply(batch_size, sizeof(int), solver_info_bytes) ||
       !checked_multiply(staged_row_tile, nbf, staged_pair_capacity) ||
       !checked_multiply(auxiliary_tile, staged_pair_capacity, tile_elements) ||
-      !checked_bytes(tile_elements, tile_bytes)) {
+      !checked_bytes(tile_elements, tile_bytes) ||
+      !checked_multiply(auxiliary_tile, naux, metric_tile_elements) ||
+      !checked_bytes(metric_tile_elements, metric_tile_bytes)) {
     detail = "CUDA DF plan storage overflows size_t";
     return fail_before_plan(VIBEQC_STATUS_OUT_OF_MEMORY);
   }
@@ -1450,6 +1834,11 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
   if (status == VIBEQC_STATUS_SUCCESS && candidate->streamed) {
     status = allocate_permanent(&candidate->exchange_tile_output, tile_bytes,
                                 "allocate CUDA DF exchange tile output");
+  }
+  if (status == VIBEQC_STATUS_SUCCESS && candidate->integral_source != nullptr) {
+    status = allocate_permanent(&candidate->metric_derivative_tile,
+                                metric_tile_bytes,
+                                "allocate source-backed CUDA DF metric derivative tile");
   }
   if (status == VIBEQC_STATUS_SUCCESS) {
     status = allocate_permanent(
@@ -1726,6 +2115,46 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
                        detail));
     }
   }
+  if (candidate->integral_source != nullptr) {
+    // Source-backed force response is streamed after SCF. Retain the compact
+    // metric and pseudoinverse on the host so the force pass can form dM+ one
+    // coordinate at a time without reconstructing the full DF tensor.
+    try {
+      candidate->host_metrics = metrics;
+      std::vector<double> inverse_square_roots(all_metric_elements, 0.0);
+      candidate->host_metric_inverse.assign(all_metric_elements, 0.0);
+      cuda_error = cudaMemcpyAsync(
+          inverse_square_roots.data(), setup.inverse_square_roots,
+          inverse_square_roots.size() * sizeof(double),
+          cudaMemcpyDeviceToHost, candidate->stream);
+      if (cuda_error == cudaSuccess) {
+        cuda_error = cudaStreamSynchronize(candidate->stream);
+      }
+      if (cuda_error != cudaSuccess) {
+        return fail_plan(
+            candidate,
+            cuda_failure(cuda_error,
+                         "read source-backed CUDA DF metric inverse", detail));
+      }
+      for (std::size_t system = 0; system < batch_size; ++system) {
+        const std::size_t offset = system * metric_elements;
+        for (std::size_t row = 0; row < naux; ++row) {
+          for (std::size_t column = 0; column < naux; ++column) {
+            double value = 0.0;
+            for (std::size_t item = 0; item < naux; ++item) {
+              value += inverse_square_roots[offset + row * naux + item] *
+                       inverse_square_roots[offset + column * naux + item];
+            }
+            candidate->host_metric_inverse[offset + row * naux + column] =
+                value;
+          }
+        }
+      }
+    } catch (const std::bad_alloc&) {
+      detail = "host allocation for source-backed CUDA DF metric factors failed";
+      return fail_plan(candidate, VIBEQC_STATUS_OUT_OF_MEMORY);
+    }
+  }
   // Publish a conservative allocation accounting record.  Setup buffers are
   // still live at this point, so the peak includes both permanent contraction
   // storage and metric-factorization workspace; host-side solver workspace is
@@ -1748,6 +2177,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
       6 * matrix_bytes + auxiliary_bytes +
       (candidate->streamed ? 0 : tensor_bytes) + 3 * tile_bytes +
       matrix_bytes + (candidate->streamed ? tile_bytes : 0) +
+      (candidate->integral_source != nullptr ? metric_tile_bytes : 0) +
       persistent_scf_bytes +
       (candidate->integral_source != nullptr ?
            metric_bytes + cuda_density_fitting_integral_source_device_bytes(
@@ -1758,10 +2188,14 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
       (candidate->streamed ? 0 : tensor_bytes) +
       solver_device_workspace_bytes + solver_info_bytes;
   const long double force_scratch_estimate =
-      8.0L * static_cast<long double>(tensor_bytes) +
-      4.0L * static_cast<long double>(metric_bytes) +
-      2.0L * static_cast<long double>(matrix_bytes) +
-      2.0L * static_cast<long double>(auxiliary_vector_bytes) + sizeof(double);
+      candidate->integral_source != nullptr
+          ? 2.0L * static_cast<long double>(tile_bytes) +
+                static_cast<long double>(metric_tile_bytes)
+          : 8.0L * static_cast<long double>(tensor_bytes) +
+                4.0L * static_cast<long double>(metric_bytes) +
+                2.0L * static_cast<long double>(matrix_bytes) +
+                2.0L * static_cast<long double>(auxiliary_vector_bytes) +
+                sizeof(double);
   const long double peak_estimate =
       static_cast<long double>(persistent_device_bytes) + setup_device_bytes +
       force_scratch_estimate;
@@ -1773,7 +2207,9 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
       candidate->streamed
            ? (candidate->integral_source != nullptr
                  ? cuda_density_fitting_integral_source_host_bytes(
-                       candidate->integral_source)
+                       candidate->integral_source) +
+                       candidate->host_metrics.size() * sizeof(double) +
+                       candidate->host_metric_inverse.size() * sizeof(double)
                  : candidate->streamed_raw_three_center.size() * sizeof(double) +
                        candidate->streamed_inverse_square_roots.size() *
                            sizeof(double))
@@ -1782,7 +2218,12 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
       host_resident_bytes + metrics.size() * sizeof(double) +
       three_center.size() * sizeof(double) +
       eigenvalues.size() * sizeof(double) + scales.size() * sizeof(double) +
-      solver_info.size() * sizeof(int) + solver_host_workspace_bytes;
+      solver_info.size() * sizeof(int) + solver_host_workspace_bytes +
+      (candidate->integral_source != nullptr
+           ? (2 * tile_bytes +
+              4 * auxiliary_tile * matrix_elements * sizeof(double) +
+              6 * metric_bytes + 2 * naux * sizeof(double))
+           : 0U);
   for (auto& diagnostic : diagnostics) {
     diagnostic.device_resident_bytes = persistent_device_bytes;
     diagnostic.peak_device_bytes = peak_device_bytes;
@@ -1827,6 +2268,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_from_source(
     CudaDensityFittingJkPlan** plan,
     std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
     std::string& detail) {
+  if (plan != nullptr) *plan = nullptr;
   if (source == nullptr || *source == nullptr) {
     detail = "source-backed CUDA DF plan requires a source";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
@@ -2384,8 +2826,10 @@ vibeqc_status execute_cuda_density_fitting_force_response_impl(
   // implementation is unavailable.  Returning before any allocation is
   // important: an OOM here must not transiently exceed the advertised plan
   // budget.
-  if (plan->streamed && plan->integral_source != nullptr) {
-    detail = "source-backed streamed CUDA DF force response requires host tiled fallback";
+  if (plan->streamed) {
+    detail = plan->integral_source != nullptr
+                 ? "source-backed streamed CUDA DF force response uses the bounded source path"
+                 : "streamed CUDA DF force response requires a bounded source plan";
     return VIBEQC_STATUS_CUDA_ERROR;
   }
   try {
