@@ -17953,8 +17953,12 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     }
     plan.resident_psss_bra_primitive_pairs = 0;
     const bool resident_psss_enabled = resident_psss_bra_requested();
+    // The bounded direct force path has its own exact page consumer for psss.
+    // Keep the resident-bra optimization on the fixed-queue path only until
+    // its bounded scheduling and force accumulation are independently gated.
     plan.resident_psss_task_count =
-        requested_quartet_direct && resident_psss_enabled
+        requested_quartet_direct && !requested_bounded_direct_streaming &&
+            resident_psss_enabled
         ? host.psss_resident_tasks.size()
         : 0;
     for (std::size_t pair = 0; pair < total_shell_pairs; ++pair) {
@@ -18625,12 +18629,12 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
             : 0}},
       {host.psss_resident_tasks.data(),
        {psss_resident_tasks,
-        quartet_direct
+        quartet_direct && !bounded_direct_streaming
             ? host.psss_resident_tasks.size() * sizeof(PsssResidentTask)
             : 0}},
       {host.psss_resident_ket_pairs.data(),
        {psss_resident_ket_pairs,
-        quartet_direct
+        quartet_direct && !bounded_direct_streaming
             ? host.psss_resident_ket_pairs.size() * sizeof(std::uint32_t)
             : 0}},
       {host.ao_shells.data(),
@@ -19258,8 +19262,6 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       const unsigned shell_class = kernel.shell_class;
       if ((host_generated_fock_shell_class_mask &
            (std::uint64_t{1} << shell_class)) == 0U ||
-          (host_generated_streaming_fock_shell_class_mask &
-           (std::uint64_t{1} << shell_class)) != 0U ||
           (host_native_streaming_fock_shell_class_mask &
            (std::uint64_t{1} << shell_class)) != 0U) {
         continue;
@@ -20727,6 +20729,17 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   const std::uint64_t bounded_first_wave_force_shell_class_mask =
       generated_queued_force_shell_class_mask &
       ~bounded_paged_force_shell_class_mask;
+  // Diagnostic A/B mode can move one selected class (dppp) back to the
+  // pre-paging first/retry queue while leaving the remaining paged classes on
+  // their production consumer.  Count diagnostics still include every class.
+  const std::uint64_t bounded_force_legacy_queue_shell_class_mask =
+      bounded_direct_count_diagnostic
+      ? generated_queued_force_shell_class_mask
+      : bounded_first_wave_force_shell_class_mask |
+            // DPPP remains on the pre-paging queue until its page-local
+            // subgroup consumer has an independent correctness gate.  The
+            // old queue is exact and disjoint from the paged stream below.
+            (std::uint64_t{1} << kDpppShellClass);
   const std::uint64_t covered_force_shell_class_mask =
       generated_shell_class_mask | native_streaming_force_shell_class_mask |
       bounded_native_paged_force_shell_class_mask;
@@ -20739,6 +20752,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       [&](bool is_unrestricted,
           DirectScreeningPurpose purpose,
           const double* quartet_density) -> cudaError_t {
+    // The count diagnostic is also used to compare the pre-paging generated
+    // queue against the exact page consumer.  In that mode every selected
+    // generated class must enter the legacy queue, including classes that
+    // production would route through the signature-paged stream; otherwise
+    // the diagnostic silently omits the very class under investigation.
     cudaError_t error = cudaMemsetAsync(
         bounded_direct_generated_task_counts, 0,
         detail::kDirectQuartetShellClassCount * sizeof(std::uint32_t),
@@ -20750,7 +20768,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         detail::kDirectQuartetShellClassCount * sizeof(std::uint32_t),
         resources.stream_);
     if (error != cudaSuccess || bounded_force_kernel_count == 0) return error;
-    if (bounded_first_wave_force_shell_class_mask == 0U) return cudaSuccess;
+    if (bounded_force_legacy_queue_shell_class_mask == 0U) return cudaSuccess;
     error = cudaMemsetAsync(
         bounded_direct_cursor, 0, sizeof(unsigned long long),
         resources.stream_);
@@ -20766,7 +20784,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
         shell_pair_density_bounds, bounded_direct_shell_pair_order,       \
         bounded_direct_shell_pair_block_bounds,                           \
         bounded_direct_system_density_bounds, active, nullptr,            \
-        bounded_first_wave_force_shell_class_mask, 0U,                   \
+        bounded_force_legacy_queue_shell_class_mask, 0U,                   \
         selected_classes, selected_any,                                   \
         bounded_direct_cursor,                                            \
         bounded_direct_generated_tasks,                                   \
@@ -20835,7 +20853,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
            kernel_index < bounded_force_kernel_count; ++kernel_index) {
         const generated::ShellKernelMetadata& kernel =
             bounded_force_kernels[kernel_index];
-        if ((bounded_first_wave_force_shell_class_mask &
+        if ((bounded_force_legacy_queue_shell_class_mask &
              (std::uint64_t{1} << kernel.shell_class)) == 0U) {
           continue;
         }
@@ -20856,7 +20874,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
            kernel_index < bounded_force_kernel_count; ++kernel_index) {
         const unsigned shell_class =
             bounded_force_kernels[kernel_index].shell_class;
-        if ((bounded_first_wave_force_shell_class_mask &
+        if ((bounded_force_legacy_queue_shell_class_mask &
              (std::uint64_t{1} << shell_class)) == 0U) {
           continue;
         }
@@ -20959,6 +20977,12 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           bounded_force_kernels[kernel_index].shell_class;
       if ((generated_queued_force_shell_class_mask &
            (std::uint64_t{1} << shell_class)) == 0U) {
+        continue;
+      }
+      if ((bounded_force_legacy_queue_shell_class_mask &
+           (std::uint64_t{1} << shell_class)) != 0U) {
+        // The pre-paging queue already consumed this class; keep the paged
+        // stream disjoint so a force quartet is never evaluated twice.
         continue;
       }
       unsigned high_pair_class = 0U;
@@ -21338,17 +21362,41 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     // generated/native routes handle the common classes; any registry gap is
     // sent to the exact bounded runtime dispatcher below instead of rejecting
     // a valid topology or silently scanning an unbounded AO-space fallback.
-    // Force pages are the lossless queue for every generated force class.
-    // Unlike Fock, force consumers have several independent density-product
-    // and derivative schedules; mixing a first/retry arena with the page
-    // stream would replay the first wave when the page loop starts at ordinal
-    // zero.  Keep the legacy compactor only for its explicit count diagnostic,
-    // and route normal execution directly through disjoint exact pages.
+    // Force pages are exact for the generated classes that have passed their
+    // page-local correctness gates. DPPP remains on the pre-paging queue
+    // because its subgroup consumer currently loses force contributions when
+    // launched from the paged stream; the two routes are kept disjoint by the
+    // class mask above.
+    cudaError_t error = cudaSuccess;
     if (bounded_direct_count_diagnostic) {
       return launch_bounded_generated_force(
           is_unrestricted, purpose, quartet_density);
     }
-    cudaError_t error = launch_bounded_overflow_force(
+    if ((bounded_force_legacy_queue_shell_class_mask &
+         generated_queued_force_shell_class_mask) != 0U) {
+      // DPPP is intentionally retained on the pre-paging generated queue;
+      // all other generated classes continue through their disjoint exact
+      // pages below.  The explicit mask also keeps this path safe if a
+      // topology does not contain DPPP.
+      error = launch_bounded_generated_force(
+          is_unrestricted, purpose, quartet_density);
+      if (error != cudaSuccess) return error;
+      error = launch_bounded_overflow_force(
+          is_unrestricted, purpose, quartet_density);
+      if (error != cudaSuccess) return error;
+      error = launch_bounded_resident_psss_force(
+          is_unrestricted, purpose, quartet_density);
+      if (error != cudaSuccess) return error;
+      error = launch_bounded_paged_native_force(
+          is_unrestricted, purpose, quartet_density);
+      if (error != cudaSuccess) return error;
+      error = launch_bounded_native_force(
+          is_unrestricted, purpose, quartet_density);
+      if (error != cudaSuccess) return error;
+      return launch_bounded_generic_force(
+          is_unrestricted, purpose, quartet_density);
+    }
+    error = launch_bounded_overflow_force(
         is_unrestricted, purpose, quartet_density);
     if (error != cudaSuccess) return error;
     error = launch_bounded_resident_psss_force(

@@ -3508,8 +3508,39 @@ def test_bounded_force_signature_mask_tracks_warp_uniform_schedules():
     assert configured_constants == expected_constants
 
 
+def test_bounded_dppp_force_stays_on_the_exact_pre_paging_queue():
+    """Prevent the 384-AO DPPP force regression from re-entering paging."""
+
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
+        encoding="utf-8"
+    )
+    mask_begin = source.index(
+        "const std::uint64_t bounded_force_legacy_queue_shell_class_mask"
+    )
+    mask_end = source.index(
+        "const std::uint64_t covered_force_shell_class_mask", mask_begin
+    )
+    mask_source = source[mask_begin:mask_end]
+    assert "std::uint64_t{1} << kDpppShellClass" in mask_source
+
+    page_begin = source.index("const auto launch_bounded_overflow_force")
+    page_end = source.index("const auto launch_bounded_native_force", page_begin)
+    page_source = source[page_begin:page_end]
+    assert "bounded_force_legacy_queue_shell_class_mask" in page_source
+    assert page_source.index("bounded_force_legacy_queue_shell_class_mask") < (
+        page_source.index("bounded_generated_page_range")
+    )
+
+    dispatch_begin = source.index("const auto launch_bounded_force")
+    dispatch_end = source.index("if (quartet_direct &&", dispatch_begin)
+    dispatch_source = source[dispatch_begin:dispatch_end]
+    assert dispatch_source.index("launch_bounded_generated_force") < (
+        dispatch_source.index("launch_bounded_overflow_force")
+    )
+
+
 def test_bounded_fock_pages_do_not_duplicate_streaming_consumers():
-    """Keep paged Fock fallback disjoint from direct streaming workers."""
+    """Run full generated pages before overflow-only streaming workers."""
 
     source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
         encoding="utf-8"
@@ -3517,11 +3548,11 @@ def test_bounded_fock_pages_do_not_duplicate_streaming_consumers():
     begin = source.index("const auto launch_bounded_paged_generated_fock")
     end = source.index("const auto launch_bounded_generated_fock", begin)
     page_source = source[begin:end]
-    assert "host_generated_streaming_fock_shell_class_mask" in page_source
+    # Generated streaming consumers are overflow-only: they return immediately
+    # when the per-class overflow flag is clear.  The paged exact consumer must
+    # therefore not skip those classes, or normal tasks disappear from Fock.
+    assert "host_generated_streaming_fock_shell_class_mask" not in page_source
     assert "host_native_streaming_fock_shell_class_mask" in page_source
-    assert page_source.index("host_generated_streaming_fock_shell_class_mask") < page_source.index(
-        "host_native_streaming_fock_shell_class_mask"
-    )
 
 
 def test_fixed_generated_task_arena_has_a_memory_admission_limit():
@@ -3558,7 +3589,10 @@ def test_bounded_psss_resident_path_is_allocated_and_disjoint_from_page_fallback
         encoding="utf-8"
     )
     assert "requested_quartet_direct\n                         ? host.psss_resident_tasks.size()" in source
-    assert "requested_quartet_direct && resident_psss_enabled" in source
+    assert (
+        "requested_quartet_direct && !requested_bounded_direct_streaming"
+        in source
+    )
     assert "launch_bounded_resident_psss_force" in source
     assert "~(bounded_resident_psss_force_enabled" in source
 
