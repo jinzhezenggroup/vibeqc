@@ -22,10 +22,6 @@ constraints, and review standards; coding agents produce and revise the code,
 tests, benchmarks, and documentation. Numerical results are checked against
 independent references, and performance claims require reproducible gates.
 
-Today VibeQC provides **RHF and UHF energies and analytic nuclear forces**.
-Other electronic-structure methods remain on the
-[roadmap](docs/methods.md), not in the current release.
-
 ## Features
 
 - CPU reference and CUDA backends.
@@ -144,6 +140,15 @@ with calc.prepare_batch(systems, warm_start=True) as batch:
 
 print(first.energies)
 ```
+
+## Benchmarks
+
+| Method | Performance |
+| --- | --- |
+| HF | <a href="benchmarks/results/vibeqc-gpu4pyscf-atom-ao-scaling.svg"><img src="benchmarks/results/vibeqc-gpu4pyscf-atom-ao-scaling.svg" width="900" alt="HF performance scaling: VibeQC versus GPU4PySCF"></a> |
+
+HF: RHF direct J/K on an RTX 5090; warm energy-plus-force replay from
+3 atoms/24 AOs to 96 atoms/768 AOs. See the [raw measurements](benchmarks/results/vibeqc-gpu4pyscf-atom-ao-scaling.json).
 
 ## Documentation
 
