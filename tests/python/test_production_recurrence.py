@@ -649,9 +649,7 @@ def test_production_packed_streaming_fock_uses_profiled_lane_local_state(
     )[1].split('extern "C" __global__', maxsplit=1)[0]
 
     local_task = f"GeneratedSm120{class_name}ShellTask stream_task;"
-    shared_tasks = (
-        f"__shared__ GeneratedSm120{class_name}ShellTask stream_tasks[32];"
-    )
+    shared_tasks = f"__shared__ GeneratedSm120{class_name}ShellTask stream_tasks[32];"
     if lane_local:
         assert local_task in streaming_worker
         assert shared_tasks not in streaming_worker

@@ -1,10 +1,10 @@
 #ifndef VIBEQC_API_ERROR_HPP
 #define VIBEQC_API_ERROR_HPP
 
-#include "vibeqc/vibeqc.h"
-
 #include <cstddef>
 #include <string>
+
+#include "vibeqc/vibeqc.h"
 
 namespace vibeqc::api {
 
@@ -21,8 +21,7 @@ bool valid_descriptor(const T* descriptor) {
  */
 inline bool valid_method_descriptor(const vibeqc_method_descriptor* descriptor) {
   return descriptor != nullptr &&
-         descriptor->struct_size >=
-             offsetof(vibeqc_method_descriptor, density_fitting_mode) &&
+         descriptor->struct_size >= offsetof(vibeqc_method_descriptor, density_fitting_mode) &&
          descriptor->abi_version == VIBEQC_ABI_VERSION;
 }
 

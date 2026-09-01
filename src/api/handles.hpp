@@ -1,13 +1,13 @@
 #ifndef VIBEQC_API_HANDLES_HPP
 #define VIBEQC_API_HANDLES_HPP
 
-#include "core/types.hpp"
-#include "methods/method.hpp"
-
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "core/types.hpp"
+#include "methods/method.hpp"
 
 struct vibeqc_context {
   vibeqc::core::ContextState state;

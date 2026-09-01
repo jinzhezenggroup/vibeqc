@@ -21,8 +21,15 @@ def test_ragged_batch_matches_independent_results_and_buckets():
         for system, charge in zip(batch_systems, charges, strict=True)
     ]
     result = calculator.batch_singlepoint(batch_systems, charges=charges, strict=True)
-    assert np.allclose(result.energies, [item.energy for item in independent], atol=2e-10)
-    assert [item.forces.shape for item in result.items] == [(2, 3), (1, 3), (2, 3), (3, 3)]
+    assert np.allclose(
+        result.energies, [item.energy for item in independent], atol=2e-10
+    )
+    assert [item.forces.shape for item in result.items] == [
+        (2, 3),
+        (1, 3),
+        (2, 3),
+        (3, 3),
+    ]
     assert result.items[0].bucket_id == result.items[2].bucket_id
     assert result.items[0].bucket_id != result.items[1].bucket_id
     assert result.items[0].bucket_id != result.items[3].bucket_id
@@ -83,8 +90,9 @@ def test_shell_class_profile_requires_explicit_opt_in():
 
 
 def test_inactive_eigensolver_profile_requires_explicit_opt_in():
-    with Calculator().prepare_batch(systems()[:1]) as prepared, pytest.raises(
-        RuntimeError, match="inactive_eigensolver_profiling=True"
+    with (
+        Calculator().prepare_batch(systems()[:1]) as prepared,
+        pytest.raises(RuntimeError, match="inactive_eigensolver_profiling=True"),
     ):
         prepared.last_inactive_eigensolver_profile()
 
@@ -119,9 +127,7 @@ def test_real_spherical_batch_reuses_fixed_topology_plan():
         energy_tolerance=1.0e-12,
         density_tolerance=1.0e-10,
     )
-    independent = [
-        calculator.singlepoint(system, charge=1) for system in systems
-    ]
+    independent = [calculator.singlepoint(system, charge=1) for system in systems]
     with calculator.prepare_batch(systems, charges=[1, 1]) as prepared:
         cold = prepared.execute(strict=True)
         warm = prepared.execute(strict=True)
@@ -182,9 +188,7 @@ def test_cuda_real_spherical_batch_reuses_fixed_topology_plan():
 
 def test_device_resident_cuda_rhf_matches_reference_when_device_is_available():
     batch_systems = [systems()[0], systems()[2], systems()[0], systems()[2]]
-    reference = Calculator(device="cpu").batch_singlepoint(
-        batch_systems, strict=True
-    )
+    reference = Calculator(device="cpu").batch_singlepoint(batch_systems, strict=True)
     try:
         candidate = Calculator(device="cuda")
         with candidate.prepare_batch(batch_systems) as prepared:
@@ -301,9 +305,7 @@ def test_cuda_bounded_direct_streaming_matches_exact_replay(
         except RuntimeError as error:
             pytest.skip(f"CUDA device unavailable: {error}")
 
-    for exact, streaming in zip(
-        outputs["exact"], outputs["streaming"], strict=True
-    ):
+    for exact, streaming in zip(outputs["exact"], outputs["streaming"], strict=True):
         assert streaming.iterations == exact.iterations
         assert streaming.energy == pytest.approx(exact.energy, abs=3.0e-13)
         assert np.allclose(streaming.forces, exact.forces, atol=1.0e-12)

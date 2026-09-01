@@ -95,9 +95,13 @@ class CudaScheduleIR:
         if self.maximum_registers != 0 and not 32 <= self.maximum_registers <= 255:
             raise ValueError("maximum registers must be zero or between 32 and 255")
         if self.minimum_blocks_per_sm and self.maximum_registers:
-            raise ValueError("launch bounds and maximum registers are mutually exclusive")
+            raise ValueError(
+                "launch bounds and maximum registers are mutually exclusive"
+            )
         if self.maximum_registers and self.kind != ScheduleKind.PACKED_TASKS:
-            raise ValueError("maximum-register lowering currently supports packed tasks")
+            raise ValueError(
+                "maximum-register lowering currently supports packed tasks"
+            )
         if (
             self.algebra_placement != AlgebraPlacement.MATERIALIZED_CSE
             and self.kind != ScheduleKind.PACKED_TASKS
@@ -135,18 +139,22 @@ class CudaScheduleIR:
             if self.tasks_per_warp != self.warp_size:
                 raise ValueError("thread-task schedules require one task per lane")
             if self.shared_coulomb:
-                raise ValueError("thread-task schedules require lane-local Coulomb data")
+                raise ValueError(
+                    "thread-task schedules require lane-local Coulomb data"
+                )
         elif self.kind == ScheduleKind.SUBGROUP_TASKS:
             if self.tasks_per_warp not in (1, 2, 4, 8):
-                raise ValueError(
-                    "subgroup-task schedules require 1, 2, 4, or 8 tasks"
-                )
+                raise ValueError("subgroup-task schedules require 1, 2, 4, or 8 tasks")
             if self.warp_size % self.tasks_per_warp != 0:
                 raise ValueError("subgroup tasks must divide the target warp")
             if not self.shared_coulomb:
-                raise ValueError("subgroup tasks require task-local shared Coulomb data")
+                raise ValueError(
+                    "subgroup tasks require task-local shared Coulomb data"
+                )
         elif self.tasks_per_warp != 1:
-            raise ValueError("only packed, thread, or subgroup schedules own many tasks")
+            raise ValueError(
+                "only packed, thread, or subgroup schedules own many tasks"
+            )
 
     def validate_for(self, target: CudaTargetInfo) -> None:
         """Validate block, occupancy, register, and shared target limits."""
@@ -202,8 +210,7 @@ class CudaKernelIR:
             # IntegralIR, but never let a first-gradient CUDA ABI consume it
             # as if it were an atomic force result.
             raise ValueError(
-                "CUDA force result ABI currently exposes only order-one "
-                "derivatives"
+                "CUDA force result ABI currently exposes only order-one derivatives"
             )
         self.schedule.validate_for(self.target)
         component_count = self.integral.spec.component_count
@@ -321,7 +328,9 @@ def default_schedule(
     for candidate in candidates:
         if candidate.kind == ScheduleKind.TILED_COMPONENTS:
             return candidate
-    raise ValueError(f"{integral.spec.name} has no schedule legal on {target.architecture}")
+    raise ValueError(
+        f"{integral.spec.name} has no schedule legal on {target.architecture}"
+    )
 
 
 def tuning_schedule_candidates(
@@ -332,7 +341,10 @@ def tuning_schedule_candidates(
 
     candidates = []
     for schedule in schedule_candidates(integral, target):
-        if schedule.kind in (ScheduleKind.COMPONENT_LANES, ScheduleKind.TILED_COMPONENTS):
+        if schedule.kind in (
+            ScheduleKind.COMPONENT_LANES,
+            ScheduleKind.TILED_COMPONENTS,
+        ):
             shared_options = (
                 (True, False)
                 if schedule.kind == ScheduleKind.COMPONENT_LANES

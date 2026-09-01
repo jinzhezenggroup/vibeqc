@@ -183,7 +183,9 @@ def _cache_metadata() -> dict[str, object]:
                 "name": name,
                 "path": path,
                 "version": _command_output((path, "--version")),
-                "stats": _command_output((path, "--show-stats" if name == "sccache" else "-s")),
+                "stats": _command_output(
+                    (path, "--show-stats" if name == "sccache" else "-s")
+                ),
             }
     return {"name": "", "path": "", "version": "", "stats": ""}
 
@@ -203,13 +205,15 @@ def _artifact_sizes(
     object_bytes = object_path.stat().st_size if object_path.is_file() else None
     source_bytes = None
     if object_path.suffix in (".o", ".obj"):
-        source_path = Path(str(object_path)[:-len(object_path.suffix)])
+        source_path = Path(str(object_path)[: -len(object_path.suffix)])
         candidates = [source_path]
         # CMake/Ninja object paths retain the source-relative suffix after a
         # ``CMakeFiles/<target>.dir/`` component. Resolve that suffix against
         # both the build and repository roots for handwritten and generated TUs.
         marker = ".dir/"
-        relative = str(source_path).split(marker, 1)[-1] if marker in str(source_path) else ""
+        relative = (
+            str(source_path).split(marker, 1)[-1] if marker in str(source_path) else ""
+        )
         if relative:
             candidates.append(build_directory / relative)
             if repository_root is not None:
@@ -251,7 +255,9 @@ def _ninja_summary(
         or row.output.rsplit("/", 1)[-1] in ("vibeqc", "libvibeqc")
     )
     device_link_rows = tuple(
-        row for row in rows if "cuda_device_link" in row.output or "cmake_device_link" in row.output
+        row
+        for row in rows
+        if "cuda_device_link" in row.output or "cmake_device_link" in row.output
     )
 
     def entry_payload(row: NinjaLogEntry) -> dict[str, object]:
@@ -322,9 +328,7 @@ def build_ledger(
         if "ARCHITECTURE" in key or "VIBEQC_CUDA" in key
     }
     cuda_compiler = cmake_values.get("CMAKE_CUDA_COMPILER", "nvcc")
-    host_compiler = cmake_values.get(
-        "CMAKE_CXX_COMPILER", os.environ.get("CXX", "c++")
-    )
+    host_compiler = cmake_values.get("CMAKE_CXX_COMPILER", os.environ.get("CXX", "c++"))
     scenarios = {
         name: {"status": "not_run", "wall_seconds": None}
         for name in (
@@ -369,7 +373,9 @@ def main() -> None:
     parser.add_argument("--build-dir", type=Path, default=Path("build"))
     parser.add_argument("--repository", type=Path, default=Path("."))
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--build", action="store_true", help="time one cmake --build invocation")
+    parser.add_argument(
+        "--build", action="store_true", help="time one cmake --build invocation"
+    )
     parser.add_argument("--target")
     arguments = parser.parse_args()
     result = (
@@ -378,10 +384,14 @@ def main() -> None:
         else None
     )
     payload = build_ledger(
-        arguments.repository.resolve(), arguments.build_dir.resolve(), build_result=result
+        arguments.repository.resolve(),
+        arguments.build_dir.resolve(),
+        build_result=result,
     )
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
-    arguments.output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    arguments.output.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     print(f"JSON result: {arguments.output}")
 
 

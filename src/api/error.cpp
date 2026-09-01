@@ -1,10 +1,10 @@
 #include "api/error.hpp"
 
-#include "methods/method.hpp"
-
 #include <exception>
 #include <new>
 #include <stdexcept>
+
+#include "methods/method.hpp"
 
 namespace vibeqc::api {
 

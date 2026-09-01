@@ -781,9 +781,7 @@ def _baseline_component_block_threads(spec: ShellClassSpec) -> int:
     return ((spec.component_count + 31) // 32) * 32
 
 
-def _benchmark_unfused_kernel(
-    spec: ShellClassSpec, plan: FusedShellPlan
-) -> str:
+def _benchmark_unfused_kernel(spec: ShellClassSpec, plan: FusedShellPlan) -> str:
     """Specialize the independent per-component baseline for one shell class."""
 
     names = _emitted_component_names(spec)
@@ -824,9 +822,7 @@ def _benchmark_unfused_kernel(
     return _specialize_dppp_identifiers(source, spec)
 
 
-def _benchmark_unfused_fock_kernel(
-    spec: ShellClassSpec, plan: FusedShellPlan
-) -> str:
+def _benchmark_unfused_fock_kernel(spec: ShellClassSpec, plan: FusedShellPlan) -> str:
     """Specialize the independent value/Fock baseline for one shell class."""
 
     names = _emitted_component_names(spec)
@@ -990,8 +986,7 @@ def _ppps_resident_benchmark_snippets() -> dict[str, str]:
         # while ket centers rotate more frequently and create realistic
         # atomic contention on the same compact force array.
         "VIBEQC_ATOM_INDEX": (
-            "center * 6U + ((task_index / "
-            "(center < 2U ? 1024U : 16U)) % 6U)"
+            "center * 6U + ((task_index / (center < 2U ? 1024U : 16U)) % 6U)"
         ),
         "VIBEQC_FORCE_COUNT": "24U * 3U",
     }
@@ -1014,8 +1009,7 @@ def _apply_benchmark_topology(
         snippets.update(
             {
                 "VIBEQC_ATOM_INDEX": (
-                    "center * 6U + ((task_index / "
-                    "(center < 2U ? 1024U : 16U)) % 6U)"
+                    "center * 6U + ((task_index / (center < 2U ? 1024U : 16U)) % 6U)"
                     if persistent_kernel
                     else "task_index * 4U + center"
                 ),
@@ -1046,9 +1040,7 @@ def _benchmark_host_harness(
     """Generate dense AO storage and offsets for a synthetic shell quartet."""
 
     component_counts = tuple(map(len, spec.center_components))
-    offsets = tuple(
-        sum(component_counts[:center]) for center in range(4)
-    )
+    offsets = tuple(sum(component_counts[:center]) for center in range(4))
     offset_lines = []
     for field in ("ao_begin", "ao_coefficient_begin"):
         offset_lines.extend(
@@ -1165,15 +1157,12 @@ def _retain_selected_persistent_benchmark_kernel(
                 "template <bool Unrestricted>", 0, force_task_signature
             )
         else:
-            force_rhf = source.find(
-                f"void {prefix}_shell_class_force_rhf_kernel("
-            )
+            force_rhf = source.find(f"void {prefix}_shell_class_force_rhf_kernel(")
             force_begin = source.rfind('extern "C" __global__', 0, force_rhf)
         fock_begin = source.find(fock_section)
         if force_begin < 0 or fock_begin < 0 or force_begin >= fock_begin:
             raise RuntimeError(
-                "persistent Fock benchmark force-section markers changed "
-                "unexpectedly"
+                "persistent Fock benchmark force-section markers changed unexpectedly"
             )
         source = source[:force_begin] + source[fock_begin:]
 
@@ -1241,12 +1230,8 @@ def _retain_selected_benchmark_kernel(
     else:
         # Packed low-order schedules inline their force work directly in the
         # wrapper and therefore have no shared force-task helper to anchor.
-        force_rhf = source.find(
-            f"void {prefix}_shell_class_force_rhf_kernel("
-        )
-        force_task = source.rfind(
-            'extern "C" __global__', 0, force_rhf
-        )
+        force_rhf = source.find(f"void {prefix}_shell_class_force_rhf_kernel(")
+        force_task = source.rfind('extern "C" __global__', 0, force_rhf)
     fock_begin = source.find(fock_section)
     if force_task < 0 or fock_begin < 0 or force_task >= fock_begin:
         raise RuntimeError("Fock benchmark force-section markers changed unexpectedly")
@@ -1319,10 +1304,7 @@ def emit_shell_class_oracle_cuda(
         else _benchmark_unfused_kernel(spec, plan)
     )
     source = (
-        _CUDA_PRELUDE
-        + fused
-        + emit_uncached_primitive_geometry_cuda(spec)
-        + baseline
+        _CUDA_PRELUDE + fused + emit_uncached_primitive_geometry_cuda(spec) + baseline
     )
     if plan.schedule.kind == ScheduleKind.TILED_COMPONENTS:
         function = (
@@ -1384,9 +1366,7 @@ def emit_shell_class_benchmark_cuda(
     if selected_plan.spec != spec:
         raise ValueError("benchmark plan and shell specification do not match")
     if selected_consumer not in selected_plan.kernel.integral.consumers:
-        raise ValueError(
-            f"{selected_consumer.value} benchmark requires its consumer"
-        )
+        raise ValueError(f"{selected_consumer.value} benchmark requires its consumer")
     if selected_consumer == KernelConsumer.FOCK:
         host = _benchmark_fock_host_harness(
             spec,

@@ -4,9 +4,8 @@ import argparse
 import statistics
 import time
 
-from vibeqc import Calculator
-
 from _support import environment_metadata, write_result
+from vibeqc import Calculator
 
 
 def main() -> None:
@@ -36,9 +35,7 @@ def main() -> None:
         payload = {
             "schema_version": 1,
             "benchmark": "h2_latency",
-            "environment": environment_metadata(
-                distributions={"numpy": ("numpy",)}
-            ),
+            "environment": environment_metadata(distributions={"numpy": ("numpy",)}),
             "settings": {
                 "iterations": args.iterations,
                 "requested_device": args.device,

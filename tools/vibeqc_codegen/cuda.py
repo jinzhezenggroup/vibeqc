@@ -52,7 +52,9 @@ class CudaEmitter:
         else:
             root_identifiers = tuple(root.identifier for root in normalized_roots)
             if root_identifiers != self.materialization_plan.root_identifiers:
-                raise ValueError("materialization plan roots do not match emission roots")
+                raise ValueError(
+                    "materialization plan roots do not match emission roots"
+                )
             materialized = set(self.materialization_plan.materialized_identifiers)
             emission_order = self.materialization_plan.emission_order
             self._fma_by_add = dict(self.materialization_plan.fma_operations)
@@ -110,9 +112,7 @@ class CudaEmitter:
             accumulator = (
                 self._reference(remaining[0])
                 if len(remaining) == 1
-                else "(" + " + ".join(
-                    self._reference(item) for item in remaining
-                ) + ")"
+                else "(" + " + ".join(self._reference(item) for item in remaining) + ")"
             )
             arguments = [self._reference(item) for item in multiply.arguments]
             return f"fma({arguments[0]}, {arguments[1]}, {accumulator})"
@@ -129,10 +129,7 @@ class CudaEmitter:
             exponent = float(node.payload)
             if exponent == 0.5:
                 return f"sqrt({arguments[0]})"
-            return (
-                f"pow({arguments[0]}, "
-                f"{format_constant(exponent)})"
-            )
+            return f"pow({arguments[0]}, {format_constant(exponent)})"
         raise ValueError(f"unsupported CUDA operation {node.operation!r}")
 
     def _reference(self, identifier: int) -> str:

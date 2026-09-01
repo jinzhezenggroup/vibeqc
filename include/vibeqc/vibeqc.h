@@ -5,13 +5,13 @@
 #include <stdint.h>
 
 #if defined(_WIN32)
-#  if defined(VIBEQC_BUILDING_LIBRARY)
-#    define VIBEQC_API __declspec(dllexport)
-#  else
-#    define VIBEQC_API __declspec(dllimport)
-#  endif
+#if defined(VIBEQC_BUILDING_LIBRARY)
+#define VIBEQC_API __declspec(dllexport)
 #else
-#  define VIBEQC_API __attribute__((visibility("default")))
+#define VIBEQC_API __declspec(dllimport)
+#endif
+#else
+#define VIBEQC_API __attribute__((visibility("default")))
 #endif
 
 #ifdef __cplusplus
@@ -52,10 +52,7 @@ enum {
 };
 
 typedef uint32_t vibeqc_property_flags;
-enum {
-  VIBEQC_PROPERTY_ENERGY = 1u << 0,
-  VIBEQC_PROPERTY_FORCES = 1u << 1
-};
+enum { VIBEQC_PROPERTY_ENERGY = 1u << 0, VIBEQC_PROPERTY_FORCES = 1u << 1 };
 
 typedef int32_t vibeqc_backend;
 enum {
@@ -174,14 +171,10 @@ typedef struct vibeqc_ppps_queue_profile {
   double primitive_tail_imbalance[VIBEQC_PPPS_PROFILE_BLOCK_SIZE_COUNT];
   uint64_t orientation_tasks[VIBEQC_PPPS_PROFILE_ORIENTATION_COUNT];
   uint64_t orientation_primitive_work[VIBEQC_PPPS_PROFILE_ORIENTATION_COUNT];
-  uint64_t bra_primitive_tasks[
-      VIBEQC_PPPS_PROFILE_PRIMITIVE_PAIR_BUCKET_COUNT];
-  uint64_t bra_primitive_work[
-      VIBEQC_PPPS_PROFILE_PRIMITIVE_PAIR_BUCKET_COUNT];
-  uint64_t ket_primitive_tasks[
-      VIBEQC_PPPS_PROFILE_PRIMITIVE_PAIR_BUCKET_COUNT];
-  uint64_t ket_primitive_work[
-      VIBEQC_PPPS_PROFILE_PRIMITIVE_PAIR_BUCKET_COUNT];
+  uint64_t bra_primitive_tasks[VIBEQC_PPPS_PROFILE_PRIMITIVE_PAIR_BUCKET_COUNT];
+  uint64_t bra_primitive_work[VIBEQC_PPPS_PROFILE_PRIMITIVE_PAIR_BUCKET_COUNT];
+  uint64_t ket_primitive_tasks[VIBEQC_PPPS_PROFILE_PRIMITIVE_PAIR_BUCKET_COUNT];
+  uint64_t ket_primitive_work[VIBEQC_PPPS_PROFILE_PRIMITIVE_PAIR_BUCKET_COUNT];
 } vibeqc_ppps_queue_profile;
 
 typedef int32_t vibeqc_eigensolver_family;
@@ -424,24 +417,21 @@ VIBEQC_API vibeqc_status vibeqc_method_available(vibeqc_method method, int32_t* 
 
 /** Query method family, properties, and batch support without preparing work. */
 VIBEQC_API vibeqc_status vibeqc_method_get_capabilities(
-    vibeqc_method method,
-    vibeqc_method_capabilities_descriptor* capabilities);
+    vibeqc_method method, vibeqc_method_capabilities_descriptor* capabilities);
 
-VIBEQC_API vibeqc_status vibeqc_context_create(
-    const vibeqc_context_descriptor* descriptor, vibeqc_context** context);
+VIBEQC_API vibeqc_status vibeqc_context_create(const vibeqc_context_descriptor* descriptor,
+                                               vibeqc_context** context);
 VIBEQC_API void vibeqc_context_destroy(vibeqc_context* context);
 
-VIBEQC_API vibeqc_status vibeqc_system_create(
-    vibeqc_context* context,
-    const vibeqc_system_descriptor* descriptor,
-    vibeqc_system** system);
+VIBEQC_API vibeqc_status vibeqc_system_create(vibeqc_context* context,
+                                              const vibeqc_system_descriptor* descriptor,
+                                              vibeqc_system** system);
 VIBEQC_API void vibeqc_system_destroy(vibeqc_system* system);
 
-VIBEQC_API vibeqc_status vibeqc_calculation_prepare(
-    vibeqc_context* context,
-    const vibeqc_system* system,
-    const vibeqc_method_descriptor* descriptor,
-    vibeqc_calculation** calculation);
+VIBEQC_API vibeqc_status vibeqc_calculation_prepare(vibeqc_context* context,
+                                                    const vibeqc_system* system,
+                                                    const vibeqc_method_descriptor* descriptor,
+                                                    vibeqc_calculation** calculation);
 VIBEQC_API void vibeqc_calculation_destroy(vibeqc_calculation* calculation);
 
 /**
@@ -450,20 +440,18 @@ VIBEQC_API void vibeqc_calculation_destroy(vibeqc_calculation* calculation);
  * requests energy and diagnostics only. Coordinates and all reported
  * derivatives use atomic units (Bohr, Hartree, Hartree/Bohr).
  */
-VIBEQC_API vibeqc_status vibeqc_calculation_execute(
-    vibeqc_calculation* calculation, vibeqc_result_descriptor* result);
+VIBEQC_API vibeqc_status vibeqc_calculation_execute(vibeqc_calculation* calculation,
+                                                    vibeqc_result_descriptor* result);
 
 /**
  * Prepare a persistent ragged fleet plan. Systems may have different atom,
  * shell, primitive, and AO counts; no global padding is introduced.
  */
-VIBEQC_API vibeqc_status vibeqc_batch_prepare(
-    vibeqc_context* context,
-    const vibeqc_system* const* systems,
-    uint32_t system_count,
-    const vibeqc_method_descriptor* descriptor,
-    vibeqc_batch_flags flags,
-    vibeqc_batch** batch);
+VIBEQC_API vibeqc_status vibeqc_batch_prepare(vibeqc_context* context,
+                                              const vibeqc_system* const* systems,
+                                              uint32_t system_count,
+                                              const vibeqc_method_descriptor* descriptor,
+                                              vibeqc_batch_flags flags, vibeqc_batch** batch);
 
 VIBEQC_API void vibeqc_batch_destroy(vibeqc_batch* batch);
 
@@ -479,14 +467,11 @@ VIBEQC_API uint32_t vibeqc_batch_get_system_count(const vibeqc_batch* batch);
  * encoding documented by VIBEQC's direct shell scheduler.
  */
 VIBEQC_API vibeqc_status vibeqc_batch_get_last_shell_class_profile(
-    const vibeqc_batch* batch,
-    vibeqc_shell_class_profile_entry* entries,
-    uint32_t entry_count);
+    const vibeqc_batch* batch, vibeqc_shell_class_profile_entry* entries, uint32_t entry_count);
 
 /** Copy PPPS queue statistics from the most recent profiled CUDA execution. */
 VIBEQC_API vibeqc_status vibeqc_batch_get_last_ppps_queue_profile(
-    const vibeqc_batch* batch,
-    vibeqc_ppps_queue_profile* profile);
+    const vibeqc_batch* batch, vibeqc_ppps_queue_profile* profile);
 
 /**
  * Copy setup-time eigensolver evidence for every bucket in the last execution.
@@ -496,9 +481,7 @@ VIBEQC_API vibeqc_status vibeqc_batch_get_last_ppps_queue_profile(
  * never performs another capability probe.
  */
 VIBEQC_API vibeqc_status vibeqc_batch_get_last_eigensolver_diagnostics(
-    const vibeqc_batch* batch,
-    vibeqc_eigensolver_diagnostic* entries,
-    uint32_t entry_count,
+    const vibeqc_batch* batch, vibeqc_eigensolver_diagnostic* entries, uint32_t entry_count,
     uint32_t* written_count);
 
 /**
@@ -506,12 +489,9 @@ VIBEQC_API vibeqc_status vibeqc_batch_get_last_eigensolver_diagnostics(
  * from the most recent batch execution. Pass `entries = NULL` and
  * `entry_count = 0` to query the required count in `written_count`.
  */
-VIBEQC_API vibeqc_status
-vibeqc_batch_get_last_density_fitting_metric_diagnostics(
-    const vibeqc_batch* batch,
-    vibeqc_density_fitting_metric_diagnostic* entries,
-    uint32_t entry_count,
-    uint32_t* written_count);
+VIBEQC_API vibeqc_status vibeqc_batch_get_last_density_fitting_metric_diagnostics(
+    const vibeqc_batch* batch, vibeqc_density_fitting_metric_diagnostic* entries,
+    uint32_t entry_count, uint32_t* written_count);
 
 /**
  * Copy per-iteration inactive-eigensolver evidence from the last execution.
@@ -522,10 +502,8 @@ vibeqc_batch_get_last_density_fitting_metric_diagnostics(
  * and iteration-ordered within each bucket.
  */
 VIBEQC_API vibeqc_status vibeqc_batch_get_last_inactive_eigensolver_profile(
-    const vibeqc_batch* batch,
-    vibeqc_inactive_eigensolver_profile_entry* entries,
-    uint32_t entry_count,
-    uint32_t* written_count);
+    const vibeqc_batch* batch, vibeqc_inactive_eigensolver_profile_entry* entries,
+    uint32_t entry_count, uint32_t* written_count);
 
 /** Discard all retained per-system converged-density warm starts. */
 VIBEQC_API vibeqc_status vibeqc_batch_clear_warm_starts(vibeqc_batch* batch);
@@ -538,8 +516,7 @@ VIBEQC_API vibeqc_status vibeqc_batch_clear_warm_starts(vibeqc_batch* batch);
  * which each successful execution advances its retained density. Existing
  * snapshots are neither cleared nor created by this call.
  */
-VIBEQC_API vibeqc_status vibeqc_batch_set_warm_start_updates(
-    vibeqc_batch* batch, int32_t enabled);
+VIBEQC_API vibeqc_status vibeqc_batch_set_warm_start_updates(vibeqc_batch* batch, int32_t enabled);
 
 /**
  * Execute all systems with failure isolation. A successful function return
@@ -547,12 +524,11 @@ VIBEQC_API vibeqc_status vibeqc_batch_set_warm_start_updates(
  * scientific outcome. `inputs` may be NULL with input_count=0 to reuse all
  * prepared geometries, otherwise it must contain one descriptor per system.
  */
-VIBEQC_API vibeqc_status vibeqc_batch_execute(
-    vibeqc_batch* batch,
-    const vibeqc_batch_input_descriptor* inputs,
-    uint32_t input_count,
-    vibeqc_batch_item_result_descriptor* results,
-    uint32_t result_count);
+VIBEQC_API vibeqc_status vibeqc_batch_execute(vibeqc_batch* batch,
+                                              const vibeqc_batch_input_descriptor* inputs,
+                                              uint32_t input_count,
+                                              vibeqc_batch_item_result_descriptor* results,
+                                              uint32_t result_count);
 
 #ifdef __cplusplus
 }

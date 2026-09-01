@@ -19,11 +19,11 @@ def test_extract_fixed_root_tables_uses_gpu4pyscf_offsets():
 
     fixed_values = [float(index) for index in range(10)]
     interpolation_width = (DEGREE + 1) * INTERVALS
-    interpolation_values = [
-        float(index) for index in range(6 * interpolation_width)
-    ]
+    interpolation_values = [float(index) for index in range(6 * interpolation_width)]
     source = "\n".join(
-        _cuda_array(name, interpolation_values if name == "ROOT_RW_DATA" else fixed_values)
+        _cuda_array(
+            name, interpolation_values if name == "ROOT_RW_DATA" else fixed_values
+        )
         for name in (
             "ROOT_SMALLX_R0",
             "ROOT_SMALLX_R1",

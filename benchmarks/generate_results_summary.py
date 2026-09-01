@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
-
+from typing import Any
 
 BEGIN_MARKER = "<!-- BEGIN GENERATED PARITY TABLE -->"
 END_MARKER = "<!-- END GENERATED PARITY TABLE -->"
@@ -35,7 +35,9 @@ def _is_direct_density_fitting_artifact(payload: dict[str, Any]) -> bool:
     return payload.get("workload", {}).get("density_fitting", "none") == "none"
 
 
-def accepted_parity_artifacts(paths: Iterable[Path]) -> dict[tuple[int, int], tuple[Path, dict[str, Any]]]:
+def accepted_parity_artifacts(
+    paths: Iterable[Path],
+) -> dict[tuple[int, int], tuple[Path, dict[str, Any]]]:
     """Select the newest clean five-repeat schema-v2 artifact per gate point."""
 
     selected: dict[tuple[int, int], tuple[Path, dict[str, Any]]] = {}
@@ -73,7 +75,9 @@ def _milliseconds(value: float) -> str:
     return f"{value * 1.0e3:.3f} ms"
 
 
-def render_parity_section(selected: dict[tuple[int, int], tuple[Path, dict[str, Any]]]) -> str:
+def render_parity_section(
+    selected: dict[tuple[int, int], tuple[Path, dict[str, Any]]],
+) -> str:
     """Render the generated Markdown section in stable AO/batch order."""
 
     missing = [key for key in PARITY_CASES if key not in selected]
@@ -131,7 +135,7 @@ def update_readme(readme: Path, section: str, *, check: bool = False) -> bool:
     end = original.find(END_MARKER)
     if begin < 0 or end < begin:
         raise ValueError("README parity markers are missing or out of order")
-    updated = original[:begin] + section + original[end + len(END_MARKER):]
+    updated = original[:begin] + section + original[end + len(END_MARKER) :]
     if updated == original:
         return False
     if check:

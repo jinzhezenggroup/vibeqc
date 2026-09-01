@@ -1,15 +1,15 @@
 #ifndef VIBEQC_SCF_FLEET_HPP
 #define VIBEQC_SCF_FLEET_HPP
 
+#include <cstddef>
+#include <optional>
+#include <vector>
+
 #include "core/types.hpp"
 #include "scf/cuda_batch.hpp"
 #include "scf/cuda_density_fitting.hpp"
 #include "scf/density_fitting.hpp"
 #include "scf/types.hpp"
-
-#include <cstddef>
-#include <optional>
-#include <vector>
 
 namespace vibeqc::scf {
 
@@ -34,14 +34,9 @@ struct FleetItemResult {
  */
 class FleetPlan {
  public:
-  FleetPlan(std::vector<core::System> systems,
-            vibeqc_method method,
-            ScfOptions options,
-            bool warm_starts_enabled,
-            bool cuda_fock_enabled,
-            bool shell_class_profiling_enabled,
-            bool inactive_eigensolver_profiling_enabled,
-            int device_id,
+  FleetPlan(std::vector<core::System> systems, vibeqc_method method, ScfOptions options,
+            bool warm_starts_enabled, bool cuda_fock_enabled, bool shell_class_profiling_enabled,
+            bool inactive_eigensolver_profiling_enabled, int device_id,
             std::optional<core::System> auxiliary_template = std::nullopt,
             bool cuda_density_fitting_enabled = false);
   ~FleetPlan();
@@ -64,20 +59,20 @@ class FleetPlan {
   void set_warm_start_updates(bool enabled) noexcept;
 
   /** Return the final-density profile from the most recent CUDA execution. */
-  [[nodiscard]] const std::optional<CudaRhfShellClassProfile>&
-  last_shell_class_profile() const noexcept {
+  [[nodiscard]] const std::optional<CudaRhfShellClassProfile>& last_shell_class_profile()
+      const noexcept {
     return last_shell_class_profile_;
   }
 
   /** Return PPPS queue statistics from the most recent profiled execution. */
-  [[nodiscard]] const std::optional<CudaPppsQueueProfile>&
-  last_ppps_queue_profile() const noexcept {
+  [[nodiscard]] const std::optional<CudaPppsQueueProfile>& last_ppps_queue_profile()
+      const noexcept {
     return last_ppps_queue_profile_;
   }
 
   /** Return one setup-time eigensolver decision for every executed bucket. */
-  [[nodiscard]] const std::vector<CudaEigensolverDiagnostic>&
-  last_eigensolver_diagnostics() const noexcept {
+  [[nodiscard]] const std::vector<CudaEigensolverDiagnostic>& last_eigensolver_diagnostics()
+      const noexcept {
     return last_eigensolver_diagnostics_;
   }
 
@@ -88,8 +83,8 @@ class FleetPlan {
   }
 
   /** Return device-timed iteration records from the most recent execution. */
-  [[nodiscard]] const CudaInactiveEigensolverProfile&
-  last_inactive_eigensolver_profile() const noexcept {
+  [[nodiscard]] const CudaInactiveEigensolverProfile& last_inactive_eigensolver_profile()
+      const noexcept {
     return last_inactive_eigensolver_profile_;
   }
 
@@ -111,8 +106,7 @@ class FleetPlan {
   std::optional<CudaRhfShellClassProfile> last_shell_class_profile_;
   std::optional<CudaPppsQueueProfile> last_ppps_queue_profile_;
   std::vector<CudaEigensolverDiagnostic> last_eigensolver_diagnostics_;
-  std::vector<CudaDensityFittingMetricDiagnostic>
-      last_density_fitting_metric_diagnostics_;
+  std::vector<CudaDensityFittingMetricDiagnostic> last_density_fitting_metric_diagnostics_;
   CudaInactiveEigensolverProfile last_inactive_eigensolver_profile_;
   // One allocation/Graph owner per workload bucket. Raw opaque pointers keep
   // CUDA headers out of this public C++ translation unit; the destructor owns
@@ -132,11 +126,9 @@ class FleetPlan {
   // warm replays can skip integral/derivative regeneration. The bucket runner
   // temporarily moves these records out while executing and restores them on
   // every return path, avoiding an additional full copy.
-  std::vector<std::vector<std::optional<DensityFittingScfData>>>
-      cuda_density_fitting_data_;
+  std::vector<std::vector<std::optional<DensityFittingScfData>>> cuda_density_fitting_data_;
   // Re-publish setup diagnostics on warm calls without rebuilding the plan.
-  std::vector<std::vector<CudaDensityFittingMetricDiagnostic>>
-      cuda_density_fitting_diagnostics_;
+  std::vector<std::vector<CudaDensityFittingMetricDiagnostic>> cuda_density_fitting_diagnostics_;
 };
 
 }  // namespace vibeqc::scf

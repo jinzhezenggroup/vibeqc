@@ -54,9 +54,7 @@ def _production_shell_classes(consumer: KernelConsumer | str) -> frozenset[str]:
     return _PRODUCTION_SHELL_CLASSES_BY_CONSUMER[selected_consumer]
 
 
-def _row_matches_consumer(
-    row: dict[str, object], consumer: KernelConsumer
-) -> bool:
+def _row_matches_consumer(row: dict[str, object], consumer: KernelConsumer) -> bool:
     """Keep profile rows scoped to the consumer being promoted.
 
     Older workload histograms omit ``consumer`` and are intentionally treated
@@ -112,7 +110,9 @@ def candidate_specs(
             specification = FUSED_SHELL_SPEC_BY_NAME[name]
         except KeyError as error:
             choices = ", ".join(FUSED_SHELL_SPEC_BY_NAME)
-            raise ValueError(f"unknown shell class {name!r}; choose from {choices}") from error
+            raise ValueError(
+                f"unknown shell class {name!r}; choose from {choices}"
+            ) from error
         if name in production_shell_classes:
             raise ValueError(
                 f"{name} is already covered by {selected_consumer.value} production AOT"
@@ -140,9 +140,7 @@ def discover_candidate_specs(
 
     selected_consumer = KernelConsumer(consumer)
     excluded = _production_shell_classes(selected_consumer)
-    uncovered = [
-        spec for spec in FUSED_SHELL_SPECS if spec.name not in excluded
-    ]
+    uncovered = [spec for spec in FUSED_SHELL_SPECS if spec.name not in excluded]
     uncovered.sort(
         key=lambda spec: (
             -spec.component_count,
@@ -253,7 +251,10 @@ def pareto_front(
         return value if math.isfinite(value) and value >= 0.0 else None
 
     def dominates(first: dict[str, object], second: dict[str, object]) -> bool:
-        first_runtime, second_runtime = numeric(first, runtime_key), numeric(second, runtime_key)
+        first_runtime, second_runtime = (
+            numeric(first, runtime_key),
+            numeric(second, runtime_key),
+        )
         if first_runtime is None and second_runtime is not None:
             # An unmeasured candidate cannot dominate a measured scientific
             # result merely because its compiler metadata is smaller.
@@ -325,21 +326,43 @@ def rank_compile_aware_candidates(
         )
         for key in ("primitive_work", "primitive_quartets", "primitive_work_fraction"):
             value = row.get(key)
-            if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(float(value)):
+            if (
+                isinstance(value, (int, float))
+                and not isinstance(value, bool)
+                and math.isfinite(float(value))
+            ):
                 item["primitive_work"] = float(item["primitive_work"]) + float(value)
                 break
-        for key in ("runtime_seconds", "compile_seconds", "source_bytes", "object_bytes"):
+        for key in (
+            "runtime_seconds",
+            "compile_seconds",
+            "source_bytes",
+            "object_bytes",
+        ):
             value = row.get(key)
-            if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(float(value)) and value >= 0:
+            if (
+                isinstance(value, (int, float))
+                and not isinstance(value, bool)
+                and math.isfinite(float(value))
+                and value >= 0
+            ):
                 # Runtime and compile/size rows are conservatively aggregated
                 # across duplicate orientations: runtime is best observed,
                 # compiler cost is the largest unit that must be rebuilt.
                 if key == "runtime_seconds":
                     previous = item.get(key)
-                    item[key] = float(value) if previous is None else min(float(previous), float(value))
+                    item[key] = (
+                        float(value)
+                        if previous is None
+                        else min(float(previous), float(value))
+                    )
                 else:
                     previous = item.get(key)
-                    item[key] = float(value) if previous is None else max(float(previous), float(value))
+                    item[key] = (
+                        float(value)
+                        if previous is None
+                        else max(float(previous), float(value))
+                    )
     if not aggregated:
         raise ValueError("profile contains no uncovered compilable shell classes")
     materialized = tuple(aggregated.values())
@@ -358,7 +381,9 @@ def rank_compile_aware_candidates(
             int(row["first_index"]),
         ),
     )
-    return tuple(FUSED_SHELL_SPEC_BY_NAME[str(row["class"])] for row in selected[:limit])
+    return tuple(
+        FUSED_SHELL_SPEC_BY_NAME[str(row["class"])] for row in selected[:limit]
+    )
 
 
 def emit_candidate_translation_unit(
@@ -388,12 +413,12 @@ def emit_candidate_translation_unit(
         samples=samples,
         consumer=selected_consumer,
     )
-    entry = f'vibeqc_run_shell_class_{spec.name}'
+    entry = f"vibeqc_run_shell_class_{spec.name}"
     source = source.replace("int main() {", f'extern "C" int {entry}() {{', 1)
-    marker = r'{\"task_count\":%u'
+    marker = r"{\"task_count\":%u"
     replacement = (
-        rf'{{\"shell_class\":\"{spec.name}\",'
-        rf'\"consumer\":\"{selected_consumer.value}\",\"task_count\":%u'
+        rf"{{\"shell_class\":\"{spec.name}\","
+        rf"\"consumer\":\"{selected_consumer.value}\",\"task_count\":%u"
     )
     if marker not in source:
         raise RuntimeError("benchmark JSON marker changed unexpectedly")
@@ -583,7 +608,9 @@ def _resource_gate(
 
     reasons = []
     if len(resources) != 4:
-        reasons.append(f"expected 4 fused kernel resource records, found {len(resources)}")
+        reasons.append(
+            f"expected 4 fused kernel resource records, found {len(resources)}"
+        )
     if any(item.spill_store_bytes or item.spill_load_bytes for item in resources):
         reasons.append("ptxas reported local-memory spills")
     if any(item.registers > maximum_registers for item in resources):
@@ -628,9 +655,7 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
 
     work_directory_owner = None
     if arguments.work_directory is None:
-        work_directory_owner = tempfile.TemporaryDirectory(
-            prefix="vibeqc-shell-batch-"
-        )
+        work_directory_owner = tempfile.TemporaryDirectory(prefix="vibeqc-shell-batch-")
         directory = Path(work_directory_owner.name)
     else:
         directory = arguments.work_directory
@@ -680,9 +705,7 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
             driver.write_text(emit_batch_driver(runnable_specs), encoding="utf-8")
             executable = directory / "shell_batch_benchmark"
             objects = [
-                str(row["object"])
-                for row in compile_rows
-                if row["returncode"] == 0
+                str(row["object"]) for row in compile_rows if row["returncode"] == 0
             ]
             link_started = time.monotonic()
             link = subprocess.run(
@@ -758,9 +781,7 @@ def _run_batch(arguments: argparse.Namespace) -> dict[str, object]:
                         f"{tolerance:.3e}"
                     )
                 if float(runtime["speedup"]) < arguments.minimum_speedup:
-                    reasons.append(
-                        f"speedup is below {arguments.minimum_speedup:.3f}x"
-                    )
+                    reasons.append(f"speedup is below {arguments.minimum_speedup:.3f}x")
             passed = resource_ok and not reasons
             if passed:
                 accepted.append(spec.name)
@@ -895,7 +916,11 @@ def main() -> None:
     )
     if selected_modes > 1:
         parser.error("pass only one of --profile, --discover, or --shell-class")
-    if arguments.profile is None and not arguments.shell_class and not arguments.discover:
+    if (
+        arguments.profile is None
+        and not arguments.shell_class
+        and not arguments.discover
+    ):
         parser.error(
             "candidate screening requires --profile, --discover, or --shell-class"
         )

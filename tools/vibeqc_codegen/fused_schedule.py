@@ -76,9 +76,7 @@ def build_fused_shell_plan(
     """
 
     if integral is None:
-        selected_consumers = (
-            (KernelConsumer.FORCE,) if consumers is None else consumers
-        )
+        selected_consumers = (KernelConsumer.FORCE,) if consumers is None else consumers
         selected_recurrence = "subset_wick" if recurrence is None else recurrence
         integral = build_integral_ir(
             spec,
@@ -254,11 +252,7 @@ def _pair_input(
 ) -> tuple[tuple[int, ...], tuple[float, ...], tuple[float, ...]]:
     """Expand two center labels into recurrence axes and shift inputs."""
 
-    quantums = tuple(
-        (center, axis)
-        for center in centers
-        for axis in component[center]
-    )
+    quantums = tuple((center, axis) for center in centers for axis in component[center])
     return (
         tuple(_AXIS_INDEX[axis] for _, axis in quantums),
         tuple(
@@ -295,9 +289,7 @@ def evaluate_fused_shell_observables(
     # Older host callers supplied only the first three product scales.  The
     # fourth scale is the exact complement for the canonical pair, so retain
     # that compatibility while allowing explicit IRs to provide it directly.
-    fourth_scale = variables.get(
-        "fourth_product_scale", 1.0 - third_scale
-    )
+    fourth_scale = variables.get("fourth_product_scale", 1.0 - third_scale)
 
     # Build one pair-term stream per independent derivative center.  Pair
     # coefficient derivatives depend on which center moves, while the value
@@ -371,16 +363,12 @@ def evaluate_fused_shell_observables(
     )
 
     plan = build_fused_shell_plan(spec, integral=selected_integral)
-    coulomb = {
-        state: _coulomb_value(state, variables) for state in plan.coulomb_states
-    }
+    coulomb = {state: _coulomb_value(state, variables) for state in plan.coulomb_states}
     value = 0.0
     for first_state, first_coefficient, _ in value_first_terms:
         for second_state, second_coefficient, _ in value_second_terms:
             sign = -1.0 if sum(second_state) % 2 else 1.0
-            state = tuple(
-                first_state[axis] + second_state[axis] for axis in range(3)
-            )
+            state = tuple(first_state[axis] + second_state[axis] for axis in range(3))
             value += sign * first_coefficient * second_coefficient * coulomb[state]
 
     difference_scales = {
@@ -406,9 +394,11 @@ def evaluate_fused_shell_observables(
                 for coordinate in range(3):
                     derivative_state = list(state)
                     derivative_state[coordinate] += 1
-                    scaled_derivative = coefficient * difference_scale * coulomb[
-                        tuple(derivative_state)
-                    ]
+                    scaled_derivative = (
+                        coefficient
+                        * difference_scale
+                        * coulomb[tuple(derivative_state)]
+                    )
                     coefficient_gradient = sign * (
                         first_gradient[coordinate] * second_coefficient
                         + first_coefficient * second_gradient[coordinate]

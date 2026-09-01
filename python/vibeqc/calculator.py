@@ -4,19 +4,34 @@ from __future__ import annotations
 
 import ctypes
 import json
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from functools import lru_cache
+from functools import cache, lru_cache
 from importlib import resources
-from typing import Iterable, Sequence
 
 import numpy as np
 
 from . import _native
 
-
 _ELEMENT_SYMBOLS = (
-    "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na",
-    "Mg", "Al", "Si", "P", "S", "Cl", "Ar",
+    "H",
+    "He",
+    "Li",
+    "Be",
+    "B",
+    "C",
+    "N",
+    "O",
+    "F",
+    "Ne",
+    "Na",
+    "Mg",
+    "Al",
+    "Si",
+    "P",
+    "S",
+    "Cl",
+    "Ar",
 )
 _ATOMIC_NUMBERS = {
     symbol: atomic_number
@@ -37,7 +52,7 @@ class Atom:
     position: tuple[float, float, float]
 
     @classmethod
-    def from_value(cls, value: "Atom | tuple[str | int, Sequence[float]]") -> "Atom":
+    def from_value(cls, value: Atom | tuple[str | int, Sequence[float]]) -> Atom:
         if isinstance(value, cls):
             return value
         element, position = value
@@ -91,7 +106,7 @@ class MethodCapabilities:
     supported_properties: frozenset[str]
 
 
-@lru_cache(maxsize=None)
+@cache
 def method_capabilities(method: str) -> MethodCapabilities:
     """Query method support without constructing a calculator or system."""
 
@@ -176,9 +191,7 @@ def _named_basis_shells(name: str, atoms: Sequence[Atom]) -> tuple[Shell, ...]:
             coefficients = packed_shell["coefficients"]
             primitives = tuple(
                 Primitive(float(exponent), float(coefficient))
-                for exponent, coefficient in zip(
-                    exponents, coefficients, strict=True
-                )
+                for exponent, coefficient in zip(exponents, coefficients, strict=True)
             )
             shells.append(Shell(atom_index, angular_momentum, primitives))
     return tuple(shells)
@@ -227,9 +240,7 @@ class Calculator:
             "spherical": _native.BASIS_SPHERICAL,
         }
         if basis_representation not in representations:
-            raise ValueError(
-                "basis_representation must be 'cartesian' or 'spherical'"
-            )
+            raise ValueError("basis_representation must be 'cartesian' or 'spherical'")
         if isinstance(density_fitting, bool):
             density_fitting = "cpu" if density_fitting else "none"
         density_fitting_modes = {
@@ -245,10 +256,15 @@ class Calculator:
             raise ValueError(
                 "density_fitting must be 'none', 'cpu', 'cuda', or 'auto'"
             ) from error
-        if auxiliary_basis is not None and density_fitting_mode == _native.DENSITY_FITTING_NONE:
+        if (
+            auxiliary_basis is not None
+            and density_fitting_mode == _native.DENSITY_FITTING_NONE
+        ):
             raise ValueError("auxiliary_basis requires density_fitting to be enabled")
         if not (0.0 < float(density_fitting_relative_threshold) < 1.0):
-            raise ValueError("density_fitting_relative_threshold must lie between zero and one")
+            raise ValueError(
+                "density_fitting_relative_threshold must lie between zero and one"
+            )
         if int(density_fitting_memory_budget_bytes) < 0:
             raise ValueError("density_fitting_memory_budget_bytes must be non-negative")
         self._method = _METHODS[method.lower()]
@@ -278,10 +294,14 @@ class Calculator:
         available = ctypes.c_int32()
         _native.check(
             self._library,
-            self._library.vibeqc_method_available(self._method, ctypes.byref(available)),
+            self._library.vibeqc_method_available(
+                self._method, ctypes.byref(available)
+            ),
         )
         if not available.value:
-            raise NotImplementedError(f"method {method!r} is reserved but not implemented")
+            raise NotImplementedError(
+                f"method {method!r} is reserved but not implemented"
+            )
 
     def _context_descriptor(self) -> _native.ContextDescriptor:
         return _native.ContextDescriptor(

@@ -1,23 +1,18 @@
-#include "scf/cuda_fock.hpp"
-
 #include <cuda_runtime_api.h>
 
 #include <limits>
 #include <new>
 
+#include "scf/cuda_fock.hpp"
+
 namespace vibeqc::scf {
 namespace {
 
-__global__ void rhf_fock_bucket_kernel(std::size_t batch_size,
-                                       std::size_t n,
-                                       const double* hcore,
-                                       const double* eri,
-                                       const double* density,
-                                       double* fock) {
+__global__ void rhf_fock_bucket_kernel(std::size_t batch_size, std::size_t n, const double* hcore,
+                                       const double* eri, const double* density, double* fock) {
   const std::size_t matrix_size = n * n;
   const std::size_t eri_size = matrix_size * matrix_size;
-  const std::size_t element =
-      static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  const std::size_t element = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (element >= batch_size * matrix_size) return;
   const std::size_t system = element / matrix_size;
   const std::size_t local = element % matrix_size;
@@ -57,7 +52,7 @@ namespace {
 vibeqc_status cuda_failure(cudaError_t error, std::string& detail) {
   detail = cudaGetErrorString(error);
   return error == cudaErrorMemoryAllocation ? VIBEQC_STATUS_OUT_OF_MEMORY
-                                             : VIBEQC_STATUS_CUDA_ERROR;
+                                            : VIBEQC_STATUS_CUDA_ERROR;
 }
 
 void release(CudaFockBucketHandle& handle) {
@@ -72,20 +67,16 @@ void release(CudaFockBucketHandle& handle) {
 
 }  // namespace
 
-vibeqc_status create_cuda_fock_bucket(int device_id,
-                                   std::size_t batch_size,
-                                   std::size_t nbf,
-                                   const std::vector<double>& hcore,
-                                   const std::vector<double>& eri,
-                                   CudaFockBucketHandle** handle,
-                                   std::string& detail) {
+vibeqc_status create_cuda_fock_bucket(int device_id, std::size_t batch_size, std::size_t nbf,
+                                      const std::vector<double>& hcore,
+                                      const std::vector<double>& eri, CudaFockBucketHandle** handle,
+                                      std::string& detail) {
   if (handle == nullptr) return VIBEQC_STATUS_INVALID_ARGUMENT;
   *handle = nullptr;
   if (batch_size == 0 || nbf == 0) return VIBEQC_STATUS_INVALID_ARGUMENT;
   const std::size_t matrix_size = nbf * nbf;
   const std::size_t eri_size = matrix_size * matrix_size;
-  if (hcore.size() != batch_size * matrix_size ||
-      eri.size() != batch_size * eri_size) {
+  if (hcore.size() != batch_size * matrix_size || eri.size() != batch_size * eri_size) {
     detail = "CUDA Fock bucket host buffers have incompatible dimensions";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
@@ -102,25 +93,22 @@ vibeqc_status create_cuda_fock_bucket(int device_id,
   candidate->nbf = nbf;
   const std::size_t matrix_bytes = batch_size * matrix_size * sizeof(double);
   const std::size_t eri_bytes = batch_size * eri_size * sizeof(double);
-  if ((error = cudaStreamCreateWithFlags(&candidate->stream,
-                                         cudaStreamNonBlocking)) != cudaSuccess ||
-      (error = cudaMalloc(reinterpret_cast<void**>(&candidate->hcore),
-                          matrix_bytes)) != cudaSuccess ||
-      (error = cudaMalloc(reinterpret_cast<void**>(&candidate->eri),
-                          eri_bytes)) != cudaSuccess ||
-      (error = cudaMalloc(reinterpret_cast<void**>(&candidate->density),
-                          matrix_bytes)) != cudaSuccess ||
-      (error = cudaMalloc(reinterpret_cast<void**>(&candidate->fock),
-                          matrix_bytes)) != cudaSuccess) {
+  if ((error = cudaStreamCreateWithFlags(&candidate->stream, cudaStreamNonBlocking)) !=
+          cudaSuccess ||
+      (error = cudaMalloc(reinterpret_cast<void**>(&candidate->hcore), matrix_bytes)) !=
+          cudaSuccess ||
+      (error = cudaMalloc(reinterpret_cast<void**>(&candidate->eri), eri_bytes)) != cudaSuccess ||
+      (error = cudaMalloc(reinterpret_cast<void**>(&candidate->density), matrix_bytes)) !=
+          cudaSuccess ||
+      (error = cudaMalloc(reinterpret_cast<void**>(&candidate->fock), matrix_bytes)) !=
+          cudaSuccess) {
     release(*candidate);
     delete candidate;
     return cuda_failure(error, detail);
   }
-  if ((error = cudaMemcpyAsync(candidate->hcore, hcore.data(), matrix_bytes,
-                               cudaMemcpyHostToDevice,
+  if ((error = cudaMemcpyAsync(candidate->hcore, hcore.data(), matrix_bytes, cudaMemcpyHostToDevice,
                                candidate->stream)) != cudaSuccess ||
-      (error = cudaMemcpyAsync(candidate->eri, eri.data(), eri_bytes,
-                               cudaMemcpyHostToDevice,
+      (error = cudaMemcpyAsync(candidate->eri, eri.data(), eri_bytes, cudaMemcpyHostToDevice,
                                candidate->stream)) != cudaSuccess ||
       (error = cudaStreamSynchronize(candidate->stream)) != cudaSuccess) {
     release(*candidate);
@@ -132,9 +120,8 @@ vibeqc_status create_cuda_fock_bucket(int device_id,
 }
 
 vibeqc_status execute_cuda_fock_bucket(CudaFockBucketHandle* handle,
-                                    const std::vector<double>& density,
-                                    std::vector<double>& fock,
-                                    std::string& detail) {
+                                       const std::vector<double>& density,
+                                       std::vector<double>& fock, std::string& detail) {
   if (handle == nullptr) return VIBEQC_STATUS_INVALID_ARGUMENT;
   const std::size_t matrix_size = handle->nbf * handle->nbf;
   const std::size_t elements = handle->batch_size * matrix_size;
@@ -146,19 +133,16 @@ vibeqc_status execute_cuda_fock_bucket(CudaFockBucketHandle* handle,
   if (error != cudaSuccess) return cuda_failure(error, detail);
   const std::size_t matrix_bytes = elements * sizeof(double);
   if ((error = cudaMemcpyAsync(handle->density, density.data(), matrix_bytes,
-                               cudaMemcpyHostToDevice,
-                               handle->stream)) != cudaSuccess) {
+                               cudaMemcpyHostToDevice, handle->stream)) != cudaSuccess) {
     return cuda_failure(error, detail);
   }
 
   constexpr unsigned threads = 256;
   const unsigned blocks = static_cast<unsigned>((elements + threads - 1) / threads);
   rhf_fock_bucket_kernel<<<blocks, threads, 0, handle->stream>>>(
-      handle->batch_size, handle->nbf, handle->hcore, handle->eri,
-      handle->density, handle->fock);
+      handle->batch_size, handle->nbf, handle->hcore, handle->eri, handle->density, handle->fock);
   if ((error = cudaGetLastError()) != cudaSuccess ||
-      (error = cudaMemcpyAsync(fock.data(), handle->fock, matrix_bytes,
-                               cudaMemcpyDeviceToHost,
+      (error = cudaMemcpyAsync(fock.data(), handle->fock, matrix_bytes, cudaMemcpyDeviceToHost,
                                handle->stream)) != cudaSuccess ||
       (error = cudaStreamSynchronize(handle->stream)) != cudaSuccess) {
     return cuda_failure(error, detail);

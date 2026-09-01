@@ -116,9 +116,7 @@ class GpuCycleTracker:
             self._previous_energy = energy
 
         self.density_rms = self._optional_float(environment.get("norm_ddm"))
-        self.orbital_gradient_norm = self._optional_float(
-            environment.get("norm_gorb")
-        )
+        self.orbital_gradient_norm = self._optional_float(environment.get("norm_gorb"))
 
 
 def gpu_convergence_payload(
@@ -132,9 +130,7 @@ def gpu_convergence_payload(
         # when present, while retaining callback counting as the portable path.
         reported_cycles = getattr(engine, "cycles", None)
         iterations = (
-            int(reported_cycles)
-            if reported_cycles is not None
-            else tracker.iterations
+            int(reported_cycles) if reported_cycles is not None else tracker.iterations
         )
         payload.append(
             {
@@ -484,9 +480,7 @@ def main() -> None:
         args.maximum_vibeqc_over_gpu4pyscf is not None
         and args.maximum_vibeqc_over_gpu4pyscf <= 0.0
     ):
-        raise ValueError(
-            "--maximum-vibeqc-over-gpu4pyscf must be positive"
-        )
+        raise ValueError("--maximum-vibeqc-over-gpu4pyscf must be positive")
     if args.maximum_energy_error is not None and args.maximum_energy_error < 0.0:
         raise ValueError("--maximum-energy-error must be non-negative")
     if args.maximum_force_error is not None and args.maximum_force_error < 0.0:
@@ -574,10 +568,14 @@ def main() -> None:
         vibeqc_cold_result = batch.execute(strict=True)
         cp.cuda.Stream.null.synchronize()
         vibeqc_cold = time.perf_counter() - start
-        density_fitting_diagnostics = [
-            diagnostic.to_dict()
-            for diagnostic in batch.last_density_fitting_metric_diagnostics()
-        ] if args.density_fitting == "cuda" else []
+        density_fitting_diagnostics = (
+            [
+                diagnostic.to_dict()
+                for diagnostic in batch.last_density_fitting_metric_diagnostics()
+            ]
+            if args.density_fitting == "cuda"
+            else []
+        )
         # Freeze the converged post-cold density before collecting either
         # engine's warm samples.  The benchmark compares the same replay from
         # one fixed dm0; allowing VibeQC to replace its retained density after
@@ -596,9 +594,7 @@ def main() -> None:
         ]
         cp.cuda.Stream.null.synchronize()
         gpu_cold = time.perf_counter() - start
-        gpu_cold_convergence = gpu_convergence_payload(
-            gpu_objects, gpu_cold_trackers
-        )
+        gpu_cold_convergence = gpu_convergence_payload(gpu_objects, gpu_cold_trackers)
         gpu_warm_densities = [engine.make_rdm1().copy() for engine in gpu_objects]
 
         # Establish a steady resident-state path before starting the captured
@@ -610,30 +606,23 @@ def main() -> None:
         # as unmeasured setup, never mixed into warm timing medians.
         vibeqc_prime = _vibeqc_sample(batch, cp, -1)
         gpu_prime = _gpu_sample(gpu_objects, gpu_warm_densities, cp, -1)
-        warm_start_priming = warm_start_priming_metadata(
-            vibeqc_prime, gpu_prime
-        )
+        warm_start_priming = warm_start_priming_metadata(vibeqc_prime, gpu_prime)
 
         if args.capture_warm_range:
             cp.cuda.profiler.start()
         try:
             for sequence_index, engine in enumerate(measurement_order):
                 if engine == VIBEQC_ENGINE:
-                    vibeqc_samples.append(
-                        _vibeqc_sample(batch, cp, sequence_index)
-                    )
+                    vibeqc_samples.append(_vibeqc_sample(batch, cp, sequence_index))
                 else:
                     gpu_samples.append(
-                        _gpu_sample(
-                            gpu_objects, gpu_warm_densities, cp, sequence_index
-                        )
+                        _gpu_sample(gpu_objects, gpu_warm_densities, cp, sequence_index)
                     )
         finally:
             if args.capture_warm_range:
                 cp.cuda.profiler.stop()
         eigensolver_diagnostics = [
-            diagnostic.to_dict()
-            for diagnostic in batch.last_eigensolver_diagnostics()
+            diagnostic.to_dict() for diagnostic in batch.last_eigensolver_diagnostics()
         ]
 
     repeat_accuracy = pair_repeat_accuracy(vibeqc_samples, gpu_samples)
@@ -658,34 +647,23 @@ def main() -> None:
     )
 
     vibeqc_converged = all(
-        item["converged"]
-        for sample in vibeqc_samples
-        for item in sample["convergence"]
+        item["converged"] for sample in vibeqc_samples for item in sample["convergence"]
     )
     reference_converged = all(
-        item["converged"]
-        for sample in gpu_samples
-        for item in sample["convergence"]
+        item["converged"] for sample in gpu_samples for item in sample["convergence"]
     )
     gate_failures = benchmark_gate_failures(
         speedup=speedup_for_gate,
         maximum_energy_error=gate_accuracy["maximum_energy_error_hartree"],
-        maximum_force_error=gate_accuracy[
-            "maximum_force_error_hartree_per_bohr"
-        ],
+        maximum_force_error=gate_accuracy["maximum_force_error_hartree_per_bohr"],
         vibeqc_converged=vibeqc_converged,
         reference_converged=reference_converged,
         minimum_speedup=args.minimum_speedup,
-        maximum_vibeqc_over_reference=(
-            args.maximum_vibeqc_over_gpu4pyscf
-        ),
+        maximum_vibeqc_over_reference=(args.maximum_vibeqc_over_gpu4pyscf),
         maximum_energy_error_limit=args.maximum_energy_error,
         maximum_force_error_limit=args.maximum_force_error,
     )
-    print(
-        f"scope: {case.description}, {ao_count} AOs, "
-        f"homogeneous batch {args.batch}"
-    )
+    print(f"scope: {case.description}, {ao_count} AOs, homogeneous batch {args.batch}")
     print("warm measurement order: " + " ".join(measurement_order))
     print(f"maximum warm energy difference: {maximum_energy_error:.3e} Eh")
     print(f"maximum warm force difference: {maximum_force_error:.3e} Eh/bohr")
@@ -724,10 +702,7 @@ def main() -> None:
         print("iteration-matched speedup: unavailable (branches do not overlap)")
     else:
         branch = ",".join(str(value) for value in matched["iteration_branch"])
-        print(
-            f"iteration-matched speedup: {matched_speedup:.2f}x "
-            f"(branch {branch})"
-        )
+        print(f"iteration-matched speedup: {matched_speedup:.2f}x (branch {branch})")
     print("warning: GPU4PySCF is measured through its single-system interface")
 
     if args.output:
@@ -770,11 +745,13 @@ def main() -> None:
                 "density_fitting": args.density_fitting,
                 "density_fitting_relative_threshold": (
                     calculator._density_fitting_relative_threshold
-                    if args.density_fitting == "cuda" else None
+                    if args.density_fitting == "cuda"
+                    else None
                 ),
                 "density_fitting_memory_budget_bytes": (
                     args.density_fitting_memory_budget_bytes
-                    if args.density_fitting == "cuda" else 0
+                    if args.density_fitting == "cuda"
+                    else 0
                 ),
                 "auxiliary_basis": (
                     "same as orbital basis" if args.density_fitting == "cuda" else None
@@ -816,8 +793,7 @@ def main() -> None:
                     "gpu4pyscf_median_seconds": gpu_warm_median,
                     "speedup": ordinary_speedup,
                     "iteration_branches_match_for_every_pair": all(
-                        item["iteration_branches_match"]
-                        for item in repeat_accuracy
+                        item["iteration_branches_match"] for item in repeat_accuracy
                     ),
                 },
                 "iteration_matched": matched,
@@ -828,9 +804,7 @@ def main() -> None:
             "vibeqc": {
                 "eigensolver_diagnostics": eigensolver_diagnostics,
                 "energies_hartree": final_vibeqc["energies_hartree"],
-                "forces_hartree_per_bohr": final_vibeqc[
-                    "forces_hartree_per_bohr"
-                ],
+                "forces_hartree_per_bohr": final_vibeqc["forces_hartree_per_bohr"],
                 "convergence": final_vibeqc["convergence"],
                 "cold_seconds": vibeqc_cold,
                 "cold_convergence": convergence_payload(vibeqc_cold_result),
@@ -841,9 +815,7 @@ def main() -> None:
             },
             "gpu4pyscf": {
                 "energies_hartree": final_gpu["energies_hartree"],
-                "forces_hartree_per_bohr": final_gpu[
-                    "forces_hartree_per_bohr"
-                ],
+                "forces_hartree_per_bohr": final_gpu["forces_hartree_per_bohr"],
                 "convergence": final_gpu["convergence"],
                 "cold_seconds": gpu_cold,
                 "cold_energies_hartree": [

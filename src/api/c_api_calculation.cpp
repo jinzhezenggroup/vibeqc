@@ -1,21 +1,17 @@
-#include "vibeqc/vibeqc.h"
+#include <algorithm>
+#include <memory>
 
 #include "api/error.hpp"
 #include "api/handles.hpp"
 #include "methods/method.hpp"
-
-#include <algorithm>
-#include <memory>
+#include "vibeqc/vibeqc.h"
 
 extern "C" {
 
-vibeqc_status vibeqc_calculation_prepare(
-    vibeqc_context* context,
-    const vibeqc_system* system,
-    const vibeqc_method_descriptor* descriptor,
-    vibeqc_calculation** calculation) {
-  if (context == nullptr || system == nullptr || descriptor == nullptr ||
-      calculation == nullptr) {
+vibeqc_status vibeqc_calculation_prepare(vibeqc_context* context, const vibeqc_system* system,
+                                         const vibeqc_method_descriptor* descriptor,
+                                         vibeqc_calculation** calculation) {
+  if (context == nullptr || system == nullptr || descriptor == nullptr || calculation == nullptr) {
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   *calculation = nullptr;
@@ -25,8 +21,8 @@ vibeqc_status vibeqc_calculation_prepare(
   try {
     auto candidate = std::make_unique<vibeqc_calculation>();
     candidate->context = context;
-    candidate->plan = vibeqc::methods::prepare_calculation(
-        context->state, system->data, *descriptor);
+    candidate->plan =
+        vibeqc::methods::prepare_calculation(context->state, system->data, *descriptor);
     *calculation = candidate.release();
     return VIBEQC_STATUS_SUCCESS;
   } catch (...) {
@@ -34,9 +30,7 @@ vibeqc_status vibeqc_calculation_prepare(
   }
 }
 
-void vibeqc_calculation_destroy(vibeqc_calculation* calculation) {
-  delete calculation;
-}
+void vibeqc_calculation_destroy(vibeqc_calculation* calculation) { delete calculation; }
 
 vibeqc_status vibeqc_calculation_execute(vibeqc_calculation* calculation,
                                          vibeqc_result_descriptor* output) {
@@ -50,8 +44,7 @@ vibeqc_status vibeqc_calculation_execute(vibeqc_calculation* calculation,
   if (output->forces == nullptr && !omit_forces) {
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
-  if (!omit_forces &&
-      output->force_count < calculation->plan->atom_count() * 3) {
+  if (!omit_forces && output->force_count < calculation->plan->atom_count() * 3) {
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
 

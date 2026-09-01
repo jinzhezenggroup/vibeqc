@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 import torch
 
-from .calculator import Calculator
 from .batch import PreparedBatch
+from .calculator import Calculator
 
 
 class _EnergyFunction(torch.autograd.Function):
@@ -82,14 +82,20 @@ class _BatchedEnergyFunction(torch.autograd.Function):
             if item.ndim != 2 or item.shape[1] != 3:
                 raise ValueError(f"coordinates[{index}] must have shape (natoms, 3)")
             if item.device != reference.device or item.dtype != reference.dtype:
-                raise ValueError("all ragged coordinate tensors must share device and dtype")
+                raise ValueError(
+                    "all ragged coordinate tensors must share device and dtype"
+                )
             if item.shape[0] != len(atomic_numbers[index]):
-                raise ValueError(f"atomic_numbers[{index}] does not match its coordinates")
+                raise ValueError(
+                    f"atomic_numbers[{index}] does not match its coordinates"
+                )
 
         cpu_coordinates = [item.detach().cpu().numpy() for item in coordinates]
         if prepared_batch is not None:
             if prepared_batch.atomic_numbers != atomic_numbers:
-                raise ValueError("prepared batch topology does not match atomic numbers")
+                raise ValueError(
+                    "prepared batch topology does not match atomic numbers"
+                )
             if prepared_batch.charges != charges:
                 raise ValueError("prepared batch charges do not match")
             if prepared_batch.multiplicities != multiplicities:
@@ -111,9 +117,7 @@ class _BatchedEnergyFunction(torch.autograd.Function):
             )
 
         force_tensors = tuple(
-            torch.as_tensor(
-                item.forces, dtype=reference.dtype, device=reference.device
-            )
+            torch.as_tensor(item.forces, dtype=reference.dtype, device=reference.device)
             for item in result.items
         )
         ctx.save_for_backward(*force_tensors)
@@ -124,8 +128,7 @@ class _BatchedEnergyFunction(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):  # type: ignore[override]
         coordinate_gradients = tuple(
-            -force * grad_output[index]
-            for index, force in enumerate(ctx.saved_tensors)
+            -force * grad_output[index] for index, force in enumerate(ctx.saved_tensors)
         )
         return None, None, None, None, None, *coordinate_gradients
 
@@ -147,7 +150,9 @@ def batched_energy(
     """
 
     if len(coordinates) != len(atomic_numbers) or not coordinates:
-        raise ValueError("coordinates and atomic_numbers must have equal nonzero length")
+        raise ValueError(
+            "coordinates and atomic_numbers must have equal nonzero length"
+        )
     if calculator is None:
         calculator = Calculator(method="rhf", basis="sto-3g", device="cpu")
     normalized_atomic_numbers = tuple(tuple(map(int, item)) for item in atomic_numbers)
@@ -159,11 +164,10 @@ def batched_energy(
         if multiplicities is None
         else tuple(map(int, multiplicities))
     )
-    if (len(normalized_charges) != len(coordinates) or
-            len(normalized_multiplicities) != len(coordinates)):
-        raise ValueError(
-            "charges and multiplicities must match the ragged batch size"
-        )
+    if len(normalized_charges) != len(coordinates) or len(
+        normalized_multiplicities
+    ) != len(coordinates):
+        raise ValueError("charges and multiplicities must match the ragged batch size")
     return _BatchedEnergyFunction.apply(
         calculator,
         prepared_batch,

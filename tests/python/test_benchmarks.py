@@ -271,9 +271,11 @@ def test_aot_endpoint_order_and_class_parser_are_deterministic():
             endpoint._class_list(value)
     assert endpoint._capacity_fock_selection(None, ("psps",)) is None
     assert endpoint._capacity_fock_selection(("dppp",), None) is None
-    assert endpoint._capacity_fock_selection(
-        ("dppp", "dpds"), ("dpds", "psps")
-    ) == ("dppp", "dpds", "psps")
+    assert endpoint._capacity_fock_selection(("dppp", "dpds"), ("dpds", "psps")) == (
+        "dppp",
+        "dpds",
+        "psps",
+    )
 
 
 def test_aot_endpoint_default_fock_selection_ignores_ambient_filter(monkeypatch):
@@ -307,9 +309,7 @@ def test_aot_endpoint_environment_overrides_parse_and_restore(monkeypatch):
         )
     )
     endpoint._validate_arguments(parser, arguments)
-    assert arguments.baseline_environment_overrides == {
-        "VIBEQC_PSPS_RESIDENT_BRA": "0"
-    }
+    assert arguments.baseline_environment_overrides == {"VIBEQC_PSPS_RESIDENT_BRA": "0"}
     assert arguments.candidate_environment_overrides == {
         "VIBEQC_PSPS_RESIDENT_BRA": "1"
     }
@@ -328,9 +328,12 @@ def test_aot_endpoint_environment_overrides_parse_and_restore(monkeypatch):
     assert os.environ["VIBEQC_TEST_A"] == "outside"
     assert "VIBEQC_TEST_NEW" not in os.environ
 
-    with pytest.raises(RuntimeError, match="restore"), endpoint._aot_selection(
-        ("dppp",),
-        environment_overrides={"VIBEQC_TEST_A": "during-error"},
+    with (
+        pytest.raises(RuntimeError, match="restore"),
+        endpoint._aot_selection(
+            ("dppp",),
+            environment_overrides={"VIBEQC_TEST_A": "during-error"},
+        ),
     ):
         raise RuntimeError("restore")
     assert os.environ["VIBEQC_TEST_A"] == "outside"
@@ -432,8 +435,7 @@ def test_aot_endpoint_freezes_after_one_cold_baseline_and_records_schema():
         "0",
     ]
     assert [
-        sample["environment_overrides"]
-        for sample in measurement["raw_samples"]
+        sample["environment_overrides"] for sample in measurement["raw_samples"]
     ] == [
         {"VIBEQC_PSPS_RESIDENT_BRA": "0"},
         {"VIBEQC_PSPS_RESIDENT_BRA": "1"},
@@ -478,9 +480,7 @@ def test_aot_endpoint_pairwise_accuracy_and_median_speedup():
     assert pairs[0]["iteration_branches_match"]
     assert not pairs[1]["iteration_branches_match"]
     assert pairs[0]["maximum_energy_error_hartree"] == pytest.approx(2.0e-12)
-    assert pairs[0]["maximum_force_error_hartree_per_bohr"] == pytest.approx(
-        2.0e-12
-    )
+    assert pairs[0]["maximum_force_error_hartree_per_bohr"] == pytest.approx(2.0e-12)
     assert endpoint.timing_summary(baseline)["median_seconds"] == 2.0
     assert endpoint.timing_summary(candidate)["median_seconds"] == 3.0
     measurement = {
@@ -571,10 +571,12 @@ def test_real_molecule_gate_has_four_explicit_dry_run_points(tmp_path):
     """Lock the 96/192-AO, batch-1/batch-4 acceptance matrix in CI."""
 
     environment = os.environ.copy()
-    environment["PYTHONPATH"] = os.pathsep.join((
-        str(REPOSITORY_ROOT / "python"),
-        str(REPOSITORY_ROOT / "benchmarks"),
-    ))
+    environment["PYTHONPATH"] = os.pathsep.join(
+        (
+            str(REPOSITORY_ROOT / "python"),
+            str(REPOSITORY_ROOT / "benchmarks"),
+        )
+    )
     completed = subprocess.run(
         (
             sys.executable,
@@ -601,14 +603,8 @@ def test_real_molecule_gate_has_four_explicit_dry_run_points(tmp_path):
     assert all("--max-iterations 100" in line for line in commands)
     assert all("--energy-tolerance 1e-12" in line for line in commands)
     assert all("--density-tolerance 1e-10" in line for line in commands)
-    assert sum(
-        "--reference-gradient-tolerance 1e-09" in line
-        for line in commands
-    ) == 2
-    assert sum(
-        "--reference-gradient-tolerance 1e-08" in line
-        for line in commands
-    ) == 2
+    assert sum("--reference-gradient-tolerance 1e-09" in line for line in commands) == 2
+    assert sum("--reference-gradient-tolerance 1e-08" in line for line in commands) == 2
     assert all("--screening-tolerance 1e-14" in line for line in commands)
     assert sum("--maximum-energy-error 3e-11" in line for line in commands) == 2
     assert sum("--maximum-force-error 3e-11" in line for line in commands) == 2
@@ -620,10 +616,12 @@ def test_density_fitting_gate_has_five_explicit_dry_run_points(tmp_path):
     """Lock the 96/192 parity plus the 384-AO DF scaling point."""
 
     environment = os.environ.copy()
-    environment["PYTHONPATH"] = os.pathsep.join((
-        str(REPOSITORY_ROOT / "python"),
-        str(REPOSITORY_ROOT / "benchmarks"),
-    ))
+    environment["PYTHONPATH"] = os.pathsep.join(
+        (
+            str(REPOSITORY_ROOT / "python"),
+            str(REPOSITORY_ROOT / "benchmarks"),
+        )
+    )
     script = REPOSITORY_ROOT / "benchmarks" / "real_molecule_gate.py"
     completed = subprocess.run(
         (
@@ -646,7 +644,10 @@ def test_density_fitting_gate_has_five_explicit_dry_run_points(tmp_path):
     assert len(commands) == 5
     assert sum("water-tetramer-def2-svp-spherical" in line for line in commands) == 2
     assert sum("water-octamer-s4-def2-svp-spherical" in line for line in commands) == 2
-    assert sum("water-hexadecamer-2s4-def2-svp-spherical" in line for line in commands) == 1
+    assert (
+        sum("water-hexadecamer-2s4-def2-svp-spherical" in line for line in commands)
+        == 1
+    )
     assert all("--density-fitting cuda" in line for line in commands)
     assert sum("--minimum-speedup 1.0" in line for line in commands) == 5
 
@@ -677,10 +678,12 @@ def test_density_fitting_gate_forwards_positive_memory_budget(tmp_path):
     """Lock the bounded planner budget into every CUDA-DF child command."""
 
     environment = os.environ.copy()
-    environment["PYTHONPATH"] = os.pathsep.join((
-        str(REPOSITORY_ROOT / "python"),
-        str(REPOSITORY_ROOT / "benchmarks"),
-    ))
+    environment["PYTHONPATH"] = os.pathsep.join(
+        (
+            str(REPOSITORY_ROOT / "python"),
+            str(REPOSITORY_ROOT / "benchmarks"),
+        )
+    )
     completed = subprocess.run(
         (
             sys.executable,
@@ -702,8 +705,7 @@ def test_density_fitting_gate_forwards_positive_memory_budget(tmp_path):
     commands = completed.stdout.splitlines()
     assert len(commands) == 5
     assert all(
-        "--density-fitting-memory-budget-bytes 1073741824" in line
-        for line in commands
+        "--density-fitting-memory-budget-bytes 1073741824" in line for line in commands
     )
 
     direct = subprocess.run(
@@ -746,14 +748,17 @@ def test_gpu_comparison_gate_reports_all_threshold_failures():
     assert "speedup" in failures[0]
     assert "energy error" in failures[1]
     assert "force error" in failures[2]
-    assert support.benchmark_gate_failures(
-        speedup=4.0,
-        maximum_energy_error=2.0e-12,
-        maximum_force_error=3.0e-12,
-        minimum_speedup=4.0,
-        maximum_energy_error_limit=2.0e-12,
-        maximum_force_error_limit=3.0e-12,
-    ) == []
+    assert (
+        support.benchmark_gate_failures(
+            speedup=4.0,
+            maximum_energy_error=2.0e-12,
+            maximum_force_error=3.0e-12,
+            minimum_speedup=4.0,
+            maximum_energy_error_limit=2.0e-12,
+            maximum_force_error_limit=3.0e-12,
+        )
+        == []
+    )
 
     convergence_failures = support.benchmark_gate_failures(
         speedup=4.0,
@@ -779,12 +784,15 @@ def test_gpu_comparison_gate_can_reject_a_large_topology_regression():
         maximum_vibeqc_over_reference=1.30,
     )
     assert failures == ["VibeQC/reference warm ratio 1.31x exceeds 1.3x"]
-    assert support.benchmark_gate_failures(
-        speedup=1.0 / 1.30,
-        maximum_energy_error=0.0,
-        maximum_force_error=0.0,
-        maximum_vibeqc_over_reference=1.30,
-    ) == []
+    assert (
+        support.benchmark_gate_failures(
+            speedup=1.0 / 1.30,
+            maximum_energy_error=0.0,
+            maximum_force_error=0.0,
+            maximum_vibeqc_over_reference=1.30,
+        )
+        == []
+    )
     assert support.benchmark_gate_failures(
         speedup=0.0,
         maximum_energy_error=0.0,
@@ -797,24 +805,26 @@ def test_batch_comparison_pairs_each_timing_with_convergence_state():
     """Preserve every replay's SCF diagnostics for straggler analysis."""
 
     comparison = _batch_comparison_module()
-    result = SimpleNamespace(items=(
-        SimpleNamespace(
-            converged=True,
-            iterations=2,
-            energy_change=1.5e-12,
-            density_rms=2.0e-13,
-            warm_start_used=True,
-            warm_start_fallback=False,
-        ),
-        SimpleNamespace(
-            converged=True,
-            iterations=3,
-            energy_change=5.0e-13,
-            density_rms=4.0e-14,
-            warm_start_used=True,
-            warm_start_fallback=False,
-        ),
-    ))
+    result = SimpleNamespace(
+        items=(
+            SimpleNamespace(
+                converged=True,
+                iterations=2,
+                energy_change=1.5e-12,
+                density_rms=2.0e-13,
+                warm_start_used=True,
+                warm_start_fallback=False,
+            ),
+            SimpleNamespace(
+                converged=True,
+                iterations=3,
+                energy_change=5.0e-13,
+                density_rms=4.0e-14,
+                warm_start_used=True,
+                warm_start_fallback=False,
+            ),
+        )
+    )
 
     payload = comparison.convergence_payload(result)
     assert [item["iterations"] for item in payload] == [2, 3]
@@ -879,9 +889,7 @@ def test_batch_comparison_uses_exact_abba_counts_and_iteration_matching():
     def sample(seconds, iterations):
         return {
             "seconds": seconds,
-            "convergence": [
-                {"iterations": value} for value in iterations
-            ],
+            "convergence": [{"iterations": value} for value in iterations],
         }
 
     matched = comparison.iteration_matched_summary(
@@ -898,12 +906,14 @@ def test_gpu_cycle_tracker_retains_explicit_final_residuals():
     comparison = _batch_comparison_module()
     tracker = comparison.GpuCycleTracker()
     tracker({"cycle": 0, "e_tot": -10.0, "norm_ddm": 0.2})
-    tracker({
-        "cycle": 1,
-        "e_tot": -10.25,
-        "norm_ddm": 1.0e-7,
-        "norm_gorb": 2.0e-8,
-    })
+    tracker(
+        {
+            "cycle": 1,
+            "e_tot": -10.25,
+            "norm_ddm": 1.0e-7,
+            "norm_gorb": 2.0e-8,
+        }
+    )
     assert tracker.iterations == 2
     assert tracker.energy_change_hartree == pytest.approx(0.25)
     assert tracker.density_rms == pytest.approx(1.0e-7)
@@ -912,18 +922,20 @@ def test_gpu_cycle_tracker_retains_explicit_final_residuals():
 
 def test_accuracy_gate_prefers_iteration_matched_repeat_pairs():
     comparison = _batch_comparison_module()
-    summary = comparison.accuracy_gate_summary([
-        {
-            "iteration_branches_match": False,
-            "maximum_energy_error_hartree": 1.0e-9,
-            "maximum_force_error_hartree_per_bohr": 2.0e-9,
-        },
-        {
-            "iteration_branches_match": True,
-            "maximum_energy_error_hartree": 3.0e-12,
-            "maximum_force_error_hartree_per_bohr": 4.0e-12,
-        },
-    ])
+    summary = comparison.accuracy_gate_summary(
+        [
+            {
+                "iteration_branches_match": False,
+                "maximum_energy_error_hartree": 1.0e-9,
+                "maximum_force_error_hartree_per_bohr": 2.0e-9,
+            },
+            {
+                "iteration_branches_match": True,
+                "maximum_energy_error_hartree": 3.0e-12,
+                "maximum_force_error_hartree_per_bohr": 4.0e-12,
+            },
+        ]
+    )
     assert summary == {
         "selection": "iteration_matched_pairs",
         "pair_count": 1,
@@ -931,18 +943,20 @@ def test_accuracy_gate_prefers_iteration_matched_repeat_pairs():
         "maximum_force_error_hartree_per_bohr": 4.0e-12,
     }
 
-    unmatched = comparison.accuracy_gate_summary([
-        {
-            "iteration_branches_match": False,
-            "maximum_energy_error_hartree": 1.0e-9,
-            "maximum_force_error_hartree_per_bohr": 2.0e-9,
-        },
-        {
-            "iteration_branches_match": False,
-            "maximum_energy_error_hartree": 5.0e-12,
-            "maximum_force_error_hartree_per_bohr": 6.0e-12,
-        },
-    ])
+    unmatched = comparison.accuracy_gate_summary(
+        [
+            {
+                "iteration_branches_match": False,
+                "maximum_energy_error_hartree": 1.0e-9,
+                "maximum_force_error_hartree_per_bohr": 2.0e-9,
+            },
+            {
+                "iteration_branches_match": False,
+                "maximum_energy_error_hartree": 5.0e-12,
+                "maximum_force_error_hartree_per_bohr": 6.0e-12,
+            },
+        ]
+    )
     assert unmatched == {
         "selection": "final_pair_unmatched_labeled",
         "pair_count": 1,
@@ -1125,25 +1139,25 @@ def test_gpu4pyscf_rys_ip1_canonicalization_merges_all_orientations():
     """Map pair/within-pair Rys directions to one generic class key."""
 
     histogram = _shell_histogram_module()
-    assert histogram.gpu4pyscf_rys_ip1_shell_class(
-        "rys_ejk_ip1_1110"
-    ) == (1, 1, 1, 0)
-    assert histogram.gpu4pyscf_rys_ip1_shell_class(
-        "rys_ejk_ip1_1011"
-    ) == (1, 1, 1, 0)
-    assert histogram.gpu4pyscf_rys_ip1_shell_class(
-        "namespace::rys_vjk_ip1_0011"
-    ) == (1, 1, 0, 0)
-    assert histogram.gpu4pyscf_rys_ip1_shell_class(
-        "rys_ejk_ip1_kernel"
-    ) is None
+    assert histogram.gpu4pyscf_rys_ip1_shell_class("rys_ejk_ip1_1110") == (1, 1, 1, 0)
+    assert histogram.gpu4pyscf_rys_ip1_shell_class("rys_ejk_ip1_1011") == (1, 1, 1, 0)
+    assert histogram.gpu4pyscf_rys_ip1_shell_class("namespace::rys_vjk_ip1_0011") == (
+        1,
+        1,
+        0,
+        0,
+    )
+    assert histogram.gpu4pyscf_rys_ip1_shell_class("rys_ejk_ip1_kernel") is None
 
     aggregate = histogram.aggregate_gpu4pyscf_rys_ip1_sqlite
     # The SQLite helper is tested below; this compact input also locks the
     # canonical transformation independently from Nsight's schema.
-    assert histogram.shell_class_label(
-        histogram.gpu4pyscf_rys_ip1_shell_class("rys_ejk_ip1_1011")
-    ) == "ppps"
+    assert (
+        histogram.shell_class_label(
+            histogram.gpu4pyscf_rys_ip1_shell_class("rys_ejk_ip1_1011")
+        )
+        == "ppps"
+    )
     with pytest.raises(ValueError, match="unsupported angular digit"):
         histogram.gpu4pyscf_rys_ip1_shell_class("rys_ejk_ip1_9999")
     assert callable(aggregate)
@@ -1236,13 +1250,9 @@ def test_active_shell_class_histogram_ranks_screened_primitive_work():
     assert sum(row["primitive_work_fraction"] for row in rows) == pytest.approx(1.0)
     assert sum(row["tile_fraction"] for row in rows) == pytest.approx(1.0)
 
-    all_rows = histogram.summarize_active_shell_classes(
-        entries, angular_order=None
-    )
+    all_rows = histogram.summarize_active_shell_classes(entries, angular_order=None)
     assert [row["class"] for row in all_rows] == ["pppp", "dpds", "dppp"]
-    assert sum(row["primitive_work_fraction"] for row in all_rows) == pytest.approx(
-        1.0
-    )
+    assert sum(row["primitive_work_fraction"] for row in all_rows) == pytest.approx(1.0)
 
 
 def test_ppps_queue_summary_labels_block_orientation_and_overflow_buckets():

@@ -29,6 +29,7 @@ def ppps_block_threads(value: str | None) -> int:
     selected = "256" if value is None else value
     return int(selected) if selected in {"32", "64", "128", "256"} else 0
 
+
 # GPU4PySCF's unrolled Rys gradient symbols encode the four shell angular
 # momenta in the final four digits.  The same physical shell class can be
 # emitted in more than one pair/center orientation (for example, ppps is
@@ -95,9 +96,7 @@ def gpu4pyscf_rys_ip1_shell_class(
         raise ValueError(
             f"unsupported angular digit in GPU4PySCF kernel {kernel_name!r}"
         )
-    return canonical_shell_class(
-        (angular[0], angular[1]), (angular[2], angular[3])
-    )
+    return canonical_shell_class((angular[0], angular[1]), (angular[2], angular[3]))
 
 
 def shell_class_label(shell_angular: Iterable[int]) -> str:
@@ -135,9 +134,7 @@ def aggregate_gpu4pyscf_rys_ip1_sqlite(
             )
         }
         if not table_columns:
-            raise ValueError(
-                "SQLite trace has no CUPTI_ACTIVITY_KIND_KERNEL table"
-            )
+            raise ValueError("SQLite trace has no CUPTI_ACTIVITY_KIND_KERNEL table")
         name_column = next(
             (
                 candidate
@@ -147,9 +144,7 @@ def aggregate_gpu4pyscf_rys_ip1_sqlite(
             None,
         )
         if name_column is None:
-            raise ValueError(
-                "SQLite kernel table has no recognized name-id column"
-            )
+            raise ValueError("SQLite kernel table has no recognized name-id column")
         try:
             rows = connection.execute(
                 f"""
@@ -224,9 +219,7 @@ def summarize_shell_classes(
                 else first.ao_count * second.ao_count
             )
             primitive_count = first.primitive_count * second.primitive_count
-            pair_groups[
-                (*angular_pair, ao_count, primitive_count)
-            ] += 1
+            pair_groups[(*angular_pair, ao_count, primitive_count)] += 1
 
     totals: dict[tuple[int, int, int, int], list[int]] = defaultdict(
         lambda: [0, 0, 0, 0]
@@ -241,9 +234,7 @@ def summarize_shell_classes(
             angular = sum((*high_angular, low_key[0], low_key[1]))
             if angular_order is not None and angular != angular_order:
                 continue
-            shell_class = canonical_shell_class(
-                high_angular, (low_key[0], low_key[1])
-            )
+            shell_class = canonical_shell_class(high_angular, (low_key[0], low_key[1]))
             row = totals[shell_class]
 
             # Distinct pair records use a Cartesian product.  Records from
@@ -259,14 +250,9 @@ def summarize_shell_classes(
                 row[0] += distinct_count
                 row[1] += distinct_count * ao_quartets
                 row[2] += (
-                    distinct_count
-                    * ao_quartets
-                    * high_primitive_count
-                    * low_key[3]
+                    distinct_count * ao_quartets * high_primitive_count * low_key[3]
                 )
-                row[3] += distinct_count * (
-                    (ao_quartets + tile_size - 1) // tile_size
-                )
+                row[3] += distinct_count * ((ao_quartets + tile_size - 1) // tile_size)
 
             if high_index == low_index:
                 diagonal_ao_quartets = high_ao_count * (high_ao_count + 1) // 2
@@ -324,9 +310,7 @@ def summarize_active_shell_classes(
             "unique_ao_quartets": entry.ao_quartets,
             "primitive_quartets": entry.primitive_quartets,
             "primitive_work_fraction": (
-                entry.primitive_quartets / primitive_total
-                if primitive_total
-                else 0.0
+                entry.primitive_quartets / primitive_total if primitive_total else 0.0
             ),
             "tiles": entry.tiles,
             "tile_fraction": entry.tiles / tile_total if tile_total else 0.0,
@@ -405,8 +389,7 @@ def scaled_geometries(
     """Match the fixed-topology geometry perturbations in the formal gate."""
 
     centroid = tuple(
-        sum(position[axis] for _, position in atoms) / len(atoms)
-        for axis in range(3)
+        sum(position[axis] for _, position in atoms) / len(atoms) for axis in range(3)
     )
     systems = []
     for index in range(batch_size):
@@ -417,8 +400,7 @@ def scaled_geometries(
                 (
                     element,
                     tuple(
-                        centroid[axis]
-                        + scale * (position[axis] - centroid[axis])
+                        centroid[axis] + scale * (position[axis] - centroid[axis])
                         for axis in range(3)
                     ),
                 )
@@ -540,9 +522,7 @@ def main() -> None:
                         "enabled": runtime_switch_enabled(
                             os.environ.get("VIBEQC_PPPS_RESIDENT_BRA")
                         ),
-                        "environment_value": os.environ.get(
-                            "VIBEQC_PPPS_RESIDENT_BRA"
-                        ),
+                        "environment_value": os.environ.get("VIBEQC_PPPS_RESIDENT_BRA"),
                     },
                     "ppps_signature_bucketing": {
                         "enabled": runtime_switch_enabled(

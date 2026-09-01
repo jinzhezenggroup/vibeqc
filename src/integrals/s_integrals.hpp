@@ -1,10 +1,10 @@
 #ifndef VIBEQC_INTEGRALS_S_INTEGRALS_HPP
 #define VIBEQC_INTEGRALS_S_INTEGRALS_HPP
 
-#include "core/types.hpp"
-
 #include <cstddef>
 #include <vector>
+
+#include "core/types.hpp"
 
 namespace vibeqc::integrals {
 
@@ -52,9 +52,8 @@ IntegralData build_integrals(const core::System& system);
  * implementation remains the independent correctness oracle for CUDA DF
  * integral-generation kernels.
  */
-DensityFittingIntegralData build_density_fitting_integrals(
-    const core::System& orbital_system,
-    const core::System& auxiliary_system);
+DensityFittingIntegralData build_density_fitting_integrals(const core::System& orbital_system,
+                                                           const core::System& auxiliary_system);
 
 /**
  * Transform Cartesian density-fitting tensors into the public AO
@@ -66,13 +65,11 @@ DensityFittingIntegralData build_density_fitting_integrals(
  * tensors are transformed coordinate-by-coordinate with the same contractions.
  */
 DensityFittingIntegralData transform_density_fitting_integrals(
-    const DensityFittingIntegralData& cartesian,
-    const core::System& orbital_system,
+    const DensityFittingIntegralData& cartesian, const core::System& orbital_system,
     const core::System& auxiliary_system);
 
 /** Transform Cartesian one-electron tensors into a system's public AO basis. */
-IntegralData transform_integrals(const IntegralData& cartesian,
-                                 const core::System& system);
+IntegralData transform_integrals(const IntegralData& cartesian, const core::System& system);
 
 /** Compatibility name retained for callers that explicitly request Cartesian. */
 inline IntegralData build_cartesian_integrals(const core::System& system) {

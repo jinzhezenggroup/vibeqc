@@ -16,17 +16,15 @@ import json
 import re
 import statistics
 from collections import defaultdict
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
-
+from typing import Any
 
 VIBEQC_RANGE = ":vibeqc/warm/energy-plus-force"
 GPU4PYSCF_SCF_RANGE = ":gpu4pyscf/warm/scf"
 GPU4PYSCF_FORCE_RANGE = ":gpu4pyscf/warm/force"
 
-_GENERATED_FORCE = re.compile(
-    r"generated_sm\d+_([spdfg]+)_shell_class_force_"
-)
+_GENERATED_FORCE = re.compile(r"generated_sm\d+_([spdfg]+)_shell_class_force_")
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -107,7 +105,9 @@ def _shell_class(name: str) -> str | None:
     return None
 
 
-def _kernel_ledger(path: Path) -> tuple[int, dict[str, float], dict[str, float], list[dict[str, Any]]]:
+def _kernel_ledger(
+    path: Path,
+) -> tuple[int, dict[str, float], dict[str, float], list[dict[str, Any]]]:
     component_ns: defaultdict[str, float] = defaultdict(float)
     shell_class_ns: defaultdict[str, float] = defaultdict(float)
     retained: list[tuple[float, int, str, str]] = []
@@ -138,8 +138,7 @@ def _kernel_ledger(path: Path) -> tuple[int, dict[str, float], dict[str, float],
         return total_ns / replay_count / 1.0e6
 
     components = {
-        name: milliseconds(total_ns)
-        for name, total_ns in sorted(component_ns.items())
+        name: milliseconds(total_ns) for name, total_ns in sorted(component_ns.items())
     }
     shell_classes = {
         name: milliseconds(total_ns)
@@ -152,9 +151,7 @@ def _kernel_ledger(path: Path) -> tuple[int, dict[str, float], dict[str, float],
             "kernel_time_milliseconds_per_replay": milliseconds(total_ns),
             "launches_per_replay": launches // replay_count,
         }
-        for total_ns, launches, component, name in sorted(
-            retained, reverse=True
-        )[:30]
+        for total_ns, launches, component, name in sorted(retained, reverse=True)[:30]
     ]
     return replay_count, components, shell_classes, top_kernels
 
@@ -170,12 +167,10 @@ def _range_medians(path: Path) -> dict[str, float]:
 def _gpu4pyscf_component_medians(endpoint: dict[str, Any]) -> dict[str, float]:
     samples = endpoint["gpu4pyscf"]["warm_samples"]
     return {
-        "scf": 1.0e3 * _median(
-            float(sample["component_seconds"]["scf"]) for sample in samples
-        ),
-        "force": 1.0e3 * _median(
-            float(sample["component_seconds"]["force"]) for sample in samples
-        ),
+        "scf": 1.0e3
+        * _median(float(sample["component_seconds"]["scf"]) for sample in samples),
+        "force": 1.0e3
+        * _median(float(sample["component_seconds"]["force"]) for sample in samples),
     }
 
 
@@ -188,8 +183,9 @@ def _shell_class_ledger(
         rows.append(
             {
                 **source,
-                "force_kernel_milliseconds_per_replay":
-                    device_milliseconds.get(shell_class, 0.0),
+                "force_kernel_milliseconds_per_replay": device_milliseconds.get(
+                    shell_class, 0.0
+                ),
             }
         )
     return sorted(
@@ -270,11 +266,12 @@ def build_ledger(
             "gpu4pyscf_median_seconds": gpu4pyscf_seconds,
             "gap_seconds": vibeqc_seconds - gpu4pyscf_seconds,
             "vibeqc_over_gpu4pyscf": vibeqc_seconds / gpu4pyscf_seconds,
-            "maximum_energy_error_hartree": endpoint["accuracy"]
-                ["gate_selection"]["maximum_energy_error_hartree"],
-            "maximum_force_error_hartree_per_bohr": endpoint["accuracy"]
-                ["gate_selection"]
-                ["maximum_force_error_hartree_per_bohr"],
+            "maximum_energy_error_hartree": endpoint["accuracy"]["gate_selection"][
+                "maximum_energy_error_hartree"
+            ],
+            "maximum_force_error_hartree_per_bohr": endpoint["accuracy"][
+                "gate_selection"
+            ]["maximum_force_error_hartree_per_bohr"],
             "gate_passed": endpoint["gate"]["passed"],
         },
         "change_from_issue_baseline": {
@@ -295,22 +292,19 @@ def build_ledger(
         "component_ledger": {
             "vibeqc_profiled_host_interval_milliseconds": profiled_vibeqc_ms,
             "vibeqc_device_kernel_milliseconds": device_total_ms,
-            "vibeqc_host_api_sync_and_idle_unattributed_milliseconds":
-                unattributed_ms,
-            "vibeqc_device_projection_excess_milliseconds":
-                projection_excess_ms,
+            "vibeqc_host_api_sync_and_idle_unattributed_milliseconds": unattributed_ms,
+            "vibeqc_device_projection_excess_milliseconds": projection_excess_ms,
             "vibeqc_device_components_milliseconds": components,
-            "gpu4pyscf_unprofiled_host_component_medians_milliseconds":
-                _gpu4pyscf_component_medians(endpoint),
+            "gpu4pyscf_unprofiled_host_component_medians_milliseconds": _gpu4pyscf_component_medians(
+                endpoint
+            ),
             "gpu4pyscf_profiled_host_ranges_milliseconds": {
                 "scf": range_medians[GPU4PYSCF_SCF_RANGE],
                 "force": range_medians[GPU4PYSCF_FORCE_RANGE],
             },
             "fock_rebuild_observation": fock_rebuild_observation,
         },
-        "shell_classes": _shell_class_ledger(
-            shell_profile, shell_device_ms
-        ),
+        "shell_classes": _shell_class_ledger(shell_profile, shell_device_ms),
         "top_kernels": top_kernels,
     }
 

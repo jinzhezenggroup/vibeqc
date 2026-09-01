@@ -1,7 +1,5 @@
 import numpy as np
-
 from vibeqc import Calculator
-
 
 systems = [
     [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))],

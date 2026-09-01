@@ -34,9 +34,7 @@ KNOWN_CAPABILITIES = frozenset(
 )
 
 
-def normalize_capabilities(
-    name: str, raw: object | None
-) -> frozenset[str]:
+def normalize_capabilities(name: str, raw: object | None) -> frozenset[str]:
     """Validate one manifest capability list and return a stable set.
 
     Capabilities are opt-in.  An omitted field therefore preserves the safe
@@ -96,8 +94,7 @@ def _production_gap_payload() -> dict[str, object]:
         "status": "manifest_gap",
         "promotion_gate": "real_molecular_endpoint_and_resource_gates",
         "reason": (
-            "not selected by the production manifest; endpoint/resource "
-            "gates remain"
+            "not selected by the production manifest; endpoint/resource gates remain"
         ),
     }
 
@@ -175,9 +172,7 @@ def _check_recurrence(
         else:
             if kind not in schedules:
                 schedules.append(kind)
-    reasons = tuple(
-        f"{kind}: {reason}" for kind, reason in sorted(failures.items())
-    )
+    reasons = tuple(f"{kind}: {reason}" for kind, reason in sorted(failures.items()))
     if not schedules and not reasons:
         reasons = ("no target-legal schedule is available",)
     return CapabilityCheck(bool(schedules), tuple(schedules), reasons)
@@ -210,10 +205,7 @@ def _check_force_derivative_order(
         return CapabilityCheck(
             False,
             reasons=(
-                (
-                    "CUDA force result ABI currently exposes only order-one "
-                    "derivatives"
-                ),
+                ("CUDA force result ABI currently exposes only order-one derivatives"),
             ),
         )
     return _check_recurrence(spec, "subset_wick", target)
@@ -290,16 +282,15 @@ def build_capability_report(
     manifest_label = None
     if manifest is not None:
         try:
-            manifest_label = manifest.resolve().relative_to(
-                Path(__file__).resolve().parents[2]
-            ).as_posix()
+            manifest_label = (
+                manifest.resolve()
+                .relative_to(Path(__file__).resolve().parents[2])
+                .as_posix()
+            )
         except ValueError:
             manifest_label = str(manifest)
     recurrence_supported = {
-        name: sum(
-            bool(row["recurrences"][name]["supported"])
-            for row in rows
-        )
+        name: sum(bool(row["recurrences"][name]["supported"]) for row in rows)
         for name in ("subset_wick", "rys2", "rys3", "rys4", "rys5")
     }
     force_derivative_supported = {
@@ -332,8 +323,7 @@ def build_capability_report(
             bool(row["generic_fused"]["supported"]) for row in rows
         ),
         "production_selected": sum(
-            bool(row["production"].get("force"))
-            or bool(row["production"].get("fock"))
+            bool(row["production"].get("force")) or bool(row["production"].get("fock"))
             for row in rows
         ),
         "recurrence_supported": recurrence_supported,

@@ -1,14 +1,11 @@
 import numpy as np
 import pytest
-
 from vibeqc import Calculator, Primitive, Shell, method_capabilities
 
 
 def test_h2_energy_and_force_invariance():
     calculator = Calculator(method="rhf", basis="sto-3g", device="cpu")
-    result = calculator.singlepoint(
-        [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
-    )
+    result = calculator.singlepoint([("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))])
     assert abs(result.energy - (-1.11671432506255)) < 2.0e-9
     assert np.max(np.abs(result.forces.sum(axis=0))) < 2.0e-10
     assert result.executed_backend == "cpu_reference"
@@ -243,8 +240,7 @@ def test_h3_plus_exercises_diis_and_force_invariants():
 
 
 def test_single_system_cuda_executes_full_scientific_path_when_available():
-    atoms = [("H", (-1.0, 0.0, 0.0)), ("H", (0.0, 0.0, 0.0)),
-             ("H", (1.0, 0.0, 0.0))]
+    atoms = [("H", (-1.0, 0.0, 0.0)), ("H", (0.0, 0.0, 0.0)), ("H", (1.0, 0.0, 0.0))]
     reference = Calculator(device="cpu").singlepoint(atoms, charge=1)
     try:
         candidate = Calculator(device="cuda").singlepoint(atoms, charge=1)
@@ -275,8 +271,7 @@ def test_cartesian_p_shell_energy_force_and_cuda_agreement():
 
     # Independent PySCF 2.11/libcint Cartesian RHF oracle.
     assert reference.energy == pytest.approx(-0.2897023252480543, abs=3.0e-12)
-    assert reference.forces[0, 2] == pytest.approx(0.34807084478701356,
-                                                  abs=3.0e-11)
+    assert reference.forces[0, 2] == pytest.approx(0.34807084478701356, abs=3.0e-11)
     assert np.max(np.abs(reference.forces.sum(axis=0))) < 2.0e-11
 
     try:
@@ -315,15 +310,9 @@ def test_bundled_def2_svp_water_matches_pyscf_cartesian_reference():
     # Independent PySCF/libcint reference with cart=True and coordinates in
     # Bohr. This has 25 Cartesian AOs and therefore exercises tiled direct J/K.
     assert result.energy == pytest.approx(-75.96220846602468, abs=8.0e-11)
-    assert result.forces[0, 2] == pytest.approx(
-        0.0178004578, abs=8.0e-10
-    )
-    assert result.forces[1, 1] == pytest.approx(
-        0.0113730678, abs=8.0e-10
-    )
-    assert result.forces[1, 2] == pytest.approx(
-        -0.00890022892, abs=8.0e-10
-    )
+    assert result.forces[0, 2] == pytest.approx(0.0178004578, abs=8.0e-10)
+    assert result.forces[1, 1] == pytest.approx(0.0113730678, abs=8.0e-10)
+    assert result.forces[1, 2] == pytest.approx(-0.00890022892, abs=8.0e-10)
     assert np.max(np.abs(result.forces.sum(axis=0))) < 2.0e-9
 
 
@@ -352,10 +341,8 @@ def test_cartesian_d_f_cuda_matches_pyscf_libcint_reference():
     # their nuclear, one-electron, Pulay, and ERI derivative paths.
     assert result.executed_backend == "cuda"
     assert result.energy == pytest.approx(-2.644619635687887, abs=8.0e-12)
-    assert result.forces[0, 2] == pytest.approx(-0.025113094749739884,
-                                               abs=3.0e-11)
-    assert result.forces[1, 2] == pytest.approx(0.02511309474973966,
-                                               abs=3.0e-11)
+    assert result.forces[0, 2] == pytest.approx(-0.025113094749739884, abs=3.0e-11)
+    assert result.forces[1, 2] == pytest.approx(0.02511309474973966, abs=3.0e-11)
     assert np.max(np.abs(result.forces.sum(axis=0))) < 3.0e-11
 
 
@@ -384,8 +371,7 @@ def test_screened_direct_jk_force_matches_energy_finite_difference(
 
     def coordinates(distance: float) -> np.ndarray:
         return np.array(
-            [[0.0, 0.0, -0.5 * distance],
-             [0.0, 0.0, 0.5 * distance]],
+            [[0.0, 0.0, -0.5 * distance], [0.0, 0.0, 0.5 * distance]],
             dtype=np.float64,
         )
 
@@ -403,9 +389,7 @@ def test_screened_direct_jk_force_matches_energy_finite_difference(
             # Compare both paths on one prepared batch so the A/B switch and
             # the conservative loose-threshold cap remain covered together.
             monkeypatch.setenv("VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING", "0")
-            unscreened = batch.execute(
-                [coordinates(1.4)], strict=True
-            ).items[0]
+            unscreened = batch.execute([coordinates(1.4)], strict=True).items[0]
             monkeypatch.delenv("VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING")
             plus = batch.execute([coordinates(1.4001)], strict=True).items[0]
             minus = batch.execute([coordinates(1.3999)], strict=True).items[0]
@@ -494,11 +478,9 @@ def test_larger_direct_jk_matches_cpu_oracle():
     # These values come from the independent CPU integral/SCF/gradient oracle,
     # not from the CUDA implementation under test.
     assert first.energy == pytest.approx(-7.43079582681513, abs=5.0e-11)
-    assert first.forces[0, 2] == pytest.approx(-0.28152878739456416,
-                                               abs=5.0e-10)
+    assert first.forces[0, 2] == pytest.approx(-0.28152878739456416, abs=5.0e-10)
     assert first.forces[1, 2] == pytest.approx(0.0, abs=5.0e-10)
-    assert first.forces[2, 2] == pytest.approx(0.28152878739456361,
-                                               abs=5.0e-10)
+    assert first.forces[2, 2] == pytest.approx(0.28152878739456361, abs=5.0e-10)
     # The replay consumes the converged density as a warm start, so it follows
     # a shorter SCF path; agreement should be numerical rather than bitwise.
     assert repeated.energy == pytest.approx(first.energy, abs=2.0e-13)
@@ -529,10 +511,8 @@ def test_cuda_uhf_h2_plus_matches_pyscf_and_cpu_oracles():
     # PySCF oracle uses the exact bundled BSE STO-3G coefficients rather than
     # the historically rounded coefficients in the native smoke test.
     assert gpu.energy == pytest.approx(-0.53851134832246783, abs=2.0e-10)
-    assert gpu.forces[0, 2] == pytest.approx(-0.19038408686848268,
-                                             abs=3.0e-9)
-    assert gpu.forces[1, 2] == pytest.approx(0.19038408686848290,
-                                             abs=3.0e-9)
+    assert gpu.forces[0, 2] == pytest.approx(-0.19038408686848268, abs=3.0e-9)
+    assert gpu.forces[1, 2] == pytest.approx(0.19038408686848290, abs=3.0e-9)
     assert gpu.energy == pytest.approx(cpu.energy, abs=2.0e-10)
     assert np.allclose(gpu.forces, cpu.forces, atol=3.0e-9)
 
@@ -543,9 +523,7 @@ def test_cuda_uhf_closed_shell_limit_matches_rhf():
     atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
     try:
         rhf = Calculator(method="rhf", device="cuda").singlepoint(atoms)
-        uhf = Calculator(method="uhf", device="cuda").singlepoint(
-            atoms, multiplicity=1
-        )
+        uhf = Calculator(method="uhf", device="cuda").singlepoint(atoms, multiplicity=1)
     except RuntimeError as error:
         pytest.skip(f"CUDA device unavailable: {error}")
 
@@ -569,17 +547,15 @@ def test_cuda_uhf_direct_quartet_closed_shell_matches_rhf():
             Shell(atom_index, 2, (Primitive(0.8, 1.0),)),
         )
     )
-    options = dict(
-        basis=basis,
-        device="cuda",
-        energy_tolerance=1.0e-12,
-        density_tolerance=1.0e-10,
-    )
+    options = {
+        "basis": basis,
+        "device": "cuda",
+        "energy_tolerance": 1.0e-12,
+        "density_tolerance": 1.0e-10,
+    }
     try:
         rhf = Calculator(method="rhf", **options).singlepoint(atoms)
-        uhf = Calculator(method="uhf", **options).singlepoint(
-            atoms, multiplicity=1
-        )
+        uhf = Calculator(method="uhf", **options).singlepoint(atoms, multiplicity=1)
     except RuntimeError as error:
         pytest.skip(f"CUDA device unavailable: {error}")
 
@@ -606,8 +582,7 @@ def test_cuda_uhf_direct_jk_matches_pyscf_and_force_finite_difference():
 
     def coordinates(distance: float) -> np.ndarray:
         return np.array(
-            [[0.0, 0.0, -0.5 * distance],
-             [0.0, 0.0, 0.5 * distance]],
+            [[0.0, 0.0, -0.5 * distance], [0.0, 0.0, 0.5 * distance]],
             dtype=np.float64,
         )
 
@@ -624,10 +599,8 @@ def test_cuda_uhf_direct_jk_matches_pyscf_and_force_finite_difference():
 
     assert center.executed_backend == "cuda"
     assert center.energy == pytest.approx(-2.5806263483643965, abs=8.0e-11)
-    assert center.forces[0, 2] == pytest.approx(-0.19311929542563755,
-                                                abs=5.0e-9)
-    assert center.forces[1, 2] == pytest.approx(0.19311929542563733,
-                                                abs=5.0e-9)
+    assert center.forces[0, 2] == pytest.approx(-0.19311929542563755, abs=5.0e-9)
+    assert center.forces[1, 2] == pytest.approx(0.19311929542563733, abs=5.0e-9)
     derivative = (plus.energy - minus.energy) / 2.0e-4
     assert center.forces[1, 2] == pytest.approx(-derivative, abs=3.0e-6)
     assert np.max(np.abs(center.forces.sum(axis=0))) < 5.0e-9
@@ -653,8 +626,7 @@ def test_screened_cuda_uhf_direct_force_matches_energy_finite_difference():
 
     def coordinates(distance: float) -> np.ndarray:
         return np.array(
-            [[0.0, 0.0, -0.5 * distance],
-             [0.0, 0.0, 0.5 * distance]],
+            [[0.0, 0.0, -0.5 * distance], [0.0, 0.0, 0.5 * distance]],
             dtype=np.float64,
         )
 
