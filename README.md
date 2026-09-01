@@ -13,6 +13,10 @@ benchmarks/results/ instead of expanding this file.
 <h1 align="center">VibeQC</h1>
 
 <p align="center">
+  <a href="https://codecov.io/gh/jinzhezenggroup/vibeqc"><img src="https://codecov.io/gh/jinzhezenggroup/vibeqc/graph/badge.svg" alt="Codecov"></a>
+</p>
+
+<p align="center">
   GPU-native, batched quantum chemistry with analytic forces.
 </p>
 
