@@ -124,9 +124,7 @@ class StaticAlgebraModel:
                 "arithmetic_operation_count": (
                     self.baseline_arithmetic_operation_count
                 ),
-                "materialized_value_count": (
-                    self.baseline_materialized_value_count
-                ),
+                "materialized_value_count": (self.baseline_materialized_value_count),
                 "estimated_peak_live_values": self.baseline_peak_live_values,
             },
             "post_optimization": {
@@ -136,8 +134,7 @@ class StaticAlgebraModel:
                 "estimated_peak_live_values": self.peak_live_values,
             },
             "inlined_value_count": (
-                self.baseline_materialized_value_count
-                - self.materialized_value_count
+                self.baseline_materialized_value_count - self.materialized_value_count
             ),
             "rematerialized_value_count": self.rematerialized_value_count,
             "reordered_value_count": self.reordered_value_count,
@@ -412,9 +409,7 @@ def _cached_static_algebra_model(
                     algebra_fusion,
                 ),
             ),
-            _packed_force_geometry_analysis(
-                4 if spec.angular[3] != 0 else 3
-            ),
+            _packed_force_geometry_analysis(4 if spec.angular[3] != 0 else 3),
         ]
         scope = "weighted_shell_dag"
         sampled_component_count = spec.component_count
@@ -547,9 +542,7 @@ def _cached_static_algebra_model(
         root_count=root_count,
         operation_counts=operation_counts,
         emitted_operation_counts=emitted_operation_counts,
-        baseline_arithmetic_operation_count=(
-            baseline_arithmetic_operation_count
-        ),
+        baseline_arithmetic_operation_count=(baseline_arithmetic_operation_count),
         baseline_materialized_value_count=baseline_materialized_value_count,
         baseline_peak_live_values=baseline_peak_live_values,
         arithmetic_operation_count=arithmetic_operation_count,
@@ -644,13 +637,9 @@ def supported_schedule_trials(
     """
 
     if any(order > 6 for order in spec.pair_orders):
-        raise ValueError(
-            f"{spec.name} is outside the current pair-order CUDA lowering"
-        )
+        raise ValueError(f"{spec.name} is outside the current pair-order CUDA lowering")
     if any(order > 3 for order in spec.angular):
-        raise ValueError(
-            f"{spec.name} exceeds the current s/p/d/f CUDA lowering"
-        )
+        raise ValueError(f"{spec.name} exceeds the current s/p/d/f CUDA lowering")
     selected_consumer = KernelConsumer(consumer)
     explicit_integral = integral
     if integral is None:
@@ -662,7 +651,9 @@ def supported_schedule_trials(
         integral = build_integral_ir(spec, consumers)
     else:
         if integral.spec != spec:
-            raise ValueError("trial integral spec does not match its shell specification")
+            raise ValueError(
+                "trial integral spec does not match its shell specification"
+            )
         if selected_consumer not in integral.consumers:
             raise ValueError(
                 f"{selected_consumer.value} trial requires its integral consumer"
@@ -723,12 +714,8 @@ def _isolate_schedule_symbols(
         # names disjoint as well as their C entry points and kernel symbols.
         suffix += _identifier_suffix(trial.integral_suffix)
     selected_prefix = symbol_prefix or trial.symbol_prefix
-    source = source.replace(
-        f"generated_{trial.spec.name}", selected_prefix
-    )
-    return source.replace(
-        f"Generated{class_name}", f"Generated{class_name}{suffix}"
-    )
+    source = source.replace(f"generated_{trial.spec.name}", selected_prefix)
+    return source.replace(f"Generated{class_name}", f"Generated{class_name}{suffix}")
 
 
 def emit_schedule_translation_unit(
@@ -774,12 +761,14 @@ def emit_schedule_translation_unit(
             else None
         ),
     )
-    source = source.replace("int main() {", f'extern "C" int {trial.entry_point}() {{', 1)
-    marker = r'{\"task_count\":%u'
+    source = source.replace(
+        "int main() {", f'extern "C" int {trial.entry_point}() {{', 1
+    )
+    marker = r"{\"task_count\":%u"
     replacement = (
-        rf'{{\"shell_class\":\"{trial.spec.name}\",'
-        rf'\"schedule_id\":\"{trial.schedule_id}\",'
-        rf'\"trial_key\":\"{trial.key}\",\"task_count\":%u'
+        rf"{{\"shell_class\":\"{trial.spec.name}\","
+        rf"\"schedule_id\":\"{trial.schedule_id}\","
+        rf"\"trial_key\":\"{trial.key}\",\"task_count\":%u"
     )
     if marker not in source:
         raise RuntimeError("benchmark JSON marker changed unexpectedly")
@@ -895,9 +884,7 @@ def emit_schedule_driver(
     declarations = "\n".join(
         f'extern "C" int {trial.entry_point}();' for trial in items
     )
-    calls = "\n".join(
-        f"  failures += {trial.entry_point}() != 0;" for trial in items
-    )
+    calls = "\n".join(f"  failures += {trial.entry_point}() != 0;" for trial in items)
     return rf"""#include <cuda_runtime.h>
 #include <cstdio>
 
@@ -1023,9 +1010,7 @@ def update_manifest_payload(
     # optional ``fock_schedule`` field while preserving the force schedule;
     # otherwise a batch Fock search silently retunes the force path too.
     schedule_field = (
-        "fock_schedule"
-        if selected_consumer == KernelConsumer.FOCK
-        else "schedule"
+        "fock_schedule" if selected_consumer == KernelConsumer.FOCK else "schedule"
     )
     required_consumers = (
         (KernelConsumer.FOCK, KernelConsumer.FORCE)
@@ -1142,8 +1127,7 @@ def _compile_trial(
     """
 
     stem = (
-        f"{trial.spec.name}_{trial.schedule_id}"
-        f"{trial.integral_suffix}{artifact_suffix}"
+        f"{trial.spec.name}_{trial.schedule_id}{trial.integral_suffix}{artifact_suffix}"
     )
     source = directory / f"{stem}.cu"
     obj = directory / f"{stem}.o"
@@ -1154,9 +1138,7 @@ def _compile_trial(
     )
     result = compiler.compile(source, obj)
     diagnostics = result.stdout + result.stderr
-    marker = (
-        f"{trial.symbol_prefix}_shell_class_{trial.consumer.value}_"
-    )
+    marker = f"{trial.symbol_prefix}_shell_class_{trial.consumer.value}_"
     return {
         "key": trial.key,
         "object": obj,
@@ -1377,23 +1359,14 @@ def _requested_shell_class_names(arguments: argparse.Namespace) -> tuple[str, ..
     """Combine repeated CLI names and list files into one ordered batch."""
 
     raw_names = getattr(arguments, "shell_class", None)
-    names = (
-        [raw_names]
-        if isinstance(raw_names, str)
-        else list(raw_names or ())
-    )
+    names = [raw_names] if isinstance(raw_names, str) else list(raw_names or ())
     raw_files = getattr(arguments, "shell_class_file", None)
-    files = (
-        [raw_files]
-        if isinstance(raw_files, (str, Path))
-        else list(raw_files or ())
-    )
+    files = [raw_files] if isinstance(raw_files, (str, Path)) else list(raw_files or ())
     for path in files:
         names.extend(_read_shell_class_file(Path(path)))
     if not names:
         raise ValueError(
-            "batch autotune requires at least one --shell-class or "
-            "--shell-class-file"
+            "batch autotune requires at least one --shell-class or --shell-class-file"
         )
     # Keep the expanded list available to ``main`` for the all-winners exit
     # gate, including names that came from a file.
@@ -1551,8 +1524,7 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 oracle_trial=oracle_by_trial[trial.key],
             )
             source_path = directory / (
-                f"{trial.spec.name}_{trial.schedule_id}"
-                f"{trial.integral_suffix}.cu"
+                f"{trial.spec.name}_{trial.schedule_id}{trial.integral_suffix}.cu"
             )
             source_path.write_text(source, encoding="utf-8")
 
@@ -1592,21 +1564,19 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
             )
             executable = directory / "shell_schedule_autotune"
             compile_by_key = {
-                trial.key: row
-                for trial, row in zip(trials, compile_rows, strict=True)
+                trial.key: row for trial, row in zip(trials, compile_rows, strict=True)
             }
             objects = [
-                Path(compile_by_key[trial.key]["object"])
-                for trial in runnable_trials
+                Path(compile_by_key[trial.key]["object"]) for trial in runnable_trials
             ]
             used_oracle_prefixes = {
                 _oracle_symbol_prefix(oracle_by_trial[trial.key])
                 for trial in runnable_trials
             }
             objects.extend(
-                    Path(oracle_compile_by_prefix[prefix]["object"])
-                    for prefix in sorted(used_oracle_prefixes)
-                )
+                Path(oracle_compile_by_prefix[prefix]["object"])
+                for prefix in sorted(used_oracle_prefixes)
+            )
             link_started = time.monotonic()
             link = compiler.link(driver, objects, executable)
             link_seconds = time.monotonic() - link_started
@@ -1699,8 +1669,7 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 )
             if compile_row["timed_out"]:
                 reasons.append(
-                    "NVCC compilation exceeded "
-                    f"{arguments.compile_timeout:g} seconds"
+                    f"NVCC compilation exceeded {arguments.compile_timeout:g} seconds"
                 )
             elif compile_row["returncode"] != 0:
                 reasons.append("NVCC compilation failed")
@@ -1715,9 +1684,7 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
             speedup_vs_baseline = None
             baseline_key = production_baseline_keys.get(trial.spec.name)
             baseline_runtime = (
-                runtime_rows.get(baseline_key)
-                if baseline_key is not None
-                else None
+                runtime_rows.get(baseline_key) if baseline_key is not None else None
             )
             if (
                 selected_consumer == KernelConsumer.FOCK
@@ -1730,20 +1697,14 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 # missing baseline row silently turns the independent oracle
                 # into the acceptance baseline and can promote an unsafe or
                 # slower mapping after a partial runtime failure.
-                reasons.append(
-                    "production baseline did not produce a runtime result"
-                )
+                reasons.append("production baseline did not produce a runtime result")
             if run_returncode == 5:
                 reasons.append("compile and runtime CUDA targets differ")
             if runtime is None:
                 reasons.append("schedule did not produce a runtime result")
             else:
-                maximum_value = float(
-                    runtime[f"maximum_{trial.consumer.value}"]
-                )
-                maximum_error = float(
-                    runtime[f"maximum_{trial.consumer.value}_error"]
-                )
+                maximum_value = float(runtime[f"maximum_{trial.consumer.value}"])
+                maximum_error = float(runtime[f"maximum_{trial.consumer.value}_error"])
                 tolerance = arguments.absolute_tolerance + (
                     arguments.relative_tolerance * maximum_value
                 )
@@ -1757,15 +1718,11 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                     not is_production_baseline
                     and oracle_speedup < arguments.minimum_speedup
                 ):
-                    reasons.append(
-                        f"speedup is below {arguments.minimum_speedup:.3f}x"
-                    )
+                    reasons.append(f"speedup is below {arguments.minimum_speedup:.3f}x")
                 if baseline_runtime is not None:
                     baseline_ms = float(baseline_runtime["fused_ms"])
                     if float(runtime["fused_ms"]) > 0.0:
-                        speedup_vs_baseline = baseline_ms / float(
-                            runtime["fused_ms"]
-                        )
+                        speedup_vs_baseline = baseline_ms / float(runtime["fused_ms"])
                     if (
                         not is_production_baseline
                         and speedup_vs_baseline < arguments.minimum_speedup
@@ -1775,9 +1732,7 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                             f"{arguments.minimum_speedup:.3f}x"
                         )
                 else:
-                    speedup_vs_baseline = (
-                        1.0 if is_production_baseline else None
-                    )
+                    speedup_vs_baseline = 1.0 if is_production_baseline else None
             accepted = not reasons
             row = {
                 "shell_class": trial.spec.name,
@@ -1824,6 +1779,7 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
             ):
                 trial, runtime, candidate = item
                 elapsed_ms = float(runtime["fused_ms"])
+
                 def metric_or_inf(name: str) -> float:
                     value = candidate.get(name)
                     if (
@@ -1884,8 +1840,7 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 production_max_shared_bytes = arguments.max_shared_bytes
                 if (
                     selected_consumer == KernelConsumer.FOCK
-                    and production_baselines.get(trial.spec.name)
-                    == trial.schedule
+                    and production_baselines.get(trial.spec.name) == trial.schedule
                 ):
                     maximum_registers = max(
                         maximum_registers,
@@ -1965,9 +1920,7 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
 
         requested_set = {spec.name for spec in specifications}
         missing_winners = sorted(requested_set - set(winners))
-        require_all_winners = bool(
-            getattr(arguments, "require_all_winners", False)
-        )
+        require_all_winners = bool(getattr(arguments, "require_all_winners", False))
         manifest_written = False
         manifest_write_skipped = False
         if arguments.manifest_output is not None:
@@ -2038,9 +1991,7 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
                 "require_all_winners": require_all_winners,
             },
             "search": {
-                "schedule_kinds": [
-                    kind.value for kind in selected_schedule_kinds
-                ],
+                "schedule_kinds": [kind.value for kind in selected_schedule_kinds],
                 "trial_count": len(trials),
             },
             "requested_shell_classes": [spec.name for spec in specifications],
@@ -2078,9 +2029,7 @@ def main() -> None:
     parser.add_argument(
         "--nvcc",
         type=Path,
-        default=Path(
-            os.environ.get("VIBEQC_NVCC", shutil.which("nvcc") or "nvcc")
-        ),
+        default=Path(os.environ.get("VIBEQC_NVCC", shutil.which("nvcc") or "nvcc")),
     )
     parser.add_argument("--architecture", default="sm_120")
     parser.add_argument("--srun", default="srun")

@@ -431,8 +431,7 @@ def _emit_rys_component_lane_fock_consumer_cuda(
     ket_extent = sum(spec.angular[2:]) + 2
     task_qualifier = "__noinline__" if spec.angular[1] == 2 else "__forceinline__"
     kernel_qualifier = (
-        "__launch_bounds__(kGeneratedDpppFockBlockThreads, "
-        f"{minimum_blocks_per_sm})"
+        f"__launch_bounds__(kGeneratedDpppFockBlockThreads, {minimum_blocks_per_sm})"
     )
 
     def axis_count(center: int, axis: int) -> str:
@@ -782,7 +781,10 @@ def _emit_shell_class_fock_cuda(
     coulomb_state_count = (
         (maximum_order + 1) * (maximum_order + 2) * (maximum_order + 3) // 6
     )
-    if plan.schedule.kind == ScheduleKind.COMPONENT_LANES and not honor_schedule_block_threads:
+    if (
+        plan.schedule.kind == ScheduleKind.COMPONENT_LANES
+        and not honor_schedule_block_threads
+    ):
         # The implicit component-lane fallback uses the smallest block that
         # covers all component and Coulomb states.  Preserve this established
         # code shape for callers that did not provide a separate Fock policy.
@@ -1597,9 +1599,7 @@ __device__ __forceinline__ void generated_dppp_make_mixed_primitive_geometry(
         "        const double angular_coefficient =",
         "        const float angular_coefficient =",
     )
-    source = source.replace(
-        "        : 0.0;\n", "        : 0.0F;\n"
-    )
+    source = source.replace("        : 0.0;\n", "        : 0.0F;\n")
     source = source.replace(
         "if (angular_coefficient == 0.0) continue;",
         "if (angular_coefficient == 0.0F) continue;",
@@ -1922,9 +1922,7 @@ __device__ __forceinline__ void generated_dppp_make_packed_force_geometry(
             variable_code[f"{prefix}_{axis}"] = (
                 f"geometry.pair_shifts[{center}][{axis_index}]"
             )
-        for center_index, center in enumerate(
-            ("first", "second", "third", "fourth")
-        ):
+        for center_index, center in enumerate(("first", "second", "third", "fourth")):
             if center_index >= decay_gradient_rows:
                 continue
             variable_code[f"decay_{center}_{axis}"] = (
@@ -1998,9 +1996,7 @@ def _emit_packed_force_consumer_cuda(
             "packed force lowering currently requires three independent and "
             "one recovered derivative center"
         )
-    independent_center_table = ", ".join(
-        f"{center}U" for center in independent_centers
-    )
+    independent_center_table = ", ".join(f"{center}U" for center in independent_centers)
     independent_atomic_code = f"""  constexpr unsigned derivative_centers[3] = {{
       {independent_center_table}}};
 #pragma unroll
@@ -2354,9 +2350,7 @@ def _emit_scalar_thread_force_consumer_cuda(
             variable_code[f"{prefix}_{axis}"] = (
                 f"storage.primitive.pair_shifts[{center}][{axis_index}]"
             )
-        for center_index, center in enumerate(
-            ("first", "second", "third", "fourth")
-        ):
+        for center_index, center in enumerate(("first", "second", "third", "fourth")):
             if center_index >= decay_gradient_rows:
                 continue
             variable_code[f"decay_{center}_{axis}"] = (
@@ -3099,7 +3093,9 @@ def _emit_rys_component_lane_force_consumer_cuda(
     )
     axis_fourth_field = "  double fourth;\n" if needs_fourth_derivative else ""
     axis_extra_parameter = ", double delta2" if needs_fourth_derivative else ""
-    axis_delta_call = ",\n              primitive.delta2" if needs_fourth_derivative else ""
+    axis_delta_call = (
+        ",\n              primitive.delta2" if needs_fourth_derivative else ""
+    )
     axis_fourth_code = (
         f"""  const double raised_fourth = generated_dppp_{symbol_tag}_state(
       trr, a, b, c, d + 1U, ab, cd);
@@ -4171,9 +4167,7 @@ void generated_dppp_shell_class_force_uhf_persistent_kernel(
         # accepted DPPP Rys4 source or its resource profile.
         replacement = f"Rys{program.nroots}"
         symbol_replacement = f"rys{program.nroots}"
-        return source.replace("Rys4", replacement).replace(
-            "rys4", symbol_replacement
-        )
+        return source.replace("Rys4", replacement).replace("rys4", symbol_replacement)
     return source
 
 
@@ -4321,13 +4315,10 @@ def _emit_ppps_resident_bra_rys3_force_consumer_cuda(
   }}"""
             )
     force_declarations = "\n".join(
-        f"  double force_{slot} = 0.0;"
-        for slot in range(3 * len(independent_centers))
+        f"  double force_{slot} = 0.0;" for slot in range(3 * len(independent_centers))
     )
     bra_force_slots = tuple(
-        slot
-        for slot, center in enumerate(independent_centers)
-        if center < 2
+        slot for slot, center in enumerate(independent_centers) if center < 2
     )
     bra_force_reductions = "\n".join(
         f"    force_{slot * 3 + coordinate} += "
@@ -5501,9 +5492,7 @@ def emit_shell_class_fused_cuda(
             "generic fused force lowering currently requires three independent "
             "and one recovered derivative center"
         )
-    decay_gradient_rows = (
-        4 if 3 in force_integral.independent_derivative_centers else 3
-    )
+    decay_gradient_rows = 4 if 3 in force_integral.independent_derivative_centers else 3
     decay_fourth_assignment = (
         "    geometry.decay_gradients[3][axis] =\n"
         "        2.0 * second_pair.reduced_exponent *\n"
@@ -5868,9 +5857,7 @@ VIBEQC_PAIR_UNROLL
         )
     component_gradient_output = "\n".join(component_gradient_output_lines)
     force_slot_count = 3 * len(independent_centers)
-    independent_center_table = ", ".join(
-        f"{center}U" for center in independent_centers
-    )
+    independent_center_table = ", ".join(f"{center}U" for center in independent_centers)
     independent_reduction_code = f"""  if (lane < {force_slot_count}U) {{
     double value = 0.0;
 #pragma unroll
@@ -6636,9 +6623,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
                 pair_storage=plan.schedule.pair_storage,
                 unroll_pair_terms=plan.schedule.unroll_pair_terms,
                 minimum_blocks_per_sm=(
-                    2
-                    if plan.kernel.integral.recurrence in ("rys4", "rys5")
-                    else 0
+                    2 if plan.kernel.integral.recurrence in ("rys4", "rys5") else 0
                 ),
                 warp_size=plan.schedule.warp_size,
             )

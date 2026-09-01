@@ -164,9 +164,7 @@ def test_ppps_resident_benchmark_runs_when_nvcc_is_configured(tmp_path: Path):
         timeout=210,
         env=environment,
     )
-    assert production_run.returncode == 0, (
-        production_run.stdout + production_run.stderr
-    )
+    assert production_run.returncode == 0, production_run.stdout + production_run.stderr
     production = json.loads(production_run.stdout.strip().splitlines()[-1])
     assert production["maximum_force_error"] <= (
         2.0e-10 * max(1.0, production["maximum_force"])
@@ -174,7 +172,6 @@ def test_ppps_resident_benchmark_runs_when_nvcc_is_configured(tmp_path: Path):
     comparison = {
         "resident": payload,
         "component_lanes": production,
-        "speedup_vs_component_lanes": production["fused_ms"]
-        / payload["fused_ms"],
+        "speedup_vs_component_lanes": production["fused_ms"] / payload["fused_ms"],
     }
     print(json.dumps(comparison, sort_keys=True))

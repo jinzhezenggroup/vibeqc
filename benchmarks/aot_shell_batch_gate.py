@@ -28,9 +28,7 @@ import numpy as np
 
 _SHELL_ENVIRONMENT = "VIBEQC_AOT_SHELL_CLASSES"
 _FOCK_SHELL_ENVIRONMENT = "VIBEQC_AOT_FOCK_SHELL_CLASSES"
-_RESERVED_ENVIRONMENTS = frozenset(
-    {_SHELL_ENVIRONMENT, _FOCK_SHELL_ENVIRONMENT}
-)
+_RESERVED_ENVIRONMENTS = frozenset({_SHELL_ENVIRONMENT, _FOCK_SHELL_ENVIRONMENT})
 BASELINE = "baseline"
 CANDIDATE = "candidate"
 
@@ -45,14 +43,10 @@ def _class_list(value: str) -> tuple[str, ...]:
     """
 
     if not isinstance(value, str) or not value.strip():
-        raise argparse.ArgumentTypeError(
-            "shell classes must be non-empty and unique"
-        )
+        raise argparse.ArgumentTypeError("shell classes must be non-empty and unique")
     fields = tuple(field.strip() for field in value.split(","))
     if any(not field for field in fields) or len(set(fields)) != len(fields):
-        raise argparse.ArgumentTypeError(
-            "shell classes must be non-empty and unique"
-        )
+        raise argparse.ArgumentTypeError("shell classes must be non-empty and unique")
     return fields
 
 
@@ -85,9 +79,7 @@ def _parse_environment_overrides(
     overrides: dict[str, str] = {}
     for raw_value in values or ():
         if not isinstance(raw_value, str) or "=" not in raw_value:
-            raise ValueError(
-                "environment overrides must use NAME=VALUE syntax"
-            )
+            raise ValueError("environment overrides must use NAME=VALUE syntax")
         name, value = raw_value.split("=", 1)
         if not name:
             raise ValueError("environment override names must be non-empty")
@@ -117,9 +109,7 @@ def _validated_environment_overrides(
     validated: dict[str, str] = {}
     for name, value in overrides.items():
         if not isinstance(name, str) or not isinstance(value, str):
-            raise TypeError(
-                "environment override names and values must be strings"
-            )
+            raise TypeError("environment override names and values must be strings")
         if not name:
             raise ValueError("environment override names must be non-empty")
         if "=" in name:
@@ -148,14 +138,10 @@ def _argument_environment_overrides(
     if hasattr(arguments, attribute):
         value = getattr(arguments, attribute)
         return {} if value is None else dict(value)
-    return _parse_environment_overrides(
-        getattr(arguments, f"{side}_env", ())
-    )
+    return _parse_environment_overrides(getattr(arguments, f"{side}_env", ()))
 
 
-def interleaved_selection_order(
-    repeats: int, style: str = "abba"
-) -> tuple[str, ...]:
+def interleaved_selection_order(repeats: int, style: str = "abba") -> tuple[str, ...]:
     """Return exactly ``repeats`` baseline and candidate labels.
 
     ``abba`` uses balanced four-sample blocks and is the default because it
@@ -357,12 +343,8 @@ def pairwise_accuracy(
     for repeat, (baseline, candidate) in enumerate(
         zip(baseline_samples, candidate_samples, strict=True)
     ):
-        baseline_energies = np.asarray(
-            baseline["energies_hartree"], dtype=np.float64
-        )
-        candidate_energies = np.asarray(
-            candidate["energies_hartree"], dtype=np.float64
-        )
+        baseline_energies = np.asarray(baseline["energies_hartree"], dtype=np.float64)
+        candidate_energies = np.asarray(candidate["energies_hartree"], dtype=np.float64)
         baseline_forces = baseline["forces_hartree_per_bohr"]
         candidate_forces = candidate["forces_hartree_per_bohr"]
         if any(force is None for force in (*baseline_forces, *candidate_forces)):
@@ -474,9 +456,7 @@ def _alternating_replays(
                 environment_overrides=environment_overrides,
             )
         )
-    baseline_samples = [
-        sample for sample in samples if sample["selection"] == BASELINE
-    ]
+    baseline_samples = [sample for sample in samples if sample["selection"] == BASELINE]
     candidate_samples = [
         sample for sample in samples if sample["selection"] == CANDIDATE
     ]
@@ -492,9 +472,7 @@ def _alternating_replays(
         "baseline_samples": baseline_samples,
         "candidate_samples": candidate_samples,
         "iteration_branches": {
-            "baseline": [
-                list(iteration_branch(sample)) for sample in baseline_samples
-            ],
+            "baseline": [list(iteration_branch(sample)) for sample in baseline_samples],
             "candidate": [
                 list(iteration_branch(sample)) for sample in candidate_samples
             ],
@@ -518,12 +496,8 @@ def _gate_measurement(
     """Attach explicit accuracy, convergence, and performance gate fields."""
 
     pairs = measurement["pairwise_accuracy"]
-    maximum_energy = max(
-        pair["maximum_energy_error_hartree"] for pair in pairs
-    )
-    maximum_force = max(
-        pair["maximum_force_error_hartree_per_bohr"] for pair in pairs
-    )
+    maximum_energy = max(pair["maximum_energy_error_hartree"] for pair in pairs)
+    maximum_force = max(pair["maximum_force_error_hartree_per_bohr"] for pair in pairs)
     baseline_converged = all(
         item["converged"]
         for sample in measurement["baseline_samples"]
@@ -534,9 +508,7 @@ def _gate_measurement(
         for sample in measurement["candidate_samples"]
         for item in sample["convergence"]
     )
-    iteration_branches_match = all(
-        pair["iteration_branches_match"] for pair in pairs
-    )
+    iteration_branches_match = all(pair["iteration_branches_match"] for pair in pairs)
     speedup = measurement["timing_summary"]["speedup"]
     failures = []
     if not baseline_converged:
@@ -573,22 +545,20 @@ def _gate_measurement(
     measurement["speedup"] = speedup
     measurement["maximum_energy_error_hartree"] = maximum_energy
     measurement["maximum_force_error_hartree_per_bohr"] = maximum_force
-    measurement["baseline_seconds"] = measurement["timing_summary"][
-        "baseline"
-    ]["raw_seconds"]
-    measurement["candidate_seconds"] = measurement["timing_summary"][
-        "candidate"
-    ]["raw_seconds"]
-    measurement["baseline_median_seconds"] = measurement["timing_summary"][
-        "baseline"
-    ]["median_seconds"]
+    measurement["baseline_seconds"] = measurement["timing_summary"]["baseline"][
+        "raw_seconds"
+    ]
+    measurement["candidate_seconds"] = measurement["timing_summary"]["candidate"][
+        "raw_seconds"
+    ]
+    measurement["baseline_median_seconds"] = measurement["timing_summary"]["baseline"][
+        "median_seconds"
+    ]
     measurement["candidate_median_seconds"] = measurement["timing_summary"][
         "candidate"
     ]["median_seconds"]
     measurement["iterations"] = measurement["iteration_branches"]["candidate"][-1]
-    measurement["classes"] = measurement["candidate_samples"][-1][
-        "shell_classes"
-    ]
+    measurement["classes"] = measurement["candidate_samples"][-1]["shell_classes"]
     measurement["passed"] = not failures
     measurement["failures"] = failures
     return measurement
@@ -617,9 +587,7 @@ def _cold_baseline_and_freeze(
         "seconds": float(seconds),
         "shell_classes": list(baseline_classes),
         "fock_classes": (
-            None
-            if baseline_fock_classes is None
-            else list(baseline_fock_classes)
+            None if baseline_fock_classes is None else list(baseline_fock_classes)
         ),
         "environment_overrides": dict(baseline_environment_overrides or {}),
         "warm_start_updates_after_run": False,
@@ -794,9 +762,7 @@ def _selection_payload(
     return {
         "shell_classes": list(shell_classes),
         "fock_classes": None if fock_classes is None else list(fock_classes),
-        "fock_environment": (
-            "default-all" if fock_classes is None else "explicit"
-        ),
+        "fock_environment": ("default-all" if fock_classes is None else "explicit"),
         "environment_overrides": dict(environment_overrides or {}),
     }
 
@@ -857,9 +823,7 @@ def _parser() -> argparse.ArgumentParser:
             "fixed-dm0 interleaved A/B gate for VibeQC generated shell classes"
         )
     )
-    parser.add_argument(
-        "--case", default="water-tetramer-def2-svp-spherical"
-    )
+    parser.add_argument("--case", default="water-tetramer-def2-svp-spherical")
     parser.add_argument("--batch", action="append", type=int, default=[])
     parser.add_argument(
         "--baseline-classes",
@@ -1065,9 +1029,7 @@ def main() -> None:
                 "selection": "capacity_prime",
                 "shell_classes": list(union_classes),
                 "fock_classes": (
-                    None
-                    if union_fock_classes is None
-                    else list(union_fock_classes)
+                    None if union_fock_classes is None else list(union_fock_classes)
                 ),
                 "environment_overrides": dict(
                     arguments.candidate_environment_overrides

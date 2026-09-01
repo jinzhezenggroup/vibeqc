@@ -1,13 +1,13 @@
 #ifndef VIBEQC_SCF_MEAN_FIELD_HPP
 #define VIBEQC_SCF_MEAN_FIELD_HPP
 
+#include <optional>
+#include <vector>
+
 #include "core/types.hpp"
 #include "scf/cuda_batch.hpp"
 #include "scf/density_fitting.hpp"
 #include "scf/types.hpp"
-
-#include <optional>
-#include <vector>
 
 namespace vibeqc::scf {
 
@@ -15,13 +15,11 @@ struct CudaDensityFittingMetricDiagnostic;
 struct CudaDensityFittingJkPlan;
 
 /** Run closed-shell RHF and assemble its variational analytic gradient. */
-ScfResult run_rhf(const core::System& system,
-                  const ScfOptions& options,
+ScfResult run_rhf(const core::System& system, const ScfOptions& options,
                   const std::vector<double>* initial_density = nullptr);
 
 /** Run spin-unrestricted HF and assemble its variational analytic gradient. */
-ScfResult run_uhf(const core::System& system,
-                  const ScfOptions& options,
+ScfResult run_uhf(const core::System& system, const ScfOptions& options,
                   const std::vector<double>* initial_density = nullptr);
 
 /**
@@ -30,18 +28,14 @@ ScfResult run_uhf(const core::System& system,
  * as `system`; callers preparing a moving batch should update those positions
  * before invoking the function.
  */
-ScfResult run_rhf_density_fitting(
-    const core::System& system,
-    const core::System& auxiliary_system,
-    const ScfOptions& options,
-    const std::vector<double>* initial_density = nullptr);
+ScfResult run_rhf_density_fitting(const core::System& system, const core::System& auxiliary_system,
+                                  const ScfOptions& options,
+                                  const std::vector<double>* initial_density = nullptr);
 
 /** UHF counterpart of `run_rhf_density_fitting`. */
-ScfResult run_uhf_density_fitting(
-    const core::System& system,
-    const core::System& auxiliary_system,
-    const ScfOptions& options,
-    const std::vector<double>* initial_density = nullptr);
+ScfResult run_uhf_density_fitting(const core::System& system, const core::System& auxiliary_system,
+                                  const ScfOptions& options,
+                                  const std::vector<double>* initial_density = nullptr);
 
 /**
  * Execute DF SCF through the CUDA contraction plan. Two-/three-center DF
@@ -51,20 +45,16 @@ ScfResult run_uhf_density_fitting(
  * contractions, and the raw two-electron force response stay on the selected
  * CUDA device when the provider is available.
  */
-ScfResult run_rhf_density_fitting_cuda(
-    const core::System& system,
-    const core::System& auxiliary_system,
-    const ScfOptions& options,
-    int device_id,
-    const std::vector<double>* initial_density = nullptr);
+ScfResult run_rhf_density_fitting_cuda(const core::System& system,
+                                       const core::System& auxiliary_system,
+                                       const ScfOptions& options, int device_id,
+                                       const std::vector<double>* initial_density = nullptr);
 
 /** CUDA DF counterpart for UHF. */
-ScfResult run_uhf_density_fitting_cuda(
-    const core::System& system,
-    const core::System& auxiliary_system,
-    const ScfOptions& options,
-    int device_id,
-    const std::vector<double>* initial_density = nullptr);
+ScfResult run_uhf_density_fitting_cuda(const core::System& system,
+                                       const core::System& auxiliary_system,
+                                       const ScfOptions& options, int device_id,
+                                       const std::vector<double>* initial_density = nullptr);
 
 /**
  * Execute a homogeneous fleet bucket through one batched CUDA DF J/K plan.
@@ -76,12 +66,9 @@ ScfResult run_uhf_density_fitting_cuda(
  * the shared batched contractions can still be evaluated.
  */
 std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket(
-    const std::vector<core::System>& systems,
-    const std::optional<core::System>& auxiliary_template,
-    const ScfOptions& options,
-    const std::vector<const std::vector<double>*>& initial_densities,
-    int device_id,
-    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics = nullptr);
+    const std::vector<core::System>& systems, const std::optional<core::System>& auxiliary_template,
+    const ScfOptions& options, const std::vector<const std::vector<double>*>& initial_densities,
+    int device_id, std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics = nullptr);
 
 /**
  * Cached counterpart used by a persistent FleetPlan. The pointed-to plan is
@@ -89,47 +76,32 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket(
  * when the caller invalidates its geometry cache.
  */
 std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_cached(
-    CudaDensityFittingJkPlan** plan,
-    const std::vector<core::System>& systems,
-    const std::optional<core::System>& auxiliary_template,
-    const ScfOptions& options,
-    const std::vector<const std::vector<double>*>& initial_densities,
-    int device_id,
+    CudaDensityFittingJkPlan** plan, const std::vector<core::System>& systems,
+    const std::optional<core::System>& auxiliary_template, const ScfOptions& options,
+    const std::vector<const std::vector<double>*>& initial_densities, int device_id,
     std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics = nullptr,
-    std::vector<std::optional<DensityFittingScfData>>* prepared_cache =
-        nullptr);
+    std::vector<std::optional<DensityFittingScfData>>* prepared_cache = nullptr);
 
 /** UHF counterpart of the batched CUDA DF bucket executor. */
 std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket(
-    const std::vector<core::System>& systems,
-    const std::optional<core::System>& auxiliary_template,
-    const ScfOptions& options,
-    const std::vector<const std::vector<double>*>& initial_densities,
-    int device_id,
-    std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics = nullptr);
+    const std::vector<core::System>& systems, const std::optional<core::System>& auxiliary_template,
+    const ScfOptions& options, const std::vector<const std::vector<double>*>& initial_densities,
+    int device_id, std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics = nullptr);
 
 /** Cached UHF counterpart for persistent FleetPlan replay. */
 std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_cached(
-    CudaDensityFittingJkPlan** plan,
-    const std::vector<core::System>& systems,
-    const std::optional<core::System>& auxiliary_template,
-    const ScfOptions& options,
-    const std::vector<const std::vector<double>*>& initial_densities,
-    int device_id,
+    CudaDensityFittingJkPlan** plan, const std::vector<core::System>& systems,
+    const std::optional<core::System>& auxiliary_template, const ScfOptions& options,
+    const std::vector<const std::vector<double>*>& initial_densities, int device_id,
     std::vector<CudaDensityFittingMetricDiagnostic>* diagnostics = nullptr,
-    std::vector<std::optional<DensityFittingScfData>>* prepared_cache =
-        nullptr);
+    std::vector<std::optional<DensityFittingScfData>>* prepared_cache = nullptr);
 
 /** Execute RHF through the native CUDA scientific path. */
-ScfResult run_rhf_cuda(const core::System& system,
-                       const ScfOptions& options,
-                       int device_id,
+ScfResult run_rhf_cuda(const core::System& system, const ScfOptions& options, int device_id,
                        const std::vector<double>* initial_density = nullptr);
 
 /** Execute UHF through the native CUDA scientific path. */
-ScfResult run_uhf_cuda(const core::System& system,
-                       const ScfOptions& options,
-                       int device_id,
+ScfResult run_uhf_cuda(const core::System& system, const ScfOptions& options, int device_id,
                        const std::vector<double>* initial_density = nullptr);
 
 }  // namespace vibeqc::scf

@@ -53,9 +53,7 @@ def main() -> None:
             "complete cooperative shell-class force kernel"
         ),
     )
-    parser.add_argument(
-        "--format", choices=("cuda", "stats"), default="cuda"
-    )
+    parser.add_argument("--format", choices=("cuda", "stats"), default="cuda")
     parser.add_argument(
         "--output",
         type=Path,
@@ -140,9 +138,7 @@ def main() -> None:
                 profile_by_architecture[architecture] = profile
             if arguments.profile != "auto":
                 for architecture in arguments.target_architecture:
-                    profile_by_architecture.setdefault(
-                        architecture, arguments.profile
-                    )
+                    profile_by_architecture.setdefault(architecture, arguments.profile)
             write_production_bundles(
                 arguments.production_manifest,
                 arguments.output_directory,
@@ -222,35 +218,34 @@ def main() -> None:
             specification = FUSED_SPECS[arguments.shell_class]
             output = emit_shell_class_fused_cuda(
                 specification,
-                build_fused_shell_plan(
-                    specification, consumers=consumers
-                ),
+                build_fused_shell_plan(specification, consumers=consumers),
             )
     else:
         if arguments.lowering == "fused":
             specification = FUSED_SPECS[arguments.shell_class]
-            plan = build_fused_shell_plan(
-                specification, consumers=consumers
-            )
+            plan = build_fused_shell_plan(specification, consumers=consumers)
             source = emit_shell_class_fused_cuda(specification, plan)
             block_threads = plan.block_threads
-            output = json.dumps(
-                {
-                    **component_metadata,
-                    "block_threads": block_threads,
-                    "component_count": len(plan.components),
-                    "coulomb_state_count": len(plan.coulomb_states),
-                    "consumers": sorted(
-                        item.value for item in plan.kernel.integral.consumers
-                    ),
-                    "shell_class": arguments.shell_class,
-                    "source_bytes": len(source.encode("utf-8")),
-                    "source_lines": source.count("\n"),
-                    "warp_count": plan.warp_count,
-                },
-                indent=2,
-                sort_keys=True,
-            ) + "\n"
+            output = (
+                json.dumps(
+                    {
+                        **component_metadata,
+                        "block_threads": block_threads,
+                        "component_count": len(plan.components),
+                        "coulomb_state_count": len(plan.coulomb_states),
+                        "consumers": sorted(
+                            item.value for item in plan.kernel.integral.consumers
+                        ),
+                        "shell_class": arguments.shell_class,
+                        "source_bytes": len(source.encode("utf-8")),
+                        "source_lines": source.count("\n"),
+                        "warp_count": plan.warp_count,
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n"
+            )
             if arguments.output is None:
                 print(output, end="")
             else:
@@ -261,16 +256,19 @@ def main() -> None:
         if hasattr(kernel, "boys_argument"):
             roots.append(kernel.boys_argument)
         roots.extend(item for center in kernel.gradients for item in center)
-        output = json.dumps(
-            {
-                **component_metadata,
-                "operation_counts": kernel.graph.operation_counts(roots),
-                "reachable_nodes": len(kernel.graph.topological_order(roots)),
-                "shell_class": arguments.shell_class,
-            },
-            indent=2,
-            sort_keys=True,
-        ) + "\n"
+        output = (
+            json.dumps(
+                {
+                    **component_metadata,
+                    "operation_counts": kernel.graph.operation_counts(roots),
+                    "reachable_nodes": len(kernel.graph.topological_order(roots)),
+                    "shell_class": arguments.shell_class,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n"
+        )
     if arguments.output is None:
         print(output, end="")
     else:

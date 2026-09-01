@@ -1,18 +1,18 @@
 #ifndef VIBEQC_METHODS_METHOD_HPP
 #define VIBEQC_METHODS_METHOD_HPP
 
-#include "core/types.hpp"
-#include "scf/cuda_density_fitting.hpp"
-#include "vibeqc/vibeqc.h"
-
+#include <array>
 #include <cstddef>
 #include <cstdint>
-#include <array>
 #include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+#include "core/types.hpp"
+#include "scf/cuda_density_fitting.hpp"
+#include "vibeqc/vibeqc.h"
 
 namespace vibeqc::methods {
 
@@ -79,11 +79,9 @@ struct DirectPppsQueueProfile {
   std::array<std::uint64_t, kOrientationCount> orientation_tasks{};
   std::array<std::uint64_t, kOrientationCount> orientation_primitive_work{};
   std::array<std::uint64_t, kPrimitivePairBucketCount> bra_primitive_tasks{};
-  std::array<std::uint64_t, kPrimitivePairBucketCount>
-      bra_primitive_work{};
+  std::array<std::uint64_t, kPrimitivePairBucketCount> bra_primitive_work{};
   std::array<std::uint64_t, kPrimitivePairBucketCount> ket_primitive_tasks{};
-  std::array<std::uint64_t, kPrimitivePairBucketCount>
-      ket_primitive_work{};
+  std::array<std::uint64_t, kPrimitivePairBucketCount> ket_primitive_work{};
 };
 
 /** Method-neutral record of one CUDA bucket's setup-time eigensolver choice. */
@@ -160,10 +158,9 @@ class PreparedBatch {
   virtual void set_warm_start_updates(bool enabled) = 0;
   [[nodiscard]] virtual std::optional<std::vector<DirectShellClassProfileEntry>>
   last_direct_shell_class_profile() const = 0;
-  [[nodiscard]] virtual std::optional<DirectPppsQueueProfile>
-  last_direct_ppps_queue_profile() const = 0;
-  [[nodiscard]] virtual std::vector<EigensolverDiagnostic>
-  last_eigensolver_diagnostics() const = 0;
+  [[nodiscard]] virtual std::optional<DirectPppsQueueProfile> last_direct_ppps_queue_profile()
+      const = 0;
+  [[nodiscard]] virtual std::vector<EigensolverDiagnostic> last_eigensolver_diagnostics() const = 0;
   [[nodiscard]] virtual std::vector<scf::CudaDensityFittingMetricDiagnostic>
   last_density_fitting_metric_diagnostics() const = 0;
   [[nodiscard]] virtual std::vector<InactiveEigensolverProfileEntry>
@@ -185,15 +182,13 @@ class MethodError final : public std::runtime_error {
 [[nodiscard]] const Capabilities* find_capabilities(vibeqc_method method) noexcept;
 
 std::unique_ptr<PreparedCalculation> prepare_calculation(
-    core::ContextState& context,
-    const core::System& system,
+    core::ContextState& context, const core::System& system,
     const vibeqc_method_descriptor& descriptor);
 
-std::unique_ptr<PreparedBatch> prepare_batch(
-    core::ContextState& context,
-    std::vector<core::System> systems,
-    const vibeqc_method_descriptor& descriptor,
-    vibeqc_batch_flags flags);
+std::unique_ptr<PreparedBatch> prepare_batch(core::ContextState& context,
+                                             std::vector<core::System> systems,
+                                             const vibeqc_method_descriptor& descriptor,
+                                             vibeqc_batch_flags flags);
 
 }  // namespace vibeqc::methods
 

@@ -1,12 +1,12 @@
 #ifndef VIBEQC_MOLECULE_BASIS_HPP
 #define VIBEQC_MOLECULE_BASIS_HPP
 
-#include "core/types.hpp"
-
 #include <array>
 #include <cstddef>
 #include <string>
 #include <vector>
+
+#include "core/types.hpp"
 
 namespace vibeqc::molecule {
 
@@ -39,14 +39,13 @@ inline constexpr std::size_t kMaximumAoExpansionTerms = 3;
  * returns real solid harmonics in the PySCF/libcint ordering used by the
  * independent numerical oracle.
  */
-[[nodiscard]] std::vector<AoExpansion> ao_expansions(
-    unsigned l, vibeqc_basis_representation representation);
+[[nodiscard]] std::vector<AoExpansion> ao_expansions(unsigned l,
+                                                     vibeqc_basis_representation representation);
 
 /** Total Cartesian AO count represented by a system's shells. */
 [[nodiscard]] std::size_t ao_count(const core::System& system) noexcept;
 
-[[nodiscard]] std::size_t cartesian_ao_count(
-    const core::System& system) noexcept;
+[[nodiscard]] std::size_t cartesian_ao_count(const core::System& system) noexcept;
 
 /**
  * Cartesian normalization factor not contained in a shell's radial factor.

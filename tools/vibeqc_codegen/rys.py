@@ -1043,14 +1043,12 @@ def evaluate_rys_component(
         p * variables["first_product_scale"],
         p * variables["second_product_scale"],
         q * variables["third_product_scale"],
-        q * variables.get(
-            "fourth_product_scale", 1.0 - variables["third_product_scale"]
-        ),
+        q
+        * variables.get("fourth_product_scale", 1.0 - variables["third_product_scale"]),
     )
     value = 0.0
     gradients = {
-        center: [0.0, 0.0, 0.0]
-        for center in program.independent_derivative_centers
+        center: [0.0, 0.0, 0.0] for center in program.independent_derivative_centers
     }
     for root, weight in zip(roots, weights, strict=True):
         base_states = tuple(
@@ -1098,9 +1096,7 @@ def evaluate_rys_component(
             )
             for axis in range(3)
         )
-    requested_centers = set(
-        program.derivative.requested_centers(program.operator)
-    )
+    requested_centers = set(program.derivative.requested_centers(program.operator))
     all_gradients = tuple(
         gradients_by_center.get(center, (0.0, 0.0, 0.0))
         if center in requested_centers

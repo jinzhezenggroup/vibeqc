@@ -24,9 +24,8 @@ struct CudaDensityFittingMetricDiagnostic;
  */
 vibeqc_status create_cuda_density_fitting_integral_source(
     int device_id, const std::vector<core::System>& orbital_systems,
-    const std::vector<core::System>& auxiliary_systems,
-    CudaDensityFittingIntegralSource** source, std::vector<double>& metrics,
-    std::size_t& nbf, std::size_t& naux, std::string& detail);
+    const std::vector<core::System>& auxiliary_systems, CudaDensityFittingIntegralSource** source,
+    std::vector<double>& metrics, std::size_t& nbf, std::size_t& naux, std::string& detail);
 
 void destroy_cuda_density_fitting_integral_source(
     CudaDensityFittingIntegralSource* source) noexcept;
@@ -48,41 +47,36 @@ std::size_t cuda_density_fitting_integral_source_coordinate_count(
     const CudaDensityFittingIntegralSource* source) noexcept;
 
 /** Validate the fixed dimensions/device associated with a source handle. */
-bool cuda_density_fitting_integral_source_matches(
-    const CudaDensityFittingIntegralSource* source, int device_id,
-    std::size_t batch_size, std::size_t nbf, std::size_t naux) noexcept;
+bool cuda_density_fitting_integral_source_matches(const CudaDensityFittingIntegralSource* source,
+                                                  int device_id, std::size_t batch_size,
+                                                  std::size_t nbf, std::size_t naux) noexcept;
 
 /** Prepare a streamed J/K plan that regenerates tiles from `source`. */
 vibeqc_status create_cuda_density_fitting_jk_plan_from_source(
-    int device_id, CudaDensityFittingIntegralSource** source,
-    std::size_t batch_size, std::size_t nbf, std::size_t naux,
-    const std::vector<double>& metrics, double relative_threshold,
-    std::size_t auxiliary_tile, std::size_t ao_pair_tile,
-    CudaDensityFittingJkPlan** plan,
-    std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
+    int device_id, CudaDensityFittingIntegralSource** source, std::size_t batch_size,
+    std::size_t nbf, std::size_t naux, const std::vector<double>& metrics,
+    double relative_threshold, std::size_t auxiliary_tile, std::size_t ao_pair_tile,
+    CudaDensityFittingJkPlan** plan, std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
     std::string& detail);
 
 /** Generate one public-basis transformed three-center tile on `stream`. */
 vibeqc_status generate_cuda_density_fitting_transformed_tile(
-    CudaDensityFittingIntegralSource* source, std::size_t system,
-    std::size_t pair_begin, std::size_t pair_count, std::size_t auxiliary_begin,
-    std::size_t auxiliary_count, std::int64_t derivative_coordinate,
-    const double* inverse_square_root, void* stream, double* output,
-    std::string& detail);
+    CudaDensityFittingIntegralSource* source, std::size_t system, std::size_t pair_begin,
+    std::size_t pair_count, std::size_t auxiliary_begin, std::size_t auxiliary_count,
+    std::int64_t derivative_coordinate, const double* inverse_square_root, void* stream,
+    double* output, std::string& detail);
 
 /** Generate one public-basis raw three-center tile on `stream`. */
 vibeqc_status generate_cuda_density_fitting_raw_tile(
-    CudaDensityFittingIntegralSource* source, std::size_t system,
-    std::size_t pair_begin, std::size_t pair_count, std::size_t auxiliary_begin,
-    std::size_t auxiliary_count, std::int64_t derivative_coordinate,
-    void* stream, double* output, std::string& detail);
+    CudaDensityFittingIntegralSource* source, std::size_t system, std::size_t pair_begin,
+    std::size_t pair_count, std::size_t auxiliary_begin, std::size_t auxiliary_count,
+    std::int64_t derivative_coordinate, void* stream, double* output, std::string& detail);
 
 /** Generate one auxiliary-metric derivative row tile on `stream`. */
 vibeqc_status generate_cuda_density_fitting_metric_derivative_tile(
-    CudaDensityFittingIntegralSource* source, std::size_t system,
-    std::size_t auxiliary_row_begin, std::size_t auxiliary_row_count,
-    std::int64_t derivative_coordinate, void* stream, double* output,
-    std::string& detail);
+    CudaDensityFittingIntegralSource* source, std::size_t system, std::size_t auxiliary_row_begin,
+    std::size_t auxiliary_row_count, std::int64_t derivative_coordinate, void* stream,
+    double* output, std::string& detail);
 
 /**
  * Stream a source-backed RHF two-electron force response without materializing
@@ -90,20 +84,17 @@ vibeqc_status generate_cuda_density_fitting_metric_derivative_tile(
  * local to the selected item; only the compact derivative vector is returned.
  */
 vibeqc_status execute_cuda_density_fitting_source_rhf_force_response(
-    CudaDensityFittingJkPlan* plan, std::size_t system,
-    const std::vector<double>& density, std::size_t coordinate_count,
-    std::vector<double>& derivative, std::string& detail);
+    CudaDensityFittingJkPlan* plan, std::size_t system, const std::vector<double>& density,
+    std::size_t coordinate_count, std::vector<double>& derivative, std::string& detail);
 
 /** UHF counterpart of the bounded source-backed force response. */
 vibeqc_status execute_cuda_density_fitting_source_uhf_force_response(
-    CudaDensityFittingJkPlan* plan, std::size_t system,
-    const std::vector<double>& alpha_density,
+    CudaDensityFittingJkPlan* plan, std::size_t system, const std::vector<double>& alpha_density,
     const std::vector<double>& beta_density, std::size_t coordinate_count,
     std::vector<double>& derivative, std::string& detail);
 
 /** Return the fixed batch cardinality owned by a prepared plan. */
-std::size_t cuda_density_fitting_jk_plan_batch_size(
-    const CudaDensityFittingJkPlan* plan) noexcept;
+std::size_t cuda_density_fitting_jk_plan_batch_size(const CudaDensityFittingJkPlan* plan) noexcept;
 
 /** Scalar state returned by the device-resident DF SCF loop. */
 struct CudaDensityFittingDeviceScfItem {
@@ -158,10 +149,8 @@ struct CudaDensityFittingMetricDiagnostic {
 vibeqc_status create_cuda_density_fitting_jk_plan(
     int device_id, std::size_t batch_size, std::size_t nbf, std::size_t naux,
     const std::vector<double>& metrics, const std::vector<double>& three_center,
-    double relative_threshold, std::size_t auxiliary_tile,
-    CudaDensityFittingJkPlan** plan,
-    std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
-    std::string& detail);
+    double relative_threshold, std::size_t auxiliary_tile, CudaDensityFittingJkPlan** plan,
+    std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics, std::string& detail);
 
 /**
  * Planner-aware variant that also bounds the staged AO-pair tile.  The
@@ -172,9 +161,8 @@ vibeqc_status create_cuda_density_fitting_jk_plan(
 vibeqc_status create_cuda_density_fitting_jk_plan_tiled(
     int device_id, std::size_t batch_size, std::size_t nbf, std::size_t naux,
     const std::vector<double>& metrics, const std::vector<double>& three_center,
-    double relative_threshold, std::size_t auxiliary_tile,
-    std::size_t ao_pair_tile, CudaDensityFittingJkPlan** plan,
-    std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
+    double relative_threshold, std::size_t auxiliary_tile, std::size_t ao_pair_tile,
+    CudaDensityFittingJkPlan** plan, std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
     std::string& detail);
 
 /**
@@ -183,10 +171,11 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled(
  * The closed-shell density includes double occupation. Returned matrices are
  * row-major and the caller forms the two-electron Fock term as J - 0.5 K.
  */
-vibeqc_status execute_cuda_density_fitting_rhf_jk(
-    CudaDensityFittingJkPlan* plan, const std::vector<double>& density,
-    std::vector<double>& coulomb, std::vector<double>& exchange,
-    std::string& detail);
+vibeqc_status execute_cuda_density_fitting_rhf_jk(CudaDensityFittingJkPlan* plan,
+                                                  const std::vector<double>& density,
+                                                  std::vector<double>& coulomb,
+                                                  std::vector<double>& exchange,
+                                                  std::string& detail);
 
 /**
  * Build batched UHF RI-J/K matrices on the plan's non-blocking CUDA stream.
@@ -197,8 +186,7 @@ vibeqc_status execute_cuda_density_fitting_rhf_jk(
 vibeqc_status execute_cuda_density_fitting_uhf_jk(
     CudaDensityFittingJkPlan* plan, const std::vector<double>& alpha_density,
     const std::vector<double>& beta_density, std::vector<double>& coulomb,
-    std::vector<double>& alpha_exchange, std::vector<double>& beta_exchange,
-    std::string& detail);
+    std::vector<double>& alpha_exchange, std::vector<double>& beta_exchange, std::string& detail);
 
 /**
  * Build one RHF J/K item without packing a complete batch on the host.
@@ -208,32 +196,28 @@ vibeqc_status execute_cuda_density_fitting_uhf_jk(
  * used by bucket finalization under a positive memory budget.
  */
 vibeqc_status execute_cuda_density_fitting_rhf_jk_item(
-    CudaDensityFittingJkPlan* plan, std::size_t system,
-    const std::vector<double>& density, std::vector<double>& coulomb,
-    std::vector<double>& exchange, std::string& detail);
+    CudaDensityFittingJkPlan* plan, std::size_t system, const std::vector<double>& density,
+    std::vector<double>& coulomb, std::vector<double>& exchange, std::string& detail);
 
 /** UHF counterpart of the bounded item-level J/K helper. */
 vibeqc_status execute_cuda_density_fitting_uhf_jk_item(
-    CudaDensityFittingJkPlan* plan, std::size_t system,
-    const std::vector<double>& alpha_density,
+    CudaDensityFittingJkPlan* plan, std::size_t system, const std::vector<double>& alpha_density,
     const std::vector<double>& beta_density, std::vector<double>& coulomb,
-    std::vector<double>& alpha_exchange, std::vector<double>& beta_exchange,
-    std::string& detail);
+    std::vector<double>& alpha_exchange, std::vector<double>& beta_exchange, std::string& detail);
 
 /**
  * Execute one RHF DF J/K contraction directly from device-resident density
  * matrices.  No host transfer is performed; callers own all device pointers
  * and must keep them valid until the plan stream has completed.
  */
-vibeqc_status execute_cuda_density_fitting_rhf_jk_device(
-    CudaDensityFittingJkPlan* plan, const double* density, double* coulomb,
-    double* exchange, std::string& detail);
+vibeqc_status execute_cuda_density_fitting_rhf_jk_device(CudaDensityFittingJkPlan* plan,
+                                                         const double* density, double* coulomb,
+                                                         double* exchange, std::string& detail);
 
 /** Device-pointer counterpart for unrestricted DF J/K. */
 vibeqc_status execute_cuda_density_fitting_uhf_jk_device(
-    CudaDensityFittingJkPlan* plan, const double* alpha_density,
-    const double* beta_density, double* coulomb, double* alpha_exchange,
-    double* beta_exchange, std::string& detail);
+    CudaDensityFittingJkPlan* plan, const double* alpha_density, const double* beta_density,
+    double* coulomb, double* alpha_exchange, double* beta_exchange, std::string& detail);
 
 /**
  * Evaluate the complete raw-tensor RHF DF two-electron force response on the
@@ -244,24 +228,18 @@ vibeqc_status execute_cuda_density_fitting_uhf_jk_device(
  * copied back to the host.
  */
 vibeqc_status execute_cuda_density_fitting_rhf_force_response(
-    CudaDensityFittingJkPlan* plan,
-    const std::vector<double>& raw_three_center,
-    const std::vector<double>& metric_inverse,
-    const std::vector<double>& three_center_derivative,
-    const std::vector<double>& metric_inverse_derivative,
-    std::size_t coordinate_count, const std::vector<double>& density,
-    std::vector<double>& derivative, std::string& detail);
+    CudaDensityFittingJkPlan* plan, const std::vector<double>& raw_three_center,
+    const std::vector<double>& metric_inverse, const std::vector<double>& three_center_derivative,
+    const std::vector<double>& metric_inverse_derivative, std::size_t coordinate_count,
+    const std::vector<double>& density, std::vector<double>& derivative, std::string& detail);
 
 /** Device counterpart for unrestricted spin-resolved DF force response. */
 vibeqc_status execute_cuda_density_fitting_uhf_force_response(
-    CudaDensityFittingJkPlan* plan,
-    const std::vector<double>& raw_three_center,
-    const std::vector<double>& metric_inverse,
-    const std::vector<double>& three_center_derivative,
-    const std::vector<double>& metric_inverse_derivative,
-    std::size_t coordinate_count, const std::vector<double>& alpha_density,
-    const std::vector<double>& beta_density, std::vector<double>& derivative,
-    std::string& detail);
+    CudaDensityFittingJkPlan* plan, const std::vector<double>& raw_three_center,
+    const std::vector<double>& metric_inverse, const std::vector<double>& three_center_derivative,
+    const std::vector<double>& metric_inverse_derivative, std::size_t coordinate_count,
+    const std::vector<double>& alpha_density, const std::vector<double>& beta_density,
+    std::vector<double>& derivative, std::string& detail);
 
 /**
  * Run batched RHF DF SCF with densities, Fock assembly, eigensolves, and
@@ -274,32 +252,24 @@ vibeqc_status execute_cuda_density_fitting_uhf_force_response(
  */
 vibeqc_status run_cuda_density_fitting_rhf_device_scf(
     CudaDensityFittingJkPlan* plan, const std::vector<double>& hcore,
-    const std::vector<double>& orthogonalizer,
-    const std::vector<double>& initial_density,
-    const std::vector<std::int32_t>& occupied,
-    const std::vector<double>& nuclear_repulsion, unsigned max_iterations,
-    double energy_tolerance, double density_tolerance,
-    std::vector<double>& final_density,
-    std::vector<CudaDensityFittingDeviceScfItem>& results,
+    const std::vector<double>& orthogonalizer, const std::vector<double>& initial_density,
+    const std::vector<std::int32_t>& occupied, const std::vector<double>& nuclear_repulsion,
+    unsigned max_iterations, double energy_tolerance, double density_tolerance,
+    std::vector<double>& final_density, std::vector<CudaDensityFittingDeviceScfItem>& results,
     std::string& detail);
 
 /** UHF counterpart of the device-resident DF SCF loop. */
 vibeqc_status run_cuda_density_fitting_uhf_device_scf(
     CudaDensityFittingJkPlan* plan, const std::vector<double>& hcore,
-    const std::vector<double>& orthogonalizer,
-    const std::vector<double>& initial_alpha_density,
+    const std::vector<double>& orthogonalizer, const std::vector<double>& initial_alpha_density,
     const std::vector<double>& initial_beta_density,
-    const std::vector<std::int32_t>& alpha_occupied,
-    const std::vector<std::int32_t>& beta_occupied,
-    const std::vector<double>& nuclear_repulsion, unsigned max_iterations,
-    double energy_tolerance, double density_tolerance,
-    std::vector<double>& final_alpha_density,
-    std::vector<double>& final_beta_density,
-    std::vector<CudaDensityFittingDeviceScfItem>& results,
+    const std::vector<std::int32_t>& alpha_occupied, const std::vector<std::int32_t>& beta_occupied,
+    const std::vector<double>& nuclear_repulsion, unsigned max_iterations, double energy_tolerance,
+    double density_tolerance, std::vector<double>& final_alpha_density,
+    std::vector<double>& final_beta_density, std::vector<CudaDensityFittingDeviceScfItem>& results,
     std::string& detail);
 
-void destroy_cuda_density_fitting_jk_plan(
-    CudaDensityFittingJkPlan* plan) noexcept;
+void destroy_cuda_density_fitting_jk_plan(CudaDensityFittingJkPlan* plan) noexcept;
 
 }  // namespace vibeqc::scf
 

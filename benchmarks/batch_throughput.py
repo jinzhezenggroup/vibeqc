@@ -4,9 +4,8 @@ import argparse
 import statistics
 import time
 
-from vibeqc import Calculator
-
 from _support import environment_metadata, write_result
+from vibeqc import Calculator
 
 
 def make_system(index: int):
@@ -57,7 +56,7 @@ def main() -> None:
         warm_times = []
         for _ in range(args.repeats):
             start = time.perf_counter()
-            warm = batch.execute(strict=True)
+            batch.execute(strict=True)
             warm_times.append(time.perf_counter() - start)
 
     assert all(
@@ -77,9 +76,7 @@ def main() -> None:
         payload = {
             "schema_version": 1,
             "benchmark": "batch_throughput",
-            "environment": environment_metadata(
-                distributions={"numpy": ("numpy",)}
-            ),
+            "environment": environment_metadata(distributions={"numpy": ("numpy",)}),
             "settings": {
                 "batch_size": args.batch,
                 "repeats": args.repeats,

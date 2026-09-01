@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import ctypes
+from collections.abc import Iterable, Sequence
+from contextlib import suppress
 from dataclasses import dataclass
-from typing import Iterable, Sequence
+from typing import Self
 
 import numpy as np
 
@@ -302,9 +304,7 @@ class InactiveEigensolverProfileEntry:
             "inactive_solver_count": self.inactive_solver_count,
             "inactive_fraction": self.inactive_fraction,
             "solver_elapsed_nanoseconds": self.solver_elapsed_nanoseconds,
-            "inactive_input_nonfinite_count": (
-                self.inactive_input_nonfinite_count
-            ),
+            "inactive_input_nonfinite_count": (self.inactive_input_nonfinite_count),
             "inactive_submission_nonfinite_count": (
                 self.inactive_submission_nonfinite_count
             ),
@@ -338,11 +338,15 @@ class PreparedBatch:
             raise ValueError("a batch requires at least one system")
         self._calculator = calculator
         self._library = calculator._library
-        self._systems = tuple(tuple(Atom.from_value(atom) for atom in system) for system in systems)
+        self._systems = tuple(
+            tuple(Atom.from_value(atom) for atom in system) for system in systems
+        )
         if any(not system for system in self._systems):
             raise ValueError("every batch item requires at least one atom")
         count = len(self._systems)
-        self._charges = tuple(0 for _ in range(count)) if charges is None else tuple(charges)
+        self._charges = (
+            tuple(0 for _ in range(count)) if charges is None else tuple(charges)
+        )
         self._multiplicities = (
             tuple(1 for _ in range(count))
             if multiplicities is None
@@ -363,7 +367,8 @@ class PreparedBatch:
         _native.check(
             self._library,
             self._library.vibeqc_context_create(
-                ctypes.byref(calculator._context_descriptor()), ctypes.byref(self._context)
+                ctypes.byref(calculator._context_descriptor()),
+                ctypes.byref(self._context),
             ),
         )
         system_handles: list[ctypes.c_void_p] = []
@@ -442,7 +447,8 @@ class PreparedBatch:
 
     def execute(
         self,
-        coordinates: Sequence[Sequence[Sequence[float]] | np.ndarray | None] | None = None,
+        coordinates: Sequence[Sequence[Sequence[float]] | np.ndarray | None]
+        | None = None,
         *,
         strict: bool = False,
     ) -> BatchResult:
@@ -705,9 +711,7 @@ class PreparedBatch:
                     ordinary_family=_native.EIGENSOLVER_FAMILY_NAMES[
                         native.ordinary_family
                     ],
-                    graph_family=_native.EIGENSOLVER_FAMILY_NAMES[
-                        native.graph_family
-                    ],
+                    graph_family=_native.EIGENSOLVER_FAMILY_NAMES[native.graph_family],
                     selection_source=(
                         _native.EIGENSOLVER_SELECTION_SOURCE_NAMES[
                             native.selection_source
@@ -741,20 +745,12 @@ class PreparedBatch:
                     cusolver_version=int(native.cusolver_version),
                     cuda_error=int(native.cuda_error),
                     cusolver_error=int(native.cusolver_error),
-                    ordinary_execution_passed=bool(
-                        native.ordinary_execution_passed
-                    ),
+                    ordinary_execution_passed=bool(native.ordinary_execution_passed),
                     graph_capture_passed=bool(native.graph_capture_passed),
-                    host_graph_replay_passed=bool(
-                        native.host_graph_replay_passed
-                    ),
-                    device_tail_replay_passed=bool(
-                        native.device_tail_replay_passed
-                    ),
+                    host_graph_replay_passed=bool(native.host_graph_replay_passed),
+                    device_tail_replay_passed=bool(native.device_tail_replay_passed),
                     graph_eligible=bool(native.graph_eligible),
-                    maximum_eigenvalue_error=float(
-                        native.maximum_eigenvalue_error
-                    ),
+                    maximum_eigenvalue_error=float(native.maximum_eigenvalue_error),
                     maximum_residual=float(native.maximum_residual),
                     maximum_orthogonality_error=float(
                         native.maximum_orthogonality_error
@@ -776,9 +772,7 @@ class PreparedBatch:
                 self._batch, None, 0, ctypes.byref(count)
             ),
         )
-        native_entries = (
-            _native.DensityFittingMetricDiagnostic * count.value
-        )()
+        native_entries = (_native.DensityFittingMetricDiagnostic * count.value)()
         written = ctypes.c_uint32()
         _native.check(
             self._library,
@@ -798,9 +792,7 @@ class PreparedBatch:
                 effective_rank=int(native.effective_rank),
                 absolute_threshold=float(native.absolute_threshold),
                 condition_number=float(native.condition_number),
-                solver_device_workspace_bytes=int(
-                    native.solver_device_workspace_bytes
-                ),
+                solver_device_workspace_bytes=int(native.solver_device_workspace_bytes),
                 solver_host_workspace_bytes=int(native.solver_host_workspace_bytes),
                 device_resident_bytes=int(native.device_resident_bytes),
                 peak_device_bytes=int(native.peak_device_bytes),
@@ -820,8 +812,7 @@ class PreparedBatch:
         self._ensure_open()
         if not self._inactive_eigensolver_profiling:
             raise RuntimeError(
-                "the batch was not prepared with "
-                "inactive_eigensolver_profiling=True"
+                "the batch was not prepared with inactive_eigensolver_profiling=True"
             )
         count = ctypes.c_uint32()
         _native.check(
@@ -859,9 +850,7 @@ class PreparedBatch:
                 inactive_submission_nonfinite_count=int(
                     native.inactive_submission_nonfinite_count
                 ),
-                inactive_info_nonzero_count=int(
-                    native.inactive_info_nonzero_count
-                ),
+                inactive_info_nonzero_count=int(native.inactive_info_nonzero_count),
                 inactive_touch_flags=int(native.inactive_touch_flags),
                 provider_invoked=bool(native.provider_invoked),
             )
@@ -876,7 +865,7 @@ class PreparedBatch:
             self._library.vibeqc_context_destroy(self._context)
             self._context = ctypes.c_void_p()
 
-    def __enter__(self) -> "PreparedBatch":
+    def __enter__(self) -> Self:
         self._ensure_open()
         return self
 
@@ -884,7 +873,5 @@ class PreparedBatch:
         self.close()
 
     def __del__(self) -> None:
-        try:
+        with suppress(Exception):
             self.close()
-        except Exception:
-            pass

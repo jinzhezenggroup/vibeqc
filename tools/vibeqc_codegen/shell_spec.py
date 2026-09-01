@@ -28,9 +28,7 @@ def cartesian_components(angular_momentum: int) -> tuple[str, ...]:
     by the production CUDA kernels.
     """
 
-    if isinstance(angular_momentum, bool) or not isinstance(
-        angular_momentum, int
-    ):
+    if isinstance(angular_momentum, bool) or not isinstance(angular_momentum, int):
         raise TypeError("angular momentum must be an integer")
     if angular_momentum < 0:
         raise ValueError("angular momentum must be a non-negative integer")
@@ -58,9 +56,7 @@ class ShellClassSpec:
             raise ValueError("a shell class must contain exactly four centers")
         for value in self.angular:
             if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-                raise ValueError(
-                    "shell angular momenta must be non-negative integers"
-                )
+                raise ValueError("shell angular momenta must be non-negative integers")
 
     @cached_property
     def center_components(self) -> tuple[tuple[str, ...], ...]:
@@ -99,9 +95,7 @@ class ShellClassSpec:
 
         return sum(self.angular) + 1
 
-    def validate_component(
-        self, component: Sequence[str]
-    ) -> tuple[str, str, str, str]:
+    def validate_component(self, component: Sequence[str]) -> tuple[str, str, str, str]:
         """Validate and normalize one Cartesian component tuple."""
 
         normalized = tuple(component)
@@ -112,8 +106,7 @@ class ShellClassSpec:
         ):
             if label not in allowed:
                 raise ValueError(
-                    f"unsupported center-{center} component {label!r} "
-                    f"for {self.name}"
+                    f"unsupported center-{center} component {label!r} for {self.name}"
                 )
         return normalized
 
@@ -147,9 +140,7 @@ class ShellClassSpec:
         """Decode a cooperative lane index into its Cartesian component."""
 
         if not 0 <= index < self.component_count:
-            raise IndexError(
-                f"component index {index} is outside {self.name} schedule"
-            )
+            raise IndexError(f"component index {index} is outside {self.name} schedule")
         return tuple(
             allowed[(index // stride) % len(allowed)]
             for allowed, stride in zip(

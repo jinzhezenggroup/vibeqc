@@ -419,12 +419,13 @@ def build_integral_ir(
         explicit = frozenset(item.kernel_consumer for item in contractions)
         if normalized != explicit:
             raise ValueError("consumer and contraction specifications disagree")
-    force_requested = any(
-        item.kernel_consumer == KernelConsumer.FORCE
-        for item in contractions
-    ) if contractions is not None else any(
-        KernelConsumer(item) == KernelConsumer.FORCE
-        for item in ((KernelConsumer.FORCE,) if consumers is None else consumers)
+    force_requested = (
+        any(item.kernel_consumer == KernelConsumer.FORCE for item in contractions)
+        if contractions is not None
+        else any(
+            KernelConsumer(item) == KernelConsumer.FORCE
+            for item in ((KernelConsumer.FORCE,) if consumers is None else consumers)
+        )
     )
     selected_derivative = derivative
     if force_requested and selected_derivative is None:
@@ -444,8 +445,7 @@ def build_integral_ir(
                     density=_DENSITY_MODELS,
                     output=(
                         ContractionOutput.ATOMIC_FORCE
-                        if selected_derivative is None
-                        or selected_derivative.order == 1
+                        if selected_derivative is None or selected_derivative.order == 1
                         else ContractionOutput.NUCLEAR_DERIVATIVE
                     ),
                 )

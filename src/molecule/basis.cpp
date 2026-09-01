@@ -14,9 +14,7 @@ double radial_primitive_normalization(double exponent, unsigned angular_momentum
          std::pow(4.0 * exponent, 0.5 * static_cast<double>(angular_momentum));
 }
 
-double normalized_same_center_overlap(double alpha,
-                                      double beta,
-                                      unsigned angular_momentum) {
+double normalized_same_center_overlap(double alpha, double beta, unsigned angular_momentum) {
   const double ratio = 2.0 * std::sqrt(alpha * beta) / (alpha + beta);
   return std::pow(ratio, static_cast<double>(angular_momentum) + 1.5);
 }
@@ -40,15 +38,13 @@ std::vector<CartesianComponent> cartesian_components(unsigned l) {
   for (int lx = static_cast<int>(l); lx >= 0; --lx) {
     for (unsigned lz = 0; lz <= l - static_cast<unsigned>(lx); ++lz) {
       const unsigned ly = l - static_cast<unsigned>(lx) - lz;
-      components.push_back(
-          {static_cast<unsigned>(lx), ly, lz});
+      components.push_back({static_cast<unsigned>(lx), ly, lz});
     }
   }
   return components;
 }
 
-std::vector<AoExpansion> ao_expansions(
-    unsigned l, vibeqc_basis_representation representation) {
+std::vector<AoExpansion> ao_expansions(unsigned l, vibeqc_basis_representation representation) {
   const std::vector<CartesianComponent> cartesian = cartesian_components(l);
   if (representation == VIBEQC_BASIS_CARTESIAN || l < 2) {
     std::vector<AoExpansion> expansions;
@@ -68,8 +64,7 @@ std::vector<AoExpansion> ao_expansions(
         {{{0, 1, 1}, 1.0}},
         {{{2, 0, 0}, -0.5}, {{0, 2, 0}, -0.5}, {{0, 0, 2}, 1.0}},
         {{{1, 0, 1}, 1.0}},
-        {{{2, 0, 0}, root_three_over_two},
-         {{0, 2, 0}, -root_three_over_two}},
+        {{{2, 0, 0}, root_three_over_two}, {{0, 2, 0}, -root_three_over_two}},
     };
   }
   if (l == 3) {
@@ -83,8 +78,7 @@ std::vector<AoExpansion> ao_expansions(
     const double three_over_root_twenty = 3.0 / std::sqrt(20.0);
     const double root_three_over_two = std::sqrt(3.0) / 2.0;
     return {
-        {{{2, 1, 0}, three_over_root_eight},
-         {{0, 3, 0}, -root_five_over_eight}},
+        {{{2, 1, 0}, three_over_root_eight}, {{0, 3, 0}, -root_five_over_eight}},
         {{{1, 1, 1}, 1.0}},
         {{{2, 1, 0}, -root_three_over_forty},
          {{0, 3, 0}, -root_three_over_eight},
@@ -95,10 +89,8 @@ std::vector<AoExpansion> ao_expansions(
         {{{3, 0, 0}, -root_three_over_eight},
          {{1, 2, 0}, -root_three_over_forty},
          {{1, 0, 2}, root_six_over_five}},
-        {{{2, 0, 1}, root_three_over_two},
-         {{0, 2, 1}, -root_three_over_two}},
-        {{{3, 0, 0}, root_five_over_eight},
-         {{1, 2, 0}, -three_over_root_eight}},
+        {{{2, 0, 1}, root_three_over_two}, {{0, 2, 1}, -root_three_over_two}},
+        {{{3, 0, 0}, root_five_over_eight}, {{1, 2, 0}, -three_over_root_eight}},
     };
   }
   return {};
@@ -107,10 +99,9 @@ std::vector<AoExpansion> ao_expansions(
 std::size_t ao_count(const core::System& system) noexcept {
   std::size_t count = 0;
   for (const core::Shell& shell : system.shells) {
-    const std::size_t functions =
-        system.basis_representation == VIBEQC_BASIS_SPHERICAL
-        ? 2 * static_cast<std::size_t>(shell.angular_momentum) + 1
-        : cartesian_count(shell.angular_momentum);
+    const std::size_t functions = system.basis_representation == VIBEQC_BASIS_SPHERICAL
+                                      ? 2 * static_cast<std::size_t>(shell.angular_momentum) + 1
+                                      : cartesian_count(shell.angular_momentum);
     if (functions > std::numeric_limits<std::size_t>::max() - count) return 0;
     count += functions;
   }
@@ -127,12 +118,10 @@ std::size_t cartesian_ao_count(const core::System& system) noexcept {
   return count;
 }
 
-double cartesian_component_normalization(
-    const CartesianComponent& component) noexcept {
-  const double denominator =
-      odd_double_factorial(component[0]) *
-      odd_double_factorial(component[1]) *
-      odd_double_factorial(component[2]);
+double cartesian_component_normalization(const CartesianComponent& component) noexcept {
+  const double denominator = odd_double_factorial(component[0]) *
+                             odd_double_factorial(component[1]) *
+                             odd_double_factorial(component[2]);
   return 1.0 / std::sqrt(denominator);
 }
 
@@ -190,8 +179,7 @@ vibeqc_status validate_and_normalize(core::System& system, std::string& detail) 
     for (const auto& a : shell.primitives) {
       for (const auto& b : shell.primitives) {
         norm2 += a.coefficient * b.coefficient *
-                 normalized_same_center_overlap(
-                     a.exponent, b.exponent, shell.angular_momentum);
+                 normalized_same_center_overlap(a.exponent, b.exponent, shell.angular_momentum);
       }
     }
     if (!(norm2 > 0.0) || !std::isfinite(norm2)) {
@@ -201,8 +189,7 @@ vibeqc_status validate_and_normalize(core::System& system, std::string& detail) 
     const double scale = 1.0 / std::sqrt(norm2);
     for (auto& primitive : shell.primitives) {
       primitive.coefficient *=
-          scale * radial_primitive_normalization(
-                      primitive.exponent, shell.angular_momentum);
+          scale * radial_primitive_normalization(primitive.exponent, shell.angular_momentum);
     }
   }
   return VIBEQC_STATUS_SUCCESS;

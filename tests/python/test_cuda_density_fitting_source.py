@@ -2,16 +2,15 @@
 
 from pathlib import Path
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_cuda_df_metric_uses_generic_cusolver_api():
     """Prevent the deprecated typed eigensolver from returning unnoticed."""
 
-    source = (
-        REPOSITORY_ROOT / "src" / "scf" / "cuda_density_fitting.cu"
-    ).read_text(encoding="utf-8")
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_density_fitting.cu").read_text(
+        encoding="utf-8"
+    )
     assert "cusolverDnCreateParams" in source
     assert "cusolverDnXsyevd_bufferSize" in source
     assert "cusolverDnXsyevd(" in source
@@ -22,9 +21,9 @@ def test_cuda_df_metric_uses_generic_cusolver_api():
 def test_cuda_df_scf_has_device_resident_iteration_boundary():
     """Keep the DF SCF bridge from regressing to host J/K staging."""
 
-    source = (
-        REPOSITORY_ROOT / "src" / "scf" / "cuda_density_fitting.cu"
-    ).read_text(encoding="utf-8")
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_density_fitting.cu").read_text(
+        encoding="utf-8"
+    )
     assert "execute_cuda_density_fitting_rhf_jk_device" in source
     assert "execute_cuda_density_fitting_uhf_jk_device" in source
     assert "execute_cuda_density_fitting_rhf_force_response" in source

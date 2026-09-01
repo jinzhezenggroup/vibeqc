@@ -458,26 +458,38 @@ def test_symbolic_kernel_builders_preserve_explicit_integral_ir():
     )
     component = DPPP_SPEC.components[0]
 
-    assert build_shell_class_component_kernel(
-        DPPP_SPEC,
-        component,
-        integral=dppp_integral,
-    ).integral is dppp_integral
-    assert build_dppp_component_kernel(
-        component[0],
-        component[1:],
-        integral=dppp_integral,
-    ).integral is dppp_integral
-    assert build_shell_class_contraction_kernel(
-        DPPP_SPEC,
-        component,
-        integral=dppp_integral,
-    ).integral is dppp_integral
-    assert build_weighted_shell_contraction_kernel(
-        DPPP_SPEC,
-        component_indices=(0,),
-        integral=dppp_integral,
-    ).integral is dppp_integral
+    assert (
+        build_shell_class_component_kernel(
+            DPPP_SPEC,
+            component,
+            integral=dppp_integral,
+        ).integral
+        is dppp_integral
+    )
+    assert (
+        build_dppp_component_kernel(
+            component[0],
+            component[1:],
+            integral=dppp_integral,
+        ).integral
+        is dppp_integral
+    )
+    assert (
+        build_shell_class_contraction_kernel(
+            DPPP_SPEC,
+            component,
+            integral=dppp_integral,
+        ).integral
+        is dppp_integral
+    )
+    assert (
+        build_weighted_shell_contraction_kernel(
+            DPPP_SPEC,
+            component_indices=(0,),
+            integral=dppp_integral,
+        ).integral
+        is dppp_integral
+    )
 
     psss_integral = build_integral_ir(
         PSSS_SPEC,
@@ -553,7 +565,9 @@ def test_shell_contraction_kernel_uses_explicit_derivative_centers():
 
     for center in (0, 2, 3):
         for axis in range(3):
-            assert custom.graph.evaluate(custom.gradients[center][axis], factored_values) == pytest.approx(
+            assert custom.graph.evaluate(
+                custom.gradients[center][axis], factored_values
+            ) == pytest.approx(
                 full.graph.evaluate(full.gradients[center][axis], full_values),
                 rel=3.0e-11,
                 abs=3.0e-11,
@@ -619,6 +633,7 @@ def test_numeric_recurrence_oracles_follow_explicit_derivative_centers():
                 rel=2.0e-12,
                 abs=2.0e-12,
             )
+
 
 def test_rys_root_body_packs_nonfinal_recovery_centers_by_ir_order():
     """Keep force slots dense when translation recovers a non-final center."""
@@ -1167,9 +1182,7 @@ def test_rys5_rule_reproduces_first_ten_boys_moments(argument: float):
         ) == pytest.approx(expected, rel=3.0e-11, abs=8.0e-13)
 
 
-@pytest.mark.parametrize(
-    "argument", (0.0, 1.0e-10, 0.05, 1.0, 5.999, 25.0, 60.0, 80.0)
-)
+@pytest.mark.parametrize("argument", (0.0, 1.0e-10, 0.05, 1.0, 5.999, 25.0, 60.0, 80.0))
 def test_gpu4pyscf_rys5_table_matches_moment_oracle(argument: float):
     """Verify the attributed nroots=5 slice before CUDA integration."""
 
@@ -2941,9 +2954,7 @@ def test_mixed_fock_recomputed_coulomb_scratch_uses_fp32():
         fock_schedule=fock_schedule,
         capabilities=(CAPABILITY_MIXED_FOCK,),
     )
-    mixed = source.split(
-        "struct GeneratedDddsMixedPrimitiveGeometry", maxsplit=1
-    )[1]
+    mixed = source.split("struct GeneratedDddsMixedPrimitiveGeometry", maxsplit=1)[1]
     assert "float coulomb[1];" in mixed
     assert "double coulomb[1];" not in mixed
 
@@ -3007,10 +3018,10 @@ def test_graph_native_eigensolver_override_covers_all_solver_calls():
     source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
         encoding="utf-8"
     )
-    override_begin = source.index(
-        "if (requested_graph_native_eigensolver_override) {"
+    override_begin = source.index("if (requested_graph_native_eigensolver_override) {")
+    override_end = source.index(
+        "    }\n  }\n  const CudaEigensolverFamily", override_begin
     )
-    override_end = source.index("    }\n  }\n  const CudaEigensolverFamily", override_begin)
     override = source[override_begin:override_end]
     assert "plan.eigensolver_diagnostic.family =" in override
     assert "plan.eigensolver_diagnostic.ordinary_family =" in override
@@ -3019,10 +3030,15 @@ def test_graph_native_eigensolver_override_covers_all_solver_calls():
         "probe_xsyev_batched_device_launch_graph(", override_begin
     )
     assert probe_call > override_begin
-    assert "Do not probe that provider first" in source[override_begin - 300:override_begin]
+    assert (
+        "Do not probe that provider first"
+        in source[override_begin - 300 : override_begin]
+    )
     # Finalization and split ordinary-stream iterations use ordinary_family;
     # an override that changes only family silently reintroduces XsyevBatched.
-    assert "ordinary_eigensolver_family == CudaEigensolverFamily::xsyev_batched" in source
+    assert (
+        "ordinary_eigensolver_family == CudaEigensolverFamily::xsyev_batched" in source
+    )
 
 
 def test_large_matrix_stream_fallback_matches_gpu4pyscf_solver_contract():
@@ -3035,9 +3051,8 @@ def test_large_matrix_stream_fallback_matches_gpu4pyscf_solver_contract():
     assert "cusolverDnXsyevd_bufferSize" in source
     assert "cusolverDnXsyevd(" in source
     probe_end = source.index(
-        "const XsyevBatchedDispatch dispatch =", source.index(
-            "probe_xsyev_batched_device_launch_graph("
-        )
+        "const XsyevBatchedDispatch dispatch =",
+        source.index("probe_xsyev_batched_device_launch_graph("),
     )
     assert "cudaGetLastError" in source[probe_end - 320 : probe_end]
     assert "dispatch.device_launch_graph_provider" in source
@@ -3054,10 +3069,12 @@ def test_bounded_force_registry_gaps_use_exact_runtime_fallback():
     )
     fallback = source.index("const auto launch_bounded_generic_force")
     dispatch = source.index("const auto launch_bounded_force")
-    dispatch_end = source.index(
-        "  if (quartet_direct &&\n      plan.shell_quartet_tile_capacities",
-        dispatch,
+    dispatch_boundary = re.search(
+        r"if \(quartet_direct &&\s+plan\.shell_quartet_tile_capacities",
+        source[dispatch:],
     )
+    assert dispatch_boundary is not None
+    dispatch_end = dispatch + dispatch_boundary.start()
     assert fallback < dispatch < dispatch_end
     assert "bounded_direct_shell_quartet_kernel" in source[fallback:dispatch]
     assert "uncovered_force_shell_class_mask == 0U" in source[fallback:dispatch]
@@ -3124,13 +3141,10 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
         selection.spec.name
         for selection in selections
         if KernelConsumer.FORCE in selection.consumers
-    ) == tuple(
-        spec.name for spec in specifications
-    )
+    ) == tuple(spec.name for spec in specifications)
     assert all(selection.architecture == "sm_120" for selection in selections)
     assert all(
-        selection.schedule.algebra_placement
-        == AlgebraPlacement.MATERIALIZED_CSE
+        selection.schedule.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
         for selection in selections
     )
     shards = _partition_production_selections(selections, shard_count=8)
@@ -3465,7 +3479,10 @@ def test_ppps_queue_buckets_orientation_and_primitive_signature_on_device():
     assert "resident_signature_offsets[bucket_index]" in source
     assert "atomicAdd(resident_signature_write_counts + bucket_index" in source
     assert "std::uint32_t* generated_ppps_resident_signatures =" in source
-    assert "shell_class_profiling\n      ? arena_pointer<std::uint32_t>" in source
+    assert re.search(
+        r"shell_class_profiling\s*\?\s*arena_pointer<std::uint32_t>",
+        source,
+    )
     assert "kBoundedForceSignatureShellClassMask" in source
     assert "bounded_force_signature_bucket" in source
     assert "scan_bounded_force_signature_counts_kernel" in source
@@ -3573,7 +3590,9 @@ def test_bounded_force_keeps_fock_only_classes_out_of_force_dispatch():
     source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
         encoding="utf-8"
     )
-    begin = source.index("const std::uint64_t explicit_generated_force_shell_class_mask")
+    begin = source.index(
+        "const std::uint64_t explicit_generated_force_shell_class_mask"
+    )
     end = source.index("const auto launch_bounded_generated_force", begin)
     mask_source = source[begin:end]
     assert "selected_fock_shell_kernels" not in mask_source
@@ -3588,11 +3607,11 @@ def test_bounded_psss_resident_path_is_allocated_and_disjoint_from_page_fallback
     source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
         encoding="utf-8"
     )
-    assert "requested_quartet_direct\n                         ? host.psss_resident_tasks.size()" in source
-    assert (
-        "requested_quartet_direct && !requested_bounded_direct_streaming"
-        in source
+    assert re.search(
+        r"requested_quartet_direct\s*\?\s*host\.psss_resident_tasks\.size\(\)",
+        source,
     )
+    assert "requested_quartet_direct && !requested_bounded_direct_streaming" in source
     assert "launch_bounded_resident_psss_force" in source
     assert "~(bounded_resident_psss_force_enabled" in source
 
@@ -3654,9 +3673,10 @@ def test_bounded_streaming_fock_forwards_mixed_precision_policy():
     threshold_end = source.index(
         "const bool requested_mixed_precision_fock", threshold_begin
     )
-    assert "requested_quartet_direct\n      ? configured_mixed_precision_fock_threshold" in source[
-        threshold_begin:threshold_end
-    ]
+    assert re.search(
+        r"requested_quartet_direct\s*\?\s*configured_mixed_precision_fock_threshold",
+        source[threshold_begin:threshold_end],
+    )
     assert "allow_mixed_precision && mixed_precision_fock" in source
     # The finalization path must explicitly disable the iterative mixed route.
     assert "launch_fock_builder(density, false)" in source
@@ -3665,9 +3685,9 @@ def test_bounded_streaming_fock_forwards_mixed_precision_policy():
 def test_bounded_streaming_uses_monotonic_system_density_tail():
     """Prune large class segments with a conservative density coarse bound."""
 
-    topology = (
-        REPOSITORY_ROOT / "src" / "scf" / "generated_shell_task.hpp"
-    ).read_text(encoding="utf-8")
+    topology = (REPOSITORY_ROOT / "src" / "scf" / "generated_shell_task.hpp").read_text(
+        encoding="utf-8"
+    )
     generator = (
         REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "production.py"
     ).read_text(encoding="utf-8")
@@ -3771,7 +3791,9 @@ def test_batch_screening_discovers_consumer_specific_manifest_gap():
 def test_codegen_capability_report_covers_catalog_and_manifest():
     """Report structural backend reasons for all 55 canonical shell classes."""
 
-    manifest = REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+    manifest = (
+        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+    )
     report = build_capability_report(
         architecture="sm_120",
         manifest=manifest,
@@ -3874,9 +3896,9 @@ def test_batch_screening_can_emit_coefficient_only_fock_candidates():
         consumer=KernelConsumer.FOCK,
     )
 
-    assert r'\"consumer\":\"fock\"' in source
+    assert r"\"consumer\":\"fock\"" in source
     assert "generated_fsps_shell_class_fock_rhf_kernel" in source
-    assert r'\"maximum_fock_error\"' in source
+    assert r"\"maximum_fock_error\"" in source
 
 
 def test_batch_benchmark_command_has_finite_slurm_allocation():
@@ -5759,9 +5781,7 @@ def test_high_component_fock_oracle_block_covers_every_component():
         consumer=KernelConsumer.FOCK,
         schedule=trial.schedule,
     )
-    baseline = source.split(
-        "/** Per-component Fock baseline", maxsplit=1
-    )[1]
+    baseline = source.split("/** Per-component Fock baseline", maxsplit=1)[1]
     assert "__launch_bounds__(192)" in baseline
     assert "<<<kTaskCount,\n        192>>>" in baseline
 
@@ -6113,13 +6133,9 @@ def test_autotune_emits_unique_schedule_variants_and_manifest_records():
         ["fock", "force"],
     ]
     assert fock_rows[0]["schedule"] == {"force_marker": "preserve"}
-    assert fock_rows[0]["fock_schedule"] == schedule_payload(
-        fock_trials[0].schedule
-    )
+    assert fock_rows[0]["fock_schedule"] == schedule_payload(fock_trials[0].schedule)
     assert fock_rows[1]["schedule"] == {"force_marker": "preserve-dpps"}
-    assert fock_rows[1]["fock_schedule"] == schedule_payload(
-        fock_trials[1].schedule
-    )
+    assert fock_rows[1]["fock_schedule"] == schedule_payload(fock_trials[1].schedule)
 
 
 def test_autotune_expands_shell_class_list_files_for_batch_runs(tmp_path: Path):
@@ -6374,8 +6390,9 @@ def test_autotune_static_model_records_operations_and_live_values():
     assert packed_model.baseline_peak_live_values == packed_model.peak_live_values
     assert 0 < packed_model.peak_live_values < packed_model.materialized_value_count
     geometry_analysis, geometry_plan = _packed_force_geometry_analysis(3)
-    assert dict(packed_model.operation_counts)["power"] >= (
-        dict(geometry_analysis.operation_counts)["power"]
+    assert (
+        dict(packed_model.operation_counts)["power"]
+        >= (dict(geometry_analysis.operation_counts)["power"])
     )
     assert packed_model.arithmetic_operation_count >= (
         geometry_plan.arithmetic_operation_count
@@ -6562,8 +6579,7 @@ def test_packed_autotune_searches_real_algebra_placement_variants():
         form: next(
             trial
             for trial in packed
-            if trial.schedule.algebra_placement
-            == AlgebraPlacement.MATERIALIZED_CSE
+            if trial.schedule.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
             and trial.schedule.algebra_ordering == AlgebraOrdering.TOPOLOGICAL
             and trial.schedule.algebra_fusion == AlgebraFusion.SEPARATE
             and trial.schedule.algebra_form == form
@@ -6621,13 +6637,9 @@ def test_algebra_placement_schedule_payload_is_backward_compatible():
         == AlgebraPlacement.MATERIALIZED_CSE
     )
     assert (
-        _schedule_from_payload(payload).algebra_ordering
-        == AlgebraOrdering.TOPOLOGICAL
+        _schedule_from_payload(payload).algebra_ordering == AlgebraOrdering.TOPOLOGICAL
     )
-    assert (
-        _schedule_from_payload(payload).algebra_fusion
-        == AlgebraFusion.SEPARATE
-    )
+    assert _schedule_from_payload(payload).algebra_fusion == AlgebraFusion.SEPARATE
     assert _schedule_from_payload(payload).algebra_form == AlgebraForm.BINARY
     with pytest.raises(ValueError, match="packed tasks"):
         replace(
@@ -6723,9 +6735,7 @@ def test_autotune_candidate_artifact_includes_static_model(
     report = _run_autotune(arguments)
     assert report["winners"] == []
     assert len(report["candidates"]) == 1
-    assert report["candidates"][0]["static_model"] == (
-        trial.static_model.to_payload()
-    )
+    assert report["candidates"][0]["static_model"] == (trial.static_model.to_payload())
     assert report["candidates"][0]["source_bytes"] is None
     assert report["candidates"][0]["object_bytes"] is None
     assert report["candidates"][0]["occupancy"]["available"] is False

@@ -31,9 +31,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--case", choices=supported_cases, required=True)
     parser.add_argument("--batch", type=int, default=1)
-    parser.add_argument(
-        "--mode", choices=("scalar", "cooperative"), required=True
-    )
+    parser.add_argument("--mode", choices=("scalar", "cooperative"), required=True)
     parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--energy-tolerance", type=float, default=1.0e-12)
     parser.add_argument("--density-tolerance", type=float, default=1.0e-10)

@@ -181,8 +181,7 @@ def _squared_distance(
     second: str,
 ) -> Expr:
     return graph.sum(
-        (coordinates[first][axis] - coordinates[second][axis]).pow(2.0)
-        for axis in AXES
+        (coordinates[first][axis] - coordinates[second][axis]).pow(2.0) for axis in AXES
     )
 
 
@@ -197,9 +196,7 @@ def build_packed_force_geometry_algebra() -> PackedForceGeometryAlgebra:
     first_weighted_coefficient = graph.variable("first_weighted_coefficient")
     second_weighted_coefficient = graph.variable("second_weighted_coefficient")
     coordinates = {
-        center: tuple(
-            graph.variable(f"{center}_coordinate_{axis}") for axis in AXES
-        )
+        center: tuple(graph.variable(f"{center}_coordinate_{axis}") for axis in AXES)
         for center in CENTERS
     }
     product_p = tuple(graph.variable(f"product_p_{axis}") for axis in AXES)
@@ -233,12 +230,10 @@ def build_packed_force_geometry_algebra() -> PackedForceGeometryAlgebra:
     )
     difference = tuple(product_p[index] - product_q[index] for index in range(3))
     first_separation = tuple(
-        coordinates["first"][index] - coordinates["second"][index]
-        for index in range(3)
+        coordinates["first"][index] - coordinates["second"][index] for index in range(3)
     )
     second_separation = tuple(
-        coordinates["third"][index] - coordinates["fourth"][index]
-        for index in range(3)
+        coordinates["third"][index] - coordinates["fourth"][index] for index in range(3)
     )
     decay_gradients = (
         tuple(-2 * first_reduced_exponent * item for item in first_separation),
@@ -249,9 +244,7 @@ def build_packed_force_geometry_algebra() -> PackedForceGeometryAlgebra:
     argument_squared_distance = graph.sum(item.pow(2) for item in difference)
     boys_argument = rho * argument_squared_distance
     prefactor = 34.986836655249725 / (p * q * (p + q).pow(0.5))
-    primitive_coefficient = (
-        first_weighted_coefficient * second_weighted_coefficient
-    )
+    primitive_coefficient = first_weighted_coefficient * second_weighted_coefficient
     return PackedForceGeometryAlgebra(
         graph=graph,
         variables=variables,
@@ -311,8 +304,7 @@ def _component_quantums(
     quantums: list[tuple[int, Expr]] = []
     for axis_index, axis in enumerate(AXES):
         quantums.extend(
-            (axis_index, first_shifts[axis])
-            for _ in range(first_component.count(axis))
+            (axis_index, first_shifts[axis]) for _ in range(first_component.count(axis))
         )
         quantums.extend(
             (axis_index, second_shifts[axis])
@@ -333,19 +325,14 @@ def _pair_expansion(
     terms = []
     for subset in range(1 << len(quantums)):
         selected = tuple(
-            quantum
-            for quantum in range(len(quantums))
-            if subset & (1 << quantum)
+            quantum for quantum in range(len(quantums)) if subset & (1 << quantum)
         )
         selected_set = frozenset(selected)
         derivative_orders = tuple(
-            sum(axes[quantum] == axis for quantum in selected)
-            for axis in range(3)
+            sum(axes[quantum] == axis for quantum in selected) for axis in range(3)
         )
         remaining = tuple(
-            quantum
-            for quantum in range(len(quantums))
-            if quantum not in selected_set
+            quantum for quantum in range(len(quantums)) if quantum not in selected_set
         )
         coefficient_terms = []
         for matching in _wick_matchings(remaining, axes):
@@ -369,7 +356,7 @@ def _axis_wick_multiplicity(order: int, pairs: int) -> int:
     numerator = 1
     for value in range(order - 2 * pairs + 1, order + 1):
         numerator *= value
-    denominator = (2**pairs)
+    denominator = 2**pairs
     for value in range(2, pairs + 1):
         denominator *= value
     return numerator // denominator
@@ -438,16 +425,12 @@ def _shell_component_value(
 
     first_expansion = _pair_expansion(
         graph,
-        _component_quantums(
-            component[0], component[1], shifts["pa"], shifts["pb"]
-        ),
+        _component_quantums(component[0], component[1], shifts["pa"], shifts["pb"]),
         inverse_two_p,
     )
     second_expansion = _pair_expansion(
         graph,
-        _component_quantums(
-            component[2], component[3], shifts["qc"], shifts["qd"]
-        ),
+        _component_quantums(component[2], component[3], shifts["qc"], shifts["qd"]),
         inverse_two_q,
     )
     coulomb_cache: dict[tuple[int, int, int], Expr] = {}
@@ -455,9 +438,7 @@ def _shell_component_value(
     def coulomb(orders: tuple[int, int, int]) -> Expr:
         expression = coulomb_cache.get(orders)
         if expression is None:
-            expression = _coulomb_derivative(
-                graph, orders, rho, difference, boys
-            )
+            expression = _coulomb_derivative(graph, orders, rho, difference, boys)
             coulomb_cache[orders] = expression
         return expression
 
@@ -465,15 +446,11 @@ def _shell_component_value(
     for first_orders, first_coefficient in first_expansion:
         for second_orders, second_coefficient in second_expansion:
             orders = tuple(
-                first_orders[axis] + second_orders[axis]
-                for axis in range(3)
+                first_orders[axis] + second_orders[axis] for axis in range(3)
             )
             sign = -1.0 if sum(second_orders) % 2 else 1.0
             terms.append(
-                sign
-                * first_coefficient
-                * second_coefficient
-                * coulomb(orders)
+                sign * first_coefficient * second_coefficient * coulomb(orders)
             )
     return graph.sum(terms)
 
@@ -510,9 +487,7 @@ def build_psss_kernel(
     gamma = graph.variable("gamma")
     delta = graph.variable("delta")
     coordinates = {
-        center: {
-            axis: graph.variable(f"{center}_{axis}") for axis in AXES
-        }
+        center: {axis: graph.variable(f"{center}_{axis}") for axis in AXES}
         for center in CENTERS
     }
     variables: dict[str, Expr] = {
@@ -523,10 +498,7 @@ def build_psss_kernel(
     }
     for center in CENTERS:
         variables.update(
-            {
-                f"{center}_{axis}": coordinates[center][axis]
-                for axis in AXES
-            }
+            {f"{center}_{axis}": coordinates[center][axis] for axis in AXES}
         )
 
     p = alpha + beta
@@ -535,40 +507,26 @@ def build_psss_kernel(
     nu = gamma * delta / q
     rho = p * q / (p + q)
     product_p = {
-        axis: (
-            alpha * coordinates["first"][axis]
-            + beta * coordinates["second"][axis]
-        )
+        axis: (alpha * coordinates["first"][axis] + beta * coordinates["second"][axis])
         / p
         for axis in AXES
     }
     product_q = {
-        axis: (
-            gamma * coordinates["third"][axis]
-            + delta * coordinates["fourth"][axis]
-        )
+        axis: (gamma * coordinates["third"][axis] + delta * coordinates["fourth"][axis])
         / q
         for axis in AXES
     }
-    product_difference = {
-        axis: product_p[axis] - product_q[axis] for axis in AXES
-    }
-    boys_argument = rho * graph.sum(
-        product_difference[axis].pow(2.0) for axis in AXES
-    )
+    product_difference = {axis: product_p[axis] - product_q[axis] for axis in AXES}
+    boys_argument = rho * graph.sum(product_difference[axis].pow(2.0) for axis in AXES)
     boys = tuple(graph.variable(f"boys_{order}") for order in range(3))
     pair_decay = graph.exponential(
         -mu * _squared_distance(graph, coordinates, "first", "second")
         - nu * _squared_distance(graph, coordinates, "third", "fourth")
     )
     pi = graph.variable("kPi")
-    normalization = (
-        2.0 * pi.pow(2.5) / (p * q * (p + q).pow(0.5))
-    )
+    normalization = 2.0 * pi.pow(2.5) / (p * q * (p + q).pow(0.5))
     pa = product_p[p_axis] - coordinates["first"][p_axis]
-    primitive_value = (
-        pa * boys[0] - (rho / p) * product_difference[p_axis] * boys[1]
-    )
+    primitive_value = pa * boys[0] - (rho / p) * product_difference[p_axis] * boys[1]
     value = normalization * pair_decay * primitive_value
 
     independent_gradients: dict[int, tuple[Expr, Expr, Expr]] = {}
@@ -648,9 +606,7 @@ def build_shell_class_component_kernel(
     gamma = graph.variable("gamma")
     delta = graph.variable("delta")
     coordinates = {
-        center: {
-            axis: graph.variable(f"{center}_{axis}") for axis in AXES
-        }
+        center: {axis: graph.variable(f"{center}_{axis}") for axis in AXES}
         for center in CENTERS
     }
     variables: dict[str, Expr] = {
@@ -661,10 +617,7 @@ def build_shell_class_component_kernel(
     }
     for center in CENTERS:
         variables.update(
-            {
-                f"{center}_{axis}": coordinates[center][axis]
-                for axis in AXES
-            }
+            {f"{center}_{axis}": coordinates[center][axis] for axis in AXES}
         )
 
     p = alpha + beta
@@ -673,43 +626,23 @@ def build_shell_class_component_kernel(
     nu = gamma * delta / q
     rho = p * q / (p + q)
     product_p = {
-        axis: (
-            alpha * coordinates["first"][axis]
-            + beta * coordinates["second"][axis]
-        )
+        axis: (alpha * coordinates["first"][axis] + beta * coordinates["second"][axis])
         / p
         for axis in AXES
     }
     product_q = {
-        axis: (
-            gamma * coordinates["third"][axis]
-            + delta * coordinates["fourth"][axis]
-        )
+        axis: (gamma * coordinates["third"][axis] + delta * coordinates["fourth"][axis])
         / q
         for axis in AXES
     }
-    difference = {
-        axis: product_p[axis] - product_q[axis] for axis in AXES
-    }
-    boys_argument = rho * graph.sum(
-        difference[axis].pow(2.0) for axis in AXES
-    )
-    boys = tuple(
-        graph.variable(f"boys_{order}") for order in range(maximum_order + 1)
-    )
+    difference = {axis: product_p[axis] - product_q[axis] for axis in AXES}
+    boys_argument = rho * graph.sum(difference[axis].pow(2.0) for axis in AXES)
+    boys = tuple(graph.variable(f"boys_{order}") for order in range(maximum_order + 1))
     shifts = {
-        "pa": {
-            axis: product_p[axis] - coordinates["first"][axis] for axis in AXES
-        },
-        "pb": {
-            axis: product_p[axis] - coordinates["second"][axis] for axis in AXES
-        },
-        "qc": {
-            axis: product_q[axis] - coordinates["third"][axis] for axis in AXES
-        },
-        "qd": {
-            axis: product_q[axis] - coordinates["fourth"][axis] for axis in AXES
-        },
+        "pa": {axis: product_p[axis] - coordinates["first"][axis] for axis in AXES},
+        "pb": {axis: product_p[axis] - coordinates["second"][axis] for axis in AXES},
+        "qc": {axis: product_q[axis] - coordinates["third"][axis] for axis in AXES},
+        "qd": {axis: product_q[axis] - coordinates["fourth"][axis] for axis in AXES},
     }
     primitive_value = _shell_component_value(
         graph,
@@ -747,7 +680,10 @@ def build_shell_class_component_kernel(
     gradients_by_center = dict(independent_gradients)
     for center in selected_integral.recovered_derivative_centers:
         gradients_by_center[center] = tuple(
-            -graph.sum(independent_gradients[independent][axis] for independent in selected_integral.independent_derivative_centers)
+            -graph.sum(
+                independent_gradients[independent][axis]
+                for independent in selected_integral.independent_derivative_centers
+            )
             for axis in range(3)
         )
     requested_centers = set(selected_integral.requested_derivative_centers)
@@ -826,27 +762,19 @@ def build_shell_class_contraction_kernel(
     inverse_two_p = graph.variable("inverse_two_p")
     inverse_two_q = graph.variable("inverse_two_q")
     rho = graph.variable("rho")
-    difference = {
-        axis: graph.variable(f"difference_{axis}") for axis in AXES
-    }
+    difference = {axis: graph.variable(f"difference_{axis}") for axis in AXES}
     shifts = {
-        prefix: {
-            axis: graph.variable(f"{prefix}_{axis}") for axis in AXES
-        }
+        prefix: {axis: graph.variable(f"{prefix}_{axis}") for axis in AXES}
         for prefix in ("pa", "pb", "qc", "qd")
     }
-    boys = tuple(
-        graph.variable(f"boys_{order}") for order in range(maximum_order + 1)
-    )
+    boys = tuple(graph.variable(f"boys_{order}") for order in range(maximum_order + 1))
     first_product_scale = graph.variable("first_product_scale")
     second_product_scale = graph.variable("second_product_scale")
     third_product_scale = graph.variable("third_product_scale")
     fourth_product_scale = graph.variable("fourth_product_scale")
     prefactor = graph.variable("prefactor")
     decay_gradients = {
-        center: {
-            axis: graph.variable(f"decay_{center}_{axis}") for axis in AXES
-        }
+        center: {axis: graph.variable(f"decay_{center}_{axis}") for axis in AXES}
         for center in CENTERS
     }
     variables: dict[str, Expr] = {
@@ -861,15 +789,10 @@ def build_shell_class_contraction_kernel(
     }
     variables.update({f"difference_{axis}": difference[axis] for axis in AXES})
     for prefix in shifts:
-        variables.update(
-            {f"{prefix}_{axis}": shifts[prefix][axis] for axis in AXES}
-        )
+        variables.update({f"{prefix}_{axis}": shifts[prefix][axis] for axis in AXES})
     for center in CENTERS:
         variables.update(
-            {
-                f"decay_{center}_{axis}": decay_gradients[center][axis]
-                for axis in AXES
-            }
+            {f"decay_{center}_{axis}": decay_gradients[center][axis] for axis in AXES}
         )
 
     value = _shell_component_value(
@@ -897,48 +820,30 @@ def build_shell_class_contraction_kernel(
                 value, difference[axis], leaf_derivatives
             )
             if center_index == 0:
-                first_shift_gradient = graph.differentiate(
-                    value, shifts["pa"][axis]
-                )
-                second_shift_gradient = graph.differentiate(
-                    value, shifts["pb"][axis]
-                )
+                first_shift_gradient = graph.differentiate(value, shifts["pa"][axis])
+                second_shift_gradient = graph.differentiate(value, shifts["pb"][axis])
                 pair_gradient = (
-                    (first_product_scale - 1.0) * first_shift_gradient
-                    + first_product_scale * second_shift_gradient
-                )
+                    first_product_scale - 1.0
+                ) * first_shift_gradient + first_product_scale * second_shift_gradient
                 unscaled = pair_gradient + first_product_scale * difference_gradient
             elif center_index == 1:
-                first_shift_gradient = graph.differentiate(
-                    value, shifts["pa"][axis]
-                )
-                second_shift_gradient = graph.differentiate(
-                    value, shifts["pb"][axis]
-                )
+                first_shift_gradient = graph.differentiate(value, shifts["pa"][axis])
+                second_shift_gradient = graph.differentiate(value, shifts["pb"][axis])
                 pair_gradient = (
                     second_product_scale * first_shift_gradient
                     + (second_product_scale - 1.0) * second_shift_gradient
                 )
                 unscaled = pair_gradient + second_product_scale * difference_gradient
             elif center_index == 2:
-                third_shift_gradient = graph.differentiate(
-                    value, shifts["qc"][axis]
-                )
-                fourth_shift_gradient = graph.differentiate(
-                    value, shifts["qd"][axis]
-                )
+                third_shift_gradient = graph.differentiate(value, shifts["qc"][axis])
+                fourth_shift_gradient = graph.differentiate(value, shifts["qd"][axis])
                 pair_gradient = (
-                    (third_product_scale - 1.0) * third_shift_gradient
-                    + third_product_scale * fourth_shift_gradient
-                )
+                    third_product_scale - 1.0
+                ) * third_shift_gradient + third_product_scale * fourth_shift_gradient
                 unscaled = pair_gradient - third_product_scale * difference_gradient
             elif center_index == 3:
-                third_shift_gradient = graph.differentiate(
-                    value, shifts["qc"][axis]
-                )
-                fourth_shift_gradient = graph.differentiate(
-                    value, shifts["qd"][axis]
-                )
+                third_shift_gradient = graph.differentiate(value, shifts["qc"][axis])
+                fourth_shift_gradient = graph.differentiate(value, shifts["qd"][axis])
                 pair_gradient = (
                     fourth_product_scale * third_shift_gradient
                     + (fourth_product_scale - 1.0) * fourth_shift_gradient
@@ -955,7 +860,10 @@ def build_shell_class_contraction_kernel(
     gradients_by_center = dict(independent_gradients)
     for center in recovered_centers:
         gradients_by_center[center] = tuple(
-            -graph.sum(independent_gradients[independent][axis] for independent in independent_centers)
+            -graph.sum(
+                independent_gradients[independent][axis]
+                for independent in independent_centers
+            )
             for axis in range(3)
         )
     requested_centers = set(selected_integral.requested_derivative_centers)
@@ -1068,9 +976,7 @@ def build_weighted_shell_contraction_kernel(
         for component in selected_components
     )
     weighted_values = []
-    weighted_gradients: list[list[list[Expr]]] = [
-        [[] for _ in AXES] for _ in CENTERS
-    ]
+    weighted_gradients: list[list[list[Expr]]] = [[[] for _ in AXES] for _ in CENTERS]
     for component_index, weight in zip(
         selected_components,
         component_weights,
@@ -1083,9 +989,7 @@ def build_weighted_shell_contraction_kernel(
             integral=selected_integral,
         )
         memo: dict[int, Expr] = {}
-        weighted_values.append(
-            weight * _clone_expression(kernel.value, graph, memo)
-        )
+        weighted_values.append(weight * _clone_expression(kernel.value, graph, memo))
         for center in range(4):
             for axis in range(3):
                 weighted_gradients[center][axis].append(
@@ -1158,9 +1062,7 @@ def emit_psss_cuda(kernel: PsssKernel) -> str:
     emitter.emit([kernel.boys_argument])
     argument_reference = emitter.reference(kernel.boys_argument)
     emitter.lines.append("  double boys[3];")
-    emitter.lines.append(
-        f"  boys_values<2>({argument_reference}, boys);"
-    )
+    emitter.lines.append(f"  boys_values<2>({argument_reference}, boys);")
     roots = [item for center in kernel.gradients for item in center]
     emitter.emit(roots)
 
@@ -1184,8 +1086,7 @@ def emit_psss_cuda(kernel: PsssKernel) -> str:
     for center, center_gradients in enumerate(kernel.gradients):
         for coordinate, expression in enumerate(center_gradients):
             lines.append(
-                f"  gradient[{center}][{coordinate}] = "
-                f"{emitter.reference(expression)};"
+                f"  gradient[{center}][{coordinate}] = {emitter.reference(expression)};"
             )
     lines.append("}")
     return "\n".join(lines) + "\n"
@@ -1236,8 +1137,7 @@ def emit_dppp_component_cuda(kernel: DpppComponentKernel) -> str:
     for center, center_gradients in enumerate(kernel.gradients):
         for coordinate, expression in enumerate(center_gradients):
             lines.append(
-                f"  gradient[{center}][{coordinate}] = "
-                f"{emitter.reference(expression)};"
+                f"  gradient[{center}][{coordinate}] = {emitter.reference(expression)};"
             )
     lines.append("}")
     return "\n".join(lines) + "\n"
@@ -1258,17 +1158,12 @@ def emit_dppp_contraction_cuda(kernel: DpppContractionKernel) -> str:
         # center's scale is its exact complement, including pair reversal.
         "fourth_product_scale": "1.0 - geometry.product_scales[2]",
         "prefactor": "geometry.prefactor",
-        **{
-            f"difference_{axis}": f"geometry.difference.{axis}"
-            for axis in AXES
-        },
+        **{f"difference_{axis}": f"geometry.difference.{axis}" for axis in AXES},
         **{f"boys_{order}": f"geometry.boys[{order}]" for order in range(7)},
     }
     for center, prefix in enumerate(("pa", "pb", "qc", "qd")):
         for axis in AXES:
-            variable_code[f"{prefix}_{axis}"] = (
-                f"geometry.pair_shifts[{center}].{axis}"
-            )
+            variable_code[f"{prefix}_{axis}"] = f"geometry.pair_shifts[{center}].{axis}"
     # Decay rows are packed in the same dense order as the independent
     # derivative centers in the explicit IR.  This avoids treating the
     # physical center index as a storage slot when translation recovery picks
@@ -1286,9 +1181,7 @@ def emit_dppp_contraction_cuda(kernel: DpppContractionKernel) -> str:
     roots = [item for center in kernel.gradients for item in center]
     emitter.emit(roots)
     p_label = "".join(kernel.p_components)
-    function_name = (
-        f"generated_dppp_{kernel.d_component}_{p_label}_factored_gradient"
-    )
+    function_name = f"generated_dppp_{kernel.d_component}_{p_label}_factored_gradient"
     lines = [
         (
             "/** Component algebra consuming one cooperatively shared primitive "
@@ -1302,8 +1195,7 @@ def emit_dppp_contraction_cuda(kernel: DpppContractionKernel) -> str:
     for center, center_gradients in enumerate(kernel.gradients):
         for coordinate, expression in enumerate(center_gradients):
             lines.append(
-                f"  gradient[{center}][{coordinate}] = "
-                f"{emitter.reference(expression)};"
+                f"  gradient[{center}][{coordinate}] = {emitter.reference(expression)};"
             )
     lines.append("}")
     return "\n".join(lines) + "\n"

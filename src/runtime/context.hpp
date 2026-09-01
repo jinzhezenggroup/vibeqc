@@ -1,9 +1,9 @@
 #ifndef VIBEQC_RUNTIME_CONTEXT_HPP
 #define VIBEQC_RUNTIME_CONTEXT_HPP
 
-#include "core/types.hpp"
-
 #include <string>
+
+#include "core/types.hpp"
 
 namespace vibeqc::runtime {
 

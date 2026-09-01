@@ -1,8 +1,7 @@
-#include "runtime/context.hpp"
-
-#include "scf/aot_shell_registry.hpp"
-
 #include <cuda_runtime_api.h>
+
+#include "runtime/context.hpp"
+#include "scf/aot_shell_registry.hpp"
 
 namespace vibeqc::runtime {
 
@@ -52,10 +51,8 @@ vibeqc_status initialize_cuda_context(core::ContextState& state, std::string& de
   // Resolve the generated kernel set once for this context/device. Unknown
   // devices retain the generic implementation instead of borrowing a tuned
   // schedule compiled and measured for another compute capability.
-  scf::generated::select_profile_for_device(
-      state.device_id, properties.major, properties.minor);
-  const scf::generated::ProfileInfo& profile =
-      scf::generated::selected_profile();
+  scf::generated::select_profile_for_device(state.device_id, properties.major, properties.minor);
+  const scf::generated::ProfileInfo& profile = scf::generated::selected_profile();
   state.aot_profile_name = profile.name;
   state.aot_profile_tuned = profile.tuned;
   state.aot_profile_portable = profile.portable;

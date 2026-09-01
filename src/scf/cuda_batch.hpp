@@ -1,15 +1,15 @@
 #ifndef VIBEQC_SCF_CUDA_BATCH_HPP
 #define VIBEQC_SCF_CUDA_BATCH_HPP
 
-#include "core/types.hpp"
-#include "scf/direct_task_layout.hpp"
-#include "scf/cuda_eigensolver_policy.hpp"
-#include "scf/types.hpp"
-
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+
+#include "core/types.hpp"
+#include "scf/cuda_eigensolver_policy.hpp"
+#include "scf/direct_task_layout.hpp"
+#include "scf/types.hpp"
 
 namespace vibeqc::scf {
 
@@ -29,12 +29,10 @@ struct CudaRhfShellClassProfileEntry {
 };
 
 using CudaRhfShellClassProfile =
-    std::array<CudaRhfShellClassProfileEntry,
-               detail::kDirectQuartetShellClassCount>;
+    std::array<CudaRhfShellClassProfileEntry, detail::kDirectQuartetShellClassCount>;
 
 /** Scalar CTA sizes compared by the PPPS production-queue diagnostic. */
-inline constexpr std::array<unsigned, 4> kPppsProfileBlockThreads{
-    32U, 64U, 128U, 256U};
+inline constexpr std::array<unsigned, 4> kPppsProfileBlockThreads{32U, 64U, 128U, 256U};
 
 /**
  * Exact final-density PPPS queue statistics retained by the CUDA backend.
@@ -59,19 +57,15 @@ struct CudaPppsQueueProfile {
   std::array<std::uint64_t, kOrientationCount> orientation_tasks{};
   std::array<std::uint64_t, kOrientationCount> orientation_primitive_work{};
   std::array<std::uint64_t, kPrimitivePairBucketCount> bra_primitive_tasks{};
-  std::array<std::uint64_t, kPrimitivePairBucketCount>
-      bra_primitive_work{};
+  std::array<std::uint64_t, kPrimitivePairBucketCount> bra_primitive_work{};
   std::array<std::uint64_t, kPrimitivePairBucketCount> ket_primitive_tasks{};
-  std::array<std::uint64_t, kPrimitivePairBucketCount>
-      ket_primitive_work{};
+  std::array<std::uint64_t, kPrimitivePairBucketCount> ket_primitive_work{};
   // Each bucket launch is sequential. Summing its ideal load and simulated
   // makespan therefore produces an aggregate tail estimate for a ragged fleet.
   std::array<double, kPppsProfileBlockThreads.size()> task_schedule_ideal{};
   std::array<double, kPppsProfileBlockThreads.size()> task_schedule_makespan{};
-  std::array<double, kPppsProfileBlockThreads.size()>
-      primitive_schedule_ideal{};
-  std::array<double, kPppsProfileBlockThreads.size()>
-      primitive_schedule_makespan{};
+  std::array<double, kPppsProfileBlockThreads.size()> primitive_schedule_ideal{};
+  std::array<double, kPppsProfileBlockThreads.size()> primitive_schedule_makespan{};
 };
 
 /** Internal diagnostics for the immutable CUDA basis topology layout. */
@@ -112,12 +106,10 @@ enum class CudaEigensolverSelectionSource : std::uint32_t {
 /** Setup-time provider selection and exact Graph qualification evidence. */
 struct CudaEigensolverDiagnostic {
   /** Provider used by setup/finalization calls outside the iteration Graph. */
-  CudaEigensolverFamily ordinary_family{
-      CudaEigensolverFamily::small_native};
+  CudaEigensolverFamily ordinary_family{CudaEigensolverFamily::small_native};
   /** Provider captured into the device-tail iteration Graph. */
   CudaEigensolverFamily family{CudaEigensolverFamily::small_native};
-  CudaEigensolverSelectionSource selection_source{
-      CudaEigensolverSelectionSource::dimension_policy};
+  CudaEigensolverSelectionSource selection_source{CudaEigensolverSelectionSource::dimension_policy};
   std::uint64_t bucket_id{};
   std::uint64_t matrix_dimension{};
   std::uint64_t physical_system_count{};
@@ -142,61 +134,41 @@ struct CudaInactiveEigensolverProfileEntry {
   bool provider_invoked{};
 };
 
-using CudaInactiveEigensolverProfile =
-    std::vector<CudaInactiveEigensolverProfileEntry>;
+using CudaInactiveEigensolverProfile = std::vector<CudaInactiveEigensolverProfileEntry>;
 
-CudaRhfBasisLayoutStats inspect_rhf_cuda_basis_layout(
-    const std::vector<core::System>& systems);
+CudaRhfBasisLayoutStats inspect_rhf_cuda_basis_layout(const std::vector<core::System>& systems);
 
 std::vector<RhfBucketItem> run_rhf_cuda_bucket(
-    const std::vector<core::System>& systems,
-    const ScfOptions& options,
-    const std::vector<const std::vector<double>*>& initial_densities,
-    int device_id,
-    bool shell_class_profiling = false,
-    bool inactive_eigensolver_profiling = false);
+    const std::vector<core::System>& systems, const ScfOptions& options,
+    const std::vector<const std::vector<double>*>& initial_densities, int device_id,
+    bool shell_class_profiling = false, bool inactive_eigensolver_profiling = false);
 
 std::vector<RhfBucketItem> run_rhf_cuda_bucket_cached(
-    CudaRhfBucketPlan** plan,
-    const std::vector<core::System>& systems,
-    const ScfOptions& options,
-    const std::vector<const std::vector<double>*>& initial_densities,
-    int device_id,
-    bool shell_class_profiling = false,
-    bool inactive_eigensolver_profiling = false);
+    CudaRhfBucketPlan** plan, const std::vector<core::System>& systems, const ScfOptions& options,
+    const std::vector<const std::vector<double>*>& initial_densities, int device_id,
+    bool shell_class_profiling = false, bool inactive_eigensolver_profiling = false);
 
 std::vector<RhfBucketItem> run_uhf_cuda_bucket(
-    const std::vector<core::System>& systems,
-    const ScfOptions& options,
-    const std::vector<const std::vector<double>*>& initial_densities,
-    int device_id,
-    bool shell_class_profiling = false,
-    bool inactive_eigensolver_profiling = false);
+    const std::vector<core::System>& systems, const ScfOptions& options,
+    const std::vector<const std::vector<double>*>& initial_densities, int device_id,
+    bool shell_class_profiling = false, bool inactive_eigensolver_profiling = false);
 
 std::vector<RhfBucketItem> run_uhf_cuda_bucket_cached(
-    CudaRhfBucketPlan** plan,
-    const std::vector<core::System>& systems,
-    const ScfOptions& options,
-    const std::vector<const std::vector<double>*>& initial_densities,
-    int device_id,
-    bool shell_class_profiling = false,
-    bool inactive_eigensolver_profiling = false);
+    CudaRhfBucketPlan** plan, const std::vector<core::System>& systems, const ScfOptions& options,
+    const std::vector<const std::vector<double>*>& initial_densities, int device_id,
+    bool shell_class_profiling = false, bool inactive_eigensolver_profiling = false);
 
-bool get_rhf_cuda_shell_class_profile(
-    const CudaRhfBucketPlan* plan,
-    CudaRhfShellClassProfile& profile) noexcept;
+bool get_rhf_cuda_shell_class_profile(const CudaRhfBucketPlan* plan,
+                                      CudaRhfShellClassProfile& profile) noexcept;
 
-bool get_rhf_cuda_ppps_queue_profile(
-    const CudaRhfBucketPlan* plan,
-    CudaPppsQueueProfile& profile) noexcept;
+bool get_rhf_cuda_ppps_queue_profile(const CudaRhfBucketPlan* plan,
+                                     CudaPppsQueueProfile& profile) noexcept;
 
-bool get_rhf_cuda_eigensolver_diagnostic(
-    const CudaRhfBucketPlan* plan,
-    CudaEigensolverDiagnostic& diagnostic) noexcept;
+bool get_rhf_cuda_eigensolver_diagnostic(const CudaRhfBucketPlan* plan,
+                                         CudaEigensolverDiagnostic& diagnostic) noexcept;
 
-bool get_rhf_cuda_inactive_eigensolver_profile(
-    const CudaRhfBucketPlan* plan,
-    CudaInactiveEigensolverProfile& profile) noexcept;
+bool get_rhf_cuda_inactive_eigensolver_profile(const CudaRhfBucketPlan* plan,
+                                               CudaInactiveEigensolverProfile& profile) noexcept;
 
 void destroy_rhf_cuda_bucket_plan(CudaRhfBucketPlan* plan) noexcept;
 
@@ -209,8 +181,7 @@ void destroy_rhf_cuda_bucket_plan(CudaRhfBucketPlan* plan) noexcept;
  * device-resident density has advanced. Re-enabling updates discards the
  * frozen baseline without invalidating the current resident-density cache.
  */
-void set_rhf_cuda_bucket_warm_start_updates(
-    CudaRhfBucketPlan* plan, bool enabled) noexcept;
+void set_rhf_cuda_bucket_warm_start_updates(CudaRhfBucketPlan* plan, bool enabled) noexcept;
 
 /** Discard both resident and frozen warm-start state for a CUDA bucket. */
 void clear_rhf_cuda_bucket_warm_starts(CudaRhfBucketPlan* plan) noexcept;

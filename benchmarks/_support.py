@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from importlib import metadata
 import json
 import os
-from pathlib import Path
 import platform
 import shutil
 import subprocess
 import sys
-from typing import Any, Iterable
-
+from collections.abc import Iterable
+from datetime import datetime, timezone
+from importlib import metadata
+from pathlib import Path
+from typing import Any
 
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
@@ -190,9 +190,7 @@ def environment_metadata(
     """
 
     head = _git_output("rev-parse", "HEAD")
-    tracked_status = _git_output(
-        "status", "--porcelain=v1", "--untracked-files=no"
-    )
+    tracked_status = _git_output("status", "--porcelain=v1", "--untracked-files=no")
     untracked_paths = _git_output("ls-files", "--others", "--exclude-standard")
     source_status = _source_status_payload(tracked_status, untracked_paths)
     package_versions = {
@@ -270,15 +268,9 @@ def benchmark_gate_failures(
     if not reference_converged:
         failures.append("one or more GPU4PySCF reference systems did not converge")
     if minimum_speedup is not None and speedup < minimum_speedup:
-        failures.append(
-            f"warm speedup {speedup:.6g}x is below {minimum_speedup:.6g}x"
-        )
-    if (
-        maximum_vibeqc_over_reference is not None
-        and (
-            speedup <= 0.0
-            or 1.0 / speedup > maximum_vibeqc_over_reference
-        )
+        failures.append(f"warm speedup {speedup:.6g}x is below {minimum_speedup:.6g}x")
+    if maximum_vibeqc_over_reference is not None and (
+        speedup <= 0.0 or 1.0 / speedup > maximum_vibeqc_over_reference
     ):
         ratio = float("inf") if speedup <= 0.0 else 1.0 / speedup
         failures.append(

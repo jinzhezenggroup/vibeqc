@@ -13,8 +13,7 @@ struct ScfOptions {
   double density_tolerance{1.0e-8};
   double screening_tolerance{1.0e-12};
   /** Select the DF solver; direct four-center remains the default. */
-  vibeqc_density_fitting_mode density_fitting_mode{
-      VIBEQC_DENSITY_FITTING_NONE};
+  vibeqc_density_fitting_mode density_fitting_mode{VIBEQC_DENSITY_FITTING_NONE};
   /** Relative cutoff used when factoring the auxiliary Coulomb metric. */
   double density_fitting_relative_threshold{1.0e-10};
   /** Byte budget for bounded DF plan/integral work; zero means implementation default. */

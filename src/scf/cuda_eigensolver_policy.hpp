@@ -23,8 +23,7 @@ enum class XsyevBatchedEligibilityReason : std::uint32_t {
 
 struct XsyevBatchedEligibility {
   bool eligible{};
-  XsyevBatchedEligibilityReason reason{
-      XsyevBatchedEligibilityReason::zero_dimension};
+  XsyevBatchedEligibilityReason reason{XsyevBatchedEligibilityReason::zero_dimension};
   std::uint64_t matrix_batch_product{};
 };
 
@@ -37,19 +36,15 @@ struct XsyevBatchedEligibility {
  * signatures near INT32_MAX without overflowing an intermediate.
  */
 constexpr XsyevBatchedEligibility xsyev_batched_api_eligibility(
-    std::uint64_t n,
-    std::uint64_t lda,
-    std::uint64_t solver_batch) noexcept {
+    std::uint64_t n, std::uint64_t lda, std::uint64_t solver_batch) noexcept {
   if (n == 0 || solver_batch == 0) {
     return {false, XsyevBatchedEligibilityReason::zero_dimension, 0};
   }
   if (lda < n) {
-    return {false, XsyevBatchedEligibilityReason::invalid_leading_dimension,
-            0};
+    return {false, XsyevBatchedEligibilityReason::invalid_leading_dimension, 0};
   }
   if (n > kXsyevBatchedDocumentedDimensionLimit) {
-    return {false, XsyevBatchedEligibilityReason::documented_dimension_limit,
-            0};
+    return {false, XsyevBatchedEligibilityReason::documented_dimension_limit, 0};
   }
   constexpr std::uint64_t product_limit =
       static_cast<std::uint64_t>(std::numeric_limits<std::int32_t>::max());
@@ -57,16 +52,13 @@ constexpr XsyevBatchedEligibility xsyev_batched_api_eligibility(
     return {false, XsyevBatchedEligibilityReason::solver_batch_limit, 0};
   }
   if (n > product_limit / lda) {
-    return {false, XsyevBatchedEligibilityReason::documented_product_limit,
-            0};
+    return {false, XsyevBatchedEligibilityReason::documented_product_limit, 0};
   }
   const std::uint64_t matrix_elements = n * lda;
   if (solver_batch > product_limit / matrix_elements) {
-    return {false, XsyevBatchedEligibilityReason::documented_product_limit,
-            0};
+    return {false, XsyevBatchedEligibilityReason::documented_product_limit, 0};
   }
-  return {true, XsyevBatchedEligibilityReason::eligible,
-          matrix_elements * solver_batch};
+  return {true, XsyevBatchedEligibilityReason::eligible, matrix_elements * solver_batch};
 }
 
 /** Stage that prevented exact device-launch Graph qualification. */
@@ -98,8 +90,7 @@ enum class XsyevBatchedGraphProbeStage : std::uint32_t {
 /** Exact-stack qualification evidence for one FP64 solver signature. */
 struct XsyevBatchedGraphProbeResult {
   XsyevBatchedEligibility api;
-  XsyevBatchedGraphProbeStage failure_stage{
-      XsyevBatchedGraphProbeStage::none};
+  XsyevBatchedGraphProbeStage failure_stage{XsyevBatchedGraphProbeStage::none};
   std::uint64_t n{};
   std::uint64_t solver_batch{};
   std::size_t device_workspace_bytes{};
@@ -133,8 +124,7 @@ struct XsyevBatchedDispatch {
 /** Keep ordinary cuSOLVER use independent from its stronger Graph contract. */
 constexpr XsyevBatchedDispatch select_xsyev_batched_dispatch(
     const XsyevBatchedGraphProbeResult& probe) noexcept {
-  return {probe.ordinary_execution_passed,
-          probe.ordinary_execution_passed && probe.graph_eligible};
+  return {probe.ordinary_execution_passed, probe.ordinary_execution_passed && probe.graph_eligible};
 }
 
 /** Probe one exact device/toolkit/dimension/batch signature during setup. */

@@ -25,14 +25,13 @@ import argparse
 import statistics
 import time
 
-from vibeqc import Calculator
-
 from _cases import benchmark_cases
 from _support import (
     cuda_accelerator_metadata,
     environment_metadata,
     write_result,
 )
+from vibeqc import Calculator
 
 
 def main() -> None:
@@ -48,8 +47,8 @@ def main() -> None:
     if args.repeats < 1:
         raise ValueError("--repeats must be positive")
     import cupy as cp
-    from pyscf import gto, scf
     from gpu4pyscf.scf import uhf as gpu_uhf
+    from pyscf import gto, scf
 
     case = cases[args.case]
 
@@ -86,9 +85,7 @@ def main() -> None:
         verbose=0,
     )
     gpu4pyscf = (
-        gpu_uhf.UHF(molecule)
-        if case.method == "uhf"
-        else scf.RHF(molecule).to_gpu()
+        gpu_uhf.UHF(molecule) if case.method == "uhf" else scf.RHF(molecule).to_gpu()
     )
     gpu4pyscf.conv_tol = 1.0e-12
     gpu4pyscf.conv_tol_grad = 1.0e-10
@@ -113,16 +110,12 @@ def main() -> None:
 
     vibeqc_item = vibeqc_result.items[0]
     print(
-        f"scope: {case.description}, {case.method.upper()} energy + "
-        "analytic gradient"
+        f"scope: {case.description}, {case.method.upper()} energy + analytic gradient"
     )
     print(f"VIBEQC energy: {vibeqc_item.energy:.15f} Eh")
     print(f"GPU4PySCF energy: {float(gpu4pyscf_energy):.15f} Eh")
     print(f"VIBEQC force z(atom 0): {vibeqc_item.forces[0, 2]:.15f} Eh/bohr")
-    print(
-        "GPU4PySCF force z(atom 0): "
-        f"{-float(gpu4pyscf_gradient[0, 2]):.15f} Eh/bohr"
-    )
+    print(f"GPU4PySCF force z(atom 0): {-float(gpu4pyscf_gradient[0, 2]):.15f} Eh/bohr")
     print(f"VIBEQC cold plan execution: {vibeqc_cold * 1.0e3:.3f} ms")
     print(
         "VIBEQC warm median/min: "

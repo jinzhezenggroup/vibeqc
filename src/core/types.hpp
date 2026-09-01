@@ -1,12 +1,12 @@
 #ifndef VIBEQC_CORE_TYPES_HPP
 #define VIBEQC_CORE_TYPES_HPP
 
-#include "vibeqc/vibeqc.h"
-
 #include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
+
+#include "vibeqc/vibeqc.h"
 
 namespace vibeqc::core {
 

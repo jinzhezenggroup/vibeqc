@@ -333,10 +333,9 @@ def test_fma_fusion_preserves_shared_multiply_cse_and_supports_inline_root():
     assert shared_plan.fma_operation_count == 0
 
     inline_graph = Graph()
-    inline_root = (
-        inline_graph.variable("a") * inline_graph.variable("b")
-        + inline_graph.variable("c")
-    )
+    inline_root = inline_graph.variable("a") * inline_graph.variable(
+        "b"
+    ) + inline_graph.variable("c")
     inline_plan = inline_graph.materialization_plan(
         (inline_root,),
         RematerializationPolicy.inline_single_use_values(),
@@ -368,9 +367,10 @@ def test_canonical_nary_rebuild_flattens_and_folds_associative_regions():
 
     assert node.operation == "add"
     assert len(node.arguments) == 4
-    assert sum(
-        canonical.nodes[item].operation == "constant" for item in node.arguments
-    ) == 1
+    assert (
+        sum(canonical.nodes[item].operation == "constant" for item in node.arguments)
+        == 1
+    )
     assert canonical.analyze_ssa(roots).arithmetic_operation_count == 3
     assert canonical.evaluate(rebuilt, {"x": 1.5, "y": -2.0}) == 6.0
 
@@ -436,9 +436,7 @@ def test_exact_rational_coefficients_fold_before_cuda_lowering():
         component_indices=(0,),
     )
     coefficients = (
-        node.payload
-        for node in weighted.graph.nodes
-        if node.operation == "constant"
+        node.payload for node in weighted.graph.nodes if node.operation == "constant"
     )
     assert all(isinstance(coefficient, Fraction) for coefficient in coefficients)
 
@@ -581,9 +579,7 @@ def test_factored_nary_extracts_common_factors_and_collects_like_terms():
     )
     root_node = factored.node(factored_roots[0])
     assert root_node.operation == "multiply"
-    assert any(
-        factored.nodes[item].operation == "add" for item in root_node.arguments
-    )
+    assert any(factored.nodes[item].operation == "add" for item in root_node.arguments)
 
 
 def test_nary_differentiation_and_fma_lowering_cover_variable_arity_nodes():

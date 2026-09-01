@@ -1,15 +1,15 @@
 #ifndef VIBEQC_VIBEQC_HPP
 #define VIBEQC_VIBEQC_HPP
 
-#include "vibeqc/vibeqc.h"
-
 #include <cstdint>
-#include <stdexcept>
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "vibeqc/vibeqc.h"
 
 namespace vibeqc {
 
@@ -40,11 +40,10 @@ struct MethodCapabilities {
 /** Query the native registry without preparing a system or calculation. */
 inline MethodCapabilities method_capabilities(vibeqc_method method) {
   vibeqc_method_capabilities_descriptor native{
-      sizeof(vibeqc_method_capabilities_descriptor), VIBEQC_ABI_VERSION,
-      0, 0, 0, 0, 0};
+      sizeof(vibeqc_method_capabilities_descriptor), VIBEQC_ABI_VERSION, 0, 0, 0, 0, 0};
   check(vibeqc_method_get_capabilities(method, &native));
-  return {native.method, native.family, native.supported_properties,
-          native.available != 0, native.supports_batch != 0};
+  return {native.method, native.family, native.supported_properties, native.available != 0,
+          native.supports_batch != 0};
 }
 
 class Context {
@@ -72,8 +71,7 @@ class System {
   System(const System&) = delete;
   System& operator=(const System&) = delete;
   System(System&& other) noexcept
-      : handle_(std::exchange(other.handle_, nullptr)),
-        atom_count_(other.atom_count_) {}
+      : handle_(std::exchange(other.handle_, nullptr)), atom_count_(other.atom_count_) {}
   [[nodiscard]] vibeqc_system* get() const noexcept { return handle_; }
   [[nodiscard]] std::uint32_t atom_count() const noexcept { return atom_count_; }
 
@@ -115,8 +113,7 @@ struct DensityFittingMetricDiagnostic {
 
 class Batch {
  public:
-  Batch(Context& context,
-        std::span<const System* const> systems,
+  Batch(Context& context, std::span<const System* const> systems,
         const vibeqc_method_descriptor& method,
         vibeqc_batch_flags flags = VIBEQC_BATCH_ENABLE_WARM_STARTS)
       : atom_counts_(systems.size()) {
@@ -129,8 +126,8 @@ class Batch {
       atom_counts_[i] = systems[i]->atom_count();
     }
     check(vibeqc_batch_prepare(context.get(), handles.data(),
-                            static_cast<std::uint32_t>(handles.size()),
-                            &method, flags, &handle_));
+                               static_cast<std::uint32_t>(handles.size()), &method, flags,
+                               &handle_));
   }
   ~Batch() { vibeqc_batch_destroy(handle_); }
   Batch(const Batch&) = delete;
@@ -144,8 +141,7 @@ class Batch {
   std::vector<BatchItemResult> execute(
       const std::vector<std::optional<std::vector<double>>>& coordinates = {}) {
     if (!coordinates.empty() && coordinates.size() != size()) {
-      throw Error(VIBEQC_STATUS_INVALID_ARGUMENT,
-                  "coordinate list does not match batch size");
+      throw Error(VIBEQC_STATUS_INVALID_ARGUMENT, "coordinate list does not match batch size");
     }
     std::vector<vibeqc_batch_input_descriptor> inputs;
     if (!coordinates.empty()) {
@@ -153,9 +149,7 @@ class Batch {
       for (std::size_t i = 0; i < size(); ++i) {
         inputs[i] = {sizeof(vibeqc_batch_input_descriptor), VIBEQC_ABI_VERSION,
                      coordinates[i] ? coordinates[i]->data() : nullptr,
-                     coordinates[i]
-                         ? static_cast<std::uint32_t>(coordinates[i]->size())
-                         : 0};
+                     coordinates[i] ? static_cast<std::uint32_t>(coordinates[i]->size()) : 0};
       }
     }
 
@@ -163,14 +157,24 @@ class Batch {
     std::vector<vibeqc_batch_item_result_descriptor> native(size());
     for (std::size_t i = 0; i < size(); ++i) {
       results[i].forces.resize(static_cast<std::size_t>(atom_counts_[i]) * 3);
-      native[i] = {sizeof(vibeqc_batch_item_result_descriptor), VIBEQC_ABI_VERSION,
-                   VIBEQC_STATUS_INTERNAL_ERROR, 0.0, results[i].forces.data(),
-                   static_cast<std::uint32_t>(results[i].forces.size()), 0,
-                   0.0, 0.0, 0, VIBEQC_BACKEND_CPU_REFERENCE, 0, 0, 0};
+      native[i] = {sizeof(vibeqc_batch_item_result_descriptor),
+                   VIBEQC_ABI_VERSION,
+                   VIBEQC_STATUS_INTERNAL_ERROR,
+                   0.0,
+                   results[i].forces.data(),
+                   static_cast<std::uint32_t>(results[i].forces.size()),
+                   0,
+                   0.0,
+                   0.0,
+                   0,
+                   VIBEQC_BACKEND_CPU_REFERENCE,
+                   0,
+                   0,
+                   0};
     }
     check(vibeqc_batch_execute(handle_, inputs.empty() ? nullptr : inputs.data(),
-                            static_cast<std::uint32_t>(inputs.size()),
-                            native.data(), static_cast<std::uint32_t>(native.size())));
+                               static_cast<std::uint32_t>(inputs.size()), native.data(),
+                               static_cast<std::uint32_t>(native.size())));
     for (std::size_t i = 0; i < size(); ++i) {
       results[i].status = native[i].status;
       results[i].energy = native[i].energy;
@@ -194,15 +198,13 @@ class Batch {
   }
 
   /** Return CUDA DF metric/allocation records from the most recent execution. */
-  std::vector<DensityFittingMetricDiagnostic>
-  last_density_fitting_metric_diagnostics() const {
+  std::vector<DensityFittingMetricDiagnostic> last_density_fitting_metric_diagnostics() const {
     std::uint32_t count = 0;
-    check(vibeqc_batch_get_last_density_fitting_metric_diagnostics(
-        handle_, nullptr, 0, &count));
+    check(vibeqc_batch_get_last_density_fitting_metric_diagnostics(handle_, nullptr, 0, &count));
     std::vector<vibeqc_density_fitting_metric_diagnostic> native(count);
     std::uint32_t written = 0;
-    check(vibeqc_batch_get_last_density_fitting_metric_diagnostics(
-        handle_, native.data(), count, &written));
+    check(vibeqc_batch_get_last_density_fitting_metric_diagnostics(handle_, native.data(), count,
+                                                                   &written));
     if (written != count) {
       throw Error(VIBEQC_STATUS_INTERNAL_ERROR,
                   "CUDA DF metric diagnostic count changed during copy");
@@ -210,18 +212,11 @@ class Batch {
     std::vector<DensityFittingMetricDiagnostic> result;
     result.reserve(count);
     for (const auto& input : native) {
-      result.push_back({input.bucket_id,
-                        input.system_index,
-                        input.effective_rank,
-                        input.absolute_threshold,
-                        input.condition_number,
-                        input.solver_device_workspace_bytes,
-                        input.solver_host_workspace_bytes,
-                        input.device_resident_bytes,
-                        input.peak_device_bytes,
-                        input.host_resident_bytes,
-                        input.peak_host_bytes,
-                        input.auxiliary_tile,
+      result.push_back({input.bucket_id, input.system_index, input.effective_rank,
+                        input.absolute_threshold, input.condition_number,
+                        input.solver_device_workspace_bytes, input.solver_host_workspace_bytes,
+                        input.device_resident_bytes, input.peak_device_bytes,
+                        input.host_resident_bytes, input.peak_host_bytes, input.auxiliary_tile,
                         input.streamed != 0});
     }
     return result;

@@ -15,14 +15,13 @@ constexpr double kExpandedConvergedFockReuseDensityRms = 2.0e-9;
 bool enabled(const char* variable) noexcept {
   const char* selection = std::getenv(variable);
   return selection == nullptr ||
-      (std::strcmp(selection, "0") != 0 &&
-       std::strcmp(selection, "none") != 0);
+         (std::strcmp(selection, "0") != 0 && std::strcmp(selection, "none") != 0);
 }
 
 bool selected(const char* variable, const char* value) noexcept {
   const char* selection = std::getenv(variable);
   return selection != nullptr &&
-      (std::strcmp(selection, "1") == 0 || std::strcmp(selection, value) == 0);
+         (std::strcmp(selection, "1") == 0 || std::strcmp(selection, value) == 0);
 }
 
 }  // namespace
@@ -30,13 +29,12 @@ bool selected(const char* variable, const char* value) noexcept {
 bool reuse_converged_fock_requested() noexcept {
   const char* force_rebuild = std::getenv("VIBEQC_FINAL_FOCK_REBUILD");
   return force_rebuild == nullptr || std::strcmp(force_rebuild, "0") == 0 ||
-      std::strcmp(force_rebuild, "none") == 0;
+         std::strcmp(force_rebuild, "none") == 0;
 }
 
 std::optional<double> configured_mixed_precision_fock_threshold(
     double screening_tolerance) noexcept {
-  const char* selection =
-      std::getenv("VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD");
+  const char* selection = std::getenv("VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD");
   if (selection == nullptr || std::strcmp(selection, "0") == 0 ||
       std::strcmp(selection, "none") == 0) {
     return std::nullopt;
@@ -92,17 +90,15 @@ bool direct_tile_validation_requested() noexcept {
 
 double converged_fock_reuse_density_rms(double density_tolerance) noexcept {
   return density_tolerance >= kExpandedConvergedFockReuseDensityTolerance
-      ? kExpandedConvergedFockReuseDensityRms
-      : kTightConvergedFockReuseDensityRms;
+             ? kExpandedConvergedFockReuseDensityRms
+             : kTightConvergedFockReuseDensityRms;
 }
 
 bool force_density_product_screening_requested() noexcept {
   return enabled("VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING");
 }
 
-bool resident_ppps_bra_requested() noexcept {
-  return enabled("VIBEQC_PPPS_RESIDENT_BRA");
-}
+bool resident_ppps_bra_requested() noexcept { return enabled("VIBEQC_PPPS_RESIDENT_BRA"); }
 
 bool ppps_signature_bucketing_requested() noexcept {
   return enabled("VIBEQC_PPPS_SIGNATURE_BUCKETING");
@@ -130,8 +126,6 @@ bool one_electron_force_scalar_requested() noexcept {
   return selection == nullptr || std::strcmp(selection, "0") == 0;
 }
 
-bool resident_psss_bra_requested() noexcept {
-  return enabled("VIBEQC_PSSS_RESIDENT_BRA");
-}
+bool resident_psss_bra_requested() noexcept { return enabled("VIBEQC_PSSS_RESIDENT_BRA"); }
 
 }  // namespace vibeqc::scf::cuda_policy

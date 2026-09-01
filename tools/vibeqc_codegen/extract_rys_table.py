@@ -29,9 +29,7 @@ _ARRAY_NAMES = (
     "ROOT_LARGEX_W_DATA",
     "ROOT_RW_DATA",
 )
-_NUMBER = re.compile(
-    r"[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?"
-)
+_NUMBER = re.compile(r"[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?")
 
 
 def _read_cuda_array(source: str, name: str) -> tuple[float, ...]:
@@ -48,9 +46,7 @@ def _read_cuda_array(source: str, name: str) -> tuple[float, ...]:
     return tuple(float(token) for token in _NUMBER.findall(body))
 
 
-def extract_fixed_root_tables(
-    source: str, nroots: int
-) -> dict[str, tuple[float, ...]]:
+def extract_fixed_root_tables(source: str, nroots: int) -> dict[str, tuple[float, ...]]:
     """Extract the compact table slice addressed by GPU4PySCF's evaluator."""
 
     if not 1 <= nroots <= 10:

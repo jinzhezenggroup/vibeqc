@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 import shlex
 import subprocess
 import sys
+from pathlib import Path
 
 from _cases import (
     BenchmarkGatePoint,
@@ -21,7 +21,6 @@ from _cases import (
     density_fitting_gate_points,
     real_molecule_gate_points,
 )
-
 
 _ENERGY_TOLERANCE = 1.0e-12
 _DENSITY_TOLERANCE = 1.0e-10
@@ -67,10 +66,12 @@ def _point_command(
     if point.minimum_speedup is not None:
         command.extend(("--minimum-speedup", str(point.minimum_speedup)))
     if density_fitting_memory_budget_bytes:
-        command.extend((
-            "--density-fitting-memory-budget-bytes",
-            str(density_fitting_memory_budget_bytes),
-        ))
+        command.extend(
+            (
+                "--density-fitting-memory-budget-bytes",
+                str(density_fitting_memory_budget_bytes),
+            )
+        )
     return command
 
 
@@ -110,9 +111,7 @@ def main() -> None:
     if args.repeats < 1:
         raise ValueError("--repeats must be positive")
     if args.density_fitting_memory_budget_bytes < 0:
-        raise ValueError(
-            "--density-fitting-memory-budget-bytes must be non-negative"
-        )
+        raise ValueError("--density-fitting-memory-budget-bytes must be non-negative")
 
     cases = benchmark_cases()
     gate_points = (
@@ -143,20 +142,23 @@ def main() -> None:
         output = args.output_directory / (
             f"{point.case}-b{point.batch_size}-{args.density_fitting}.json"
         )
-        commands.append((
-            point,
-            output,
-            _point_command(
+        commands.append(
+            (
                 point,
-                repeats=args.repeats,
-                output=output,
-                density_fitting_memory_budget_bytes=(
-                    args.density_fitting_memory_budget_bytes
-                    if args.density_fitting == "cuda" else 0
-                ),
+                output,
+                _point_command(
+                    point,
+                    repeats=args.repeats,
+                    output=output,
+                    density_fitting_memory_budget_bytes=(
+                        args.density_fitting_memory_budget_bytes
+                        if args.density_fitting == "cuda"
+                        else 0
+                    ),
+                )
+                + ["--density-fitting", args.density_fitting],
             )
-            + ["--density-fitting", args.density_fitting],
-        ))
+        )
     if args.dry_run:
         for _, _, command in commands:
             print(shlex.join(command))
@@ -172,20 +174,21 @@ def main() -> None:
             payload = json.loads(output.read_text(encoding="utf-8"))
         passed = completed.returncode == 0
         failed = failed or not passed
-        results.append({
-            "case": point.case,
-            "ao_count": point.expected_ao_count,
-            "batch_size": point.batch_size,
-            "minimum_speedup": point.minimum_speedup,
-            "reference_gradient_tolerance":
-                point.reference_gradient_tolerance,
-            "maximum_energy_error_hartree": point.maximum_energy_error,
-            "maximum_force_error_hartree_per_bohr": point.maximum_force_error,
-            "returncode": completed.returncode,
-            "passed": passed,
-            "artifact": str(output.resolve()),
-            "gate": None if payload is None else payload.get("gate"),
-        })
+        results.append(
+            {
+                "case": point.case,
+                "ao_count": point.expected_ao_count,
+                "batch_size": point.batch_size,
+                "minimum_speedup": point.minimum_speedup,
+                "reference_gradient_tolerance": point.reference_gradient_tolerance,
+                "maximum_energy_error_hartree": point.maximum_energy_error,
+                "maximum_force_error_hartree_per_bohr": point.maximum_force_error,
+                "returncode": completed.returncode,
+                "passed": passed,
+                "artifact": str(output.resolve()),
+                "gate": None if payload is None else payload.get("gate"),
+            }
+        )
 
     summary = {
         "schema_version": 1,

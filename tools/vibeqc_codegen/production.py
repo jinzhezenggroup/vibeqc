@@ -40,9 +40,9 @@ from .fused_schedule import build_fused_shell_plan
 from .ir import IntegralIR, KernelConsumer, build_integral_ir
 from .shell_spec import FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec, shell_pair_class
 
-_SUPPORTED_RECURRENCES = frozenset(
-    ("subset_wick", "rys2", "rys3", "rys4", "rys5")
-)
+_SUPPORTED_RECURRENCES = frozenset(("subset_wick", "rys2", "rys3", "rys4", "rys5"))
+
+
 def _supports_scalar_rys(
     spec: ShellClassSpec,
     schedule: ScheduleIR,
@@ -207,9 +207,7 @@ class KernelSelection:
                 "production recurrence does not match the selection integral"
             )
         if selected_integral.consumers != frozenset(self.consumers):
-            raise ValueError(
-                "production consumers do not match the selection integral"
-            )
+            raise ValueError("production consumers do not match the selection integral")
         for field_name in (
             "runtime_seconds",
             "compile_seconds",
@@ -250,9 +248,7 @@ class KernelSelection:
         high_root_component_lanes = _supports_component_lane_rys(
             self.spec, self.schedule
         )
-        high_root_uniform_warps = _supports_uniform_warp_rys(
-            self.spec, self.schedule
-        )
+        high_root_uniform_warps = _supports_uniform_warp_rys(self.spec, self.schedule)
         if self.recurrence in ("rys4", "rys5") and not (
             high_root_component_lanes or high_root_uniform_warps
         ):
@@ -296,9 +292,7 @@ def _selection_integral(
     plan beside a force Rys plan).
     """
 
-    selected_recurrence = (
-        selection.recurrence if recurrence is None else recurrence
-    )
+    selected_recurrence = selection.recurrence if recurrence is None else recurrence
     base = selection.integral
     if base is None:
         selected_consumers = selection.consumers if consumers is None else consumers
@@ -1118,9 +1112,7 @@ def _streaming_fock_source(selection: KernelSelection) -> str:
         value_state_count = (
             (angular_order + 1) * (angular_order + 2) * (angular_order + 3) // 6
         )
-        block_threads = (
-            (max(spec.component_count, value_state_count) + 31) // 32 * 32
-        )
+        block_threads = (max(spec.component_count, value_state_count) + 31) // 32 * 32
         schedule = ScheduleIR(
             kind=ScheduleKind.COMPONENT_LANES,
             block_threads=block_threads,
@@ -1145,17 +1137,23 @@ def _streaming_fock_source(selection: KernelSelection) -> str:
     low_pair_class = min(first_pair_class, second_pair_class)
     shell_class = shell_class_index(selection.spec)
     first_angular, second_angular, third_angular, fourth_angular = spec.angular
-    density_pair_classes = tuple(dict.fromkeys((
-        first_pair_class,
-        second_pair_class,
-        shell_pair_class(first_angular, third_angular),
-        shell_pair_class(first_angular, fourth_angular),
-        shell_pair_class(second_angular, third_angular),
-        shell_pair_class(second_angular, fourth_angular),
-    )))
-    system_density_bound = "topology.system_pair_density_bounds[" \
-        "static_cast<std::size_t>(system) * 10U + " \
+    density_pair_classes = tuple(
+        dict.fromkeys(
+            (
+                first_pair_class,
+                second_pair_class,
+                shell_pair_class(first_angular, third_angular),
+                shell_pair_class(first_angular, fourth_angular),
+                shell_pair_class(second_angular, third_angular),
+                shell_pair_class(second_angular, fourth_angular),
+            )
+        )
+    )
+    system_density_bound = (
+        "topology.system_pair_density_bounds["
+        "static_cast<std::size_t>(system) * 10U + "
         f"{density_pair_classes[0]}U]"
+    )
     for pair_class in density_pair_classes[1:]:
         system_density_bound = (
             f"fmax({system_density_bound}, "
@@ -1166,8 +1164,7 @@ def _streaming_fock_source(selection: KernelSelection) -> str:
     prefix = f"generated_{spec.name}"
     supports_mixed_fock = selection.has_capability(CAPABILITY_MIXED_FOCK)
     retained_state = (
-        "mixed_precision_enabled && contribution_bound < fp64_threshold "
-        "? 3U : 1U"
+        "mixed_precision_enabled && contribution_bound < fp64_threshold ? 3U : 1U"
         if supports_mixed_fock
         else "1U"
     )
@@ -1411,11 +1408,15 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
         {prefix}_stream_populate_task(
             topology, bra_pair, ket_pair, {task_reference});
         if ({retained_state} == 3U) {{
-          {f'''{prefix}_packed_mixed_fock_lane<Unrestricted>(
+          {
+            f'''{prefix}_packed_mixed_fock_lane<Unrestricted>(
               {task_pointer}, primitive_pairs, primitive_pair_offsets,
               ao_coefficients, atom_positions, screening_tolerance,
               schwarz_bounds, density, fock,
-              {task_index}, {storage_reference});''' if supports_mixed_fock else '/* This shell class has no generated mixed Fock helper. */'}
+              {task_index}, {storage_reference});'''
+            if supports_mixed_fock
+            else "/* This shell class has no generated mixed Fock helper. */"
+        }
         }} else {{
           {prefix}_packed_fock_lane<Unrestricted>(
               {task_pointer}, primitive_pairs, primitive_pair_offsets,
@@ -1446,7 +1447,8 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
     const double* density, double* fock, std::uint32_t* bra_head) {{
   static_assert(kGenerated{class_name}FockBlockThreads == {schedule.block_threads}U);
   __shared__ Generated{class_name}ShellTask stream_tasks[{tasks_per_block}];
-  {f'''union Generated{class_name}StreamingSubgroupFockStorage {{
+  {
+            f'''union Generated{class_name}StreamingSubgroupFockStorage {{
     Generated{class_name}SubgroupFockStorage fp64;
     Generated{class_name}MixedSubgroupFockStorage mixed;
   }};
@@ -1454,8 +1456,11 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
   // reserves the larger scratch layout for each subgroup without summing both
   // layouts and unnecessarily reducing streaming-kernel occupancy.
   __shared__ Generated{class_name}StreamingSubgroupFockStorage
-      subgroup_storage[{tasks_per_block}];''' if supports_mixed_fock else f'''__shared__ Generated{class_name}SubgroupFockStorage
-      subgroup_storage[{tasks_per_block}];'''}
+      subgroup_storage[{tasks_per_block}];'''
+            if supports_mixed_fock
+            else f'''__shared__ Generated{class_name}SubgroupFockStorage
+      subgroup_storage[{tasks_per_block}];'''
+        }
   __shared__ std::uint32_t stream_keep[{tasks_per_block}];
   __shared__ std::uint32_t bra_ordinal;
   const unsigned subgroup = threadIdx.x / {subgroup_lanes}U;
@@ -1530,17 +1535,21 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
             ao_coefficients, atom_positions, screening_tolerance,
             schwarz_bounds, density, fock,
             static_cast<std::size_t>(subgroup),
-            subgroup_storage[subgroup]{'.fp64' if supports_mixed_fock else ''},
+            subgroup_storage[subgroup]{".fp64" if supports_mixed_fock else ""},
             lane, subgroup_mask);
       }}
-      {f'''if (stream_keep[subgroup] == 3U) {{
+      {
+            f'''if (stream_keep[subgroup] == 3U) {{
         {prefix}_mixed_subgroup_fock_task<Unrestricted>(
             stream_tasks, primitive_pairs, primitive_pair_offsets,
             ao_coefficients, atom_positions, screening_tolerance,
             schwarz_bounds, density, fock,
             static_cast<std::size_t>(subgroup),
             subgroup_storage[subgroup].mixed, lane, subgroup_mask);
-      }}''' if supports_mixed_fock else ''}
+      }}'''
+            if supports_mixed_fock
+            else ""
+        }
       __syncthreads();
     }}
   }}
@@ -1643,12 +1652,16 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
           ao_coefficients, atom_positions, screening_tolerance,
           schwarz_bounds, density, fock, 0U);
     }}
-    {f'''if (stream_state == 3U) {{
+    {
+            f'''if (stream_state == 3U) {{
       {prefix}_shell_class_mixed_fock_task<Unrestricted>(
           stream_task, primitive_pairs, primitive_pair_offsets,
           ao_coefficients, atom_positions, screening_tolerance,
           schwarz_bounds, density, fock, 0U);
-    }}''' if supports_mixed_fock else ''}
+    }}'''
+            if supports_mixed_fock
+            else ""
+        }
     __syncthreads();
   }}
 }}
@@ -1722,12 +1735,16 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
             ao_coefficients, atom_positions, screening_tolerance,
             schwarz_bounds, density, fock, 0U);
       }}
-      {f'''if (stream_state == 3U) {{
+      {
+            f'''if (stream_state == 3U) {{
         {prefix}_shell_class_mixed_fock_task<Unrestricted>(
             stream_task, primitive_pairs, primitive_pair_offsets,
             ao_coefficients, atom_positions, screening_tolerance,
             schwarz_bounds, density, fock, 0U);
-      }}''' if supports_mixed_fock else ''}
+      }}'''
+            if supports_mixed_fock
+            else ""
+        }
       __syncthreads();
     }}
   }}
@@ -2208,19 +2225,19 @@ def emit_registry_source(
         for spec in mixed_fock_specs
     )
     streaming_fock_declarations = "\n".join(
-        f'''extern "C" cudaError_t vibeqc_launch_generated_{spec.name}_streaming_fock(
+        f"""extern "C" cudaError_t vibeqc_launch_generated_{spec.name}_streaming_fock(
     cudaStream_t, bool, unsigned, const void*, const std::int64_t*,
     const void*, const double*, const void*, double, bool, double,
-    const double*, const double*, double*, std::uint32_t*);'''
+    const double*, const double*, double*, std::uint32_t*);"""
         for spec in streaming_fock_specs
     )
     streaming_fock_cases = "\n".join(
-        f'''    case {shell_class_index(spec)}U:
+        f"""    case {shell_class_index(spec)}U:
       return vibeqc_launch_generated_{spec.name}_streaming_fock(
           stream, unrestricted, worker_blocks, shell_pair_stream,
           primitive_pair_offsets, primitive_pairs, ao_coefficients,
           atom_positions, screening_tolerance, mixed_precision_enabled,
-          fp64_threshold, schwarz_bounds, density, fock, bra_head);'''
+          fp64_threshold, schwarz_bounds, density, fock, bra_head);"""
         for spec in streaming_fock_specs
     )
     resident_declaration = ""
@@ -2519,9 +2536,7 @@ def emit_profile_shard(
                     selection,
                     identifier,
                 ).replace(
-                    _scope_profile_identifiers(
-                        streaming_symbol, selection, identifier
-                    ),
+                    _scope_profile_identifiers(streaming_symbol, selection, identifier),
                     streaming_symbol,
                 )
                 body.append(streaming_wrapper)

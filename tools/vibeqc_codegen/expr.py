@@ -219,9 +219,7 @@ class MaterializationPlan:
         """Return arithmetic node identifiers assigned to scalar temporaries."""
 
         return frozenset(
-            decision.identifier
-            for decision in self.decisions
-            if decision.materialized
+            decision.identifier for decision in self.decisions if decision.materialized
         )
 
     @property
@@ -244,9 +242,7 @@ class MaterializationPlan:
         """Return positions changed from the canonical topological order."""
 
         baseline_order = tuple(
-            decision.identifier
-            for decision in self.decisions
-            if decision.materialized
+            decision.identifier for decision in self.decisions if decision.materialized
         )
         return sum(
             baseline != emitted
@@ -669,9 +665,7 @@ class Graph:
         normalized_roots = tuple(roots)
         graph = self
         if power_lowering == PowerLowering.SMALL_INTEGER:
-            graph, normalized_roots = self.lower_small_integer_powers(
-                normalized_roots
-            )
+            graph, normalized_roots = self.lower_small_integer_powers(normalized_roots)
         elif power_lowering != PowerLowering.NATIVE:
             raise ValueError(f"unsupported power lowering {power_lowering!r}")
         if form == AlgebraForm.BINARY:
@@ -859,9 +853,9 @@ class Graph:
                 else:
                     derivative = self.add_many(
                         self.multiply_many(
-                            visit(argument) if index == differentiated else Expr(
-                                self, argument
-                            )
+                            visit(argument)
+                            if index == differentiated
+                            else Expr(self, argument)
                             for index, argument in enumerate(node.arguments)
                         )
                         for differentiated in range(len(node.arguments))
@@ -1133,9 +1127,7 @@ class Graph:
             lifetime_span = lifetime.last_use_index - lifetime.definition_index
             operation_cost = selected_policy.operation_cost(
                 lifetime.operation
-            ) * self._node_arithmetic_operation_count(
-                self.nodes[lifetime.identifier]
-            )
+            ) * self._node_arithmetic_operation_count(self.nodes[lifetime.identifier])
             decisions.append(
                 MaterializationDecision(
                     identifier=lifetime.identifier,
@@ -1161,9 +1153,7 @@ class Graph:
             decisions=tuple(decisions),
             emission_order=emission_order,
             fma_operations=fma_operations,
-            baseline_arithmetic_operation_count=(
-                baseline.arithmetic_operation_count
-            ),
+            baseline_arithmetic_operation_count=(baseline.arithmetic_operation_count),
             baseline_materialized_value_count=baseline.materialized_value_count,
             baseline_peak_live_values=baseline.peak_live_values,
             operation_counts=tuple(sorted(operation_counts.items())),
@@ -1263,7 +1253,9 @@ class Graph:
 
         ordered = tuple(emission_order)
         if set(ordered) != materialized or len(ordered) != len(materialized):
-            raise ValueError("emission order must contain every materialized value once")
+            raise ValueError(
+                "emission order must contain every materialized value once"
+            )
         definition_index = {
             identifier: index for index, identifier in enumerate(ordered)
         }
@@ -1284,9 +1276,7 @@ class Graph:
         for consumer_index, consumer in enumerate(ordered):
             for argument in self.nodes[consumer].arguments:
                 for identifier in dict(referenced_values(argument)):
-                    last_uses[identifier] = max(
-                        last_uses[identifier], consumer_index
-                    )
+                    last_uses[identifier] = max(last_uses[identifier], consumer_index)
         output_begin = len(ordered)
         for offset, root in enumerate(roots):
             for identifier in dict(referenced_values(root.identifier)):
@@ -1355,21 +1345,17 @@ class Graph:
         downstream_height: dict[int, int] = {}
         for identifier in reversed(tuple(baseline_order)):
             downstream_height[identifier] = 1 + max(
-                (
-                    downstream_height[consumer]
-                    for consumer in consumers[identifier]
-                ),
+                (downstream_height[consumer] for consumer in consumers[identifier]),
                 default=0,
             )
 
         unscheduled = set(materialized)
         ready = {
-            identifier
-            for identifier in materialized
-            if not dependencies[identifier]
+            identifier for identifier in materialized if not dependencies[identifier]
         }
         order = []
         while ready:
+
             def priority(identifier: int) -> tuple[int, int, int]:
                 freed_operands = sum(
                     remaining_consumer_events[dependency] == 1
@@ -1388,9 +1374,8 @@ class Graph:
             for dependency in dependencies[selected]:
                 remaining_consumer_events[dependency] -= 1
             for consumer in consumers[selected]:
-                if (
-                    consumer in unscheduled
-                    and dependencies[consumer].isdisjoint(unscheduled)
+                if consumer in unscheduled and dependencies[consumer].isdisjoint(
+                    unscheduled
                 ):
                     ready.add(consumer)
         if unscheduled:
