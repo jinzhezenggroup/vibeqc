@@ -199,13 +199,23 @@ AO matrices up to 16 use the low-overhead serial device Jacobi kernel and sizes
 isolated exact-signature probe both pass. The probe captures on a private
 stream, instantiates with `cudaGraphInstantiateFlagDeviceLaunch`, validates a
 host replay and device-tail replay, and records stack identity, workspaces,
-status codes, residuals, and orthogonality. Provider rejection selects the
-Graph-native solver rather than aborting SCF. CUDA 12.9's documented 32768
+status codes, residuals, and orthogonality. Provider rejection keeps the
+ordinary stream on standard `Xsyevd` and uses the Graph-native solver only
+for the captured portion, rather than aborting SCF. CUDA 12.9's documented
+32768
 dimension bound is distinct from the measured RTX 5090 provider transition:
 512 AOs is capture-compatible on that stack, while 513 and 768 AOs remain
-ordinary-cuSOLVER-compatible but use the fallback only for VibeQC's stronger
-iteration-Graph contract. Setup and finalization remain on cuSOLVER for those
-API-eligible signatures.
+ordinary-cuSOLVER-compatible but reject VibeQC's stronger iteration-Graph
+contract. Their Fock/matrix work stays in reusable Graphs,
+while setup, finalization, and the ordinary-stream iteration gap use the
+standard single-matrix `Xsyevd` provider one matrix at a time, matching
+GPU4PySCF's robust large-matrix strategy.
+
+The diagnostic environment switch
+`VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE=graph_native` is deliberately stronger:
+it bypasses provider probing and routes both iteration and finalization
+eigensolves through the Graph-native implementation, preventing a known
+cuSOLVER capture regression from returning through the ordinary-stream path.
 
 The Graph-native path uses one cooperative block per physical or spin state.
 For 33--256 AOs, one 256-thread block applies disjoint round-robin rotations as

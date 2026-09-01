@@ -258,6 +258,7 @@ def benchmark_gate_failures(
     vibeqc_converged: bool = True,
     reference_converged: bool = True,
     minimum_speedup: float | None = None,
+    maximum_vibeqc_over_reference: float | None = None,
     maximum_energy_error_limit: float | None = None,
     maximum_force_error_limit: float | None = None,
 ) -> list[str]:
@@ -271,6 +272,19 @@ def benchmark_gate_failures(
     if minimum_speedup is not None and speedup < minimum_speedup:
         failures.append(
             f"warm speedup {speedup:.6g}x is below {minimum_speedup:.6g}x"
+        )
+    if (
+        maximum_vibeqc_over_reference is not None
+        and (
+            speedup <= 0.0
+            or 1.0 / speedup > maximum_vibeqc_over_reference
+        )
+    ):
+        ratio = float("inf") if speedup <= 0.0 else 1.0 / speedup
+        failures.append(
+            "VibeQC/reference warm ratio "
+            f"{ratio:.6g}x exceeds "
+            f"{maximum_vibeqc_over_reference:.6g}x"
         )
     if (
         maximum_energy_error_limit is not None

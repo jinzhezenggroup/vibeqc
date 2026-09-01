@@ -233,6 +233,7 @@ def test_gpu_comparison_help_does_not_require_an_allocated_device():
         assert "water-octamer-s4-def2-svp-spherical" in completed.stdout
         if script == "compare_gpu4pyscf_batch.py":
             assert "--minimum-speedup" in completed.stdout
+            assert "--maximum-vibeqc-over-gpu4pyscf" in completed.stdout
             assert "--maximum-energy-error" in completed.stdout
             assert "--maximum-force-error" in completed.stdout
             assert "--energy-tolerance" in completed.stdout
@@ -651,6 +652,31 @@ def test_gpu_comparison_gate_reports_all_threshold_failures():
         "one or more VIBEQC systems did not converge",
         "one or more GPU4PySCF reference systems did not converge",
     ]
+
+
+def test_gpu_comparison_gate_can_reject_a_large_topology_regression():
+    """Keep the 768-AO comparison gate from silently accepting slowdowns."""
+
+    support = _benchmark_support_module()
+    failures = support.benchmark_gate_failures(
+        speedup=1.0 / 1.31,
+        maximum_energy_error=0.0,
+        maximum_force_error=0.0,
+        maximum_vibeqc_over_reference=1.30,
+    )
+    assert failures == ["VibeQC/reference warm ratio 1.31x exceeds 1.3x"]
+    assert support.benchmark_gate_failures(
+        speedup=1.0 / 1.30,
+        maximum_energy_error=0.0,
+        maximum_force_error=0.0,
+        maximum_vibeqc_over_reference=1.30,
+    ) == []
+    assert support.benchmark_gate_failures(
+        speedup=0.0,
+        maximum_energy_error=0.0,
+        maximum_force_error=0.0,
+        maximum_vibeqc_over_reference=1.30,
+    ) == ["VibeQC/reference warm ratio infx exceeds 1.3x"]
 
 
 def test_batch_comparison_pairs_each_timing_with_convergence_state():

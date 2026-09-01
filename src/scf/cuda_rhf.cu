@@ -87,6 +87,10 @@ constexpr std::size_t kCublasMatrixProductAoThreshold = 17;
 // Capture-safe scalar kernels are small or register-heavy and use one warp per
 // block. Direct quartets keep their separately documented virtual tiling.
 constexpr unsigned kCaptureSafeKernelThreads = 32;
+// Schwarz diagonal ERIs use the largest device call frame in the direct path.
+// One thread per block prevents a full warp of those frames from exhausting
+// the SM local-memory stack pool while preserving the dense AO-pair grid.
+constexpr unsigned kSchwarzThreads = 1;
 // Generated descriptors are a small staging cache, not topology.
 // Dominant Fock classes stream directly from O(N_shell^2) shell-pair metadata;
 // force classes that outgrow this cache are replayed losslessly through
@@ -95,6 +99,13 @@ constexpr unsigned kCaptureSafeKernelThreads = 32;
 constexpr std::size_t kBoundedGeneratedTasksPerShellPair = 1024;
 constexpr std::size_t kBoundedGeneratedMaximumTaskCapacity =
     8U * 1024U * 1024U;
+// Keep the fixed-topology generated descriptor arena below one GiB.  The
+// exact tile count is a topology property, so using it as a conservative
+// admission check prevents a 384-AO bucket from attempting an ~11 GiB
+// allocation before it can fall back to the bounded streaming route.
+constexpr std::size_t kFixedGeneratedTaskArenaMaximumBytes =
+    std::size_t{1} << 30;
+constexpr std::size_t kDirectCudaStackLimitBytes = std::size_t{64} << 10;
 // Matrix reductions use one complete warp per system. Keep this independent
 // from the generic capture-safe launch width so tuning other kernels cannot
 // silently drop reductions from additional warps.
@@ -824,6 +835,9 @@ __device__ bool decode_direct_tile_ao_ordinal(
     std::size_t& j,
     std::size_t& k,
     std::size_t& l) {
+  if (first_pair_ao_count == 0U || second_pair_ao_count == 0U) {
+    return false;
+  }
   std::size_t first_ao_pair = ordinal / second_pair_ao_count;
   std::size_t second_ao_pair = ordinal % second_pair_ao_count;
   if (tile.first_pair == tile.second_pair) {
@@ -1253,6 +1267,19 @@ __device__ Angular direct_ao_angular(const DeviceBatch& batch,
   const std::size_t offset = static_cast<std::size_t>(ao) * 3;
   return {batch.direct_ao_angular[offset], batch.direct_ao_angular[offset + 1],
           batch.direct_ao_angular[offset + 2]};
+}
+
+/** Map one canonical direct AO to its component within the owning shell. */
+__device__ bool direct_shell_component_index(const DeviceBatch& batch,
+                                             std::int64_t base,
+                                             std::int32_t shell,
+                                             std::int32_t ao,
+                                             unsigned& component) {
+  const std::int64_t shell_begin = batch.shell_direct_ao_offsets[shell];
+  const std::int64_t local_begin = shell_begin - base;
+  if (local_begin < 0 || ao < local_begin) return false;
+  component = static_cast<unsigned>(ao - local_begin);
+  return true;
 }
 
 template <typename Scalar>
@@ -4185,7 +4212,7 @@ template <unsigned FirstShellAngular,
           unsigned ThirdShellAngular,
           unsigned FourthShellAngular,
           typename Scalar>
-__device__ __noinline__ Scalar contracted_eri_cartesian_source_shell_class(
+__device__ Scalar contracted_eri_cartesian_source_shell_class(
     const DeviceBatch& batch,
     std::int64_t ao_i,
     std::int64_t ao_j,
@@ -6928,6 +6955,64 @@ __device__ Scalar contracted_eri_cartesian_source_shell_class(
     shell_l = second_shell;
   }
 
+  // The order-two shell classes have closed-form Cartesian contractions below
+  // (the same routines used by the handwritten Fock consumer).  Reuse those
+  // routines for Schwarz diagonals as well: the generic source evaluator keeps
+  // a much larger recurrence frame alive and can exceed CUDA's per-thread local
+  // stack on p/s and d/s quartets even though the order-two result is tiny.
+  if constexpr (ShellClass == 2 || ShellClass == 3 || ShellClass == 6) {
+    const unsigned first_count =
+        (static_cast<unsigned>(FirstShellAngular) + 1U) *
+        (static_cast<unsigned>(FirstShellAngular) + 2U) / 2U;
+    const unsigned second_count =
+        (static_cast<unsigned>(SecondShellAngular) + 1U) *
+        (static_cast<unsigned>(SecondShellAngular) + 2U) / 2U;
+    const unsigned third_count =
+        (static_cast<unsigned>(ThirdShellAngular) + 1U) *
+        (static_cast<unsigned>(ThirdShellAngular) + 2U) / 2U;
+    const unsigned fourth_count =
+        (static_cast<unsigned>(FourthShellAngular) + 1U) *
+        (static_cast<unsigned>(FourthShellAngular) + 2U) / 2U;
+    unsigned first_component = 0U;
+    unsigned second_component = 0U;
+    unsigned third_component = 0U;
+    unsigned fourth_component = 0U;
+    if (!direct_shell_component_index(batch, base, shell_i, i,
+                                      first_component) ||
+        !direct_shell_component_index(batch, base, shell_j, j,
+                                      second_component) ||
+        !direct_shell_component_index(batch, base, shell_k, k,
+                                      third_component) ||
+        !direct_shell_component_index(batch, base, shell_l, l,
+                                      fourth_component)) {
+      return scalar<Scalar>(0.0);
+    }
+    if (first_component >= first_count || second_component >= second_count ||
+        third_component >= third_count || fourth_component >= fourth_count) {
+      return scalar<Scalar>(0.0);
+    }
+    const unsigned component =
+        (((first_component * second_count + second_component) *
+              third_count + third_component) *
+             fourth_count + fourth_component);
+    const unsigned active_component_mask = 1U << component;
+    Order2IntegralVector integral{};
+    if constexpr (ShellClass == 2) {
+      integral = contracted_eri_cartesian_source_order2_shell<1, 0, 1, 0>(
+          batch, shell_i, shell_j, shell_k, shell_l,
+          active_component_mask);
+    } else if constexpr (ShellClass == 3) {
+      integral = contracted_eri_cartesian_source_order2_shell<1, 1, 0, 0>(
+          batch, shell_i, shell_j, shell_k, shell_l,
+          active_component_mask);
+    } else {
+      integral = contracted_eri_cartesian_source_order2_shell<2, 0, 0, 0>(
+          batch, shell_i, shell_j, shell_k, shell_l,
+          active_component_mask);
+    }
+    return static_cast<Scalar>(integral.component[component]);
+  }
+
   return contracted_eri_cartesian_source_shell_class<
       FirstShellAngular, SecondShellAngular, ThirdShellAngular,
       FourthShellAngular, Scalar>(
@@ -8392,8 +8477,25 @@ __global__ void build_schwarz_and_shell_pair_bounds_packed_kernel(
       batch.direct_ao_shells[system_ao_begin + i];
   const std::int32_t second_shell =
       batch.direct_ao_shells[system_ao_begin + j];
+  // The direct-AO-to-shell map is topology metadata.  Keep malformed or
+  // stale entries from turning the unsigned local-index arithmetic below
+  // into an arena write outside this system's shell-pair segment.
+  const std::int64_t shell_begin = batch.system_shell_offsets[system];
+  const std::int64_t shell_end = batch.system_shell_offsets[system + 1];
+  if (first_shell < shell_begin || second_shell < shell_begin ||
+      first_shell >= shell_end || second_shell >= shell_end) {
+    return;
+  }
   const std::size_t shell_pair =
       system_shell_pair_index(batch, system, first_shell, second_shell);
+  const std::size_t shell_pair_begin = static_cast<std::size_t>(
+      batch.system_shell_pair_offsets[system]);
+  const std::size_t shell_pair_end = static_cast<std::size_t>(
+      batch.system_shell_pair_offsets[system + 1]);
+  if (shell_pair < shell_pair_begin || shell_pair >= shell_pair_end ||
+      shell_pair >= static_cast<std::size_t>(batch.total_shell_pairs)) {
+    return;
+  }
   atomic_max_double(shell_pair_bounds + shell_pair, bound);
 }
 
@@ -9994,9 +10096,17 @@ __device__ __forceinline__ void contract_fock_direct_quartet_subtile(
       active_subtile % subtiles_per_tile;
   const ActiveShellQuartetTile task =
       active_shell_quartet_tiles[active_tile];
+  if (task.first_pair >= static_cast<std::uint32_t>(batch.total_shell_pairs) ||
+      task.second_pair >= static_cast<std::uint32_t>(batch.total_shell_pairs)) {
+    return;
+  }
   const std::size_t first_pair = task.first_pair;
   const std::size_t second_pair = task.second_pair;
   const std::int32_t system = batch.shell_pair_systems[first_pair];
+  if (system < 0 || system >= batch.batch_size ||
+      batch.shell_pair_systems[second_pair] != system) {
+    return;
+  }
   if (active != nullptr && active[system] == 0) return;
   const std::int32_t first_shell = batch.shell_pair_first[first_pair];
   const std::int32_t second_shell = batch.shell_pair_second[first_pair];
@@ -10030,22 +10140,15 @@ __device__ __forceinline__ void contract_fock_direct_quartet_subtile(
       static_cast<std::size_t>(task.tile) * detail::kDirectQuartetTileSize +
       subtile * detail::kDirectQuartetThreads + ao_quartet_lane;
   if (ordinal < ao_quartet_count) {
-    std::size_t first_ao_pair = 0;
-    std::size_t second_ao_pair = 0;
-    if (same_shell_pair) {
-      decode_lower_triangle(ordinal, first_ao_pair, second_ao_pair);
-    } else {
-      first_ao_pair = ordinal / second_ao_pair_count;
-      second_ao_pair = ordinal % second_ao_pair_count;
-    }
     std::size_t i = 0;
     std::size_t j = 0;
     std::size_t k = 0;
     std::size_t l = 0;
-    decode_shell_ao_pair(batch, first_pair, first_ao_pair, system_ao_begin,
-                         i, j);
-    decode_shell_ao_pair(batch, second_pair, second_ao_pair, system_ao_begin,
-                         k, l);
+    if (!decode_direct_tile_ao_ordinal(
+            batch, task, ordinal, first_ao_pair_count,
+            second_ao_pair_count, system_ao_begin, n, i, j, k, l)) {
+      return;
+    }
     if (schwarz_bounds[physical_offset + matrix_index(i, j, n)] *
             schwarz_bounds[physical_offset + matrix_index(k, l, n)] <
         screening_tolerance) {
@@ -15847,7 +15950,8 @@ struct EigensolverProfileLaunch {
 
 bool provider_eigensolver(CudaEigensolverFamily family) {
   return family == CudaEigensolverFamily::jacobi_batched ||
-      family == CudaEigensolverFamily::xsyev_batched;
+      family == CudaEigensolverFamily::xsyev_batched ||
+      family == CudaEigensolverFamily::xsyevd;
 }
 
 vibeqc_status launch_solver(CudaResources& resources,
@@ -15919,6 +16023,29 @@ vibeqc_status launch_solver(CudaResources& resources,
         resources.solver_host_workspace_bytes_, info, batch_size);
     if (status != CUSOLVER_STATUS_SUCCESS) {
       return solver_status(status);
+    }
+  } else if (family == CudaEigensolverFamily::xsyevd) {
+    // GPU4PySCF uses the ordinary single-matrix Xsyevd/Sygvd family for
+    // large AO spaces.  Unlike XsyevBatched, this provider is intentionally
+    // kept outside CUDA Graph capture.  Calls are serialized on the owning
+    // stream and reuse one workspace, which also makes a multi-system bucket
+    // deterministic without requiring a pointer-array API.
+    const std::size_t matrix_elements =
+        static_cast<std::size_t>(nbf) * static_cast<std::size_t>(nbf);
+    for (int system = 0; system < batch_size; ++system) {
+      const cusolverStatus_t status = cusolverDnXsyevd(
+          resources.solver_, resources.solver_parameters_,
+          CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER,
+          static_cast<std::int64_t>(nbf), CUDA_R_64F,
+          matrices + static_cast<std::size_t>(system) * matrix_elements,
+          static_cast<std::int64_t>(nbf), CUDA_R_64F,
+          eigenvalues + static_cast<std::size_t>(system) * nbf, CUDA_R_64F,
+          resources.solver_workspace_, resources.solver_workspace_bytes_,
+          resources.solver_host_workspace_,
+          resources.solver_host_workspace_bytes_, info + system);
+      if (status != CUSOLVER_STATUS_SUCCESS) {
+        return solver_status(status);
+      }
     }
   } else {
     // API-ineligible or Graph-rejected signatures retain the unbounded native
@@ -16606,6 +16733,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       requested_bounded_direct_streaming = true;
       direct_task_layout = {};
       total_shell_quartet_tiles = 0;
+    } else if (direct_task_layout.exact_tile_count >
+               kFixedGeneratedTaskArenaMaximumBytes /
+                   sizeof(GeneratedShellTask)) {
+      // The uint32 grid limit is much larger than a practical descriptor
+      // arena on a 32 GiB device.  Route large-but-grid-addressable buckets
+      // through bounded streaming before make_layout() reserves the complete
+      // generated task array.
+      requested_bounded_direct_streaming = true;
+      direct_task_layout = {};
+      total_shell_quartet_tiles = 0;
     }
   } else if (requested_quartet_direct) {
     requested_bounded_direct_streaming =
@@ -16795,11 +16932,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
                      bounded_generated_task_capacity,
                      total_shell_pair_primitives,
                      requested_quartet_direct
-                         && !requested_bounded_direct_streaming
                          ? host.psss_resident_tasks.size()
                          : 0,
                      requested_quartet_direct
-                         && !requested_bounded_direct_streaming
                          ? host.psss_resident_ket_pairs.size()
                          : 0,
                      total_shell_quartet_tiles,
@@ -16856,8 +16991,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     plan.resident_psss_bra_primitive_pairs = 0;
     const bool resident_psss_enabled = resident_psss_bra_requested();
     plan.resident_psss_task_count =
-        requested_quartet_direct && !requested_bounded_direct_streaming &&
-            resident_psss_enabled
+        requested_quartet_direct && resident_psss_enabled
         ? host.psss_resident_tasks.size()
         : 0;
     for (std::size_t pair = 0; pair < total_shell_pairs; ++pair) {
@@ -16942,7 +17076,18 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     plan.eigensolver_diagnostic.matrix_dimension = nbf;
     plan.eigensolver_diagnostic.physical_system_count = batch_size;
     plan.eigensolver_diagnostic.solver_batch_count = spin_batch_size;
-    if (nbf <= static_cast<std::size_t>(kSmallEigensolverLimit)) {
+    // A forced graph-native selection is an explicit escape hatch for large
+    // matrices where cuSOLVER XsyevBatched capture is known to be unusable.
+    // Do not probe that provider first: the probe allocates and executes a
+    // full-size eigensystem and can itself spend minutes in host-side setup.
+    if (requested_graph_native_eigensolver_override) {
+      plan.eigensolver_diagnostic.family =
+          CudaEigensolverFamily::graph_native;
+      plan.eigensolver_diagnostic.ordinary_family =
+          CudaEigensolverFamily::graph_native;
+      plan.eigensolver_diagnostic.selection_source =
+          CudaEigensolverSelectionSource::benchmark_override;
+    } else if (nbf <= static_cast<std::size_t>(kSmallEigensolverLimit)) {
       plan.eigensolver_diagnostic.ordinary_family =
           CudaEigensolverFamily::small_native;
       plan.eigensolver_diagnostic.family =
@@ -16956,28 +17101,37 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       plan.eigensolver_diagnostic.xsyev_probe =
           probe_xsyev_batched_device_launch_graph(
               device_id, nbf, spin_batch_size);
+      // A rejected capture intentionally leaves CUDA's per-thread last-error
+      // slot set to cudaErrorStreamCaptureUnsupported (901) on CUDA 12.9.
+      // The probe has already recorded that evidence; clear the sticky slot
+      // before the real plan allocates, captures, and launches its fallback.
+      // Otherwise the unrelated final cudaGetLastError() would report the
+      // old probe rejection as a calculation failure.
+      (void)cudaGetLastError();
       const XsyevBatchedDispatch dispatch = select_xsyev_batched_dispatch(
           plan.eigensolver_diagnostic.xsyev_probe);
       plan.eigensolver_diagnostic.family =
           dispatch.device_launch_graph_provider
           ? CudaEigensolverFamily::xsyev_batched
           : CudaEigensolverFamily::graph_native;
-      plan.eigensolver_diagnostic.ordinary_family =
-          dispatch.ordinary_stream_provider
-          ? CudaEigensolverFamily::xsyev_batched
-          : CudaEigensolverFamily::graph_native;
+      if (dispatch.device_launch_graph_provider) {
+        plan.eigensolver_diagnostic.ordinary_family =
+            CudaEigensolverFamily::xsyev_batched;
+      } else if (dispatch.ordinary_stream_provider) {
+        // Match GPU4PySCF's robust large-matrix strategy when the generic
+        // batched provider works on a stream but rejects Graph capture.
+        plan.eigensolver_diagnostic.ordinary_family =
+            CudaEigensolverFamily::xsyevd;
+      } else {
+        plan.eigensolver_diagnostic.ordinary_family =
+            CudaEigensolverFamily::graph_native;
+      }
       plan.eigensolver_diagnostic.selection_source =
           xsyev_probe_skip_diagnostic
           ? CudaEigensolverSelectionSource::benchmark_override
           : plan.eigensolver_diagnostic.xsyev_probe.graph_eligible
           ? CudaEigensolverSelectionSource::exact_probe
           : CudaEigensolverSelectionSource::exact_probe_fallback;
-    }
-    if (requested_graph_native_eigensolver_override) {
-      plan.eigensolver_diagnostic.family =
-          CudaEigensolverFamily::graph_native;
-      plan.eigensolver_diagnostic.selection_source =
-          CudaEigensolverSelectionSource::benchmark_override;
     }
   }
   const CudaEigensolverFamily graph_eigensolver_family =
@@ -16988,7 +17142,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       graph_eigensolver_family == CudaEigensolverFamily::jacobi_batched ||
       ordinary_eigensolver_family == CudaEigensolverFamily::jacobi_batched;
   const bool use_cusolver = use_jacobi ||
-      ordinary_eigensolver_family == CudaEigensolverFamily::xsyev_batched;
+      ordinary_eigensolver_family == CudaEigensolverFamily::xsyev_batched ||
+      ordinary_eigensolver_family == CudaEigensolverFamily::xsyevd;
   const bool geometry_changed =
       first_setup || plan.cached_positions != host.positions;
   const bool all_systems_warm = std::all_of(
@@ -17035,6 +17190,24 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   if (cuda_error != cudaSuccess) {
     fill_global_failure(outputs, cuda_status(cuda_error));
     return outputs;
+  }
+  if (quartet_direct) {
+    // High-order direct ERI recurrences use a bounded per-thread local
+    // workspace.  CUDA's default stack limit is only 1 KiB, which is enough
+    // for s/p/d low-order tiles but lets d/f quartets fault with an apparent
+    // local-memory out-of-bounds access.  Reserve a generous fixed ceiling
+    // once per device; low-order kernels do not consume it.
+    std::size_t stack_limit = 0;
+    cuda_error = cudaDeviceGetLimit(&stack_limit, cudaLimitStackSize);
+    if (cuda_error == cudaSuccess &&
+        stack_limit < kDirectCudaStackLimitBytes) {
+      cuda_error = cudaDeviceSetLimit(
+          cudaLimitStackSize, kDirectCudaStackLimitBytes);
+    }
+    if (cuda_error != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
   }
   if (first_setup && quartet_direct) {
     int multiprocessor_count = 0;
@@ -17489,12 +17662,12 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
             : 0}},
       {host.psss_resident_tasks.data(),
        {psss_resident_tasks,
-        quartet_direct && !bounded_direct_streaming
+        quartet_direct
             ? host.psss_resident_tasks.size() * sizeof(PsssResidentTask)
             : 0}},
       {host.psss_resident_ket_pairs.data(),
        {psss_resident_ket_pairs,
-        quartet_direct && !bounded_direct_streaming
+        quartet_direct
             ? host.psss_resident_ket_pairs.size() * sizeof(std::uint32_t)
             : 0}},
       {host.ao_shells.data(),
@@ -17689,6 +17862,20 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           resources.jacobi_, static_cast<int>(spin_batch_size));
       resources.solver_workspace_bytes_ =
           static_cast<std::size_t>(plan.lwork) * sizeof(double);
+    } else if (ordinary_eigensolver_family == CudaEigensolverFamily::xsyevd) {
+      // Xsyevd is the non-batched counterpart used by GPU4PySCF for large
+      // matrices.  Its workspace is independent of the number of systems;
+      // launch_solver serializes one call per matrix on the ordinary stream.
+      std::size_t device_bytes = 0;
+      std::size_t host_bytes = 0;
+      solver_error = cusolverDnXsyevd_bufferSize(
+          resources.solver_, resources.solver_parameters_,
+          CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER,
+          static_cast<std::int64_t>(nbf), CUDA_R_64F, eigensystem,
+          static_cast<std::int64_t>(nbf), CUDA_R_64F, eigenvalues, CUDA_R_64F,
+          &device_bytes, &host_bytes);
+      resources.solver_workspace_bytes_ = device_bytes;
+      resources.solver_host_workspace_bytes_ = host_bytes;
     } else {
       // RHF submits batch_size matrices; UHF additionally submits the doubled
       // spin batch. Query both actual capacities because cuSOLVER does not
@@ -17972,6 +18159,19 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
           active_shell_quartet_tile_counts, active_shell_quartet_tiles,
           false, 0.0, nullptr, nullptr, nullptr);
     }
+    if (direct_tile_validation &&
+        resources.direct_tile_validation_ != nullptr) {
+      cudaError_t validation_error = cudaMemsetAsync(
+          resources.direct_tile_validation_, 0xff,
+          sizeof(DirectTileValidationRecord), resources.stream_);
+      if (validation_error != cudaSuccess) return validation_error;
+      validate_direct_tile_descriptors_kernel<<<
+          blocks_for(plan.total_shell_quartet_tiles), threads, 0,
+          resources.stream_>>>(
+          device_batch, active_shell_quartet_tile_offsets,
+          active_shell_quartet_tile_counts, active_shell_quartet_tiles,
+          plan.total_shell_quartet_tiles, resources.direct_tile_validation_);
+    }
     return cudaPeekAtLastError();
   };
   std::size_t bounded_fock_kernel_count = 0;
@@ -18095,6 +18295,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
       const unsigned shell_class = kernel.shell_class;
       if ((host_generated_fock_shell_class_mask &
            (std::uint64_t{1} << shell_class)) == 0U ||
+          (host_generated_streaming_fock_shell_class_mask &
+           (std::uint64_t{1} << shell_class)) != 0U ||
           (host_native_streaming_fock_shell_class_mask &
            (std::uint64_t{1} << shell_class)) != 0U) {
         continue;
@@ -18586,7 +18788,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
             total_shell_pairs * sizeof(double), resources.stream_);
         if (cuda_error == cudaSuccess) {
           build_schwarz_and_shell_pair_bounds_packed_kernel<<<
-              blocks_for(direct_pair_elements), threads, 0,
+              static_cast<unsigned>(direct_pair_elements), kSchwarzThreads, 0,
               resources.stream_>>>(
               device_batch, direct_pair_count, schwarz_bounds,
               shell_pair_bounds);
@@ -18821,15 +19023,15 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
 
   const bool fock_only_iteration =
       bounded_direct_fock_only_diagnostic && bounded_direct_streaming;
-  // CUDA 12.9 XsyevBatched remains fast and correct on an ordinary stream for
-  // matrices above 512 AOs, but the exact-signature probe shows that provider
-  // rejecting Graph capture.  Keep the expensive Fock and matrix work in two
-  // reusable Graphs while the host inserts the ordinary provider call between
-  // them and checks the tiny physical active mask once per SCF iteration.
+  // CUDA 12.9 rejects XsyevBatched capture for matrices above 512 AOs.  Keep
+  // the expensive Fock and matrix work in two reusable Graphs while the host
+  // inserts a GPU4PySCF-style ordinary eigensolver call between them and
+  // checks the tiny physical active mask once per SCF iteration.
   const bool split_provider_iteration =
       !fock_only_iteration &&
-      ordinary_eigensolver_family == CudaEigensolverFamily::xsyev_batched &&
-      graph_eigensolver_family != CudaEigensolverFamily::xsyev_batched;
+      (ordinary_eigensolver_family == CudaEigensolverFamily::xsyev_batched ||
+       ordinary_eigensolver_family == CudaEigensolverFamily::xsyevd) &&
+      graph_eigensolver_family != ordinary_eigensolver_family;
 
   const auto launch_iteration_pre_eigensolver = [&]() -> vibeqc_status {
     const cudaError_t fock_error = launch_fock_builder(density, true);
@@ -19515,11 +19717,24 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
   }
   const std::uint64_t explicit_generated_force_shell_class_mask =
       generated::enabled_shell_class_mask() & host_present_shell_class_mask;
+  // Fock-only AOT entries (currently ssss/psss) are deliberately not added
+  // to the force queue.  The force dispatcher is a separate registry and
+  // returns ``cudaErrorNotSupported`` for classes without a validated force
+  // consumer.  Keep these classes on the exact handwritten low-order page
+  // kernel below until an independently validated generated force entry is
+  // promoted.
+  const bool bounded_resident_psss_force_enabled =
+      bounded_direct_streaming && plan.resident_psss_task_count != 0U &&
+      plan.resident_psss_bra_primitive_pairs != 0U &&
+      plan.resident_psss_bra_primitive_pairs <=
+          kResidentPsssMaximumBraPrimitivePairs;
   const std::uint64_t bounded_native_paged_force_shell_class_mask =
-      bounded_direct_streaming
-      ? host_present_shell_class_mask & kBoundedNativePagedForceShellClassMask &
-            ~explicit_generated_force_shell_class_mask
-      : 0U;
+      (bounded_direct_streaming
+           ? host_present_shell_class_mask & kBoundedNativePagedForceShellClassMask
+           : 0U) &
+      ~(bounded_resident_psss_force_enabled
+            ? (std::uint64_t{1} << kPsssShellClass)
+            : 0U);
   const std::uint64_t selected_force_shell_class_mask =
       (explicit_generated_force_shell_class_mask |
        (bounded_direct_streaming
@@ -19974,6 +20189,80 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
 #undef VIBEQC_LAUNCH_NATIVE_DDDD_FORCE
     return cudaPeekAtLastError();
   };
+  const auto launch_bounded_generic_force =
+      [&](bool is_unrestricted,
+          DirectScreeningPurpose purpose,
+          const double* quartet_density) -> cudaError_t {
+    if (uncovered_force_shell_class_mask == 0U) return cudaSuccess;
+    // The generated/native routes above cover the common classes.  Keep the
+    // remaining exact classes correct with the bounded runtime dispatcher,
+    // rather than rejecting an otherwise valid large-AO force calculation.
+    // Zero the generated-overflow state so an earlier diagnostic page cannot
+    // make a covered class look like an uncovered fallback candidate.
+    cudaError_t error = cudaMemsetAsync(
+        bounded_direct_generated_overflow, 0,
+        detail::kDirectQuartetShellClassCount * sizeof(std::uint32_t),
+        resources.stream_);
+    if (error == cudaSuccess) {
+      error = cudaMemsetAsync(bounded_direct_cursor, 0,
+                              sizeof(unsigned long long), resources.stream_);
+    }
+    if (error != cudaSuccess) return error;
+    if (is_unrestricted && purpose == DirectScreeningPurpose::Force) {
+      bounded_direct_shell_quartet_kernel<
+          true, DirectScreeningPurpose::Force, true><<<
+              plan.persistent_quartet_worker_blocks, kBoundedDirectThreads,
+              0, resources.stream_>>>(
+          device_batch, options.screening_tolerance, shell_pair_bounds,
+          shell_pair_density_bounds, bounded_direct_shell_pair_order,
+          bounded_direct_shell_pair_block_bounds,
+          bounded_direct_system_density_bounds, nullptr,
+          covered_force_shell_class_mask, bounded_direct_generated_overflow,
+          schwarz_bounds, quartet_density, active, forces,
+          bounded_direct_cursor, shell_class_profiling ? shell_class_profile
+                                                        : nullptr);
+    } else if (!is_unrestricted && purpose == DirectScreeningPurpose::Force) {
+      bounded_direct_shell_quartet_kernel<
+          false, DirectScreeningPurpose::Force, true><<<
+              plan.persistent_quartet_worker_blocks, kBoundedDirectThreads,
+              0, resources.stream_>>>(
+          device_batch, options.screening_tolerance, shell_pair_bounds,
+          shell_pair_density_bounds, bounded_direct_shell_pair_order,
+          bounded_direct_shell_pair_block_bounds,
+          bounded_direct_system_density_bounds, nullptr,
+          covered_force_shell_class_mask, bounded_direct_generated_overflow,
+          schwarz_bounds, quartet_density, active, forces,
+          bounded_direct_cursor, shell_class_profiling ? shell_class_profile
+                                                        : nullptr);
+    } else if (is_unrestricted) {
+      bounded_direct_shell_quartet_kernel<
+          true, DirectScreeningPurpose::Fock, true><<<
+              plan.persistent_quartet_worker_blocks, kBoundedDirectThreads,
+              0, resources.stream_>>>(
+          device_batch, options.screening_tolerance, shell_pair_bounds,
+          shell_pair_density_bounds, bounded_direct_shell_pair_order,
+          bounded_direct_shell_pair_block_bounds,
+          bounded_direct_system_density_bounds, nullptr,
+          covered_force_shell_class_mask, bounded_direct_generated_overflow,
+          schwarz_bounds, quartet_density, active, forces,
+          bounded_direct_cursor, shell_class_profiling ? shell_class_profile
+                                                        : nullptr);
+    } else {
+      bounded_direct_shell_quartet_kernel<
+          false, DirectScreeningPurpose::Fock, true><<<
+              plan.persistent_quartet_worker_blocks, kBoundedDirectThreads,
+              0, resources.stream_>>>(
+          device_batch, options.screening_tolerance, shell_pair_bounds,
+          shell_pair_density_bounds, bounded_direct_shell_pair_order,
+          bounded_direct_shell_pair_block_bounds,
+          bounded_direct_system_density_bounds, nullptr,
+          covered_force_shell_class_mask, bounded_direct_generated_overflow,
+          schwarz_bounds, quartet_density, active, forces,
+          bounded_direct_cursor, shell_class_profiling ? shell_class_profile
+                                                        : nullptr);
+    }
+    return cudaPeekAtLastError();
+  };
   const auto launch_bounded_paged_native_force =
       [&](bool is_unrestricted,
           DirectScreeningPurpose purpose,
@@ -20044,17 +20333,48 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     }
     return cudaSuccess;
   };
+  const auto launch_bounded_resident_psss_force =
+      [&](bool is_unrestricted,
+          DirectScreeningPurpose purpose,
+          const double* quartet_density) -> cudaError_t {
+    if (!bounded_resident_psss_force_enabled) return cudaSuccess;
+    const bool use_force_screening =
+        purpose == DirectScreeningPurpose::Force;
+    if (is_unrestricted) {
+      two_electron_force_psss_resident_bra_kernel<true><<<
+          static_cast<unsigned>(plan.resident_psss_task_count),
+          kResidentPsssThreads,
+          plan.resident_psss_bra_primitive_pairs *
+              sizeof(PrimitivePairData),
+          resources.stream_>>>(
+          device_batch, psss_resident_tasks, psss_resident_ket_pairs,
+          plan.resident_psss_task_count, options.screening_tolerance,
+          shell_pair_bounds, shell_pair_density_bounds, use_force_screening,
+          schwarz_bounds, quartet_density, active, forces,
+          generated_shell_class_mask);
+    } else {
+      two_electron_force_psss_resident_bra_kernel<false><<<
+          static_cast<unsigned>(plan.resident_psss_task_count),
+          kResidentPsssThreads,
+          plan.resident_psss_bra_primitive_pairs *
+              sizeof(PrimitivePairData),
+          resources.stream_>>>(
+          device_batch, psss_resident_tasks, psss_resident_ket_pairs,
+          plan.resident_psss_task_count, options.screening_tolerance,
+          shell_pair_bounds, shell_pair_density_bounds, use_force_screening,
+          schwarz_bounds, quartet_density, active, forces,
+          generated_shell_class_mask);
+    }
+    return cudaPeekAtLastError();
+  };
   const auto launch_bounded_force =
       [&](bool is_unrestricted,
           DirectScreeningPurpose purpose,
           const double* quartet_density) -> cudaError_t {
-    // Bounded production execution is class-specific by construction. Do not
-    // silently turn a disabled or unsupported class into a whole-topology
-    // generic force scan: that route is both unpredictable and prohibitively
-    // slow on the large topologies that require bounded streaming.
-    if (uncovered_force_shell_class_mask != 0U) {
-      return cudaErrorNotSupported;
-    }
+    // Bounded production execution is class-specific by construction. The
+    // generated/native routes handle the common classes; any registry gap is
+    // sent to the exact bounded runtime dispatcher below instead of rejecting
+    // a valid topology or silently scanning an unbounded AO-space fallback.
     // Force pages are the lossless queue for every generated force class.
     // Unlike Fock, force consumers have several independent density-product
     // and derivative schedules; mixing a first/retry arena with the page
@@ -20068,10 +20388,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(
     cudaError_t error = launch_bounded_overflow_force(
         is_unrestricted, purpose, quartet_density);
     if (error != cudaSuccess) return error;
+    error = launch_bounded_resident_psss_force(
+        is_unrestricted, purpose, quartet_density);
+    if (error != cudaSuccess) return error;
     error = launch_bounded_paged_native_force(
         is_unrestricted, purpose, quartet_density);
     if (error != cudaSuccess) return error;
     error = launch_bounded_native_force(
+        is_unrestricted, purpose, quartet_density);
+    if (error != cudaSuccess) return error;
+    error = launch_bounded_generic_force(
         is_unrestricted, purpose, quartet_density);
     return error;
   };

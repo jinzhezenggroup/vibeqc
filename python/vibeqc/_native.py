@@ -50,6 +50,7 @@ EIGENSOLVER_FAMILY_NAMES = (
     "jacobi_batched",
     "xsyev_batched",
     "graph_native",
+    "xsyevd",
 )
 EIGENSOLVER_SELECTION_SOURCE_NAMES = (
     "dimension_policy",
