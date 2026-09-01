@@ -904,6 +904,31 @@ convergence on the complete production registry. The optional `--count` switch
 is intentionally separate because it routes through descriptor compaction and
 can be much slower on the 768-AO topology.
 
+For the cross-engine regression gate, use the same fixed topology with the
+interleaved warm replay harness and an explicit upper bound on the
+iteration-matched VibeQC/GPU4PySCF ratio. The bound is supplied by the
+acceptance job rather than inferred from a stale artifact:
+
+```bash
+srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 \
+  --time=00:20:00 bash -lc \
+  'export LD_PRELOAD=/group/software/cuda-12.9.1/targets/x86_64-linux/lib/libcublasLt.so.12:/group/software/cuda-12.9.1/targets/x86_64-linux/lib/libcublas.so.12; \
+   VIBEQC_LIBRARY=$PWD/build/cuda-release-sm120/libvibeqc.so \
+   PYTHONPATH=$PWD/python:$PWD/benchmarks:$PWD \
+   /home/jzzeng/codes/qc/build/gpu4pyscf-venv/bin/python \
+   benchmarks/compare_gpu4pyscf_batch.py \
+   --case water-32mer-4s4-def2-svp-spherical --batch 1 --repeats 3 \
+   --max-iterations 100 --energy-tolerance 1e-12 \
+   --density-tolerance 1e-10 --reference-gradient-tolerance 1e-8 \
+   --screening-tolerance 1e-14 \
+   --maximum-vibeqc-over-gpu4pyscf 1.30 \
+   --output build/issue52-768-regression-gate.json'
+```
+
+The command fails on a timeout, non-converged replay, numerical mismatch, or
+an iteration-matched warm ratio above the supplied limit; a partial or missing
+JSON artifact is never treated as a pass.
+
 Run Python gates:
 
 ```bash

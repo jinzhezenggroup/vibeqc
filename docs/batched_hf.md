@@ -10,7 +10,7 @@ shell-task and DF algorithms remain roadmap work.
 | Native ragged systems | `vibeqc_batch` stores independent `System` objects and force buffers; no padded molecule tensor exists | Mixed He/H2/H3+/H4 C and Python tests assert exact per-item force shapes |
 | Batch scheduler | `FleetPlan` sorts by `(nbf, nocc, primitive_count)` and restores input order | Bucket IDs and independent-energy ordering are tested |
 | Compatible-work parallelism | CPU buckets use bounded native worker groups; CUDA buckets use batched integral/matrix kernels and device eigensolves with an active mask | 64-system repeated stress test and CUDA same-bucket comparison |
-| Large eigensolves | Above 32 AOs, generic FP64 `XsyevBatched` is used only after an exact setup-time device-launch Graph probe; rejected signatures automatically use the cooperative Graph-native solver | API/product boundary tests plus 512/513/768-AO probe and fallback checks on an allocated RTX 5090 |
+| Large eigensolves | Above 32 AOs, generic FP64 `XsyevBatched` is used only after an exact setup-time device-launch Graph probe; rejected signatures keep Fock/matrix work in Graphs and use ordinary-stream `Xsyevd` one matrix at a time | API/product boundary tests plus 512/513/768-AO probe and fallback checks on an allocated RTX 5090 |
 | Per-system convergence | Every item owns status, iteration count, residuals, and convergence flag | H2 succeeds while H3+ intentionally fails with `max_iterations=2` |
 | Failure isolation | Invalid coordinates and nonconvergence do not abort structurally valid neighbors | Native and Python isolation tests |
 | Fixed-topology plans | Prepared systems own reusable CUDA arenas, solver state, Graph executables, and exact-coordinate geometry caches; changed coordinates rebuild all geometry-derived state before replay | Same-coordinate warm replay and coordinate-update energy are compared with independent calculations |
@@ -112,14 +112,25 @@ API eligibility does not imply device-launch Graph eligibility. Setup probes
 the exact device, CUDA/cuSOLVER stack, matrix dimension, solver batch, and
 workspace signature on a private stream. It validates ordinary execution,
 capture, device-launch instantiation, host replay, one device-tail replay,
-eigenvalue residuals, and orthogonality. A rejected provider selects the
-Graph-native implementation without failing the calculation, and warm replays
-reuse the recorded decision without probing or allocating again. On the
+eigenvalue residuals, and orthogonality. A provider that rejects Graph capture
+keeps the standard ordinary-stream `Xsyevd` implementation without failing
+the calculation, and warm replays reuse the recorded decision without probing
+or allocating again. On the
 measured RTX 5090 with CUDA 12.9, 512 AOs passes this stronger Graph contract
-while 513 and 768 AOs execute normally in cuSOLVER but reject capture and
-therefore fall back only inside the iteration Graph. Their setup and final
-ordinary-stream solves continue to use cuSOLVER. This observed 512/513
-transition is not a cuSOLVER matrix size limit.
+while 513 and 768 AOs execute normally in cuSOLVER but reject capture. Their
+Fock/matrix work stays in reusable Graphs, while setup, finalization, and the
+ordinary-stream iteration gap use the standard single-matrix `Xsyevd` provider
+(one call per physical or spin matrix), matching GPU4PySCF's robust large-
+matrix strategy. This observed 512/513 transition is not a cuSOLVER matrix
+size limit.
+
+For diagnosing or gating a known provider regression, setting
+`VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE=graph_native` selects the Graph-native
+solver for both captured iterations and ordinary/finalization solves. This
+override bypasses the cuSOLVER probe entirely, so a rejected or unstable
+provider cannot re-enter through a split ordinary-stream path. It is an
+explicit benchmark/diagnostic switch; normal runs continue to use the
+setup-qualified dispatch above.
 
 The cache is plan-local rather than a process-global manifest: a different
 device or matrix/batch signature creates a different bucket plan, and a new

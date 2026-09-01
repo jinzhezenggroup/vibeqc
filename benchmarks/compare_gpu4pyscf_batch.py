@@ -444,6 +444,14 @@ def main() -> None:
     )
     parser.add_argument("--screening-tolerance", type=float, default=1.0e-12)
     parser.add_argument("--minimum-speedup", type=float)
+    parser.add_argument(
+        "--maximum-vibeqc-over-gpu4pyscf",
+        type=float,
+        help=(
+            "optional upper bound on the iteration-matched VibeQC/GPU4PySCF "
+            "warm-time ratio; useful for large-topology regression gates"
+        ),
+    )
     parser.add_argument("--maximum-energy-error", type=float)
     parser.add_argument("--maximum-force-error", type=float)
     parser.add_argument(
@@ -472,6 +480,13 @@ def main() -> None:
         raise ValueError("SCF tolerances must be positive")
     if args.minimum_speedup is not None and args.minimum_speedup <= 0.0:
         raise ValueError("--minimum-speedup must be positive")
+    if (
+        args.maximum_vibeqc_over_gpu4pyscf is not None
+        and args.maximum_vibeqc_over_gpu4pyscf <= 0.0
+    ):
+        raise ValueError(
+            "--maximum-vibeqc-over-gpu4pyscf must be positive"
+        )
     if args.maximum_energy_error is not None and args.maximum_energy_error < 0.0:
         raise ValueError("--maximum-energy-error must be non-negative")
     if args.maximum_force_error is not None and args.maximum_force_error < 0.0:
@@ -636,7 +651,11 @@ def main() -> None:
     ordinary_speedup = gpu_warm_median / vibeqc_warm_median
     matched = iteration_matched_summary(vibeqc_samples, gpu_samples)
     matched_speedup = None if matched is None else float(matched["speedup"])
-    speedup_for_gate = matched_speedup or ordinary_speedup
+    # Preserve a measured zero speedup as a real regression signal instead of
+    # silently falling back to the ordinary (possibly unmatched) statistic.
+    speedup_for_gate = (
+        matched_speedup if matched_speedup is not None else ordinary_speedup
+    )
 
     vibeqc_converged = all(
         item["converged"]
@@ -657,6 +676,9 @@ def main() -> None:
         vibeqc_converged=vibeqc_converged,
         reference_converged=reference_converged,
         minimum_speedup=args.minimum_speedup,
+        maximum_vibeqc_over_reference=(
+            args.maximum_vibeqc_over_gpu4pyscf
+        ),
         maximum_energy_error_limit=args.maximum_energy_error,
         maximum_force_error_limit=args.maximum_force_error,
     )
@@ -767,6 +789,9 @@ def main() -> None:
                 "density_fitting_metric_diagnostics": density_fitting_diagnostics,
                 "gates": {
                     "minimum_iteration_matched_speedup": args.minimum_speedup,
+                    "maximum_iteration_matched_vibeqc_over_gpu4pyscf": (
+                        args.maximum_vibeqc_over_gpu4pyscf
+                    ),
                     "maximum_energy_error_hartree": args.maximum_energy_error,
                     "maximum_force_error_hartree_per_bohr": args.maximum_force_error,
                 },

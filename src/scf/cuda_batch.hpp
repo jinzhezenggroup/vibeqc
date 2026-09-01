@@ -95,6 +95,11 @@ enum class CudaEigensolverFamily : std::uint32_t {
   jacobi_batched,
   xsyev_batched,
   graph_native,
+  // Ordinary-stream standard symmetric eigensolver.  This mirrors the
+  // single-matrix GPU path used by GPU4PySCF and deliberately has no Graph
+  // contract; it is the safe provider for dimensions whose batched Xsyev
+  // call is valid on a stream but rejected during Graph capture.
+  xsyevd,
 };
 
 enum class CudaEigensolverSelectionSource : std::uint32_t {

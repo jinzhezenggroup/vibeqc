@@ -3001,6 +3001,71 @@ def test_direct_tile_validation_is_opt_in_and_reports_descriptor_context():
     assert "return cudaSuccess;" in source
 
 
+def test_graph_native_eigensolver_override_covers_all_solver_calls():
+    """Keep the large-matrix escape hatch off cuSOLVER in every phase."""
+
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
+        encoding="utf-8"
+    )
+    override_begin = source.index(
+        "if (requested_graph_native_eigensolver_override) {"
+    )
+    override_end = source.index("    }\n  }\n  const CudaEigensolverFamily", override_begin)
+    override = source[override_begin:override_end]
+    assert "plan.eigensolver_diagnostic.family =" in override
+    assert "plan.eigensolver_diagnostic.ordinary_family =" in override
+    assert "CudaEigensolverFamily::graph_native" in override
+    probe_call = source.index(
+        "probe_xsyev_batched_device_launch_graph(", override_begin
+    )
+    assert probe_call > override_begin
+    assert "Do not probe that provider first" in source[override_begin - 300:override_begin]
+    # Finalization and split ordinary-stream iterations use ordinary_family;
+    # an override that changes only family silently reintroduces XsyevBatched.
+    assert "ordinary_eigensolver_family == CudaEigensolverFamily::xsyev_batched" in source
+
+
+def test_large_matrix_stream_fallback_matches_gpu4pyscf_solver_contract():
+    """Keep Graph-rejected large matrices on the standard Xsyevd provider."""
+
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
+        encoding="utf-8"
+    )
+    assert "CudaEigensolverFamily::xsyevd" in source
+    assert "cusolverDnXsyevd_bufferSize" in source
+    assert "cusolverDnXsyevd(" in source
+    probe_end = source.index(
+        "const XsyevBatchedDispatch dispatch =", source.index(
+            "probe_xsyev_batched_device_launch_graph("
+        )
+    )
+    assert "cudaGetLastError" in source[probe_end - 320 : probe_end]
+    assert "dispatch.device_launch_graph_provider" in source
+    assert "plan.eigensolver_diagnostic.ordinary_family =" in source
+    assert "CudaEigensolverFamily::xsyevd" in source
+    assert "Unlike XsyevBatched" in source
+
+
+def test_bounded_force_registry_gaps_use_exact_runtime_fallback():
+    """Prevent large-AO force runs from regressing to a hard CUDA error."""
+
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
+        encoding="utf-8"
+    )
+    fallback = source.index("const auto launch_bounded_generic_force")
+    dispatch = source.index("const auto launch_bounded_force")
+    dispatch_end = source.index(
+        "  if (quartet_direct &&\n      plan.shell_quartet_tile_capacities",
+        dispatch,
+    )
+    assert fallback < dispatch < dispatch_end
+    assert "bounded_direct_shell_quartet_kernel" in source[fallback:dispatch]
+    assert "uncovered_force_shell_class_mask == 0U" in source[fallback:dispatch]
+    assert "launch_bounded_generic_force" in source[dispatch:dispatch_end]
+    # Registry incompleteness must not be converted into the old hard failure.
+    assert "return cudaErrorNotSupported;" not in source[dispatch:dispatch_end]
+
+
 def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path):
     """Keep machine CUDA out of Git while retaining deterministic builds."""
 
@@ -3441,6 +3506,61 @@ def test_bounded_force_signature_mask_tracks_warp_uniform_schedules():
         re.findall(r"<< (k[A-Za-z0-9]+ShellClass)", source[mask_begin:mask_end])
     )
     assert configured_constants == expected_constants
+
+
+def test_bounded_fock_pages_do_not_duplicate_streaming_consumers():
+    """Keep paged Fock fallback disjoint from direct streaming workers."""
+
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
+        encoding="utf-8"
+    )
+    begin = source.index("const auto launch_bounded_paged_generated_fock")
+    end = source.index("const auto launch_bounded_generated_fock", begin)
+    page_source = source[begin:end]
+    assert "host_generated_streaming_fock_shell_class_mask" in page_source
+    assert "host_native_streaming_fock_shell_class_mask" in page_source
+    assert page_source.index("host_generated_streaming_fock_shell_class_mask") < page_source.index(
+        "host_native_streaming_fock_shell_class_mask"
+    )
+
+
+def test_fixed_generated_task_arena_has_a_memory_admission_limit():
+    """Route large grid-addressable buckets before a multi-GiB allocation."""
+
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
+        encoding="utf-8"
+    )
+    assert "kFixedGeneratedTaskArenaMaximumBytes" in source
+    assert "direct_task_layout.exact_tile_count >" in source
+    assert "sizeof(GeneratedShellTask)" in source
+    assert "requested_bounded_direct_streaming = true" in source
+
+
+def test_bounded_force_keeps_fock_only_classes_out_of_force_dispatch():
+    """Do not call the force registry for Fock-only ssss/psss entries."""
+
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
+        encoding="utf-8"
+    )
+    begin = source.index("const std::uint64_t explicit_generated_force_shell_class_mask")
+    end = source.index("const auto launch_bounded_generated_force", begin)
+    mask_source = source[begin:end]
+    assert "selected_fock_shell_kernels" not in mask_source
+    assert "selected_shell_kernels(bounded_force_kernel_count)" in mask_source
+    assert "~kBoundedNativePagedForceShellClassMask" in mask_source
+    assert "cudaErrorNotSupported" in mask_source
+
+
+def test_bounded_psss_resident_path_is_allocated_and_disjoint_from_page_fallback():
+    """Use the validated resident-bra consumer before paging psss force work."""
+
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
+        encoding="utf-8"
+    )
+    assert "requested_quartet_direct\n                         ? host.psss_resident_tasks.size()" in source
+    assert "requested_quartet_direct && resident_psss_enabled" in source
+    assert "launch_bounded_resident_psss_force" in source
+    assert "~(bounded_resident_psss_force_enabled" in source
 
 
 def test_warm_density_validation_parallelizes_each_system_matrix():
