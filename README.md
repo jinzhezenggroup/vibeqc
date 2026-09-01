@@ -1,8 +1,8 @@
 <!--
 IMPORTANT: Keep this README concise and user-facing. It should contain only
-the project identity, essential capabilities, installation, minimal examples,
-and measured benchmarks. Put implementation history, kernel details,
-benchmark analysis, and extended roadmaps in docs/ or
+the project identity, current supported methods, essential capabilities,
+installation, and minimal examples. Put implementation history, kernel
+details, benchmark analysis, and extended roadmaps in docs/ or
 benchmarks/results/ instead of expanding this file.
 -->
 
@@ -143,20 +143,12 @@ print(first.energies)
 
 ## Benchmarks
 
-The table below is the measured performance surface for each implemented
-method. Each chart is a clickable thumbnail with the full-size SVG and raw
-benchmark data. New methods can be added as new rows without maintaining a
-separate support list.
-
 | Method | Performance |
 | --- | --- |
-| HF | <a href="benchmarks/results/vibeqc-gpu4pyscf-atom-ao-scaling.svg"><img src="benchmarks/results/vibeqc-gpu4pyscf-atom-ao-scaling.svg" width="720" alt="HF performance scaling: VibeQC versus GPU4PySCF"></a> |
+| HF | <a href="benchmarks/results/vibeqc-gpu4pyscf-atom-ao-scaling.svg"><img src="benchmarks/results/vibeqc-gpu4pyscf-atom-ao-scaling.svg" width="900" alt="HF performance scaling: VibeQC versus GPU4PySCF"></a> |
 
-The HF chart uses RHF direct J/K on an RTX 5090, with nested water topologies
-from 3 atoms/24 AOs through 96 atoms/768 AOs. It reports warm energy-plus-force
-replay time on a logarithmic scale under the benchmark's matched loose SCF
-criteria; see the [raw measurements](benchmarks/results/vibeqc-gpu4pyscf-atom-ao-scaling.json)
-for the exact protocol and values.
+HF: RHF direct J/K on an RTX 5090; warm energy-plus-force replay from
+3 atoms/24 AOs to 96 atoms/768 AOs. See the [raw measurements](benchmarks/results/vibeqc-gpu4pyscf-atom-ao-scaling.json).
 
 ## Documentation
 
