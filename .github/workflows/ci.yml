@@ -32,6 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
       - name: Install ccache
         run: sudo apt-get update && sudo apt-get install --yes ccache
@@ -45,17 +46,39 @@ jobs:
       - name: Configure
         env:
           CXX: ${{ matrix.compiler == 'gcc' && 'g++' || 'clang++' }}
+          # Instrument only the GCC leg so the existing compiler matrix still
+          # exercises an ordinary non-instrumented Clang build.
+          COVERAGE_COMPILE_FLAGS: ${{ matrix.compiler == 'gcc' && '-fprofile-arcs -ftest-coverage -fprofile-update=atomic' || '' }}
+          COVERAGE_LINK_FLAGS: ${{ matrix.compiler == 'gcc' && '--coverage' || '' }}
         run: >-
           cmake -S . -B build -G Ninja
           -DVIBEQC_ENABLE_CUDA=OFF
           -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_FLAGS="${COVERAGE_COMPILE_FLAGS}"
+          -DCMAKE_EXE_LINKER_FLAGS="${COVERAGE_LINK_FLAGS}"
+          -DCMAKE_SHARED_LINKER_FLAGS="${COVERAGE_LINK_FLAGS}"
       - name: Build
         run: cmake --build build --parallel
       - name: Show ccache statistics
         run: ccache --show-stats
       - name: Test
         run: ctest --test-dir build --output-on-failure
+      - name: Collect C++ coverage
+        if: matrix.compiler == 'gcc'
+        run: |
+          sudo apt-get install --yes lcov
+          lcov --capture --directory build --output-file coverage-cpp.info \
+            --exclude '/usr/*' --exclude '*/tests/*' \
+            --ignore-errors mismatch,unused
+      - name: Preserve C++ coverage for the upload-only job
+        if: matrix.compiler == 'gcc'
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: coverage-report-cpp
+          path: coverage-cpp.info
+          retention-days: 1
 
   python:
     runs-on: ubuntu-24.04
@@ -64,6 +87,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
       - name: Install uv and Python 3.11
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
@@ -93,10 +117,67 @@ jobs:
           uv pip install --python .venv/bin/python --editable '.[test]'
       - name: Show ccache statistics
         run: ccache --show-stats
-      - name: Run Python tests
+      - name: Run Python tests with coverage
         env:
           VIBEQC_LIBRARY: ${{ github.workspace }}/build/libvibeqc.so
-        run: .venv/bin/python -m pytest tests/python -q
+        run: >-
+          .venv/bin/python -m pytest tests/python -q --cov
+          --cov-report=xml:coverage-python.xml
+      - name: Preserve Python coverage for the upload-only job
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: coverage-report-python
+          path: coverage-python.xml
+          retention-days: 1
+
+  upload-coverage:
+    needs: [cpu, python]
+    if: ${{ !cancelled() && needs.cpu.result == 'success' && needs.python.result == 'success' }}
+    # Coverage reporting is observability rather than a correctness gate. A
+    # Codecov or artifact-service outage must not fail the workflow.
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - artifact: coverage-report-cpp
+            file: coverage/coverage-cpp.info
+            flag: cpp
+            name: code-coverage/cpp
+          - artifact: coverage-report-python
+            file: coverage/coverage-python.xml
+            flag: python
+            name: code-coverage/python
+    runs-on: ubuntu-24.04
+    # Keep OIDC away from jobs that build or execute pull-request code. This
+    # job checks out source metadata and consumes coverage artifacts only.
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Download coverage report
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: ${{ matrix.artifact }}
+          path: coverage
+      - name: Upload coverage to Codecov
+        # fail_ci_if_error covers CLI upload errors; continue-on-error also
+        # covers action setup, integrity-check, and OIDC failures.
+        continue-on-error: true
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          files: ${{ matrix.file }}
+          flags: ${{ matrix.flag }}
+          name: ${{ matrix.name }}
+          disable_search: true
+          fail_ci_if_error: false
+          use_oidc: true
+          version: v11.3.1
 
   pass:
     name: Pass CI checks
