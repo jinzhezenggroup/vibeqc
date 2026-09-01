@@ -3525,8 +3525,8 @@ def test_bounded_force_signature_mask_tracks_warp_uniform_schedules():
     assert configured_constants == expected_constants
 
 
-def test_bounded_dppp_force_stays_on_the_exact_pre_paging_queue():
-    """Prevent the 384-AO DPPP force regression from re-entering paging."""
+def test_bounded_dppp_force_uses_nonterminating_paged_screening():
+    """Keep DPPP paged without assuming Schwarz-sorted ket segments."""
 
     source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
         encoding="utf-8"
@@ -3538,7 +3538,36 @@ def test_bounded_dppp_force_stays_on_the_exact_pre_paging_queue():
         "const std::uint64_t covered_force_shell_class_mask", mask_begin
     )
     mask_source = source[mask_begin:mask_end]
-    assert "std::uint64_t{1} << kDpppShellClass" in mask_source
+    assert "std::uint64_t{1} << kDpppShellClass" not in mask_source
+
+    order_begin = source.index("bool make_bounded_stream_shell_pair_order")
+    order_end = source.index("struct BoundedGeneratedPageRange", order_begin)
+    assert "std::sort" not in source[order_begin:order_end]
+
+    compact_begin = source.index(
+        "__global__ void compact_bounded_exact_class_force_wave_kernel"
+    )
+    compact_end = source.index("/**\n * Consume one paged exact class", compact_begin)
+    low_order_begin = source.index(
+        "__global__ void contract_bounded_exact_low_order_force_page_kernel"
+    )
+    low_order_end = source.index("/** Scan bounded signature chunks", low_order_begin)
+    for page_source in (
+        source[compact_begin:compact_end],
+        source[low_order_begin:low_order_end],
+    ):
+        force_gate = re.search(
+            r"page_density_tails\.force < force_tolerance\) \{\s*(\w+);",
+            page_source,
+        )
+        fock_gate = re.search(
+            r"page_density_tails\.fock < screening_tolerance\) \{\s*(\w+);",
+            page_source,
+        )
+        assert force_gate is not None
+        assert force_gate.group(1) == "continue"
+        assert fock_gate is not None
+        assert fock_gate.group(1) == "continue"
 
     page_begin = source.index("const auto launch_bounded_overflow_force")
     page_end = source.index("const auto launch_bounded_native_force", page_begin)
@@ -3548,12 +3577,22 @@ def test_bounded_dppp_force_stays_on_the_exact_pre_paging_queue():
         page_source.index("bounded_generated_page_range")
     )
 
-    dispatch_begin = source.index("const auto launch_bounded_force")
-    dispatch_end = source.index("if (quartet_direct &&", dispatch_begin)
-    dispatch_source = source[dispatch_begin:dispatch_end]
-    assert dispatch_source.index("launch_bounded_generated_force") < (
-        dispatch_source.index("launch_bounded_overflow_force")
+
+def test_bounded_page_range_tracks_end_across_systems():
+    """Do not stop a page at the first system that it intersects."""
+
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
+        encoding="utf-8"
     )
+    range_begin = source.index("BoundedGeneratedPageRange bounded_generated_page_range")
+    range_end = source.index(
+        "std::vector<RhfBucketItem> execute_hf_cuda_bucket", range_begin
+    )
+    range_source = source[range_begin:range_end]
+    assert "bool found_end = false;" in range_source
+    assert "found_begin && !found_end && page_end <= system_end" in range_source
+    assert "found_end = true;" in range_source
+    assert "bra_end == 0U" not in range_source
 
 
 def test_bounded_fock_pages_do_not_duplicate_streaming_consumers():
