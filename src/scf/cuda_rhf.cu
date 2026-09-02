@@ -10685,15 +10685,14 @@ __launch_bounds__(detail::kDirectQuartetThreads) void bounded_direct_dddd_stream
 /**
  * Bound the density factors for one exact pair-class page.
  *
- * Pair pages are sorted by Schwarz bound, so a fixed density upper bound lets
- * the compactor stop at the first failing ket.  The previous implementation
- * used the maximum over the whole system.  That is safe but particularly
- * loose for force pages: a dense d/d pair could keep a sparse s/p page alive
- * until its final ket.  The per-class maxima already maintained in the
- * bounded topology are sufficient to tighten both the Fock and force tails.
- * For exchange, enumerate both orientations of the low pair class; this is
- * a conservative bound for every physical ket in that class while remaining
- * independent of the ket row, and therefore preserves the monotonic break.
+ * The class-major stream preserves topology insertion order; it is not
+ * sorted by the geometry-dependent Schwarz bounds. These class maxima
+ * therefore provide a conservative coarse rejection for the current ket
+ * only. They must never terminate the remaining row: a later ket may have
+ * a larger Schwarz bound and survive the exact shell-quartet predicate.
+ *
+ * For exchange, enumerate both orientations of the low pair class so
+ * every physical ket orientation remains covered by the class-level bound.
  */
 struct BoundedPageDensityTails {
   double fock{};
@@ -10799,10 +10798,9 @@ __global__ void compact_bounded_exact_class_force_wave_kernel(
     if (topology.active != nullptr && topology.active[system] == 0U) {
       continue;
     }
-    // This tail is fixed for the bra row and pair class.  Ket shell-pair
-    // bounds are descending, so a failure is a safe monotonic stop for the
-    // remainder of the page row.  Force uses the product bound for all J/K
-    // terms; Fock uses the largest single density factor.
+    // This bound is fixed for the bra row and pair class. Pair-order
+    // segments are not Schwarz-sorted, so it may reject only the current
+    // ket; the exact predicate below still decides every survivor.
     const BoundedPageDensityTails page_density_tails = bounded_page_density_tails(
         batch, topology, system, bra_pair, high_pair_class, low_pair_class);
     const std::uint32_t ket_begin =
@@ -10863,11 +10861,11 @@ __global__ void compact_bounded_exact_class_force_wave_kernel(
         const double force_tolerance =
             fmin(screening_tolerance, kForceDensityProductScreeningTolerance);
         if (has_density_bound && quartet_bound * page_density_tails.force < force_tolerance) {
-          break;
+          continue;
         }
       } else if (has_density_bound &&
                  quartet_bound * page_density_tails.fock < screening_tolerance) {
-        break;
+        continue;
       }
       if (!direct_shell_quartet_survives_screening<Unrestricted, Purpose>(
               batch, bra_pair, ket_pair, screening_tolerance, topology.shell_pair_bounds,
@@ -10982,11 +10980,11 @@ __global__ void contract_bounded_exact_low_order_force_page_kernel(
         const double force_tolerance =
             fmin(screening_tolerance, kForceDensityProductScreeningTolerance);
         if (has_density_bound && quartet_bound * page_density_tails.force < force_tolerance) {
-          break;
+          continue;
         }
       } else if (has_density_bound &&
                  quartet_bound * page_density_tails.fock < screening_tolerance) {
-        break;
+        continue;
       }
       if (!direct_shell_quartet_survives_screening<Unrestricted, Purpose>(
               batch, bra_pair, ket_pair, screening_tolerance, topology.shell_pair_bounds,
@@ -14373,6 +14371,7 @@ BoundedGeneratedPageRange bounded_generated_page_range(
   std::uint64_t candidate_cursor = 0U;
   std::uint64_t bra_cursor = 0U;
   bool found_begin = false;
+  bool found_end = false;
   std::uint64_t bra_begin = 0U;
   std::uint64_t bra_end = 0U;
   for (std::size_t system = 0; system < batch_size; ++system) {
@@ -14400,14 +14399,15 @@ BoundedGeneratedPageRange bounded_generated_page_range(
       bra_begin = bra_cursor + std::min(high_count, local_bra);
       found_begin = true;
     }
-    if (found_begin && bra_end == 0U && page_end > candidate_cursor) {
-      const std::uint64_t local_end = std::min(system_candidates, page_end - candidate_cursor);
+    if (found_begin && !found_end && page_end <= system_end) {
+      const std::uint64_t local_end = page_end - candidate_cursor;
       // ``ceil`` keeps a row whose final ket falls inside the page.  The
       // exact ket loop clips the row to the page interval below.
       const std::uint64_t rows_end =
           same_pair_class ? bounded_lower_triangle_row_end(local_end, high_count)
                           : std::min(high_count, (local_end + low_count - 1U) / low_count);
       bra_end = bra_cursor + rows_end;
+      found_end = true;
     }
     candidate_cursor = system_end;
     bra_cursor += high_count;
@@ -14415,7 +14415,7 @@ BoundedGeneratedPageRange bounded_generated_page_range(
   if (!found_begin) {
     bra_begin = bra_cursor;
     bra_end = bra_cursor;
-  } else if (bra_end == 0U) {
+  } else if (!found_end) {
     bra_end = bra_cursor;
   }
   return {
@@ -17095,17 +17095,12 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
           : 0U;
   const std::uint64_t bounded_first_wave_force_shell_class_mask =
       generated_queued_force_shell_class_mask & ~bounded_paged_force_shell_class_mask;
-  // Diagnostic A/B mode can move one selected class (dppp) back to the
-  // pre-paging first/retry queue while leaving the remaining paged classes on
-  // their production consumer.  Count diagnostics still include every class.
+  // Count diagnostics intentionally materialize every class through the
+  // pre-paging queue. Production keeps only classes outside the page
+  // mask there; the remaining classes use disjoint exact pages.
   const std::uint64_t bounded_force_legacy_queue_shell_class_mask =
-      bounded_direct_count_diagnostic
-          ? generated_queued_force_shell_class_mask
-          : bounded_first_wave_force_shell_class_mask |
-                // DPPP remains on the pre-paging queue until its page-local
-                // subgroup consumer has an independent correctness gate.  The
-                // old queue is exact and disjoint from the paged stream below.
-                (std::uint64_t{1} << kDpppShellClass);
+      bounded_direct_count_diagnostic ? generated_queued_force_shell_class_mask
+                                      : bounded_first_wave_force_shell_class_mask;
   const std::uint64_t covered_force_shell_class_mask = generated_shell_class_mask |
                                                        native_streaming_force_shell_class_mask |
                                                        bounded_native_paged_force_shell_class_mask;
@@ -17589,21 +17584,17 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     // generated/native routes handle the common classes; any registry gap is
     // sent to the exact bounded runtime dispatcher below instead of rejecting
     // a valid topology or silently scanning an unbounded AO-space fallback.
-    // Force pages are exact for the generated classes that have passed their
-    // page-local correctness gates. DPPP remains on the pre-paging queue
-    // because its subgroup consumer currently loses force contributions when
-    // launched from the paged stream; the two routes are kept disjoint by the
-    // class mask above.
+    // Generated classes selected by the page mask use exact, disjoint
+    // pages. The pre-paging queue is retained only for diagnostics and
+    // classes that do not use the paged route.
     cudaError_t error = cudaSuccess;
     if (bounded_direct_count_diagnostic) {
       return launch_bounded_generated_force(is_unrestricted, purpose, quartet_density);
     }
     if ((bounded_force_legacy_queue_shell_class_mask & generated_queued_force_shell_class_mask) !=
         0U) {
-      // DPPP is intentionally retained on the pre-paging generated queue;
-      // all other generated classes continue through their disjoint exact
-      // pages below.  The explicit mask also keeps this path safe if a
-      // topology does not contain DPPP.
+      // Consume non-paged generated classes first, then keep their exact
+      // class mask out of the page stream to avoid duplicate quartets.
       error = launch_bounded_generated_force(is_unrestricted, purpose, quartet_density);
       if (error != cudaSuccess) return error;
       error = launch_bounded_overflow_force(is_unrestricted, purpose, quartet_density);
