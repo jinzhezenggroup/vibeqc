@@ -80,6 +80,35 @@ jobs:
           path: coverage-cpp.info
           retention-days: 1
 
+  cuda-compile:
+    name: CUDA 12.9 compile (sm_120)
+    runs-on: ubuntu-24.04
+    env:
+      CUDACXX: /usr/local/cuda-12.9/bin/nvcc
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Add NVIDIA CUDA repository
+        run: |
+          curl --fail --silent --show-error --location --output cuda-keyring.deb \
+            https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
+          sudo dpkg -i cuda-keyring.deb
+          sudo apt-get update
+      - name: Install CUDA 12.9 build dependencies
+        run: |
+          sudo apt-get install --yes \
+            cuda-nvcc-12-9 \
+            cuda-cudart-dev-12-9 \
+            libcublas-dev-12-9 \
+            libcusolver-dev-12-9
+          "$CUDACXX" --version
+      - name: Configure production CUDA build
+        run: cmake --preset cuda-release-sm120 -DVIBEQC_BUILD_TESTS=OFF
+      - name: Compile production CUDA build
+        run: cmake --build --preset cuda-release-sm120 --parallel 2
+
   python:
     runs-on: ubuntu-24.04
     env:
@@ -161,7 +190,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Download coverage report
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@3e5f45b2cfb917205e4b4087a40e8e0b5a5461e7c # v8
         with:
           name: ${{ matrix.artifact }}
           path: coverage
@@ -181,7 +210,7 @@ jobs:
 
   pass:
     name: Pass CI checks
-    needs: [cpu, python]
+    needs: [cpu, cuda-compile, python]
     runs-on: ubuntu-24.04
     if: always()
     steps:
