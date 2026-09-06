@@ -105,8 +105,11 @@ jobs:
             libcusolver-dev-12-9 \
             python3-numpy
           "$CUDACXX" --version
-      - name: Configure production CUDA build
-        run: cmake --preset cuda-release-sm120 -DVIBEQC_BUILD_TESTS=OFF
+      - name: Configure production CUDA compile check
+        run: >-
+          cmake --preset cuda-release-sm120
+          -DVIBEQC_BUILD_TESTS=OFF
+          -DVIBEQC_CUDA_FAST_COMPILE=ON
       - name: Compile production CUDA build
         run: cmake --build --preset cuda-release-sm120 --parallel 2
 
