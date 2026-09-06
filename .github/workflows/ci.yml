@@ -212,7 +212,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Download coverage report
-        uses: actions/download-artifact@3e5f45b2cfb917205e4b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: ${{ matrix.artifact }}
           path: coverage
