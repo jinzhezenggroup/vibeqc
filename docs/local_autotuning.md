@@ -82,7 +82,8 @@ analytic forces from a frozen converged density. All samples are retained and
 SCF iteration counts must match. Promotion requires at least 1.02x median
 endpoint speedup and a positive 95% bootstrap lower speedup bound above 1.0,
 alongside energy, force, and translation parity. A faster isolated kernel alone
-cannot enable a local profile.
+cannot enable a local profile. When a compatible local profile is already active,
+the final proposal must also beat that incumbent before replacing it.
 
 Fock and force proposals are gated independently. An older official row with an
 implicit Fock mapping cannot accept a force-only replacement until an explicit

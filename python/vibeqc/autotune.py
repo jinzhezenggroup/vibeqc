@@ -35,6 +35,7 @@ from .profiles import (
     find_nvcc,
     install_bundle,
     probe_device,
+    select_library,
     toolchain_identity,
 )
 
@@ -263,6 +264,22 @@ def _build(source, build, manifest, target, nvcc, *, timeout, jobs):
     return library.resolve(), time.monotonic() - started
 
 
+def _native_kernel_paths(build, architecture, name):
+    """Locate the generated source and exact object in a class-mode native build."""
+    relative = (
+        Path("generated/production_shell_kernels")
+        / architecture
+        / f"vibeqc_generated_shell_{architecture.replace('_', '')}_{name}.cu"
+    )
+    return (
+        build / relative,
+        build
+        / "CMakeFiles"
+        / f"vibeqc_aot_{architecture}_{name}.dir"
+        / (str(relative) + ".o"),
+    )
+
+
 def run(args) -> dict:
     """Tune measured hotspots; publish only complete accepted endpoint replacements."""
     source = args.source_dir.resolve()
@@ -382,6 +399,8 @@ def run(args) -> dict:
             )
             report["dirty"] = bool(status.stdout.strip())
     base_path = Path(base_library._name).resolve()
+    incumbent, incumbent_diagnostics = select_library(base_library, args.device_id)
+    report["incumbent_profile"] = incumbent_diagnostics
     generic = args.portable_baseline or bool(device["portable"])
     current_path = base_path
     try:
@@ -412,6 +431,7 @@ def run(args) -> dict:
             }
         manifest["default_architecture"] = architecture
         accepted = []
+        accepted_schedules = {}
         build = directory / "build"
         for hotspot in hotspots:
             name = hotspot["name"]
@@ -559,18 +579,8 @@ def run(args) -> dict:
                     # native compiler flags cannot hide behind a standalone
                     # source-emission or synthetic benchmark result.
                     record["prebuild_isolated"] = isolated
-                    generated_relative = (
-                        Path("generated/production_shell_kernels")
-                        / architecture
-                        / (
-                            f"vibeqc_generated_shell_{architecture.replace('_', '')}_{name}.cu"
-                        )
-                    )
-                    production_object = (
-                        build
-                        / "CMakeFiles"
-                        / f"vibeqc_aot_{architecture}_{name}.dir"
-                        / (str(generated_relative) + ".o")
+                    production_source, production_object = _native_kernel_paths(
+                        build, architecture, name
                     )
                     isolated = validate_schedule(
                         name,
@@ -580,10 +590,11 @@ def run(args) -> dict:
                         nvcc,
                         trial_directory / "native-isolated",
                         timeout=min(900, remaining()),
-                        production_source=build / generated_relative,
+                        production_source=production_source,
                         production_object=production_object,
                     )
                     record["isolated"] = isolated
+                    atomic_json(trial_directory / "native-isolated.json", isolated)
                     if not isolated["passed"]:
                         record["reason"] = "exact native-object numerical gate failed"
                         continue
@@ -623,6 +634,7 @@ def run(args) -> dict:
                         },
                     }
                     accepted.append(kernel)
+                    accepted_schedules[(name, consumer)] = trial.schedule
                     manifest, current_path, generic = (
                         candidate_manifest,
                         candidate_library,
@@ -638,8 +650,84 @@ def run(args) -> dict:
                 ) as error:
                     record["reason"] = str(error)
                     (trial_directory / "failure.txt").write_text(traceback.format_exc())
-                atomic_json(directory / "report.json", report)
+                finally:
+                    # Persist rejections too: continue statements must not
+                    # hide the completed gates until the whole search ends.
+                    atomic_json(directory / "report.json", report)
         if accepted:
+            # A later companion changes a class's shared helpers, while a
+            # rejected trial can leave the incremental build on another
+            # manifest. Rebuild the accepted set and validate every enabled
+            # consumer from those final objects before publishing one library.
+            final_manifest = directory / "build-manifest.json"
+            atomic_json(final_manifest, manifest)
+            final_library, report["final_build_seconds"] = _build(
+                source,
+                build,
+                final_manifest,
+                target,
+                nvcc,
+                timeout=remaining(),
+                jobs=args.compile_jobs,
+            )
+            for kernel in accepted:
+                name, consumer = kernel["shell_class"], kernel["consumer"]
+                production_source, production_object = _native_kernel_paths(
+                    build, architecture, name
+                )
+                isolated = validate_schedule(
+                    name,
+                    consumer,
+                    accepted_schedules[(name, consumer)],
+                    target,
+                    nvcc,
+                    directory / f"final-{name}-{consumer}",
+                    timeout=min(900, remaining()),
+                    production_source=production_source,
+                    production_object=production_object,
+                )
+                if not isolated["passed"]:
+                    raise ValueError(
+                        f"final native-object numerical gate failed: {name}/{consumer}"
+                    )
+                record = next(
+                    row
+                    for row in report["candidates"]
+                    if row.get("accepted")
+                    and row["shell_class"] == name
+                    and row["consumer"] == consumer
+                )
+                record["promotion_isolated"] = record["isolated"]
+                record["isolated"] = isolated
+                kernel["source_hash"] = isolated["source_hash"]
+            # Rebuilding an identical accepted manifest must reproduce the
+            # endpoint-tested executable; a difference needs another A/B run.
+            if file_hash(final_library) != file_hash(current_path):
+                raise ValueError(
+                    "final native library differs from the endpoint-tested build"
+                )
+            if incumbent_diagnostics["source"] == "local":
+                # A new workload search starts from official/generic code.
+                # It may replace a previous local build only after beating
+                # that actual incumbent as well as its incremental baselines.
+                comparison_directory = directory / "incumbent"
+                comparison_directory.mkdir()
+                comparison = _compare(
+                    Path(incumbent._name).resolve(),
+                    current_path,
+                    workload_path,
+                    comparison_directory,
+                    repeats=args.repeats,
+                    generic=False,
+                    timeout=remaining(),
+                )
+                report["incumbent_endpoint"] = comparison
+                if not comparison["passed"]:
+                    report["reason"] = (
+                        "current local profile remains faster or within noise"
+                    )
+                    return report
+                report["endpoint"] = comparison
             bundle = directory / "accepted"
             bundle.mkdir()
             shutil.copyfile(current_path, bundle / "libvibeqc.so")

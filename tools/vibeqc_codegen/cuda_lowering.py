@@ -5636,7 +5636,11 @@ __device__ __constant__ unsigned char generated_dppp_f_axes[10][3] = {{
     component_gradient_setup = _generic_component_gradient_setup(spec)
     task_component_setup = _generic_task_component_setup(spec)
     component_names = _emitted_component_names(spec)
-    side = maximum_order + 1
+    # The dense state-index table belongs to the requested mathematical IR.
+    # Value-only manifests prune the derivative layer even though the common
+    # helper declarations retain force-sized scratch storage. Indexing that
+    # smaller table with the force stride silently reads unrelated states.
+    side = plan.kernel.integral.maximum_coulomb_order + 1
     minimum_blocks_per_sm = plan.schedule.minimum_blocks_per_sm or (
         2
         if plan.schedule.kind == ScheduleKind.PACKED_TASKS
