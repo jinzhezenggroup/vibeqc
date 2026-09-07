@@ -236,3 +236,8 @@ revision/dirty state, NumPy/Python versions, per-block errors, and explicit
 not-run statuses for later stages. The source-file manifest identifies dirty
 source bytes as well as committed code. The runner does not issue a performance
 pass or present logical byte accounting as measured allocation/peak memory.
+
+The [archived CG08 CPU records](../benchmarks/results/cg08/README.md) report a
+maximum absolute loop-reference error of `3.469446951953614e-18` and identical
+equation/input hashes across two generations from the clean implementation
+commit.
