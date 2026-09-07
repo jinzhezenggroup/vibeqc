@@ -289,7 +289,7 @@ class Calculator:
         self._screening_tolerance = float(screening_tolerance)
         if self._screening_tolerance <= 0.0:
             raise ValueError("screening_tolerance must be positive")
-        self._library = _native.load_library()
+        self._library = _native.load_library(device=device, device_id=self._device_id)
 
         available = ctypes.c_int32()
         _native.check(
@@ -302,6 +302,24 @@ class Calculator:
             raise NotImplementedError(
                 f"method {method!r} is reserved but not implemented"
             )
+
+    @property
+    def profile_diagnostics(self) -> dict:
+        """Report official/local/portable selection and incompatible-cache reasons."""
+        import copy
+
+        return copy.deepcopy(
+            getattr(
+                self._library,
+                "_vibeqc_profile_diagnostics",
+                {
+                    "source": "cpu",
+                    "identity": None,
+                    "kernels": [],
+                    "rejected": [],
+                },
+            )
+        )
 
     def _context_descriptor(self) -> _native.ContextDescriptor:
         return _native.ContextDescriptor(

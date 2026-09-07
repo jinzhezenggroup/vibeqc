@@ -409,6 +409,32 @@ typedef struct vibeqc_batch_item_result_descriptor {
 /** Return the ABI version implemented by the loaded shared library. */
 VIBEQC_API uint32_t vibeqc_get_abi_version(void);
 
+/** Source/codegen identity, independent of checkout paths and selected kernels. */
+VIBEQC_API const char* vibeqc_get_source_identity(void);
+
+/** Hardware and runtime identity for safe user-local schedule reuse.
+ * Device ordinals use the CUDA runtime's scheduler-assigned visibility. No
+ * probe changes CUDA_VISIBLE_DEVICES. UUID/PCI address are intentionally absent
+ * because matching GPUs on different cluster nodes may share a tuned profile.
+ */
+typedef struct vibeqc_cuda_tuning_device_descriptor {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  char name[256];
+  char official_profile[128];
+  int32_t major, minor, warp_size;
+  int32_t maximum_threads_per_block, maximum_threads_per_sm, maximum_blocks_per_sm;
+  int32_t registers_per_sm, maximum_registers_per_thread, sm_count;
+  uint64_t shared_memory_per_block, shared_memory_per_block_optin, shared_memory_per_sm;
+  int32_t runtime_version, driver_version, toolkit_version;
+  int32_t release_build, fast_compile;
+  int32_t portable;
+} vibeqc_cuda_tuning_device_descriptor;
+
+/** Probe an allocated GPU; CPU builds return NOT_IMPLEMENTED without probing. */
+VIBEQC_API vibeqc_status vibeqc_cuda_tuning_device(int32_t device_id,
+                                                   vibeqc_cuda_tuning_device_descriptor* output);
+
 /** Return a stable, process-lifetime error string for a status code. */
 VIBEQC_API const char* vibeqc_status_message(vibeqc_status status);
 

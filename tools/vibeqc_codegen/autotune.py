@@ -1391,11 +1391,15 @@ def _requested_schedule_kinds(
     return tuple(kinds)
 
 
-def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
+def _run_autotune(
+    arguments: argparse.Namespace, *, runtime_target: CudaTargetInfo | None = None
+) -> dict[str, object]:
     """Generate, compile, run, rank, and optionally persist schedule winners."""
 
     arguments.architecture = normalize_cuda_architecture(arguments.architecture)
-    target = cuda_target_info(arguments.architecture)
+    target = runtime_target or cuda_target_info(arguments.architecture)
+    if target.architecture != arguments.architecture:
+        raise ValueError("probed and requested CUDA targets differ")
     compiler = CudaCompilerAdapter(
         nvcc=arguments.nvcc,
         target=target,
@@ -1446,6 +1450,22 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
             )
         )
     )
+    # User-local quick/full modes bound work per class while retaining any
+    # official Fock baseline needed by the existing comparative gate.
+    limit = getattr(arguments, "max_candidates", None)
+    if limit is not None:
+        if limit < 1:
+            raise ValueError("candidate limit must be positive")
+        bounded = []
+        for spec in specifications:
+            candidates = [t for t in trials if t.spec.name == spec.name]
+            chosen = candidates[:limit]
+            baseline = production_baselines.get(spec.name)
+            for candidate in candidates:
+                if candidate.schedule == baseline and candidate not in chosen:
+                    chosen.append(candidate)
+            bounded.extend(chosen)
+        trials = tuple(bounded)
     if not trials:
         requested = ", ".join(spec.name for spec in specifications)
         selected = ", ".join(kind.value for kind in selected_schedule_kinds)
@@ -2024,7 +2044,8 @@ def _run_autotune(arguments: argparse.Namespace) -> dict[str, object]:
             work_directory_owner.cleanup()
 
 
-def main() -> None:
+def argument_parser() -> argparse.ArgumentParser:
+    """Shared CLI contract for developer and supported user-local tuning."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--nvcc",
@@ -2119,6 +2140,16 @@ def main() -> None:
     )
     parser.add_argument("--output", type=Path)
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument(
+        "--max-candidates",
+        type=int,
+        help="bound schedule candidates per class (plus a required baseline)",
+    )
+    return parser
+
+
+def main() -> None:
+    parser = argument_parser()
     arguments = parser.parse_args()
     if arguments.compile_jobs < 1:
         parser.error("--compile-jobs must be positive")

@@ -355,7 +355,12 @@ def _candidate_paths() -> list[Path]:
     return candidates
 
 
-def load_library() -> ctypes.CDLL:
+def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDLL:
+    """Load the native ABI, optionally resolving a validated local CUDA build.
+
+    Capability queries and CPU calculators never probe a GPU or consult a
+    local CUDA profile. VIBEQC_PROFILE=off keeps the baseline for tuning A/Bs.
+    """
     for candidate in _candidate_paths():
         if candidate.exists():
             library = ctypes.CDLL(str(candidate))
@@ -364,6 +369,12 @@ def load_library() -> ctypes.CDLL:
         raise RuntimeError(
             "VIBEQC native library was not found; set VIBEQC_LIBRARY or build in ./build"
         )
+
+    if device == "cuda":
+        from .profiles import select_library
+
+        library, diagnostics = select_library(library, device_id)
+        library._vibeqc_profile_diagnostics = diagnostics
 
     void_pp = ctypes.POINTER(ctypes.c_void_p)
     library.vibeqc_get_abi_version.restype = ctypes.c_uint32

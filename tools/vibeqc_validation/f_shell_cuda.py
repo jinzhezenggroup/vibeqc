@@ -6,24 +6,31 @@ from pathlib import Path
 from .f_shell import f_shell_plan, source_audit
 
 
-def emit_numerical_driver(name: str, architecture: str = "sm_120") -> str:
+def emit_numerical_driver(
+    name: str,
+    architecture: str = "sm_120",
+    *,
+    plan=None,
+    source: str | None = None,
+    consumer: str | None = None,
+) -> str:
     """Extract the emitted task ABI and declare the eight generated launch entries.
 
     Keeping the host driver separate lets numerical-fixture changes reuse the
     expensive class object and its exact resource report. No device recurrence
     or contraction implementation is copied into this host-only translation unit.
     """
-    audit, source = source_audit(name, architecture)
-    plan = f_shell_plan(name, architecture)
+    if source is None:
+        _, source = source_audit(name, architecture)
+    plan = plan or f_shell_plan(name, architecture)
+    consumers = (consumer,) if consumer is not None else ("fock", "force")
     class_name = name[0].upper() + name[1:]
     start = source.index(f"struct Generated{class_name}Vec3")
     stop = source.index(f"struct Generated{class_name}PrimitiveGeometry")
     types = source[start:stop]
     declarations, table = [], []
-    for consumer in ("fock", "force"):
-        constant = (
-            f"kGenerated{class_name}{'Fock' if consumer == 'fock' else ''}BlockThreads"
-        )
+    for selected_consumer in consumers:
+        constant = f"kGenerated{class_name}{'Fock' if selected_consumer == 'fock' else ''}BlockThreads"
         matches = re.findall(r"constexpr unsigned " + constant + r" = (\d+)U;", source)
         if len(matches) != 1:
             raise ValueError("generated block-thread declaration changed")
@@ -31,9 +38,7 @@ def emit_numerical_driver(name: str, architecture: str = "sm_120") -> str:
         for spin in ("rhf", "uhf"):
             for persistent in (False, True):
                 suffix = "_persistent" if persistent else ""
-                symbol = (
-                    f"generated_{name}_shell_class_{consumer}_{spin}{suffix}_kernel"
-                )
+                symbol = f"generated_{name}_shell_class_{selected_consumer}_{spin}{suffix}_kernel"
                 tail = (
                     "const std::uint32_t*, const std::uint32_t*, std::uint32_t*"
                     if persistent
@@ -44,11 +49,11 @@ def emit_numerical_driver(name: str, architecture: str = "sm_120") -> str:
                     const std::int64_t*, const double*, const Generated{class_name}Vec3*, double,
                     const double*, const double*, double*, {tail});""")
                 table.append(
-                    f'{{"{spin}_{consumer}{suffix}", reinterpret_cast<const void*>({symbol}), '
-                    f"{threads}, {str(spin == 'uhf').lower()}, {str(consumer == 'force').lower()}, {str(persistent).lower()}"
+                    f'{{"{spin}_{selected_consumer}{suffix}", reinterpret_cast<const void*>({symbol}), '
+                    f"{threads}, {str(spin == 'uhf').lower()}, {str(selected_consumer == 'force').lower()}, {str(persistent).lower()}"
                     + "}"
                 )
-    if len(audit["symbols"]) != len(table):
+    if 4 * len(consumers) != len(table):
         raise ValueError("numerical driver does not cover the complete wrapper set")
     template = Path(__file__).with_name("f_shell_driver.cu.in").read_text()
     substitutions = {

@@ -131,6 +131,7 @@ add_library(vibeqc SHARED
   src/api/c_api_calculation.cpp
   src/api/c_api_common.cpp
   src/api/c_api_context.cpp
+  src/api/c_api_tuning.cpp
   src/api/error.cpp
   src/integrals/s_integrals.cpp
   src/methods/hf_method.cpp
@@ -141,6 +142,30 @@ add_library(vibeqc SHARED
   src/scf/fleet.cpp
   src/scf/rhf.cpp
 )
+
+# A local tuned library may replace this build only when its scientific source
+# and generator are identical. Paths and Git metadata are deliberately excluded
+# so the same installed build can be reused across homogeneous cluster nodes.
+file(GLOB_RECURSE _vibeqc_identity_inputs CONFIGURE_DEPENDS
+     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+     "src/*" "include/*" "tools/vibeqc_codegen/*.py"
+     "tools/vibeqc_codegen/*.json" "python/vibeqc/*.py")
+list(APPEND _vibeqc_identity_inputs "CMakeLists.txt" "tools/generate_shell_kernels.py")
+list(SORT _vibeqc_identity_inputs)
+set(_vibeqc_identity_text "")
+foreach(_vibeqc_identity_path IN LISTS _vibeqc_identity_inputs)
+  file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/${_vibeqc_identity_path}" _vibeqc_file_hash)
+  string(APPEND _vibeqc_identity_text "${_vibeqc_identity_path}:${_vibeqc_file_hash}\n")
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+               "${CMAKE_CURRENT_SOURCE_DIR}/${_vibeqc_identity_path}")
+endforeach()
+string(SHA256 VIBEQC_SOURCE_IDENTITY "${_vibeqc_identity_text}")
+set(VIBEQC_TUNING_RELEASE_BUILD OFF)
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+  set(VIBEQC_TUNING_RELEASE_BUILD ON)
+endif()
+configure_file(src/api/build_identity.hpp.in generated/build_identity.hpp @ONLY)
+target_include_directories(vibeqc PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
 
 target_include_directories(vibeqc
   PUBLIC
