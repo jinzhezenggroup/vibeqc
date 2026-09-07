@@ -415,10 +415,12 @@ def _cached_static_algebra_model(
         sampled_component_count = spec.component_count
     else:
         components = tuple(product(*_balanced_component_labels(spec)))
+        # Algebra normalization can return a new graph; its roots must be
+        # analyzed by that owner, just as in the weighted-shell branch.
         analysis_pairs = (
             (
-                component_kernel.graph.analyze_ssa(roots),
-                component_kernel.graph.materialization_plan(
+                graph.analyze_ssa(roots),
+                graph.materialization_plan(
                     roots,
                     algebra_placement.materialization_policy(),
                     algebra_ordering,

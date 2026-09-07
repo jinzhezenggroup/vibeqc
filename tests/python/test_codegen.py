@@ -6467,6 +6467,21 @@ def test_autotune_static_model_records_operations_and_live_values():
     assert fock_model.recurrence_state_count == 56
 
 
+def test_fock_static_model_handles_transformed_component_graphs():
+    """Nonbinary Fock candidates must retain a usable model after normalization."""
+    trials = supported_schedule_trials(PSPS_SPEC, KernelConsumer.FOCK)
+    transformed = [
+        trial for trial in trials if trial.schedule.algebra_form != AlgebraForm.BINARY
+    ]
+    assert transformed
+    for trial in transformed:
+        model = trial.static_model
+        assert model.scope == "balanced_component_sample_envelope"
+        assert model.root_count == 1
+        assert model.arithmetic_operation_count > 0
+        assert model.algebra_form == trial.schedule.algebra_form
+
+
 def test_packed_autotune_searches_real_algebra_placement_variants():
     """Tie schedule IDs, payloads, source lowering, and static models together."""
 

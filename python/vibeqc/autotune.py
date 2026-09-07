@@ -17,6 +17,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import traceback
 from pathlib import Path
 
 import numpy as np
@@ -454,6 +455,9 @@ def run(args) -> dict:
                         "--architecture",
                         architecture,
                         "--local",
+                        # This workflow supplies the independent native-object
+                        # and endpoint gates required for subgroup promotion.
+                        "--allow-experimental-subgroup-winner",
                         "--shell-class",
                         name,
                         "--consumer",
@@ -633,6 +637,7 @@ def run(args) -> dict:
                     subprocess.SubprocessError,
                 ) as error:
                     record["reason"] = str(error)
+                    (trial_directory / "failure.txt").write_text(traceback.format_exc())
                 atomic_json(directory / "report.json", report)
         if accepted:
             bundle = directory / "accepted"
