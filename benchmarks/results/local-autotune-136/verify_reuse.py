@@ -129,6 +129,7 @@ def main():
                 "bohr",
                 "--basis",
                 workload["basis"],
+                "--portable-baseline",
                 "--budget-seconds",
                 "1",
             ],
