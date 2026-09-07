@@ -18,7 +18,14 @@ from pathlib import Path
 from .cuda_schedule import schedule_candidates
 from .cuda_target import DEFAULT_CUDA_TARGET, CudaTargetInfo, cuda_target_info
 from .fused_schedule import build_fused_shell_plan
-from .ir import FOUR_CENTER_ERI_OPERATOR, KernelConsumer, build_integral_ir
+from .ir import (
+    FOUR_CENTER_ERI_OPERATOR,
+    ContractionSpec,
+    IntegralIR,
+    KernelConsumer,
+    OperatorFamily,
+    build_integral_ir,
+)
 from .shell_spec import FUSED_SHELL_SPECS, ShellClassSpec
 
 CAPABILITY_STREAMING_FOCK = "streaming_fock"
@@ -74,6 +81,56 @@ class CapabilityCheck:
             "schedules": list(self.schedules),
             "reasons": list(self.reasons),
         }
+
+
+def query_integral_capability(
+    integral: IntegralIR, *, backend: str = "cuda"
+) -> CapabilityCheck:
+    """Query the existing backend's semantic input boundary without emitting code.
+
+    Success means eligibility for CUDA scheduling/lowering, not compilation,
+    numerical validation, or production selection. Those stages remain in the
+    existing shell capability report and architecture manifest. New raw/weight
+    contracts are representable but have no production executor in this issue.
+    """
+    reasons = []
+    if backend != "cuda":
+        return CapabilityCheck(
+            False, reasons=(f"no integral executor registered for backend {backend!r}",)
+        )
+    if integral.operator.family != OperatorFamily.FOUR_CENTER_ERI:
+        reasons.append(
+            f"CUDA lowering is unavailable for {integral.operator.family.value}"
+        )
+    if any(not isinstance(c, ContractionSpec) for c in integral.contractions):
+        reasons.append(
+            "CUDA lowering supports direct HF consumers; raw_block/weighted_derivative executors are unavailable"
+        )
+    if not isinstance(integral.spec, ShellClassSpec):
+        reasons.append(
+            "CUDA task binding requires the legacy ShellClassSpec compatibility adapter"
+        )
+    if integral.operator.centers != (0, 1, 2, 3):
+        reasons.append("CUDA task ABI requires quartet center slots (0, 1, 2, 3)")
+    if integral.derivative is not None and integral.derivative.order != 1:
+        reasons.append(
+            "CUDA force result ABI currently exposes only order-one derivatives"
+        )
+    if (
+        integral.recurrence.startswith("rys")
+        and KernelConsumer.FORCE not in integral.consumers
+    ):
+        reasons.append(
+            "CUDA direct Rys lowering currently requires a force contraction"
+        )
+    return CapabilityCheck(not reasons, reasons=tuple(reasons))
+
+
+def require_cuda_integral(integral: IntegralIR) -> None:
+    """Reject unavailable semantic inputs before any quartet-specific lowering."""
+    capability = query_integral_capability(integral)
+    if not capability.supported:
+        raise ValueError("; ".join(capability.reasons))
 
 
 def _production_gap_payload() -> dict[str, object]:

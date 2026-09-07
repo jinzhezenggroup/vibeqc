@@ -10,7 +10,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from math import isfinite
 
+from .blocks import RawBlock, WeightedDerivative
+from .shell_signature import ShellSignature, checked_index
 from .shell_spec import ShellClassSpec
 
 
@@ -27,6 +30,8 @@ class OperatorFamily(str, Enum):
     OVERLAP = "overlap"
     KINETIC = "kinetic"
     NUCLEAR_ATTRACTION = "nuclear_attraction"
+    COULOMB_METRIC = "coulomb_metric"
+    THREE_CENTER_ERI = "three_center_eri"
     FOUR_CENTER_ERI = "four_center_eri"
 
 
@@ -42,6 +47,8 @@ class ContractionConsumer(str, Enum):
 
     DIRECT_FOCK = "direct_fock"
     DIRECT_FORCE = "direct_force"
+    RAW_BLOCK = "raw_block"
+    WEIGHTED_DERIVATIVE = "weighted_derivative"
 
 
 class ContractionOutput(str, Enum):
@@ -69,8 +76,8 @@ class NuclearCoordinates:
             return
         if not isinstance(self.centers, tuple) or not self.centers:
             raise ValueError("nuclear coordinates require 'all' or a center tuple")
-        if any(not isinstance(center, int) or center < 0 for center in self.centers):
-            raise ValueError("nuclear-coordinate centers must be non-negative integers")
+        for center in self.centers:
+            checked_index(center, "nuclear-coordinate center")
         if len(set(self.centers)) != len(self.centers):
             raise ValueError("nuclear-coordinate centers must be unique")
 
@@ -99,6 +106,10 @@ class TranslationInvariant:
     parameters: NuclearCoordinates = _ALL_NUCLEAR_COORDINATES
     dependent_center: int | None = None
 
+    def __post_init__(self) -> None:
+        if self.dependent_center is not None:
+            checked_index(self.dependent_center, "translation dependent center")
+
     def recovered_center(
         self,
         requested_centers: tuple[int, ...],
@@ -120,23 +131,106 @@ class TranslationInvariant:
 
 
 @dataclass(frozen=True, slots=True)
+class NuclearCenter:
+    """External attraction position with nuclear charge, never a Gaussian shell.
+
+    The electronic operator is ``-charge / |r - R_center|`` in atomic units;
+    this physical minus sign is part of the integral, not a weight convention.
+    """
+
+    center: int
+    charge: float
+
+    def __post_init__(self) -> None:
+        checked_index(self.center, "nuclear center")
+        if (
+            isinstance(self.charge, bool)
+            or not isfinite(self.charge)
+            or self.charge <= 0
+        ):
+            raise ValueError("nuclear charge must be finite and positive")
+        object.__setattr__(self, "charge", float(self.charge))
+
+
+@dataclass(frozen=True, slots=True)
 class OperatorSpec:
     """Operator family, mathematical centers, and exact invariants."""
 
     family: OperatorFamily | str
     centers: tuple[int, ...]
     invariants: tuple[TranslationInvariant, ...] = ()
+    external_centers: tuple[NuclearCenter, ...] = ()
+    permutations: tuple[tuple[int, ...], ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "family", OperatorFamily(self.family))
+        object.__setattr__(self, "centers", tuple(self.centers))
+        object.__setattr__(self, "invariants", tuple(self.invariants))
+        object.__setattr__(self, "external_centers", tuple(self.external_centers))
+        object.__setattr__(
+            self, "permutations", tuple(tuple(p) for p in self.permutations)
+        )
         if not self.centers or len(set(self.centers)) != len(self.centers):
             raise ValueError("operator centers must be non-empty and unique")
-        if any(center < 0 for center in self.centers):
-            raise ValueError("operator centers must be non-negative")
+        for center in self.centers:
+            checked_index(center, "operator center")
+        attraction = self.family == OperatorFamily.NUCLEAR_ATTRACTION
+        if len(self.centers) != len(self.basis_roles) + int(attraction):
+            raise ValueError("operator center inventory has the wrong center count")
+        if attraction:
+            if (
+                len(self.external_centers) != 1
+                or self.external_centers[0].center not in self.centers
+            ):
+                raise ValueError(
+                    "attraction requires one external nuclear center in its inventory"
+                )
+        elif self.external_centers:
+            raise ValueError("this operator does not accept external nuclear centers")
+        if len(self.invariants) > 1:
+            # All families here have one simultaneous-translation relation.
+            # Recovering two centers from it would create a circular system.
+            raise ValueError(
+                "duplicate translation relations cannot recover multiple centers"
+            )
         for invariant in self.invariants:
-            invariant.parameters.resolve(self.centers)
+            if set(invariant.parameters.resolve(self.centers)) != set(self.centers):
+                raise ValueError("translation must include all operator centers")
             if invariant.dependent_center is not None:
                 invariant.recovered_center(self.centers, self.centers)
+        if len(set(self.permutations)) != len(self.permutations):
+            raise ValueError("operator contains duplicate permutations")
+        n = len(self.basis_roles)
+        allowed = {tuple(range(n)), (1, 0, *range(2, n))}
+        if self.family == OperatorFamily.FOUR_CENTER_ERI:
+            allowed = {
+                (0, 1, 2, 3),
+                (1, 0, 2, 3),
+                (0, 1, 3, 2),
+                (1, 0, 3, 2),
+                (2, 3, 0, 1),
+                (3, 2, 0, 1),
+                (2, 3, 1, 0),
+                (3, 2, 1, 0),
+            }
+        for permutation in self.permutations:
+            for slot in permutation:
+                checked_index(slot, "permutation slot")
+            if permutation not in allowed:
+                raise ValueError(
+                    "illegal basis-slot permutation for operator symmetry/auxiliary roles"
+                )
+
+    @property
+    def basis_roles(self) -> tuple[str, ...]:
+        """Declare orbital/auxiliary tensor slots independently of atom identity."""
+        if self.family == OperatorFamily.COULOMB_METRIC:
+            return ("auxiliary", "auxiliary")
+        if self.family == OperatorFamily.THREE_CENTER_ERI:
+            return ("orbital", "orbital", "auxiliary")
+        if self.family == OperatorFamily.FOUR_CENTER_ERI:
+            return ("orbital",) * 4
+        return ("orbital", "orbital")
 
     def nuclear_derivative(
         self,
@@ -163,8 +257,10 @@ class DerivativeSpec:
     invariants: tuple[TranslationInvariant, ...] = ()
 
     def __post_init__(self) -> None:
-        if self.order < 1:
-            raise ValueError("derivative order must be positive")
+        checked_index(self.order, "derivative order", minimum=1)
+        object.__setattr__(self, "invariants", tuple(self.invariants))
+        if len(self.invariants) > 1:
+            raise ValueError("duplicate derivative translation recovery relations")
 
     def requested_centers(self, operator: OperatorSpec) -> tuple[int, ...]:
         """Return every logical nuclear center requested by the derivative."""
@@ -175,6 +271,8 @@ class DerivativeSpec:
         """Return centers reconstructed exactly instead of differentiated."""
 
         requested = self.requested_centers(operator)
+        if self.order != 1:
+            raise ValueError("translation recovery exposes only order-one derivatives")
         recovered: list[int] = []
         for invariant in self.invariants:
             center = invariant.recovered_center(requested, operator.centers)
@@ -203,6 +301,11 @@ class ContractionSpec:
 
     def __post_init__(self) -> None:
         consumer = ContractionConsumer(self.consumer)
+        if consumer not in (
+            ContractionConsumer.DIRECT_FOCK,
+            ContractionConsumer.DIRECT_FORCE,
+        ):
+            raise ValueError("use RawBlock or WeightedDerivative for non-HF consumers")
         output = ContractionOutput(self.output)
         density_items = (
             self.density.split("|") if isinstance(self.density, str) else self.density
@@ -261,7 +364,7 @@ _CONTRACTION_BY_CONSUMER = {
 
 @dataclass(frozen=True, slots=True)
 class IntegralIR:
-    """Mathematical definition shared by Fock and force contractions.
+    """Operator-independent scientific intent with explicit consumer contracts.
 
     The mathematical IR carries explicit nuclear derivative orders. The CUDA
     backend currently lowers only first derivatives; that backend limitation is
@@ -269,26 +372,55 @@ class IntegralIR:
     intent or treating FORCE as an implicit derivative specification.
     """
 
-    spec: ShellClassSpec
+    spec: ShellClassSpec | ShellSignature
     operator: OperatorSpec
     derivative: DerivativeSpec | None
-    contractions: tuple[ContractionSpec, ...]
+    contractions: tuple[ContractionSpec | RawBlock | WeightedDerivative, ...]
     recurrence: str = "subset_wick"
 
     def __post_init__(self) -> None:
-        if self.operator.family != OperatorFamily.FOUR_CENTER_ERI:
-            raise ValueError(
-                "shell-quartet lowering currently requires a four-center ERI"
+        if not isinstance(self.spec, (ShellClassSpec, ShellSignature)):
+            raise TypeError(
+                "integral spec must be a shell signature or legacy shell class"
             )
-        if len(self.operator.centers) != len(self.spec.angular):
+        if any(
+            not isinstance(c, (ContractionSpec, RawBlock, WeightedDerivative))
+            for c in self.contractions
+        ):
+            raise TypeError(
+                "integral consumers must use a declared contraction contract"
+            )
+        signature = self.signature
+        if len(signature.shells) != len(self.operator.basis_roles):
+            raise ValueError("operator shell count does not match the shell signature")
+        if tuple(s.role for s in signature.shells) != self.operator.basis_roles:
             raise ValueError(
-                "operator center inventory does not match the shell quartet"
+                "operator orbital/auxiliary roles do not match basis slots"
+            )
+        inventory = tuple(s.center for s in signature.shells) + tuple(
+            c.center for c in self.operator.external_centers
+        )
+        if len(set(inventory)) != len(inventory) or set(inventory) != set(
+            self.operator.centers
+        ):
+            raise ValueError(
+                "operator center inventory does not match basis/external centers"
+            )
+        if tuple(b.center for b in signature.center_bindings) != self.operator.centers:
+            raise ValueError(
+                "center inventory bindings must follow operator center order"
             )
         if not self.contractions:
             raise ValueError("an integral IR requires at least one contraction")
-        consumers = tuple(item.kernel_consumer for item in self.contractions)
+        object.__setattr__(self, "contractions", tuple(self.contractions))
+        consumers = tuple(item.consumer for item in self.contractions)
         if len(set(consumers)) != len(consumers):
             raise ValueError("integral IR contains duplicate contraction consumers")
+        direct = tuple(
+            item for item in self.contractions if isinstance(item, ContractionSpec)
+        )
+        if direct and self.operator.family != OperatorFamily.FOUR_CENTER_ERI:
+            raise ValueError("direct HF consumers require four-center ERIs")
         if self.recurrence not in (
             "subset_wick",
             "rys2",
@@ -298,55 +430,126 @@ class IntegralIR:
         ):
             raise ValueError(f"unsupported integral recurrence {self.recurrence!r}")
 
-        force_requested = KernelConsumer.FORCE in consumers
-        if force_requested:
-            if self.derivative is None:
-                raise ValueError("direct-force contraction requires a derivative spec")
+        force_requested = any(
+            item.kernel_consumer == KernelConsumer.FORCE for item in direct
+        )
+        weighted_requested = any(
+            isinstance(item, WeightedDerivative) for item in self.contractions
+        )
+        if (force_requested or weighted_requested) and self.derivative is None:
+            raise ValueError(
+                "direct-force or weighted-derivative contraction requires a derivative spec"
+            )
+        if self.derivative is not None:
             requested = self.derivative.requested_centers(self.operator)
-            if requested != self.operator.centers:
-                raise ValueError(
-                    "current direct-force output requires every operator center"
-                )
             if not set(self.derivative.invariants) <= set(self.operator.invariants):
                 raise ValueError(
                     "derivative recovery invariants must be declared by the operator"
                 )
-            self.derivative.recovered_centers(self.operator)
-            expected_output = (
-                ContractionOutput.ATOMIC_FORCE
-                if self.derivative.order == 1
-                else ContractionOutput.NUCLEAR_DERIVATIVE
-            )
-            for contraction in self.contractions:
-                if (
-                    contraction.kernel_consumer == KernelConsumer.FORCE
-                    and contraction.output != expected_output
-                ):
+            if self.derivative.order == 1:
+                self.derivative.recovered_centers(self.operator)
+            if force_requested:
+                if requested != self.operator.centers:
                     raise ValueError(
-                        f"derivative order {self.derivative.order} requires "
-                        f"{expected_output.value} output"
+                        "current direct-force output requires every operator center"
                     )
-        elif self.derivative is not None:
-            raise ValueError("a derivative spec requires a derivative contraction")
+                expected_output = (
+                    ContractionOutput.ATOMIC_FORCE
+                    if self.derivative.order == 1
+                    else ContractionOutput.NUCLEAR_DERIVATIVE
+                )
+                for contraction in direct:
+                    if (
+                        contraction.kernel_consumer == KernelConsumer.FORCE
+                        and contraction.output != expected_output
+                    ):
+                        raise ValueError(
+                            f"derivative order {self.derivative.order} requires {expected_output.value} output"
+                        )
+            elif not weighted_requested and not any(
+                isinstance(item, RawBlock) for item in self.contractions
+            ):
+                raise ValueError("a derivative spec requires a derivative contraction")
+        for contraction in self.contractions:
+            if isinstance(contraction, (RawBlock, WeightedDerivative)):
+                self._validate_block_consumer(contraction)
 
         if self.recurrence.startswith("rys"):
-            if not force_requested:
-                raise ValueError(
-                    "direct Rys lowering currently requires a force contraction"
-                )
+            if self.operator.family in (OperatorFamily.OVERLAP, OperatorFamily.KINETIC):
+                raise ValueError("a Rys recurrence requires a Coulomb operator")
             required = self.required_rys_roots
             selected = int(self.recurrence.removeprefix("rys"))
             if selected != required:
                 raise ValueError(
-                    f"{self.spec.name} first-derivative lowering requires rys{required}, "
+                    f"{getattr(self.spec, 'name', self.operator.family.value)} lowering requires rys{required}, "
                     f"not {self.recurrence}"
                 )
+
+    @property
+    def signature(self) -> ShellSignature:
+        """Expose legacy quartet classes through the operator-independent adapter."""
+        return (
+            ShellSignature.from_shell_class(self.spec)
+            if isinstance(self.spec, ShellClassSpec)
+            else self.spec
+        )
+
+    def _validate_block_consumer(self, consumer: RawBlock | WeightedDerivative) -> None:
+        """Check scientific tensor axes; per-tile budgets are checked on requests."""
+        signature = self.signature
+        derivative_axes = ("center", "xyz") if self.derivative is not None else ()
+        if isinstance(consumer, RawBlock):
+            layout = consumer.layout
+            expected = derivative_axes + signature.tensor_indices
+            if self.derivative is not None and layout.shape[:2] != (
+                len(self.requested_derivative_centers),
+                3,
+            ):
+                raise ValueError(
+                    "raw derivative tensor index layout requires requested center and xyz extents"
+                )
+        else:
+            layout = consumer.weights.layout
+            expected = signature.tensor_indices
+            output_indices = (
+                ("atom", "xyz")
+                if consumer.output == ContractionOutput.ATOMIC_FORCE
+                else ("center", "xyz")
+            )
+            if (
+                consumer.output_layout.indices != output_indices
+                or consumer.output_layout.shape[-1] != 3
+            ):
+                raise ValueError(
+                    "weighted output tensor index order must be center/atom then xyz"
+                )
+            if (
+                consumer.output == ContractionOutput.NUCLEAR_DERIVATIVE
+                and consumer.output_layout.shape[0]
+                != len(self.requested_derivative_centers)
+            ):
+                raise ValueError(
+                    "weighted output layout requires every requested center"
+                )
+        if layout.indices != expected:
+            raise ValueError(f"tensor index order must be {expected}")
+        if any(
+            n > full
+            for n, full in zip(
+                layout.shape[-len(signature.shells) :], signature.component_shape
+            )
+        ):
+            raise ValueError("consumer tensor shape exceeds shell bounds")
 
     @property
     def consumers(self) -> frozenset[KernelConsumer]:
         """Return compatibility registry categories for existing call sites."""
 
-        return frozenset(item.kernel_consumer for item in self.contractions)
+        return frozenset(
+            item.kernel_consumer
+            for item in self.contractions
+            if item.kernel_consumer is not None
+        )
 
     @property
     def independent_derivative_centers(self) -> tuple[int, ...]:
@@ -380,8 +583,10 @@ class IntegralIR:
 
     @property
     def value_coulomb_order(self) -> int:
-        """Largest Cartesian Coulomb derivative needed for ERI values."""
+        """Largest Cartesian Coulomb derivative for a Coulomb-family operator."""
 
+        if self.operator.family in (OperatorFamily.OVERLAP, OperatorFamily.KINETIC):
+            raise ValueError("Coulomb recurrence bounds require a Coulomb operator")
         return sum(self.spec.angular)
 
     @property
@@ -399,12 +604,13 @@ class IntegralIR:
 
 
 def build_integral_ir(
-    spec: ShellClassSpec,
+    spec: ShellClassSpec | ShellSignature,
     consumers: tuple[KernelConsumer | str, ...] | None = None,
     *,
     operator: OperatorSpec = FOUR_CENTER_ERI_OPERATOR,
     derivative: DerivativeSpec | None = None,
-    contractions: tuple[ContractionSpec, ...] | None = None,
+    contractions: tuple[ContractionSpec | RawBlock | WeightedDerivative, ...]
+    | None = None,
     recurrence: str = "subset_wick",
 ) -> IntegralIR:
     """Normalize legacy consumers or explicit contractions into one IR.

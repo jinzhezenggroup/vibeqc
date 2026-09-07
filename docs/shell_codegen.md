@@ -20,9 +20,12 @@ architecture manifest; generated production CUDA remains a build artifact.
 `tools/vibeqc_codegen/ir.py` is now strictly mathematical, while
 `cuda_target.py` and `cuda_schedule.py` own NVIDIA execution policy:
 
-- `IntegralIR` describes a canonical shell class and its consumers (`fock`,
-  `force`). Force differentiates centers 0, 1, and 2 and restores center 3 by
-  exact translation invariance.
+- `IntegralIR` describes two-, three-, or four-shell operators, explicit
+  centers, and direct-HF, raw-block, or external-weight consumers. The existing
+  four-center force adapter differentiates centers 0, 1, and 2 and restores
+  center 3 by exact translation invariance. The new
+  [integral contracts](integral_ir.md) distinguish representable requests from
+  executable CUDA support.
 - `CudaScheduleIR` describes task/component ownership, block size, component tile,
   Coulomb-state placement, pair orientation/storage, and loop unrolling.
 - `CudaKernelIR` combines the two with a `CudaTargetInfo` and validates target
@@ -61,7 +64,7 @@ axis tables widen automatically for these classes.
 
 ### Automation boundary
 
-The mathematical IR now represents four-center ERI operators, nuclear-coordinate
+The mathematical IR represents one-electron and Coulomb operators, nuclear-coordinate
 derivatives, exact translation invariants, and consumer-directed RHF/UHF
 contractions separately. `KernelConsumer.FORCE` remains a compatibility input
 at generator and manifest boundaries; it is normalized to an order-one
@@ -100,9 +103,10 @@ share the backend path without being added to a promoted-name list.
 
 The current CUDA backend still accepts only first nuclear derivatives of
 four-center ERIs and preserves the existing force-vector ABI. Higher derivative
-orders, one-electron operator lowering, and density-fitting operators need their
-own tensor layout, invariant application, correctness oracles, and resource and
-timing gates, but no longer require another redesign of derivative intent.
+orders need a separate higher-order tensor layout and recovery implementation.
+One-electron and density-fitting operators have explicit shell, center, and
+bounded-block contracts; their generated kernels still need lowering,
+correctness oracles, and resource and timing gates.
 
 For large-AO direct-J/K failures, set `VIBEQC_DIRECT_TILE_VALIDATION=validate`
 to run an opt-in device validator immediately after shell-quartet compaction.

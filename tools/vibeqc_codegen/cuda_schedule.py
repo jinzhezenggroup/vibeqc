@@ -14,7 +14,7 @@ from .expr import (
     AlgebraOrdering,
     RematerializationPolicy,
 )
-from .ir import IntegralIR, KernelConsumer
+from .ir import IntegralIR
 
 
 class ScheduleKind(str, Enum):
@@ -201,17 +201,10 @@ class CudaKernelIR:
     target: CudaTargetInfo = DEFAULT_CUDA_TARGET
 
     def __post_init__(self) -> None:
-        if (
-            KernelConsumer.FORCE in self.integral.consumers
-            and self.integral.derivative is not None
-            and self.integral.derivative.order != 1
-        ):
-            # Keep higher-order mathematical intent representable in
-            # IntegralIR, but never let a first-gradient CUDA ABI consume it
-            # as if it were an atomic force result.
-            raise ValueError(
-                "CUDA force result ABI currently exposes only order-one derivatives"
-            )
+        # Import lazily because capability reporting also enumerates schedules.
+        from .capabilities import require_cuda_integral
+
+        require_cuda_integral(self.integral)
         self.schedule.validate_for(self.target)
         component_count = self.integral.spec.component_count
         if (
@@ -229,6 +222,10 @@ def schedule_candidates(
     target: CudaTargetInfo = DEFAULT_CUDA_TARGET,
 ) -> tuple[CudaScheduleIR, ...]:
     """Enumerate legal CUDA schedules from explicit target capabilities."""
+
+    from .capabilities import require_cuda_integral
+
+    require_cuda_integral(integral)
 
     component_count = integral.spec.component_count
     warp_size = target.warp_size

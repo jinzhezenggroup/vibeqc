@@ -3768,17 +3768,21 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs():
 
     source = (REPOSITORY_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
     for dependency in (
+        "tools/vibeqc_codegen/blocks.py",
+        "tools/vibeqc_codegen/cache.py",
         "tools/vibeqc_codegen/cuda.py",
         "tools/vibeqc_codegen/capabilities.py",
         "tools/vibeqc_codegen/cuda_lowering.py",
         "tools/vibeqc_codegen/expr.py",
         "tools/vibeqc_codegen/fused_schedule.py",
         "tools/vibeqc_codegen/ir.py",
+        "tools/vibeqc_codegen/ir_serialization.py",
         "tools/vibeqc_codegen/production.py",
         "tools/vibeqc_codegen/rys.py",
         "tools/vibeqc_codegen/rys3_data.py",
         "tools/vibeqc_codegen/rys5_data.py",
         "tools/vibeqc_codegen/shell_class.py",
+        "tools/vibeqc_codegen/shell_signature.py",
         "tools/vibeqc_codegen/shell_spec.py",
     ):
         assert dependency in source

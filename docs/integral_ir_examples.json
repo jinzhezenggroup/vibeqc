@@ -1,0 +1,345 @@
+{
+  "four_center_external_weight": {
+    "cuda_lowering": {
+      "reasons": [
+        "CUDA lowering supports direct HF consumers; raw_block/weighted_derivative executors are unavailable",
+        "CUDA task binding requires the legacy ShellClassSpec compatibility adapter"
+      ],
+      "schedules": [],
+      "supported": false
+    },
+    "integral": {
+      "contractions": [
+        {
+          "consumer": "weighted_derivative",
+          "memory_budget_bytes": 4096,
+          "output": "atomic_force",
+          "output_layout": {
+            "dtype": "float64",
+            "indices": [
+              "atom",
+              "xyz"
+            ],
+            "shape": [
+              3,
+              3
+            ],
+            "strides": [
+              3,
+              1
+            ]
+          },
+          "output_sign": -1,
+          "weights": {
+            "layout": {
+              "dtype": "float64",
+              "indices": [
+                "shell_0",
+                "shell_1",
+                "shell_2",
+                "shell_3"
+              ],
+              "shape": [
+                3,
+                1,
+                1,
+                1
+              ],
+              "strides": [
+                1,
+                1,
+                1,
+                1
+              ]
+            },
+            "prefactor": 0.5,
+            "sign": 1,
+            "source": "cc_lagrangian_tile"
+          }
+        }
+      ],
+      "derivative": {
+        "centers": "all",
+        "invariants": [
+          {
+            "centers": "all",
+            "dependent_center": null
+          }
+        ],
+        "order": 1
+      },
+      "operator": {
+        "centers": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "external_centers": [],
+        "family": "four_center_eri",
+        "invariants": [
+          {
+            "centers": "all",
+            "dependent_center": null
+          }
+        ],
+        "permutations": []
+      },
+      "recurrence": "subset_wick",
+      "schema": "vibeqc.integral_ir",
+      "schema_version": 1,
+      "spec": {
+        "center_bindings": [
+          {
+            "atom_index": 0,
+            "center": 0
+          },
+          {
+            "atom_index": 0,
+            "center": 1
+          },
+          {
+            "atom_index": 1,
+            "center": 2
+          },
+          {
+            "atom_index": 2,
+            "center": 3
+          }
+        ],
+        "kind": "shell_signature",
+        "legacy_class": null,
+        "shells": [
+          {
+            "angular": 1,
+            "center": 0,
+            "convention": "cartesian",
+            "role": "orbital",
+            "slot": 0
+          },
+          {
+            "angular": 0,
+            "center": 1,
+            "convention": "cartesian",
+            "role": "orbital",
+            "slot": 1
+          },
+          {
+            "angular": 0,
+            "center": 2,
+            "convention": "cartesian",
+            "role": "orbital",
+            "slot": 2
+          },
+          {
+            "angular": 0,
+            "center": 3,
+            "convention": "cartesian",
+            "role": "orbital",
+            "slot": 3
+          }
+        ]
+      }
+    }
+  },
+  "three_center_derivative": {
+    "cuda_lowering": {
+      "reasons": [
+        "CUDA lowering is unavailable for three_center_eri",
+        "CUDA lowering supports direct HF consumers; raw_block/weighted_derivative executors are unavailable",
+        "CUDA task binding requires the legacy ShellClassSpec compatibility adapter",
+        "CUDA task ABI requires quartet center slots (0, 1, 2, 3)"
+      ],
+      "schedules": [],
+      "supported": false
+    },
+    "integral": {
+      "contractions": [
+        {
+          "consumer": "raw_block",
+          "layout": {
+            "dtype": "float64",
+            "indices": [
+              "center",
+              "xyz",
+              "shell_0",
+              "shell_1",
+              "shell_2"
+            ],
+            "shape": [
+              3,
+              3,
+              3,
+              1,
+              1
+            ],
+            "strides": [
+              9,
+              3,
+              1,
+              1,
+              1
+            ]
+          },
+          "memory_budget_bytes": 4096,
+          "output_sign": 1
+        }
+      ],
+      "derivative": {
+        "centers": "all",
+        "invariants": [
+          {
+            "centers": "all",
+            "dependent_center": null
+          }
+        ],
+        "order": 1
+      },
+      "operator": {
+        "centers": [
+          0,
+          1,
+          2
+        ],
+        "external_centers": [],
+        "family": "three_center_eri",
+        "invariants": [
+          {
+            "centers": "all",
+            "dependent_center": null
+          }
+        ],
+        "permutations": []
+      },
+      "recurrence": "subset_wick",
+      "schema": "vibeqc.integral_ir",
+      "schema_version": 1,
+      "spec": {
+        "center_bindings": [
+          {
+            "atom_index": 0,
+            "center": 0
+          },
+          {
+            "atom_index": 0,
+            "center": 1
+          },
+          {
+            "atom_index": 1,
+            "center": 2
+          }
+        ],
+        "kind": "shell_signature",
+        "legacy_class": null,
+        "shells": [
+          {
+            "angular": 1,
+            "center": 0,
+            "convention": "cartesian",
+            "role": "orbital",
+            "slot": 0
+          },
+          {
+            "angular": 0,
+            "center": 1,
+            "convention": "cartesian",
+            "role": "orbital",
+            "slot": 1
+          },
+          {
+            "angular": 0,
+            "center": 2,
+            "convention": "cartesian",
+            "role": "auxiliary",
+            "slot": 2
+          }
+        ]
+      }
+    }
+  },
+  "two_center_value": {
+    "cuda_lowering": {
+      "reasons": [
+        "CUDA lowering is unavailable for overlap",
+        "CUDA lowering supports direct HF consumers; raw_block/weighted_derivative executors are unavailable",
+        "CUDA task binding requires the legacy ShellClassSpec compatibility adapter",
+        "CUDA task ABI requires quartet center slots (0, 1, 2, 3)"
+      ],
+      "schedules": [],
+      "supported": false
+    },
+    "integral": {
+      "contractions": [
+        {
+          "consumer": "raw_block",
+          "layout": {
+            "dtype": "float64",
+            "indices": [
+              "shell_0",
+              "shell_1"
+            ],
+            "shape": [
+              3,
+              1
+            ],
+            "strides": [
+              1,
+              1
+            ]
+          },
+          "memory_budget_bytes": 4096,
+          "output_sign": 1
+        }
+      ],
+      "derivative": null,
+      "operator": {
+        "centers": [
+          0,
+          1
+        ],
+        "external_centers": [],
+        "family": "overlap",
+        "invariants": [
+          {
+            "centers": "all",
+            "dependent_center": null
+          }
+        ],
+        "permutations": []
+      },
+      "recurrence": "subset_wick",
+      "schema": "vibeqc.integral_ir",
+      "schema_version": 1,
+      "spec": {
+        "center_bindings": [
+          {
+            "atom_index": 0,
+            "center": 0
+          },
+          {
+            "atom_index": 0,
+            "center": 1
+          }
+        ],
+        "kind": "shell_signature",
+        "legacy_class": null,
+        "shells": [
+          {
+            "angular": 1,
+            "center": 0,
+            "convention": "cartesian",
+            "role": "orbital",
+            "slot": 0
+          },
+          {
+            "angular": 0,
+            "center": 1,
+            "convention": "cartesian",
+            "role": "orbital",
+            "slot": 1
+          }
+        ]
+      }
+    }
+  }
+}

@@ -29,3 +29,22 @@ def nvrtc_cache_key(specification: NvrtcCacheSpec) -> str:
         asdict(specification), sort_keys=True, separators=(",", ":")
     ).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
+
+
+def integral_cache_key(integral) -> str:
+    """Hash versioned scientific intent through the existing content-addressing scheme.
+
+    This identity includes physical bindings, external charges, tensor strides,
+    weight source/signs, and budgets. It describes intent, not compiled support.
+    The legacy NVRTC key and production ABI remain unchanged because their
+    symbols, layouts, and generated sources are byte-identical.
+    """
+    from .ir_serialization import integral_to_payload
+
+    payload = json.dumps(
+        integral_to_payload(integral),
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
