@@ -23,6 +23,8 @@ cover all quantum-chemistry methods through a coherent batched interface.
   correctness model.
 - [Integral IR contracts](integral_ir.md): operator centers, bounded raw blocks,
   external weights, serialization, and backend capability boundaries.
+- [TensorIR](tensor_ir.md): typed tensor equations, exact factors, symmetry-packed
+  amplitudes, CPU interpretation, conservative rewrites, and replay.
 - [Validation gates](validation.md): pinned conventions and references,
   independent oracles, tiered execution, and shared evidence registration.
 - [Benchmark evidence](../benchmarks/results/README.md): comparison boundary,
