@@ -13,6 +13,13 @@ tuning workload do not establish full f-shell correctness or performance.
 Selection is reported explicitly; validation does not silently alter dispatch
 or mechanically promote 34 classes.
 
+The provenance audit traces FPPS selection to commit
+`c0683c5b0a66b6330d16117ab8a4dd812956843b`. Its `docs/shell_codegen.md` records
+water/def2-TZVP profiling, a 2.27x isolated speedup, 15-sample endpoint speedups
+of 1.0022x/1.0054x/1.0060x at batches 1/4/8, and a maximum force difference of
+7.17e-13 hartree/bohr. This historical reason for selection is preserved; it
+does not supply the missing current-source, independent, all-consumer matrix.
+
 ## CI and manual tiers
 
 Every Python test run checks all 34 classes, complete component ordering,
@@ -22,6 +29,10 @@ A host C++ regression executes the emitted f/f value-pair routine against
 independent Gaussian moments. It detects the missing three-pair Wick
 contractions that the GPU matrix exposed in the original ten `ff*` Fock
 classes. Value and gradient consumers now share the complete matching logic.
+The highest FFFF force order also exposed a 32-bit intermediate overflow in
+the Wick multiplicity ratio: 13! exceeds unsigned even though the final
+coefficient is small. Its intermediate uses 64 bits and an exact-integer host
+regression checks all multiplicities through order 13.
 
 ```bash
 python tools/validate_f_shells.py --tier source --output build/f-source.json

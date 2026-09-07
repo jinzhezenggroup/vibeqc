@@ -346,3 +346,49 @@ def test_measured_device_time_preserves_mixed_class_uncertainty(tmp_path):
     assert result["all_kernel_nanoseconds"] == 600
     with pytest.raises(ValueError, match="no fock"):
         module.summarize([])
+
+
+def test_ffff_force_wick_coefficients_do_not_overflow_before_division(tmp_path):
+    """Check emitted integer arithmetic through the highest first-force order."""
+    import math
+
+    compiler = shutil.which("c++")
+    if compiler is None:
+        pytest.skip("host C++ compiler unavailable")
+    _, source = f_shell.source_audit("ffff")
+    start = source.index(
+        "__device__ __forceinline__ unsigned generated_ffff_wick_multiplicity("
+    )
+    stop = source.index(
+        "__device__ __forceinline__ double generated_ffff_coulomb(", start
+    )
+    expected = [
+        math.factorial(order)
+        // (2**pairs * math.factorial(pairs) * math.factorial(order - 2 * pairs))
+        for order in range(14)
+        for pairs in range(order // 2 + 1)
+    ]
+    path, executable = tmp_path / "wick.cpp", tmp_path / "wick"
+    path.write_text(
+        "\n".join(
+            (
+                "#include <iostream>",
+                "#include <cstdint>",
+                "#define __device__",
+                "#define __forceinline__ inline",
+                source[start:stop],
+                "int main() { for(unsigned n=0;n<=13;++n) for(unsigned p=0;p<=n/2;++p)",
+                "std::cout << generated_ffff_wick_multiplicity(n,p) << '\\n'; }",
+            )
+        )
+    )
+    subprocess.run(
+        [compiler, "-std=c++17", "-O2", str(path), "-o", str(executable)],
+        check=True,
+        capture_output=True,
+        timeout=30,
+    )
+    run = subprocess.run(
+        [str(executable)], check=True, capture_output=True, text=True, timeout=10
+    )
+    assert [int(value) for value in run.stdout.split()] == expected

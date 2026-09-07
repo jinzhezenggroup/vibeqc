@@ -5834,6 +5834,20 @@ VIBEQC_PAIR_UNROLL
   }
   return numerator / denominator;
 """
+        if maximum_order >= 13:
+            # FFFF forces reach order 13: the factorial ratio's numerator can
+            # be 13! = 6,227,020,800 even though its final multiplicity fits in
+            # unsigned. Keep lower-order code/cache identities unchanged.
+            high_wick_multiplicity = (
+                high_wick_multiplicity.replace(
+                    "unsigned numerator", "std::uint64_t numerator"
+                )
+                .replace("unsigned denominator", "std::uint64_t denominator")
+                .replace(
+                    "return numerator / denominator;",
+                    "return static_cast<unsigned>(numerator / denominator);",
+                )
+            )
     # These lowerings replace the generic cooperative force body below, so
     # emitting its warp-count constant would leave a misleading unused symbol.
     replaces_cooperative_force_body = (

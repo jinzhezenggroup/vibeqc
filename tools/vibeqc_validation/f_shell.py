@@ -150,8 +150,25 @@ def catalog(*, architecture: str = "sm_120", names=F_SHELL_CLASSES) -> dict:
                     "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
                 },
                 "prior_evidence": {
-                    "status": "not-run",
-                    "reason": "legacy fsss/fpps smoke and fsps no-f-shell workloads are not complete current-source acceptance",
+                    "status": "historical" if name == "fpps" else "not-run",
+                    "reason": "historical selection does not establish all current-source acceptance gates",
+                    "records": [
+                        {
+                            "commit": "c0683c5b0a66b6330d16117ab8a4dd812956843b",
+                            "document": "docs/shell_codegen.md",
+                            "basis": "water/def2-TZVP",
+                            "isolated_speedup": 2.27,
+                            "endpoint_speedups": {
+                                "1": 1.0022,
+                                "4": 1.0054,
+                                "8": 1.0060,
+                            },
+                            "maximum_force_difference": 7.17e-13,
+                            "scope": "documented historical RHF force promotion; incomplete current all-consumer/oracle matrix",
+                        }
+                    ]
+                    if name == "fpps"
+                    else [],
                 },
                 "compilation": outcome("not-run", "compile tier not run"),
                 "resources": outcome("not-run", "compile tier not run"),
