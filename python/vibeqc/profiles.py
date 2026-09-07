@@ -238,6 +238,21 @@ def validate_bundle(
     for kernel in kernels:
         row = accepted[(kernel["shell_class"], kernel["consumer"])]
         isolated = row.get("isolated", {})
+        measured_device = isolated.get("device", {})
+        actual_device = identity["device"]
+        if any(
+            measured_device.get(record) != actual_device[expected]
+            for record, expected in (
+                ("name", "name"),
+                ("major", "major"),
+                ("minor", "minor"),
+                ("driver", "driver_version"),
+                ("runtime", "runtime_version"),
+            )
+        ):
+            raise ValueError(
+                "numerical evidence was collected on a different CUDA target/runtime"
+            )
         winner = next(
             (
                 w
@@ -265,9 +280,10 @@ def validate_bundle(
 def verify_library(directory: Path, probe: dict, device_id: int = 0) -> ctypes.CDLL:
     """Verify the binary itself against source/ABI and actual CUDA identity."""
     selected = ctypes.CDLL(str(directory / "libvibeqc.so"))
-    if compatibility_identity(
-        probe_device(selected, device_id)
-    ) != compatibility_identity(probe):
+    actual = probe_device(selected, device_id)
+    if actual["device"]["portable"]:
+        raise ValueError("cached binary has no tuned profile for the allocated GPU")
+    if compatibility_identity(actual) != compatibility_identity(probe):
         raise ValueError(
             "cached native library has incompatible source/ABI/toolkit identity"
         )

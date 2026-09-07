@@ -46,6 +46,10 @@ Use `--coverage`, `--max-classes`, `--max-candidates`, `--compile-jobs`, and
 `--budget-seconds` to bound the search. Coverage and the remaining uncovered
 fraction are recorded even when a limit ends the search.
 
+Very small workloads can use cached ERIs instead of direct shell-class kernels.
+When that execution path supplies no direct-work counters, tuning records the
+reason, compiles no classes, and preserves the current configuration.
+
 Exact official consumers are retained by default. `--retune` explicitly includes
 them in the search. `--portable-baseline` starts from the generic CUDA path even
 on an officially tuned device, which is useful for validating the untuned-device
@@ -66,6 +70,9 @@ proposed consumer. Fixtures cover asymmetric and coincident centers, Cartesian
 and spherical conventions, pair reversals, and shell/atom permutations. Forces
 must also satisfy translation invariance. Numerical gates use the established
 combined absolute/relative floors rather than raw relative errors near zero.
+After building each candidate library, the same all-spin gate runs against the
+exact native object, preserving its actual source hash, resources, and launch
+behavior before endpoint promotion.
 
 Each proposed consumer is built into a candidate native library and compared
 with the currently accepted build in fresh processes. Balanced ABBA ordering

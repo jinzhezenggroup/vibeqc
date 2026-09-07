@@ -76,6 +76,13 @@ def bundle(tmp_path, probe):
                     "passed": True,
                     "source_hash": "b" * 64,
                     "schedule_hash": profiles.canonical_hash(schedule),
+                    "device": {
+                        "name": probe["device"]["name"],
+                        "major": 12,
+                        "minor": 0,
+                        "runtime": 12090,
+                        "driver": 13000,
+                    },
                     "errors": {"fixture": {"passed": True}},
                 },
                 "endpoint": {"passed": True},
@@ -146,6 +153,33 @@ def test_nvcc_and_ptxas_are_independently_checked(bundle, probe):
         tools = {"nvcc": "test NVCC", "ptxas": "test PTXAS", name: "changed"}
         with pytest.raises(ValueError, match="NVCC/PTXAS"):
             profiles.validate_bundle(bundle, probe, tools)
+
+
+def test_relabeling_foreign_gpu_evidence_does_not_make_it_compatible(bundle, probe):
+    evidence_path = bundle / "evidence.json"
+    evidence = json.loads(evidence_path.read_text())
+    evidence["candidates"][0]["isolated"]["device"]["major"] = 13
+    profiles.atomic_json(evidence_path, evidence)
+    profile_path = bundle / "profile.json"
+    profile = json.loads(profile_path.read_text())
+    profile["artifacts"]["evidence.json"] = profiles.file_hash(evidence_path)
+    profiles.atomic_json(profile_path, profile)
+    with pytest.raises(ValueError, match="different CUDA target"):
+        profiles.validate_bundle(bundle, probe)
+
+
+def test_cached_binary_must_have_a_tuned_profile_on_the_actual_device(
+    probe, tmp_path, monkeypatch
+):
+    binary = object()
+    monkeypatch.setattr(profiles.ctypes, "CDLL", lambda *a: binary)
+    monkeypatch.setattr(profiles, "probe_device", lambda *a: probe)
+    with pytest.raises(ValueError, match="no tuned profile"):
+        profiles.verify_library(tmp_path, probe)
+    selected = copy.deepcopy(probe)
+    selected["device"]["portable"] = 0
+    monkeypatch.setattr(profiles, "probe_device", lambda *a: selected)
+    assert profiles.verify_library(tmp_path, probe) is binary
 
 
 def test_corrupt_and_ungated_profiles_are_rejected(bundle, probe):
@@ -359,3 +393,61 @@ def test_native_source_identity_and_probe_abi_match_checkout():
     ]
     library.vibeqc_cuda_tuning_device.restype = ctypes.c_int
     assert library.vibeqc_cuda_tuning_device(0, ctypes.byref(descriptor)) != 0
+
+
+def test_workload_without_direct_counters_is_a_noop_but_other_errors_propagate(
+    monkeypatch,
+):
+    from types import SimpleNamespace
+
+    from vibeqc import _autotune_worker
+
+    error = [NotImplementedError("cached ERI route")]
+    result = SimpleNamespace(
+        items=[
+            SimpleNamespace(
+                iterations=1,
+                energy=-1.0,
+                forces=np.zeros((1, 3)),
+                converged=True,
+                executed_backend="cuda",
+            )
+        ]
+    )
+
+    class Prepared:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def execute(self, **kwargs):
+            return result
+
+        def set_warm_start_updates(self, enabled):
+            pass
+
+        def last_shell_class_profile(self):
+            raise error[0]
+
+    calculator = SimpleNamespace(
+        prepare_batch=lambda *a, **k: Prepared(), profile_diagnostics={}
+    )
+    monkeypatch.setattr(_autotune_worker, "Calculator", lambda **kwargs: calculator)
+    workload = {
+        "method": "rhf",
+        "basis": "sto-3g",
+        "device_id": 0,
+        "representation": "cartesian",
+        "atoms": [["He", [0.0, 0.0, 0.0]]],
+        "batch": 1,
+        "charge": 0,
+        "multiplicity": 1,
+    }
+    measured = _autotune_worker.execute_workload(workload, profile=True)
+    assert measured["work"] == [] and measured["profiling_reason"]
+    assert measured["energies"] == [-1.0]
+    error[0] = RuntimeError("CUDA execution failure")
+    with pytest.raises(RuntimeError, match="CUDA execution failure"):
+        _autotune_worker.execute_workload(workload, profile=True)

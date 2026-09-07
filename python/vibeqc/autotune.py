@@ -12,6 +12,7 @@ import hashlib
 import json
 import math
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -270,7 +271,7 @@ def run(args) -> dict:
         )
     sys.path.insert(0, str(source))
     # Fail early with an actionable missing-dependency message before compiling.
-    import pyscf  # noqa: F401
+    import pyscf
 
     from tools.vibeqc_codegen.autotune import (
         _run_autotune,
@@ -298,6 +299,13 @@ def run(args) -> dict:
             "autotuning requires a Release baseline with VIBEQC_CUDA_FAST_COMPILE=OFF"
         )
     architecture = f"sm_{device['major']}{device['minor']}"
+    official = json.loads(
+        (source / "tools/vibeqc_codegen/production_shell_classes.json").read_text()
+    )
+    abi_profile = (
+        official["architectures"].get(architecture)
+        or official["architectures"][official["default_architecture"]]
+    )
     target = cuda_target_info(architecture)
     values = {
         name: value
@@ -305,7 +313,10 @@ def run(args) -> dict:
         if name in target.__dataclass_fields__
     }
     target = target.with_runtime_probe(
-        **values, nvcc_version=tools["nvcc"], ptxas_version=tools["ptxas"]
+        **values,
+        nvcc_version=tools["nvcc"],
+        ptxas_version=tools["ptxas"],
+        generator_abi=int(abi_profile["generator_abi"]),
     )
     workload = {
         "atoms": read_xyz(args.input, units=args.units),
@@ -342,7 +353,33 @@ def run(args) -> dict:
         "installed": None,
         "slurm_job_id": os.environ.get("SLURM_JOB_ID"),
         "endpoint": {"passed": False},
+        "reference_versions": {
+            "python": sys.version,
+            "numpy": np.__version__,
+            "pyscf": pyscf.__version__,
+        },
     }
+    report.update(revision=None, dirty=None)
+    if shutil.which("git") is not None:
+        revision = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=source,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if revision.returncode == 0:
+            report["revision"] = revision.stdout.strip()
+            status = subprocess.run(
+                ["git", "status", "--porcelain"],
+                cwd=source,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            report["dirty"] = bool(status.stdout.strip())
     base_path = Path(base_library._name).resolve()
     generic = args.portable_baseline or bool(device["portable"])
     current_path = base_path
@@ -359,9 +396,11 @@ def run(args) -> dict:
             measured["work"], coverage=args.coverage, maximum_classes=args.max_classes
         )
         report.update(work_profile=measured, hotspots=hotspots)
-        official = json.loads(
-            (source / "tools/vibeqc_codegen/production_shell_classes.json").read_text()
-        )
+        if not hotspots:
+            report["reason"] = (
+                measured.get("profiling_reason")
+                or "no active direct shell-class work was measured"
+            )
         manifest = copy.deepcopy(official)
         if generic or architecture not in manifest["architectures"]:
             manifest["architectures"][architecture] = {
@@ -511,9 +550,41 @@ def run(args) -> dict:
                         timeout=remaining(),
                         jobs=args.compile_jobs,
                     )
+                    # Recheck every spin/launch wrapper from the object that
+                    # enters the native library. Manifest companions and the
+                    # native compiler flags cannot hide behind a standalone
+                    # source-emission or synthetic benchmark result.
+                    record["prebuild_isolated"] = isolated
+                    generated_relative = (
+                        Path("generated/production_shell_kernels")
+                        / architecture
+                        / (
+                            f"vibeqc_generated_shell_{architecture.replace('_', '')}_{name}.cu"
+                        )
+                    )
+                    production_object = (
+                        build
+                        / "CMakeFiles"
+                        / f"vibeqc_aot_{architecture}_{name}.dir"
+                        / (str(generated_relative) + ".o")
+                    )
+                    isolated = validate_schedule(
+                        name,
+                        consumer,
+                        trial.schedule,
+                        target,
+                        nvcc,
+                        trial_directory / "native-isolated",
+                        timeout=min(900, remaining()),
+                        production_source=build / generated_relative,
+                        production_object=production_object,
+                    )
+                    record["isolated"] = isolated
+                    if not isolated["passed"]:
+                        record["reason"] = "exact native-object numerical gate failed"
+                        continue
                     # Snapshot each build: the next incremental relink must not
                     # overwrite the accepted baseline used by fresh A/B processes.
-                    import shutil
 
                     candidate_library = trial_directory / "libvibeqc.so"
                     shutil.copyfile(compiled, candidate_library)
@@ -564,8 +635,6 @@ def run(args) -> dict:
                     record["reason"] = str(error)
                 atomic_json(directory / "report.json", report)
         if accepted:
-            import shutil
-
             bundle = directory / "accepted"
             bundle.mkdir()
             shutil.copyfile(current_path, bundle / "libvibeqc.so")

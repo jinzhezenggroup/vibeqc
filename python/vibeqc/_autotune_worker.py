@@ -42,11 +42,15 @@ def execute_workload(workload: dict, *, profile: bool = False) -> dict:
         started = time.perf_counter()
         result = prepared.execute(strict=True)
         elapsed = time.perf_counter() - started
-        work = (
-            [asdict(row) for row in prepared.last_shell_class_profile()]
-            if profile
-            else []
-        )
+        work, profiling_reason = [], None
+        if profile:
+            try:
+                work = [asdict(row) for row in prepared.last_shell_class_profile()]
+            except NotImplementedError:
+                # Small cached-ERI routes have no direct shell-class work to
+                # accelerate. Never substitute unscreened static counts for
+                # absent measured counters or compile every class speculatively.
+                profiling_reason = "runtime did not report direct shell-class work for this execution path"
     return {
         "seconds": elapsed,
         "cold_iterations": [item.iterations for item in cold.items],
@@ -56,6 +60,7 @@ def execute_workload(workload: dict, *, profile: bool = False) -> dict:
         "converged": all(item.converged for item in result.items),
         "backend": [item.executed_backend for item in result.items],
         "work": work,
+        "profiling_reason": profiling_reason,
         "profile": calculator.profile_diagnostics,
     }
 

@@ -172,6 +172,7 @@ def main() -> int:
                         "installed": report["installed"],
                         "report": report["directory"] + "/report.json",
                         "failure": report.get("failure"),
+                        "reason": report.get("reason"),
                     },
                     indent=2,
                 )

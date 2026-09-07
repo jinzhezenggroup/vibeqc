@@ -7,6 +7,7 @@ native host driver. The scientific oracle is independent of the schedule tuner.
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -33,9 +34,23 @@ from .schema import canonical_hash, file_hash
 
 
 def validate_schedule(
-    name, consumer, schedule, target, nvcc: Path, directory: Path, *, timeout=600
+    name,
+    consumer,
+    schedule,
+    target,
+    nvcc: Path,
+    directory: Path,
+    *,
+    timeout=600,
+    production_source: Path | None = None,
+    production_object: Path | None = None,
 ) -> dict:
-    """Run direct/persistent RHF/UHF wrappers, including translation and symmetry."""
+    """Run all-spin wrappers, optionally from the exact candidate native object.
+
+    The production-object mode preserves the native build's actual code and
+    compiler resources. Only the host fixture ABI and external C kernel names
+    are declared by the separately linked numerical driver.
+    """
     consumers = (
         (KernelConsumer.FOCK, KernelConsumer.FORCE)
         if consumer == "fock"
@@ -57,17 +72,29 @@ def validate_schedule(
     path, obj, driver, executable = [
         directory / n for n in ("kernel.cu", "kernel.o", "driver.cu", "numerical")
     ]
-    path.write_text(source)
-    driver.write_text(
-        emit_numerical_driver(
-            name, target.architecture, plan=plan, source=source, consumer=consumer
-        )
+    driver_source = emit_numerical_driver(
+        name, target.architecture, plan=plan, source=source, consumer=consumer
     )
     compiler = CudaCompilerAdapter(nvcc, target, compile_timeout=timeout)
-    compiled = compiler.compile(path, obj)
-    (directory / "ptxas.txt").write_text(compiled.stdout + compiled.stderr)
-    if compiled.returncode:
-        raise ValueError("isolated production-wrapper compilation failed")
+    compiled = None
+    if production_object is not None:
+        if production_source is None:
+            raise ValueError("a production object requires its generated source")
+        path.write_bytes(production_source.read_bytes())
+        shutil.copyfile(production_object, obj)
+        prefix = target.architecture.replace("_", "")
+        driver_source = driver_source.replace(
+            f"generated_{name}_", f"generated_{prefix}_{name}_"
+        )
+    else:
+        if production_source is not None:
+            raise ValueError("a production source requires its compiled object")
+        path.write_text(source)
+        compiled = compiler.compile(path, obj)
+        (directory / "ptxas.txt").write_text(compiled.stdout + compiled.stderr)
+        if compiled.returncode:
+            raise ValueError("isolated production-wrapper compilation failed")
+    driver.write_text(driver_source)
     linked = compiler.link(driver, [obj], executable, timeout=timeout)
     if linked.returncode:
         (directory / "link.txt").write_text(linked.stdout + linked.stderr)
@@ -152,5 +179,9 @@ def validate_schedule(
         "source_bytes": path.stat().st_size,
         "object_bytes": obj.stat().st_size,
         "object_hash": file_hash(obj),
-        "compile_seconds": compiled.duration_seconds,
+        "compile_seconds": compiled.duration_seconds if compiled is not None else None,
+        "object_origin": "candidate native build"
+        if production_object is not None
+        else "isolated release compile",
+        "driver_hash": file_hash(driver),
     }
