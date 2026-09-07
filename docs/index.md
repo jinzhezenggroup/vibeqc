@@ -27,6 +27,8 @@ cover all quantum-chemistry methods through a coherent batched interface.
   amplitudes, CPU interpretation, conservative rewrites, and replay.
 - [Validation gates](validation.md): pinned conventions and references,
   independent oracles, tiered execution, and shared evidence registration.
+- [F-shell validation](f_shell_validation.md): all-34 source/numerical gates,
+  release resource tiers, actual f-containing endpoints, and promotion policy.
 - [Benchmark evidence](../benchmarks/results/README.md): comparison boundary,
   reproducibility rules, gates, and archived results.
 

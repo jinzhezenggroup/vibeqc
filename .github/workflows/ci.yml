@@ -104,6 +104,7 @@ jobs:
           sudo apt-get install --yes \
             ccache \
             cuda-nvcc-12-9 \
+            cuda-cuobjdump-12-9 \
             cuda-cudart-dev-12-9 \
             libcublas-dev-12-9 \
             libcusolver-dev-12-9 \
@@ -130,6 +131,26 @@ jobs:
         run: cmake --build --preset cuda-release-sm120 --parallel 2
       - name: Show CUDA ccache statistics
         run: ccache --show-stats
+      # This is release resource evidence. The production compile-only step
+      # above uses fast compilation and cannot supply acceptance resources.
+      - name: Restore f-shell release objects
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/f-shell-cache
+          key: f-shell-cuda-12.9-sm120-${{ hashFiles('tools/**') }}
+          restore-keys: |
+            f-shell-cuda-12.9-sm120-
+      - name: Compile five representative f classes with release resources
+        run: >-
+          python3 tools/validate_f_shells.py --tier compile --smoke
+          --nvcc "$CUDACXX" --compile-jobs 2 --compile-timeout 900
+          --output build/f-shell-smoke.json
+      - name: Preserve f-shell release resource report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: f-shell-release-smoke
+          path: build/f-shell-smoke.json
 
   python:
     runs-on: ubuntu-24.04

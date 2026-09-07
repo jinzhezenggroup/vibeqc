@@ -338,6 +338,27 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
         basis_representation="spherical",
         expected_ao_count=768,
     )
+    # Reuse the documented optimized WATER27 geometry with an actual f-shell
+    # basis; the validation runner inspects both loaded basis implementations.
+    cases["water-tetramer-def2-tzvp-spherical"] = BenchmarkCase(
+        description="WATER27 water tetramer, 172 spherical AOs, def2-TZVP",
+        atoms=cases["water-tetramer-def2-svp-spherical"].atoms,
+        vibeqc_basis="def2-tzvp",
+        pyscf_basis="def2-tzvp",
+        basis_representation="spherical",
+        expected_ao_count=172,
+    )
+    cases["water-dimer-def2-tzvp-spherical"] = BenchmarkCase(
+        # Two adjacent hydrogen-bonded monomers from the documented WATER27
+        # tetramer geometry. This is a physical six-atom fragment, not two
+        # independently timed or widely separated monomer calculations.
+        description="hydrogen-bonded WATER27 tetramer dimer fragment, 86 spherical AOs, def2-TZVP",
+        atoms=cases["water-tetramer-def2-svp-spherical"].atoms[:6],
+        vibeqc_basis="def2-tzvp",
+        pyscf_basis="def2-tzvp",
+        basis_representation="spherical",
+        expected_ao_count=86,
+    )
     return cases
 
 

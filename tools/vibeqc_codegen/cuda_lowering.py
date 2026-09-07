@@ -753,6 +753,53 @@ void generated_dppp_shell_class_fock_uhf_persistent_kernel(
 """
 
 
+def _emit_triple_pair_matchings(call: str, *, gradients: bool) -> str:
+    """Enumerate unordered disjoint triples needed by six-quantum f/f pairs.
+
+    Both value and derivative consumers need all 15 complete Wick pairings.
+    Sorting removed-bit masks visits each matching once, including pairs whose
+    endpoints interleave. The value consumer omits only gradient arguments.
+    """
+    source = """  if constexpr (PairOrder >= 6U) {
+    for (unsigned first = 0; first < PairOrder; ++first) {
+      for (unsigned second = first + 1U; second < PairOrder; ++second) {
+        if (axes[first] != axes[second]) continue;
+        const unsigned first_removed =
+            (1U << first) | (1U << second);
+        for (unsigned third = 0; third < PairOrder; ++third) {
+          for (unsigned fourth = third + 1U; fourth < PairOrder; ++fourth) {
+            if (axes[third] != axes[fourth]) continue;
+            const unsigned second_removed =
+                (1U << third) | (1U << fourth);
+            if (first_removed >= second_removed ||
+                (first_removed & second_removed) != 0U) continue;
+            for (unsigned fifth = 0; fifth < PairOrder; ++fifth) {
+              for (unsigned sixth = fifth + 1U; sixth < PairOrder; ++sixth) {
+                if (axes[fifth] != axes[sixth]) continue;
+                const unsigned third_removed =
+                    (1U << fifth) | (1U << sixth);
+                if (second_removed >= third_removed ||
+                    ((first_removed | second_removed) & third_removed) != 0U) {
+                  continue;
+                }
+                VIBEQC_PAIR_MATCHING_CALL(
+                    term, axes, shifts, shift_gradients,
+                    inverse_two_exponent, subset,
+                    first_removed | second_removed | third_removed, 3U);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+"""
+    source = source.replace("VIBEQC_PAIR_MATCHING_CALL", call)
+    if not gradients:
+        source = source.replace("shifts, shift_gradients,", "shifts,")
+    return source
+
+
 def _emit_shell_class_fock_cuda(
     spec: ShellClassSpec,
     plan: FusedShellPlan,
@@ -975,6 +1022,13 @@ VIBEQC_PAIR_UNROLL
     }
   }
 """
+    triple_pair_matchings = (
+        _emit_triple_pair_matchings(
+            "generated_dppp_add_value_matching<PairOrder>", gradients=False
+        )
+        if max(spec.pair_orders) >= 6
+        else ""
+    )
     source = f"""
 
 /** Coefficient-only pair term used by the SCF Fock recurrence. */
@@ -1036,7 +1090,7 @@ generated_dppp_pair_value_term(
       }}
     }}
   }}
-{double_pair_matchings}  return term;
+{double_pair_matchings}{triple_pair_matchings}  return term;
 }}
 
 /** Evaluate one AO component without constructing force-only derivatives. */
@@ -5574,45 +5628,11 @@ __device__ __constant__ unsigned char generated_dppp_f_axes[10][3] = {{
         double_pair_matchings = double_pair_matchings.replace(
             "VIBEQC_PAIR_MATCHING_CALL", pair_matching_call
         )
-    triple_pair_matchings = ""
-    if max(spec.pair_orders) >= 6:
-        triple_pair_matchings = """  if constexpr (PairOrder >= 6U) {
-    for (unsigned first = 0; first < PairOrder; ++first) {
-      for (unsigned second = first + 1U; second < PairOrder; ++second) {
-        if (axes[first] != axes[second]) continue;
-        const unsigned first_removed =
-            (1U << first) | (1U << second);
-        for (unsigned third = 0; third < PairOrder; ++third) {
-          for (unsigned fourth = third + 1U; fourth < PairOrder; ++fourth) {
-            if (axes[third] != axes[fourth]) continue;
-            const unsigned second_removed =
-                (1U << third) | (1U << fourth);
-            if (first_removed >= second_removed ||
-                (first_removed & second_removed) != 0U) continue;
-            for (unsigned fifth = 0; fifth < PairOrder; ++fifth) {
-              for (unsigned sixth = fifth + 1U; sixth < PairOrder; ++sixth) {
-                if (axes[fifth] != axes[sixth]) continue;
-                const unsigned third_removed =
-                    (1U << fifth) | (1U << sixth);
-                if (second_removed >= third_removed ||
-                    ((first_removed | second_removed) & third_removed) != 0U) {
-                  continue;
-                }
-                VIBEQC_PAIR_MATCHING_CALL(
-                    term, axes, shifts, shift_gradients,
-                    inverse_two_exponent, subset,
-                    first_removed | second_removed | third_removed, 3U);
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-"""
-        triple_pair_matchings = triple_pair_matchings.replace(
-            "VIBEQC_PAIR_MATCHING_CALL", pair_matching_call
-        )
+    triple_pair_matchings = (
+        _emit_triple_pair_matchings(pair_matching_call, gradients=True)
+        if max(spec.pair_orders) >= 6
+        else ""
+    )
     component_gradient_setup = _generic_component_gradient_setup(spec)
     task_component_setup = _generic_task_component_setup(spec)
     component_names = _emitted_component_names(spec)
