@@ -6486,6 +6486,11 @@ def test_value_only_native_helpers_use_the_pruned_coulomb_table_stride(name):
     values = [int(value) for value in re.findall(r"-?\d+", table.group(2))]
     assert int(table.group(1)) == len(values) == side**3
     assert f"(x_order * {side}U + y_order) * {side}U + z_order" in source
+    # The common geometry helper still evaluates the derivative Boys order;
+    # shrinking its scratch arrays with the lookup stride would overwrite it.
+    geometry_side = spec.maximum_force_coulomb_order + 1
+    assert f"double boys[{geometry_side}];" in source
+    assert f"double coordinate_powers[3][{geometry_side}];" in source
     for index, (x, y, z) in enumerate(plan.coulomb_states):
         assert values[(x * side + y) * side + z] == index
 

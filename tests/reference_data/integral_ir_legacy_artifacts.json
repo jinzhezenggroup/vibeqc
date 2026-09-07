@@ -507,15 +507,25 @@
     ]
   ],
   "artifacts": {
-    "sm_120/vibeqc_generated_shell_sm120_shard_0.cu": "88735efdd277b89b673e6c819df35051a5987f62d101ea61e07bff13a1187c82",
-    "sm_120/vibeqc_generated_shell_sm120_shard_1.cu": "1d9a3e218ef222262e3a3fc6d4734d7bd55c97fdb8e98f7eed59bba7cfe12fce",
-    "sm_120/vibeqc_generated_shell_sm120_shard_2.cu": "d48f885f4b638b8d3cbd1a19929e761e3bec5d15f911daeb8182f3dcc09b29b5",
-    "sm_120/vibeqc_generated_shell_sm120_shard_3.cu": "f6286679c397fd22171aaf3e0dbe0db6bdea4734457c403f7243cb03565733e6",
     "sm_90/vibeqc_generated_shell_sm90_shard_0.cu": "6317922732a5d7a6c03d19c1482ed05119d2008f87b3ec76573ce92acf2ad809",
     "sm_90/vibeqc_generated_shell_sm90_shard_1.cu": "6317922732a5d7a6c03d19c1482ed05119d2008f87b3ec76573ce92acf2ad809",
     "sm_90/vibeqc_generated_shell_sm90_shard_2.cu": "6317922732a5d7a6c03d19c1482ed05119d2008f87b3ec76573ce92acf2ad809",
     "sm_90/vibeqc_generated_shell_sm90_shard_3.cu": "6317922732a5d7a6c03d19c1482ed05119d2008f87b3ec76573ce92acf2ad809",
-    "vibeqc_generated_shell_registry.cu": "88a008840696b251d652ac043115cad8a872060fe3009a6ed2c66ce325a347de",
-    "vibeqc_generated_shell_registry.hpp": "930aecf979b40f243af6fabd1b1513b072197acdab02f7ccad59e6a3738b4753"
-  }
+    "sm_120/vibeqc_generated_shell_sm120_shard_0.cu": "bfaf56ba29f38c56ac00aa9be3f21ce072a8e7a781c507910af059f026d69a70",
+    "sm_120/vibeqc_generated_shell_sm120_shard_1.cu": "f89d4c4434a7ab30a293f73e7216e0f867cf7905031fedfd4a3b457ffa5a4a3c",
+    "sm_120/vibeqc_generated_shell_sm120_shard_2.cu": "d48f885f4b638b8d3cbd1a19929e761e3bec5d15f911daeb8182f3dcc09b29b5",
+    "sm_120/vibeqc_generated_shell_sm120_shard_3.cu": "f6286679c397fd22171aaf3e0dbe0db6bdea4734457c403f7243cb03565733e6",
+    "vibeqc_generated_shell_registry.hpp": "930aecf979b40f243af6fabd1b1513b072197acdab02f7ccad59e6a3738b4753",
+    "vibeqc_generated_shell_registry.cu": "88a008840696b251d652ac043115cad8a872060fe3009a6ed2c66ce325a347de"
+  },
+  "artifact_corrections": [
+    {
+      "issue": 136,
+      "reason": "Value-only Coulomb tables use their pruned IR stride; common geometry scratch retains the force-order extent. Verified exact PPPS/PSPS native objects against independent RHF/UHF direct/persistent fixtures.",
+      "paths": [
+        "sm_120/vibeqc_generated_shell_sm120_shard_0.cu",
+        "sm_120/vibeqc_generated_shell_sm120_shard_1.cu"
+      ]
+    }
+  ]
 }
