@@ -23,6 +23,8 @@ cover all quantum-chemistry methods through a coherent batched interface.
   correctness model.
 - [Integral IR contracts](integral_ir.md): operator centers, bounded raw blocks,
   external weights, serialization, and backend capability boundaries.
+- [Validation gates](validation.md): pinned conventions and references,
+  independent oracles, tiered execution, and shared evidence registration.
 - [Benchmark evidence](../benchmarks/results/README.md): comparison boundary,
   reproducibility rules, gates, and archived results.
 

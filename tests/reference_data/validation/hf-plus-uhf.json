@@ -1,0 +1,647 @@
+{
+  "angular_momenta_loaded": [
+    0,
+    0,
+    1,
+    0
+  ],
+  "data": {
+    "ao_labels": [
+      "0 F0 1s    ",
+      "0 F0 2s    ",
+      "0 F0 2px   ",
+      "0 F0 2py   ",
+      "0 F0 2pz   ",
+      "1 H1 1s    "
+    ],
+    "density": [
+      [
+        [
+          1.0591494130453234,
+          -0.24923513403060066,
+          0.0035701038749471176,
+          -0.0035701038749471224,
+          0.021420623249682535,
+          -0.003975891933581856
+        ],
+        [
+          -0.24923513403060066,
+          1.0599351805566821,
+          -0.02072337096626682,
+          0.02072337096626686,
+          -0.1243402257976001,
+          -0.023197302681832555
+        ],
+        [
+          0.0035701038749471176,
+          -0.02072337096626682,
+          0.9927322829116845,
+          0.0072677170883154426,
+          -0.04360630252989185,
+          0.04637244023864246
+        ],
+        [
+          -0.0035701038749471224,
+          0.02072337096626686,
+          0.0072677170883154426,
+          0.992732282911684,
+          0.04360630252989183,
+          -0.046372440238642613
+        ],
+        [
+          0.021420623249682535,
+          -0.1243402257976001,
+          -0.04360630252989185,
+          0.04360630252989183,
+          0.738362184820649,
+          0.27823464143185384
+        ],
+        [
+          -0.003975891933581856,
+          -0.023197302681832555,
+          0.04637244023864246,
+          -0.046372440238642613,
+          0.27823464143185384,
+          0.11364816320395581
+        ]
+      ],
+      [
+        [
+          1.0584014850768304,
+          -0.24550182746878405,
+          0.0045820082640034634,
+          -0.004582008264003515,
+          0.02749204958402088,
+          -0.008188122902942
+        ],
+        [
+          -0.24550182746878405,
+          1.0428007973306468,
+          -0.02567462071326311,
+          0.02567462071326338,
+          -0.15404772427957916,
+          -0.011936641008352266
+        ],
+        [
+          0.0045820082640034634,
+          -0.02567462071326311,
+          0.37064257963534897,
+          -0.4760457894777563,
+          -0.029105626626429192,
+          0.05142252456611443
+        ],
+        [
+          -0.004582008264003515,
+          0.02567462071326338,
+          -0.4760457894777563,
+          0.6129254646823149,
+          0.06948610746758939,
+          -0.05142252456611483
+        ],
+        [
+          0.02749204958402088,
+          -0.15404772427957916,
+          -0.029105626626429192,
+          0.06948610746758939,
+          0.6884865650368691,
+          0.30853514739668686
+        ],
+        [
+          -0.008188122902942,
+          -0.011936641008352266,
+          0.05142252456611443,
+          -0.05142252456611483,
+          0.30853514739668686,
+          0.1534705680924976
+        ]
+      ]
+    ],
+    "energy": -98.19140891835532,
+    "forces": [
+      [
+        -0.003439268233106807,
+        0.00343926823310714,
+        -0.02063560939863862
+      ],
+      [
+        0.003439268233106363,
+        -0.003439268233106585,
+        0.020635609398639065
+      ]
+    ],
+    "gradient": [
+      [
+        0.003439268233106807,
+        -0.00343926823310714,
+        0.02063560939863862
+      ],
+      [
+        -0.003439268233106363,
+        0.003439268233106585,
+        -0.020635609398639065
+      ]
+    ],
+    "hcore": [
+      [
+        -40.54829783670876,
+        -9.51420513985372,
+        -0.0020085233733848394,
+        0.0020085233733848394,
+        -0.012051140240309035,
+        -1.5917717129553988
+      ],
+      [
+        -9.51420513985372,
+        -11.024526330801013,
+        -0.02451589785739936,
+        0.02451589785739936,
+        -0.14709538714439613,
+        -3.4522307551393308
+      ],
+      [
+        -0.0020085233733848394,
+        -0.02451589785739936,
+        -8.693515849570302,
+        0.0024173286717120643,
+        -0.01450397203027239,
+        -0.3768378058693833
+      ],
+      [
+        0.0020085233733848394,
+        0.02451589785739936,
+        0.0024173286717120643,
+        -8.693515849570302,
+        0.01450397203027239,
+        0.3768378058693833
+      ],
+      [
+        -0.012051140240309035,
+        -0.14709538714439613,
+        -0.01450397203027239,
+        0.01450397203027239,
+        -8.778122353080226,
+        -2.2610268352163
+      ],
+      [
+        -1.5917717129553988,
+        -3.4522307551393308,
+        -0.3768378058693833,
+        0.3768378058693833,
+        -2.2610268352163,
+        -5.037753377957031
+      ]
+    ],
+    "mo_coeff": [
+      [
+        [
+          0.994813519071373,
+          -0.25760448126784136,
+          -9.538274627586361e-17,
+          0.05599470107858972,
+          -1.478124659701525e-16,
+          0.07140814957684039
+        ],
+        [
+          0.02176148376890294,
+          0.991372477035138,
+          4.533408682690094e-16,
+          -0.27684333143146606,
+          7.531035596707331e-16,
+          -0.4647444228633053
+        ],
+        [
+          0.0003678632346931444,
+          0.017324208118666334,
+          0.7878624743605757,
+          0.1369226382855316,
+          -0.594101785909407,
+          -0.10380778280451364
+        ],
+        [
+          -0.00036786323469314465,
+          -0.017324208118666494,
+          0.615178342806852,
+          -0.13692263828552956,
+          0.7715178656827922,
+          0.10380778280451393
+        ],
+        [
+          0.002207179408158865,
+          0.10394524871199867,
+          -0.0287806885922883,
+          0.8215358297131916,
+          0.22760327526536492,
+          -0.6228466968270813
+        ],
+        [
+          -0.004740900189803627,
+          0.06885193634535336,
+          -4.594943003989148e-16,
+          0.3299774203348489,
+          -1.00167428318538e-15,
+          1.1069836495939382
+        ]
+      ],
+      [
+        [
+          0.9952880672517964,
+          -0.25176022077764154,
+          0.06648262552733043,
+          1.0583996305160954e-16,
+          6.40968006769068e-17,
+          0.07646601725263638
+        ],
+        [
+          0.01984017003484057,
+          0.967308548558962,
+          -0.32668231796102726,
+          -4.976163971260709e-16,
+          -3.6747205469664256e-16,
+          -0.4828268445401327
+        ],
+        [
+          0.0003429011981075984,
+          0.01795228303817682,
+          0.13176966861565165,
+          -0.5941017859094145,
+          0.7878624743605701,
+          -0.110174772709387
+        ],
+        [
+          -0.0003429011981075986,
+          -0.017952283038176878,
+          -0.13176966861565292,
+          0.771517865682786,
+          0.6151783428068597,
+          0.11017477270938658
+        ],
+        [
+          0.002057407188645589,
+          0.10771369822906099,
+          0.7906180116939058,
+          0.22760327526536833,
+          -0.02878068859228501,
+          -0.6610486362563199
+        ],
+        [
+          -0.004345245947747156,
+          0.11428917139548213,
+          0.3746860982634468,
+          4.718354340655649e-16,
+          6.831401356288337e-16,
+          1.0888481967564498
+        ]
+      ]
+    ],
+    "mo_energy": [
+      [
+        -26.87025394898871,
+        -2.2182680783452575,
+        -1.3021364232488646,
+        -1.2688135145647728,
+        -1.1945956826921735,
+        -0.061556439362506876
+      ],
+      [
+        -26.838437848520066,
+        -2.020131644305896,
+        -1.2083646017467597,
+        -1.13718432818749,
+        -0.3009818040866935,
+        -0.04272843972432656
+      ]
+    ],
+    "mo_occ": [
+      [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.0
+      ],
+      [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "nuclear_repulsion": 4.709654161860848,
+    "overlap": [
+      [
+        1.0000000000000002,
+        0.2379898835395085,
+        0.0,
+        0.0,
+        0.0,
+        0.03949506688072072
+      ],
+      [
+        0.2379898835395085,
+        1.0000000000000002,
+        0.0,
+        0.0,
+        0.0,
+        0.38817908535524304
+      ],
+      [
+        0.0,
+        0.0,
+        1.0000000000000002,
+        0.0,
+        0.0,
+        0.05118592796446278
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0000000000000002,
+        0.0,
+        -0.05118592796446278
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0000000000000002,
+        0.3071155677867766
+      ],
+      [
+        0.03949506688072072,
+        0.38817908535524304,
+        0.05118592796446278,
+        -0.05118592796446278,
+        0.3071155677867766,
+        1.0000000000000002
+      ]
+    ],
+    "scf_iterations": [
+      {
+        "density_change_norm": 1.1379659482471445,
+        "energy": -98.18535424449861,
+        "iteration": 1,
+        "orbital_gradient_norm": 0.10005028318591254
+      },
+      {
+        "density_change_norm": 0.0933891316213394,
+        "energy": -98.19099593913239,
+        "iteration": 2,
+        "orbital_gradient_norm": 0.020132475465405555
+      },
+      {
+        "density_change_norm": 0.025359390159924954,
+        "energy": -98.19132146978178,
+        "iteration": 3,
+        "orbital_gradient_norm": 0.006332614300333293
+      },
+      {
+        "density_change_norm": 0.014135977225327312,
+        "energy": -98.19139224935594,
+        "iteration": 4,
+        "orbital_gradient_norm": 0.002679115611073504
+      },
+      {
+        "density_change_norm": 0.01059893163122352,
+        "energy": -98.1914088679586,
+        "iteration": 5,
+        "orbital_gradient_norm": 0.00017645440155084004
+      },
+      {
+        "density_change_norm": 0.0005591387795288667,
+        "energy": -98.19140891797893,
+        "iteration": 6,
+        "orbital_gradient_norm": 1.7995758333128564e-05
+      },
+      {
+        "density_change_norm": 4.8209356118034217e-05,
+        "energy": -98.1914089183548,
+        "iteration": 7,
+        "orbital_gradient_norm": 7.975956051007667e-07
+      },
+      {
+        "density_change_norm": 1.3382481925805194e-06,
+        "energy": -98.19140891835534,
+        "iteration": 8,
+        "orbital_gradient_norm": 1.909115965513252e-09
+      },
+      {
+        "density_change_norm": 1.3904634072382634e-09,
+        "energy": -98.19140891835532,
+        "iteration": 9,
+        "orbital_gradient_norm": 9.135955243142988e-10
+      },
+      {
+        "density_change_norm": 5.237353098643126e-10,
+        "energy": -98.19140891835526,
+        "iteration": 10,
+        "orbital_gradient_norm": 5.916584242162042e-10
+      },
+      {
+        "density_change_norm": 8.454012197933349e-10,
+        "energy": -98.19140891835532,
+        "iteration": 11,
+        "orbital_gradient_norm": 7.125009788582168e-12
+      }
+    ],
+    "scf_residual_max": 6.508127370352668e-13
+  },
+  "data_hash": "4536524488fcbc8935cf0eeb3ec04cb2f2c46a7b45d50c0e11df6cf3714154cd",
+  "inputs": {
+    "atomic_numbers": [
+      9,
+      1
+    ],
+    "auxiliary_centers": [],
+    "basis_name": "sto-3g",
+    "basis_representation": "cartesian",
+    "cc_settings": null,
+    "charge": 1,
+    "conventions": {
+      "auxiliary_centers": "explicit independent identities and parent atom indices; [] means none",
+      "cartesian_normalization": "each contracted Cartesian component has unit self-overlap",
+      "cartesian_order": "descending lx, then descending ly; lz=l-lx-ly",
+      "derivative_order": "shell-center slot, xyz, i,j,k,l; nuclear-center derivative",
+      "energy_unit": "hartree",
+      "eri_order": "chemist (ij|kl); physicist <ij|kl> = chemist (ik|jl)",
+      "eri_storage": "C order, last AO index fastest",
+      "force_sign": "force=-dE/dR",
+      "frozen_core": 0,
+      "gradient_unit": "hartree/bohr",
+      "hamiltonian": "all-electron nonrelativistic Coulomb; no ECP",
+      "length_unit": "bohr",
+      "nuclear_charges": "explicit atomic_numbers, never inferred from basis labels",
+      "orbital_order": "ascending canonical orbital energy within each spin",
+      "orbital_phase": "largest-absolute AO coefficient positive; first index wins ties; no degenerate-subspace rotation",
+      "orbital_representation": "real spatial orbitals; alpha/beta separate for UHF",
+      "rhf_density": "P=2*C_occ*C_occ.T; F=h+J[P]-K[P]/2",
+      "spherical_normalization": "unit self-overlap; libcint phases",
+      "spherical_order": "libcint real harmonics; p=(x,y,z); l>=2 m=-l,...,+l",
+      "spin_orbital_order": "when expanded: all alpha spatial orbitals, then all beta",
+      "uhf_density": "P_alpha=C_alpha_occ*C_alpha_occ.T; P_beta likewise",
+      "version": 1
+    },
+    "coordinates": [
+      [
+        -0.13,
+        0.22,
+        -0.74
+      ],
+      [
+        0.18,
+        -0.09,
+        1.12
+      ]
+    ],
+    "kind": "molecule",
+    "method": "uhf",
+    "multiplicity": 2,
+    "name": "hf-plus-uhf",
+    "scf_settings": {
+      "direct_scf_tol": 1e-14,
+      "energy_tolerance": 1e-13,
+      "gradient_tolerance": 1e-11,
+      "initial_guess": "minao",
+      "max_iterations": 200
+    },
+    "shells": [
+      {
+        "angular_momentum": 0,
+        "atom_index": 0,
+        "primitives": [
+          [
+            166.679134,
+            0.1543289673
+          ],
+          [
+            30.36081233,
+            0.5353281423
+          ],
+          [
+            8.216820672,
+            0.4446345422
+          ]
+        ]
+      },
+      {
+        "angular_momentum": 0,
+        "atom_index": 0,
+        "primitives": [
+          [
+            6.464803249,
+            -0.09996722919
+          ],
+          [
+            1.502281245,
+            0.3995128261
+          ],
+          [
+            0.4885884864,
+            0.7001154689
+          ]
+        ]
+      },
+      {
+        "angular_momentum": 1,
+        "atom_index": 0,
+        "primitives": [
+          [
+            6.464803249,
+            0.155916275
+          ],
+          [
+            1.502281245,
+            0.6076837186
+          ],
+          [
+            0.4885884864,
+            0.3919573931
+          ]
+        ]
+      },
+      {
+        "angular_momentum": 0,
+        "atom_index": 1,
+        "primitives": [
+          [
+            3.425250914,
+            0.1543289673
+          ],
+          [
+            0.6239137298,
+            0.5353281423
+          ],
+          [
+            0.168855404,
+            0.4446345422
+          ]
+        ]
+      }
+    ]
+  },
+  "inputs_hash": "aab27cff618e8c0ffbf4182a6de83059ff652a4d7e1881a1fb08d7d730e205d6",
+  "provenance": {
+    "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+    "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+    "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+    "generated_at": "2026-09-07T17:55:35.529434+00:00",
+    "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+    "h5py": "3.14.0",
+    "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+    "loaded_threadpools": [
+      {
+        "architecture": "Haswell",
+        "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+        "internal_api": "openblas",
+        "num_threads": 1,
+        "prefix": "libscipy_openblas",
+        "threading_layer": "pthreads",
+        "user_api": "blas",
+        "version": "0.3.33.112.0"
+      },
+      {
+        "architecture": "Zen",
+        "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+        "internal_api": "openblas",
+        "num_threads": 1,
+        "prefix": "libopenblas",
+        "threading_layer": "disabled",
+        "user_api": "blas",
+        "version": null
+      },
+      {
+        "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+        "internal_api": "openmp",
+        "num_threads": 1,
+        "prefix": "libgomp",
+        "user_api": "openmp",
+        "version": null
+      },
+      {
+        "architecture": "Haswell",
+        "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+        "internal_api": "openblas",
+        "num_threads": 1,
+        "prefix": "libscipy_openblas",
+        "threading_layer": "pthreads",
+        "user_api": "blas",
+        "version": "0.3.31.dev"
+      }
+    ],
+    "numpy": "2.5.1",
+    "purpose": "independent test/reference generation only",
+    "pyscf": "2.6.2",
+    "python": "3.13.9",
+    "schema_version": 1,
+    "scipy": "1.18.0",
+    "threadpoolctl": "3.6.0",
+    "threads": 1
+  },
+  "provenance_hash": "4eabd24ae3b8b1b40eff8d8c9f3fde4f89287224c04972355454fe417e9152ed",
+  "schema": "vibeqc.reference",
+  "schema_version": 1
+}

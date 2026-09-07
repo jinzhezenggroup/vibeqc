@@ -1,0 +1,259 @@
+{
+  "angular_momenta_loaded": [
+    0,
+    0
+  ],
+  "data": {
+    "ao_labels": [
+      "0 H0 1s    ",
+      "1 H1 1s    "
+    ],
+    "density": [
+      [
+        0.6122516057520925,
+        0.6122516057520927
+      ],
+      [
+        0.6122516057520927,
+        0.612251605752093
+      ]
+    ],
+    "energy": -1.1133065384535525,
+    "forces": [
+      [
+        -0.008644615945520684,
+        0.015642638377608833,
+        0.05804242134849613
+      ],
+      [
+        0.00864461594552067,
+        -0.015642638377608833,
+        -0.058042421348495965
+      ]
+    ],
+    "gradient": [
+      [
+        0.008644615945520684,
+        -0.015642638377608833,
+        -0.05804242134849613
+      ],
+      [
+        -0.00864461594552067,
+        0.015642638377608833,
+        0.058042421348495965
+      ]
+    ],
+    "hcore": [
+      [
+        -1.0952441541720837,
+        -0.9121958683253883
+      ],
+      [
+        -0.9121958683253883,
+        -1.0952441541720837
+      ]
+    ],
+    "mo_coeff": [
+      [
+        0.5532863660673795,
+        1.1677199220399808
+      ],
+      [
+        0.5532863660673797,
+        -1.1677199220399805
+      ]
+    ],
+    "mo_energy": [
+      -0.5620623996984427,
+      0.630700540577448
+    ],
+    "mo_occ": [
+      2.0,
+      0.0
+    ],
+    "nuclear_repulsion": 0.6778142384699847,
+    "overlap": [
+      [
+        1.0000000000000002,
+        0.6333154386285278
+      ],
+      [
+        0.6333154386285278,
+        1.0000000000000002
+      ]
+    ],
+    "scf_iterations": [
+      {
+        "density_change_norm": 0.8558325566379357,
+        "energy": -1.1133065384535525,
+        "iteration": 1,
+        "orbital_gradient_norm": 2.220446049250313e-16
+      },
+      {
+        "density_change_norm": 6.473657049138938e-16,
+        "energy": -1.1133065384535534,
+        "iteration": 2,
+        "orbital_gradient_norm": 4.440892098500626e-16
+      }
+    ],
+    "scf_residual_max": 2.220446049250313e-16
+  },
+  "data_hash": "7f84c4e836cf748aa59512e0939fcbe4656b6792016119802d0f4d1848d1a187",
+  "inputs": {
+    "atomic_numbers": [
+      1,
+      1
+    ],
+    "auxiliary_centers": [],
+    "basis_name": "sto-3g",
+    "basis_representation": "cartesian",
+    "cc_settings": null,
+    "charge": 0,
+    "conventions": {
+      "auxiliary_centers": "explicit independent identities and parent atom indices; [] means none",
+      "cartesian_normalization": "each contracted Cartesian component has unit self-overlap",
+      "cartesian_order": "descending lx, then descending ly; lz=l-lx-ly",
+      "derivative_order": "shell-center slot, xyz, i,j,k,l; nuclear-center derivative",
+      "energy_unit": "hartree",
+      "eri_order": "chemist (ij|kl); physicist <ij|kl> = chemist (ik|jl)",
+      "eri_storage": "C order, last AO index fastest",
+      "force_sign": "force=-dE/dR",
+      "frozen_core": 0,
+      "gradient_unit": "hartree/bohr",
+      "hamiltonian": "all-electron nonrelativistic Coulomb; no ECP",
+      "length_unit": "bohr",
+      "nuclear_charges": "explicit atomic_numbers, never inferred from basis labels",
+      "orbital_order": "ascending canonical orbital energy within each spin",
+      "orbital_phase": "largest-absolute AO coefficient positive; first index wins ties; no degenerate-subspace rotation",
+      "orbital_representation": "real spatial orbitals; alpha/beta separate for UHF",
+      "rhf_density": "P=2*C_occ*C_occ.T; F=h+J[P]-K[P]/2",
+      "spherical_normalization": "unit self-overlap; libcint phases",
+      "spherical_order": "libcint real harmonics; p=(x,y,z); l>=2 m=-l,...,+l",
+      "spin_orbital_order": "when expanded: all alpha spatial orbitals, then all beta",
+      "uhf_density": "P_alpha=C_alpha_occ*C_alpha_occ.T; P_beta likewise",
+      "version": 1
+    },
+    "coordinates": [
+      [
+        0.13,
+        -0.21,
+        -0.67
+      ],
+      [
+        -0.08,
+        0.17,
+        0.74
+      ]
+    ],
+    "kind": "molecule",
+    "method": "rhf",
+    "multiplicity": 1,
+    "name": "h2",
+    "scf_settings": {
+      "direct_scf_tol": 1e-14,
+      "energy_tolerance": 1e-13,
+      "gradient_tolerance": 1e-11,
+      "initial_guess": "minao",
+      "max_iterations": 200
+    },
+    "shells": [
+      {
+        "angular_momentum": 0,
+        "atom_index": 0,
+        "primitives": [
+          [
+            3.425250914,
+            0.1543289673
+          ],
+          [
+            0.6239137298,
+            0.5353281423
+          ],
+          [
+            0.168855404,
+            0.4446345422
+          ]
+        ]
+      },
+      {
+        "angular_momentum": 0,
+        "atom_index": 1,
+        "primitives": [
+          [
+            3.425250914,
+            0.1543289673
+          ],
+          [
+            0.6239137298,
+            0.5353281423
+          ],
+          [
+            0.168855404,
+            0.4446345422
+          ]
+        ]
+      }
+    ]
+  },
+  "inputs_hash": "089ac08c503a5725a1e9735b7b274f82dcf2df7929ac62ba2df80e17bff85d42",
+  "provenance": {
+    "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+    "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+    "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+    "generated_at": "2026-09-07T17:55:35.529434+00:00",
+    "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+    "h5py": "3.14.0",
+    "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+    "loaded_threadpools": [
+      {
+        "architecture": "Haswell",
+        "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+        "internal_api": "openblas",
+        "num_threads": 1,
+        "prefix": "libscipy_openblas",
+        "threading_layer": "pthreads",
+        "user_api": "blas",
+        "version": "0.3.33.112.0"
+      },
+      {
+        "architecture": "Zen",
+        "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+        "internal_api": "openblas",
+        "num_threads": 1,
+        "prefix": "libopenblas",
+        "threading_layer": "disabled",
+        "user_api": "blas",
+        "version": null
+      },
+      {
+        "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+        "internal_api": "openmp",
+        "num_threads": 1,
+        "prefix": "libgomp",
+        "user_api": "openmp",
+        "version": null
+      },
+      {
+        "architecture": "Haswell",
+        "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+        "internal_api": "openblas",
+        "num_threads": 1,
+        "prefix": "libscipy_openblas",
+        "threading_layer": "pthreads",
+        "user_api": "blas",
+        "version": "0.3.31.dev"
+      }
+    ],
+    "numpy": "2.5.1",
+    "purpose": "independent test/reference generation only",
+    "pyscf": "2.6.2",
+    "python": "3.13.9",
+    "schema_version": 1,
+    "scipy": "1.18.0",
+    "threadpoolctl": "3.6.0",
+    "threads": 1
+  },
+  "provenance_hash": "4eabd24ae3b8b1b40eff8d8c9f3fde4f89287224c04972355454fe417e9152ed",
+  "schema": "vibeqc.reference",
+  "schema_version": 1
+}

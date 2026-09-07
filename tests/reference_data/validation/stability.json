@@ -1,0 +1,2522 @@
+{
+  "generations": [
+    {
+      "errors": {
+        "data/eri": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "data/gradient": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            4,
+            3,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "data/libcint_to_unit_cartesian": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            4
+          ]
+        }
+      },
+      "first_data_hash": "a4628ea9d81d20d61ceb0e9036ed6ef96f08026f160eeee1eb034f3ae50f7c9f",
+      "first_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:34.152538+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "first_record_hash": "3bfb83d526aca5aeffde2831456f904cfd5d942f1187e9f0695b922441db1fc9",
+      "inputs_hash": "8725a7276e19392292f296d792cdeca5965df61656d0a18e30ff4f8f11b4efe4",
+      "name": "ssss-asymmetric",
+      "second_data_hash": "a4628ea9d81d20d61ceb0e9036ed6ef96f08026f160eeee1eb034f3ae50f7c9f",
+      "second_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:35.529434+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "second_record_hash": "e878a92ea33f97a2b820def13b38ca06e574f2b1fc1d420c96a25a512a6efb19"
+    },
+    {
+      "errors": {
+        "data/eri": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            3,
+            1,
+            1,
+            1
+          ]
+        },
+        "data/gradient": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            4,
+            3,
+            3,
+            1,
+            1,
+            1
+          ]
+        },
+        "data/libcint_to_unit_cartesian": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            6
+          ]
+        }
+      },
+      "first_data_hash": "646b813e38f1c82a4932684ca9332e227c22997cfe9b817f973d217fac4288ce",
+      "first_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:34.152538+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "first_record_hash": "2ec7749dcd7e2e95a07ff771cbc7a1a80551a0b30aa811e8a2cc419cd697a2be",
+      "inputs_hash": "9a6396da823b6ce8a54fde0400a1a428aa6ea909ca53d9e238ddf767f573083a",
+      "name": "psss-coincident",
+      "second_data_hash": "646b813e38f1c82a4932684ca9332e227c22997cfe9b817f973d217fac4288ce",
+      "second_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:35.529434+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "second_record_hash": "3b18911261de05288db3c0fd1adbd8dae624aed53a09ca166d9aa144771e8a72"
+    },
+    {
+      "errors": {
+        "data/eri": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            6,
+            3,
+            1,
+            1
+          ]
+        },
+        "data/gradient": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            4,
+            3,
+            6,
+            3,
+            1,
+            1
+          ]
+        },
+        "data/libcint_to_unit_cartesian": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            11
+          ]
+        }
+      },
+      "first_data_hash": "82a32cb9429e650b380d2e5e0e9b215bf2f9c952ae28944620aa1270249f3696",
+      "first_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:34.152538+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "first_record_hash": "a8f4b22671af4ac80baad24eff827559db77a0c655b1a2f4aa8188d29f4457d3",
+      "inputs_hash": "241eb680c3adf1f574687503b60d3a3bd315302006c713f6ae6871ea783a179e",
+      "name": "dpss-asymmetric",
+      "second_data_hash": "82a32cb9429e650b380d2e5e0e9b215bf2f9c952ae28944620aa1270249f3696",
+      "second_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:35.529434+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "second_record_hash": "38f590f93ddf2ca9a53ed6e15c1da34a0b7ae852c1e866dbf344d6aa81509efa"
+    },
+    {
+      "errors": {
+        "data/eri": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            10,
+            1,
+            1,
+            1
+          ]
+        },
+        "data/gradient": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            4,
+            3,
+            10,
+            1,
+            1,
+            1
+          ]
+        },
+        "data/libcint_to_unit_cartesian": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            13
+          ]
+        }
+      },
+      "first_data_hash": "98464005660a7657cc855ec6ad5871cf20c662aef4afdd5ed30f07289de307e9",
+      "first_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:34.152538+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "first_record_hash": "9b18843de75127fb96e6ebff828bdc95e177ee862efe4d7d974887c17964d924",
+      "inputs_hash": "e92b0e0bbad62ebeee22cafcfcc0d97542977b57a1c121ed5cd90217eb6333a4",
+      "name": "fsss-asymmetric",
+      "second_data_hash": "98464005660a7657cc855ec6ad5871cf20c662aef4afdd5ed30f07289de307e9",
+      "second_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:35.529434+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "second_record_hash": "e1c74a9d4afcaa56a27465c93a076d377be3d0220cdef2199044d12cb4ca2e5a"
+    },
+    {
+      "errors": {
+        "data/eri": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            10,
+            1,
+            1,
+            1
+          ]
+        },
+        "data/gradient": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            4,
+            3,
+            10,
+            1,
+            1,
+            1
+          ]
+        },
+        "data/libcint_to_unit_cartesian": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            13
+          ]
+        }
+      },
+      "first_data_hash": "7ad55780832b788d767347b7f51013b295d22c0702f7c9a83cfbe88ef1e30ea8",
+      "first_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:34.152538+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "first_record_hash": "f5f7c8e5792c6191b27bb9ec0367b604ac4ccbdbe645b3ce53023dad074ad5d8",
+      "inputs_hash": "c2c894b1208521b1d0ce9b3e73fe53cb33995a484004036c27966e7461bb310b",
+      "name": "fsss-same-center",
+      "second_data_hash": "7ad55780832b788d767347b7f51013b295d22c0702f7c9a83cfbe88ef1e30ea8",
+      "second_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:35.529434+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "second_record_hash": "eb051ea651367c509e8b676cbfaff79aeb7a771af392fed8e62e936c9a96f564"
+    },
+    {
+      "errors": {
+        "data/eri": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            7,
+            1,
+            1,
+            1
+          ]
+        },
+        "data/gradient": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            4,
+            3,
+            7,
+            1,
+            1,
+            1
+          ]
+        },
+        "data/libcint_to_unit_cartesian": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            10
+          ]
+        }
+      },
+      "first_data_hash": "bac97770f52a96e6a7526735c39efcc40a007a26234b1485f6e26243145c5e58",
+      "first_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:34.152538+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "first_record_hash": "de6b6a1a5fd84a0975065d199e6be174b124aec30d1c548ba808e400c2c6ef1c",
+      "inputs_hash": "08427ce4742083395ea1eca1cf25fd6b136d64b8df218930d4d28fc06fb1260e",
+      "name": "fsss-spherical",
+      "second_data_hash": "bac97770f52a96e6a7526735c39efcc40a007a26234b1485f6e26243145c5e58",
+      "second_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:35.529434+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "second_record_hash": "41823f25216334d06e72b618875960f9834d67d1369f3bcb7b6a4ec4fc99135e"
+    },
+    {
+      "errors": {
+        "data/density": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            2,
+            2
+          ]
+        },
+        "data/energy": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": []
+        },
+        "data/forces": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            2,
+            3
+          ]
+        },
+        "data/gradient": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            2,
+            3
+          ]
+        },
+        "data/hcore": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            2,
+            2
+          ]
+        },
+        "data/mo_coeff": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            2,
+            2
+          ]
+        },
+        "data/mo_energy": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            2
+          ]
+        },
+        "data/mo_occ": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            2
+          ]
+        },
+        "data/nuclear_repulsion": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": []
+        },
+        "data/overlap": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            2,
+            2
+          ]
+        },
+        "data/scf_residual_max": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": []
+        }
+      },
+      "first_data_hash": "7f84c4e836cf748aa59512e0939fcbe4656b6792016119802d0f4d1848d1a187",
+      "first_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:34.152538+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "first_record_hash": "0bb7965913baaa8015d20c1d2691ca5d99a26f4d238b5bf71a6519a47ecf8493",
+      "inputs_hash": "089ac08c503a5725a1e9735b7b274f82dcf2df7929ac62ba2df80e17bff85d42",
+      "name": "h2",
+      "second_data_hash": "7f84c4e836cf748aa59512e0939fcbe4656b6792016119802d0f4d1848d1a187",
+      "second_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:35.529434+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "second_record_hash": "4e55164fc9b780dfe5ee34da5f4e10d950970dceb83434bde4acef1ebc672864"
+    },
+    {
+      "errors": {
+        "data/density": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            1,
+            1
+          ]
+        },
+        "data/energy": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": []
+        },
+        "data/forces": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            1,
+            3
+          ]
+        },
+        "data/gradient": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            1,
+            3
+          ]
+        },
+        "data/hcore": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            1,
+            1
+          ]
+        },
+        "data/mo_coeff": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            1,
+            1
+          ]
+        },
+        "data/mo_energy": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            1
+          ]
+        },
+        "data/mo_occ": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            1
+          ]
+        },
+        "data/nuclear_repulsion": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": []
+        },
+        "data/overlap": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            1,
+            1
+          ]
+        },
+        "data/scf_residual_max": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": []
+        }
+      },
+      "first_data_hash": "3d01053a065634b1e25e04876bd243d703811e00c5d5366b6fcb8219bec4d12c",
+      "first_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:34.152538+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "first_record_hash": "f03127bb00597f71335da56b9090395db0e1b75d59e288a0e902773f944c08b0",
+      "inputs_hash": "f536e396d5ca709ccb4be9868c6d469dca3d8db988c124688e7d9e347cf25d6a",
+      "name": "he",
+      "second_data_hash": "3d01053a065634b1e25e04876bd243d703811e00c5d5366b6fcb8219bec4d12c",
+      "second_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:35.529434+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "second_record_hash": "75121c35317e9da995e73a77f52b750c97d8b9063f1a17ae7c5d98179fb27d74"
+    },
+    {
+      "errors": {
+        "data/density": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            7,
+            7
+          ]
+        },
+        "data/energy": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": []
+        },
+        "data/forces": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            3,
+            3
+          ]
+        },
+        "data/gradient": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            3,
+            3
+          ]
+        },
+        "data/hcore": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            7,
+            7
+          ]
+        },
+        "data/mo_coeff": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            7,
+            7
+          ]
+        },
+        "data/mo_energy": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            7
+          ]
+        },
+        "data/mo_occ": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            7
+          ]
+        },
+        "data/nuclear_repulsion": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": []
+        },
+        "data/overlap": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            7,
+            7
+          ]
+        },
+        "data/scf_residual_max": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": []
+        }
+      },
+      "first_data_hash": "841e0d6574c58a3b2ccd9bd68faa887772150fe4ef8a9fe5ad5f2cbc7633ef15",
+      "first_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:34.152538+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "first_record_hash": "80e29c4bba45219fbb720228c4e87a8254d761729d48c3da8977567ce891a2a5",
+      "inputs_hash": "cca94fc0b269e983659df27893c6803932dff608ae60d9231bff1863e0c7dee5",
+      "name": "h2o",
+      "second_data_hash": "841e0d6574c58a3b2ccd9bd68faa887772150fe4ef8a9fe5ad5f2cbc7633ef15",
+      "second_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:35.529434+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "second_record_hash": "afed538ada0572963570d483f10bf8a46d07a82942bb36d167fee54eb5795333"
+    },
+    {
+      "errors": {
+        "data/ccsd_t/amplitude_update_max": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": []
+        },
+        "data/ccsd_t/correlation_energy": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": []
+        },
+        "data/ccsd_t/t1": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            5,
+            3
+          ]
+        },
+        "data/ccsd_t/t2": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            5,
+            5,
+            3,
+            3
+          ]
+        },
+        "data/ccsd_t/triples_energy": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": []
+        },
+        "data/density": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            8,
+            8
+          ]
+        },
+        "data/energy": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": []
+        },
+        "data/forces": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            4,
+            3
+          ]
+        },
+        "data/gradient": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            4,
+            3
+          ]
+        },
+        "data/hcore": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            8,
+            8
+          ]
+        },
+        "data/mo_coeff": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            8,
+            8
+          ]
+        },
+        "data/mo_energy": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            8
+          ]
+        },
+        "data/mo_occ": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            8
+          ]
+        },
+        "data/nuclear_repulsion": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": []
+        },
+        "data/overlap": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            8,
+            8
+          ]
+        },
+        "data/scf_residual_max": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": []
+        }
+      },
+      "first_data_hash": "5d7f22080afad3d71f38dc4cecb563f15a75e4182df82381fd5cd1101d8e778f",
+      "first_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:34.152538+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "first_record_hash": "d52adc5c86bb103713d8ab41f01851438b75270c85e2f699eb9848190da13511",
+      "inputs_hash": "0ff0c69c2902620445e141f4c3153ba1a0afa9e87ef623eb85b4748c953b0e9d",
+      "name": "nh3",
+      "second_data_hash": "5d7f22080afad3d71f38dc4cecb563f15a75e4182df82381fd5cd1101d8e778f",
+      "second_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:35.529434+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "second_record_hash": "eb1a641331e9d5752c61b314d374e905c129f1065d70e06061dc90baccd17d2b"
+    },
+    {
+      "errors": {
+        "data/density": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            9,
+            9
+          ]
+        },
+        "data/energy": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": []
+        },
+        "data/forces": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            5,
+            3
+          ]
+        },
+        "data/gradient": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            5,
+            3
+          ]
+        },
+        "data/hcore": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            9,
+            9
+          ]
+        },
+        "data/mo_coeff": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            9,
+            9
+          ]
+        },
+        "data/mo_energy": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            9
+          ]
+        },
+        "data/mo_occ": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            9
+          ]
+        },
+        "data/nuclear_repulsion": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": []
+        },
+        "data/overlap": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            9,
+            9
+          ]
+        },
+        "data/scf_residual_max": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": []
+        }
+      },
+      "first_data_hash": "ed1a6019e6265552ca15da9bf682ca1aa4b635b8428a9ca3c23ab76ca14fee9b",
+      "first_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:34.152538+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "first_record_hash": "83bb21f2f1f30c0e01d86dd9b4778a2ebd6cfb6780a9dc185181f171ab75d206",
+      "inputs_hash": "f066b97af5349368a5b7b9353829e76e7e13c831b8e847071f5fef1221fdeda0",
+      "name": "ch4",
+      "second_data_hash": "ed1a6019e6265552ca15da9bf682ca1aa4b635b8428a9ca3c23ab76ca14fee9b",
+      "second_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:35.529434+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "second_record_hash": "7d0b517a03a31a762d7f554e35a58e160f585f96a95d7735fc39e0802a902065"
+    },
+    {
+      "errors": {
+        "data/density": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            2,
+            6,
+            6
+          ]
+        },
+        "data/energy": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": []
+        },
+        "data/forces": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            2,
+            3
+          ]
+        },
+        "data/gradient": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            2,
+            3
+          ]
+        },
+        "data/hcore": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            6,
+            6
+          ]
+        },
+        "data/mo_coeff": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            2,
+            6,
+            6
+          ]
+        },
+        "data/mo_energy": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            2,
+            6
+          ]
+        },
+        "data/mo_occ": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            2,
+            6
+          ]
+        },
+        "data/nuclear_repulsion": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": []
+        },
+        "data/overlap": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": [
+            6,
+            6
+          ]
+        },
+        "data/scf_residual_max": {
+          "atol": 1e-12,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-12,
+          "shape": []
+        }
+      },
+      "first_data_hash": "4536524488fcbc8935cf0eeb3ec04cb2f2c46a7b45d50c0e11df6cf3714154cd",
+      "first_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:34.152538+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "first_record_hash": "f52444af203654ecf459643d5964c1e23631a544134a2a2a49643e49a5067333",
+      "inputs_hash": "aab27cff618e8c0ffbf4182a6de83059ff652a4d7e1881a1fb08d7d730e205d6",
+      "name": "hf-plus-uhf",
+      "second_data_hash": "4536524488fcbc8935cf0eeb3ec04cb2f2c46a7b45d50c0e11df6cf3714154cd",
+      "second_provenance": {
+        "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+        "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+        "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+        "generated_at": "2026-09-07T17:55:35.529434+00:00",
+        "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+        "h5py": "3.14.0",
+        "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+        "loaded_threadpools": [
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.33.112.0"
+          },
+          {
+            "architecture": "Zen",
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libopenblas",
+            "threading_layer": "disabled",
+            "user_api": "blas",
+            "version": null
+          },
+          {
+            "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+            "internal_api": "openmp",
+            "num_threads": 1,
+            "prefix": "libgomp",
+            "user_api": "openmp",
+            "version": null
+          },
+          {
+            "architecture": "Haswell",
+            "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+            "internal_api": "openblas",
+            "num_threads": 1,
+            "prefix": "libscipy_openblas",
+            "threading_layer": "pthreads",
+            "user_api": "blas",
+            "version": "0.3.31.dev"
+          }
+        ],
+        "numpy": "2.5.1",
+        "purpose": "independent test/reference generation only",
+        "pyscf": "2.6.2",
+        "python": "3.13.9",
+        "schema_version": 1,
+        "scipy": "1.18.0",
+        "threadpoolctl": "3.6.0",
+        "threads": 1
+      },
+      "second_record_hash": "4a68382184fedd7acb9e927c4a5cd3c89ceb828851068ba07a5dcfb08b6c5bfe"
+    }
+  ],
+  "schema_version": 1
+}
