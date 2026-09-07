@@ -1,5 +1,9 @@
 # Published GPU benchmark artifacts
 
+The [CG01 protocol controls](cg01/README.md) record independent small-reference
+stability, CPU/CUDA HF endpoints, and a separate CUDA compilation smoke check.
+They demonstrate the shared validation schema without claiming a speedup.
+
 The current build provenance snapshot is available in
 [`build-ledger-current.json`](build-ledger-current.json).  It records the
 repository state, host/toolchain versions, CMake CUDA architecture values,
