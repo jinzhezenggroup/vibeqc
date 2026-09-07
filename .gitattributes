@@ -1,3 +1,4 @@
 # Keep reproducible data available while making implementation diffs reviewable.
 tests/reference_data/validation/*.json linguist-generated=true
 benchmarks/results/cg01/*.json linguist-generated=true
+benchmarks/results/f-shell-135/*.json linguist-generated=true

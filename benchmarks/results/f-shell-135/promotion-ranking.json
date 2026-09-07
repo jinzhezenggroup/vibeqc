@@ -1,0 +1,585 @@
+{
+  "rows": [
+    {
+      "class": "fpps",
+      "generated_force_nanoseconds": 17941554,
+      "primitive_quartets": 5946570,
+      "primitive_work_fraction": 0.05020886778220876,
+      "rank": 1,
+      "shell_angular": [
+        3,
+        1,
+        1,
+        0
+      ],
+      "shell_quartets": 15549,
+      "tile_fraction": 0.015933572710951527,
+      "tiles": 15549,
+      "unique_ao_quartets": 1399410
+    },
+    {
+      "class": "fppp",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 4196880,
+      "primitive_work_fraction": 0.035435653329195876,
+      "rank": 2,
+      "shell_angular": [
+        3,
+        1,
+        1,
+        1
+      ],
+      "shell_quartets": 4075,
+      "tile_fraction": 0.007539985079888181,
+      "tiles": 7358,
+      "unique_ao_quartets": 1028970
+    },
+    {
+      "class": "fsps",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 3904230,
+      "primitive_work_fraction": 0.03296471207121633,
+      "rank": 3,
+      "shell_angular": [
+        3,
+        0,
+        1,
+        0
+      ],
+      "shell_quartets": 30334,
+      "tile_fraction": 0.031084249444594737,
+      "tiles": 30334,
+      "unique_ao_quartets": 910020
+    },
+    {
+      "class": "fpdp",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 3486780,
+      "primitive_work_fraction": 0.02944004291644593,
+      "rank": 4,
+      "shell_angular": [
+        3,
+        1,
+        2,
+        1
+      ],
+      "shell_quartets": 2641,
+      "tile_fraction": 0.00811895919923268,
+      "tiles": 7923,
+      "unique_ao_quartets": 1426140
+    },
+    {
+      "class": "fspp",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 2798940,
+      "primitive_work_fraction": 0.023632381085287046,
+      "rank": 5,
+      "shell_angular": [
+        3,
+        0,
+        1,
+        1
+      ],
+      "shell_quartets": 7938,
+      "tile_fraction": 0.00813433019355156,
+      "tiles": 7938,
+      "unique_ao_quartets": 668220
+    },
+    {
+      "class": "fpds",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 2759940,
+      "primitive_work_fraction": 0.023303091117539903,
+      "rank": 6,
+      "shell_angular": [
+        3,
+        1,
+        2,
+        0
+      ],
+      "shell_quartets": 5771,
+      "tile_fraction": 0.005913733880950624,
+      "tiles": 5771,
+      "unique_ao_quartets": 1038780
+    },
+    {
+      "class": "fpss",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 2754690,
+      "primitive_work_fraction": 0.02325876362188163,
+      "rank": 7,
+      "shell_angular": [
+        3,
+        1,
+        0,
+        0
+      ],
+      "shell_quartets": 17998,
+      "tile_fraction": 0.018443143716747417,
+      "tiles": 17998,
+      "unique_ao_quartets": 539940
+    },
+    {
+      "class": "fdps",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 2593980,
+      "primitive_work_fraction": 0.021901835654788204,
+      "rank": 8,
+      "shell_angular": [
+        3,
+        2,
+        1,
+        0
+      ],
+      "shell_quartets": 5429,
+      "tile_fraction": 0.005563275210480149,
+      "tiles": 5429,
+      "unique_ao_quartets": 977220
+    },
+    {
+      "class": "fsdp",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 2279880,
+      "primitive_work_fraction": 0.019249784914547735,
+      "rank": 9,
+      "shell_angular": [
+        3,
+        0,
+        2,
+        1
+      ],
+      "shell_quartets": 5178,
+      "tile_fraction": 0.005306067238877548,
+      "tiles": 5178,
+      "unique_ao_quartets": 932040
+    },
+    {
+      "class": "fpfs",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 1970400,
+      "primitive_work_fraction": 0.01663674237048654,
+      "rank": 10,
+      "shell_angular": [
+        3,
+        1,
+        3,
+        0
+      ],
+      "shell_quartets": 2638,
+      "tile_fraction": 0.005406491068427568,
+      "tiles": 5276,
+      "unique_ao_quartets": 791400
+    },
+    {
+      "class": "fsds",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 1903200,
+      "primitive_work_fraction": 0.01606935042606069,
+      "rank": 11,
+      "shell_angular": [
+        3,
+        0,
+        2,
+        0
+      ],
+      "shell_quartets": 11465,
+      "tile_fraction": 0.011748563324397662,
+      "tiles": 11465,
+      "unique_ao_quartets": 687900
+    },
+    {
+      "class": "fsss",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 1859870,
+      "primitive_work_fraction": 0.015703500828561104,
+      "rank": 12,
+      "shell_angular": [
+        3,
+        0,
+        0,
+        0
+      ],
+      "shell_quartets": 35081,
+      "tile_fraction": 0.03594865678004312,
+      "tiles": 35081,
+      "unique_ao_quartets": 350810
+    },
+    {
+      "class": "fdpp",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 1812780,
+      "primitive_work_fraction": 0.015305904300837694,
+      "rank": 13,
+      "shell_angular": [
+        3,
+        2,
+        1,
+        1
+      ],
+      "shell_quartets": 1397,
+      "tile_fraction": 0.003999532721772706,
+      "tiles": 3903,
+      "unique_ao_quartets": 702540
+    },
+    {
+      "class": "fpfp",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 1577700,
+      "primitive_work_fraction": 0.013321045695247977,
+      "rank": 14,
+      "shell_angular": [
+        3,
+        1,
+        3,
+        1
+      ],
+      "shell_quartets": 724,
+      "tile_fraction": 0.0028446586819474845,
+      "tiles": 2776,
+      "unique_ao_quartets": 625500
+    },
+    {
+      "class": "fddp",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 1393200,
+      "primitive_work_fraction": 0.011763250847828791,
+      "rank": 15,
+      "shell_angular": [
+        3,
+        2,
+        2,
+        1
+      ],
+      "shell_quartets": 858,
+      "tile_fraction": 0.004396104375199823,
+      "tiles": 4290,
+      "unique_ao_quartets": 926640
+    },
+    {
+      "class": "ffps",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 1264980,
+      "primitive_work_fraction": 0.010680646753866253,
+      "rank": 16,
+      "shell_angular": [
+        3,
+        3,
+        1,
+        0
+      ],
+      "shell_quartets": 2307,
+      "tile_fraction": 0.0030803472615036523,
+      "tiles": 3006,
+      "unique_ao_quartets": 475020
+    },
+    {
+      "class": "fdss",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 1225380,
+      "primitive_work_fraction": 0.010346290786615305,
+      "rank": 17,
+      "shell_angular": [
+        3,
+        2,
+        0,
+        0
+      ],
+      "shell_quartets": 6312,
+      "tile_fraction": 0.0064681144093849145,
+      "tiles": 6312,
+      "unique_ao_quartets": 378720
+    },
+    {
+      "class": "fdfp",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 1152000,
+      "primitive_work_fraction": 0.009726719047300292,
+      "rank": 18,
+      "shell_angular": [
+        3,
+        2,
+        3,
+        1
+      ],
+      "shell_quartets": 400,
+      "tile_fraction": 0.0032791454546945067,
+      "tiles": 3200,
+      "unique_ao_quartets": 720000
+    },
+    {
+      "class": "fdds",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 1129320,
+      "primitive_work_fraction": 0.009535224266056568,
+      "rank": 19,
+      "shell_angular": [
+        3,
+        2,
+        2,
+        0
+      ],
+      "shell_quartets": 1852,
+      "tile_fraction": 0.003795610863808891,
+      "tiles": 3704,
+      "unique_ao_quartets": 666720
+    },
+    {
+      "class": "fpdd",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 880200,
+      "primitive_work_fraction": 0.007431821272077879,
+      "rank": 20,
+      "shell_angular": [
+        3,
+        1,
+        2,
+        2
+      ],
+      "shell_quartets": 636,
+      "tile_fraction": 0.002643811022847446,
+      "tiles": 2580,
+      "unique_ao_quartets": 551880
+    },
+    {
+      "class": "ffpp",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 871920,
+      "primitive_work_fraction": 0.007361910478925408,
+      "rank": 21,
+      "shell_angular": [
+        3,
+        3,
+        1,
+        1
+      ],
+      "shell_quartets": 596,
+      "tile_fraction": 0.0015493962273431545,
+      "tiles": 1512,
+      "unique_ao_quartets": 342720
+    },
+    {
+      "class": "fdfs",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 839400,
+      "primitive_work_fraction": 0.007087333305819327,
+      "rank": 22,
+      "shell_angular": [
+        3,
+        2,
+        3,
+        0
+      ],
+      "shell_quartets": 871,
+      "tile_fraction": 0.002677627210348983,
+      "tiles": 2613,
+      "unique_ao_quartets": 522600
+    },
+    {
+      "class": "fsfs",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 686320,
+      "primitive_work_fraction": 0.00579482796574925,
+      "rank": 23,
+      "shell_angular": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "shell_quartets": 2751,
+      "tile_fraction": 0.002819040358082684,
+      "tiles": 2751,
+      "unique_ao_quartets": 268800
+    },
+    {
+      "class": "ffdp",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 686160,
+      "primitive_work_fraction": 0.005793477032548237,
+      "rank": 24,
+      "shell_angular": [
+        3,
+        3,
+        2,
+        1
+      ],
+      "shell_quartets": 380,
+      "tile_fraction": 0.001967487272816704,
+      "tiles": 1920,
+      "unique_ao_quartets": 457200
+    },
+    {
+      "class": "fsdd",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 606480,
+      "primitive_work_fraction": 0.005120712298443299,
+      "rank": 25,
+      "shell_angular": [
+        3,
+        0,
+        2,
+        2
+      ],
+      "shell_quartets": 1311,
+      "tile_fraction": 0.0020802078978218275,
+      "tiles": 2030,
+      "unique_ao_quartets": 383160
+    },
+    {
+      "class": "fffp",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 606000,
+      "primitive_work_fraction": 0.005116659498840257,
+      "rank": 26,
+      "shell_angular": [
+        3,
+        3,
+        3,
+        1
+      ],
+      "shell_quartets": 190,
+      "tile_fraction": 0.001598583409163572,
+      "tiles": 1560,
+      "unique_ao_quartets": 375600
+    },
+    {
+      "class": "ffss",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 574720,
+      "primitive_work_fraction": 0.004852552058042034,
+      "rank": 27,
+      "shell_angular": [
+        3,
+        3,
+        0,
+        0
+      ],
+      "shell_quartets": 2686,
+      "tile_fraction": 0.0027524327160342015,
+      "tiles": 2686,
+      "unique_ao_quartets": 184360
+    },
+    {
+      "class": "ffds",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 524760,
+      "primitive_work_fraction": 0.004430723166025435,
+      "rank": 28,
+      "shell_angular": [
+        3,
+        3,
+        2,
+        0
+      ],
+      "shell_quartets": 835,
+      "tile_fraction": 0.001935720551224351,
+      "tiles": 1889,
+      "unique_ao_quartets": 334680
+    },
+    {
+      "class": "fffs",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 397600,
+      "primitive_work_fraction": 0.0033570690045196146,
+      "rank": 29,
+      "shell_angular": [
+        3,
+        3,
+        3,
+        0
+      ],
+      "shell_quartets": 394,
+      "tile_fraction": 0.0013116581818778026,
+      "tiles": 1280,
+      "unique_ao_quartets": 260800
+    },
+    {
+      "class": "fddd",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 380160,
+      "primitive_work_fraction": 0.003209817285609096,
+      "rank": 30,
+      "shell_angular": [
+        3,
+        2,
+        2,
+        2
+      ],
+      "shell_quartets": 216,
+      "tile_fraction": 0.001598583409163572,
+      "tiles": 1560,
+      "unique_ao_quartets": 380160
+    },
+    {
+      "class": "fdfd",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 259920,
+      "primitive_work_fraction": 0.0021945909850471282,
+      "rank": 31,
+      "shell_angular": [
+        3,
+        2,
+        3,
+        2
+      ],
+      "shell_quartets": 84,
+      "tile_fraction": 0.0011190083864145003,
+      "tiles": 1092,
+      "unique_ao_quartets": 259920
+    },
+    {
+      "class": "fffd",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 206400,
+      "primitive_work_fraction": 0.0017427038293079688,
+      "rank": 32,
+      "shell_angular": [
+        3,
+        3,
+        3,
+        2
+      ],
+      "shell_quartets": 56,
+      "tile_fraction": 0.0008361820909470992,
+      "tiles": 816,
+      "unique_ao_quartets": 206400
+    },
+    {
+      "class": "ffdd",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 192960,
+      "primitive_work_fraction": 0.001629225440422799,
+      "rank": 33,
+      "shell_angular": [
+        3,
+        3,
+        2,
+        2
+      ],
+      "shell_quartets": 100,
+      "tile_fraction": 0.0008238852954919948,
+      "tiles": 804,
+      "unique_ao_quartets": 192960
+    },
+    {
+      "class": "ffff",
+      "generated_force_nanoseconds": null,
+      "primitive_quartets": 24420,
+      "primitive_work_fraction": 0.00020618617980475097,
+      "rank": 34,
+      "shell_angular": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "shell_quartets": 12,
+      "tile_fraction": 0.00010657222727757146,
+      "tiles": 104,
+      "unique_ao_quartets": 24420
+    }
+  ],
+  "schema_version": 1,
+  "source": "dimer batch 4 active final-density counters",
+  "timing_note": "only exact generated entries have per-class durations; mixed generic durations remain unresolved"
+}

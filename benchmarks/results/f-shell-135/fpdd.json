@@ -1,0 +1,2852 @@
+{
+  "angular": [
+    3,
+    1,
+    2,
+    2
+  ],
+  "capabilities": {
+    "angular": [
+      3,
+      1,
+      2,
+      2
+    ],
+    "component_count": 1080,
+    "force_derivative_orders": {
+      "1": {
+        "reasons": [],
+        "schedules": [
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "2": {
+        "reasons": [
+          "CUDA force result ABI currently exposes only order-one derivatives"
+        ],
+        "schedules": [],
+        "supported": false
+      }
+    },
+    "generic_fused": {
+      "reasons": [],
+      "schedules": [
+        "tiled_components"
+      ],
+      "supported": true
+    },
+    "pair_orders": [
+      4,
+      4
+    ],
+    "production": {
+      "capabilities": [],
+      "fock": false,
+      "force": false,
+      "profile": null,
+      "profile_match": null,
+      "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+      "reason": "not selected by the production manifest; endpoint/resource gates remain",
+      "status": "manifest_gap"
+    },
+    "recurrences": {
+      "rys2": {
+        "reasons": [
+          "fpdd lowering requires rys5, not rys2"
+        ],
+        "schedules": [],
+        "supported": false
+      },
+      "rys3": {
+        "reasons": [
+          "fpdd lowering requires rys5, not rys3"
+        ],
+        "schedules": [],
+        "supported": false
+      },
+      "rys4": {
+        "reasons": [
+          "fpdd lowering requires rys5, not rys4"
+        ],
+        "schedules": [],
+        "supported": false
+      },
+      "rys5": {
+        "reasons": [],
+        "schedules": [
+          "tiled_components"
+        ],
+        "supported": true
+      },
+      "subset_wick": {
+        "reasons": [],
+        "schedules": [
+          "tiled_components"
+        ],
+        "supported": true
+      }
+    },
+    "shell_class": "fpdd"
+  },
+  "compilation": {
+    "cache_hit": true,
+    "cache_key": "3486b6cd248329b20bab03975874bdc1bd8877a63c15da1e61eb59698eabba6c",
+    "identity": {
+      "architecture": "sm_120",
+      "flags": [
+        "-std=c++17",
+        "-O3",
+        "-Xptxas=-v"
+      ],
+      "generator_abi": 1,
+      "schedule": {
+        "algebra_form": "binary",
+        "algebra_fusion": "separate",
+        "algebra_ordering": "topological",
+        "algebra_placement": "materialized_cse",
+        "block_threads": 64,
+        "component_tile": 64,
+        "kind": "tiled_components",
+        "maximum_registers": 0,
+        "minimum_blocks_per_sm": 0,
+        "pair_orientation": "canonical",
+        "pair_storage": "materialized",
+        "shared_coulomb": true,
+        "tasks_per_warp": 1,
+        "unroll_pair_terms": true
+      },
+      "source": "409670aa3e932260ebb1fa6b8dd7c8f53858aafdaa176ce7f25241253f00e9c5",
+      "toolchain": {
+        "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Mon_May_19_08:50:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.82\nBuild cuda_12.9.r12.9/compiler.36001619_0",
+        "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0",
+        "ptxas": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+      }
+    },
+    "log_hash": "750fb7bd59d5303b667d98d0edee0de70ebd3755448820de4c29fac796faa530",
+    "object_bytes": 7816384,
+    "object_hash": "c3549b8f024f35d4cff7193f758abef4ab78c81abb393270e07957ef6316543f",
+    "reason": null,
+    "returncode": 0,
+    "seconds": 72.64893665001728,
+    "status": "pass"
+  },
+  "consumers": [
+    "fock",
+    "force"
+  ],
+  "endpoint": {
+    "reason": "generated-class endpoint A/B not measured; generic exposure alone is not promotion evidence",
+    "status": "not-run"
+  },
+  "manifest": {
+    "acceptance": "unselected",
+    "capabilities": [],
+    "fock": false,
+    "force": false,
+    "profile": null,
+    "profile_match": null,
+    "promotion_gate": "real_molecular_endpoint_and_resource_gates",
+    "reason": "manifest selection alone is not compile/numerical/endpoint evidence",
+    "status": "manifest_gap"
+  },
+  "numerical": {
+    "driver_source_hash": "9731e6fb125363483cb84c5af0b73b8fe192a88fea1503c7aba48e930ae57d67",
+    "evidence": {
+      "attachments": [],
+      "backend_selected": "cuda",
+      "block_errors": {
+        "fixture_0/rhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.713578978712379e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_0/rhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.713578978712379e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_0/rhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.369483396765835e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_0/rhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.0842021724855044e-19,
+          "max_scaled_error": 5.421010862427522e-10,
+          "passed": true,
+          "rms_error": 6.25964416140483e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_0/rhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.382125406840739e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_0/rhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.6263032587282567e-19,
+          "max_scaled_error": 8.131516293641283e-10,
+          "passed": true,
+          "rms_error": 9.389466242107245e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_0/uhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8344700758454735e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.146383708388961e-07,
+          "passed": true,
+          "rms_error": 3.8566944798098273e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_0/uhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8344700758454735e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.146383708388961e-07,
+          "passed": true,
+          "rms_error": 3.8566944798098273e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_0/uhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0398370208160561e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_0/uhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.168404344971009e-19,
+          "max_scaled_error": 1.0842021724855044e-09,
+          "passed": true,
+          "rms_error": 1.29045870281265e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_0/uhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0404268124612523e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_0/uhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 3.2526065174565133e-19,
+          "max_scaled_error": 1.6263032587282567e-09,
+          "passed": true,
+          "rms_error": 2.1227486139795503e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_1/rhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.713578978712379e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_1/rhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.714180007681036e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_1/rhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.369483396765835e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_1/rhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.0842021724855044e-19,
+          "max_scaled_error": 5.421010862427522e-10,
+          "passed": true,
+          "rms_error": 6.25964416140483e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_1/rhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.382125406840739e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_1/rhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.6263032587282567e-19,
+          "max_scaled_error": 8.131516293641283e-10,
+          "passed": true,
+          "rms_error": 9.389466242107245e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_1/uhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8344700758454735e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.146383708388961e-07,
+          "passed": true,
+          "rms_error": 3.857756173076761e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_1/uhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8344700758454735e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.146383708388961e-07,
+          "passed": true,
+          "rms_error": 3.8563770185036444e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_1/uhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0398370208160561e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_1/uhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.168404344971009e-19,
+          "max_scaled_error": 1.0842021724855044e-09,
+          "passed": true,
+          "rms_error": 1.29045870281265e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_1/uhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0404268124612523e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_1/uhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 3.2526065174565133e-19,
+          "max_scaled_error": 1.6263032587282567e-09,
+          "passed": true,
+          "rms_error": 2.1227486139795503e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_10/rhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.713352322802886e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_10/rhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.713953388451262e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_10/rhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.369483396765835e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_10/rhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.0842021724855044e-19,
+          "max_scaled_error": 5.421010862427522e-10,
+          "passed": true,
+          "rms_error": 6.25964416140483e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_10/rhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.382125406840739e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_10/rhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.6263032587282567e-19,
+          "max_scaled_error": 8.131516293641283e-10,
+          "passed": true,
+          "rms_error": 9.389466242107245e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_10/uhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.8592873341849305e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_10/uhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.8582490276205377e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_10/uhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0398370208160561e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_10/uhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.168404344971009e-19,
+          "max_scaled_error": 1.0842021724855044e-09,
+          "passed": true,
+          "rms_error": 1.29045870281265e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_10/uhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0404268124612523e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_10/uhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 3.2526065174565133e-19,
+          "max_scaled_error": 1.6263032587282567e-09,
+          "passed": true,
+          "rms_error": 2.1227486139795503e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_11/rhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.716748805897819e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_11/rhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.716148192392203e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_11/rhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.369483396765835e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_11/rhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.0842021724855044e-19,
+          "max_scaled_error": 5.421010862427522e-10,
+          "passed": true,
+          "rms_error": 6.25964416140483e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_11/rhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.382125406840739e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_11/rhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.6263032587282567e-19,
+          "max_scaled_error": 8.131516293641283e-10,
+          "passed": true,
+          "rms_error": 9.389466242107245e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_11/uhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8344700758454735e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.146383708388961e-07,
+          "passed": true,
+          "rms_error": 3.8638287623886875e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_11/uhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.8582791317968514e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_11/uhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0398370208160561e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_11/uhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.168404344971009e-19,
+          "max_scaled_error": 1.0842021724855044e-09,
+          "passed": true,
+          "rms_error": 1.29045870281265e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_11/uhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0404268124612523e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_11/uhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 3.2526065174565133e-19,
+          "max_scaled_error": 1.6263032587282567e-09,
+          "passed": true,
+          "rms_error": 2.1227486139795503e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_12/rhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.712964785247427e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_12/rhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.712964785247427e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_12/rhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.369483396765835e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_12/rhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.0842021724855044e-19,
+          "max_scaled_error": 5.421010862427522e-10,
+          "passed": true,
+          "rms_error": 6.25964416140483e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_12/rhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.382125406840739e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_12/rhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.6263032587282567e-19,
+          "max_scaled_error": 8.131516293641283e-10,
+          "passed": true,
+          "rms_error": 9.389466242107245e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_12/uhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.8557269754256217e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_12/uhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.856024801809767e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_12/uhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0398370208160561e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_12/uhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.168404344971009e-19,
+          "max_scaled_error": 1.0842021724855044e-09,
+          "passed": true,
+          "rms_error": 1.29045870281265e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_12/uhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0404268124612523e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_12/uhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 3.2526065174565133e-19,
+          "max_scaled_error": 1.6263032587282567e-09,
+          "passed": true,
+          "rms_error": 2.1227486139795503e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_13/rhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.7168209913421435e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_13/rhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.7168209913421435e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_13/rhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.369483396765835e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_13/rhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.0842021724855044e-19,
+          "max_scaled_error": 5.421010862427522e-10,
+          "passed": true,
+          "rms_error": 6.25964416140483e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_13/rhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.382125406840739e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_13/rhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.6263032587282567e-19,
+          "max_scaled_error": 8.131516293641283e-10,
+          "passed": true,
+          "rms_error": 9.389466242107245e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_13/uhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8344700758454735e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.146383708388961e-07,
+          "passed": true,
+          "rms_error": 3.864505162624329e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_13/uhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.859774774373896e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_13/uhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0398370208160561e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_13/uhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.168404344971009e-19,
+          "max_scaled_error": 1.0842021724855044e-09,
+          "passed": true,
+          "rms_error": 1.29045870281265e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_13/uhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0404268124612523e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_13/uhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 3.2526065174565133e-19,
+          "max_scaled_error": 1.6263032587282567e-09,
+          "passed": true,
+          "rms_error": 2.1227486139795503e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_2/rhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.1796119636642288e-16,
+          "max_relative_error_nonzero_reference": 2.349520708575616e-13,
+          "max_scaled_error": 5.790866802132723e-07,
+          "passed": true,
+          "rms_error": 1.5410222837122728e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_2/rhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.1796119636642288e-16,
+          "max_relative_error_nonzero_reference": 2.349520708575616e-13,
+          "max_scaled_error": 5.790866802132723e-07,
+          "passed": true,
+          "rms_error": 1.5410222837122728e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_2/rhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.0191500421363742e-17,
+          "max_relative_error_nonzero_reference": 1.7319094538294326e-14,
+          "max_scaled_error": 5.0896000032553794e-08,
+          "passed": true,
+          "rms_error": 4.1362544527827536e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 3
+        },
+        "fixture_2/rhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.168404344971009e-19,
+          "max_scaled_error": 1.0842021724855044e-09,
+          "passed": true,
+          "rms_error": 1.5332934166833742e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_2/rhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.0408340855860843e-17,
+          "max_relative_error_nonzero_reference": 1.7319094538294326e-14,
+          "max_scaled_error": 5.1978893650267704e-08,
+          "passed": true,
+          "rms_error": 4.17910548123138e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 3
+        },
+        "fixture_2/rhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 5.421010862427522e-20,
+          "max_scaled_error": 2.710505431213761e-10,
+          "passed": true,
+          "rms_error": 3.129822080702415e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_2/uhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.1796119636642288e-16,
+          "max_relative_error_nonzero_reference": 9.052986317173406e-13,
+          "max_scaled_error": 5.790866802132723e-07,
+          "passed": true,
+          "rms_error": 1.5957698725629184e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_2/uhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.1796119636642288e-16,
+          "max_relative_error_nonzero_reference": 9.052986317173406e-13,
+          "max_scaled_error": 5.790866802132723e-07,
+          "passed": true,
+          "rms_error": 1.5957421326211954e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_2/uhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 8.565197162635485e-18,
+          "max_relative_error_nonzero_reference": 1.9071871603783634e-14,
+          "max_scaled_error": 4.278642183760926e-08,
+          "passed": true,
+          "rms_error": 4.027905919116702e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 3
+        },
+        "fixture_2/uhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 3.2526065174565133e-19,
+          "max_scaled_error": 1.6263032587282567e-09,
+          "passed": true,
+          "rms_error": 2.0760891004518698e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_2/uhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 8.565197162635485e-18,
+          "max_relative_error_nonzero_reference": 1.9071871603783634e-14,
+          "max_scaled_error": 4.278642183760926e-08,
+          "passed": true,
+          "rms_error": 4.041411166333221e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 3
+        },
+        "fixture_2/uhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 3.2526065174565133e-19,
+          "max_scaled_error": 1.6263032587282567e-09,
+          "passed": true,
+          "rms_error": 1.9794732892213925e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_3/rhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 8.787458607995013e-17,
+          "max_relative_error_nonzero_reference": 1.4228213736924013e-11,
+          "max_scaled_error": 4.3918236565064163e-07,
+          "passed": true,
+          "rms_error": 1.60896856391082e-17,
+          "rtol": 2e-10,
+          "shape": [
+            20,
+            20
+          ],
+          "zero_reference_entries": 108
+        },
+        "fixture_3/rhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 8.787458607995013e-17,
+          "max_relative_error_nonzero_reference": 1.4228213736924013e-11,
+          "max_scaled_error": 4.3918236565064163e-07,
+          "passed": true,
+          "rms_error": 1.6084313580711464e-17,
+          "rtol": 2e-10,
+          "shape": [
+            20,
+            20
+          ],
+          "zero_reference_entries": 108
+        },
+        "fixture_3/rhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.9678269430611905e-17,
+          "max_relative_error_nonzero_reference": 6.18311989981692e-14,
+          "max_scaled_error": 9.836004328924297e-08,
+          "passed": true,
+          "rms_error": 7.743788982006696e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_3/rhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.6263032587282567e-19,
+          "max_scaled_error": 8.131516293641283e-10,
+          "passed": true,
+          "rms_error": 9.897366446106963e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_3/rhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.9678269430611905e-17,
+          "max_relative_error_nonzero_reference": 6.18311989981692e-14,
+          "max_scaled_error": 9.836004328924297e-08,
+          "passed": true,
+          "rms_error": 7.77289222518164e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_3/rhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.168404344971009e-19,
+          "max_scaled_error": 1.0842021724855044e-09,
+          "passed": true,
+          "rms_error": 1.5959023863575186e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_3/uhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 8.901299836105991e-17,
+          "max_relative_error_nonzero_reference": 1.4234330982454497e-11,
+          "max_scaled_error": 4.448719582963316e-07,
+          "passed": true,
+          "rms_error": 1.8324342909743816e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            20,
+            20
+          ],
+          "zero_reference_entries": 216
+        },
+        "fixture_3/uhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 8.765774564545303e-17,
+          "max_relative_error_nonzero_reference": 1.4234330982454497e-11,
+          "max_scaled_error": 4.3809863371812925e-07,
+          "passed": true,
+          "rms_error": 1.8285801268770765e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            20,
+            20
+          ],
+          "zero_reference_entries": 216
+        },
+        "fixture_3/uhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.200930410145574e-17,
+          "max_relative_error_nonzero_reference": 9.690379405981487e-14,
+          "max_scaled_error": 1.100215318329413e-07,
+          "passed": true,
+          "rms_error": 7.836452440205008e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_3/uhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 3.2526065174565133e-19,
+          "max_scaled_error": 1.6263032587282567e-09,
+          "passed": true,
+          "rms_error": 2.444469189145153e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_3/uhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.222614453595284e-17,
+          "max_relative_error_nonzero_reference": 9.78585112426702e-14,
+          "max_scaled_error": 1.1110548781159097e-07,
+          "passed": true,
+          "rms_error": 7.914472075477754e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_3/uhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.168404344971009e-19,
+          "max_scaled_error": 1.0842021724855044e-09,
+          "passed": true,
+          "rms_error": 1.6854607721591133e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_4/rhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.714180007681036e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_4/rhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.713578978712379e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_4/rhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.369483396765835e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_4/rhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 6.776263578034403e-20,
+          "max_scaled_error": 3.3881317890172014e-10,
+          "passed": true,
+          "rms_error": 5.010159905949536e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_4/rhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.382125406840739e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_4/rhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.6263032587282567e-19,
+          "max_scaled_error": 8.131516293641283e-10,
+          "passed": true,
+          "rms_error": 1.017192176228285e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_4/uhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8344700758454735e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.146383708388961e-07,
+          "passed": true,
+          "rms_error": 3.8563770185036444e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_4/uhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8344700758454735e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.146383708388961e-07,
+          "passed": true,
+          "rms_error": 3.8563770185036444e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_4/uhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0398370208160561e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_4/uhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0328790734103208e-19,
+          "max_scaled_error": 1.0164395367051604e-09,
+          "passed": true,
+          "rms_error": 1.1943665156283185e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_4/uhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0404268124612523e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_4/uhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 3.1170812458958252e-19,
+          "max_scaled_error": 1.5585406229479126e-09,
+          "passed": true,
+          "rms_error": 2.1126299044741303e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_5/rhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.714180007681036e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_5/rhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.713578978712379e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_5/rhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.369483396765835e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_5/rhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.0842021724855044e-19,
+          "max_scaled_error": 5.421010862427522e-10,
+          "passed": true,
+          "rms_error": 6.25964416140483e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_5/rhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.382125406840739e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_5/rhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.6263032587282567e-19,
+          "max_scaled_error": 8.131516293641283e-10,
+          "passed": true,
+          "rms_error": 9.389466242107245e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_5/uhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8344700758454735e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.146383708388961e-07,
+          "passed": true,
+          "rms_error": 3.857756173076761e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_5/uhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8344700758454735e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.146383708388961e-07,
+          "passed": true,
+          "rms_error": 3.8563770185036444e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_5/uhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0398370208160561e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_5/uhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.168404344971009e-19,
+          "max_scaled_error": 1.0842021724855044e-09,
+          "passed": true,
+          "rms_error": 1.29045870281265e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_5/uhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0404268124612523e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_5/uhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 3.2526065174565133e-19,
+          "max_scaled_error": 1.6263032587282567e-09,
+          "passed": true,
+          "rms_error": 2.1227486139795503e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_6/rhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.714180007681036e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_6/rhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.714180007681036e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_6/rhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.369483396765835e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_6/rhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.0842021724855044e-19,
+          "max_scaled_error": 5.421010862427522e-10,
+          "passed": true,
+          "rms_error": 6.25964416140483e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_6/rhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.382125406840739e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_6/rhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.6263032587282567e-19,
+          "max_scaled_error": 8.131516293641283e-10,
+          "passed": true,
+          "rms_error": 9.389466242107245e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_6/uhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8344700758454735e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.146383708388961e-07,
+          "passed": true,
+          "rms_error": 3.8563770185036444e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_6/uhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8344700758454735e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.146383708388961e-07,
+          "passed": true,
+          "rms_error": 3.85676846841762e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_6/uhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0398370208160561e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_6/uhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.168404344971009e-19,
+          "max_scaled_error": 1.0842021724855044e-09,
+          "passed": true,
+          "rms_error": 1.29045870281265e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_6/uhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0404268124612523e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_6/uhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 3.2526065174565133e-19,
+          "max_scaled_error": 1.6263032587282567e-09,
+          "passed": true,
+          "rms_error": 2.1227486139795503e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_7/rhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0376090825416057e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.71679094558238e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_7/rhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0376090825416057e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.71679094558238e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_7/rhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.369483396765835e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_7/rhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.0842021724855044e-19,
+          "max_scaled_error": 5.421010862427522e-10,
+          "passed": true,
+          "rms_error": 6.25964416140483e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_7/rhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.382125406840739e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_7/rhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.6263032587282567e-19,
+          "max_scaled_error": 8.131516293641283e-10,
+          "passed": true,
+          "rms_error": 9.389466242107245e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_7/uhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8344700758454735e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.146383708388961e-07,
+          "passed": true,
+          "rms_error": 3.858298081150479e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_7/uhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8344700758454735e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.146383708388961e-07,
+          "passed": true,
+          "rms_error": 3.856534182482783e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_7/uhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0398370208160561e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_7/uhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.168404344971009e-19,
+          "max_scaled_error": 1.0842021724855044e-09,
+          "passed": true,
+          "rms_error": 1.29045870281265e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_7/uhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0404268124612523e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_7/uhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 3.2526065174565133e-19,
+          "max_scaled_error": 1.6263032587282567e-09,
+          "passed": true,
+          "rms_error": 2.1227486139795503e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_8/rhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8344700758454735e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.146383708388961e-07,
+          "passed": true,
+          "rms_error": 3.717569014847128e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_8/rhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8344700758454735e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.146383708388961e-07,
+          "passed": true,
+          "rms_error": 3.717569014847128e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_8/rhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.369483396765835e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_8/rhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.0842021724855044e-19,
+          "max_scaled_error": 5.421010862427522e-10,
+          "passed": true,
+          "rms_error": 6.25964416140483e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_8/rhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.382125406840739e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_8/rhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.6263032587282567e-19,
+          "max_scaled_error": 8.131516293641283e-10,
+          "passed": true,
+          "rms_error": 9.389466242107245e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_8/uhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.859805306531225e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_8/uhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.859805306531225e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_8/uhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0398370208160561e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_8/uhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.168404344971009e-19,
+          "max_scaled_error": 1.0842021724855044e-09,
+          "passed": true,
+          "rms_error": 1.29045870281265e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_8/uhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0404268124612523e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_8/uhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 3.2526065174565133e-19,
+          "max_scaled_error": 1.6263032587282567e-09,
+          "passed": true,
+          "rms_error": 2.1227486139795503e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_9/rhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.718611272663057e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_9/rhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8257964584655895e-16,
+          "max_relative_error_nonzero_reference": 2.0301086810107776e-12,
+          "max_scaled_error": 9.103138395346934e-07,
+          "passed": true,
+          "rms_error": 3.718611272663057e-17,
+          "rtol": 2e-10,
+          "shape": [
+            25,
+            25
+          ],
+          "zero_reference_entries": 181
+        },
+        "fixture_9/rhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.369483396765835e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_9/rhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.0842021724855044e-19,
+          "max_scaled_error": 5.421010862427522e-10,
+          "passed": true,
+          "rms_error": 6.25964416140483e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_9/rhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0274580625478933e-17,
+          "max_relative_error_nonzero_reference": 3.8866338064438254e-13,
+          "max_scaled_error": 1.0130895579934667e-07,
+          "passed": true,
+          "rms_error": 9.382125406840739e-18,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_9/rhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.6263032587282567e-19,
+          "max_scaled_error": 8.131516293641283e-10,
+          "passed": true,
+          "rms_error": 9.389466242107245e-20,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_9/uhf_fock": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8344700758454735e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.146383708388961e-07,
+          "passed": true,
+          "rms_error": 3.864765054479796e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_9/uhf_fock_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 1.8344700758454735e-16,
+          "max_relative_error_nonzero_reference": 2.005037799648269e-12,
+          "max_scaled_error": 9.146383708388961e-07,
+          "passed": true,
+          "rms_error": 3.859692701277485e-17,
+          "rtol": 2e-10,
+          "shape": [
+            2,
+            25,
+            25
+          ],
+          "zero_reference_entries": 362
+        },
+        "fixture_9/uhf_force": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0398370208160561e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_9/uhf_force/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.168404344971009e-19,
+          "max_scaled_error": 1.0842021724855044e-09,
+          "passed": true,
+          "rms_error": 1.29045870281265e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        },
+        "fixture_9/uhf_force_persistent": {
+          "atol": 2e-10,
+          "max_absolute_error": 2.0491421059976034e-17,
+          "max_relative_error_nonzero_reference": 1.0805770931646921e-13,
+          "max_scaled_error": 1.0241250636948746e-07,
+          "passed": true,
+          "rms_error": 1.0404268124612523e-17,
+          "rtol": 2e-10,
+          "shape": [
+            4,
+            3
+          ],
+          "zero_reference_entries": 0
+        },
+        "fixture_9/uhf_force_persistent/translation": {
+          "atol": 2e-10,
+          "max_absolute_error": 3.2526065174565133e-19,
+          "max_scaled_error": 1.6263032587282567e-09,
+          "passed": true,
+          "rms_error": 2.1227486139795503e-19,
+          "rtol": 0,
+          "shape": [
+            3
+          ]
+        }
+      },
+      "compilation": {
+        "reason": null,
+        "seconds": 74.90190427401103
+      },
+      "device": {
+        "driver": 13000,
+        "kernels": [
+          {
+            "active_blocks_per_sm": 6,
+            "local_bytes": 16,
+            "name": "rhf_fock",
+            "registers": 168,
+            "shared_bytes": 2264,
+            "threads": 64
+          },
+          {
+            "active_blocks_per_sm": 6,
+            "local_bytes": 16,
+            "name": "rhf_fock_persistent",
+            "registers": 168,
+            "shared_bytes": 2272,
+            "threads": 64
+          },
+          {
+            "active_blocks_per_sm": 6,
+            "local_bytes": 16,
+            "name": "uhf_fock",
+            "registers": 168,
+            "shared_bytes": 2264,
+            "threads": 64
+          },
+          {
+            "active_blocks_per_sm": 6,
+            "local_bytes": 16,
+            "name": "uhf_fock_persistent",
+            "registers": 168,
+            "shared_bytes": 2272,
+            "threads": 64
+          },
+          {
+            "active_blocks_per_sm": 6,
+            "local_bytes": 880,
+            "name": "rhf_force",
+            "registers": 168,
+            "shared_bytes": 2848,
+            "threads": 64
+          },
+          {
+            "active_blocks_per_sm": 6,
+            "local_bytes": 928,
+            "name": "rhf_force_persistent",
+            "registers": 168,
+            "shared_bytes": 2856,
+            "threads": 64
+          },
+          {
+            "active_blocks_per_sm": 6,
+            "local_bytes": 880,
+            "name": "uhf_force",
+            "registers": 168,
+            "shared_bytes": 2848,
+            "threads": 64
+          },
+          {
+            "active_blocks_per_sm": 6,
+            "local_bytes": 928,
+            "name": "uhf_force_persistent",
+            "registers": 168,
+            "shared_bytes": 2856,
+            "threads": 64
+          }
+        ],
+        "kind": "device",
+        "major": 12,
+        "minor": 0,
+        "name": "NVIDIA GeForce RTX 5090",
+        "runtime": 12090
+      },
+      "hardware": {
+        "reason": null,
+        "status": "pass"
+      },
+      "hash_reasons": {},
+      "hashes": {
+        "equation": "ac109808515b609273eeb7f4c8744fa798a898d7df3ebeea51575f493756a477",
+        "ir": "ac109808515b609273eeb7f4c8744fa798a898d7df3ebeea51575f493756a477",
+        "schedule": "596dd1985909730f91084547ee1e6079b1590fe0c642c9245e4bc0e098ff4b34",
+        "source": "05c7edb78b2d301d319a7888886bcfd94793830d8dc453662d0ad2ea67843c8c"
+      },
+      "inputs_hash": "ec55599b35b6b90b459c0175c98cd228ed2b34f61aaba8187bd759cdcb362f6e",
+      "memory": {
+        "allocated_bytes": null,
+        "peak_bytes": null,
+        "reason": "not measured"
+      },
+      "performance": {
+        "reason": "no comparison registered",
+        "status": "not-run"
+      },
+      "residuals": {},
+      "revision": "5592bac93697bafdf2abef42df10223b02b371a1",
+      "schema": "vibeqc.validation",
+      "schema_version": 1,
+      "settings": {
+        "device": "cuda",
+        "dirty": true,
+        "fast_compile": false,
+        "fixture_hashes": [
+          "aca626be21688e752f4a4e8766dbcb39dfc691eeb3e599799a9a6f4d9d023fd8",
+          "2c621d89e1a725ea538b1cd2eebdad534a7aaae2801121993136572f2fc9151a",
+          "a1bf94e7c9ab8c8717f52930aa3a4a7cc00ef1d8695651f4f371ee1baaeec0ee",
+          "e8ba5c8090dcbe048fdcd1a17a40e4e2a527d71fa997da264d49d0eb9ec1d723",
+          "661b6776055f09a50917b3a5c0278be5c926fb43f15807e807ff420acca2d934",
+          "22ef254f8a023ebe07627ae97b455c8e2b394d7bb7a794b184b92f24ac3a82da",
+          "29b2f1bff61c14edecfec59d0d63e2ebca9eef5489d1b2d194d4fbc9ac02fa1e",
+          "92d9b7c538f3571fc1969205f364b75e9a76ddb96553d17b4f8acaa2d04e0a75",
+          "1f4d69f9e2792bb9d04f6c4c655d1a027690bcb18aff64db78312fab50307a36",
+          "596a15c911de3ab368d11680c57bf80d24f736c728c278ebae37df29deb7e5a3",
+          "a6c339b26c1e834befc843bb8dfd174cd06b24aade0653c0aaced7562b666143",
+          "9c57814891675a4bc41c69778d3c7a058bac5ce3426dc1f3ff4a675d191fe58a",
+          "1dfda0be67e3076dbe64a94f64661162d82081f6f03c069c92e9c74478f7e805",
+          "2b25f3fdab16b34d910a237d05de4e04d6304cd4ef69df93428af26585e9f4af"
+        ],
+        "reference": "independent libcint values/all-center derivatives and explicit ERI orbit loops",
+        "screening": 0.0,
+        "seed": 135,
+        "slurm_command": [
+          "srun",
+          "--partition=main",
+          "--gres=gpu:5090:1",
+          "--nodes=1",
+          "--ntasks=1",
+          "--time=00:10:00",
+          "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-cache/3486b6cd248329b20bab03975874bdc1bd8877a63c15da1e61eb59698eabba6c/numerical",
+          "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-cache/3486b6cd248329b20bab03975874bdc1bd8877a63c15da1e61eb59698eabba6c/fixture-0.bin",
+          "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-cache/3486b6cd248329b20bab03975874bdc1bd8877a63c15da1e61eb59698eabba6c/fixture-1.bin",
+          "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-cache/3486b6cd248329b20bab03975874bdc1bd8877a63c15da1e61eb59698eabba6c/fixture-2.bin",
+          "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-cache/3486b6cd248329b20bab03975874bdc1bd8877a63c15da1e61eb59698eabba6c/fixture-3.bin",
+          "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-cache/3486b6cd248329b20bab03975874bdc1bd8877a63c15da1e61eb59698eabba6c/fixture-4.bin",
+          "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-cache/3486b6cd248329b20bab03975874bdc1bd8877a63c15da1e61eb59698eabba6c/fixture-5.bin",
+          "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-cache/3486b6cd248329b20bab03975874bdc1bd8877a63c15da1e61eb59698eabba6c/fixture-6.bin",
+          "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-cache/3486b6cd248329b20bab03975874bdc1bd8877a63c15da1e61eb59698eabba6c/fixture-7.bin",
+          "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-cache/3486b6cd248329b20bab03975874bdc1bd8877a63c15da1e61eb59698eabba6c/fixture-8.bin",
+          "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-cache/3486b6cd248329b20bab03975874bdc1bd8877a63c15da1e61eb59698eabba6c/fixture-9.bin",
+          "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-cache/3486b6cd248329b20bab03975874bdc1bd8877a63c15da1e61eb59698eabba6c/fixture-10.bin",
+          "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-cache/3486b6cd248329b20bab03975874bdc1bd8877a63c15da1e61eb59698eabba6c/fixture-11.bin",
+          "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-cache/3486b6cd248329b20bab03975874bdc1bd8877a63c15da1e61eb59698eabba6c/fixture-12.bin",
+          "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-cache/3486b6cd248329b20bab03975874bdc1bd8877a63c15da1e61eb59698eabba6c/fixture-13.bin"
+        ]
+      },
+      "solver_iterations": [],
+      "solver_trace_reason": "not exposed by executor",
+      "stages": {
+        "compilation": {
+          "reason": null,
+          "status": "pass"
+        },
+        "endpoint": {
+          "reason": "no evidence registered",
+          "status": "not-run"
+        },
+        "numerical": {
+          "reason": null,
+          "status": "pass"
+        },
+        "production": {
+          "reason": "no evidence registered",
+          "status": "not-run"
+        },
+        "representation": {
+          "reason": null,
+          "status": "pass"
+        },
+        "source": {
+          "reason": null,
+          "status": "pass"
+        }
+      },
+      "subject": "f-shell/fpdd",
+      "tier": "gpu-numerical",
+      "timings": [],
+      "toolchain": {
+        "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Mon_May_19_08:50:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.82\nBuild cuda_12.9.r12.9/compiler.36001619_0",
+        "numpy": "2.4.6",
+        "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0",
+        "ptxas": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0",
+        "pyscf": "2.14.0",
+        "python": "3.11.14"
+      }
+    },
+    "executable_hash": "375048459dea384eec7e60b765e8ec833be925694ff3d64b806bfd7e19e1b4f3",
+    "finite_differences": [],
+    "fixture_count": 14,
+    "raw_output_hash": "de434186e5290bfc578ac6df7c567406e311442f597745c41d26a07f3ba498c7",
+    "reason": null,
+    "relative_error_reanalysis": {
+      "original_errors_unchanged": true,
+      "raw_gpu_outputs_reused": true,
+      "validator_source_hash": "a299e1d11ca1e490b5491bccd8377bb52ddd01da15c6caf445f7687a1bf56005"
+    },
+    "status": "pass",
+    "variants": [
+      "cartesian",
+      "reversed_pairs",
+      "coincident",
+      "spherical",
+      "atom_permutation",
+      "reversed_bra",
+      "reversed_ket",
+      "shell_permutation_1",
+      "shell_permutation_2",
+      "shell_permutation_3",
+      "shell_permutation_4",
+      "shell_permutation_5",
+      "shell_permutation_6",
+      "shell_permutation_7"
+    ]
+  },
+  "prior_evidence": {
+    "reason": "historical selection does not establish all current-source acceptance gates",
+    "records": [],
+    "status": "not-run"
+  },
+  "promotion": {
+    "reason": "unselected pending class-specific endpoint acceptance",
+    "status": "not-run"
+  },
+  "resources": {
+    "cubin_kernels": {
+      "generated_fpdd_shell_class_fock_rhf_kernel": {
+        "EXTRA_SHARED": 1024,
+        "LOCAL": 0,
+        "REG": 168,
+        "SHARED": 3288,
+        "STACK": 16
+      },
+      "generated_fpdd_shell_class_fock_rhf_persistent_kernel": {
+        "EXTRA_SHARED": 1024,
+        "LOCAL": 0,
+        "REG": 168,
+        "SHARED": 3296,
+        "STACK": 16
+      },
+      "generated_fpdd_shell_class_fock_uhf_kernel": {
+        "EXTRA_SHARED": 1024,
+        "LOCAL": 0,
+        "REG": 168,
+        "SHARED": 3288,
+        "STACK": 16
+      },
+      "generated_fpdd_shell_class_fock_uhf_persistent_kernel": {
+        "EXTRA_SHARED": 1024,
+        "LOCAL": 0,
+        "REG": 168,
+        "SHARED": 3296,
+        "STACK": 16
+      },
+      "generated_fpdd_shell_class_force_rhf_kernel": {
+        "EXTRA_SHARED": 1024,
+        "LOCAL": 0,
+        "REG": 168,
+        "SHARED": 3872,
+        "STACK": 880
+      },
+      "generated_fpdd_shell_class_force_rhf_persistent_kernel": {
+        "EXTRA_SHARED": 1024,
+        "LOCAL": 0,
+        "REG": 168,
+        "SHARED": 3880,
+        "STACK": 928
+      },
+      "generated_fpdd_shell_class_force_uhf_kernel": {
+        "EXTRA_SHARED": 1024,
+        "LOCAL": 0,
+        "REG": 168,
+        "SHARED": 3872,
+        "STACK": 880
+      },
+      "generated_fpdd_shell_class_force_uhf_persistent_kernel": {
+        "EXTRA_SHARED": 1024,
+        "LOCAL": 0,
+        "REG": 168,
+        "SHARED": 3880,
+        "STACK": 928
+      }
+    },
+    "cubins": [
+      {
+        "bytes": 6255160,
+        "sha256": "2e71ea5ff9bcf8ce6489001bf88dedd7a9b2cb1f9f04f54be1b15ee79a75f261"
+      }
+    ],
+    "cuobjdump": "\nFatbin elf code:\n================\narch = sm_120\ncode version = [1,8]\nhost = linux\ncompile_size = 64bit\n\nResource usage:\n Common:\n  GLOBAL:0 CONSTANT[3]:2482\n Function generated_fpdd_shell_class_fock_uhf_persistent_kernel:\n  REG:168 STACK:16 SHARED:3296 LOCAL:0 CONSTANT[0]:992 TEXTURE:0 SURFACE:0 SAMPLER:0\n Function generated_fpdd_shell_class_fock_rhf_persistent_kernel:\n  REG:168 STACK:16 SHARED:3296 LOCAL:0 CONSTANT[0]:992 TEXTURE:0 SURFACE:0 SAMPLER:0\n Function generated_fpdd_shell_class_fock_uhf_kernel:\n  REG:168 STACK:16 SHARED:3288 LOCAL:0 CONSTANT[0]:976 TEXTURE:0 SURFACE:0 SAMPLER:0\n Function generated_fpdd_shell_class_fock_rhf_kernel:\n  REG:168 STACK:16 SHARED:3288 LOCAL:0 CONSTANT[0]:976 TEXTURE:0 SURFACE:0 SAMPLER:0\n Function generated_fpdd_shell_class_force_uhf_persistent_kernel:\n  REG:168 STACK:928 SHARED:3880 LOCAL:0 CONSTANT[0]:992 TEXTURE:0 SURFACE:0 SAMPLER:0\n Function generated_fpdd_shell_class_force_rhf_persistent_kernel:\n  REG:168 STACK:928 SHARED:3880 LOCAL:0 CONSTANT[0]:992 TEXTURE:0 SURFACE:0 SAMPLER:0\n Function generated_fpdd_shell_class_force_uhf_kernel:\n  REG:168 STACK:880 SHARED:3872 LOCAL:0 CONSTANT[0]:976 TEXTURE:0 SURFACE:0 SAMPLER:0\n Function generated_fpdd_shell_class_force_rhf_kernel:\n  REG:168 STACK:880 SHARED:3872 LOCAL:0 CONSTANT[0]:976 TEXTURE:0 SURFACE:0 SAMPLER:0\n\nFatbin ptx code:\n================\narch = sm_120\ncode version = [8,8]\nhost = linux\ncompile_size = 64bit\ncompressed\nptxasOptions = -v  \n",
+    "cuobjdump_hash": "9a70470a89634df1590315659a7316689205cfdbe65d8ddc833aaf162a1f10bd",
+    "kernels": [
+      {
+        "function": "generated_fpdd_shell_class_fock_uhf_persistent_kernel",
+        "registers": 168,
+        "shared_bytes": 2272,
+        "spill_load_bytes": 16,
+        "spill_store_bytes": 16,
+        "stack_bytes": 16
+      },
+      {
+        "function": "generated_fpdd_shell_class_fock_rhf_persistent_kernel",
+        "registers": 168,
+        "shared_bytes": 2272,
+        "spill_load_bytes": 16,
+        "spill_store_bytes": 16,
+        "stack_bytes": 16
+      },
+      {
+        "function": "generated_fpdd_shell_class_fock_uhf_kernel",
+        "registers": 168,
+        "shared_bytes": 2264,
+        "spill_load_bytes": 16,
+        "spill_store_bytes": 16,
+        "stack_bytes": 16
+      },
+      {
+        "function": "generated_fpdd_shell_class_fock_rhf_kernel",
+        "registers": 168,
+        "shared_bytes": 2264,
+        "spill_load_bytes": 16,
+        "spill_store_bytes": 16,
+        "stack_bytes": 16
+      },
+      {
+        "function": "generated_fpdd_shell_class_force_uhf_persistent_kernel",
+        "registers": 168,
+        "shared_bytes": 2856,
+        "spill_load_bytes": 4980,
+        "spill_store_bytes": 1404,
+        "stack_bytes": 928
+      },
+      {
+        "function": "generated_fpdd_shell_class_force_rhf_persistent_kernel",
+        "registers": 168,
+        "shared_bytes": 2856,
+        "spill_load_bytes": 4980,
+        "spill_store_bytes": 1404,
+        "stack_bytes": 928
+      },
+      {
+        "function": "generated_fpdd_shell_class_force_uhf_kernel",
+        "registers": 168,
+        "shared_bytes": 2848,
+        "spill_load_bytes": 4856,
+        "spill_store_bytes": 1340,
+        "stack_bytes": 880
+      },
+      {
+        "function": "generated_fpdd_shell_class_force_rhf_kernel",
+        "registers": 168,
+        "shared_bytes": 2848,
+        "spill_load_bytes": 4856,
+        "spill_store_bytes": 1340,
+        "stack_bytes": 880
+      }
+    ],
+    "occupancy": {
+      "kernels": [
+        {
+          "active_blocks_per_sm": 6,
+          "local_bytes": 16,
+          "name": "rhf_fock",
+          "registers": 168,
+          "shared_bytes": 2264,
+          "threads": 64
+        },
+        {
+          "active_blocks_per_sm": 6,
+          "local_bytes": 16,
+          "name": "rhf_fock_persistent",
+          "registers": 168,
+          "shared_bytes": 2272,
+          "threads": 64
+        },
+        {
+          "active_blocks_per_sm": 6,
+          "local_bytes": 16,
+          "name": "uhf_fock",
+          "registers": 168,
+          "shared_bytes": 2264,
+          "threads": 64
+        },
+        {
+          "active_blocks_per_sm": 6,
+          "local_bytes": 16,
+          "name": "uhf_fock_persistent",
+          "registers": 168,
+          "shared_bytes": 2272,
+          "threads": 64
+        },
+        {
+          "active_blocks_per_sm": 6,
+          "local_bytes": 880,
+          "name": "rhf_force",
+          "registers": 168,
+          "shared_bytes": 2848,
+          "threads": 64
+        },
+        {
+          "active_blocks_per_sm": 6,
+          "local_bytes": 928,
+          "name": "rhf_force_persistent",
+          "registers": 168,
+          "shared_bytes": 2856,
+          "threads": 64
+        },
+        {
+          "active_blocks_per_sm": 6,
+          "local_bytes": 880,
+          "name": "uhf_force",
+          "registers": 168,
+          "shared_bytes": 2848,
+          "threads": 64
+        },
+        {
+          "active_blocks_per_sm": 6,
+          "local_bytes": 928,
+          "name": "uhf_force_persistent",
+          "registers": 168,
+          "shared_bytes": 2856,
+          "threads": 64
+        }
+      ],
+      "reason": null,
+      "status": "pass"
+    },
+    "reason": null,
+    "spill_free": false,
+    "status": "pass"
+  },
+  "shell_class": "fpdd",
+  "source": {
+    "component_count": 1080,
+    "component_order_hash": "712eee6cb7addc94dd6780406d54ac2327a8ca422a4e36dcbce58a4b73e6c2a9",
+    "deterministic_generations": 2,
+    "independent_derivative_centers": [
+      0,
+      1,
+      2
+    ],
+    "ir_hash": "ac109808515b609273eeb7f4c8744fa798a898d7df3ebeea51575f493756a477",
+    "reason": null,
+    "recovered_derivative_centers": [
+      3
+    ],
+    "registry_class_index": 33,
+    "schedule": {
+      "algebra_form": "binary",
+      "algebra_fusion": "separate",
+      "algebra_ordering": "topological",
+      "algebra_placement": "materialized_cse",
+      "block_threads": 64,
+      "component_tile": 64,
+      "kind": "tiled_components",
+      "maximum_registers": 0,
+      "minimum_blocks_per_sm": 0,
+      "pair_orientation": "canonical",
+      "pair_storage": "materialized",
+      "shared_coulomb": true,
+      "tasks_per_warp": 1,
+      "unroll_pair_terms": true
+    },
+    "source_bytes": 56293,
+    "source_hash": "409670aa3e932260ebb1fa6b8dd7c8f53858aafdaa176ce7f25241253f00e9c5",
+    "status": "pass",
+    "symbols": [
+      "generated_fpdd_shell_class_fock_rhf_kernel",
+      "generated_fpdd_shell_class_fock_rhf_persistent_kernel",
+      "generated_fpdd_shell_class_fock_uhf_kernel",
+      "generated_fpdd_shell_class_fock_uhf_persistent_kernel",
+      "generated_fpdd_shell_class_force_rhf_kernel",
+      "generated_fpdd_shell_class_force_rhf_persistent_kernel",
+      "generated_fpdd_shell_class_force_uhf_kernel",
+      "generated_fpdd_shell_class_force_uhf_persistent_kernel"
+    ]
+  }
+}

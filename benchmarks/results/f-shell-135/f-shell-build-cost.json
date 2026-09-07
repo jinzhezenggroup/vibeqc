@@ -1,0 +1,473 @@
+{
+  "build_span_seconds": 1479.525,
+  "command_count": 92,
+  "command_seconds_sum": 2998.023,
+  "cuda_fast_compile": false,
+  "cuda_jobs": 2,
+  "method": "single release Ninja invocation; recorded command start/end timestamps",
+  "records": [
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dddd.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dddp.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ddds.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ddpp.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ddps.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ddss.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dpdp.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dpds.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dppp.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dpps.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dpss.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dsds.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dspp.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dsps.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dsss.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fpps.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_pppp.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ppps.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ppss.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_psps.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_psss.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ssss.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/vibeqc_generated_shell_registry.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "generated/production_shell_kernels/vibeqc_generated_shell_registry.hpp",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dddd.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dddp.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ddds.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ddpp.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ddps.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ddss.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dpdp.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dpds.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dppp.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dpps.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dpss.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dsds.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dspp.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dsps.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dsss.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fpps.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_pppp.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ppps.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ppss.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_psps.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_psss.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ssss.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/vibeqc_generated_shell_registry.cu",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 2722,
+      "output": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/generated/production_shell_kernels/vibeqc_generated_shell_registry.hpp",
+      "start_ms": 3
+    },
+    {
+      "end_ms": 113171,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_dddd.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dddd.cu.o",
+      "start_ms": 2723
+    },
+    {
+      "end_ms": 114258,
+      "output": "CMakeFiles/vibeqc.dir/src/api/c_api_batch.cpp.o",
+      "start_ms": 113171
+    },
+    {
+      "end_ms": 114940,
+      "output": "CMakeFiles/vibeqc.dir/src/api/c_api_calculation.cpp.o",
+      "start_ms": 114258
+    },
+    {
+      "end_ms": 115467,
+      "output": "CMakeFiles/vibeqc.dir/src/api/c_api_common.cpp.o",
+      "start_ms": 114940
+    },
+    {
+      "end_ms": 116183,
+      "output": "CMakeFiles/vibeqc.dir/src/api/c_api_context.cpp.o",
+      "start_ms": 115467
+    },
+    {
+      "end_ms": 116735,
+      "output": "CMakeFiles/vibeqc.dir/src/api/error.cpp.o",
+      "start_ms": 116183
+    },
+    {
+      "end_ms": 119533,
+      "output": "CMakeFiles/vibeqc.dir/src/integrals/s_integrals.cpp.o",
+      "start_ms": 116736
+    },
+    {
+      "end_ms": 121072,
+      "output": "CMakeFiles/vibeqc.dir/src/methods/hf_method.cpp.o",
+      "start_ms": 119533
+    },
+    {
+      "end_ms": 121809,
+      "output": "CMakeFiles/vibeqc.dir/src/methods/registry.cpp.o",
+      "start_ms": 121072
+    },
+    {
+      "end_ms": 122574,
+      "output": "CMakeFiles/vibeqc.dir/src/molecule/basis.cpp.o",
+      "start_ms": 121809
+    },
+    {
+      "end_ms": 122961,
+      "output": "CMakeFiles/vibeqc.dir/src/runtime/context.cpp.o",
+      "start_ms": 122574
+    },
+    {
+      "end_ms": 124459,
+      "output": "CMakeFiles/vibeqc.dir/src/scf/density_fitting.cpp.o",
+      "start_ms": 122961
+    },
+    {
+      "end_ms": 127292,
+      "output": "CMakeFiles/vibeqc.dir/src/scf/fleet.cpp.o",
+      "start_ms": 124459
+    },
+    {
+      "end_ms": 132322,
+      "output": "CMakeFiles/vibeqc.dir/src/scf/rhf.cpp.o",
+      "start_ms": 127293
+    },
+    {
+      "end_ms": 132604,
+      "output": "CMakeFiles/vibeqc.dir/src/scf/cuda/rhf_policy.cpp.o",
+      "start_ms": 132322
+    },
+    {
+      "end_ms": 134656,
+      "output": "CMakeFiles/vibeqc.dir/src/runtime/cuda_runtime.cu.o",
+      "start_ms": 132604
+    },
+    {
+      "end_ms": 141173,
+      "output": "CMakeFiles/vibeqc.dir/src/scf/cuda_density_fitting.cu.o",
+      "start_ms": 134657
+    },
+    {
+      "end_ms": 144708,
+      "output": "CMakeFiles/vibeqc.dir/src/scf/cuda_eigensolver_probe.cu.o",
+      "start_ms": 141173
+    },
+    {
+      "end_ms": 522433,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_dddp.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dddp.cu.o",
+      "start_ms": 2723
+    },
+    {
+      "end_ms": 524780,
+      "output": "CMakeFiles/vibeqc.dir/generated/production_shell_kernels/vibeqc_generated_shell_registry.cu.o",
+      "start_ms": 522433
+    },
+    {
+      "end_ms": 596033,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_ddds.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ddds.cu.o",
+      "start_ms": 524780
+    },
+    {
+      "end_ms": 672161,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_ddpp.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ddpp.cu.o",
+      "start_ms": 596033
+    },
+    {
+      "end_ms": 737822,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_ddps.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ddps.cu.o",
+      "start_ms": 672161
+    },
+    {
+      "end_ms": 1000877,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_ddss.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ddss.cu.o",
+      "start_ms": 737822
+    },
+    {
+      "end_ms": 1063418,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_dpdp.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dpdp.cu.o",
+      "start_ms": 1000877
+    },
+    {
+      "end_ms": 1110540,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_dpds.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dpds.cu.o",
+      "start_ms": 1063418
+    },
+    {
+      "end_ms": 1205017,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_dppp.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dppp.cu.o",
+      "start_ms": 1110540
+    },
+    {
+      "end_ms": 1233720,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_dpps.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dpps.cu.o",
+      "start_ms": 1205017
+    },
+    {
+      "end_ms": 1242642,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_dpss.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dpss.cu.o",
+      "start_ms": 1233720
+    },
+    {
+      "end_ms": 1258203,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_dsds.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dsds.cu.o",
+      "start_ms": 1242642
+    },
+    {
+      "end_ms": 1273078,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_dspp.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dspp.cu.o",
+      "start_ms": 1258203
+    },
+    {
+      "end_ms": 1286835,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_dsps.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dsps.cu.o",
+      "start_ms": 1273078
+    },
+    {
+      "end_ms": 1313474,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_dsss.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dsss.cu.o",
+      "start_ms": 1286835
+    },
+    {
+      "end_ms": 1321066,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_fpps.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fpps.cu.o",
+      "start_ms": 1313474
+    },
+    {
+      "end_ms": 1346550,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_pppp.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_pppp.cu.o",
+      "start_ms": 1321066
+    },
+    {
+      "end_ms": 1368590,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_ppps.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ppps.cu.o",
+      "start_ms": 1346550
+    },
+    {
+      "end_ms": 1379305,
+      "output": "CMakeFiles/vibeqc.dir/src/scf/cuda_rhf.cu.o",
+      "start_ms": 144709
+    },
+    {
+      "end_ms": 1382965,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_ppss.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ppss.cu.o",
+      "start_ms": 1368590
+    },
+    {
+      "end_ms": 1390376,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_psss.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_psss.cu.o",
+      "start_ms": 1382965
+    },
+    {
+      "end_ms": 1393429,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_ssss.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ssss.cu.o",
+      "start_ms": 1390376
+    },
+    {
+      "end_ms": 1479141,
+      "output": "CMakeFiles/vibeqc_aot_sm_120_psps.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_psps.cu.o",
+      "start_ms": 1379306
+    },
+    {
+      "end_ms": 1479523,
+      "output": "libvibeqc.so.0.1.0",
+      "start_ms": 1479141
+    },
+    {
+      "end_ms": 1479528,
+      "output": "libvibeqc.so.0",
+      "start_ms": 1479523
+    },
+    {
+      "end_ms": 1479528,
+      "output": "libvibeqc.so",
+      "start_ms": 1479523
+    }
+  ],
+  "schema": "vibeqc.f_shell_build_cost",
+  "schema_version": 1,
+  "unit_mode": "class"
+}

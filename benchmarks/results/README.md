@@ -7,6 +7,11 @@ They demonstrate the shared validation schema without claiming a speedup.
 The [CG08 TensorIR CPU records](cg08/README.md) check typed tensor fragments,
 serialization, and conservative rewrites against independent coordinate loops.
 
+The [issue #135 f-shell matrix](f-shell-135/README.md) records all-34 release
+resources and independent GPU numerics, actual f-containing molecular endpoints,
+scoped FPPS acceptance, and the unsupported bounded-batch boundary. Development
+measurements retain their original source identity and are verified by hashes.
+
 The current build provenance snapshot is available in
 [`build-ledger-current.json`](build-ledger-current.json).  It records the
 repository state, host/toolchain versions, CMake CUDA architecture values,

@@ -1,0 +1,115 @@
+{
+  "rows": [
+    {
+      "after_max_absolute_error": 5.065392549852277e-16,
+      "after_source_hash": "0696142aebb224d0e5fd4e5a4eac8b217f351682183e9347b1ac1ffc3ea2ac0b",
+      "before_max_absolute_error": 0.014256180976551111,
+      "before_source_hash": "a2c2e18dddc8344d248ad4e450b994bf987ab8d6774b0a77962918206f4fb3d1",
+      "class": "ffss",
+      "consumer": "fock",
+      "fix": "missing triple Wick pairings",
+      "fixture_inputs_hash": "d6d7afb9384f166ee6a0355b0c28221c220f68e3b3e60a138c6e19bd3887ed28"
+    },
+    {
+      "after_max_absolute_error": 6.643990912991171e-16,
+      "after_source_hash": "2c250e8ea8aeb08cc6183958f54b37a74ce7c5a7888b1876137d1ad19dc16aa9",
+      "before_max_absolute_error": 0.05516371322714849,
+      "before_source_hash": "dabbc7598a13acacc31fb229d3bfd9a00db967d914b4fce7cc005b3acf8b1a91",
+      "class": "ffps",
+      "consumer": "fock",
+      "fix": "missing triple Wick pairings",
+      "fixture_inputs_hash": "755875986e6e4c8baa92b897cbb5b27b30cd7075e5cdf5325c7b34d37e5aa4a4"
+    },
+    {
+      "after_max_absolute_error": 3.2873009869760494e-16,
+      "after_source_hash": "756d7660a188e9b077a2968b9168844f4fecaac9329787340f5a5f357a8ac55d",
+      "before_max_absolute_error": 0.03320384819923304,
+      "before_source_hash": "06ddc2d47e2b394237dfcb97aef6f49beee480fb554e37ae755ae88114f07dc9",
+      "class": "ffpp",
+      "consumer": "fock",
+      "fix": "missing triple Wick pairings",
+      "fixture_inputs_hash": "c4f1aeca065528ba90e1b21da12e0d06421e192f2e8167f79ee89f060cdc4368"
+    },
+    {
+      "after_max_absolute_error": 3.1138286393783687e-16,
+      "after_source_hash": "b7e024b08268af1d7e90d09b032b10d37bf6aaefb80f821790fcddac779f150c",
+      "before_max_absolute_error": 0.021892352227152214,
+      "before_source_hash": "07219744c23509885382ae8fd04b6e252050c5f352bb3521a2ea816ef2e92b01",
+      "class": "ffds",
+      "consumer": "fock",
+      "fix": "missing triple Wick pairings",
+      "fixture_inputs_hash": "1fb909e71fca71bddcd0cd5399572e0b14490f48a8553313cb76a13bb3060ccb"
+    },
+    {
+      "after_max_absolute_error": 2.983724378680108e-16,
+      "after_source_hash": "fca0081982e31cf05d8f0f032dca3e7077659a787a017220079709651dc56165",
+      "before_max_absolute_error": 0.054349575452999205,
+      "before_source_hash": "2dac67fa793333758d090806efd72141a8e2e426abf51bcce0e084a7bf1c6f06",
+      "class": "ffdp",
+      "consumer": "fock",
+      "fix": "missing triple Wick pairings",
+      "fixture_inputs_hash": "1e553013e316a30dfefe4b6024e796aa61851c2f471b00d441bbab77a2fba664"
+    },
+    {
+      "after_max_absolute_error": 2.40692882291782e-16,
+      "after_source_hash": "34ede2d9339f8c29c6899f3820aab53b6ead4c32ec024187aca14960e0b4b462",
+      "before_max_absolute_error": 0.05503961540422448,
+      "before_source_hash": "778fb02d10dd9068f169c96490dfb70c44aecfc737ce9dde40e542c8f4983341",
+      "class": "ffdd",
+      "consumer": "fock",
+      "fix": "missing triple Wick pairings",
+      "fixture_inputs_hash": "4345a261ab024d60646519a613a14b37ebf945f280a06045627f6d89a9e4b896"
+    },
+    {
+      "after_max_absolute_error": 4.85722573273506e-16,
+      "after_source_hash": "3de5015fc515bba3f29b917ed25de559257875897925a33c91064a17f01a0d7c",
+      "before_max_absolute_error": 0.043976623422194557,
+      "before_source_hash": "61d21840826c85340a924a327f30ff0859a55b471318354485baa3d89563a713",
+      "class": "fffs",
+      "consumer": "fock",
+      "fix": "missing triple Wick pairings",
+      "fixture_inputs_hash": "daa161c70dc3fff28da7a2e9992fd6b8de38c96f6801ee336e70182edbfcc924"
+    },
+    {
+      "after_max_absolute_error": 1.457167719820518e-16,
+      "after_source_hash": "bb359b3e990ff408187a660a0bc78c329e73eb2c876f9586be021e0cb0fca48d",
+      "before_max_absolute_error": 0.028436184699130507,
+      "before_source_hash": "8fb564e5ae2fe0a2da60d40e02d56857ebef4ca871a9e58ed8c3f904eda2541d",
+      "class": "fffp",
+      "consumer": "fock",
+      "fix": "missing triple Wick pairings",
+      "fixture_inputs_hash": "a4bf769c234b6159612671f44aa6daf927cc00524a3f67c72cbebe8087f510bb"
+    },
+    {
+      "after_max_absolute_error": 4.2327252813834093e-16,
+      "after_source_hash": "116c2968e896e3a704e53ac79b247124a4b7d2bef61e7ed086269597d71535d3",
+      "before_max_absolute_error": 0.022105693459461992,
+      "before_source_hash": "6d143751702d5d518dc27c0a0e8b5ccdc21d141d58cd882ac76bb56fa9814e3f",
+      "class": "fffd",
+      "consumer": "fock",
+      "fix": "missing triple Wick pairings",
+      "fixture_inputs_hash": "07ee1ea68f9be4e4541497de66e7fcf6b91708c4e2ee6ce8a8752f918e80655a"
+    },
+    {
+      "after_max_absolute_error": 1.1188966420050406e-15,
+      "after_source_hash": "9437ed98d115b6e85d413ca5895845270aeb3ec37261265dd25ae23b3f0dcda1",
+      "before_max_absolute_error": 0.03032814053580028,
+      "before_source_hash": "eb87ccd75f058ef95d6bfed2ffba7a0e7c5ed0365dfce27e3fb671d872dc78f3",
+      "class": "ffff",
+      "consumer": "fock",
+      "fix": "missing triple Wick pairings",
+      "fixture_inputs_hash": "4ce604cd4931dd65603f2b6e70d3496593f43f3b151cf3db72390c18c1ff3f12"
+    },
+    {
+      "after_max_absolute_error": 8.521829075736065e-17,
+      "after_source_hash": "9437ed98d115b6e85d413ca5895845270aeb3ec37261265dd25ae23b3f0dcda1",
+      "before_max_absolute_error": 6.780491904967797e-05,
+      "before_source_hash": "eb87ccd75f058ef95d6bfed2ffba7a0e7c5ed0365dfce27e3fb671d872dc78f3",
+      "class": "ffff",
+      "consumer": "force",
+      "fix": "order-13 intermediate overflow",
+      "fixture_inputs_hash": "4ce604cd4931dd65603f2b6e70d3496593f43f3b151cf3db72390c18c1ff3f12"
+    }
+  ],
+  "schema_version": 1
+}
