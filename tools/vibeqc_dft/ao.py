@@ -97,7 +97,16 @@ class NativeAO:
                 "spherical" if self.representation == "real_spherical" else "cartesian"
             ),
         )
-        shells = calculator._shells_for_atoms(self.atoms)
+        try:
+            shells = calculator._shells_for_atoms(
+                self.atoms, operator="ao", derivative_order=3
+            )
+        except NotImplementedError as error:
+            # Keep the AO helper's established validation exception while
+            # retaining the exact per-shell capability diagnostic.
+            raise ValueError(
+                f"AO jets support all-electron bases through f: {error}"
+            ) from error
         if any(s.angular_momentum > 3 for s in shells):
             raise ValueError("AO grids support through f")
         owned = []

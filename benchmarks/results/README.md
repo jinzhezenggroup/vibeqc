@@ -391,3 +391,7 @@ gate, and `3e-12`/`3e-11` energy/force gates. Its Cartesian counterpart uses
 records all gate thresholds and failures in the JSON before exiting with
 status 2 on a failed gate. On a Slurm cluster, run the command inside an
 allocation that owns exactly one GPU.
+
+The [issue #169 external basis contracts](external-basis-169/README.md) archive
+offline data provenance, independent overlap/kinetic and HF gates, supported
+synthetic Fe ions, explicit high-l/ECP rejection, and CPU/CUDA prepared endpoints.

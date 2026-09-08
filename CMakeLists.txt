@@ -525,6 +525,11 @@ if(VIBEQC_BUILD_TESTS)
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
   add_test(NAME vibeqc_spherical_tests COMMAND vibeqc_spherical_tests)
 
+  add_executable(vibeqc_basis_contract_tests tests/native/test_basis_contract.cpp)
+  target_include_directories(vibeqc_basis_contract_tests PRIVATE src)
+  target_link_libraries(vibeqc_basis_contract_tests PRIVATE vibeqc)
+  add_test(NAME vibeqc_basis_contract_tests COMMAND vibeqc_basis_contract_tests)
+
   add_executable(vibeqc_grid_tests tests/native/test_grid.cpp)
   target_link_libraries(vibeqc_grid_tests PRIVATE vibeqc)
   target_include_directories(vibeqc_grid_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)

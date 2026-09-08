@@ -53,6 +53,7 @@ def convergence_payload(result) -> list[dict[str, object]]:
         {
             "converged": item.converged,
             "iterations": item.iterations,
+            "basis_metadata": getattr(item, "basis_metadata", None),
             # Retain the schema-v1 flat fields for readers that have not yet
             # adopted the explicit residual/warm-start groups.
             "energy_change_hartree": item.energy_change,

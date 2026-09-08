@@ -1,0 +1,21 @@
+{
+  "commit": "969c3c8e94d03d546a5f78d9ab7488c70a012ca9",
+  "purpose": "Normalize accepted NumPy scalars before serializing invalid-occupation diagnostics; preserve native preparation rejection and runtime failure isolation.",
+  "native_library_sha256": "50fcf4163695c066699498e7cc1b517beffca79c8fd3bac39576fd41ad43cf54",
+  "source_identity_header": "#ifndef VIBEQC_BUILD_IDENTITY_HPP\n#define VIBEQC_BUILD_IDENTITY_HPP\n\n// The CMake input inventory includes native code and codegen/runtime policy.\ninline constexpr const char* kVibeqcSourceIdentity = \"9c471a7ca11cbf4861d4836302ccfc5cdd03238f315f854192b2d1694805e7a7\";\n#define VIBEQC_CUDA_FAST_COMPILE 0\n#define VIBEQC_TUNING_RELEASE_BUILD 1\n\n#endif\n",
+  "scientific_objects_unchanged": true,
+  "scientific_objects": {
+    "src/molecule/basis.cpp.o": "4c8e45381d39bf2c4fbb21cdd659ab790a9a4b1d7344b91d3e4a704972b7cc7b",
+    "src/scf/cuda_rhf.cu.o": "35db6240913e30a6588e72df88eac10775df74ef38c0713adef06029b5510571",
+    "src/scf/rhf.cpp.o": "810a6347b72b0dc97c16a9b460626c6db1d74f5e6a0530c257d2c21ce1960dd8",
+    "src/scf/density_fitting.cpp.o": "dc343e585bb95ab9d88fa3e38f1b06064eefbdd845e4c18d2e03c14c8a6de339",
+    "src/integrals/s_integrals.cpp.o": "e6c397cb3f145758ba8bf8221314e7f0b6a5fc273a788553166da57ed7056dc7",
+    "src/scf/fleet.cpp.o": "02556108c39594f951552340c8957b2809fb07ba594dbea39847ffc1c37404d5",
+    "src/scf/cuda_density_fitting.cu.o": "87ce5c455a88ea4dafb70cbeec7c590f010dcbf3233cda811228744986d5bd07"
+  },
+  "python_cpu_focused_passed": 47,
+  "gpu_and_identity_passed": 10,
+  "sanitizer_tests_passed": 9,
+  "sanitizer_errors": 0,
+  "sanitizer_leaked_bytes": 0
+}

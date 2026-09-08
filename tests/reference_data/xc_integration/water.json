@@ -1,0 +1,274 @@
+{
+  "schema": "vibeqc.xc-integration-reference",
+  "version": 1,
+  "inputs": {
+    "name": "water",
+    "atomic_numbers": [
+      8,
+      1,
+      1
+    ],
+    "coordinates": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        1.4,
+        0.1,
+        1.1
+      ],
+      [
+        -1.2,
+        0.2,
+        1.3
+      ]
+    ],
+    "shells": [
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            130.7093214,
+            0.1543289673
+          ],
+          [
+            23.80886605,
+            0.5353281423
+          ],
+          [
+            6.443608313,
+            0.4446345422
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            5.033151319,
+            -0.09996722919
+          ],
+          [
+            1.169596125,
+            0.3995128261
+          ],
+          [
+            0.38038896,
+            0.7001154689
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            5.033151319,
+            0.155916275
+          ],
+          [
+            1.169596125,
+            0.6076837186
+          ],
+          [
+            0.38038896,
+            0.3919573931
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            3.425250914,
+            0.1543289673
+          ],
+          [
+            0.6239137298,
+            0.5353281423
+          ],
+          [
+            0.168855404,
+            0.4446345422
+          ]
+        ]
+      },
+      {
+        "atom_index": 2,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            3.425250914,
+            0.1543289673
+          ],
+          [
+            0.6239137298,
+            0.5353281423
+          ],
+          [
+            0.168855404,
+            0.4446345422
+          ]
+        ]
+      }
+    ],
+    "basis_representation": "cartesian",
+    "charge": 0,
+    "multiplicity": 1
+  },
+  "inputs_hash": "3341d9d744abb2deaf2e13f1fb24ba931c83bf7d778e15c28669a7c04d71a30d",
+  "source_grid_identity": "8fec6d6860e298b766a08a3458397939065e43479b8dbafd0b3486b61dfab78e",
+  "reference": {
+    "PySCF": "2.14.0",
+    "Libxc": "7.0.0",
+    "NumPy": "2.2.6",
+    "python": "3.11.16 (main, Sep  1 2026, 14:18:37) [Clang 22.1.3 ]",
+    "actual_angular_momenta": [
+      0,
+      0,
+      1,
+      0,
+      0
+    ],
+    "pyscf_numint_sha256": "ff7384551c7a6b80ff8a5ffcd915eb8bfbf6ca4b8f987f912aa82a1d6edda7e8",
+    "exporter_sha256": "fc83ad88b16fd7269686315be2f4fb42626eacabf82034e3a3a35fd432f90c50",
+    "basis_adapter_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+    "functionals": {
+      "LDA_XC_PW": "LDA_X,LDA_C_PW",
+      "PBE": "GGA_X_PBE,GGA_C_PBE"
+    },
+    "ao_cutoff": 1e-30,
+    "threads": 1,
+    "oracle": "PySCF NumInt.nr_rks/nr_uks (independent AO, density, XC and matrix assembly)"
+  },
+  "conventions": {
+    "coordinates": "Bohr",
+    "energy": "Hartree",
+    "weights": "Bohr^3, already partitioned",
+    "density": "arbitrary PSD with 0.15 identity per spin; no SCF or renormalization",
+    "AO": "unit-normalized contracted Cartesian or real spherical; exact DFT01 shells",
+    "reference_density": "D_pyscf = scale[:,None] * D * scale[None,:]",
+    "reference_potential": "V = scale[:,None] * V_pyscf * scale[None,:]",
+    "energy_density": "Libxc epsilon times total rho, integrated by PySCF"
+  },
+  "arrays": {
+    "points": {
+      "shape": [
+        48,
+        3
+      ],
+      "sha256": "9ef26f7e77bd057dc8d596076e8b002462eee6e58cc69cee68eff69e3433a167"
+    },
+    "weights": {
+      "shape": [
+        48
+      ],
+      "sha256": "7ba4a0539116f2a1e20ae34e90210f02cd5911782772761713f395b5e5b9a13a"
+    },
+    "density_total": {
+      "shape": [
+        7,
+        7
+      ],
+      "sha256": "c022b29b8cb1479e02a50a54a4e8cbc56f16b382d318080c5abcc90e1bf97817"
+    },
+    "density_spin": {
+      "shape": [
+        2,
+        7,
+        7
+      ],
+      "sha256": "d1b3a3f045cc368615db6a655190157134f8751be5a6a2488b7f545afe74678e"
+    },
+    "ao_scale": {
+      "shape": [
+        7
+      ],
+      "sha256": "3d19e0dbfc2e81287a9a617eb15b0a825e07809591c9ca39f5213d1cb220fbc8"
+    },
+    "LDA_XC_PW_total_energy": {
+      "shape": [
+        1
+      ],
+      "sha256": "2c3bb44653dced779f80ce2e87ed2adb6577d57d84ccf9f0b1f04eb93c605d51"
+    },
+    "LDA_XC_PW_total_potential": {
+      "shape": [
+        7,
+        7
+      ],
+      "sha256": "038a8f901f5f060b2025fc98027cb1850bdbdc1e73678937f05803ac8c232ec0"
+    },
+    "LDA_XC_PW_total_electrons": {
+      "shape": [
+        1
+      ],
+      "sha256": "6beaca314b19c74ea7da8914851acfb22a795429c997bc25160d05dab7da383e"
+    },
+    "LDA_XC_PW_spin_energy": {
+      "shape": [
+        1
+      ],
+      "sha256": "3fd8e64502e7ee1994bda59c9f81639018b2227aa49e78e7d87495e32a10da27"
+    },
+    "LDA_XC_PW_spin_potential": {
+      "shape": [
+        2,
+        7,
+        7
+      ],
+      "sha256": "3599cba6f0e84dc1550c23355002cd14830861dfd539f6709d938ebef0395898"
+    },
+    "LDA_XC_PW_spin_electrons": {
+      "shape": [
+        2
+      ],
+      "sha256": "0b85f1dd9e547afdaf0654dffaaca0e45e12b930df0a4e1c4d1ea7a35786fb88"
+    },
+    "PBE_total_energy": {
+      "shape": [
+        1
+      ],
+      "sha256": "b7bcf4f64e7c546408bd3fde8eb6a05ffa8d9f49a237267e2a27382b7d4e31ca"
+    },
+    "PBE_total_potential": {
+      "shape": [
+        7,
+        7
+      ],
+      "sha256": "f5990a64e6b02135e250f38b38f3c085df38f20e96aedcd6f80d6292625cdc06"
+    },
+    "PBE_total_electrons": {
+      "shape": [
+        1
+      ],
+      "sha256": "6beaca314b19c74ea7da8914851acfb22a795429c997bc25160d05dab7da383e"
+    },
+    "PBE_spin_energy": {
+      "shape": [
+        1
+      ],
+      "sha256": "78bc25f875600238aaca5414c28fa23dd4f2e81b06d19e4bd864b773aeee3a72"
+    },
+    "PBE_spin_potential": {
+      "shape": [
+        2,
+        7,
+        7
+      ],
+      "sha256": "93e5559b22452443214697718a08a28ac660edb5082f8b3fa1e3de2e347aa434"
+    },
+    "PBE_spin_electrons": {
+      "shape": [
+        2
+      ],
+      "sha256": "0b85f1dd9e547afdaf0654dffaaca0e45e12b930df0a4e1c4d1ea7a35786fb88"
+    }
+  },
+  "identity": "d0b8568e876ef0975f4b3e2d99571144cd72bec7aace5cf108616b0c4d994346"
+}

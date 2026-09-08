@@ -5,7 +5,8 @@ from __future__ import annotations
 import ctypes
 from collections.abc import Iterable, Sequence
 from contextlib import suppress
-from dataclasses import dataclass
+from copy import deepcopy
+from dataclasses import dataclass, field
 from typing import Self
 
 import numpy as np
@@ -29,6 +30,7 @@ class BatchItemResult:
     bucket_id: int
     warm_start_used: bool
     warm_start_fallback: bool
+    basis_metadata: dict = field(default_factory=dict)
 
     @property
     def succeeded(self) -> bool:
@@ -354,6 +356,15 @@ class PreparedBatch:
         )
         if len(self._charges) != count or len(self._multiplicities) != count:
             raise ValueError("charges and multiplicities must match the batch size")
+        for atoms in self._systems:
+            calculator._preflight_hf_basis(atoms)
+        self._model_signature = calculator._model_signature()
+        self._basis_metadata = tuple(
+            calculator.basis_metadata(atoms, charge=charge, multiplicity=multiplicity)
+            for atoms, charge, multiplicity in zip(
+                self._systems, self._charges, self._multiplicities, strict=True
+            )
+        )
         self._atom_counts = tuple(len(system) for system in self._systems)
         self._atomic_numbers = tuple(
             tuple(atom.atomic_number for atom in system) for system in self._systems
@@ -441,6 +452,11 @@ class PreparedBatch:
 
         return self._multiplicities
 
+    @property
+    def basis_metadata(self):
+        """Detached resolved provenance/identities for benchmark and result records."""
+        return deepcopy(self._basis_metadata)
+
     def _ensure_open(self) -> None:
         if not self._batch.value:
             raise RuntimeError("prepared batch is closed")
@@ -453,6 +469,10 @@ class PreparedBatch:
         strict: bool = False,
     ) -> BatchResult:
         self._ensure_open()
+        if self._calculator._model_signature() != self._model_signature:
+            raise RuntimeError(
+                "prepared basis/model identity changed; prepare a new batch before reusing densities or Fock/DIIS state"
+            )
         count = len(self._systems)
         coordinate_storage: list[np.ndarray] = []
         inputs_pointer = None
@@ -549,6 +569,7 @@ class PreparedBatch:
                     bucket_id=output.bucket_id,
                     warm_start_used=bool(output.warm_start_used),
                     warm_start_fallback=bool(output.warm_start_fallback),
+                    basis_metadata=deepcopy(self._basis_metadata[index]),
                 )
             )
         result = BatchResult(tuple(items))

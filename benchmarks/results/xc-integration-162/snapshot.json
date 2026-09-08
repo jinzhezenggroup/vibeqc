@@ -1,0 +1,24 @@
+{
+  "base_commit": "1e93c3cfa10afdf99ee26c70312bcfe533114331",
+  "reviewed_tree": "7a265dd0def716edbb659a23e7c7ffb1d9df9b74",
+  "files": {
+    "docs/index.md": "c4dc465980b8068f6f882bd7d2c5bcbfdb0126eebc623d7a879a5bb5f67689e9",
+    "docs/validation.md": "92ce283503bdbffbaa9f8b12bcd7a6200d0356628a79ec3793a74108a1c22698",
+    "docs/xc_integration.md": "fa627540f088d6d784fad5a46ef096fdc36a52049071e04a0165a6f6df017525",
+    "tests/python/test_xc_integration.py": "68ee13723ede477a4db98ec2bddf1f62a03ef981604a7e09fde2334ae0646eea",
+    "tests/reference_data/xc_integration/f_cartesian.json": "c6c077ccf2370989016e1ea64a74bc67c7922492c9df55d318f3b7f5dd5b9ceb",
+    "tests/reference_data/xc_integration/f_cartesian.npz": "a6b3dad3e08a1637b74b67323080af01b9729e598ee754158cab420f62427dc6",
+    "tests/reference_data/xc_integration/f_spherical.json": "68769f8341ec9c67c9983cb6dc073c975160f801011a424414981dffcd07d9e8",
+    "tests/reference_data/xc_integration/f_spherical.npz": "d27117115500f473f9c58a6abe6f583d7cfa0214bec7acd55a1881744e2aa81f",
+    "tests/reference_data/xc_integration/h2.json": "6f12cf29e0a4a3b307551b615d89824c79dcb6a8912f92ddb98ed2503d2bf954",
+    "tests/reference_data/xc_integration/h2.npz": "de7ac3c2525835ed3b38c437ab4db2116753aeb750cae99828c3d3e0cfca8547",
+    "tests/reference_data/xc_integration/water.json": "987f2fb31809404c13f2418fecbbe2850c67e2c0ffb7898a86b5a5d96de5648b",
+    "tests/reference_data/xc_integration/water.npz": "6c246999e8bbb9056c30eb501df968140651a0cfb3421ecf4c283cb7ff6fc3de",
+    "tools/generate_xc_integration_references.py": "fc83ad88b16fd7269686315be2f4fb42626eacabf82034e3a3a35fd432f90c50",
+    "tools/validate_xc_integration.py": "60d6474cbdd74b147584e07b512c9708e5275ee77b48af98009abfeb6f0a3feb",
+    "tools/vibeqc_xc/__init__.py": "66227db542a0b4d19827b63f95c98d725a9fc16e96b6eb667d042c49390eb004",
+    "tools/vibeqc_xc/integration.py": "70e59519792f94883a36246f12bd1d7068cfbd5a02bb630f15cdb1addd2def10",
+    "tools/vibeqc_xc/integration_fixtures.py": "2ad7cfd640e174f4a6c92c2328cfe60a613dffb4a27fbc55793dec40f5c1fb9a",
+    "tools/vibeqc_xc/potential.py": "f2b6f2efa1909eb9c8f11d31abf934785ed4188139960ef040a0244d6fc7c012"
+  }
+}

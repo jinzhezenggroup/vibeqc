@@ -96,6 +96,12 @@ class NativeSource:
         self.atoms = tuple(Atom.from_value(a) for a in atoms)
         calculator = Calculator(basis=basis, basis_representation=representation)
         self.shells = calculator._shells_for_atoms(self.atoms)
+        if auxiliary_basis is not None:
+            # This source ABI has one representation for both AO spaces. A
+            # loaded auxiliary record must not silently lose its own choice.
+            from vibeqc.calculator import _snapshot_basis
+
+            auxiliary_basis = _snapshot_basis(auxiliary_basis, representation)
         self.auxiliary_shells = (
             ()
             if auxiliary_basis is None

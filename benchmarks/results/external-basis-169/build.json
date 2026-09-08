@@ -1,0 +1,597 @@
+{
+  "revision": "4a6ae98afa5ac209578b10263bc4c1e504925979",
+  "native_library_sha256": "8f3beb7f1133f31347ddbbab43d0ae4595a46c28f8d9c6eebc799eae4781eb5a",
+  "source_identity_header": "#ifndef VIBEQC_BUILD_IDENTITY_HPP\n#define VIBEQC_BUILD_IDENTITY_HPP\n\n// The CMake input inventory includes native code and codegen/runtime policy.\ninline constexpr const char* kVibeqcSourceIdentity = \"8f65e5a287ef38dbfdbc4d9d0b46a046cc4f0065c33eea317c8cb3ab3e02d7b9\";\n#define VIBEQC_CUDA_FAST_COMPILE 0\n#define VIBEQC_TUNING_RELEASE_BUILD 1\n\n#endif\n",
+  "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0",
+  "cxx": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+  "cmake": "cmake version 4.2.1\n\nCMake suite maintained and supported by Kitware (kitware.com/cmake).",
+  "settings": {
+    "CMAKE_BUILD_TYPE:STRING": "Release",
+    "CMAKE_CUDA_COMPILER:STRING": "/group/software/cuda-12.9.1/bin/nvcc",
+    "CMAKE_CUDA_COMPILER_LAUNCHER:UNINITIALIZED": "ccache",
+    "CMAKE_CXX_COMPILER:FILEPATH": "/usr/bin/c++",
+    "CMAKE_CXX_COMPILER_LAUNCHER:UNINITIALIZED": "ccache",
+    "VIBEQC_AOT_PROFILE:STRING": "sm_120",
+    "VIBEQC_AOT_UNIT_MODE:STRING": "stable-shards",
+    "VIBEQC_CUDA_COMPILE_ARCHITECTURES:STRING": "120",
+    "VIBEQC_CUDA_FAST_COMPILE:BOOL": "OFF",
+    "VIBEQC_ENABLE_CUDA:BOOL": "ON"
+  },
+  "ninja_compilation_and_link_tasks": [
+    {
+      "output": "/home/jzzeng/codes/qc-external-basis/build/cuda-release-sm120/CMakeFiles/cmake.verify_globs",
+      "elapsed_seconds": 0.009,
+      "command_hash": "85caa36516469450"
+    },
+    {
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_0.cu",
+      "elapsed_seconds": 2.702,
+      "command_hash": "de918ad015c469c7"
+    },
+    {
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_1.cu",
+      "elapsed_seconds": 2.702,
+      "command_hash": "de918ad015c469c7"
+    },
+    {
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_2.cu",
+      "elapsed_seconds": 2.702,
+      "command_hash": "de918ad015c469c7"
+    },
+    {
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_3.cu",
+      "elapsed_seconds": 2.702,
+      "command_hash": "de918ad015c469c7"
+    },
+    {
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_4.cu",
+      "elapsed_seconds": 2.702,
+      "command_hash": "de918ad015c469c7"
+    },
+    {
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_5.cu",
+      "elapsed_seconds": 2.702,
+      "command_hash": "de918ad015c469c7"
+    },
+    {
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_6.cu",
+      "elapsed_seconds": 2.702,
+      "command_hash": "de918ad015c469c7"
+    },
+    {
+      "output": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_7.cu",
+      "elapsed_seconds": 2.702,
+      "command_hash": "de918ad015c469c7"
+    },
+    {
+      "output": "generated/production_shell_kernels/vibeqc_generated_shell_registry.cu",
+      "elapsed_seconds": 2.702,
+      "command_hash": "de918ad015c469c7"
+    },
+    {
+      "output": "generated/production_shell_kernels/vibeqc_generated_shell_registry.hpp",
+      "elapsed_seconds": 2.702,
+      "command_hash": "de918ad015c469c7"
+    },
+    {
+      "output": "/home/jzzeng/codes/qc-external-basis/build/cuda-release-sm120/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_0.cu",
+      "elapsed_seconds": 2.702,
+      "command_hash": "de918ad015c469c7"
+    },
+    {
+      "output": "/home/jzzeng/codes/qc-external-basis/build/cuda-release-sm120/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_1.cu",
+      "elapsed_seconds": 2.702,
+      "command_hash": "de918ad015c469c7"
+    },
+    {
+      "output": "/home/jzzeng/codes/qc-external-basis/build/cuda-release-sm120/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_2.cu",
+      "elapsed_seconds": 2.702,
+      "command_hash": "de918ad015c469c7"
+    },
+    {
+      "output": "/home/jzzeng/codes/qc-external-basis/build/cuda-release-sm120/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_3.cu",
+      "elapsed_seconds": 2.702,
+      "command_hash": "de918ad015c469c7"
+    },
+    {
+      "output": "/home/jzzeng/codes/qc-external-basis/build/cuda-release-sm120/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_4.cu",
+      "elapsed_seconds": 2.702,
+      "command_hash": "de918ad015c469c7"
+    },
+    {
+      "output": "/home/jzzeng/codes/qc-external-basis/build/cuda-release-sm120/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_5.cu",
+      "elapsed_seconds": 2.702,
+      "command_hash": "de918ad015c469c7"
+    },
+    {
+      "output": "/home/jzzeng/codes/qc-external-basis/build/cuda-release-sm120/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_6.cu",
+      "elapsed_seconds": 2.702,
+      "command_hash": "de918ad015c469c7"
+    },
+    {
+      "output": "/home/jzzeng/codes/qc-external-basis/build/cuda-release-sm120/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_7.cu",
+      "elapsed_seconds": 2.702,
+      "command_hash": "de918ad015c469c7"
+    },
+    {
+      "output": "/home/jzzeng/codes/qc-external-basis/build/cuda-release-sm120/generated/production_shell_kernels/vibeqc_generated_shell_registry.cu",
+      "elapsed_seconds": 2.702,
+      "command_hash": "de918ad015c469c7"
+    },
+    {
+      "output": "/home/jzzeng/codes/qc-external-basis/build/cuda-release-sm120/generated/production_shell_kernels/vibeqc_generated_shell_registry.hpp",
+      "elapsed_seconds": 2.702,
+      "command_hash": "de918ad015c469c7"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_aot_sm_120.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_0.cu.o",
+      "elapsed_seconds": 113.074,
+      "command_hash": "520b0224839e3e35"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_aot_sm_120.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_2.cu.o",
+      "elapsed_seconds": 196.771,
+      "command_hash": "69bbed50494fdf84"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_aot_sm_120.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_3.cu.o",
+      "elapsed_seconds": 76.687,
+      "command_hash": "7492f16f1ed4aa8b"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_aot_sm_120.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_4.cu.o",
+      "elapsed_seconds": 115.055,
+      "command_hash": "714fa2ca4e82d679"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_aot_sm_120.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_1.cu.o",
+      "elapsed_seconds": 518.682,
+      "command_hash": "fbeda085bbdfbed0"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_aot_sm_120.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_5.cu.o",
+      "elapsed_seconds": 87.031,
+      "command_hash": "9e986c540b9f6984"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_aot_sm_120.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_7.cu.o",
+      "elapsed_seconds": 116.28,
+      "command_hash": "c07d32718e0b4885"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_aot_sm_120.dir/generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_6.cu.o",
+      "elapsed_seconds": 365.575,
+      "command_hash": "6c8f76c471094a8e"
+    },
+    {
+      "output": "generated/weighted_eri.cuh",
+      "elapsed_seconds": 0.168,
+      "command_hash": "2fdf4c6270cc8f39"
+    },
+    {
+      "output": "/home/jzzeng/codes/qc-external-basis/build/cuda-release-sm120/generated/weighted_eri.cuh",
+      "elapsed_seconds": 0.168,
+      "command_hash": "2fdf4c6270cc8f39"
+    },
+    {
+      "output": "generated/df_values.cuh",
+      "elapsed_seconds": 0.192,
+      "command_hash": "7459da49bf586285"
+    },
+    {
+      "output": "/home/jzzeng/codes/qc-external-basis/build/cuda-release-sm120/generated/df_values.cuh",
+      "elapsed_seconds": 0.192,
+      "command_hash": "7459da49bf586285"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_native_tests.dir/tests/native/test_rhf.cpp.o",
+      "elapsed_seconds": 0.088,
+      "command_hash": "fb5e2d1e5c0c1e22"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_cpp_api_tests.dir/tests/native/test_cpp_batch.cpp.o",
+      "elapsed_seconds": 0.089,
+      "command_hash": "2cdc7b55f5644572"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/api/c_api_batch.cpp.o",
+      "elapsed_seconds": 0.092,
+      "command_hash": "bba1a946b49a6864"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/api/c_api_calculation.cpp.o",
+      "elapsed_seconds": 0.094,
+      "command_hash": "439ba54307602604"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_batch_tests.dir/tests/native/test_batch.cpp.o",
+      "elapsed_seconds": 0.097,
+      "command_hash": "48adaa9fc5202b34"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_cartesian_integral_tests.dir/tests/native/test_cartesian_integrals.cpp.o",
+      "elapsed_seconds": 0.117,
+      "command_hash": "895ac9afec2ef988"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/api/c_api_common.cpp.o",
+      "elapsed_seconds": 0.078,
+      "command_hash": "13af7fdf20655ca7"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/api/c_api_tuning.cpp.o",
+      "elapsed_seconds": 0.331,
+      "command_hash": "ad803cf55a539624"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_cuda_eigensolver_policy_tests.dir/tests/native/test_cuda_eigensolver_policy.cpp.o",
+      "elapsed_seconds": 0.414,
+      "command_hash": "542d5e5d1b6d6ec5"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/api/error.cpp.o",
+      "elapsed_seconds": 0.094,
+      "command_hash": "5bbb05371d5bb15a"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/dft/ao_grid.cpp.o",
+      "elapsed_seconds": 0.11,
+      "command_hash": "fb1e335c4754350d"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_weighted_eri_probe.dir/tests/native/weighted_eri_probe.cpp.o",
+      "elapsed_seconds": 0.751,
+      "command_hash": "c3ecf9c2790f4b10"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/api/c_api_context.cpp.o",
+      "elapsed_seconds": 0.714,
+      "command_hash": "433734da6209fc0a"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/dft/bridge.cpp.o",
+      "elapsed_seconds": 0.103,
+      "command_hash": "7e0821fecf1cc08f"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_grid_tests.dir/tests/native/test_grid.cpp.o",
+      "elapsed_seconds": 0.102,
+      "command_hash": "9170eaba669fc86d"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/integrals/s_integrals.cpp.o",
+      "elapsed_seconds": 0.122,
+      "command_hash": "139675c366512c62"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/methods/hf_method.cpp.o",
+      "elapsed_seconds": 0.132,
+      "command_hash": "24b53451d484a273"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_spherical_tests.dir/tests/native/test_spherical.cpp.o",
+      "elapsed_seconds": 0.875,
+      "command_hash": "2cacf6abc9f44d2a"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/methods/registry.cpp.o",
+      "elapsed_seconds": 0.097,
+      "command_hash": "d28c7663b9fb00a8"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/posthf/bridge.cpp.o",
+      "elapsed_seconds": 0.105,
+      "command_hash": "8d1cd6d8686b6a9e"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_basis_contract_tests.dir/tests/native/test_basis_contract.cpp.o",
+      "elapsed_seconds": 0.667,
+      "command_hash": "a734f4d03ca83790"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_uhf_tests.dir/tests/native/test_uhf.cpp.o",
+      "elapsed_seconds": 1.172,
+      "command_hash": "c8937b02e0a6dfa7"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_aot_profile_tests.dir/tests/native/test_aot_profile.cpp.o",
+      "elapsed_seconds": 0.393,
+      "command_hash": "4698896e9021b044"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/runtime/context.cpp.o",
+      "elapsed_seconds": 0.389,
+      "command_hash": "fb9f8fc370068dba"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_df_value_probe.dir/tests/native/df_value_probe.cpp.o",
+      "elapsed_seconds": 1.558,
+      "command_hash": "ca1e0fef4628a68f"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/scf/density_fitting.cpp.o",
+      "elapsed_seconds": 0.107,
+      "command_hash": "95209d8063fbc2b9"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/molecule/basis.cpp.o",
+      "elapsed_seconds": 0.807,
+      "command_hash": "70223df06a641d5e"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/scf/fleet.cpp.o",
+      "elapsed_seconds": 0.136,
+      "command_hash": "4c74ad6c327d394b"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_mixed_precision_tests.dir/tests/native/test_mixed_precision.cpp.o",
+      "elapsed_seconds": 0.946,
+      "command_hash": "90ce34be9cb8a88d"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_density_fitting_tests.dir/tests/native/test_density_fitting.cpp.o",
+      "elapsed_seconds": 2.19,
+      "command_hash": "7dfceac66890c626"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/dft/cuda_grid.cu.o",
+      "elapsed_seconds": 4.481,
+      "command_hash": "ac737ba7bd0a978e"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/scf/rhf.cpp.o",
+      "elapsed_seconds": 5.018,
+      "command_hash": "f988443000fcdd1b"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/scf/cuda/rhf_policy.cpp.o",
+      "elapsed_seconds": 0.294,
+      "command_hash": "9ae910ea24e80345"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/runtime/cuda_runtime.cu.o",
+      "elapsed_seconds": 2.056,
+      "command_hash": "19a6451f1049ff5e"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/posthf/df_bridge.cu.o",
+      "elapsed_seconds": 3.547,
+      "command_hash": "3b69a371b620ee80"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/scf/cuda_eigensolver_probe.cu.o",
+      "elapsed_seconds": 3.527,
+      "command_hash": "5c4bc2804f66311c"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/scf/cuda_density_fitting.cu.o",
+      "elapsed_seconds": 6.503,
+      "command_hash": "4ae860628c5b0347"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/generated/production_shell_kernels/vibeqc_generated_shell_registry.cu.o",
+      "elapsed_seconds": 2.36,
+      "command_hash": "d393089d16a097e1"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/scf/cuda_rhf.cu.o",
+      "elapsed_seconds": 1231.807,
+      "command_hash": "c13c9de682e9713b"
+    },
+    {
+      "output": "libvibeqc.so.0.1.0",
+      "elapsed_seconds": 0.34,
+      "command_hash": "d44f6170b1a419fc"
+    },
+    {
+      "output": "libvibeqc.so.0",
+      "elapsed_seconds": 0.005,
+      "command_hash": "93cb9b74a7a78e71"
+    },
+    {
+      "output": "libvibeqc.so",
+      "elapsed_seconds": 0.005,
+      "command_hash": "93cb9b74a7a78e71"
+    },
+    {
+      "output": "vibeqc_native_tests",
+      "elapsed_seconds": 0.055,
+      "command_hash": "da46c2a40b0ed91d"
+    },
+    {
+      "output": "vibeqc_weighted_eri_probe",
+      "elapsed_seconds": 0.056,
+      "command_hash": "5acd6cd6c75d2382"
+    },
+    {
+      "output": "vibeqc_batch_tests",
+      "elapsed_seconds": 0.057,
+      "command_hash": "988f8df96d2a217e"
+    },
+    {
+      "output": "vibeqc_cuda_eigensolver_policy_tests",
+      "elapsed_seconds": 0.056,
+      "command_hash": "2822d41261ad24f"
+    },
+    {
+      "output": "vibeqc_cartesian_integral_tests",
+      "elapsed_seconds": 0.057,
+      "command_hash": "76ea25e19e7105bc"
+    },
+    {
+      "output": "vibeqc_cpp_api_tests",
+      "elapsed_seconds": 0.057,
+      "command_hash": "3f4d859ab0b22d28"
+    },
+    {
+      "output": "vibeqc_density_fitting_tests",
+      "elapsed_seconds": 0.058,
+      "command_hash": "7becb79d6e7f840e"
+    },
+    {
+      "output": "vibeqc_df_value_probe",
+      "elapsed_seconds": 0.066,
+      "command_hash": "7bd8377547dc2229"
+    },
+    {
+      "output": "vibeqc_spherical_tests",
+      "elapsed_seconds": 0.056,
+      "command_hash": "8351fc7dd905e419"
+    },
+    {
+      "output": "vibeqc_basis_contract_tests",
+      "elapsed_seconds": 0.055,
+      "command_hash": "1620025fd050ec62"
+    },
+    {
+      "output": "vibeqc_grid_tests",
+      "elapsed_seconds": 0.056,
+      "command_hash": "1452e09235a78984"
+    },
+    {
+      "output": "vibeqc_mixed_precision_tests",
+      "elapsed_seconds": 0.056,
+      "command_hash": "28c8888f36e7928e"
+    },
+    {
+      "output": "vibeqc_aot_profile_tests",
+      "elapsed_seconds": 0.057,
+      "command_hash": "93531207b7d394cd"
+    },
+    {
+      "output": "vibeqc_uhf_tests",
+      "elapsed_seconds": 0.077,
+      "command_hash": "e9f1403276a05a1e"
+    },
+    {
+      "output": "build.ninja",
+      "elapsed_seconds": 0.538,
+      "command_hash": "e21a18fa45e2150"
+    },
+    {
+      "output": "/home/jzzeng/codes/qc-external-basis/build/cuda-release-sm120/cmake_install.cmake",
+      "elapsed_seconds": 0.538,
+      "command_hash": "e21a18fa45e2150"
+    },
+    {
+      "output": "/home/jzzeng/codes/qc-external-basis/build/cuda-release-sm120/CTestTestfile.cmake",
+      "elapsed_seconds": 0.538,
+      "command_hash": "e21a18fa45e2150"
+    },
+    {
+      "output": "/home/jzzeng/codes/qc-external-basis/build/cuda-release-sm120/CMakeFiles/cmake.verify_globs",
+      "elapsed_seconds": 0.006,
+      "command_hash": "85caa36516469450"
+    },
+    {
+      "output": "CMakeFiles/vibeqc_basis_contract_tests.dir/tests/native/test_basis_contract.cpp.o",
+      "elapsed_seconds": 0.096,
+      "command_hash": "a734f4d03ca83790"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/molecule/basis.cpp.o",
+      "elapsed_seconds": 0.098,
+      "command_hash": "70223df06a641d5e"
+    },
+    {
+      "output": "CMakeFiles/vibeqc.dir/src/api/c_api_tuning.cpp.o",
+      "elapsed_seconds": 0.331,
+      "command_hash": "ad803cf55a539624"
+    },
+    {
+      "output": "libvibeqc.so.0.1.0",
+      "elapsed_seconds": 0.352,
+      "command_hash": "d44f6170b1a419fc"
+    },
+    {
+      "output": "libvibeqc.so.0",
+      "elapsed_seconds": 0.004,
+      "command_hash": "93cb9b74a7a78e71"
+    },
+    {
+      "output": "libvibeqc.so",
+      "elapsed_seconds": 0.004,
+      "command_hash": "93cb9b74a7a78e71"
+    },
+    {
+      "output": "vibeqc_weighted_eri_probe",
+      "elapsed_seconds": 0.057,
+      "command_hash": "5acd6cd6c75d2382"
+    },
+    {
+      "output": "vibeqc_batch_tests",
+      "elapsed_seconds": 0.056,
+      "command_hash": "988f8df96d2a217e"
+    },
+    {
+      "output": "vibeqc_df_value_probe",
+      "elapsed_seconds": 0.057,
+      "command_hash": "7bd8377547dc2229"
+    },
+    {
+      "output": "vibeqc_cartesian_integral_tests",
+      "elapsed_seconds": 0.056,
+      "command_hash": "76ea25e19e7105bc"
+    },
+    {
+      "output": "vibeqc_cuda_eigensolver_policy_tests",
+      "elapsed_seconds": 0.056,
+      "command_hash": "2822d41261ad24f"
+    },
+    {
+      "output": "vibeqc_cpp_api_tests",
+      "elapsed_seconds": 0.058,
+      "command_hash": "3f4d859ab0b22d28"
+    },
+    {
+      "output": "vibeqc_density_fitting_tests",
+      "elapsed_seconds": 0.057,
+      "command_hash": "7becb79d6e7f840e"
+    },
+    {
+      "output": "vibeqc_native_tests",
+      "elapsed_seconds": 0.063,
+      "command_hash": "da46c2a40b0ed91d"
+    },
+    {
+      "output": "vibeqc_grid_tests",
+      "elapsed_seconds": 0.053,
+      "command_hash": "1452e09235a78984"
+    },
+    {
+      "output": "vibeqc_mixed_precision_tests",
+      "elapsed_seconds": 0.055,
+      "command_hash": "28c8888f36e7928e"
+    },
+    {
+      "output": "vibeqc_basis_contract_tests",
+      "elapsed_seconds": 0.055,
+      "command_hash": "1620025fd050ec62"
+    },
+    {
+      "output": "vibeqc_aot_profile_tests",
+      "elapsed_seconds": 0.057,
+      "command_hash": "93531207b7d394cd"
+    },
+    {
+      "output": "vibeqc_uhf_tests",
+      "elapsed_seconds": 0.063,
+      "command_hash": "e9f1403276a05a1e"
+    },
+    {
+      "output": "vibeqc_spherical_tests",
+      "elapsed_seconds": 0.063,
+      "command_hash": "8351fc7dd905e419"
+    }
+  ],
+  "note": "Initial build and incremental rebuilds are retained. No new CUDA kernel or schedule is introduced; this is compile provenance, not performance promotion.",
+  "scientific_objects": {
+    "src/molecule/basis.cpp.o": "4c8e45381d39bf2c4fbb21cdd659ab790a9a4b1d7344b91d3e4a704972b7cc7b",
+    "src/scf/cuda_rhf.cu.o": "35db6240913e30a6588e72df88eac10775df74ef38c0713adef06029b5510571",
+    "src/scf/rhf.cpp.o": "810a6347b72b0dc97c16a9b460626c6db1d74f5e6a0530c257d2c21ce1960dd8",
+    "src/scf/density_fitting.cpp.o": "dc343e585bb95ab9d88fa3e38f1b06064eefbdd845e4c18d2e03c14c8a6de339",
+    "src/integrals/s_integrals.cpp.o": "e6c397cb3f145758ba8bf8221314e7f0b6a5fc273a788553166da57ed7056dc7",
+    "src/scf/fleet.cpp.o": "02556108c39594f951552340c8957b2809fb07ba594dbea39847ffc1c37404d5",
+    "src/scf/cuda_density_fitting.cu.o": "87ce5c455a88ea4dafb70cbeec7c590f010dcbf3233cda811228744986d5bd07"
+  }
+}
