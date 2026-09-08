@@ -45,5 +45,6 @@ Those belong in the developer documents so the first page remains an accurate,
 compact user entry point.
 
 - [HF reference snapshots and bounded MO integral providers](posthf.md)
+- [Localized occupied and pair-natural-orbital spaces](local_spaces.md)
 - [Atom-centered grids and spatial AO/density jets](dft_grid.md)
 - [Fixed-density LDA/PBE XC integration and AO potentials](xc_integration.md)

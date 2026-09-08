@@ -49,7 +49,10 @@ def source_arguments(metadata):
             Shell(
                 s["atom_index"],
                 s["angular_momentum"],
-                tuple(Primitive(*p) for p in s["primitives"]),
+                # Match public basis resolution before hashing: JSON integer
+                # coefficients (notably the f-shell fixture's 1) and 1.0 are
+                # the same physical primitive and become FP64 in NativeSource.
+                tuple(Primitive(float(p[0]), float(p[1])) for p in s["primitives"]),
             )
             for s in records
         )
