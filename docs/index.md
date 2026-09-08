@@ -9,6 +9,8 @@ cover all quantum-chemistry methods through a coherent batched interface.
 - [README](../README.md): build, install, supported features, and minimal use.
 - [Batched HF](batched_hf.md): batch semantics, warm starts, backend labels,
   and verification.
+- [External basis data](external_basis.md): offline input, provenance, element/ECP
+  bookkeeping, per-operator limits and prepared-state identities.
 - [Methods](methods.md): implemented methods, planned method families, and the
   acceptance standard for enabling new capabilities.
 - [Local autotuning](local_autotuning.md): optional workload-first CUDA tuning,
