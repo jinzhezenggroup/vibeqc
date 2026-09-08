@@ -123,8 +123,8 @@ class CudaEmitter:
             return " * ".join(arguments)
         if node.operation == "reciprocal":
             return f"1.0 / {arguments[0]}"
-        if node.operation == "exp":
-            return f"exp({arguments[0]})"
+        if node.operation in ("exp", "log", "log1p", "expm1"):
+            return f"{node.operation}({arguments[0]})"
         if node.operation == "power":
             exponent = float(node.payload)
             if exponent == 0.5:
@@ -144,7 +144,10 @@ class CudaEmitter:
         if identifier in self._materialized:
             raise RuntimeError("materialized dependency was not emitted before use")
         code = self._operation_code(identifier)
-        if node.operation in ("exp", "power") or identifier in self._fma_by_add:
+        if (
+            node.operation in ("exp", "power", "log", "log1p", "expm1")
+            or identifier in self._fma_by_add
+        ):
             return code
         return f"({code})"
 

@@ -145,6 +145,17 @@ jobs:
           python3 tools/validate_f_shells.py --tier compile --smoke
           --nvcc "$CUDACXX" --compile-jobs 2 --compile-timeout 900
           --output build/f-shell-smoke.json
+      - name: Compile generated XC derivative consumers
+        run: >-
+          python3 tools/validate_xc.py --tier cuda-compile
+          --functionals PBE --nvcc "$CUDACXX"
+          --cache build/xc-cache --output build/xc-compile
+      - name: Preserve generated XC resource reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: xc-release-compile
+          path: build/xc-compile
       - name: Preserve f-shell release resource report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

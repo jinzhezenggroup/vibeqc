@@ -103,6 +103,9 @@ class RematerializationPolicy:
         ("reciprocal", 4.0),
         ("power", 8.0),
         ("exp", 12.0),
+        ("expm1", 12.0),
+        ("log", 12.0),
+        ("log1p", 12.0),
     )
     live_range_weight: float = 1.0
     recomputation_weight: float = 1.0
@@ -642,6 +645,8 @@ class Graph:
                 result = target.reciprocal(visit(node.arguments[0]))
             elif node.operation == "exp":
                 result = target.exponential(visit(node.arguments[0]))
+            elif node.operation in ("log", "log1p", "expm1"):
+                result = target.stable_unary(node.operation, visit(node.arguments[0]))
             elif node.operation == "power":
                 result = target.power(
                     visit(node.arguments[0]),
@@ -741,6 +746,8 @@ class Graph:
                 result = target.reciprocal(arguments[0])
             elif node.operation == "exp":
                 result = target.exponential(arguments[0])
+            elif node.operation in ("log", "log1p", "expm1"):
+                result = target.stable_unary(node.operation, arguments[0])
             elif node.operation == "power":
                 exponent = float(node.payload)
                 if (
@@ -775,6 +782,22 @@ class Graph:
                 math.exp(float(self._constant_value(node)))
             )
         return self._intern(Node("exp", (value.identifier,)))
+
+    def stable_unary(self, operation: str, value: Expr) -> Expr:
+        """Build a domain-preserving log/log1p/expm1 primitive.
+
+        These are distinct nodes so cancellation-safe source identities survive
+        algebra rebuilding and CUDA lowering. No clipping is implicit.
+        """
+        if operation not in ("log", "log1p", "expm1"):
+            raise ValueError(f"unsupported stable unary operation {operation!r}")
+        self._require_graph(value)
+        node = self.node(value)
+        if node.operation == "constant":
+            return self.approximate_constant(
+                getattr(math, operation)(float(self._constant_value(node)))
+            )
+        return self._intern(Node(operation, (value.identifier,)))
 
     def power(self, value: Expr, exponent: float) -> Expr:
         self._require_graph(value)
@@ -866,6 +889,14 @@ class Graph:
             elif node.operation == "exp":
                 operand = Expr(self, node.arguments[0])
                 derivative = visit(operand.identifier) * current
+            elif node.operation in ("log", "log1p", "expm1"):
+                operand = Expr(self, node.arguments[0])
+                inner = visit(operand.identifier)
+                if node.operation == "expm1":
+                    derivative = inner * self.exponential(operand)
+                else:
+                    denominator = operand + 1 if node.operation == "log1p" else operand
+                    derivative = inner / denominator
             elif node.operation == "power":
                 operand = Expr(self, node.arguments[0])
                 exponent = float(node.payload)
@@ -1400,6 +1431,8 @@ class Graph:
                 result = 1.0 / values[node.arguments[0]]
             elif node.operation == "exp":
                 result = math.exp(values[node.arguments[0]])
+            elif node.operation in ("log", "log1p", "expm1"):
+                result = getattr(math, node.operation)(values[node.arguments[0]])
             elif node.operation == "power":
                 result = values[node.arguments[0]] ** float(node.payload)
             else:
