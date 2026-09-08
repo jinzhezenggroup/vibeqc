@@ -56,6 +56,33 @@ class NativeSource:
     """
 
     backend = "cpu-reference-native-shell-tiles"
+    supported_operators = frozenset(_KIND)
+    _fixed_fields = frozenset(
+        (
+            "atoms",
+            "shells",
+            "auxiliary_shells",
+            "charge",
+            "electron_count",
+            "representation",
+            "geometry_hash",
+            "basis_hash",
+            "auxiliary_hash",
+            "identity",
+            "shell_sizes",
+            "auxiliary_sizes",
+            "nbf",
+            "naux",
+            "numeric_bytes",
+        )
+    )
+
+    def __setattr__(self, name, value):
+        if name in self._fixed_fields and name in self.__dict__:
+            raise AttributeError(
+                "source scientific state is immutable; construct a new source"
+            )
+        super().__setattr__(name, value)
 
     def __init__(
         self,
@@ -347,8 +374,17 @@ class NativeSource:
 
     def execute(self, request):
         """Return the existing CG02 response with explicit successful metadata."""
-        begin = self.global_offsets(request)
         kind = request.integral.operator.family.value
+        if (
+            request.integral.derivative is not None
+            or kind not in self.supported_operators
+        ):
+            return BlockResponse(
+                request,
+                BlockStatus.UNSUPPORTED,
+                reason=f"{self.backend} does not implement the requested operator/derivative",
+            )
+        begin = self.global_offsets(request)
         values = self._read(kind, begin, request.tile.shape)
         # Honor the request layout/sign, including padded physical storage.
         from tools.vibeqc_codegen.blocks import assemble_raw_block
@@ -429,6 +465,7 @@ class CudaDFSource(NativeSource):
     """
 
     backend = "cuda-generated-df-values-host-staged"
+    supported_operators = frozenset(("coulomb_metric", "three_center_eri"))
 
     def __init__(
         self,
@@ -482,7 +519,11 @@ class CudaDFSource(NativeSource):
         )
         self.source_host_peak_bytes = int(diagnostics[0])
         self.source_device_bytes = int(diagnostics[1])
-        self.numeric_bytes += self.source_host_peak_bytes + self.source_device_bytes
+        object.__setattr__(
+            self,
+            "numeric_bytes",
+            self.numeric_bytes + self.source_host_peak_bytes + self.source_device_bytes,
+        )
         self.tile_capacity = tile_capacity
         lib.vibeqc_posthf_df_metrics_v1.argtypes = [
             ct.c_void_p,

@@ -8,6 +8,8 @@ independent spectral DF reconstruction. No external solver code is copied.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import json
 import sys
 from hashlib import sha256
@@ -86,7 +88,8 @@ def generate(directory):
         normal = np.einsum("i,j,k,l->ijkl", scale, scale, scale, scale)
         ao = mol.intor("int2e").reshape((mol.nao_nr(),) * 4)
         # Deliberately use a compact auxiliary set and record fitting error
-        # separately. Add one duplicate to exercise the metric rank policy.
+        # separately. The native regression adds duplicate auxiliary shells
+        # in a separate rank/invalidation test.
         auxiliary = gto.M(
             atom=mol.atom,
             basis=mol._basis,
@@ -162,6 +165,9 @@ def generate(directory):
             }
         )
         np.savez_compressed(directory / (name + ".npz"), **arrays)
+        configuration = io.StringIO()
+        with contextlib.redirect_stdout(configuration):
+            np.show_config()
         metadata = {
             "schema": "vibeqc.posthf_reference",
             "version": 1,
@@ -173,6 +179,7 @@ def generate(directory):
             "versions": {
                 "pyscf": pyscf.__version__,
                 "numpy": np.__version__,
+                "numpy_blas_configuration": configuration.getvalue(),
                 "python": sys.version,
             },
             "provenance": {

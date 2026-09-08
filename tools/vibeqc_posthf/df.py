@@ -41,6 +41,7 @@ class MetricFactor:
     identity: str
     setup_seconds: float
     host_peak_bytes: int
+    device_bytes: int
     convention: str = "square-symmetric-thresholded-inverse-square-root"
 
     @classmethod
@@ -102,7 +103,8 @@ class MetricFactor:
             metric_hash,
             identity,
             time.perf_counter() - start,
-            peak,
+            peak - getattr(source, "source_device_bytes", 0),
+            getattr(source, "source_device_bytes", 0),
         )
 
     @property
@@ -328,6 +330,9 @@ class DFProvider:
                     "cache_hit": False,
                     "endpoint_seconds": time.perf_counter() - start,
                     "peak_bytes": peak,
+                    "host_peak_bytes": peak
+                    - getattr(self.source, "source_device_bytes", 0),
+                    "device_peak_bytes": getattr(self.source, "source_device_bytes", 0),
                     "output_placement": "host",
                     "metric_identity": self.metric.identity,
                     "metric_rank": self.metric.rank,

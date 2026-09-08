@@ -212,3 +212,52 @@ def test_stale_metric_geometry_is_rejected(source_factory):
     snapshot = fixture_snapshot(meta, a, label="df", metric=metric)
     with pytest.raises(ValueError, match="mismatch"):
         DFProvider(snapshot, source, replace(metric, geometry_hash="stale"))
+
+
+def test_valid_but_unsupported_raw_operator_has_explicit_status(source_factory):
+    from tools.vibeqc_codegen.blocks import (
+        BlockRequest,
+        BlockStatus,
+        RawBlock,
+        ShellTile,
+        TensorLayout,
+    )
+    from tools.vibeqc_codegen.ir import IntegralIR, OperatorSpec
+    from tools.vibeqc_codegen.shell_signature import (
+        BasisShell,
+        CenterBinding,
+        ShellSignature,
+    )
+
+    source, _, _ = source_factory()
+    signature = ShellSignature(
+        (BasisShell(0, 0, 0), BasisShell(1, 1, 0)),
+        (CenterBinding(0, 0), CenterBinding(1, 1)),
+    )
+    request = BlockRequest(
+        "kinetic-test",
+        IntegralIR(
+            signature,
+            OperatorSpec("kinetic", (0, 1)),
+            None,
+            (RawBlock(TensorLayout(signature.tensor_indices, (1, 1)), 16),),
+        ),
+        ShellTile((0, 0), (1, 1)),
+        shell_indices=(0, 1),
+    )
+    response = source.execute(request)
+    assert (
+        response.status == BlockStatus.UNSUPPORTED
+        and response.reason
+        and not response.values
+    )
+
+
+def test_source_metadata_cannot_silently_change_owned_geometry(source_factory):
+    source, _, _ = source_factory()
+    for name in ("atoms", "basis_hash", "geometry_hash", "identity", "numeric_bytes"):
+        with pytest.raises(AttributeError, match="immutable"):
+            setattr(source, name, None)
+    # A rejected metadata edit leaves the native source and neighboring state
+    # usable, rather than labelling old native integrals with new geometry.
+    assert np.isfinite(source.one_electron()[0]).all()
