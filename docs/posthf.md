@@ -170,3 +170,8 @@ srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 --time=00:10:00 \
 The CUDA transform runtime is compiled explicitly with `compile_cuda`, using
 the shared finite NVCC process-tree adapter and a hash-verified local cache.
 The generated DF source also requires the native library built with CUDA.
+
+The [CG10 evidence archive](../benchmarks/results/posthf-147/README.md) records
+the clean scientific revision, independent numerical gates, sanitizer logs,
+capacity bounds and raw cold/reuse timings. CUDA is slower on these small
+host-source fixtures; this interface validation makes no performance promotion.
