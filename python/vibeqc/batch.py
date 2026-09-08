@@ -12,6 +12,7 @@ from typing import Self
 import numpy as np
 
 from . import _native
+from .accuracy import AccuracyAssessment
 from .calculator import Atom, Calculator
 
 
@@ -31,6 +32,7 @@ class BatchItemResult:
     warm_start_used: bool
     warm_start_fallback: bool
     basis_metadata: dict = field(default_factory=dict)
+    accuracy: AccuracyAssessment | None = None
 
     @property
     def succeeded(self) -> bool:
@@ -550,6 +552,23 @@ class PreparedBatch:
                 else None
             )
             message = self._library.vibeqc_status_message(output.status).decode("utf-8")
+            accuracy = None
+            if succeeded and self._calculator._target_accuracy is not None:
+                atoms = self._systems[index]
+                if coordinates is not None and coordinates[index] is not None:
+                    xyz = np.asarray(coordinates[index], dtype=np.float64).reshape(
+                        -1, 3
+                    )
+                    atoms = tuple(
+                        Atom(atom.atomic_number, tuple(position))
+                        for atom, position in zip(atoms, xyz, strict=True)
+                    )
+                accuracy = self._calculator._accuracy_assessment(
+                    atoms,
+                    self._charges[index],
+                    self._multiplicities[index],
+                    bool(output.converged),
+                )
             items.append(
                 BatchItemResult(
                     index=index,
@@ -570,6 +589,7 @@ class PreparedBatch:
                     warm_start_used=bool(output.warm_start_used),
                     warm_start_fallback=bool(output.warm_start_fallback),
                     basis_metadata=deepcopy(self._basis_metadata[index]),
+                    accuracy=accuracy,
                 )
             )
         result = BatchResult(tuple(items))

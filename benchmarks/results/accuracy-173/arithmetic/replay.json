@@ -1,0 +1,1257 @@
+{
+  "mode": "fixed_density_operator_replay",
+  "original_record_hash": "cc566cc22ab82c993853400a86dc11ea49f92ec8893ec54721f813fc0cf7573d",
+  "passed": true,
+  "rows": [
+    {
+      "case": "h2",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "strict",
+      "status": "pass"
+    },
+    {
+      "case": "h2",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "h2",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "h2",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "h2",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "h2",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "h2",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "h2",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "h2",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "h2",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "h2",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "h2",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "h2",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "he",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "strict",
+      "status": "pass"
+    },
+    {
+      "case": "he",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "he",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "he",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "he",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "he",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "he",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "he",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "he",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "he",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "he",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "he",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "he",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "h2o",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "strict",
+      "status": "pass"
+    },
+    {
+      "case": "h2o",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "h2o",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "h2o",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "h2o",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "h2o",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "h2o",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "h2o",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "h2o",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "h2o",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "h2o",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "h2o",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "h2o",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "nh3",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "strict",
+      "status": "pass"
+    },
+    {
+      "case": "nh3",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "nh3",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "nh3",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "nh3",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "nh3",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "nh3",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "nh3",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "nh3",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "nh3",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "nh3",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "nh3",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "nh3",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "ch4",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "strict",
+      "status": "pass"
+    },
+    {
+      "case": "ch4",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "ch4",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "ch4",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "ch4",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "ch4",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "ch4",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "ch4",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "ch4",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "ch4",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "ch4",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "ch4",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "ch4",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "hf-plus-uhf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "strict",
+      "status": "pass"
+    },
+    {
+      "case": "hf-plus-uhf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "hf-plus-uhf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "hf-plus-uhf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "hf-plus-uhf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "hf-plus-uhf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "hf-plus-uhf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "hf-plus-uhf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "hf-plus-uhf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "hf-plus-uhf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "hf-plus-uhf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "hf-plus-uhf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "hf-plus-uhf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "hf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "strict",
+      "status": "pass"
+    },
+    {
+      "case": "hf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "hf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "hf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "hf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "hf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "hf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "hf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "hf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "hf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "hf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "hf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "hf",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "h2-def2-svp",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "strict",
+      "status": "pass"
+    },
+    {
+      "case": "h2-def2-svp",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "h2-def2-svp",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "h2-def2-svp",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-09__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "h2-def2-svp",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "h2-def2-svp",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "h2-def2-svp",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-07__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "h2-def2-svp",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "h2-def2-svp",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "h2-def2-svp",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-06__mixed_0.1",
+      "status": "pass"
+    },
+    {
+      "case": "h2-def2-svp",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_1e-06",
+      "status": "pass"
+    },
+    {
+      "case": "h2-def2-svp",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_0.001",
+      "status": "pass"
+    },
+    {
+      "case": "h2-def2-svp",
+      "differences": {
+        "ao_commutator_max": 0.0,
+        "density_idempotency_max": 0.0,
+        "electron_trace_error_max": 0.0,
+        "energy": 0.0,
+        "orthonormal_commutator_max": 0.0
+      },
+      "label": "coupled_1e-05__mixed_0.1",
+      "status": "pass"
+    }
+  ],
+  "scf_executed": false,
+  "schema_version": 1
+}

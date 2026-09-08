@@ -4,7 +4,9 @@
  */
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdio>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 
@@ -106,6 +108,81 @@ int vibeqc_posthf_rhf_density_v1(void* source, int backend, int device, unsigned
     scalars[1] = result.energy_change;
     scalars[2] = result.density_rms;
     scalars[3] = result.iterations;
+  });
+}
+
+/** Opt-in small-system NUM01 diagnostic execution using the existing HF source.
+ * Unlike a converged post-HF export, this preserves failed-solve scalar records.
+ * RHF density has one spin-summed block; UHF has alpha then beta. It neither
+ * registers a method nor changes production defaults. Host arrays and the
+ * N<=12 audit boundary are explicit; CUDA callers must own a GPU allocation.
+ */
+int vibeqc_accuracy_hf_probe_v1(void* source, int method, int backend, int device,
+                                unsigned max_iterations, unsigned diis_history,
+                                double energy_tolerance, double density_tolerance,
+                                double screening_tolerance, int df, double metric_threshold,
+                                double* density, std::size_t density_elements, double* forces,
+                                std::size_t force_elements, double* scalars,
+                                std::size_t scalar_elements, char* error, std::size_t size) {
+  return guarded(error, size, [&] {
+    if (!source || !density || !forces || !scalars || scalar_elements != 5 ||
+        (method != VIBEQC_METHOD_RHF && method != VIBEQC_METHOD_UHF) ||
+        (backend != 0 && backend != 1) || (df != 0 && df != 1) || !max_iterations ||
+        !std::isfinite(energy_tolerance) || energy_tolerance <= 0 ||
+        !std::isfinite(density_tolerance) || density_tolerance <= 0 ||
+        !std::isfinite(screening_tolerance) || screening_tolerance < 0 ||
+        !std::isfinite(metric_threshold) || metric_threshold <= 0 || metric_threshold >= 1)
+      throw std::invalid_argument("invalid HF accuracy probe controls");
+    const auto& raw = *static_cast<RawSource*>(source);
+    const std::size_t spins = method == VIBEQC_METHOD_RHF ? 1 : 2;
+    if (!raw.nbf() || raw.nbf() > 12 || raw.naux() > 24 ||
+        density_elements != spins * raw.nbf() * raw.nbf() ||
+        force_elements != 3 * raw.orbital().atoms.size())
+      throw std::invalid_argument("HF accuracy probe supports at most 12 orbital/24 auxiliary AOs");
+    if (method == VIBEQC_METHOD_RHF &&
+        (raw.orbital().multiplicity != 1 || raw.orbital().electron_count % 2))
+      throw std::invalid_argument("RHF accuracy probe requires a closed-shell source");
+    std::fill_n(density, density_elements, std::numeric_limits<double>::quiet_NaN());
+    std::fill_n(forces, force_elements, std::numeric_limits<double>::quiet_NaN());
+    vibeqc::scf::ScfOptions options;
+    options.max_iterations = max_iterations;
+    options.diis_history = diis_history;
+    options.energy_tolerance = energy_tolerance;
+    options.density_tolerance = density_tolerance;
+    options.screening_tolerance = screening_tolerance;
+    options.density_fitting_relative_threshold = metric_threshold;
+    vibeqc::scf::ScfResult result;
+    if (method == VIBEQC_METHOD_RHF) {
+      if (df) {
+        result =
+            backend ? vibeqc::scf::run_rhf_density_fitting_cuda(raw.orbital(), raw.auxiliary(),
+                                                                options, device)
+                    : vibeqc::scf::run_rhf_density_fitting(raw.orbital(), raw.auxiliary(), options);
+      } else {
+        result = backend ? vibeqc::scf::run_rhf_cuda(raw.orbital(), options, device)
+                         : vibeqc::scf::run_rhf(raw.orbital(), options);
+      }
+    } else {
+      if (df) {
+        result =
+            backend ? vibeqc::scf::run_uhf_density_fitting_cuda(raw.orbital(), raw.auxiliary(),
+                                                                options, device)
+                    : vibeqc::scf::run_uhf_density_fitting(raw.orbital(), raw.auxiliary(), options);
+      } else {
+        result = backend ? vibeqc::scf::run_uhf_cuda(raw.orbital(), options, device)
+                         : vibeqc::scf::run_uhf(raw.orbital(), options);
+      }
+    }
+    scalars[0] = result.energy;
+    scalars[1] = result.energy_change;
+    scalars[2] = result.density_rms;
+    scalars[3] = result.iterations;
+    scalars[4] = result.converged ? 1 : 0;
+    if (!result.converged) return;
+    if (result.density.size() != density_elements || result.forces.size() != force_elements)
+      throw std::runtime_error("HF probe returned inconsistent scientific-state dimensions");
+    std::copy(result.density.begin(), result.density.end(), density);
+    std::copy(result.forces.begin(), result.forces.end(), forces);
   });
 }
 }

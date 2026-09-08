@@ -17,6 +17,8 @@ cover all quantum-chemistry methods through a coherent batched interface.
   compatible profile reuse, diagnostics, and homogeneous cluster export/import.
 - [Density fitting](density_fitting.md): milestone-1 correctness and planning
   foundation, plus the production features that remain in issue #5.
+- [Accuracy evidence](accuracy.md): resolved HF models, observable targets and
+  explicit reference comparisons, independent of iteration convergence.
 
 ## Developers
 
