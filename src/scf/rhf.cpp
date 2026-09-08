@@ -18,6 +18,7 @@
 #include "scf/cuda_density_fitting.hpp"
 #include "scf/cuda_density_fitting_integrals.hpp"
 #include "scf/density_fitting.hpp"
+#include "scf/fock_build.hpp"
 
 namespace vibeqc::scf {
 namespace {
@@ -25,10 +26,6 @@ namespace {
 using Matrix = std::vector<double>;
 
 std::size_t index(std::size_t row, std::size_t column, std::size_t n) { return row * n + column; }
-
-std::size_t eri_index(std::size_t i, std::size_t j, std::size_t k, std::size_t l, std::size_t n) {
-  return ((i * n + j) * n + k) * n + l;
-}
 
 Matrix identity(std::size_t n) {
   Matrix result(n * n, 0.0);
@@ -308,30 +305,13 @@ Matrix energy_weighted_density(const Matrix& coefficients, const std::vector<dou
   return weighted;
 }
 
-std::pair<Matrix, Matrix> build_uhf_focks(const Matrix& hcore, const std::vector<double>& eri,
+std::pair<Matrix, Matrix> build_uhf_focks(const ResolvedFockBuild& strategy,
+                                          const Matrix& hcore, const std::vector<double>& eri,
                                           const Matrix& alpha_density, const Matrix& beta_density,
                                           std::size_t n) {
-  Matrix alpha_fock = hcore;
-  Matrix beta_fock = hcore;
-  for (std::size_t i = 0; i < n; ++i) {
-    for (std::size_t j = 0; j < n; ++j) {
-      double coulomb = 0.0;
-      double alpha_exchange = 0.0;
-      double beta_exchange = 0.0;
-      for (std::size_t k = 0; k < n; ++k) {
-        for (std::size_t l = 0; l < n; ++l) {
-          const double alpha = alpha_density[index(k, l, n)];
-          const double beta = beta_density[index(k, l, n)];
-          coulomb += (alpha + beta) * eri[eri_index(i, j, k, l, n)];
-          alpha_exchange += alpha * eri[eri_index(i, k, j, l, n)];
-          beta_exchange += beta * eri[eri_index(i, k, j, l, n)];
-        }
-      }
-      alpha_fock[index(i, j, n)] += coulomb - alpha_exchange;
-      beta_fock[index(i, j, n)] += coulomb - beta_exchange;
-    }
-  }
-  return {std::move(alpha_fock), std::move(beta_fock)};
+  const auto jk = build_exact_direct_jk(strategy, n, eri, alpha_density, beta_density);
+  auto fock = assemble_fock(strategy, hcore, jk);
+  return {std::move(fock.alpha), std::move(fock.beta)};
 }
 
 double uhf_electronic_energy(const Matrix& alpha_density, const Matrix& beta_density,
@@ -363,24 +343,9 @@ std::pair<Matrix, Matrix> split_spin_matrices(const Matrix& joined, std::size_t 
   };
 }
 
-Matrix build_fock(const Matrix& hcore, const std::vector<double>& eri, const Matrix& density,
-                  std::size_t n) {
-  Matrix fock = hcore;
-  for (std::size_t i = 0; i < n; ++i) {
-    for (std::size_t j = 0; j < n; ++j) {
-      double coulomb = 0.0;
-      double exchange = 0.0;
-      for (std::size_t k = 0; k < n; ++k) {
-        for (std::size_t l = 0; l < n; ++l) {
-          const double pkl = density[index(k, l, n)];
-          coulomb += pkl * eri[eri_index(i, j, k, l, n)];
-          exchange += pkl * eri[eri_index(i, k, j, l, n)];
-        }
-      }
-      fock[index(i, j, n)] += coulomb - 0.5 * exchange;
-    }
-  }
-  return fock;
+Matrix build_fock(const ResolvedFockBuild& strategy, const Matrix& hcore,
+                  const std::vector<double>& eri, const Matrix& density, std::size_t n) {
+  return assemble_fock(strategy, hcore, build_exact_direct_jk(strategy, n, eri, density)).alpha;
 }
 
 double electronic_energy(const Matrix& density, const Matrix& hcore, const Matrix& fock) {
@@ -490,7 +455,8 @@ double density_rms(const Matrix& a, const Matrix& b) {
   return std::sqrt(square / static_cast<double>(a.size()));
 }
 
-std::vector<double> analytic_forces(const integrals::IntegralData& ints, const Matrix& density,
+std::vector<double> analytic_forces(const ResolvedFockBuild& strategy,
+                                    const integrals::IntegralData& ints, const Matrix& density,
                                     const Matrix& weighted_density) {
   const std::size_t n = ints.nbf;
   std::vector<double> forces(ints.ncoord, 0.0);
@@ -499,96 +465,68 @@ std::vector<double> analytic_forces(const integrals::IntegralData& ints, const M
     const double* dh = ints.hcore_derivative.data() + coordinate * n * n;
     const double* deri = ints.eri_derivative.data() + coordinate * n * n * n * n;
     double derivative = ints.nuclear_repulsion_derivative[coordinate];
-    for (std::size_t i = 0; i < n; ++i) {
-      for (std::size_t j = 0; j < n; ++j) {
-        derivative += density[index(i, j, n)] * dh[index(i, j, n)];
-        derivative -= weighted_density[index(i, j, n)] * ds[index(i, j, n)];
-        double coulomb_derivative = 0.0;
-        double exchange_derivative = 0.0;
-        for (std::size_t k = 0; k < n; ++k) {
-          for (std::size_t l = 0; l < n; ++l) {
-            const double pkl = density[index(k, l, n)];
-            coulomb_derivative += pkl * deri[eri_index(i, j, k, l, n)];
-            exchange_derivative += pkl * deri[eri_index(i, k, j, l, n)];
-          }
-        }
-        derivative +=
-            0.5 * density[index(i, j, n)] * (coulomb_derivative - 0.5 * exchange_derivative);
-      }
+    for (std::size_t element = 0; element < n * n; ++element) {
+      derivative += density[element] * dh[element];
+      derivative -= weighted_density[element] * ds[element];
     }
+    derivative += contract_exact_direct_energy_derivative(
+        strategy, n, std::span<const double>(deri, n * n * n * n), density);
     forces[coordinate] = -derivative;
   }
   return forces;
 }
 
-std::vector<double> analytic_uhf_forces(const integrals::IntegralData& ints,
+std::vector<double> analytic_uhf_forces(const ResolvedFockBuild& strategy,
+                                        const integrals::IntegralData& ints,
                                         const Matrix& alpha_density, const Matrix& beta_density,
                                         const Matrix& alpha_weighted_density,
                                         const Matrix& beta_weighted_density) {
   const std::size_t n = ints.nbf;
-  Matrix total_density(n * n);
-  Matrix total_weighted(n * n);
-  for (std::size_t element = 0; element < n * n; ++element) {
-    total_density[element] = alpha_density[element] + beta_density[element];
-    total_weighted[element] = alpha_weighted_density[element] + beta_weighted_density[element];
-  }
   std::vector<double> forces(ints.ncoord, 0.0);
   for (std::size_t coordinate = 0; coordinate < ints.ncoord; ++coordinate) {
     const double* ds = ints.overlap_derivative.data() + coordinate * n * n;
     const double* dh = ints.hcore_derivative.data() + coordinate * n * n;
     const double* deri = ints.eri_derivative.data() + coordinate * n * n * n * n;
     double derivative = ints.nuclear_repulsion_derivative[coordinate];
-    for (std::size_t i = 0; i < n; ++i) {
-      for (std::size_t j = 0; j < n; ++j) {
-        const std::size_t ij = index(i, j, n);
-        derivative += total_density[ij] * dh[ij];
-        derivative -= total_weighted[ij] * ds[ij];
-        double coulomb_derivative = 0.0;
-        double alpha_exchange_derivative = 0.0;
-        double beta_exchange_derivative = 0.0;
-        for (std::size_t k = 0; k < n; ++k) {
-          for (std::size_t l = 0; l < n; ++l) {
-            const std::size_t kl = index(k, l, n);
-            coulomb_derivative += total_density[kl] * deri[eri_index(i, j, k, l, n)];
-            alpha_exchange_derivative += alpha_density[kl] * deri[eri_index(i, k, j, l, n)];
-            beta_exchange_derivative += beta_density[kl] * deri[eri_index(i, k, j, l, n)];
-          }
-        }
-        derivative += 0.5 * total_density[ij] * coulomb_derivative;
-        derivative -= 0.5 * alpha_density[ij] * alpha_exchange_derivative;
-        derivative -= 0.5 * beta_density[ij] * beta_exchange_derivative;
-      }
+    for (std::size_t element = 0; element < n * n; ++element) {
+      derivative += (alpha_density[element] + beta_density[element]) * dh[element];
+      derivative -= (alpha_weighted_density[element] + beta_weighted_density[element]) *
+                    ds[element];
     }
+    derivative += contract_exact_direct_energy_derivative(
+        strategy, n, std::span<const double>(deri, n * n * n * n), alpha_density, beta_density);
     forces[coordinate] = -derivative;
   }
   return forces;
 }
 
-void finalize_scf(const integrals::IntegralData& ints, const Matrix& orthogonalizer,
-                  std::size_t occupied, Matrix& density, ScfResult& result) {
+void finalize_scf(const ResolvedFockBuild& strategy, const integrals::IntegralData& ints,
+                  const Matrix& orthogonalizer, std::size_t occupied, Matrix& density,
+                  ScfResult& result) {
   const std::size_t n = ints.nbf;
-  Matrix final_fock = build_fock(ints.hcore, ints.eri, density, n);
+  Matrix final_fock = build_fock(strategy, ints.hcore, ints.eri, density, n);
   EigenResult orbitals = generalized_eigen(final_fock, orthogonalizer, n);
   density = density_from_orbitals(orbitals.vectors, n, occupied);
-  final_fock = build_fock(ints.hcore, ints.eri, density, n);
+  final_fock = build_fock(strategy, ints.hcore, ints.eri, density, n);
   result.energy = electronic_energy(density, ints.hcore, final_fock) + ints.nuclear_repulsion;
   const Matrix weighted = energy_weighted_density(orbitals.vectors, orbitals.values, n, occupied);
-  result.forces = analytic_forces(ints, density, weighted);
+  result.forces = analytic_forces(strategy, ints, density, weighted);
   result.density = density;
 }
 
-void finalize_uhf(const integrals::IntegralData& ints, const Matrix& orthogonalizer,
-                  std::size_t alpha_occupied, std::size_t beta_occupied, Matrix& alpha_density,
+void finalize_uhf(const ResolvedFockBuild& strategy, const integrals::IntegralData& ints,
+                  const Matrix& orthogonalizer, std::size_t alpha_occupied,
+                  std::size_t beta_occupied, Matrix& alpha_density,
                   Matrix& beta_density, ScfResult& result) {
   const std::size_t n = ints.nbf;
   auto [alpha_fock, beta_fock] =
-      build_uhf_focks(ints.hcore, ints.eri, alpha_density, beta_density, n);
+      build_uhf_focks(strategy, ints.hcore, ints.eri, alpha_density, beta_density, n);
   EigenResult alpha_orbitals = generalized_eigen(alpha_fock, orthogonalizer, n);
   EigenResult beta_orbitals = generalized_eigen(beta_fock, orthogonalizer, n);
   alpha_density = density_from_orbitals(alpha_orbitals.vectors, n, alpha_occupied, 1.0);
   beta_density = density_from_orbitals(beta_orbitals.vectors, n, beta_occupied, 1.0);
   std::tie(alpha_fock, beta_fock) =
-      build_uhf_focks(ints.hcore, ints.eri, alpha_density, beta_density, n);
+      build_uhf_focks(strategy, ints.hcore, ints.eri, alpha_density, beta_density, n);
   result.energy =
       uhf_electronic_energy(alpha_density, beta_density, ints.hcore, alpha_fock, beta_fock) +
       ints.nuclear_repulsion;
@@ -597,7 +535,7 @@ void finalize_uhf(const integrals::IntegralData& ints, const Matrix& orthogonali
   const Matrix beta_weighted =
       energy_weighted_density(beta_orbitals.vectors, beta_orbitals.values, n, beta_occupied, 1.0);
   result.forces =
-      analytic_uhf_forces(ints, alpha_density, beta_density, alpha_weighted, beta_weighted);
+      analytic_uhf_forces(strategy, ints, alpha_density, beta_density, alpha_weighted, beta_weighted);
   result.density = concatenate(alpha_density, beta_density);
 }
 
@@ -1037,6 +975,15 @@ void finalize_density_fitting_uhf(const DensityFittingScfData& data, const Matri
 
 ScfResult run_rhf(const core::System& system, const ScfOptions& options,
                   const std::vector<double>* initial_density) {
+  // Resolve before integral allocation; iteration, final rebuild, and forces share this plan.
+  const ResolvedFockBuild strategy = options.resolved_fock_build
+      ? *options.resolved_fock_build
+      : resolve_fock_build(make_hf_fock_spec(FockSpin::Restricted),
+                           FockBackend::Cpu, options.screening_tolerance);
+  require_exact_direct_strategy(strategy, FockSpin::Restricted, FockBackend::Cpu);
+  if (strategy.screening_tolerance != options.screening_tolerance) {
+    throw std::invalid_argument("resolved Fock screening differs from SCF options");
+  }
   const integrals::IntegralData ints = integrals::build_cartesian_integrals(system);
   const std::size_t n = ints.nbf;
   const std::size_t occupied = static_cast<std::size_t>(system.electron_count / 2);
@@ -1053,7 +1000,7 @@ ScfResult run_rhf(const core::System& system, const ScfOptions& options,
   result.initial_density_used = initial_density != nullptr;
   double previous_energy = std::numeric_limits<double>::infinity();
   for (unsigned iteration = 1; iteration <= options.max_iterations; ++iteration) {
-    const Matrix fock = build_fock(ints.hcore, ints.eri, density, n);
+    const Matrix fock = build_fock(strategy, ints.hcore, ints.eri, density, n);
     const double energy = electronic_energy(density, ints.hcore, fock) + ints.nuclear_repulsion;
     const Matrix residual = commutator_residual(fock, density, ints.overlap, n);
     const Matrix effective_fock = diis.update(fock, residual);
@@ -1079,12 +1026,21 @@ ScfResult run_rhf(const core::System& system, const ScfOptions& options,
 
   // Rebuild and diagonalize the un-extrapolated converged Fock matrix. The
   // resulting orbitals define the energy-weighted density in the Pulay term.
-  finalize_scf(ints, orthogonalizer, occupied, density, result);
+  finalize_scf(strategy, ints, orthogonalizer, occupied, density, result);
   return result;
 }
 
 ScfResult run_uhf(const core::System& system, const ScfOptions& options,
                   const std::vector<double>* initial_density) {
+  // Resolve before integral allocation; iteration, final rebuild, and forces share this plan.
+  const ResolvedFockBuild strategy = options.resolved_fock_build
+      ? *options.resolved_fock_build
+      : resolve_fock_build(make_hf_fock_spec(FockSpin::Unrestricted),
+                           FockBackend::Cpu, options.screening_tolerance);
+  require_exact_direct_strategy(strategy, FockSpin::Unrestricted, FockBackend::Cpu);
+  if (strategy.screening_tolerance != options.screening_tolerance) {
+    throw std::invalid_argument("resolved Fock screening differs from SCF options");
+  }
   const integrals::IntegralData ints = integrals::build_cartesian_integrals(system);
   const std::size_t n = ints.nbf;
   const auto [alpha_occupied, beta_occupied] = spin_occupations(system);
@@ -1104,7 +1060,7 @@ ScfResult run_uhf(const core::System& system, const ScfOptions& options,
   double previous_energy = std::numeric_limits<double>::infinity();
   for (unsigned iteration = 1; iteration <= options.max_iterations; ++iteration) {
     auto [alpha_fock, beta_fock] =
-        build_uhf_focks(ints.hcore, ints.eri, alpha_density, beta_density, n);
+        build_uhf_focks(strategy, ints.hcore, ints.eri, alpha_density, beta_density, n);
     const double energy =
         uhf_electronic_energy(alpha_density, beta_density, ints.hcore, alpha_fock, beta_fock) +
         ints.nuclear_repulsion;
@@ -1140,8 +1096,8 @@ ScfResult run_uhf(const core::System& system, const ScfOptions& options,
 
   // As in RHF, rebuild from the un-extrapolated converged spin Fock matrices
   // before forming orbital-weighted Pulay densities and analytic forces.
-  finalize_uhf(ints, orthogonalizer, alpha_occupied, beta_occupied, alpha_density, beta_density,
-               result);
+  finalize_uhf(strategy, ints, orthogonalizer, alpha_occupied, beta_occupied, alpha_density,
+               beta_density, result);
   return result;
 }
 

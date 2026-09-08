@@ -143,6 +143,7 @@ add_library(vibeqc SHARED
   src/runtime/context.cpp
   src/scf/density_fitting.cpp
   src/scf/fleet.cpp
+  src/scf/fock_build.cpp
   src/scf/rhf.cpp
 )
 
@@ -477,6 +478,11 @@ if(VIBEQC_BUILD_TESTS)
     target_link_libraries(vibeqc_df_value_probe PRIVATE vibeqc CUDA::cudart)
     target_include_directories(vibeqc_df_value_probe PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
   endif()
+  add_executable(vibeqc_fock_build_tests tests/native/test_fock_build.cpp)
+  target_link_libraries(vibeqc_fock_build_tests PRIVATE vibeqc)
+  target_include_directories(vibeqc_fock_build_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  add_test(NAME vibeqc_fock_build_tests COMMAND vibeqc_fock_build_tests)
+
   add_executable(vibeqc_native_tests tests/native/test_rhf.cpp)
   target_link_libraries(vibeqc_native_tests PRIVATE vibeqc)
   target_include_directories(vibeqc_native_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)

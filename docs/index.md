@@ -21,6 +21,8 @@ cover all quantum-chemistry methods through a coherent batched interface.
 ## Developers
 
 - [Architecture](architecture.md): scientific and runtime design decisions.
+- [Shared Fock construction](fock_build.md): method-neutral J/K requests, exact
+  HF consumers, capability limits, and prepared strategy identity.
 - [Implementation roadmap](roadmap.md): detailed milestones and measured
   implementation history.
 - [Shell code generation](shell_codegen.md): generated CUDA policy and
