@@ -125,7 +125,9 @@ changed input, failures, closure and concurrent independent plans are tested.
 Validation requires the shared evidence schema and exact generated/binary
 identity. No candidate is automatically promoted. The PBE Hessian's fully fused
 candidate spills on the measured RTX 5090; separate and grouped outputs provide
-spill-free alternatives. Resource success alone is not a performance result.
+spill-free alternatives. Eight-output PBE correlation still spills, so the
+full matrix does not assume a universal grouping. Resource success alone is not
+a performance result.
 
 ## Reproducing independent evidence
 

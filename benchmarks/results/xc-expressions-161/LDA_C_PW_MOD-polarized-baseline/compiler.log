@@ -1,0 +1,198 @@
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_ZN13vibeqc_tensor11check_scaleEPdldPii' for 'sm_120'
+ptxas info    : Function properties for _ZN13vibeqc_tensor11check_scaleEPdldPii
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 26 registers, used 0 barriers
+ptxas info    : Compile time = 13.703 ms
+ptxas info    : Compiling entry function '_Z11xc_group_35PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_35PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.926 ms
+ptxas info    : Compiling entry function '_Z11xc_group_34PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_34PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.726 ms
+ptxas info    : Compiling entry function '_Z11xc_group_33PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_33PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.788 ms
+ptxas info    : Compiling entry function '_Z11xc_group_32PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_32PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 12 registers, used 0 barriers
+ptxas info    : Compile time = 1.646 ms
+ptxas info    : Compiling entry function '_Z11xc_group_31PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_31PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.718 ms
+ptxas info    : Compiling entry function '_Z11xc_group_30PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_30PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.715 ms
+ptxas info    : Compiling entry function '_Z11xc_group_29PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_29PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.694 ms
+ptxas info    : Compiling entry function '_Z11xc_group_28PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_28PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.699 ms
+ptxas info    : Compiling entry function '_Z11xc_group_27PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_27PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.702 ms
+ptxas info    : Compiling entry function '_Z11xc_group_26PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_26PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.692 ms
+ptxas info    : Compiling entry function '_Z11xc_group_25PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_25PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.707 ms
+ptxas info    : Compiling entry function '_Z11xc_group_24PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_24PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.697 ms
+ptxas info    : Compiling entry function '_Z11xc_group_23PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_23PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.708 ms
+ptxas info    : Compiling entry function '_Z11xc_group_22PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_22PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.691 ms
+ptxas info    : Compiling entry function '_Z11xc_group_21PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_21PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.694 ms
+ptxas info    : Compiling entry function '_Z11xc_group_20PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_20PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.699 ms
+ptxas info    : Compiling entry function '_Z11xc_group_19PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_19PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.686 ms
+ptxas info    : Compiling entry function '_Z11xc_group_18PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_18PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.691 ms
+ptxas info    : Compiling entry function '_Z11xc_group_17PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_17PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.707 ms
+ptxas info    : Compiling entry function '_Z11xc_group_16PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_16PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 12 registers, used 0 barriers
+ptxas info    : Compile time = 1.607 ms
+ptxas info    : Compiling entry function '_Z11xc_group_15PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_15PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 112 registers, used 0 barriers
+ptxas info    : Compile time = 93.268 ms
+ptxas info    : Function properties for __internal_accurate_pow
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function '_Z11xc_group_14PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_14PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.823 ms
+ptxas info    : Compiling entry function '_Z11xc_group_13PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_13PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.732 ms
+ptxas info    : Compiling entry function '_Z11xc_group_12PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_12PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.724 ms
+ptxas info    : Compiling entry function '_Z11xc_group_11PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_11PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.706 ms
+ptxas info    : Compiling entry function '_Z11xc_group_10PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z11xc_group_10PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.724 ms
+ptxas info    : Compiling entry function '_Z10xc_group_9PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z10xc_group_9PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 108 registers, used 0 barriers
+ptxas info    : Compile time = 91.367 ms
+ptxas info    : Function properties for __internal_accurate_pow
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function '_Z10xc_group_8PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z10xc_group_8PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 112 registers, used 0 barriers
+ptxas info    : Compile time = 91.974 ms
+ptxas info    : Function properties for __internal_accurate_pow
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function '_Z10xc_group_7PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z10xc_group_7PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.827 ms
+ptxas info    : Compiling entry function '_Z10xc_group_6PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z10xc_group_6PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.755 ms
+ptxas info    : Compiling entry function '_Z10xc_group_5PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z10xc_group_5PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.724 ms
+ptxas info    : Compiling entry function '_Z10xc_group_4PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z10xc_group_4PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 12 registers, used 0 barriers
+ptxas info    : Compile time = 1.636 ms
+ptxas info    : Compiling entry function '_Z10xc_group_3PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z10xc_group_3PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.728 ms
+ptxas info    : Compiling entry function '_Z10xc_group_2PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z10xc_group_2PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 72 registers, used 0 barriers
+ptxas info    : Compile time = 67.247 ms
+ptxas info    : Function properties for __internal_accurate_pow
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function '_Z10xc_group_1PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z10xc_group_1PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 70 registers, used 0 barriers
+ptxas info    : Compile time = 67.121 ms
+ptxas info    : Function properties for __internal_accurate_pow
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function '_Z10xc_group_0PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z10xc_group_0PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 56 registers, used 0 barriers
+ptxas info    : Compile time = 48.540 ms
+ptxas info    : Function properties for __internal_accurate_pow
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads

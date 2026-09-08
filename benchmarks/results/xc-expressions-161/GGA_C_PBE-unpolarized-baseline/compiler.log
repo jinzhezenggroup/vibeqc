@@ -1,0 +1,68 @@
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_ZN13vibeqc_tensor11check_scaleEPdldPii' for 'sm_120'
+ptxas info    : Function properties for _ZN13vibeqc_tensor11check_scaleEPdldPii
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 26 registers, used 0 barriers
+ptxas info    : Compile time = 13.623 ms
+ptxas info    : Compiling entry function '_Z10xc_group_9PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z10xc_group_9PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.913 ms
+ptxas info    : Compiling entry function '_Z10xc_group_8PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z10xc_group_8PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 12 registers, used 0 barriers
+ptxas info    : Compile time = 1.638 ms
+ptxas info    : Compiling entry function '_Z10xc_group_7PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z10xc_group_7PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 46 registers, used 0 barriers
+ptxas info    : Compile time = 56.180 ms
+ptxas info    : Function properties for __internal_accurate_pow
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function '_Z10xc_group_6PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z10xc_group_6PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.903 ms
+ptxas info    : Compiling entry function '_Z10xc_group_5PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z10xc_group_5PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 102 registers, used 0 barriers
+ptxas info    : Compile time = 83.668 ms
+ptxas info    : Function properties for __internal_accurate_pow
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function '_Z10xc_group_4PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z10xc_group_4PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 114 registers, used 0 barriers
+ptxas info    : Compile time = 116.013 ms
+ptxas info    : Function properties for __internal_accurate_pow
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function '_Z10xc_group_3PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z10xc_group_3PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.899 ms
+ptxas info    : Compiling entry function '_Z10xc_group_2PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z10xc_group_2PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 46 registers, used 0 barriers
+ptxas info    : Compile time = 51.320 ms
+ptxas info    : Function properties for __internal_accurate_pow
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function '_Z10xc_group_1PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z10xc_group_1PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 98 registers, used 0 barriers
+ptxas info    : Compile time = 82.907 ms
+ptxas info    : Function properties for __internal_accurate_pow
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function '_Z10xc_group_0PKdPdmPi' for 'sm_120'
+ptxas info    : Function properties for _Z10xc_group_0PKdPdmPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 48 registers, used 0 barriers
+ptxas info    : Compile time = 54.209 ms
+ptxas info    : Function properties for __internal_accurate_pow
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads

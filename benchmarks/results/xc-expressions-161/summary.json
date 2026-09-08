@@ -1,0 +1,635 @@
+{
+  "records": [
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "219619056ddbb7e93b74e55a2cc1348bbb88f7fa3e1bd85a35ca76bb912dc82b",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 1.1210680105868456,
+      "spill_free": true,
+      "subject": "XC/LDA_X/polarized/baseline"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "bb1355f538d19fb77834dbc61f6da03a29796537e2054896a4fc67747739b9ec",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 1.6511344806166475,
+      "spill_free": true,
+      "subject": "XC/LDA_X/polarized/fused"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "a9f7582b4c1e7943614929799cbb4fc1925f67747d34534916f49e5cf76d8cc1",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 1.548486540266743,
+      "spill_free": true,
+      "subject": "XC/LDA_X/polarized/split"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "d9aee1fddc68940855ffabed145269ad1d55301c7f5b8c6d204220f3e48a673c",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 0.9768516394878216,
+      "spill_free": true,
+      "subject": "XC/LDA_X/unpolarized/baseline"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "144d4d559debfcdc301512ad480e66970570a891c34bc8c4bb6041c2743dd80f",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 1.0915038107959683,
+      "spill_free": true,
+      "subject": "XC/LDA_X/unpolarized/fused"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "b989845743f44dfd9cbd6553c120103b3c614cd0ea2d5092226f4ff1d6ee853b",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 1.079368159037827,
+      "spill_free": true,
+      "subject": "XC/LDA_X/unpolarized/split"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "bcf81b3fe98196d38a762bbff7e46cd86fd988ed0f6a16c4de583c4850ba8ee6",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 4.03118231828476,
+      "spill_free": true,
+      "subject": "XC/LDA_C_PW/polarized/baseline"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "63370759fc30d755e19d810c23e41ebbde8fdd5a1cff9193f145c3d0d6ed39cd",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 8.092213912750989,
+      "spill_free": true,
+      "subject": "XC/LDA_C_PW/polarized/fused"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "694193cca6e925be14000928757303aaf561c78f0dcd851b7426d3ccc2f5546f",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 6.9264715096323215,
+      "spill_free": true,
+      "subject": "XC/LDA_C_PW/polarized/split"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "cbf709c30d792806f5b48e2eaf2c3fe5b828ea7161f4aeba2f451e7c8956a350",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 2.978046470580461,
+      "spill_free": true,
+      "subject": "XC/LDA_C_PW/unpolarized/baseline"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "be7fc388e5615e479fc5f93d717f84255300c04cc1643b67ec5bccfae3d5e222",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 3.7799912676594323,
+      "spill_free": true,
+      "subject": "XC/LDA_C_PW/unpolarized/fused"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "c837e8d27dcfc33befd300c8531ac384af14b702b6d0265e2049e0f8f64f898e",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 3.7544320532567457,
+      "spill_free": true,
+      "subject": "XC/LDA_C_PW/unpolarized/split"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "b4bbfd610c375d8dd47acbfbe41f51c59b037f872a1c2c0db2b5ebc32f9883ac",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 4.030700578381462,
+      "spill_free": true,
+      "subject": "XC/LDA_C_PW_MOD/polarized/baseline"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "e611b5418908e662f788c7647086bdca7fe5b4194a99c4273afc6da4a31464f0",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 8.165664663816383,
+      "spill_free": true,
+      "subject": "XC/LDA_C_PW_MOD/polarized/fused"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "63e8d73bcbcabcecdc6ccb42fafefc2593cdfec3fec5c3d110d159ad5ec14b4c",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 6.917813645508551,
+      "spill_free": true,
+      "subject": "XC/LDA_C_PW_MOD/polarized/split"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "c3a1d130d642c4b9e459797ac04e91e01495524340117b2979d35b0afd5699d7",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 2.9856658342378535,
+      "spill_free": true,
+      "subject": "XC/LDA_C_PW_MOD/unpolarized/baseline"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "456b4084cb637323281f5567a951670a2afd7dcb1dd6bb6de5271a712d6f7ad0",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 3.776973500704429,
+      "spill_free": true,
+      "subject": "XC/LDA_C_PW_MOD/unpolarized/fused"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "5e7f61f08f3e3fb12ad9b24c85094f9e9953d5049822327ef4d08bb1531bfb5b",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 3.7696291385588676,
+      "spill_free": true,
+      "subject": "XC/LDA_C_PW_MOD/unpolarized/split"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "fe40347294b8b828dcfcba23a4c3e323a45aa279ed9f3c0c4dbe1b01b3c74c16",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 1.6065132867671108,
+      "spill_free": true,
+      "subject": "XC/GGA_X_PBE/polarized/baseline"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "58b4018f6b6ce364bc713a0bcc66a8bbca5fea6479477b2995199c7adca7a5a2",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 2.6152211538441508,
+      "spill_free": true,
+      "subject": "XC/GGA_X_PBE/polarized/fused"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "4000adc0eb35daa4b21eb918713b41646689bd46124a17f6c813a4efca34d771",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 2.1402690113099134,
+      "spill_free": true,
+      "subject": "XC/GGA_X_PBE/polarized/split"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "d20078f6fa43c33be7f0c18059e5f1f3bdf30f7cdcad4ff47b9fde1b62e588de",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 1.3615590268982933,
+      "spill_free": true,
+      "subject": "XC/GGA_X_PBE/unpolarized/baseline"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "149102976f34652a5c3a12e1075f67874294515d7fbe2ff5cca26df21f73fd45",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 1.7148208799128355,
+      "spill_free": true,
+      "subject": "XC/GGA_X_PBE/unpolarized/fused"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "a428d19d2c66c3220128c24204e60d5377d3f1fac5e2fd09f07b6e9c97771a75",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 1.6872032623501578,
+      "spill_free": true,
+      "subject": "XC/GGA_X_PBE/unpolarized/split"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "194d7a89a3dd70b1c615f7758ef326791fe54310d3ecc64d5d85401f32e008ed",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 3.6131348056685835,
+      "spill_free": true,
+      "subject": "XC/GGA_C_PBE/polarized/baseline"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "223ebb7e11e100643e17f1b80097b9989fb5e5b3fe45ffb684e3a48c5612887e",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 13.63157787149728,
+      "spill_free": true,
+      "subject": "XC/GGA_C_PBE/polarized/fused"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "c5c9ff5e9e8ab0024c69ab267c54b2da399865c4a842a7e983bb38dfe7d867ab",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 9.65627133298706,
+      "spill_free": false,
+      "subject": "XC/GGA_C_PBE/polarized/split"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "ba74ed9b081998ae946ba1d439878be285e5a81d984b2fddb02398085588f709",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 3.9605021498212345,
+      "spill_free": true,
+      "subject": "XC/GGA_C_PBE/unpolarized/baseline"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "f94f46f71f318d66e7f9b82a83307b10025e0e184838c9fd5987ac3a972d603e",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 6.460583354362575,
+      "spill_free": true,
+      "subject": "XC/GGA_C_PBE/unpolarized/fused"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "dd74405291a10f8196b1f1eccc10d79003bdea5dbddd7294735c798adff4c124",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 6.357899855190519,
+      "spill_free": true,
+      "subject": "XC/GGA_C_PBE/unpolarized/split"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "f1544094e3531f2889bc858817b668f30752394cad92de368f32ffd3edaf0439",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 3.964719998295524,
+      "spill_free": true,
+      "subject": "XC/LDA_XC_PW/polarized/baseline"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "d7ff9ab37f6a96863155d659646f58d9221c35d821bc3dba85a36f7c0221b362",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 7.793662572385609,
+      "spill_free": true,
+      "subject": "XC/LDA_XC_PW/polarized/fused"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "5a84b7e376aa78556e1d120911a9d25ed0b47cd7d5d5314db9a1f3208d12d222",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 6.820847737290252,
+      "spill_free": true,
+      "subject": "XC/LDA_XC_PW/polarized/split"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "d7c0e7f9df709b8789dcf7ce7876aa86c3e193dc9a4c819dbc53899f150582fd",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 3.071212099344047,
+      "spill_free": true,
+      "subject": "XC/LDA_XC_PW/unpolarized/baseline"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "0fbde5dd6e33567c5dabe69d5cf5d9c657d402da48abeb884654f1a9d3780523",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 3.857993612960879,
+      "spill_free": true,
+      "subject": "XC/LDA_XC_PW/unpolarized/fused"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "41962a350f932c8742ff54b62e18ff1b01c38f18812179d130b6ca86f59b56eb",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 3.8301626174152257,
+      "spill_free": true,
+      "subject": "XC/LDA_XC_PW/unpolarized/split"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "a6d8e6cdfbe7e9dc18cbb79c547f9b1e3c809da256b7c16d02f3d20cd5955248",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 3.586458222570257,
+      "spill_free": true,
+      "subject": "XC/PBE/polarized/baseline"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "58c6d837267e75f9743aee54247086d8e7e53fa612d7e40b6a9e7c103d656ca8",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 13.37884703697572,
+      "spill_free": false,
+      "subject": "XC/PBE/polarized/fused"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "3643f2ae3a579c3e7bf40dca5c28e0a23a8707be31b465cf627dc7c515191497",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 8.692032626571628,
+      "spill_free": true,
+      "subject": "XC/PBE/polarized/split"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "f85d86de18212aa669d7ec44c8a5cdd31b00044fbb1a79112c4c055ef773adb6",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 3.9422123693021427,
+      "spill_free": true,
+      "subject": "XC/PBE/unpolarized/baseline"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "95242da1e33a3c4c8fc5774d3b9cc471534b9fe2b76e416bb45bbf46e0edc92a",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 6.743825030642961,
+      "spill_free": true,
+      "subject": "XC/PBE/unpolarized/fused"
+    },
+    {
+      "endpoint": {
+        "reason": null,
+        "scope": "fixed-feature upload/evaluation/download/consumption only",
+        "status": "pass"
+      },
+      "identity": "5cabcf8ad44cfeea37740c9c153e7e501e1f38e0ffb12de98dc343a8772c6fcf",
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "speedup": 6.572938987293275,
+      "spill_free": true,
+      "subject": "XC/PBE/unpolarized/split"
+    }
+  ],
+  "tier": "endpoint"
+}
