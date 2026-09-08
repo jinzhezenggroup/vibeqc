@@ -454,3 +454,25 @@ def test_independent_overlap_and_kinetic_from_native_ao_quadrature(case):
     with np.load(ROOT / "oracles.npz") as oracle:
         check(overlap, oracle[case + "_overlap"], atol=2e-10, rtol=2e-10)
         check(kinetic, oracle[case + "_kinetic"], atol=2e-9, rtol=2e-10)
+
+
+@pytest.mark.parametrize("dtype", [np.int32, np.int64])
+def test_numpy_integer_metadata_preserves_native_occupation_diagnostics(dtype):
+    atoms = [[("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))], [("H", (0, 0, 0))]]
+    calculator = Calculator(basis=imported())
+    metadata = calculator.basis_metadata(
+        atoms[1], charge=dtype(0), multiplicity=dtype(1)
+    )
+    assert type(metadata["orbital"]["electrons"]["ionic_charge"]) is int
+    assert "occupation_error" in metadata["orbital"]["electrons"]
+    json.dumps(metadata)
+    for charges in ([0, 0], np.array([0, 0], dtype=dtype)):
+        with pytest.raises(RuntimeError, match="invalid argument"):
+            calculator.batch_singlepoint(atoms, charges=charges)
+    with calculator.prepare_batch(
+        [atoms[0], atoms[0]],
+        charges=np.array([0, 0], dtype=dtype),
+        multiplicities=np.array([1, 1], dtype=dtype),
+    ) as prepared:
+        result = prepared.execute([None, np.zeros((1, 3))])
+        assert result.failure_indices == (1,)

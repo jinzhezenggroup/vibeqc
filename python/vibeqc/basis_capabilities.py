@@ -143,6 +143,10 @@ def resolved_basis_metadata(
     and source names must not distinguish identical expanded FP64 input shells.
     Every coefficient, including zero entries, enters this mathematical hash.
     """
+    # Accepted NumPy integral scalars must become JSON-native integers even
+    # when invalid occupations take the diagnostic path below.
+    charge = checked_integer(charge, "ionic charge", low=-(2**31), high=2**31 - 1)
+    multiplicity = checked_integer(multiplicity, "multiplicity", low=1, high=2**31 - 1)
     metadata = basis.by_element if isinstance(basis, BasisSet) else {}
     numbers = tuple(a.atomic_number for a in atoms)
     nuclei = tuple(metadata[z].nuclear_charge if z in metadata else z for z in numbers)
@@ -159,8 +163,9 @@ def resolved_basis_metadata(
             )
         )
     except ValueError as error:
-        # Invalid occupation requests may be isolated failures inside a native
-        # batch. Metadata must not turn such a failure into a whole-batch abort.
+        # Occupation inspection is separate from native method preparation.
+        # Preserve its existing rejection behavior instead of replacing it
+        # with an unrelated metadata/JSON exception.
         state = {
             "atomic_numbers": numbers,
             "nuclear_charges": nuclei,

@@ -145,6 +145,11 @@ Replacing calculator model state is detected before prepared execution and
 cannot reuse incompatible densities/Fock/DIIS state. Coordinate updates remain
 supported. Result metadata is detached from the prepared snapshot.
 
+NumPy integral charge/spin scalars remain JSON-safe, including invalid-occupation
+diagnostics. Native method preparation rejects invalid RHF occupations before
+execution. Coordinate-update and convergence failures remain isolated per item
+on both backends. Metadata preserves those existing behaviors.
+
 ## Validation and follow-ups
 
 `tests/data/external_basis/manifest.json` pins BSE git revision
