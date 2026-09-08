@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "molecule/basis.hpp"
+#include "posthf/raw_source.hpp"
 
 namespace vibeqc::integrals {
 namespace {
@@ -922,3 +923,161 @@ IntegralData build_integrals(const core::System& system) {
 }
 
 }  // namespace vibeqc::integrals
+
+// Keep this adapter in the evaluator translation unit so it reuses the exact
+// contracted primitive mathematics without exporting recurrence internals.
+namespace vibeqc::posthf {
+using namespace vibeqc::integrals;
+
+struct RawSource::Impl {
+  core::System orbital, auxiliary;
+  bool has_auxiliary = false;
+  std::vector<AoView> aos, aux;
+  std::vector<GlobalAoExpansion> public_aos, public_aux;
+  std::vector<Vec3> centers;
+
+  double cartesian(Operator op, const std::array<const AoView*, 4>& slots) const {
+    const bool one = op == Operator::overlap || op == Operator::hcore;
+    const unsigned rank = op == Operator::eri ? 4 : op == Operator::three_center ? 3 : 2;
+    std::array<core::Primitive, 4> primitive{};
+    double result = 0;
+    auto evaluate = [&](auto&& self, unsigned slot, double weight) -> void {
+      if (slot < rank) {
+        for (const auto& p : slots[slot]->shell->primitives) {
+          primitive[slot] = p;
+          self(self, slot + 1, weight * p.coefficient * slots[slot]->component_normalization);
+        }
+        return;
+      }
+      const auto& a = centers[slots[0]->shell->atom_index];
+      const auto& b = centers[slots[1]->shell->atom_index];
+      if (one) {
+        if (op == Operator::overlap) {
+          result +=
+              weight * primitive_overlap_cartesian(primitive[0].exponent, a, slots[0]->angular,
+                                                   primitive[1].exponent, b, slots[1]->angular)
+                           .value;
+        } else {
+          result +=
+              weight * (primitive_kinetic_cartesian(primitive[0].exponent, a, slots[0]->angular,
+                                                    primitive[1].exponent, b, slots[1]->angular) +
+                        primitive_nuclear_attraction_cartesian(
+                            primitive[0].exponent, a, slots[0]->angular, primitive[1].exponent, b,
+                            slots[1]->angular, centers, orbital))
+                           .value;
+        }
+        return;
+      }
+      const molecule::CartesianComponent zero{0, 0, 0};
+      if (op == Operator::metric) {
+        result += weight * primitive_eri_cartesian(primitive[0].exponent, a, slots[0]->angular, 0,
+                                                   a, zero, primitive[1].exponent, b,
+                                                   slots[1]->angular, 0, b, zero)
+                               .value;
+      } else {
+        const auto& c = centers[slots[2]->shell->atom_index];
+        const auto& d = rank == 4 ? centers[slots[3]->shell->atom_index] : c;
+        result += weight * primitive_eri_cartesian(primitive[0].exponent, a, slots[0]->angular,
+                                                   primitive[1].exponent, b, slots[1]->angular,
+                                                   primitive[2].exponent, c, slots[2]->angular,
+                                                   rank == 4 ? primitive[3].exponent : 0, d,
+                                                   rank == 4 ? slots[3]->angular : zero)
+                               .value;
+      }
+    };
+    evaluate(evaluate, 0, 1);
+    return result;
+  }
+
+  double value(Operator op, const std::array<std::size_t, 4>& indices) const {
+    const unsigned rank = op == Operator::eri ? 4 : op == Operator::three_center ? 3 : 2;
+    std::array<const AoView*, 4> slots{};
+    double result = 0;
+    auto expand = [&](auto&& self, unsigned slot, double weight) -> void {
+      if (slot == rank) {
+        result += weight * cartesian(op, slots);
+        return;
+      }
+      const bool auxiliary_slot =
+          op == Operator::metric || (op == Operator::three_center && slot == 2);
+      const auto& expansion = (auxiliary_slot ? public_aux : public_aos)[indices[slot]];
+      const auto& source = auxiliary_slot ? aux : aos;
+      for (const auto& term : expansion) {
+        slots[slot] = &source[term.cartesian_ao];
+        self(self, slot + 1, weight * term.coefficient);
+      }
+    };
+    expand(expand, 0, 1);
+    return result;
+  }
+};
+
+RawSource::RawSource(core::System orbital, const core::System* auxiliary)
+    : impl_(std::make_unique<Impl>()) {
+  impl_->orbital = std::move(orbital);
+  for (const auto& shell : impl_->orbital.shells)
+    if (shell.angular_momentum > 3)
+      throw std::invalid_argument("raw post-HF source supports through f");
+  impl_->aos = expand_cartesian_aos(impl_->orbital);
+  impl_->public_aos = public_ao_expansions(impl_->orbital);
+  for (const auto& atom : impl_->orbital.atoms) {
+    Vec3 position;
+    for (unsigned axis = 0; axis < 3; ++axis) position[axis] = Jet(atom.position[axis], 0);
+    impl_->centers.push_back(std::move(position));
+  }
+  if (auxiliary) {
+    require_matching_density_fitting_geometry(impl_->orbital, *auxiliary);
+    for (const auto& shell : auxiliary->shells)
+      if (shell.angular_momentum > 3)
+        throw std::invalid_argument("raw auxiliary source supports through f");
+    impl_->auxiliary = *auxiliary;
+    impl_->has_auxiliary = true;
+    impl_->aux = expand_cartesian_aos(impl_->auxiliary);
+    impl_->public_aux = public_ao_expansions(impl_->auxiliary);
+  }
+}
+RawSource::~RawSource() = default;
+const core::System& RawSource::orbital() const { return impl_->orbital; }
+const core::System& RawSource::auxiliary() const {
+  if (!impl_->has_auxiliary) throw std::invalid_argument("auxiliary basis required");
+  return impl_->auxiliary;
+}
+std::size_t RawSource::nbf() const { return impl_->public_aos.size(); }
+std::size_t RawSource::naux() const { return impl_->public_aux.size(); }
+void RawSource::read(Operator op, const std::array<std::size_t, 4>& begin,
+                     const std::array<std::size_t, 4>& count, double* out,
+                     std::size_t elements) const {
+  if (op < Operator::overlap || op > Operator::three_center)
+    throw std::invalid_argument("unknown raw operator");
+  const unsigned rank = op == Operator::eri ? 4 : op == Operator::three_center ? 3 : 2;
+  if ((op == Operator::metric || op == Operator::three_center) && !impl_->has_auxiliary)
+    throw std::invalid_argument("auxiliary basis required");
+  std::size_t size = 1;
+  for (unsigned slot = 0; slot < 4; ++slot) {
+    const std::size_t dimension =
+        slot >= rank
+            ? 1
+            : (op == Operator::metric || (op == Operator::three_center && slot == 2) ? naux()
+                                                                                     : nbf());
+    if (begin[slot] > dimension || count[slot] > dimension - begin[slot])
+      throw std::invalid_argument("raw tile exceeds source bounds");
+    if (count[slot] && size > SIZE_MAX / count[slot])
+      throw std::overflow_error("raw tile size overflow");
+    size *= count[slot];
+  }
+  if (size != elements || (size && !out)) throw std::invalid_argument("raw output size mismatch");
+  std::size_t cursor = 0;
+  std::array<std::size_t, 4> indices{};
+  auto traverse = [&](auto&& self, unsigned slot) -> void {
+    if (slot == 4) {
+      out[cursor++] = impl_->value(op, indices);
+      return;
+    }
+    for (std::size_t i = 0; i < count[slot]; ++i) {
+      indices[slot] = begin[slot] + i;
+      self(self, slot + 1);
+    }
+  };
+  traverse(traverse, 0);
+}
+}  // namespace vibeqc::posthf

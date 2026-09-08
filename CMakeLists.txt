@@ -137,6 +137,7 @@ add_library(vibeqc SHARED
   src/methods/hf_method.cpp
   src/methods/registry.cpp
   src/molecule/basis.cpp
+  src/posthf/bridge.cpp
   src/runtime/context.cpp
   src/scf/density_fitting.cpp
   src/scf/fleet.cpp
@@ -209,6 +210,7 @@ if(VIBEQC_ENABLE_CUDA)
     VERBATIM)
   target_sources(vibeqc PRIVATE "${VIBEQC_WEIGHTED_ERI_HEADER}")
   target_sources(vibeqc PRIVATE
+    src/posthf/df_bridge.cu
     src/scf/cuda/rhf_policy.cpp
     src/runtime/cuda_runtime.cu
     src/scf/cuda_density_fitting.cu

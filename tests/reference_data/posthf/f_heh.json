@@ -1,0 +1,132 @@
+{
+  "schema": "vibeqc.posthf_reference",
+  "version": 1,
+  "inputs": {
+    "name": "f_heh",
+    "atomic_numbers": [
+      2,
+      1
+    ],
+    "coordinates": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.3,
+        -0.2,
+        1.7
+      ]
+    ],
+    "shells": [
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            1.3,
+            1
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 3,
+        "primitives": [
+          [
+            0.7,
+            1
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.6,
+            1
+          ]
+        ]
+      }
+    ],
+    "basis_representation": "real_spherical",
+    "charge": 1,
+    "multiplicity": 1
+  },
+  "auxiliary_shells": [
+    {
+      "atom_index": 0,
+      "angular_momentum": 0,
+      "primitives": [
+        [
+          1.3,
+          1
+        ]
+      ]
+    },
+    {
+      "atom_index": 0,
+      "angular_momentum": 3,
+      "primitives": [
+        [
+          0.7,
+          1
+        ]
+      ]
+    },
+    {
+      "atom_index": 1,
+      "angular_momentum": 0,
+      "primitives": [
+        [
+          0.6,
+          1
+        ]
+      ]
+    }
+  ],
+  "actual_angular_momenta": [
+    0,
+    3,
+    0
+  ],
+  "records": {
+    "conventional": {
+      "hf_energy": -2.422284177535021,
+      "correlation_energy": -0.01741486128265443,
+      "scf_residual": 2.353672812205332e-14,
+      "electron_count": 2
+    },
+    "df": {
+      "hf_energy": -2.4608678174883742,
+      "correlation_energy": -0.012906138489357299,
+      "scf_residual": 2.4868995751603507e-14,
+      "electron_count": 2
+    }
+  },
+  "array_hash": "e120b22195ddf4f0e6aa451961101f84d7a5843d6b8e9971e58a77f341ea5ff9",
+  "versions": {
+    "pyscf": "2.14.0",
+    "numpy": "2.4.6",
+    "python": "3.11.14 (main, Feb 12 2026, 00:42:50) [Clang 21.1.4 ]"
+  },
+  "provenance": {
+    "pyscf": "Apache-2.0",
+    "libcint": "BSD-2-Clause",
+    "exporter": "original repository GPL-3.0-or-later"
+  },
+  "settings": {
+    "scf_energy_tolerance": 1e-13,
+    "scf_gradient_tolerance": 1e-11,
+    "screening": 0,
+    "df_relative_threshold": 1e-10,
+    "frozen_core": null,
+    "mo_phase": "largest unit-normalized AO coefficient positive",
+    "eri": "chemists (pq|rs)",
+    "t2": "restricted ijab = (ia|jb)/D",
+    "units": "Bohr, Hartree"
+  },
+  "conventional_df_ao_max_difference": 0.16117043572404732
+}

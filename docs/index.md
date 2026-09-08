@@ -39,3 +39,5 @@ cover all quantum-chemistry methods through a coherent batched interface.
 The README intentionally omits kernel history and internal scheduling details.
 Those belong in the developer documents so the first page remains an accurate,
 compact user entry point.
+
+- [HF reference snapshots and bounded MO integral providers](posthf.md)
