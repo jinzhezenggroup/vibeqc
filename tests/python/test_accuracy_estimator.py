@@ -73,6 +73,7 @@ def test_empirical_prediction_never_becomes_a_certified_or_observed_pass():
         {"electron_trace_error": 0.1},
         {"idempotency_error": 0.1},
         {"minimum_nuclear_distance": 0.01},
+        {"minimum_nuclear_distance": None},
         {"precision": "fp32"},
         {"backend": "cuda"},
     ],
@@ -106,6 +107,25 @@ def test_holdout_reports_failed_coverage_missed_tolerances_and_overconservatism(
     assert conservative["overconservative"] == 2
     with pytest.raises(ValueError, match="leakage"):
         predictor.evaluate_holdout((sample("molecule-a"),))
+
+
+def test_missing_separation_is_only_allowed_for_a_single_atom():
+    # Synthetic atomic features isolate the domain gate: an isolated carbon
+    # atom has no internuclear distance, unlike the two-centre fixture above.
+    atomic_model = replace(MODEL, electron_count=6)
+    atomic_features = replace(
+        FEATURES,
+        model_id=atomic_model.identity,
+        atomic_numbers=(6,),
+        nao=5,
+        minimum_nuclear_distance=None,
+    )
+    assert not DOMAIN.rejection_reasons(atomic_model, atomic_features)
+    missing = replace(
+        sample("molecule-b"), features=replace(FEATURES, minimum_nuclear_distance=None)
+    )
+    with pytest.raises(ValueError, match="missing nuclear separation"):
+        EmpiricalHFEstimator.fit(DOMAIN, (sample("molecule-a"), missing))
 
 
 def test_training_rejects_single_family_duplicates_and_unsupported_observations():

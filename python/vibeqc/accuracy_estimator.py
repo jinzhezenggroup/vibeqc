@@ -146,7 +146,16 @@ class HFCalibrationDomain:
             reasons.append("electron populations are not validated")
         if features.idempotency_error > self.maximum_idempotency_error:
             reasons.append("density idempotency is not validated")
+        # A missing separation is meaningful only for an isolated atom. For a
+        # molecule it is absent evidence, not permission to skip a domain gate.
         if (
+            len(features.atomic_numbers) > 1
+            and features.minimum_nuclear_distance is None
+        ):
+            reasons.append(
+                "missing nuclear separation diagnostic for a multi-atom system"
+            )
+        elif (
             features.minimum_nuclear_distance is not None
             and features.minimum_nuclear_distance < self.minimum_nuclear_distance
         ):
