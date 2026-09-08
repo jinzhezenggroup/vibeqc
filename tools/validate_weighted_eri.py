@@ -344,7 +344,7 @@ def main():
                 "libcint_error": error,
                 "route_budget_error": cross,
                 "finite_differences": fd,
-                "passed": error["passed"] and cross["passed"] and fd_passed,
+                "passed": bool(error["passed"] and cross["passed"] and fd_passed),
             }
             report["runs"].append(run)
             previous = actual

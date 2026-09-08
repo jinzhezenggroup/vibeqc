@@ -29,15 +29,18 @@ def endpoint(config):
     from vibeqc import Calculator
 
     method, batch = config["method"], config["batch"]
-    geometry = [("O", [0.0, 0.0, 0.0]), ("H", [0.0, 1.43, 1.11])]
-    if method == "rhf":
-        geometry.append(("H", [0.0, -1.43, 1.11]))
-    # Three fragments exceed the native 16-AO persistent-ERI cutoff even in
-    # STO-3G. A single water would never enter the migrated direct force path.
+    water = [
+        ("O", [0.0, 0.0, 0.0]),
+        ("H", [0.0, 1.43, 1.11]),
+        ("H", [0.0, -1.43, 1.11]),
+    ]
+    # OH + two closed-shell waters gives a single radical without the nearly
+    # degenerate independent spins of three separated OH radicals. Both
+    # methods exceed the native 16-AO persistent-ERI cutoff even in STO-3G.
     geometry = [
         (element, [x + 7.0 * fragment, y, z])
         for fragment in range(3)
-        for element, (x, y, z) in geometry
+        for element, (x, y, z) in (water if method == "rhf" or fragment else water[:2])
     ]
     systems = [
         [(element, [x + item * 0.01, y, z]) for element, (x, y, z) in geometry]
@@ -58,9 +61,12 @@ def endpoint(config):
     )
     phases = {}
     start = time.perf_counter()
-    multiplicities = [1 if method == "rhf" else 4] * batch
-    if method == "uhf" and batch > 1:
-        multiplicities[1] = 2
+    multiplicities = [1 if method == "rhf" else 2] * batch
+    phases["inputs"] = {
+        "systems": systems,
+        "multiplicities": multiplicities,
+        "coordinates_unit": "bohr",
+    }
     with calculator.prepare_batch(
         systems,
         multiplicities=multiplicities,
@@ -122,12 +128,56 @@ def require_equal(actual, reference):
     return checks
 
 
+def cross_schedule_checks(runs):
+    """Gate identical physics across fixed/resident/pages and mixed batches.
+
+    The first molecule has identical coordinates in every batch size, while
+    the additional molecules intentionally have different shapes/geometries.
+    Compare it separately rather than broadcasting ragged batch arrays.
+    """
+    references, batch_references = {}, {}
+    checks = []
+    for run in runs:
+        key = (run["method"], run["basis"])
+        reference = references.setdefault(key, run["samples"]["reference"])
+        same_batch = batch_references.setdefault(
+            (*key, run["batch"]), run["samples"]["reference"]
+        )
+        for samples in run["samples"].values():
+            if samples["inputs"]["systems"][0] != reference["inputs"]["systems"][0]:
+                raise RuntimeError("cross-schedule first-molecule coordinates differ")
+            if samples["inputs"] != same_batch["inputs"]:
+                raise RuntimeError("cross-schedule batch inputs differ")
+            for phase in ("cold", "changed_geometry"):
+                checks.extend(require_equal(samples[phase], same_batch[phase]))
+
+                def first(result):
+                    return {
+                        "energies": result["energies"][:1],
+                        "forces": result["forces"][:1],
+                    }
+
+                checks.extend(
+                    require_equal(first(samples[phase]), first(reference[phase]))
+                )
+    return checks
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--worker")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--baseline-library", type=Path)
     parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument(
+        "--methods", nargs="+", choices=["rhf", "uhf"], default=["rhf", "uhf"]
+    )
+    parser.add_argument(
+        "--schedules",
+        nargs="+",
+        choices=["fixed", "resident", "paged"],
+        default=["fixed", "resident", "paged"],
+    )
     parser.add_argument("--batches", nargs="+", type=int, default=[1, 3])
     parser.add_argument("--bases", nargs="+", default=["sto-3g", "def2-svp"])
     args = parser.parse_args()
@@ -148,10 +198,10 @@ def main():
         "runs": [],
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    for method in ("rhf", "uhf"):
+    for method in args.methods:
         for basis in args.bases:
             for batch in args.batches:
-                for schedule in ("fixed", "resident", "paged"):
+                for schedule in args.schedules:
                     resident = schedule == "resident"
                     config = {
                         "method": method,
@@ -192,7 +242,9 @@ def main():
                             check=False,
                         )
                         if completed.returncode:
-                            raise RuntimeError(completed.stderr)
+                            raise RuntimeError(
+                                f"{config}, route={route}: {completed.stderr}"
+                            )
                         samples[route] = json.loads(completed.stdout)
                     profile_config = {
                         **config,
@@ -245,6 +297,7 @@ def main():
                     )
                     args.output.write_text(json.dumps(report, indent=2) + "\n")
                     print(json.dumps({**config, "speedups": speedups}), flush=True)
+    report["cross_schedule_batch_checks"] = cross_schedule_checks(report["runs"])
     report["passed"] = True
     args.output.write_text(json.dumps(report, indent=2) + "\n")
 

@@ -15,7 +15,7 @@ source emission alone does not select a production route.
 | Consumer/class | Existing execution | Selection and this change |
 | --- | --- | --- |
 | HF, at most 16 public AOs | Persistent ERI values and their native force path | AO cutoff; does not exercise the direct psss migration |
-| Direct HF psss Fock | Handwritten three-component `contracted_eri_cartesian_source_psss` | Retains one primitive traversal and cached pair data |
+| Direct HF psss Fock | Fixed queues use handwritten three-component `contracted_eri_cartesian_source_psss`; bounded streaming can use the existing generated Fock row | `kFixedTopologyGeneratedFockExclusionMask` retains the fixed low-order workers; streaming capabilities select generated psss for bounded Fock |
 | Direct HF psss force | Handwritten weighted PA/PQ dot products, F0/F1/F2 once per primitive pair product | Default remains handwritten; `VIBEQC_PSSS_WEIGHTED=generated` substitutes only its primitive weighted expression |
 | Direct HF psss resident force | Resident bra pairs and primitive-length descriptors | `VIBEQC_PSSS_RESIDENT_BRA`; the generated expression uses the same resident pairs and canonical-orientation scales |
 | Bounded direct psss force | Lossless paged exact-class consumer | `VIBEQC_BOUNDED_DIRECT_STREAMING=force` or topology limits; uses the same weighted expression, retains page traversal |
@@ -137,3 +137,8 @@ The generated psss policy remains opt-in. A resource-safe or mathematically
 correct candidate is promoted only after non-regressing molecular endpoint
 evidence; the old component-cloning candidate and its rejection remain
 documented in [shell_codegen.md](shell_codegen.md).
+
+The final [RTX 5090 evidence](../benchmarks/results/weighted-eri-144/README.md)
+includes native libcint agreement, memory-sanitizer results, resource records,
+and 72 complete RHF/UHF endpoint runs. The new candidate remains opt-in because
+its endpoint time ratios cross one.

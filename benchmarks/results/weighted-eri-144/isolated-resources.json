@@ -1,0 +1,51 @@
+{
+  "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0\n",
+  "candidates": [
+    {
+      "inline_single_use": false,
+      "source_sha256": "4c942f21a3ceed5e2b20a6e03650dd6dbfdf9ae9fb41d977cca67304f6296544",
+      "header_sha256": "3a320765b77e53391d5a0fcfa81d40e714de3a77ef2ead0934dacce0b534270c",
+      "object_sha256": "0373470c8c0875265d600af13e8b4622eeaa27beaf307460c71dde9c7bbebd92",
+      "generation_seconds": 0.01114070089533925,
+      "compile_seconds": 0.9709753389470279,
+      "source_bytes": 7325,
+      "object_bytes": 23072,
+      "command": [
+        "/group/software/cuda-12.9.1/bin/nvcc",
+        "-O3",
+        "-std=c++20",
+        "-arch=sm_120",
+        "-Xptxas=-v",
+        "-c",
+        "build/weighted-resources/materialized.cu",
+        "-o",
+        "build/weighted-resources/materialized.o"
+      ],
+      "ptxas": "ptxas info    : 0 bytes gmem\nptxas info    : Compiling entry function 'weighted_screen' for 'sm_120'\nptxas info    : Function properties for weighted_screen\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\nptxas info    : Used 64 registers, used 0 barriers\nptxas info    : Compile time = 12.630 ms\n"
+    },
+    {
+      "inline_single_use": true,
+      "source_sha256": "e78b1d9bbdcfd86b2ceeef0dccb9ac3070044e81aa0ce2f2068c1f53a7ddd191",
+      "header_sha256": "badafc2a530e79e4f8f28b13cab5cf1ffde875e0b381457e4f76e81e4637617d",
+      "object_sha256": "6cdf406a6da411c297412a117e53d60da91422a6211dd7a9a3a6dd388fd09de3",
+      "generation_seconds": 0.010999591089785099,
+      "compile_seconds": 0.959700935985893,
+      "source_bytes": 5094,
+      "object_bytes": 23016,
+      "command": [
+        "/group/software/cuda-12.9.1/bin/nvcc",
+        "-O3",
+        "-std=c++20",
+        "-arch=sm_120",
+        "-Xptxas=-v",
+        "-c",
+        "build/weighted-resources/inline.cu",
+        "-o",
+        "build/weighted-resources/inline.o"
+      ],
+      "ptxas": "ptxas info    : 0 bytes gmem\nptxas info    : Compiling entry function 'weighted_screen' for 'sm_120'\nptxas info    : Function properties for weighted_screen\n    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\nptxas info    : Used 64 registers, used 0 barriers\nptxas info    : Compile time = 12.084 ms\n"
+    }
+  ],
+  "new_graph_nodes": 225,
+  "previous_component_cloning_nodes": 318
+}
