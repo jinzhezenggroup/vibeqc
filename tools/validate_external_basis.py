@@ -185,15 +185,36 @@ def case_endpoints(spec, arrays, devices, samples):
             imported = Calculator(
                 basis=basis, device=device, **SCF_OPTIONS
             ).singlepoint(spec["atoms"])
-            assert bundled.energy == imported.energy
-            np.testing.assert_array_equal(bundled.forces, imported.forces)
             assert (
                 bundled.basis_metadata["orbital"]["mathematical_identity"]
                 == imported.basis_metadata["orbital"]["mathematical_identity"]
             )
-            record["bundled_equivalence"][device] = (
-                "identical inputs, energy and forces"
-            )
+            if device == "cpu":
+                assert bundled.energy == imported.energy
+                np.testing.assert_array_equal(bundled.forces, imported.forces)
+                record["bundled_equivalence"][device] = (
+                    "identical inputs, energy and forces"
+                )
+            else:
+                # Atomic GPU force reductions can change the last few bits
+                # between identical calls. Input identity stays exact; this
+                # replay gate is far tighter than the independent HF gates.
+                errors = {
+                    "energy": block_error(
+                        np.asarray(imported.energy),
+                        np.asarray(bundled.energy),
+                        atol=1e-12,
+                        rtol=0,
+                    ),
+                    "forces": block_error(
+                        imported.forces, bundled.forces, atol=1e-12, rtol=0
+                    ),
+                }
+                assert all(error["passed"] for error in errors.values()), errors
+                record["bundled_equivalence"][device] = {
+                    "identical_inputs": True,
+                    "errors": errors,
+                }
     return record
 
 
