@@ -28,9 +28,11 @@
 #include "scf/cuda_density_fitting.hpp"
 #include "scf/cuda_density_fitting_integrals.hpp"
 #include "scf/cuda_eigensolver_policy.hpp"
+#include "scf/cuda_weighted_eri.hpp"
 #include "scf/direct_task_layout.hpp"
 #include "scf/generated_shell_task.hpp"
 #include "scf/rhf.hpp"
+#include "weighted_eri.cuh"
 
 namespace vibeqc::scf {
 
@@ -619,6 +621,8 @@ struct DeviceBatch {
   const double* primitive_exponents;
   const double* primitive_coefficients;
   const std::int32_t* occupied;
+  // Same primitive traversal/queues on both sides of the weighted psss gate.
+  bool generated_psss_weighted{};
 };
 
 __device__ std::size_t matrix_index(std::size_t row, std::size_t column, std::size_t n) {
@@ -3697,6 +3701,40 @@ __device__ __noinline__ PsssWeightedGradient contracted_eri_cartesian_source_pss
       boys_values<2>(rho * distance_squared(product_p, product_q), boys);
       const double prefactor = first_pair.weighted_coefficient * second_pair.weighted_coefficient *
                                2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q));
+      if (batch.generated_psss_weighted) {
+        // Retain resident-bra reuse, primitive orientation, normalization, and
+        // one traversal across all p outputs. Only the scalar weighted
+        // expression comes from the generic external-weight DAG lowering.
+        generated_weighted_eri::Geometry geometry{};
+        geometry.inverse_two_p = 0.5 / p;
+        geometry.rho = rho;
+        geometry.prefactor = prefactor;
+        geometry.product_scales[0] = first_product_scale;
+        geometry.product_scales[1] = second_product_scale;
+        geometry.product_scales[2] = second_pair_matches_canonical_order
+                                         ? second_pair.first_product_scale
+                                         : second_pair.second_product_scale;
+#pragma unroll
+        for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+          geometry.shifts[0][coordinate] = vec_axis(pa, coordinate);
+          geometry.difference[coordinate] = vec_axis(product_difference, coordinate);
+          geometry.boys[coordinate] = boys[coordinate];
+          geometry.decay[0][coordinate] =
+              -2.0 * mu * (vec_axis(first, coordinate) - vec_axis(second, coordinate));
+          geometry.decay[1][coordinate] = -geometry.decay[0][coordinate];
+          geometry.decay[2][coordinate] =
+              -2.0 * nu * (vec_axis(third, coordinate) - vec_axis(fourth, coordinate));
+        }
+        const auto generated = generated_weighted_eri::psss(geometry, axis_weight);
+#pragma unroll
+        for (unsigned center = 0; center < 3; ++center) {
+#pragma unroll
+          for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+            result.center[center][coordinate] += generated.center[center][coordinate];
+          }
+        }
+        continue;
+      }
       const double coulomb_scale = rho / p;
       const double weighted_pa =
           axis_weight[0] * pa.x + axis_weight[1] * pa.y + axis_weight[2] * pa.z;
@@ -6003,6 +6041,8 @@ __device__ std::conditional_t<Derivative, Dual, double> contracted_df(
   return contracted_eri<std::conditional_t<Derivative, Dual, double>>(batch, system, first, second,
                                                                       auxiliary, dummy, coordinate);
 }
+
+#include "scf/cuda/weighted_eri.cuh"
 
 /** Evaluate raw Cartesian M[P,Q] and A[mu,nu,P], without pair compression. */
 template <bool Derivative>
@@ -14197,6 +14237,7 @@ struct CudaRhfBucketPlan {
   unsigned persistent_quartet_worker_blocks{};
   std::size_t resident_psss_bra_primitive_pairs{};
   std::size_t resident_psss_task_count{};
+  bool generated_psss_weighted{};
   std::size_t primitive_count{};
   std::size_t diis_history{};
   int lwork{};
@@ -14939,6 +14980,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       }
     }
     plan.resident_psss_bra_primitive_pairs = 0;
+    plan.generated_psss_weighted = cuda_policy::generated_psss_weighted_requested();
     const bool resident_psss_enabled = resident_psss_bra_requested();
     // The bounded direct force path has its own exact page consumer for psss.
     // Keep the resident-bra optimization on the fixed-queue path only until
@@ -15681,6 +15723,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
                            primitive_exponents,
                            primitive_coefficients,
                            occupied};
+  device_batch.generated_psss_weighted = plan.generated_psss_weighted;
 
   if (quartet_direct && geometry_changed) {
     build_shell_primitive_pair_cache_kernel<<<static_cast<unsigned>(total_shell_pairs),
@@ -19476,6 +19519,159 @@ ScfResult run_uhf_cuda(const core::System& system, const ScfOptions& options, in
     throw std::runtime_error("CUDA UHF execution failed");
   }
   return std::move(result.front().scf);
+}
+
+vibeqc_status contract_cuda_weighted_eri_primitives(
+    int device_id, const CudaWeightedEriPrimitive* records, std::size_t record_count,
+    std::size_t tile_count, std::size_t memory_budget_bytes, bool generated,
+    std::vector<CudaWeightedEriResult>& output, CudaWeightedEriDiagnostic& diagnostic,
+    std::string& detail) {
+  // Discard previous output capacity so a small-budget call cannot retain an
+  // old larger allocation while reporting only its new logical result size.
+  std::vector<CudaWeightedEriResult>{}.swap(output);
+  diagnostic = {};
+  detail.clear();
+  std::size_t output_bytes = 0, result_peak = 0, input_bytes = 0;
+  if ((record_count != 0U && records == nullptr) ||
+      tile_count > std::numeric_limits<std::uint32_t>::max() ||
+      !checked_multiply(record_count, sizeof(CudaWeightedEriPrimitive), input_bytes) ||
+      !checked_multiply(tile_count, sizeof(CudaWeightedEriResult), output_bytes) ||
+      !checked_multiply(output_bytes, 2U, result_peak) || result_peak > memory_budget_bytes) {
+    detail = "weighted ERI dimensions or numeric memory budget are invalid";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  for (std::size_t index = 0; index < record_count; ++index) {
+    const auto& record = records[index];
+    if (record.kind > 1U || record.output_tile >= tile_count) {
+      detail = "weighted ERI record kind or output tile is invalid";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+    for (unsigned slot = 0; slot < 4; ++slot) {
+      if (!(record.exponents[slot] > 0.0) || !std::isfinite(record.exponents[slot])) {
+        detail = "weighted ERI primitive exponents must be finite and positive";
+        return VIBEQC_STATUS_INVALID_ARGUMENT;
+      }
+      unsigned total = 0;
+      for (unsigned axis = 0; axis < 3; ++axis) {
+        const auto angular = record.angular[slot][axis];
+        if (angular > 3U || !std::isfinite(record.centers[slot][axis]) ||
+            (record.kind == 1U && angular != static_cast<unsigned>(slot == 0U && axis == 0U))) {
+          detail = "weighted ERI angular components or positions are invalid";
+          return VIBEQC_STATUS_INVALID_ARGUMENT;
+        }
+        total += angular;
+      }
+      if (total > 3U) {
+        detail = "weighted ERI primitive shells beyond f are unsupported";
+        return VIBEQC_STATUS_INVALID_ARGUMENT;
+      }
+    }
+    for (double weight : record.weights) {
+      if (!std::isfinite(weight)) {
+        detail = "external ERI weights must be finite";
+        return VIBEQC_STATUS_INVALID_ARGUMENT;
+      }
+    }
+    if (generated && record.kind == 1U)
+      ++diagnostic.generated_records;
+    else
+      ++diagnostic.reference_records;
+  }
+  try {
+    if (record_count == 0U) {
+      output.resize(tile_count);
+      diagnostic.host_peak_bytes = output_bytes;
+      return VIBEQC_STATUS_SUCCESS;
+    }
+    const std::size_t capacity =
+        std::min({record_count, std::size_t{65536},
+                  (memory_budget_bytes - result_peak) / sizeof(CudaWeightedEriPrimitive)});
+    if (capacity == 0U) {
+      detail = "weighted ERI budget cannot hold one primitive and its outputs";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+    diagnostic.primitive_capacity = capacity;
+    diagnostic.host_peak_bytes = output_bytes;
+    diagnostic.device_peak_bytes = output_bytes + capacity * sizeof(CudaWeightedEriPrimitive);
+    auto error = cudaSetDevice(device_id);
+    if (error != cudaSuccess) {
+      detail = "weighted ERI CUDA device selection failed";
+      return cuda_status(error);
+    }
+    struct Buffers {
+      CudaWeightedEriPrimitive* records{};
+      CudaWeightedEriResult* results{};
+      cudaStream_t stream{};
+      ~Buffers() {
+        if (stream) (void)cudaStreamSynchronize(stream);
+        if (records) (void)cudaFree(records);
+        if (results) (void)cudaFree(results);
+        if (stream) (void)cudaStreamDestroy(stream);
+      }
+    } buffers;
+    error = cudaStreamCreateWithFlags(&buffers.stream, cudaStreamNonBlocking);
+    if (error == cudaSuccess)
+      error = cudaMalloc(&buffers.records, capacity * sizeof(*buffers.records));
+    if (error == cudaSuccess) error = cudaMalloc(&buffers.results, output_bytes);
+    if (error == cudaSuccess)
+      error = cudaMemsetAsync(buffers.results, 0, output_bytes, buffers.stream);
+    constexpr unsigned threads = 64U;
+    for (std::size_t begin = 0; begin < record_count && error == cudaSuccess;) {
+      const std::size_t count = std::min(capacity, record_count - begin);
+      bool has_generated = false, has_reference = false;
+      for (std::size_t i = begin; i < begin + count; ++i) {
+        if (generated && records[i].kind == 1U)
+          has_generated = true;
+        else
+          has_reference = true;
+      }
+      error = cudaMemcpyAsync(buffers.records, records + begin, count * sizeof(*records),
+                              cudaMemcpyHostToDevice, buffers.stream);
+      const unsigned blocks = static_cast<unsigned>((count + threads - 1U) / threads);
+      if (error == cudaSuccess && has_reference) {
+        weighted_eri_reference_kernel<<<blocks, threads, 0, buffers.stream>>>(
+            buffers.records, count, generated, buffers.results);
+        error = cudaGetLastError();
+      }
+      if (error == cudaSuccess && has_generated) {
+        weighted_eri_generated_psss_kernel<<<blocks, threads, 0, buffers.stream>>>(
+            buffers.records, count, buffers.results);
+        error = cudaGetLastError();
+      }
+      begin += count;
+    }
+    if (error == cudaSuccess) {
+      output.resize(tile_count);
+      error = cudaMemcpyAsync(output.data(), buffers.results, output_bytes, cudaMemcpyDeviceToHost,
+                              buffers.stream);
+    }
+    if (error == cudaSuccess) error = cudaStreamSynchronize(buffers.stream);
+    if (error != cudaSuccess) {
+      output.clear();
+      detail = "CUDA external-weight ERI contraction failed";
+      return cuda_status(error);
+    }
+    for (const auto& result : output) {
+      bool finite = std::isfinite(result.value);
+      for (const auto& center : result.center) {
+        for (double value : center) finite = finite && std::isfinite(value);
+      }
+      if (!finite) {
+        output.clear();
+        detail = "weighted ERI contraction overflowed or produced nonfinite values";
+        return VIBEQC_STATUS_NUMERICAL_FAILURE;
+      }
+    }
+    return VIBEQC_STATUS_SUCCESS;
+  } catch (const std::bad_alloc&) {
+    output.clear();
+    detail = "weighted ERI host allocation failed";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  } catch (const std::exception& error) {
+    output.clear();
+    detail = error.what();
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
 }
 
 }  // namespace vibeqc::scf

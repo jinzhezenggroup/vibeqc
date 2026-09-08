@@ -151,7 +151,7 @@ file(GLOB_RECURSE _vibeqc_identity_inputs CONFIGURE_DEPENDS
      "src/*" "include/*" "tools/vibeqc_codegen/*.py"
      "tools/vibeqc_codegen/*.json" "python/vibeqc/*.py")
 list(APPEND _vibeqc_identity_inputs "CMakeLists.txt" "tools/generate_shell_kernels.py"
-     "tools/generate_df_kernels.py")
+     "tools/generate_df_kernels.py" "tools/generate_weighted_eri_kernels.py")
 list(SORT _vibeqc_identity_inputs)
 set(_vibeqc_identity_text "")
 foreach(_vibeqc_identity_path IN LISTS _vibeqc_identity_inputs)
@@ -197,6 +197,17 @@ if(VIBEQC_ENABLE_CUDA)
             ${VIBEQC_DF_GENERATOR_INPUTS}
     VERBATIM)
   target_sources(vibeqc PRIVATE "${VIBEQC_DF_GENERATED_HEADER}")
+  # The first weighted-ERI migration reuses native primitive loops and queue
+  # policies, replacing only their scalar expression with a shared DAG helper.
+  set(VIBEQC_WEIGHTED_ERI_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/weighted_eri.cuh")
+  add_custom_command(
+    OUTPUT "${VIBEQC_WEIGHTED_ERI_HEADER}"
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_weighted_eri_kernels.py"
+            --output "${VIBEQC_WEIGHTED_ERI_HEADER}"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_weighted_eri_kernels.py"
+            ${VIBEQC_DF_GENERATOR_INPUTS}
+    VERBATIM)
+  target_sources(vibeqc PRIVATE "${VIBEQC_WEIGHTED_ERI_HEADER}")
   target_sources(vibeqc PRIVATE
     src/scf/cuda/rhf_policy.cpp
     src/runtime/cuda_runtime.cu
@@ -438,7 +449,8 @@ if(VIBEQC_ENABLE_CUDA)
 else()
   target_sources(vibeqc PRIVATE
     src/scf/cuda_density_fitting_stub.cpp
-    src/scf/cuda_density_fitting_integrals_stub.cpp)
+    src/scf/cuda_density_fitting_integrals_stub.cpp
+    src/scf/cuda_weighted_eri_stub.cpp)
   target_compile_definitions(vibeqc PUBLIC VIBEQC_HAS_CUDA=0)
 endif()
 
@@ -453,6 +465,9 @@ if(VIBEQC_BUILD_TESTS)
   if(VIBEQC_ENABLE_CUDA)
     # Manual numerical/performance tier: invoked through the Slurm validator,
     # never registered as an unallocated login-node GPU test.
+    add_executable(vibeqc_weighted_eri_probe tests/native/weighted_eri_probe.cpp)
+    target_link_libraries(vibeqc_weighted_eri_probe PRIVATE vibeqc CUDA::cudart)
+    target_include_directories(vibeqc_weighted_eri_probe PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
     add_executable(vibeqc_df_value_probe tests/native/df_value_probe.cpp)
     target_link_libraries(vibeqc_df_value_probe PRIVATE vibeqc CUDA::cudart)
     target_include_directories(vibeqc_df_value_probe PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")

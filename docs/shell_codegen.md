@@ -750,6 +750,12 @@ not sufficient evidence for promotion over a tuned handwritten kernel.
 
 ## Production AOT policy
 
+The separate [arbitrary-weight ERI consumer](weighted_eri.md) now precontracts
+Hermite coefficients before differentiation. It supplies an opt-in native psss
+expression inside the existing primitive loops and resident/paged queues.
+The older component-cloning candidate above remains recorded as rejected;
+the production manifest and handwritten psss default are unchanged.
+
 `production_shell_classes.json` carries explicit tuned and portable profiles.
 The current `sm_120` profile is measured; `portable_cuda` is intentionally
 empty so unsupported targets retain generic correctness. The `sm_120` force

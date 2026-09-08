@@ -26,6 +26,8 @@ bool ppss_signature_bucketing_requested() noexcept;
 unsigned ppps_resident_block_threads_requested() noexcept;
 bool one_electron_force_scalar_requested() noexcept;
 bool resident_psss_bra_requested() noexcept;
+/** Generated weighted primitive candidate; frozen into a prepared bucket. */
+bool generated_psss_weighted_requested() noexcept;
 
 /** DF value A/B controls; derivatives always use the existing recurrence. */
 bool generated_df_values_requested() noexcept;

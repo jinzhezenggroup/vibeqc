@@ -128,6 +128,12 @@ bool one_electron_force_scalar_requested() noexcept {
 
 bool resident_psss_bra_requested() noexcept { return enabled("VIBEQC_PSSS_RESIDENT_BRA"); }
 
+bool generated_psss_weighted_requested() noexcept {
+  // Keep the handwritten implementation selected until native resource and
+  // complete RHF/UHF endpoint comparisons justify promoting this candidate.
+  return selected("VIBEQC_PSSS_WEIGHTED", "generated");
+}
+
 bool generated_df_values_requested() noexcept {
   // The generated value route passed the archived all-class raw, resource,
   // RI-J/K, and public RHF/UHF endpoint gates. Keep the old route selectable

@@ -91,9 +91,36 @@ def query_integral_capability(
     Success means eligibility for CUDA scheduling/lowering, not compilation,
     numerical validation, or production selection. Those stages remain in the
     existing shell capability report and architecture manifest. New raw/weight
-    contracts are representable but have no production executor in this issue.
+    contracts use separate backend names so legacy HF emitters cannot accept
+    a weighted request and silently apply an HF contraction.
     """
     reasons = []
+    if backend == "cuda_weighted_eri":
+        from .blocks import WeightedDerivative
+
+        if integral.operator.family != OperatorFamily.FOUR_CENTER_ERI:
+            reasons.append("external weighted executor requires four-center ERIs")
+        if integral.operator.centers != (0, 1, 2, 3) or tuple(
+            s.center for s in integral.signature.shells
+        ) != (0, 1, 2, 3):
+            reasons.append(
+                "external weighted executor requires quartet center slots (0, 1, 2, 3)"
+            )
+        if integral.derivative is None or integral.derivative.order != 1:
+            reasons.append("external weighted executor requires first derivatives")
+        if len(integral.contractions) != 1 or not isinstance(
+            integral.contractions[0], WeightedDerivative
+        ):
+            reasons.append(
+                "external weighted executor requires one arbitrary-weight consumer"
+            )
+        if any(l > 3 for l in integral.signature.angular):
+            reasons.append("external weighted executor supports s/p/d/f shells")
+        return CapabilityCheck(
+            not reasons,
+            schedules=() if reasons else ("bounded_primitive_stream",),
+            reasons=tuple(reasons),
+        )
     if backend != "cuda":
         return CapabilityCheck(
             False, reasons=(f"no integral executor registered for backend {backend!r}",)
