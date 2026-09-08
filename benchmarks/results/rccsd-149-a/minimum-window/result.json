@@ -1,0 +1,50 @@
+{
+  "start": "2026-09-08T13:05:02.252444+00:00",
+  "scope": "monitored correctness only; not exclusive performance/memory measurement",
+  "steps": [
+    {
+      "name": "minimum-memcheck",
+      "pid": 502882,
+      "start": "2026-09-08T13:05:02.428396+00:00",
+      "command": [
+        "compute-sanitizer",
+        "--tool",
+        "memcheck",
+        "--error-exitcode",
+        "99",
+        "--target-processes",
+        "all",
+        "/inspire/qb-ilm/project/chemicalreaction/czxs25220150/projects/vibeqc-issue-149/.venv/bin/python",
+        "-m",
+        "tools.validate_cc_cuda",
+        "--architecture",
+        "sm_90",
+        "--nvcc",
+        "/usr/local/cuda/bin/nvcc",
+        "--cache",
+        "build/tensor-cuda-cache",
+        "--output",
+        "build/cc149-gpu-a-sanitized"
+      ],
+      "returncode": 0,
+      "end": "2026-09-08T13:05:10.728032+00:00"
+    },
+    {
+      "name": "updated-state",
+      "pid": 503982,
+      "start": "2026-09-08T13:05:10.817823+00:00",
+      "command": [
+        "/inspire/qb-ilm/project/chemicalreaction/czxs25220150/projects/vibeqc-issue-149/.venv/bin/python",
+        "-m",
+        "pytest",
+        "tests/python/test_cc_cuda.py",
+        "tests/python/test_cc_cuda_state.py",
+        "-q"
+      ],
+      "returncode": 0,
+      "end": "2026-09-08T13:05:17.052209+00:00"
+    }
+  ],
+  "end": "2026-09-08T13:05:17.053448+00:00",
+  "passed": true
+}
