@@ -180,7 +180,12 @@ def main():
                 )
                 record.update(
                     revision=revision,
-                    device=device,
+                    device=device
+                    if backend == "cuda"
+                    else {
+                        "name": platform.processor() or platform.machine(),
+                        "kind": "cpu",
+                    },
                     backend_selected=backend,
                     settings={
                         "device": backend,

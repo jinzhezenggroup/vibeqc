@@ -108,13 +108,24 @@ def test_generated_df_source_staging_and_same_hamiltonian(name):
     meta, a = load_fixture(name)
     with CudaDFSource(**source_arguments(meta), tile_capacity=64) as source:
         factor = MetricFactor.from_source(source)
+        np.testing.assert_allclose(
+            source._read("coulomb_metric", (0, 0), (source.naux, source.naux)),
+            a["metric"],
+            atol=1e-11,
+            rtol=1e-10,
+        )
         snapshot = fixture_snapshot(meta, a, label="df", metric=factor)
         # Final partial tiles exercise the generated native source, including f.
+        shells = (
+            (1, 2, 1)
+            if name == "f_heh"
+            else (0, len(source.shells) - 1, len(source.auxiliary_shells) - 1)
+        )
         request = next(
             r
             for r in source.requests("three_center_eri", axis_tile=3)
-            if r.shell_indices
-            == (0, len(source.shells) - 1, len(source.auxiliary_shells) - 1)
+            if r.shell_indices == shells
+            and (name != "f_heh" or r.tile.offsets == (6, 0, 6))
         )
         begin = source.global_offsets(request)
         tile = source.tile(request)
@@ -122,14 +133,16 @@ def test_generated_df_source_staging_and_same_hamiltonian(name):
         np.testing.assert_allclose(
             tile, a["raw_three_center"][slices], atol=1e-11, rtol=1e-10
         )
-        if name != "f_heh":
-            with DFProvider(snapshot, source, factor, auxiliary_tile=3) as provider:
-                result = restricted_mp2(snapshot, provider)
-                assert (
-                    abs(
-                        result.correlation_energy
-                        - meta["records"]["df"]["correlation_energy"]
-                    )
-                    < 1e-9
+        with DFProvider(snapshot, source, factor, auxiliary_tile=3) as provider:
+            result = restricted_mp2(snapshot, provider)
+            np.testing.assert_allclose(
+                result.amplitudes, a["df_t2"], atol=1e-11, rtol=1e-10
+            )
+            assert (
+                abs(
+                    result.correlation_energy
+                    - meta["records"]["df"]["correlation_energy"]
                 )
+                < 1e-9
+            )
         assert source.source_device_bytes > 0
