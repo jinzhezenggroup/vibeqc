@@ -1,0 +1,7 @@
+srun: job 9019 queued and waiting for resources
+srun: job 9019 has been allocated resources
+========= COMPUTE-SANITIZER
+.........                                                                [100%]
+9 passed in 35.37s
+========= LEAK SUMMARY: 0 bytes leaked in 0 allocations
+========= ERROR SUMMARY: 0 errors
