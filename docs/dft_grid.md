@@ -180,3 +180,7 @@ element gates from quadrature convergence. It records cold setup, fixed replay,
 geometry rebuild, ragged throughput, transfers, compilation/resources and
 numeric capacities, with repeated interleaved CPU/CUDA samples. It does not
 automatically promote a schedule or assert DFT energy/force performance.
+
+The [DFT01 evidence archive](../benchmarks/results/dft-grid-160/README.md)
+preserves the clean scientific revision, raw numerical/timing records,
+sanitizer logs, actual loaded-library versions and capacity scope.

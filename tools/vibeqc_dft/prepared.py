@@ -366,7 +366,7 @@ class PreparedGridBatch:
                 }
                 try:
                     record.update(status="pass", result=plan.integrate(density))
-                except (ValueError, RuntimeError) as error:
+                except (TypeError, ValueError, RuntimeError) as error:
                     record.update(status="fail", reason=str(error))
                 result.append(record)
             return result

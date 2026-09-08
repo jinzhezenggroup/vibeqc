@@ -114,6 +114,8 @@ def test_prepared_reuse_changed_geometry_and_ragged_failures(artifact):
             [densities[0], np.full_like(densities[1], np.nan), densities[2]]
         )
         assert [r["status"] for r in failure] == ["pass", "fail", "pass"]
+        invalid_type = gpu.execute([densities[0], {"invalid": 1}, densities[2]])
+        assert [r["status"] for r in invalid_type] == ["pass", "fail", "pass"]
     with PreparedGrid(**items[0]) as plan:
         first = plan.integrate(densities[0])
         xyz = np.array(items[0]["atoms"][1][1]) + [0.07, -0.02, 0.03]

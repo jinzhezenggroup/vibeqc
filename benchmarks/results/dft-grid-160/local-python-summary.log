@@ -1,0 +1,4 @@
+A cache-key metadata edit occurred after the library loaded. The only failure was its stale source identity.
+FAILED tests/python/test_local_profiles.py::test_native_source_identity_and_probe_abi_match_checkout
+1 failed, 791 passed, 129 skipped in 159.88s (0:02:39)
+The library was rebuilt; identity-recheck.log records the exact passing recheck. Clean-checkout CI is linked in README.md.

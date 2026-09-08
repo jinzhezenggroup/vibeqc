@@ -4,3 +4,5 @@ benchmarks/results/cg01/*.json linguist-generated=true
 benchmarks/results/f-shell-135/*.json linguist-generated=true
 benchmarks/results/tensor-cuda-146/*.json linguist-generated=true
 benchmarks/results/posthf-147/*.json linguist-generated=true
+tests/reference_data/grid/*.json linguist-generated=true
+benchmarks/results/dft-grid-160/*.json linguist-generated=true

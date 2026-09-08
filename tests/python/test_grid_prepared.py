@@ -103,6 +103,8 @@ def test_ragged_offsets_failure_isolation_and_update_budget():
         np.testing.assert_array_equal(
             failures[1]["result"]["electrons"], records[1]["result"]["electrons"]
         )
+        invalid_type = batch.execute([{"invalid": 1}, b["density"]])
+        assert [x["status"] for x in invalid_type] == ["fail", "pass"]
         batch.reconfigure(0, spec=GridSpec(4, 3, 6))
         assert batch.execute([a["density"], b["density"]])[1]["point_begin"] == 144
         assert batch.peak_bytes == sum(i.plan.peak_bytes for i in batch._items)
