@@ -106,8 +106,8 @@ ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,
   require(spec.version == 1, "unsupported FockBuildSpec version");
   require(valid(spec.spin) && valid(backend), "unknown Fock spin/backend");
   require(spec.derivative_order <= 1, "second Fock derivatives are not implemented");
-  require(std::isfinite(screening_tolerance) && screening_tolerance > 0.0,
-          "Fock screening tolerance must be positive and finite");
+  require(std::isfinite(screening_tolerance) && screening_tolerance >= 0.0,
+          "Fock screening tolerance must be nonnegative and finite");
   canonicalize(spec.coulomb);
   canonicalize(spec.exchange);
   const bool fitted = spec.coulomb.approximation == FockApproximation::DensityFitted ||
@@ -144,7 +144,7 @@ void require_exact_direct_strategy(const ResolvedFockBuild& strategy, FockSpin s
               standard_hf_terms(strategy.spec, FockApproximation::Exact) &&
               strategy.schedule == (backend == FockBackend::Cpu ? FockSchedule::CpuReference
                                                                 : FockSchedule::CudaFused) &&
-              std::isfinite(strategy.screening_tolerance) && strategy.screening_tolerance > 0.0,
+              std::isfinite(strategy.screening_tolerance) && strategy.screening_tolerance >= 0.0,
           "HF direct energy/force execution requires its resolved exact standard HF strategy");
 }
 

@@ -73,7 +73,8 @@ CUDA direct bucket compatibility also includes this value.
 
 The mathematical request (`spec`) is distinct from backend/schedule fields.
 Screening, precision, and the DF metric cutoff are explicit resolved fields;
-an unused exact-provider metric cutoff is canonicalized away. Geometry,
+an unused exact-provider metric cutoff is canonicalized away. Zero screening
+retains the existing unscreened reference semantics used by post-HF exports. Geometry,
 orbital basis, auxiliary basis, and device-resource ownership remain in the
 enclosing existing prepared plans and their compatibility checks.
 

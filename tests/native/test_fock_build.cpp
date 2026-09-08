@@ -322,6 +322,13 @@ void verify_identity_and_invalid_inputs() {
   require(cpu.spec == cuda.spec && cpu != cuda && cpu.backend != cuda.backend &&
               cpu.schedule != cuda.schedule,
           "mathematical semantics and backend schedule identities were conflated");
+  // Existing post-HF density export uses zero to disable screening.
+  for (const auto backend : {FockBackend::Cpu, FockBackend::Cuda}) {
+    const auto unscreened = resolve_fock_build(spec, backend, 0.0);
+    require_exact_direct_strategy(unscreened, FockSpin::Restricted, backend);
+    require(unscreened.screening_tolerance == 0.0,
+            "zero screening must preserve the unscreened reference request");
+  }
   const auto screened = resolve_fock_build(spec, FockBackend::Cpu, 1.0e-8, 1.0e-10);
   require(cpu.spec == screened.spec && cpu != screened, "screening change retained stale identity");
   auto scaled = spec;
