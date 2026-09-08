@@ -42,3 +42,4 @@ compact user entry point.
 
 - [HF reference snapshots and bounded MO integral providers](posthf.md)
 - [Atom-centered grids and spatial AO/density jets](dft_grid.md)
+- [Fixed-density LDA/PBE XC integration and AO potentials](xc_integration.md)

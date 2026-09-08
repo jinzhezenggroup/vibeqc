@@ -8,6 +8,13 @@ committed data and require neither PySCF nor a CUDA toolchain.
 
 ## Existing tests and oracle independence
 
+DFT03's first fixed-density slice is documented in [XC integration](xc_integration.md).
+`test_xc_integration.py` checks saved identical-grid PySCF/Libxc energy and AO
+matrix references, trace variations, spin/weight factors and stale-grid failures.
+Its exporter and evidence runner preserve the existing FP64 element gate and
+record all finite-difference steps. This acceptance does not establish a CPU
+RKS method, arbitrary grid-tail support, SCF convergence or GPU execution.
+
 Every existing native and Python test is retained, including its tolerances.
 The new small-fixture tolerances do not supersede stricter existing tests.
 

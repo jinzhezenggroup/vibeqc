@@ -1,0 +1,225 @@
+{
+  "schema": "vibeqc.xc-integration-reference",
+  "version": 1,
+  "inputs": {
+    "name": "f_cartesian",
+    "atomic_numbers": [
+      2,
+      1
+    ],
+    "coordinates": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.7,
+        -0.2,
+        1.5
+      ]
+    ],
+    "shells": [
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.6,
+            1
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.2,
+            0.8
+          ],
+          [
+            0.8,
+            0.3
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 2,
+        "primitives": [
+          [
+            1.2,
+            1
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 3,
+        "primitives": [
+          [
+            0.4,
+            1
+          ],
+          [
+            1.1,
+            -0.1
+          ]
+        ]
+      }
+    ],
+    "basis_representation": "cartesian",
+    "charge": 0,
+    "multiplicity": 2
+  },
+  "inputs_hash": "71bcf5314ce95d960ef062245f457dfa3b09b07728ab7d7c310bda87f42dec5c",
+  "source_grid_identity": "5227679ae76ee325f5da60de4a7bf52088af1c29e5c399f70c483b492056cd48",
+  "reference": {
+    "PySCF": "2.14.0",
+    "Libxc": "7.0.0",
+    "NumPy": "2.2.6",
+    "python": "3.11.16 (main, Sep  1 2026, 14:18:37) [Clang 22.1.3 ]",
+    "actual_angular_momenta": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "pyscf_numint_sha256": "ff7384551c7a6b80ff8a5ffcd915eb8bfbf6ca4b8f987f912aa82a1d6edda7e8",
+    "exporter_sha256": "fc83ad88b16fd7269686315be2f4fb42626eacabf82034e3a3a35fd432f90c50",
+    "basis_adapter_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+    "functionals": {
+      "LDA_XC_PW": "LDA_X,LDA_C_PW",
+      "PBE": "GGA_X_PBE,GGA_C_PBE"
+    },
+    "ao_cutoff": 1e-30,
+    "threads": 1,
+    "oracle": "PySCF NumInt.nr_rks/nr_uks (independent AO, density, XC and matrix assembly)"
+  },
+  "conventions": {
+    "coordinates": "Bohr",
+    "energy": "Hartree",
+    "weights": "Bohr^3, already partitioned",
+    "density": "arbitrary PSD with 0.15 identity per spin; no SCF or renormalization",
+    "AO": "unit-normalized contracted Cartesian or real spherical; exact DFT01 shells",
+    "reference_density": "D_pyscf = scale[:,None] * D * scale[None,:]",
+    "reference_potential": "V = scale[:,None] * V_pyscf * scale[None,:]",
+    "energy_density": "Libxc epsilon times total rho, integrated by PySCF"
+  },
+  "arrays": {
+    "points": {
+      "shape": [
+        32,
+        3
+      ],
+      "sha256": "063d6379fbfda3eee2f345b5d60263b4debcf2b93e491a91b75bae4a77df1cfa"
+    },
+    "weights": {
+      "shape": [
+        32
+      ],
+      "sha256": "7b19c27997ae1d59916d3cafc07db53c490ea39ed46f22b3a9375f8fcff66ed7"
+    },
+    "density_total": {
+      "shape": [
+        20,
+        20
+      ],
+      "sha256": "32bd8749758c86621c9d440ac09cb2c37289c6323ad4c3a0cea8fce545c84b53"
+    },
+    "density_spin": {
+      "shape": [
+        2,
+        20,
+        20
+      ],
+      "sha256": "783a002ae979707be2710f554e54bf577af1961e9001d58c7ae475e999cc4874"
+    },
+    "ao_scale": {
+      "shape": [
+        20
+      ],
+      "sha256": "9c723b628deb7012727f24d5eb06c3b248b975d0a39099b146e6397152136867"
+    },
+    "LDA_XC_PW_total_energy": {
+      "shape": [
+        1
+      ],
+      "sha256": "f7755fd7710afa1f15743fefa7caa967315fbf755555fcef83dadfad64113286"
+    },
+    "LDA_XC_PW_total_potential": {
+      "shape": [
+        20,
+        20
+      ],
+      "sha256": "930a46605ecd030b206f03ad58c6be9c5a4e8b2e668fc3e9863655459f2f7c3f"
+    },
+    "LDA_XC_PW_total_electrons": {
+      "shape": [
+        1
+      ],
+      "sha256": "95a1e315726e1e825f5da088e93184488dcacd61d4ef4e627cd31d3bd0ced2fb"
+    },
+    "LDA_XC_PW_spin_energy": {
+      "shape": [
+        1
+      ],
+      "sha256": "d858236b6f8cfbadcd3cd48af68e08da8060922e520fb056e5ab8c07930c9355"
+    },
+    "LDA_XC_PW_spin_potential": {
+      "shape": [
+        2,
+        20,
+        20
+      ],
+      "sha256": "6b0d105fe2c2bb2ee46d1026681e5ee417a3a67d8cd981a1f1142be79ed36a93"
+    },
+    "LDA_XC_PW_spin_electrons": {
+      "shape": [
+        2
+      ],
+      "sha256": "49a057e8b085cffee3a755a0cc447da893d8896cff0a9d97bacb093dda8f9a76"
+    },
+    "PBE_total_energy": {
+      "shape": [
+        1
+      ],
+      "sha256": "1a996434a67cfdea7de5f3d696d31c3f1a7a3f7d08ce17a02dfe78d227338001"
+    },
+    "PBE_total_potential": {
+      "shape": [
+        20,
+        20
+      ],
+      "sha256": "1e2c355781f92dd0957142693b475c942a29b3fc7d41a33ac56d205ba5916b20"
+    },
+    "PBE_total_electrons": {
+      "shape": [
+        1
+      ],
+      "sha256": "95a1e315726e1e825f5da088e93184488dcacd61d4ef4e627cd31d3bd0ced2fb"
+    },
+    "PBE_spin_energy": {
+      "shape": [
+        1
+      ],
+      "sha256": "c302c4c32aba229296dffe0ad0cda28da41c61b224862e70184733a1cb840948"
+    },
+    "PBE_spin_potential": {
+      "shape": [
+        2,
+        20,
+        20
+      ],
+      "sha256": "46e77cf99382d6fb090bcaadec3d3bf27ea61cb16191c6fe823ff70370840e69"
+    },
+    "PBE_spin_electrons": {
+      "shape": [
+        2
+      ],
+      "sha256": "49a057e8b085cffee3a755a0cc447da893d8896cff0a9d97bacb093dda8f9a76"
+    }
+  },
+  "identity": "31c1af130597fd97a1490a6ab3344041c20343f74eee687f0741c0fac75ec6c9"
+}
