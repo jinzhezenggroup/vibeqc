@@ -129,12 +129,16 @@ bool one_electron_force_scalar_requested() noexcept {
 bool resident_psss_bra_requested() noexcept { return enabled("VIBEQC_PSSS_RESIDENT_BRA"); }
 
 bool generated_df_values_requested() noexcept {
-  // Until the full raw-value/resource/endpoint gates are archived, promotion
-  // is explicitly opt-in. The reference switch remains available for A/B runs.
-  return selected("VIBEQC_DF_VALUES", "generated");
+  // The generated value route passed the archived all-class raw, resource,
+  // RI-J/K, and public RHF/UHF endpoint gates. Keep the old route selectable
+  // for independent A/B checks; unrecognized explicit choices also fall back.
+  return std::getenv("VIBEQC_DF_VALUES") == nullptr || selected("VIBEQC_DF_VALUES", "generated");
 }
 
 unsigned df_value_mapping_requested() noexcept {
+  // Primitive-oriented warps won the endpoint comparisons at both budgets
+  // and batch sizes. Other mappings remain explicit diagnostic candidates.
+  if (std::getenv("VIBEQC_DF_VALUE_MAPPING") == nullptr) return 2U;
   if (selected("VIBEQC_DF_VALUE_MAPPING", "component")) return 1U;
   if (selected("VIBEQC_DF_VALUE_MAPPING", "primitive")) return 2U;
   return 0U;

@@ -135,11 +135,17 @@ host/device resident and peak byte counts. The eigendecomposition, regular
 cuBLAS contractions, derivative recurrence, force-scratch accounting, and
 direct-SCF acceptance gates are unchanged.
 
-For bounded comparisons, `VIBEQC_DF_VALUES=generated` selects the generated
-values and `VIBEQC_DF_VALUES=reference` selects the previous Hermite evaluator.
+Generated values are the default, with primitive-oriented warps in the bounded
+source. The bulk compatibility builder retains one thread per output. The
+promotion evidence is in
+[`benchmarks/results/generated-df-values-142`](../benchmarks/results/generated-df-values-142/README.md).
+For bounded comparisons, `VIBEQC_DF_VALUES=generated` explicitly selects this
+route and `VIBEQC_DF_VALUES=reference` selects the previous Hermite evaluator.
 `VIBEQC_DF_VALUE_MAPPING=auxiliary|component|primitive` compares contiguous
 auxiliary writes, contiguous AO-pair work, and one primitive-reduction warp per
-output. These source choices are frozen at source creation. Derivatives retain
+output. Auxiliary/component mappings remain diagnostic overrides; the component
+mapping was rejected for automatic selection after its endpoint regression.
+These source choices are frozen at source creation. Derivatives retain
 their existing scheduling. The three mappings share the same generated
 primitive functions; no separate four-center tuning pipeline is duplicated.
 

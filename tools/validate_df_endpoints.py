@@ -92,7 +92,25 @@ def run_endpoint(method, batch, budget, route, repeats):
         for item, xyz in enumerate(changed):
             xyz[1, 2] += 0.025 + item * 0.01
         phases["changed_geometry"] = execute(changed)
-        phases["changed_warm"] = [execute() for _ in range(repeats)]
+        # Omitting coordinates restores the prepared input geometry; keep the
+        # updated coordinates explicit so this phase reuses the changed source.
+        phases["changed_warm"] = [execute(changed) for _ in range(repeats)]
+        for cold_phase, warm_phase in (
+            ("cold", "warm"),
+            ("changed_geometry", "changed_warm"),
+        ):
+            for sample in phases[warm_phase]:
+                for quantity in ("energies", "forces"):
+                    error = numerical_error(
+                        np.asarray(sample[quantity]),
+                        np.asarray(phases[cold_phase][quantity]),
+                        atol=2e-8,
+                        rtol=2e-9,
+                    )
+                    if not error["passed"]:
+                        raise RuntimeError(
+                            f"{warm_phase} changed {quantity} at fixed geometry"
+                        )
     return phases
 
 
@@ -150,7 +168,10 @@ def main():
                 baseline = run_endpoint(
                     method, batch, budget, "reference", args.repeats
                 )
-                for route in args.routes:
+                # Bulk generation has one mapping; repeating it under each
+                # source-only override would duplicate the same measurement.
+                routes = args.routes if budget else args.routes[:1]
+                for route in routes:
                     actual = run_endpoint(method, batch, budget, route, args.repeats)
                     errors = {}
                     for phase in ("cold", "changed_geometry", "warm", "changed_warm"):
@@ -202,6 +223,10 @@ def main():
                         "batch": batch,
                         "budget": budget,
                         "route": route,
+                        # The bulk compatibility builder uses one thread per
+                        # output. Cooperative mappings belong to the bounded
+                        # source, so never label bulk timings as warp timings.
+                        "effective_mapping": route if budget else "auxiliary_bulk",
                         "baseline": baseline,
                         "generated": actual,
                         "errors": errors,

@@ -165,11 +165,16 @@ int main(int argc, char** argv) {
 
     CudaDensityFittingJkPlan* raw_plan = nullptr;
     std::vector<CudaDensityFittingMetricDiagnostic> diagnostics;
+    // Raw writes deliberately split individual AO rows. For the independent
+    // J/K replay comparison, use a few partial row panels, as the production
+    // planner does; one-row panels otherwise measure thousands of launches
+    // and repeated integral generation rather than a bounded schedule choice.
+    const std::size_t jk_pair_tile = std::min(pairs, std::max(pair_tile, nbf * (nbf / 2U + 1U)));
     start = Clock::now();
     // The plan constructor consumes the source on both success and failure.
     raw_source = source.release();
     require(create_cuda_density_fitting_jk_plan_from_source(
-                0, &raw_source, count, nbf, naux, metric, 1.0e-12, auxiliary_tile, pair_tile,
+                0, &raw_source, count, nbf, naux, metric, 1.0e-12, auxiliary_tile, jk_pair_tile,
                 &raw_plan, diagnostics, detail) == VIBEQC_STATUS_SUCCESS,
             detail);
     auto plan =
@@ -208,6 +213,8 @@ int main(int argc, char** argv) {
     std::cout << std::setprecision(12) << "{\"nbf\":" << nbf << ",\"naux\":" << naux
               << ",\"batch\":" << count << ",\"source_setup_ms\":" << setup_ms
               << ",\"raw_reconstruction_ms\":" << raw_ms << ",\"jk_setup_ms\":" << plan_ms
+              << ",\"raw_pair_tile\":" << pair_tile << ",\"jk_pair_tile\":" << jk_pair_tile
+              << ",\"auxiliary_tile\":" << auxiliary_tile
               << ",\"source_device_bytes\":" << source_device_bytes
               << ",\"source_host_peak_bytes\":" << source_host_peak_bytes
               << ",\"value_backend\":" << std::quoted(placement.value_backend)

@@ -143,10 +143,24 @@ def main():
         parser.error("run this native GPU validation through srun")
     directory = args.directory.resolve()
     directory.mkdir(parents=True, exist_ok=True)
+    linked = subprocess.run(
+        ["ldd", str(args.probe.resolve())], capture_output=True, text=True, check=True
+    )
+    libraries = [
+        line.split()[2]
+        for line in linked.stdout.splitlines()
+        if line.strip().startswith("libvibeqc.so") and "=>" in line
+    ]
+    if len(libraries) != 1 or not Path(libraries[0]).is_file():
+        raise RuntimeError(
+            "cannot verify the production library linked by the native probe"
+        )
     report = {
         "schema": "vibeqc.df_source_validation",
         "version": 1,
         "probe_hash": file_hash(args.probe),
+        "library": libraries[0],
+        "library_hash": file_hash(Path(libraries[0])),
         "production_promoted": False,
         "runs": [],
     }
