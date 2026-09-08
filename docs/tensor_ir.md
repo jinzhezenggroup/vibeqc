@@ -11,8 +11,10 @@ not implement a complete MP2 or CCSD method.
 derivatives, and bounded integral providers. `TensorIR` owns tensor index
 populations and algebra over supplied arrays. Neither inherits from the other;
 TensorIR does not import `ShellClassSpec` or require CUDA. Physical strides,
-device placement, contraction planning, and production lowering are subsequent
-work (#146). Derivative rules are subsequent work (#151).
+device placement and contraction planning live in the separate
+[prepared FP64 CUDA executor](tensor_cuda.md) (#146). Derivative rules remain
+subsequent work (#151). The table below describes the original CG08 boundary;
+the CUDA document records the subsequent execution capabilities.
 
 | Stage | CG08 capability |
 | --- | --- |
@@ -124,7 +126,7 @@ contractions are valid; empty sums are zero. Dimension/byte products use a
 checked signed-64-bit contract before allocation. `execute(max_bytes=...)`
 defaults to 256 MiB and bounds logical retained arrays plus returned snapshots.
 It does not claim a bound on NumPy internal scratch, Python objects, or process
-RSS. Large-system planning remains #146.
+RSS. CUDA allocation planning has its own explicit [budget scope](tensor_cuda.md).
 
 Compile-time coefficients accept integers, `Fraction`, or exact rational
 strings such as `"1/4"`. Float coefficients are rejected. Serialization stores

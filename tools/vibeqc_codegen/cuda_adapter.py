@@ -49,6 +49,42 @@ class CudaCompilerAdapter:
             "-o",
             str(output),
         ]
+        return self._run_compiler(command)
+
+    def compile_shared(
+        self,
+        source: Path,
+        output: Path,
+        *,
+        includes: tuple[Path, ...] = (),
+        libraries: tuple[str, ...] = (),
+        options: tuple[str, ...] = (),
+    ) -> CudaCompileResult:
+        """Build a prepared native executor with the same finite process lifetime.
+
+        Options are explicit argv entries, never shell text. Callers control
+        scientific flags and libraries without changing legacy shell kernels.
+        """
+        return self._run_compiler(
+            [
+                str(self.nvcc),
+                "-std=c++17",
+                f"-arch={self.target.architecture}",
+                "-O3",
+                "-Xptxas=-v",
+                "--shared",
+                "-Xcompiler=-fPIC",
+                *(f"-I{path}" for path in includes),
+                *options,
+                str(source),
+                *(f"-l{name}" for name in libraries),
+                "-o",
+                str(output),
+            ]
+        )
+
+    def _run_compiler(self, command: list[str]) -> CudaCompileResult:
+        """Bound NVCC and every child for either object or shared-library builds."""
         started = time.monotonic()
         process = subprocess.Popen(
             command,
