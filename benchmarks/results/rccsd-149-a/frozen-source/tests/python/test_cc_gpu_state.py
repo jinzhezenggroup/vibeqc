@@ -89,7 +89,9 @@ def test_solver_plan_keeps_independent_replay_and_all_state_under_budget():
     assert primary.reservations == reservation
     assert segments["diis_vectors"]["bytes"] == 6 * (2 * 3 + 2**2 * 3**2) * 8
     spans = [(s["offset"], s["offset"] + s["bytes"]) for s in segments.values()]
-    assert all(right <= next_left for (_, right), (next_left, _) in pairwise(spans))
+    assert all(
+        right <= next_left for (_, right), (next_left, _) in pairwise(spans)
+    )
     assert spans[-1][1] <= reservation.total
     with pytest.raises(ValueError, match="budget"):
         solver_plans(2, 3, target, SolverOptions(max_bytes=128 << 20))

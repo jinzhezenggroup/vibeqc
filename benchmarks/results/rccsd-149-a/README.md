@@ -18,6 +18,13 @@ distinction by inspecting actual blobs, not changing recorded hashes).
 
 Later `cuda_resident*` modules are not part of this snapshot or these results.
 No host-input ABI test is being represented as persistent-device execution.
+After publication, pre-commit reformatted one assertion in the current
+`tests/python/test_cc_gpu_state.py` without changing its Python AST and added
+terminal newlines to the two window result JSON files without changing their
+parsed values. The original frozen test bytes were restored and are excluded
+only from rewriting formatter hooks. All other validation hooks remain active.
+Use the frozen copy or original `5cbe3a2` Git blob for that historical test hash;
+do not mistake the current formatting-only test bytes for the original bytes.
 `transfers_per_execution` records that fixed-amplitude inputs and outputs are
 transferred on each call. Kernel section measurements are diagnostic samples,
 not a performance ranking or exclusive resource benchmark.
