@@ -3,91 +3,29 @@
 from __future__ import annotations
 
 import ctypes as ct
-import json
-import os
-import shutil
-import subprocess
-import tempfile
 import threading
-from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
-from vibeqc.profiles import atomic_json, canonical_hash, file_hash, toolchain_identity
+from vibeqc.profiles import file_hash
 
-from tools.vibeqc_tensor.cuda_execute import _PREPARATION_LOCK, CudaArtifact, _Metrics
-from tools.vibeqc_tensor.cuda_resources import parse_resources
+from tools.vibeqc_codegen.native_runtime import compile_runtime
+from tools.vibeqc_tensor.cuda_execute import _PREPARATION_LOCK, _Metrics
 
 from .reference import immutable
 from .sources import _DOUBLE, _SIZE, pointer
 
 
 def compile_cuda(compiler, cache):
-    """Build the bounded transform runtime; compilation itself uses no GPU."""
+    """Build the bounded transform through the shared native-runtime cache."""
     root = Path(__file__).resolve().parents[2]
-    source = root / "src/posthf/cuda_transform.cu"
-    identity = {
-        "schema": 1,
-        "source": file_hash(source),
-        "runtime": file_hash(root / "src/tensor/cuda_runtime.cuh"),
-        "toolchain": toolchain_identity(compiler.nvcc),
-        "host_compiler": file_hash(
-            Path(os.environ.get("NVCC_CCBIN") or shutil.which("gcc")).resolve()
-        ),
-        "host_version": subprocess.check_output(
-            [os.environ.get("NVCC_CCBIN") or shutil.which("gcc"), "--version"],
-            text=True,
-            timeout=30,
-        ),
-        "target": asdict(compiler.target),
-        "flags": ["c++17", "O3", "shared", "fPIC", "--fmad=false", "cublas"],
-        "environment": {
-            k: os.environ.get(k, "")
-            for k in (
-                "NVCC_CCBIN",
-                "NVCC_PREPEND_FLAGS",
-                "NVCC_APPEND_FLAGS",
-                "CPATH",
-                "LIBRARY_PATH",
-            )
-        },
-    }
-    key = canonical_hash(identity)
-    cache = Path(cache).resolve()
-    cache.mkdir(parents=True, exist_ok=True)
-    destination = cache / key
-    if not destination.exists():
-        with tempfile.TemporaryDirectory(prefix=".posthf-", dir=cache) as temporary:
-            folder = Path(temporary)
-            library = folder / "transform.so"
-            result = compiler.compile_shared(
-                source, library, libraries=("cublas",), options=("--fmad=false",)
-            )
-            (folder / "compiler.log").write_text(result.stdout + result.stderr)
-            if result.returncode:
-                raise RuntimeError(
-                    f"CUDA transform compilation failed: {result.stdout}{result.stderr}"
-                )
-            metadata = {
-                "identity": identity,
-                "key": key,
-                "binary_sha256": file_hash(library),
-                "compile_seconds": result.duration_seconds,
-                "resources": [asdict(x) for x in parse_resources(result.stderr)],
-            }
-            atomic_json(folder / "artifact.json", metadata)
-            try:
-                os.rename(folder, destination)
-            except OSError:
-                if not destination.is_dir():
-                    raise
-    metadata = json.loads((destination / "artifact.json").read_text())
-    library = destination / "transform.so"
-    if canonical_hash(metadata.get("identity")) != key or metadata.get(
-        "binary_sha256"
-    ) != file_hash(library):
-        raise ValueError("CUDA transform cache integrity failure")
-    return CudaArtifact(library, metadata)
+    return compile_runtime(
+        compiler,
+        cache,
+        root / "src/posthf/cuda_transform.cu",
+        headers=(root / "src/tensor/cuda_runtime.cuh",),
+        libraries=("cublas",),
+    )
 
 
 class CudaTransform:

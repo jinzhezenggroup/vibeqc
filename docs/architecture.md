@@ -4,8 +4,9 @@
 
 RHF and UHF are executable in the HF vertical prototype. `WB97M_V` and
 `RCCSD_T` have stable method identifiers for capability discovery but return
-`VIBEQC_STATUS_NOT_IMPLEMENTED`. No DFT grid or coupled-cluster tensor framework
-is created before a real method requires it.
+`VIBEQC_STATUS_NOT_IMPLEMENTED`. Internal grid/AO, tensor and post-HF provider
+interfaces support method development; they do not enable executable DFT or
+coupled-cluster methods in the registry.
 
 ## Method execution boundary
 

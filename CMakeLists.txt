@@ -133,6 +133,8 @@ add_library(vibeqc SHARED
   src/api/c_api_context.cpp
   src/api/c_api_tuning.cpp
   src/api/error.cpp
+  src/dft/ao_grid.cpp
+  src/dft/bridge.cpp
   src/integrals/s_integrals.cpp
   src/methods/hf_method.cpp
   src/methods/registry.cpp
@@ -210,6 +212,7 @@ if(VIBEQC_ENABLE_CUDA)
     VERBATIM)
   target_sources(vibeqc PRIVATE "${VIBEQC_WEIGHTED_ERI_HEADER}")
   target_sources(vibeqc PRIVATE
+    src/dft/cuda_grid.cu
     src/posthf/df_bridge.cu
     src/scf/cuda/rhf_policy.cpp
     src/runtime/cuda_runtime.cu
@@ -521,6 +524,11 @@ if(VIBEQC_BUILD_TESTS)
   target_include_directories(vibeqc_spherical_tests
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
   add_test(NAME vibeqc_spherical_tests COMMAND vibeqc_spherical_tests)
+
+  add_executable(vibeqc_grid_tests tests/native/test_grid.cpp)
+  target_link_libraries(vibeqc_grid_tests PRIVATE vibeqc)
+  target_include_directories(vibeqc_grid_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  add_test(NAME vibeqc_grid_tests COMMAND vibeqc_grid_tests)
 
   add_executable(vibeqc_mixed_precision_tests
     tests/native/test_mixed_precision.cpp)

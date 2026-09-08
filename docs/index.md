@@ -41,3 +41,4 @@ Those belong in the developer documents so the first page remains an accurate,
 compact user entry point.
 
 - [HF reference snapshots and bounded MO integral providers](posthf.md)
+- [Atom-centered grids and spatial AO/density jets](dft_grid.md)

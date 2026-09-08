@@ -1,0 +1,196 @@
+{
+  "schema": "vibeqc.grid-reference",
+  "version": 1,
+  "inputs": {
+    "name": "f_spherical",
+    "atomic_numbers": [
+      2,
+      1
+    ],
+    "coordinates": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.7,
+        -0.2,
+        1.5
+      ]
+    ],
+    "shells": [
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.6,
+            1
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            0.2,
+            0.8
+          ],
+          [
+            0.8,
+            0.3
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 2,
+        "primitives": [
+          [
+            1.2,
+            1
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 3,
+        "primitives": [
+          [
+            0.4,
+            1
+          ],
+          [
+            1.1,
+            -0.1
+          ]
+        ]
+      }
+    ],
+    "basis_representation": "real_spherical",
+    "charge": 0,
+    "multiplicity": 2
+  },
+  "inputs_hash": "a381e13cea8fc998fa0b21c99845bad191e0a04186e1d924e9603bbe35f1c76b",
+  "grid_hash": "5227679ae76ee325f5da60de4a7bf52088af1c29e5c399f70c483b492056cd48",
+  "reference": {
+    "PySCF": "2.14.0",
+    "NumPy": "2.4.6",
+    "licenses": {
+      "PySCF": "Apache-2.0",
+      "libcint": "BSD-2-Clause"
+    },
+    "exporter": "original tools/generate_grid_references.py",
+    "actual_basis": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  "conventions": {
+    "jets": "ordinary spatial derivatives; libcint order; no factorials",
+    "density": "separate alpha/beta; arbitrary PSD, not SCF",
+    "tau": "one-half gradient square",
+    "sigma": "aa,ab,bb; no cross factor",
+    "grid": "identical explicit points, not a quadrature-convergence comparison"
+  },
+  "arrays": {
+    "points": {
+      "shape": [
+        58,
+        3
+      ],
+      "sha256": "7f7ee458217348edd7457eb8db9ed352c2cc6055b8e2749fe5d75d48ea25cb80"
+    },
+    "ao_jets": {
+      "shape": [
+        20,
+        58,
+        16
+      ],
+      "sha256": "3671510a440284c77f893c6f6c495cefdf03a64ec8f486772503907bfb22d8cf"
+    },
+    "density": {
+      "shape": [
+        2,
+        16,
+        16
+      ],
+      "sha256": "2b4f4e15768a61c49f9eeee936f9739e577bf4174b208598da4d7f08bb65722d"
+    },
+    "coefficients": {
+      "shape": [
+        2,
+        16,
+        4
+      ],
+      "sha256": "de7c3e71c08d32214de970bb90099fbb5f553a9754eead2e433416deb81bc9b4"
+    },
+    "partitioned_grid_points": {
+      "shape": [
+        32,
+        3
+      ],
+      "sha256": "063d6379fbfda3eee2f345b5d60263b4debcf2b93e491a91b75bae4a77df1cfa"
+    },
+    "partitioned_grid_weights": {
+      "shape": [
+        32
+      ],
+      "sha256": "7b19c27997ae1d59916d3cafc07db53c490ea39ed46f22b3a9375f8fcff66ed7"
+    },
+    "occupations": {
+      "shape": [
+        2,
+        4
+      ],
+      "sha256": "f9bab9d18b59daaea7b35fd88adbe028954ccc4d89a3e5b817648ae571f0c503"
+    },
+    "rho": {
+      "shape": [
+        2,
+        58
+      ],
+      "sha256": "cd14410e1a2efeac5ce8033c9648ae1df85195ff46bbd476d7af559584892521"
+    },
+    "gradient": {
+      "shape": [
+        2,
+        58,
+        3
+      ],
+      "sha256": "41e50d1e435b2bbf5b1ab96dcfe492528af3151e3c8024f79315c525144f0140"
+    },
+    "tau": {
+      "shape": [
+        2,
+        58
+      ],
+      "sha256": "06e7f6fd70585d943325e3aac6d2011ab8c3d683bb437cd96b5e0addad5501be"
+    },
+    "laplacian": {
+      "shape": [
+        2,
+        58
+      ],
+      "sha256": "da7de011c6c2b14f381600629a5116c28433d495d03d5522cb2c2ec0d79539ff"
+    },
+    "sigma": {
+      "shape": [
+        3,
+        58
+      ],
+      "sha256": "6d775b87a95ce87369bff982db52e4f01d63c1e55bf0730e78cc3f7664f879ba"
+    },
+    "overlap": {
+      "shape": [
+        16,
+        16
+      ],
+      "sha256": "e18a30c363be367fbd606cd4e01f393e607f851103e84ba259fcee6752f3d59d"
+    }
+  }
+}
