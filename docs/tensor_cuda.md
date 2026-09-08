@@ -213,3 +213,7 @@ flags, batched/noncontiguous layouts, general contractions, unit tiles, odd
 dimensions, empty domains, error recovery, architecture mismatches, independent
 contexts, shape buckets and detached outputs. Real-device tests skip in CPU CI
 unless explicitly enabled by the caller's GPU allocation.
+
+The [archived CG09 records](../benchmarks/results/tensor-cuda-146/README.md)
+include the retained-provider allocation audit, all candidate samples and the
+measured selection/fallback results for six shape buckets.

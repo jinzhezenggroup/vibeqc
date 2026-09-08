@@ -1,0 +1,11 @@
+Slurm job=8995 GPU=NVIDIA GeForce RTX 5090 architecture=sm_120
+initialization cuMemAlloc_v2 bytes=4195328
+before create free=32842842112 total=33666498560
+cublasCreate cuMemAlloc_v2 bytes=1024
+cublasCreate cuMemAlloc_v2 bytes=131072
+cublasCreate cuMemAlloc_v2 bytes=67108864
+after create free=32771538944 total=33666498560
+after workspace free=32771538944 total=33666498560
+after gemm free=32771538944 total=33666498560
+after batched gemm free=32771538944 total=33666498560
+after destroy free=32840744960 total=33666498560
