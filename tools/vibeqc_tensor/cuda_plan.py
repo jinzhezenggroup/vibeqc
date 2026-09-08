@@ -2,8 +2,10 @@
 
 The byte budget is a combined numeric-buffer budget: device allocations plus
 prepared host input staging and one detached host output set. Caller-owned
-inputs/old results, Python/code objects, CUDA context/module/handle overhead,
-and the CUDA allocator's page rounding are outside this scope. The runtime
+inputs/old results, Python/code objects, CUDA context/module/stack overhead,
+provider host metadata,
+and the CUDA allocator's page rounding are outside this scope. Retained
+cuBLAS device allocations have a separate checked allowance. The runtime
 reports its device-memory delta separately; it must never label that delta as
 the plan's numeric-buffer peak.
 """
@@ -24,6 +26,7 @@ from .types import checked_size
 PLAN_SCHEMA = 1
 ALIGNMENT = 256
 INT_MAX = 2**31 - 1
+MIN_PROVIDER_BYTES = 96 * 1024**2
 VALIDATION_CHUNK = 4096
 # Two NumPy iterator buffers, two reusable FP64 scratch buffers and one mask.
 VALIDATION_BYTES = VALIDATION_CHUNK * (4 * 8 + 1)
@@ -124,12 +127,13 @@ class TensorPlan:
     arena_bytes: int
     panel_bytes: int
     library_bytes: int
+    provider_bytes: int
     host_bytes: int
     estimated_flops: int
     estimated_traffic_bytes: int
 
     @property
-    def device_bytes(self) -> int:
+    def allocation_bytes(self) -> int:
         # Error flag has a full alignment unit to keep every segment aligned.
         return (
             self.arena_bytes
@@ -138,6 +142,10 @@ class TensorPlan:
             + aligned(self.reservations.total)
             + ALIGNMENT
         )
+
+    @property
+    def device_bytes(self) -> int:
+        return self.allocation_bytes + self.provider_bytes
 
     @property
     def peak_bytes(self) -> int:
@@ -160,6 +168,8 @@ class TensorPlan:
             "arena_bytes": self.arena_bytes,
             "panel_bytes": self.panel_bytes,
             "library_bytes": self.library_bytes,
+            "provider_bytes": self.provider_bytes,
+            "allocation_bytes": self.allocation_bytes,
             "host_bytes": self.host_bytes,
             "device_bytes": self.device_bytes,
             "peak_bytes": self.peak_bytes,
@@ -267,6 +277,7 @@ def plan_cuda(
     schedule: TensorSchedule = BASELINE_SCHEDULE,
     reservations: Reservations = NO_RESERVATIONS,
     library_bytes: int = 4 * 1024**2,
+    provider_bytes: int = MIN_PROVIDER_BYTES,
 ) -> TensorPlan:
     """Plan all allocations before preparation; shrink packing tiles to fit.
 
@@ -279,6 +290,9 @@ def plan_cuda(
         raise TypeError("plan_cuda requires a Program and CudaTargetInfo")
     checked_size(max_bytes, "tensor byte budget")
     checked_size(library_bytes, "library workspace")
+    checked_size(provider_bytes, "provider allowance")
+    if provider_bytes % ALIGNMENT:
+        raise ValueError("provider allowance must be a multiple of 256 bytes")
     if library_bytes % ALIGNMENT:
         raise ValueError("library workspace must be a multiple of 256 bytes")
     TargetScheduleShape(schedule.threads, target.warp_size).validate_for(
@@ -422,9 +436,20 @@ def plan_cuda(
         + (VALIDATION_BYTES if inputs else 0),
         "host tensor bytes",
     )
-    library_bytes = library_bytes if any(s.gemm != "none" for s in steps) else 0
+    needs_blas = any(
+        s.gemm != "none" and s.node.spec.size and gemm_contract(s.node).k for s in steps
+    )
+    if needs_blas and provider_bytes < MIN_PROVIDER_BYTES:
+        raise ValueError("cuBLAS plans require at least a 96 MiB provider allowance")
+    library_bytes = library_bytes if needs_blas else 0
+    provider_bytes = provider_bytes if needs_blas else 0
     fixed = checked_size(
-        capacity + host + library_bytes + aligned(reservations.total) + ALIGNMENT,
+        capacity
+        + host
+        + library_bytes
+        + provider_bytes
+        + aligned(reservations.total)
+        + ALIGNMENT,
         "fixed tensor bytes",
     )
     tile = [schedule.tile_m, schedule.tile_n, schedule.tile_k]
@@ -467,6 +492,7 @@ def plan_cuda(
         capacity,
         panel,
         library_bytes,
+        provider_bytes,
         host,
         flops,
         traffic,

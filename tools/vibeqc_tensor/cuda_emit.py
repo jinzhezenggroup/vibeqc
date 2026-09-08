@@ -288,7 +288,7 @@ __global__ void kernel_{i}(unsigned char* p, int* error) {{
     error_offset = (
         library_offset + plan.library_bytes + aligned(plan.reservations.total)
     )
-    assert error_offset + ALIGNMENT == plan.device_bytes
+    assert error_offset + ALIGNMENT == plan.allocation_bytes
     parts.append(f"""
 extern "C" const char* tensor_plan_identity() {{ return "{plan.identity}"; }}
 extern "C" int tensor_create(int device, void** result, char* error, size_t size) {{
@@ -297,8 +297,8 @@ extern "C" int tensor_create(int device, void** result, char* error, size_t size
         *result = nullptr;
         auto ctx = std::make_unique<Context>();
         ctx->prepare(device, {plan.target.compute_capability_major}, {plan.target.compute_capability_minor},
-                     {plan.device_bytes}ULL, {error_offset}ULL, {library_offset}ULL,
-                     {plan.library_bytes}ULL, {"true" if needs_blas else "false"});
+                     {plan.allocation_bytes}ULL, {error_offset}ULL, {library_offset}ULL,
+                     {plan.library_bytes}ULL, {plan.provider_bytes}ULL, {"true" if needs_blas else "false"});
         DeviceGuard guard(device);
         {" ".join(initialize)}
         cuda_check(cudaStreamSynchronize(ctx->stream));
@@ -318,6 +318,7 @@ extern "C" int tensor_run(void* pointer, const double* const* inputs, double* co
         if (!result || !inputs || !outputs) throw std::runtime_error("null tensor execution arguments");
         Metrics metrics;
         metrics.owned_device_bytes = ctx.metrics.owned_device_bytes;
+        metrics.provider_retained_bytes = ctx.metrics.provider_retained_bytes;
         metrics.prepare_device_delta = ctx.metrics.prepare_device_delta;
         auto* p = ctx.arena;
         cuda_check(cudaEventRecord(ctx.begin, ctx.stream));

@@ -41,6 +41,7 @@ struct DeviceGuard {
 
 struct Metrics {
   uint64_t owned_device_bytes = 0;
+  uint64_t provider_retained_bytes = 0;
   uint64_t prepare_device_delta = 0;
   uint64_t observed_device_delta = 0;
   double device_ms = 0;
@@ -65,7 +66,8 @@ struct Context {
   // All allocations and event/handle creation happen here. No run() path
   // allocates buffers or creates cuBLAS handles, even for partial tiles.
   void prepare(int ordinal, int major, int minor, size_t bytes, size_t error_offset,
-               size_t library_offset, size_t library_bytes, bool needs_blas) {
+               size_t library_offset, size_t library_bytes, size_t provider_bytes,
+               bool needs_blas) {
     device = ordinal;
     DeviceGuard guard(device);
     cudaDeviceProp property{};
@@ -76,18 +78,35 @@ struct Context {
     cuda_check(cudaMemGetInfo(&before, &total));
     free_before_prepare = before;
     cuda_check(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
+    if (needs_blas) {
+      // A supplied workspace does not release cuBLAS's internal retained
+      // allocations (64 MiB plus small buffers on the audited provider).
+      // Charge a configurable allowance and check it before allocating tensor
+      // storage. Preparation/destruction are serialized by the Python owner
+      // so another owned handle cannot distort this conservative device delta.
+      size_t provider_before = 0, provider_after = 0;
+      cuda_check(cudaMemGetInfo(&provider_before, &total));
+      blas_check(cublasCreate(&handle));
+      cuda_check(cudaMemGetInfo(&provider_after, &total));
+      metrics.provider_retained_bytes =
+          provider_before > provider_after ? provider_before - provider_after : 0;
+      if (metrics.provider_retained_bytes > provider_bytes)
+        throw std::runtime_error(
+            "cuBLAS retained allocations exceed the provider allowance: observed " +
+            std::to_string(metrics.provider_retained_bytes) + " bytes, allowed " +
+            std::to_string(provider_bytes));
+    }
     cuda_check(cudaMalloc(reinterpret_cast<void**>(&arena), bytes));
     error = reinterpret_cast<int*>(arena + error_offset);
     metrics.owned_device_bytes = bytes;
     if (needs_blas) {
-      blas_check(cublasCreate(&handle));
       blas_check(cublasSetStream(handle, stream));
       blas_check(cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_HOST));
       blas_check(cublasSetMathMode(handle, CUBLAS_DEFAULT_MATH));
       blas_check(cublasSetAtomicsMode(handle, CUBLAS_ATOMICS_NOT_ALLOWED));
       // SetStream resets the workspace; install our counted workspace
       // only after the final stream binding. A zero-byte workspace is a
-      // valid conservative provider path and does not request a pool.
+      // valid conservative path; retained provider storage is budgeted above.
       blas_check(cublasSetWorkspace(handle, arena + library_offset, library_bytes));
     }
     cuda_check(cudaEventCreate(&begin));

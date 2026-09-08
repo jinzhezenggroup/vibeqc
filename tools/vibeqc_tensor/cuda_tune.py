@@ -158,6 +158,7 @@ def tune_cuda(
                     schedule=schedule,
                     reservations=baseline.reservations,
                     library_bytes=baseline.library_bytes,
+                    provider_bytes=baseline.provider_bytes,
                 )
                 row.update(plan=plan.to_payload(), plan_identity=plan.identity)
                 compiled = compile_cuda(plan, compiler, cache)

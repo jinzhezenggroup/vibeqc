@@ -192,3 +192,19 @@ def test_invalid_types_overflow_and_float32_fail_before_allocation():
             TARGET,
             schedule=replace(TensorSchedule(), threads=2048),
         )
+
+
+def test_cublas_retained_storage_cannot_be_hidden_by_zero_user_workspace():
+    from test_tensor_cuda_gemm import node_for
+
+    program = Program({"c": node_for("ik,kj->ij", {"i": 3, "j": 5, "k": 7})})
+    plan = plan_cuda(program, TARGET, library_bytes=0)
+    assert plan.provider_bytes == 96 * 1024**2
+    assert plan.device_bytes == plan.allocation_bytes + plan.provider_bytes
+    with pytest.raises(ValueError, match="provider allowance"):
+        plan_cuda(program, TARGET, library_bytes=0, provider_bytes=0)
+    with pytest.raises(ValueError, match="infeasible"):
+        plan_cuda(program, TARGET, library_bytes=0, max_bytes=plan.peak_bytes - 1)
+    # Empty contractions never create a provider handle or charge an allowance.
+    empty = Program({"c": node_for("ik,kj->ij", {"i": 3, "j": 5, "k": 0})})
+    assert plan_cuda(empty, TARGET).provider_bytes == 0

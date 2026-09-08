@@ -31,10 +31,15 @@ from .cuda_emit import emit_cuda
 from .cuda_plan import VALIDATION_CHUNK, TensorPlan
 from .cuda_resources import parse_resources
 
+# Allocation snapshots for provider accounting must not race another owned
+# handle's creation/destruction. Executions themselves remain independent.
+_PREPARATION_LOCK = threading.RLock()
+
 
 class _Metrics(ctypes.Structure):
     _fields_ = [
         ("owned_device_bytes", ctypes.c_uint64),
+        ("provider_retained_bytes", ctypes.c_uint64),
         ("prepare_device_delta", ctypes.c_uint64),
         ("observed_device_delta", ctypes.c_uint64),
         *[
@@ -257,8 +262,11 @@ class PreparedCuda:
             else []
         )
         self._mask = np.empty(VALIDATION_CHUNK, dtype=np.bool_) if plan.inputs else None
-        if lib.tensor_create(device, ctypes.byref(self._pointer), error, len(error)):
-            raise RuntimeError(error.value.decode())
+        with _PREPARATION_LOCK:
+            if lib.tensor_create(
+                device, ctypes.byref(self._pointer), error, len(error)
+            ):
+                raise RuntimeError(error.value.decode())
 
     def _validate(self, value, node):
         """Bound validation scratch even for transposed symmetry partners."""
@@ -354,7 +362,10 @@ class PreparedCuda:
                 host_buffer_bytes=self.plan.host_bytes,
                 profiled=bool(profile),
             )
-            if native.owned_device_bytes != self.plan.device_bytes:
+            if (
+                native.owned_device_bytes != self.plan.allocation_bytes
+                or native.provider_retained_bytes > self.plan.provider_bytes
+            ):
                 raise RuntimeError(
                     "native tensor allocation disagrees with the memory plan"
                 )
@@ -364,7 +375,8 @@ class PreparedCuda:
         """Release resources once; cannot race an execution using their pointers."""
         with self._lock:
             if self._pointer:
-                self._library.tensor_destroy(self._pointer)
+                with _PREPARATION_LOCK:
+                    self._library.tensor_destroy(self._pointer)
                 self._pointer = ctypes.c_void_p()
 
     def __enter__(self):

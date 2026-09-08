@@ -74,7 +74,8 @@ def check(program, feeds, compiler, cache, schedule=None, **options):
                 np.testing.assert_allclose(
                     result.outputs[name], expected[name], atol=1e-11, rtol=1e-10
                 )
-            assert result.metrics["owned_device_bytes"] == plan.device_bytes
+            assert result.metrics["owned_device_bytes"] == plan.allocation_bytes
+            assert result.metrics["provider_retained_bytes"] <= plan.provider_bytes
             assert result.metrics["predicted_peak_bytes"] <= plan.max_bytes
         return result
 
@@ -273,3 +274,25 @@ def test_architecture_mismatch_is_explicit_before_execution(compiler, cache):
     plan = plan_cuda(Program({"scalar": constant(3)}), other.target)
     with pytest.raises(ValueError, match="device architecture mismatch"):
         PreparedCuda(plan, compile_cuda(plan, other, cache))
+
+
+def test_provider_allowance_guard_releases_a_rejected_handle(compiler, cache):
+    case = example_cases()[0]
+    plan = plan_cuda(case.program, compiler.target, library_bytes=0)
+    artifact = compile_cuda(plan, compiler, cache)
+    with PreparedCuda(plan, artifact) as prepared:
+        measured = prepared.execute(case.inputs).metrics["provider_retained_bytes"]
+    if measured == 0:
+        pytest.skip("provider allocations fit existing allocator pages on this stack")
+    # Deliberately bypass the CPU minimum solely to exercise native rollback
+    # before tensor allocation; ordinary callers cannot obtain this plan.
+    invalid = replace(plan, provider_bytes=0)
+    with pytest.raises(RuntimeError, match="provider allowance"):
+        PreparedCuda(invalid, compile_cuda(invalid, compiler, cache))
+    with PreparedCuda(plan, artifact) as prepared:
+        np.testing.assert_allclose(
+            prepared.execute(case.inputs).outputs["value"],
+            case.reference,
+            atol=1e-11,
+            rtol=1e-10,
+        )

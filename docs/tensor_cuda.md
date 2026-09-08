@@ -100,8 +100,19 @@ storage, with 256-byte alignment where needed:
 - Reusable intermediate arena slots and their last-use intervals.
 - The maximum simultaneously live A/B/C packing panels.
 - The explicit cuBLAS workspace (default 4 MiB, configurable down to zero).
+- A separate cuBLAS retained-device allowance (default/minimum 96 MiB).
 - Physically retained T/R/DIIS/concurrent-work reservations and the device error flag.
 - Prepared host input staging, bounded validation scratch and one detached output set.
+
+The provider allowance accounts for internal retained allocations even with a
+zero explicit workspace. The audited cuBLAS provider allocates a 64 MiB buffer
+plus smaller buffers during handle creation; installing a user workspace does
+not release them. `provider_bytes` can increase the conservative allowance.
+Preparation checks the device-memory delta around handle creation before
+allocating tensor buffers and rolls back if that provider exceeds its allowance.
+This provider probe can fail after creating its temporary handle; it does not
+establish a portable promise for every future library version. Owned handle
+creation/destruction are serialized so they cannot distort each other's check.
 
 The executor binds one ordinary stream and installs its user workspace after
 the final cuBLAS stream binding. There are no concurrent per-plan streams or
@@ -111,14 +122,19 @@ and are not silently recycled as intermediate storage.
 
 The combined budget is **not a process-RSS or total-free-VRAM guarantee**.
 Caller inputs/previous results, Python metadata, generated code/constants in
-the host library, CUDA context/module/stack storage, opaque provider handle
-allocations and allocator page rounding are outside the numeric-buffer scope.
-The explicit cuBLAS scratch workspace is included. `owned_device_bytes` records
-the successful native allocation; `prepare_device_delta` and
+the host library, general CUDA context/module/stack storage, provider host
+metadata and allocator page rounding are outside the numeric-buffer scope.
+Both the explicit workspace and retained-device allowance are included.
+`owned_device_bytes` records the successful tensor allocation and
+`provider_retained_bytes` records its provider check. `allocation_bytes` is the
+tensor allocation capacity; `device_bytes` also includes the provider allowance.
+`prepare_device_delta` and
 `observed_device_delta` separately report device-wide free-memory differences,
 which may include another concurrently prepared context. Initial cuBLAS/JIT
 overhead can greatly exceed a small tensor's numeric storage and startup time.
-These deltas are observations, not portable upper bounds on opaque overhead.
+The overall device-wide deltas are observations, not portable upper bounds on
+general runtime overhead. Successful preparations must fit their counted
+provider allowance as well as their statically planned tensor capacities.
 
 Inputs and outputs are indivisible resident tensors. When fixed storage plus
 the minimum panel capacity exceeds the budget, planning fails on the CPU;

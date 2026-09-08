@@ -223,17 +223,23 @@ def run(args):
                         constrained_metrics=constrained_result.metrics,
                     )
                     record["memory"] = {
-                        "allocated_bytes": selected_plan.device_bytes,
+                        "allocated_bytes": selected_plan.allocation_bytes
+                        + profile.metrics["provider_retained_bytes"],
                         "peak_bytes": selected_plan.peak_bytes,
                         "reason": None,
-                        "scope": "native numeric allocation plus conservative host staging/validation/current-output capacity; excludes CUDA/provider allocations and caller-owned arrays",
+                        "scope": "native allocation, checked provider-retained allowance, and conservative host staging/validation/current-output capacity; excludes general CUDA context/module/stack overhead and caller-owned arrays",
+                        "provider_retained_bytes": profile.metrics[
+                            "provider_retained_bytes"
+                        ],
+                        "provider_allowance_bytes": selected_plan.provider_bytes,
                         "observed_device_delta": profile.metrics[
                             "observed_device_delta"
                         ],
-                        "opaque_provider_and_allocator_delta": max(
+                        "additional_runtime_and_allocator_delta": max(
                             0,
                             profile.metrics["observed_device_delta"]
-                            - selected_plan.device_bytes,
+                            - selected_plan.allocation_bytes
+                            - profile.metrics["provider_retained_bytes"],
                         ),
                     }
                     passed = all(e["passed"] for e in record["block_errors"].values())
