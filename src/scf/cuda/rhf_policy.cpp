@@ -128,4 +128,16 @@ bool one_electron_force_scalar_requested() noexcept {
 
 bool resident_psss_bra_requested() noexcept { return enabled("VIBEQC_PSSS_RESIDENT_BRA"); }
 
+bool generated_df_values_requested() noexcept {
+  // Until the full raw-value/resource/endpoint gates are archived, promotion
+  // is explicitly opt-in. The reference switch remains available for A/B runs.
+  return selected("VIBEQC_DF_VALUES", "generated");
+}
+
+unsigned df_value_mapping_requested() noexcept {
+  if (selected("VIBEQC_DF_VALUE_MAPPING", "component")) return 1U;
+  if (selected("VIBEQC_DF_VALUE_MAPPING", "primitive")) return 2U;
+  return 0U;
+}
+
 }  // namespace vibeqc::scf::cuda_policy

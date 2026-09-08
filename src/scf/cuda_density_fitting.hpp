@@ -15,6 +15,19 @@ struct CudaDensityFittingJkPlan;
 struct CudaDensityFittingIntegralSource;
 struct CudaDensityFittingMetricDiagnostic;
 
+/** Integral-source placement, distinct from metric rank and J/K plan storage. */
+struct CudaDensityFittingSourceDiagnostic {
+  const char* value_backend{"unavailable"};
+  const char* value_mapping{"unavailable"};
+  bool public_transform_on_device{};
+  /** The returned metric crosses D2H, then H2D for cuSOLVER factorization. */
+  bool metric_staged_on_host{};
+};
+
+/** Describe the choices frozen into a source; a null handle is unavailable. */
+CudaDensityFittingSourceDiagnostic cuda_density_fitting_integral_source_diagnostic(
+    const CudaDensityFittingIntegralSource* source) noexcept;
+
 /**
  * Prepare a device-resident source for bounded DF tile generation.
  *
@@ -66,7 +79,11 @@ vibeqc_status generate_cuda_density_fitting_transformed_tile(
     std::int64_t derivative_coordinate, const double* inverse_square_root, void* stream,
     double* output, std::string& detail);
 
-/** Generate one public-basis raw three-center tile on `stream`. */
+/**
+ * Generate raw A[mu,nu,P] in row-major [pair][auxiliary] order on `stream`.
+ * Pairs use pair=mu*nbf+nu with unit weight (no symmetry compression).
+ * Empty extents at valid offsets are no-ops; stream/output must remain valid.
+ */
 vibeqc_status generate_cuda_density_fitting_raw_tile(
     CudaDensityFittingIntegralSource* source, std::size_t system, std::size_t pair_begin,
     std::size_t pair_count, std::size_t auxiliary_begin, std::size_t auxiliary_count,

@@ -42,7 +42,11 @@ from .profiles import (
 
 def source_identity(source: Path) -> str:
     """Mirror the CMake compatibility inventory before spending a tuning budget."""
-    paths = {source / "CMakeLists.txt", source / "tools/generate_shell_kernels.py"}
+    paths = {
+        source / "CMakeLists.txt",
+        source / "tools/generate_shell_kernels.py",
+        source / "tools/generate_df_kernels.py",
+    }
     for directory in ("src", "include"):
         paths.update(p for p in (source / directory).rglob("*") if p.is_file())
     paths.update((source / "python/vibeqc").rglob("*.py"))

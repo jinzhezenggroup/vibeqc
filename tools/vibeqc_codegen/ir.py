@@ -423,6 +423,7 @@ class IntegralIR:
             raise ValueError("direct HF consumers require four-center ERIs")
         if self.recurrence not in (
             "subset_wick",
+            "rys1",
             "rys2",
             "rys3",
             "rys4",

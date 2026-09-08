@@ -150,7 +150,8 @@ file(GLOB_RECURSE _vibeqc_identity_inputs CONFIGURE_DEPENDS
      RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
      "src/*" "include/*" "tools/vibeqc_codegen/*.py"
      "tools/vibeqc_codegen/*.json" "python/vibeqc/*.py")
-list(APPEND _vibeqc_identity_inputs "CMakeLists.txt" "tools/generate_shell_kernels.py")
+list(APPEND _vibeqc_identity_inputs "CMakeLists.txt" "tools/generate_shell_kernels.py"
+     "tools/generate_df_kernels.py")
 list(SORT _vibeqc_identity_inputs)
 set(_vibeqc_identity_text "")
 foreach(_vibeqc_identity_path IN LISTS _vibeqc_identity_inputs)
@@ -179,6 +180,23 @@ target_compile_definitions(vibeqc PRIVATE VIBEQC_BUILDING_LIBRARY=1)
 target_compile_options(vibeqc PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Wpedantic>)
 
 if(VIBEQC_ENABLE_CUDA)
+  # DF values share the mathematical generator even in generic four-center
+  # builds. Keep the emitted header out of version control and regenerate it
+  # whenever one of its mathematical or lowering dependencies changes.
+  if(NOT Python3_Interpreter_FOUND)
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  endif()
+  file(GLOB VIBEQC_DF_GENERATOR_INPUTS CONFIGURE_DEPENDS
+       "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/*.py")
+  set(VIBEQC_DF_GENERATED_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/df_values.cuh")
+  add_custom_command(
+    OUTPUT "${VIBEQC_DF_GENERATED_HEADER}"
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
+            --output "${VIBEQC_DF_GENERATED_HEADER}"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
+            ${VIBEQC_DF_GENERATOR_INPUTS}
+    VERBATIM)
+  target_sources(vibeqc PRIVATE "${VIBEQC_DF_GENERATED_HEADER}")
   target_sources(vibeqc PRIVATE
     src/scf/cuda/rhf_policy.cpp
     src/runtime/cuda_runtime.cu
@@ -432,6 +450,13 @@ set_target_properties(vibeqc PROPERTIES
 
 if(VIBEQC_BUILD_TESTS)
   enable_testing()
+  if(VIBEQC_ENABLE_CUDA)
+    # Manual numerical/performance tier: invoked through the Slurm validator,
+    # never registered as an unallocated login-node GPU test.
+    add_executable(vibeqc_df_value_probe tests/native/df_value_probe.cpp)
+    target_link_libraries(vibeqc_df_value_probe PRIVATE vibeqc CUDA::cudart)
+    target_include_directories(vibeqc_df_value_probe PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+  endif()
   add_executable(vibeqc_native_tests tests/native/test_rhf.cpp)
   target_link_libraries(vibeqc_native_tests PRIVATE vibeqc)
   target_include_directories(vibeqc_native_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)

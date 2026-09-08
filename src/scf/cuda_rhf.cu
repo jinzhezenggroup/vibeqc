@@ -21,9 +21,11 @@
 #include <utility>
 #include <vector>
 
+#include "df_values.cuh"
 #include "molecule/basis.hpp"
 #include "scf/aot_shell_registry.hpp"
 #include "scf/cuda/rhf_policy.hpp"
+#include "scf/cuda_density_fitting.hpp"
 #include "scf/cuda_density_fitting_integrals.hpp"
 #include "scf/cuda_eigensolver_policy.hpp"
 #include "scf/direct_task_layout.hpp"
@@ -5915,20 +5917,100 @@ __global__ void build_eri_kernel(DeviceBatch batch, double* eri) {
 }
 
 /**
- * Evaluate the two DF targets directly from the shared Cartesian quartet
- * recurrence.  A zero-exponent s function is used as the fourth center: with
- * delta=0, `(mu nu|P)` and `(P|Q)` are exactly the three-/two-center Coulomb
- * integrals used by the host oracle, while no O(N^4) ERI tensor is retained.
- * The combined batch contains orbital shells, auxiliary shells, and one such
- * dummy shell, so all geometry and normalization data follow the production
- * DeviceBatch layout without a second recurrence implementation.
+ * Contract generated raw DF values using the production normalization data.
+ *
+ * Metric has two auxiliary slots; three-center has two orbital slots and one
+ * auxiliary slot. No normalized dummy primitive participates in these value
+ * expressions. Sparse public AO expansions are supported, although the tiled
+ * source passes Cartesian AOs and applies its public transforms at the write.
+ * Runtime primitive lengths are deliberately independent of angular IR. A
+ * primitive-oriented warp owns one output and distributes primitive products
+ * by lane; the caller reduces partial values after all public-basis transforms.
  */
+template <bool Metric>
+__device__ __noinline__ double contracted_generated_df(const DeviceBatch& batch,
+                                                       std::int32_t system, std::int32_t first,
+                                                       std::int32_t second, std::int32_t auxiliary,
+                                                       unsigned lane, unsigned lanes) {
+  const std::int64_t base = static_cast<std::int64_t>(system) * batch.nbf;
+  const std::int64_t i = base + first;
+  const std::int64_t j = Metric ? i : base + second;
+  const std::int64_t k = base + auxiliary;
+  const auto si = batch.ao_shells[i], sj = batch.ao_shells[j], sk = batch.ao_shells[k];
+  const auto a_position = atom_position<double>(batch, batch.shell_atoms[si], -1);
+  const auto b_position = atom_position<double>(batch, batch.shell_atoms[sj], -1);
+  const auto c_position = atom_position<double>(batch, batch.shell_atoms[sk], -1);
+  const generated_df::Vec3 A{a_position.x, a_position.y, a_position.z};
+  const generated_df::Vec3 B{b_position.x, b_position.y, b_position.z};
+  const generated_df::Vec3 C{c_position.x, c_position.y, c_position.z};
+  const std::int64_t b_begin = Metric ? 0 : batch.shell_primitive_offsets[sj];
+  const std::int64_t b_end = Metric ? 1 : batch.shell_primitive_offsets[sj + 1];
+  unsigned primitive_lane = 0U;
+  double result = 0.0;
+  for (auto a = batch.shell_primitive_offsets[si]; a < batch.shell_primitive_offsets[si + 1]; ++a) {
+    for (auto b = b_begin; b < b_end; ++b) {
+      for (auto c = batch.shell_primitive_offsets[sk]; c < batch.shell_primitive_offsets[sk + 1];
+           ++c) {
+        // Lanes is one or 32. Cycling avoids multiplying unbounded contraction
+        // lengths merely to calculate a primitive's scheduling index.
+        const unsigned owner = primitive_lane;
+        primitive_lane = (primitive_lane + 1U) % lanes;
+        if (owner != lane) continue;
+        double weight = batch.primitive_coefficients[a] * batch.primitive_coefficients[c];
+        if constexpr (!Metric) weight *= batch.primitive_coefficients[b];
+        for (unsigned ti = 0; ti < batch.ao_term_counts[i]; ++ti) {
+          const auto ai = ao_angular(batch, i, ti);
+          const generated_df::Angular ai_df{ai.x, ai.y, ai.z};
+          const unsigned second_terms = Metric ? 1U : batch.ao_term_counts[j];
+          for (unsigned tj = 0; tj < second_terms; ++tj) {
+            const auto aj = ao_angular(batch, j, tj);
+            const generated_df::Angular aj_df{aj.x, aj.y, aj.z};
+            for (unsigned tk = 0; tk < batch.ao_term_counts[k]; ++tk) {
+              const auto ak = ao_angular(batch, k, tk);
+              const generated_df::Angular ak_df{ak.x, ak.y, ak.z};
+              double coefficient =
+                  ao_term_coefficient(batch, i, ti) * ao_term_coefficient(batch, k, tk);
+              double value;
+              if constexpr (Metric) {
+                value = generated_df::metric(batch.primitive_exponents[a], A, ai_df,
+                                             batch.primitive_exponents[c], C, ak_df);
+              } else {
+                coefficient *= ao_term_coefficient(batch, j, tj);
+                value = generated_df::three_center(batch.primitive_exponents[a], A, ai_df,
+                                                   batch.primitive_exponents[b], B, aj_df,
+                                                   batch.primitive_exponents[c], C, ak_df);
+              }
+              result += weight * coefficient * value;
+            }
+          }
+        }
+      }
+    }
+  }
+  return result;
+}
+
+/** Preserve the independently validated derivative and reference value route. */
+template <bool Derivative, bool Metric>
+__device__ std::conditional_t<Derivative, Dual, double> contracted_df(
+    const DeviceBatch& batch, std::int32_t system, std::int32_t first, std::int32_t second,
+    std::int32_t auxiliary, std::int32_t dummy, std::int64_t coordinate, bool generated,
+    unsigned lane = 0U, unsigned lanes = 1U) {
+  if constexpr (!Derivative) {
+    if (generated)
+      return contracted_generated_df<Metric>(batch, system, first, second, auxiliary, lane, lanes);
+  }
+  return contracted_eri<std::conditional_t<Derivative, Dual, double>>(batch, system, first, second,
+                                                                      auxiliary, dummy, coordinate);
+}
+
+/** Evaluate raw Cartesian M[P,Q] and A[mu,nu,P], without pair compression. */
 template <bool Derivative>
 __global__ void build_cuda_df_integrals_kernel(
     DeviceBatch batch, std::size_t orbital_count, std::size_t auxiliary_count,
     std::size_t dummy_index, std::size_t metric_elements, std::size_t three_center_elements,
     std::size_t system_base, std::size_t launch_batch_size, std::int64_t derivative_coordinate,
-    double* metric, double* three_center) {
+    double* metric, double* three_center, bool generated_values = false) {
   const std::size_t element = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   const std::size_t per_system = metric_elements + three_center_elements;
   const std::size_t total = launch_batch_size * per_system;
@@ -5943,12 +6025,12 @@ __global__ void build_cuda_df_integrals_kernel(
   if (system_local < metric_elements) {
     const std::size_t first_aux = system_local / auxiliary_count;
     const std::size_t second_aux = system_local % auxiliary_count;
-    const auto value = contracted_eri<std::conditional_t<Derivative, Dual, double>>(
+    const auto value = contracted_df<Derivative, true>(
         batch, static_cast<std::int32_t>(system),
         static_cast<std::int32_t>(orbital_count + first_aux),
         static_cast<std::int32_t>(dummy_index),
         static_cast<std::int32_t>(orbital_count + second_aux),
-        static_cast<std::int32_t>(dummy_index), system_derivative_coordinate);
+        static_cast<std::int32_t>(dummy_index), system_derivative_coordinate, generated_values);
     if constexpr (Derivative) {
       metric[local_system * metric_elements + system_local] = value.derivative;
     } else {
@@ -5962,11 +6044,11 @@ __global__ void build_cuda_df_integrals_kernel(
   const std::size_t auxiliary = local % auxiliary_count;
   const std::size_t first_orbital = orbital_pair / orbital_count;
   const std::size_t second_orbital = orbital_pair % orbital_count;
-  const auto value = contracted_eri<std::conditional_t<Derivative, Dual, double>>(
+  const auto value = contracted_df<Derivative, false>(
       batch, static_cast<std::int32_t>(system), static_cast<std::int32_t>(first_orbital),
       static_cast<std::int32_t>(second_orbital),
       static_cast<std::int32_t>(orbital_count + auxiliary), static_cast<std::int32_t>(dummy_index),
-      system_derivative_coordinate);
+      system_derivative_coordinate, generated_values);
   if constexpr (Derivative) {
     three_center[local_system * three_center_elements + local] = value.derivative;
   } else {
@@ -5988,12 +6070,19 @@ __global__ void build_cuda_df_transformed_tile_kernel(
     std::size_t pair_begin, std::size_t pair_count, std::size_t auxiliary_begin,
     std::size_t auxiliary_count, std::int64_t derivative_coordinate,
     const double* orbital_to_cartesian, const double* auxiliary_to_cartesian,
-    const double* inverse_square_root, bool apply_metric_transform, double* output) {
-  const std::size_t element = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    const double* inverse_square_root, bool apply_metric_transform, double* output,
+    bool generated_values = false, unsigned mapping = 0U) {
+  const unsigned lanes = !Derivative && generated_values && mapping == 2U ? 32U : 1U;
+  const unsigned lane = threadIdx.x % lanes;
+  const std::size_t element =
+      (static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x) / lanes;
   const std::size_t tile_elements = pair_count * auxiliary_count;
   if (element >= tile_elements) return;
-  const std::size_t pair = pair_begin + element / auxiliary_count;
-  const std::size_t auxiliary = auxiliary_begin + element % auxiliary_count;
+  const bool components_contiguous = !Derivative && generated_values && mapping == 1U;
+  const std::size_t pair =
+      pair_begin + (components_contiguous ? element % pair_count : element / auxiliary_count);
+  const std::size_t auxiliary =
+      auxiliary_begin + (components_contiguous ? element / pair_count : element % auxiliary_count);
   const std::size_t public_first = pair / public_nbf;
   const std::size_t public_second = pair % public_nbf;
   // The source stores transforms for every system contiguously.  A fleet can
@@ -6025,11 +6114,12 @@ __global__ void build_cuda_df_transformed_tile_kernel(
                                             cartesian_auxiliary];
           if (auxiliary_coefficient == 0.0) continue;
           using Scalar = std::conditional_t<Derivative, Dual, double>;
-          const Scalar raw = contracted_eri<Scalar>(
+          const Scalar raw = contracted_df<Derivative, false>(
               batch, static_cast<std::int32_t>(system), static_cast<std::int32_t>(first),
               static_cast<std::int32_t>(second),
               static_cast<std::int32_t>(cartesian_orbital_count + cartesian_auxiliary),
-              static_cast<std::int32_t>(dummy_index), derivative_coordinate);
+              static_cast<std::int32_t>(dummy_index), derivative_coordinate, generated_values, lane,
+              lanes);
           if constexpr (Derivative) {
             transformed_raw +=
                 first_coefficient * second_coefficient * auxiliary_coefficient * raw.derivative;
@@ -6043,7 +6133,15 @@ __global__ void build_cuda_df_transformed_tile_kernel(
                  ? transformed_raw * inverse_square_root[auxiliary * public_naux + source]
                  : transformed_raw;
   }
-  output[(pair - pair_begin) * auxiliary_count + (auxiliary - auxiliary_begin)] = value;
+  if (lanes == 32U) {
+    // Each warp owns a complete output, including ragged tails; no lane can
+    // exit independently before this full-mask deterministic reduction.
+    for (unsigned offset = 16U; offset != 0U; offset /= 2U) {
+      value += __shfl_down_sync(0xffffffffU, value, offset);
+    }
+  }
+  if (lane == 0U)
+    output[(pair - pair_begin) * auxiliary_count + (auxiliary - auxiliary_begin)] = value;
 }
 
 /** Generate one public-basis auxiliary metric (or its derivative). */
@@ -6052,12 +6150,20 @@ __global__ void build_cuda_df_metric_source_kernel(
     DeviceBatch batch, std::size_t cartesian_orbital_count, std::size_t cartesian_auxiliary_count,
     std::size_t public_naux, std::size_t dummy_index, std::size_t system,
     std::size_t auxiliary_row_begin, std::size_t auxiliary_row_count,
-    std::int64_t derivative_coordinate, const double* auxiliary_to_cartesian, double* output) {
-  const std::size_t element = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    std::int64_t derivative_coordinate, const double* auxiliary_to_cartesian, double* output,
+    bool generated_values = false, unsigned mapping = 0U) {
+  const unsigned lanes = !Derivative && generated_values && mapping == 2U ? 32U : 1U;
+  const unsigned lane = threadIdx.x % lanes;
+  const std::size_t element =
+      (static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x) / lanes;
   const std::size_t total = auxiliary_row_count * public_naux;
   if (element >= total) return;
-  const std::size_t first = auxiliary_row_begin + element / public_naux;
-  const std::size_t second = element % public_naux;
+  const bool components_contiguous = !Derivative && generated_values && mapping == 1U;
+  const std::size_t first =
+      auxiliary_row_begin +
+      (components_contiguous ? element % auxiliary_row_count : element / public_naux);
+  const std::size_t second =
+      components_contiguous ? element / auxiliary_row_count : element % public_naux;
   const std::size_t auxiliary_transform_stride = public_naux * cartesian_auxiliary_count;
   const double* system_auxiliary_to_cartesian =
       auxiliary_to_cartesian + system * auxiliary_transform_stride;
@@ -6073,12 +6179,13 @@ __global__ void build_cuda_df_metric_source_kernel(
           system_auxiliary_to_cartesian[second * cartesian_auxiliary_count + cartesian_second];
       if (second_coefficient == 0.0) continue;
       using Scalar = std::conditional_t<Derivative, Dual, double>;
-      const Scalar raw = contracted_eri<Scalar>(
+      const Scalar raw = contracted_df<Derivative, true>(
           batch, static_cast<std::int32_t>(system),
           static_cast<std::int32_t>(cartesian_orbital_count + cartesian_first),
           static_cast<std::int32_t>(dummy_index),
           static_cast<std::int32_t>(cartesian_orbital_count + cartesian_second),
-          static_cast<std::int32_t>(dummy_index), derivative_coordinate);
+          static_cast<std::int32_t>(dummy_index), derivative_coordinate, generated_values, lane,
+          lanes);
       if constexpr (Derivative) {
         value += first_coefficient * second_coefficient * raw.derivative;
       } else {
@@ -6086,7 +6193,12 @@ __global__ void build_cuda_df_metric_source_kernel(
       }
     }
   }
-  output[element] = value;
+  if (lanes == 32U) {
+    for (unsigned offset = 16U; offset != 0U; offset /= 2U) {
+      value += __shfl_down_sync(0xffffffffU, value, offset);
+    }
+  }
+  if (lane == 0U) output[(first - auxiliary_row_begin) * public_naux + second] = value;
 }
 
 /** Evaluate one-electron matrices and their first-coordinate response. */
@@ -12997,6 +13109,9 @@ bool pack_host_batch(const std::vector<core::System>& systems,
  */
 struct CudaDensityFittingIntegralSourceImpl {
   int device_id{-1};
+  // Freeze the A/B choice with the source so a warm plan never mixes routes.
+  bool generated_values{};
+  unsigned value_mapping{};
   std::size_t batch_size{};
   std::size_t public_nbf{};
   std::size_t public_naux{};
@@ -13026,6 +13141,17 @@ vibeqc_status source_cuda_status(cudaError_t status) {
   if (status == cudaSuccess) return VIBEQC_STATUS_SUCCESS;
   return status == cudaErrorMemoryAllocation ? VIBEQC_STATUS_OUT_OF_MEMORY
                                              : VIBEQC_STATUS_CUDA_ERROR;
+}
+
+/** Reject unsupported physical shells before AO counting or device packing. */
+bool cuda_df_shell_domain(const core::System& system, const char* role, std::string& detail) {
+  for (const auto& shell : system.shells) {
+    if (shell.angular_momentum > 3U) {
+      detail = std::string("CUDA DF ") + role + " shells beyond f (l > 3) are unsupported";
+      return false;
+    }
+  }
+  return true;
 }
 
 std::vector<double> make_public_to_cartesian_transform(const core::System& system) {
@@ -13114,6 +13240,12 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
   }
   *source = nullptr;
   const std::size_t batch_size = orbital_systems.size();
+  for (std::size_t system = 0; system < batch_size; ++system) {
+    if (!cuda_df_shell_domain(auxiliary_systems[system], "auxiliary", detail) ||
+        !cuda_df_shell_domain(orbital_systems[system], "orbital", detail)) {
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+  }
   const std::size_t public_nbf = molecule::ao_count(orbital_systems.front());
   const std::size_t public_naux = molecule::ao_count(auxiliary_systems.front());
   const std::size_t cartesian_nbf = molecule::cartesian_ao_count(orbital_systems.front());
@@ -13199,6 +13331,8 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
       new (std::nothrow) CudaDensityFittingIntegralSourceImpl{});
   if (!candidate) return VIBEQC_STATUS_OUT_OF_MEMORY;
   candidate->device_id = device_id;
+  candidate->generated_values = cuda_policy::generated_df_values_requested();
+  candidate->value_mapping = cuda_policy::df_value_mapping_requested();
   candidate->batch_size = batch_size;
   candidate->public_nbf = public_nbf;
   candidate->public_naux = public_naux;
@@ -13338,7 +13472,10 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
   cuda_error = cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
   if (cuda_error != cudaSuccess) return source_cuda_status(cuda_error);
   double* metric_device = nullptr;
-  if (metric_elements > static_cast<std::size_t>(std::numeric_limits<unsigned>::max()) * 128U) {
+  const unsigned metric_outputs_per_block =
+      candidate->generated_values && candidate->value_mapping == 2U ? 4U : 128U;
+  if (metric_elements >
+      static_cast<std::size_t>(std::numeric_limits<unsigned>::max()) * metric_outputs_per_block) {
     (void)cudaStreamDestroy(stream);
     detail = "bounded DF metric launch exceeds CUDA grid limits";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
@@ -13350,9 +13487,12 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
   }
   for (std::size_t system = 0; system < batch_size && cuda_error == cudaSuccess; ++system) {
     build_cuda_df_metric_source_kernel<false>
-        <<<static_cast<unsigned>((metric_elements + 128U - 1U) / 128U), 128U, 0, stream>>>(
-            candidate->batch, cartesian_nbf, cartesian_naux, public_naux, candidate->dummy_index,
-            system, 0, public_naux, -1, candidate->auxiliary_to_cartesian, metric_device);
+        <<<static_cast<unsigned>((metric_elements + metric_outputs_per_block - 1U) /
+                                 metric_outputs_per_block),
+           128U, 0, stream>>>(candidate->batch, cartesian_nbf, cartesian_naux, public_naux,
+                              candidate->dummy_index, system, 0, public_naux, -1,
+                              candidate->auxiliary_to_cartesian, metric_device,
+                              candidate->generated_values, candidate->value_mapping);
     cuda_error = cudaGetLastError();
     if (cuda_error == cudaSuccess) cuda_error = cudaStreamSynchronize(stream);
     if (cuda_error == cudaSuccess) {
@@ -13474,13 +13614,14 @@ vibeqc_status generate_cuda_density_fitting_transformed_tile_impl(
   }
   if (source == nullptr || output == nullptr ||
       (apply_metric_transform && inverse_square_root == nullptr) || stream_handle == nullptr ||
-      system >= source->batch_size || pair_count == 0U || auxiliary_count == 0U ||
-      pair_begin > pair_total || pair_count > pair_total - pair_begin ||
-      auxiliary_begin > source->public_naux ||
+      system >= source->batch_size || pair_begin > pair_total ||
+      pair_count > pair_total - pair_begin || auxiliary_begin > source->public_naux ||
       auxiliary_count > source->public_naux - auxiliary_begin) {
     detail = "bounded DF transformed tile dimensions are invalid";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
+  // Empty blocks at valid offsets are legal no-ops and perform no device work.
+  if (pair_count == 0U || auxiliary_count == 0U) return VIBEQC_STATUS_SUCCESS;
   if (derivative_coordinate >= 0) {
     // The public API indexes coordinates relative to the selected system,
     // while the packed recurrence metadata uses fleet-global atom offsets.
@@ -13502,18 +13643,22 @@ vibeqc_status generate_cuda_density_fitting_transformed_tile_impl(
   if (cuda_error != cudaSuccess) return source_cuda_status(cuda_error);
   const cudaStream_t stream = reinterpret_cast<cudaStream_t>(stream_handle);
   constexpr unsigned source_threads = 128U;
+  const unsigned outputs_per_block =
+      derivative_coordinate < 0 && source->generated_values && source->value_mapping == 2U
+          ? source_threads / 32U
+          : source_threads;
   std::size_t tile_elements = 0;
   if (!checked_multiply(pair_count, auxiliary_count, tile_elements)) {
     detail = "bounded DF transformed tile size overflows size_t";
     return VIBEQC_STATUS_OUT_OF_MEMORY;
   }
   if (tile_elements >
-      static_cast<std::size_t>(std::numeric_limits<unsigned>::max()) * source_threads) {
+      static_cast<std::size_t>(std::numeric_limits<unsigned>::max()) * outputs_per_block) {
     detail = "bounded DF transformed tile launch exceeds CUDA grid limits";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   const unsigned blocks =
-      static_cast<unsigned>((tile_elements + source_threads - 1U) / source_threads);
+      static_cast<unsigned>((tile_elements + outputs_per_block - 1U) / outputs_per_block);
   // Public callers address derivatives relative to one system.  The packed
   // recurrence metadata is fleet-global, so translate the coordinate to the
   // selected system's atom range before evaluating the tile.
@@ -13531,7 +13676,8 @@ vibeqc_status generate_cuda_density_fitting_transformed_tile_impl(
         source->batch, source->cartesian_nbf, source->cartesian_naux, source->public_nbf,
         source->public_naux, source->dummy_index, system, pair_begin, pair_count, auxiliary_begin,
         auxiliary_count, system_derivative_coordinate, source->orbital_to_cartesian,
-        source->auxiliary_to_cartesian, inverse_square_root, apply_metric_transform, output);
+        source->auxiliary_to_cartesian, inverse_square_root, apply_metric_transform, output,
+        source->generated_values, source->value_mapping);
   } else {
     build_cuda_df_transformed_tile_kernel<true><<<blocks, source_threads, 0, stream>>>(
         source->batch, source->cartesian_nbf, source->cartesian_naux, source->public_nbf,
@@ -13890,6 +14036,19 @@ std::size_t cuda_density_fitting_integral_source_device_bytes(
   if (source == nullptr) return 0U;
   return cuda_density_fitting_integral_source_device_bytes_impl(
       static_cast<const CudaDensityFittingIntegralSourceImpl*>(source->implementation));
+}
+
+CudaDensityFittingSourceDiagnostic cuda_density_fitting_integral_source_diagnostic(
+    const CudaDensityFittingIntegralSource* source) noexcept {
+  if (source == nullptr || source->implementation == nullptr) return {};
+  const auto& implementation =
+      *static_cast<const CudaDensityFittingIntegralSourceImpl*>(source->implementation);
+  const char* mapping = !implementation.generated_values     ? "auxiliary"
+                        : implementation.value_mapping == 1U ? "component"
+                        : implementation.value_mapping == 2U ? "primitive"
+                                                             : "auxiliary";
+  return {implementation.generated_values ? "generated_rys" : "reference_hermite", mapping, true,
+          true};
 }
 
 std::size_t cuda_density_fitting_integral_source_host_bytes(
@@ -18250,7 +18409,8 @@ vibeqc_status build_cuda_density_fitting_integrals_impl(
   const unsigned blocks = static_cast<unsigned>((total_elements + threads - 1U) / threads);
   build_cuda_df_integrals_kernel<false><<<blocks, threads, 0, stream>>>(
       device_batch, orbital_count, auxiliary_count, dummy_index, metric_elements,
-      three_center_elements, 0, 1, -1, device_metric, device_three_center);
+      three_center_elements, 0, 1, -1, device_metric, device_three_center,
+      cuda_policy::generated_df_values_requested());
   cuda_error = cudaGetLastError();
   if (cuda_error == cudaSuccess) cuda_error = cudaStreamSynchronize(stream);
   if (cuda_error == cudaSuccess) {
@@ -18558,7 +18718,7 @@ vibeqc_status build_cuda_density_fitting_integrals_batch_impl(
       build_cuda_df_integrals_kernel<false><<<blocks, threads, 0, stream>>>(
           device_batch, orbital_count, auxiliary_count, dummy_index, metric_elements,
           three_center_elements, system_base, systems_in_chunk, coordinate, device_metric,
-          device_three_center);
+          device_three_center, cuda_policy::generated_df_values_requested());
     } else {
       build_cuda_df_integrals_kernel<true><<<blocks, threads, 0, stream>>>(
           device_batch, orbital_count, auxiliary_count, dummy_index, metric_elements,
@@ -18645,7 +18805,10 @@ vibeqc_status build_cuda_one_electron_integrals_impl(int device_id, const core::
   cartesian_system.basis_representation = VIBEQC_BASIS_CARTESIAN;
   HostBatch host;
   std::vector<const std::vector<double>*> no_warm(1, nullptr);
-  if (!pack_host_batch({cartesian_system}, no_warm, host, false) || host.nbf == 0U) {
+  // One-electron integrals are spin independent. General spin packing accepts
+  // both RHF and UHF systems; closed-shell packing incorrectly rejects the
+  // odd-electron orbital metadata needed by an open-shell DF endpoint.
+  if (!pack_host_batch({cartesian_system}, no_warm, host, true) || host.nbf == 0U) {
     detail = "Cartesian one-electron basis cannot be represented by CUDA";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
@@ -18870,7 +19033,8 @@ vibeqc_status build_cuda_one_electron_integrals_batch_impl(
 
   HostBatch host;
   std::vector<const std::vector<double>*> no_warm(batch_size, nullptr);
-  if (!pack_host_batch(cartesian_systems, no_warm, host, false) || host.nbf == 0U) {
+  // Match the spin-independent single-system evaluator for open-shell fleets.
+  if (!pack_host_batch(cartesian_systems, no_warm, host, true) || host.nbf == 0U) {
     detail = "Cartesian one-electron batch cannot be represented by CUDA";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
@@ -19147,6 +19311,10 @@ vibeqc_status build_cuda_density_fitting_integrals(int device_id,
                                                    const core::System& auxiliary_system,
                                                    integrals::DensityFittingIntegralData& output,
                                                    std::string& detail) {
+  if (!cuda_df_shell_domain(auxiliary_system, "auxiliary", detail) ||
+      !cuda_df_shell_domain(orbital_system, "orbital", detail)) {
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
   return build_cuda_density_fitting_integrals_impl(device_id, orbital_system, auxiliary_system,
                                                    output, detail);
 }
@@ -19156,6 +19324,12 @@ vibeqc_status build_cuda_density_fitting_integrals_batch(
     const std::vector<core::System>& auxiliary_systems,
     std::vector<integrals::DensityFittingIntegralData>& outputs, std::string& detail,
     std::size_t output_budget_bytes) {
+  for (const auto& system : auxiliary_systems) {
+    if (!cuda_df_shell_domain(system, "auxiliary", detail)) return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  for (const auto& system : orbital_systems) {
+    if (!cuda_df_shell_domain(system, "orbital", detail)) return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
   return build_cuda_density_fitting_integrals_batch_impl(
       device_id, orbital_systems, auxiliary_systems, outputs, detail, output_budget_bytes);
 }

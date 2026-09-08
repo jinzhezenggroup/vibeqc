@@ -577,6 +577,29 @@ int main() {
                            host_one_electron.nuclear_repulsion_derivative, 3.0e-11,
                            "CUDA nuclear derivative differs from oracle");
 
+      // Spin-independent integral packing must also accept odd-electron UHF
+      // inputs. H2+ has the same one-electron values as H2 at fixed geometry.
+      auto open_shell_orbital = orbital;
+      open_shell_orbital.charge = 1;
+      open_shell_orbital.multiplicity = 2;
+      open_shell_orbital.electron_count = 1;
+      vibeqc::integrals::IntegralData open_shell_one_electron;
+      require(vibeqc::scf::build_cuda_one_electron_integrals(
+                  0, open_shell_orbital, open_shell_one_electron, cuda_one_electron_detail) ==
+                  VIBEQC_STATUS_SUCCESS,
+              cuda_one_electron_detail.c_str());
+      require_matrix_close(open_shell_one_electron.hcore, host_one_electron.hcore, 3.0e-11,
+                           "open-shell one-electron packing changed the Hamiltonian");
+      std::vector<vibeqc::integrals::IntegralData> open_shell_batch;
+      require(vibeqc::scf::build_cuda_one_electron_integrals_batch(
+                  0, {orbital, open_shell_orbital}, open_shell_batch, cuda_one_electron_detail) ==
+                  VIBEQC_STATUS_SUCCESS,
+              cuda_one_electron_detail.c_str());
+      require(open_shell_batch.size() == 2, "open-shell one-electron batch is incomplete");
+      require_matrix_close(open_shell_batch[1].overlap_derivative,
+                           host_one_electron.overlap_derivative, 3.0e-10,
+                           "open-shell one-electron derivative packing differs from oracle");
+
       // Exercise the production bucket bridge itself (not only the lower-level
       // J/K API): both systems must share one batched plan while retaining
       // input order and independent SCF results.

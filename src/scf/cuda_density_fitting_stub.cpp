@@ -2,6 +2,11 @@
 
 namespace vibeqc::scf {
 
+CudaDensityFittingSourceDiagnostic cuda_density_fitting_integral_source_diagnostic(
+    const CudaDensityFittingIntegralSource*) noexcept {
+  return {};
+}
+
 vibeqc_status create_cuda_density_fitting_integral_source(int, const std::vector<core::System>&,
                                                           const std::vector<core::System>&,
                                                           CudaDensityFittingIntegralSource** source,

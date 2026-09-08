@@ -27,6 +27,11 @@ unsigned ppps_resident_block_threads_requested() noexcept;
 bool one_electron_force_scalar_requested() noexcept;
 bool resident_psss_bra_requested() noexcept;
 
+/** DF value A/B controls; derivatives always use the existing recurrence. */
+bool generated_df_values_requested() noexcept;
+/** 0: contiguous auxiliary outputs; 1: AO components; 2: primitive lanes. */
+unsigned df_value_mapping_requested() noexcept;
+
 }  // namespace vibeqc::scf::cuda_policy
 
 #endif

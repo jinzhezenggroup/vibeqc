@@ -92,3 +92,67 @@ not silently fall back to CPU integral evaluation when CUDA generation fails.
 The streamed host-transfer boundary and external GPU4PySCF availability remain
 explicitly visible in benchmark artifacts; no direct-SCF gate is weakened when
 the DF matrix is unavailable on a given machine.
+
+## Generated raw integral values
+
+`tools/generate_df_kernels.py` emits the native DF value header from the shared
+mathematical IR and expression/CUDA emitters. Its inventory contains every
+ordered auxiliary pair (16 metric signatures) and orbital/orbital/auxiliary
+triple (64 three-center signatures) through `f`. The primitive expressions use
+the exact one- through five-root Rys order, with pruned Gaussian moment DAGs.
+The independent Hermite/Wick IR interpreter and libcint fixtures provide
+separate arithmetic references. Primitive contraction lengths remain runtime
+extents; auxiliary exponents are positive physical exponents, with no
+normalized zero-exponent shell in the generated expressions.
+
+The raw outputs are `M[P,Q]=(P|Q)` and `A[mu,nu,P]=(mu nu|P)`, before applying
+the metric inverse square root. Layouts are row-major with auxiliary functions
+contiguous. AO pairs use `pair=mu*nbf+nu`, including both symmetric entries with
+unit weight. There are no hidden `sqrt(2)` or off-diagonal compression factors.
+Metric exchange and orbital `mu/nu` exchange are the only declared operator
+permutations. The public Cartesian component normalization and libcint-ordered
+real spherical conventions use the existing basis transforms.
+
+The existing bounded source supplies ragged AO-pair/auxiliary tiles for each
+batch item; final partial tiles preserve the same layout. Empty extents at
+valid offsets are no-ops, and dimensions are checked before launches. Source
+metadata and per-item public-basis transforms are fixed for a prepared topology.
+Geometry changes follow the existing Fleet invalidation and rebuild rules.
+Auxiliary shells beyond `l=3` are rejected explicitly, including when a named
+auxiliary basis contains them. No shell is silently dropped.
+
+Data placement depends on the existing planner route:
+
+| Route | Integral values | Public-basis transform | Setup staging |
+| --- | --- | --- | --- |
+| Positive-budget source | CUDA, requested tiles | CUDA at tile writes | Transform metadata H2D; metric D2H then H2D for cuSOLVER |
+| Bulk Cartesian source | CUDA | Host, existing independent transform | Raw M/A D2H; normalized J/K input H2D |
+
+`cuda_density_fitting_integral_source_diagnostic` reports the frozen value
+backend, mapping, device public transform, and host metric staging. Existing
+metric diagnostics retain threshold, effective rank, condition number, and
+host/device resident and peak byte counts. The eigendecomposition, regular
+cuBLAS contractions, derivative recurrence, force-scratch accounting, and
+direct-SCF acceptance gates are unchanged.
+
+For bounded comparisons, `VIBEQC_DF_VALUES=generated` selects the generated
+values and `VIBEQC_DF_VALUES=reference` selects the previous Hermite evaluator.
+`VIBEQC_DF_VALUE_MAPPING=auxiliary|component|primitive` compares contiguous
+auxiliary writes, contiguous AO-pair work, and one primitive-reduction warp per
+output. These source choices are frozen at source creation. Derivatives retain
+their existing scheduling. The three mappings share the same generated
+primitive functions; no separate four-center tuning pipeline is duplicated.
+
+Manual validation tools must run through a finite Slurm allocation:
+
+- `tools/validate_df_values.py` checks every complete Cartesian shell block and
+  independent host spherical projection against libcint, including contracted
+  and coincident-center fixtures, and records exact object resource reports.
+- `tools/validate_df_source.py --probe build/cuda/vibeqc_df_value_probe` checks
+  reconstructed full tensors across native tile boundaries, different batch
+  primitive offsets and geometries, and RHF/UHF RI-J/K with identical metric
+  thresholds. It compares all three source mappings with the reference path.
+- `tools/validate_df_endpoints.py` compares public RHF/UHF energy-force
+  endpoints at batch one/multiple and two positive budgets plus the bulk route.
+  Cold setup/SCF, changed-geometry rebuilding, and warm reuse are reported
+  separately with metric ranks and allocation diagnostics.
