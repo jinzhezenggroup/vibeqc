@@ -74,7 +74,7 @@ commutator entries. `validation.json` records these checks, artifact hashes,
 and the pre-change comparison data. Every individual artifact is below 1 MiB.
 
 Validation also includes 12 native CPU test executables, a full Python suite
-(1,159 passed, 188 skipped), and a final 34-test focused suite after the last
+(1,159 passed, 188 skipped), and a final 36-test focused suite after the last
 failure-isolation and policy refinements. A CUDA 12.9 production sm_120 build
 succeeded. Native, UHF, density-fitting and proposal suites all passed under
 a Slurm RTX 5090 allocation. CUDA proposal callbacks remain explicitly

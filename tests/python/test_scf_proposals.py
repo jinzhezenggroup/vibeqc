@@ -310,18 +310,10 @@ def test_invalid_initial_guess_is_not_silently_rescaled():
         assert abs(warm.energy - result.energy) < 1e-12
 
 
-def test_real_operator_damps_a_valid_but_overlarge_orbital_rotation():
+@pytest.mark.parametrize("gauge_seed", [None, 7, 19])
+def test_real_operator_damps_a_valid_but_overlarge_orbital_rotation(gauge_seed):
     atoms = [(8, (0.0, 0.0, 0.0)), (1, (0.0, -1.43, 1.1)), (1, (0.0, 1.43, 1.1))]
     model = Calculator().resolved_model(atoms)
-    rotation = np.array(
-        [
-            [0.09004121366532195, 0.007644054761638538],
-            [0.13049526710891945, 0.05412129730174603],
-            [-0.09947613587533569, 0.042688496275698866],
-            [-0.11100520487344473, 0.10169394624894525],
-            [-0.005779681446645312, -0.02140062247556664],
-        ]
-    )
 
     def proposal(state):
         if state.iteration != 1:
@@ -329,6 +321,15 @@ def test_real_operator_damps_a_valid_but_overlarge_orbital_rotation():
         root = metric_root(state.overlap)
         _, v = np.linalg.eigh(root @ state.density[0] @ root)
         c = np.linalg.solve(root, v[:, ::-1])
+        # Density eigenvalues are degenerate inside each occupied/virtual
+        # subspace, so LAPACK can return any orthogonal gauge. Derive the
+        # rotation covariantly from the physical Fock; fixed OV coefficients
+        # would propose different AO densities on different BLAS builds.
+        if gauge_seed is not None:
+            rng = np.random.default_rng(gauge_seed)
+            c[:, :5] = c[:, :5] @ np.linalg.qr(rng.normal(size=(5, 5)))[0]
+            c[:, 5:] = c[:, 5:] @ np.linalg.qr(rng.normal(size=(2, 2)))[0]
+        rotation = -0.1 * (c[:, :5].T @ state.fock[0] @ c[:, 5:])
         return RotationProposal(state.identity, (c,), (rotation,))
 
     with NativeSource(atoms) as source:
