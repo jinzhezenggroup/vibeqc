@@ -11,6 +11,8 @@ cover all quantum-chemistry methods through a coherent batched interface.
   and verification.
 - [Portable HF checkpoints](checkpoint.md): restart across processes and backends,
   strict scientific compatibility, corruption handling and per-item restore.
+- [Cross-basis HF initialization](basis_projection.md): rectangular overlaps,
+  occupied-space projection and complete source-plus-target cost accounting.
 - [External basis data](external_basis.md): offline input, provenance, element/ECP
   bookkeeping, per-operator limits and prepared-state identities.
 - [Methods](methods.md): implemented methods, planned method families, and the

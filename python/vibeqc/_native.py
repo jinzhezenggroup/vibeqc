@@ -422,6 +422,20 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
     ]
     library.vibeqc_system_create.restype = ctypes.c_int
     library.vibeqc_system_destroy.argtypes = [ctypes.c_void_p]
+    library.vibeqc_system_cross_overlap_cpu.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.c_size_t,
+    ]
+    library.vibeqc_system_cross_overlap_cpu.restype = ctypes.c_int
+    library.vibeqc_batch_get_last_fock_builds.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.POINTER(ctypes.c_uint64),
+    ]
+    library.vibeqc_batch_get_last_fock_builds.restype = ctypes.c_int
     library.vibeqc_calculation_prepare.argtypes = [
         ctypes.c_void_p,
         ctypes.c_void_p,

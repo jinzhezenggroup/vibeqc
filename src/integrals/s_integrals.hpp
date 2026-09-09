@@ -2,6 +2,7 @@
 #define VIBEQC_INTEGRALS_S_INTEGRALS_HPP
 
 #include <cstddef>
+#include <span>
 #include <vector>
 
 #include "core/types.hpp"
@@ -43,6 +44,15 @@ struct DensityFittingIntegralData {
  * routine or copy these integral tensors to the GPU.
  */
 IntegralData build_integrals(const core::System& system);
+
+/**
+ * Write a row-major rectangular <target AO | source AO> overlap on the CPU.
+ * Systems already own validated normalized shells and may independently use
+ * Cartesian or real-spherical AOs. Reuses the value recurrence with no nuclear
+ * derivative storage, ERIs, or combined-basis square matrix allocation.
+ */
+void cross_overlap(const core::System& target, const core::System& source,
+                   std::span<double> output);
 
 /**
  * Evaluate normalized two- and three-center density-fitting integrals.

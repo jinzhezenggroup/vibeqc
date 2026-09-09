@@ -405,6 +405,10 @@ def save_checkpoint(batch, path, *, max_bytes=256 << 20):
     """Write, fsync, verify and atomically replace a single portable HF file."""
     start = time.perf_counter()
     _check_batch(batch)
+    if batch._projection_indices:
+        raise CheckpointError(
+            "projected seeds require a successful target solve before checkpoint export"
+        )
     _integer(max_bytes, "checkpoint byte limit", 2**63 - 1, _HEADER.size)
     if batch.system_count > _MAX_ITEMS:
         raise CheckpointError("checkpoint item count exceeds schema limit")
@@ -680,6 +684,7 @@ def load_checkpoint(batch, path, *, allow_warm=False, strict=True, max_bytes=256
                 f"native checkpoint validation failed: {detail or status}"
             )
     batch._restart_indices = origins
+    batch._projection_indices.difference_update(accepted_indices)
     batch._warm_metadata = metadata
     report["read_seconds"] = time.perf_counter() - start
     batch.checkpoint_diagnostics = report

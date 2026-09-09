@@ -37,6 +37,7 @@ vibeqc_status vibeqc_batch_prepare(vibeqc_context* context, const vibeqc_system*
     auto candidate = std::make_unique<vibeqc_batch>();
     candidate->context = context;
     candidate->atom_counts = std::move(atom_counts);
+    candidate->last_fock_builds.resize(system_count);
     candidate->plan = vibeqc::methods::prepare_batch(context->state, std::move(native_systems),
                                                      *descriptor, flags);
     *batch = candidate.release();
@@ -355,6 +356,7 @@ vibeqc_status vibeqc_batch_execute(vibeqc_batch* batch, const vibeqc_batch_input
   if (batch == nullptr || results == nullptr) {
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
+  std::fill(batch->last_fock_builds.begin(), batch->last_fock_builds.end(), 0);
   const std::uint32_t system_count = vibeqc_batch_get_system_count(batch);
   if (result_count != system_count || ((inputs == nullptr) != (input_count == 0)) ||
       (inputs != nullptr && input_count != system_count)) {
@@ -399,6 +401,12 @@ vibeqc_status vibeqc_batch_execute(vibeqc_batch* batch, const vibeqc_batch_input
     for (std::uint32_t i = 0; i < system_count; ++i) {
       vibeqc_batch_item_result_descriptor& output = results[i];
       const vibeqc::methods::BatchItemResult& item = native[i];
+      // A retry may have spent additional builds before throwing, and CUDA
+      // does not yet export this counter. Never report a partial count as total.
+      if (!item.warm_start_fallback &&
+          item.calculation.executed_backend == VIBEQC_BACKEND_CPU_REFERENCE) {
+        batch->last_fock_builds[i] = item.calculation.fock_builds;
+      }
       const std::uint32_t required_forces = batch->atom_counts[i] * 3;
       const bool omit_forces = output.forces == nullptr && output.force_count == 0;
       const bool valid_force_buffer =
@@ -421,6 +429,14 @@ vibeqc_status vibeqc_batch_execute(vibeqc_batch* batch, const vibeqc_batch_input
   } catch (...) {
     return vibeqc::api::map_exception(&batch->context->last_detail);
   }
+}
+
+vibeqc_status vibeqc_batch_get_last_fock_builds(const vibeqc_batch* batch, uint32_t index,
+                                                uint64_t* builds) {
+  if (!batch || !builds || index >= batch->last_fock_builds.size())
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  *builds = batch->last_fock_builds[index];
+  return *builds ? VIBEQC_STATUS_SUCCESS : VIBEQC_STATUS_NOT_IMPLEMENTED;
 }
 
 }  // extern "C"

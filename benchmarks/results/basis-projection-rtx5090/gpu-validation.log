@@ -1,0 +1,43 @@
+Slurm job: 9077; CUDA_VISIBLE_DEVICES: 0
+name, driver_version, memory.total [MiB]
+NVIDIA GeForce RTX 5090, 580.95.05, 32607 MiB
+Verified source identity: 460a6b09c3d470f7638fe6a3a8e92498d6ccaf29c3aac28d3f4fa03dbd0f5baa
+Test project /home/jzzeng/codes/vibeqc-issue-189/build-cuda
+      Start  1: vibeqc_fock_build_tests
+ 1/13 Test  #1: vibeqc_fock_build_tests ................   Passed    0.08 sec
+      Start  2: vibeqc_native_tests
+ 2/13 Test  #2: vibeqc_native_tests ....................   Passed    0.12 sec
+      Start  3: vibeqc_scf_proposal_tests
+ 3/13 Test  #3: vibeqc_scf_proposal_tests ..............   Passed    0.37 sec
+      Start  4: vibeqc_batch_tests
+ 4/13 Test  #4: vibeqc_batch_tests .....................   Passed    0.99 sec
+      Start  5: vibeqc_cpp_api_tests
+ 5/13 Test  #5: vibeqc_cpp_api_tests ...................   Passed    0.10 sec
+      Start  6: vibeqc_cartesian_integral_tests
+ 6/13 Test  #6: vibeqc_cartesian_integral_tests ........   Passed    0.22 sec
+      Start  7: vibeqc_density_fitting_tests
+ 7/13 Test  #7: vibeqc_density_fitting_tests ...........   Passed    3.77 sec
+      Start  8: vibeqc_cuda_eigensolver_policy_tests
+ 8/13 Test  #8: vibeqc_cuda_eigensolver_policy_tests ...   Passed    0.45 sec
+      Start  9: vibeqc_uhf_tests
+ 9/13 Test  #9: vibeqc_uhf_tests .......................   Passed    1.51 sec
+      Start 10: vibeqc_spherical_tests
+10/13 Test #10: vibeqc_spherical_tests .................   Passed   38.91 sec
+      Start 11: vibeqc_basis_contract_tests
+11/13 Test #11: vibeqc_basis_contract_tests ............   Passed    0.08 sec
+      Start 12: vibeqc_grid_tests
+12/13 Test #12: vibeqc_grid_tests ......................   Passed    0.09 sec
+      Start 13: vibeqc_mixed_precision_tests
+13/13 Test #13: vibeqc_mixed_precision_tests ...........   Passed    0.70 sec
+
+100% tests passed, 0 tests failed out of 13
+
+Total Test time (real) =  47.40 sec
+.....                                                                    [100%]
+5 passed in 3.98s
+.........................................                                [100%]
+41 passed in 7.56s
+{"case": "h2-rhf-small-large", "passed": true, "output": "/tmp/issue189-bench/h2-rhf-small-large-cuda.json"}
+{"case": "h2-uhf-small-large", "passed": true, "output": "/tmp/issue189-bench/h2-uhf-small-large-cuda.json"}
+{"case": "h2-rhf-same", "passed": true, "output": "/tmp/issue189-bench/h2-rhf-same-cuda.json"}
+{"case": "h2-rhf-large-small", "passed": true, "output": "/tmp/issue189-bench/h2-rhf-large-small-cuda.json"}

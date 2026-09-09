@@ -40,6 +40,8 @@ struct Result {
   std::vector<double> forces;
   Convergence convergence;
   vibeqc_backend executed_backend{VIBEQC_BACKEND_CPU_REFERENCE};
+  /** Existing CPU physical Fock evaluation counter; zero means unavailable. */
+  std::size_t fock_builds{};
 };
 
 struct BatchItemResult {

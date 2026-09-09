@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
 #include <numbers>
 #include <stdexcept>
 #include <utility>
@@ -733,6 +734,54 @@ DensityFittingIntegralData transform_density_fitting_integrals(
                                                three_center_derivative.end());
   }
   return transformed;
+}
+
+void cross_overlap(const core::System& target, const core::System& source,
+                   std::span<double> output) {
+  const auto nt = molecule::ao_count(target), ns = molecule::ao_count(source);
+  if (nt == 0 || ns == 0 || nt > std::numeric_limits<std::size_t>::max() / ns ||
+      output.size() != nt * ns) {
+    throw std::invalid_argument("cross-overlap output must match target/source AO dimensions");
+  }
+  const auto target_cartesian = expand_cartesian_aos(target);
+  const auto source_cartesian = expand_cartesian_aos(source);
+  const auto target_public = public_ao_expansions(target);
+  const auto source_public = public_ao_expansions(source);
+  auto centers = [](const core::System& system) {
+    std::vector<Vec3> result;
+    result.reserve(system.atoms.size());
+    for (const auto& atom : system.atoms) {
+      result.push_back(
+          {Jet(atom.position[0], 0), Jet(atom.position[1], 0), Jet(atom.position[2], 0)});
+    }
+    return result;
+  };
+  const auto target_centers = centers(target), source_centers = centers(source);
+  // Expand only the AO pair being written. The bounded sparse spherical terms
+  // avoid a second Cartesian rectangular matrix and preserve both AO orders.
+  for (std::size_t i = 0; i < nt; ++i) {
+    for (std::size_t j = 0; j < ns; ++j) {
+      double value = 0;
+      for (const auto& t : target_public[i]) {
+        const auto& a = target_cartesian[t.cartesian_ao];
+        for (const auto& s : source_public[j]) {
+          const auto& b = source_cartesian[s.cartesian_ao];
+          const double factor =
+              t.coefficient * s.coefficient * a.component_normalization * b.component_normalization;
+          for (const auto& p : a.shell->primitives) {
+            for (const auto& q : b.shell->primitives) {
+              value += factor * p.coefficient * q.coefficient *
+                       primitive_overlap_cartesian(p.exponent, target_centers[a.shell->atom_index],
+                                                   a.angular, q.exponent,
+                                                   source_centers[b.shell->atom_index], b.angular)
+                           .value;
+            }
+          }
+        }
+      }
+      output[i * ns + j] = value;
+    }
+  }
 }
 
 IntegralData transform_integrals(const IntegralData& cartesian, const core::System& system) {

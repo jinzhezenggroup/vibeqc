@@ -34,6 +34,7 @@ class BatchItemResult:
     basis_metadata: dict = field(default_factory=dict)
     accuracy: AccuracyAssessment | None = None
     restart_origin: str = "cold"
+    fock_builds: int | None = None
 
     @property
     def succeeded(self) -> bool:
@@ -344,6 +345,8 @@ class PreparedBatch:
             raise ValueError("a batch requires at least one system")
         self._last_statuses = None
         self._restart_indices = set()
+        self._projection_indices = set()
+        self.projection_diagnostics = None
         self.checkpoint_diagnostics = None
         self._calculator = calculator
         self._library = calculator._library
@@ -627,6 +630,15 @@ class PreparedBatch:
 
         items: list[BatchItemResult] = []
         for index, output in enumerate(output_array):
+            builds = ctypes.c_uint64()
+            count_status = self._library.vibeqc_batch_get_last_fock_builds(
+                self._batch, index, ctypes.byref(builds)
+            )
+            if count_status not in (
+                _native.STATUS_SUCCESS,
+                _native.STATUS_NOT_IMPLEMENTED,
+            ):
+                _native.check(self._library, count_status)
             succeeded = output.status == _native.STATUS_SUCCESS
             forces = (
                 np.ctypeslib.as_array(force_storage[index]).copy().reshape(-1, 3)
@@ -655,6 +667,9 @@ class PreparedBatch:
                 BatchItemResult(
                     index=index,
                     status=output.status,
+                    fock_builds=builds.value
+                    if count_status == _native.STATUS_SUCCESS
+                    else None,
                     status_message=message,
                     energy=output.energy,
                     forces=forces,
@@ -675,6 +690,8 @@ class PreparedBatch:
                     restart_origin=(
                         "cold_fallback"
                         if output.warm_start_fallback
+                        else "basis_projection"
+                        if output.warm_start_used and index in self._projection_indices
                         else "persistent_restart"
                         if output.warm_start_used and index in self._restart_indices
                         else "in_process_warm"
@@ -692,6 +709,22 @@ class PreparedBatch:
                     "backend": "cuda" if item.executed_backend == "cuda" else "cpu",
                 }
                 self._restart_indices.discard(index)
+                self._projection_indices.discard(index)
+        if self.projection_diagnostics:
+            self.projection_diagnostics["target_verification"] = "executed"
+            self.projection_diagnostics["target_results"] = [
+                {
+                    "index": i.index,
+                    "converged": i.converged,
+                    "status": i.status,
+                    "energy": i.energy if i.succeeded else None,
+                    "density_rms": i.density_rms if i.succeeded else None,
+                    "iterations": i.iterations,
+                    "fock_builds": i.fock_builds,
+                    "restart_origin": i.restart_origin,
+                }
+                for i in result.items
+            ]
         if (
             self.checkpoint_diagnostics
             and "target_verification" in self.checkpoint_diagnostics
@@ -750,7 +783,27 @@ class PreparedBatch:
             self._library.vibeqc_batch_clear_warm_starts(self._batch),
         )
         self._restart_indices.clear()
+        self._projection_indices.clear()
+        self.projection_diagnostics = None
         self._warm_metadata = [None] * len(self._systems)
+
+    def initialize_from(
+        self, source, *, policy=None, strict=True, maximum_host_bytes=256 << 20
+    ):
+        """Project a converged source batch into this fresh target's AO metric.
+
+        The next execute rebuilds and converges the target equations. See
+        ``vibeqc.progressive.initialize_from`` for compatibility and fallback.
+        """
+        from .progressive import initialize_from
+
+        return initialize_from(
+            self,
+            source,
+            policy=policy,
+            strict=strict,
+            maximum_host_bytes=maximum_host_bytes,
+        )
 
     def set_warm_start_updates(self, enabled: bool) -> None:
         """Control whether successful executions replace retained densities.

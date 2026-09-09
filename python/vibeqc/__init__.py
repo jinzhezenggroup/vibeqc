@@ -32,6 +32,16 @@ from .calculator import (
     method_capabilities,
 )
 from .elements import ElectronState, electron_state
+from .overlap import cross_overlap
+from .progressive import ProgressiveResult, projected_singlepoint
+from .projection import (
+    OccupiedProjection,
+    ProjectionDiagnostics,
+    ProjectionPolicy,
+    ProjectionRejected,
+    project_density,
+    project_occupied,
+)
 from .resources import (
     ResourceAllocationError,
     ResourceBudget,
@@ -63,9 +73,14 @@ __all__ = [
     "InactiveEigensolverProfileEntry",
     "MethodCapabilities",
     "ObservableTarget",
+    "OccupiedProjection",
     "PppsQueueProfile",
     "PreparedBatch",
     "Primitive",
+    "ProgressiveResult",
+    "ProjectionDiagnostics",
+    "ProjectionPolicy",
+    "ProjectionRejected",
     "ResolvedModel",
     "ResourceAllocationError",
     "ResourceBudget",
@@ -81,11 +96,15 @@ __all__ = [
     "TargetAccuracy",
     "basis_capability",
     "compare_observables",
+    "cross_overlap",
     "electron_state",
     "estimate_hf_resources",
     "import_bse",
     "load_basis",
     "method_capabilities",
     "plan_resources",
+    "project_density",
+    "project_occupied",
+    "projected_singlepoint",
 ]
 __version__ = "0.1.0"

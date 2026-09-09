@@ -143,6 +143,7 @@ Result adapt_result(scf::ScfResult native, vibeqc_backend backend) {
   result.convergence.residual_rms = native.density_rms;
   result.convergence.converged = native.converged;
   result.executed_backend = backend;
+  result.fock_builds = native.fock_builds;
   return result;
 }
 
