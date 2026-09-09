@@ -11,9 +11,10 @@ expanded/shared/optimized equivalence are implemented. C remains separate.
   tests/python/test_cc_doubles.py tests/python/test_cc_doubles_references.py -q`:
   **41 passed in 21.19 s** before the additional provenance regression.
 - Final `python -m pytest tests/python/test_cc_doubles_references.py -q`:
-  **5 passed in 2.95 s** after the provenance repair (see b-final-test.log).
+  **5 passed in 2.95 s** after the provenance repair. The routine log has been
+  consolidated into this result; numerical records and provenance are retained.
 - `python -m tools.validate_ccsd --output build/cc-b-final`: all five independent
-  records passed. The adjacent JSON files contain per-form/per-intermediate
+  records passed. The archived JSON files contain per-form/per-intermediate
   errors, actual source/fixture/upstream hashes and dirty status.
 - Ruff check passed. Equations unchanged after the complete 41-test run.
 - Reference generation used `python -m tools.generate_cc_references --full`
@@ -23,6 +24,30 @@ expanded/shared/optimized equivalence are implemented. C remains separate.
   `fd2c598be044424907b5c57f22e21b5c03f2fe0cdf4a7424fde4d3e0dceb84b0`;
   independently read back before extraction/execution. All Inspire commands
   used `--no-env-file --account qz` and explicit remote worktree.
+
+## Archived raw records
+
+Detailed JSON results and execution logs are stored in
+[`raw-evidence.zip`](raw-evidence.zip). The
+[manifest](raw-evidence.manifest.json) lists every member's size and SHA-256,
+plus the archive hash and the Git commit from which the original bytes were
+copied. That commit identifies the storage migration input, not a new
+scientific run. Existing source snapshots and the acceptance summary below
+retain the original experiment identity, tolerances and limitations.
+
+From the repository root, verify without extracting, or restore into a **new**
+directory (Python standard library only):
+
+```bash
+python -m tools.unpack_evidence benchmarks/results/rccsd-148-b
+python -m tools.unpack_evidence benchmarks/results/rccsd-148-b \
+  --output build/rccsd-148-b-history
+```
+
+Files listed in the manifest are relative to the restored directory. Small
+provenance records remain beside this README. Restoration checks every hash before writing and refuses
+an existing output directory. Historical scripts are records, not commands to
+execute. Test fixtures remain directly available under `tests/reference_data/`.
 
 ## Independent review and repair
 
@@ -44,3 +69,7 @@ No T2 acceptance relies solely on two versions of the same inventory: tiny
 fermionic determinant projections and pinned external full-update residuals
 also pass. PySCF update denominators have both virtual level shifts and are
 reconstructed as D2*(update-t2). GPU/(T)/Lambda/gradients are outside #148.
+
+Portable final A/B/C reproduction commands, including reference regeneration,
+are in [the C archive](../rccsd-148-c/README.md#reproduction). Historical machine
+paths above identify the original experiment, not prerequisites for replay.

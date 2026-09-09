@@ -30,7 +30,7 @@ def immutable(value, *, shape=None):
 
 @dataclass(frozen=True, eq=False)
 class ReferenceSnapshot:
-    """Validated real, all-electron, canonical closed-shell RHF state.
+    """Validated real, all-electron, canonical closed-shell HF/KS state.
 
     C[mu,p] uses occupied columns first, then virtual columns; occupations are
     spatial 2/0. Buffers always belong to this host snapshot. ``hf_backend``
@@ -63,12 +63,23 @@ class ReferenceSnapshot:
     frozen_mask: tuple[int, ...] = ()
     validation_tolerance: float = 1e-8
     overlap_threshold: float = 1e-10
+    functional_identity: str | None = None
+    grid_identity: str | None = None
     identity: str = field(init=False)
     diagnostics: tuple[tuple[str, float], ...] = field(init=False)
 
     def __post_init__(self):
-        if self.algorithm != "RHF" or self.precision != "float64":
-            raise ValueError("only real FP64 RHF references are supported")
+        if self.algorithm not in ("RHF", "KS") or self.precision != "float64":
+            raise ValueError("only real FP64 RHF/KS references are supported")
+        if self.algorithm == "KS":
+            if not self.functional_identity or not self.grid_identity:
+                raise ValueError(
+                    "KS references require nonempty functional and grid identities"
+                )
+        elif self.functional_identity or self.grid_identity:
+            raise ValueError(
+                "RHF references cannot carry DFT functional/grid identities"
+            )
         if self.representation not in ("cartesian", "real_spherical"):
             raise ValueError("unknown AO representation")
         if not self.converged:
@@ -172,6 +183,8 @@ class ReferenceSnapshot:
                 "frozen_mask",
                 "validation_tolerance",
                 "overlap_threshold",
+                "functional_identity",
+                "grid_identity",
             )
         }
         for name in (

@@ -5,6 +5,27 @@ evaluated on a real H100. It also records tested CC state primitives. It does
 not establish a resident iterative solver, public RCCSD API, supported batches
 or complete GPU molecular convergence. B/C remain unverified.
 
+## Archived raw records
+
+The expanded numerical traces, frozen source files, and historical execution
+records are preserved byte for byte in [raw-evidence.zip](raw-evidence.zip).
+The [manifest](raw-evidence.manifest.json) binds the archive, every member's
+size/SHA-256, and migration source commit. Paths below such as `numerical/`,
+`frozen-source/`, `window/`, and `minimum-window/` refer to the restored tree;
+`source-snapshot.json`, the review, and acceptance summary remain readable here.
+
+Verify or restore into a new directory with the standard-library verifier:
+
+```bash
+python -m tools.unpack_evidence benchmarks/results/rccsd-149-a
+python -m tools.unpack_evidence benchmarks/results/rccsd-149-a \
+  --output build/cc149-history
+```
+
+Restoration refuses an existing destination and validates every byte before
+writing. Frozen files remain historical records; current source fixes do not
+rewrite their recorded validation identity.
+
 ## Source and scope
 
 The tested checkout was based on #148 C commit
@@ -21,8 +42,8 @@ No host-input ABI test is being represented as persistent-device execution.
 After publication, pre-commit reformatted one assertion in the current
 `tests/python/test_cc_gpu_state.py` without changing its Python AST and added
 terminal newlines to the two window result JSON files without changing their
-parsed values. The original frozen test bytes were restored and are excluded
-only from rewriting formatter hooks. All other validation hooks remain active.
+parsed values. The original frozen test bytes were restored before this archive migration.
+They now remain inside the archive, so no formatter exclusions are needed.
 Use the frozen copy or original `5cbe3a2` Git blob for that historical test hash;
 do not mistake the current formatting-only test bytes for the original bytes.
 `transfers_per_execution` records that fixed-amplitude inputs and outputs are

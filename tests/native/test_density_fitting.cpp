@@ -862,6 +862,18 @@ int main() {
                   0, {orbital}, {auxiliary}, &source, source_metrics, source_nbf, source_naux,
                   source_detail) == VIBEQC_STATUS_SUCCESS,
               source_detail.c_str());
+      std::size_t source_primitives = 1;  // implicit dummy fourth center
+      for (const auto* system : {&orbital, &auxiliary})
+        for (const auto& shell : system->shells) source_primitives += shell.primitives.size();
+      const auto orbital_cartesian = vibeqc::molecule::cartesian_ao_count(orbital);
+      const auto auxiliary_cartesian = vibeqc::molecule::cartesian_ao_count(auxiliary);
+      const auto source_capacity = vibeqc::scf::density_fitting_source_metadata_bytes(
+          1, orbital.atoms.size(), orbital.shells.size() + auxiliary.shells.size() + 1,
+          orbital_cartesian + auxiliary_cartesian + 1, source_primitives,
+          source_nbf * orbital_cartesian + source_naux * auxiliary_cartesian);
+      require(
+          source_capacity == vibeqc::scf::cuda_density_fitting_integral_source_device_bytes(source),
+          "shape-only DF source capacity differs from actual owned CUDA uploads");
       vibeqc::scf::CudaDensityFittingJkPlan* source_raw_plan = nullptr;
       std::vector<vibeqc::scf::CudaDensityFittingMetricDiagnostic> source_diagnostics;
       require(vibeqc::scf::create_cuda_density_fitting_jk_plan_from_source(

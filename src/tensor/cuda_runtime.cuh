@@ -17,7 +17,14 @@
 namespace vibeqc_tensor {
 using I = int64_t;
 
+// Preserve the allocator's typed failure across the generated C ABI. Driver,
+// arithmetic and cuBLAS errors must never be guessed to mean device OOM.
+struct DeviceAllocationError : std::runtime_error {
+  using std::runtime_error::runtime_error;
+};
+
 inline void cuda_check(cudaError_t status) {
+  if (status == cudaErrorMemoryAllocation) throw DeviceAllocationError(cudaGetErrorString(status));
   if (status != cudaSuccess) throw std::runtime_error(cudaGetErrorString(status));
 }
 inline void blas_check(cublasStatus_t status) {

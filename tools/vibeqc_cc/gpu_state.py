@@ -51,6 +51,10 @@ def denominators(snapshot, options):
     """Preflight physical gaps once, before any integral or device allocation."""
     if not isinstance(snapshot, ReferenceSnapshot):
         raise TypeError("GPU RCCSD requires a validated ReferenceSnapshot")
+    # The shared snapshot also represents KS states for CPKS; RCCSD still
+    # requires the RHF reference used by the audited physical equations.
+    if snapshot.algorithm != "RHF":
+        raise ValueError("GPU RCCSD requires an RHF reference")
     if not isinstance(options, SolverOptions):
         raise TypeError("GPU RCCSD options must be SolverOptions")
     o = snapshot.nocc
@@ -180,6 +184,8 @@ class AmplitudeSnapshot:
     def for_reference(self, snapshot):
         if not isinstance(snapshot, ReferenceSnapshot):
             raise TypeError("warm start requires a validated ReferenceSnapshot")
+        if snapshot.algorithm != "RHF":
+            raise ValueError("GPU RCCSD warm start requires an RHF reference")
         if self.reference_id != snapshot.identity:
             raise ValueError(
                 "warm start invalidated by reference/geometry/orbital change"

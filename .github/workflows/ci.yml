@@ -85,6 +85,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       CUDACXX: /usr/local/cuda-12.9/bin/nvcc
+      LD_LIBRARY_PATH: /usr/local/cuda-12.9/lib64
       # Generated AOT objects are much larger than ordinary CPU objects, so
       # give the CUDA cache enough room while staying within the repo quota.
       CCACHE_MAXSIZE: 3G
@@ -108,6 +109,8 @@ jobs:
             cuda-cudart-dev-12-9 \
             libcublas-dev-12-9 \
             libcusolver-dev-12-9 \
+            libcusparse-12-9 \
+            libnvjitlink-12-9 \
             python3-numpy
           "$CUDACXX" --version
           ccache --version
@@ -123,12 +126,19 @@ jobs:
       - name: Configure production CUDA compile check
         run: >-
           cmake --preset cuda-release-sm120
-          -DVIBEQC_BUILD_TESTS=OFF
+          -DVIBEQC_BUILD_TESTS=ON
           -DVIBEQC_CUDA_FAST_COMPILE=ON
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache
       - name: Compile production CUDA build
-        run: cmake --build --preset cuda-release-sm120 --parallel 2
+        run: cmake --build --preset cuda-release-sm120 --target vibeqc --parallel 2
+      - name: Check Fock and proposal preflight without a GPU
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+        run: |
+          cmake --build --preset cuda-release-sm120 --target vibeqc_fock_build_tests vibeqc_scf_proposal_tests --parallel 2
+          ctest --test-dir build/cuda-release-sm120 \
+            -R '^vibeqc_(fock_build|scf_proposal)_tests$' --output-on-failure
       - name: Show CUDA ccache statistics
         run: ccache --show-stats
       # This is release resource evidence. The production compile-only step

@@ -26,6 +26,8 @@ def restricted_mp2(snapshot, provider, *, denominator_threshold=1e-10):
     spatial orbitals participate, with restricted pair symmetry ijab<->jiba.
     Device integrals are explicitly downloaded for this CPU bridge.
     """
+    if snapshot.algorithm != "RHF":
+        raise ValueError("restricted MP2 requires an RHF reference")
     if provider.snapshot.identity != snapshot.identity:
         raise ValueError("MP2 provider/reference mismatch")
     if not np.isfinite(denominator_threshold) or denominator_threshold <= 0:

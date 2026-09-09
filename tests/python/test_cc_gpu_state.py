@@ -97,3 +97,19 @@ def test_solver_plan_keeps_independent_replay_and_all_state_under_budget():
         solver_plans(
             2, 3, target, SolverOptions(max_bytes=1 << 20), provider_peak_bytes=1 << 20
         )
+
+
+def test_gpu_cc_reference_helpers_reject_ks_snapshots():
+    """Shared CPKS snapshots must not widen the RCCSD reference contract."""
+    snapshot = replace(
+        fixture_snapshot(*load_fixture("water")),
+        algorithm="KS",
+        functional_identity="synthetic-functional",
+        grid_identity="synthetic-grid",
+    )
+    with pytest.raises(ValueError, match="RHF reference"):
+        denominators(snapshot, SolverOptions())
+    t1, t2 = random_case(snapshot.nocc, snapshot.nmo - snapshot.nocc)[2:]
+    warm = AmplitudeSnapshot(snapshot.identity, t1, t2)
+    with pytest.raises(ValueError, match="RHF reference"):
+        warm.for_reference(snapshot)

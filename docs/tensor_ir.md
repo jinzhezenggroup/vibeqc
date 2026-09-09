@@ -12,8 +12,9 @@ derivatives, and bounded integral providers. `TensorIR` owns tensor index
 populations and algebra over supplied arrays. Neither inherits from the other;
 TensorIR does not import `ShellClassSpec` or require CUDA. Physical strides,
 device placement and contraction planning live in the separate
-[prepared FP64 CUDA executor](tensor_cuda.md) (#146). Derivative rules remain
-subsequent work (#151). The table below describes the original CG08 boundary;
+[prepared FP64 CUDA executor](tensor_cuda.md) (#146). #151 now adds primitive
+JVP/VJP rules and demand-driven derivative programs; the generated programs
+reuse that executor. The table below describes the original CG08 boundary;
 the CUDA document records the subsequent execution capabilities.
 
 | Stage | CG08 capability |
@@ -134,10 +135,10 @@ reduced numerator/positive-denominator pairs; conversion happens in the chosen
 real dtype during interpretation. No complex values, conjugation, arbitrary
 expression evaluation, SCF/CC loops, or mutable scatter operations are supported.
 
-`PRIMITIVES` declares future differentiable-operand and accumulation contracts.
-Shared-operand contributions accumulate, and repeated gathers will require
-scatter-add in a VJP. Shapes live in each typed node; no AD rules or derivative
-execution are introduced here.
+`PRIMITIVES` declares differentiable-operand and accumulation contracts.
+`autodiff.py` implements JVP/VJP rules for every primitive; repeated gathers
+use scatter-add in a VJP, and repeated einsum labels use exact identity
+projections in generated reverse programs. Shapes live in each typed node.
 
 ## Independent/packed amplitudes
 
@@ -158,8 +159,55 @@ sum_dense unpack(x) * unpack(y) = sum_packed weights * x * y
 `inner_product(x,y)` implements this metric. For two occupied and three virtual
 orbitals, the spatial pair layout has 21 independent coordinates with weights
 1 or 2, while separate spin-orbital antisymmetries have 3 coordinates with weight
-4. Later VJPs must use these weights, not the unweighted packed dot product.
-`to_payload`/`from_payload` preserve and verify the complete map and metric.
+4. `unpack_transpose` and `pack_transpose` implement the exact adjoints under
+this metric; the reverse of `unpack` is not ordinary `pack`. Generated reverse
+programs apply the weighted transpose when a packed parameter is requested with
+`packed=...`. `to_payload`/`from_payload` preserve and verify the complete map
+and metric.
+
+## Derivative programs (#151)
+
+`tools/vibeqc_tensor/autodiff.py` provides a CPU reference for JVP (`jvp`) and
+matrix-free VJP (`vjp`) with an adjoint dot test (`dot_test`). It covers every
+primitive, preserves exact rational coefficients, accumulates multiple
+consumers, and rejects unsupported or non-differentiable requests. The
+interpreter deliberately treats packed/symmetric parameters as dense general
+tensors only through an explicit packing boundary; callers must not replace
+the weighted adjoint with an unweighted Euclidean one.
+
+Distinct input nodes with the same public name read one feed: VJPs sum all
+their contributions, including before common-subexpression elimination. The
+generated reverse graph starts from every occurrence of each requested input
+and builds only active operand adjoints, so an unrequested diagonal projection
+cannot consume the generation element budget. Repeated einsum labels that
+survive in the output retain their cotangent axis in the diagonal embedding.
+
+`tools/vibeqc_tensor/ad_program.py` turns the same rules into demand-driven,
+backend-independent TensorIR `Program` DAGs:
+
+- `linearize(program, tangent_inputs, outputs=..., packed=...)` generates
+  forward programs whose inputs are the original parameters plus `d_<name>`
+  tangents and whose outputs are `d_<output>` tangents.
+- `transpose_program(program, cotangent_outputs, inputs=..., packed=...)`
+  generates reverse programs whose inputs are the original parameters plus
+  `bar_<output>` cotangents and whose outputs are `bar_<input>` cotangents.
+- Only requested paths produce nodes; an inactive requested output becomes an
+  explicit zero-like node. Generated programs are replayable with
+  `Program.dumps()` and can be passed directly to `plan_cuda`.
+- Reverse slice/gather use exact incidence matrices. Repeated einsum labels
+  use exact identity projections. A packed parameter is expanded through an
+  explicit unpack DAG, and its reverse output applies `unpack_transpose`
+  (including orbit weights).
+
+The generated reverse programs are matrix-free: their node count follows the
+primal DAG and never materializes a dense Jacobian or a tape growing with
+solver iterations. `tools/tensor_ad_examples.py` compiles and executes a
+fixed, unconverged CC-like scalar-energy fragment on CUDA and compares JVP/VJP
+against the CPU interpreter and directional finite differences. The recorded
+RTX 5090 evidence in
+[`benchmarks/results/tensor-ad-151`](../benchmarks/results/tensor-ad-151/README.md)
+passes both directions with a dot relative error of `3.97e-16`; it is not a
+complete CCSD/MP2 method and makes no production-promotion claim.
 
 ## Rewrites and serialization
 
@@ -225,8 +273,13 @@ a molecular N⁴ integral or derivative tensor.
 ```bash
 python -m pytest tests/python/test_tensor_ir.py tests/python/test_tensor_execution.py \
   tests/python/test_tensor_examples.py -q
+python -m pytest tests/python/test_tensor_autodiff.py \
+  tests/python/test_tensor_ad_program.py -q
 python tools/tensor_ir_examples.py --output /tmp/tensor-evidence.json \
   --equations-dir /tmp/tensor-equations
+python tools/tensor_ad_examples.py --mode compile \
+  --nvcc /path/to/nvcc --architecture sm_120 \
+  --output /tmp/tensor-ad-compile
 ```
 
 The runner uses the existing `vibeqc.validation` schema and controlled FP64
@@ -242,4 +295,7 @@ pass or present logical byte accounting as measured allocation/peak memory.
 The [archived CG08 CPU records](../benchmarks/results/cg08/README.md) report a
 maximum absolute loop-reference error of `3.469446951953614e-18` and identical
 equation/input hashes across two generations from the clean implementation
-commit.
+commit. The #151 CUDA records in
+[`benchmarks/results/tensor-ad-151`](../benchmarks/results/tensor-ad-151/README.md)
+record JVP/VJP numerical, dot-test, recomputation, plan and device-delta
+evidence; they explicitly leave production promotion `not-run`.

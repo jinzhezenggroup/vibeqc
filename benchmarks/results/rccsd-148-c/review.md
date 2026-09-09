@@ -52,3 +52,13 @@ were added after the frozen candidate. Acceptance covers the internal
 conventional, real, closed-shell, all-electron CPU RCCSD scope of #148.
 Public GPU execution, (T), Lambda, gradients and general convergence guarantees
 are not inferred. The repository's stricter existing numerical tests remain.
+
+## Subsequent collective-budget review
+
+The later `c_engineering_review` identified a P2 in collective provider-budget
+preflight, beyond the interpreter-budget rejection checked above. It was fixed
+in a follow-up without rewriting this C snapshot. The same uninvolved reviewer
+confirmed the correction; qz's 16 solver tests passed. See
+[the correction and evidence](provider-preflight.md). The concurrent independent
+`c_math_review` reconfirmed the frozen C equations and endpoint evidence without
+mathematical blockers. These later checks preserve the original review record.

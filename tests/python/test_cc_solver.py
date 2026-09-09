@@ -9,6 +9,7 @@ import pytest
 
 from tools.cc_endpoint_fixtures import load, snapshot_from_fixture, source_arguments
 from tools.vibeqc_cc.solver import PreparedCCSD, SolverOptions, solve
+from tools.vibeqc_posthf import MOBlock
 from tools.vibeqc_posthf.export import export_rhf
 from tools.vibeqc_posthf.providers import BlockResult, ConventionalProvider
 from tools.vibeqc_posthf.sources import NativeSource
@@ -169,6 +170,19 @@ def test_false_shared_residual_cannot_bypass_expanded_acceptance(monkeypatch):
     assert result.history[-1]["independent_r2_max"] > 1e-9
 
 
+def test_prepared_ccsd_rejects_ks_reference():
+    s, p, _meta, _ = fixture_problem()
+    ks = replace(
+        s,
+        algorithm="KS",
+        functional_identity="test-functional",
+        grid_identity="test-grid",
+        hf_backend="test-ks",
+    )
+    with pytest.raises(ValueError, match="RHF"):
+        PreparedCCSD(ks, p)
+
+
 def test_nonfinite_initial_equation_has_no_fabricated_energy_and_replays(tmp_path):
     s, p, _meta, a = fixture_problem()
     result = solve(
@@ -179,6 +193,47 @@ def test_nonfinite_initial_equation_has_no_fabricated_energy_and_replays(tmp_pat
     from tools.replay_ccsd import replay
 
     assert replay(tmp_path / "overflow.json").status == "nonfinite"
+
+
+def test_collective_provider_budget_rejects_before_any_read_and_accepts_cache_hits():
+    s, _p, _meta, a = fixture_problem()
+    source = SimpleNamespace(
+        nbf=s.nmo,
+        shell_sizes=(1,) * s.nmo,
+        numeric_bytes=0,
+        geometry_hash=s.geometry_hash,
+        basis_hash=s.basis_hash,
+        representation=s.representation,
+        identity="budget-test-source",
+        _check_open=lambda: None,
+    )
+    source.requests = lambda *args, **kwargs: pytest.fail(
+        "AO read before complete budget preflight"
+    )
+    provider = ConventionalProvider(s, source)
+    names = ("ovov", "ovvo", "oovv", "ovvv", "ovoo", "oooo", "vvvv")
+    blocks = [MOBlock.from_spaces(s, name) for name in names]
+    # Every individual block fits, but their pinned collection cannot fit.
+    provider.budget_bytes = max(provider.plan(b).peak_bytes for b in blocks)
+    with pytest.raises(MemoryError, match="complete provider block set"):
+        PreparedCCSD(s, provider)
+    assert (
+        provider.statistics["transformations"] == 0
+        and provider.statistics["source_tiles"] == 0
+    )
+    assert provider._retained == 0 and not provider._cache
+    # An already warm cache fits the same budget and must not be rejected by
+    # a cold-cache worst-case estimate. Actual provider.get serves all hits.
+    for block in blocks:
+        values = a["g"][np.ix_(*block.slots)]
+        provider._cache[(s.identity, source.identity, block.slots)] = (
+            BlockResult(block, values, s.identity, s.hamiltonian_id, {}),
+            values.nbytes,
+        )
+        provider._retained += values.nbytes
+    prepared = PreparedCCSD(s, provider)
+    assert provider.statistics["hits"] == 7
+    assert np.isfinite(prepared.evaluate(*prepared.initial)["correlation_energy"])
 
 
 @pytest.mark.parametrize("name", ["h2", "he", "h2o", "nh3", "ch4"])

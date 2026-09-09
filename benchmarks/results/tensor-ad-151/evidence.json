@@ -1,0 +1,1684 @@
+[
+  {
+    "attachments": [],
+    "backend_selected": "cuda",
+    "block_errors": {
+      "d_energy": {
+        "atol": 1e-11,
+        "max_absolute_error": 2.168404344971009e-19,
+        "max_scaled_error": 2.1566176134658938e-08,
+        "passed": true,
+        "rms_error": 2.168404344971009e-19,
+        "rtol": 1e-10,
+        "shape": []
+      }
+    },
+    "compilation": {
+      "binary_sha256": "b04c0cdb940022f8fc87c764fd3c09dd7ff01a92815b34ccf21436f88d52640f",
+      "reason": null,
+      "resources": [
+        {
+          "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+          "registers": 26,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z9kernel_18PhPi",
+          "registers": 12,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z10scatter_17PhPKdPilllll",
+          "registers": 26,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z7pack_17PKhPdS1_Pilllllll",
+          "registers": 32,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z9kernel_16PhPi",
+          "registers": 30,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z10scatter_15PhPKdPilllll",
+          "registers": 26,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z7pack_15PKhPdS1_Pilllllll",
+          "registers": 32,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z9kernel_13PhPi",
+          "registers": 34,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z9kernel_10PhPi",
+          "registers": 34,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z9scatter_8PhPKdPilllll",
+          "registers": 36,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z6pack_8PKhPdS1_Pilllllll",
+          "registers": 34,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z9scatter_7PhPKdPilllll",
+          "registers": 36,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z6pack_7PKhPdS1_Pilllllll",
+          "registers": 34,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z9scatter_6PhPKdPilllll",
+          "registers": 36,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z6pack_6PKhPdS1_Pilllllll",
+          "registers": 34,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        }
+      ],
+      "seconds": 3.835113463923335
+    },
+    "device": {
+      "architecture": "sm_120",
+      "cublas": "12.9.1",
+      "driver": 12080,
+      "runtime": 12090,
+      "sm_count": 170,
+      "uuid": "c17495e9988d06268bdd95d0d1b47f36"
+    },
+    "hardware": {
+      "reason": null,
+      "status": "pass"
+    },
+    "hash_reasons": {},
+    "hashes": {
+      "equation": "62699da76a6356a8b1472d0cb8a586a37e79c65c22191dc52a1a522942a8cc28",
+      "ir": "784c383da568b4c258c879687eda6bcfb2d97ca5e52d974fed334e688a419ec4",
+      "schedule": "cb9325bec6d46b57a34ad024bef3f9834f58dca8424fdd4853c6ac43689f7614",
+      "source": "351c564302507f20e191bda6e54d1dbc59da34e19c14a620eb33f9afdfaffb63"
+    },
+    "inputs_hash": "18158c37802501919d07be22341a280623f753e3c406dbab603430ad0c18558b",
+    "memory": {
+      "allocated_bytes": 16790528,
+      "observed_device_delta": 18874368,
+      "peak_bytes": 105010952,
+      "provider_retained_bytes": 12582912,
+      "reason": null
+    },
+    "performance": {
+      "reason": "no interleaved baseline comparison",
+      "status": "not-run"
+    },
+    "residuals": {},
+    "revision": "4707632ca91c0faebca1ccef1aa068adf05fff3f",
+    "schema": "vibeqc.validation",
+    "schema_version": 1,
+    "settings": {
+      "dirty": false,
+      "dot_relative_error": 3.9675282341427827e-16,
+      "fast_compile": false,
+      "finite_differences": [
+        {
+          "error": {
+            "atol": 1e-08,
+            "max_absolute_error": 1.1761707027161533e-10,
+            "max_scaled_error": 0.011152197114297538,
+            "passed": true,
+            "rms_error": 1.1761707027161533e-10,
+            "rtol": 1e-06,
+            "shape": []
+          },
+          "step": 0.001
+        },
+        {
+          "error": {
+            "atol": 1e-08,
+            "max_absolute_error": 1.1759389035442824e-12,
+            "max_scaled_error": 0.00011149999367611089,
+            "passed": true,
+            "rms_error": 1.1759389035442824e-12,
+            "rtol": 1e-06,
+            "shape": []
+          },
+          "step": 0.0001
+        },
+        {
+          "error": {
+            "atol": 1e-08,
+            "max_absolute_error": 9.947229671902758e-15,
+            "max_scaled_error": 9.431748896917368e-07,
+            "passed": true,
+            "rms_error": 9.947229671902758e-15,
+            "rtol": 1e-06,
+            "shape": []
+          },
+          "step": 1e-05
+        }
+      ],
+      "graph_status": "ordinary-stream: graph capture is not enabled for TensorIR",
+      "metrics": {
+        "device_ms": 56.03798294067383,
+        "endpoint_ms": 56.39582499861717,
+        "host_buffer_bytes": 140040,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 18874368,
+        "output_ms": 0.0,
+        "owned_device_bytes": 4207616,
+        "packing_ms": 0.0,
+        "predicted_peak_bytes": 105010952,
+        "prepare_device_delta": 18874368,
+        "profiled": false,
+        "provider_retained_bytes": 12582912
+      },
+      "mode": "numerical",
+      "nocc": 3,
+      "nvir": 4,
+      "plan": {
+        "allocation_bytes": 4207616,
+        "arena_bytes": 10752,
+        "device_bytes": 104870912,
+        "double_buffer_bytes": 0,
+        "equation": "62699da76a6356a8b1472d0cb8a586a37e79c65c22191dc52a1a522942a8cc28",
+        "estimated_flops": 5186,
+        "estimated_traffic_bytes": 24872,
+        "host_bytes": 140040,
+        "index_tables": [],
+        "inputs": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "library_bytes": 4194304,
+        "max_bytes": 268435456,
+        "outputs": [
+          [
+            "d_energy",
+            18
+          ]
+        ],
+        "panel_bytes": 2304,
+        "peak_bytes": 105010952,
+        "provider_bytes": 100663296,
+        "reservations": {
+          "concurrent": 0,
+          "diis": 0,
+          "r": 0,
+          "t": 0
+        },
+        "schedule": {
+          "direct_gemm": false,
+          "fuse": true,
+          "recompute": true,
+          "threads": 128,
+          "tile_k": 32,
+          "tile_m": 32,
+          "tile_n": 32,
+          "views": true
+        },
+        "schema": 1,
+        "steps": [
+          {
+            "gemm": "none",
+            "inputs": [],
+            "last_use": 19,
+            "node": "n_41f00d4fadeea96212859ccc46021ca48f482cc034e8f76e92d8e3893c24f66a_0",
+            "offset": 0,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "none",
+            "inputs": [],
+            "last_use": 19,
+            "node": "n_501b0e3a82ed2bcc7be6c6e0a5552d8883eaf1b842d0d65c273c9bced613472c_0",
+            "offset": 1280,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "none",
+            "inputs": [],
+            "last_use": 19,
+            "node": "n_57512ee16caf7031b3cfebcd4e30ee44ad2370e3b68f4596d8e03a70e3b6401c_0",
+            "offset": 2560,
+            "shape": [
+              4,
+              4
+            ],
+            "strides": [
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "none",
+            "inputs": [],
+            "last_use": 19,
+            "node": "n_99367e8951f6899eaf7ac1b0f09d5068f13599d398d6610d81873e5fd9f97995_0",
+            "offset": 2816,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "none",
+            "inputs": [],
+            "last_use": 19,
+            "node": "n_cb93cd8e82abf8aeaf60c273a52661dc2bd8a5aaec4e97d0615c8ecd2bcc61d8_0",
+            "offset": 4096,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "none",
+            "inputs": [],
+            "last_use": 19,
+            "node": "n_e6439a31d983cda93336338b41a3fc9a5dbdbf91f984cb4d30eefecf3c5bb598_0",
+            "offset": 5376,
+            "shape": [
+              4,
+              4
+            ],
+            "strides": [
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "packed",
+            "inputs": [
+              2,
+              4
+            ],
+            "last_use": 13,
+            "node": "n_0a21686f8b03c9d568e5c9912a89c91045bac7f8cff1999686914dfb24d77683_0",
+            "offset": 5632,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "packed",
+            "inputs": [
+              5,
+              4
+            ],
+            "last_use": 10,
+            "node": "n_63057a316478d1bca6e432472941ee0207d6266591bcf05560211a518b029cb1_0",
+            "offset": 6912,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "packed",
+            "inputs": [
+              2,
+              3
+            ],
+            "last_use": 10,
+            "node": "n_8298a79011cdcfc29f6dcabeb6406d1f1338fe3ac16e21e5c6d865f4ac4d8e7f_0",
+            "offset": 8192,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "none",
+            "inputs": [
+              6
+            ],
+            "last_use": 9,
+            "node": "n_2259929713d437773941d800bf9bff4a1306bd7af2fac27ee50f409afff7f73c_0",
+            "offset": -1,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": null,
+            "view_map": {
+              "axes": [
+                0,
+                1,
+                3,
+                2
+              ]
+            },
+            "virtual": true
+          },
+          {
+            "gemm": "none",
+            "inputs": [
+              7,
+              8
+            ],
+            "last_use": 16,
+            "node": "n_2ed0e68090e3aeb997c817caef96ddc9f3165b7616010dfae69e4ca931892f1b_0",
+            "offset": 9472,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "none",
+            "inputs": [
+              10
+            ],
+            "last_use": 11,
+            "node": "n_187a92758bc0e7f91b1ea25131931d465e54928aa8209a32a5b19dc56ce53607_0",
+            "offset": -1,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": null,
+            "view_map": {
+              "axes": [
+                0,
+                1,
+                3,
+                2
+              ]
+            },
+            "virtual": true
+          },
+          {
+            "gemm": "none",
+            "inputs": [
+              10
+            ],
+            "last_use": 12,
+            "node": "n_b66d9ef7c8eda60e41d1321d8c2bffee3216c7569458fbf5991923090dd4fe23_0",
+            "offset": -1,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": null,
+            "view_map": {
+              "coefficients": [
+                [
+                  1,
+                  1
+                ]
+              ]
+            },
+            "virtual": true
+          },
+          {
+            "gemm": "none",
+            "inputs": [
+              6,
+              9
+            ],
+            "last_use": 15,
+            "node": "n_d6d3545b60d4f8e8dce30309a4feacc898144f1fe54190c93c9da06ccfa13981_0",
+            "offset": 6912,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "none",
+            "inputs": [
+              11
+            ],
+            "last_use": 14,
+            "node": "n_337666b6484b73c6d1ebfe66ee2808634c03ab4e1d1d7babff12bbbdc1ba5808_0",
+            "offset": -1,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": null,
+            "view_map": {
+              "coefficients": [
+                [
+                  -1,
+                  1
+                ]
+              ]
+            },
+            "virtual": true
+          },
+          {
+            "gemm": "packed",
+            "inputs": [
+              0,
+              13
+            ],
+            "last_use": 18,
+            "node": "n_7289fb3a8ffa23a4214fd593fa12e3bafff67c36474d0cb602bc5b74e1344b13_0",
+            "offset": 5632,
+            "shape": [],
+            "strides": [],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "none",
+            "inputs": [
+              12,
+              14
+            ],
+            "last_use": 17,
+            "node": "n_8c5a8e94d044c4681d14b73c82a4a53412bbf41193f007cf56667ea4263a5d05_0",
+            "offset": 5888,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "packed",
+            "inputs": [
+              1,
+              16
+            ],
+            "last_use": 18,
+            "node": "n_2fea7d3e64b0c8df4dfc496be806d3899e0bf7918f8a167f8859099860656357_0",
+            "offset": 7168,
+            "shape": [],
+            "strides": [],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "none",
+            "inputs": [
+              15,
+              17
+            ],
+            "last_use": 19,
+            "node": "n_749f0a30fd392f0d8e4bb70fe16ccb47ea58aa9dbd1ca5e6132f3cef5d51d7ec_0",
+            "offset": 5888,
+            "shape": [],
+            "strides": [],
+            "view_map": null,
+            "virtual": false
+          }
+        ],
+        "streams": 1,
+        "target": {
+          "architecture": "sm_120",
+          "compute_capability": "12.0",
+          "compute_capability_major": 12,
+          "compute_capability_minor": 0,
+          "cuda_toolkit_version": "",
+          "driver_version": "",
+          "generator_abi": 1,
+          "maximum_blocks_per_sm": 24,
+          "maximum_registers_per_thread": 255,
+          "maximum_threads_per_block": 1024,
+          "maximum_threads_per_sm": 1536,
+          "minimum_cuda_toolkit": "12.8",
+          "nvcc_version": "",
+          "packed_register_caps": [
+            192,
+            208
+          ],
+          "ptxas_version": "",
+          "registers_per_sm": 65536,
+          "required_cuda_features": [
+            "fp64",
+            "fp64_atomic_add"
+          ],
+          "shared_memory_per_block": 49152,
+          "shared_memory_per_block_optin": 101376,
+          "shared_memory_per_sm": 102400,
+          "sm_count": 170,
+          "tuning_maximum_packed_registers": 224,
+          "tuning_maximum_registers": 192,
+          "tuning_maximum_shared_bytes": 49152,
+          "tuning_maximum_stack_bytes": 128,
+          "warp_size": 32
+        }
+      },
+      "profile_metrics": {
+        "device_ms": 0.5615360140800476,
+        "endpoint_ms": 0.7703881710767746,
+        "host_buffer_bytes": 140040,
+        "input_ms": 0.018848000094294548,
+        "kernel_ms": 0.018112000077962875,
+        "library_ms": 0.14307199977338314,
+        "observed_device_delta": 18874368,
+        "output_ms": 0.016736000776290894,
+        "owned_device_bytes": 4207616,
+        "packing_ms": 0.10374400019645691,
+        "predicted_peak_bytes": 105010952,
+        "prepare_device_delta": 18874368,
+        "profiled": true,
+        "provider_retained_bytes": 12582912
+      },
+      "recomputed_nodes": 0,
+      "reference": "CPU TensorIR interpreter plus directional finite differences",
+      "scope": "generated JVP/VJP for a fixed scalar CC-like fragment",
+      "seed": 151,
+      "slurm_job_id": "1044"
+    },
+    "solver_iterations": [],
+    "solver_trace_reason": "not exposed by executor",
+    "stages": {
+      "compilation": {
+        "reason": null,
+        "status": "pass"
+      },
+      "endpoint": {
+        "reason": null,
+        "status": "pass"
+      },
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "production": {
+        "reason": "no production promotion in this evidence run",
+        "status": "not-run"
+      },
+      "representation": {
+        "reason": null,
+        "status": "pass"
+      },
+      "source": {
+        "reason": null,
+        "status": "pass"
+      }
+    },
+    "subject": "TensorIR/#151 generated JVP",
+    "tier": "gpu-numerical",
+    "timings": [],
+    "toolchain": {
+      "numpy": "2.3.4",
+      "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0",
+      "ptxas": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0",
+      "python": "3.12.12"
+    }
+  },
+  {
+    "attachments": [],
+    "backend_selected": "cuda",
+    "block_errors": {
+      "bar_f": {
+        "atol": 1e-11,
+        "max_absolute_error": 3.2526065174565133e-19,
+        "max_scaled_error": 3.242153167021119e-08,
+        "passed": true,
+        "rms_error": 1.6777240408489206e-19,
+        "rtol": 1e-10,
+        "shape": [
+          4,
+          4
+        ]
+      },
+      "bar_g": {
+        "atol": 1e-11,
+        "max_absolute_error": 8.673617379884035e-19,
+        "max_scaled_error": 8.497610457647145e-08,
+        "passed": true,
+        "rms_error": 1.53960260953206e-19,
+        "rtol": 1e-10,
+        "shape": [
+          3,
+          3,
+          4,
+          4
+        ]
+      },
+      "bar_t": {
+        "atol": 1e-11,
+        "max_absolute_error": 4.336808689942018e-19,
+        "max_scaled_error": 4.2484006006233236e-08,
+        "passed": true,
+        "rms_error": 8.87541845464484e-20,
+        "rtol": 1e-10,
+        "shape": [
+          3,
+          3,
+          4,
+          4
+        ]
+      }
+    },
+    "compilation": {
+      "binary_sha256": "44415289c7df6be01e8e2e28cfff36ace98bea121148485721e6997e2665bb3a",
+      "reason": null,
+      "resources": [
+        {
+          "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+          "registers": 26,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z10scatter_19PhPKdPilllll",
+          "registers": 38,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z7pack_19PKhPdS1_Pilllllll",
+          "registers": 34,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z9kernel_18PhPi",
+          "registers": 30,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z9kernel_15PhPi",
+          "registers": 30,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z10scatter_14PhPKdPilllll",
+          "registers": 32,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z7pack_14PKhPdS1_Pilllllll",
+          "registers": 32,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z10scatter_13PhPKdPilllll",
+          "registers": 32,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z7pack_13PKhPdS1_Pilllllll",
+          "registers": 32,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z9kernel_12PhPi",
+          "registers": 34,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z10scatter_10PhPKdPilllll",
+          "registers": 36,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z7pack_10PKhPdS1_Pilllllll",
+          "registers": 34,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z9scatter_9PhPKdPilllll",
+          "registers": 28,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z6pack_9PKhPdS1_Pilllllll",
+          "registers": 36,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z8kernel_8PhPi",
+          "registers": 30,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z8kernel_5PhPi",
+          "registers": 30,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z9scatter_4PhPKdPilllll",
+          "registers": 32,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z6pack_4PKhPdS1_Pilllllll",
+          "registers": 32,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        }
+      ],
+      "seconds": 4.030379397794604
+    },
+    "device": {
+      "architecture": "sm_120",
+      "cublas": "12.9.1",
+      "driver": 12080,
+      "runtime": 12090,
+      "sm_count": 170,
+      "uuid": "c17495e9988d06268bdd95d0d1b47f36"
+    },
+    "hardware": {
+      "reason": null,
+      "status": "pass"
+    },
+    "hash_reasons": {},
+    "hashes": {
+      "equation": "053f61b75222bf821360bb447267b02a9a6411acf51229741a1d3fa1d63fb5d2",
+      "ir": "619cf618911a46118f94043c0b74c83d9c82cbd341cf5214cb399e0343736a73",
+      "schedule": "63246b257f1cedff770ebaa8c605fea9eadd1b9051d41a77ac9a1867a25abb48",
+      "source": "351c564302507f20e191bda6e54d1dbc59da34e19c14a620eb33f9afdfaffb63"
+    },
+    "inputs_hash": "600515e39825dfd8f0ab779bba84c72a177bb69fa14f75132f3527887828431a",
+    "memory": {
+      "allocated_bytes": 14692096,
+      "observed_device_delta": 16777216,
+      "peak_bytes": 105009672,
+      "provider_retained_bytes": 10485760,
+      "reason": null
+    },
+    "performance": {
+      "reason": "no interleaved baseline comparison",
+      "status": "not-run"
+    },
+    "residuals": {},
+    "revision": "4707632ca91c0faebca1ccef1aa068adf05fff3f",
+    "schema": "vibeqc.validation",
+    "schema_version": 1,
+    "settings": {
+      "dirty": false,
+      "dot_relative_error": 3.9675282341427827e-16,
+      "fast_compile": false,
+      "finite_differences": [
+        {
+          "error": {
+            "atol": 1e-08,
+            "max_absolute_error": 1.1761707027161533e-10,
+            "max_scaled_error": 0.011152197114297538,
+            "passed": true,
+            "rms_error": 1.1761707027161533e-10,
+            "rtol": 1e-06,
+            "shape": []
+          },
+          "step": 0.001
+        },
+        {
+          "error": {
+            "atol": 1e-08,
+            "max_absolute_error": 1.1759389035442824e-12,
+            "max_scaled_error": 0.00011149999367611089,
+            "passed": true,
+            "rms_error": 1.1759389035442824e-12,
+            "rtol": 1e-06,
+            "shape": []
+          },
+          "step": 0.0001
+        },
+        {
+          "error": {
+            "atol": 1e-08,
+            "max_absolute_error": 9.947229671902758e-15,
+            "max_scaled_error": 9.431748896917368e-07,
+            "passed": true,
+            "rms_error": 9.947229671902758e-15,
+            "rtol": 1e-06,
+            "shape": []
+          },
+          "step": 1e-05
+        }
+      ],
+      "graph_status": "ordinary-stream: graph capture is not enabled for TensorIR",
+      "metrics": {
+        "device_ms": 4.066336154937744,
+        "endpoint_ms": 4.267167299985886,
+        "host_buffer_bytes": 140040,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 16777216,
+        "output_ms": 0.0,
+        "owned_device_bytes": 4206336,
+        "packing_ms": 0.0,
+        "predicted_peak_bytes": 105009672,
+        "prepare_device_delta": 16777216,
+        "profiled": false,
+        "provider_retained_bytes": 10485760
+      },
+      "mode": "numerical",
+      "nocc": 3,
+      "nvir": 4,
+      "plan": {
+        "allocation_bytes": 4206336,
+        "arena_bytes": 9472,
+        "device_bytes": 104869632,
+        "double_buffer_bytes": 0,
+        "equation": "053f61b75222bf821360bb447267b02a9a6411acf51229741a1d3fa1d63fb5d2",
+        "estimated_flops": 5760,
+        "estimated_traffic_bytes": 30496,
+        "host_bytes": 140040,
+        "index_tables": [],
+        "inputs": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "library_bytes": 4194304,
+        "max_bytes": 268435456,
+        "outputs": [
+          [
+            "bar_f",
+            9
+          ],
+          [
+            "bar_g",
+            13
+          ],
+          [
+            "bar_t",
+            19
+          ]
+        ],
+        "panel_bytes": 2304,
+        "peak_bytes": 105009672,
+        "provider_bytes": 100663296,
+        "reservations": {
+          "concurrent": 0,
+          "diis": 0,
+          "r": 0,
+          "t": 0
+        },
+        "schedule": {
+          "direct_gemm": false,
+          "fuse": true,
+          "recompute": true,
+          "threads": 128,
+          "tile_k": 32,
+          "tile_m": 32,
+          "tile_n": 32,
+          "views": true
+        },
+        "schema": 1,
+        "steps": [
+          {
+            "gemm": "none",
+            "inputs": [],
+            "last_use": 20,
+            "node": "n_501b0e3a82ed2bcc7be6c6e0a5552d8883eaf1b842d0d65c273c9bced613472c_0",
+            "offset": 0,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "none",
+            "inputs": [],
+            "last_use": 20,
+            "node": "n_57512ee16caf7031b3cfebcd4e30ee44ad2370e3b68f4596d8e03a70e3b6401c_0",
+            "offset": 1280,
+            "shape": [
+              4,
+              4
+            ],
+            "strides": [
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "none",
+            "inputs": [],
+            "last_use": 20,
+            "node": "n_a7da53565a28be2579ecf1fe6d499a8ee97864039d20253c5504a11eb35cf837_0",
+            "offset": 1536,
+            "shape": [],
+            "strides": [],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "none",
+            "inputs": [],
+            "last_use": 20,
+            "node": "n_cb93cd8e82abf8aeaf60c273a52661dc2bd8a5aaec4e97d0615c8ecd2bcc61d8_0",
+            "offset": 1792,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "packed",
+            "inputs": [
+              2,
+              0
+            ],
+            "last_use": 8,
+            "node": "n_35e207d254e41edd5d69eb8c7686c3f794dbca0ded08d8d409c112976d539126_0",
+            "offset": 3072,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "none",
+            "inputs": [
+              4
+            ],
+            "last_use": 8,
+            "node": "n_3449d2344d12b1554626e5ccc514ef01e1b9af408146321d837a77421afc7cf5_0",
+            "offset": 4352,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "none",
+            "inputs": [
+              4
+            ],
+            "last_use": 6,
+            "node": "n_dd5a81aa3d7635ce6814a02b0263bf7b3c5c42858901a6415e90f71285055f48_0",
+            "offset": -1,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": null,
+            "view_map": {
+              "coefficients": [
+                [
+                  1,
+                  1
+                ]
+              ]
+            },
+            "virtual": true
+          },
+          {
+            "gemm": "none",
+            "inputs": [
+              5
+            ],
+            "last_use": 7,
+            "node": "n_eb593ea012969df835b76a047f306550043379dd0e00d9ef68e5b0080a7b8d4e_0",
+            "offset": -1,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": null,
+            "view_map": {
+              "axes": [
+                0,
+                1,
+                3,
+                2
+              ]
+            },
+            "virtual": true
+          },
+          {
+            "gemm": "none",
+            "inputs": [
+              6,
+              7
+            ],
+            "last_use": 9,
+            "node": "n_25a86ee0957a1d7c5e485861837652bae0a58abcfc09eaccb5df4fb495f0af39_0",
+            "offset": 5632,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "packed",
+            "inputs": [
+              8,
+              3
+            ],
+            "last_use": 20,
+            "node": "n_04d4d6aae5966883ce9e416d34ec1ab43e5f257f51e306ffe4709996478b9fe7_0",
+            "offset": 3072,
+            "shape": [
+              4,
+              4
+            ],
+            "strides": [
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "packed",
+            "inputs": [
+              1,
+              3
+            ],
+            "last_use": 12,
+            "node": "n_0a21686f8b03c9d568e5c9912a89c91045bac7f8cff1999686914dfb24d77683_0",
+            "offset": 3328,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "none",
+            "inputs": [
+              10
+            ],
+            "last_use": 11,
+            "node": "n_2259929713d437773941d800bf9bff4a1306bd7af2fac27ee50f409afff7f73c_0",
+            "offset": -1,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": null,
+            "view_map": {
+              "axes": [
+                0,
+                1,
+                3,
+                2
+              ]
+            },
+            "virtual": true
+          },
+          {
+            "gemm": "none",
+            "inputs": [
+              10,
+              11
+            ],
+            "last_use": 13,
+            "node": "n_d6d3545b60d4f8e8dce30309a4feacc898144f1fe54190c93c9da06ccfa13981_0",
+            "offset": 4608,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "packed",
+            "inputs": [
+              2,
+              12
+            ],
+            "last_use": 20,
+            "node": "n_ab2124340cb39644759ea18f5e71a2c3f4ffb9dd21c2c04d3a8572492062ffd2_0",
+            "offset": 3328,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "packed",
+            "inputs": [
+              2,
+              0
+            ],
+            "last_use": 18,
+            "node": "n_35e207d254e41edd5d69eb8c7686c3f794dbca0ded08d8d409c112976d539126_0",
+            "offset": 4608,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "none",
+            "inputs": [
+              14
+            ],
+            "last_use": 18,
+            "node": "n_3449d2344d12b1554626e5ccc514ef01e1b9af408146321d837a77421afc7cf5_0",
+            "offset": 6912,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "none",
+            "inputs": [
+              14
+            ],
+            "last_use": 16,
+            "node": "n_dd5a81aa3d7635ce6814a02b0263bf7b3c5c42858901a6415e90f71285055f48_0",
+            "offset": -1,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": null,
+            "view_map": {
+              "coefficients": [
+                [
+                  1,
+                  1
+                ]
+              ]
+            },
+            "virtual": true
+          },
+          {
+            "gemm": "none",
+            "inputs": [
+              15
+            ],
+            "last_use": 17,
+            "node": "n_eb593ea012969df835b76a047f306550043379dd0e00d9ef68e5b0080a7b8d4e_0",
+            "offset": -1,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": null,
+            "view_map": {
+              "axes": [
+                0,
+                1,
+                3,
+                2
+              ]
+            },
+            "virtual": true
+          },
+          {
+            "gemm": "none",
+            "inputs": [
+              16,
+              17
+            ],
+            "last_use": 19,
+            "node": "n_25a86ee0957a1d7c5e485861837652bae0a58abcfc09eaccb5df4fb495f0af39_0",
+            "offset": 8192,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          },
+          {
+            "gemm": "packed",
+            "inputs": [
+              18,
+              1
+            ],
+            "last_use": 20,
+            "node": "n_10bc05f2d9b7435763551a0e20dc5ac16c8dae00f67544eb962743095b801e82_0",
+            "offset": 4608,
+            "shape": [
+              3,
+              3,
+              4,
+              4
+            ],
+            "strides": [
+              48,
+              16,
+              4,
+              1
+            ],
+            "view_map": null,
+            "virtual": false
+          }
+        ],
+        "streams": 1,
+        "target": {
+          "architecture": "sm_120",
+          "compute_capability": "12.0",
+          "compute_capability_major": 12,
+          "compute_capability_minor": 0,
+          "cuda_toolkit_version": "",
+          "driver_version": "",
+          "generator_abi": 1,
+          "maximum_blocks_per_sm": 24,
+          "maximum_registers_per_thread": 255,
+          "maximum_threads_per_block": 1024,
+          "maximum_threads_per_sm": 1536,
+          "minimum_cuda_toolkit": "12.8",
+          "nvcc_version": "",
+          "packed_register_caps": [
+            192,
+            208
+          ],
+          "ptxas_version": "",
+          "registers_per_sm": 65536,
+          "required_cuda_features": [
+            "fp64",
+            "fp64_atomic_add"
+          ],
+          "shared_memory_per_block": 49152,
+          "shared_memory_per_block_optin": 101376,
+          "shared_memory_per_sm": 102400,
+          "sm_count": 170,
+          "tuning_maximum_packed_registers": 224,
+          "tuning_maximum_registers": 192,
+          "tuning_maximum_shared_bytes": 49152,
+          "tuning_maximum_stack_bytes": 128,
+          "warp_size": 32
+        }
+      },
+      "profile_metrics": {
+        "device_ms": 0.8098239898681641,
+        "endpoint_ms": 0.9422041475772858,
+        "host_buffer_bytes": 140040,
+        "input_ms": 0.014175999909639359,
+        "kernel_ms": 0.02204800001345575,
+        "library_ms": 0.19023999711498618,
+        "observed_device_delta": 16777216,
+        "output_ms": 0.03014400042593479,
+        "owned_device_bytes": 4206336,
+        "packing_ms": 0.16931200213730335,
+        "predicted_peak_bytes": 105009672,
+        "prepare_device_delta": 16777216,
+        "profiled": true,
+        "provider_retained_bytes": 10485760
+      },
+      "recomputed_nodes": 5,
+      "reference": "CPU TensorIR interpreter plus directional finite differences",
+      "scope": "generated JVP/VJP for a fixed scalar CC-like fragment",
+      "seed": 151,
+      "slurm_job_id": "1044"
+    },
+    "solver_iterations": [],
+    "solver_trace_reason": "not exposed by executor",
+    "stages": {
+      "compilation": {
+        "reason": null,
+        "status": "pass"
+      },
+      "endpoint": {
+        "reason": null,
+        "status": "pass"
+      },
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "production": {
+        "reason": "no production promotion in this evidence run",
+        "status": "not-run"
+      },
+      "representation": {
+        "reason": null,
+        "status": "pass"
+      },
+      "source": {
+        "reason": null,
+        "status": "pass"
+      }
+    },
+    "subject": "TensorIR/#151 generated VJP",
+    "tier": "gpu-numerical",
+    "timings": [],
+    "toolchain": {
+      "numpy": "2.3.4",
+      "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0",
+      "ptxas": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0",
+      "python": "3.12.12"
+    }
+  }
+]

@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include "runtime/resource_cuda.cuh"
 #include "scf/cuda_density_fitting.hpp"
 #include "scf/density_fitting.hpp"
 
@@ -466,14 +467,14 @@ struct SetupBuffers {
   int* solver_info{};
 
   ~SetupBuffers() {
-    (void)cudaFree(metrics);
-    (void)cudaFree(eigenvalues);
-    (void)cudaFree(scales);
-    (void)cudaFree(scaled_eigenvectors);
-    (void)cudaFree(inverse_square_roots);
-    (void)cudaFree(raw_three_center);
-    (void)cudaFree(solver_workspace);
-    (void)cudaFree(solver_info);
+    (void)runtime::resource_cuda_free(metrics);
+    (void)runtime::resource_cuda_free(eigenvalues);
+    (void)runtime::resource_cuda_free(scales);
+    (void)runtime::resource_cuda_free(scaled_eigenvectors);
+    (void)runtime::resource_cuda_free(inverse_square_roots);
+    (void)runtime::resource_cuda_free(raw_three_center);
+    (void)runtime::resource_cuda_free(solver_workspace);
+    (void)runtime::resource_cuda_free(solver_info);
   }
 };
 
@@ -534,21 +535,21 @@ void release(CudaDensityFittingJkPlan& plan) noexcept {
   if (plan.device_id >= 0) (void)cudaSetDevice(plan.device_id);
   destroy_persistent_scf_state(plan.persistent_scf_state);
   destroy_cuda_density_fitting_integral_source(plan.integral_source);
-  (void)cudaFree(plan.inverse_square_roots);
-  (void)cudaFree(plan.three_center);
-  (void)cudaFree(plan.primary_density);
-  (void)cudaFree(plan.secondary_density);
-  (void)cudaFree(plan.total_density);
-  (void)cudaFree(plan.auxiliary_density);
-  (void)cudaFree(plan.coulomb);
-  (void)cudaFree(plan.alpha_exchange);
-  (void)cudaFree(plan.beta_exchange);
-  (void)cudaFree(plan.auxiliary_tile_values);
-  (void)cudaFree(plan.exchange_intermediate);
-  (void)cudaFree(plan.exchange_contributions);
-  (void)cudaFree(plan.exchange_tile_output);
-  (void)cudaFree(plan.exchange_density_column_major);
-  (void)cudaFree(plan.metric_derivative_tile);
+  (void)runtime::resource_cuda_free(plan.inverse_square_roots);
+  (void)runtime::resource_cuda_free(plan.three_center);
+  (void)runtime::resource_cuda_free(plan.primary_density);
+  (void)runtime::resource_cuda_free(plan.secondary_density);
+  (void)runtime::resource_cuda_free(plan.total_density);
+  (void)runtime::resource_cuda_free(plan.auxiliary_density);
+  (void)runtime::resource_cuda_free(plan.coulomb);
+  (void)runtime::resource_cuda_free(plan.alpha_exchange);
+  (void)runtime::resource_cuda_free(plan.beta_exchange);
+  (void)runtime::resource_cuda_free(plan.auxiliary_tile_values);
+  (void)runtime::resource_cuda_free(plan.exchange_intermediate);
+  (void)runtime::resource_cuda_free(plan.exchange_contributions);
+  (void)runtime::resource_cuda_free(plan.exchange_tile_output);
+  (void)runtime::resource_cuda_free(plan.exchange_density_column_major);
+  (void)runtime::resource_cuda_free(plan.metric_derivative_tile);
   if (plan.solver_parameters != nullptr) {
     (void)cusolverDnDestroyParams(plan.solver_parameters);
   }
@@ -568,7 +569,7 @@ vibeqc_status fail_plan(CudaDensityFittingJkPlan* plan, vibeqc_status status) {
 
 vibeqc_status allocate_device(void** pointer, std::size_t bytes, const char* description,
                               std::string& detail) {
-  const cudaError_t error = cudaMalloc(pointer, bytes);
+  const cudaError_t error = runtime::resource_cuda_malloc(pointer, bytes);
   return error == cudaSuccess ? VIBEQC_STATUS_SUCCESS : cuda_failure(error, description, detail);
 }
 
@@ -2402,7 +2403,7 @@ struct DeviceSolver {
   bool xsyev{};
   int lwork{};
   ~DeviceSolver() {
-    (void)cudaFree(workspace);
+    (void)runtime::resource_cuda_free(workspace);
     std::free(host_workspace);
     if (parameters != nullptr) (void)cusolverDnDestroyParams(parameters);
     if (jacobi != nullptr) (void)cusolverDnDestroySyevjInfo(jacobi);
@@ -2484,7 +2485,7 @@ struct PersistentScfState {
 
   ~PersistentScfState() {
     if (device_id >= 0) (void)cudaSetDevice(device_id);
-    for (void* pointer : allocations) (void)cudaFree(pointer);
+    for (void* pointer : allocations) (void)runtime::resource_cuda_free(pointer);
   }
 };
 
@@ -2499,14 +2500,24 @@ struct ForceResponseScratch {
   std::vector<void*> pointers;
   ~ForceResponseScratch() {
     if (device_id >= 0) (void)cudaSetDevice(device_id);
-    for (void* pointer : pointers) (void)cudaFree(pointer);
+    for (void* pointer : pointers) (void)runtime::resource_cuda_free(pointer);
   }
 };
 
 vibeqc_status allocate_force_buffer(ForceResponseScratch& scratch, std::size_t bytes,
                                     void** pointer, const char* description, std::string& detail) {
   const vibeqc_status status = allocate_device(pointer, bytes, description, detail);
-  if (status == VIBEQC_STATUS_SUCCESS) scratch.pointers.push_back(*pointer);
+  if (status == VIBEQC_STATUS_SUCCESS) {
+    try {
+      scratch.pointers.push_back(*pointer);
+    } catch (const std::bad_alloc&) {
+      // The scratch owner has not acquired this pointer yet. Free it before
+      // propagating a host metadata failure through the native OOM boundary.
+      (void)runtime::resource_cuda_free(*pointer);
+      *pointer = nullptr;
+      throw;
+    }
+  }
   return status;
 }
 
@@ -3086,7 +3097,7 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
         try {
           state->allocations.push_back(*pointer);
         } catch (const std::bad_alloc&) {
-          (void)cudaFree(*pointer);
+          (void)runtime::resource_cuda_free(*pointer);
           *pointer = nullptr;
           detail = "host allocation failed for CUDA DF SCF state handles";
           return VIBEQC_STATUS_OUT_OF_MEMORY;
@@ -3451,7 +3462,7 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
         try {
           state->allocations.push_back(*pointer);
         } catch (const std::bad_alloc&) {
-          (void)cudaFree(*pointer);
+          (void)runtime::resource_cuda_free(*pointer);
           *pointer = nullptr;
           detail = "host allocation failed for CUDA DF SCF state handles";
           return VIBEQC_STATUS_OUT_OF_MEMORY;

@@ -1,11 +1,12 @@
 # GPU RCCSD implementation and acceptance
 
-This work depends on **PR #215**, including the audited #148 A/B/C commit
+This slice builds on the merged **PR #215** and its audited #148 A/B/C
+implementation. The historical GPU evidence used CPU commit
 `5f31c4289db59853e4f64a942a51b4cccc68a3cd`. That CPU implementation supplies
 the physical equations; #149 does not introduce a second CC equation source.
-The current branch also integrates upstream `73be867` without rewriting the
-published #148 commits. Shared native reference/provider and resident TensorIR
-interfaces are coordinated with #193.
+Historical evidence preserves its original source identities; the active code
+integrates current master. Shared native reference/provider and resident
+TensorIR interfaces are coordinated with #193.
 
 ## A: fixed-amplitude equations
 
@@ -27,7 +28,7 @@ one byte below the minimum must fail before CUDA allocation.
 export PYTHONPATH=.:python OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 python -m tools.validate_cc_cuda --architecture sm_90 \
   --nvcc /usr/local/cuda/bin/nvcc --cache build/tensor-cuda-cache \
-  --output benchmarks/results/rccsd-149-a
+  --output build/cc149-reproduction
 VIBEQC_CC_CUDA_TEST=1 VIBEQC_TENSOR_ARCH=sm_90 \
   VIBEQC_NVCC=/usr/local/cuda/bin/nvcc python -m pytest \
   tests/python/test_cc_cuda.py tests/python/test_cc_cuda_state.py -q

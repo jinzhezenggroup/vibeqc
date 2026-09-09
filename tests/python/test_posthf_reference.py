@@ -125,6 +125,24 @@ def test_small_denominators_are_not_clamped():
         restricted_mp2(s, provider)
 
 
+def test_restricted_mp2_rejects_ks_reference():
+    meta, a = load_fixture("h2")
+    s = fixture_snapshot(meta, a)
+    ks = replace(
+        s,
+        algorithm="KS",
+        functional_identity="test-functional",
+        grid_identity="test-grid",
+        hf_backend="test-ks",
+    )
+    provider = SimpleNamespace(
+        snapshot=ks,
+        get=lambda request: pytest.fail("KS reference must be rejected before reads"),
+    )
+    with pytest.raises(ValueError, match="RHF"):
+        restricted_mp2(ks, provider)
+
+
 def test_explicit_slot_order_and_invalid_indices():
     meta, a = load_fixture("water")
     s = fixture_snapshot(meta, a)

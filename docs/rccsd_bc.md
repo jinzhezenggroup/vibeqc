@@ -75,7 +75,11 @@ reference and conventional CPU provider; it does not register a public method
 or call an external CC solver. `PreparedCCSD` first validates the reference,
 provider identity, amplitude shapes/FP64/finiteness/pair symmetry and logical
 budget, then checks physical canonical denominators. Only afterward does it
-request the seven cached MO blocks. The A energy/T1 facade now also rejects
+dry-run the complete seven-block provider cache transition and request the
+MO blocks. Pin/LRU policies and existing cache hits are included in the
+collective preflight, under the provider lock; insufficient collective capacity
+fails before the first AO read. This CC adapter reads #147's internal cache
+accounting without extending its shared API. The A energy/T1 facade also rejects
 illegal amplitudes and impossible interpreter budgets before conversion.
 
 Default initial amplitudes are T1=0 and MP2-like T2=(ia|jb)/D2 with the

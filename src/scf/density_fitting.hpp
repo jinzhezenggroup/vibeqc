@@ -197,6 +197,14 @@ struct DensityFittingTilePlan {
                                                                 std::size_t memory_budget_bytes,
                                                                 std::size_t fixed_device_bytes = 0);
 
+/** Shape-only capacity of the current bounded DF source's owned uploads.
+ * Counts include the combined orbital/auxiliary/dummy basis across the batch;
+ * transform_elements counts both public-to-Cartesian transform matrices.
+ */
+[[nodiscard]] std::size_t density_fitting_source_metadata_bytes(
+    std::size_t batch, std::size_t atoms, std::size_t shells, std::size_t cartesian_aos,
+    std::size_t primitives, std::size_t transform_elements);
+
 }  // namespace vibeqc::scf
 
 #endif

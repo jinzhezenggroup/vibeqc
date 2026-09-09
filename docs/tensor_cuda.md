@@ -88,7 +88,13 @@ produce zero. Index expressions remain compilable for zero extents.
 Generated kernels cover ordered addition, products, division/denominators,
 transpose, logical reshape, slice, gather (including repeated coordinates),
 reduction and explicit broadcast. Packing scatter assigns unique destinations;
-there is no new mathematical scatter-add primitive or AD implementation.
+generated derivative programs from #151 use incidence-matrix einsum nodes
+rather than a new mathematical scatter-add primitive.
+
+Generated JVP/VJP programs from #151 are ordinary TensorIR programs and use
+the same planning, compilation and execution path. The fixed CC-like RTX 5090
+numerical/resource evidence is recorded in
+[`benchmarks/results/tensor-ad-151`](../benchmarks/results/tensor-ad-151/README.md).
 
 ## Budgets, lifetimes and limitations
 

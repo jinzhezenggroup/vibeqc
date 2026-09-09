@@ -7,6 +7,8 @@
 #include <stdexcept>
 #include <vector>
 
+#include "molecule/basis.hpp"
+
 namespace vibeqc::scf {
 namespace {
 
@@ -890,6 +892,27 @@ DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch_size, std::s
   plan.stores_full_three_center = plan.batch_tile == batch_size &&
                                   plan.ao_pair_tile == ao_pair_count && plan.auxiliary_tile == naux;
   return plan;
+}
+
+std::size_t density_fitting_source_metadata_bytes(std::size_t batch, std::size_t atoms,
+                                                  std::size_t shells, std::size_t cartesian_aos,
+                                                  std::size_t primitives,
+                                                  std::size_t transform_elements) {
+  std::size_t bytes = 32;  // atom and three shell offset vectors' final entries
+  const auto add = [&](std::size_t count, std::size_t width) {
+    std::size_t product = 0;
+    if (!checked_multiply(count, width, product) ||
+        product > std::numeric_limits<std::size_t>::max() - bytes)
+      throw std::overflow_error("DF source metadata overflows size_t");
+    bytes += product;
+  };
+  add(batch, 8);
+  add(atoms, 32);   // system/element indices and Cartesian positions
+  add(shells, 29);  // center/angular values and three shell offset arrays
+  add(cartesian_aos, 20 + 11 * molecule::kMaximumAoExpansionTerms);
+  add(primitives, 16);
+  add(transform_elements, 8);
+  return bytes;
 }
 
 }  // namespace vibeqc::scf

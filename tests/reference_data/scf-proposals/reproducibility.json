@@ -1,0 +1,9 @@
+{
+  "schema": "vibeqc.scf_reference_reproducibility",
+  "schema_version": 1,
+  "independent_generations": 2,
+  "byte_identical": true,
+  "reference_record_hash": "9ca04af2992818722a4c489c11bae23c76e07834e4d16cfb50307798aaf3a7c9",
+  "maximum_energy_difference_Eh": 0.0,
+  "maximum_force_difference_Eh_per_bohr": 0.0
+}

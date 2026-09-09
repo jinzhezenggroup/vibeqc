@@ -1,5 +1,6 @@
 """Native tile, bounded transformation, cache and same-Hamiltonian DF gates."""
 
+import os
 from dataclasses import replace
 
 import numpy as np
@@ -158,6 +159,22 @@ def test_df_rank_threshold_and_metric_invalidation(source_factory):
     assert metric.rank == 2 and source.naux == 3
     changed = MetricFactor.from_source(source, relative_threshold=1e-9)
     assert metric.identity != changed.identity
+
+
+@pytest.mark.parametrize("backend", ["cpu", "cuda"])
+def test_native_direct_density_export_preserves_zero_screening(source_factory, backend):
+    """The native export requests screening=0 for its unscreened HF reference."""
+    if backend == "cuda" and os.environ.get("VIBEQC_POSTHF_CUDA_TEST") != "1":
+        pytest.skip("requires explicitly allocated real GPU")
+    source, meta, _ = source_factory()
+    density, stats = source.rhf_density(backend=backend, df=False)
+    overlap, _ = source.one_electron()
+    assert stats["backend"] == backend
+    assert stats["energy"] == pytest.approx(
+        meta["records"]["conventional"]["hf_energy"], abs=2e-11
+    )
+    assert np.trace(density @ overlap) == pytest.approx(2.0, abs=1e-10)
+    assert np.all(np.isfinite(density))
 
 
 def test_native_hf_export_failure_isolation_and_ownership(source_factory):

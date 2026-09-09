@@ -1,0 +1,3528 @@
+{
+  "schema_version": 1,
+  "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+  "library_sha256": "47da7a478ab528999fd45b53c27a1987f38c44c7a98fb789ccf2606150fa4bee",
+  "source_identity": "b039ac24d6a599018fb067796ff804f3d6107bc962c2683606d834b8afc4360f",
+  "production_configuration": [
+    "CMAKE_BUILD_TYPE:STRING=Release",
+    "CMAKE_CUDA_ARCHITECTURES:UNINITIALIZED=120",
+    "CMAKE_CUDA_COMPILER:STRING=/group/software/cuda-12.9.1/bin/nvcc",
+    "CMAKE_CUDA_FLAGS:STRING=",
+    "CMAKE_CUDA_FLAGS_DEBUG:STRING=-g",
+    "CMAKE_CUDA_FLAGS_MINSIZEREL:STRING=-O1 -DNDEBUG",
+    "CMAKE_CUDA_FLAGS_RELEASE:STRING=-O3 -DNDEBUG",
+    "CMAKE_CUDA_FLAGS_RELWITHDEBINFO:STRING=-O2 -g -DNDEBUG",
+    "CMAKE_CXX_FLAGS:STRING=",
+    "CMAKE_CXX_FLAGS_DEBUG:STRING=-g",
+    "CMAKE_CXX_FLAGS_MINSIZEREL:STRING=-Os -DNDEBUG",
+    "CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG",
+    "CMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING=-O2 -g -DNDEBUG",
+    "VIBEQC_AOT_PROFILE:STRING=auto",
+    "VIBEQC_AOT_PROFILES:STRING=",
+    "VIBEQC_AOT_SHARDS:STRING=8",
+    "VIBEQC_AOT_UNIT_MODE:STRING=stable-shards",
+    "VIBEQC_BUILD_TESTS:BOOL=ON",
+    "VIBEQC_COMPILER_CACHE:STRING=auto",
+    "VIBEQC_CUDA_ARCHITECTURES:STRING=",
+    "VIBEQC_CUDA_COMPILE_ARCHITECTURES:STRING=",
+    "VIBEQC_CUDA_COMPILE_JOBS:STRING=2",
+    "VIBEQC_CUDA_FAST_COMPILE:BOOL=OFF",
+    "VIBEQC_CUDA_SEPARABLE_COMPILATION:BOOL=OFF",
+    "VIBEQC_CUDA_SPLIT_COMPILE_THREADS:STRING=1",
+    "VIBEQC_ENABLE_AOT_SHELLS:BOOL=OFF",
+    "VIBEQC_ENABLE_CUDA:BOOL=ON",
+    "CMAKE_CUDA_COMPILER-ADVANCED:INTERNAL=1",
+    "CMAKE_CUDA_FLAGS-ADVANCED:INTERNAL=1",
+    "CMAKE_CUDA_FLAGS_DEBUG-ADVANCED:INTERNAL=1",
+    "CMAKE_CUDA_FLAGS_MINSIZEREL-ADVANCED:INTERNAL=1",
+    "CMAKE_CUDA_FLAGS_RELEASE-ADVANCED:INTERNAL=1",
+    "CMAKE_CUDA_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1",
+    "CMAKE_CXX_FLAGS-ADVANCED:INTERNAL=1",
+    "CMAKE_CXX_FLAGS_DEBUG-ADVANCED:INTERNAL=1",
+    "CMAKE_CXX_FLAGS_MINSIZEREL-ADVANCED:INTERNAL=1",
+    "CMAKE_CXX_FLAGS_RELEASE-ADVANCED:INTERNAL=1",
+    "CMAKE_CXX_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1",
+    "VIBEQC_AOT_UNIT_MODE-STRINGS:INTERNAL=stable-shards;class"
+  ],
+  "slurm_job_id": "9046",
+  "visible_devices": "0",
+  "gpu": "NVIDIA GeForce RTX 5090, 580.95.05\n",
+  "scope": "owned HF CUDA allocations and TensorIR arrays/provider retention; sum of observed owner peaks bounds their joint live usage; runtime/library exclusions remain explicit in each plan",
+  "records": [
+    {
+      "case": "rhf-direct",
+      "plan": {
+        "budget": {
+          "host_bytes": 807520,
+          "device_bytes": 69872,
+          "pinned_host_bytes": null,
+          "per_device_bytes": [],
+          "host_reserve_bytes": 0,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "schema_version": 1
+        },
+        "requests": [
+          {
+            "name": "hf",
+            "identity": {
+              "method": "rhf",
+              "provider": "native-hf-direct-v1",
+              "backend": "cuda",
+              "precision": "fp64",
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 1}, {\"atoms\": 3, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [8, 1, 1], \"ecp_core_electrons\": [0, 0, 0], \"electron_count\": 10, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 5, \"nbeta\": 5, \"nuclear_charges\": [8, 1, 1]}, \"orbital\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"spins\": 1}, {\"atoms\": 2, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 1}]}",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "schedule": "{\"density_fitting\": \"none\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-10, \"device_id\": 0, \"diis_history\": 8, \"energy_tolerance\": 1e-12, \"max_iterations\": 100, \"native_binary_sha256\": \"47da7a478ab528999fd45b53c27a1987f38c44c7a98fb789ccf2606150fa4bee\", \"profile_identity\": \"generic_cuda\", \"runtime_policy\": {\"VIBEQC_BOUNDED_DIRECT_AOT_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_COUNT_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_STREAMING\": null, \"VIBEQC_DF_VALUES\": null, \"VIBEQC_DF_VALUE_MAPPING\": null, \"VIBEQC_DIRECT_TILE_VALIDATION\": null, \"VIBEQC_FINAL_FOCK_REBUILD\": null, \"VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING\": null, \"VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE\": null, \"VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD\": null, \"VIBEQC_ONE_ELECTRON_FORCE_SCALAR\": null, \"VIBEQC_PPPS_BLOCK_THREADS\": null, \"VIBEQC_PPPS_RESIDENT_BRA\": null, \"VIBEQC_PPPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PPSS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSSS_RESIDENT_BRA\": null, \"VIBEQC_PSSS_WEIGHTED\": null, \"VIBEQC_XSYEV_PROBE_SKIP_DIAGNOSTIC\": null}, \"screening_tolerance\": 1e-12}",
+              "schema_version": 1
+            },
+            "candidates": [
+              {
+                "name": "cuda-small-resident",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "all retained direct-HF bucket arenas",
+                    "bytes": 37352,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "one cold numerical retry alongside warm bucket",
+                    "bytes": 32520,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "fleet host state, packed topology and staging capacity",
+                    "bytes": 807520,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  }
+                ],
+                "relative_cost": 0,
+                "decisions": [
+                  [
+                    "batch_execution",
+                    "serialized buckets; every retained arena summed"
+                  ],
+                  [
+                    "eigensolver",
+                    "small native; no external library workspace"
+                  ],
+                  [
+                    "item_inventory",
+                    "[{\"arena\": 2416, \"host\": 90016}, {\"arena\": 32520, \"host\": 627488}, {\"arena\": 2416, \"host\": 90016}]"
+                  ]
+                ]
+              }
+            ],
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding",
+              "CUDA context, modules, graphs, stacks and allocator pool/page retention"
+            ],
+            "unsupported_reason": null,
+            "infeasible_reason": null
+          }
+        ],
+        "selections": [
+          [
+            "hf",
+            "cuda-small-resident"
+          ]
+        ],
+        "status": "feasible",
+        "diagnostic": null,
+        "schema_version": 1,
+        "peak_bytes": {
+          "host": 807520,
+          "device": 69872,
+          "pinned": 0,
+          "pageable": 807520,
+          "device:0": 69872
+        },
+        "resident_bytes": {
+          "host": 807520,
+          "device": 37352,
+          "pinned": 0,
+          "pageable": 807520,
+          "device:0": 37352
+        },
+        "peak_phases": {
+          "device:0": 0,
+          "pageable": 0,
+          "host": 0,
+          "device": 0
+        },
+        "limits": {
+          "host": 807520,
+          "device": 69872
+        },
+        "identity": "8e944a10e3cbc126f1966a0a5423e1be3ea29030439f90b2b051f294a65a3289"
+      },
+      "replays": [
+        {
+          "observation": {
+            "status": "observed",
+            "sampled_item_peak_host_bytes": null,
+            "samples": null,
+            "sampled_cuda_arena_peak_bytes": 37208,
+            "cuda_arena_samples": 4,
+            "device_ledger": {
+              "device": 0,
+              "limit_bytes": 69872,
+              "live_bytes": 37208,
+              "peak_bytes": 37208,
+              "allocations": 2,
+              "rejected_allocations": 0,
+              "scope": "owned HF CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+            },
+            "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+            "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+            "complete_plan_peak": false,
+            "cpu_worker_limit": 1,
+            "excludes": [
+              "recurrence/eigensolver temporaries",
+              "other fleet items",
+              "runtime overhead"
+            ]
+          },
+          "maximum_energy_error": 0.0,
+          "maximum_cpu_energy_error": 5.684341886080802e-14,
+          "maximum_force_error": 1.6375789613221059e-15,
+          "maximum_cpu_force_error": 4.399729885973258e-11
+        },
+        {
+          "observation": {
+            "status": "observed",
+            "sampled_item_peak_host_bytes": null,
+            "samples": null,
+            "sampled_cuda_arena_peak_bytes": 37208,
+            "cuda_arena_samples": 2,
+            "device_ledger": {
+              "device": 0,
+              "limit_bytes": 69872,
+              "live_bytes": 37208,
+              "peak_bytes": 37208,
+              "allocations": 0,
+              "rejected_allocations": 0,
+              "scope": "owned HF CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+            },
+            "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+            "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+            "complete_plan_peak": false,
+            "cpu_worker_limit": 1,
+            "excludes": [
+              "recurrence/eigensolver temporaries",
+              "other fleet items",
+              "runtime overhead"
+            ]
+          },
+          "maximum_energy_error": 0.0,
+          "maximum_cpu_energy_error": 5.684341886080802e-14,
+          "maximum_force_error": 1.0408340855860843e-15,
+          "maximum_cpu_force_error": 8.310109544940047e-12
+        }
+      ],
+      "live_device_bytes_after_destroy": 0,
+      "infeasible": {
+        "budget": {
+          "host_bytes": 807519,
+          "device_bytes": null,
+          "pinned_host_bytes": null,
+          "per_device_bytes": [],
+          "host_reserve_bytes": 0,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "schema_version": 1
+        },
+        "requests": [
+          {
+            "name": "hf",
+            "identity": {
+              "method": "rhf",
+              "provider": "native-hf-direct-v1",
+              "backend": "cuda",
+              "precision": "fp64",
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 1}, {\"atoms\": 3, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [8, 1, 1], \"ecp_core_electrons\": [0, 0, 0], \"electron_count\": 10, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 5, \"nbeta\": 5, \"nuclear_charges\": [8, 1, 1]}, \"orbital\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"spins\": 1}, {\"atoms\": 2, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 1}]}",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "schedule": "{\"density_fitting\": \"none\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-10, \"device_id\": 0, \"diis_history\": 8, \"energy_tolerance\": 1e-12, \"max_iterations\": 100, \"native_binary_sha256\": \"47da7a478ab528999fd45b53c27a1987f38c44c7a98fb789ccf2606150fa4bee\", \"profile_identity\": \"generic_cuda\", \"runtime_policy\": {\"VIBEQC_BOUNDED_DIRECT_AOT_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_COUNT_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_STREAMING\": null, \"VIBEQC_DF_VALUES\": null, \"VIBEQC_DF_VALUE_MAPPING\": null, \"VIBEQC_DIRECT_TILE_VALIDATION\": null, \"VIBEQC_FINAL_FOCK_REBUILD\": null, \"VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING\": null, \"VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE\": null, \"VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD\": null, \"VIBEQC_ONE_ELECTRON_FORCE_SCALAR\": null, \"VIBEQC_PPPS_BLOCK_THREADS\": null, \"VIBEQC_PPPS_RESIDENT_BRA\": null, \"VIBEQC_PPPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PPSS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSSS_RESIDENT_BRA\": null, \"VIBEQC_PSSS_WEIGHTED\": null, \"VIBEQC_XSYEV_PROBE_SKIP_DIAGNOSTIC\": null}, \"screening_tolerance\": 1e-12}",
+              "schema_version": 1
+            },
+            "candidates": [
+              {
+                "name": "cuda-small-resident",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "all retained direct-HF bucket arenas",
+                    "bytes": 37352,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "one cold numerical retry alongside warm bucket",
+                    "bytes": 32520,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "fleet host state, packed topology and staging capacity",
+                    "bytes": 807520,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  }
+                ],
+                "relative_cost": 0,
+                "decisions": [
+                  [
+                    "batch_execution",
+                    "serialized buckets; every retained arena summed"
+                  ],
+                  [
+                    "eigensolver",
+                    "small native; no external library workspace"
+                  ],
+                  [
+                    "item_inventory",
+                    "[{\"arena\": 2416, \"host\": 90016}, {\"arena\": 32520, \"host\": 627488}, {\"arena\": 2416, \"host\": 90016}]"
+                  ]
+                ]
+              }
+            ],
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding",
+              "CUDA context, modules, graphs, stacks and allocator pool/page retention"
+            ],
+            "unsupported_reason": null,
+            "infeasible_reason": null
+          }
+        ],
+        "selections": [
+          [
+            "hf",
+            "cuda-small-resident"
+          ]
+        ],
+        "status": "infeasible",
+        "diagnostic": "no supported plan fits: {'host': {'peak': 807520, 'limit': 807519, 'minimum_across_candidates': 807520}}; dominant allocations: fleet host state, packed topology and staging capacity=807520 pageable, all retained direct-HF bucket arenas=37352 device:0, one cold numerical retry alongside warm bucket=32520 device:0",
+        "schema_version": 1,
+        "peak_bytes": {
+          "host": 807520,
+          "device": 69872,
+          "pinned": 0,
+          "pageable": 807520,
+          "device:0": 69872
+        },
+        "resident_bytes": {
+          "host": 807520,
+          "device": 37352,
+          "pinned": 0,
+          "pageable": 807520,
+          "device:0": 37352
+        },
+        "peak_phases": {
+          "device:0": 0,
+          "pageable": 0,
+          "host": 0,
+          "device": 0
+        },
+        "limits": {
+          "host": 807519
+        },
+        "identity": "cc94355579e25d03224c27434d167a4acefb51d1bba08a4da16c47b571b7d446"
+      }
+    },
+    {
+      "case": "rhf-resident",
+      "plan": {
+        "budget": {
+          "host_bytes": 95999144,
+          "device_bytes": 1140957484,
+          "pinned_host_bytes": null,
+          "per_device_bytes": [],
+          "host_reserve_bytes": 0,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "schema_version": 1
+        },
+        "requests": [
+          {
+            "name": "hf",
+            "identity": {
+              "method": "rhf",
+              "provider": "native-hf-df-v1",
+              "backend": "cuda",
+              "precision": "fp64",
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 1}, {\"atoms\": 3, \"auxiliary\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"electrons\": {\"atomic_numbers\": [8, 1, 1], \"ecp_core_electrons\": [0, 0, 0], \"electron_count\": 10, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 5, \"nbeta\": 5, \"nuclear_charges\": [8, 1, 1]}, \"orbital\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"spins\": 1}, {\"atoms\": 2, \"auxiliary\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 1}]}",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "schedule": "{\"density_fitting\": \"cuda\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-10, \"device_id\": 0, \"diis_history\": 8, \"energy_tolerance\": 1e-12, \"max_iterations\": 100, \"native_binary_sha256\": \"47da7a478ab528999fd45b53c27a1987f38c44c7a98fb789ccf2606150fa4bee\", \"profile_identity\": \"generic_cuda\", \"runtime_policy\": {\"VIBEQC_BOUNDED_DIRECT_AOT_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_COUNT_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_STREAMING\": null, \"VIBEQC_DF_VALUES\": null, \"VIBEQC_DF_VALUE_MAPPING\": null, \"VIBEQC_DIRECT_TILE_VALIDATION\": null, \"VIBEQC_FINAL_FOCK_REBUILD\": null, \"VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING\": null, \"VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE\": null, \"VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD\": null, \"VIBEQC_ONE_ELECTRON_FORCE_SCALAR\": null, \"VIBEQC_PPPS_BLOCK_THREADS\": null, \"VIBEQC_PPPS_RESIDENT_BRA\": null, \"VIBEQC_PPPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PPSS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSSS_RESIDENT_BRA\": null, \"VIBEQC_PSSS_WEIGHTED\": null, \"VIBEQC_XSYEV_PROBE_SKIP_DIAGNOSTIC\": null}, \"screening_tolerance\": 1e-12}",
+              "schema_version": 1
+            },
+            "candidates": [
+              {
+                "name": "cuda-df-resident",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "all DF bucket caches and native solver workspaces",
+                    "bytes": 134260944,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF setup/force/retry workspace",
+                    "bytes": 201390172,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "all retained DF host state",
+                    "bytes": 10320192,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": true,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF host workspace",
+                    "bytes": 85678952,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "opaque CUDA library retention allowance",
+                    "bytes": 805306368,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  }
+                ],
+                "relative_cost": 0,
+                "decisions": [
+                  [
+                    "density_fitting_memory_budget_bytes",
+                    "0"
+                  ],
+                  [
+                    "batch_execution",
+                    "serialized buckets; all retained caches summed"
+                  ],
+                  [
+                    "scf_driver",
+                    "CUDA SCF with existing CPU numerical recovery; CUDA J/K"
+                  ],
+                  [
+                    "bucket_inventory",
+                    "[{\"batch\": 2, \"cartesian_naux\": 2, \"cartesian_nbf\": 2, \"coordinates\": 6, \"host_metadata\": 1081344, \"naux\": 2, \"nbf\": 2, \"occupied\": 1, \"preparation_minimum\": 12920, \"resident_device_bytes\": 67114880, \"resident_host_bytes\": 1087392, \"source_bytes\": 1540, \"tiles\": {\"ao_pair_tile\": 4, \"auxiliary_tile\": 2, \"batch_tile\": 2, \"budget_bytes\": 0, \"fixed_device_bytes\": 0, \"occupied_tile\": 1, \"peak_workspace_bytes\": 2560, \"stores_full_three_center\": true}}, {\"batch\": 1, \"cartesian_naux\": 7, \"cartesian_nbf\": 7, \"coordinates\": 9, \"host_metadata\": 9177088, \"naux\": 7, \"nbf\": 7, \"occupied\": 5, \"preparation_minimum\": 98064, \"resident_device_bytes\": 67146064, \"resident_host_bytes\": 9232800, \"source_bytes\": 2530, \"tiles\": {\"ao_pair_tile\": 49, \"auxiliary_tile\": 7, \"batch_tile\": 1, \"budget_bytes\": 0, \"fixed_device_bytes\": 0, \"occupied_tile\": 5, \"peak_workspace_bytes\": 32592, \"stores_full_three_center\": true}}]"
+                  ]
+                ]
+              },
+              {
+                "name": "cuda-df-source",
+                "mode": "recomputed",
+                "estimates": [
+                  {
+                    "name": "all DF bucket caches and native solver workspaces",
+                    "bytes": 134265830,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": true,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF setup/force/retry workspace",
+                    "bytes": 201393486,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "all retained DF host state",
+                    "bytes": 10276624,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF host workspace",
+                    "bytes": 85590360,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "opaque CUDA library retention allowance",
+                    "bytes": 805306368,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  }
+                ],
+                "relative_cost": 1,
+                "decisions": [
+                  [
+                    "density_fitting_memory_budget_bytes",
+                    "98064"
+                  ],
+                  [
+                    "batch_execution",
+                    "serialized buckets; all retained caches summed"
+                  ],
+                  [
+                    "scf_driver",
+                    "CPU DIIS/eigensolvers; CUDA integral regeneration and J/K"
+                  ],
+                  [
+                    "bucket_inventory",
+                    "[{\"batch\": 2, \"cartesian_naux\": 2, \"cartesian_nbf\": 2, \"coordinates\": 6, \"host_metadata\": 1081344, \"naux\": 2, \"nbf\": 2, \"occupied\": 1, \"preparation_minimum\": 12920, \"resident_device_bytes\": 67116452, \"resident_host_bytes\": 1085056, \"source_bytes\": 1540, \"tiles\": {\"ao_pair_tile\": 4, \"auxiliary_tile\": 2, \"batch_tile\": 2, \"budget_bytes\": 98064, \"fixed_device_bytes\": 1540, \"occupied_tile\": 1, \"peak_workspace_bytes\": 4100, \"stores_full_three_center\": true}}, {\"batch\": 1, \"cartesian_naux\": 7, \"cartesian_nbf\": 7, \"coordinates\": 9, \"host_metadata\": 9177088, \"naux\": 7, \"nbf\": 7, \"occupied\": 5, \"preparation_minimum\": 98064, \"resident_device_bytes\": 67149378, \"resident_host_bytes\": 9191568, \"source_bytes\": 2530, \"tiles\": {\"ao_pair_tile\": 49, \"auxiliary_tile\": 7, \"batch_tile\": 1, \"budget_bytes\": 98064, \"fixed_device_bytes\": 2530, \"occupied_tile\": 5, \"peak_workspace_bytes\": 35122, \"stores_full_three_center\": true}}]"
+                  ]
+                ]
+              }
+            ],
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding",
+              "CUDA context, modules, graphs, stacks and allocator pool/page retention",
+              "opaque CUDA library retention above the reported allowance is untracked"
+            ],
+            "unsupported_reason": null,
+            "infeasible_reason": null
+          }
+        ],
+        "selections": [
+          [
+            "hf",
+            "cuda-df-resident"
+          ]
+        ],
+        "status": "feasible",
+        "diagnostic": null,
+        "schema_version": 1,
+        "peak_bytes": {
+          "host": 95999144,
+          "device": 1140957484,
+          "pinned": 0,
+          "pageable": 95999144,
+          "device:0": 1140957484
+        },
+        "resident_bytes": {
+          "host": 10320192,
+          "device": 939567312,
+          "pinned": 0,
+          "pageable": 10320192,
+          "device:0": 939567312
+        },
+        "peak_phases": {
+          "device:0": 0,
+          "pageable": 0,
+          "host": 0,
+          "device": 0
+        },
+        "limits": {
+          "host": 95999144,
+          "device": 1140957484
+        },
+        "identity": "19b5d7a5305a9bb791dbba70a140044a34d5d6e729f90b89408edd8774da610d"
+      },
+      "replays": [
+        {
+          "observation": {
+            "status": "observed",
+            "sampled_item_peak_host_bytes": null,
+            "samples": null,
+            "sampled_cuda_arena_peak_bytes": null,
+            "cuda_arena_samples": null,
+            "device_ledger": {
+              "device": 0,
+              "limit_bytes": 335651116,
+              "live_bytes": 59242,
+              "peak_bytes": 612864,
+              "allocations": 211,
+              "rejected_allocations": 0,
+              "scope": "owned HF CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+            },
+            "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+            "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+            "complete_plan_peak": false,
+            "cpu_worker_limit": 1,
+            "excludes": [
+              "recurrence/eigensolver temporaries",
+              "other fleet items",
+              "runtime overhead"
+            ]
+          },
+          "maximum_energy_error": 0.0,
+          "maximum_cpu_energy_error": 3.126388037344441e-13,
+          "maximum_force_error": 0.0,
+          "maximum_cpu_force_error": 1.1156631174458198e-11
+        },
+        {
+          "observation": {
+            "status": "observed",
+            "sampled_item_peak_host_bytes": null,
+            "samples": null,
+            "sampled_cuda_arena_peak_bytes": null,
+            "cuda_arena_samples": null,
+            "device_ledger": {
+              "device": 0,
+              "limit_bytes": 335651116,
+              "live_bytes": 59242,
+              "peak_bytes": 83666,
+              "allocations": 51,
+              "rejected_allocations": 0,
+              "scope": "owned HF CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+            },
+            "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+            "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+            "complete_plan_peak": false,
+            "cpu_worker_limit": 1,
+            "excludes": [
+              "recurrence/eigensolver temporaries",
+              "other fleet items",
+              "runtime overhead"
+            ]
+          },
+          "maximum_energy_error": 0.0,
+          "maximum_cpu_energy_error": 2.8421709430404007e-13,
+          "maximum_force_error": 0.0,
+          "maximum_cpu_force_error": 2.4138469001400154e-11
+        }
+      ],
+      "live_device_bytes_after_destroy": 0,
+      "infeasible": {
+        "budget": {
+          "host_bytes": 95866983,
+          "device_bytes": null,
+          "pinned_host_bytes": null,
+          "per_device_bytes": [],
+          "host_reserve_bytes": 0,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "schema_version": 1
+        },
+        "requests": [
+          {
+            "name": "hf",
+            "identity": {
+              "method": "rhf",
+              "provider": "native-hf-df-v1",
+              "backend": "cuda",
+              "precision": "fp64",
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 1}, {\"atoms\": 3, \"auxiliary\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"electrons\": {\"atomic_numbers\": [8, 1, 1], \"ecp_core_electrons\": [0, 0, 0], \"electron_count\": 10, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 5, \"nbeta\": 5, \"nuclear_charges\": [8, 1, 1]}, \"orbital\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"spins\": 1}, {\"atoms\": 2, \"auxiliary\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 1}]}",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "schedule": "{\"density_fitting\": \"cuda\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-10, \"device_id\": 0, \"diis_history\": 8, \"energy_tolerance\": 1e-12, \"max_iterations\": 100, \"native_binary_sha256\": \"47da7a478ab528999fd45b53c27a1987f38c44c7a98fb789ccf2606150fa4bee\", \"profile_identity\": \"generic_cuda\", \"runtime_policy\": {\"VIBEQC_BOUNDED_DIRECT_AOT_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_COUNT_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_STREAMING\": null, \"VIBEQC_DF_VALUES\": null, \"VIBEQC_DF_VALUE_MAPPING\": null, \"VIBEQC_DIRECT_TILE_VALIDATION\": null, \"VIBEQC_FINAL_FOCK_REBUILD\": null, \"VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING\": null, \"VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE\": null, \"VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD\": null, \"VIBEQC_ONE_ELECTRON_FORCE_SCALAR\": null, \"VIBEQC_PPPS_BLOCK_THREADS\": null, \"VIBEQC_PPPS_RESIDENT_BRA\": null, \"VIBEQC_PPPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PPSS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSSS_RESIDENT_BRA\": null, \"VIBEQC_PSSS_WEIGHTED\": null, \"VIBEQC_XSYEV_PROBE_SKIP_DIAGNOSTIC\": null}, \"screening_tolerance\": 1e-12}",
+              "schema_version": 1
+            },
+            "candidates": [
+              {
+                "name": "cuda-df-resident",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "all DF bucket caches and native solver workspaces",
+                    "bytes": 134260944,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF setup/force/retry workspace",
+                    "bytes": 201390172,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "all retained DF host state",
+                    "bytes": 10320192,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": true,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF host workspace",
+                    "bytes": 85678952,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "opaque CUDA library retention allowance",
+                    "bytes": 805306368,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  }
+                ],
+                "relative_cost": 0,
+                "decisions": [
+                  [
+                    "density_fitting_memory_budget_bytes",
+                    "0"
+                  ],
+                  [
+                    "batch_execution",
+                    "serialized buckets; all retained caches summed"
+                  ],
+                  [
+                    "scf_driver",
+                    "CUDA SCF with existing CPU numerical recovery; CUDA J/K"
+                  ],
+                  [
+                    "bucket_inventory",
+                    "[{\"batch\": 2, \"cartesian_naux\": 2, \"cartesian_nbf\": 2, \"coordinates\": 6, \"host_metadata\": 1081344, \"naux\": 2, \"nbf\": 2, \"occupied\": 1, \"preparation_minimum\": 12920, \"resident_device_bytes\": 67114880, \"resident_host_bytes\": 1087392, \"source_bytes\": 1540, \"tiles\": {\"ao_pair_tile\": 4, \"auxiliary_tile\": 2, \"batch_tile\": 2, \"budget_bytes\": 0, \"fixed_device_bytes\": 0, \"occupied_tile\": 1, \"peak_workspace_bytes\": 2560, \"stores_full_three_center\": true}}, {\"batch\": 1, \"cartesian_naux\": 7, \"cartesian_nbf\": 7, \"coordinates\": 9, \"host_metadata\": 9177088, \"naux\": 7, \"nbf\": 7, \"occupied\": 5, \"preparation_minimum\": 98064, \"resident_device_bytes\": 67146064, \"resident_host_bytes\": 9232800, \"source_bytes\": 2530, \"tiles\": {\"ao_pair_tile\": 49, \"auxiliary_tile\": 7, \"batch_tile\": 1, \"budget_bytes\": 0, \"fixed_device_bytes\": 0, \"occupied_tile\": 5, \"peak_workspace_bytes\": 32592, \"stores_full_three_center\": true}}]"
+                  ]
+                ]
+              },
+              {
+                "name": "cuda-df-source",
+                "mode": "recomputed",
+                "estimates": [
+                  {
+                    "name": "all DF bucket caches and native solver workspaces",
+                    "bytes": 134265830,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": true,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF setup/force/retry workspace",
+                    "bytes": 201393486,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "all retained DF host state",
+                    "bytes": 10276624,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF host workspace",
+                    "bytes": 85590360,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "opaque CUDA library retention allowance",
+                    "bytes": 805306368,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  }
+                ],
+                "relative_cost": 1,
+                "decisions": [
+                  [
+                    "density_fitting_memory_budget_bytes",
+                    "98064"
+                  ],
+                  [
+                    "batch_execution",
+                    "serialized buckets; all retained caches summed"
+                  ],
+                  [
+                    "scf_driver",
+                    "CPU DIIS/eigensolvers; CUDA integral regeneration and J/K"
+                  ],
+                  [
+                    "bucket_inventory",
+                    "[{\"batch\": 2, \"cartesian_naux\": 2, \"cartesian_nbf\": 2, \"coordinates\": 6, \"host_metadata\": 1081344, \"naux\": 2, \"nbf\": 2, \"occupied\": 1, \"preparation_minimum\": 12920, \"resident_device_bytes\": 67116452, \"resident_host_bytes\": 1085056, \"source_bytes\": 1540, \"tiles\": {\"ao_pair_tile\": 4, \"auxiliary_tile\": 2, \"batch_tile\": 2, \"budget_bytes\": 98064, \"fixed_device_bytes\": 1540, \"occupied_tile\": 1, \"peak_workspace_bytes\": 4100, \"stores_full_three_center\": true}}, {\"batch\": 1, \"cartesian_naux\": 7, \"cartesian_nbf\": 7, \"coordinates\": 9, \"host_metadata\": 9177088, \"naux\": 7, \"nbf\": 7, \"occupied\": 5, \"preparation_minimum\": 98064, \"resident_device_bytes\": 67149378, \"resident_host_bytes\": 9191568, \"source_bytes\": 2530, \"tiles\": {\"ao_pair_tile\": 49, \"auxiliary_tile\": 7, \"batch_tile\": 1, \"budget_bytes\": 98064, \"fixed_device_bytes\": 2530, \"occupied_tile\": 5, \"peak_workspace_bytes\": 35122, \"stores_full_three_center\": true}}]"
+                  ]
+                ]
+              }
+            ],
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding",
+              "CUDA context, modules, graphs, stacks and allocator pool/page retention",
+              "opaque CUDA library retention above the reported allowance is untracked"
+            ],
+            "unsupported_reason": null,
+            "infeasible_reason": null
+          }
+        ],
+        "selections": [
+          [
+            "hf",
+            "cuda-df-source"
+          ]
+        ],
+        "status": "infeasible",
+        "diagnostic": "no supported plan fits: {'host': {'peak': 95866984, 'limit': 95866983, 'minimum_across_candidates': 95866984}}; dominant allocations: opaque CUDA library retention allowance=805306368 device:0, largest serialized DF setup/force/retry workspace=201393486 device:0, all DF bucket caches and native solver workspaces=134265830 device:0",
+        "schema_version": 1,
+        "peak_bytes": {
+          "host": 95866984,
+          "device": 1140965684,
+          "pinned": 0,
+          "pageable": 95866984,
+          "device:0": 1140965684
+        },
+        "resident_bytes": {
+          "host": 10276624,
+          "device": 939572198,
+          "pinned": 0,
+          "pageable": 10276624,
+          "device:0": 939572198
+        },
+        "peak_phases": {
+          "device:0": 0,
+          "pageable": 0,
+          "host": 0,
+          "device": 0
+        },
+        "limits": {
+          "host": 95866983
+        },
+        "identity": "06cec8cb095ee85eff7831066ec2b8804aae1a350e305e89def6da09a9e88d3b"
+      }
+    },
+    {
+      "case": "rhf-recomputed",
+      "plan": {
+        "budget": {
+          "host_bytes": 95866984,
+          "device_bytes": 1140965684,
+          "pinned_host_bytes": null,
+          "per_device_bytes": [],
+          "host_reserve_bytes": 0,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "schema_version": 1
+        },
+        "requests": [
+          {
+            "name": "hf",
+            "identity": {
+              "method": "rhf",
+              "provider": "native-hf-df-v1",
+              "backend": "cuda",
+              "precision": "fp64",
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 1}, {\"atoms\": 3, \"auxiliary\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"electrons\": {\"atomic_numbers\": [8, 1, 1], \"ecp_core_electrons\": [0, 0, 0], \"electron_count\": 10, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 5, \"nbeta\": 5, \"nuclear_charges\": [8, 1, 1]}, \"orbital\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"spins\": 1}, {\"atoms\": 2, \"auxiliary\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 1}]}",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "schedule": "{\"density_fitting\": \"cuda\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-10, \"device_id\": 0, \"diis_history\": 8, \"energy_tolerance\": 1e-12, \"max_iterations\": 100, \"native_binary_sha256\": \"47da7a478ab528999fd45b53c27a1987f38c44c7a98fb789ccf2606150fa4bee\", \"profile_identity\": \"generic_cuda\", \"runtime_policy\": {\"VIBEQC_BOUNDED_DIRECT_AOT_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_COUNT_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_STREAMING\": null, \"VIBEQC_DF_VALUES\": null, \"VIBEQC_DF_VALUE_MAPPING\": null, \"VIBEQC_DIRECT_TILE_VALIDATION\": null, \"VIBEQC_FINAL_FOCK_REBUILD\": null, \"VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING\": null, \"VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE\": null, \"VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD\": null, \"VIBEQC_ONE_ELECTRON_FORCE_SCALAR\": null, \"VIBEQC_PPPS_BLOCK_THREADS\": null, \"VIBEQC_PPPS_RESIDENT_BRA\": null, \"VIBEQC_PPPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PPSS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSSS_RESIDENT_BRA\": null, \"VIBEQC_PSSS_WEIGHTED\": null, \"VIBEQC_XSYEV_PROBE_SKIP_DIAGNOSTIC\": null}, \"screening_tolerance\": 1e-12}",
+              "schema_version": 1
+            },
+            "candidates": [
+              {
+                "name": "cuda-df-resident",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "all DF bucket caches and native solver workspaces",
+                    "bytes": 134260944,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF setup/force/retry workspace",
+                    "bytes": 201390172,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "all retained DF host state",
+                    "bytes": 10320192,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": true,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF host workspace",
+                    "bytes": 85678952,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "opaque CUDA library retention allowance",
+                    "bytes": 805306368,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  }
+                ],
+                "relative_cost": 0,
+                "decisions": [
+                  [
+                    "density_fitting_memory_budget_bytes",
+                    "0"
+                  ],
+                  [
+                    "batch_execution",
+                    "serialized buckets; all retained caches summed"
+                  ],
+                  [
+                    "scf_driver",
+                    "CUDA SCF with existing CPU numerical recovery; CUDA J/K"
+                  ],
+                  [
+                    "bucket_inventory",
+                    "[{\"batch\": 2, \"cartesian_naux\": 2, \"cartesian_nbf\": 2, \"coordinates\": 6, \"host_metadata\": 1081344, \"naux\": 2, \"nbf\": 2, \"occupied\": 1, \"preparation_minimum\": 12920, \"resident_device_bytes\": 67114880, \"resident_host_bytes\": 1087392, \"source_bytes\": 1540, \"tiles\": {\"ao_pair_tile\": 4, \"auxiliary_tile\": 2, \"batch_tile\": 2, \"budget_bytes\": 0, \"fixed_device_bytes\": 0, \"occupied_tile\": 1, \"peak_workspace_bytes\": 2560, \"stores_full_three_center\": true}}, {\"batch\": 1, \"cartesian_naux\": 7, \"cartesian_nbf\": 7, \"coordinates\": 9, \"host_metadata\": 9177088, \"naux\": 7, \"nbf\": 7, \"occupied\": 5, \"preparation_minimum\": 98064, \"resident_device_bytes\": 67146064, \"resident_host_bytes\": 9232800, \"source_bytes\": 2530, \"tiles\": {\"ao_pair_tile\": 49, \"auxiliary_tile\": 7, \"batch_tile\": 1, \"budget_bytes\": 0, \"fixed_device_bytes\": 0, \"occupied_tile\": 5, \"peak_workspace_bytes\": 32592, \"stores_full_three_center\": true}}]"
+                  ]
+                ]
+              },
+              {
+                "name": "cuda-df-source",
+                "mode": "recomputed",
+                "estimates": [
+                  {
+                    "name": "all DF bucket caches and native solver workspaces",
+                    "bytes": 134265830,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": true,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF setup/force/retry workspace",
+                    "bytes": 201393486,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "all retained DF host state",
+                    "bytes": 10276624,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF host workspace",
+                    "bytes": 85590360,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "opaque CUDA library retention allowance",
+                    "bytes": 805306368,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  }
+                ],
+                "relative_cost": 1,
+                "decisions": [
+                  [
+                    "density_fitting_memory_budget_bytes",
+                    "98064"
+                  ],
+                  [
+                    "batch_execution",
+                    "serialized buckets; all retained caches summed"
+                  ],
+                  [
+                    "scf_driver",
+                    "CPU DIIS/eigensolvers; CUDA integral regeneration and J/K"
+                  ],
+                  [
+                    "bucket_inventory",
+                    "[{\"batch\": 2, \"cartesian_naux\": 2, \"cartesian_nbf\": 2, \"coordinates\": 6, \"host_metadata\": 1081344, \"naux\": 2, \"nbf\": 2, \"occupied\": 1, \"preparation_minimum\": 12920, \"resident_device_bytes\": 67116452, \"resident_host_bytes\": 1085056, \"source_bytes\": 1540, \"tiles\": {\"ao_pair_tile\": 4, \"auxiliary_tile\": 2, \"batch_tile\": 2, \"budget_bytes\": 98064, \"fixed_device_bytes\": 1540, \"occupied_tile\": 1, \"peak_workspace_bytes\": 4100, \"stores_full_three_center\": true}}, {\"batch\": 1, \"cartesian_naux\": 7, \"cartesian_nbf\": 7, \"coordinates\": 9, \"host_metadata\": 9177088, \"naux\": 7, \"nbf\": 7, \"occupied\": 5, \"preparation_minimum\": 98064, \"resident_device_bytes\": 67149378, \"resident_host_bytes\": 9191568, \"source_bytes\": 2530, \"tiles\": {\"ao_pair_tile\": 49, \"auxiliary_tile\": 7, \"batch_tile\": 1, \"budget_bytes\": 98064, \"fixed_device_bytes\": 2530, \"occupied_tile\": 5, \"peak_workspace_bytes\": 35122, \"stores_full_three_center\": true}}]"
+                  ]
+                ]
+              }
+            ],
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding",
+              "CUDA context, modules, graphs, stacks and allocator pool/page retention",
+              "opaque CUDA library retention above the reported allowance is untracked"
+            ],
+            "unsupported_reason": null,
+            "infeasible_reason": null
+          }
+        ],
+        "selections": [
+          [
+            "hf",
+            "cuda-df-source"
+          ]
+        ],
+        "status": "feasible",
+        "diagnostic": null,
+        "schema_version": 1,
+        "peak_bytes": {
+          "host": 95866984,
+          "device": 1140965684,
+          "pinned": 0,
+          "pageable": 95866984,
+          "device:0": 1140965684
+        },
+        "resident_bytes": {
+          "host": 10276624,
+          "device": 939572198,
+          "pinned": 0,
+          "pageable": 10276624,
+          "device:0": 939572198
+        },
+        "peak_phases": {
+          "device:0": 0,
+          "pageable": 0,
+          "host": 0,
+          "device": 0
+        },
+        "limits": {
+          "host": 95866984,
+          "device": 1140965684
+        },
+        "identity": "c40f5c35ce78f5782b6e59b9a133451afe810c326030e991863c41dd8fd6e44b"
+      },
+      "replays": [
+        {
+          "observation": {
+            "status": "observed",
+            "sampled_item_peak_host_bytes": null,
+            "samples": null,
+            "sampled_cuda_arena_peak_bytes": null,
+            "cuda_arena_samples": null,
+            "device_ledger": {
+              "device": 0,
+              "limit_bytes": 335659316,
+              "live_bytes": 64128,
+              "peak_bytes": 615006,
+              "allocations": 166,
+              "rejected_allocations": 0,
+              "scope": "owned HF CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+            },
+            "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+            "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+            "complete_plan_peak": false,
+            "cpu_worker_limit": 1,
+            "excludes": [
+              "recurrence/eigensolver temporaries",
+              "other fleet items",
+              "runtime overhead"
+            ]
+          },
+          "maximum_energy_error": 0.0,
+          "maximum_cpu_energy_error": 3.126388037344441e-13,
+          "maximum_force_error": 0.0,
+          "maximum_cpu_force_error": 1.1349809980742975e-11
+        },
+        {
+          "observation": {
+            "status": "observed",
+            "sampled_item_peak_host_bytes": null,
+            "samples": null,
+            "sampled_cuda_arena_peak_bytes": null,
+            "cuda_arena_samples": null,
+            "device_ledger": {
+              "device": 0,
+              "limit_bytes": 335659316,
+              "live_bytes": 64128,
+              "peak_bytes": 66036,
+              "allocations": 46,
+              "rejected_allocations": 0,
+              "scope": "owned HF CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+            },
+            "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+            "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+            "complete_plan_peak": false,
+            "cpu_worker_limit": 1,
+            "excludes": [
+              "recurrence/eigensolver temporaries",
+              "other fleet items",
+              "runtime overhead"
+            ]
+          },
+          "maximum_energy_error": 0.0,
+          "maximum_cpu_energy_error": 2.7000623958883807e-13,
+          "maximum_force_error": 0.0,
+          "maximum_cpu_force_error": 2.423061751244404e-11
+        }
+      ],
+      "live_device_bytes_after_destroy": 0,
+      "infeasible": {
+        "budget": {
+          "host_bytes": 95866983,
+          "device_bytes": null,
+          "pinned_host_bytes": null,
+          "per_device_bytes": [],
+          "host_reserve_bytes": 0,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "schema_version": 1
+        },
+        "requests": [
+          {
+            "name": "hf",
+            "identity": {
+              "method": "rhf",
+              "provider": "native-hf-df-v1",
+              "backend": "cuda",
+              "precision": "fp64",
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 1}, {\"atoms\": 3, \"auxiliary\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"electrons\": {\"atomic_numbers\": [8, 1, 1], \"ecp_core_electrons\": [0, 0, 0], \"electron_count\": 10, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 5, \"nbeta\": 5, \"nuclear_charges\": [8, 1, 1]}, \"orbital\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"spins\": 1}, {\"atoms\": 2, \"auxiliary\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 1}]}",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "schedule": "{\"density_fitting\": \"cuda\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-10, \"device_id\": 0, \"diis_history\": 8, \"energy_tolerance\": 1e-12, \"max_iterations\": 100, \"native_binary_sha256\": \"47da7a478ab528999fd45b53c27a1987f38c44c7a98fb789ccf2606150fa4bee\", \"profile_identity\": \"generic_cuda\", \"runtime_policy\": {\"VIBEQC_BOUNDED_DIRECT_AOT_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_COUNT_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_STREAMING\": null, \"VIBEQC_DF_VALUES\": null, \"VIBEQC_DF_VALUE_MAPPING\": null, \"VIBEQC_DIRECT_TILE_VALIDATION\": null, \"VIBEQC_FINAL_FOCK_REBUILD\": null, \"VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING\": null, \"VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE\": null, \"VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD\": null, \"VIBEQC_ONE_ELECTRON_FORCE_SCALAR\": null, \"VIBEQC_PPPS_BLOCK_THREADS\": null, \"VIBEQC_PPPS_RESIDENT_BRA\": null, \"VIBEQC_PPPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PPSS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSSS_RESIDENT_BRA\": null, \"VIBEQC_PSSS_WEIGHTED\": null, \"VIBEQC_XSYEV_PROBE_SKIP_DIAGNOSTIC\": null}, \"screening_tolerance\": 1e-12}",
+              "schema_version": 1
+            },
+            "candidates": [
+              {
+                "name": "cuda-df-resident",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "all DF bucket caches and native solver workspaces",
+                    "bytes": 134260944,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF setup/force/retry workspace",
+                    "bytes": 201390172,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "all retained DF host state",
+                    "bytes": 10320192,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": true,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF host workspace",
+                    "bytes": 85678952,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "opaque CUDA library retention allowance",
+                    "bytes": 805306368,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  }
+                ],
+                "relative_cost": 0,
+                "decisions": [
+                  [
+                    "density_fitting_memory_budget_bytes",
+                    "0"
+                  ],
+                  [
+                    "batch_execution",
+                    "serialized buckets; all retained caches summed"
+                  ],
+                  [
+                    "scf_driver",
+                    "CUDA SCF with existing CPU numerical recovery; CUDA J/K"
+                  ],
+                  [
+                    "bucket_inventory",
+                    "[{\"batch\": 2, \"cartesian_naux\": 2, \"cartesian_nbf\": 2, \"coordinates\": 6, \"host_metadata\": 1081344, \"naux\": 2, \"nbf\": 2, \"occupied\": 1, \"preparation_minimum\": 12920, \"resident_device_bytes\": 67114880, \"resident_host_bytes\": 1087392, \"source_bytes\": 1540, \"tiles\": {\"ao_pair_tile\": 4, \"auxiliary_tile\": 2, \"batch_tile\": 2, \"budget_bytes\": 0, \"fixed_device_bytes\": 0, \"occupied_tile\": 1, \"peak_workspace_bytes\": 2560, \"stores_full_three_center\": true}}, {\"batch\": 1, \"cartesian_naux\": 7, \"cartesian_nbf\": 7, \"coordinates\": 9, \"host_metadata\": 9177088, \"naux\": 7, \"nbf\": 7, \"occupied\": 5, \"preparation_minimum\": 98064, \"resident_device_bytes\": 67146064, \"resident_host_bytes\": 9232800, \"source_bytes\": 2530, \"tiles\": {\"ao_pair_tile\": 49, \"auxiliary_tile\": 7, \"batch_tile\": 1, \"budget_bytes\": 0, \"fixed_device_bytes\": 0, \"occupied_tile\": 5, \"peak_workspace_bytes\": 32592, \"stores_full_three_center\": true}}]"
+                  ]
+                ]
+              },
+              {
+                "name": "cuda-df-source",
+                "mode": "recomputed",
+                "estimates": [
+                  {
+                    "name": "all DF bucket caches and native solver workspaces",
+                    "bytes": 134265830,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": true,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF setup/force/retry workspace",
+                    "bytes": 201393486,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "all retained DF host state",
+                    "bytes": 10276624,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF host workspace",
+                    "bytes": 85590360,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "opaque CUDA library retention allowance",
+                    "bytes": 805306368,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  }
+                ],
+                "relative_cost": 1,
+                "decisions": [
+                  [
+                    "density_fitting_memory_budget_bytes",
+                    "98064"
+                  ],
+                  [
+                    "batch_execution",
+                    "serialized buckets; all retained caches summed"
+                  ],
+                  [
+                    "scf_driver",
+                    "CPU DIIS/eigensolvers; CUDA integral regeneration and J/K"
+                  ],
+                  [
+                    "bucket_inventory",
+                    "[{\"batch\": 2, \"cartesian_naux\": 2, \"cartesian_nbf\": 2, \"coordinates\": 6, \"host_metadata\": 1081344, \"naux\": 2, \"nbf\": 2, \"occupied\": 1, \"preparation_minimum\": 12920, \"resident_device_bytes\": 67116452, \"resident_host_bytes\": 1085056, \"source_bytes\": 1540, \"tiles\": {\"ao_pair_tile\": 4, \"auxiliary_tile\": 2, \"batch_tile\": 2, \"budget_bytes\": 98064, \"fixed_device_bytes\": 1540, \"occupied_tile\": 1, \"peak_workspace_bytes\": 4100, \"stores_full_three_center\": true}}, {\"batch\": 1, \"cartesian_naux\": 7, \"cartesian_nbf\": 7, \"coordinates\": 9, \"host_metadata\": 9177088, \"naux\": 7, \"nbf\": 7, \"occupied\": 5, \"preparation_minimum\": 98064, \"resident_device_bytes\": 67149378, \"resident_host_bytes\": 9191568, \"source_bytes\": 2530, \"tiles\": {\"ao_pair_tile\": 49, \"auxiliary_tile\": 7, \"batch_tile\": 1, \"budget_bytes\": 98064, \"fixed_device_bytes\": 2530, \"occupied_tile\": 5, \"peak_workspace_bytes\": 35122, \"stores_full_three_center\": true}}]"
+                  ]
+                ]
+              }
+            ],
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding",
+              "CUDA context, modules, graphs, stacks and allocator pool/page retention",
+              "opaque CUDA library retention above the reported allowance is untracked"
+            ],
+            "unsupported_reason": null,
+            "infeasible_reason": null
+          }
+        ],
+        "selections": [
+          [
+            "hf",
+            "cuda-df-source"
+          ]
+        ],
+        "status": "infeasible",
+        "diagnostic": "no supported plan fits: {'host': {'peak': 95866984, 'limit': 95866983, 'minimum_across_candidates': 95866984}}; dominant allocations: opaque CUDA library retention allowance=805306368 device:0, largest serialized DF setup/force/retry workspace=201393486 device:0, all DF bucket caches and native solver workspaces=134265830 device:0",
+        "schema_version": 1,
+        "peak_bytes": {
+          "host": 95866984,
+          "device": 1140965684,
+          "pinned": 0,
+          "pageable": 95866984,
+          "device:0": 1140965684
+        },
+        "resident_bytes": {
+          "host": 10276624,
+          "device": 939572198,
+          "pinned": 0,
+          "pageable": 10276624,
+          "device:0": 939572198
+        },
+        "peak_phases": {
+          "device:0": 0,
+          "pageable": 0,
+          "host": 0,
+          "device": 0
+        },
+        "limits": {
+          "host": 95866983
+        },
+        "identity": "06cec8cb095ee85eff7831066ec2b8804aae1a350e305e89def6da09a9e88d3b"
+      }
+    },
+    {
+      "case": "uhf-direct",
+      "plan": {
+        "budget": {
+          "host_bytes": 836704,
+          "device_bytes": 92944,
+          "pinned_host_bytes": null,
+          "per_device_bytes": [],
+          "host_reserve_bytes": 0,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "schema_version": 1
+        },
+        "requests": [
+          {
+            "name": "hf",
+            "identity": {
+              "method": "uhf",
+              "provider": "native-hf-direct-v1",
+              "backend": "cuda",
+              "precision": "fp64",
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 2}, {\"atoms\": 3, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [8, 1, 1], \"ecp_core_electrons\": [0, 0, 0], \"electron_count\": 10, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 5, \"nbeta\": 5, \"nuclear_charges\": [8, 1, 1]}, \"orbital\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"spins\": 2}, {\"atoms\": 2, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 2}]}",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "schedule": "{\"density_fitting\": \"none\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-10, \"device_id\": 0, \"diis_history\": 8, \"energy_tolerance\": 1e-12, \"max_iterations\": 100, \"native_binary_sha256\": \"47da7a478ab528999fd45b53c27a1987f38c44c7a98fb789ccf2606150fa4bee\", \"profile_identity\": \"generic_cuda\", \"runtime_policy\": {\"VIBEQC_BOUNDED_DIRECT_AOT_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_COUNT_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_STREAMING\": null, \"VIBEQC_DF_VALUES\": null, \"VIBEQC_DF_VALUE_MAPPING\": null, \"VIBEQC_DIRECT_TILE_VALIDATION\": null, \"VIBEQC_FINAL_FOCK_REBUILD\": null, \"VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING\": null, \"VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE\": null, \"VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD\": null, \"VIBEQC_ONE_ELECTRON_FORCE_SCALAR\": null, \"VIBEQC_PPPS_BLOCK_THREADS\": null, \"VIBEQC_PPPS_RESIDENT_BRA\": null, \"VIBEQC_PPPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PPSS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSSS_RESIDENT_BRA\": null, \"VIBEQC_PSSS_WEIGHTED\": null, \"VIBEQC_XSYEV_PROBE_SKIP_DIAGNOSTIC\": null}, \"screening_tolerance\": 1e-12}",
+              "schema_version": 1
+            },
+            "candidates": [
+              {
+                "name": "cuda-small-resident",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "all retained direct-HF bucket arenas",
+                    "bytes": 49776,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "one cold numerical retry alongside warm bucket",
+                    "bytes": 43168,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "fleet host state, packed topology and staging capacity",
+                    "bytes": 836704,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  }
+                ],
+                "relative_cost": 0,
+                "decisions": [
+                  [
+                    "batch_execution",
+                    "serialized buckets; every retained arena summed"
+                  ],
+                  [
+                    "eigensolver",
+                    "small native; no external library workspace"
+                  ],
+                  [
+                    "item_inventory",
+                    "[{\"arena\": 3304, \"host\": 92064}, {\"arena\": 43168, \"host\": 652576}, {\"arena\": 3304, \"host\": 92064}]"
+                  ]
+                ]
+              }
+            ],
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding",
+              "CUDA context, modules, graphs, stacks and allocator pool/page retention"
+            ],
+            "unsupported_reason": null,
+            "infeasible_reason": null
+          }
+        ],
+        "selections": [
+          [
+            "hf",
+            "cuda-small-resident"
+          ]
+        ],
+        "status": "feasible",
+        "diagnostic": null,
+        "schema_version": 1,
+        "peak_bytes": {
+          "host": 836704,
+          "device": 92944,
+          "pinned": 0,
+          "pageable": 836704,
+          "device:0": 92944
+        },
+        "resident_bytes": {
+          "host": 836704,
+          "device": 49776,
+          "pinned": 0,
+          "pageable": 836704,
+          "device:0": 49776
+        },
+        "peak_phases": {
+          "device:0": 0,
+          "pageable": 0,
+          "host": 0,
+          "device": 0
+        },
+        "limits": {
+          "host": 836704,
+          "device": 92944
+        },
+        "identity": "c5dcad04c2980d3b8322986950bdb22602c02c2b8dd3a5c8472ed848fc9f398d"
+      },
+      "replays": [
+        {
+          "observation": {
+            "status": "observed",
+            "sampled_item_peak_host_bytes": null,
+            "samples": null,
+            "sampled_cuda_arena_peak_bytes": 49632,
+            "cuda_arena_samples": 4,
+            "device_ledger": {
+              "device": 0,
+              "limit_bytes": 92944,
+              "live_bytes": 49632,
+              "peak_bytes": 49632,
+              "allocations": 2,
+              "rejected_allocations": 0,
+              "scope": "owned HF CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+            },
+            "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+            "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+            "complete_plan_peak": false,
+            "cpu_worker_limit": 1,
+            "excludes": [
+              "recurrence/eigensolver temporaries",
+              "other fleet items",
+              "runtime overhead"
+            ]
+          },
+          "maximum_energy_error": 0.0,
+          "maximum_cpu_energy_error": 9.947598300641403e-14,
+          "maximum_force_error": 1.0824674490095276e-15,
+          "maximum_cpu_force_error": 1.0359618024535777e-10
+        },
+        {
+          "observation": {
+            "status": "observed",
+            "sampled_item_peak_host_bytes": null,
+            "samples": null,
+            "sampled_cuda_arena_peak_bytes": 49632,
+            "cuda_arena_samples": 2,
+            "device_ledger": {
+              "device": 0,
+              "limit_bytes": 92944,
+              "live_bytes": 49632,
+              "peak_bytes": 49632,
+              "allocations": 0,
+              "rejected_allocations": 0,
+              "scope": "owned HF CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+            },
+            "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+            "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+            "complete_plan_peak": false,
+            "cpu_worker_limit": 1,
+            "excludes": [
+              "recurrence/eigensolver temporaries",
+              "other fleet items",
+              "runtime overhead"
+            ]
+          },
+          "maximum_energy_error": 0.0,
+          "maximum_cpu_energy_error": 1.4210854715202004e-13,
+          "maximum_force_error": 1.547373340571312e-15,
+          "maximum_cpu_force_error": 1.9672603823739365e-11
+        }
+      ],
+      "live_device_bytes_after_destroy": 0,
+      "infeasible": {
+        "budget": {
+          "host_bytes": 836703,
+          "device_bytes": null,
+          "pinned_host_bytes": null,
+          "per_device_bytes": [],
+          "host_reserve_bytes": 0,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "schema_version": 1
+        },
+        "requests": [
+          {
+            "name": "hf",
+            "identity": {
+              "method": "uhf",
+              "provider": "native-hf-direct-v1",
+              "backend": "cuda",
+              "precision": "fp64",
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 2}, {\"atoms\": 3, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [8, 1, 1], \"ecp_core_electrons\": [0, 0, 0], \"electron_count\": 10, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 5, \"nbeta\": 5, \"nuclear_charges\": [8, 1, 1]}, \"orbital\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"spins\": 2}, {\"atoms\": 2, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 2}]}",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "schedule": "{\"density_fitting\": \"none\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-10, \"device_id\": 0, \"diis_history\": 8, \"energy_tolerance\": 1e-12, \"max_iterations\": 100, \"native_binary_sha256\": \"47da7a478ab528999fd45b53c27a1987f38c44c7a98fb789ccf2606150fa4bee\", \"profile_identity\": \"generic_cuda\", \"runtime_policy\": {\"VIBEQC_BOUNDED_DIRECT_AOT_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_COUNT_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_STREAMING\": null, \"VIBEQC_DF_VALUES\": null, \"VIBEQC_DF_VALUE_MAPPING\": null, \"VIBEQC_DIRECT_TILE_VALIDATION\": null, \"VIBEQC_FINAL_FOCK_REBUILD\": null, \"VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING\": null, \"VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE\": null, \"VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD\": null, \"VIBEQC_ONE_ELECTRON_FORCE_SCALAR\": null, \"VIBEQC_PPPS_BLOCK_THREADS\": null, \"VIBEQC_PPPS_RESIDENT_BRA\": null, \"VIBEQC_PPPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PPSS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSSS_RESIDENT_BRA\": null, \"VIBEQC_PSSS_WEIGHTED\": null, \"VIBEQC_XSYEV_PROBE_SKIP_DIAGNOSTIC\": null}, \"screening_tolerance\": 1e-12}",
+              "schema_version": 1
+            },
+            "candidates": [
+              {
+                "name": "cuda-small-resident",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "all retained direct-HF bucket arenas",
+                    "bytes": 49776,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "one cold numerical retry alongside warm bucket",
+                    "bytes": 43168,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "fleet host state, packed topology and staging capacity",
+                    "bytes": 836704,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  }
+                ],
+                "relative_cost": 0,
+                "decisions": [
+                  [
+                    "batch_execution",
+                    "serialized buckets; every retained arena summed"
+                  ],
+                  [
+                    "eigensolver",
+                    "small native; no external library workspace"
+                  ],
+                  [
+                    "item_inventory",
+                    "[{\"arena\": 3304, \"host\": 92064}, {\"arena\": 43168, \"host\": 652576}, {\"arena\": 3304, \"host\": 92064}]"
+                  ]
+                ]
+              }
+            ],
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding",
+              "CUDA context, modules, graphs, stacks and allocator pool/page retention"
+            ],
+            "unsupported_reason": null,
+            "infeasible_reason": null
+          }
+        ],
+        "selections": [
+          [
+            "hf",
+            "cuda-small-resident"
+          ]
+        ],
+        "status": "infeasible",
+        "diagnostic": "no supported plan fits: {'host': {'peak': 836704, 'limit': 836703, 'minimum_across_candidates': 836704}}; dominant allocations: fleet host state, packed topology and staging capacity=836704 pageable, all retained direct-HF bucket arenas=49776 device:0, one cold numerical retry alongside warm bucket=43168 device:0",
+        "schema_version": 1,
+        "peak_bytes": {
+          "host": 836704,
+          "device": 92944,
+          "pinned": 0,
+          "pageable": 836704,
+          "device:0": 92944
+        },
+        "resident_bytes": {
+          "host": 836704,
+          "device": 49776,
+          "pinned": 0,
+          "pageable": 836704,
+          "device:0": 49776
+        },
+        "peak_phases": {
+          "device:0": 0,
+          "pageable": 0,
+          "host": 0,
+          "device": 0
+        },
+        "limits": {
+          "host": 836703
+        },
+        "identity": "36654fdae5e13bf750feabf45d23364a7f9ed36b5b2ac9e5347ff005500b1d20"
+      }
+    },
+    {
+      "case": "uhf-resident",
+      "plan": {
+        "budget": {
+          "host_bytes": 95999144,
+          "device_bytes": 1140957484,
+          "pinned_host_bytes": null,
+          "per_device_bytes": [],
+          "host_reserve_bytes": 0,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "schema_version": 1
+        },
+        "requests": [
+          {
+            "name": "hf",
+            "identity": {
+              "method": "uhf",
+              "provider": "native-hf-df-v1",
+              "backend": "cuda",
+              "precision": "fp64",
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 2}, {\"atoms\": 3, \"auxiliary\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"electrons\": {\"atomic_numbers\": [8, 1, 1], \"ecp_core_electrons\": [0, 0, 0], \"electron_count\": 10, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 5, \"nbeta\": 5, \"nuclear_charges\": [8, 1, 1]}, \"orbital\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"spins\": 2}, {\"atoms\": 2, \"auxiliary\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 2}]}",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "schedule": "{\"density_fitting\": \"cuda\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-10, \"device_id\": 0, \"diis_history\": 8, \"energy_tolerance\": 1e-12, \"max_iterations\": 100, \"native_binary_sha256\": \"47da7a478ab528999fd45b53c27a1987f38c44c7a98fb789ccf2606150fa4bee\", \"profile_identity\": \"generic_cuda\", \"runtime_policy\": {\"VIBEQC_BOUNDED_DIRECT_AOT_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_COUNT_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_STREAMING\": null, \"VIBEQC_DF_VALUES\": null, \"VIBEQC_DF_VALUE_MAPPING\": null, \"VIBEQC_DIRECT_TILE_VALIDATION\": null, \"VIBEQC_FINAL_FOCK_REBUILD\": null, \"VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING\": null, \"VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE\": null, \"VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD\": null, \"VIBEQC_ONE_ELECTRON_FORCE_SCALAR\": null, \"VIBEQC_PPPS_BLOCK_THREADS\": null, \"VIBEQC_PPPS_RESIDENT_BRA\": null, \"VIBEQC_PPPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PPSS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSSS_RESIDENT_BRA\": null, \"VIBEQC_PSSS_WEIGHTED\": null, \"VIBEQC_XSYEV_PROBE_SKIP_DIAGNOSTIC\": null}, \"screening_tolerance\": 1e-12}",
+              "schema_version": 1
+            },
+            "candidates": [
+              {
+                "name": "cuda-df-resident",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "all DF bucket caches and native solver workspaces",
+                    "bytes": 134260944,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF setup/force/retry workspace",
+                    "bytes": 201390172,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "all retained DF host state",
+                    "bytes": 10320192,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": true,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF host workspace",
+                    "bytes": 85678952,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "opaque CUDA library retention allowance",
+                    "bytes": 805306368,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  }
+                ],
+                "relative_cost": 0,
+                "decisions": [
+                  [
+                    "density_fitting_memory_budget_bytes",
+                    "0"
+                  ],
+                  [
+                    "batch_execution",
+                    "serialized buckets; all retained caches summed"
+                  ],
+                  [
+                    "scf_driver",
+                    "CUDA SCF with existing CPU numerical recovery; CUDA J/K"
+                  ],
+                  [
+                    "bucket_inventory",
+                    "[{\"batch\": 2, \"cartesian_naux\": 2, \"cartesian_nbf\": 2, \"coordinates\": 6, \"host_metadata\": 1081344, \"naux\": 2, \"nbf\": 2, \"occupied\": 1, \"preparation_minimum\": 12920, \"resident_device_bytes\": 67114880, \"resident_host_bytes\": 1087392, \"source_bytes\": 1540, \"tiles\": {\"ao_pair_tile\": 4, \"auxiliary_tile\": 2, \"batch_tile\": 2, \"budget_bytes\": 0, \"fixed_device_bytes\": 0, \"occupied_tile\": 1, \"peak_workspace_bytes\": 2560, \"stores_full_three_center\": true}}, {\"batch\": 1, \"cartesian_naux\": 7, \"cartesian_nbf\": 7, \"coordinates\": 9, \"host_metadata\": 9177088, \"naux\": 7, \"nbf\": 7, \"occupied\": 5, \"preparation_minimum\": 98064, \"resident_device_bytes\": 67146064, \"resident_host_bytes\": 9232800, \"source_bytes\": 2530, \"tiles\": {\"ao_pair_tile\": 49, \"auxiliary_tile\": 7, \"batch_tile\": 1, \"budget_bytes\": 0, \"fixed_device_bytes\": 0, \"occupied_tile\": 5, \"peak_workspace_bytes\": 32592, \"stores_full_three_center\": true}}]"
+                  ]
+                ]
+              },
+              {
+                "name": "cuda-df-source",
+                "mode": "recomputed",
+                "estimates": [
+                  {
+                    "name": "all DF bucket caches and native solver workspaces",
+                    "bytes": 134265830,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": true,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF setup/force/retry workspace",
+                    "bytes": 201393486,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "all retained DF host state",
+                    "bytes": 10276624,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF host workspace",
+                    "bytes": 85590360,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "opaque CUDA library retention allowance",
+                    "bytes": 805306368,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  }
+                ],
+                "relative_cost": 1,
+                "decisions": [
+                  [
+                    "density_fitting_memory_budget_bytes",
+                    "98064"
+                  ],
+                  [
+                    "batch_execution",
+                    "serialized buckets; all retained caches summed"
+                  ],
+                  [
+                    "scf_driver",
+                    "CPU DIIS/eigensolvers; CUDA integral regeneration and J/K"
+                  ],
+                  [
+                    "bucket_inventory",
+                    "[{\"batch\": 2, \"cartesian_naux\": 2, \"cartesian_nbf\": 2, \"coordinates\": 6, \"host_metadata\": 1081344, \"naux\": 2, \"nbf\": 2, \"occupied\": 1, \"preparation_minimum\": 12920, \"resident_device_bytes\": 67116452, \"resident_host_bytes\": 1085056, \"source_bytes\": 1540, \"tiles\": {\"ao_pair_tile\": 4, \"auxiliary_tile\": 2, \"batch_tile\": 2, \"budget_bytes\": 98064, \"fixed_device_bytes\": 1540, \"occupied_tile\": 1, \"peak_workspace_bytes\": 4100, \"stores_full_three_center\": true}}, {\"batch\": 1, \"cartesian_naux\": 7, \"cartesian_nbf\": 7, \"coordinates\": 9, \"host_metadata\": 9177088, \"naux\": 7, \"nbf\": 7, \"occupied\": 5, \"preparation_minimum\": 98064, \"resident_device_bytes\": 67149378, \"resident_host_bytes\": 9191568, \"source_bytes\": 2530, \"tiles\": {\"ao_pair_tile\": 49, \"auxiliary_tile\": 7, \"batch_tile\": 1, \"budget_bytes\": 98064, \"fixed_device_bytes\": 2530, \"occupied_tile\": 5, \"peak_workspace_bytes\": 35122, \"stores_full_three_center\": true}}]"
+                  ]
+                ]
+              }
+            ],
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding",
+              "CUDA context, modules, graphs, stacks and allocator pool/page retention",
+              "opaque CUDA library retention above the reported allowance is untracked"
+            ],
+            "unsupported_reason": null,
+            "infeasible_reason": null
+          }
+        ],
+        "selections": [
+          [
+            "hf",
+            "cuda-df-resident"
+          ]
+        ],
+        "status": "feasible",
+        "diagnostic": null,
+        "schema_version": 1,
+        "peak_bytes": {
+          "host": 95999144,
+          "device": 1140957484,
+          "pinned": 0,
+          "pageable": 95999144,
+          "device:0": 1140957484
+        },
+        "resident_bytes": {
+          "host": 10320192,
+          "device": 939567312,
+          "pinned": 0,
+          "pageable": 10320192,
+          "device:0": 939567312
+        },
+        "peak_phases": {
+          "device:0": 0,
+          "pageable": 0,
+          "host": 0,
+          "device": 0
+        },
+        "limits": {
+          "host": 95999144,
+          "device": 1140957484
+        },
+        "identity": "ea737ca37bbabb7bde993e15519a6eb4351809ba42fdcf418ea5e01e4fbeedcf"
+      },
+      "replays": [
+        {
+          "observation": {
+            "status": "observed",
+            "sampled_item_peak_host_bytes": null,
+            "samples": null,
+            "sampled_cuda_arena_peak_bytes": null,
+            "cuda_arena_samples": null,
+            "device_ledger": {
+              "device": 0,
+              "limit_bytes": 335651116,
+              "live_bytes": 60722,
+              "peak_bytes": 613104,
+              "allocations": 325,
+              "rejected_allocations": 0,
+              "scope": "owned HF CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+            },
+            "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+            "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+            "complete_plan_peak": false,
+            "cpu_worker_limit": 1,
+            "excludes": [
+              "recurrence/eigensolver temporaries",
+              "other fleet items",
+              "runtime overhead"
+            ]
+          },
+          "maximum_energy_error": 0.0,
+          "maximum_cpu_energy_error": 3.552713678800501e-13,
+          "maximum_force_error": 0.0,
+          "maximum_cpu_force_error": 2.414357602731343e-11
+        },
+        {
+          "observation": {
+            "status": "observed",
+            "sampled_item_peak_host_bytes": null,
+            "samples": null,
+            "sampled_cuda_arena_peak_bytes": null,
+            "cuda_arena_samples": null,
+            "device_ledger": {
+              "device": 0,
+              "limit_bytes": 335651116,
+              "live_bytes": 60722,
+              "peak_bytes": 85146,
+              "allocations": 153,
+              "rejected_allocations": 0,
+              "scope": "owned HF CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+            },
+            "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+            "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+            "complete_plan_peak": false,
+            "cpu_worker_limit": 1,
+            "excludes": [
+              "recurrence/eigensolver temporaries",
+              "other fleet items",
+              "runtime overhead"
+            ]
+          },
+          "maximum_energy_error": 0.0,
+          "maximum_cpu_energy_error": 4.831690603168681e-13,
+          "maximum_force_error": 0.0,
+          "maximum_cpu_force_error": 5.203104613826781e-11
+        }
+      ],
+      "live_device_bytes_after_destroy": 0,
+      "infeasible": {
+        "budget": {
+          "host_bytes": 95866983,
+          "device_bytes": null,
+          "pinned_host_bytes": null,
+          "per_device_bytes": [],
+          "host_reserve_bytes": 0,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "schema_version": 1
+        },
+        "requests": [
+          {
+            "name": "hf",
+            "identity": {
+              "method": "uhf",
+              "provider": "native-hf-df-v1",
+              "backend": "cuda",
+              "precision": "fp64",
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 2}, {\"atoms\": 3, \"auxiliary\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"electrons\": {\"atomic_numbers\": [8, 1, 1], \"ecp_core_electrons\": [0, 0, 0], \"electron_count\": 10, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 5, \"nbeta\": 5, \"nuclear_charges\": [8, 1, 1]}, \"orbital\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"spins\": 2}, {\"atoms\": 2, \"auxiliary\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 2}]}",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "schedule": "{\"density_fitting\": \"cuda\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-10, \"device_id\": 0, \"diis_history\": 8, \"energy_tolerance\": 1e-12, \"max_iterations\": 100, \"native_binary_sha256\": \"47da7a478ab528999fd45b53c27a1987f38c44c7a98fb789ccf2606150fa4bee\", \"profile_identity\": \"generic_cuda\", \"runtime_policy\": {\"VIBEQC_BOUNDED_DIRECT_AOT_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_COUNT_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_STREAMING\": null, \"VIBEQC_DF_VALUES\": null, \"VIBEQC_DF_VALUE_MAPPING\": null, \"VIBEQC_DIRECT_TILE_VALIDATION\": null, \"VIBEQC_FINAL_FOCK_REBUILD\": null, \"VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING\": null, \"VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE\": null, \"VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD\": null, \"VIBEQC_ONE_ELECTRON_FORCE_SCALAR\": null, \"VIBEQC_PPPS_BLOCK_THREADS\": null, \"VIBEQC_PPPS_RESIDENT_BRA\": null, \"VIBEQC_PPPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PPSS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSSS_RESIDENT_BRA\": null, \"VIBEQC_PSSS_WEIGHTED\": null, \"VIBEQC_XSYEV_PROBE_SKIP_DIAGNOSTIC\": null}, \"screening_tolerance\": 1e-12}",
+              "schema_version": 1
+            },
+            "candidates": [
+              {
+                "name": "cuda-df-resident",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "all DF bucket caches and native solver workspaces",
+                    "bytes": 134260944,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF setup/force/retry workspace",
+                    "bytes": 201390172,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "all retained DF host state",
+                    "bytes": 10320192,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": true,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF host workspace",
+                    "bytes": 85678952,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "opaque CUDA library retention allowance",
+                    "bytes": 805306368,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  }
+                ],
+                "relative_cost": 0,
+                "decisions": [
+                  [
+                    "density_fitting_memory_budget_bytes",
+                    "0"
+                  ],
+                  [
+                    "batch_execution",
+                    "serialized buckets; all retained caches summed"
+                  ],
+                  [
+                    "scf_driver",
+                    "CUDA SCF with existing CPU numerical recovery; CUDA J/K"
+                  ],
+                  [
+                    "bucket_inventory",
+                    "[{\"batch\": 2, \"cartesian_naux\": 2, \"cartesian_nbf\": 2, \"coordinates\": 6, \"host_metadata\": 1081344, \"naux\": 2, \"nbf\": 2, \"occupied\": 1, \"preparation_minimum\": 12920, \"resident_device_bytes\": 67114880, \"resident_host_bytes\": 1087392, \"source_bytes\": 1540, \"tiles\": {\"ao_pair_tile\": 4, \"auxiliary_tile\": 2, \"batch_tile\": 2, \"budget_bytes\": 0, \"fixed_device_bytes\": 0, \"occupied_tile\": 1, \"peak_workspace_bytes\": 2560, \"stores_full_three_center\": true}}, {\"batch\": 1, \"cartesian_naux\": 7, \"cartesian_nbf\": 7, \"coordinates\": 9, \"host_metadata\": 9177088, \"naux\": 7, \"nbf\": 7, \"occupied\": 5, \"preparation_minimum\": 98064, \"resident_device_bytes\": 67146064, \"resident_host_bytes\": 9232800, \"source_bytes\": 2530, \"tiles\": {\"ao_pair_tile\": 49, \"auxiliary_tile\": 7, \"batch_tile\": 1, \"budget_bytes\": 0, \"fixed_device_bytes\": 0, \"occupied_tile\": 5, \"peak_workspace_bytes\": 32592, \"stores_full_three_center\": true}}]"
+                  ]
+                ]
+              },
+              {
+                "name": "cuda-df-source",
+                "mode": "recomputed",
+                "estimates": [
+                  {
+                    "name": "all DF bucket caches and native solver workspaces",
+                    "bytes": 134265830,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": true,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF setup/force/retry workspace",
+                    "bytes": 201393486,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "all retained DF host state",
+                    "bytes": 10276624,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF host workspace",
+                    "bytes": 85590360,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "opaque CUDA library retention allowance",
+                    "bytes": 805306368,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  }
+                ],
+                "relative_cost": 1,
+                "decisions": [
+                  [
+                    "density_fitting_memory_budget_bytes",
+                    "98064"
+                  ],
+                  [
+                    "batch_execution",
+                    "serialized buckets; all retained caches summed"
+                  ],
+                  [
+                    "scf_driver",
+                    "CPU DIIS/eigensolvers; CUDA integral regeneration and J/K"
+                  ],
+                  [
+                    "bucket_inventory",
+                    "[{\"batch\": 2, \"cartesian_naux\": 2, \"cartesian_nbf\": 2, \"coordinates\": 6, \"host_metadata\": 1081344, \"naux\": 2, \"nbf\": 2, \"occupied\": 1, \"preparation_minimum\": 12920, \"resident_device_bytes\": 67116452, \"resident_host_bytes\": 1085056, \"source_bytes\": 1540, \"tiles\": {\"ao_pair_tile\": 4, \"auxiliary_tile\": 2, \"batch_tile\": 2, \"budget_bytes\": 98064, \"fixed_device_bytes\": 1540, \"occupied_tile\": 1, \"peak_workspace_bytes\": 4100, \"stores_full_three_center\": true}}, {\"batch\": 1, \"cartesian_naux\": 7, \"cartesian_nbf\": 7, \"coordinates\": 9, \"host_metadata\": 9177088, \"naux\": 7, \"nbf\": 7, \"occupied\": 5, \"preparation_minimum\": 98064, \"resident_device_bytes\": 67149378, \"resident_host_bytes\": 9191568, \"source_bytes\": 2530, \"tiles\": {\"ao_pair_tile\": 49, \"auxiliary_tile\": 7, \"batch_tile\": 1, \"budget_bytes\": 98064, \"fixed_device_bytes\": 2530, \"occupied_tile\": 5, \"peak_workspace_bytes\": 35122, \"stores_full_three_center\": true}}]"
+                  ]
+                ]
+              }
+            ],
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding",
+              "CUDA context, modules, graphs, stacks and allocator pool/page retention",
+              "opaque CUDA library retention above the reported allowance is untracked"
+            ],
+            "unsupported_reason": null,
+            "infeasible_reason": null
+          }
+        ],
+        "selections": [
+          [
+            "hf",
+            "cuda-df-source"
+          ]
+        ],
+        "status": "infeasible",
+        "diagnostic": "no supported plan fits: {'host': {'peak': 95866984, 'limit': 95866983, 'minimum_across_candidates': 95866984}}; dominant allocations: opaque CUDA library retention allowance=805306368 device:0, largest serialized DF setup/force/retry workspace=201393486 device:0, all DF bucket caches and native solver workspaces=134265830 device:0",
+        "schema_version": 1,
+        "peak_bytes": {
+          "host": 95866984,
+          "device": 1140965684,
+          "pinned": 0,
+          "pageable": 95866984,
+          "device:0": 1140965684
+        },
+        "resident_bytes": {
+          "host": 10276624,
+          "device": 939572198,
+          "pinned": 0,
+          "pageable": 10276624,
+          "device:0": 939572198
+        },
+        "peak_phases": {
+          "device:0": 0,
+          "pageable": 0,
+          "host": 0,
+          "device": 0
+        },
+        "limits": {
+          "host": 95866983
+        },
+        "identity": "4fa4059e6410ba37e00b8f8f155623aaf4f91aee549b68a6a403ea3d6b60ac79"
+      }
+    },
+    {
+      "case": "uhf-recomputed",
+      "plan": {
+        "budget": {
+          "host_bytes": 95866984,
+          "device_bytes": 1140965684,
+          "pinned_host_bytes": null,
+          "per_device_bytes": [],
+          "host_reserve_bytes": 0,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "schema_version": 1
+        },
+        "requests": [
+          {
+            "name": "hf",
+            "identity": {
+              "method": "uhf",
+              "provider": "native-hf-df-v1",
+              "backend": "cuda",
+              "precision": "fp64",
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 2}, {\"atoms\": 3, \"auxiliary\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"electrons\": {\"atomic_numbers\": [8, 1, 1], \"ecp_core_electrons\": [0, 0, 0], \"electron_count\": 10, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 5, \"nbeta\": 5, \"nuclear_charges\": [8, 1, 1]}, \"orbital\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"spins\": 2}, {\"atoms\": 2, \"auxiliary\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 2}]}",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "schedule": "{\"density_fitting\": \"cuda\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-10, \"device_id\": 0, \"diis_history\": 8, \"energy_tolerance\": 1e-12, \"max_iterations\": 100, \"native_binary_sha256\": \"47da7a478ab528999fd45b53c27a1987f38c44c7a98fb789ccf2606150fa4bee\", \"profile_identity\": \"generic_cuda\", \"runtime_policy\": {\"VIBEQC_BOUNDED_DIRECT_AOT_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_COUNT_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_STREAMING\": null, \"VIBEQC_DF_VALUES\": null, \"VIBEQC_DF_VALUE_MAPPING\": null, \"VIBEQC_DIRECT_TILE_VALIDATION\": null, \"VIBEQC_FINAL_FOCK_REBUILD\": null, \"VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING\": null, \"VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE\": null, \"VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD\": null, \"VIBEQC_ONE_ELECTRON_FORCE_SCALAR\": null, \"VIBEQC_PPPS_BLOCK_THREADS\": null, \"VIBEQC_PPPS_RESIDENT_BRA\": null, \"VIBEQC_PPPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PPSS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSSS_RESIDENT_BRA\": null, \"VIBEQC_PSSS_WEIGHTED\": null, \"VIBEQC_XSYEV_PROBE_SKIP_DIAGNOSTIC\": null}, \"screening_tolerance\": 1e-12}",
+              "schema_version": 1
+            },
+            "candidates": [
+              {
+                "name": "cuda-df-resident",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "all DF bucket caches and native solver workspaces",
+                    "bytes": 134260944,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF setup/force/retry workspace",
+                    "bytes": 201390172,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "all retained DF host state",
+                    "bytes": 10320192,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": true,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF host workspace",
+                    "bytes": 85678952,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "opaque CUDA library retention allowance",
+                    "bytes": 805306368,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  }
+                ],
+                "relative_cost": 0,
+                "decisions": [
+                  [
+                    "density_fitting_memory_budget_bytes",
+                    "0"
+                  ],
+                  [
+                    "batch_execution",
+                    "serialized buckets; all retained caches summed"
+                  ],
+                  [
+                    "scf_driver",
+                    "CUDA SCF with existing CPU numerical recovery; CUDA J/K"
+                  ],
+                  [
+                    "bucket_inventory",
+                    "[{\"batch\": 2, \"cartesian_naux\": 2, \"cartesian_nbf\": 2, \"coordinates\": 6, \"host_metadata\": 1081344, \"naux\": 2, \"nbf\": 2, \"occupied\": 1, \"preparation_minimum\": 12920, \"resident_device_bytes\": 67114880, \"resident_host_bytes\": 1087392, \"source_bytes\": 1540, \"tiles\": {\"ao_pair_tile\": 4, \"auxiliary_tile\": 2, \"batch_tile\": 2, \"budget_bytes\": 0, \"fixed_device_bytes\": 0, \"occupied_tile\": 1, \"peak_workspace_bytes\": 2560, \"stores_full_three_center\": true}}, {\"batch\": 1, \"cartesian_naux\": 7, \"cartesian_nbf\": 7, \"coordinates\": 9, \"host_metadata\": 9177088, \"naux\": 7, \"nbf\": 7, \"occupied\": 5, \"preparation_minimum\": 98064, \"resident_device_bytes\": 67146064, \"resident_host_bytes\": 9232800, \"source_bytes\": 2530, \"tiles\": {\"ao_pair_tile\": 49, \"auxiliary_tile\": 7, \"batch_tile\": 1, \"budget_bytes\": 0, \"fixed_device_bytes\": 0, \"occupied_tile\": 5, \"peak_workspace_bytes\": 32592, \"stores_full_three_center\": true}}]"
+                  ]
+                ]
+              },
+              {
+                "name": "cuda-df-source",
+                "mode": "recomputed",
+                "estimates": [
+                  {
+                    "name": "all DF bucket caches and native solver workspaces",
+                    "bytes": 134265830,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": true,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF setup/force/retry workspace",
+                    "bytes": 201393486,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "all retained DF host state",
+                    "bytes": 10276624,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF host workspace",
+                    "bytes": 85590360,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "opaque CUDA library retention allowance",
+                    "bytes": 805306368,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  }
+                ],
+                "relative_cost": 1,
+                "decisions": [
+                  [
+                    "density_fitting_memory_budget_bytes",
+                    "98064"
+                  ],
+                  [
+                    "batch_execution",
+                    "serialized buckets; all retained caches summed"
+                  ],
+                  [
+                    "scf_driver",
+                    "CPU DIIS/eigensolvers; CUDA integral regeneration and J/K"
+                  ],
+                  [
+                    "bucket_inventory",
+                    "[{\"batch\": 2, \"cartesian_naux\": 2, \"cartesian_nbf\": 2, \"coordinates\": 6, \"host_metadata\": 1081344, \"naux\": 2, \"nbf\": 2, \"occupied\": 1, \"preparation_minimum\": 12920, \"resident_device_bytes\": 67116452, \"resident_host_bytes\": 1085056, \"source_bytes\": 1540, \"tiles\": {\"ao_pair_tile\": 4, \"auxiliary_tile\": 2, \"batch_tile\": 2, \"budget_bytes\": 98064, \"fixed_device_bytes\": 1540, \"occupied_tile\": 1, \"peak_workspace_bytes\": 4100, \"stores_full_three_center\": true}}, {\"batch\": 1, \"cartesian_naux\": 7, \"cartesian_nbf\": 7, \"coordinates\": 9, \"host_metadata\": 9177088, \"naux\": 7, \"nbf\": 7, \"occupied\": 5, \"preparation_minimum\": 98064, \"resident_device_bytes\": 67149378, \"resident_host_bytes\": 9191568, \"source_bytes\": 2530, \"tiles\": {\"ao_pair_tile\": 49, \"auxiliary_tile\": 7, \"batch_tile\": 1, \"budget_bytes\": 98064, \"fixed_device_bytes\": 2530, \"occupied_tile\": 5, \"peak_workspace_bytes\": 35122, \"stores_full_three_center\": true}}]"
+                  ]
+                ]
+              }
+            ],
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding",
+              "CUDA context, modules, graphs, stacks and allocator pool/page retention",
+              "opaque CUDA library retention above the reported allowance is untracked"
+            ],
+            "unsupported_reason": null,
+            "infeasible_reason": null
+          }
+        ],
+        "selections": [
+          [
+            "hf",
+            "cuda-df-source"
+          ]
+        ],
+        "status": "feasible",
+        "diagnostic": null,
+        "schema_version": 1,
+        "peak_bytes": {
+          "host": 95866984,
+          "device": 1140965684,
+          "pinned": 0,
+          "pageable": 95866984,
+          "device:0": 1140965684
+        },
+        "resident_bytes": {
+          "host": 10276624,
+          "device": 939572198,
+          "pinned": 0,
+          "pageable": 10276624,
+          "device:0": 939572198
+        },
+        "peak_phases": {
+          "device:0": 0,
+          "pageable": 0,
+          "host": 0,
+          "device": 0
+        },
+        "limits": {
+          "host": 95866984,
+          "device": 1140965684
+        },
+        "identity": "539523bdb5b8cdae0b5f62ad2c3d0637e85b32fccd499c3d8fe0db64a92329d9"
+      },
+      "replays": [
+        {
+          "observation": {
+            "status": "observed",
+            "sampled_item_peak_host_bytes": null,
+            "samples": null,
+            "sampled_cuda_arena_peak_bytes": null,
+            "cuda_arena_samples": null,
+            "device_ledger": {
+              "device": 0,
+              "limit_bytes": 335659316,
+              "live_bytes": 65608,
+              "peak_bytes": 615246,
+              "allocations": 178,
+              "rejected_allocations": 0,
+              "scope": "owned HF CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+            },
+            "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+            "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+            "complete_plan_peak": false,
+            "cpu_worker_limit": 1,
+            "excludes": [
+              "recurrence/eigensolver temporaries",
+              "other fleet items",
+              "runtime overhead"
+            ]
+          },
+          "maximum_energy_error": 0.0,
+          "maximum_cpu_energy_error": 3.126388037344441e-13,
+          "maximum_force_error": 0.0,
+          "maximum_cpu_force_error": 2.4340529591881932e-11
+        },
+        {
+          "observation": {
+            "status": "observed",
+            "sampled_item_peak_host_bytes": null,
+            "samples": null,
+            "sampled_cuda_arena_peak_bytes": null,
+            "cuda_arena_samples": null,
+            "device_ledger": {
+              "device": 0,
+              "limit_bytes": 335659316,
+              "live_bytes": 65608,
+              "peak_bytes": 67516,
+              "allocations": 46,
+              "rejected_allocations": 0,
+              "scope": "owned HF CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+            },
+            "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+            "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+            "complete_plan_peak": false,
+            "cpu_worker_limit": 1,
+            "excludes": [
+              "recurrence/eigensolver temporaries",
+              "other fleet items",
+              "runtime overhead"
+            ]
+          },
+          "maximum_energy_error": 0.0,
+          "maximum_cpu_energy_error": 4.547473508864641e-13,
+          "maximum_force_error": 0.0,
+          "maximum_cpu_force_error": 5.208122821898087e-11
+        }
+      ],
+      "live_device_bytes_after_destroy": 0,
+      "infeasible": {
+        "budget": {
+          "host_bytes": 95866983,
+          "device_bytes": null,
+          "pinned_host_bytes": null,
+          "per_device_bytes": [],
+          "host_reserve_bytes": 0,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "schema_version": 1
+        },
+        "requests": [
+          {
+            "name": "hf",
+            "identity": {
+              "method": "uhf",
+              "provider": "native-hf-df-v1",
+              "backend": "cuda",
+              "precision": "fp64",
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 2}, {\"atoms\": 3, \"auxiliary\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"electrons\": {\"atomic_numbers\": [8, 1, 1], \"ecp_core_electrons\": [0, 0, 0], \"electron_count\": 10, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 5, \"nbeta\": 5, \"nuclear_charges\": [8, 1, 1]}, \"orbital\": {\"basis_hash\": \"276e9d30b62247aa637ab1d62135186970712b218a62f44874ad345aa8742514\", \"cartesian_nbf\": 7, \"maximum_angular\": 1, \"nbf\": 7, \"primitives\": 15, \"representation\": \"cartesian\", \"shells\": 5}, \"spins\": 2}, {\"atoms\": 2, \"auxiliary\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 2}]}",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "schedule": "{\"density_fitting\": \"cuda\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-10, \"device_id\": 0, \"diis_history\": 8, \"energy_tolerance\": 1e-12, \"max_iterations\": 100, \"native_binary_sha256\": \"47da7a478ab528999fd45b53c27a1987f38c44c7a98fb789ccf2606150fa4bee\", \"profile_identity\": \"generic_cuda\", \"runtime_policy\": {\"VIBEQC_BOUNDED_DIRECT_AOT_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_COUNT_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_STREAMING\": null, \"VIBEQC_DF_VALUES\": null, \"VIBEQC_DF_VALUE_MAPPING\": null, \"VIBEQC_DIRECT_TILE_VALIDATION\": null, \"VIBEQC_FINAL_FOCK_REBUILD\": null, \"VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING\": null, \"VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE\": null, \"VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD\": null, \"VIBEQC_ONE_ELECTRON_FORCE_SCALAR\": null, \"VIBEQC_PPPS_BLOCK_THREADS\": null, \"VIBEQC_PPPS_RESIDENT_BRA\": null, \"VIBEQC_PPPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PPSS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSSS_RESIDENT_BRA\": null, \"VIBEQC_PSSS_WEIGHTED\": null, \"VIBEQC_XSYEV_PROBE_SKIP_DIAGNOSTIC\": null}, \"screening_tolerance\": 1e-12}",
+              "schema_version": 1
+            },
+            "candidates": [
+              {
+                "name": "cuda-df-resident",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "all DF bucket caches and native solver workspaces",
+                    "bytes": 134260944,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF setup/force/retry workspace",
+                    "bytes": 201390172,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "all retained DF host state",
+                    "bytes": 10320192,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": true,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF host workspace",
+                    "bytes": 85678952,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "opaque CUDA library retention allowance",
+                    "bytes": 805306368,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  }
+                ],
+                "relative_cost": 0,
+                "decisions": [
+                  [
+                    "density_fitting_memory_budget_bytes",
+                    "0"
+                  ],
+                  [
+                    "batch_execution",
+                    "serialized buckets; all retained caches summed"
+                  ],
+                  [
+                    "scf_driver",
+                    "CUDA SCF with existing CPU numerical recovery; CUDA J/K"
+                  ],
+                  [
+                    "bucket_inventory",
+                    "[{\"batch\": 2, \"cartesian_naux\": 2, \"cartesian_nbf\": 2, \"coordinates\": 6, \"host_metadata\": 1081344, \"naux\": 2, \"nbf\": 2, \"occupied\": 1, \"preparation_minimum\": 12920, \"resident_device_bytes\": 67114880, \"resident_host_bytes\": 1087392, \"source_bytes\": 1540, \"tiles\": {\"ao_pair_tile\": 4, \"auxiliary_tile\": 2, \"batch_tile\": 2, \"budget_bytes\": 0, \"fixed_device_bytes\": 0, \"occupied_tile\": 1, \"peak_workspace_bytes\": 2560, \"stores_full_three_center\": true}}, {\"batch\": 1, \"cartesian_naux\": 7, \"cartesian_nbf\": 7, \"coordinates\": 9, \"host_metadata\": 9177088, \"naux\": 7, \"nbf\": 7, \"occupied\": 5, \"preparation_minimum\": 98064, \"resident_device_bytes\": 67146064, \"resident_host_bytes\": 9232800, \"source_bytes\": 2530, \"tiles\": {\"ao_pair_tile\": 49, \"auxiliary_tile\": 7, \"batch_tile\": 1, \"budget_bytes\": 0, \"fixed_device_bytes\": 0, \"occupied_tile\": 5, \"peak_workspace_bytes\": 32592, \"stores_full_three_center\": true}}]"
+                  ]
+                ]
+              },
+              {
+                "name": "cuda-df-source",
+                "mode": "recomputed",
+                "estimates": [
+                  {
+                    "name": "all DF bucket caches and native solver workspaces",
+                    "bytes": 134265830,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": true,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF setup/force/retry workspace",
+                    "bytes": 201393486,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "all retained DF host state",
+                    "bytes": 10276624,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "largest serialized DF host workspace",
+                    "bytes": 85590360,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "opaque CUDA library retention allowance",
+                    "bytes": 805306368,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  }
+                ],
+                "relative_cost": 1,
+                "decisions": [
+                  [
+                    "density_fitting_memory_budget_bytes",
+                    "98064"
+                  ],
+                  [
+                    "batch_execution",
+                    "serialized buckets; all retained caches summed"
+                  ],
+                  [
+                    "scf_driver",
+                    "CPU DIIS/eigensolvers; CUDA integral regeneration and J/K"
+                  ],
+                  [
+                    "bucket_inventory",
+                    "[{\"batch\": 2, \"cartesian_naux\": 2, \"cartesian_nbf\": 2, \"coordinates\": 6, \"host_metadata\": 1081344, \"naux\": 2, \"nbf\": 2, \"occupied\": 1, \"preparation_minimum\": 12920, \"resident_device_bytes\": 67116452, \"resident_host_bytes\": 1085056, \"source_bytes\": 1540, \"tiles\": {\"ao_pair_tile\": 4, \"auxiliary_tile\": 2, \"batch_tile\": 2, \"budget_bytes\": 98064, \"fixed_device_bytes\": 1540, \"occupied_tile\": 1, \"peak_workspace_bytes\": 4100, \"stores_full_three_center\": true}}, {\"batch\": 1, \"cartesian_naux\": 7, \"cartesian_nbf\": 7, \"coordinates\": 9, \"host_metadata\": 9177088, \"naux\": 7, \"nbf\": 7, \"occupied\": 5, \"preparation_minimum\": 98064, \"resident_device_bytes\": 67149378, \"resident_host_bytes\": 9191568, \"source_bytes\": 2530, \"tiles\": {\"ao_pair_tile\": 49, \"auxiliary_tile\": 7, \"batch_tile\": 1, \"budget_bytes\": 98064, \"fixed_device_bytes\": 2530, \"occupied_tile\": 5, \"peak_workspace_bytes\": 35122, \"stores_full_three_center\": true}}]"
+                  ]
+                ]
+              }
+            ],
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding",
+              "CUDA context, modules, graphs, stacks and allocator pool/page retention",
+              "opaque CUDA library retention above the reported allowance is untracked"
+            ],
+            "unsupported_reason": null,
+            "infeasible_reason": null
+          }
+        ],
+        "selections": [
+          [
+            "hf",
+            "cuda-df-source"
+          ]
+        ],
+        "status": "infeasible",
+        "diagnostic": "no supported plan fits: {'host': {'peak': 95866984, 'limit': 95866983, 'minimum_across_candidates': 95866984}}; dominant allocations: opaque CUDA library retention allowance=805306368 device:0, largest serialized DF setup/force/retry workspace=201393486 device:0, all DF bucket caches and native solver workspaces=134265830 device:0",
+        "schema_version": 1,
+        "peak_bytes": {
+          "host": 95866984,
+          "device": 1140965684,
+          "pinned": 0,
+          "pageable": 95866984,
+          "device:0": 1140965684
+        },
+        "resident_bytes": {
+          "host": 10276624,
+          "device": 939572198,
+          "pinned": 0,
+          "pageable": 10276624,
+          "device:0": 939572198
+        },
+        "peak_phases": {
+          "device:0": 0,
+          "pageable": 0,
+          "host": 0,
+          "device": 0
+        },
+        "limits": {
+          "host": 95866983
+        },
+        "identity": "4fa4059e6410ba37e00b8f8f155623aaf4f91aee549b68a6a403ea3d6b60ac79"
+      }
+    },
+    {
+      "case": "hf-tensor",
+      "plan": {
+        "budget": {
+          "host_bytes": 290768,
+          "device_bytes": 137696,
+          "pinned_host_bytes": null,
+          "per_device_bytes": [],
+          "host_reserve_bytes": 0,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "schema_version": 1
+        },
+        "requests": [
+          {
+            "name": "hf",
+            "identity": {
+              "method": "rhf",
+              "provider": "native-hf-direct-v1",
+              "backend": "cuda",
+              "precision": "fp64",
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"d84bfe3768b400204179d56c208ddf9551dce9129b91be0914ed262fb3e6a855\", \"cartesian_nbf\": 2, \"maximum_angular\": 0, \"nbf\": 2, \"primitives\": 6, \"representation\": \"cartesian\", \"shells\": 2}, \"spins\": 1}]}",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "schedule": "{\"density_fitting\": \"none\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-08, \"device_id\": 0, \"diis_history\": 8, \"energy_tolerance\": 1e-10, \"max_iterations\": 100, \"native_binary_sha256\": \"47da7a478ab528999fd45b53c27a1987f38c44c7a98fb789ccf2606150fa4bee\", \"profile_identity\": \"generic_cuda\", \"runtime_policy\": {\"VIBEQC_BOUNDED_DIRECT_AOT_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_COUNT_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_STREAMING\": null, \"VIBEQC_DF_VALUES\": null, \"VIBEQC_DF_VALUE_MAPPING\": null, \"VIBEQC_DIRECT_TILE_VALIDATION\": null, \"VIBEQC_FINAL_FOCK_REBUILD\": null, \"VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING\": null, \"VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE\": null, \"VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD\": null, \"VIBEQC_ONE_ELECTRON_FORCE_SCALAR\": null, \"VIBEQC_PPPS_BLOCK_THREADS\": null, \"VIBEQC_PPPS_RESIDENT_BRA\": null, \"VIBEQC_PPPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PPSS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSSS_RESIDENT_BRA\": null, \"VIBEQC_PSSS_WEIGHTED\": null, \"VIBEQC_XSYEV_PROBE_SKIP_DIAGNOSTIC\": null}, \"screening_tolerance\": 1e-12}",
+              "schema_version": 1
+            },
+            "candidates": [
+              {
+                "name": "cuda-small-resident",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "all retained direct-HF bucket arenas",
+                    "bytes": 2416,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "one cold numerical retry alongside warm bucket",
+                    "bytes": 2416,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "workspace",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "fleet host state, packed topology and staging capacity",
+                    "bytes": 90016,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  }
+                ],
+                "relative_cost": 0,
+                "decisions": [
+                  [
+                    "batch_execution",
+                    "serialized buckets; every retained arena summed"
+                  ],
+                  [
+                    "eigensolver",
+                    "small native; no external library workspace"
+                  ],
+                  [
+                    "item_inventory",
+                    "[{\"arena\": 2416, \"host\": 90016}]"
+                  ]
+                ]
+              }
+            ],
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding",
+              "CUDA context, modules, graphs, stacks and allocator pool/page retention"
+            ],
+            "unsupported_reason": null,
+            "infeasible_reason": null
+          },
+          {
+            "name": "tensor",
+            "identity": {
+              "method": "tensor_contraction",
+              "provider": "tensorir-cuda",
+              "backend": "cuda",
+              "precision": "fp64",
+              "topology": "{\"device\": 0, \"equation\": \"8bd5dbbe5065c171f42c2ec4b3092d900cab02e3ef2a49604d29b370cdca7c68\", \"outputs\": [\"r0\", \"r1\", \"r2\", \"r3\", \"r4\", \"r5\"], \"target\": {\"architecture\": \"sm_120\", \"compute_capability\": \"12.0\", \"compute_capability_major\": 12, \"compute_capability_minor\": 0, \"cuda_toolkit_version\": \"\", \"driver_version\": \"\", \"generator_abi\": 1, \"maximum_blocks_per_sm\": 24, \"maximum_registers_per_thread\": 255, \"maximum_threads_per_block\": 1024, \"maximum_threads_per_sm\": 1536, \"minimum_cuda_toolkit\": \"12.8\", \"nvcc_version\": \"\", \"packed_register_caps\": [192, 208], \"ptxas_version\": \"\", \"registers_per_sm\": 65536, \"required_cuda_features\": [\"fp64\", \"fp64_atomic_add\"], \"shared_memory_per_block\": 49152, \"shared_memory_per_block_optin\": 101376, \"shared_memory_per_sm\": 102400, \"sm_count\": 170, \"tuning_maximum_packed_registers\": 224, \"tuning_maximum_registers\": 192, \"tuning_maximum_shared_bytes\": 49152, \"tuning_maximum_stack_bytes\": 128, \"warp_size\": 32}}",
+              "observables": [
+                "tensor_outputs"
+              ],
+              "schedule": "{\"direct_gemm\": true, \"fuse\": false, \"recompute\": false, \"threads\": 128, \"tile_k\": 128, \"tile_m\": 128, \"tile_n\": 128, \"views\": false}",
+              "schema_version": 1
+            },
+            "candidates": [
+              {
+                "name": "tensor-0",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "native arena and workspaces",
+                    "bytes": 459264,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "retained library allowance",
+                    "bytes": 0,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  },
+                  {
+                    "name": "host staging, validation and detached output",
+                    "bytes": 200752,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  }
+                ],
+                "relative_cost": 0,
+                "decisions": [
+                  [
+                    "tensor_plan",
+                    "6a6f852d6170458c76f7c2f1bc59649ab1ce86aa74753208589c28052bc0fe60"
+                  ]
+                ]
+              },
+              {
+                "name": "tensor-1",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "native arena and workspaces",
+                    "bytes": 459264,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "retained library allowance",
+                    "bytes": 0,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  },
+                  {
+                    "name": "host staging, validation and detached output",
+                    "bytes": 200752,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  }
+                ],
+                "relative_cost": 1,
+                "decisions": [
+                  [
+                    "tensor_plan",
+                    "d7186efc3d0727d76d07d88657054e0fd31ab7d0b01bf45e065dbbe2df3e3afb"
+                  ]
+                ]
+              },
+              {
+                "name": "tensor-2",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "native arena and workspaces",
+                    "bytes": 459264,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "retained library allowance",
+                    "bytes": 0,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  },
+                  {
+                    "name": "host staging, validation and detached output",
+                    "bytes": 200752,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  }
+                ],
+                "relative_cost": 2,
+                "decisions": [
+                  [
+                    "tensor_plan",
+                    "d98b12ef547070421edd5ccd25628fc727c3748f545eac02031703e2e8afea2b"
+                  ]
+                ]
+              },
+              {
+                "name": "tensor-3",
+                "mode": "resident",
+                "estimates": [
+                  {
+                    "name": "native arena and workspaces",
+                    "bytes": 459264,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "retained library allowance",
+                    "bytes": 0,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  },
+                  {
+                    "name": "host staging, validation and detached output",
+                    "bytes": 200752,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  }
+                ],
+                "relative_cost": 3,
+                "decisions": [
+                  [
+                    "tensor_plan",
+                    "3b7e27c86f82797e4a355a1735b045ec1db373a1a149433e19cb3ac189e3edc3"
+                  ]
+                ]
+              },
+              {
+                "name": "tensor-4",
+                "mode": "recomputed",
+                "estimates": [
+                  {
+                    "name": "native arena and workspaces",
+                    "bytes": 132864,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": true,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "retained library allowance",
+                    "bytes": 0,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  },
+                  {
+                    "name": "host staging, validation and detached output",
+                    "bytes": 200752,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  }
+                ],
+                "relative_cost": 4,
+                "decisions": [
+                  [
+                    "tensor_plan",
+                    "fc056b748ec6e11d2eda4689528116f99a879457d53b04457e2aea83e18ea93a"
+                  ]
+                ]
+              },
+              {
+                "name": "tensor-5",
+                "mode": "recomputed",
+                "estimates": [
+                  {
+                    "name": "native arena and workspaces",
+                    "bytes": 132864,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": true,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "retained library allowance",
+                    "bytes": 0,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  },
+                  {
+                    "name": "host staging, validation and detached output",
+                    "bytes": 200752,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  }
+                ],
+                "relative_cost": 5,
+                "decisions": [
+                  [
+                    "tensor_plan",
+                    "a51558d7b4ab5fdc2e933a01fc3250b5b379985c3233fa4db92f1caa1231ea42"
+                  ]
+                ]
+              },
+              {
+                "name": "tensor-6",
+                "mode": "recomputed",
+                "estimates": [
+                  {
+                    "name": "native arena and workspaces",
+                    "bytes": 132864,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": true,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "retained library allowance",
+                    "bytes": 0,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  },
+                  {
+                    "name": "host staging, validation and detached output",
+                    "bytes": 200752,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  }
+                ],
+                "relative_cost": 6,
+                "decisions": [
+                  [
+                    "tensor_plan",
+                    "13b29c66fcfe9599cffc389280ada73da670ac7911c13649d2bf2c1df41c6e19"
+                  ]
+                ]
+              },
+              {
+                "name": "tensor-7",
+                "mode": "recomputed",
+                "estimates": [
+                  {
+                    "name": "native arena and workspaces",
+                    "bytes": 132864,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": true,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  },
+                  {
+                    "name": "retained library allowance",
+                    "bytes": 0,
+                    "space": "device:0",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "library",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "runtime_allowance"
+                  },
+                  {
+                    "name": "host staging, validation and detached output",
+                    "bytes": 200752,
+                    "space": "pageable",
+                    "first_phase": 0,
+                    "last_phase": 0,
+                    "kind": "persistent",
+                    "cacheable": false,
+                    "recomputable": false,
+                    "streamed_bytes": 0,
+                    "accounting": "capacity_bound"
+                  }
+                ],
+                "relative_cost": 7,
+                "decisions": [
+                  [
+                    "tensor_plan",
+                    "e7773500d0214cd7d27b4e751ca63d21d44c98a7767669dbb8f381dbf7fbd6cb"
+                  ]
+                ]
+              }
+            ],
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained outputs",
+              "Python/code objects, CUDA context/module/stack and allocator rounding"
+            ],
+            "unsupported_reason": null,
+            "infeasible_reason": null
+          }
+        ],
+        "selections": [
+          [
+            "hf",
+            "cuda-small-resident"
+          ],
+          [
+            "tensor",
+            "tensor-4"
+          ]
+        ],
+        "status": "feasible",
+        "diagnostic": null,
+        "schema_version": 1,
+        "peak_bytes": {
+          "host": 290768,
+          "device": 137696,
+          "pinned": 0,
+          "pageable": 290768,
+          "device:0": 137696
+        },
+        "resident_bytes": {
+          "host": 290768,
+          "device": 135280,
+          "pinned": 0,
+          "pageable": 290768,
+          "device:0": 135280
+        },
+        "peak_phases": {
+          "device:0": 0,
+          "pageable": 0,
+          "host": 0,
+          "device": 0
+        },
+        "limits": {
+          "host": 290768,
+          "device": 137696
+        },
+        "identity": "6cb765685625ea67b80b447886bcb69fb3c4914d4c81555e9080d037b12f58ad"
+      },
+      "hf_observation": {
+        "status": "observed",
+        "sampled_item_peak_host_bytes": null,
+        "samples": null,
+        "sampled_cuda_arena_peak_bytes": 2416,
+        "cuda_arena_samples": 2,
+        "device_ledger": {
+          "device": 0,
+          "limit_bytes": 4832,
+          "live_bytes": 2416,
+          "peak_bytes": 2416,
+          "allocations": 1,
+          "rejected_allocations": 0,
+          "scope": "owned HF CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+        },
+        "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+        "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+        "complete_plan_peak": false,
+        "cpu_worker_limit": 1,
+        "excludes": [
+          "recurrence/eigensolver temporaries",
+          "other fleet items",
+          "runtime overhead"
+        ]
+      },
+      "tensor_metrics": {
+        "owned_device_bytes": 132864,
+        "provider_retained_bytes": 0,
+        "prepare_device_delta": 2097152,
+        "observed_device_delta": 35651584,
+        "device_ms": 1.8679360151290894,
+        "input_ms": 0.0,
+        "output_ms": 0.0,
+        "packing_ms": 0.0,
+        "library_ms": 0.0,
+        "kernel_ms": 0.0,
+        "endpoint_ms": 2.0196959376335144,
+        "predicted_peak_bytes": 333616,
+        "host_buffer_bytes": 200752,
+        "profiled": false,
+        "resource_plan_id": "6cb765685625ea67b80b447886bcb69fb3c4914d4c81555e9080d037b12f58ad",
+        "resource_owner": "tensor",
+        "tracked_device_bytes": 132864,
+        "tracked_host_bytes": 135216,
+        "resource_tracking_scope": "owned ndarrays, native device buffers and measured retained provider allocations; iterator/runtime overhead reported separately"
+      },
+      "observed_device_peak_upper_bound": 135280,
+      "maximum_tensor_error": 2.000888343900442e-10,
+      "allocation_fallbacks": []
+    }
+  ]
+}

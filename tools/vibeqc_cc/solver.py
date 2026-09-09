@@ -2,6 +2,8 @@
 
 import json
 import time
+from collections import OrderedDict
+from contextlib import nullcontext
 from dataclasses import asdict, dataclass, fields
 from hashlib import sha256
 from pathlib import Path
@@ -16,6 +18,51 @@ from tools.vibeqc_validation.schema import canonical_hash
 
 from .doubles import build_ccsd_program
 from .equations import amplitude_layouts
+
+
+def _provider_blocks(provider, snapshot, names):
+    """Dry-run the complete CPU cache transition before any AO conversion.
+
+    This internal adapter mirrors #147's pin/LRU retention under its reentrant
+    lock. It reads its private cache accounting but does not change the shared
+    provider API. Saved-MO replay/test adapters have no transformation cache.
+    """
+    blocks = {name: MOBlock.from_spaces(snapshot, name) for name in names}
+    with getattr(provider, "_lock", nullcontext()):
+        if hasattr(provider, "_cache"):
+            if provider._closed:
+                raise RuntimeError("CCSD integral provider is closed")
+            if provider.source.identity != provider._source_identity:
+                raise ValueError("integral source changed before CCSD preparation")
+            provider.source._check_open()
+            retained = provider._retained
+            cache = OrderedDict(
+                (key, cost) for key, (_, cost) in provider._cache.items()
+            )
+            for block in blocks.values():
+                plan = provider.plan(block)
+                if plan.peak_bytes > provider.budget_bytes:
+                    raise MemoryError(
+                        "CCSD provider block exceeds budget before integral conversion"
+                    )
+                key = (snapshot.identity, provider.source.identity, block.slots)
+                if key in cache:
+                    cache.move_to_end(key)
+                    continue
+                while (
+                    cache
+                    and retained + plan.peak_bytes > provider.budget_bytes
+                    and provider.cache_policy == "lru"
+                ):
+                    _, cost = cache.popitem(last=False)
+                    retained -= cost
+                if retained + plan.peak_bytes > provider.budget_bytes:
+                    raise MemoryError(
+                        "CCSD complete provider block set exceeds budget before integral conversion"
+                    )
+                cache[key] = 8 * plan.output_elements
+                retained += cache[key]
+        return {name: provider.get(block) for name, block in blocks.items()}
 
 
 @dataclass(frozen=True)
@@ -74,6 +121,8 @@ class PreparedCCSD:
             raise TypeError("options must be SolverOptions")
         if not isinstance(snapshot, ReferenceSnapshot):
             raise TypeError("CCSD requires a validated RHF ReferenceSnapshot")
+        if snapshot.algorithm != "RHF":
+            raise ValueError("CCSD requires an RHF reference")
         if not isinstance(provider, ConventionalProvider) or provider.backend != "cpu":
             raise ValueError("CCSD requires a conventional CPU integral provider")
         if snapshot.identity != provider.snapshot.identity:
@@ -138,8 +187,9 @@ class PreparedCCSD:
         )
         f = snapshot.coefficients.T @ snapshot.fock @ snapshot.coefficients
         self.feeds = {"foo": f[:o, :o], "fov": f[:o, o:], "fvv": f[o:, o:]}
-        for name in ("ovov", "ovvo", "oovv", "ovvv", "ovoo", "oooo", "vvvv"):
-            result = provider.get(MOBlock.from_spaces(snapshot, name))
+        for name, result in _provider_blocks(
+            provider, snapshot, ("ovov", "ovvo", "oovv", "ovvv", "ovoo", "oooo", "vvvv")
+        ).items():
             if (
                 result.reference_id != snapshot.identity
                 or result.hamiltonian_id != snapshot.hamiltonian_id

@@ -1,0 +1,127 @@
+{
+  "schema": "vibeqc.evidence-archive.v1",
+  "source_commit": "e5db80642d61afacb1d2761825c5a40b1698f4e3",
+  "archive_sha256": "dee1ead19fb45abeb7f07934c9b642dd9dbd8716a9634469285a2cadd56e0a72",
+  "files": [
+    {
+      "path": "frozen-source/docs/rccsd_gpu.md",
+      "bytes": 4268,
+      "sha256": "83d0099df93905f48b8530b01b1cf05d68b9cf22e5c1c6988472914bc123af9d"
+    },
+    {
+      "path": "frozen-source/src/cc/cuda_state.cuh",
+      "bytes": 5274,
+      "sha256": "76766d10f1c2d1501794e948f13dfd89cfd1ae86589d02f005f95a660c808449"
+    },
+    {
+      "path": "frozen-source/tests/cc_cuda_state.cu",
+      "bytes": 2935,
+      "sha256": "1a7bdcc5e40d45dcacfdabc2346f4d4662eec03e49d0b780a6631bfbd418cd89"
+    },
+    {
+      "path": "frozen-source/tests/python/test_cc_cuda.py",
+      "bytes": 3510,
+      "sha256": "fe1abc5210bc102a433ce161ab9b9ed5219f23d32f4b55c7aff37cf4c1fbe9d0"
+    },
+    {
+      "path": "frozen-source/tests/python/test_cc_cuda_state.py",
+      "bytes": 3262,
+      "sha256": "1d81d249bed7708c5b873e400ec9389fa65e2ed3ba79c1e33a33c65f91b46229"
+    },
+    {
+      "path": "frozen-source/tests/python/test_cc_gpu_state.py",
+      "bytes": 4372,
+      "sha256": "0f061f1f07aea0dd8c662c4345b4a4b472d4573c4432d4bb4a37dcea016a840e"
+    },
+    {
+      "path": "frozen-source/tools/validate_cc_cuda.py",
+      "bytes": 7229,
+      "sha256": "c360db82b726cae17a194f2fdb3d2af4e238e8856483c8e9233bc818140434af"
+    },
+    {
+      "path": "frozen-source/tools/vibeqc_cc/cuda.py",
+      "bytes": 2428,
+      "sha256": "ae405ae7a335e93b6319097ae9cbcdde3ebd7c388162ab9165b023e0ba00f89a"
+    },
+    {
+      "path": "frozen-source/tools/vibeqc_cc/gpu_state.py",
+      "bytes": 7823,
+      "sha256": "03d9474c6696c5b7614a3253310a14cd2dbf9a41ece67b2e4ebf236d23549b47"
+    },
+    {
+      "path": "minimum-window/device.txt",
+      "bytes": 159,
+      "sha256": "149aacc61be3305e74f7f76c7b476eb891000be521d7c50479d97a5a7845c03a"
+    },
+    {
+      "path": "minimum-window/minimum-memcheck.log",
+      "bytes": 306,
+      "sha256": "819c379499c9b2bdf1a627780e21ae523acd84a824307034e66a72e5c1291f7d"
+    },
+    {
+      "path": "minimum-window/result.json",
+      "bytes": 1408,
+      "sha256": "b596dd4f847b2ff1183bbc017db3c2a0ff96b37641f9ca6e89af519958b2730b"
+    },
+    {
+      "path": "numerical/h2-minimum.json",
+      "bytes": 310932,
+      "sha256": "aced5814fdba2979eb64d08cb70fe900e6fc40e069e9c455f0908ddb2ff3a673"
+    },
+    {
+      "path": "numerical/h2-normal.json",
+      "bytes": 310943,
+      "sha256": "8c3a8df95d3d35232c9bde2c204fb5027874aa44e12fa597cc2ed3184847148f"
+    },
+    {
+      "path": "numerical/lih-minimum.json",
+      "bytes": 356140,
+      "sha256": "cc4288578e9d63d56098d4d4ebeaf54c735e64aa348db290e7c60da62b87409e"
+    },
+    {
+      "path": "numerical/lih-normal.json",
+      "bytes": 356291,
+      "sha256": "8ef6b6064e381f426b5e9d1a6eabce2af37a38a66f5e69db201b8578063806be"
+    },
+    {
+      "path": "numerical/manifest.json",
+      "bytes": 2581,
+      "sha256": "2340c9cea9486e8eb7331f8fe006f184cfdab2366b3a8015c8c22a9cda251f9c"
+    },
+    {
+      "path": "numerical/random-minimum.json",
+      "bytes": 353141,
+      "sha256": "8543fed21d22d993ed7d48ab6facc9c65008fc4a281239eee62d08f5ac2a0b05"
+    },
+    {
+      "path": "numerical/random-normal.json",
+      "bytes": 351304,
+      "sha256": "edf7f1897a27e1ac4449ba020e35f41cfaa6df748d4138e5310edccc542c45d7"
+    },
+    {
+      "path": "numerical/water-minimum.json",
+      "bytes": 356290,
+      "sha256": "d9a1bb4c8bc9f676825b79fb3e49427cfcdfd8455660b93791538f4e2cfc8504"
+    },
+    {
+      "path": "numerical/water-normal.json",
+      "bytes": 356150,
+      "sha256": "02da282f71557465ae8c9a3f04e511a600cac97837bbca2a03e019a044139f9f"
+    },
+    {
+      "path": "window/device.txt",
+      "bytes": 159,
+      "sha256": "149aacc61be3305e74f7f76c7b476eb891000be521d7c50479d97a5a7845c03a"
+    },
+    {
+      "path": "window/memcheck.log",
+      "bytes": 160,
+      "sha256": "3f58a7de52a5fc7a0e7ad00eae463dfa7b4e9a0644a22f86ab91112744d6a2c7"
+    },
+    {
+      "path": "window/result.json",
+      "bytes": 1830,
+      "sha256": "03e989394e3351d96fd89981a16a03be958b3855c58a38452e961d7db79224ef"
+    }
+  ]
+}

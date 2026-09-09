@@ -12,6 +12,7 @@ from typing import Self
 import numpy as np
 
 from . import _native
+from .accuracy import AccuracyAssessment
 from .calculator import Atom, Calculator
 
 
@@ -31,6 +32,7 @@ class BatchItemResult:
     warm_start_used: bool
     warm_start_fallback: bool
     basis_metadata: dict = field(default_factory=dict)
+    accuracy: AccuracyAssessment | None = None
 
     @property
     def succeeded(self) -> bool:
@@ -335,6 +337,7 @@ class PreparedBatch:
         warm_start: bool = True,
         shell_class_profiling: bool = False,
         inactive_eigensolver_profiling: bool = False,
+        resource_plan=None,
     ) -> None:
         if not systems:
             raise ValueError("a batch requires at least one system")
@@ -358,6 +361,47 @@ class PreparedBatch:
             raise ValueError("charges and multiplicities must match the batch size")
         for atoms in self._systems:
             calculator._preflight_hf_basis(atoms)
+        self.resource_plan = resource_plan
+        self.resource_diagnostics = None
+        self._resource_ledger = None
+        if resource_plan is not None or calculator._resource_budget is not None:
+            request = calculator._resource_request(
+                self._systems,
+                charges=self._charges,
+                multiplicities=self._multiplicities,
+            )
+            if resource_plan is None:
+                from .resources import plan_resources
+
+                self.resource_plan = plan_resources(
+                    (request,), calculator._resource_budget
+                )
+            else:
+                owned = {r.name: r for r in resource_plan.requests}
+                if owned.get(request.name) != request:
+                    raise ValueError(
+                        "prepared HF inputs differ from the global resource plan"
+                    )
+                if (
+                    calculator._resource_budget is not None
+                    and resource_plan.budget != calculator._resource_budget
+                ):
+                    raise ValueError(
+                        "global resource plan differs from the calculator budget"
+                    )
+            self.resource_plan.require_feasible()
+            if request.identity.backend == "cuda":
+                from .resources_native import NativeDeviceLedger
+
+                self._resource_ledger = NativeDeviceLedger(
+                    self._library, self.resource_plan
+                )
+            if request.identity.backend == "cuda" and (
+                shell_class_profiling or inactive_eigensolver_profiling
+            ):
+                raise NotImplementedError(
+                    "CUDA resource plans exclude optional profiling allocations"
+                )
         self._model_signature = calculator._model_signature()
         self._basis_metadata = tuple(
             calculator.basis_metadata(atoms, charge=charge, multiplicity=multiplicity)
@@ -404,7 +448,8 @@ class PreparedBatch:
                     calculator._auxiliary_basis,
                 )
             method = calculator._method_descriptor(
-                auxiliary_handle if auxiliary_handle.value else None
+                auxiliary_handle if auxiliary_handle.value else None,
+                resource_plan=self.resource_plan,
             )
             flags = _native.BATCH_ENABLE_WARM_STARTS if warm_start else 0
             if shell_class_profiling:
@@ -530,16 +575,45 @@ class PreparedBatch:
                 for index in range(count)
             )
         )
-        _native.check(
-            self._library,
-            self._library.vibeqc_batch_execute(
+        if self.resource_plan is None:
+            status = self._library.vibeqc_batch_execute(
                 self._batch,
                 inputs_pointer,
                 input_count,
                 output_array,
                 count,
-            ),
-        )
+            )
+        else:
+            from .resources import CpuResourceObservation
+
+            current = self._calculator._resource_request(
+                self._systems,
+                charges=self._charges,
+                multiplicities=self._multiplicities,
+            )
+            if current != next(
+                r for r in self.resource_plan.requests if r.name == current.name
+            ):
+                raise ValueError(
+                    "HF resource inputs or execution schedule changed after preparation"
+                )
+            with CpuResourceObservation(
+                self._library, cpu_workers=1, ledger=self._resource_ledger
+            ) as observed:
+                status = self._library.vibeqc_batch_execute(
+                    self._batch, inputs_pointer, input_count, output_array, count
+                )
+            self.resource_diagnostics = {
+                "plan": self.resource_plan.to_dict(),
+                "observation": observed.to_dict(),
+            }
+            observed.verify(self.resource_plan)
+        if self.resource_diagnostics is None:
+            _native.check(self._library, status)
+        else:
+            from .resources_native import check_resource_status
+
+            check_resource_status(self._library, status, self.resource_diagnostics)
 
         items: list[BatchItemResult] = []
         for index, output in enumerate(output_array):
@@ -550,6 +624,23 @@ class PreparedBatch:
                 else None
             )
             message = self._library.vibeqc_status_message(output.status).decode("utf-8")
+            accuracy = None
+            if succeeded and self._calculator._target_accuracy is not None:
+                atoms = self._systems[index]
+                if coordinates is not None and coordinates[index] is not None:
+                    xyz = np.asarray(coordinates[index], dtype=np.float64).reshape(
+                        -1, 3
+                    )
+                    atoms = tuple(
+                        Atom(atom.atomic_number, tuple(position))
+                        for atom, position in zip(atoms, xyz, strict=True)
+                    )
+                accuracy = self._calculator._accuracy_assessment(
+                    atoms,
+                    self._charges[index],
+                    self._multiplicities[index],
+                    bool(output.converged),
+                )
             items.append(
                 BatchItemResult(
                     index=index,
@@ -570,11 +661,17 @@ class PreparedBatch:
                     warm_start_used=bool(output.warm_start_used),
                     warm_start_fallback=bool(output.warm_start_fallback),
                     basis_metadata=deepcopy(self._basis_metadata[index]),
+                    accuracy=accuracy,
                 )
             )
         result = BatchResult(tuple(items))
         if strict:
-            result.raise_for_failures()
+            try:
+                result.raise_for_failures()
+            except RuntimeError as error:
+                if self.resource_diagnostics is not None:
+                    error.resource_diagnostics = self.resource_diagnostics
+                raise
         return result
 
     def clear_warm_starts(self) -> None:
@@ -885,6 +982,8 @@ class PreparedBatch:
         if self._context.value:
             self._library.vibeqc_context_destroy(self._context)
             self._context = ctypes.c_void_p()
+        if self._resource_ledger is not None:
+            self._resource_ledger.close()
 
     def __enter__(self) -> Self:
         self._ensure_open()
