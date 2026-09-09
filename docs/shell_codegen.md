@@ -105,8 +105,10 @@ The current CUDA backend still accepts only first nuclear derivatives of
 four-center ERIs and preserves the existing force-vector ABI. Higher derivative
 orders need a separate higher-order tensor layout and recovery implementation.
 One-electron and density-fitting operators have explicit shell, center, and
-bounded-block contracts; their generated kernels still need lowering,
-correctness oracles, and resource and timing gates.
+bounded-block contracts. [One-electron S/T/V values](one_electron_codegen.md)
+now have a separate Hermite DAG lowering and native candidate schedules;
+the DF value provider has its own generated Rys lowering. Their derivative
+and production-selection boundaries remain independent of the quartet ABI.
 
 For large-AO direct-J/K failures, set `VIBEQC_DIRECT_TILE_VALIDATION=validate`
 to run an opt-in device validator immediately after shell-quartet compaction.

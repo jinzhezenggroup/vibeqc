@@ -126,6 +126,14 @@ bool one_electron_force_scalar_requested() noexcept {
   return selection == nullptr || std::strcmp(selection, "0") == 0;
 }
 
+bool generated_one_electron_values_requested() noexcept {
+  return selected("VIBEQC_ONE_ELECTRON_VALUES", "generated");
+}
+
+unsigned one_electron_value_mapping_requested() noexcept {
+  return selected("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", "shell_warp") ? 1U : 0U;
+}
+
 bool resident_psss_bra_requested() noexcept { return enabled("VIBEQC_PSSS_RESIDENT_BRA"); }
 
 bool generated_psss_weighted_requested() noexcept {

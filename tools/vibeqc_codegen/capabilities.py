@@ -95,6 +95,18 @@ def query_integral_capability(
     a weighted request and silently apply an HF contraction.
     """
     reasons = []
+    if backend == "cuda_one_electron_values":
+        from .one_electron_values import build_one_electron_component_kernel
+        from .shell_spec import cartesian_components
+
+        try:
+            components = tuple(
+                cartesian_components(l)[0] for l in integral.signature.angular
+            )
+            build_one_electron_component_kernel(integral, components)
+        except (ValueError, IndexError) as error:
+            return CapabilityCheck(False, reasons=(str(error),))
+        return CapabilityCheck(True, schedules=("thread", "shell_warp"))
     if backend == "cuda_weighted_eri":
         from .blocks import WeightedDerivative
 

@@ -47,6 +47,7 @@ def source_identity(source: Path) -> str:
         source / "tools/generate_shell_kernels.py",
         source / "tools/generate_df_kernels.py",
         source / "tools/generate_weighted_eri_kernels.py",
+        source / "tools/generate_one_electron_kernels.py",
     }
     for directory in ("src", "include"):
         paths.update(p for p in (source / directory).rglob("*") if p.is_file())

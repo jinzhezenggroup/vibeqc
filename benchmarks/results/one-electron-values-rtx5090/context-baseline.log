@@ -1,0 +1,141 @@
+................F
+=================================== FAILURES ===================================
+_____ test_fresh_process_restart_and_independent_reference[False-rhf-0-1] ______
+
+tmp_path = PosixPath('/tmp/pytest-of-jzzeng/pytest-1684/test_fresh_process_restart_and0')
+method = 'rhf', charge = 0, multiplicity = 1, fitted = False
+
+    @pytest.mark.parametrize("method,charge,multiplicity", [("rhf", 0, 1), ("uhf", 1, 2)])
+    @pytest.mark.parametrize("fitted", [False, True])
+    def test_fresh_process_restart_and_independent_reference(
+        tmp_path, method, charge, multiplicity, fitted
+    ):
+        checkpoint = tmp_path / "hf.vqcp"
+        options = {
+            "method": method,
+            "device": DEVICE,
+            "density_fitting": DEVICE if fitted else "none",
+        }
+        # Producer and consumer have separate library contexts, streams and heaps.
+        script = """
+    import json, sys
+    from vibeqc import Calculator
+    options=json.loads(sys.argv[1]); systems=json.loads(sys.argv[2]); charge=int(sys.argv[3]); multiplicity=int(sys.argv[4])
+    with Calculator(**options).prepare_batch(systems,charges=[charge],multiplicities=[multiplicity]) as b:
+        if sys.argv[6]=='read': b.load_checkpoint(sys.argv[5])
+        r=b.execute(strict=True).items[0]
+        if sys.argv[6]=='write': b.save_checkpoint(sys.argv[5])
+        print(json.dumps(dict(energy=r.energy,forces=r.forces.tolist(),origin=r.restart_origin,iterations=r.iterations,converged=r.converged)))
+    """
+        args = [
+            sys.executable,
+            "-c",
+            script,
+            json.dumps(options),
+            json.dumps([H2]),
+            str(charge),
+            str(multiplicity),
+            str(checkpoint),
+        ]
+        outputs = [
+>           json.loads(subprocess.check_output(args + [mode], text=True))
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            for mode in ("write", "read")
+        ]
+
+tests/python/test_checkpoint.py:96:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+../../miniconda3/lib/python3.13/subprocess.py:472: in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+input = None, capture_output = False, timeout = None, check = True
+popenargs = (['/home/jzzeng/codes/vibeqc-issue-204/.venv/bin/python', '-c', '\nimport json, sys\nfrom vibeqc import Calculator\nop...rhf", "device": "cuda", "density_fitting": "none"}', '[[["H", [0.0, 0.0, -0.7]], ["H", [0.0, 0.0, 0.7]]]]', '0', ...],)
+kwargs = {'stdout': -1, 'text': True}
+
+    def run(*popenargs,
+            input=None, capture_output=False, timeout=None, check=False, **kwargs):
+        """Run command with arguments and return a CompletedProcess instance.
+
+        The returned instance will have attributes args, returncode, stdout and
+        stderr. By default, stdout and stderr are not captured, and those attributes
+        will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them,
+        or pass capture_output=True to capture both.
+
+        If check is True and the exit code was non-zero, it raises a
+        CalledProcessError. The CalledProcessError object will have the return code
+        in the returncode attribute, and output & stderr attributes if those streams
+        were captured.
+
+        If timeout (seconds) is given and the process takes too long,
+         a TimeoutExpired exception will be raised.
+
+        There is an optional argument "input", allowing you to
+        pass bytes or a string to the subprocess's stdin.  If you use this argument
+        you may not also use the Popen constructor's "stdin" argument, as
+        it will be used internally.
+
+        By default, all communication is in bytes, and therefore any "input" should
+        be bytes, and the stdout and stderr will be bytes. If in text mode, any
+        "input" should be a string, and stdout and stderr will be strings decoded
+        according to locale encoding, or by "encoding" if set. Text mode is
+        triggered by setting any of text, encoding, errors or universal_newlines.
+
+        The other arguments are the same as for the Popen constructor.
+        """
+        if input is not None:
+            if kwargs.get('stdin') is not None:
+                raise ValueError('stdin and input arguments may not both be used.')
+            kwargs['stdin'] = PIPE
+
+        if capture_output:
+            if kwargs.get('stdout') is not None or kwargs.get('stderr') is not None:
+                raise ValueError('stdout and stderr arguments may not be used '
+                                 'with capture_output.')
+            kwargs['stdout'] = PIPE
+            kwargs['stderr'] = PIPE
+
+        with Popen(*popenargs, **kwargs) as process:
+            try:
+                stdout, stderr = process.communicate(input, timeout=timeout)
+            except TimeoutExpired as exc:
+                process.kill()
+                if _mswindows:
+                    # Windows accumulates the output in a single blocking
+                    # read() call run on child threads, with the timeout
+                    # being done in a join() on those threads.  communicate()
+                    # _after_ kill() is required to collect that and add it
+                    # to the exception.
+                    exc.stdout, exc.stderr = process.communicate()
+                else:
+                    # POSIX _communicate already populated the output so
+                    # far into the TimeoutExpired exception.
+                    process.wait()
+                raise
+            except:  # Including KeyboardInterrupt, communicate handled that.
+                process.kill()
+                # We don't call process.wait() as .__exit__ does that for us.
+                raise
+            retcode = process.poll()
+            if check and retcode:
+>               raise CalledProcessError(retcode, process.args,
+                                         output=stdout, stderr=stderr)
+E               subprocess.CalledProcessError: Command '['/home/jzzeng/codes/vibeqc-issue-204/.venv/bin/python', '-c', "\nimport json, sys\nfrom vibeqc import Calculator\noptions=json.loads(sys.argv[1]); systems=json.loads(sys.argv[2]); charge=int(sys.argv[3]); multiplicity=int(sys.argv[4])\nwith Calculator(**options).prepare_batch(systems,charges=[charge],multiplicities=[multiplicity]) as b:\n    if sys.argv[6]=='read': b.load_checkpoint(sys.argv[5])\n    r=b.execute(strict=True).items[0]\n    if sys.argv[6]=='write': b.save_checkpoint(sys.argv[5])\n    print(json.dumps(dict(energy=r.energy,forces=r.forces.tolist(),origin=r.restart_origin,iterations=r.iterations,converged=r.converged)))\n", '{"method": "rhf", "device": "cuda", "density_fitting": "none"}', '[[["H", [0.0, 0.0, -0.7]], ["H", [0.0, 0.0, 0.7]]]]', '0', '1', '/tmp/pytest-of-jzzeng/pytest-1684/test_fresh_process_restart_and0/hf.vqcp', 'write']' returned non-zero exit status 1.
+
+../../miniconda3/lib/python3.13/subprocess.py:577: CalledProcessError
+----------------------------- Captured stderr call -----------------------------
+Traceback (most recent call last):
+  File "<string>", line 7, in <module>
+    r=b.execute(strict=True).items[0]
+      ~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/jzzeng/codes/vibeqc-issue-140/python/vibeqc/batch.py", line 713, in execute
+    result.raise_for_failures()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/jzzeng/codes/vibeqc-issue-140/python/vibeqc/batch.py", line 71, in raise_for_failures
+    raise RuntimeError("batched HF item failures: " + "; ".join(failures))
+RuntimeError: batched HF item failures: 0: out of memory
+=========================== short test summary info ============================
+FAILED tests/python/test_checkpoint.py::test_fresh_process_restart_and_independent_reference[False-rhf-0-1]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 16 passed in 60.81s (0:01:00)
+srun: error: node3: task 0: Exited with exit code 1

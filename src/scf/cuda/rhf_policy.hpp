@@ -25,6 +25,10 @@ bool psps_signature_bucketing_requested() noexcept;
 bool ppss_signature_bucketing_requested() noexcept;
 unsigned ppps_resident_block_threads_requested() noexcept;
 bool one_electron_force_scalar_requested() noexcept;
+/** One-electron candidates remain opt-in until endpoint promotion evidence. */
+bool generated_one_electron_values_requested() noexcept;
+/** 0: one AO pair per thread; 1: one shell pair per warp. */
+unsigned one_electron_value_mapping_requested() noexcept;
 bool resident_psss_bra_requested() noexcept;
 /** Generated weighted primitive candidate; frozen into a prepared bucket. */
 bool generated_psss_weighted_requested() noexcept;

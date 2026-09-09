@@ -31,6 +31,8 @@ cover all quantum-chemistry methods through a coherent batched interface.
   implementation history.
 - [Shell code generation](shell_codegen.md): generated CUDA policy and
   correctness model.
+- [One-electron value generation](one_electron_codegen.md): S/T/V DAGs, native
+  contraction schedules, same-binary selectors and independent validation.
 - [Integral IR contracts](integral_ir.md): operator centers, bounded raw blocks,
   external weights, serialization, and backend capability boundaries.
 - [TensorIR](tensor_ir.md): typed tensor equations, exact factors, symmetry-packed

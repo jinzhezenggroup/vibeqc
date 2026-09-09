@@ -156,7 +156,8 @@ file(GLOB_RECURSE _vibeqc_identity_inputs CONFIGURE_DEPENDS
      "src/*" "include/*" "tools/vibeqc_codegen/*.py"
      "tools/vibeqc_codegen/*.json" "python/vibeqc/*.py")
 list(APPEND _vibeqc_identity_inputs "CMakeLists.txt" "tools/generate_shell_kernels.py"
-     "tools/generate_df_kernels.py" "tools/generate_weighted_eri_kernels.py")
+     "tools/generate_df_kernels.py" "tools/generate_weighted_eri_kernels.py"
+     "tools/generate_one_electron_kernels.py")
 list(SORT _vibeqc_identity_inputs)
 set(_vibeqc_identity_text "")
 foreach(_vibeqc_identity_path IN LISTS _vibeqc_identity_inputs)
@@ -202,6 +203,19 @@ if(VIBEQC_ENABLE_CUDA)
             ${VIBEQC_DF_GENERATOR_INPUTS}
     VERBATIM)
   target_sources(vibeqc PRIVATE "${VIBEQC_DF_GENERATED_HEADER}")
+  # One-electron lowering is compiled in its own TU, keeping the generic HF
+  # fallback independent of generated scalar-family source size.
+  set(VIBEQC_ONE_ELECTRON_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_one_electron_values.cuh")
+  add_custom_command(
+    OUTPUT "${VIBEQC_ONE_ELECTRON_HEADER}"
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_one_electron_kernels.py"
+            --output "${VIBEQC_ONE_ELECTRON_HEADER}"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_one_electron_kernels.py"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
+            ${VIBEQC_DF_GENERATOR_INPUTS}
+    VERBATIM)
+  target_sources(vibeqc PRIVATE "${VIBEQC_ONE_ELECTRON_HEADER}"
+                 src/scf/cuda/one_electron_values.cu)
   # The first weighted-ERI migration reuses native primitive loops and queue
   # policies, replacing only their scalar expression with a shared DAG helper.
   set(VIBEQC_WEIGHTED_ERI_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/weighted_eri.cuh")
@@ -556,7 +570,9 @@ if(VIBEQC_BUILD_TESTS)
   add_test(NAME vibeqc_mixed_precision_tests
     COMMAND vibeqc_mixed_precision_tests)
 
-  if(VIBEQC_ENABLE_CUDA)
+  # This test requires a tuned registry and deliberately rejects the portable
+  # stub used when AOT shells are disabled. Other CUDA tests use either build.
+  if(VIBEQC_ENABLE_CUDA AND VIBEQC_ENABLE_AOT_SHELLS)
     add_executable(vibeqc_aot_profile_tests tests/native/test_aot_profile.cpp)
     target_link_libraries(vibeqc_aot_profile_tests PRIVATE vibeqc CUDA::cudart)
     target_include_directories(vibeqc_aot_profile_tests

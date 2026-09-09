@@ -26,6 +26,7 @@
 #include "runtime/resource_cuda.cuh"
 #include "runtime/resource_usage.hpp"
 #include "scf/aot_shell_registry.hpp"
+#include "scf/cuda/one_electron_values.cuh"
 #include "scf/cuda/rhf_policy.hpp"
 #include "scf/cuda_density_fitting.hpp"
 #include "scf/cuda_density_fitting_integrals.hpp"
@@ -626,6 +627,27 @@ struct DeviceBatch {
   // Same primitive traversal/queues on both sides of the weighted psss gate.
   bool generated_psss_weighted{};
 };
+
+/** Borrow the prepared topology; current positions remain owned by the plan. */
+OneElectronDeviceView one_electron_view(const DeviceBatch& batch) {
+  return {batch.batch_size,
+          batch.nbf,
+          static_cast<std::size_t>(batch.total_shell_pairs),
+          batch.atom_offsets,
+          batch.atomic_numbers,
+          batch.positions,
+          batch.shell_atoms,
+          batch.shell_ao_offsets,
+          batch.shell_primitive_offsets,
+          batch.shell_pair_first,
+          batch.shell_pair_second,
+          batch.ao_shells,
+          batch.ao_term_counts,
+          batch.ao_term_angular,
+          batch.ao_term_coefficients,
+          batch.primitive_exponents,
+          batch.primitive_coefficients};
+}
 
 __device__ std::size_t matrix_index(std::size_t row, std::size_t column, std::size_t n) {
   // CUDA dense matrices are column-major so they can be submitted directly to
@@ -5914,31 +5936,7 @@ __device__ Scalar contracted_eri_cartesian_source(const DeviceBatch& batch, std:
   return scalar<Scalar>(0.0);
 }
 
-__global__ void build_one_electron_integrals_kernel(DeviceBatch batch,
-                                                    const std::int32_t* pair_first,
-                                                    const std::int32_t* pair_second,
-                                                    std::size_t pair_count, double* overlap,
-                                                    double* hcore) {
-  const std::size_t n = static_cast<std::size_t>(batch.nbf);
-  const std::size_t matrix_size = n * n;
-  const std::size_t element = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (element >= static_cast<std::size_t>(batch.batch_size) * pair_count) return;
-  const std::int32_t system = static_cast<std::int32_t>(element / pair_count);
-  const std::size_t pair = element % pair_count;
-  const std::size_t row = static_cast<std::size_t>(pair_first[pair]);
-  const std::size_t column = static_cast<std::size_t>(pair_second[pair]);
-  const double overlap_value = contracted_overlap<double>(
-      batch, system, static_cast<std::int32_t>(row), static_cast<std::int32_t>(column), -1);
-  const double hcore_value = contracted_hcore<double>(batch, system, static_cast<std::int32_t>(row),
-                                                      static_cast<std::int32_t>(column), -1);
-  const std::size_t matrix_offset = static_cast<std::size_t>(system) * matrix_size;
-  overlap[matrix_offset + matrix_index(row, column, n)] = overlap_value;
-  hcore[matrix_offset + matrix_index(row, column, n)] = hcore_value;
-  if (row != column) {
-    overlap[matrix_offset + matrix_index(column, row, n)] = overlap_value;
-    hcore[matrix_offset + matrix_index(column, row, n)] = hcore_value;
-  }
-}
+#include "scf/cuda/one_electron_reference.cuh"
 
 __global__ void build_eri_kernel(DeviceBatch batch, double* eri) {
   const std::size_t n = static_cast<std::size_t>(batch.nbf);
@@ -6241,52 +6239,6 @@ __global__ void build_cuda_df_metric_source_kernel(
     }
   }
   if (lane == 0U) output[(first - auxiliary_row_begin) * public_naux + second] = value;
-}
-
-/** Evaluate one-electron matrices and their first-coordinate response. */
-template <bool Derivative>
-__global__ void build_cuda_one_electron_integrals_kernel(
-    DeviceBatch batch, const std::int32_t* pair_first, const std::int32_t* pair_second,
-    std::size_t pair_count, std::int64_t derivative_coordinate, double* overlap, double* hcore) {
-  const std::size_t n = static_cast<std::size_t>(batch.nbf);
-  const std::size_t element = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (element >= static_cast<std::size_t>(batch.batch_size) * pair_count) {
-    return;
-  }
-  const std::int32_t system = static_cast<std::int32_t>(element / pair_count);
-  const std::size_t pair = element % pair_count;
-  const std::size_t row = static_cast<std::size_t>(pair_first[pair]);
-  const std::size_t column = static_cast<std::size_t>(pair_second[pair]);
-  const std::int64_t system_derivative_coordinate =
-      derivative_coordinate < 0 ? derivative_coordinate
-                                : derivative_coordinate + batch.atom_offsets[system] * 3;
-  if constexpr (Derivative) {
-    const Dual overlap_value =
-        contracted_overlap<Dual>(batch, system, static_cast<std::int32_t>(row),
-                                 static_cast<std::int32_t>(column), system_derivative_coordinate);
-    const Dual hcore_value =
-        contracted_hcore<Dual>(batch, system, static_cast<std::int32_t>(row),
-                               static_cast<std::int32_t>(column), system_derivative_coordinate);
-    const std::size_t matrix_offset = static_cast<std::size_t>(system) * n * n;
-    overlap[matrix_offset + row * n + column] = overlap_value.derivative;
-    hcore[matrix_offset + row * n + column] = hcore_value.derivative;
-    if (row != column) {
-      overlap[matrix_offset + column * n + row] = overlap_value.derivative;
-      hcore[matrix_offset + column * n + row] = hcore_value.derivative;
-    }
-  } else {
-    const double overlap_value = contracted_overlap<double>(
-        batch, system, static_cast<std::int32_t>(row), static_cast<std::int32_t>(column), -1);
-    const double hcore_value = contracted_hcore<double>(
-        batch, system, static_cast<std::int32_t>(row), static_cast<std::int32_t>(column), -1);
-    const std::size_t matrix_offset = static_cast<std::size_t>(system) * n * n;
-    overlap[matrix_offset + row * n + column] = overlap_value;
-    hcore[matrix_offset + row * n + column] = hcore_value;
-    if (row != column) {
-      overlap[matrix_offset + column * n + row] = overlap_value;
-      hcore[matrix_offset + column * n + row] = hcore_value;
-    }
-  }
 }
 
 template <bool Derivative>
@@ -14240,6 +14192,8 @@ struct CudaRhfBucketPlan {
   std::size_t resident_psss_bra_primitive_pairs{};
   std::size_t resident_psss_task_count{};
   bool generated_psss_weighted{};
+  bool generated_one_electron_values{};
+  unsigned one_electron_value_mapping{};
   std::size_t primitive_count{};
   std::size_t diis_history{};
   int lwork{};
@@ -14984,6 +14938,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     }
     plan.resident_psss_bra_primitive_pairs = 0;
     plan.generated_psss_weighted = cuda_policy::generated_psss_weighted_requested();
+    plan.generated_one_electron_values = cuda_policy::generated_one_electron_values_requested();
+    plan.one_electron_value_mapping = cuda_policy::one_electron_value_mapping_requested();
     const bool resident_psss_enabled = resident_psss_bra_requested();
     // The bounded direct force path has its own exact page consumer for psss.
     // Keep the resident-bra optimization on the fixed-queue path only until
@@ -16471,9 +16427,19 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       failed, iterations, previous_energy, energy_change, density_rms, diis_count, diis_head);
   vibeqc_status status = VIBEQC_STATUS_SUCCESS;
   if (geometry_changed) {
-    build_one_electron_integrals_kernel<<<blocks_for(pair_elements), threads, 0,
-                                          resources.stream_>>>(
-        device_batch, ao_pair_first, ao_pair_second, pair_count, overlap, hcore);
+    if (plan.generated_one_electron_values) {
+      cuda_error = launch_generated_one_electron_values(
+          one_electron_view(device_batch), ao_pair_first, ao_pair_second, pair_count,
+          plan.one_electron_value_mapping, overlap, hcore, resources.stream_);
+      if (cuda_error != cudaSuccess) {
+        fill_global_failure(outputs, cuda_status(cuda_error));
+        return outputs;
+      }
+    } else {
+      build_one_electron_integrals_kernel<<<blocks_for(pair_elements), threads, 0,
+                                            resources.stream_>>>(
+          device_batch, ao_pair_first, ao_pair_second, pair_count, overlap, hcore);
+    }
     if (persistent_eri) {
       build_eri_kernel<<<blocks_for(eri_elements), threads, 0, resources.stream_>>>(device_batch,
                                                                                     eri);
@@ -19010,6 +18976,11 @@ vibeqc_status build_cuda_one_electron_integrals_impl(int device_id, const core::
   device_batch.direct_nbf = static_cast<std::int32_t>(host.direct_nbf);
   device_batch.total_atoms = static_cast<std::int64_t>(host.atomic_numbers.size());
   device_batch.total_shells = static_cast<std::int64_t>(host.shell_atoms.size());
+  device_batch.total_shell_pairs = static_cast<std::int64_t>(host.shell_pair_first.size());
+  device_batch.shell_pair_first =
+      static_cast<const std::int32_t*>(upload_vector(host.shell_pair_first));
+  device_batch.shell_pair_second =
+      static_cast<const std::int32_t*>(upload_vector(host.shell_pair_second));
   device_batch.atom_offsets = static_cast<const std::int64_t*>(upload_vector(host.atom_offsets));
   device_batch.atom_systems = static_cast<const std::int32_t*>(upload_vector(host.atom_systems));
   device_batch.atomic_numbers =
@@ -19040,7 +19011,9 @@ vibeqc_status build_cuda_one_electron_integrals_impl(int device_id, const core::
       static_cast<const double*>(upload_vector(host.primitive_exponents));
   device_batch.primitive_coefficients =
       static_cast<const double*>(upload_vector(host.primitive_coefficients));
-  const std::array<const void*, 18> metadata{device_batch.atom_offsets,
+  const std::array<const void*, 20> metadata{device_batch.shell_pair_first,
+                                             device_batch.shell_pair_second,
+                                             device_batch.atom_offsets,
                                              device_batch.atom_systems,
                                              device_batch.atomic_numbers,
                                              device_batch.positions,
@@ -19087,9 +19060,20 @@ vibeqc_status build_cuda_one_electron_integrals_impl(int device_id, const core::
   output.nuclear_repulsion_derivative.resize(output.ncoord);
   constexpr unsigned threads = 128U;
   const unsigned pair_blocks = static_cast<unsigned>((pair_count + threads - 1U) / threads);
-  build_cuda_one_electron_integrals_kernel<false>
-      <<<pair_blocks, threads, 0, stream>>>(device_batch, device_pair_first, device_pair_second,
-                                            pair_count, -1, device_overlap, device_hcore);
+  if (cuda_policy::generated_one_electron_values_requested()) {
+    cuda_error = launch_generated_one_electron_values(
+        one_electron_view(device_batch), device_pair_first, device_pair_second, pair_count,
+        cuda_policy::one_electron_value_mapping_requested(), device_overlap, device_hcore, stream);
+    if (cuda_error != cudaSuccess) {
+      detail = "generated CUDA one-electron value launch failed";
+      release();
+      return cuda_status(cuda_error);
+    }
+  } else {
+    build_cuda_one_electron_integrals_kernel<false>
+        <<<pair_blocks, threads, 0, stream>>>(device_batch, device_pair_first, device_pair_second,
+                                              pair_count, -1, device_overlap, device_hcore);
+  }
   build_cuda_nuclear_repulsion_kernel<false><<<1, 1, 0, stream>>>(device_batch, -1, device_nuclear);
   cuda_error = cudaGetLastError();
   if (cuda_error == cudaSuccess) cuda_error = cudaStreamSynchronize(stream);
@@ -19266,6 +19250,11 @@ vibeqc_status build_cuda_one_electron_integrals_batch_impl(
   device_batch.direct_nbf = static_cast<std::int32_t>(host.direct_nbf);
   device_batch.total_atoms = static_cast<std::int64_t>(host.atomic_numbers.size());
   device_batch.total_shells = static_cast<std::int64_t>(host.shell_atoms.size());
+  device_batch.total_shell_pairs = static_cast<std::int64_t>(host.shell_pair_first.size());
+  device_batch.shell_pair_first =
+      static_cast<const std::int32_t*>(upload_vector(host.shell_pair_first));
+  device_batch.shell_pair_second =
+      static_cast<const std::int32_t*>(upload_vector(host.shell_pair_second));
   device_batch.atom_offsets = static_cast<const std::int64_t*>(upload_vector(host.atom_offsets));
   device_batch.atom_systems = static_cast<const std::int32_t*>(upload_vector(host.atom_systems));
   device_batch.atomic_numbers =
@@ -19296,7 +19285,9 @@ vibeqc_status build_cuda_one_electron_integrals_batch_impl(
       static_cast<const double*>(upload_vector(host.primitive_exponents));
   device_batch.primitive_coefficients =
       static_cast<const double*>(upload_vector(host.primitive_coefficients));
-  const std::array<const void*, 18> metadata{device_batch.atom_offsets,
+  const std::array<const void*, 20> metadata{device_batch.shell_pair_first,
+                                             device_batch.shell_pair_second,
+                                             device_batch.atom_offsets,
                                              device_batch.atom_systems,
                                              device_batch.atomic_numbers,
                                              device_batch.positions,
@@ -19367,9 +19358,20 @@ vibeqc_status build_cuda_one_electron_integrals_batch_impl(
 
   constexpr unsigned threads = 128U;
   const unsigned blocks = static_cast<unsigned>((pair_launch_elements + threads - 1U) / threads);
-  build_cuda_one_electron_integrals_kernel<false>
-      <<<blocks, threads, 0, stream>>>(device_batch, device_pair_first, device_pair_second,
-                                       pair_count, -1, device_overlap, device_hcore);
+  if (cuda_policy::generated_one_electron_values_requested()) {
+    cuda_error = launch_generated_one_electron_values(
+        one_electron_view(device_batch), device_pair_first, device_pair_second, pair_count,
+        cuda_policy::one_electron_value_mapping_requested(), device_overlap, device_hcore, stream);
+    if (cuda_error != cudaSuccess) {
+      detail = "generated CUDA one-electron value launch failed";
+      release();
+      return cuda_status(cuda_error);
+    }
+  } else {
+    build_cuda_one_electron_integrals_kernel<false>
+        <<<blocks, threads, 0, stream>>>(device_batch, device_pair_first, device_pair_second,
+                                         pair_count, -1, device_overlap, device_hcore);
+  }
   build_cuda_nuclear_repulsion_kernel<false>
       <<<static_cast<unsigned>((batch_size + threads - 1U) / threads), threads, 0, stream>>>(
           device_batch, -1, device_nuclear);

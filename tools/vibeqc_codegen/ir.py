@@ -422,6 +422,7 @@ class IntegralIR:
         if direct and self.operator.family != OperatorFamily.FOUR_CENTER_ERI:
             raise ValueError("direct HF consumers require four-center ERIs")
         if self.recurrence not in (
+            "hermite",
             "subset_wick",
             "rys1",
             "rys2",
@@ -430,6 +431,16 @@ class IntegralIR:
             "rys5",
         ):
             raise ValueError(f"unsupported integral recurrence {self.recurrence!r}")
+        if self.recurrence == "hermite" and self.operator.family not in (
+            OperatorFamily.OVERLAP,
+            OperatorFamily.KINETIC,
+            OperatorFamily.NUCLEAR_ATTRACTION,
+        ):
+            # The one-electron lowering owns this recurrence identity. Do not
+            # let a new label imply support for an unimplemented ERI/DF route.
+            raise ValueError(
+                "Hermite recurrence currently requires a one-electron operator"
+            )
 
         force_requested = any(
             item.kernel_consumer == KernelConsumer.FORCE for item in direct
