@@ -131,6 +131,7 @@ add_library(vibeqc SHARED
   src/api/c_api_calculation.cpp
   src/api/c_api_common.cpp
   src/api/c_api_context.cpp
+  src/api/c_api_resources.cpp
   src/api/c_api_tuning.cpp
   src/api/error.cpp
   src/dft/ao_grid.cpp

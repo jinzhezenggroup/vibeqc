@@ -12,6 +12,30 @@ def parser() -> argparse.ArgumentParser:
     """Expose stable quick/full, diagnostic, and cluster installation commands."""
     root = argparse.ArgumentParser(prog="vibeqc")
     commands = root.add_subparsers(dest="command", required=True)
+    resources = commands.add_parser(
+        "resources", help="dry-run HF resource estimates without scientific execution"
+    )
+    resources.add_argument("input", type=Path)
+    resources.add_argument("--basis", default="sto-3g")
+    resources.add_argument("--auxiliary-basis")
+    resources.add_argument("--representation", choices=("cartesian", "spherical"))
+    resources.add_argument("--method", choices=("rhf", "uhf"), default="rhf")
+    resources.add_argument("--backend", choices=("cpu", "cuda"), default="cpu")
+    resources.add_argument(
+        "--density-fitting", choices=("none", "cpu", "cuda", "auto"), default="none"
+    )
+    resources.add_argument("--charge", type=int, default=0)
+    resources.add_argument("--multiplicity", type=int, default=1)
+    resources.add_argument("--units", choices=("angstrom", "bohr"), default="angstrom")
+    resources.add_argument("--batch", type=int, default=1)
+    resources.add_argument("--host-bytes", type=int)
+    resources.add_argument("--device-bytes", type=int)
+    resources.add_argument("--pinned-host-bytes", type=int)
+    resources.add_argument("--host-reserve-bytes", type=int, default=0)
+    resources.add_argument("--device-reserve-bytes", type=int, default=0)
+    resources.add_argument("--headroom-fraction", type=float, default=0)
+    resources.add_argument("--diis-history", type=int, default=8)
+    resources.add_argument("--max-iterations", type=int, default=100)
     tune = commands.add_parser(
         "autotune", help="explicitly tune a representative XYZ workload"
     )
@@ -93,6 +117,38 @@ def main() -> int:
     arguments = parser()
     args = arguments.parse_args()
     try:
+        if args.command == "resources":
+            from .autotune import read_xyz
+            from .resources import ResourceBudget
+            from .resources_hf import estimate_hf_resources
+
+            if not 1 <= args.batch <= 100000:
+                raise ValueError("resource dry-run batch must be in [1, 100000]")
+            atoms = read_xyz(args.input, units=args.units)
+            budget = ResourceBudget(
+                host_bytes=args.host_bytes,
+                device_bytes=args.device_bytes,
+                pinned_host_bytes=args.pinned_host_bytes,
+                host_reserve_bytes=args.host_reserve_bytes,
+                device_reserve_bytes=args.device_reserve_bytes,
+                headroom_fraction=args.headroom_fraction,
+            )
+            plan = estimate_hf_resources(
+                [atoms] * args.batch,
+                budget=budget,
+                basis=args.basis,
+                auxiliary_basis=args.auxiliary_basis,
+                basis_representation=args.representation,
+                method=args.method,
+                backend=args.backend,
+                density_fitting=args.density_fitting,
+                charges=[args.charge] * args.batch,
+                multiplicities=[args.multiplicity] * args.batch,
+                diis_history=args.diis_history,
+                max_iterations=args.max_iterations,
+            )
+            print(json.dumps(plan.to_dict(), indent=2))
+            return 0 if plan.status == "feasible" else 2
         operation = (
             args.operation
             if args.command == "profile"

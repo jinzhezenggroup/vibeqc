@@ -17,6 +17,8 @@
 
 #include "integrals/s_integrals.hpp"
 #include "molecule/basis.hpp"
+#include "runtime/resource_ledger.hpp"
+#include "runtime/resource_usage.hpp"
 #include "scf/cuda_density_fitting.hpp"
 #include "scf/cuda_density_fitting_integrals.hpp"
 #include "scf/density_fitting.hpp"
@@ -444,6 +446,16 @@ class Diis {
  public:
   explicit Diis(std::size_t capacity) : capacity_(capacity) {}
 
+  /** Actual retained numerical capacity; no temporary extrapolation work. */
+  std::size_t numeric_capacity() const noexcept {
+    std::size_t bytes = 0;
+    for (const auto& value : focks_)
+      bytes = runtime::add_capacity(bytes, runtime::vector_bytes(value));
+    for (const auto& value : residuals_)
+      bytes = runtime::add_capacity(bytes, runtime::vector_bytes(value));
+    return bytes;
+  }
+
   void clear() {
     focks_.clear();
     residuals_.clear();
@@ -488,6 +500,27 @@ class Diis {
   std::vector<Matrix> focks_;
   std::vector<Matrix> residuals_;
 };
+
+std::size_t integral_numeric_capacity(const integrals::IntegralData& data) noexcept {
+  return runtime::vector_capacities(data.overlap, data.hcore, data.eri, data.overlap_derivative,
+                                    data.hcore_derivative, data.eri_derivative,
+                                    data.nuclear_repulsion_derivative);
+}
+
+std::size_t integral_numeric_capacity(const DensityFittingScfData& data) noexcept {
+  return runtime::add_capacity(
+      integral_numeric_capacity(data.one_electron),
+      runtime::vector_capacities(data.raw.metric, data.raw.three_center, data.raw.metric_derivative,
+                                 data.raw.three_center_derivative, data.three_center.values));
+}
+
+template <class Data, class... Vectors>
+void sample_scf_buffers(const Data& data, const Diis& diis, const Vectors&... vectors) noexcept {
+  if (!runtime::cpu_resource_observation.active) return;
+  runtime::sample_cpu_capacity(runtime::add_capacity(
+      integral_numeric_capacity(data),
+      runtime::add_capacity(diis.numeric_capacity(), runtime::vector_capacities(vectors...))));
+}
 
 double density_rms(const Matrix& a, const Matrix& b) {
   double square = 0.0;
@@ -1241,6 +1274,9 @@ ScfResult run_rhf(const core::System& system, const ScfOptions& options,
     orbitals = generalized_eigen(effective_fock, orthogonalizer, n);
     Matrix next_density = density_from_orbitals(orbitals.vectors, n, occupied);
 
+    sample_scf_buffers(ints, diis, orthogonalizer, density, fock, residual, effective_fock,
+                       orbitals.values, orbitals.vectors, next_density);
+
     result.iterations = iteration;
     result.energy = energy;
     result.energy_change = std::isfinite(previous_energy) ? std::abs(energy - previous_energy)
@@ -1328,6 +1364,11 @@ ScfResult run_uhf(const core::System& system, const ScfOptions& options,
     Matrix next_alpha = density_from_orbitals(alpha_orbitals.vectors, n, alpha_occupied, 1.0);
     Matrix next_beta = density_from_orbitals(beta_orbitals.vectors, n, beta_occupied, 1.0);
 
+    sample_scf_buffers(ints, diis, orthogonalizer, alpha_density, beta_density, alpha_fock,
+                       beta_fock, alpha_residual, beta_residual, physical_fock, physical_residual,
+                       effective_joined, alpha_orbitals.values, alpha_orbitals.vectors,
+                       beta_orbitals.values, beta_orbitals.vectors, next_alpha, next_beta);
+
     result.iterations = iteration;
     result.energy = energy;
     result.energy_change = std::isfinite(previous_energy) ? std::abs(energy - previous_energy)
@@ -1414,6 +1455,9 @@ ScfResult run_rhf_density_fitting(const core::System& system, const core::System
     const Matrix effective_fock = diis.update(fock, residual);
     orbitals = generalized_eigen(effective_fock, orthogonalizer, n);
     Matrix next_density = density_from_orbitals(orbitals.vectors, n, occupied);
+
+    sample_scf_buffers(data, diis, orthogonalizer, density, fock, residual, effective_fock,
+                       orbitals.values, orbitals.vectors, next_density);
 
     result.iterations = iteration;
     result.energy = energy;
@@ -1506,6 +1550,11 @@ ScfResult run_uhf_density_fitting(const core::System& system, const core::System
     Matrix next_alpha = density_from_orbitals(alpha_orbitals.vectors, n, alpha_occupied, 1.0);
     Matrix next_beta = density_from_orbitals(beta_orbitals.vectors, n, beta_occupied, 1.0);
 
+    sample_scf_buffers(data, diis, orthogonalizer, alpha_density, beta_density, alpha_fock,
+                       beta_fock, alpha_residual, beta_residual, physical_fock, physical_residual,
+                       effective_joined, alpha_orbitals.values, alpha_orbitals.vectors,
+                       beta_orbitals.values, beta_orbitals.vectors, next_alpha, next_beta);
+
     result.iterations = iteration;
     result.energy = energy;
     result.energy_change = std::isfinite(previous_energy) ? std::abs(energy - previous_energy)
@@ -1588,6 +1637,8 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_plan(
     const vibeqc_status source_status = create_cuda_density_fitting_integral_source(
         device_id, {*orbital_system}, {*auxiliary_system}, &source, source_metrics, source_nbf,
         source_naux, detail);
+    if (source_status == VIBEQC_STATUS_OUT_OF_MEMORY && runtime::active_device_resource_ledger)
+      throw std::bad_alloc();
     if (source_status != VIBEQC_STATUS_SUCCESS) {
       throw std::runtime_error(detail.empty() ? "CUDA DF source preparation failed" : detail);
     }
@@ -1608,6 +1659,8 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_plan(
         options.density_fitting_relative_threshold, auxiliary_tile, ao_pair_tile, &raw_plan,
         diagnostics, detail);
     destroy_cuda_density_fitting_integral_source(source);
+    if (plan_status == VIBEQC_STATUS_OUT_OF_MEMORY && runtime::active_device_resource_ledger)
+      throw std::bad_alloc();
     if (plan_status != VIBEQC_STATUS_SUCCESS) {
       throw std::runtime_error(detail.empty() ? "CUDA density-fitting source plan creation failed"
                                               : detail);
@@ -1622,6 +1675,8 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_plan(
             : create_cuda_density_fitting_jk_plan(
                   device_id, 1, data.raw.nbf, data.raw.naux, data.raw.metric, data.raw.three_center,
                   options.density_fitting_relative_threshold, 0, &raw_plan, diagnostics, detail);
+    if (status == VIBEQC_STATUS_OUT_OF_MEMORY && runtime::active_device_resource_ledger)
+      throw std::bad_alloc();
     if (status != VIBEQC_STATUS_SUCCESS) {
       throw std::runtime_error(detail.empty() ? "CUDA density-fitting plan creation failed"
                                               : detail);
@@ -1660,6 +1715,8 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_batch_plan(
     const vibeqc_status source_status = create_cuda_density_fitting_integral_source(
         device_id, *orbital_systems, *auxiliary_systems, &source, metrics, source_nbf, source_naux,
         source_detail);
+    if (source_status == VIBEQC_STATUS_OUT_OF_MEMORY && runtime::active_device_resource_ledger)
+      throw std::bad_alloc();
     if (source_status != VIBEQC_STATUS_SUCCESS) {
       throw std::runtime_error(source_detail.empty() ? "CUDA DF source preparation failed"
                                                      : source_detail);
@@ -1681,6 +1738,8 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_batch_plan(
         options.density_fitting_relative_threshold, tile_plan.auxiliary_tile,
         tile_plan.ao_pair_tile, &raw_plan, diagnostics, detail);
     destroy_cuda_density_fitting_integral_source(source);
+    if (plan_status == VIBEQC_STATUS_OUT_OF_MEMORY && runtime::active_device_resource_ledger)
+      throw std::bad_alloc();
     if (plan_status != VIBEQC_STATUS_SUCCESS) {
       throw std::runtime_error(detail.empty() ? "CUDA DF source plan creation failed" : detail);
     }
@@ -1721,6 +1780,8 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_batch_plan(
           : create_cuda_density_fitting_jk_plan(
                 device_id, data.size(), nbf, naux, metrics, three_center,
                 options.density_fitting_relative_threshold, 0, &raw_plan, diagnostics, detail);
+  if (status == VIBEQC_STATUS_OUT_OF_MEMORY && runtime::active_device_resource_ledger)
+    throw std::bad_alloc();
   if (status != VIBEQC_STATUS_SUCCESS) {
     throw std::runtime_error(detail.empty() ? "CUDA density-fitting batch plan creation failed"
                                             : detail);
@@ -2070,6 +2131,9 @@ ScfResult run_rhf_density_fitting_cuda_impl(const core::System& system,
         {static_cast<std::int32_t>(occupied)}, {data.one_electron.nuclear_repulsion},
         options.max_iterations, options.energy_tolerance, options.density_tolerance,
         device_final_density, device_records, detail);
+    // A resource rejection must not trigger an undisclosed host SCF retry.
+    if (device_status == VIBEQC_STATUS_OUT_OF_MEMORY && runtime::active_device_resource_ledger)
+      throw std::bad_alloc();
     if (device_status == VIBEQC_STATUS_SUCCESS && device_records.size() == 1 &&
         device_records.front().converged) {
       density = std::move(device_final_density);
@@ -2167,6 +2231,9 @@ ScfResult run_uhf_density_fitting_cuda_impl(const core::System& system,
         {static_cast<std::int32_t>(alpha_occupied)}, {static_cast<std::int32_t>(beta_occupied)},
         {data.one_electron.nuclear_repulsion}, options.max_iterations, options.energy_tolerance,
         options.density_tolerance, device_final_alpha, device_final_beta, device_records, detail);
+    // A resource rejection must not trigger an undisclosed host SCF retry.
+    if (device_status == VIBEQC_STATUS_OUT_OF_MEMORY && runtime::active_device_resource_ledger)
+      throw std::bad_alloc();
     if (device_status == VIBEQC_STATUS_SUCCESS && device_records.size() == 1 &&
         device_records.front().converged) {
       alpha_density = std::move(device_final_alpha);
@@ -2465,6 +2532,10 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
         plan, hcore, orthogonalizer, initial_density, occupied, nuclear, options.max_iterations,
         options.energy_tolerance, options.density_tolerance, device_final_density, device_records,
         device_detail);
+    if (device_status == VIBEQC_STATUS_OUT_OF_MEMORY && runtime::active_device_resource_ledger) {
+      for (const auto source : source_indices) outputs[source].status = VIBEQC_STATUS_OUT_OF_MEMORY;
+      return outputs;
+    }
     const bool device_converged =
         device_status == VIBEQC_STATUS_SUCCESS && device_records.size() == data.size() &&
         std::all_of(device_records.begin(), device_records.end(),
@@ -2826,6 +2897,10 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
         plan, hcore, orthogonalizer, initial_alpha, initial_beta, alpha_occupied, beta_occupied,
         nuclear, options.max_iterations, options.energy_tolerance, options.density_tolerance,
         device_final_alpha, device_final_beta, device_records, device_detail);
+    if (device_status == VIBEQC_STATUS_OUT_OF_MEMORY && runtime::active_device_resource_ledger) {
+      for (const auto source : source_indices) outputs[source].status = VIBEQC_STATUS_OUT_OF_MEMORY;
+      return outputs;
+    }
     const bool device_converged =
         device_status == VIBEQC_STATUS_SUCCESS && device_records.size() == data.size() &&
         std::all_of(device_records.begin(), device_records.end(),
@@ -3100,6 +3175,8 @@ CudaRhfBasisLayoutStats inspect_rhf_cuda_basis_layout(const std::vector<core::Sy
 ScfResult run_rhf_cuda(const core::System&, const ScfOptions&, int, const std::vector<double>*) {
   throw std::runtime_error("the library was built without CUDA support");
 }
+
+std::size_t hf_cuda_owned_device_bytes(const CudaRhfBucketPlan*) noexcept { return 0; }
 
 ScfResult run_uhf_cuda(const core::System&, const ScfOptions&, int, const std::vector<double>*) {
   throw std::runtime_error("the library was built without CUDA support");

@@ -304,6 +304,10 @@ extern "C" int tensor_create(int device, void** result, char* error, size_t size
         cuda_check(cudaStreamSynchronize(ctx->stream));
         *result = ctx.release();
         return 0;
+    }} catch (const DeviceAllocationError& e) {{
+        error_text(error, size, e.what()); return 2;
+    }} catch (const std::bad_alloc& e) {{
+        error_text(error, size, e.what()); return 3;
     }} catch (const std::exception& e) {{ error_text(error, size, e.what()); return 1; }}
 }}
 extern "C" void tensor_destroy(void* pointer) {{ delete static_cast<Context*>(pointer); }}

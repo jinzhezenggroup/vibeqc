@@ -64,6 +64,152 @@ def cache(tmp_path_factory):
     )
 
 
+def test_two_tensor_providers_share_one_global_budget(compiler, cache):
+    """A retained neighbor forces an executable recomputation alternative."""
+    from vibeqc.resources import ResourceBudget, ResourceSession, plan_resources
+
+    from tools.vibeqc_tensor.resources import tensor_resource_choices
+
+    index = Index("i", IndexSpace("axis", "batch", 8192))
+    x = input_tensor("x", TensorSpec((index,), role="input"))
+    program = Program(
+        {
+            f"r{i}": reduce_sum(add(x, x, coefficients=(1, i + 1)), (0,))
+            for i in range(6)
+        }
+    )
+    primary = tensor_resource_choices(program, compiler.target, name="primary")
+    neighbor = tensor_resource_choices(
+        Program({"x": x}), compiler.target, name="neighbor"
+    )
+    smallest = min((p for _, p in primary.plans), key=lambda p: p.device_bytes)
+    neighbor_plan = neighbor.plans[0][1]
+    assert smallest.schedule.recompute
+    budget = ResourceBudget(
+        device_bytes=smallest.device_bytes + neighbor_plan.device_bytes,
+        host_bytes=smallest.host_bytes + neighbor_plan.host_bytes,
+    )
+    global_plan = plan_resources(
+        [primary.request, neighbor.request], budget
+    ).require_feasible()
+    selected = primary.selected(global_plan)
+    assert selected.schedule.recompute
+    feeds = {"x": np.linspace(-0.25, 0.75, 8192)}
+    with ResourceSession(
+        global_plan,
+        {
+            "neighbor": neighbor.factory(compiler, cache),
+            "primary": primary.factory(compiler, cache),
+        },
+    ) as session:
+        session.advance(0)
+        other, prepared = session.provider("neighbor"), session.provider("primary")
+        other_result = other.execute(feeds)
+        result = prepared.execute(feeds)
+        for i in range(6):
+            np.testing.assert_allclose(
+                result.outputs[f"r{i}"], (i + 2) * feeds["x"].sum(), rtol=1e-11
+            )
+        np.testing.assert_array_equal(other_result.outputs["x"], feeds["x"])
+        for space in ("device", "host"):
+            measured = sum(
+                r.metrics[f"tracked_{space}_bytes"] for r in (other_result, result)
+            )
+            assert measured <= global_plan.peak_bytes[space]
+        assert result.metrics["resource_plan_id"] == global_plan.identity
+
+
+def test_actual_cuda_allocation_failure_is_typed_and_exhausted_plan_is_recorded(
+    compiler, cache
+):
+    """An impossible native allocation tests rollback without filling GPU RAM."""
+    from vibeqc import (
+        ResourceAllocationError,
+        ResourceBudget,
+        ResourceSession,
+        plan_resources,
+    )
+
+    from tools.vibeqc_tensor.resources import tensor_resource_choices
+
+    program = Program({"scalar": constant(3)})
+    choices = tensor_resource_choices(
+        program,
+        compiler.target,
+        reservations=Reservations(concurrent=1 << 48),
+        sub_budget_bytes=1 << 49,
+    )
+    plan = plan_resources([choices.request], ResourceBudget())
+    with ResourceSession(plan, {"tensor": choices.factory(compiler, cache)}) as session:
+        with pytest.raises(ResourceAllocationError) as failure:
+            session.advance(0)
+        assert failure.value.space == "device:0"
+        assert len(session.fallbacks) == 1
+        assert session.fallbacks[0]["to_plan"] is None
+    ordinary = tensor_resource_choices(program, compiler.target)
+    ordinary_plan = plan_resources([ordinary.request], ResourceBudget())
+    with ResourceSession(
+        ordinary_plan, {"tensor": ordinary.factory(compiler, cache)}
+    ) as session:
+        session.advance(0)
+        assert session.provider("tensor").execute({}).outputs["scalar"] == 3
+
+
+@pytest.mark.skipif(
+    os.environ.get("VIBEQC_RESOURCE_CUDA_TEST") != "1",
+    reason="also requires a CUDA-linked HF library",
+)
+def test_direct_hf_and_tensor_share_one_executable_resource_plan(compiler, cache):
+    from vibeqc import Calculator, ResourceBudget, ResourceSession, plan_resources
+
+    from tools.vibeqc_tensor.resources import tensor_resource_choices
+
+    atoms = [(1, (0, 0, -0.7)), (1, (0, 0, 0.7))]
+    calculator = Calculator(device="cuda")
+    hf = calculator._resource_request([atoms])
+    index = Index("i", IndexSpace("axis", "batch", 8192))
+    x = input_tensor("x", TensorSpec((index,), role="input"))
+    program = Program(
+        {
+            f"r{i}": reduce_sum(add(x, x, coefficients=(1, i + 1)), (0,))
+            for i in range(6)
+        }
+    )
+    tensor = tensor_resource_choices(program, compiler.target)
+    smallest = min((p for _, p in tensor.plans), key=lambda p: p.device_bytes)
+    hf_plan = plan_resources([hf], ResourceBudget()).require_feasible()
+    budget = ResourceBudget(
+        device_bytes=hf_plan.peak_bytes["device"] + smallest.device_bytes,
+        host_bytes=hf_plan.peak_bytes["host"] + smallest.host_bytes,
+    )
+    plan = plan_resources([hf, tensor.request], budget).require_feasible()
+    assert tensor.selected(plan).schedule.recompute
+    with ResourceSession(
+        plan,
+        {
+            "hf": lambda p: calculator.prepare_batch([atoms], resource_plan=p),
+            "tensor": tensor.factory(compiler, cache),
+        },
+    ) as session:
+        session.advance(0)
+        native = session.provider("hf")
+        hf_result = native.execute(strict=True).items[0]
+        assert hf_result.energy == pytest.approx(
+            Calculator().singlepoint(atoms).energy, abs=1e-10
+        )
+        feeds = {"x": np.linspace(-0.25, 0.75, 8192)}
+        result = session.provider("tensor").execute(feeds)
+        for i in range(6):
+            assert result.outputs[f"r{i}"] == pytest.approx(
+                (i + 2) * feeds["x"].sum(), rel=1e-11
+            )
+        actual = native.resource_diagnostics["observation"]["device_ledger"][
+            "peak_bytes"
+        ]
+        actual += result.metrics["tracked_device_bytes"]
+        assert actual <= plan.peak_bytes["device"]
+
+
 def check(program, feeds, compiler, cache, schedule=None, **options):
     schedule = TensorSchedule() if schedule is None else schedule
     expected = execute(program, feeds).outputs

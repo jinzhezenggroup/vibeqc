@@ -32,6 +32,18 @@ from .calculator import (
     method_capabilities,
 )
 from .elements import ElectronState, electron_state
+from .resources import (
+    ResourceAllocationError,
+    ResourceBudget,
+    ResourceCandidate,
+    ResourceEstimate,
+    ResourceIdentity,
+    ResourcePlan,
+    ResourceRequest,
+    ResourceSession,
+    plan_resources,
+)
+from .resources_hf import estimate_hf_resources
 
 __all__ = [
     "AccuracyAssessment",
@@ -55,6 +67,14 @@ __all__ = [
     "PreparedBatch",
     "Primitive",
     "ResolvedModel",
+    "ResourceAllocationError",
+    "ResourceBudget",
+    "ResourceCandidate",
+    "ResourceEstimate",
+    "ResourceIdentity",
+    "ResourcePlan",
+    "ResourceRequest",
+    "ResourceSession",
     "Result",
     "Shell",
     "ShellClassProfileEntry",
@@ -62,8 +82,10 @@ __all__ = [
     "basis_capability",
     "compare_observables",
     "electron_state",
+    "estimate_hf_resources",
     "import_bse",
     "load_basis",
     "method_capabilities",
+    "plan_resources",
 ]
 __version__ = "0.1.0"

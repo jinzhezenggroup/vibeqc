@@ -23,6 +23,8 @@
 
 #include "df_values.cuh"
 #include "molecule/basis.hpp"
+#include "runtime/resource_cuda.cuh"
+#include "runtime/resource_usage.hpp"
 #include "scf/aot_shell_registry.hpp"
 #include "scf/cuda/rhf_policy.hpp"
 #include "scf/cuda_density_fitting.hpp"
@@ -13171,7 +13173,7 @@ struct CudaDensityFittingIntegralSourceImpl {
 
   ~CudaDensityFittingIntegralSourceImpl() {
     if (device_id >= 0) (void)cudaSetDevice(device_id);
-    for (void* pointer : allocations) (void)cudaFree(pointer);
+    for (void* pointer : allocations) (void)runtime::resource_cuda_free(pointer);
   }
 };
 
@@ -13240,7 +13242,7 @@ vibeqc_status source_upload(CudaDensityFittingIntegralSourceImpl& source, const 
     detail = "bounded DF source metadata bytes overflow size_t";
     return VIBEQC_STATUS_OUT_OF_MEMORY;
   }
-  cudaError_t error = cudaMalloc(device, bytes);
+  cudaError_t error = runtime::resource_cuda_malloc(device, bytes);
   if (error != cudaSuccess) {
     detail = "CUDA allocation failed for bounded DF source metadata";
     return source_cuda_status(error);
@@ -13248,7 +13250,7 @@ vibeqc_status source_upload(CudaDensityFittingIntegralSourceImpl& source, const 
   try {
     source.allocations.push_back(*device);
   } catch (const std::bad_alloc&) {
-    (void)cudaFree(*device);
+    (void)runtime::resource_cuda_free(*device);
     *device = nullptr;
     detail = "host allocation failed for bounded DF source metadata handles";
     return VIBEQC_STATUS_OUT_OF_MEMORY;
@@ -13520,7 +13522,7 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
     detail = "bounded DF metric launch exceeds CUDA grid limits";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
-  cuda_error = cudaMalloc(&metric_device, metric_elements * sizeof(double));
+  cuda_error = runtime::resource_cuda_malloc(&metric_device, metric_elements * sizeof(double));
   if (cuda_error != cudaSuccess) {
     (void)cudaStreamDestroy(stream);
     return source_cuda_status(cuda_error);
@@ -13540,7 +13542,7 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
                               metric_elements * sizeof(double), cudaMemcpyDeviceToHost);
     }
   }
-  (void)cudaFree(metric_device);
+  (void)runtime::resource_cuda_free(metric_device);
   (void)cudaStreamDestroy(stream);
   if (cuda_error != cudaSuccess) {
     detail = "CUDA bounded DF metric generation failed";
@@ -13823,12 +13825,12 @@ class CudaResources {
       // their release on the owning bucket stream so destroying one plan does
       // not impose a device-wide synchronization on unrelated workloads.
       if (solver_workspace_ != nullptr) {
-        (void)cudaFreeAsync(solver_workspace_, stream_);
+        (void)runtime::resource_cuda_free_async(solver_workspace_, stream_);
       }
       if (direct_tile_validation_ != nullptr) {
-        (void)cudaFreeAsync(direct_tile_validation_, stream_);
+        (void)runtime::resource_cuda_free_async(direct_tile_validation_, stream_);
       }
-      if (arena_ != nullptr) (void)cudaFreeAsync(arena_, stream_);
+      if (arena_ != nullptr) (void)runtime::resource_cuda_free_async(arena_, stream_);
       (void)cudaStreamSynchronize(stream_);
       (void)cudaStreamDestroy(stream_);
     }
@@ -15184,17 +15186,19 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   if (first_setup) {
     if ((cuda_error = cudaStreamCreateWithFlags(&resources.stream_, cudaStreamNonBlocking)) !=
             cudaSuccess ||
-        (cuda_error = cudaMallocAsync(&resources.arena_, layout.bytes, resources.stream_)) !=
-            cudaSuccess) {
+        (cuda_error = runtime::resource_cuda_malloc_async(&resources.arena_, layout.bytes,
+                                                          resources.stream_)) != cudaSuccess) {
       fill_global_failure(outputs, cuda_status(cuda_error));
       return outputs;
     }
-    if (quartet_direct && (cuda_error = cudaMallocAsync(&resources.direct_tile_validation_,
-                                                        sizeof(DirectTileValidationRecord),
-                                                        resources.stream_)) != cudaSuccess) {
+    if (quartet_direct &&
+        (cuda_error = runtime::resource_cuda_malloc_async(&resources.direct_tile_validation_,
+                                                          sizeof(DirectTileValidationRecord),
+                                                          resources.stream_)) != cudaSuccess) {
       fill_global_failure(outputs, cuda_status(cuda_error));
       return outputs;
     }
+    runtime::sample_cuda_arena_capacity(layout.bytes);
     if (use_cublas) {
       blas_error = cublasCreate(&resources.blas_);
       if (blas_error == CUBLAS_STATUS_SUCCESS) {
@@ -15787,8 +15791,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       fill_global_failure(outputs, VIBEQC_STATUS_CUDA_ERROR);
       return outputs;
     }
-    if ((cuda_error = cudaMallocAsync(&resources.solver_workspace_,
-                                      resources.solver_workspace_bytes_, resources.stream_)) !=
+    if ((cuda_error = runtime::resource_cuda_malloc_async(
+             &resources.solver_workspace_, resources.solver_workspace_bytes_, resources.stream_)) !=
         cudaSuccess) {
       fill_global_failure(outputs, cuda_status(cuda_error));
       return outputs;
@@ -18132,6 +18136,42 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
 
 }  // namespace
 
+bool small_hf_cuda_resource_layout(std::size_t nbf, std::size_t direct_nbf, std::size_t atoms,
+                                   std::size_t shells, std::size_t primitives,
+                                   std::size_t diis_history, std::size_t spins,
+                                   std::size_t& arena_bytes, std::size_t& plan_object_bytes) {
+  // This contract intentionally covers the provider with no cuBLAS/cuSOLVER
+  // workspace or exact-quartet descriptor table. Other routes need their own
+  // compact provider-workspace query before they can advertise a global bound.
+  if (nbf == 0 || nbf > kPersistentEriAoLimit || nbf > kSmallEigensolverLimit ||
+      nbf >= kCublasMatrixProductAoThreshold || direct_nbf < nbf || direct_nbf > 2 * nbf ||
+      atoms == 0 || shells == 0 || shells > nbf || primitives == 0 || diis_history > 64 ||
+      (spins != 1 && spins != 2))
+    return false;
+  const std::size_t pairs = shells * (shells + 1) / 2;
+  const std::size_t blocks =
+      detail::bounded_direct_queue_refill_count(pairs, detail::kBoundedDirectShellPairBlockSize);
+  ArenaLayout layout{};
+  if (!make_layout(1, nbf, direct_nbf, atoms, shells, pairs, blocks, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                   primitives, std::max<std::size_t>(1, diis_history), 0, spins, true, false, false,
+                   false, false, false, false, layout))
+    return false;
+  arena_bytes = layout.bytes;
+  plan_object_bytes = sizeof(CudaRhfBucketPlan);
+  return true;
+}
+
+std::size_t hf_cuda_owned_device_bytes(const CudaRhfBucketPlan* plan) noexcept {
+  if (plan == nullptr) return 0;
+  const auto& resources = plan->resources;
+  auto bytes = resources.arena_ == nullptr ? 0 : plan->layout.bytes;
+  if (resources.solver_workspace_ != nullptr)
+    bytes = runtime::add_capacity(bytes, resources.solver_workspace_bytes_);
+  if (resources.direct_tile_validation_ != nullptr)
+    bytes = runtime::add_capacity(bytes, sizeof(DirectTileValidationRecord));
+  return bytes;
+}
+
 CudaRhfBasisLayoutStats inspect_rhf_cuda_basis_layout(const std::vector<core::System>& systems) {
   std::vector<const std::vector<double>*> initial_densities(systems.size(), nullptr);
   HostBatch host;
@@ -18353,23 +18393,34 @@ vibeqc_status build_cuda_density_fitting_integrals_impl(
   }
   std::vector<void*> allocations;
   auto release = [&]() {
-    for (void* pointer : allocations) (void)cudaFree(pointer);
+    for (void* pointer : allocations) (void)runtime::resource_cuda_free(pointer);
     allocations.clear();
     if (stream != nullptr) {
       (void)cudaStreamDestroy(stream);
       stream = nullptr;
     }
   };
+  // Host staging/vector allocations can throw after device uploads. Keep
+  // every partially prepared allocation owned until normal or exceptional exit.
+  struct UploadScope {
+    decltype(release)& cleanup;
+    ~UploadScope() { cleanup(); }
+  } upload_scope{release};
   auto upload = [&](const void* source, std::size_t bytes) -> void* {
     if (bytes == 0U) return nullptr;
     void* destination = nullptr;
-    if (cudaMalloc(&destination, bytes) != cudaSuccess) return nullptr;
+    if (runtime::resource_cuda_malloc(&destination, bytes) != cudaSuccess) return nullptr;
     if (source != nullptr &&
         cudaMemcpy(destination, source, bytes, cudaMemcpyHostToDevice) != cudaSuccess) {
-      (void)cudaFree(destination);
+      (void)runtime::resource_cuda_free(destination);
       return nullptr;
     }
-    allocations.push_back(destination);
+    try {
+      allocations.push_back(destination);
+    } catch (const std::bad_alloc&) {
+      (void)runtime::resource_cuda_free(destination);
+      throw;
+    }
     return destination;
   };
   auto upload_vector = [&](const auto& values) -> void* {
@@ -18644,23 +18695,34 @@ vibeqc_status build_cuda_density_fitting_integrals_batch_impl(
   }
   std::vector<void*> allocations;
   auto release = [&]() {
-    for (void* pointer : allocations) (void)cudaFree(pointer);
+    for (void* pointer : allocations) (void)runtime::resource_cuda_free(pointer);
     allocations.clear();
     if (stream != nullptr) {
       (void)cudaStreamDestroy(stream);
       stream = nullptr;
     }
   };
+  // Host staging/vector allocations can throw after device uploads. Keep
+  // every partially prepared allocation owned until normal or exceptional exit.
+  struct UploadScope {
+    decltype(release)& cleanup;
+    ~UploadScope() { cleanup(); }
+  } upload_scope{release};
   auto upload = [&](const void* source, std::size_t bytes) -> void* {
     if (bytes == 0U) return nullptr;
     void* destination = nullptr;
-    if (cudaMalloc(&destination, bytes) != cudaSuccess) return nullptr;
+    if (runtime::resource_cuda_malloc(&destination, bytes) != cudaSuccess) return nullptr;
     if (source != nullptr &&
         cudaMemcpy(destination, source, bytes, cudaMemcpyHostToDevice) != cudaSuccess) {
-      (void)cudaFree(destination);
+      (void)runtime::resource_cuda_free(destination);
       return nullptr;
     }
-    allocations.push_back(destination);
+    try {
+      allocations.push_back(destination);
+    } catch (const std::bad_alloc&) {
+      (void)runtime::resource_cuda_free(destination);
+      throw;
+    }
     return destination;
   };
   auto upload_vector = [&](const auto& values) -> void* {
@@ -18897,23 +18959,34 @@ vibeqc_status build_cuda_one_electron_integrals_impl(int device_id, const core::
   }
   std::vector<void*> allocations;
   auto release = [&]() {
-    for (void* pointer : allocations) (void)cudaFree(pointer);
+    for (void* pointer : allocations) (void)runtime::resource_cuda_free(pointer);
     allocations.clear();
     if (stream != nullptr) {
       (void)cudaStreamDestroy(stream);
       stream = nullptr;
     }
   };
+  // Host staging/vector allocations can throw after device uploads. Keep
+  // every partially prepared allocation owned until normal or exceptional exit.
+  struct UploadScope {
+    decltype(release)& cleanup;
+    ~UploadScope() { cleanup(); }
+  } upload_scope{release};
   auto upload = [&](const void* source, std::size_t bytes) -> void* {
     if (bytes == 0U) return nullptr;
     void* destination = nullptr;
-    if (cudaMalloc(&destination, bytes) != cudaSuccess) return nullptr;
+    if (runtime::resource_cuda_malloc(&destination, bytes) != cudaSuccess) return nullptr;
     if (source != nullptr &&
         cudaMemcpy(destination, source, bytes, cudaMemcpyHostToDevice) != cudaSuccess) {
-      (void)cudaFree(destination);
+      (void)runtime::resource_cuda_free(destination);
       return nullptr;
     }
-    allocations.push_back(destination);
+    try {
+      allocations.push_back(destination);
+    } catch (const std::bad_alloc&) {
+      (void)runtime::resource_cuda_free(destination);
+      throw;
+    }
     return destination;
   };
   auto upload_vector = [&](const auto& values) -> void* {
@@ -19147,23 +19220,34 @@ vibeqc_status build_cuda_one_electron_integrals_batch_impl(
   }
   std::vector<void*> allocations;
   auto release = [&]() {
-    for (void* pointer : allocations) (void)cudaFree(pointer);
+    for (void* pointer : allocations) (void)runtime::resource_cuda_free(pointer);
     allocations.clear();
     if (stream != nullptr) {
       (void)cudaStreamDestroy(stream);
       stream = nullptr;
     }
   };
+  // Host staging/vector allocations can throw after device uploads. Keep
+  // every partially prepared allocation owned until normal or exceptional exit.
+  struct UploadScope {
+    decltype(release)& cleanup;
+    ~UploadScope() { cleanup(); }
+  } upload_scope{release};
   auto upload = [&](const void* source, std::size_t bytes) -> void* {
     if (bytes == 0U) return nullptr;
     void* destination = nullptr;
-    if (cudaMalloc(&destination, bytes) != cudaSuccess) return nullptr;
+    if (runtime::resource_cuda_malloc(&destination, bytes) != cudaSuccess) return nullptr;
     if (source != nullptr &&
         cudaMemcpy(destination, source, bytes, cudaMemcpyHostToDevice) != cudaSuccess) {
-      (void)cudaFree(destination);
+      (void)runtime::resource_cuda_free(destination);
       return nullptr;
     }
-    allocations.push_back(destination);
+    try {
+      allocations.push_back(destination);
+    } catch (const std::bad_alloc&) {
+      (void)runtime::resource_cuda_free(destination);
+      throw;
+    }
     return destination;
   };
   auto upload_vector = [&](const auto& values) -> void* {
@@ -19617,15 +19701,15 @@ vibeqc_status contract_cuda_weighted_eri_primitives(
       cudaStream_t stream{};
       ~Buffers() {
         if (stream) (void)cudaStreamSynchronize(stream);
-        if (records) (void)cudaFree(records);
-        if (results) (void)cudaFree(results);
+        if (records) (void)runtime::resource_cuda_free(records);
+        if (results) (void)runtime::resource_cuda_free(results);
         if (stream) (void)cudaStreamDestroy(stream);
       }
     } buffers;
     error = cudaStreamCreateWithFlags(&buffers.stream, cudaStreamNonBlocking);
     if (error == cudaSuccess)
-      error = cudaMalloc(&buffers.records, capacity * sizeof(*buffers.records));
-    if (error == cudaSuccess) error = cudaMalloc(&buffers.results, output_bytes);
+      error = runtime::resource_cuda_malloc(&buffers.records, capacity * sizeof(*buffers.records));
+    if (error == cudaSuccess) error = runtime::resource_cuda_malloc(&buffers.results, output_bytes);
     if (error == cudaSuccess)
       error = cudaMemsetAsync(buffers.results, 0, output_bytes, buffers.stream);
     constexpr unsigned threads = 64U;

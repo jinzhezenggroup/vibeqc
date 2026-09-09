@@ -202,13 +202,40 @@ class PreparedCuda:
 
     graph_status = "ordinary-stream: graph capture is not enabled for TensorIR"
 
-    def __init__(self, plan: TensorPlan, artifact: CudaArtifact, *, device: int = 0):
+    def __init__(
+        self,
+        plan: TensorPlan,
+        artifact: CudaArtifact,
+        *,
+        device: int = 0,
+        resource_plan=None,
+        resource_owner=None,
+    ):
         if type(device) is not int or device < 0:
             raise ValueError("device must be a nonnegative visible CUDA ordinal")
         self._lock = threading.Lock()
         self._pointer = ctypes.c_void_p()
         self.plan = plan
         self.artifact = artifact
+        self.resource_plan = resource_plan
+        self.resource_owner = resource_owner
+        if resource_plan is not None:
+            resource_plan.require_feasible()
+            request = next(
+                (r for r in resource_plan.requests if r.name == resource_owner), None
+            )
+            if request is None or request.identity.provider != "tensorir-cuda":
+                raise ValueError("global resource plan has no matching tensor owner")
+            chosen = dict(resource_plan.selections)[resource_owner]
+            candidate = next(c for c in request.candidates if c.name == chosen)
+            if dict(candidate.decisions).get("tensor_plan") != plan.identity:
+                raise ValueError(
+                    "tensor plan differs from the globally selected alternative"
+                )
+            if json.loads(request.identity.topology)["device"] != device:
+                raise ValueError("tensor device differs from its resource plan")
+        elif resource_owner is not None:
+            raise ValueError("resource owner requires a global plan")
         if file_hash(artifact.library) != artifact.metadata.get("binary_sha256"):
             raise ValueError("tensor artifact binary hash mismatch")
         lib = self._library = ctypes.CDLL(str(artifact.library))
@@ -252,21 +279,37 @@ class PreparedCuda:
                 "numpy": np.__version__,
             }
         )
-        self._inputs = [
-            np.empty(plan.steps[i].node.spec.shape, dtype=np.float64)
-            for i in plan.inputs
-        ]
-        self._scratch = (
-            [np.empty(VALIDATION_CHUNK, dtype=np.float64) for _ in range(2)]
-            if plan.inputs
-            else []
-        )
-        self._mask = np.empty(VALIDATION_CHUNK, dtype=np.bool_) if plan.inputs else None
+        from vibeqc.resources import ResourceAllocationError
+
+        try:
+            self._inputs = [
+                np.empty(plan.steps[i].node.spec.shape, dtype=np.float64)
+                for i in plan.inputs
+            ]
+            self._scratch = (
+                [np.empty(VALIDATION_CHUNK, dtype=np.float64) for _ in range(2)]
+                if plan.inputs
+                else []
+            )
+            self._mask = (
+                np.empty(VALIDATION_CHUNK, dtype=np.bool_) if plan.inputs else None
+            )
+        except MemoryError as error:
+            # Tracebacks may retain this failed object while a group retries.
+            # Release host owners now instead of relying on object collection.
+            self._inputs, self._scratch, self._mask = [], [], None
+            raise ResourceAllocationError("host", str(error)) from error
         with _PREPARATION_LOCK:
-            if lib.tensor_create(
+            status = lib.tensor_create(
                 device, ctypes.byref(self._pointer), error, len(error)
-            ):
-                raise RuntimeError(error.value.decode())
+            )
+        if status:
+            self._inputs, self._scratch, self._mask = [], [], None
+            if status in (2, 3):
+                raise ResourceAllocationError(
+                    f"device:{device}" if status == 2 else "host", error.value.decode()
+                )
+            raise RuntimeError(error.value.decode())
 
     def _validate(self, value, node):
         """Bound validation scratch even for transposed symmetry partners."""
@@ -369,6 +412,23 @@ class PreparedCuda:
                 raise RuntimeError(
                     "native tensor allocation disagrees with the memory plan"
                 )
+            if self.resource_plan is not None:
+                host_owned = sum(
+                    a.nbytes for a in (*self._inputs, *self._scratch, *outputs.values())
+                )
+                host_owned += 0 if self._mask is None else self._mask.nbytes
+                if host_owned > self.plan.host_bytes:
+                    raise RuntimeError(
+                        "owned tensor host buffers exceed the resource plan"
+                    )
+                metrics.update(
+                    resource_plan_id=self.resource_plan.identity,
+                    resource_owner=self.resource_owner,
+                    tracked_device_bytes=native.owned_device_bytes
+                    + native.provider_retained_bytes,
+                    tracked_host_bytes=host_owned,
+                    resource_tracking_scope="owned ndarrays, native device buffers and measured retained provider allocations; iterator/runtime overhead reported separately",
+                )
             return CudaExecution(outputs, metrics)
 
     def close(self):
@@ -378,6 +438,7 @@ class PreparedCuda:
                 with _PREPARATION_LOCK:
                     self._library.tensor_destroy(self._pointer)
                 self._pointer = ctypes.c_void_p()
+            self._inputs, self._scratch, self._mask = [], [], None
 
     def __enter__(self):
         return self

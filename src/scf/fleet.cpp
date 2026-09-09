@@ -12,6 +12,7 @@
 #include <utility>
 
 #include "molecule/basis.hpp"
+#include "runtime/resource_usage.hpp"
 #include "scf/mean_field.hpp"
 
 namespace vibeqc::scf {
@@ -312,7 +313,13 @@ std::vector<FleetItemResult> FleetPlan::execute(
     }
     const std::size_t bucket_size = bucket_end - bucket_begin;
     const std::size_t hardware_threads = std::max<unsigned>(1, std::thread::hardware_concurrency());
-    const std::size_t worker_count = std::min(bucket_size, hardware_threads);
+    // An accepted global CPU resource plan may require serialized items.
+    // This explicit cap is independent of the hardware thread count; without
+    // it a largest-item workspace estimate would undercount concurrent solves.
+    const auto requested_workers = runtime::cpu_resource_observation.cpu_worker_limit;
+    const std::size_t worker_count = std::min(
+        bucket_size, requested_workers ? std::min<std::size_t>(hardware_threads, requested_workers)
+                                       : hardware_threads);
     if (cuda_fock_enabled_) {
       std::vector<core::System> cuda_systems;
       std::vector<std::size_t> original_indices;
@@ -555,7 +562,10 @@ std::vector<FleetItemResult> FleetPlan::execute(
         }
       }
     } else if (worker_count == 1) {
-      execute_one(execution_order_[bucket_begin]);
+      // One worker can own a multi-item bucket under the resource policy.
+      for (std::size_t position = bucket_begin; position < bucket_end; ++position) {
+        execute_one(execution_order_[position]);
+      }
     } else {
       std::atomic<std::size_t> next{bucket_begin};
       std::vector<std::thread> workers;
@@ -570,6 +580,14 @@ std::vector<FleetItemResult> FleetPlan::execute(
         });
       }
       for (auto& worker : workers) worker.join();
+    }
+    if (runtime::cpu_resource_observation.active && cuda_fock_enabled_) {
+      // Every bucket cache remains live. Sampling only the most recent
+      // bucket would miss retained arenas from earlier ragged shapes.
+      std::size_t resident_bytes = 0;
+      for (const auto* plan : cuda_bucket_plans_)
+        resident_bytes = runtime::add_capacity(resident_bytes, hf_cuda_owned_device_bytes(plan));
+      runtime::sample_cuda_arena_capacity(resident_bytes);
     }
     bucket_begin = bucket_end;
   }
