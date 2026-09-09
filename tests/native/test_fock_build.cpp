@@ -8,7 +8,10 @@
 #include <string>
 #include <vector>
 
+#include "molecule/basis.hpp"
+#include "scf/fleet.hpp"
 #include "scf/fock_build.hpp"
+#include "scf/mean_field.hpp"
 
 namespace {
 using namespace vibeqc::scf;
@@ -319,6 +322,69 @@ void verify_preflight_and_approximation_identity() {
                    "CUDA fixed-HF schedule silently computed unrequested K");
 }
 
+vibeqc::core::System hydrogen_molecule() {
+  vibeqc::core::System system;
+  system.atoms = {{1, {0.0, 0.0, -0.7}}, {1, {0.0, 0.0, 0.7}}};
+  system.shells = {
+      {0, 0, {{3.42525091, 0.15432897}, {0.62391373, 0.53532814}, {0.16885540, 0.44463454}}},
+      {1, 0, {{3.42525091, 0.15432897}, {0.62391373, 0.53532814}, {0.16885540, 0.44463454}}},
+  };
+  std::string detail;
+  require(vibeqc::molecule::validate_and_normalize(system, detail) == VIBEQC_STATUS_SUCCESS,
+          "SCF preflight H2 fixture normalization failed: " + detail);
+  return system;
+}
+
+template <typename Function>
+void verify_entry_rejects_mismatched_strategies(FockSpin spin, FockBackend backend,
+                                                Function&& evaluate, const std::string& entry) {
+  ScfOptions options;
+  const auto spec = make_hf_fock_spec(spin);
+  const auto other_backend = backend == FockBackend::Cpu ? FockBackend::Cuda : FockBackend::Cpu;
+  options.resolved_fock_build =
+      resolve_fock_build(spec, other_backend, options.screening_tolerance);
+  require_rejected([&] { evaluate(options); }, entry + " accepted the wrong resolved backend");
+
+  const auto other_spin =
+      spin == FockSpin::Restricted ? FockSpin::Unrestricted : FockSpin::Restricted;
+  options.resolved_fock_build =
+      resolve_fock_build(make_hf_fock_spec(other_spin), backend, options.screening_tolerance);
+  require_rejected([&] { evaluate(options); }, entry + " accepted the wrong resolved spin");
+
+  options.resolved_fock_build = resolve_fock_build(spec, backend, 1.0e-8);
+  require_rejected([&] { evaluate(options); }, entry + " accepted mismatched resolved screening");
+}
+
+void verify_scf_entry_preflight() {
+  // A valid normalized molecule ensures that an unrelated input failure cannot
+  // satisfy the invalid_argument assertion for a mismatched resolved strategy.
+  const auto system = hydrogen_molecule();
+  verify_entry_rejects_mismatched_strategies(
+      FockSpin::Restricted, FockBackend::Cpu,
+      [&](const ScfOptions& options) { (void)run_rhf(system, options); }, "CPU RHF");
+  verify_entry_rejects_mismatched_strategies(
+      FockSpin::Unrestricted, FockBackend::Cpu,
+      [&](const ScfOptions& options) { (void)run_uhf(system, options); }, "CPU UHF");
+
+#if VIBEQC_HAS_CUDA
+  // Strategy preflight must reject before CUDA initialization. These cases run
+  // even on a CUDA-enabled build without a usable GPU, and must not be skipped.
+  verify_entry_rejects_mismatched_strategies(
+      FockSpin::Restricted, FockBackend::Cuda,
+      [&](const ScfOptions& options) { (void)run_rhf_cuda(system, options, 0); }, "CUDA RHF");
+  verify_entry_rejects_mismatched_strategies(
+      FockSpin::Unrestricted, FockBackend::Cuda,
+      [&](const ScfOptions& options) { (void)run_uhf_cuda(system, options, 0); }, "CUDA UHF");
+#endif
+
+  verify_entry_rejects_mismatched_strategies(
+      FockSpin::Restricted, FockBackend::Cpu,
+      [&](const ScfOptions& options) {
+        FleetPlan plan({system}, VIBEQC_METHOD_RHF, options, false, false, false, false, 0);
+      },
+      "CPU RHF fleet");
+}
+
 void verify_identity_and_invalid_inputs() {
   auto spec = make_hf_fock_spec(FockSpin::Restricted);
   const auto cpu = resolve_fock_build(spec, FockBackend::Cpu, 1.0e-12, 1.0e-10);
@@ -431,6 +497,7 @@ int main() {
     verify_independent_terms_and_coefficients();
     verify_unrestricted_coefficients_and_capabilities();
     verify_preflight_and_approximation_identity();
+    verify_scf_entry_preflight();
     verify_identity_and_invalid_inputs();
     std::cout
         << "exact Fock providers: raw J/K, spin, terms, derivatives, preflight, identity PASS\n";

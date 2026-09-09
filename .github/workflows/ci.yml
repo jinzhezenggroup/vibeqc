@@ -123,12 +123,19 @@ jobs:
       - name: Configure production CUDA compile check
         run: >-
           cmake --preset cuda-release-sm120
-          -DVIBEQC_BUILD_TESTS=OFF
+          -DVIBEQC_BUILD_TESTS=ON
           -DVIBEQC_CUDA_FAST_COMPILE=ON
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache
       - name: Compile production CUDA build
-        run: cmake --build --preset cuda-release-sm120 --parallel 2
+        run: cmake --build --preset cuda-release-sm120 --target vibeqc --parallel 2
+      - name: Check Fock preflight without a GPU
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+        run: |
+          cmake --build --preset cuda-release-sm120 --target vibeqc_fock_build_tests --parallel 2
+          ctest --test-dir build/cuda-release-sm120 \
+            -R '^vibeqc_fock_build_tests$' --output-on-failure
       - name: Show CUDA ccache statistics
         run: ccache --show-stats
       # This is release resource evidence. The production compile-only step
