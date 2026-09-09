@@ -279,6 +279,75 @@ vibeqc_status vibeqc_batch_set_warm_start_updates(vibeqc_batch* batch, int32_t e
   }
 }
 
+vibeqc_status vibeqc_batch_get_hf_warm_state(const vibeqc_batch* batch, uint32_t index,
+                                             vibeqc_hf_warm_state* state) {
+  if (!batch || !state || index >= batch->plan->size()) return VIBEQC_STATUS_INVALID_ARGUMENT;
+  if (!vibeqc::api::valid_descriptor(state)) return VIBEQC_STATUS_ABI_MISMATCH;
+  try {
+    const auto& source = batch->plan->warm_state(index);
+    if (!source) {
+      state->present = 0;
+      state->density_count = state->coordinate_count = 0;
+      return VIBEQC_STATUS_SUCCESS;
+    }
+    const bool query = !state->density && !state->coordinates;
+    if (!query &&
+        (!state->density || !state->coordinates || state->density_count < source->density.size() ||
+         state->coordinate_count < source->coordinates.size()))
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    state->present = 1;
+    state->density_count = source->density.size();
+    state->coordinate_count = source->coordinates.size();
+    state->energy = source->energy;
+    state->energy_change = source->energy_change;
+    state->density_rms = source->density_rms;
+    state->iterations = source->iterations;
+    if (!query) {
+      std::copy(source->density.begin(), source->density.end(), state->density);
+      std::copy(source->coordinates.begin(), source->coordinates.end(), state->coordinates);
+    }
+    return VIBEQC_STATUS_SUCCESS;
+  } catch (...) {
+    return vibeqc::api::map_exception(&batch->context->last_detail);
+  }
+}
+
+vibeqc_status vibeqc_batch_restore_hf_warm_states(vibeqc_batch* batch,
+                                                  const vibeqc_hf_warm_state* states,
+                                                  uint32_t count) {
+  if (!batch || !states || count != batch->plan->size()) return VIBEQC_STATUS_INVALID_ARGUMENT;
+  try {
+    // Validate dimensions against the trusted prepared topology before any
+    // caller-controlled allocation or pointer arithmetic.
+    for (uint32_t i = 0; i < count; ++i) {
+      const auto& state = states[i];
+      if (!vibeqc::api::valid_descriptor(&state)) return VIBEQC_STATUS_ABI_MISMATCH;
+      if (state.present != 0 && state.present != 1) return VIBEQC_STATUS_INVALID_ARGUMENT;
+      if (!state.present) continue;
+      if (!state.density || !state.coordinates ||
+          state.density_count != batch->plan->warm_density_size(i) ||
+          state.coordinate_count != std::size_t(batch->atom_counts[i]) * 3)
+        return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+    std::vector<std::optional<vibeqc::scf::HfWarmState>> candidates(count);
+    for (uint32_t i = 0; i < count; ++i) {
+      const auto& state = states[i];
+      if (!state.present) continue;
+      candidates[i] =
+          vibeqc::scf::HfWarmState{{state.density, state.density + state.density_count},
+                                   {state.coordinates, state.coordinates + state.coordinate_count},
+                                   state.energy,
+                                   state.energy_change,
+                                   state.density_rms,
+                                   state.iterations};
+    }
+    batch->plan->restore_warm_states(std::move(candidates));
+    return VIBEQC_STATUS_SUCCESS;
+  } catch (...) {
+    return vibeqc::api::map_exception(&batch->context->last_detail);
+  }
+}
+
 vibeqc_status vibeqc_batch_execute(vibeqc_batch* batch, const vibeqc_batch_input_descriptor* inputs,
                                    uint32_t input_count,
                                    vibeqc_batch_item_result_descriptor* results,

@@ -99,6 +99,13 @@ core-Hamiltonian guesses are skipped; mixed warm/cold batches retain the cold
 guess path. SCF and force state remain dynamic on every execution.
 Finer AO-level active compaction remains a later scheduler milestone.
 
+## Persistent restart
+
+Prepared batches can [save and load portable HF checkpoints](checkpoint.md),
+including one-item single-system calculations. Each saved seed retains its
+source geometry and scientific identity. Restored densities enter normal target
+SCF verification; device handles and geometry/runtime caches are never persisted.
+
 ## Eigensolver dispatch
 
 The solver hierarchy is explicit per fixed-topology bucket. Matrices through

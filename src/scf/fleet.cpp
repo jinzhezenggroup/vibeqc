@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <limits>
 #include <map>
 #include <new>
 #include <numeric>
@@ -237,7 +238,7 @@ std::vector<FleetItemResult> FleetPlan::execute(
     };
     try {
       const std::vector<double>* initial_density =
-          has_warm_density ? &*warm_densities_[system_index] : nullptr;
+          has_warm_density ? &warm_densities_[system_index]->density : nullptr;
       item.scf = evaluate(initial_density);
       if (use_cuda_density_fitting) {
         item.executed_backend = VIBEQC_BACKEND_CUDA;
@@ -267,7 +268,7 @@ std::vector<FleetItemResult> FleetPlan::execute(
 
     if (item.status == VIBEQC_STATUS_SUCCESS && warm_starts_enabled_ &&
         warm_start_updates_enabled_) {
-      warm_densities_[system_index] = item.scf.density;
+      retain_warm_state(system_index, execution_system, item.scf);
     }
   };
 
@@ -316,7 +317,8 @@ std::vector<FleetItemResult> FleetPlan::execute(
         item.warm_start_used = has_warm_density;
         cuda_systems.push_back(std::move(execution_system));
         original_indices.push_back(system_index);
-        initial_densities.push_back(has_warm_density ? &*warm_densities_[system_index] : nullptr);
+        initial_densities.push_back(has_warm_density ? &warm_densities_[system_index]->density
+                                                     : nullptr);
       }
 
       if (!cuda_systems.empty()) {
@@ -390,7 +392,7 @@ std::vector<FleetItemResult> FleetPlan::execute(
           }
           if (item.status == VIBEQC_STATUS_SUCCESS && warm_starts_enabled_ &&
               warm_start_updates_enabled_) {
-            warm_densities_[system_index] = item.scf.density;
+            retain_warm_state(system_index, cuda_systems[slot], item.scf);
           }
         }
       }
@@ -421,7 +423,8 @@ std::vector<FleetItemResult> FleetPlan::execute(
         item.warm_start_used = has_warm_density;
         df_systems.push_back(std::move(execution_system));
         original_indices.push_back(system_index);
-        initial_densities.push_back(has_warm_density ? &*warm_densities_[system_index] : nullptr);
+        initial_densities.push_back(has_warm_density ? &warm_densities_[system_index]->density
+                                                     : nullptr);
         append_geometry_positions(df_systems.back(), bucket_positions);
       }
 
@@ -529,7 +532,7 @@ std::vector<FleetItemResult> FleetPlan::execute(
           }
           if (item.status == VIBEQC_STATUS_SUCCESS && warm_starts_enabled_ &&
               warm_start_updates_enabled_) {
-            warm_densities_[system_index] = item.scf.density;
+            retain_warm_state(system_index, df_systems[slot], item.scf);
           }
         }
       }
@@ -564,6 +567,70 @@ std::vector<FleetItemResult> FleetPlan::execute(
     bucket_begin = bucket_end;
   }
   return results;
+}
+
+std::size_t FleetPlan::warm_density_size(std::size_t index) const {
+  const auto n = molecule::ao_count(systems_.at(index));
+  const std::size_t spins = method_ == VIBEQC_METHOD_UHF ? 2 : 1;
+  if (n == 0 || n > std::numeric_limits<std::size_t>::max() / n / spins / sizeof(double))
+    throw std::invalid_argument("warm density dimensions overflow");
+  return spins * n * n;
+}
+
+const std::optional<HfWarmState>& FleetPlan::warm_state(std::size_t index) const {
+  return warm_densities_.at(index);
+}
+
+void FleetPlan::retain_warm_state(std::size_t index, const core::System& system,
+                                  const ScfResult& result) {
+  auto& retained = warm_densities_[index];
+  if (retained && retained->density.size() == result.density.size() &&
+      retained->coordinates.size() == 3 * system.atoms.size()) {
+    // Fixed topology keeps the existing buffer capacity and pointer stable on
+    // warm replays. Nothing in this update can allocate or leave a density
+    // paired with the previous geometry after an allocation failure.
+    std::copy(result.density.begin(), result.density.end(), retained->density.begin());
+    for (std::size_t atom = 0; atom < system.atoms.size(); ++atom)
+      std::copy(system.atoms[atom].position.begin(), system.atoms[atom].position.end(),
+                retained->coordinates.begin() + 3 * atom);
+    retained->energy = result.energy;
+    retained->energy_change = result.energy_change;
+    retained->density_rms = result.density_rms;
+    retained->iterations = result.iterations;
+    return;
+  }
+  HfWarmState state;
+  state.density = result.density;
+  state.coordinates.reserve(3 * system.atoms.size());
+  for (const auto& atom : system.atoms)
+    state.coordinates.insert(state.coordinates.end(), atom.position.begin(), atom.position.end());
+  state.energy = result.energy;
+  state.energy_change = result.energy_change;
+  state.density_rms = result.density_rms;
+  state.iterations = result.iterations;
+  warm_densities_[index] = std::move(state);
+}
+
+void FleetPlan::restore_warm_states(std::vector<std::optional<HfWarmState>> states) {
+  if (!warm_starts_enabled_ || states.size() != size())
+    throw std::invalid_argument("checkpoint restore requires a matching warm-enabled fleet");
+  for (std::size_t i = 0; i < size(); ++i) {
+    if (!states[i]) continue;
+    const auto& state = *states[i];
+    if (state.density.size() != warm_density_size(i) ||
+        !valid_coordinates(state.coordinates, systems_[i].atoms.size()) || state.iterations < 0 ||
+        !std::isfinite(state.energy) || !std::isfinite(state.energy_change) ||
+        !std::isfinite(state.density_rms) || state.density_rms < 0)
+      throw std::invalid_argument("invalid checkpoint state dimensions or diagnostics");
+    auto source = systems_[i];
+    apply_coordinates(source, state.coordinates);
+    validate_hf_warm_density(source, method_, state.density);
+  }
+  // Every allocation/validation above completes before this no-throw commit.
+  // A pre-existing device seed/energy must never supersede an imported seed.
+  for (auto* plan : cuda_bucket_plans_) clear_rhf_cuda_bucket_warm_starts(plan);
+  for (std::size_t i = 0; i < size(); ++i)
+    if (states[i]) warm_densities_[i].swap(states[i]);
 }
 
 void FleetPlan::clear_warm_starts() {

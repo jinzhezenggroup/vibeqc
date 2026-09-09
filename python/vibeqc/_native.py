@@ -92,6 +92,24 @@ XSYEV_GRAPH_PROBE_STAGE_NAMES = (
 )
 
 
+class HfWarmState(ctypes.Structure):
+    """Live buffer descriptor; checkpoint files never serialize this struct."""
+
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("density", ctypes.POINTER(ctypes.c_double)),
+        ("density_count", ctypes.c_uint64),
+        ("coordinates", ctypes.POINTER(ctypes.c_double)),
+        ("coordinate_count", ctypes.c_uint64),
+        ("energy", ctypes.c_double),
+        ("energy_change", ctypes.c_double),
+        ("density_rms", ctypes.c_double),
+        ("iterations", ctypes.c_int32),
+        ("present", ctypes.c_int32),
+    ]
+
+
 class ContextDescriptor(ctypes.Structure):
     _fields_ = [
         ("struct_size", ctypes.c_uint32),
@@ -463,6 +481,20 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
         ctypes.POINTER(ctypes.c_uint32),
     ]
     library.vibeqc_batch_get_last_inactive_eigensolver_profile.restype = ctypes.c_int
+    library.vibeqc_context_get_last_detail.argtypes = [ctypes.c_void_p]
+    library.vibeqc_context_get_last_detail.restype = ctypes.c_char_p
+    library.vibeqc_batch_get_hf_warm_state.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.POINTER(HfWarmState),
+    ]
+    library.vibeqc_batch_get_hf_warm_state.restype = ctypes.c_int
+    library.vibeqc_batch_restore_hf_warm_states.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(HfWarmState),
+        ctypes.c_uint32,
+    ]
+    library.vibeqc_batch_restore_hf_warm_states.restype = ctypes.c_int
     library.vibeqc_batch_clear_warm_starts.argtypes = [ctypes.c_void_p]
     library.vibeqc_batch_clear_warm_starts.restype = ctypes.c_int
     library.vibeqc_batch_set_warm_start_updates.argtypes = [

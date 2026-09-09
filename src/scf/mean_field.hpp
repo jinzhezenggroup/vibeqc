@@ -14,6 +14,12 @@ namespace vibeqc::scf {
 struct CudaDensityFittingMetricDiagnostic;
 struct CudaDensityFittingJkPlan;
 
+/** Rebuild only the source overlap on the CPU and apply the shared SCF
+ * ensemble-density guard (Hermiticity, metric occupations, electron/spin trace).
+ * This does not assert target compatibility or target convergence. */
+void validate_hf_warm_density(const core::System& source, vibeqc_method method,
+                              const std::vector<double>& density);
+
 /** Run closed-shell RHF and assemble its variational analytic gradient. */
 ScfResult run_rhf(const core::System& system, const ScfOptions& options,
                   const std::vector<double>* initial_density = nullptr);

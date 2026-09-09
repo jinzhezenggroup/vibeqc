@@ -17,6 +17,7 @@
 
 #include "integrals/s_integrals.hpp"
 #include "molecule/basis.hpp"
+#include "posthf/raw_source.hpp"
 #include "runtime/resource_ledger.hpp"
 #include "runtime/resource_usage.hpp"
 #include "scf/cuda_density_fitting.hpp"
@@ -1178,6 +1179,24 @@ void finalize_density_fitting_uhf(const DensityFittingScfData& data, const Matri
 }
 
 }  // namespace
+
+void validate_hf_warm_density(const core::System& source, vibeqc_method method,
+                              const std::vector<double>& density) {
+  posthf::RawSource raw(source);
+  const auto n = raw.nbf();
+  Matrix overlap(n * n);
+  raw.read(posthf::RawSource::Operator::overlap, {0, 0, 0, 0}, {n, n, 1, 1}, overlap.data(),
+           overlap.size());
+  if (method == VIBEQC_METHOD_UHF) {
+    const auto [alpha, beta] = spin_occupations(source);
+    validate_seed(overlap, density, n, {static_cast<unsigned>(alpha), static_cast<unsigned>(beta)},
+                  1.0);
+  } else {
+    if (source.electron_count <= 0 || source.electron_count % 2 || source.multiplicity != 1)
+      throw std::invalid_argument("invalid checkpoint RHF electron/spin counts");
+    validate_seed(overlap, density, n, {static_cast<unsigned>(source.electron_count)}, 2.0);
+  }
+}
 
 ScfResult run_rhf(const core::System& system, const ScfOptions& options,
                   const std::vector<double>* initial_density) {

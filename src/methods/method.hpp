@@ -12,6 +12,7 @@
 
 #include "core/types.hpp"
 #include "scf/cuda_density_fitting.hpp"
+#include "scf/warm_state.hpp"
 #include "vibeqc/vibeqc.h"
 
 namespace vibeqc::methods {
@@ -155,6 +156,10 @@ class PreparedBatch {
   [[nodiscard]] virtual std::size_t size() const noexcept = 0;
   virtual std::vector<BatchItemResult> execute(const Coordinates& coordinates) = 0;
   virtual void clear_warm_starts() = 0;
+  [[nodiscard]] virtual std::size_t warm_density_size(std::size_t index) const = 0;
+  [[nodiscard]] virtual const std::optional<scf::HfWarmState>& warm_state(
+      std::size_t index) const = 0;
+  virtual void restore_warm_states(std::vector<std::optional<scf::HfWarmState>> states) = 0;
   virtual void set_warm_start_updates(bool enabled) = 0;
   [[nodiscard]] virtual std::optional<std::vector<DirectShellClassProfileEntry>>
   last_direct_shell_class_profile() const = 0;

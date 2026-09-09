@@ -449,6 +449,10 @@ VIBEQC_API vibeqc_status vibeqc_context_create(const vibeqc_context_descriptor* 
                                                vibeqc_context** context);
 VIBEQC_API void vibeqc_context_destroy(vibeqc_context* context);
 
+/** Borrow the last native failure detail, valid until the next failing call
+ * on this context or its destruction. Empty when no detail has been recorded. */
+VIBEQC_API const char* vibeqc_context_get_last_detail(const vibeqc_context* context);
+
 VIBEQC_API vibeqc_status vibeqc_system_create(vibeqc_context* context,
                                               const vibeqc_system_descriptor* descriptor,
                                               vibeqc_system** system);
@@ -530,6 +534,42 @@ VIBEQC_API vibeqc_status vibeqc_batch_get_last_density_fitting_metric_diagnostic
 VIBEQC_API vibeqc_status vibeqc_batch_get_last_inactive_eigensolver_profile(
     const vibeqc_batch* batch, vibeqc_inactive_eigensolver_profile_entry* entries,
     uint32_t entry_count, uint32_t* written_count);
+
+/** Portable scientific buffers for an HF seed. This is a live ABI descriptor,
+ * never an on-disk representation. Density is row-major RHF total or UHF alpha
+ * then beta. Coordinates are the source geometry, in Bohr and input atom order.
+ * Source diagnostics do not establish target convergence.
+ */
+typedef struct vibeqc_hf_warm_state {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  double* density;
+  uint64_t density_count;
+  double* coordinates;
+  uint64_t coordinate_count;
+  double energy;
+  double energy_change;
+  double density_rms;
+  int32_t iterations;
+  int32_t present;
+} vibeqc_hf_warm_state;
+
+/** Query with both buffers null to obtain counts, then copy into owned buffers.
+ * A missing retained seed returns present=0 and zero counts. */
+VIBEQC_API vibeqc_status vibeqc_batch_get_hf_warm_state(const vibeqc_batch* batch, uint32_t index,
+                                                        vibeqc_hf_warm_state* state);
+
+/** Atomically import input-ordered seeds; present=0 preserves a neighbor.
+ * The caller MUST verify source/target method, ordered nuclei, basis/AO, core,
+ * spin, and provider identities before calling this low-level buffer API.
+ * Native validation checks shape, finiteness, Hermiticity and source-metric
+ * electron/spin occupations before mutation. Target execution normalizes the
+ * warm guess in its current metric and recomputes SCF convergence normally.
+ * Requires warm starts enabled; no runtime objects or convergence flags load.
+ */
+VIBEQC_API vibeqc_status vibeqc_batch_restore_hf_warm_states(vibeqc_batch* batch,
+                                                             const vibeqc_hf_warm_state* states,
+                                                             uint32_t count);
 
 /** Discard all retained per-system converged-density warm starts. */
 VIBEQC_API vibeqc_status vibeqc_batch_clear_warm_starts(vibeqc_batch* batch);

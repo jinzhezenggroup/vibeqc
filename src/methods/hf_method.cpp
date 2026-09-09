@@ -341,6 +341,15 @@ class HfPreparedBatch final : public PreparedBatch {
   }
 
   void clear_warm_starts() override { plan_.clear_warm_starts(); }
+  std::size_t warm_density_size(std::size_t index) const override {
+    return plan_.warm_density_size(index);
+  }
+  const std::optional<scf::HfWarmState>& warm_state(std::size_t index) const override {
+    return plan_.warm_state(index);
+  }
+  void restore_warm_states(std::vector<std::optional<scf::HfWarmState>> states) override {
+    plan_.restore_warm_states(std::move(states));
+  }
 
   void set_warm_start_updates(bool enabled) override { plan_.set_warm_start_updates(enabled); }
 

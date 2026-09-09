@@ -33,6 +33,7 @@ class BatchItemResult:
     warm_start_fallback: bool
     basis_metadata: dict = field(default_factory=dict)
     accuracy: AccuracyAssessment | None = None
+    restart_origin: str = "cold"
 
     @property
     def succeeded(self) -> bool:
@@ -341,6 +342,9 @@ class PreparedBatch:
     ) -> None:
         if not systems:
             raise ValueError("a batch requires at least one system")
+        self._last_statuses = None
+        self._restart_indices = set()
+        self.checkpoint_diagnostics = None
         self._calculator = calculator
         self._library = calculator._library
         self._systems = tuple(
@@ -349,6 +353,9 @@ class PreparedBatch:
         if any(not system for system in self._systems):
             raise ValueError("every batch item requires at least one atom")
         count = len(self._systems)
+        self._warm_enabled = warm_start
+        self._warm_updates = True
+        self._warm_metadata = [None] * count
         self._charges = (
             tuple(0 for _ in range(count)) if charges is None else tuple(charges)
         )
@@ -518,6 +525,9 @@ class PreparedBatch:
             raise RuntimeError(
                 "prepared basis/model identity changed; prepare a new batch before reusing densities or Fock/DIIS state"
             )
+        from .checkpoint import _controls
+
+        controls = _controls(self._calculator)
         count = len(self._systems)
         coordinate_storage: list[np.ndarray] = []
         inputs_pointer = None
@@ -662,9 +672,42 @@ class PreparedBatch:
                     warm_start_fallback=bool(output.warm_start_fallback),
                     basis_metadata=deepcopy(self._basis_metadata[index]),
                     accuracy=accuracy,
+                    restart_origin=(
+                        "cold_fallback"
+                        if output.warm_start_fallback
+                        else "persistent_restart"
+                        if output.warm_start_used and index in self._restart_indices
+                        else "in_process_warm"
+                        if output.warm_start_used
+                        else "cold"
+                    ),
                 )
             )
         result = BatchResult(tuple(items))
+        self._last_statuses = tuple(item.status for item in result.items)
+        for index, item in enumerate(result.items):
+            if item.succeeded and self._warm_enabled and self._warm_updates:
+                self._warm_metadata[index] = {
+                    "controls": deepcopy(controls),
+                    "backend": "cuda" if item.executed_backend == "cuda" else "cpu",
+                }
+                self._restart_indices.discard(index)
+        if (
+            self.checkpoint_diagnostics
+            and "target_verification" in self.checkpoint_diagnostics
+        ):
+            self.checkpoint_diagnostics["target_verification"] = "executed"
+            self.checkpoint_diagnostics["target_results"] = [
+                {
+                    "index": i.index,
+                    "converged": i.converged,
+                    "status": i.status,
+                    "energy": i.energy if i.succeeded else None,
+                    "density_rms": i.density_rms if i.succeeded else None,
+                    "restart_origin": i.restart_origin,
+                }
+                for i in result.items
+            ]
         if strict:
             try:
                 result.raise_for_failures()
@@ -674,12 +717,40 @@ class PreparedBatch:
                 raise
         return result
 
+    def save_checkpoint(self, path, *, max_bytes=256 << 20):
+        """Atomically persist retained HF seeds, identities and source diagnostics.
+
+        Failed/no-state items keep their input slots. A one-item prepared batch
+        provides single-system checkpoint/restart with the same contract.
+        """
+        from .checkpoint import save_checkpoint
+
+        return save_checkpoint(self, path, max_bytes=max_bytes)
+
+    def load_checkpoint(
+        self, path, *, allow_warm=False, strict=True, max_bytes=256 << 20
+    ):
+        """Restore compatible seeds as proposals for the next normal execution.
+
+        Exact restart is the default. ``allow_warm`` permits changed geometry or
+        numerical controls with the same scientific model. ``strict=False``
+        preserves incompatible neighbors; corruption always rejects the file
+        before any seed is applied. Runtime resources follow this target plan.
+        """
+        from .checkpoint import load_checkpoint
+
+        return load_checkpoint(
+            self, path, allow_warm=allow_warm, strict=strict, max_bytes=max_bytes
+        )
+
     def clear_warm_starts(self) -> None:
         self._ensure_open()
         _native.check(
             self._library,
             self._library.vibeqc_batch_clear_warm_starts(self._batch),
         )
+        self._restart_indices.clear()
+        self._warm_metadata = [None] * len(self._systems)
 
     def set_warm_start_updates(self, enabled: bool) -> None:
         """Control whether successful executions replace retained densities.
@@ -696,6 +767,7 @@ class PreparedBatch:
                 self._batch, int(bool(enabled))
             ),
         )
+        self._warm_updates = bool(enabled)
 
     def last_shell_class_profile(self) -> tuple[ShellClassProfileEntry, ...]:
         """Return work surviving the most recent final-density CUDA screening.

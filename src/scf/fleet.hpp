@@ -10,6 +10,7 @@
 #include "scf/cuda_density_fitting.hpp"
 #include "scf/density_fitting.hpp"
 #include "scf/types.hpp"
+#include "scf/warm_state.hpp"
 
 namespace vibeqc::scf {
 
@@ -47,6 +48,12 @@ class FleetPlan {
       const std::vector<std::optional<std::vector<double>>>& coordinates);
 
   void clear_warm_starts();
+
+  [[nodiscard]] std::size_t warm_density_size(std::size_t index) const;
+  [[nodiscard]] const std::optional<HfWarmState>& warm_state(std::size_t index) const;
+  /** Validate every supplied seed before changing any retained state. Missing
+   * entries preserve neighbors. Imported densities always re-enter target SCF. */
+  void restore_warm_states(std::vector<std::optional<HfWarmState>> states);
 
   /**
    * Control whether successful executions replace the retained warm guesses.
@@ -102,7 +109,8 @@ class FleetPlan {
   std::optional<core::System> auxiliary_template_;
   std::vector<std::size_t> execution_order_;
   std::vector<std::size_t> bucket_ids_;
-  std::vector<std::optional<std::vector<double>>> warm_densities_;
+  std::vector<std::optional<HfWarmState>> warm_densities_;
+  void retain_warm_state(std::size_t index, const core::System& system, const ScfResult& result);
   std::optional<CudaRhfShellClassProfile> last_shell_class_profile_;
   std::optional<CudaPppsQueueProfile> last_ppps_queue_profile_;
   std::vector<CudaEigensolverDiagnostic> last_eigensolver_diagnostics_;
