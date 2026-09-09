@@ -1,0 +1,122 @@
+{
+  "schema": "vibeqc.evidence-archive.v1",
+  "source_commit": "83dc2effec30e051afd8063bb405155b4e877d2b",
+  "archive_sha256": "bd6879e101dc3a47e6ec4bd517014859a95f13033d85a4a01447fc91da6007f4",
+  "files": [
+    {
+      "path": "endpoints.log",
+      "bytes": 1385,
+      "sha256": "01245c4da7bd206c1618d6ee1ccab9eeb9b1d8bead5070b48164561bd7a49710"
+    },
+    {
+      "path": "endpoints/ch4-native-HF-state.json",
+      "bytes": 176381,
+      "sha256": "b976bfcea533fd1a45c910c4b90d28956421dc8d2d6332440ece304b95058c46"
+    },
+    {
+      "path": "endpoints/ch4-native-HF.json",
+      "bytes": 17993,
+      "sha256": "c9a573c023e3943c3088356238ce24021cec279d000ac21c24c95651e8c3c0bf"
+    },
+    {
+      "path": "endpoints/ch4-same-C-state.json",
+      "bytes": 176140,
+      "sha256": "b5663b599cbef3382990e60df61f9531b1997679e95dfeae067ccaf16b606312"
+    },
+    {
+      "path": "endpoints/ch4-same-C.json",
+      "bytes": 17410,
+      "sha256": "763ef7fb5bb507a5c030b43bd5fa41dc3f6db9ab03155e29737073950906558e"
+    },
+    {
+      "path": "endpoints/h2-native-HF-state.json",
+      "bytes": 7381,
+      "sha256": "99b8ee5d7d9c978cb2fe7407120fb49676c2c509f211850844d705262a567744"
+    },
+    {
+      "path": "endpoints/h2-native-HF.json",
+      "bytes": 14344,
+      "sha256": "350098162cf6992fe9e0827e74edf7702d93341149ff4ce02b24ddf41b34578b"
+    },
+    {
+      "path": "endpoints/h2-same-C-state.json",
+      "bytes": 7391,
+      "sha256": "1403fdebef0bb8cdac1f018d313902f4ad3b292fc11fbdd1fccb9a0082bf82e6"
+    },
+    {
+      "path": "endpoints/h2-same-C.json",
+      "bytes": 13779,
+      "sha256": "98d5eb8d15d5df61621aa533603461b9c2c3c174924e366a023d3c869293078f"
+    },
+    {
+      "path": "endpoints/h2o-native-HF-state.json",
+      "bytes": 81525,
+      "sha256": "b027ead8c1c2c70ba0f17876bd1a0be25621b64f19c355d6662f45934f0a4d22"
+    },
+    {
+      "path": "endpoints/h2o-native-HF.json",
+      "bytes": 17566,
+      "sha256": "7f6798d9f4b56d7d1276597aa0d4ef31906494eabb7079f2d21ed682c9f4646e"
+    },
+    {
+      "path": "endpoints/h2o-same-C-state.json",
+      "bytes": 81279,
+      "sha256": "af9bde2f9913ea207e32046b70533486e416970dead6c34df400b5abe53f64a5"
+    },
+    {
+      "path": "endpoints/h2o-same-C.json",
+      "bytes": 16983,
+      "sha256": "66ccc416bca052d7e729c628017ef9df2ad228a7672549c4ce912425bdeb0083"
+    },
+    {
+      "path": "endpoints/he-native-HF-state.json",
+      "bytes": 8267,
+      "sha256": "59f96b1942a789e536e856e42346d44e376932ca97b6ebc5ce193b86f0029746"
+    },
+    {
+      "path": "endpoints/he-native-HF.json",
+      "bytes": 15272,
+      "sha256": "aa6776a143cfbd6d5ad018b660eeb27eefe8137c5f9a131e7f89c196746d4dd7"
+    },
+    {
+      "path": "endpoints/he-same-C-state.json",
+      "bytes": 8649,
+      "sha256": "9a5462684a77173a268b2814a3beb1c1a129103e0d4a81f56b0119a619f483db"
+    },
+    {
+      "path": "endpoints/he-same-C.json",
+      "bytes": 15083,
+      "sha256": "8ef1e5b3e85e12bc5ab6f85bf6f367dd77301f1b6509d9e8a5d94b5d4b556697"
+    },
+    {
+      "path": "endpoints/nh3-native-HF-state.json",
+      "bytes": 120723,
+      "sha256": "9b4587afef740b9248d0a3f44fa67caeed90b64f5b37e2d20222cfc2179142ba"
+    },
+    {
+      "path": "endpoints/nh3-native-HF.json",
+      "bytes": 18424,
+      "sha256": "e57abb71ffdca7ca9c411c56e754265eb644a771e387ddb739cc0858aeedf46f"
+    },
+    {
+      "path": "endpoints/nh3-same-C-state.json",
+      "bytes": 120282,
+      "sha256": "08f9bfe182577c98ea7ebc617ffa587641dfc0b3241423da6a2980ae2169f366"
+    },
+    {
+      "path": "endpoints/nh3-same-C.json",
+      "bytes": 17826,
+      "sha256": "17be7d125bab7c96b8994a6909ba98200afd204f5b426151cf1044d7048cae17"
+    },
+    {
+      "path": "source-check.log",
+      "bytes": 24,
+      "sha256": "51a54071fa99630b9b3a9d9b3e693311f66c0b617c639f44960849b569cf7948"
+    },
+    {
+      "path": "versions.log",
+      "bytes": 253,
+      "sha256": "31c102f2e9eddcf214cde15eecabe3900b41a6eeea4d5f0ee6104d6a63522ab5"
+    }
+  ]
+}

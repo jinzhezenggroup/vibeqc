@@ -1,0 +1,22 @@
+{
+  "schema": "vibeqc.evidence-archive.v1",
+  "source_commit": "83dc2effec30e051afd8063bb405155b4e877d2b",
+  "archive_sha256": "f4c11760dd15afa092fec00baf577b8b38de646399b4ff1570820d041b1f2311",
+  "files": [
+    {
+      "path": "determinant-groups.json",
+      "bytes": 59137,
+      "sha256": "2563f481acad0cfadfbfffde6eeafff26cd96b89ce1fb4476ed4dc3be3d837e9"
+    },
+    {
+      "path": "numerical.json",
+      "bytes": 46600,
+      "sha256": "eaecae4c4b9242dbd6bdb8b027cfcdd834315067185933fc02fdcc6e8394df36"
+    },
+    {
+      "path": "source-verification.log",
+      "bytes": 546,
+      "sha256": "1c2c3b79e79d1c388e8e3cbc73457803266c708b7a7a67c1083cc22a07569916"
+    }
+  ]
+}

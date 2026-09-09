@@ -5,6 +5,30 @@ This archive completes the internal CPU scope of issue #148, following A at
 `3f4c6c4942efc0e6712e1b36b0c8938fcaae86e7`. It does not implement the public
 GPU method/API, (T), Lambda or gradients; those have separate issues.
 
+## Archived raw records
+
+Detailed JSON results and execution logs are stored in
+[`raw-evidence.zip`](raw-evidence.zip). The
+[manifest](raw-evidence.manifest.json) lists every member's size and SHA-256,
+plus the archive hash and the Git commit from which the original bytes were
+copied. That commit identifies the storage migration input, not a new
+scientific run. Existing source snapshots and the acceptance summary below
+retain the original experiment identity, tolerances and limitations.
+
+From the repository root, verify without extracting, or restore into a **new**
+directory (Python standard library only):
+
+```bash
+python -m tools.unpack_evidence benchmarks/results/rccsd-148-c
+python -m tools.unpack_evidence benchmarks/results/rccsd-148-c \
+  --output build/rccsd-148-c-history
+```
+
+Files listed in the manifest are relative to the restored directory. Small
+provenance records remain beside this README. Restoration checks every hash before writing and refuses
+an existing output directory. Historical scripts are records, not commands to
+execute. Test fixtures remain directly available under `tests/reference_data/`.
+
 ## Fixed implementation and environment
 
 The 19 files in `source-snapshot.json` were validated on qz and independently
@@ -90,8 +114,10 @@ python -m pytest tests/python/test_cc*.py \
   tests/python/test_tensor_examples.py tests/python/test_posthf_reference.py \
   tests/python/test_posthf_providers.py tests/python/test_validation.py -q
 python -m tools.validate_cc_solver --output build/cc-c-reproduction
+python -m tools.unpack_evidence benchmarks/results/rccsd-148-c \
+  --output build/cc-c-history
 python -m tools.replay_ccsd \
-  benchmarks/results/rccsd-148-c/endpoints/h2-same-C-state.json \
+  build/cc-c-history/endpoints/h2-same-C-state.json \
   --output build/cc-c-reproduction/h2-state-replay.json
 
 ruff check tools/vibeqc_cc tools/cc_endpoint_fixtures.py \

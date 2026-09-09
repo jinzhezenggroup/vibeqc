@@ -4,6 +4,30 @@ Scope: issue #148 A only, real conventional all-electron RCCSD energy and
 physical T1 equations at supplied amplitudes. No T2 residual/CCSD convergence,
 GPU, triples, Lambda, gradients or performance claim. Refs #148.
 
+## Archived raw records
+
+Detailed JSON results and execution logs are stored in
+[`raw-evidence.zip`](raw-evidence.zip). The
+[manifest](raw-evidence.manifest.json) lists every member's size and SHA-256,
+plus the archive hash and the Git commit from which the original bytes were
+copied. That commit identifies the storage migration input, not a new
+scientific run. Existing source snapshots and the acceptance summary below
+retain the original experiment identity, tolerances and limitations.
+
+From the repository root, verify without extracting, or restore into a **new**
+directory (Python standard library only):
+
+```bash
+python -m tools.unpack_evidence benchmarks/results/rccsd-148-a
+python -m tools.unpack_evidence benchmarks/results/rccsd-148-a \
+  --output build/rccsd-148-a-history
+```
+
+Files listed in the manifest are relative to the restored directory. Small
+provenance records remain beside this README. Restoration checks every hash before writing and refuses
+an existing output directory. Historical scripts are records, not commands to
+execute. Test fixtures remain directly available under `tests/reference_data/`.
+
 ## Code and execution identity
 
 - Baseline/default branch: `origin/master`,

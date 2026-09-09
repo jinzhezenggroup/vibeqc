@@ -6,6 +6,30 @@ method, establish SCF/quadrature convergence, or validate GPU execution.
 The interface and remaining dependencies are in
 [the integration contract](../../../docs/xc_integration.md).
 
+## Archived raw records
+
+Detailed JSON results and execution logs are stored in
+[`raw-evidence.zip`](raw-evidence.zip). The
+[manifest](raw-evidence.manifest.json) lists every member's size and SHA-256,
+plus the archive hash and the Git commit from which the original bytes were
+copied. That commit identifies the storage migration input, not a new
+scientific run. Existing source snapshots and the acceptance summary below
+retain the original experiment identity, tolerances and limitations.
+
+From the repository root, verify without extracting, or restore into a **new**
+directory (Python standard library only):
+
+```bash
+python -m tools.unpack_evidence benchmarks/results/xc-integration-162
+python -m tools.unpack_evidence benchmarks/results/xc-integration-162 \
+  --output build/xc-integration-162-history
+```
+
+Files listed in the manifest are relative to the restored directory. Small
+provenance records remain beside this README. Restoration checks every hash before writing and refuses
+an existing output directory. Historical scripts are records, not commands to
+execute. Test fixtures remain directly available under `tests/reference_data/`.
+
 ## Source and environment
 
 - Upstream baseline: `1e93c3cfa10afdf99ee26c70312bcfe533114331` (PR #211),
@@ -31,13 +55,14 @@ The interface and remaining dependencies are in
   Full paths follow the supplied qz environment guide. No `.env` was read.
 
 Exact compiler/dependency/library/source versions and SHA-256 values are in
-[versions.log](versions.log). They include PySCF 2.14.0, Libxc 7.0.0,
+`versions.log`. They include PySCF 2.14.0, Libxc 7.0.0,
 NumPy 2.2.6, SciPy 1.15.3, SymPy 1.14.0, GCC 11.4.0, CMake 3.31.10 and
 Ruff 0.16.2. BLAS/OpenMP environment thread limits were one.
 
 ## Commands and results
 
-[verification.sh](verification.sh) is the exact executed Bash command sequence.
+`verification.sh` in the archive is the exact historical Bash command sequence,
+including machine-specific paths. Do not execute it as a reproduction entry point.
 It uses an explicit worktree and interpreter, `set -euo pipefail`, a final exit
 sentinel, full logs and unchanged tolerances. It was uploaded and invoked via:
 
@@ -48,13 +73,13 @@ inspire --no-env-file --account qz notebook exec general --workspace CPU资源�
 | Check | Measured result | Evidence |
 | --- | --- | --- |
 | Baseline grid/AO/XC, before implementation | 90 passed | Remote `../vibeqc-issue-162-baseline.log` |
-| New + grid/AO/XC focused regression | 129 passed (39 new) | [focused-tests.log](focused-tests.log) |
-| Native CPU suite, including HF/integrals/grid | 10/10 passed | [ctest.log](ctest.log) |
-| Complete Python regression | 891 passed, 173 skipped | [python-tests.log](python-tests.log) |
-| CPU build | Passed, current build up to date | [build.log](build.log) |
-| Ruff check/format and Git whitespace | Passed | [format.log](format.log) |
-| Reference regeneration | Two independent invocations exactly match each other and saved metadata/array hashes | [reference-generation.log](reference-generation.log) |
-| Numerical evidence runner | 24 independent comparisons, all passed | [numerical.json](numerical.json), [numerical.log](numerical.log) |
+| New + grid/AO/XC focused regression | 129 passed (39 new) | `focused-tests.log` |
+| Native CPU suite, including HF/integrals/grid | 10/10 passed | `ctest.log` |
+| Complete Python regression | 891 passed, 173 skipped | `python-tests.log` |
+| CPU build | Passed, current build up to date | `build.log` |
+| Ruff check/format and Git whitespace | Passed | `format.log` |
+| Reference regeneration | Two independent invocations exactly match each other and saved metadata/array hashes | `reference-generation.log` |
+| Numerical evidence runner | 24 independent comparisons, all passed | `numerical.json`, `numerical.log` |
 
 The complete verifier returned exit 0. Optional CUDA/GPU/PyTorch skips are not
 numerical acceptance for those backends. Existing HF tolerances and tests were
@@ -92,6 +117,45 @@ not converged molecular DFT calculations. Future CPU RKS requires a versioned
 tail/limit policy, a native DFT adapter, common #202 Coulomb strategy, occupations,
 DIIS and physical-residual convergence, followed by #203 resource composition.
 No second J/K scheduler or global budget API is introduced here.
+
+## Reproduction on a new CPU checkout
+
+On Linux, from the repository root in an activated environment with the
+versions listed above (including PySCF 2.14.0), use fresh build/output paths:
+
+```bash
+export PYTHONPATH=.:python OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
+cmake -S . -B build/xc-repro-native -G Ninja \
+  -DVIBEQC_ENABLE_CUDA=OFF -DCMAKE_BUILD_TYPE=Release
+cmake --build build/xc-repro-native --parallel 2
+export VIBEQC_LIBRARY="$PWD/build/xc-repro-native/libvibeqc.so"
+ctest --test-dir build/xc-repro-native --output-on-failure
+python -m pytest tests/python/test_xc_integration.py -q
+python -m tools.validate_xc_integration --output build/xc-reproduction/numerical.json
+python -m tools.generate_xc_integration_references build/xc-reference-first
+python -m tools.generate_xc_integration_references build/xc-reference-second
+python - <<'PY'
+import json
+from pathlib import Path
+import numpy as np
+paths = sorted(Path("build/xc-reference-first").glob("*.json"))
+assert {p.stem for p in paths} == {"h2", "water", "f_cartesian", "f_spherical"}
+assert {p.name for p in paths} == {
+    p.name for p in Path("build/xc-reference-second").glob("*.json")
+}
+for path in paths:
+    other = Path("build/xc-reference-second") / path.name
+    assert json.loads(path.read_text()) == json.loads(other.read_text()), path.name
+    with np.load(path.with_suffix(".npz")) as a, np.load(other.with_suffix(".npz")) as b:
+        assert sorted(a.files) == sorted(b.files)
+        for key in a.files:
+            np.testing.assert_array_equal(a[key], b[key])
+PY
+```
+
+These commands create new results under `build/`; they do not overwrite the
+historical archive or committed test references. Restoring historical bytes
+only verifies storage integrity, not a fresh scientific acceptance run.
 
 ## Independent review
 

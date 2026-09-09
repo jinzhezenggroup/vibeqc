@@ -1,5 +1,31 @@
 # Published GPU benchmark artifacts
 
+## Adding and maintaining evidence
+
+Keep a short, reviewable summary of scope, acceptance thresholds, observed
+results, source/environment identity and reproduction commands beside each
+archive. Full traces, repeated per-node checks, state dumps and historical
+machine scripts belong in a compressed archive, not expanded JSON diffs.
+Preserve distinct cases, budgets, runs and failures; compression must not
+change original bytes or weaken scientific gates. Keep small test-required
+reference fixtures directly usable, with their provenance and licenses.
+
+For each PR, report implementation, test, and evidence/data line deltas
+separately, plus archive sizes. Record the archive SHA-256, member hashes and
+source commit in a manifest; verify restoration before removing originals.
+Source identity can use immutable Git commits/blobs instead of duplicate
+source trees, provided all referenced bytes remain recoverable. Run new
+experiments into fresh `build/` directories, never into historical archives.
+
+The merged [RCCSD A](rccsd-148-a/README.md), [B](rccsd-148-b/README.md),
+[C](rccsd-148-c/README.md) and [fixed-density XC](xc-integration-162/README.md)
+records use the standard-library `python -m tools.unpack_evidence` verifier.
+Their manifests inventory the archived files; their READMEs retain results and
+commands. Archive hashes establish integrity, not independent authentication
+or renewed scientific acceptance. Git history still retains the old expanded
+files; this layout reduces current checkout and review burden.
+
+
 The [CG01 protocol controls](cg01/README.md) record independent small-reference
 stability, CPU/CUDA HF endpoints, and a separate CUDA compilation smoke check.
 They demonstrate the shared validation schema without claiming a speedup.
