@@ -1,0 +1,43 @@
+........................................................................ [ 17%]
+........................................................................ [ 35%]
+........................................................................ [ 53%]
+..s...........................ssssssssssssssssssssssssssssssssssssssssss [ 71%]
+sss....s..............................s................................. [ 89%]
+..................F......................                                [100%]
+=================================== FAILURES ===================================
+___________ test_native_source_identity_and_probe_abi_match_checkout ___________
+
+    def test_native_source_identity_and_probe_abi_match_checkout():
+        import ctypes
+
+        from vibeqc import _native
+        from vibeqc.autotune import source_identity
+
+>       library = _native.load_library()
+                  ^^^^^^^^^^^^^^^^^^^^^^
+
+tests/python/test_local_profiles.py:382:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+device = None, device_id = 0
+
+    def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDLL:
+        """Load the native ABI, optionally resolving a validated local CUDA build.
+
+        Capability queries and CPU calculators never probe a GPU or consult a
+        local CUDA profile. VIBEQC_PROFILE=off keeps the baseline for tuning A/Bs.
+        """
+        for candidate in _candidate_paths():
+            if candidate.exists():
+                library = ctypes.CDLL(str(candidate))
+                break
+        else:
+>           raise RuntimeError(
+                "VIBEQC native library was not found; set VIBEQC_LIBRARY or build in ./build"
+            )
+E           RuntimeError: VIBEQC native library was not found; set VIBEQC_LIBRARY or build in ./build
+
+python/vibeqc/_native.py:388: RuntimeError
+=========================== short test summary info ============================
+FAILED tests/python/test_local_profiles.py::test_native_source_identity_and_probe_abi_match_checkout
+1 failed, 352 passed, 48 skipped in 85.52s (0:01:25)

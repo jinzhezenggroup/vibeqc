@@ -25,6 +25,8 @@ cover all quantum-chemistry methods through a coherent batched interface.
 ## Developers
 
 - [Architecture](architecture.md): scientific and runtime design decisions.
+- [Experimental OpenCL contracts](opencl_backend.md): optional compiler/runtime
+  execution, queried capabilities and the boundary before native HF integration.
 - [Shared Fock construction](fock_build.md): method-neutral J/K requests, exact
   HF consumers, capability limits, and prepared strategy identity.
 - [Implementation roadmap](roadmap.md): detailed milestones and measured

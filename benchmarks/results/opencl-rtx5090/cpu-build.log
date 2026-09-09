@@ -1,0 +1,95 @@
+-- The CXX compiler identification is GNU 11.4.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- VibeQC compiler cache: /home/jzzeng/.local/bin/ccache
+-- Configuring done (0.7s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/jzzeng/codes/vibeqc-issue-176/build-cpu
+[  2%] Building CXX object CMakeFiles/vibeqc.dir/src/api/c_api_batch.cpp.o
+[  4%] Building CXX object CMakeFiles/vibeqc.dir/src/api/c_api_calculation.cpp.o
+[  6%] Building CXX object CMakeFiles/vibeqc.dir/src/api/c_api_common.cpp.o
+[  8%] Building CXX object CMakeFiles/vibeqc.dir/src/api/c_api_context.cpp.o
+[ 10%] Building CXX object CMakeFiles/vibeqc.dir/src/api/c_api_resources.cpp.o
+[ 12%] Building CXX object CMakeFiles/vibeqc.dir/src/api/c_api_tuning.cpp.o
+[ 14%] Building CXX object CMakeFiles/vibeqc.dir/src/api/error.cpp.o
+[ 16%] Building CXX object CMakeFiles/vibeqc.dir/src/dft/ao_grid.cpp.o
+[ 18%] Building CXX object CMakeFiles/vibeqc.dir/src/dft/bridge.cpp.o
+[ 20%] Building CXX object CMakeFiles/vibeqc.dir/src/integrals/s_integrals.cpp.o
+/home/jzzeng/codes/vibeqc-issue-176/src/api/c_api_resources.cpp: In function ‘int vibeqc_resource_small_hf_cuda_v1(std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, uint64_t*)’:
+/home/jzzeng/codes/vibeqc-issue-176/src/api/c_api_resources.cpp:104:50: warning: unused parameter ‘nbf’ [-Wunused-parameter]
+  104 | int vibeqc_resource_small_hf_cuda_v1(std::size_t nbf, std::size_t direct_nbf, std::size_t atoms,
+      |                                      ~~~~~~~~~~~~^~~
+/home/jzzeng/codes/vibeqc-issue-176/src/api/c_api_resources.cpp:104:67: warning: unused parameter ‘direct_nbf’ [-Wunused-parameter]
+  104 | int vibeqc_resource_small_hf_cuda_v1(std::size_t nbf, std::size_t direct_nbf, std::size_t atoms,
+      |                                                       ~~~~~~~~~~~~^~~~~~~~~~
+/home/jzzeng/codes/vibeqc-issue-176/src/api/c_api_resources.cpp:104:91: warning: unused parameter ‘atoms’ [-Wunused-parameter]
+  104 | int vibeqc_resource_small_hf_cuda_v1(std::size_t nbf, std::size_t direct_nbf, std::size_t atoms,
+      |                                                                               ~~~~~~~~~~~~^~~~~
+/home/jzzeng/codes/vibeqc-issue-176/src/api/c_api_resources.cpp:105:50: warning: unused parameter ‘shells’ [-Wunused-parameter]
+  105 |                                      std::size_t shells, std::size_t primitives,
+      |                                      ~~~~~~~~~~~~^~~~~~
+/home/jzzeng/codes/vibeqc-issue-176/src/api/c_api_resources.cpp:105:70: warning: unused parameter ‘primitives’ [-Wunused-parameter]
+  105 |                                      std::size_t shells, std::size_t primitives,
+      |                                                          ~~~~~~~~~~~~^~~~~~~~~~
+/home/jzzeng/codes/vibeqc-issue-176/src/api/c_api_resources.cpp:106:50: warning: unused parameter ‘diis_history’ [-Wunused-parameter]
+  106 |                                      std::size_t diis_history, std::size_t spins,
+      |                                      ~~~~~~~~~~~~^~~~~~~~~~~~
+/home/jzzeng/codes/vibeqc-issue-176/src/api/c_api_resources.cpp:106:76: warning: unused parameter ‘spins’ [-Wunused-parameter]
+  106 |                                      std::size_t diis_history, std::size_t spins,
+      |                                                                ~~~~~~~~~~~~^~~~~
+[ 22%] Building CXX object CMakeFiles/vibeqc.dir/src/methods/hf_method.cpp.o
+[ 24%] Building CXX object CMakeFiles/vibeqc.dir/src/methods/registry.cpp.o
+[ 26%] Building CXX object CMakeFiles/vibeqc.dir/src/molecule/basis.cpp.o
+[ 28%] Building CXX object CMakeFiles/vibeqc.dir/src/posthf/bridge.cpp.o
+[ 30%] Building CXX object CMakeFiles/vibeqc.dir/src/runtime/context.cpp.o
+[ 32%] Building CXX object CMakeFiles/vibeqc.dir/src/scf/density_fitting.cpp.o
+[ 34%] Building CXX object CMakeFiles/vibeqc.dir/src/scf/fleet.cpp.o
+[ 36%] Building CXX object CMakeFiles/vibeqc.dir/src/scf/fock_build.cpp.o
+[ 38%] Building CXX object CMakeFiles/vibeqc.dir/src/scf/rhf.cpp.o
+[ 40%] Building CXX object CMakeFiles/vibeqc.dir/src/scf/cuda_density_fitting_stub.cpp.o
+[ 42%] Building CXX object CMakeFiles/vibeqc.dir/src/scf/cuda_density_fitting_integrals_stub.cpp.o
+[ 44%] Building CXX object CMakeFiles/vibeqc.dir/src/scf/cuda_weighted_eri_stub.cpp.o
+[ 46%] Linking CXX shared library libvibeqc.so
+[ 46%] Built target vibeqc
+[ 48%] Building CXX object CMakeFiles/vibeqc_batch_tests.dir/tests/native/test_batch.cpp.o
+[ 51%] Building CXX object CMakeFiles/vibeqc_fock_build_tests.dir/tests/native/test_fock_build.cpp.o
+[ 53%] Building CXX object CMakeFiles/vibeqc_native_tests.dir/tests/native/test_rhf.cpp.o
+[ 55%] Building CXX object CMakeFiles/vibeqc_scf_proposal_tests.dir/tests/native/test_scf_proposals.cpp.o
+[ 57%] Linking CXX executable vibeqc_native_tests
+[ 57%] Built target vibeqc_native_tests
+[ 59%] Building CXX object CMakeFiles/vibeqc_cpp_api_tests.dir/tests/native/test_cpp_batch.cpp.o
+[ 61%] Linking CXX executable vibeqc_batch_tests
+[ 61%] Built target vibeqc_batch_tests
+[ 63%] Building CXX object CMakeFiles/vibeqc_cartesian_integral_tests.dir/tests/native/test_cartesian_integrals.cpp.o
+[ 65%] Linking CXX executable vibeqc_scf_proposal_tests
+[ 65%] Built target vibeqc_scf_proposal_tests
+[ 67%] Building CXX object CMakeFiles/vibeqc_density_fitting_tests.dir/tests/native/test_density_fitting.cpp.o
+[ 69%] Linking CXX executable vibeqc_cpp_api_tests
+[ 69%] Built target vibeqc_cpp_api_tests
+[ 71%] Building CXX object CMakeFiles/vibeqc_cuda_eigensolver_policy_tests.dir/tests/native/test_cuda_eigensolver_policy.cpp.o
+[ 73%] Linking CXX executable vibeqc_fock_build_tests
+[ 73%] Built target vibeqc_fock_build_tests
+[ 75%] Building CXX object CMakeFiles/vibeqc_uhf_tests.dir/tests/native/test_uhf.cpp.o
+[ 77%] Linking CXX executable vibeqc_cuda_eigensolver_policy_tests
+[ 77%] Built target vibeqc_cuda_eigensolver_policy_tests
+[ 79%] Building CXX object CMakeFiles/vibeqc_spherical_tests.dir/tests/native/test_spherical.cpp.o
+[ 81%] Linking CXX executable vibeqc_cartesian_integral_tests
+[ 81%] Built target vibeqc_cartesian_integral_tests
+[ 83%] Building CXX object CMakeFiles/vibeqc_basis_contract_tests.dir/tests/native/test_basis_contract.cpp.o
+[ 85%] Linking CXX executable vibeqc_density_fitting_tests
+[ 85%] Built target vibeqc_density_fitting_tests
+[ 87%] Building CXX object CMakeFiles/vibeqc_grid_tests.dir/tests/native/test_grid.cpp.o
+[ 89%] Linking CXX executable vibeqc_uhf_tests
+[ 89%] Built target vibeqc_uhf_tests
+[ 91%] Building CXX object CMakeFiles/vibeqc_mixed_precision_tests.dir/tests/native/test_mixed_precision.cpp.o
+[ 93%] Linking CXX executable vibeqc_spherical_tests
+[ 95%] Linking CXX executable vibeqc_basis_contract_tests
+[ 95%] Built target vibeqc_spherical_tests
+[ 95%] Built target vibeqc_basis_contract_tests
+[ 97%] Linking CXX executable vibeqc_grid_tests
+[ 97%] Built target vibeqc_grid_tests
+[100%] Linking CXX executable vibeqc_mixed_precision_tests
+[100%] Built target vibeqc_mixed_precision_tests

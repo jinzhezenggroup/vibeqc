@@ -1,0 +1,1 @@
+(): Warning: Function small_expression is a kernel, so overriding noinline attribute. The function may be inlined when called.

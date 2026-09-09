@@ -1,0 +1,4 @@
+Slurm job 9074
+.........                                                                [100%]
+9 passed in 2.01s
+{"passed": true, "report": "/tmp/issue176-opencl-evidence/report.json"}

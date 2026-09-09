@@ -1,0 +1,566 @@
+{
+  "capabilities": {
+    "backend": "opencl",
+    "device_enqueue": false,
+    "event_profiling": true,
+    "fp64": true,
+    "fp64_atomic_add": false,
+    "graphs": false,
+    "local_memory_bytes": 49152,
+    "maximum_workgroup_threads": 1024,
+    "native_events": true,
+    "subgroup_size": 32
+  },
+  "cuda_visible_devices": "0",
+  "device": {
+    "compiler_available": 1,
+    "driver": "580.95.05",
+    "extensions": "cl_khr_global_int32_base_atomics cl_khr_global_int32_extended_atomics cl_khr_local_int32_base_atomics cl_khr_local_int32_extended_atomics cl_khr_fp64 cl_khr_3d_image_writes cl_khr_byte_addressable_store cl_khr_icd cl_khr_gl_sharing cl_nv_compiler_options cl_nv_device_attribute_query cl_nv_pragma_unroll cl_nv_copy_opts cl_nv_create_buffer cl_khr_int64_base_atomics cl_khr_int64_extended_atomics cl_khr_device_uuid cl_khr_pci_bus_info cl_khr_external_semaphore cl_khr_external_memory cl_khr_external_semaphore_opaque_fd cl_khr_external_memory_opaque_fd cl_khr_semaphore",
+    "fp64": true,
+    "language": "OpenCL C 1.2 ",
+    "linker_available": 1,
+    "local_memory_bytes": 49152,
+    "maximum_allocation_bytes": 8416624640,
+    "maximum_workgroup_threads": 1024,
+    "name": "NVIDIA GeForce RTX 5090",
+    "subgroup_size": 32,
+    "uuid": "8e9c9e1ae183258c0b3a03a5ddebb2f8",
+    "vendor": "NVIDIA Corporation",
+    "version": "OpenCL 3.0 CUDA"
+  },
+  "domestic_gpu_validation": "not-run",
+  "host_boundary": "Boys fixture inputs and contraction of primitive outputs; no production integral provider",
+  "inputs": [
+    {
+      "atomic_numbers": [
+        1,
+        1
+      ],
+      "basis_representation": "cartesian",
+      "charge": 0,
+      "coordinates": [
+        [
+          0.13,
+          -0.31,
+          0.24
+        ],
+        [
+          -0.43,
+          0.27,
+          0.51
+        ]
+      ],
+      "multiplicity": 1,
+      "name": "metric/pp/asymmetric",
+      "reference_version": 1,
+      "shells": [
+        {
+          "angular_momentum": 1,
+          "atom_index": 0,
+          "primitives": [
+            [
+              0.57,
+              0.83
+            ],
+            [
+              1.2799999999999998,
+              -0.17
+            ]
+          ]
+        },
+        {
+          "angular_momentum": 1,
+          "atom_index": 1,
+          "primitives": [
+            [
+              0.7999999999999999,
+              0.83
+            ]
+          ]
+        }
+      ],
+      "units": {
+        "coordinates": "bohr",
+        "integrals": "atomic_units"
+      }
+    },
+    {
+      "atomic_numbers": [
+        1,
+        1
+      ],
+      "basis_representation": "cartesian",
+      "charge": 0,
+      "coordinates": [
+        [
+          0.13,
+          -0.31,
+          0.24
+        ],
+        [
+          0.13,
+          -0.31,
+          0.24
+        ]
+      ],
+      "multiplicity": 1,
+      "name": "metric/pp/coincident",
+      "reference_version": 1,
+      "shells": [
+        {
+          "angular_momentum": 1,
+          "atom_index": 0,
+          "primitives": [
+            [
+              0.57,
+              0.83
+            ],
+            [
+              1.2799999999999998,
+              -0.17
+            ]
+          ]
+        },
+        {
+          "angular_momentum": 1,
+          "atom_index": 1,
+          "primitives": [
+            [
+              0.7999999999999999,
+              0.83
+            ]
+          ]
+        }
+      ],
+      "units": {
+        "coordinates": "bohr",
+        "integrals": "atomic_units"
+      }
+    },
+    {
+      "atomic_numbers": [
+        1,
+        1
+      ],
+      "basis_representation": "cartesian",
+      "charge": 0,
+      "coordinates": [
+        [
+          0.13,
+          -0.31,
+          0.24
+        ],
+        [
+          -0.43,
+          0.27,
+          0.51
+        ]
+      ],
+      "multiplicity": 1,
+      "name": "metric/pp/asymmetric",
+      "reference_version": 1,
+      "shells": [
+        {
+          "angular_momentum": 1,
+          "atom_index": 0,
+          "primitives": [
+            [
+              0.57,
+              0.83
+            ],
+            [
+              1.2799999999999998,
+              -0.17
+            ],
+            [
+              1.9899999999999998,
+              -0.085
+            ],
+            [
+              2.6999999999999997,
+              -0.05666666666666667
+            ],
+            [
+              3.4099999999999997,
+              -0.0425
+            ],
+            [
+              4.12,
+              -0.034
+            ],
+            [
+              4.83,
+              -0.028333333333333335
+            ],
+            [
+              5.54,
+              -0.02428571428571429
+            ],
+            [
+              6.25,
+              -0.02125
+            ]
+          ]
+        },
+        {
+          "angular_momentum": 1,
+          "atom_index": 1,
+          "primitives": [
+            [
+              0.7999999999999999,
+              0.83
+            ],
+            [
+              1.5099999999999998,
+              -0.17
+            ],
+            [
+              2.2199999999999998,
+              -0.085
+            ],
+            [
+              2.9299999999999997,
+              -0.05666666666666667
+            ],
+            [
+              3.6399999999999997,
+              -0.0425
+            ],
+            [
+              4.35,
+              -0.034
+            ],
+            [
+              5.06,
+              -0.028333333333333335
+            ]
+          ]
+        }
+      ],
+      "units": {
+        "coordinates": "bohr",
+        "integrals": "atomic_units"
+      }
+    }
+  ],
+  "integral_runs": [
+    {
+      "artifact_key": "f0418c22fd6f06dab5cc84e61a6f3772da8a13932aa8f022eac65c0b14bbc9de",
+      "binary_bytes": 2005,
+      "cache_roundtrip_passed": true,
+      "compile_seconds": 0.006114393938332796,
+      "contracted_values": [
+        4.856708063180316,
+        6.256154707713778,
+        5.197481673093469
+      ],
+      "identity": {
+        "abi": 1,
+        "backend": "opencl",
+        "compiler": "vendor ICD online compiler 580.95.05",
+        "device": "8e9c9e1ae183258c0b3a03a5ddebb2f8",
+        "driver": "580.95.05",
+        "language": "OpenCL C 1.2 ",
+        "options": [
+          "-cl-std=CL1.2"
+        ],
+        "runtime": "OpenCL 3.0 CUDA",
+        "schedule_hash": "967935cc292b51d4a9864ef3fa2183d4d271a329e4f9b88adbd33b318d503de1",
+        "scientific_hash": "343f553a4adefbdeb2de1a0bffc3d488eec9d7e15b0bd09cda4af72d1b6e8597",
+        "source_hash": "db2208b692452998f07c07a1b3575cc2ab8b7ff4dd6e0a3915cf84a3a38218f0"
+      },
+      "input_bytes": 4824,
+      "inputs_hash": "468540e4234a39c6f656a73cbab4065b1c87f9b2053a65b5cfac26f85832fd76",
+      "kernel_nanoseconds": [
+        16064,
+        7360,
+        6848,
+        7808,
+        6784,
+        6528,
+        8128
+      ],
+      "link_seconds": 0.029285689117386937,
+      "numerical": {
+        "atol": 1e-11,
+        "max_absolute_error": 3.4994229736184934e-13,
+        "max_scaled_error": 0.013673656311391948,
+        "passed": true,
+        "rms_error": 2.3215631537072167e-13,
+        "rtol": 3e-12,
+        "shape": [
+          3
+        ]
+      },
+      "output_bytes": 536,
+      "resources": {
+        "local_bytes": 1,
+        "maximum_workgroup_threads": 256,
+        "preferred_workgroup_multiple": 32,
+        "private_bytes": 0,
+        "registers": null,
+        "spills": null,
+        "unavailable_reason": "OpenCL 1.2 has no portable register/spill query"
+      },
+      "source_hash": "db2208b692452998f07c07a1b3575cc2ab8b7ff4dd6e0a3915cf84a3a38218f0"
+    },
+    {
+      "artifact_key": "a06d5bafabdeb09271d04fc372bbc7d61ac587a9ea3addeb7882dda463f0f08b",
+      "binary_bytes": 2005,
+      "cache_roundtrip_passed": true,
+      "compile_seconds": 0.004841148853302002,
+      "contracted_values": [
+        4.856708063180316,
+        6.256154707713778,
+        5.197481673093469
+      ],
+      "identity": {
+        "abi": 1,
+        "backend": "opencl",
+        "compiler": "vendor ICD online compiler 580.95.05",
+        "device": "8e9c9e1ae183258c0b3a03a5ddebb2f8",
+        "driver": "580.95.05",
+        "language": "OpenCL C 1.2 ",
+        "options": [
+          "-cl-std=CL1.2"
+        ],
+        "runtime": "OpenCL 3.0 CUDA",
+        "schedule_hash": "a4f87fc248c7678c631d027df86545ae7611be34a6da1d981321f436467b9c95",
+        "scientific_hash": "343f553a4adefbdeb2de1a0bffc3d488eec9d7e15b0bd09cda4af72d1b6e8597",
+        "source_hash": "89f8860b797b983be2c6be90e873349ecff7c3d0e4c7ec8617421354e963861c"
+      },
+      "input_bytes": 4824,
+      "inputs_hash": "468540e4234a39c6f656a73cbab4065b1c87f9b2053a65b5cfac26f85832fd76",
+      "kernel_nanoseconds": [
+        15936,
+        8544,
+        6144,
+        6528,
+        5536,
+        6240,
+        6208
+      ],
+      "link_seconds": 0.025587495882064104,
+      "numerical": {
+        "atol": 1e-11,
+        "max_absolute_error": 3.4994229736184934e-13,
+        "max_scaled_error": 0.013673656311391948,
+        "passed": true,
+        "rms_error": 2.3215631537072167e-13,
+        "rtol": 3e-12,
+        "shape": [
+          3
+        ]
+      },
+      "output_bytes": 536,
+      "resources": {
+        "local_bytes": 1,
+        "maximum_workgroup_threads": 256,
+        "preferred_workgroup_multiple": 32,
+        "private_bytes": 0,
+        "registers": null,
+        "spills": null,
+        "unavailable_reason": "OpenCL 1.2 has no portable register/spill query"
+      },
+      "source_hash": "89f8860b797b983be2c6be90e873349ecff7c3d0e4c7ec8617421354e963861c"
+    },
+    {
+      "artifact_key": "010653de2dc1d9963d999ecb38be04bec7dd2b54225308ad3a9d6d49cfea4a1e",
+      "binary_bytes": 2005,
+      "cache_roundtrip_passed": true,
+      "compile_seconds": 0.004840828012675047,
+      "contracted_values": [
+        4.856708063180316,
+        6.256154707713778,
+        5.197481673093469
+      ],
+      "identity": {
+        "abi": 1,
+        "backend": "opencl",
+        "compiler": "vendor ICD online compiler 580.95.05",
+        "device": "8e9c9e1ae183258c0b3a03a5ddebb2f8",
+        "driver": "580.95.05",
+        "language": "OpenCL C 1.2 ",
+        "options": [
+          "-cl-std=CL1.2"
+        ],
+        "runtime": "OpenCL 3.0 CUDA",
+        "schedule_hash": "aa209fd0f53f57af16ff4015775009e529ea9b35f1307ea9800c066ae46698b2",
+        "scientific_hash": "343f553a4adefbdeb2de1a0bffc3d488eec9d7e15b0bd09cda4af72d1b6e8597",
+        "source_hash": "f9e41fe3fff79400732136d6a33a2cfb97febac1d9e3213db98f33ecfd3ac193"
+      },
+      "input_bytes": 4824,
+      "inputs_hash": "468540e4234a39c6f656a73cbab4065b1c87f9b2053a65b5cfac26f85832fd76",
+      "kernel_nanoseconds": [
+        15520,
+        8352,
+        6208,
+        6464,
+        6720,
+        6912,
+        6688
+      ],
+      "link_seconds": 0.0258406198117882,
+      "numerical": {
+        "atol": 1e-11,
+        "max_absolute_error": 3.4994229736184934e-13,
+        "max_scaled_error": 0.013673656311391948,
+        "passed": true,
+        "rms_error": 2.3215631537072167e-13,
+        "rtol": 3e-12,
+        "shape": [
+          3
+        ]
+      },
+      "output_bytes": 536,
+      "resources": {
+        "local_bytes": 1,
+        "maximum_workgroup_threads": 256,
+        "preferred_workgroup_multiple": 32,
+        "private_bytes": 0,
+        "registers": null,
+        "spills": null,
+        "unavailable_reason": "OpenCL 1.2 has no portable register/spill query"
+      },
+      "source_hash": "f9e41fe3fff79400732136d6a33a2cfb97febac1d9e3213db98f33ecfd3ac193"
+    }
+  ],
+  "passed": true,
+  "production_hf_supported": false,
+  "provenance": {
+    "executed_at_utc": "2026-09-09T09:12:42.177148+00:00",
+    "git_head": "dc2c037c72d5eb33c9486ec367e3edb02af2db34",
+    "numpy": "2.5.3",
+    "pyscf": "2.14.0",
+    "python": "3.13.9",
+    "source_files": {
+      "tools/validate_opencl_backend.py": "cd1b81343822743cb7bf7fb86eb5fff363f41ed61a37aac5bec6c044447b05bc",
+      "tools/vibeqc_codegen/__init__.py": "7f7375e3933753859177c9efbd409b262d3c94715a603e3d2ef0ab8e3efeef90",
+      "tools/vibeqc_codegen/artifact_cache.py": "5cc65bd52a4645c943b9e21bda649c2945e5c0d5f765552628cc30043057018a",
+      "tools/vibeqc_codegen/autotune.py": "b433565422345115cc05f7a5f048ccfdb82edee1ce93bf93ccb912dae9317f7a",
+      "tools/vibeqc_codegen/backend.py": "74bd709a25c5ec3db56fe57f8feb3da117924c8c525fbc52aeb0934fc5f02b77",
+      "tools/vibeqc_codegen/batch_benchmark.py": "d6a721b34e6f3fd7dc532c03e7ed875daa4f47bf63f5b200fd49bff48ce6cf34",
+      "tools/vibeqc_codegen/benchmark.py": "47a4d1c61ce48d15e633596bdabedc98364105e285a0d42d8143f3acf8a69e40",
+      "tools/vibeqc_codegen/blocks.py": "9e7779ff6073cfc8dd2b83e8d868d3afb0b04891db31ce4c84985606282e9664",
+      "tools/vibeqc_codegen/cache.py": "26ed3e2a754698dc6d562f8a9f1835ee125e4d36df365713bad7496f4dd20ffa",
+      "tools/vibeqc_codegen/capabilities.py": "b76818a6070509b4153db56c8df9358bddd8e6042070349ef2d796b51b45f0b3",
+      "tools/vibeqc_codegen/cuda.py": "c8c0a32dc5fa04f92e404d127ea1814b9eb78c17abae052a63b94dee4ca54aa1",
+      "tools/vibeqc_codegen/cuda_adapter.py": "a025586dff67267db064d1dcbe7d96cb4c3ce63076960a713935e2e5aeae9254",
+      "tools/vibeqc_codegen/cuda_emitter.py": "7af8e086de49f944ed6ffa59bf4aedf0b34375a4aff2a4f4fbaab9785f016215",
+      "tools/vibeqc_codegen/cuda_lowering.py": "44563a7b0948b29f4d0410cf915616f0e9a951b2dbc0cf2f8c2e7fb410dd7ae1",
+      "tools/vibeqc_codegen/cuda_schedule.py": "b25fb7a7a3ed88c3caed706331d980cfb81151cd145fd016a0e66eb91f4f7f6e",
+      "tools/vibeqc_codegen/cuda_target.py": "f380b6a86b6b59d25d35fee71b025278e576bc6509a01cfea2e1f99f56ce3b46",
+      "tools/vibeqc_codegen/df_cuda.py": "3c501ac742781cb67db79e8fbaf32a1567d57fba0e0a91437e2531dd9569d4e2",
+      "tools/vibeqc_codegen/df_values.py": "61e9b7faea19dd223d7e29dde5b6002343b1475d3e8150435786deeba5adec65",
+      "tools/vibeqc_codegen/dppp_dispatch.py": "f119c2e7475019aaebaa37a7eba89d1e2643f837fae6e6ace5631f32701b74e2",
+      "tools/vibeqc_codegen/dppp_specialization.py": "06ea28253d1ec2db6dd5df335481bc9b9a3eb5f082b7d122e5651255f5f81fca",
+      "tools/vibeqc_codegen/eri_weights.py": "c1820b58cfd502d66c2fc25adcf5771a757f66e3f42ed81ff82f39c766f0632a",
+      "tools/vibeqc_codegen/expr.py": "16bdd5312fd1746eb8f2eb55aa94c11729c37db9dfb2f67ca71d9bc3595efd90",
+      "tools/vibeqc_codegen/extract_rys_table.py": "13c22fd7e485df832b12a138c0e665eaa85e28cd0f574a28db6997ac90ceb03f",
+      "tools/vibeqc_codegen/fused_schedule.py": "d8dcdc19b46406ab10a8a493be515e0817a9e4c574744248505b264f35dbdaa7",
+      "tools/vibeqc_codegen/ir.py": "718479d3a9998db8fae926ecf04d00de6570c45bfde01b202c5d733ecc70ddc5",
+      "tools/vibeqc_codegen/ir_serialization.py": "094d75f1836272e98a409027a05b879357cc0cac2c2a66603c833a203cc34951",
+      "tools/vibeqc_codegen/native_runtime.py": "84151141bfccb7c4c6f4e35aea172e11850eec57a9182062ba9fa4c31dfb0063",
+      "tools/vibeqc_codegen/opencl_lowering.py": "ebee19053af60c978b026e40afb71e00af49b81c4556d631fb84b9d8d62be848",
+      "tools/vibeqc_codegen/opencl_runtime.py": "f9c728cada320436be5733b701cbc534ff91a8ba057e97478f198db2ae01c079",
+      "tools/vibeqc_codegen/production.py": "9dd9246014bce26ea672f052fa46fb396b47063c77db29ba8031acbf7db0de67",
+      "tools/vibeqc_codegen/runtime_backend.py": "27175004d5b97cc755dada745a44d5f82db33f9ff2e38c42545946b0cc1a3740",
+      "tools/vibeqc_codegen/rys.py": "186547dfd0c7757c045f01fd6aea10f161b5438c55589b47fc4942e9f406e914",
+      "tools/vibeqc_codegen/rys2_data.py": "970899c5e2a00d7910db4a198a663c47b847d425efc4e69af9375dcb371cb0bf",
+      "tools/vibeqc_codegen/rys3_data.py": "eb5c8d2034eeeecbdf5320abe9decbc9401762a3c4b3a53c5401434e678b14bf",
+      "tools/vibeqc_codegen/rys4_data.py": "c3ce5ef1c3244442215b3911ec474f7074803399ad941593908688908c248c58",
+      "tools/vibeqc_codegen/rys5_data.py": "d0146bf9e4ddebc7a6a31979547d3ceacb1cf7925c816b8901b9c3d3691e13eb",
+      "tools/vibeqc_codegen/scalar_c.py": "742df67754866197024801720a3678aec748fd390df4ec9a6c26df6183d265e3",
+      "tools/vibeqc_codegen/shell_class.py": "4b07e153ece79584989971e90678c093af29d410d7a76968e8fa7c1501e42dac",
+      "tools/vibeqc_codegen/shell_signature.py": "f6306dc89e3668abf0de603cbaa13eef76c440c047b7c1b39111ad24b3e906a5",
+      "tools/vibeqc_codegen/shell_spec.py": "4db360d480cd123bed0ccbcb378d559a9607dd54f0c039496bb27874a731b97f",
+      "tools/vibeqc_codegen/weighted_eri.py": "c4a37de251c225d1f1f19d08e6124e5400e8bdf72e07747a6874ed3ea07c9d2e",
+      "tools/vibeqc_codegen/weighted_eri_cuda.py": "6f7ecf4e9ac3a3485cb6485c57b1caf25121ae2c685a49f56c867f8801cc1ce3",
+      "tools/vibeqc_codegen/weighted_eri_inputs.py": "dd8310db58c3d1b715e8d122bff036b7f2722db0e3bfd29242b41664e24b9356",
+      "tools/vibeqc_validation/__init__.py": "a19a67b37a7a003a51ec49d82523f354d895c3fdca0ea5de57e2a74b9e3944d3",
+      "tools/vibeqc_validation/capabilities.py": "8aeca7b06352bca006861de803e7cdba7e39f28fc77affc5c9f278c918bae4d5",
+      "tools/vibeqc_validation/df_values.py": "961aac89a73c7f35853baa14676adeb6bb2724a3d6cc57e4dafacd375c932458",
+      "tools/vibeqc_validation/df_values_cuda.py": "07700e6e9c194d883a9abf74415b2381c258705053054248b57f6244967aa93e",
+      "tools/vibeqc_validation/f_shell.py": "c5e7950e03f95c439a6b9f17169352aa45350a3c73543bede8d2499072af2a67",
+      "tools/vibeqc_validation/f_shell_cuda.py": "26d21c608cee281b2008c1e997b2bfe17dd1e694f41023f8b2a373f0bfb4760d",
+      "tools/vibeqc_validation/f_shell_numerics.py": "a299e1d11ca1e490b5491bccd8377bb52ddd01da15c6caf445f7687a1bf56005",
+      "tools/vibeqc_validation/fixtures.py": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+      "tools/vibeqc_validation/integrals.py": "81ed0e8b61493e12e7d728cd1af5c890daa4fbb34560112a4e7714aa0c29f3ea",
+      "tools/vibeqc_validation/local_tuning.py": "e6aef2b7d4205e807ecb43e58ff0531b134832308297f905f892a3dfa52e42ff",
+      "tools/vibeqc_validation/performance.py": "cab0b1050f0745e42cf78dd471eb9633892bcec7cd55f6a3d7bbb40a9a255262",
+      "tools/vibeqc_validation/schema.py": "21dbb6376d551e99523c93633623657288bf9009c05f775f59f77570a517fbb6",
+      "tools/vibeqc_validation/weighted_eri.py": "307692a3c36181de631d76399bd6dc743ce997016571a8d232e7d7b8e27d9fda"
+    },
+    "worktree_dirty": true
+  },
+  "references": [
+    4.856708063180514,
+    6.256154707713777,
+    5.197481673093819
+  ],
+  "schema": "vibeqc.opencl_expression_smoke",
+  "slurm_job_id": "9074",
+  "target": {
+    "architecture": "NVIDIA GeForce RTX 5090",
+    "backend": "opencl",
+    "maximum_resident_workgroups": null,
+    "maximum_workgroup_threads": 1024,
+    "subgroup_size": 32
+  },
+  "toy": {
+    "artifact_key": "2bf6fa0919c722cfbe39a20c94decfaf3f1a4197084a1666fa33b57749336fb0",
+    "binary_bytes": 1315,
+    "cache_roundtrip_passed": true,
+    "compile_seconds": 0.008560853078961372,
+    "identity": {
+      "abi": 1,
+      "backend": "opencl",
+      "compiler": "vendor ICD online compiler 580.95.05",
+      "device": "8e9c9e1ae183258c0b3a03a5ddebb2f8",
+      "driver": "580.95.05",
+      "language": "OpenCL C 1.2 ",
+      "options": [
+        "-cl-std=CL1.2"
+      ],
+      "runtime": "OpenCL 3.0 CUDA",
+      "schedule_hash": "a4f87fc248c7678c631d027df86545ae7611be34a6da1d981321f436467b9c95",
+      "scientific_hash": "8cd61e12f2b4305d1af004fa6588246be74f21c9b37bfe059efd7178204ca256",
+      "source_hash": "b71296da892c88ea30d3b7a82184261a8476d8910f6c1c3fef71e2f6605a627e"
+    },
+    "input_bytes": 272,
+    "inputs_hash": "c3bcf2512a0dc6b0d68425406eefb5b28b268939d69be7d69025a5ac2ed280b3",
+    "kernel_nanoseconds": [
+      14144,
+      7104,
+      6496,
+      6240,
+      6368,
+      6592,
+      5984
+    ],
+    "link_seconds": 0.027565418975427747,
+    "numerical": {
+      "atol": 1e-14,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 1e-14,
+      "shape": [
+        17
+      ]
+    },
+    "output_bytes": 136,
+    "resources": {
+      "local_bytes": 1,
+      "maximum_workgroup_threads": 256,
+      "preferred_workgroup_multiple": 32,
+      "private_bytes": 0,
+      "registers": null,
+      "spills": null,
+      "unavailable_reason": "OpenCL 1.2 has no portable register/spill query"
+    },
+    "source_hash": "b71296da892c88ea30d3b7a82184261a8476d8910f6c1c3fef71e2f6605a627e"
+  },
+  "version": 1
+}
