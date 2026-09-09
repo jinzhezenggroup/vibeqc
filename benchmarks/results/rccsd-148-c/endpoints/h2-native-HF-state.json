@@ -1,0 +1,305 @@
+{
+  "correlation_energy": -0.02237235836571864,
+  "history": [
+    {
+      "correlation_energy": -0.01411763047232983,
+      "elapsed_seconds": 0.014469828456640244,
+      "energy_change": null,
+      "energy_components": {
+        "energy_t1": 0.0,
+        "energy_t1t1": 0.0,
+        "energy_t2": -0.01411763047232983
+      },
+      "iteration": 0,
+      "r1_max": 2.234784643930783e-17,
+      "r2_max": 0.06834676485532366
+    },
+    {
+      "correlation_energy": -0.019375463632886756,
+      "elapsed_seconds": 0.043166035786271095,
+      "energy_change": 0.005257833160556925,
+      "energy_components": {
+        "energy_t1": 4.6253594271462887e-35,
+        "energy_t1t1": 6.44222745725019e-35,
+        "energy_t2": -0.019375463632886756
+      },
+      "iteration": 1,
+      "r1_max": 1.3847124750889357e-17,
+      "r2_max": 0.02489928641485839
+    },
+    {
+      "correlation_energy": -0.022374485460581225,
+      "elapsed_seconds": 0.07189096882939339,
+      "energy_change": 0.0029990218276944695,
+      "energy_components": {
+        "energy_t1": 9.1125374497302e-35,
+        "energy_t1t1": 2.500482006780893e-34,
+        "energy_t2": -0.022374485460581225
+      },
+      "iteration": 2,
+      "r1_max": 1.9789059694537454e-18,
+      "r2_max": 1.770743529364016e-05
+    },
+    {
+      "correlation_energy": -0.022372357300796297,
+      "elapsed_seconds": 0.10077748447656631,
+      "energy_change": 2.1281597849288902e-06,
+      "energy_components": {
+        "energy_t1": 9.52077786211639e-35,
+        "energy_t1t1": 2.729543036453896e-34,
+        "energy_t2": -0.022372357300796297
+      },
+      "iteration": 3,
+      "r1_max": 4.450140725784829e-19,
+      "r2_max": 8.865154471626724e-09
+    },
+    {
+      "correlation_energy": -0.022372357833604434,
+      "elapsed_seconds": 0.12983622029423714,
+      "energy_change": 5.328081378874749e-10,
+      "energy_components": {
+        "energy_t1": 9.566833776353764e-35,
+        "energy_t1t1": 2.7560147515067506e-34,
+        "energy_t2": -0.022372357833604434
+      },
+      "iteration": 4,
+      "r1_max": 2.723600903601627e-19,
+      "r2_max": 4.429690503293671e-09
+    },
+    {
+      "correlation_energy": -0.022372358366136727,
+      "elapsed_seconds": 0.158689733594656,
+      "energy_change": 5.32532292568666e-10,
+      "energy_components": {
+        "energy_t1": 9.61976703051154e-35,
+        "energy_t1t1": 2.7865971621184754e-34,
+        "energy_t2": -0.022372358366136727
+      },
+      "iteration": 5,
+      "r1_max": 7.392426982397513e-20,
+      "r2_max": 3.4769687129454496e-12
+    },
+    {
+      "correlation_energy": -0.02237235836571864,
+      "elapsed_seconds": 0.1876361258327961,
+      "energy_change": 4.180857049451703e-13,
+      "energy_components": {
+        "energy_t1": 9.635067222671861e-35,
+        "energy_t1t1": 2.7954683494711017e-34,
+        "energy_t2": -0.02237235836571864
+      },
+      "independent_r1_max": 1.6566762439066545e-20,
+      "independent_r2_max": 3.3306690738754696e-15,
+      "iteration": 6,
+      "r1_max": 1.6566762439066545e-20,
+      "r2_max": 3.3029134982598407e-15
+    }
+  ],
+  "inputs": {
+    "foo": [
+      [
+        -0.5620623996984326
+      ]
+    ],
+    "fov": [
+      [
+        -1.234337573676064e-18
+      ]
+    ],
+    "fvv": [
+      [
+        0.6307005405775191
+      ]
+    ],
+    "initial_t1": [
+      [
+        0.0
+      ]
+    ],
+    "initial_t2": [
+      [
+        [
+          [
+            -0.07692877887763525
+          ]
+        ]
+      ]
+    ],
+    "oooo": [
+      [
+        [
+          [
+            0.6669959775266515
+          ]
+        ]
+      ]
+    ],
+    "oovv": [
+      [
+        [
+          [
+            0.6567071842859789
+          ]
+        ]
+      ]
+    ],
+    "orbital_energies": [
+      -0.5620623996984326,
+      0.630700540577519
+    ],
+    "ovoo": [
+      [
+        [
+          [
+            1.942890293094024e-16
+          ]
+        ]
+      ]
+    ],
+    "ovov": [
+      [
+        [
+          [
+            0.1835155929718535
+          ]
+        ]
+      ]
+    ],
+    "ovvo": [
+      [
+        [
+          [
+            0.18351559297185352
+          ]
+        ]
+      ]
+    ],
+    "ovvv": [
+      [
+        [
+          [
+            -1.1102230246251565e-16
+          ]
+        ]
+      ]
+    ],
+    "snapshot": {
+      "algorithm": "RHF",
+      "basis_hash": "df0acb257a572bf434ec3913f30d97677e89016d15e686b87ed497f0a0ede31b",
+      "coefficients": [
+        [
+          0.5532863660673797,
+          1.167719922039981
+        ],
+        [
+          0.5532863660673795,
+          -1.167719922039981
+        ]
+      ],
+      "converged": true,
+      "device_id": null,
+      "electron_count": 2,
+      "fock": [
+        [
+          -0.3433785219108154,
+          -0.5746466729892334
+        ],
+        [
+          -0.5746466729892332,
+          -0.34337852191081525
+        ]
+      ],
+      "frozen_mask": [],
+      "generation_id": "385d42b3-2a61-4692-9c41-d31543a76950",
+      "geometry_hash": "5bd85699961c3489bbe653300a99e52292badb0426f4e0028085c9bba226b17f",
+      "hamiltonian_id": "conventional-unscreened",
+      "hcore": [
+        [
+          -1.0952441541720628,
+          -0.9121958683253926
+        ],
+        [
+          -0.9121958683253926,
+          -1.0952441541720628
+        ]
+      ],
+      "hf_backend": "native-cpu",
+      "occupations": [
+        2.0,
+        0.0
+      ],
+      "orbital_energies": [
+        -0.5620623996984326,
+        0.630700540577519
+      ],
+      "overlap": [
+        [
+          1.0,
+          0.6333154386285278
+        ],
+        [
+          0.6333154386285278,
+          1.0
+        ]
+      ],
+      "overlap_threshold": 1e-10,
+      "precision": "float64",
+      "reference_energy": -1.1133065384535321,
+      "representation": "cartesian",
+      "scf_residual": 2.220446049250313e-16,
+      "screening_tolerance": 0.0,
+      "validation_tolerance": 1e-08
+    },
+    "vvvv": [
+      [
+        [
+          [
+            0.6902418562153191
+          ]
+        ]
+      ]
+    ]
+  },
+  "inputs_hash": "430e639066e58348dc35d73f2f6c057104bef1810149fade310e129a98e477ee",
+  "provenance": {
+    "diis_restarts": 0,
+    "equation_hash": "d684a729807fe3cd38abebe35d89fa6a56790b2b7e0f55d780ae04ea1ad3662f",
+    "hamiltonian_id": "conventional-unscreened",
+    "independent_equation_hash": "0a3978ebc08547ca9f1e23d8feeb166a80aef7077ee76668ef7879daebc36d73",
+    "integral_hash": "6098c0f33bec42ca84795d6140421551dff8f868109f45fee38da2fefa297be0",
+    "logical_required_bytes": 1800,
+    "options": {
+      "damping": 0.0,
+      "denominator_threshold": 1e-10,
+      "diis_size": 6,
+      "energy_tolerance": 1e-12,
+      "level_shift": 0.0,
+      "max_bytes": 268435456,
+      "max_iterations": 100,
+      "residual_tolerance": 1e-10
+    },
+    "reference_energy": -1.1133065384535321,
+    "reference_id": "28e961b2e34eae538d5a3c47981666b4f2d86de293f2169c0a3bc077561b130a",
+    "solver_source_sha256": "2947b165294ee1f4d763fb1d0c504c5092a9d78cf60172293ea27c918b11233f"
+  },
+  "reason": "energy change and freshly expanded physical R1/R2 passed",
+  "record_hash": "43ae921ab959a64aaf4c16e94bbe528d5ff3a6b4509fe0b4e549598b3d31d6ad",
+  "schema": "vibeqc.ccsd.result",
+  "status": "converged",
+  "t1": [
+    [
+      -3.9029303766460814e-17
+    ]
+  ],
+  "t2": [
+    [
+      [
+        [
+          -0.12190984974857139
+        ]
+      ]
+    ]
+  ],
+  "total_energy": -1.1356788968192508,
+  "version": 1
+}

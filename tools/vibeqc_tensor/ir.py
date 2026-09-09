@@ -81,7 +81,7 @@ class Node:
 
 @dataclass(frozen=True)
 class PrimitiveContract:
-    """AD/lowering extension boundary; no derivative rules are implemented."""
+    """AD/lowering boundary; every listed primitive has rules in autodiff.py."""
 
     differentiable_operands: str
     accumulation: str

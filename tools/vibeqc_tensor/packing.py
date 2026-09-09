@@ -2,8 +2,9 @@
 
 The map stores x[dense_coordinate] = sign * packed[orbit]. Antisymmetric
 fixed points are structural zeros. Orbit multiplicities are the metric for
-dense inner products; they must accompany packed amplitudes into later AD.
-This bounded reference enumerator is not a large-system packing planner.
+dense inner products; the exact pack/unpack transposes used by AD are provided
+here and must not be replaced by ordinary pack/unpack. This bounded reference
+enumerator is not a large-system packing planner.
 """
 
 from __future__ import annotations
@@ -82,6 +83,14 @@ class PackedLayout:
             raise ValueError("packed amplitudes must be finite")
         return values
 
+    def _dense(self, values) -> np.ndarray:
+        values = np.asarray(values)
+        if values.shape != self.spec.shape or values.dtype != np.dtype(self.spec.dtype):
+            raise ValueError("dense array shape/real dtype does not match its layout")
+        if not np.isfinite(values).all():
+            raise ValueError("dense values must be finite")
+        return values
+
     def unpack(self, values) -> np.ndarray:
         """Expand independent amplitudes without imposing extra antisymmetries."""
         values = self._packed(values)
@@ -104,6 +113,42 @@ class PackedLayout:
         ):
             raise ValueError("dense tensor violates the declared packed symmetry")
         return packed
+
+    def unpack_transpose(self, dense_bar) -> np.ndarray:
+        """Adjoint of ``unpack`` under the dense and weighted packed metrics.
+
+        The adjoint is the signed orbit sum divided by the orbit weight:
+
+        ``<dense_bar, unpack(x)>_dense = <unpack_transpose(dense_bar), x>_packed``.
+
+        This is deliberately not ordinary :meth:`pack`; orbit multiplicities
+        are part of the packed inner product and must be removed here.
+        """
+        dense_bar = self._dense(dense_bar)
+        flat = dense_bar.reshape(-1)
+        result = np.zeros(self.size, dtype=self.spec.dtype)
+        for flat_index, (packed_index, sign) in enumerate(
+            zip(self.dense_to_packed, self.signs)
+        ):
+            if sign:
+                result[packed_index] += sign * flat[flat_index]
+        result /= np.asarray(self.weights, dtype=self.spec.dtype)
+        return result
+
+    def pack_transpose(self, packed_bar) -> np.ndarray:
+        """Adjoint of ``pack`` under the weighted packed and dense metrics.
+
+        ``<pack(y), x>_packed = <y, pack_transpose(x)>_dense``.  The map
+        scatters ``weight * x`` to each orbit representative; it is not
+        ordinary :meth:`unpack`.
+        """
+        packed_bar = self._packed(packed_bar)
+        result = np.zeros(self.spec.size, dtype=self.spec.dtype)
+        flat = result.reshape(-1)
+        weights = np.asarray(self.weights, dtype=self.spec.dtype)
+        for index, representative in enumerate(self.representatives):
+            flat[representative] = weights[index] * packed_bar[index]
+        return result.reshape(self.spec.shape)
 
     def inner_product(self, left, right) -> float:
         """Use orbit weights to equal sum(unpack(left) * unpack(right))."""

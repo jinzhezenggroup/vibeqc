@@ -1,0 +1,4196 @@
+{
+  "inventory_hash": "60647d87d9c7fd059b7c686f1f3da29fdff012af5acc5f9b901f2fac761d0e32",
+  "packing": [
+    {
+      "dense_to_packed": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "representatives": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "schema": "vibeqc.tensor.packing",
+      "schema_version": 1,
+      "signs": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "spec": {
+        "differentiable": true,
+        "dtype": "float64",
+        "indices": [
+          {
+            "name": "i",
+            "selection": null,
+            "space": {
+              "kind": "occupied",
+              "name": "occupied",
+              "size": 2,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 2
+          },
+          {
+            "name": "a",
+            "selection": null,
+            "space": {
+              "kind": "virtual",
+              "name": "virtual",
+              "size": 2,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 2
+          }
+        ],
+        "representation": "restricted_spatial",
+        "role": "parameter",
+        "symmetries": []
+      },
+      "weights": [
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "dense_to_packed": [
+        0,
+        1,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        3,
+        5,
+        4,
+        6,
+        7,
+        8,
+        8,
+        9
+      ],
+      "representatives": [
+        0,
+        1,
+        3,
+        4,
+        5,
+        6,
+        7,
+        12,
+        13,
+        15
+      ],
+      "schema": "vibeqc.tensor.packing",
+      "schema_version": 1,
+      "signs": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "spec": {
+        "differentiable": true,
+        "dtype": "float64",
+        "indices": [
+          {
+            "name": "i",
+            "selection": null,
+            "space": {
+              "kind": "occupied",
+              "name": "occupied",
+              "size": 2,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 2
+          },
+          {
+            "name": "j",
+            "selection": null,
+            "space": {
+              "kind": "occupied",
+              "name": "occupied",
+              "size": 2,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 2
+          },
+          {
+            "name": "a",
+            "selection": null,
+            "space": {
+              "kind": "virtual",
+              "name": "virtual",
+              "size": 2,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 2
+          },
+          {
+            "name": "b",
+            "selection": null,
+            "space": {
+              "kind": "virtual",
+              "name": "virtual",
+              "size": 2,
+              "spin": null
+            },
+            "start": 0,
+            "stop": 2
+          }
+        ],
+        "representation": "restricted_spatial",
+        "role": "parameter",
+        "symmetries": [
+          {
+            "permutation": [
+              1,
+              0,
+              3,
+              2
+            ],
+            "sign": 1
+          }
+        ]
+      },
+      "weights": [
+        1,
+        2,
+        1,
+        2,
+        2,
+        2,
+        2,
+        1,
+        2,
+        1
+      ]
+    }
+  ],
+  "program": {
+    "conventions": {
+      "aliasing": "immutable SSA; no in-place writes",
+      "coefficient": "reduced rational numerator/positive denominator",
+      "indexing": "zero-based; half-open ranges; ordered gather coordinates",
+      "inner_product": "real Euclidean dense; packed coordinates carry orbit weights",
+      "reshape": "logical C order; physical copies/views are executor decisions"
+    },
+    "logical_hash": "226e8deec60c8df23a8fd4d230e0f0554c396cd5fcb9cc952df03a7565b3d021",
+    "nodes": [
+      {
+        "attributes": {
+          "name": "ovvo"
+        },
+        "id": "n_0882c2f6cb5df566498a9f0d2409418773b660f92bfeb46699d2ba11ea0f54cf_0",
+        "inputs": [],
+        "op": "input",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "p0",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "p1",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "p2",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "p3",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "parameter",
+          "symmetries": [
+            {
+              "permutation": [
+                3,
+                2,
+                1,
+                0
+              ],
+              "sign": 1
+            }
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "name": "ovvv"
+        },
+        "id": "n_371972005c0ff0952c66bc1bf524cc8b4d03e10985c9d8d3697c58c080166f40_0",
+        "inputs": [],
+        "op": "input",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "p0",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "p1",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "p2",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "p3",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "parameter",
+          "symmetries": [
+            {
+              "permutation": [
+                0,
+                1,
+                3,
+                2
+              ],
+              "sign": 1
+            }
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "name": "oovv"
+        },
+        "id": "n_5129eda3944b6707642b90d26719c7175df9ea1a2dc824883fd1682318b6ec71_0",
+        "inputs": [],
+        "op": "input",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "p0",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "p1",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "p2",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "p3",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "parameter",
+          "symmetries": [
+            {
+              "permutation": [
+                0,
+                1,
+                3,
+                2
+              ],
+              "sign": 1
+            },
+            {
+              "permutation": [
+                1,
+                0,
+                2,
+                3
+              ],
+              "sign": 1
+            }
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "name": "fov"
+        },
+        "id": "n_9982cbc6b3efa93e8e23eb553ad3125412b2c3b913b9f8f1f385b0cd7ee91a1e_0",
+        "inputs": [],
+        "op": "input",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "p0",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "p1",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "parameter",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "name": "fvv"
+        },
+        "id": "n_ab8ab65d7c13ea91e225749084e684f5a8bab14d8f5688a87d102b20948414ff_0",
+        "inputs": [],
+        "op": "input",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "p0",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "p1",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "parameter",
+          "symmetries": [
+            {
+              "permutation": [
+                1,
+                0
+              ],
+              "sign": 1
+            }
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "name": "t2"
+        },
+        "id": "n_aef831f9444a636746a833804f07fed1f993de4181c27df6a6dfb7f6ce005e90_0",
+        "inputs": [],
+        "op": "input",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "j",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "b",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "parameter",
+          "symmetries": [
+            {
+              "permutation": [
+                1,
+                0,
+                3,
+                2
+              ],
+              "sign": 1
+            }
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "name": "t1"
+        },
+        "id": "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+        "inputs": [],
+        "op": "input",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "parameter",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "name": "foo"
+        },
+        "id": "n_d80d61fb5cb42a801f9e6ed3b17eac1d7161e7dff7829e1392d30e3f35bac59f_0",
+        "inputs": [],
+        "op": "input",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "p0",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "p1",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "parameter",
+          "symmetries": [
+            {
+              "permutation": [
+                1,
+                0
+              ],
+              "sign": 1
+            }
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "name": "ovoo"
+        },
+        "id": "n_e0a9b2e155ab9cf74a874daf1be4f105618e7845fa2ed89dca6dcd09a663b341_0",
+        "inputs": [],
+        "op": "input",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "p0",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "p1",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "p2",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "p3",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "parameter",
+          "symmetries": [
+            {
+              "permutation": [
+                0,
+                1,
+                3,
+                2
+              ],
+              "sign": 1
+            }
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "name": "ovov"
+        },
+        "id": "n_f70fcade980cd6d0a94ff988f631b26250b201173f010ed3c2538c8080932311_0",
+        "inputs": [],
+        "op": "input",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "p0",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "p1",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "p2",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "p3",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "parameter",
+          "symmetries": [
+            {
+              "permutation": [
+                2,
+                3,
+                0,
+                1
+              ],
+              "sign": 1
+            }
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            2,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              4,
+              0,
+              3,
+              1
+            ]
+          ],
+          "output": [
+            4,
+            2
+          ]
+        },
+        "id": "n_05b2e90ac279c0efa15cc1dbcd55176b53134eca9b316a9f4a7581141cb5271d_0",
+        "inputs": [
+          "n_371972005c0ff0952c66bc1bf524cc8b4d03e10985c9d8d3697c58c080166f40_0",
+          "n_aef831f9444a636746a833804f07fed1f993de4181c27df6a6dfb7f6ce005e90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            1,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              4,
+              3
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              0,
+              5
+            ]
+          ],
+          "output": [
+            4,
+            5
+          ]
+        },
+        "id": "n_14d6d010f40707524df8eb8ec44c6fed3596d2244229ee4a512b8b7896990a1e_0",
+        "inputs": [
+          "n_f70fcade980cd6d0a94ff988f631b26250b201173f010ed3c2538c8080932311_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            -1,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              0,
+              3
+            ],
+            [
+              2,
+              1
+            ]
+          ],
+          "output": []
+        },
+        "id": "n_1f97d330ada100f168897fe431344f28d28556f5e8a19dee6dd30a4cfdfb9e85_0",
+        "inputs": [
+          "n_f70fcade980cd6d0a94ff988f631b26250b201173f010ed3c2538c8080932311_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            -1,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              4,
+              3
+            ],
+            [
+              0,
+              5
+            ]
+          ],
+          "output": [
+            4,
+            5
+          ]
+        },
+        "id": "n_30c2127fc878b82e5db306f1d55b170bff115c99221001d1076a88f7455f519a_0",
+        "inputs": [
+          "n_f70fcade980cd6d0a94ff988f631b26250b201173f010ed3c2538c8080932311_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            2,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              1
+            ]
+          ],
+          "output": []
+        },
+        "id": "n_30c3ba111e62e4e587dca13b3e091207f6a894d47df45d9b0a317483ae9a85b1_0",
+        "inputs": [
+          "n_9982cbc6b3efa93e8e23eb553ad3125412b2c3b913b9f8f1f385b0cd7ee91a1e_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            -1,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ]
+          ],
+          "output": [
+            1,
+            2
+          ]
+        },
+        "id": "n_3db50a1aa423f8223dedb0d6fc336b9560b2c2bcb21ded758ccc4e602a1ddec6_0",
+        "inputs": [
+          "n_d80d61fb5cb42a801f9e6ed3b17eac1d7161e7dff7829e1392d30e3f35bac59f_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            -2,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              2,
+              3
+            ],
+            [
+              4,
+              0,
+              1,
+              5
+            ]
+          ],
+          "output": [
+            4,
+            5
+          ]
+        },
+        "id": "n_4a213c2709544f90f1e59284db04f96cb35a73b83185cffed21c30f7e62ebff1_0",
+        "inputs": [
+          "n_f70fcade980cd6d0a94ff988f631b26250b201173f010ed3c2538c8080932311_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_aef831f9444a636746a833804f07fed1f993de4181c27df6a6dfb7f6ce005e90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            -2,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              0,
+              4,
+              3,
+              5
+            ]
+          ],
+          "output": [
+            4,
+            5
+          ]
+        },
+        "id": "n_59fbf53071005599e9d5d4e27e997f2421f405a14f36e6e6cb3b526fb485a1a0_0",
+        "inputs": [
+          "n_f70fcade980cd6d0a94ff988f631b26250b201173f010ed3c2538c8080932311_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_aef831f9444a636746a833804f07fed1f993de4181c27df6a6dfb7f6ce005e90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            -2,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              0,
+              2,
+              4,
+              3
+            ],
+            [
+              5,
+              1
+            ]
+          ],
+          "output": [
+            5,
+            4
+          ]
+        },
+        "id": "n_5fe0346456d6f3ce74bc52fff3ace0255990bf63ff36cda339dba7a43d782c50_0",
+        "inputs": [
+          "n_f70fcade980cd6d0a94ff988f631b26250b201173f010ed3c2538c8080932311_0",
+          "n_aef831f9444a636746a833804f07fed1f993de4181c27df6a6dfb7f6ce005e90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            -1,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              3,
+              1
+            ]
+          ],
+          "output": [
+            3,
+            2
+          ]
+        },
+        "id": "n_60010b79c15f0776a3bf85639e8e28f49987404b4e37d3833dcd27c8b3d56f98_0",
+        "inputs": [
+          "n_9982cbc6b3efa93e8e23eb553ad3125412b2c3b913b9f8f1f385b0cd7ee91a1e_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            2,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              4,
+              3
+            ]
+          ],
+          "output": [
+            4,
+            2
+          ]
+        },
+        "id": "n_7015e6dd093b803e71c15f6e09e5ef0c1ee1158112eb561d77657e019ed7da65_0",
+        "inputs": [
+          "n_371972005c0ff0952c66bc1bf524cc8b4d03e10985c9d8d3697c58c080166f40_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            1,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1
+            ],
+            [
+              2,
+              1
+            ]
+          ],
+          "output": [
+            2,
+            0
+          ]
+        },
+        "id": "n_729c485a82d4c97a0fb9ead9827cc9c1542b123fb68d3c7242f3cef624531917_0",
+        "inputs": [
+          "n_ab8ab65d7c13ea91e225749084e684f5a8bab14d8f5688a87d102b20948414ff_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            -2,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              2,
+              4
+            ]
+          ],
+          "output": [
+            3,
+            4
+          ]
+        },
+        "id": "n_7448bd8059bfc0da5e9eaeef273892ac5d7876f8c96be26857628ea824b4aa61_0",
+        "inputs": [
+          "n_e0a9b2e155ab9cf74a874daf1be4f105618e7845fa2ed89dca6dcd09a663b341_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            2,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              2,
+              3
+            ]
+          ],
+          "output": []
+        },
+        "id": "n_79a1d4b2dc62d46f85466e4b5e737f6fd673fd20a1d1ef23b56f830f599fe027_0",
+        "inputs": [
+          "n_f70fcade980cd6d0a94ff988f631b26250b201173f010ed3c2538c8080932311_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            -2,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              0,
+              4
+            ],
+            [
+              2,
+              3
+            ],
+            [
+              5,
+              1
+            ]
+          ],
+          "output": [
+            5,
+            4
+          ]
+        },
+        "id": "n_7e82cc830cf23159c14285f84222e188e1fabb9d8b05b2bab57310f88e68cfeb_0",
+        "inputs": [
+          "n_f70fcade980cd6d0a94ff988f631b26250b201173f010ed3c2538c8080932311_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            -2,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              4,
+              1
+            ],
+            [
+              2,
+              3
+            ],
+            [
+              0,
+              5
+            ]
+          ],
+          "output": [
+            4,
+            5
+          ]
+        },
+        "id": "n_81843463fc237035c7f07c1ad204c6e32d44110704a4c4581da1775d56322db9_0",
+        "inputs": [
+          "n_f70fcade980cd6d0a94ff988f631b26250b201173f010ed3c2538c8080932311_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            1,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1
+            ]
+          ],
+          "output": [
+            0,
+            1
+          ]
+        },
+        "id": "n_8b3d13a28bae7c05c2eeba9d5e42f1433747a88ac37e7a377704f7737cbc15cd_0",
+        "inputs": [
+          "n_9982cbc6b3efa93e8e23eb553ad3125412b2c3b913b9f8f1f385b0cd7ee91a1e_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            -1,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              0,
+              3
+            ],
+            [
+              4,
+              1
+            ]
+          ],
+          "output": [
+            4,
+            2
+          ]
+        },
+        "id": "n_939f4fbcad19d83db7d40bb76e4b9550ad48b366b424aadd64d1cc850af0530c_0",
+        "inputs": [
+          "n_371972005c0ff0952c66bc1bf524cc8b4d03e10985c9d8d3697c58c080166f40_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            -1,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1
+            ],
+            [
+              2,
+              0,
+              1,
+              3
+            ]
+          ],
+          "output": [
+            2,
+            3
+          ]
+        },
+        "id": "n_964db883cecb3379903874d857ed53bf0468f55a3597c8a460fa948132a8b70a_0",
+        "inputs": [
+          "n_9982cbc6b3efa93e8e23eb553ad3125412b2c3b913b9f8f1f385b0cd7ee91a1e_0",
+          "n_aef831f9444a636746a833804f07fed1f993de4181c27df6a6dfb7f6ce005e90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            2,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              0,
+              1
+            ]
+          ],
+          "output": [
+            3,
+            2
+          ]
+        },
+        "id": "n_9845e9603eb535315b9adff22acc117fc6f4c23cba4a7fc26b6649d3dd10bc37_0",
+        "inputs": [
+          "n_0882c2f6cb5df566498a9f0d2409418773b660f92bfeb46699d2ba11ea0f54cf_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            -2,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              4,
+              2,
+              1,
+              3
+            ],
+            [
+              0,
+              5
+            ]
+          ],
+          "output": [
+            4,
+            5
+          ]
+        },
+        "id": "n_9cb34b0e01f6bc06ad673ae27cfbf956ef3b01d84603dc28d9880fed7dc7861e_0",
+        "inputs": [
+          "n_f70fcade980cd6d0a94ff988f631b26250b201173f010ed3c2538c8080932311_0",
+          "n_aef831f9444a636746a833804f07fed1f993de4181c27df6a6dfb7f6ce005e90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            -1,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              4,
+              0,
+              1,
+              3
+            ]
+          ],
+          "output": [
+            4,
+            2
+          ]
+        },
+        "id": "n_ac89dcd850da5d4e1c5acbc442a7b2c82d462b7af87dd7a3b62cfb7077269bf9_0",
+        "inputs": [
+          "n_371972005c0ff0952c66bc1bf524cc8b4d03e10985c9d8d3697c58c080166f40_0",
+          "n_aef831f9444a636746a833804f07fed1f993de4181c27df6a6dfb7f6ce005e90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            4,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              2,
+              3
+            ],
+            [
+              0,
+              4,
+              1,
+              5
+            ]
+          ],
+          "output": [
+            4,
+            5
+          ]
+        },
+        "id": "n_ae072918e548ec7db63e5a89438f1e08cc89d7d6c222b10e61db229165ef4fb6_0",
+        "inputs": [
+          "n_f70fcade980cd6d0a94ff988f631b26250b201173f010ed3c2538c8080932311_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_aef831f9444a636746a833804f07fed1f993de4181c27df6a6dfb7f6ce005e90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            1,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              4,
+              0,
+              3,
+              5
+            ]
+          ],
+          "output": [
+            4,
+            5
+          ]
+        },
+        "id": "n_b4d8343bea18666c813eac2479128030c3ebb35744f1ef566a87179e56e8c6de_0",
+        "inputs": [
+          "n_f70fcade980cd6d0a94ff988f631b26250b201173f010ed3c2538c8080932311_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_aef831f9444a636746a833804f07fed1f993de4181c27df6a6dfb7f6ce005e90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            2,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              0,
+              2,
+              1,
+              3
+            ]
+          ],
+          "output": []
+        },
+        "id": "n_b5f769ae46e71aafee42df91f99c5445acce1905c3953857b44948810eaa7ad2_0",
+        "inputs": [
+          "n_f70fcade980cd6d0a94ff988f631b26250b201173f010ed3c2538c8080932311_0",
+          "n_aef831f9444a636746a833804f07fed1f993de4181c27df6a6dfb7f6ce005e90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            -2,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              2,
+              0,
+              4,
+              1
+            ]
+          ],
+          "output": [
+            3,
+            4
+          ]
+        },
+        "id": "n_b83cdfabce7d382b1c3400612e8be9c921ffa3c0763ac4a29624dec0e9163ad3_0",
+        "inputs": [
+          "n_e0a9b2e155ab9cf74a874daf1be4f105618e7845fa2ed89dca6dcd09a663b341_0",
+          "n_aef831f9444a636746a833804f07fed1f993de4181c27df6a6dfb7f6ce005e90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            1,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              4,
+              2,
+              3,
+              1
+            ],
+            [
+              0,
+              5
+            ]
+          ],
+          "output": [
+            4,
+            5
+          ]
+        },
+        "id": "n_bea42d7c55b71838b8e9994c5620e93ff6dc9f45dbe59401184ec01a4fac4c4e_0",
+        "inputs": [
+          "n_f70fcade980cd6d0a94ff988f631b26250b201173f010ed3c2538c8080932311_0",
+          "n_aef831f9444a636746a833804f07fed1f993de4181c27df6a6dfb7f6ce005e90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            -1,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              0,
+              3
+            ]
+          ],
+          "output": [
+            1,
+            2
+          ]
+        },
+        "id": "n_cf6c6219d81e2de6a48b71a4551c4110009bf14a980a736d00224b48dec7aee7_0",
+        "inputs": [
+          "n_5129eda3944b6707642b90d26719c7175df9ea1a2dc824883fd1682318b6ec71_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            2,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2,
+              1,
+              3
+            ]
+          ],
+          "output": [
+            2,
+            3
+          ]
+        },
+        "id": "n_d4ca3504731eb8baf165627176347c7d55501c753e9227c4945552df5bb927ef_0",
+        "inputs": [
+          "n_9982cbc6b3efa93e8e23eb553ad3125412b2c3b913b9f8f1f385b0cd7ee91a1e_0",
+          "n_aef831f9444a636746a833804f07fed1f993de4181c27df6a6dfb7f6ce005e90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            1,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              0,
+              4
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              5,
+              3
+            ]
+          ],
+          "output": [
+            5,
+            4
+          ]
+        },
+        "id": "n_d8bd4ec486607d8c12a6cfdd5b3c3881b33160782bfbd3e052078d522f7bf387_0",
+        "inputs": [
+          "n_f70fcade980cd6d0a94ff988f631b26250b201173f010ed3c2538c8080932311_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            -1,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              0,
+              2,
+              3,
+              1
+            ]
+          ],
+          "output": []
+        },
+        "id": "n_df84b352eb3706c1891c337eac0cc44bc6e0178e71beaf3ad799c22c1c708374_0",
+        "inputs": [
+          "n_f70fcade980cd6d0a94ff988f631b26250b201173f010ed3c2538c8080932311_0",
+          "n_aef831f9444a636746a833804f07fed1f993de4181c27df6a6dfb7f6ce005e90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            1,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              0,
+              2,
+              4,
+              1
+            ],
+            [
+              5,
+              3
+            ]
+          ],
+          "output": [
+            5,
+            4
+          ]
+        },
+        "id": "n_e2e884d819aa3340eabd15524d9fa8a3ce8d15a8148577928e564ebd665fe03d_0",
+        "inputs": [
+          "n_f70fcade980cd6d0a94ff988f631b26250b201173f010ed3c2538c8080932311_0",
+          "n_aef831f9444a636746a833804f07fed1f993de4181c27df6a6dfb7f6ce005e90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            1,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              0,
+              2,
+              4,
+              1
+            ]
+          ],
+          "output": [
+            3,
+            4
+          ]
+        },
+        "id": "n_eb6c62e13d80cb5a610b098c1f7687532430dbf19b9f24f40cd0c163ab06797f_0",
+        "inputs": [
+          "n_e0a9b2e155ab9cf74a874daf1be4f105618e7845fa2ed89dca6dcd09a663b341_0",
+          "n_aef831f9444a636746a833804f07fed1f993de4181c27df6a6dfb7f6ce005e90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            2,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              2,
+              3
+            ],
+            [
+              4,
+              1
+            ],
+            [
+              0,
+              5
+            ]
+          ],
+          "output": [
+            4,
+            5
+          ]
+        },
+        "id": "n_f4791a72b61706f55c520e3d49328a4408a22fea65a1230e16443e383cade480_0",
+        "inputs": [
+          "n_f70fcade980cd6d0a94ff988f631b26250b201173f010ed3c2538c8080932311_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficient": [
+            1,
+            1
+          ],
+          "labels": [
+            [
+              0,
+              1,
+              2,
+              3
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              0,
+              4
+            ]
+          ],
+          "output": [
+            3,
+            4
+          ]
+        },
+        "id": "n_f86489c5eb93311f9a34f6588e0ae5fab877dab73368a087db4dbb50f20282e0_0",
+        "inputs": [
+          "n_e0a9b2e155ab9cf74a874daf1be4f105618e7845fa2ed89dca6dcd09a663b341_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0",
+          "n_cf4936651e36a989e034bfa44933d12b579f1fbe1cfb24e388551083ae3b9b90_0"
+        ],
+        "op": "einsum",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficients": [
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        "id": "n_0ceaa674c55cdfbfd70ed2f73dfa2172937a501fe9a4b0f69de640840df1c185_0",
+        "inputs": [
+          "n_79a1d4b2dc62d46f85466e4b5e737f6fd673fd20a1d1ef23b56f830f599fe027_0",
+          "n_1f97d330ada100f168897fe431344f28d28556f5e8a19dee6dd30a4cfdfb9e85_0"
+        ],
+        "op": "add",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficients": [
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        "id": "n_2f87ac5d05c61c85925cace8401ee1814217b06b51b6cfc686b16e46b17065b0_0",
+        "inputs": [
+          "n_30c3ba111e62e4e587dca13b3e091207f6a894d47df45d9b0a317483ae9a85b1_0"
+        ],
+        "op": "add",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficients": [
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        "id": "n_3e282fc3d9035636f9e461fcab49bff78386509ad2f16ddc5154e6a54ca360ba_0",
+        "inputs": [
+          "n_7015e6dd093b803e71c15f6e09e5ef0c1ee1158112eb561d77657e019ed7da65_0",
+          "n_939f4fbcad19d83db7d40bb76e4b9550ad48b366b424aadd64d1cc850af0530c_0",
+          "n_7448bd8059bfc0da5e9eaeef273892ac5d7876f8c96be26857628ea824b4aa61_0",
+          "n_f86489c5eb93311f9a34f6588e0ae5fab877dab73368a087db4dbb50f20282e0_0"
+        ],
+        "op": "add",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficients": [
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        "id": "n_419cf935a3af8804714195be00a10f7c72587cc8286245b14278027a649acef0_0",
+        "inputs": [
+          "n_05b2e90ac279c0efa15cc1dbcd55176b53134eca9b316a9f4a7581141cb5271d_0",
+          "n_ac89dcd850da5d4e1c5acbc442a7b2c82d462b7af87dd7a3b62cfb7077269bf9_0",
+          "n_b83cdfabce7d382b1c3400612e8be9c921ffa3c0763ac4a29624dec0e9163ad3_0",
+          "n_eb6c62e13d80cb5a610b098c1f7687532430dbf19b9f24f40cd0c163ab06797f_0"
+        ],
+        "op": "add",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficients": [
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        "id": "n_6ae709764fb93f5d7d7a6e99c8d2de23e25956c43a5fa6c2a08b8ee3612a4670_0",
+        "inputs": [
+          "n_8b3d13a28bae7c05c2eeba9d5e42f1433747a88ac37e7a377704f7737cbc15cd_0",
+          "n_729c485a82d4c97a0fb9ead9827cc9c1542b123fb68d3c7242f3cef624531917_0",
+          "n_3db50a1aa423f8223dedb0d6fc336b9560b2c2bcb21ded758ccc4e602a1ddec6_0",
+          "n_60010b79c15f0776a3bf85639e8e28f49987404b4e37d3833dcd27c8b3d56f98_0",
+          "n_d4ca3504731eb8baf165627176347c7d55501c753e9227c4945552df5bb927ef_0",
+          "n_964db883cecb3379903874d857ed53bf0468f55a3597c8a460fa948132a8b70a_0"
+        ],
+        "op": "add",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficients": [
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        "id": "n_713c144f32369ee902cb0c011532aa05dd0e78d0f739796b26616bf3bf1db826_0",
+        "inputs": [
+          "n_9845e9603eb535315b9adff22acc117fc6f4c23cba4a7fc26b6649d3dd10bc37_0",
+          "n_cf6c6219d81e2de6a48b71a4551c4110009bf14a980a736d00224b48dec7aee7_0"
+        ],
+        "op": "add",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficients": [
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        "id": "n_7d4207b6c4e76f6c74f25aa415ac9d4d9a11c28a7bd785b8b9ef6fc05c87788e_0",
+        "inputs": [
+          "n_7e82cc830cf23159c14285f84222e188e1fabb9d8b05b2bab57310f88e68cfeb_0",
+          "n_d8bd4ec486607d8c12a6cfdd5b3c3881b33160782bfbd3e052078d522f7bf387_0",
+          "n_81843463fc237035c7f07c1ad204c6e32d44110704a4c4581da1775d56322db9_0",
+          "n_14d6d010f40707524df8eb8ec44c6fed3596d2244229ee4a512b8b7896990a1e_0",
+          "n_f4791a72b61706f55c520e3d49328a4408a22fea65a1230e16443e383cade480_0",
+          "n_30c2127fc878b82e5db306f1d55b170bff115c99221001d1076a88f7455f519a_0"
+        ],
+        "op": "add",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficients": [
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        "id": "n_eb36be67f6e054e35d201b83eb1dab94f4c2695abea682857865177ff301c947_0",
+        "inputs": [
+          "n_b5f769ae46e71aafee42df91f99c5445acce1905c3953857b44948810eaa7ad2_0",
+          "n_df84b352eb3706c1891c337eac0cc44bc6e0178e71beaf3ad799c22c1c708374_0"
+        ],
+        "op": "add",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficients": [
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        "id": "n_fa97c49d814c41ac2062226593a4866fa47edc1043c0d74c1a3adad00519f85c_0",
+        "inputs": [
+          "n_5fe0346456d6f3ce74bc52fff3ace0255990bf63ff36cda339dba7a43d782c50_0",
+          "n_e2e884d819aa3340eabd15524d9fa8a3ce8d15a8148577928e564ebd665fe03d_0",
+          "n_9cb34b0e01f6bc06ad673ae27cfbf956ef3b01d84603dc28d9880fed7dc7861e_0",
+          "n_bea42d7c55b71838b8e9994c5620e93ff6dc9f45dbe59401184ec01a4fac4c4e_0",
+          "n_ae072918e548ec7db63e5a89438f1e08cc89d7d6c222b10e61db229165ef4fb6_0",
+          "n_59fbf53071005599e9d5d4e27e997f2421f405a14f36e6e6cb3b526fb485a1a0_0",
+          "n_4a213c2709544f90f1e59284db04f96cb35a73b83185cffed21c30f7e62ebff1_0",
+          "n_b4d8343bea18666c813eac2479128030c3ebb35744f1ef566a87179e56e8c6de_0"
+        ],
+        "op": "add",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficients": [
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        "id": "n_9edac184cdf25e2279a36a52908b69c25252d1a65635854bd5d1dc97e617b734_0",
+        "inputs": [
+          "n_2f87ac5d05c61c85925cace8401ee1814217b06b51b6cfc686b16e46b17065b0_0",
+          "n_eb36be67f6e054e35d201b83eb1dab94f4c2695abea682857865177ff301c947_0",
+          "n_0ceaa674c55cdfbfd70ed2f73dfa2172937a501fe9a4b0f69de640840df1c185_0"
+        ],
+        "op": "add",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      },
+      {
+        "attributes": {
+          "coefficients": [
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        "id": "n_f18818ce4c5ab68b28987094b814c6c4157bcf7fafffb3d5374599bd6cf400a1_0",
+        "inputs": [
+          "n_6ae709764fb93f5d7d7a6e99c8d2de23e25956c43a5fa6c2a08b8ee3612a4670_0",
+          "n_713c144f32369ee902cb0c011532aa05dd0e78d0f739796b26616bf3bf1db826_0",
+          "n_419cf935a3af8804714195be00a10f7c72587cc8286245b14278027a649acef0_0",
+          "n_3e282fc3d9035636f9e461fcab49bff78386509ad2f16ddc5154e6a54ca360ba_0",
+          "n_fa97c49d814c41ac2062226593a4866fa47edc1043c0d74c1a3adad00519f85c_0",
+          "n_7d4207b6c4e76f6c74f25aa415ac9d4d9a11c28a7bd785b8b9ef6fc05c87788e_0"
+        ],
+        "op": "add",
+        "spec": {
+          "differentiable": true,
+          "dtype": "float64",
+          "indices": [
+            {
+              "name": "i",
+              "selection": null,
+              "space": {
+                "kind": "occupied",
+                "name": "occupied",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            },
+            {
+              "name": "a",
+              "selection": null,
+              "space": {
+                "kind": "virtual",
+                "name": "virtual",
+                "size": 2,
+                "spin": null
+              },
+              "start": 0,
+              "stop": 2
+            }
+          ],
+          "representation": "restricted_spatial",
+          "role": "intermediate",
+          "symmetries": []
+        }
+      }
+    ],
+    "outputs": {
+      "E01": "n_30c3ba111e62e4e587dca13b3e091207f6a894d47df45d9b0a317483ae9a85b1_0",
+      "E02": "n_b5f769ae46e71aafee42df91f99c5445acce1905c3953857b44948810eaa7ad2_0",
+      "E03": "n_df84b352eb3706c1891c337eac0cc44bc6e0178e71beaf3ad799c22c1c708374_0",
+      "E04": "n_79a1d4b2dc62d46f85466e4b5e737f6fd673fd20a1d1ef23b56f830f599fe027_0",
+      "E05": "n_1f97d330ada100f168897fe431344f28d28556f5e8a19dee6dd30a4cfdfb9e85_0",
+      "S01": "n_8b3d13a28bae7c05c2eeba9d5e42f1433747a88ac37e7a377704f7737cbc15cd_0",
+      "S02": "n_729c485a82d4c97a0fb9ead9827cc9c1542b123fb68d3c7242f3cef624531917_0",
+      "S03": "n_3db50a1aa423f8223dedb0d6fc336b9560b2c2bcb21ded758ccc4e602a1ddec6_0",
+      "S04": "n_60010b79c15f0776a3bf85639e8e28f49987404b4e37d3833dcd27c8b3d56f98_0",
+      "S05": "n_d4ca3504731eb8baf165627176347c7d55501c753e9227c4945552df5bb927ef_0",
+      "S06": "n_964db883cecb3379903874d857ed53bf0468f55a3597c8a460fa948132a8b70a_0",
+      "S07": "n_9845e9603eb535315b9adff22acc117fc6f4c23cba4a7fc26b6649d3dd10bc37_0",
+      "S08": "n_cf6c6219d81e2de6a48b71a4551c4110009bf14a980a736d00224b48dec7aee7_0",
+      "S09": "n_05b2e90ac279c0efa15cc1dbcd55176b53134eca9b316a9f4a7581141cb5271d_0",
+      "S10": "n_ac89dcd850da5d4e1c5acbc442a7b2c82d462b7af87dd7a3b62cfb7077269bf9_0",
+      "S11": "n_b83cdfabce7d382b1c3400612e8be9c921ffa3c0763ac4a29624dec0e9163ad3_0",
+      "S12": "n_eb6c62e13d80cb5a610b098c1f7687532430dbf19b9f24f40cd0c163ab06797f_0",
+      "S13": "n_7015e6dd093b803e71c15f6e09e5ef0c1ee1158112eb561d77657e019ed7da65_0",
+      "S14": "n_939f4fbcad19d83db7d40bb76e4b9550ad48b366b424aadd64d1cc850af0530c_0",
+      "S15": "n_7448bd8059bfc0da5e9eaeef273892ac5d7876f8c96be26857628ea824b4aa61_0",
+      "S16": "n_f86489c5eb93311f9a34f6588e0ae5fab877dab73368a087db4dbb50f20282e0_0",
+      "S17": "n_5fe0346456d6f3ce74bc52fff3ace0255990bf63ff36cda339dba7a43d782c50_0",
+      "S18": "n_e2e884d819aa3340eabd15524d9fa8a3ce8d15a8148577928e564ebd665fe03d_0",
+      "S19": "n_9cb34b0e01f6bc06ad673ae27cfbf956ef3b01d84603dc28d9880fed7dc7861e_0",
+      "S20": "n_bea42d7c55b71838b8e9994c5620e93ff6dc9f45dbe59401184ec01a4fac4c4e_0",
+      "S21": "n_ae072918e548ec7db63e5a89438f1e08cc89d7d6c222b10e61db229165ef4fb6_0",
+      "S22": "n_59fbf53071005599e9d5d4e27e997f2421f405a14f36e6e6cb3b526fb485a1a0_0",
+      "S23": "n_4a213c2709544f90f1e59284db04f96cb35a73b83185cffed21c30f7e62ebff1_0",
+      "S24": "n_b4d8343bea18666c813eac2479128030c3ebb35744f1ef566a87179e56e8c6de_0",
+      "S25": "n_7e82cc830cf23159c14285f84222e188e1fabb9d8b05b2bab57310f88e68cfeb_0",
+      "S26": "n_d8bd4ec486607d8c12a6cfdd5b3c3881b33160782bfbd3e052078d522f7bf387_0",
+      "S27": "n_81843463fc237035c7f07c1ad204c6e32d44110704a4c4581da1775d56322db9_0",
+      "S28": "n_14d6d010f40707524df8eb8ec44c6fed3596d2244229ee4a512b8b7896990a1e_0",
+      "S29": "n_f4791a72b61706f55c520e3d49328a4408a22fea65a1230e16443e383cade480_0",
+      "S30": "n_30c2127fc878b82e5db306f1d55b170bff115c99221001d1076a88f7455f519a_0",
+      "correlation_energy": "n_9edac184cdf25e2279a36a52908b69c25252d1a65635854bd5d1dc97e617b734_0",
+      "energy_t1": "n_2f87ac5d05c61c85925cace8401ee1814217b06b51b6cfc686b16e46b17065b0_0",
+      "energy_t1t1": "n_0ceaa674c55cdfbfd70ed2f73dfa2172937a501fe9a4b0f69de640840df1c185_0",
+      "energy_t2": "n_eb36be67f6e054e35d201b83eb1dab94f4c2695abea682857865177ff301c947_0",
+      "singles_fock": "n_6ae709764fb93f5d7d7a6e99c8d2de23e25956c43a5fa6c2a08b8ee3612a4670_0",
+      "singles_g_t1": "n_713c144f32369ee902cb0c011532aa05dd0e78d0f739796b26616bf3bf1db826_0",
+      "singles_g_t1t1": "n_3e282fc3d9035636f9e461fcab49bff78386509ad2f16ddc5154e6a54ca360ba_0",
+      "singles_g_t1t1t1": "n_7d4207b6c4e76f6c74f25aa415ac9d4d9a11c28a7bd785b8b9ef6fc05c87788e_0",
+      "singles_g_t1t2": "n_fa97c49d814c41ac2062226593a4866fa47edc1043c0d74c1a3adad00519f85c_0",
+      "singles_g_t2": "n_419cf935a3af8804714195be00a10f7c72587cc8286245b14278027a649acef0_0",
+      "singles_residual": "n_f18818ce4c5ab68b28987094b814c6c4157bcf7fafffb3d5374599bd6cf400a1_0"
+    },
+    "primitive_version": 1,
+    "provenance": {
+      "inventory_hash": "60647d87d9c7fd059b7c686f1f3da29fdff012af5acc5f9b901f2fac761d0e32",
+      "inventory_version": 1,
+      "method": "real all-electron conventional RCCSD",
+      "residual": "<Phi_i_alpha^a_alpha|exp(-T) H_N exp(T)|Phi>",
+      "slice": "A",
+      "source": "PySCF 2.14.0 rccsd + rintermediates; see source_manifest.json"
+    },
+    "schema": "vibeqc.tensor",
+    "schema_version": 1
+  },
+  "terms": {
+    "E01": {
+      "definition": [
+        "E01",
+        "energy_t1",
+        2,
+        "ia,ia->",
+        [
+          "fov",
+          "t1"
+        ]
+      ],
+      "hash": "7f65569c3bd9def4808e6e211a987e7efd7ea9a5ca36eb5bd3ca578e5c09eaf0"
+    },
+    "E02": {
+      "definition": [
+        "E02",
+        "energy_t2",
+        2,
+        "iajb,ijab->",
+        [
+          "ovov",
+          "t2"
+        ]
+      ],
+      "hash": "d31613f87b822d1d5a19da3ef781c14b265198036700d247a1dbdb5c87703a10"
+    },
+    "E03": {
+      "definition": [
+        "E03",
+        "energy_t2",
+        -1,
+        "ibja,ijab->",
+        [
+          "ovov",
+          "t2"
+        ]
+      ],
+      "hash": "53ed3b711bb8743a0a4403e032307f3478744b18a593f00db264f67d0f542cc7"
+    },
+    "E04": {
+      "definition": [
+        "E04",
+        "energy_t1t1",
+        2,
+        "iajb,ia,jb->",
+        [
+          "ovov",
+          "t1",
+          "t1"
+        ]
+      ],
+      "hash": "cec0291cbe2cff9167a1922af62af30c857a0230a9684421745050c3a9bd34e3"
+    },
+    "E05": {
+      "definition": [
+        "E05",
+        "energy_t1t1",
+        -1,
+        "ibja,ia,jb->",
+        [
+          "ovov",
+          "t1",
+          "t1"
+        ]
+      ],
+      "hash": "5a64333d206dba924a1ad665064c62d0b885d71fc441d2f2eb1ec0b9ef1cf0b1"
+    },
+    "S01": {
+      "definition": [
+        "S01",
+        "singles_fock",
+        1,
+        "ia->ia",
+        [
+          "fov"
+        ]
+      ],
+      "hash": "97676820b86dd5d7193cd769fd3e84063a155e7cfa2a1e18516a2a0c6ca0cfa0"
+    },
+    "S02": {
+      "definition": [
+        "S02",
+        "singles_fock",
+        1,
+        "ac,ic->ia",
+        [
+          "fvv",
+          "t1"
+        ]
+      ],
+      "hash": "f824236767e21a2de0b0a9814a5ef415ef777d5f651b9e5711e780665866e9b2"
+    },
+    "S03": {
+      "definition": [
+        "S03",
+        "singles_fock",
+        -1,
+        "ki,ka->ia",
+        [
+          "foo",
+          "t1"
+        ]
+      ],
+      "hash": "1ded59f0ca13637c57a7a1253c9f401415cacd2dfcaadf1622afdc0ee3d095c1"
+    },
+    "S04": {
+      "definition": [
+        "S04",
+        "singles_fock",
+        -1,
+        "kc,ka,ic->ia",
+        [
+          "fov",
+          "t1",
+          "t1"
+        ]
+      ],
+      "hash": "80040a68684aec1952f4f4a7018943af2efedc627bfae2a2248f2ffac4f1fe9a"
+    },
+    "S05": {
+      "definition": [
+        "S05",
+        "singles_fock",
+        2,
+        "kc,kica->ia",
+        [
+          "fov",
+          "t2"
+        ]
+      ],
+      "hash": "1230b29f586ba9b62b4ac3b63c5d787b41caf7f41965874c8efd9bc165341f7f"
+    },
+    "S06": {
+      "definition": [
+        "S06",
+        "singles_fock",
+        -1,
+        "kc,ikca->ia",
+        [
+          "fov",
+          "t2"
+        ]
+      ],
+      "hash": "5c5a7b412f3eaaee5f89b1a02dafe54c8168e8ae8564a78234822cb7b09ef14e"
+    },
+    "S07": {
+      "definition": [
+        "S07",
+        "singles_g_t1",
+        2,
+        "kcai,kc->ia",
+        [
+          "ovvo",
+          "t1"
+        ]
+      ],
+      "hash": "8bbddbd75ca24dbb47e9581c3a2c44aecc17b1d7b9c2c0f8a8a20914cf017c87"
+    },
+    "S08": {
+      "definition": [
+        "S08",
+        "singles_g_t1",
+        -1,
+        "kiac,kc->ia",
+        [
+          "oovv",
+          "t1"
+        ]
+      ],
+      "hash": "ff74ea976c2d1a0aab7996f474a27ed149cb6e52cc60cc03626a892558d61d69"
+    },
+    "S09": {
+      "definition": [
+        "S09",
+        "singles_g_t2",
+        2,
+        "kdac,ikcd->ia",
+        [
+          "ovvv",
+          "t2"
+        ]
+      ],
+      "hash": "955c62cd214a17628a52322c9e3dfa4939da8622a39c9299d215a6aeecb4d9f8"
+    },
+    "S10": {
+      "definition": [
+        "S10",
+        "singles_g_t2",
+        -1,
+        "kcad,ikcd->ia",
+        [
+          "ovvv",
+          "t2"
+        ]
+      ],
+      "hash": "1078e96d3dfdb9ecebc518f3e3c4a8e369bce5bd0a4b1dc5f614b833089fbced"
+    },
+    "S11": {
+      "definition": [
+        "S11",
+        "singles_g_t2",
+        -2,
+        "lcki,klac->ia",
+        [
+          "ovoo",
+          "t2"
+        ]
+      ],
+      "hash": "dbe5946d6ab0d3073a0d148fa48173c2e64d394ed07e562016a7ad7e1f813de9"
+    },
+    "S12": {
+      "definition": [
+        "S12",
+        "singles_g_t2",
+        1,
+        "kcli,klac->ia",
+        [
+          "ovoo",
+          "t2"
+        ]
+      ],
+      "hash": "38c95c5e0e08fd110d812965437e443caee53c4cf69db12f632e7d2f214bd78c"
+    },
+    "S13": {
+      "definition": [
+        "S13",
+        "singles_g_t1t1",
+        2,
+        "kdac,kd,ic->ia",
+        [
+          "ovvv",
+          "t1",
+          "t1"
+        ]
+      ],
+      "hash": "832c4e4c1c36d1ba7bc1826a79ef99473bd946b1fd1ba501f1a0dbc72f88c80c"
+    },
+    "S14": {
+      "definition": [
+        "S14",
+        "singles_g_t1t1",
+        -1,
+        "kcad,kd,ic->ia",
+        [
+          "ovvv",
+          "t1",
+          "t1"
+        ]
+      ],
+      "hash": "c9b2a8b48458f43632bba4af5bc567577ff7b8b6a45db20fc6ebff432c8aecb8"
+    },
+    "S15": {
+      "definition": [
+        "S15",
+        "singles_g_t1t1",
+        -2,
+        "lcki,lc,ka->ia",
+        [
+          "ovoo",
+          "t1",
+          "t1"
+        ]
+      ],
+      "hash": "5f33707aab4d04322f211f6635eca7974e7e5c58381b1c146ed3399342285a34"
+    },
+    "S16": {
+      "definition": [
+        "S16",
+        "singles_g_t1t1",
+        1,
+        "kcli,lc,ka->ia",
+        [
+          "ovoo",
+          "t1",
+          "t1"
+        ]
+      ],
+      "hash": "2b3029276364745ca7d76e603551691a541256a0e4c5c87cd41468aea8c8425f"
+    },
+    "S17": {
+      "definition": [
+        "S17",
+        "singles_g_t1t2",
+        -2,
+        "kcld,klad,ic->ia",
+        [
+          "ovov",
+          "t2",
+          "t1"
+        ]
+      ],
+      "hash": "fd93d0c0b7f4abff7482e702003be6eab9f076f6999540af6d00cb4d4dada2e1"
+    },
+    "S18": {
+      "definition": [
+        "S18",
+        "singles_g_t1t2",
+        1,
+        "kdlc,klad,ic->ia",
+        [
+          "ovov",
+          "t2",
+          "t1"
+        ]
+      ],
+      "hash": "d89402d5d1c610ccf57a33487df3b077c8fc2aaf7de3717b95f1d912c762a686"
+    },
+    "S19": {
+      "definition": [
+        "S19",
+        "singles_g_t1t2",
+        -2,
+        "kcld,ilcd,ka->ia",
+        [
+          "ovov",
+          "t2",
+          "t1"
+        ]
+      ],
+      "hash": "77ed077beb165c06fe418618544df17ef120237a2846aa5a5bb76858e4747a16"
+    },
+    "S20": {
+      "definition": [
+        "S20",
+        "singles_g_t1t2",
+        1,
+        "kdlc,ilcd,ka->ia",
+        [
+          "ovov",
+          "t2",
+          "t1"
+        ]
+      ],
+      "hash": "608406f6c4ce7089cf432337250775d31c758164e0653bdd40e974dcedf0f987"
+    },
+    "S21": {
+      "definition": [
+        "S21",
+        "singles_g_t1t2",
+        4,
+        "kcld,ld,kica->ia",
+        [
+          "ovov",
+          "t1",
+          "t2"
+        ]
+      ],
+      "hash": "184ed1fbc5cfb38af6eeca3d8ad86d421bf2750e2abc0bcfcc927afd275f916b"
+    },
+    "S22": {
+      "definition": [
+        "S22",
+        "singles_g_t1t2",
+        -2,
+        "kdlc,ld,kica->ia",
+        [
+          "ovov",
+          "t1",
+          "t2"
+        ]
+      ],
+      "hash": "c819a2b53d61390afcdd994e07ebf264c57830f0d6421d8e18b9b5461df2dffc"
+    },
+    "S23": {
+      "definition": [
+        "S23",
+        "singles_g_t1t2",
+        -2,
+        "kcld,ld,ikca->ia",
+        [
+          "ovov",
+          "t1",
+          "t2"
+        ]
+      ],
+      "hash": "f63748fb6f2a1eb731cf5a52c1ae17264803c4ad3faf5673b9af7a99c2f250f4"
+    },
+    "S24": {
+      "definition": [
+        "S24",
+        "singles_g_t1t2",
+        1,
+        "kdlc,ld,ikca->ia",
+        [
+          "ovov",
+          "t1",
+          "t2"
+        ]
+      ],
+      "hash": "f4f33e58523f5ca2a74017bc639a0338959f64b336e0a20657f28b95eb42640e"
+    },
+    "S25": {
+      "definition": [
+        "S25",
+        "singles_g_t1t1t1",
+        -2,
+        "kcld,ka,ld,ic->ia",
+        [
+          "ovov",
+          "t1",
+          "t1",
+          "t1"
+        ]
+      ],
+      "hash": "2431d781dac38e0cc2ade4c7b0376d761b3b98a86ef8b279b2d608e68c271228"
+    },
+    "S26": {
+      "definition": [
+        "S26",
+        "singles_g_t1t1t1",
+        1,
+        "kdlc,ka,ld,ic->ia",
+        [
+          "ovov",
+          "t1",
+          "t1",
+          "t1"
+        ]
+      ],
+      "hash": "3f0f7e0ff458c9049dccbe2103793a64bdc1be3dbace6b835db3fd427bd89570"
+    },
+    "S27": {
+      "definition": [
+        "S27",
+        "singles_g_t1t1t1",
+        -2,
+        "kcld,ic,ld,ka->ia",
+        [
+          "ovov",
+          "t1",
+          "t1",
+          "t1"
+        ]
+      ],
+      "hash": "8c8a4eac6450db7729ce740e99f74eec72cf31e52cbe1cb79636fdc70cd51a59"
+    },
+    "S28": {
+      "definition": [
+        "S28",
+        "singles_g_t1t1t1",
+        1,
+        "kdlc,ic,ld,ka->ia",
+        [
+          "ovov",
+          "t1",
+          "t1",
+          "t1"
+        ]
+      ],
+      "hash": "5efbee98bd246a95fbaceb80d93ea2b596e42bc405cf6a8fdb2e1767c1400b91"
+    },
+    "S29": {
+      "definition": [
+        "S29",
+        "singles_g_t1t1t1",
+        2,
+        "kcld,ld,ic,ka->ia",
+        [
+          "ovov",
+          "t1",
+          "t1",
+          "t1"
+        ]
+      ],
+      "hash": "61ff08a1717733651460b2b2665780c899a25adaa23259c584a2e633adec36cb"
+    },
+    "S30": {
+      "definition": [
+        "S30",
+        "singles_g_t1t1t1",
+        -1,
+        "kdlc,ld,ic,ka->ia",
+        [
+          "ovov",
+          "t1",
+          "t1",
+          "t1"
+        ]
+      ],
+      "hash": "23b4da1d2181c78ffb41f2f70e837cf5b11ac51e2193ee61fc1507a446348205"
+    }
+  }
+}

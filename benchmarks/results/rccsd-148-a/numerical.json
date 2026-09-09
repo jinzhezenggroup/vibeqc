@@ -1,0 +1,1291 @@
+[
+  {
+    "attachments": [],
+    "backend_selected": "numpy-cpu-interpreter",
+    "block_errors": {
+      "optimized/correlation_energy": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 2.7755575615628914e-17,
+        "max_scaled_error": 1.1886665394840914e-06,
+        "passed": true,
+        "rms_error": 2.7755575615628914e-17,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "optimized/energy_t1": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "optimized/energy_t1t1": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "optimized/energy_t2": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 6.938893903907228e-18,
+        "max_scaled_error": 6.063562863383334e-07,
+        "passed": true,
+        "rms_error": 6.938893903907228e-18,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "optimized/singles_fock": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 1.1102230246251565e-16,
+        "max_scaled_error": 1.8516438726264682e-06,
+        "passed": true,
+        "rms_error": 6.206335383118183e-17,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "optimized/singles_g_t1": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 2.0816681711721685e-17,
+        "max_scaled_error": 1.6521844382488347e-06,
+        "passed": true,
+        "rms_error": 1.1120870498752015e-17,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "optimized/singles_g_t1t1": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 6.071532165918825e-18,
+        "max_scaled_error": 5.956964462526243e-07,
+        "passed": true,
+        "rms_error": 3.817869818393022e-18,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "optimized/singles_g_t1t1t1": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 1.3010426069826053e-18,
+        "max_scaled_error": 1.2994046597726273e-07,
+        "passed": true,
+        "rms_error": 8.152171780478642e-19,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "optimized/singles_g_t1t2": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 9.107298248878237e-18,
+        "max_scaled_error": 8.77227236467032e-07,
+        "passed": true,
+        "rms_error": 5.333569469867188e-18,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "optimized/singles_g_t2": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 4.7704895589362195e-18,
+        "max_scaled_error": 4.6769767883951816e-07,
+        "passed": true,
+        "rms_error": 2.9493487749136975e-18,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "optimized/singles_residual": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 2.220446049250313e-16,
+        "max_scaled_error": 5.800743794156579e-06,
+        "passed": true,
+        "rms_error": 1.2412670766236366e-16,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "original/correlation_energy": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 2.7755575615628914e-17,
+        "max_scaled_error": 1.1886665394840914e-06,
+        "passed": true,
+        "rms_error": 2.7755575615628914e-17,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "original/energy_t1": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "original/energy_t1t1": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "original/energy_t2": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 6.938893903907228e-18,
+        "max_scaled_error": 6.063562863383334e-07,
+        "passed": true,
+        "rms_error": 6.938893903907228e-18,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "original/singles_fock": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 1.1102230246251565e-16,
+        "max_scaled_error": 1.8516438726264682e-06,
+        "passed": true,
+        "rms_error": 6.206335383118183e-17,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "original/singles_g_t1": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 2.0816681711721685e-17,
+        "max_scaled_error": 1.6521844382488347e-06,
+        "passed": true,
+        "rms_error": 1.1120870498752015e-17,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "original/singles_g_t1t1": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 6.071532165918825e-18,
+        "max_scaled_error": 5.956964462526243e-07,
+        "passed": true,
+        "rms_error": 3.817869818393022e-18,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "original/singles_g_t1t1t1": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 1.3010426069826053e-18,
+        "max_scaled_error": 1.2994046597726273e-07,
+        "passed": true,
+        "rms_error": 8.152171780478642e-19,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "original/singles_g_t1t2": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 9.107298248878237e-18,
+        "max_scaled_error": 8.77227236467032e-07,
+        "passed": true,
+        "rms_error": 5.333569469867188e-18,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "original/singles_g_t2": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 4.7704895589362195e-18,
+        "max_scaled_error": 4.6769767883951816e-07,
+        "passed": true,
+        "rms_error": 2.9493487749136975e-18,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "original/singles_residual": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 2.220446049250313e-16,
+        "max_scaled_error": 5.800743794156579e-06,
+        "passed": true,
+        "rms_error": 1.2412670766236366e-16,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "replay/correlation_energy": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 2.7755575615628914e-17,
+        "max_scaled_error": 1.1886665394840914e-06,
+        "passed": true,
+        "rms_error": 2.7755575615628914e-17,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "replay/energy_t1": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "replay/energy_t1t1": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "replay/energy_t2": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 6.938893903907228e-18,
+        "max_scaled_error": 6.063562863383334e-07,
+        "passed": true,
+        "rms_error": 6.938893903907228e-18,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "replay/singles_fock": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 1.1102230246251565e-16,
+        "max_scaled_error": 1.8516438726264682e-06,
+        "passed": true,
+        "rms_error": 6.206335383118183e-17,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "replay/singles_g_t1": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 2.0816681711721685e-17,
+        "max_scaled_error": 1.6521844382488347e-06,
+        "passed": true,
+        "rms_error": 1.1120870498752015e-17,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "replay/singles_g_t1t1": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 6.071532165918825e-18,
+        "max_scaled_error": 5.956964462526243e-07,
+        "passed": true,
+        "rms_error": 3.817869818393022e-18,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "replay/singles_g_t1t1t1": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 1.3010426069826053e-18,
+        "max_scaled_error": 1.2994046597726273e-07,
+        "passed": true,
+        "rms_error": 8.152171780478642e-19,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "replay/singles_g_t1t2": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 9.107298248878237e-18,
+        "max_scaled_error": 8.77227236467032e-07,
+        "passed": true,
+        "rms_error": 5.333569469867188e-18,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "replay/singles_g_t2": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 4.7704895589362195e-18,
+        "max_scaled_error": 4.6769767883951816e-07,
+        "passed": true,
+        "rms_error": 2.9493487749136975e-18,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "replay/singles_residual": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 2.220446049250313e-16,
+        "max_scaled_error": 5.800743794156579e-06,
+        "passed": true,
+        "rms_error": 1.2412670766236366e-16,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      }
+    },
+    "compilation": {
+      "reason": "not measured",
+      "seconds": null
+    },
+    "device": {
+      "kind": "cpu",
+      "machine": "x86_64"
+    },
+    "hardware": {
+      "reason": null,
+      "status": "pass"
+    },
+    "hash_reasons": {
+      "schedule": "CPU equation interpreter; no compiled CC schedule"
+    },
+    "hashes": {
+      "equation": "226e8deec60c8df23a8fd4d230e0f0554c396cd5fcb9cc952df03a7565b3d021",
+      "ir": "fde45bf79beb7a583b7c4e000ada52da34bdd9fe78e51a3e5bb58e561fb8b327",
+      "schedule": null,
+      "source": "7b53dedf24172e221822d81d55254363f4ed48af4023708e917f6bb6e27adf24"
+    },
+    "inputs_hash": "755367394ff0131a48e4378b1cca777fe345abc5f6b77ada197bc133217e0a35",
+    "memory": {
+      "allocated_bytes": null,
+      "peak_bytes": null,
+      "reason": "not measured"
+    },
+    "performance": {
+      "reason": "no comparison registered",
+      "status": "not-run"
+    },
+    "residuals": {},
+    "revision": "1e93c3cfa10afdf99ee26c70312bcfe533114331",
+    "schema": "vibeqc.validation",
+    "schema_version": 1,
+    "settings": {
+      "dirty": true,
+      "reference": "independent determinant polynomial",
+      "reference_file_sha256": "4487858606fabe17cc0edfe814c667630bb4d4c7f74d1d6a7b7f24d6e0589449",
+      "scope": "fixed-amplitude energy and T1 only",
+      "source_files": {
+        "tools/generate_cc_references.py": "7d15fa530d7ebac2e1a28e9f83ff64fc03ca98752f4a37c46a3a2c5b85bf70c3",
+        "tools/validate_cc.py": "cbc4616c4a7197e127836e556ca0dc250d0162ad59a069d68702d307e9312ada",
+        "tools/vibeqc_cc/__init__.py": "c609edfe53329869923d26542a75e1802a1a1d759035638d271848cb41172ca3",
+        "tools/vibeqc_cc/equations.py": "e33c3bd6264990cdd4b5dc28b5300231bc0020e7cde4c257bdfdacdf6eeffa22",
+        "tools/vibeqc_cc/evaluate.py": "4923ca7e49e87e8b5987d546ee281500e0c26c3693e701a714b7150ebabb54b9",
+        "tools/vibeqc_cc/inventory.py": "24310a7ff7270d7a7b07febc794c560fc382fa4b0cdc223612a8e6cbc1faa820",
+        "tools/vibeqc_cc/oracle.py": "fafc44841b6012d86718aab2e0ec090bf5e7547dd4330208e0cb70f1e9bdfbf7",
+        "tools/vibeqc_tensor/__init__.py": "8f642a5d2887a29f02c98adf3ab6a214627c68139c1fe48dadcfb0b4a00af303",
+        "tools/vibeqc_tensor/cuda_batch.py": "ddb0b5d5a3db32fae842c123f9b228279661f92c70b5831f3c83313716b12963",
+        "tools/vibeqc_tensor/cuda_emit.py": "a91bc10fe593760577fe95326d20ddec8fc421505ed3e77275af1c0005c6e343",
+        "tools/vibeqc_tensor/cuda_execute.py": "35ac45a04a2717e3ee435f6ccd64db876cef777ff375c163f8fef4bc5d0c3b82",
+        "tools/vibeqc_tensor/cuda_fixtures.py": "d7743c61f06ad2f505c48de83db90071d2e2c700797a68c6951e43a6847e5588",
+        "tools/vibeqc_tensor/cuda_gemm.py": "46822e14f66dc7475ff3da29d53d6a5d965c1457e7b287bc5e371c5b8c1ffb90",
+        "tools/vibeqc_tensor/cuda_plan.py": "7787af5966e29690a265c0edfaa8641c203c6fd09b82c290dac3d9ecbd905713",
+        "tools/vibeqc_tensor/cuda_resources.py": "194b9b10cf5a98ab3c4c582cf24b63aa776740c8596ab074d4a20ab665ea48c8",
+        "tools/vibeqc_tensor/cuda_tune.py": "6f61b7ea7162f9f82b03bf679bdcbd887de7bb723e7d5ad726fa87019089da6b",
+        "tools/vibeqc_tensor/examples.py": "ac4661e8a0df976cac8960fb02c7387ff7dbe675f61925321a89717580b80915",
+        "tools/vibeqc_tensor/interpreter.py": "19511ba9ed4e399bdc63dee93bccaf0abb4d848c1fa42a2c1ef04f9e02ac5a85",
+        "tools/vibeqc_tensor/ir.py": "5c16550617c5251de68b039d21e0db9a77d2dd8c5203966e029ea33b051633f4",
+        "tools/vibeqc_tensor/optimize.py": "fc829cbca0cd743c48b9e2aa55e89e0aa55490063cf0d29f6b1da80ef8aecda4",
+        "tools/vibeqc_tensor/oracles.py": "7935eeab7bff5e7174c37e93195552301f58d5ce69bff3018d6e7fbeb649f601",
+        "tools/vibeqc_tensor/packing.py": "73c6f46678bfb1f4e14fd71798ee2e2e53c76ae34c1299f28899bc563f56d852",
+        "tools/vibeqc_tensor/program.py": "03643c38e6f7c6e0b74040e4bdd40df450e3b5c5498a9cb7e6947e19acf7e956",
+        "tools/vibeqc_tensor/types.py": "e173219652cb3f4ef63352b1355654b410ca495d0901c9d94b189e65964520ac"
+      },
+      "upstream": {
+        "files": [
+          {
+            "path": "pyscf/cc/rccsd.py",
+            "sha256": "35391234363b6ae26893891e18c468e636458ac209bfdad9606c15112457a552",
+            "url": "https://raw.githubusercontent.com/pyscf/pyscf/v2.14.0/pyscf/cc/rccsd.py"
+          },
+          {
+            "path": "pyscf/cc/rintermediates.py",
+            "sha256": "c7f3311b15c3482315bc5c8aaf570334dd71170c4b9a901ad6968bd97c903666",
+            "url": "https://raw.githubusercontent.com/pyscf/pyscf/v2.14.0/pyscf/cc/rintermediates.py"
+          }
+        ],
+        "license": "Apache-2.0",
+        "version": "2.14.0"
+      }
+    },
+    "solver_iterations": [],
+    "solver_trace_reason": "not exposed by executor",
+    "stages": {
+      "compilation": {
+        "reason": "not a compiled CC method or converged CCSD endpoint",
+        "status": "not-run"
+      },
+      "endpoint": {
+        "reason": "not a compiled CC method or converged CCSD endpoint",
+        "status": "not-run"
+      },
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "production": {
+        "reason": "not a compiled CC method or converged CCSD endpoint",
+        "status": "not-run"
+      },
+      "representation": {
+        "reason": null,
+        "status": "pass"
+      },
+      "source": {
+        "reason": "not a compiled CC method or converged CCSD endpoint",
+        "status": "not-run"
+      }
+    },
+    "subject": "RCCSD-A/determinant-groups",
+    "tier": "cpu",
+    "timings": [],
+    "toolchain": {
+      "numpy": "2.2.6",
+      "python": "3.11.16"
+    }
+  },
+  {
+    "attachments": [],
+    "backend_selected": "numpy-cpu-interpreter",
+    "block_errors": {
+      "optimized/correlation_energy": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "optimized/singles_residual": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 5.551115123125783e-17,
+        "max_scaled_error": 1.4501859485391436e-06,
+        "passed": true,
+        "rms_error": 4.8074067159589095e-17,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "original/correlation_energy": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "original/singles_residual": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 5.551115123125783e-17,
+        "max_scaled_error": 1.4501859485391436e-06,
+        "passed": true,
+        "rms_error": 4.8074067159589095e-17,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "replay/correlation_energy": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "replay/singles_residual": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 5.551115123125783e-17,
+        "max_scaled_error": 1.4501859485391436e-06,
+        "passed": true,
+        "rms_error": 4.8074067159589095e-17,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2
+        ]
+      }
+    },
+    "compilation": {
+      "reason": "not measured",
+      "seconds": null
+    },
+    "device": {
+      "kind": "cpu",
+      "machine": "x86_64"
+    },
+    "hardware": {
+      "reason": null,
+      "status": "pass"
+    },
+    "hash_reasons": {
+      "schedule": "CPU equation interpreter; no compiled CC schedule"
+    },
+    "hashes": {
+      "equation": "226e8deec60c8df23a8fd4d230e0f0554c396cd5fcb9cc952df03a7565b3d021",
+      "ir": "fde45bf79beb7a583b7c4e000ada52da34bdd9fe78e51a3e5bb58e561fb8b327",
+      "schedule": null,
+      "source": "7b53dedf24172e221822d81d55254363f4ed48af4023708e917f6bb6e27adf24"
+    },
+    "inputs_hash": "755367394ff0131a48e4378b1cca777fe345abc5f6b77ada197bc133217e0a35",
+    "memory": {
+      "allocated_bytes": null,
+      "peak_bytes": null,
+      "reason": "not measured"
+    },
+    "performance": {
+      "reason": "no comparison registered",
+      "status": "not-run"
+    },
+    "residuals": {},
+    "revision": "1e93c3cfa10afdf99ee26c70312bcfe533114331",
+    "schema": "vibeqc.validation",
+    "schema_version": 1,
+    "settings": {
+      "dirty": true,
+      "reference": "pinned PySCF 2.14.0",
+      "reference_file_sha256": "4487858606fabe17cc0edfe814c667630bb4d4c7f74d1d6a7b7f24d6e0589449",
+      "scope": "fixed-amplitude energy and T1 only",
+      "source_files": {
+        "tools/generate_cc_references.py": "7d15fa530d7ebac2e1a28e9f83ff64fc03ca98752f4a37c46a3a2c5b85bf70c3",
+        "tools/validate_cc.py": "cbc4616c4a7197e127836e556ca0dc250d0162ad59a069d68702d307e9312ada",
+        "tools/vibeqc_cc/__init__.py": "c609edfe53329869923d26542a75e1802a1a1d759035638d271848cb41172ca3",
+        "tools/vibeqc_cc/equations.py": "e33c3bd6264990cdd4b5dc28b5300231bc0020e7cde4c257bdfdacdf6eeffa22",
+        "tools/vibeqc_cc/evaluate.py": "4923ca7e49e87e8b5987d546ee281500e0c26c3693e701a714b7150ebabb54b9",
+        "tools/vibeqc_cc/inventory.py": "24310a7ff7270d7a7b07febc794c560fc382fa4b0cdc223612a8e6cbc1faa820",
+        "tools/vibeqc_cc/oracle.py": "fafc44841b6012d86718aab2e0ec090bf5e7547dd4330208e0cb70f1e9bdfbf7",
+        "tools/vibeqc_tensor/__init__.py": "8f642a5d2887a29f02c98adf3ab6a214627c68139c1fe48dadcfb0b4a00af303",
+        "tools/vibeqc_tensor/cuda_batch.py": "ddb0b5d5a3db32fae842c123f9b228279661f92c70b5831f3c83313716b12963",
+        "tools/vibeqc_tensor/cuda_emit.py": "a91bc10fe593760577fe95326d20ddec8fc421505ed3e77275af1c0005c6e343",
+        "tools/vibeqc_tensor/cuda_execute.py": "35ac45a04a2717e3ee435f6ccd64db876cef777ff375c163f8fef4bc5d0c3b82",
+        "tools/vibeqc_tensor/cuda_fixtures.py": "d7743c61f06ad2f505c48de83db90071d2e2c700797a68c6951e43a6847e5588",
+        "tools/vibeqc_tensor/cuda_gemm.py": "46822e14f66dc7475ff3da29d53d6a5d965c1457e7b287bc5e371c5b8c1ffb90",
+        "tools/vibeqc_tensor/cuda_plan.py": "7787af5966e29690a265c0edfaa8641c203c6fd09b82c290dac3d9ecbd905713",
+        "tools/vibeqc_tensor/cuda_resources.py": "194b9b10cf5a98ab3c4c582cf24b63aa776740c8596ab074d4a20ab665ea48c8",
+        "tools/vibeqc_tensor/cuda_tune.py": "6f61b7ea7162f9f82b03bf679bdcbd887de7bb723e7d5ad726fa87019089da6b",
+        "tools/vibeqc_tensor/examples.py": "ac4661e8a0df976cac8960fb02c7387ff7dbe675f61925321a89717580b80915",
+        "tools/vibeqc_tensor/interpreter.py": "19511ba9ed4e399bdc63dee93bccaf0abb4d848c1fa42a2c1ef04f9e02ac5a85",
+        "tools/vibeqc_tensor/ir.py": "5c16550617c5251de68b039d21e0db9a77d2dd8c5203966e029ea33b051633f4",
+        "tools/vibeqc_tensor/optimize.py": "fc829cbca0cd743c48b9e2aa55e89e0aa55490063cf0d29f6b1da80ef8aecda4",
+        "tools/vibeqc_tensor/oracles.py": "7935eeab7bff5e7174c37e93195552301f58d5ce69bff3018d6e7fbeb649f601",
+        "tools/vibeqc_tensor/packing.py": "73c6f46678bfb1f4e14fd71798ee2e2e53c76ae34c1299f28899bc563f56d852",
+        "tools/vibeqc_tensor/program.py": "03643c38e6f7c6e0b74040e4bdd40df450e3b5c5498a9cb7e6947e19acf7e956",
+        "tools/vibeqc_tensor/types.py": "e173219652cb3f4ef63352b1355654b410ca495d0901c9d94b189e65964520ac"
+      },
+      "upstream": {
+        "files": [
+          {
+            "path": "pyscf/cc/rccsd.py",
+            "sha256": "35391234363b6ae26893891e18c468e636458ac209bfdad9606c15112457a552",
+            "url": "https://raw.githubusercontent.com/pyscf/pyscf/v2.14.0/pyscf/cc/rccsd.py"
+          },
+          {
+            "path": "pyscf/cc/rintermediates.py",
+            "sha256": "c7f3311b15c3482315bc5c8aaf570334dd71170c4b9a901ad6968bd97c903666",
+            "url": "https://raw.githubusercontent.com/pyscf/pyscf/v2.14.0/pyscf/cc/rintermediates.py"
+          }
+        ],
+        "license": "Apache-2.0",
+        "version": "2.14.0"
+      }
+    },
+    "solver_iterations": [],
+    "solver_trace_reason": "not exposed by executor",
+    "stages": {
+      "compilation": {
+        "reason": "not a compiled CC method or converged CCSD endpoint",
+        "status": "not-run"
+      },
+      "endpoint": {
+        "reason": "not a compiled CC method or converged CCSD endpoint",
+        "status": "not-run"
+      },
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "production": {
+        "reason": "not a compiled CC method or converged CCSD endpoint",
+        "status": "not-run"
+      },
+      "representation": {
+        "reason": null,
+        "status": "pass"
+      },
+      "source": {
+        "reason": "not a compiled CC method or converged CCSD endpoint",
+        "status": "not-run"
+      }
+    },
+    "subject": "RCCSD-A/pyscf-random",
+    "tier": "cpu",
+    "timings": [],
+    "toolchain": {
+      "numpy": "2.2.6",
+      "python": "3.11.16"
+    }
+  },
+  {
+    "attachments": [],
+    "backend_selected": "numpy-cpu-interpreter",
+    "block_errors": {
+      "optimized/correlation_energy": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "optimized/singles_residual": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": [
+          1,
+          1
+        ]
+      },
+      "original/correlation_energy": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "original/singles_residual": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": [
+          1,
+          1
+        ]
+      },
+      "replay/correlation_energy": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "replay/singles_residual": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": [
+          1,
+          1
+        ]
+      }
+    },
+    "compilation": {
+      "reason": "not measured",
+      "seconds": null
+    },
+    "device": {
+      "kind": "cpu",
+      "machine": "x86_64"
+    },
+    "hardware": {
+      "reason": null,
+      "status": "pass"
+    },
+    "hash_reasons": {
+      "schedule": "CPU equation interpreter; no compiled CC schedule"
+    },
+    "hashes": {
+      "equation": "259cbe512d280f55f71aadd922a0a9f567991bea7995f9dc786c4b97ef16fa35",
+      "ir": "fe45e334f494cf6ba0f6410dd96de29afbc60d692a1e3b057c0f2002ca9495ae",
+      "schedule": null,
+      "source": "7b53dedf24172e221822d81d55254363f4ed48af4023708e917f6bb6e27adf24"
+    },
+    "inputs_hash": "e5ebe566710c6e6c78f783c7db00a5da64f116849fd5e5400795450cb76e5a62",
+    "memory": {
+      "allocated_bytes": null,
+      "peak_bytes": null,
+      "reason": "not measured"
+    },
+    "performance": {
+      "reason": "no comparison registered",
+      "status": "not-run"
+    },
+    "residuals": {},
+    "revision": "1e93c3cfa10afdf99ee26c70312bcfe533114331",
+    "schema": "vibeqc.validation",
+    "schema_version": 1,
+    "settings": {
+      "dirty": true,
+      "reference": "pinned PySCF 2.14.0",
+      "reference_file_sha256": "4487858606fabe17cc0edfe814c667630bb4d4c7f74d1d6a7b7f24d6e0589449",
+      "scope": "fixed-amplitude energy and T1 only",
+      "source_files": {
+        "tools/generate_cc_references.py": "7d15fa530d7ebac2e1a28e9f83ff64fc03ca98752f4a37c46a3a2c5b85bf70c3",
+        "tools/validate_cc.py": "cbc4616c4a7197e127836e556ca0dc250d0162ad59a069d68702d307e9312ada",
+        "tools/vibeqc_cc/__init__.py": "c609edfe53329869923d26542a75e1802a1a1d759035638d271848cb41172ca3",
+        "tools/vibeqc_cc/equations.py": "e33c3bd6264990cdd4b5dc28b5300231bc0020e7cde4c257bdfdacdf6eeffa22",
+        "tools/vibeqc_cc/evaluate.py": "4923ca7e49e87e8b5987d546ee281500e0c26c3693e701a714b7150ebabb54b9",
+        "tools/vibeqc_cc/inventory.py": "24310a7ff7270d7a7b07febc794c560fc382fa4b0cdc223612a8e6cbc1faa820",
+        "tools/vibeqc_cc/oracle.py": "fafc44841b6012d86718aab2e0ec090bf5e7547dd4330208e0cb70f1e9bdfbf7",
+        "tools/vibeqc_tensor/__init__.py": "8f642a5d2887a29f02c98adf3ab6a214627c68139c1fe48dadcfb0b4a00af303",
+        "tools/vibeqc_tensor/cuda_batch.py": "ddb0b5d5a3db32fae842c123f9b228279661f92c70b5831f3c83313716b12963",
+        "tools/vibeqc_tensor/cuda_emit.py": "a91bc10fe593760577fe95326d20ddec8fc421505ed3e77275af1c0005c6e343",
+        "tools/vibeqc_tensor/cuda_execute.py": "35ac45a04a2717e3ee435f6ccd64db876cef777ff375c163f8fef4bc5d0c3b82",
+        "tools/vibeqc_tensor/cuda_fixtures.py": "d7743c61f06ad2f505c48de83db90071d2e2c700797a68c6951e43a6847e5588",
+        "tools/vibeqc_tensor/cuda_gemm.py": "46822e14f66dc7475ff3da29d53d6a5d965c1457e7b287bc5e371c5b8c1ffb90",
+        "tools/vibeqc_tensor/cuda_plan.py": "7787af5966e29690a265c0edfaa8641c203c6fd09b82c290dac3d9ecbd905713",
+        "tools/vibeqc_tensor/cuda_resources.py": "194b9b10cf5a98ab3c4c582cf24b63aa776740c8596ab074d4a20ab665ea48c8",
+        "tools/vibeqc_tensor/cuda_tune.py": "6f61b7ea7162f9f82b03bf679bdcbd887de7bb723e7d5ad726fa87019089da6b",
+        "tools/vibeqc_tensor/examples.py": "ac4661e8a0df976cac8960fb02c7387ff7dbe675f61925321a89717580b80915",
+        "tools/vibeqc_tensor/interpreter.py": "19511ba9ed4e399bdc63dee93bccaf0abb4d848c1fa42a2c1ef04f9e02ac5a85",
+        "tools/vibeqc_tensor/ir.py": "5c16550617c5251de68b039d21e0db9a77d2dd8c5203966e029ea33b051633f4",
+        "tools/vibeqc_tensor/optimize.py": "fc829cbca0cd743c48b9e2aa55e89e0aa55490063cf0d29f6b1da80ef8aecda4",
+        "tools/vibeqc_tensor/oracles.py": "7935eeab7bff5e7174c37e93195552301f58d5ce69bff3018d6e7fbeb649f601",
+        "tools/vibeqc_tensor/packing.py": "73c6f46678bfb1f4e14fd71798ee2e2e53c76ae34c1299f28899bc563f56d852",
+        "tools/vibeqc_tensor/program.py": "03643c38e6f7c6e0b74040e4bdd40df450e3b5c5498a9cb7e6947e19acf7e956",
+        "tools/vibeqc_tensor/types.py": "e173219652cb3f4ef63352b1355654b410ca495d0901c9d94b189e65964520ac"
+      },
+      "upstream": {
+        "files": [
+          {
+            "path": "pyscf/cc/rccsd.py",
+            "sha256": "35391234363b6ae26893891e18c468e636458ac209bfdad9606c15112457a552",
+            "url": "https://raw.githubusercontent.com/pyscf/pyscf/v2.14.0/pyscf/cc/rccsd.py"
+          },
+          {
+            "path": "pyscf/cc/rintermediates.py",
+            "sha256": "c7f3311b15c3482315bc5c8aaf570334dd71170c4b9a901ad6968bd97c903666",
+            "url": "https://raw.githubusercontent.com/pyscf/pyscf/v2.14.0/pyscf/cc/rintermediates.py"
+          }
+        ],
+        "license": "Apache-2.0",
+        "version": "2.14.0"
+      }
+    },
+    "solver_iterations": [],
+    "solver_trace_reason": "not exposed by executor",
+    "stages": {
+      "compilation": {
+        "reason": "not a compiled CC method or converged CCSD endpoint",
+        "status": "not-run"
+      },
+      "endpoint": {
+        "reason": "not a compiled CC method or converged CCSD endpoint",
+        "status": "not-run"
+      },
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "production": {
+        "reason": "not a compiled CC method or converged CCSD endpoint",
+        "status": "not-run"
+      },
+      "representation": {
+        "reason": null,
+        "status": "pass"
+      },
+      "source": {
+        "reason": "not a compiled CC method or converged CCSD endpoint",
+        "status": "not-run"
+      }
+    },
+    "subject": "RCCSD-A/pyscf-h2",
+    "tier": "cpu",
+    "timings": [],
+    "toolchain": {
+      "numpy": "2.2.6",
+      "python": "3.11.16"
+    }
+  },
+  {
+    "attachments": [],
+    "backend_selected": "numpy-cpu-interpreter",
+    "block_errors": {
+      "optimized/correlation_energy": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 2.6020852139652106e-18,
+        "max_scaled_error": 2.5388653450019866e-07,
+        "passed": true,
+        "rms_error": 2.6020852139652106e-18,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "optimized/singles_residual": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 6.661338147750939e-16,
+        "max_scaled_error": 3.3662156064104947e-06,
+        "passed": true,
+        "rms_error": 2.1200137857526836e-16,
+        "rtol": 1e-10,
+        "shape": [
+          5,
+          2
+        ]
+      },
+      "original/correlation_energy": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 2.6020852139652106e-18,
+        "max_scaled_error": 2.5388653450019866e-07,
+        "passed": true,
+        "rms_error": 2.6020852139652106e-18,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "original/singles_residual": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 6.661338147750939e-16,
+        "max_scaled_error": 3.3662156064104947e-06,
+        "passed": true,
+        "rms_error": 2.1200137857526836e-16,
+        "rtol": 1e-10,
+        "shape": [
+          5,
+          2
+        ]
+      },
+      "replay/correlation_energy": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 2.6020852139652106e-18,
+        "max_scaled_error": 2.5388653450019866e-07,
+        "passed": true,
+        "rms_error": 2.6020852139652106e-18,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "replay/singles_residual": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 6.661338147750939e-16,
+        "max_scaled_error": 3.3662156064104947e-06,
+        "passed": true,
+        "rms_error": 2.1200137857526836e-16,
+        "rtol": 1e-10,
+        "shape": [
+          5,
+          2
+        ]
+      }
+    },
+    "compilation": {
+      "reason": "not measured",
+      "seconds": null
+    },
+    "device": {
+      "kind": "cpu",
+      "machine": "x86_64"
+    },
+    "hardware": {
+      "reason": null,
+      "status": "pass"
+    },
+    "hash_reasons": {
+      "schedule": "CPU equation interpreter; no compiled CC schedule"
+    },
+    "hashes": {
+      "equation": "06b7ebc8c60597529506c75adbdee11bc20a23c0e4dd310c887d5eefa69a3e37",
+      "ir": "500418ad0338ab184346ba6dfdc138c2059b6c7bf9143ad0582ff893547b1d24",
+      "schedule": null,
+      "source": "7b53dedf24172e221822d81d55254363f4ed48af4023708e917f6bb6e27adf24"
+    },
+    "inputs_hash": "1ab90b10e1d672a0d8d6d73a9f6604ff5acf99989920d71c2f0a39df32dfaee6",
+    "memory": {
+      "allocated_bytes": null,
+      "peak_bytes": null,
+      "reason": "not measured"
+    },
+    "performance": {
+      "reason": "no comparison registered",
+      "status": "not-run"
+    },
+    "residuals": {},
+    "revision": "1e93c3cfa10afdf99ee26c70312bcfe533114331",
+    "schema": "vibeqc.validation",
+    "schema_version": 1,
+    "settings": {
+      "dirty": true,
+      "reference": "pinned PySCF 2.14.0",
+      "reference_file_sha256": "4487858606fabe17cc0edfe814c667630bb4d4c7f74d1d6a7b7f24d6e0589449",
+      "scope": "fixed-amplitude energy and T1 only",
+      "source_files": {
+        "tools/generate_cc_references.py": "7d15fa530d7ebac2e1a28e9f83ff64fc03ca98752f4a37c46a3a2c5b85bf70c3",
+        "tools/validate_cc.py": "cbc4616c4a7197e127836e556ca0dc250d0162ad59a069d68702d307e9312ada",
+        "tools/vibeqc_cc/__init__.py": "c609edfe53329869923d26542a75e1802a1a1d759035638d271848cb41172ca3",
+        "tools/vibeqc_cc/equations.py": "e33c3bd6264990cdd4b5dc28b5300231bc0020e7cde4c257bdfdacdf6eeffa22",
+        "tools/vibeqc_cc/evaluate.py": "4923ca7e49e87e8b5987d546ee281500e0c26c3693e701a714b7150ebabb54b9",
+        "tools/vibeqc_cc/inventory.py": "24310a7ff7270d7a7b07febc794c560fc382fa4b0cdc223612a8e6cbc1faa820",
+        "tools/vibeqc_cc/oracle.py": "fafc44841b6012d86718aab2e0ec090bf5e7547dd4330208e0cb70f1e9bdfbf7",
+        "tools/vibeqc_tensor/__init__.py": "8f642a5d2887a29f02c98adf3ab6a214627c68139c1fe48dadcfb0b4a00af303",
+        "tools/vibeqc_tensor/cuda_batch.py": "ddb0b5d5a3db32fae842c123f9b228279661f92c70b5831f3c83313716b12963",
+        "tools/vibeqc_tensor/cuda_emit.py": "a91bc10fe593760577fe95326d20ddec8fc421505ed3e77275af1c0005c6e343",
+        "tools/vibeqc_tensor/cuda_execute.py": "35ac45a04a2717e3ee435f6ccd64db876cef777ff375c163f8fef4bc5d0c3b82",
+        "tools/vibeqc_tensor/cuda_fixtures.py": "d7743c61f06ad2f505c48de83db90071d2e2c700797a68c6951e43a6847e5588",
+        "tools/vibeqc_tensor/cuda_gemm.py": "46822e14f66dc7475ff3da29d53d6a5d965c1457e7b287bc5e371c5b8c1ffb90",
+        "tools/vibeqc_tensor/cuda_plan.py": "7787af5966e29690a265c0edfaa8641c203c6fd09b82c290dac3d9ecbd905713",
+        "tools/vibeqc_tensor/cuda_resources.py": "194b9b10cf5a98ab3c4c582cf24b63aa776740c8596ab074d4a20ab665ea48c8",
+        "tools/vibeqc_tensor/cuda_tune.py": "6f61b7ea7162f9f82b03bf679bdcbd887de7bb723e7d5ad726fa87019089da6b",
+        "tools/vibeqc_tensor/examples.py": "ac4661e8a0df976cac8960fb02c7387ff7dbe675f61925321a89717580b80915",
+        "tools/vibeqc_tensor/interpreter.py": "19511ba9ed4e399bdc63dee93bccaf0abb4d848c1fa42a2c1ef04f9e02ac5a85",
+        "tools/vibeqc_tensor/ir.py": "5c16550617c5251de68b039d21e0db9a77d2dd8c5203966e029ea33b051633f4",
+        "tools/vibeqc_tensor/optimize.py": "fc829cbca0cd743c48b9e2aa55e89e0aa55490063cf0d29f6b1da80ef8aecda4",
+        "tools/vibeqc_tensor/oracles.py": "7935eeab7bff5e7174c37e93195552301f58d5ce69bff3018d6e7fbeb649f601",
+        "tools/vibeqc_tensor/packing.py": "73c6f46678bfb1f4e14fd71798ee2e2e53c76ae34c1299f28899bc563f56d852",
+        "tools/vibeqc_tensor/program.py": "03643c38e6f7c6e0b74040e4bdd40df450e3b5c5498a9cb7e6947e19acf7e956",
+        "tools/vibeqc_tensor/types.py": "e173219652cb3f4ef63352b1355654b410ca495d0901c9d94b189e65964520ac"
+      },
+      "upstream": {
+        "files": [
+          {
+            "path": "pyscf/cc/rccsd.py",
+            "sha256": "35391234363b6ae26893891e18c468e636458ac209bfdad9606c15112457a552",
+            "url": "https://raw.githubusercontent.com/pyscf/pyscf/v2.14.0/pyscf/cc/rccsd.py"
+          },
+          {
+            "path": "pyscf/cc/rintermediates.py",
+            "sha256": "c7f3311b15c3482315bc5c8aaf570334dd71170c4b9a901ad6968bd97c903666",
+            "url": "https://raw.githubusercontent.com/pyscf/pyscf/v2.14.0/pyscf/cc/rintermediates.py"
+          }
+        ],
+        "license": "Apache-2.0",
+        "version": "2.14.0"
+      }
+    },
+    "solver_iterations": [],
+    "solver_trace_reason": "not exposed by executor",
+    "stages": {
+      "compilation": {
+        "reason": "not a compiled CC method or converged CCSD endpoint",
+        "status": "not-run"
+      },
+      "endpoint": {
+        "reason": "not a compiled CC method or converged CCSD endpoint",
+        "status": "not-run"
+      },
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "production": {
+        "reason": "not a compiled CC method or converged CCSD endpoint",
+        "status": "not-run"
+      },
+      "representation": {
+        "reason": null,
+        "status": "pass"
+      },
+      "source": {
+        "reason": "not a compiled CC method or converged CCSD endpoint",
+        "status": "not-run"
+      }
+    },
+    "subject": "RCCSD-A/pyscf-water",
+    "tier": "cpu",
+    "timings": [],
+    "toolchain": {
+      "numpy": "2.2.6",
+      "python": "3.11.16"
+    }
+  },
+  {
+    "attachments": [],
+    "backend_selected": "numpy-cpu-interpreter",
+    "block_errors": {
+      "optimized/correlation_energy": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 4.336808689942018e-19,
+        "max_scaled_error": 4.2055295719226786e-08,
+        "passed": true,
+        "rms_error": 4.336808689942018e-19,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "optimized/singles_residual": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 1.1102230246251565e-16,
+        "max_scaled_error": 2.0614787553844642e-06,
+        "passed": true,
+        "rms_error": 4.634504588219202e-17,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          4
+        ]
+      },
+      "original/correlation_energy": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 4.336808689942018e-19,
+        "max_scaled_error": 4.2055295719226786e-08,
+        "passed": true,
+        "rms_error": 4.336808689942018e-19,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "original/singles_residual": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 1.1102230246251565e-16,
+        "max_scaled_error": 2.0614787553844642e-06,
+        "passed": true,
+        "rms_error": 4.634504588219202e-17,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          4
+        ]
+      },
+      "replay/correlation_energy": {
+        "absolute_gate": 1e-08,
+        "atol": 1e-11,
+        "max_absolute_error": 4.336808689942018e-19,
+        "max_scaled_error": 4.2055295719226786e-08,
+        "passed": true,
+        "rms_error": 4.336808689942018e-19,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "replay/singles_residual": {
+        "absolute_gate": 1e-09,
+        "atol": 1e-11,
+        "max_absolute_error": 1.1102230246251565e-16,
+        "max_scaled_error": 2.0614787553844642e-06,
+        "passed": true,
+        "rms_error": 4.634504588219202e-17,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          4
+        ]
+      }
+    },
+    "compilation": {
+      "reason": "not measured",
+      "seconds": null
+    },
+    "device": {
+      "kind": "cpu",
+      "machine": "x86_64"
+    },
+    "hardware": {
+      "reason": null,
+      "status": "pass"
+    },
+    "hash_reasons": {
+      "schedule": "CPU equation interpreter; no compiled CC schedule"
+    },
+    "hashes": {
+      "equation": "360d7cec658fb6cc7aefd456ea0025d53cbfd7b43fbbbf490c4ebd81efc13b09",
+      "ir": "b977987b4400cffd6898e85b4a0f846e934051f56efee5019f44e9606b40b9c3",
+      "schedule": null,
+      "source": "7b53dedf24172e221822d81d55254363f4ed48af4023708e917f6bb6e27adf24"
+    },
+    "inputs_hash": "a2b26fcee836260e049d9e9464fd00d40f3fb3d2ce085d1fa35b6763aad92154",
+    "memory": {
+      "allocated_bytes": null,
+      "peak_bytes": null,
+      "reason": "not measured"
+    },
+    "performance": {
+      "reason": "no comparison registered",
+      "status": "not-run"
+    },
+    "residuals": {},
+    "revision": "1e93c3cfa10afdf99ee26c70312bcfe533114331",
+    "schema": "vibeqc.validation",
+    "schema_version": 1,
+    "settings": {
+      "dirty": true,
+      "reference": "pinned PySCF 2.14.0",
+      "reference_file_sha256": "4487858606fabe17cc0edfe814c667630bb4d4c7f74d1d6a7b7f24d6e0589449",
+      "scope": "fixed-amplitude energy and T1 only",
+      "source_files": {
+        "tools/generate_cc_references.py": "7d15fa530d7ebac2e1a28e9f83ff64fc03ca98752f4a37c46a3a2c5b85bf70c3",
+        "tools/validate_cc.py": "cbc4616c4a7197e127836e556ca0dc250d0162ad59a069d68702d307e9312ada",
+        "tools/vibeqc_cc/__init__.py": "c609edfe53329869923d26542a75e1802a1a1d759035638d271848cb41172ca3",
+        "tools/vibeqc_cc/equations.py": "e33c3bd6264990cdd4b5dc28b5300231bc0020e7cde4c257bdfdacdf6eeffa22",
+        "tools/vibeqc_cc/evaluate.py": "4923ca7e49e87e8b5987d546ee281500e0c26c3693e701a714b7150ebabb54b9",
+        "tools/vibeqc_cc/inventory.py": "24310a7ff7270d7a7b07febc794c560fc382fa4b0cdc223612a8e6cbc1faa820",
+        "tools/vibeqc_cc/oracle.py": "fafc44841b6012d86718aab2e0ec090bf5e7547dd4330208e0cb70f1e9bdfbf7",
+        "tools/vibeqc_tensor/__init__.py": "8f642a5d2887a29f02c98adf3ab6a214627c68139c1fe48dadcfb0b4a00af303",
+        "tools/vibeqc_tensor/cuda_batch.py": "ddb0b5d5a3db32fae842c123f9b228279661f92c70b5831f3c83313716b12963",
+        "tools/vibeqc_tensor/cuda_emit.py": "a91bc10fe593760577fe95326d20ddec8fc421505ed3e77275af1c0005c6e343",
+        "tools/vibeqc_tensor/cuda_execute.py": "35ac45a04a2717e3ee435f6ccd64db876cef777ff375c163f8fef4bc5d0c3b82",
+        "tools/vibeqc_tensor/cuda_fixtures.py": "d7743c61f06ad2f505c48de83db90071d2e2c700797a68c6951e43a6847e5588",
+        "tools/vibeqc_tensor/cuda_gemm.py": "46822e14f66dc7475ff3da29d53d6a5d965c1457e7b287bc5e371c5b8c1ffb90",
+        "tools/vibeqc_tensor/cuda_plan.py": "7787af5966e29690a265c0edfaa8641c203c6fd09b82c290dac3d9ecbd905713",
+        "tools/vibeqc_tensor/cuda_resources.py": "194b9b10cf5a98ab3c4c582cf24b63aa776740c8596ab074d4a20ab665ea48c8",
+        "tools/vibeqc_tensor/cuda_tune.py": "6f61b7ea7162f9f82b03bf679bdcbd887de7bb723e7d5ad726fa87019089da6b",
+        "tools/vibeqc_tensor/examples.py": "ac4661e8a0df976cac8960fb02c7387ff7dbe675f61925321a89717580b80915",
+        "tools/vibeqc_tensor/interpreter.py": "19511ba9ed4e399bdc63dee93bccaf0abb4d848c1fa42a2c1ef04f9e02ac5a85",
+        "tools/vibeqc_tensor/ir.py": "5c16550617c5251de68b039d21e0db9a77d2dd8c5203966e029ea33b051633f4",
+        "tools/vibeqc_tensor/optimize.py": "fc829cbca0cd743c48b9e2aa55e89e0aa55490063cf0d29f6b1da80ef8aecda4",
+        "tools/vibeqc_tensor/oracles.py": "7935eeab7bff5e7174c37e93195552301f58d5ce69bff3018d6e7fbeb649f601",
+        "tools/vibeqc_tensor/packing.py": "73c6f46678bfb1f4e14fd71798ee2e2e53c76ae34c1299f28899bc563f56d852",
+        "tools/vibeqc_tensor/program.py": "03643c38e6f7c6e0b74040e4bdd40df450e3b5c5498a9cb7e6947e19acf7e956",
+        "tools/vibeqc_tensor/types.py": "e173219652cb3f4ef63352b1355654b410ca495d0901c9d94b189e65964520ac"
+      },
+      "upstream": {
+        "files": [
+          {
+            "path": "pyscf/cc/rccsd.py",
+            "sha256": "35391234363b6ae26893891e18c468e636458ac209bfdad9606c15112457a552",
+            "url": "https://raw.githubusercontent.com/pyscf/pyscf/v2.14.0/pyscf/cc/rccsd.py"
+          },
+          {
+            "path": "pyscf/cc/rintermediates.py",
+            "sha256": "c7f3311b15c3482315bc5c8aaf570334dd71170c4b9a901ad6968bd97c903666",
+            "url": "https://raw.githubusercontent.com/pyscf/pyscf/v2.14.0/pyscf/cc/rintermediates.py"
+          }
+        ],
+        "license": "Apache-2.0",
+        "version": "2.14.0"
+      }
+    },
+    "solver_iterations": [],
+    "solver_trace_reason": "not exposed by executor",
+    "stages": {
+      "compilation": {
+        "reason": "not a compiled CC method or converged CCSD endpoint",
+        "status": "not-run"
+      },
+      "endpoint": {
+        "reason": "not a compiled CC method or converged CCSD endpoint",
+        "status": "not-run"
+      },
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "production": {
+        "reason": "not a compiled CC method or converged CCSD endpoint",
+        "status": "not-run"
+      },
+      "representation": {
+        "reason": null,
+        "status": "pass"
+      },
+      "source": {
+        "reason": "not a compiled CC method or converged CCSD endpoint",
+        "status": "not-run"
+      }
+    },
+    "subject": "RCCSD-A/pyscf-lih",
+    "tier": "cpu",
+    "timings": [],
+    "toolchain": {
+      "numpy": "2.2.6",
+      "python": "3.11.16"
+    }
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "prior_worktree": "D:\\Users\\Lenovo\\Desktop\\My_ViveQC\\wt-cc",
+  "source_hashes": {
+    "D:\\Users\\Lenovo\\Desktop\\My_ViveQC\\wt-cc\\tools\\vibeqc_cc\\equations.py": "babd4938dae205a9c0094cb3bbc0029c7f521ead342493fa99a04f40e5835241",
+    "D:\\Users\\Lenovo\\Desktop\\My_ViveQC\\wt-cc\\tools\\rccsd_determinant_reference.py": "7a424192e96d1b7c916363cb72a285142b6aad3335f790a3ada06d37f740011d"
+  },
+  "all_35_contractions_identical": true,
+  "independent_oracles_group_errors": {
+    "energy_t1": 0.0,
+    "energy_t2": 1.3877787807814457e-17,
+    "energy_t1t1": 4.336808689942018e-19,
+    "t1_fock": 1.6653345369377348e-16,
+    "t1_g_t1": 6.938893903907228e-18,
+    "t1_g_t2": 6.938893903907228e-17,
+    "t1_g_t1t1": 3.382710778154774e-17,
+    "t1_g_t1t2": 2.6020852139652106e-17,
+    "t1_g_t1cubed": 1.0130514049161432e-18,
+    "energy": 1.3877787807814457e-17,
+    "t1_residual": 1.3877787807814457e-16
+  },
+  "prior_files_modified": false
+}

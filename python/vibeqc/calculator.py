@@ -15,6 +15,7 @@ from pathlib import Path
 import numpy as np
 
 from . import _native
+from .accuracy import AccuracyAssessment, ResolvedModel, TargetAccuracy
 from .basis import BasisProvenance, BasisSet, BasisShell, ElementBasis, load_basis
 from .basis_capabilities import require_basis, resolved_basis_metadata
 from .elements import atomic_number as element_number
@@ -78,6 +79,7 @@ class Result:
     density_rms: float
     executed_backend: str
     basis_metadata: dict = field(default_factory=dict)
+    accuracy: AccuracyAssessment | None = None
 
 
 @dataclass(frozen=True)
@@ -270,6 +272,7 @@ class Calculator:
         density_tolerance: float = 1.0e-8,
         diis_history: int = 8,
         screening_tolerance: float = 1.0e-12,
+        target_accuracy: TargetAccuracy | None = None,
     ) -> None:
         """Create a calculator, optionally selecting CPU or CUDA DF.
 
@@ -277,7 +280,17 @@ class Calculator:
         CUDA DF.  Positive values select smaller auxiliary tiles (and stream
         transformed three-center values when needed); zero uses the backend's
         default policy.
+
+        ``target_accuracy`` requests observable diagnostics independently of
+        iteration convergence. Until an explicit audit/estimator is attached,
+        successful results report ``unverified`` and numerical defaults remain
+        unchanged. It never certifies an error from ``energy_tolerance``.
         """
+        if target_accuracy is not None and not isinstance(
+            target_accuracy, TargetAccuracy
+        ):
+            raise TypeError("target_accuracy must be a TargetAccuracy contract")
+        self._target_accuracy = target_accuracy
         if method.lower() not in _METHODS:
             raise ValueError(f"unknown method {method!r}")
         if device not in {"cpu", "cuda"}:
@@ -471,6 +484,13 @@ class Calculator:
                 "density_fitting": self._density_fitting_mode,
                 "df_threshold": self._density_fitting_relative_threshold,
                 "screening": self._screening_tolerance,
+                "energy_tolerance": self._energy_tolerance,
+                "density_tolerance": self._density_tolerance,
+                "max_iterations": self._max_iterations,
+                "diis_history": self._diis_history,
+                "target_accuracy": self._target_accuracy.to_dict()
+                if self._target_accuracy
+                else None,
             }
         )
 
@@ -510,6 +530,59 @@ class Calculator:
             }
         )
         return result
+
+    def resolved_model(self, atoms, *, charge=0, multiplicity=1) -> ResolvedModel:
+        """Resolve the scientific HF identity for accuracy comparisons.
+
+        Unlike a prepared-plan signature, this identity excludes execution
+        backend, iteration tolerances, screening and schedules. Fitting and its
+        actual auxiliary basis remain mathematical choices. This method only
+        resolves compact basis metadata; it performs no integral/SCF work.
+        """
+        atoms = tuple(Atom.from_value(atom) for atom in atoms)
+        self._preflight_hf_basis(atoms)
+        metadata = self.basis_metadata(atoms, charge=charge, multiplicity=multiplicity)
+        orbital = metadata["orbital"]
+        fitted = self._density_fitting_mode != _native.DENSITY_FITTING_NONE
+        # HF's native default uses the orbital system as the auxiliary system.
+        # An AUTO provider may choose a backend, but never changes this model.
+        auxiliary = metadata.get("auxiliary", orbital) if fitted else None
+        return ResolvedModel(
+            method={_native.METHOD_RHF: "rhf", _native.METHOD_UHF: "uhf"}[self._method],
+            geometry_hash=canonical_hash(
+                [
+                    (
+                        a.atomic_number,
+                        tuple(float(x).hex() if x else "0x0.0p+0" for x in a.position),
+                    )
+                    for a in atoms
+                ]
+            ),
+            basis_hash=orbital["mathematical_identity"],
+            electron_count=orbital["electrons"]["electron_count"],
+            charge=charge,
+            multiplicity=multiplicity,
+            representation="real_spherical"
+            if self._representation_name == "spherical"
+            else "cartesian",
+            approximation="density_fitting" if fitted else "conventional",
+            auxiliary_basis_hash=auxiliary["mathematical_identity"]
+            if auxiliary
+            else None,
+            metric_relative_threshold=self._density_fitting_relative_threshold
+            if fitted
+            else None,
+        )
+
+    def _accuracy_assessment(self, atoms, charge, multiplicity, converged):
+        """Attach a request without inventing operator audits or certificates."""
+        if self._target_accuracy is None:
+            return None
+        return AccuracyAssessment(
+            self.resolved_model(atoms, charge=charge, multiplicity=multiplicity),
+            self._target_accuracy,
+            converged=converged,
+        )
 
     def _preflight_hf_basis(self, atoms):
         """Check the value and force operators needed by a public HF endpoint.
@@ -746,6 +819,12 @@ class Calculator:
                 executed_backend=backend,
                 basis_metadata=self.basis_metadata(
                     native_atoms, charge=charge, multiplicity=multiplicity
+                ),
+                accuracy=self._accuracy_assessment(
+                    native_atoms,
+                    charge,
+                    multiplicity,
+                    bool(result_descriptor.converged),
                 ),
             )
         finally:

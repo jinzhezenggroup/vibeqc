@@ -101,22 +101,16 @@ def _evaluate(node: Node, operands: list[np.ndarray], feeds: Mapping) -> np.ndar
     raise ValueError(f"unsupported interpreter primitive: {op}")
 
 
-def execute(
+def _run(
     program: Program,
     feeds: Mapping,
     *,
-    debug: bool = False,
-    max_bytes: int = 256 * 1024 * 1024,
-) -> Execution:
-    """Evaluate live nodes in order, checking shapes, dtypes, and finiteness.
-
-    Noncontiguous/negative-stride input arrays and read-only views are legal.
-    Feed dictionaries may contain unused inputs so original and optimized
-    programs share a fixture. Returned arrays never alias each other, inputs,
-    or interpreter views. Every output/debug entry is an independent snapshot.
-    """
+    debug: bool,
+    max_bytes: int,
+) -> tuple[dict[Node, np.ndarray], dict[str, np.ndarray], int]:
+    """Shared single-pass evaluator used by execution and derivative rules."""
     if not isinstance(program, Program) or not isinstance(feeds, Mapping):
-        raise TypeError("execute requires a Program and input mapping")
+        raise TypeError("tensor evaluation requires a Program and input mapping")
     checked_size(max_bytes, "interpreter byte budget")
     nodes = program.live_nodes
     retained = sum(n.spec.size * n.spec.itemsize for n in nodes)
@@ -152,6 +146,41 @@ def execute(
             values[node] = value
             if debug:
                 snapshots[names[node]] = value.copy()
+    return values, snapshots, retained
+
+
+def evaluate_nodes(
+    program: Program,
+    feeds: Mapping,
+    *,
+    max_bytes: int = 256 * 1024 * 1024,
+) -> dict[Node, np.ndarray]:
+    """Return one read-only primal value per live SSA node.
+
+    This is the internal execution snapshot consumed by derivative rules.  It
+    is deliberately not a public result object: callers must treat every array
+    as immutable and must not retain it after the next evaluation, because
+    values may be views into interpreter-owned storage.
+    """
+    values, _, _ = _run(program, feeds, debug=False, max_bytes=max_bytes)
+    return values
+
+
+def execute(
+    program: Program,
+    feeds: Mapping,
+    *,
+    debug: bool = False,
+    max_bytes: int = 256 * 1024 * 1024,
+) -> Execution:
+    """Evaluate live nodes in order, checking shapes, dtypes, and finiteness.
+
+    Noncontiguous/negative-stride input arrays and read-only views are legal.
+    Feed dictionaries may contain unused inputs so original and optimized
+    programs share a fixture. Returned arrays never alias each other, inputs,
+    or interpreter views. Every output/debug entry is an independent snapshot.
+    """
+    values, snapshots, retained = _run(program, feeds, debug=debug, max_bytes=max_bytes)
     return Execution(
         {name: values[node].copy() for name, node in program.outputs.items()},
         snapshots,

@@ -1,0 +1,16 @@
+docs/rccsd.md: OK
+tests/python/test_cc_equations.py: OK
+tests/python/test_cc_provenance.py: OK
+tests/python/test_cc_references.py: OK
+tests/reference_data/cc/equations-2o2v.json: OK
+tests/reference_data/cc/rccsd-a.json: OK
+tools/generate_cc_references.py: OK
+tools/validate_cc.py: OK
+tools/vibeqc_cc/LICENSE.pyscf: OK
+tools/vibeqc_cc/NOTICE: OK
+tools/vibeqc_cc/__init__.py: OK
+tools/vibeqc_cc/equations.py: OK
+tools/vibeqc_cc/evaluate.py: OK
+tools/vibeqc_cc/inventory.py: OK
+tools/vibeqc_cc/oracle.py: OK
+tools/vibeqc_cc/source_manifest.json: OK

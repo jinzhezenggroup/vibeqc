@@ -18203,6 +18203,13 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
     const ScfOptions& requested_options,
     const std::vector<const std::vector<double>*>& initial_densities, int device_id,
     bool unrestricted, bool shell_class_profiling, bool inactive_eigensolver_profiling) {
+  if (requested_options.hooks || requested_options.strict_initial_density) {
+    // Host callbacks are an explicit CPU capability, never a device fallback.
+    std::vector<RhfBucketItem> outputs(systems.size());
+    fill_global_failure(outputs, VIBEQC_STATUS_NOT_IMPLEMENTED);
+    return outputs;
+  }
+
   // Resolve legacy internal callers once per prepared execution, before any
   // device setup. Fock kernels and final exact force assembly share this guard.
   ScfOptions execution_options = requested_options;
@@ -18223,6 +18230,7 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
     return outputs;
   }
   const ScfOptions& options = execution_options;
+
   if (plan == nullptr) {
     std::vector<RhfBucketItem> outputs(systems.size());
     fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
@@ -19520,6 +19528,9 @@ std::vector<RhfBucketItem> run_uhf_cuda_bucket(
 
 ScfResult run_rhf_cuda(const core::System& system, const ScfOptions& options, int device_id,
                        const std::vector<double>* initial_density) {
+  if (options.hooks || options.strict_initial_density)
+    throw std::invalid_argument("SCF proposal callbacks require the CPU reference backend");
+
   const std::vector<core::System> systems{system};
   const std::vector<const std::vector<double>*> initial_densities{initial_density};
   std::vector<RhfBucketItem> result =
@@ -19537,6 +19548,9 @@ ScfResult run_rhf_cuda(const core::System& system, const ScfOptions& options, in
 
 ScfResult run_uhf_cuda(const core::System& system, const ScfOptions& options, int device_id,
                        const std::vector<double>* initial_density) {
+  if (options.hooks || options.strict_initial_density)
+    throw std::invalid_argument("SCF proposal callbacks require the CPU reference backend");
+
   const std::vector<core::System> systems{system};
   const std::vector<const std::vector<double>*> initial_densities{initial_density};
   std::vector<RhfBucketItem> result =

@@ -24,6 +24,7 @@ from tools.vibeqc_tensor import (
     broadcast,
     constant,
     divide,
+    einsum,
     gather,
     input_tensor,
     multiply,
@@ -31,6 +32,7 @@ from tools.vibeqc_tensor import (
     reshape,
     slice_tensor,
     transpose,
+    transpose_program,
 )
 from tools.vibeqc_tensor.cuda_execute import PreparedCuda, compile_cuda
 from tools.vibeqc_tensor.cuda_plan import Reservations, TensorSchedule, plan_cuda
@@ -78,6 +80,43 @@ def check(program, feeds, compiler, cache, schedule=None, **options):
             assert result.metrics["provider_retained_bytes"] <= plan.provider_bytes
             assert result.metrics["predicted_peak_bytes"] <= plan.max_bytes
         return result
+
+
+@pytest.mark.parametrize("case", ["diagonal", "named_inputs", "inactive_operand"])
+def test_generated_vjp_review_regressions_on_cuda(case, compiler, cache):
+    """Check generated adjoints against analytic results on the real backend."""
+    if case == "named_inputs":
+        spec = TensorSpec((), role="parameter", differentiable=True)
+        first, second = input_tensor("x", spec), input_tensor("x", spec)
+        primal = Program({"out": add(multiply(first, first), second)})
+        generated = transpose_program(primal, ["out"], inputs=["x"])
+        feeds = {"x": np.asarray(3.0), "bar_out": np.asarray(2.0)}
+        output, expected = "bar_x", np.asarray(14.0)
+    else:
+        space = IndexSpace("o", "occupied", 3)
+        matrix = input_tensor(
+            "A",
+            TensorSpec(
+                (Index("i", space), Index("j", space)),
+                role="parameter",
+                differentiable=True,
+            ),
+        )
+        if case == "diagonal":
+            primal = Program({"out": einsum("ii->i", matrix)})
+            generated = transpose_program(primal, ["out"], inputs=["A"])
+            feeds = {"bar_out": np.array([2.0, 3.0, 4.0])}
+            output, expected = "bar_A", np.diag(feeds["bar_out"])
+        else:
+            scalar = input_tensor(
+                "x", TensorSpec((), role="parameter", differentiable=True)
+            )
+            primal = Program({"out": einsum("ii,->", matrix, scalar)})
+            generated = transpose_program(primal, ["out"], inputs=["x"], max_elements=0)
+            feeds = {"A": np.eye(3), "bar_out": np.asarray(2.0)}
+            output, expected = "bar_x", np.asarray(6.0)
+    result = check(generated.program, feeds, compiler, cache)
+    np.testing.assert_array_equal(result.outputs[output], expected)
 
 
 @pytest.mark.parametrize("case", example_cases(), ids=lambda c: c.name)

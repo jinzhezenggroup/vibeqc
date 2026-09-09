@@ -129,13 +129,13 @@ jobs:
           -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache
       - name: Compile production CUDA build
         run: cmake --build --preset cuda-release-sm120 --target vibeqc --parallel 2
-      - name: Check Fock preflight without a GPU
+      - name: Check Fock and proposal preflight without a GPU
         env:
           CUDA_VISIBLE_DEVICES: ""
         run: |
-          cmake --build --preset cuda-release-sm120 --target vibeqc_fock_build_tests --parallel 2
+          cmake --build --preset cuda-release-sm120 --target vibeqc_fock_build_tests vibeqc_scf_proposal_tests --parallel 2
           ctest --test-dir build/cuda-release-sm120 \
-            -R '^vibeqc_fock_build_tests$' --output-on-failure
+            -R '^vibeqc_(fock_build|scf_proposal)_tests$' --output-on-failure
       - name: Show CUDA ccache statistics
         run: ccache --show-stats
       # This is release resource evidence. The production compile-only step
