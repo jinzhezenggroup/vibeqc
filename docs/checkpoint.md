@@ -32,7 +32,8 @@ A saved convergence flag and energy cannot bypass this work.
 The required manifest records ordered nuclei, charge, spin populations, geometry
 and actual basis hashes, AO conventions, all-electron Hamiltonian, direct or RI
 provider identity, auxiliary basis and metric threshold, solver controls,
-precision policy, source backend and basis provenance. Mathematical identity
+precision policy, the resource planner's complete runtime-control inventory,
+source backend and basis provenance. Mathematical identity
 reuses `ResolvedModel` from the accuracy and SCF-state layer. Numerical controls
 are separate from that identity; backend and runtime scheduling are provenance.
 
@@ -161,7 +162,7 @@ srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 \
 
 The same tests cover new-process direct/DF RHF and UHF restart, independent
 PySCF direct energies/forces, both CPU/CUDA transfer directions, geometry changes,
-custom Cartesian/spherical d bases, frozen provenance, invalid source densities,
+custom Cartesian/spherical d/f bases, frozen provenance, invalid source densities,
 provider/model/spin/schema rejection, overflow/corruption, interrupted publication,
 per-slot isolation and resource headroom. Tests deliberately falsify source
 convergence diagnostics while preserving a physically valid nonstationary seed

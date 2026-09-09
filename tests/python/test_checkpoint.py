@@ -390,15 +390,16 @@ def test_native_abi_checks_dimensions_before_allocation(tmp_path):
 
 
 @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
-def test_custom_s_d_basis_roundtrip_and_gauge_independent_seed(
-    tmp_path, representation
+@pytest.mark.parametrize("angular", [2, 3])
+def test_custom_higher_angular_basis_roundtrip_and_gauge_independent_seed(
+    tmp_path, representation, angular
 ):
     from vibeqc import Primitive, Shell
 
     path = tmp_path / "custom"
     basis = (
         Shell(0, 0, (Primitive(1.2, 1.0),)),
-        Shell(0, 2, (Primitive(0.8, 1.0),)),
+        Shell(0, angular, (Primitive(0.8, 1.0),)),
     )
     calculator = calc(basis=basis, basis_representation=representation)
     with calculator.prepare_batch([HE]) as source:
@@ -411,7 +412,12 @@ def test_custom_s_d_basis_roundtrip_and_gauge_independent_seed(
     np.testing.assert_allclose(restored.forces, cold.forces, atol=1e-8, rtol=0)
     # No orbital gauge, virtual columns or DIIS history is part of this schema.
     record = inspect_checkpoint(path).items[0]
-    assert record["seed"]["nbf"] == (7 if representation == "cartesian" else 6)
+    count = (
+        (angular + 1) * (angular + 2) // 2
+        if representation == "cartesian"
+        else 2 * angular + 1
+    )
+    assert record["seed"]["nbf"] == 1 + count
     assert record["model"]["representation"] == (
         "cartesian" if representation == "cartesian" else "real_spherical"
     )
@@ -455,18 +461,23 @@ def test_no_checkpoint_cold_run_remains_available_after_clear(tmp_path):
 @pytest.mark.skipif(
     DEVICE != "cuda", reason="real-GPU cross-backend test runs under Slurm"
 )
-def test_backend_independent_cpu_cuda_restart_both_directions(tmp_path):
+@pytest.mark.parametrize("fitted", [False, True])
+def test_backend_independent_cpu_cuda_restart_both_directions(tmp_path, fitted):
     path = tmp_path / "state"
     for source_device, target_device in (("cpu", "cuda"), ("cuda", "cpu")):
         for method, charge, mult in (("rhf", 0, 1), ("uhf", 1, 2)):
-            with Calculator(device=source_device, method=method).prepare_batch(
-                [H2], charges=[charge], multiplicities=[mult]
-            ) as source:
+            with Calculator(
+                device=source_device,
+                method=method,
+                density_fitting=source_device if fitted else "none",
+            ).prepare_batch([H2], charges=[charge], multiplicities=[mult]) as source:
                 cold = source.execute(strict=True).items[0]
                 source.save_checkpoint(path)
-            with Calculator(device=target_device, method=method).prepare_batch(
-                [H2], charges=[charge], multiplicities=[mult]
-            ) as target:
+            with Calculator(
+                device=target_device,
+                method=method,
+                density_fitting=target_device if fitted else "none",
+            ).prepare_batch([H2], charges=[charge], multiplicities=[mult]) as target:
                 assert (
                     target.load_checkpoint(path)["items"][0]["compatibility"]
                     == "exact_restart"
@@ -536,3 +547,29 @@ def test_checkpoint_respects_a_feasible_current_resource_plan(tmp_path):
         assert actual.restart_origin == "persistent_restart"
         assert actual.energy == pytest.approx(expected.energy, abs=2e-10)
         target.save_checkpoint(path)
+
+
+@pytest.mark.parametrize(
+    "variable",
+    [
+        "VIBEQC_FINAL_FOCK_REBUILD",
+        "VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING",
+        "VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD",
+    ],
+)
+def test_runtime_numerical_policy_changes_require_explicit_warm_restart(
+    tmp_path, monkeypatch, variable
+):
+    path = tmp_path / "state"
+    monkeypatch.delenv(variable, raising=False)
+    save(path)
+    monkeypatch.setenv(variable, "1")
+    with calc().prepare_batch([H2]) as target:
+        with pytest.raises(CheckpointError, match="numerical controls"):
+            target.load_checkpoint(path)
+        report = target.load_checkpoint(path, allow_warm=True)
+        assert report["items"][0]["compatibility"] == "warm_start_compatible"
+        assert os.environ[variable] == "1"
+        target.save_checkpoint(tmp_path / "reexport")
+    source = inspect_checkpoint(tmp_path / "reexport").items[0]
+    assert source["controls"]["runtime_policy"][variable] is None

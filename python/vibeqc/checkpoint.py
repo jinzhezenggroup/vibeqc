@@ -27,6 +27,7 @@ from . import _native
 from .accuracy import ResolvedModel, TargetAccuracy
 from .calculator import Atom
 from .profiles import canonical_hash
+from .resources_hf import _CUDA_SCHEDULE_VARIABLES
 
 _MAGIC = b"VQHFCP01"
 _HEADER = struct.Struct("<8sQ32s")
@@ -109,6 +110,12 @@ def _controls(calc):
         if calc._target_accuracy
         else None,
         "precision_policy": os.environ.get("VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD"),
+        # Share the resource planner's arithmetic/schedule inventory rather
+        # than overlooking a force-screening or final-Fock override. These
+        # remain source controls, separate from backend-independent physics.
+        "runtime_policy": {
+            name: os.environ.get(name) for name in _CUDA_SCHEDULE_VARIABLES
+        },
     }
 
 
@@ -125,7 +132,7 @@ def _validate_controls(controls):
     _keys(
         controls,
         "max_iterations energy_tolerance density_tolerance diis_history "
-        "screening_tolerance target_accuracy precision_policy",
+        "screening_tolerance target_accuracy precision_policy runtime_policy",
         "solver controls",
     )
     for name in ("max_iterations", "diis_history"):
@@ -140,6 +147,14 @@ def _validate_controls(controls):
         controls["precision_policy"], str
     ):
         raise CheckpointError("invalid source precision policy")
+    policy = controls["runtime_policy"]
+    _keys(policy, " ".join(_CUDA_SCHEDULE_VARIABLES), "runtime policy")
+    if any(
+        value is not None and not isinstance(value, str) for value in policy.values()
+    ):
+        raise CheckpointError("invalid source runtime policy")
+    if policy["VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD"] != controls["precision_policy"]:
+        raise CheckpointError("inconsistent source precision policy")
 
 
 def _check_batch(batch):
