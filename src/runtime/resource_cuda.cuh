@@ -11,6 +11,22 @@
 
 namespace vibeqc::runtime {
 
+/** Keep partial device uploads owned across host staging/vector failures.
+ * The callable outlives this noncopyable guard and may also run explicitly
+ * on a status-return path; it must clear released pointers and stream handles.
+ */
+template <class Cleanup>
+class ResourceScopeExit {
+ public:
+  explicit ResourceScopeExit(Cleanup& cleanup) noexcept : cleanup_(cleanup) {}
+  ResourceScopeExit(const ResourceScopeExit&) = delete;
+  ResourceScopeExit& operator=(const ResourceScopeExit&) = delete;
+  ~ResourceScopeExit() { cleanup_(); }
+
+ private:
+  Cleanup& cleanup_;
+};
+
 /** Charge the actual requested CUDA bytes before returning a native pointer.
  * A rejected allocation has the ordinary typed CUDA OOM status. No policy
  * changes the equation or silently selects another backend here.

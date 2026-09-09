@@ -18400,12 +18400,7 @@ vibeqc_status build_cuda_density_fitting_integrals_impl(
       stream = nullptr;
     }
   };
-  // Host staging/vector allocations can throw after device uploads. Keep
-  // every partially prepared allocation owned until normal or exceptional exit.
-  struct UploadScope {
-    decltype(release)& cleanup;
-    ~UploadScope() { cleanup(); }
-  } upload_scope{release};
+  runtime::ResourceScopeExit upload_scope{release};
   auto upload = [&](const void* source, std::size_t bytes) -> void* {
     if (bytes == 0U) return nullptr;
     void* destination = nullptr;
@@ -18702,12 +18697,7 @@ vibeqc_status build_cuda_density_fitting_integrals_batch_impl(
       stream = nullptr;
     }
   };
-  // Host staging/vector allocations can throw after device uploads. Keep
-  // every partially prepared allocation owned until normal or exceptional exit.
-  struct UploadScope {
-    decltype(release)& cleanup;
-    ~UploadScope() { cleanup(); }
-  } upload_scope{release};
+  runtime::ResourceScopeExit upload_scope{release};
   auto upload = [&](const void* source, std::size_t bytes) -> void* {
     if (bytes == 0U) return nullptr;
     void* destination = nullptr;
@@ -18966,12 +18956,7 @@ vibeqc_status build_cuda_one_electron_integrals_impl(int device_id, const core::
       stream = nullptr;
     }
   };
-  // Host staging/vector allocations can throw after device uploads. Keep
-  // every partially prepared allocation owned until normal or exceptional exit.
-  struct UploadScope {
-    decltype(release)& cleanup;
-    ~UploadScope() { cleanup(); }
-  } upload_scope{release};
+  runtime::ResourceScopeExit upload_scope{release};
   auto upload = [&](const void* source, std::size_t bytes) -> void* {
     if (bytes == 0U) return nullptr;
     void* destination = nullptr;
@@ -19227,12 +19212,7 @@ vibeqc_status build_cuda_one_electron_integrals_batch_impl(
       stream = nullptr;
     }
   };
-  // Host staging/vector allocations can throw after device uploads. Keep
-  // every partially prepared allocation owned until normal or exceptional exit.
-  struct UploadScope {
-    decltype(release)& cleanup;
-    ~UploadScope() { cleanup(); }
-  } upload_scope{release};
+  runtime::ResourceScopeExit upload_scope{release};
   auto upload = [&](const void* source, std::size_t bytes) -> void* {
     if (bytes == 0U) return nullptr;
     void* destination = nullptr;
