@@ -159,10 +159,6 @@ def _validate_source_model(source, model):
         raise TypeError("audit requires a typed model")
     if not 0 < source.nbf <= 12 or source.naux > 24:
         raise ValueError("audit domain is at most 12 orbital/24 auxiliary AOs")
-    if model.multiplicity != (1 if source.electron_count % 2 == 0 else 2):
-        raise ValueError(
-            "the raw-source probe currently supports minimum-spin references"
-        )
     fitted = model.approximation == "density_fitting"
     if fitted and not source.naux:
         raise ValueError("a fitted audit requires explicit source auxiliary data")
@@ -206,6 +202,13 @@ def probe_hf(
     if backend not in ("cpu", "cuda") or type(device_id) is not int or device_id < 0:
         raise ValueError("invalid HF probe backend/device")
     _validate_source_model(source, model)
+    # This older probe ABI uses the source's minimum-spin descriptor. Generic
+    # source/model validation and fixed-density audits are spin-independent;
+    # SOL01's separate solve ABI supplies an explicit multiplicity.
+    if model.multiplicity != (1 if source.electron_count % 2 == 0 else 2):
+        raise ValueError(
+            "the raw-source probe currently supports minimum-spin references"
+        )
     fitted = model.approximation == "density_fitting"
     selection = os.environ.get("VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD", "0")
     if experimental_mixed_fock_threshold is None:

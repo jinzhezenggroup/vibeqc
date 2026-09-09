@@ -5,6 +5,8 @@
 
 namespace vibeqc::scf {
 
+struct ScfHooks;
+
 /** Numerical controls shared by the implemented mean-field solvers. */
 struct ScfOptions {
   unsigned max_iterations{100};
@@ -18,6 +20,10 @@ struct ScfOptions {
   double density_fitting_relative_threshold{1.0e-10};
   /** Byte budget for bounded DF plan/integral work; zero means implementation default. */
   std::size_t density_fitting_memory_budget_bytes{};
+  /** Explicit synchronous CPU proposal/trace opt-in; null has no snapshot work. */
+  ScfHooks* hooks{};
+  /** Diagnostic proposal bridge rejects malformed seeds instead of normalizing them. */
+  bool strict_initial_density{};
 };
 
 /** Internal mean-field result, including state retained for warm starts. */
@@ -32,6 +38,8 @@ struct ScfResult {
   double density_rms{};
   bool converged{};
   bool initial_density_used{};
+  /** CPU physical operator evaluations, counting a joint UHF J/K as one build. */
+  std::size_t fock_builds{};
 };
 
 }  // namespace vibeqc::scf

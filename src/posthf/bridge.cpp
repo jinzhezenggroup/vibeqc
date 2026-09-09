@@ -14,6 +14,8 @@
 #include "posthf/raw_source.hpp"
 #include "scf/density_fitting.hpp"
 #include "scf/mean_field.hpp"
+#include "scf/proposal_bridge.hpp"
+#include "scf/proposals.hpp"
 
 using vibeqc::posthf::RawSource;
 namespace {
@@ -183,6 +185,105 @@ int vibeqc_accuracy_hf_probe_v1(void* source, int method, int backend, int devic
       throw std::runtime_error("HF probe returned inconsistent scientific-state dimensions");
     std::copy(result.density.begin(), result.density.end(), density);
     std::copy(result.forces.begin(), result.forces.end(), forces);
+  });
+}
+
+/** Complete CPU reference solve with per-call hooks. The explicit small-system
+ * boundary matches NUM01's diagnostic bridge. Production device-resident loops
+ * cannot silently enter this callback path. Scalars preserve nonconvergence;
+ * final densities are reusable only after the caller checks convergence and
+ * re-evaluates the target operator at the destination state.
+ */
+int vibeqc_scf_solve_v1(void* source, int method, int multiplicity, int df, unsigned max_iterations,
+                        unsigned diis_history, double energy_tolerance, double density_tolerance,
+                        double metric_threshold, const double* initial_density,
+                        ScfProposeV1 propose, ScfObserveV1 observe, double* density,
+                        std::size_t elements, double* forces, std::size_t force_elements,
+                        double* scalars, std::size_t scalar_elements, char* error,
+                        std::size_t size) {
+  return guarded(error, size, [&] {
+    using namespace vibeqc::scf;
+    if (!source || !density || !forces || !scalars || scalar_elements != 6 ||
+        (method != VIBEQC_METHOD_RHF && method != VIBEQC_METHOD_UHF) || (df != 0 && df != 1) ||
+        !max_iterations || max_iterations > 10000 || diis_history > 100 ||
+        !std::isfinite(energy_tolerance) || energy_tolerance <= 0 ||
+        !std::isfinite(density_tolerance) || density_tolerance <= 0 ||
+        !std::isfinite(metric_threshold) || metric_threshold <= 0 || metric_threshold >= 1)
+      throw std::invalid_argument("invalid SCF proposal bridge controls");
+    const auto& raw = *static_cast<RawSource*>(source);
+    auto system = raw.orbital();
+    if (multiplicity < 1 || multiplicity - 1 > system.electron_count ||
+        (system.electron_count - (multiplicity - 1)) % 2 ||
+        (method == VIBEQC_METHOD_RHF && multiplicity != 1))
+      throw std::invalid_argument("inconsistent SCF spin populations");
+    system.multiplicity = multiplicity;
+    const std::size_t spins = method == VIBEQC_METHOD_RHF ? 1 : 2;
+    if (!raw.nbf() || raw.nbf() > 12 || raw.naux() > 24 ||
+        elements != spins * raw.nbf() * raw.nbf() || force_elements != 3 * system.atoms.size())
+      throw std::invalid_argument(
+          "SCF proposal bridge supports at most 12 orbital/24 auxiliary AOs");
+    std::fill_n(density, elements, std::numeric_limits<double>::quiet_NaN());
+    std::fill_n(forces, force_elements, std::numeric_limits<double>::quiet_NaN());
+    std::vector<double> initial;
+    if (initial_density) initial.assign(initial_density, initial_density + elements);
+    ScfOptions options;
+    options.max_iterations = max_iterations;
+    options.diis_history = diis_history;
+    options.energy_tolerance = energy_tolerance;
+    options.density_tolerance = density_tolerance;
+    options.screening_tolerance = 0;
+    options.density_fitting_relative_threshold = metric_threshold;
+    ScfHooks hooks;
+    const auto view = [](const ScfSnapshot& s) {
+      return ScfSnapshotViewV1{s.generation,        s.iteration,      s.nbf,
+                               s.electrons.size(),  s.fock_builds,    s.electrons.data(),
+                               s.occupation_weight, s.energy,         s.residual_rms,
+                               s.density.data(),    s.fock.data(),    s.residual.data(),
+                               s.overlap.data(),    s.baseline.data()};
+    };
+    if (propose)
+      hooks.propose = [&](const ScfSnapshot& s) {
+        const auto v = view(s);
+        ScfProposal p;
+        p.density.resize(elements, std::numeric_limits<double>::quiet_NaN());
+        p.representation = static_cast<ProposalRepresentation>(
+            propose(&v, p.density.data(), &p.generation, &p.iteration));
+        return p;
+      };
+    if (observe)
+      hooks.observe = [&](const ScfSnapshot& s, const ProposalDecision& d) {
+        const auto v = view(s);
+        const ScfDecisionViewV1 dv{static_cast<int>(d.action),
+                                   d.reason.c_str(),
+                                   d.trials,
+                                   d.fraction,
+                                   d.energy,
+                                   d.residual_rms,
+                                   d.inference_seconds,
+                                   d.validation_seconds,
+                                   d.operator_seconds};
+        observe(&v, &dv);
+      };
+    options.hooks = propose || observe ? &hooks : nullptr;
+    options.strict_initial_density = true;
+    const auto* seed = initial_density ? &initial : nullptr;
+    ScfResult result;
+    if (method == VIBEQC_METHOD_RHF)
+      result = df ? run_rhf_density_fitting(system, raw.auxiliary(), options, seed)
+                  : run_rhf(system, options, seed);
+    else
+      result = df ? run_uhf_density_fitting(system, raw.auxiliary(), options, seed)
+                  : run_uhf(system, options, seed);
+    scalars[0] = result.energy;
+    scalars[1] = result.energy_change;
+    scalars[2] = result.density_rms;
+    scalars[3] = result.iterations;
+    scalars[4] = result.converged ? 1 : 0;
+    scalars[5] = result.fock_builds;
+    if (result.density.size() == elements)
+      std::copy(result.density.begin(), result.density.end(), density);
+    if (result.forces.size() == force_elements)
+      std::copy(result.forces.begin(), result.forces.end(), forces);
   });
 }
 }

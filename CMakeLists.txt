@@ -482,6 +482,11 @@ if(VIBEQC_BUILD_TESTS)
   target_include_directories(vibeqc_native_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
   add_test(NAME vibeqc_native_tests COMMAND vibeqc_native_tests)
 
+  add_executable(vibeqc_scf_proposal_tests tests/native/test_scf_proposals.cpp)
+  target_link_libraries(vibeqc_scf_proposal_tests PRIVATE vibeqc)
+  target_include_directories(vibeqc_scf_proposal_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  add_test(NAME vibeqc_scf_proposal_tests COMMAND vibeqc_scf_proposal_tests)
+
   add_executable(vibeqc_batch_tests tests/native/test_batch.cpp)
   target_link_libraries(vibeqc_batch_tests PRIVATE vibeqc)
   add_test(NAME vibeqc_batch_tests COMMAND vibeqc_batch_tests)
