@@ -5,32 +5,6 @@
 #ifndef VIBEQC_SCF_CUDA_ONE_ELECTRON_REFERENCE_CUH
 #define VIBEQC_SCF_CUDA_ONE_ELECTRON_REFERENCE_CUH
 
-__global__ void build_one_electron_integrals_kernel(DeviceBatch batch,
-                                                    const std::int32_t* pair_first,
-                                                    const std::int32_t* pair_second,
-                                                    std::size_t pair_count, double* overlap,
-                                                    double* hcore) {
-  const std::size_t n = static_cast<std::size_t>(batch.nbf);
-  const std::size_t matrix_size = n * n;
-  const std::size_t element = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (element >= static_cast<std::size_t>(batch.batch_size) * pair_count) return;
-  const std::int32_t system = static_cast<std::int32_t>(element / pair_count);
-  const std::size_t pair = element % pair_count;
-  const std::size_t row = static_cast<std::size_t>(pair_first[pair]);
-  const std::size_t column = static_cast<std::size_t>(pair_second[pair]);
-  const double overlap_value = contracted_overlap<double>(
-      batch, system, static_cast<std::int32_t>(row), static_cast<std::int32_t>(column), -1);
-  const double hcore_value = contracted_hcore<double>(batch, system, static_cast<std::int32_t>(row),
-                                                      static_cast<std::int32_t>(column), -1);
-  const std::size_t matrix_offset = static_cast<std::size_t>(system) * matrix_size;
-  overlap[matrix_offset + matrix_index(row, column, n)] = overlap_value;
-  hcore[matrix_offset + matrix_index(row, column, n)] = hcore_value;
-  if (row != column) {
-    overlap[matrix_offset + matrix_index(column, row, n)] = overlap_value;
-    hcore[matrix_offset + matrix_index(column, row, n)] = hcore_value;
-  }
-}
-
 /** Evaluate one-electron matrices and their first-coordinate response. */
 template <bool Derivative>
 __global__ void build_cuda_one_electron_integrals_kernel(

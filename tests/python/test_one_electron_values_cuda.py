@@ -92,3 +92,35 @@ def test_generated_schedules_preserve_scf_and_geometry(
             actual[0].energies, actual[3].energies, atol=3e-10, rtol=0
         )
         assert np.max(np.abs(actual[0].energies - actual[2].energies)) > 1e-7
+
+
+def test_policy_changes_rebuild_reused_direct_plan(monkeypatch):
+    """A cached plan must follow the policy recorded for the current execution."""
+    assert os.environ.get("SLURM_JOB_ID"), "real GPU tests must run inside Slurm"
+    atoms = [("H", (0, 0, -0.7)), ("H", (0.1, 0, 0.7))]
+    moved = np.array([r for _, r in atoms], dtype=float)
+    moved[1, 0] += 0.01
+    calc = Calculator(device="cuda", energy_tolerance=1e-12, density_tolerance=1e-10)
+    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUES", "reference")
+    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", "thread")
+    with calc.prepare_batch([atoms]) as prepared:
+        prepared.execute(strict=True)
+        for selection, mapping in (
+            ("generated", "thread"),
+            ("generated", "shell_warp"),
+            ("reference", "thread"),
+        ):
+            monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUES", selection)
+            monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", mapping)
+            actual = prepared.execute([moved], strict=True)
+            with calc.prepare_batch([[("H", tuple(r)) for r in moved]]) as fresh:
+                expected = fresh.execute(strict=True)
+            np.testing.assert_allclose(
+                actual.energies, expected.energies, atol=3e-10, rtol=0
+            )
+            np.testing.assert_allclose(
+                actual.items[0].forces, expected.items[0].forces, atol=3e-9, rtol=0
+            )
+            controls = prepared._warm_metadata[0]["controls"]["runtime_policy"]
+            assert controls["VIBEQC_ONE_ELECTRON_VALUES"] == selection
+            assert controls["VIBEQC_ONE_ELECTRON_VALUE_MAPPING"] == mapping

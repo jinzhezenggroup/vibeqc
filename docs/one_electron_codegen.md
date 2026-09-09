@@ -18,8 +18,10 @@ export VIBEQC_ONE_ELECTRON_VALUE_MAPPING=thread
 shell-pair schedule. `VIBEQC_ONE_ELECTRON_VALUES=reference` selects the
 handwritten implementation in the same binary. Unrecognized explicit value
 selections also retain that implementation. These controls participate in
-prepared resource and checkpoint runtime-policy identities. A prepared direct
-plan freezes its selection; create a new plan for an A/B comparison.
+prepared resource and checkpoint runtime-policy identities. Changing either
+selection invalidates the cached native direct plan before the next execution.
+Explicit resource plans still require a matching policy identity. Create a new
+prepared batch for cold A/B comparisons.
 
 Both candidates run on CUDA, including public real-spherical d/f bases,
 RHF/UHF and the standalone one-electron construction used by density fitting.
@@ -117,7 +119,7 @@ the complete family.
 
 The [archived gate](../benchmarks/results/one-electron-values-rtx5090/validation-summary.json)
 records the release library's source identity and binary hash. Validation passed
-13 native tests, 16 CUDA endpoint cases, 41 checkpoint tests and 14 CUDA resource
+13 native tests, 17 CUDA endpoint cases, 41 checkpoint tests and 14 CUDA resource
 tests; the GPU suites had no skips. The raw blocks' largest absolute error was
 `7.14e-14` for the 83-fixture matrix. The broader CPU codegen/IR checks passed
 403 tests with 48 unavailable optional tiers skipped.
@@ -136,11 +138,17 @@ Five interleaved A/B pairs per workload on the three-item `sp8` batch gave:
 
 | Schedule | Cold, reference/candidate | Unchanged geometry | Changed geometry |
 | --- | --- | --- | --- |
-| `thread` | 9.812 / 9.979 ms | 2.410 / 2.447 ms | 12.739 / 12.904 ms |
-| `shell_warp` | 9.817 / 9.742 ms | 2.452 / 2.472 ms | 12.766 / 12.701 ms |
+| `thread` | 9.748 / 9.938 ms | 2.436 / 2.433 ms | 12.783 / 12.925 ms |
+| `shell_warp` | 9.793 / 9.730 ms | 2.453 / 2.430 ms | 12.741 / 12.709 ms |
 
 These differences do not pass the shared significance gate. Both schedules
 remain opt-in; no integral-kernel or whole-HF speedup is claimed.
+
+The latest gate also switches reference/thread/shell-warp selections on an
+existing plan and compares with fresh plans. Both native reuse predicates now
+invalidate the plan on policy changes, keeping actual execution consistent
+with recorded Python runtime controls. The resource tier was initially disabled
+by a missing enable flag in review job 9075; its enabled run passed in job 9076.
 
 Run the checkpoint and large f-containing endpoint suites in separate Python
 processes. After the full endpoint matrix, the live parent's CUDA context can

@@ -1,0 +1,215 @@
+srun: job 9076 queued and waiting for resources
+srun: job 9076 has been allocated resources
+Slurm job 9076
+..............                                                           [100%]
+14 passed in 35.66s
+{
+  "status": "not-run",
+  "reason": "difference within 2%, measurement noise, or no improvement",
+  "workloads": {
+    "cold-start": {
+      "baseline": {
+        "samples": 5,
+        "median_seconds": 0.00974761787801981,
+        "minimum_seconds": 0.009725325042381883,
+        "maximum_seconds": 0.010139273945242167,
+        "raw_seconds": [
+          0.010139273945242167,
+          0.009830225026234984,
+          0.009725786978378892,
+          0.009725325042381883,
+          0.00974761787801981
+        ],
+        "relative_mad": 0.002287003441958453
+      },
+      "candidate": {
+        "samples": 5,
+        "median_seconds": 0.009937570197507739,
+        "minimum_seconds": 0.009878367884084582,
+        "maximum_seconds": 0.012119886931031942,
+        "raw_seconds": [
+          0.009937570197507739,
+          0.009880932047963142,
+          0.012119886931031942,
+          0.010080842999741435,
+          0.009878367884084582
+        ],
+        "relative_mad": 0.005957423419057125
+      },
+      "relative_improvement": -0.019487050258325977,
+      "noise_floor": 0.02,
+      "significant": false
+    },
+    "unchanged-geometry": {
+      "baseline": {
+        "samples": 5,
+        "median_seconds": 0.0024357091169804335,
+        "minimum_seconds": 0.002396665047854185,
+        "maximum_seconds": 0.00250850897282362,
+        "raw_seconds": [
+          0.00250850897282362,
+          0.0024357091169804335,
+          0.0024797229561954737,
+          0.002396665047854185,
+          0.0024280052166432142
+        ],
+        "relative_mad": 0.01602985711801727
+      },
+      "candidate": {
+        "samples": 5,
+        "median_seconds": 0.002432894194498658,
+        "minimum_seconds": 0.0023945418652147055,
+        "maximum_seconds": 0.002498198999091983,
+        "raw_seconds": [
+          0.002479142975062132,
+          0.002432894194498658,
+          0.002428045030683279,
+          0.0023945418652147055,
+          0.002498198999091983
+        ],
+        "relative_mad": 0.01576407612409791
+      },
+      "relative_improvement": 0.00115568910185182,
+      "noise_floor": 0.06358786648423037,
+      "significant": false
+    },
+    "changed-geometry": {
+      "baseline": {
+        "samples": 5,
+        "median_seconds": 0.012782589998096228,
+        "minimum_seconds": 0.012751430971547961,
+        "maximum_seconds": 0.012821624055504799,
+        "raw_seconds": [
+          0.012821624055504799,
+          0.01277102786116302,
+          0.012751430971547961,
+          0.012795784045010805,
+          0.012782589998096228
+        ],
+        "relative_mad": 0.0010321888534751203
+      },
+      "candidate": {
+        "samples": 5,
+        "median_seconds": 0.012925171060487628,
+        "minimum_seconds": 0.012901486130431294,
+        "maximum_seconds": 0.012944066897034645,
+        "raw_seconds": [
+          0.012925171060487628,
+          0.012920241104438901,
+          0.012944066897034645,
+          0.012901486130431294,
+          0.012941431952640414
+        ],
+        "relative_mad": 0.0012580794541664489
+      },
+      "relative_improvement": -0.011154317115125822,
+      "noise_floor": 0.02,
+      "significant": false
+    }
+  }
+}
+{
+  "status": "not-run",
+  "reason": "difference within 2%, measurement noise, or no improvement",
+  "workloads": {
+    "cold-start": {
+      "baseline": {
+        "samples": 5,
+        "median_seconds": 0.009792744880542159,
+        "minimum_seconds": 0.009766964940354228,
+        "maximum_seconds": 0.010021360125392675,
+        "raw_seconds": [
+          0.010021360125392675,
+          0.009778658160939813,
+          0.009766964940354228,
+          0.009792744880542159,
+          0.009877134812995791
+        ],
+        "relative_mad": 0.002632555070351613
+      },
+      "candidate": {
+        "samples": 5,
+        "median_seconds": 0.00972966500557959,
+        "minimum_seconds": 0.00970951491035521,
+        "maximum_seconds": 0.012008945923298597,
+        "raw_seconds": [
+          0.009711880935356021,
+          0.00970951491035521,
+          0.012008945923298597,
+          0.00972966500557959,
+          0.009765582857653499
+        ],
+        "relative_mad": 0.0020709957858595527
+      },
+      "relative_improvement": 0.006441490688469331,
+      "noise_floor": 0.02,
+      "significant": false
+    },
+    "unchanged-geometry": {
+      "baseline": {
+        "samples": 5,
+        "median_seconds": 0.0024533329997211695,
+        "minimum_seconds": 0.0024109119549393654,
+        "maximum_seconds": 0.002496605971828103,
+        "raw_seconds": [
+          0.002496605971828103,
+          0.0024533329997211695,
+          0.0024109119549393654,
+          0.002435348927974701,
+          0.0024589449167251587
+        ],
+        "relative_mad": 0.007330465023913387
+      },
+      "candidate": {
+        "samples": 5,
+        "median_seconds": 0.002429919084534049,
+        "minimum_seconds": 0.0023875380866229534,
+        "maximum_seconds": 0.002460276009514928,
+        "raw_seconds": [
+          0.002460276009514928,
+          0.0024323640391230583,
+          0.002429919084534049,
+          0.0023875380866229534,
+          0.0024224051740020514
+        ],
+        "relative_mad": 0.003092247219186114
+      },
+      "relative_improvement": 0.00954371672731813,
+      "noise_floor": 0.020845424486199002,
+      "significant": false
+    },
+    "changed-geometry": {
+      "baseline": {
+        "samples": 5,
+        "median_seconds": 0.012741110986098647,
+        "minimum_seconds": 0.01271857786923647,
+        "maximum_seconds": 0.012812707806006074,
+        "raw_seconds": [
+          0.012812707806006074,
+          0.012758002849295735,
+          0.01271857786923647,
+          0.012737242970615625,
+          0.012741110986098647
+        ],
+        "relative_mad": 0.0013257763169568437
+      },
+      "candidate": {
+        "samples": 5,
+        "median_seconds": 0.012708890018984675,
+        "minimum_seconds": 0.012670675991103053,
+        "maximum_seconds": 0.012736322125419974,
+        "raw_seconds": [
+          0.012736322125419974,
+          0.012681687017902732,
+          0.012717575998976827,
+          0.012670675991103053,
+          0.012708890018984675
+        ],
+        "relative_mad": 0.00214047025674999
+      },
+      "relative_improvement": 0.002528897766382099,
+      "noise_floor": 0.02,
+      "significant": false
+    }
+  }
+}

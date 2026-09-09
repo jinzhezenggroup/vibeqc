@@ -14792,6 +14792,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
        plan.bounded_fock_class_timing != bounded_fock_class_timing ||
        plan.graph_native_eigensolver_override != requested_graph_native_eigensolver_override ||
        plan.reuse_converged_fock != requested_reuse_converged_fock ||
+       plan.generated_one_electron_values !=
+           cuda_policy::generated_one_electron_values_requested() ||
+       plan.one_electron_value_mapping != cuda_policy::one_electron_value_mapping_requested() ||
        plan.mixed_precision_fock != requested_mixed_precision_fock ||
        plan.mixed_precision_fock_threshold !=
            requested_mixed_precision_fock_threshold.value_or(0.0))) {
@@ -16436,9 +16439,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
         return outputs;
       }
     } else {
-      build_one_electron_integrals_kernel<<<blocks_for(pair_elements), threads, 0,
-                                            resources.stream_>>>(
-          device_batch, ao_pair_first, ao_pair_second, pair_count, overlap, hcore);
+      build_cuda_one_electron_integrals_kernel<false>
+          <<<blocks_for(pair_elements), threads, 0, resources.stream_>>>(
+              device_batch, ao_pair_first, ao_pair_second, pair_count, -1, overlap, hcore);
     }
     if (persistent_eri) {
       build_eri_kernel<<<blocks_for(eri_elements), threads, 0, resources.stream_>>>(device_batch,
@@ -18262,6 +18265,9 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
        (*plan)->inactive_eigensolver_profiling != inactive_eigensolver_profiling ||
        (*plan)->graph_native_eigensolver_override != graph_native_eigensolver_override ||
        (*plan)->reuse_converged_fock != reuse_converged_fock ||
+       (*plan)->generated_one_electron_values !=
+           cuda_policy::generated_one_electron_values_requested() ||
+       (*plan)->one_electron_value_mapping != cuda_policy::one_electron_value_mapping_requested() ||
        (*plan)->mixed_precision_fock != mixed_precision_fock ||
        (*plan)->mixed_precision_fock_threshold != mixed_precision_fock_threshold.value_or(0.0))) {
     delete *plan;
