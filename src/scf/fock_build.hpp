@@ -33,8 +33,7 @@ struct FockBuildSpec {
   FockSpin spin{FockSpin::Restricted};
   std::uint32_t derivative_order{1};
   FockTermSpec coulomb{};
-  FockTermSpec exchange{true, -0.5, FockOperator::FullRange, 0.0,
-                        FockApproximation::Exact};
+  FockTermSpec exchange{true, -0.5, FockOperator::FullRange, 0.0, FockApproximation::Exact};
   bool operator==(const FockBuildSpec&) const = default;
 };
 
@@ -70,12 +69,12 @@ struct ResolvedFockBuild {
 };
 
 FockProviderCapabilities fock_provider_capabilities(FockApproximation approximation,
-                                                  FockBackend backend);
+                                                    FockBackend backend);
 FockBuildSpec make_hf_fock_spec(FockSpin spin,
-                               FockApproximation approximation = FockApproximation::Exact);
+                                FockApproximation approximation = FockApproximation::Exact);
 ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,
-                                   double screening_tolerance = 1.0e-12,
-                                   double metric_relative_threshold = 1.0e-10);
+                                     double screening_tolerance = 1.0e-12,
+                                     double metric_relative_threshold = 1.0e-10);
 
 /** Guard for legacy HF solver entry points, including the force route.
  * Requires the standard complete HF coefficients and first derivatives.
@@ -102,19 +101,17 @@ struct FockMatrices {
  * nonsymmetric test densities are accepted without implicit symmetrization.
  */
 DirectJkMatrices build_exact_direct_jk(const ResolvedFockBuild& strategy, std::size_t nbf,
-                                     std::span<const double> eri,
-                                     std::span<const double> density,
-                                     std::span<const double> beta = {});
+                                       std::span<const double> eri, std::span<const double> density,
+                                       std::span<const double> beta = {});
 FockMatrices assemble_fock(const ResolvedFockBuild& strategy, std::span<const double> hcore,
-                          const DirectJkMatrices& jk);
+                           const DirectJkMatrices& jk);
 /** Fixed-density two-electron energy derivative, excluding one-electron, Pulay,
  * and nuclear-repulsion terms. API forces are the negative of the total gradient.
  */
-double contract_exact_direct_energy_derivative(const ResolvedFockBuild& strategy,
-                                              std::size_t nbf,
-                                              std::span<const double> eri_derivative,
-                                              std::span<const double> density,
-                                              std::span<const double> beta = {});
+double contract_exact_direct_energy_derivative(const ResolvedFockBuild& strategy, std::size_t nbf,
+                                               std::span<const double> eri_derivative,
+                                               std::span<const double> density,
+                                               std::span<const double> beta = {});
 
 }  // namespace vibeqc::scf
 #endif

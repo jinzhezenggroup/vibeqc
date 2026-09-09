@@ -18199,7 +18199,8 @@ CudaRhfBasisLayoutStats inspect_rhf_cuda_basis_layout(const std::vector<core::Sy
 namespace {
 
 std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
-    CudaRhfBucketPlan** plan, const std::vector<core::System>& systems, const ScfOptions& requested_options,
+    CudaRhfBucketPlan** plan, const std::vector<core::System>& systems,
+    const ScfOptions& requested_options,
     const std::vector<const std::vector<double>*>& initial_densities, int device_id,
     bool unrestricted, bool shell_class_profiling, bool inactive_eigensolver_profiling) {
   // Resolve legacy internal callers once per prepared execution, before any
@@ -18211,8 +18212,7 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
       execution_options.resolved_fock_build = resolve_fock_build(
           make_hf_fock_spec(spin), FockBackend::Cuda, execution_options.screening_tolerance);
     }
-    require_exact_direct_strategy(*execution_options.resolved_fock_build, spin,
-                                   FockBackend::Cuda);
+    require_exact_direct_strategy(*execution_options.resolved_fock_build, spin, FockBackend::Cuda);
     if (execution_options.resolved_fock_build->screening_tolerance !=
         execution_options.screening_tolerance) {
       throw std::invalid_argument("CUDA screening differs from its resolved Fock strategy");

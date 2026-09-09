@@ -305,8 +305,8 @@ Matrix energy_weighted_density(const Matrix& coefficients, const std::vector<dou
   return weighted;
 }
 
-std::pair<Matrix, Matrix> build_uhf_focks(const ResolvedFockBuild& strategy,
-                                          const Matrix& hcore, const std::vector<double>& eri,
+std::pair<Matrix, Matrix> build_uhf_focks(const ResolvedFockBuild& strategy, const Matrix& hcore,
+                                          const std::vector<double>& eri,
                                           const Matrix& alpha_density, const Matrix& beta_density,
                                           std::size_t n) {
   const auto jk = build_exact_direct_jk(strategy, n, eri, alpha_density, beta_density);
@@ -490,8 +490,8 @@ std::vector<double> analytic_uhf_forces(const ResolvedFockBuild& strategy,
     double derivative = ints.nuclear_repulsion_derivative[coordinate];
     for (std::size_t element = 0; element < n * n; ++element) {
       derivative += (alpha_density[element] + beta_density[element]) * dh[element];
-      derivative -= (alpha_weighted_density[element] + beta_weighted_density[element]) *
-                    ds[element];
+      derivative -=
+          (alpha_weighted_density[element] + beta_weighted_density[element]) * ds[element];
     }
     derivative += contract_exact_direct_energy_derivative(
         strategy, n, std::span<const double>(deri, n * n * n * n), alpha_density, beta_density);
@@ -516,8 +516,8 @@ void finalize_scf(const ResolvedFockBuild& strategy, const integrals::IntegralDa
 
 void finalize_uhf(const ResolvedFockBuild& strategy, const integrals::IntegralData& ints,
                   const Matrix& orthogonalizer, std::size_t alpha_occupied,
-                  std::size_t beta_occupied, Matrix& alpha_density,
-                  Matrix& beta_density, ScfResult& result) {
+                  std::size_t beta_occupied, Matrix& alpha_density, Matrix& beta_density,
+                  ScfResult& result) {
   const std::size_t n = ints.nbf;
   auto [alpha_fock, beta_fock] =
       build_uhf_focks(strategy, ints.hcore, ints.eri, alpha_density, beta_density, n);
@@ -534,8 +534,8 @@ void finalize_uhf(const ResolvedFockBuild& strategy, const integrals::IntegralDa
       alpha_orbitals.vectors, alpha_orbitals.values, n, alpha_occupied, 1.0);
   const Matrix beta_weighted =
       energy_weighted_density(beta_orbitals.vectors, beta_orbitals.values, n, beta_occupied, 1.0);
-  result.forces =
-      analytic_uhf_forces(strategy, ints, alpha_density, beta_density, alpha_weighted, beta_weighted);
+  result.forces = analytic_uhf_forces(strategy, ints, alpha_density, beta_density, alpha_weighted,
+                                      beta_weighted);
   result.density = concatenate(alpha_density, beta_density);
 }
 
@@ -976,10 +976,11 @@ void finalize_density_fitting_uhf(const DensityFittingScfData& data, const Matri
 ScfResult run_rhf(const core::System& system, const ScfOptions& options,
                   const std::vector<double>* initial_density) {
   // Resolve before integral allocation; iteration, final rebuild, and forces share this plan.
-  const ResolvedFockBuild strategy = options.resolved_fock_build
-      ? *options.resolved_fock_build
-      : resolve_fock_build(make_hf_fock_spec(FockSpin::Restricted),
-                           FockBackend::Cpu, options.screening_tolerance);
+  const ResolvedFockBuild strategy =
+      options.resolved_fock_build
+          ? *options.resolved_fock_build
+          : resolve_fock_build(make_hf_fock_spec(FockSpin::Restricted), FockBackend::Cpu,
+                               options.screening_tolerance);
   require_exact_direct_strategy(strategy, FockSpin::Restricted, FockBackend::Cpu);
   if (strategy.screening_tolerance != options.screening_tolerance) {
     throw std::invalid_argument("resolved Fock screening differs from SCF options");
@@ -1033,10 +1034,11 @@ ScfResult run_rhf(const core::System& system, const ScfOptions& options,
 ScfResult run_uhf(const core::System& system, const ScfOptions& options,
                   const std::vector<double>* initial_density) {
   // Resolve before integral allocation; iteration, final rebuild, and forces share this plan.
-  const ResolvedFockBuild strategy = options.resolved_fock_build
-      ? *options.resolved_fock_build
-      : resolve_fock_build(make_hf_fock_spec(FockSpin::Unrestricted),
-                           FockBackend::Cpu, options.screening_tolerance);
+  const ResolvedFockBuild strategy =
+      options.resolved_fock_build
+          ? *options.resolved_fock_build
+          : resolve_fock_build(make_hf_fock_spec(FockSpin::Unrestricted), FockBackend::Cpu,
+                               options.screening_tolerance);
   require_exact_direct_strategy(strategy, FockSpin::Unrestricted, FockBackend::Cpu);
   if (strategy.screening_tolerance != options.screening_tolerance) {
     throw std::invalid_argument("resolved Fock screening differs from SCF options");

@@ -144,12 +144,12 @@ FleetPlan::FleetPlan(std::vector<core::System> systems, vibeqc_method method, Sc
       bucket_ids_(systems_.size()),
       warm_densities_(systems_.size()) {
   const bool fitted = options_.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE;
-  const FockBackend backend = cuda_fock_enabled_ || cuda_density_fitting_enabled_
-                                  ? FockBackend::Cuda : FockBackend::Cpu;
+  const FockBackend backend =
+      cuda_fock_enabled_ || cuda_density_fitting_enabled_ ? FockBackend::Cuda : FockBackend::Cpu;
   const ResolvedFockBuild expected = resolve_fock_build(
-      make_hf_fock_spec(method_ == VIBEQC_METHOD_UHF ? FockSpin::Unrestricted
-                                                   : FockSpin::Restricted,
-                        fitted ? FockApproximation::DensityFitted : FockApproximation::Exact),
+      make_hf_fock_spec(
+          method_ == VIBEQC_METHOD_UHF ? FockSpin::Unrestricted : FockSpin::Restricted,
+          fitted ? FockApproximation::DensityFitted : FockApproximation::Exact),
       backend, options_.screening_tolerance, options_.density_fitting_relative_threshold);
   if (options_.resolved_fock_build.has_value() && *options_.resolved_fock_build != expected) {
     throw std::invalid_argument("fleet options disagree with the resolved HF Fock strategy");
@@ -228,10 +228,11 @@ std::vector<FleetItemResult> FleetPlan::execute(
         }
         return method_ == VIBEQC_METHOD_UHF
                    ? run_uhf_density_fitting(execution_system, auxiliary, options_, initial_density)
-                   : run_rhf_density_fitting(execution_system, auxiliary, options_, initial_density);
+                   : run_rhf_density_fitting(execution_system, auxiliary, options_,
+                                             initial_density);
       }
       return method_ == VIBEQC_METHOD_UHF ? run_uhf(execution_system, options_, initial_density)
-                                         : run_rhf(execution_system, options_, initial_density);
+                                          : run_rhf(execution_system, options_, initial_density);
     };
     try {
       const std::vector<double>* initial_density =

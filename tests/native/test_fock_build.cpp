@@ -19,8 +19,7 @@ void require(bool condition, const std::string& message) {
 
 void require_close(double actual, double expected, const std::string& message) {
   require(std::isfinite(actual) && std::abs(actual - expected) < 2.0e-13,
-          message + ": actual=" + std::to_string(actual) +
-              " expected=" + std::to_string(expected));
+          message + ": actual=" + std::to_string(actual) + " expected=" + std::to_string(expected));
 }
 
 void require_matrix(std::span<const double> actual, std::span<const double> expected,
@@ -46,10 +45,8 @@ void require_rejected(Function&& function, const std::string& message) {
 // the production contraction or a duplicate of its optimized loop ordering.
 std::array<double, 16> eri_fixture(bool derivative = false) {
   const std::array<double, 9> pairs =
-      derivative ? std::array<double, 9>{0.11, -0.03, 0.07, -0.03, 0.05, 0.02,
-                                         0.07, 0.02, -0.04}
-                 : std::array<double, 9>{1.3, 0.2, 0.4, 0.2, 0.6, -0.1,
-                                         0.4, -0.1, 0.9};
+      derivative ? std::array<double, 9>{0.11, -0.03, 0.07, -0.03, 0.05, 0.02, 0.07, 0.02, -0.04}
+                 : std::array<double, 9>{1.3, 0.2, 0.4, 0.2, 0.6, -0.1, 0.4, -0.1, 0.9};
   const std::array<std::size_t, 4> pair_index{0, 1, 1, 2};
   std::array<double, 16> values{};
   for (std::size_t ij = 0; ij < 4; ++ij) {
@@ -67,8 +64,8 @@ const std::array<double, 4> beta_density{0.1, -0.05, -0.05, 0.4};
 const std::array<double, 4> zero_density{};
 
 void verify_restricted_raw_and_assembly() {
-  const auto strategy = resolve_fock_build(make_hf_fock_spec(FockSpin::Restricted),
-                                           FockBackend::Cpu);
+  const auto strategy =
+      resolve_fock_build(make_hf_fock_spec(FockSpin::Restricted), FockBackend::Cpu);
   const auto eri = eri_fixture();
   const auto jk = build_exact_direct_jk(strategy, 2, eri, density);
   require(jk.nbf == 2 && jk.exchange_beta.empty(), "RHF raw result spin/shape is wrong");
@@ -96,8 +93,8 @@ void verify_restricted_raw_and_assembly() {
 }
 
 void verify_unrestricted_and_closed_shell_limit() {
-  const auto strategy = resolve_fock_build(make_hf_fock_spec(FockSpin::Unrestricted),
-                                           FockBackend::Cpu);
+  const auto strategy =
+      resolve_fock_build(make_hf_fock_spec(FockSpin::Unrestricted), FockBackend::Cpu);
   const auto eri = eri_fixture();
   const auto jk = build_exact_direct_jk(strategy, 2, eri, alpha_density, beta_density);
   require_matrix(jk.coulomb, std::array{1.30, 0.29, 0.29, 0.74}, "UHF total-density J");
@@ -107,20 +104,20 @@ void verify_unrestricted_and_closed_shell_limit() {
   require_matrix(fock.alpha, std::array{-0.75, 0.08, 0.08, -0.53}, "UHF alpha Fock");
   require_matrix(fock.beta, std::array{-0.05, 0.48, 0.48, -0.49}, "UHF beta Fock");
   require_close(contract_exact_direct_energy_derivative(strategy, 2, eri_fixture(true),
-                                                       alpha_density, beta_density),
+                                                        alpha_density, beta_density),
                 0.02965, "UHF derivative must use total J and separate spin K");
 
   const std::array<double, 4> half_density{0.6, 0.15, 0.15, 0.35};
   const auto closed_jk = build_exact_direct_jk(strategy, 2, eri, half_density, half_density);
   const auto closed_fock = assemble_fock(strategy, hcore, closed_jk);
-  const auto rhf_strategy = resolve_fock_build(make_hf_fock_spec(FockSpin::Restricted),
-                                               FockBackend::Cpu);
+  const auto rhf_strategy =
+      resolve_fock_build(make_hf_fock_spec(FockSpin::Restricted), FockBackend::Cpu);
   const auto rhf_fock =
       assemble_fock(rhf_strategy, hcore, build_exact_direct_jk(rhf_strategy, 2, eri, density));
   require_matrix(closed_fock.alpha, rhf_fock.alpha, "closed-shell UHF alpha/RHF limit");
   require_matrix(closed_fock.beta, rhf_fock.alpha, "closed-shell UHF beta/RHF limit");
   require_close(contract_exact_direct_energy_derivative(strategy, 2, eri_fixture(true),
-                                                       half_density, half_density),
+                                                        half_density, half_density),
                 0.0695, "closed-shell UHF/RHF derivative limit");
 
   const auto polarized = build_exact_direct_jk(strategy, 2, eri, alpha_density, zero_density);
@@ -145,27 +142,28 @@ void verify_independent_terms_and_coefficients() {
           strategy, 2, requested == 0 ? std::span<const double>() : eri, first, second);
       require(jk.coulomb.empty() == !spec.coulomb.present, "absent J was allocated");
       require(jk.exchange_alpha.empty() == !spec.exchange.present, "absent alpha K was allocated");
-      require(jk.exchange_beta.empty() ==
-                  (!spec.exchange.present || spin == FockSpin::Restricted),
+      require(jk.exchange_beta.empty() == (!spec.exchange.present || spin == FockSpin::Restricted),
               "absent beta K was allocated");
       const auto fock = assemble_fock(strategy, hcore, jk);
       const std::array<double, 3> derivative_rhf{0.0, 0.124, -0.0545};
       const std::array<double, 3> derivative_uhf{0.0, 0.05625, -0.0266};
-      require_close(contract_exact_direct_energy_derivative(strategy, 2,
-                        requested == 0 ? std::span<const double>() : eri_fixture(true),
-                        first, second),
-                    spin == FockSpin::Restricted ? derivative_rhf[requested]
-                                                : derivative_uhf[requested],
-                    "independently absent J/K derivative");
+      require_close(
+          contract_exact_direct_energy_derivative(
+              strategy, 2, requested == 0 ? std::span<const double>() : eri_fixture(true), first,
+              second),
+          spin == FockSpin::Restricted ? derivative_rhf[requested] : derivative_uhf[requested],
+          "independently absent J/K derivative");
       if (requested == 1) {
         const std::array<double, 4> expected = spin == FockSpin::Restricted
-            ? std::array{0.96, 0.65, 0.65, 0.25} : std::array{0.30, 0.41, 0.41, -0.06};
+                                                   ? std::array{0.96, 0.65, 0.65, 0.25}
+                                                   : std::array{0.30, 0.41, 0.41, -0.06};
         require_matrix(fock.alpha, expected, "J-only Fock");
         if (spin == FockSpin::Unrestricted) require_matrix(fock.beta, expected, "UHF J-only beta");
       } else if (requested == 2) {
-        require_matrix(fock.alpha, spin == FockSpin::Restricted
-            ? std::array{-2.05, -0.115, -0.115, -1.445}
-            : std::array{-2.05, -0.21, -0.21, -1.27}, "K-only Fock");
+        require_matrix(fock.alpha,
+                       spin == FockSpin::Restricted ? std::array{-2.05, -0.115, -0.115, -1.445}
+                                                    : std::array{-2.05, -0.21, -0.21, -1.27},
+                       "K-only Fock");
         if (spin == FockSpin::Unrestricted) {
           require_matrix(fock.beta, std::array{-1.35, 0.19, 0.19, -1.23}, "UHF K-only beta");
         }
@@ -190,9 +188,9 @@ void verify_independent_terms_and_coefficients() {
                  std::array{2.815, 1.1291, 1.1291, 1.2817}, "general coefficients applied twice");
   require_close(contract_exact_direct_energy_derivative(strategy, 2, eri_fixture(true), density),
                 0.23587, "general coefficients not shared with derivative dispatch");
-  require_rejected([&] { require_exact_direct_strategy(strategy, FockSpin::Restricted,
-                                                       FockBackend::Cpu); },
-                   "HF entry accepted a different mathematical method");
+  require_rejected(
+      [&] { require_exact_direct_strategy(strategy, FockSpin::Restricted, FockBackend::Cpu); },
+      "HF entry accepted a different mathematical method");
 }
 
 void verify_unrestricted_coefficients_and_capabilities() {
@@ -207,25 +205,25 @@ void verify_unrestricted_coefficients_and_capabilities() {
   require_matrix(fock.beta, std::array{-0.725, 0.285, 0.285, -0.805},
                  "general UHF beta coefficients");
   require_close(contract_exact_direct_energy_derivative(strategy, 2, eri_fixture(true),
-                                                       alpha_density, beta_density),
+                                                        alpha_density, beta_density),
                 0.00388, "general UHF derivative coefficients");
 
   spec.coulomb.coefficient = 0.0;
   spec.exchange.coefficient = 0.0;
   const auto zero_weight = resolve_fock_build(spec, FockBackend::Cpu);
-  const auto zero_jk = build_exact_direct_jk(zero_weight, 2, eri_fixture(),
-                                            alpha_density, beta_density);
-  require(!zero_jk.coulomb.empty() && !zero_jk.exchange_alpha.empty() &&
-              !zero_jk.exchange_beta.empty(),
-          "a requested zero-coefficient raw term was confused with an absent term");
+  const auto zero_jk =
+      build_exact_direct_jk(zero_weight, 2, eri_fixture(), alpha_density, beta_density);
+  require(
+      !zero_jk.coulomb.empty() && !zero_jk.exchange_alpha.empty() && !zero_jk.exchange_beta.empty(),
+      "a requested zero-coefficient raw term was confused with an absent term");
   const auto zero_fock = assemble_fock(zero_weight, hcore, zero_jk);
   require_matrix(zero_fock.alpha, hcore, "zero-weight UHF alpha Fock");
   require_matrix(zero_fock.beta, hcore, "zero-weight UHF beta Fock");
 
   const auto cpu = fock_provider_capabilities(FockApproximation::Exact, FockBackend::Cpu);
   const auto cuda = fock_provider_capabilities(FockApproximation::Exact, FockBackend::Cuda);
-  const auto fitted = fock_provider_capabilities(FockApproximation::DensityFitted,
-                                                FockBackend::Cuda);
+  const auto fitted =
+      fock_provider_capabilities(FockApproximation::DensityFitted, FockBackend::Cuda);
   require(cpu.restricted && cpu.unrestricted && cpu.full_range && !cpu.short_range &&
               !cpu.long_range && cpu.maximum_derivative_order == 1 &&
               cpu.maximum_angular_momentum == 3 && cpu.cartesian && cpu.spherical &&
@@ -233,18 +231,22 @@ void verify_unrestricted_coefficients_and_capabilities() {
           "CPU exact capabilities misrepresent the executable contract");
   require(!cuda.independent_terms && !cuda.arbitrary_coefficients && !cuda.legacy_adapter_only,
           "CUDA advertised independent terms before its fused consumer supports them");
-  require(fitted.legacy_adapter_only && !fitted.independent_terms &&
-              !fitted.arbitrary_coefficients,
+  require(fitted.legacy_adapter_only && !fitted.independent_terms && !fitted.arbitrary_coefficients,
           "legacy fitted adapter advertised a migrated independent provider");
-  require_rejected([&] { (void)fock_provider_capabilities(static_cast<FockApproximation>(99),
-                                                        FockBackend::Cpu); },
-                   "capability query accepted an unknown approximation");
+  require_rejected(
+      [&] {
+        (void)fock_provider_capabilities(static_cast<FockApproximation>(99), FockBackend::Cpu);
+      },
+      "capability query accepted an unknown approximation");
   auto forged_precision = strategy;
   forged_precision.precision = static_cast<FockPrecision>(99);
   require(forged_precision != strategy, "precision missing from execution identity");
-  require_rejected([&] { (void)build_exact_direct_jk(forged_precision, 2, eri_fixture(),
-                                                   alpha_density, beta_density); },
-                   "exact provider accepted an unimplemented precision");
+  require_rejected(
+      [&] {
+        (void)build_exact_direct_jk(forged_precision, 2, eri_fixture(), alpha_density,
+                                    beta_density);
+      },
+      "exact provider accepted an unimplemented precision");
 }
 
 void verify_preflight_and_approximation_identity() {
@@ -271,12 +273,17 @@ void verify_preflight_and_approximation_identity() {
   energy_only.derivative_order = 0;
   const auto energy_strategy = resolve_fock_build(energy_only, FockBackend::Cpu);
   (void)build_exact_direct_jk(energy_strategy, 2, eri_fixture(), density);
-  require_rejected([&] { (void)contract_exact_direct_energy_derivative(
-                                energy_strategy, 2, eri_fixture(true), density); },
-                   "energy-only strategy silently supplied derivatives");
-  require_rejected([&] { require_exact_direct_strategy(energy_strategy, FockSpin::Restricted,
-                                                       FockBackend::Cpu); },
-                   "HF entry accepted an incomplete energy/force strategy");
+  require_rejected(
+      [&] {
+        (void)contract_exact_direct_energy_derivative(energy_strategy, 2, eri_fixture(true),
+                                                      density);
+      },
+      "energy-only strategy silently supplied derivatives");
+  require_rejected(
+      [&] {
+        require_exact_direct_strategy(energy_strategy, FockSpin::Restricted, FockBackend::Cpu);
+      },
+      "HF entry accepted an incomplete energy/force strategy");
 
   for (const bool exchange : {false, true}) {
     auto mixed = exact_spec;
@@ -292,12 +299,12 @@ void verify_preflight_and_approximation_identity() {
           "resolved fitted provider lost approximation identity");
   require_rejected([&] { (void)build_exact_direct_jk(fitted, 2, eri_fixture(), density); },
                    "exact provider consumed a fitted energy strategy");
-  require_rejected([&] { (void)contract_exact_direct_energy_derivative(
-                                fitted, 2, eri_fixture(true), density); },
-                   "fitted energy silently received an exact derivative");
-  require_rejected([&] { require_exact_direct_strategy(fitted, FockSpin::Restricted,
-                                                       FockBackend::Cuda); },
-                   "exact HF entry accepted a fitted provider");
+  require_rejected(
+      [&] { (void)contract_exact_direct_energy_derivative(fitted, 2, eri_fixture(true), density); },
+      "fitted energy silently received an exact derivative");
+  require_rejected(
+      [&] { require_exact_direct_strategy(fitted, FockSpin::Restricted, FockBackend::Cuda); },
+      "exact HF entry accepted a fitted provider");
   require(exact.spec.coulomb.approximation == FockApproximation::Exact &&
               exact.spec.exchange.approximation == FockApproximation::Exact,
           "default provider resolution changed the declared approximation");
@@ -364,8 +371,8 @@ void verify_identity_and_invalid_inputs() {
                    "unknown approximation accepted");
   require_rejected([&] { (void)resolve_fock_build(spec, static_cast<FockBackend>(99)); },
                    "unknown backend accepted");
-  for (double invalid : {-0.1, std::numeric_limits<double>::infinity(),
-                          std::numeric_limits<double>::quiet_NaN()}) {
+  for (double invalid :
+       {-0.1, std::numeric_limits<double>::infinity(), std::numeric_limits<double>::quiet_NaN()}) {
     malformed = spec;
     malformed.exchange.omega = invalid;
     require_rejected([&] { (void)resolve_fock_build(malformed, FockBackend::Cpu); },
@@ -374,9 +381,13 @@ void verify_identity_and_invalid_inputs() {
                      "invalid screening accepted");
     require(cpu == resolve_fock_build(spec, FockBackend::Cpu, 1.0e-12, invalid),
             "unused metric threshold changed or rejected an exact strategy");
-    require_rejected([&] { (void)resolve_fock_build(
-        make_hf_fock_spec(FockSpin::Restricted, FockApproximation::DensityFitted),
-        FockBackend::Cuda, 1.0e-12, invalid); }, "invalid fitted metric threshold accepted");
+    require_rejected(
+        [&] {
+          (void)resolve_fock_build(
+              make_hf_fock_spec(FockSpin::Restricted, FockApproximation::DensityFitted),
+              FockBackend::Cuda, 1.0e-12, invalid);
+        },
+        "invalid fitted metric threshold accepted");
   }
   malformed = spec;
   malformed.exchange.omega = 0.4;
@@ -393,8 +404,8 @@ void verify_identity_and_invalid_inputs() {
                    "raw direct provider accepted a truncated ERI tensor");
   require_rejected([&] { (void)build_exact_direct_jk(cpu, 2, eri_fixture(), density, density); },
                    "restricted raw provider accepted a beta density");
-  const auto unrestricted = resolve_fock_build(make_hf_fock_spec(FockSpin::Unrestricted),
-                                               FockBackend::Cpu);
+  const auto unrestricted =
+      resolve_fock_build(make_hf_fock_spec(FockSpin::Unrestricted), FockBackend::Cpu);
   require_rejected([&] { (void)build_exact_direct_jk(unrestricted, 2, eri_fixture(), density); },
                    "unrestricted raw provider accepted a missing beta density");
   auto nonfinite = density;
@@ -404,12 +415,12 @@ void verify_identity_and_invalid_inputs() {
   const auto valid_jk = build_exact_direct_jk(cpu, 2, eri_fixture(), density);
   require_rejected([&] { (void)assemble_fock(cpu, std::array{1.0}, valid_jk); },
                    "Fock assembly accepted a truncated hcore");
-  require_rejected([&] { require_exact_direct_strategy(cpu, FockSpin::Unrestricted,
-                                                       FockBackend::Cpu); },
-                   "HF entry accepted the wrong spin strategy");
-  require_rejected([&] { require_exact_direct_strategy(cpu, FockSpin::Restricted,
-                                                       FockBackend::Cuda); },
-                   "HF entry accepted the wrong backend strategy");
+  require_rejected(
+      [&] { require_exact_direct_strategy(cpu, FockSpin::Unrestricted, FockBackend::Cpu); },
+      "HF entry accepted the wrong spin strategy");
+  require_rejected(
+      [&] { require_exact_direct_strategy(cpu, FockSpin::Restricted, FockBackend::Cuda); },
+      "HF entry accepted the wrong backend strategy");
 }
 }  // namespace
 
@@ -421,7 +432,8 @@ int main() {
     verify_unrestricted_coefficients_and_capabilities();
     verify_preflight_and_approximation_identity();
     verify_identity_and_invalid_inputs();
-    std::cout << "exact Fock providers: raw J/K, spin, terms, derivatives, preflight, identity PASS\n";
+    std::cout
+        << "exact Fock providers: raw J/K, spin, terms, derivatives, preflight, identity PASS\n";
     return EXIT_SUCCESS;
   } catch (const std::exception& error) {
     std::cerr << "test failure: " << error.what() << '\n';

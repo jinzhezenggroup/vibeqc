@@ -14,9 +14,7 @@ void require(bool condition, const char* message) {
 bool valid(FockSpin value) {
   return value == FockSpin::Restricted || value == FockSpin::Unrestricted;
 }
-bool valid(FockBackend value) {
-  return value == FockBackend::Cpu || value == FockBackend::Cuda;
-}
+bool valid(FockBackend value) { return value == FockBackend::Cpu || value == FockBackend::Cuda; }
 bool valid(FockApproximation value) {
   return value == FockApproximation::Exact || value == FockApproximation::DensityFitted;
 }
@@ -40,22 +38,18 @@ void canonicalize(FockTermSpec& term) {
   term.omega = 0.0;
 }
 bool standard_hf_terms(const FockBuildSpec& spec, FockApproximation approximation) {
-  return spec.coulomb.present && spec.exchange.present &&
-         spec.coulomb.coefficient == 1.0 &&
+  return spec.coulomb.present && spec.exchange.present && spec.coulomb.coefficient == 1.0 &&
          spec.exchange.coefficient == (spec.spin == FockSpin::Restricted ? -0.5 : -1.0) &&
          spec.coulomb.op == FockOperator::FullRange &&
-         spec.exchange.op == FockOperator::FullRange &&
-         spec.coulomb.omega == 0.0 && spec.exchange.omega == 0.0 &&
-         spec.coulomb.approximation == approximation &&
+         spec.exchange.op == FockOperator::FullRange && spec.coulomb.omega == 0.0 &&
+         spec.exchange.omega == 0.0 && spec.coulomb.approximation == approximation &&
          spec.exchange.approximation == approximation;
 }
 void require_cpu_exact_consumer(const ResolvedFockBuild& strategy) {
   require(strategy.spec.version == 1 && valid(strategy.spec.spin) &&
-              strategy.spec.derivative_order <= 1 &&
-              strategy.backend == FockBackend::Cpu &&
+              strategy.spec.derivative_order <= 1 && strategy.backend == FockBackend::Cpu &&
               strategy.schedule == FockSchedule::CpuReference &&
-              strategy.precision == FockPrecision::Float64 &&
-              !strategy.legacy_density_fitting,
+              strategy.precision == FockPrecision::Float64 && !strategy.legacy_density_fitting,
           "exact raw Fock consumer requires a resolved CPU exact strategy");
   for (const auto* term : {&strategy.spec.coulomb, &strategy.spec.exchange}) {
     require(std::isfinite(term->coefficient) && term->op == FockOperator::FullRange &&
@@ -69,7 +63,7 @@ std::size_t matrix_size(std::size_t nbf) {
   return nbf * nbf;
 }
 void validate_densities(FockSpin spin, std::size_t count, std::span<const double> density,
-                       std::span<const double> beta) {
+                        std::span<const double> beta) {
   require(density.size() == count, "Fock density dimensions do not match the AO basis");
   require(spin == FockSpin::Unrestricted ? beta.size() == count : beta.empty(),
           "Fock spin-density layout does not match the requested spin semantics");
@@ -80,7 +74,7 @@ void validate_densities(FockSpin spin, std::size_t count, std::span<const double
 }  // namespace
 
 FockProviderCapabilities fock_provider_capabilities(FockApproximation approximation,
-                                                  FockBackend backend) {
+                                                    FockBackend backend) {
   require(valid(approximation) && valid(backend), "unknown Fock provider/backend");
   FockProviderCapabilities capabilities;
   capabilities.independent_terms =
@@ -101,8 +95,7 @@ FockBuildSpec make_hf_fock_spec(FockSpin spin, FockApproximation approximation) 
 }
 
 ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,
-                                   double screening_tolerance,
-                                   double metric_relative_threshold) {
+                                     double screening_tolerance, double metric_relative_threshold) {
   require(spec.version == 1, "unsupported FockBuildSpec version");
   require(valid(spec.spin) && valid(backend), "unknown Fock spin/backend");
   require(spec.derivative_order <= 1, "second Fock derivatives are not implemented");
@@ -113,9 +106,9 @@ ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,
   const bool fitted = spec.coulomb.approximation == FockApproximation::DensityFitted ||
                       spec.exchange.approximation == FockApproximation::DensityFitted;
   if (fitted) {
-  require(std::isfinite(metric_relative_threshold) && metric_relative_threshold > 0.0 &&
-              metric_relative_threshold < 1.0,
-          "DF metric relative threshold must lie strictly between zero and one");
+    require(std::isfinite(metric_relative_threshold) && metric_relative_threshold > 0.0 &&
+                metric_relative_threshold < 1.0,
+            "DF metric relative threshold must lie strictly between zero and one");
     require(standard_hf_terms(spec, FockApproximation::DensityFitted),
             "independent/mixed DF Fock providers are not migrated; use the existing HF DF pair");
   } else if (backend == FockBackend::Cuda) {
@@ -127,7 +120,7 @@ ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,
   result.backend = backend;
   result.schedule = fitted ? FockSchedule::LegacyDensityFitting
                            : (backend == FockBackend::Cuda ? FockSchedule::CudaFused
-                                                          : FockSchedule::CpuReference);
+                                                           : FockSchedule::CpuReference);
   result.screening_tolerance = screening_tolerance;
   result.metric_relative_threshold = fitted ? metric_relative_threshold : 0.0;
   result.legacy_density_fitting = fitted;
@@ -138,8 +131,7 @@ void require_exact_direct_strategy(const ResolvedFockBuild& strategy, FockSpin s
                                    FockBackend backend) {
   require(valid(spin) && valid(backend) && strategy.spec.version == 1 &&
               strategy.spec.spin == spin && strategy.backend == backend &&
-              strategy.spec.derivative_order == 1 &&
-              strategy.precision == FockPrecision::Float64 &&
+              strategy.spec.derivative_order == 1 && strategy.precision == FockPrecision::Float64 &&
               !strategy.legacy_density_fitting &&
               standard_hf_terms(strategy.spec, FockApproximation::Exact) &&
               strategy.schedule == (backend == FockBackend::Cpu ? FockSchedule::CpuReference
@@ -149,9 +141,8 @@ void require_exact_direct_strategy(const ResolvedFockBuild& strategy, FockSpin s
 }
 
 DirectJkMatrices build_exact_direct_jk(const ResolvedFockBuild& strategy, std::size_t nbf,
-                                     std::span<const double> eri,
-                                     std::span<const double> density,
-                                     std::span<const double> beta) {
+                                       std::span<const double> eri, std::span<const double> density,
+                                       std::span<const double> beta) {
   require_cpu_exact_consumer(strategy);
   const std::size_t count = matrix_size(nbf);
   validate_densities(strategy.spec.spin, count, density, beta);
@@ -160,8 +151,7 @@ DirectJkMatrices build_exact_direct_jk(const ResolvedFockBuild& strategy, std::s
     result.nbf = nbf;
     return result;
   }
-  require(count <= std::numeric_limits<std::size_t>::max() / count &&
-              eri.size() == count * count,
+  require(count <= std::numeric_limits<std::size_t>::max() / count && eri.size() == count * count,
           "exact Fock ERI dimensions do not match the AO basis");
   const bool unrestricted = strategy.spec.spin == FockSpin::Unrestricted;
   DirectJkMatrices result;
@@ -201,39 +191,40 @@ DirectJkMatrices build_exact_direct_jk(const ResolvedFockBuild& strategy, std::s
 }
 
 FockMatrices assemble_fock(const ResolvedFockBuild& strategy, std::span<const double> hcore,
-                          const DirectJkMatrices& jk) {
+                           const DirectJkMatrices& jk) {
   require_cpu_exact_consumer(strategy);
   const std::size_t count = matrix_size(jk.nbf);
   const bool unrestricted = strategy.spec.spin == FockSpin::Unrestricted;
   require(hcore.size() == count, "Fock Hcore dimensions do not match the AO basis");
-  require(jk.coulomb.size() == (strategy.spec.coulomb.present ? count : 0) &&
-              jk.exchange_alpha.size() == (strategy.spec.exchange.present ? count : 0) &&
-              jk.exchange_beta.size() ==
-                  (strategy.spec.exchange.present && unrestricted ? count : 0),
-          "raw J/K outputs do not match the resolved Fock terms");
+  require(
+      jk.coulomb.size() == (strategy.spec.coulomb.present ? count : 0) &&
+          jk.exchange_alpha.size() == (strategy.spec.exchange.present ? count : 0) &&
+          jk.exchange_beta.size() == (strategy.spec.exchange.present && unrestricted ? count : 0),
+      "raw J/K outputs do not match the resolved Fock terms");
   FockMatrices result;
   result.alpha.assign(hcore.begin(), hcore.end());
   if (unrestricted) result.beta = result.alpha;
   for (std::size_t ij = 0; ij < count; ++ij) {
-    const double j = strategy.spec.coulomb.present
-                         ? strategy.spec.coulomb.coefficient * jk.coulomb[ij] : 0.0;
+    const double j =
+        strategy.spec.coulomb.present ? strategy.spec.coulomb.coefficient * jk.coulomb[ij] : 0.0;
     const double ka = strategy.spec.exchange.present
-                          ? strategy.spec.exchange.coefficient * jk.exchange_alpha[ij] : 0.0;
+                          ? strategy.spec.exchange.coefficient * jk.exchange_alpha[ij]
+                          : 0.0;
     result.alpha[ij] += j + ka;
     if (unrestricted) {
       const double kb = strategy.spec.exchange.present
-                            ? strategy.spec.exchange.coefficient * jk.exchange_beta[ij] : 0.0;
+                            ? strategy.spec.exchange.coefficient * jk.exchange_beta[ij]
+                            : 0.0;
       result.beta[ij] += j + kb;
     }
   }
   return result;
 }
 
-double contract_exact_direct_energy_derivative(const ResolvedFockBuild& strategy,
-                                              std::size_t nbf,
-                                              std::span<const double> eri_derivative,
-                                              std::span<const double> density,
-                                              std::span<const double> beta) {
+double contract_exact_direct_energy_derivative(const ResolvedFockBuild& strategy, std::size_t nbf,
+                                               std::span<const double> eri_derivative,
+                                               std::span<const double> density,
+                                               std::span<const double> beta) {
   require(strategy.spec.derivative_order == 1, "Fock first derivatives were not requested");
   const DirectJkMatrices derivative =
       build_exact_direct_jk(strategy, nbf, eri_derivative, density, beta);
@@ -244,10 +235,11 @@ double contract_exact_direct_energy_derivative(const ResolvedFockBuild& strategy
     if (strategy.spec.coulomb.present)
       result += 0.5 * total * strategy.spec.coulomb.coefficient * derivative.coulomb[ij];
     if (strategy.spec.exchange.present) {
-      result += 0.5 * density[ij] * strategy.spec.exchange.coefficient *
-                derivative.exchange_alpha[ij];
+      result +=
+          0.5 * density[ij] * strategy.spec.exchange.coefficient * derivative.exchange_alpha[ij];
       if (unrestricted)
-        result += 0.5 * beta[ij] * strategy.spec.exchange.coefficient * derivative.exchange_beta[ij];
+        result +=
+            0.5 * beta[ij] * strategy.spec.exchange.coefficient * derivative.exchange_beta[ij];
     }
   }
   return result;

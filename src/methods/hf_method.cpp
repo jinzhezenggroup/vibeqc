@@ -95,14 +95,13 @@ void resolve_hf_options(scf::ScfOptions& options, vibeqc_method method,
                         const core::ContextState& context) {
   const bool fitted = options.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE;
   const bool cpu_df = options.density_fitting_mode == VIBEQC_DENSITY_FITTING_CPU_REFERENCE;
-  const scf::FockBackend backend =
-      context.requested_backend == VIBEQC_BACKEND_CUDA && !cpu_df
-          ? scf::FockBackend::Cuda : scf::FockBackend::Cpu;
+  const scf::FockBackend backend = context.requested_backend == VIBEQC_BACKEND_CUDA && !cpu_df
+                                       ? scf::FockBackend::Cuda
+                                       : scf::FockBackend::Cpu;
   options.resolved_fock_build = scf::resolve_fock_build(
-      scf::make_hf_fock_spec(method == VIBEQC_METHOD_UHF ? scf::FockSpin::Unrestricted
-                                                      : scf::FockSpin::Restricted,
-                             fitted ? scf::FockApproximation::DensityFitted
-                                    : scf::FockApproximation::Exact),
+      scf::make_hf_fock_spec(
+          method == VIBEQC_METHOD_UHF ? scf::FockSpin::Unrestricted : scf::FockSpin::Restricted,
+          fitted ? scf::FockApproximation::DensityFitted : scf::FockApproximation::Exact),
       backend, options.screening_tolerance, options.density_fitting_relative_threshold);
 }
 
