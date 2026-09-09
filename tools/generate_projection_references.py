@@ -25,18 +25,21 @@ def overlap_inputs(same_geometry):
     target_shells = [
         {
             "atom_index": i % 2,
-            "angular_momentum": l,
-            "primitives": [[0.17 + 0.2 * l, 0.8], [1.4 + l, -0.13]],
+            "angular_momentum": angular_momentum,
+            "primitives": [
+                [0.17 + 0.2 * angular_momentum, 0.8],
+                [1.4 + angular_momentum, -0.13],
+            ],
         }
-        for i, l in enumerate(range(4))
+        for i, angular_momentum in enumerate(range(4))
     ]
     source_shells = [
         {
             "atom_index": i % 2,
-            "angular_momentum": l,
-            "primitives": [[0.23 + 0.1 * l, 0.75]],
+            "angular_momentum": angular_momentum,
+            "primitives": [[0.23 + 0.1 * angular_momentum, 0.75]],
         }
-        for i, l in enumerate((3, 0, 2, 1, 0))
+        for i, angular_momentum in enumerate((3, 0, 2, 1, 0))
     ]
     return {
         "target_atoms": target_atoms,

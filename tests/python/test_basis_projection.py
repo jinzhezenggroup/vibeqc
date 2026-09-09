@@ -96,7 +96,7 @@ def test_poor_projection_inconsistent_overlap_and_source_states_are_rejected():
     with pytest.raises(ProjectionRejected, match="orthonormal"):
         project_occupied(metric, metric, metric, 2 * occupied)
     for density in (np.diag([1.5, 0.5]), np.diag([2, 2]), np.diag([0, 0])):
-        with pytest.raises(ProjectionRejected, match="electron count|fractional"):
+        with pytest.raises(ProjectionRejected, match=r"electron count|fractional"):
             project_density(metric, metric, metric, density, occupied_orbitals=1)
     with pytest.raises(ProjectionRejected, match="Hermitian"):
         project_density(metric, metric, metric, [[2, 1], [0, 0]], occupied_orbitals=1)

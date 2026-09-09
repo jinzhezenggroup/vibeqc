@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+: "${SLURM_JOB_ID:?Run through srun on main with --gres=gpu:5090:1 and a finite --time}"
+: "${CUDA_VISIBLE_DEVICES:?Slurm must assign GPU visibility; preserve its device selection}"
 cd /home/jzzeng/codes/vibeqc-issue-189
 export PYTHONPATH=python:.
 export VIBEQC_LIBRARY=$PWD/build-cuda/libvibeqc.so

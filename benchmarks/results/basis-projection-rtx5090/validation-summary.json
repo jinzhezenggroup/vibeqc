@@ -83,5 +83,6 @@
     "numpy": "2.5.3",
     "python": "3.13"
   },
-  "version": 1
+  "version": 1,
+  "worktree_dirty": true
 }
