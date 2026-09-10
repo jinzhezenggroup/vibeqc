@@ -126,6 +126,7 @@ def worker(args):
             basis_representation=representation,
             density_fitting="cuda" if fitted else "none",
             density_fitting_memory_budget_bytes=df_budget,
+            resource_budget=budget,
             energy_tolerance=1e-12,
             density_tolerance=1e-10,
             screening_tolerance=1e-14,
@@ -142,7 +143,6 @@ def worker(args):
             atoms,
             charges=[charge] * count,
             multiplicities=[multiplicity] * count,
-            budget=budget,
         )
         row["seconds"]["prepare"] = perf_counter() - start
         original = [np.array([r for _, r in system]) for system in atoms]
