@@ -95,3 +95,8 @@ Dense `PreparedGrid` remains an available baseline. Local packing is an
 explicit candidate, with no automatic promotion or universal speedup claim.
 Construction, AO evaluation, density gathering/contraction, scatter, transfers
 and complete available endpoints all contribute to a selection decision.
+
+The [accepted numerical evidence](../benchmarks/results/spatial-tasks/README.md)
+retains CPU/CUDA samples, resource observations, construction overhead and the
+historical dense comparison. It validates the explicit candidate without
+promoting it or claiming a complete GPU XC endpoint.

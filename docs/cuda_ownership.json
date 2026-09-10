@@ -470,7 +470,10 @@
     "ao_grid": {
       "current_default": "Dense bounded schedules; explicit local-dense candidate with shared compiler-owned AO/feature policy",
       "evidence": [
-        "docs/dft_grid.md"
+        "docs/dft_grid.md",
+        "docs/spatial_tasks.md",
+        "benchmarks/results/spatial-tasks/cpu/summary.json",
+        "benchmarks/results/spatial-tasks/cuda/summary.json"
       ],
       "generated_capability": "Through-f/order-three AO axis derivatives and spin ingredient arithmetic, shared by dense and selected-column schedules",
       "missing_capability": "Whole AO traversal remains counted as scientific glue; broader execution promotion remains evidence-based",
