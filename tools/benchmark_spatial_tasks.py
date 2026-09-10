@@ -155,7 +155,7 @@ def main():
             grid = ExplicitGrid(
                 points,
                 rng.uniform(0.001, 0.003, len(points)),
-                tuple(np.repeat(np.arange(natom), 32)),
+                tuple(map(int, np.repeat(np.arange(natom), 32))),
                 {},
             )
             with NativeAO(atoms, basis=shells, representation=representation) as basis:
