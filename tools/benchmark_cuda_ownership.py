@@ -164,10 +164,15 @@ def worker(args):
                     # Keep the same density seed for each replay workload.
                     prepared.set_warm_start_updates(False)
                 if any(
-                    not r.converged or r.executed_backend != "cuda"
+                    not r.converged
+                    or r.executed_backend != "cuda"
+                    or not np.isfinite([r.energy, r.energy_change, r.density_rms]).all()
+                    or not np.isfinite(r.forces).all()
                     for r in result.items
                 ):
-                    raise RuntimeError("wrong backend or unconverged endpoint")
+                    raise RuntimeError(
+                        "wrong backend, unconverged or nonfinite endpoint"
+                    )
                 row["results"][phase] = [
                     {
                         "energy": r.energy,
@@ -244,6 +249,22 @@ def compare(args):
         subprocess.run(argv, check=True)
         runs[label].append(json.loads(path.read_text()))
         measured.append((label, runs[label][-1]))
+    expected_cases = [r["case"] for r in runs["baseline"][0]["endpoints"]]
+    for label, group in runs.items():
+        expected_source = (
+            group[0]["revision"],
+            group[0]["native_source_identity"],
+            group[0]["library_sha256"],
+        )
+        for run in group:
+            if [r["case"] for r in run["endpoints"]] != expected_cases:
+                raise ValueError("endpoint inventories differ")
+            if (
+                run["revision"],
+                run["native_source_identity"],
+                run["library_sha256"],
+            ) != expected_source:
+                raise ValueError(f"{label} source or binary changed between samples")
     rows = []
     for index, base in enumerate(runs["baseline"][0]["endpoints"]):
         row = {
