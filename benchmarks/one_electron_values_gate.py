@@ -63,16 +63,13 @@ def main():
         parser.error("run this real-GPU gate inside Slurm")
     if args.batch < 1 or args.repeats < 5:
         parser.error("batch must be positive and at least five repeats are required")
-    if args.df_derivatives:
-        if not args.fitted or args.derivatives or args.mapping == "shell_warp":
-            parser.error(
-                "DF derivatives require --fitted, thread/serial mapping and no --derivatives"
-            )
-        os.environ["VIBEQC_ONE_ELECTRON_DERIVATIVES"] = "generated"
-    elif args.mapping == "serial":
+    if args.df_derivatives or not args.derivatives:
         parser.error(
-            "serial mapping is only supported by this gate for --df-derivatives"
+            "the reference value/DF response was retired; use tools/benchmark_cuda_ownership.py "
+            "with explicit archived baseline and candidate checkouts"
         )
+    if args.mapping == "serial":
+        parser.error("one-electron derivatives use thread/shell_warp mapping")
     case = cases[args.case]
     basis = case.vibeqc_basis
     if args.contraction_length:
@@ -135,9 +132,6 @@ def main():
         if args.derivatives
         else "VIBEQC_ONE_ELECTRON_VALUE_MAPPING"
     )
-    if args.df_derivatives:
-        selection_variable = "VIBEQC_DF_DERIVATIVES"
-        mapping_variable = "VIBEQC_DF_DERIVATIVE_MAPPING"
     os.environ[mapping_variable] = args.mapping
     library = _native.load_library()
     library.vibeqc_get_source_identity.restype = ctypes.c_char_p

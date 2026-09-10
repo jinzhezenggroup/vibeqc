@@ -6,7 +6,6 @@ capacity allowance and is also charged by the native allocation ledger.
 """
 
 import json
-import os
 from dataclasses import asdict
 
 from .resources import ResourceCandidate, ResourceEstimate, checked_bytes
@@ -35,8 +34,6 @@ def cuda_df_candidates(
         key = orbital["nbf"], state["nalpha"], state["nbeta"], orbital["primitives"]
         buckets.setdefault(key, []).append(item)
     groups = [buckets[key] for key in sorted(buckets)]
-    # Native selected() accepts "1" as an alias for the named candidate.
-    generated_response = os.environ.get("VIBEQC_DF_DERIVATIVES") in ("1", "generated")
     rows = []
     for group in groups:
         first = group[0]
@@ -159,8 +156,8 @@ def cuda_df_candidates(
     source_budget = requested_budget or max(
         max(
             row["preparation_minimum"],
-            (2 if generated_response else 1) * row["default_tile"].peak_workspace_bytes,
-            2 * row["response_minimum"] if generated_response else 0,
+            2 * row["default_tile"].peak_workspace_bytes,
+            2 * row["response_minimum"],
         )
         for row in rows
     )
@@ -194,9 +191,7 @@ def cuda_df_candidates(
                 n,
                 aux,
                 row["occupied"],
-                budget_bytes=(sub_budget // 2 if generated_response else sub_budget)
-                if source
-                else 0,
+                budget_bytes=sub_budget // 2 if source else 0,
                 fixed_device_bytes=row["source_bytes"] if source else 0,
             )
             pairs = (
@@ -208,37 +203,27 @@ def cuda_df_candidates(
                 8 * b * aux * aux,
                 8 * b * n * n * aux,
             )
-            tile_bytes, metric_tile = 8 * pairs * q, 8 * q * aux
+            tile_bytes = 8 * pairs * q
             # Actual queried metric/SCF workspaces are numeric allocations in
             # the ledger. These explicit conservative allowances are shared
             # with neither caller inputs nor opaque provider allocations.
             solver = (64 << 20) + 16 * matrix + 128 * aux * aux
             persistent_device = 32 * matrix + 16 * b * aux + solver + 1024 * b
             persistent_device += (
-                4 * tile_bytes + metric_tile + metric + row["source_bytes"]
+                4 * tile_bytes + metric + row["source_bytes"]
                 if source
                 else tensor + 3 * tile_bytes
             )
             setup = 3 * metric + 16 * b * aux + solver + 4 * b
-            force = (
-                2 * tile_bytes + metric_tile
-                if source
-                else 8 * (tensor // b)
-                + 4 * (metric // b)
-                + 2 * (matrix // b)
-                + 16 * aux
-                + 8
-            )
-            if generated_response:
-                force = max(force, row["response_capacity"])
-            # Default raw-value/derivative generation is a separate temporary
-            # phase; charge its complete chunk ceiling conservatively.
-            generation = row["source_bytes"] + 8 * b * (d + 1) * (
-                2 * c * c + (0 if source else ac * ac + c * c * ac)
+            # The promoted force consumer streams bounded weights. It owns no
+            # raw coordinate derivative tensors or coordinate-wise CUDA scratch.
+            force = row["response_capacity"]
+            generation = row["source_bytes"] + 8 * b * (
+                (d + 1) * 2 * c * c + (0 if source else ac * ac + c * c * ac)
             )
             persistent_host = row["host_metadata"] + 8 * b * (32 * n * n + 16 * d)
             one_electron = 8 * b * ((d + 1) * 2 * n * n + d)
-            raw = 8 * b * (d + 1) * (aux * aux + n * n * aux)
+            raw = 8 * b * (aux * aux + n * n * aux)
             if source:
                 persistent_host += 2 * metric
             else:
@@ -256,20 +241,17 @@ def cuda_df_candidates(
                 (64 << 20) + scf + one_electron + 64 * (metric // b) + 8 * (tensor // b)
             )
             host_temporary += 2 * row["host_metadata"] + (
-                2 * tile_bytes
-                if source
-                else 2 * raw + 8 * b * (d + 1) * (ac * ac + c * c * ac)
+                2 * tile_bytes if source else 2 * raw + 8 * b * (ac * ac + c * c * ac)
             )
             if source and sub_budget < row["preparation_minimum"]:
                 raise ValueError(
                     "DF sub-budget cannot hold the native one-electron preparation minimum"
                 )
-            if generated_response:
-                if source and sub_budget // 2 < row["response_minimum"]:
-                    raise ValueError(
-                        "DF sub-budget cannot hold the generated response minimum"
-                    )
-                host_temporary += row["response_capacity"]
+            if source and sub_budget // 2 < row["response_minimum"]:
+                raise ValueError(
+                    "DF sub-budget cannot hold the generated response minimum"
+                )
+            host_temporary += row["response_capacity"]
             host_resident.append(checked_bytes(persistent_host))
             device_resident.append(checked_bytes(persistent_device))
             host_work.append(checked_bytes(host_temporary))

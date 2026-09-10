@@ -39,7 +39,10 @@ def main():
     if not os.environ.get("SLURM_JOB_ID") or args.batch < 1 or args.df_budget < 0:
         parser.error("use a finite Slurm job, positive batch, and nonnegative budget")
     os.environ["VIBEQC_ONE_ELECTRON_DERIVATIVES"] = "generated"
-    os.environ["VIBEQC_DF_DERIVATIVES"] = args.selection
+    if args.selection == "reference":
+        parser.error(
+            "coordinate-wise DF response was retired; use an archived source checkout"
+        )
     os.environ["VIBEQC_DF_DERIVATIVE_MAPPING"] = "thread"
     lib = _native.load_library()
     lib.vibeqc_get_source_identity.restype = ctypes.c_char_p

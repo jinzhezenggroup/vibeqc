@@ -26,9 +26,10 @@ def test_cuda_df_scf_has_device_resident_iteration_boundary():
     )
     assert "execute_cuda_density_fitting_rhf_jk_device" in source
     assert "execute_cuda_density_fitting_uhf_jk_device" in source
-    assert "execute_cuda_density_fitting_rhf_force_response" in source
-    assert "execute_cuda_density_fitting_uhf_force_response" in source
-    assert "reduce_force_response_kernel" in source
+    assert "execute_cuda_density_fitting_generated_force_response" in source
+    assert "execute_cuda_density_fitting_rhf_force_response" not in source
+    assert "execute_cuda_density_fitting_uhf_force_response" not in source
+    assert "reduce_force_response_kernel" not in source
     assert "run_cuda_density_fitting_rhf_device_scf" in source
     assert "run_cuda_density_fitting_uhf_device_scf" in source
     assert "update_device_convergence_kernel" in source

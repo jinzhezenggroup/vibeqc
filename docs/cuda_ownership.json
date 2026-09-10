@@ -228,12 +228,6 @@
       "reason": "RI planning, ownership, generic eigensolver/DIIS and library runtime.",
       "regions": [
         {
-          "reason": "RI force-response contraction coefficients and reductions.",
-          "role": "scientific",
-          "start": "__global__ void gather_force_auxiliary_matrices_kernel",
-          "stop": "__global__ void gather_auxiliary_tile_kernel"
-        },
-        {
           "reason": "Streamed RI J/K, density and energy equations.",
           "role": "scientific",
           "start": "__global__ void accumulate_streamed_auxiliary_density_kernel",
@@ -246,9 +240,9 @@
           "stop": "vibeqc_status prepare_outputs("
         },
         {
-          "reason": "Source and generated derivative force-response equation assembly.",
+          "reason": "Generated response bridge and shared spectral-factor composition; counted conservatively with its native adapter.",
           "role": "scientific",
-          "start": "vibeqc_status source_force_response_impl(",
+          "start": "vibeqc_status execute_cuda_density_fitting_generated_force_response(",
           "stop": "vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl("
         }
       ],

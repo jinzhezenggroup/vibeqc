@@ -227,14 +227,9 @@ def test_cuda_df_global_candidates_bind_execution_and_respect_host_device_caps(
 
 
 @pytest.mark.parametrize("mode", ["resident", "recomputed"])
-@pytest.mark.parametrize("selector", ["generated", "1"])
-def test_cuda_df_distinct_auxiliary_basis_and_open_shell_inventory(
-    monkeypatch, mode, selector
-):
+def test_cuda_df_distinct_auxiliary_basis_and_open_shell_inventory(mode):
     """Orbital dimensions cannot substitute for auxiliary or spin dimensions."""
     from vibeqc.resources import ResourcePlan
-
-    monkeypatch.setenv("VIBEQC_DF_DERIVATIVES", selector)
 
     options = {
         "method": "uhf",

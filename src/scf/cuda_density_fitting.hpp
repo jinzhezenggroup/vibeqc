@@ -111,21 +111,6 @@ vibeqc_status generate_cuda_density_fitting_metric_derivative_tile(
     std::size_t auxiliary_row_count, std::int64_t derivative_coordinate, void* stream,
     double* output, std::string& detail);
 
-/**
- * Stream a source-backed RHF two-electron force response without materializing
- * raw three-center values or their derivatives. `system` and coordinates are
- * local to the selected item; only the compact derivative vector is returned.
- */
-vibeqc_status execute_cuda_density_fitting_source_rhf_force_response(
-    CudaDensityFittingJkPlan* plan, std::size_t system, const std::vector<double>& density,
-    std::size_t coordinate_count, std::vector<double>& derivative, std::string& detail);
-
-/** UHF counterpart of the bounded source-backed force response. */
-vibeqc_status execute_cuda_density_fitting_source_uhf_force_response(
-    CudaDensityFittingJkPlan* plan, std::size_t system, const std::vector<double>& alpha_density,
-    const std::vector<double>& beta_density, std::size_t coordinate_count,
-    std::vector<double>& derivative, std::string& detail);
-
 /** Return the fixed batch cardinality owned by a prepared plan. */
 std::size_t cuda_density_fitting_jk_plan_batch_size(const CudaDensityFittingJkPlan* plan) noexcept;
 /** Verify a borrowed item's dimensions and the value-side metric cutoff before
@@ -157,11 +142,11 @@ struct CudaDensityFittingMetricDiagnostic {
   std::size_t solver_host_workspace_bytes{};
   /** Persistent device bytes retained after setup (all batch systems). */
   std::size_t device_resident_bytes{};
-  /** Conservative peak device bytes during plan construction. */
+  /** Conservative value/SCF plan setup peak; force bridge storage is separate. */
   std::size_t peak_device_bytes{};
   /** Host bytes retained for streamed raw values and inverse metrics. */
   std::size_t host_resident_bytes{};
-  /** Conservative host peak while preparing the streamed plan. */
+  /** Conservative value-plan host setup peak; force bridge storage is separate. */
   std::size_t peak_host_bytes{};
   /** Auxiliary tile selected by the planner/backend. */
   std::size_t auxiliary_tile{};
@@ -270,28 +255,6 @@ vibeqc_status execute_cuda_density_fitting_uhf_jk_device(
     CudaDensityFittingJkPlan* plan, const double* alpha_density, const double* beta_density,
     double* coulomb, double* alpha_exchange, double* beta_exchange, std::string& detail,
     JkTermSelection terms = {}, FockMatrixLayout density_layout = FockMatrixLayout::ColumnMajor);
-
-/**
- * Evaluate the complete raw-tensor RHF DF two-electron force response on the
- * plan stream.  Inputs are packed by system, with derivative tensors packed
- * by system then coordinate.  The metric pseudoinverse and its derivative are
- * supplied explicitly so thresholding and rank-deficiency policy exactly
- * match the validated host oracle.  Only the compact derivative vector is
- * copied back to the host.
- */
-vibeqc_status execute_cuda_density_fitting_rhf_force_response(
-    CudaDensityFittingJkPlan* plan, const std::vector<double>& raw_three_center,
-    const std::vector<double>& metric_inverse, const std::vector<double>& three_center_derivative,
-    const std::vector<double>& metric_inverse_derivative, std::size_t coordinate_count,
-    const std::vector<double>& density, std::vector<double>& derivative, std::string& detail);
-
-/** Device counterpart for unrestricted spin-resolved DF force response. */
-vibeqc_status execute_cuda_density_fitting_uhf_force_response(
-    CudaDensityFittingJkPlan* plan, const std::vector<double>& raw_three_center,
-    const std::vector<double>& metric_inverse, const std::vector<double>& three_center_derivative,
-    const std::vector<double>& metric_inverse_derivative, std::size_t coordinate_count,
-    const std::vector<double>& alpha_density, const std::vector<double>& beta_density,
-    std::vector<double>& derivative, std::string& detail);
 
 /**
  * Run batched RHF DF SCF with densities, Fock assembly, eigensolves, and

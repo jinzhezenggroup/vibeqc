@@ -35,9 +35,7 @@ bool resident_psss_bra_requested() noexcept;
 /** Generated weighted primitive candidate; frozen into a prepared bucket. */
 bool generated_psss_weighted_requested() noexcept;
 
-/** DF derivative candidates remain opt-in pending complete endpoint evidence. */
-bool generated_df_derivatives_requested() noexcept;
-/** 0: atomic dense elements; 1: deterministic serial traversal. */
+/** 0: cooperative dense elements; 1: deterministic serial traversal. */
 unsigned df_derivative_mapping_requested() noexcept;
 /** 0: contiguous auxiliary outputs; 1: AO components; 2: primitive lanes. */
 unsigned df_value_mapping_requested() noexcept;

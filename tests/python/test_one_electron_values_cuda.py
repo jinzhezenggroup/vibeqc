@@ -16,7 +16,9 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def run_case(monkeypatch, mapping, *, method, representation, fitted, count):
+def run_case(
+    monkeypatch, mapping, *, method, representation, fitted, count, device="cuda"
+):
     """Exercise cold, unchanged and changed geometry on one fixed topology."""
     if mapping is None:
         monkeypatch.delenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", raising=False)
@@ -37,10 +39,10 @@ def run_case(monkeypatch, mapping, *, method, representation, fitted, count):
     charge, multiplicity = (1, 1) if method == "rhf" else (0, 2)
     calculator = Calculator(
         method=method,
-        device="cuda",
+        device=device,
         basis=basis,
         basis_representation=representation,
-        density_fitting="cuda" if fitted else "none",
+        density_fitting=device if fitted else "none",
         energy_tolerance=1e-12,
         density_tolerance=1e-10,
         screening_tolerance=1e-14,

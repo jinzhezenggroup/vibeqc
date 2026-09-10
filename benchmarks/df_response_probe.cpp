@@ -31,13 +31,12 @@ int main(int argc, char** argv) {
     const std::string name = argv[1], mode = argv[2], spin = argv[5];
     const auto budget = std::stoull(argv[3]), cap = std::stoull(argv[4]);
     const int repeats = std::stoi(argv[6]);
-    const bool generated = mode.starts_with("generated_"), source = mode.ends_with("_source");
+    const bool source = mode.ends_with("_source");
     if ((name != "sp8" && name != "sdf18") || (spin != "rhf" && spin != "uhf") || repeats < 5 ||
-        (mode != "generated_source" && mode != "generated_resident" && mode != "reference_source" &&
-         mode != "reference_resident"))
-      throw std::invalid_argument("unsupported probe case, mode, spin or repeats");
-    if (generated && !budget)
-      throw std::invalid_argument("generated response requires a positive byte budget");
+        (mode != "generated_source" && mode != "generated_resident"))
+      throw std::invalid_argument(
+          "unsupported probe arguments; reference response requires the archived source");
+    if (!budget) throw std::invalid_argument("generated response requires a positive byte budget");
     core::System orbital;
     orbital.atoms = {{1, {0.0, 0.0, -0.7}}, {1, {0.1, 0.2, 0.7}}};
     orbital.shells = name == "sp8" ? std::vector<core::Shell>{{0, 0, {{1.2, 1.0}}},
@@ -69,13 +68,6 @@ int main(int argc, char** argv) {
         spin == "rhf"
             ? scf::build_density_fitting_rhf_gradient(raw, rhf, threshold).derivative
             : scf::build_density_fitting_uhf_gradient(raw, alpha, beta, threshold).derivative;
-    const auto inverse = scf::density_fitting_metric_pseudoinverse(raw, threshold);
-    std::vector<double> inverse_derivative(raw.ncoord * a * a);
-    for (std::size_t coordinate = 0; coordinate < raw.ncoord; ++coordinate) {
-      const auto slice =
-          scf::density_fitting_metric_pseudoinverse_derivative(raw, inverse, coordinate, threshold);
-      std::copy(slice.begin(), slice.end(), inverse_derivative.begin() + coordinate * a * a);
-    }
     scf::CudaDensityFittingJkPlan* handle = nullptr;
     std::vector<scf::CudaDensityFittingMetricDiagnostic> diagnostics;
     if (source) {
@@ -103,24 +95,9 @@ int main(int argc, char** argv) {
     scf::DfGradientResources resources;
     std::vector<double> actual;
     const auto execute = [&] {
-      if (generated) {
-        check(scf::execute_cuda_density_fitting_generated_force_response(
-            plan.get(), 0, orbital, auxiliary, raw.three_center, raw.metric, terms, 0, budget, cap,
-            actual, detail, &resources));
-      } else if (source) {
-        check(spin == "rhf" ? scf::execute_cuda_density_fitting_source_rhf_force_response(
-                                  plan.get(), 0, rhf, raw.ncoord, actual, detail)
-                            : scf::execute_cuda_density_fitting_source_uhf_force_response(
-                                  plan.get(), 0, alpha, beta, raw.ncoord, actual, detail));
-      } else {
-        check(spin == "rhf"
-                  ? scf::execute_cuda_density_fitting_rhf_force_response(
-                        plan.get(), raw.three_center, inverse, raw.three_center_derivative,
-                        inverse_derivative, raw.ncoord, rhf, actual, detail)
-                  : scf::execute_cuda_density_fitting_uhf_force_response(
-                        plan.get(), raw.three_center, inverse, raw.three_center_derivative,
-                        inverse_derivative, raw.ncoord, alpha, beta, actual, detail));
-      }
+      check(scf::execute_cuda_density_fitting_generated_force_response(
+          plan.get(), 0, orbital, auxiliary, raw.three_center, raw.metric, terms, 0, budget, cap,
+          actual, detail, &resources));
     };
     execute();
     std::vector<double> timings;
@@ -135,8 +112,7 @@ int main(int argc, char** argv) {
       for (std::size_t i = 0; i < actual.size(); ++i)
         maximum_error = std::max(maximum_error, std::abs(actual[i] - expected[i]));
     }
-    if (maximum_error > 2e-9 ||
-        (generated && (resources.host_bytes > budget || resources.device_bytes > budget)))
+    if (maximum_error > 2e-9 || (resources.host_bytes > budget || resources.device_bytes > budget))
       throw std::runtime_error("response error or staging budget gate failed");
     rusage usage{};
     if (getrusage(RUSAGE_SELF, &usage)) throw std::runtime_error("getrusage failed");
@@ -150,19 +126,15 @@ int main(int argc, char** argv) {
               << ",\"process_peak_host_bytes_including_oracle\":" << usage.ru_maxrss * 1024ULL
               << ",\"plan_device_resident_bytes\":" << diagnostics[0].device_resident_bytes
               << ",\"response_resources\":";
-    if (!generated)
-      std::cout << "null";
-    else
-      std::cout << "{\"host_bytes\":" << resources.host_bytes
-                << ",\"device_bytes\":" << resources.device_bytes
-                << ",\"h2d_bytes\":" << resources.host_to_device_bytes
-                << ",\"d2h_bytes\":" << resources.device_to_host_bytes
-                << ",\"synchronizations\":" << resources.stream_synchronizations
-                << ",\"uploads\":" << resources.uploads
-                << ",\"derivative_tiles\":" << resources.tiles
-                << ",\"weight_tile_elements\":" << resources.weight_tile_elements
-                << ",\"auxiliary_weight_tile\":" << resources.auxiliary_weight_tile
-                << ",\"value_slices\":" << resources.value_slices << "}";
+    std::cout << "{\"host_bytes\":" << resources.host_bytes
+              << ",\"device_bytes\":" << resources.device_bytes
+              << ",\"h2d_bytes\":" << resources.host_to_device_bytes
+              << ",\"d2h_bytes\":" << resources.device_to_host_bytes
+              << ",\"synchronizations\":" << resources.stream_synchronizations
+              << ",\"uploads\":" << resources.uploads << ",\"derivative_tiles\":" << resources.tiles
+              << ",\"weight_tile_elements\":" << resources.weight_tile_elements
+              << ",\"auxiliary_weight_tile\":" << resources.auxiliary_weight_tile
+              << ",\"value_slices\":" << resources.value_slices << "}";
     std::cout << ",\"milliseconds\":[";
     for (std::size_t i = 0; i < timings.size(); ++i) std::cout << (i ? "," : "") << timings[i];
     std::cout << "]}\n";

@@ -90,20 +90,6 @@ vibeqc_status generate_cuda_density_fitting_metric_derivative_tile(
   return VIBEQC_STATUS_NOT_IMPLEMENTED;
 }
 
-vibeqc_status execute_cuda_density_fitting_source_rhf_force_response(
-    CudaDensityFittingJkPlan*, std::size_t, const std::vector<double>&, std::size_t,
-    std::vector<double>&, std::string& detail) {
-  detail = "CUDA density-fitting support is unavailable in this build";
-  return VIBEQC_STATUS_NOT_IMPLEMENTED;
-}
-
-vibeqc_status execute_cuda_density_fitting_source_uhf_force_response(
-    CudaDensityFittingJkPlan*, std::size_t, const std::vector<double>&, const std::vector<double>&,
-    std::size_t, std::vector<double>&, std::string& detail) {
-  detail = "CUDA density-fitting support is unavailable in this build";
-  return VIBEQC_STATUS_NOT_IMPLEMENTED;
-}
-
 std::size_t cuda_density_fitting_jk_plan_batch_size(const CudaDensityFittingJkPlan*) noexcept {
   return 0U;
 }
@@ -179,20 +165,6 @@ vibeqc_status execute_cuda_density_fitting_uhf_jk_device(CudaDensityFittingJkPla
                                                          const double*, double*, double*, double*,
                                                          std::string& detail, JkTermSelection,
                                                          FockMatrixLayout) {
-  return unavailable(nullptr, detail);
-}
-
-vibeqc_status execute_cuda_density_fitting_rhf_force_response(
-    CudaDensityFittingJkPlan*, const std::vector<double>&, const std::vector<double>&,
-    const std::vector<double>&, const std::vector<double>&, std::size_t, const std::vector<double>&,
-    std::vector<double>&, std::string& detail) {
-  return unavailable(nullptr, detail);
-}
-
-vibeqc_status execute_cuda_density_fitting_uhf_force_response(
-    CudaDensityFittingJkPlan*, const std::vector<double>&, const std::vector<double>&,
-    const std::vector<double>&, const std::vector<double>&, std::size_t, const std::vector<double>&,
-    const std::vector<double>&, std::vector<double>&, std::string& detail) {
   return unavailable(nullptr, detail);
 }
 

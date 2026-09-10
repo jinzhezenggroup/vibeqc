@@ -150,9 +150,6 @@ bool generated_psss_weighted_requested() noexcept {
   return selected("VIBEQC_PSSS_WEIGHTED", "generated");
 }
 
-bool generated_df_derivatives_requested() noexcept {
-  return selected("VIBEQC_DF_DERIVATIVES", "generated");
-}
 unsigned df_derivative_mapping_requested() noexcept {
   return selected("VIBEQC_DF_DERIVATIVE_MAPPING", "serial") ? 1U : 0U;
 }

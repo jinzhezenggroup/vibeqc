@@ -61,9 +61,10 @@ def main() -> None:
     if args.df_response is not None:
         if not args.fitted:
             parser.error("--df-response requires --fitted")
-        os.environ["VIBEQC_DF_DERIVATIVES"] = args.df_response
-    else:
-        os.environ.pop("VIBEQC_DF_DERIVATIVES", None)
+        if args.df_response == "reference":
+            parser.error(
+                "coordinate-wise DF response was retired; use an archived source checkout"
+            )
 
     if args.mode == "scalar":
         os.environ[_SCALAR_ENVIRONMENT] = "1"

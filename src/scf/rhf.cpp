@@ -838,7 +838,7 @@ void bind_generated_one_electron(DensityFittingScfData& data, const core::System
 void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
                        const core::System& auxiliary, int device, std::size_t budget) {
 #if VIBEQC_HAS_CUDA
-  if (device >= 0 && cuda_policy::generated_df_derivatives_requested()) {
+  if (device >= 0) {
     data.df_gradient_orbital = orbital;
     data.df_gradient_auxiliary = auxiliary;
     data.df_gradient_mapping = cuda_policy::df_derivative_mapping_requested();
@@ -852,10 +852,12 @@ void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
   (void)budget;
 #endif
 }
+/** Energy-only and CPU caches have no bound CUDA response to invalidate. */
 [[maybe_unused]] bool df_response_policy_matches(const DensityFittingScfData& data,
-                                                 std::size_t budget, double relative_threshold) {
+                                                 std::size_t budget, double relative_threshold,
+                                                 bool needs_cuda_response) {
 #if VIBEQC_HAS_CUDA
-  const bool generated = cuda_policy::generated_df_derivatives_requested();
+  const bool generated = needs_cuda_response;
   return data.metric_relative_threshold == relative_threshold &&
          data.df_gradient_orbital.has_value() == generated &&
          (!generated ||
@@ -865,15 +867,18 @@ void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
   (void)data;
   (void)budget;
   (void)relative_threshold;
+  (void)needs_cuda_response;
   return true;
 #endif
 }
 
 /** Cached DF response state must follow policy and budget changes on replay. */
 [[maybe_unused]] bool one_electron_response_policy_matches(const DensityFittingScfData& data,
-                                                           std::size_t requested_budget) {
+                                                           std::size_t requested_budget,
+                                                           bool needs_cuda_response) {
 #if VIBEQC_HAS_CUDA
-  const bool generated = cuda_policy::generated_one_electron_derivatives_requested();
+  const bool generated =
+      needs_cuda_response && cuda_policy::generated_one_electron_derivatives_requested();
   const auto effective_budget = requested_budget ? requested_budget : 128U * 1024U * 1024U;
   return data.one_electron_gradient_system.has_value() == generated &&
          (!generated || (data.one_electron_gradient_mapping ==
@@ -882,6 +887,7 @@ void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
 #else
   (void)data;
   (void)requested_budget;
+  (void)needs_cuda_response;
   return true;
 #endif
 }
@@ -939,8 +945,7 @@ void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
     integrals::DensityFittingIntegralData cartesian;
     std::string detail;
     const vibeqc_status status = build_cuda_density_fitting_integrals(
-        cuda_device_id, system, auxiliary_system, cartesian, detail,
-        include_derivatives && !cuda_policy::generated_df_derivatives_requested());
+        cuda_device_id, system, auxiliary_system, cartesian, detail, false);
     if (status != VIBEQC_STATUS_SUCCESS) {
       throw std::runtime_error(detail.empty() ? "CUDA density-fitting integral generation failed"
                                               : detail);
@@ -1154,69 +1159,35 @@ Matrix generated_df_hf_gradient(const DensityFittingScfData& data, CudaDensityFi
   }
 
   const Matrix weighted = energy_weighted_density(orbitals.vectors, orbitals.values, n, occupied);
-  // Run before the legacy response fallback guard: a requested generated
-  // failure must propagate, never silently switch integral implementations.
+  // The CUDA response is the sole device path; failures propagate before force
+  // assembly. The independent CPU calculation below serves CPU callers only.
   const Matrix generated_one_electron = generated_one_electron_hf_gradient(data, density, weighted);
   const Matrix generated_df = generated_df_hf_gradient(data, cuda_plan, cuda_system, density);
-  bool device_force_response = false;
-#if VIBEQC_HAS_CUDA
   if (cuda_plan != nullptr) {
-    try {
-      std::vector<double> two_electron_derivative = generated_df;
-      std::string detail;
-      vibeqc_status status = !generated_df.empty()
-                                 ? VIBEQC_STATUS_SUCCESS
-                                 : execute_cuda_density_fitting_source_rhf_force_response(
-                                       cuda_plan, cuda_system, density, data.raw.ncoord,
-                                       two_electron_derivative, detail);
-      if (status != VIBEQC_STATUS_SUCCESS && !data.raw.three_center.empty()) {
-        const std::vector<double> inverse = density_fitting_metric_pseudoinverse(
-            data.raw, options.density_fitting_relative_threshold);
-        const std::size_t metric_elements = data.raw.naux * data.raw.naux;
-        const std::size_t derivative_elements = data.raw.ncoord * metric_elements;
-        std::vector<double> inverse_derivative(derivative_elements, 0.0);
-        for (std::size_t coordinate = 0; coordinate < data.raw.ncoord; ++coordinate) {
-          const std::vector<double> response = density_fitting_metric_pseudoinverse_derivative(
-              data.raw, inverse, coordinate, options.density_fitting_relative_threshold);
-          std::copy(response.begin(), response.end(),
-                    inverse_derivative.begin() + coordinate * metric_elements);
-        }
-        status = execute_cuda_density_fitting_rhf_force_response(
-            cuda_plan, data.raw.three_center, inverse, data.raw.three_center_derivative,
-            inverse_derivative, data.raw.ncoord, density, two_electron_derivative, detail);
+    if (generated_df.size() != data.raw.ncoord)
+      throw std::runtime_error("generated DF response has invalid coordinate dimensions");
+    result.forces.assign(data.raw.ncoord, 0.0);
+    const std::size_t matrix_elements = data.raw.nbf * data.raw.nbf;
+    for (std::size_t coordinate = 0; coordinate < data.raw.ncoord; ++coordinate) {
+      if (!generated_one_electron.empty()) {
+        result.forces[coordinate] =
+            -(generated_one_electron[coordinate] + generated_df[coordinate] +
+              data.one_electron.nuclear_repulsion_derivative[coordinate]);
+        continue;
       }
-      if (status == VIBEQC_STATUS_SUCCESS && two_electron_derivative.size() == data.raw.ncoord) {
-        result.forces.assign(data.raw.ncoord, 0.0);
-        const std::size_t matrix_elements = data.raw.nbf * data.raw.nbf;
-        for (std::size_t coordinate = 0; coordinate < data.raw.ncoord; ++coordinate) {
-          if (!generated_one_electron.empty()) {
-            result.forces[coordinate] =
-                -(generated_one_electron[coordinate] + two_electron_derivative[coordinate] +
-                  data.one_electron.nuclear_repulsion_derivative[coordinate]);
-            continue;
-          }
-          const double* overlap_derivative =
-              data.one_electron.overlap_derivative.data() + coordinate * matrix_elements;
-          const double* hcore_derivative =
-              data.one_electron.hcore_derivative.data() + coordinate * matrix_elements;
-          double derivative = two_electron_derivative[coordinate] +
-                              data.one_electron.nuclear_repulsion_derivative[coordinate];
-          for (std::size_t item = 0; item < matrix_elements; ++item) {
-            derivative +=
-                density[item] * hcore_derivative[item] - weighted[item] * overlap_derivative[item];
-          }
-          result.forces[coordinate] = -derivative;
-        }
-        device_force_response = true;
+      const double* overlap_derivative =
+          data.one_electron.overlap_derivative.data() + coordinate * matrix_elements;
+      const double* hcore_derivative =
+          data.one_electron.hcore_derivative.data() + coordinate * matrix_elements;
+      double derivative =
+          generated_df[coordinate] + data.one_electron.nuclear_repulsion_derivative[coordinate];
+      for (std::size_t item = 0; item < matrix_elements; ++item) {
+        derivative +=
+            density[item] * hcore_derivative[item] - weighted[item] * overlap_derivative[item];
       }
-    } catch (...) {
-      // The host oracle below remains the correctness fallback when a device
-      // force scratch allocation or metric preparation is unavailable.
+      result.forces[coordinate] = -derivative;
     }
-  }
-#endif
-  if (!device_force_response) {
-    if (!generated_df.empty()) throw std::runtime_error("generated DF response assembly failed");
+  } else {
     if (!generated_one_electron.empty()) {
       throw std::runtime_error(
           "CUDA DF response failed with generated one-electron gradients selected");
@@ -1334,66 +1305,33 @@ Matrix generated_df_hf_gradient(const DensityFittingScfData& data, CudaDensityFi
       data, alpha_density, alpha_weighted, &beta_density, &beta_weighted);
   const Matrix generated_df =
       generated_df_hf_gradient(data, cuda_plan, cuda_system, alpha_density, &beta_density);
-  bool device_force_response = false;
-#if VIBEQC_HAS_CUDA
   if (cuda_plan != nullptr) {
-    try {
-      std::vector<double> two_electron_derivative = generated_df;
-      std::string detail;
-      vibeqc_status status = !generated_df.empty()
-                                 ? VIBEQC_STATUS_SUCCESS
-                                 : execute_cuda_density_fitting_source_uhf_force_response(
-                                       cuda_plan, cuda_system, alpha_density, beta_density,
-                                       data.raw.ncoord, two_electron_derivative, detail);
-      if (status != VIBEQC_STATUS_SUCCESS && !data.raw.three_center.empty()) {
-        const std::vector<double> inverse = density_fitting_metric_pseudoinverse(
-            data.raw, options.density_fitting_relative_threshold);
-        const std::size_t metric_elements = data.raw.naux * data.raw.naux;
-        std::vector<double> inverse_derivative(data.raw.ncoord * metric_elements, 0.0);
-        for (std::size_t coordinate = 0; coordinate < data.raw.ncoord; ++coordinate) {
-          const std::vector<double> response = density_fitting_metric_pseudoinverse_derivative(
-              data.raw, inverse, coordinate, options.density_fitting_relative_threshold);
-          std::copy(response.begin(), response.end(),
-                    inverse_derivative.begin() + coordinate * metric_elements);
-        }
-        status = execute_cuda_density_fitting_uhf_force_response(
-            cuda_plan, data.raw.three_center, inverse, data.raw.three_center_derivative,
-            inverse_derivative, data.raw.ncoord, alpha_density, beta_density,
-            two_electron_derivative, detail);
+    if (generated_df.size() != data.raw.ncoord)
+      throw std::runtime_error("generated DF response has invalid coordinate dimensions");
+    result.forces.assign(data.raw.ncoord, 0.0);
+    const std::size_t matrix_elements = data.raw.nbf * data.raw.nbf;
+    for (std::size_t coordinate = 0; coordinate < data.raw.ncoord; ++coordinate) {
+      if (!generated_one_electron.empty()) {
+        result.forces[coordinate] =
+            -(generated_one_electron[coordinate] + generated_df[coordinate] +
+              data.one_electron.nuclear_repulsion_derivative[coordinate]);
+        continue;
       }
-      if (status == VIBEQC_STATUS_SUCCESS && two_electron_derivative.size() == data.raw.ncoord) {
-        result.forces.assign(data.raw.ncoord, 0.0);
-        const std::size_t matrix_elements = data.raw.nbf * data.raw.nbf;
-        for (std::size_t coordinate = 0; coordinate < data.raw.ncoord; ++coordinate) {
-          if (!generated_one_electron.empty()) {
-            result.forces[coordinate] =
-                -(generated_one_electron[coordinate] + two_electron_derivative[coordinate] +
-                  data.one_electron.nuclear_repulsion_derivative[coordinate]);
-            continue;
-          }
-          const double* overlap_derivative =
-              data.one_electron.overlap_derivative.data() + coordinate * matrix_elements;
-          const double* hcore_derivative =
-              data.one_electron.hcore_derivative.data() + coordinate * matrix_elements;
-          double derivative = two_electron_derivative[coordinate] +
-                              data.one_electron.nuclear_repulsion_derivative[coordinate];
-          for (std::size_t item = 0; item < matrix_elements; ++item) {
-            const double total_density = alpha_density[item] + beta_density[item];
-            const double total_weighted = alpha_weighted[item] + beta_weighted[item];
-            derivative +=
-                total_density * hcore_derivative[item] - total_weighted * overlap_derivative[item];
-          }
-          result.forces[coordinate] = -derivative;
-        }
-        device_force_response = true;
+      const double* overlap_derivative =
+          data.one_electron.overlap_derivative.data() + coordinate * matrix_elements;
+      const double* hcore_derivative =
+          data.one_electron.hcore_derivative.data() + coordinate * matrix_elements;
+      double derivative =
+          generated_df[coordinate] + data.one_electron.nuclear_repulsion_derivative[coordinate];
+      for (std::size_t item = 0; item < matrix_elements; ++item) {
+        const double total_density = alpha_density[item] + beta_density[item];
+        const double total_weighted = alpha_weighted[item] + beta_weighted[item];
+        derivative +=
+            total_density * hcore_derivative[item] - total_weighted * overlap_derivative[item];
       }
-    } catch (...) {
-      // Preserve the validated host response if device force preparation fails.
+      result.forces[coordinate] = -derivative;
     }
-  }
-#endif
-  if (!device_force_response) {
-    if (!generated_df.empty()) throw std::runtime_error("generated DF response assembly failed");
+  } else {
     if (!generated_one_electron.empty()) {
       throw std::runtime_error(
           "CUDA DF response failed with generated one-electron gradients selected");
@@ -1703,8 +1641,7 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_plan(
     std::size_t occupied,
     std::vector<CudaDensityFittingMetricDiagnostic>* output_diagnostics = nullptr,
     const core::System* orbital_system = nullptr, const core::System* auxiliary_system = nullptr) {
-  const auto planning_budget = cuda_policy::generated_df_derivatives_requested() &&
-                                       options.density_fitting_memory_budget_bytes
+  const auto planning_budget = options.density_fitting_memory_budget_bytes
                                    ? options.density_fitting_memory_budget_bytes / 2
                                    : options.density_fitting_memory_budget_bytes;
 
@@ -1798,8 +1735,7 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_batch_plan(
     std::vector<CudaDensityFittingMetricDiagnostic>* output_diagnostics = nullptr,
     const std::vector<core::System>* orbital_systems = nullptr,
     const std::vector<core::System>* auxiliary_systems = nullptr) {
-  const auto planning_budget = cuda_policy::generated_df_derivatives_requested() &&
-                                       options.density_fitting_memory_budget_bytes
+  const auto planning_budget = options.density_fitting_memory_budget_bytes
                                    ? options.density_fitting_memory_budget_bytes / 2
                                    : options.density_fitting_memory_budget_bytes;
 
@@ -2051,12 +1987,11 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
       // Source-backed positive-budget plans regenerate DF values on demand;
       // generating a complete raw batch here only to discard it would defeat
       // the budget. Keep this batch limited to one-electron response data.
-      const vibeqc_status batch_status =
-          output_budget_bytes == 0U
-              ? build_cuda_density_fitting_integrals_batch(
-                    device_id, orbital_chunk, auxiliary_chunk, raw_batch, detail,
-                    output_budget_bytes, !cuda_policy::generated_df_derivatives_requested())
-              : VIBEQC_STATUS_SUCCESS;
+      const vibeqc_status batch_status = output_budget_bytes == 0U
+                                             ? build_cuda_density_fitting_integrals_batch(
+                                                   device_id, orbital_chunk, auxiliary_chunk,
+                                                   raw_batch, detail, output_budget_bytes, false)
+                                             : VIBEQC_STATUS_SUCCESS;
       const vibeqc_status one_electron_batch_status =
           batch_status == VIBEQC_STATUS_SUCCESS
               ? build_cuda_one_electron_integrals_batch(
@@ -2118,7 +2053,7 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
                 output_budget_bytes == 0U
                     ? build_cuda_density_fitting_integrals_batch(
                           device_id, single_orbital, single_auxiliary, single_raw, retry_detail,
-                          output_budget_bytes, !cuda_policy::generated_df_derivatives_requested())
+                          output_budget_bytes, false)
                     : VIBEQC_STATUS_SUCCESS;
             const vibeqc_status retry_one_electron_status =
                 retry_raw_status == VIBEQC_STATUS_SUCCESS
@@ -2165,8 +2100,7 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
           integrals::DensityFittingIntegralData cartesian;
           std::string item_detail;
           const vibeqc_status item_status = build_cuda_density_fitting_integrals(
-              device_id, systems[source], auxiliaries[source], cartesian, item_detail,
-              !cuda_policy::generated_df_derivatives_requested());
+              device_id, systems[source], auxiliaries[source], cartesian, item_detail, false);
           if (item_status != VIBEQC_STATUS_SUCCESS) {
             statuses[source] = item_status;
             continue;
@@ -2485,13 +2419,16 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
   std::vector<std::optional<DensityFittingScfData>> batched_prepared;
   const bool cached_data_complete =
       prepared_cache != nullptr && prepared_cache->size() == systems.size() &&
-      std::all_of(prepared_cache->begin(), prepared_cache->end(), [&options](const auto& item) {
-        return item.has_value() &&
-               one_electron_response_policy_matches(*item,
-                                                    options.density_fitting_memory_budget_bytes) &&
-               df_response_policy_matches(*item, options.density_fitting_memory_budget_bytes,
-                                          options.density_fitting_relative_threshold);
-      });
+      std::all_of(
+          prepared_cache->begin(), prepared_cache->end(), [&options, device_id](const auto& item) {
+            return item.has_value() &&
+                   one_electron_response_policy_matches(*item,
+                                                        options.density_fitting_memory_budget_bytes,
+                                                        options.compute_forces && device_id >= 0) &&
+                   df_response_policy_matches(*item, options.density_fitting_memory_budget_bytes,
+                                              options.density_fitting_relative_threshold,
+                                              options.compute_forces && device_id >= 0);
+          });
   if (prepared_cache != nullptr && !cached_data_complete && cached_plan != nullptr &&
       *cached_plan != nullptr) {
     // A budget change can switch resident tensors to a source-backed plan.
@@ -2851,13 +2788,16 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
   std::vector<std::optional<DensityFittingScfData>> batched_prepared;
   const bool cached_data_complete =
       prepared_cache != nullptr && prepared_cache->size() == systems.size() &&
-      std::all_of(prepared_cache->begin(), prepared_cache->end(), [&options](const auto& item) {
-        return item.has_value() &&
-               one_electron_response_policy_matches(*item,
-                                                    options.density_fitting_memory_budget_bytes) &&
-               df_response_policy_matches(*item, options.density_fitting_memory_budget_bytes,
-                                          options.density_fitting_relative_threshold);
-      });
+      std::all_of(
+          prepared_cache->begin(), prepared_cache->end(), [&options, device_id](const auto& item) {
+            return item.has_value() &&
+                   one_electron_response_policy_matches(*item,
+                                                        options.density_fitting_memory_budget_bytes,
+                                                        options.compute_forces && device_id >= 0) &&
+                   df_response_policy_matches(*item, options.density_fitting_memory_budget_bytes,
+                                              options.density_fitting_relative_threshold,
+                                              options.compute_forces && device_id >= 0);
+          });
   if (prepared_cache != nullptr && !cached_data_complete && cached_plan != nullptr &&
       *cached_plan != nullptr) {
     // A budget change can switch resident tensors to a source-backed plan.
