@@ -50,6 +50,15 @@ def _functional_gradient(spec, features):
     )
 
 
+def _weighted_energy(weights, values):
+    """Reject overflow in quadrature even when every scalar point is finite."""
+    with np.errstate(over="ignore", invalid="ignore"):
+        energy = float(weights @ values)
+    if not np.isfinite(energy):
+        raise ArithmeticError("nonfinite integrated XC energy")
+    return energy
+
+
 def _response_features(reference, linear):
     """Differentiate nonlinear sigma at the reference, keeping linear fields."""
     result = dict(linear)
@@ -171,7 +180,7 @@ class ContractionProgram:
             _functional_gradient(self.spec, features), v
         )
         return {
-            "energy": float(weights @ rows[()]),
+            "energy": _weighted_energy(weights, rows[()]),
             "potential": assemble_coefficients(jets, coefficients, weights),
             "electrons": immutable(features["rho"] @ weights),
         }
@@ -207,7 +216,7 @@ class ContractionProgram:
             return self.potential_tile(jets, features, weights)
         rows = self.scalar_values(features)
         result = {
-            "energy": float(weights @ rows[()]),
+            "energy": _weighted_energy(weights, rows[()]),
             "electrons": immutable(features["rho"] @ weights),
         }
         if observable == "energy":

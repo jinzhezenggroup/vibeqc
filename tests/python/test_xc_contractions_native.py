@@ -307,3 +307,67 @@ def test_unpolarized_native_endpoints(native_factory, name, observable):
                 **expected_options,
             ),
         )
+
+
+def test_native_energy_rejects_quadrature_overflow(native_factory):
+    jets, density, weights = np.ones((1, 1, 1)), np.array([[1e9]]), np.array([1e298])
+    for consumer in (
+        native_factory("LDA_XC_PW", "energy"),
+        ContractionProgram(functional("LDA_XC_PW"), "energy"),
+    ):
+        with pytest.raises(ArithmeticError, match="integrated XC energy"):
+            consumer.evaluate(jets, density, weights)
+
+
+@pytest.mark.parametrize("observable", ["energy", "potential", "response", "geometry"])
+def test_nonempty_strict_spatial_subsets_preserve_all_observables(
+    native_factory, observable
+):
+    from vibeqc_compiler.dft import ExplicitGrid
+    from vibeqc_compiler.dft.ao import jet_indices
+
+    from tools.benchmark_xc_contractions import diagnostic
+
+    meta, data, _ = fixture("f_cartesian")
+    args = basis_arguments(meta)
+    args["atoms"] = [(2, (0.0, 0.0, 0.0)), (1, (12.0, 0.0, 0.0))]
+    rng = np.random.default_rng(2367)
+    points = np.concatenate(
+        [
+            np.asarray(center) + 0.2 * rng.normal(size=(8, 3))
+            for _, center in args["atoms"]
+        ]
+    )
+    grid = ExplicitGrid(
+        points, np.full(16, 0.03), (0,) * 8 + (1,) * 8, {"case": "strict-local"}
+    )
+    density, direction = data["density_spin"], data["density_spin"] * 0.03
+    with (
+        NativeAO(**args) as basis,
+        PreparedSpatialGrid(
+            basis,
+            grid,
+            policy=SpatialPolicy(
+                screening="absolute_ao_jet",
+                cutoff=1e-4,
+                region_points=4,
+                derivatives=jet_indices(2),
+            ),
+            tile_points=3,
+        ) as spatial,
+        PreparedXCContractions(
+            native_factory("PBE", observable), basis, grid, spatial=spatial
+        ) as prepared,
+    ):
+        assert all(0 < len(t.ao_ids) < basis.nao for t in spatial.tasks.tasks)
+        options = {"delta_density": direction} if observable == "response" else {}
+        expected = diagnostic(
+            ContractionProgram(functional("PBE"), observable),
+            basis,
+            grid,
+            density,
+            3,
+            spatial,
+            direction,
+        )
+        compare(prepared.execute(density, **options), expected)

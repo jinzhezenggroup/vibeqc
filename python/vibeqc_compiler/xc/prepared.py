@@ -323,6 +323,8 @@ class PreparedXCContractions:
                     weights[ids] = partials.weights
                 tiles += 1
             self._check()
+            if not np.isfinite(result["energy"]):
+                raise ArithmeticError("nonfinite accumulated XC energy")
             for name in ("electrons", "potential", "response"):
                 if name in result:
                     result[name] = immutable(result[name])
@@ -348,6 +350,28 @@ class PreparedXCContractions:
                 "planned_host_peak_bytes": self.resource_plan.peak_bytes["host"],
                 "memory_scope": "numeric capacity bound with explicit resource-plan exclusions; not a measured process peak",
             }
+            # Count logical matrix products in the actual nonempty tile
+            # schedule, including feature reductions and geometric D*AO jets.
+            # These are separate from generated point-function calls; BLAS
+            # may internally split a matrix product into several kernels.
+            self.statistics["density_matrix_products"] = evaluated_tiles * (
+                4 if observable == "response" else 2
+            )
+            self.statistics["geometry_matrix_products"] = (
+                nspin
+                * evaluated_tiles
+                * (1 if self.program.contract.ingredients.family == "lda" else 4)
+                if observable == "geometry"
+                else 0
+            )
+            self.statistics["total_matrix_products"] = sum(
+                self.statistics[key]
+                for key in (
+                    "density_matrix_products",
+                    "geometry_matrix_products",
+                    "matrix_assembly_products",
+                )
+            )
             return result
 
     def close(self):

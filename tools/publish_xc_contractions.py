@@ -22,7 +22,7 @@ from vibeqc_compiler.common.resources import ResourcePlan
 
 from tools.vibeqc_validation.publication import publish
 
-CASES = ("h2", "f_cartesian", "f_spherical")
+CASES = ("h2", "f_cartesian", "f_spherical", "separated_f")
 FUNCTIONALS = ("LDA_XC_PW", "PBE")
 OBSERVABLES = ("energy", "potential", "response", "geometry")
 
@@ -118,6 +118,14 @@ def validate_run(run):
             or row["traced_execute_peak_bytes"] <= 0
         ):
             raise ValueError("missing mask/memory observation")
+        if (
+            row["local"]
+            and case == "separated_f"
+            and not all(0 < n < row["nao"] for n in row["active_ao_sizes"])
+        ):
+            raise ValueError(
+                "separated f case must exercise nonempty strict AO subsets"
+            )
         if [s["sample"] for s in row["samples"]] != list(range(5)):
             raise ValueError("five ordered samples required")
         required_errors = {"energy", "electrons"}
@@ -148,6 +156,21 @@ def validate_run(run):
             ):
                 raise ValueError("resource/execution accounting mismatch")
             calls = stats["scalar_calls"]
+            density_products = calls * (4 if obs == "response" else 2)
+            geometry_products = (
+                2 * calls * (1 if name.startswith("LDA") else 4)
+                if obs == "geometry"
+                else 0
+            )
+            if (
+                stats["density_matrix_products"] != density_products
+                or stats["geometry_matrix_products"] != geometry_products
+                or stats["total_matrix_products"]
+                != density_products
+                + geometry_products
+                + stats["matrix_assembly_products"]
+            ):
+                raise ValueError("incomplete matrix-product accounting")
             if (
                 stats["point_coefficient_calls"] != (0 if obs == "energy" else calls)
                 or stats["ao_pullback_calls"] != (2 * calls if obs == "geometry" else 0)

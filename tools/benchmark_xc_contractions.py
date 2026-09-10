@@ -40,7 +40,7 @@ from vibeqc_compiler.xc.prepared import PreparedXCContractions
 
 from tools.generate_validation_references import pyscf_molecule
 
-CASES = ("h2", "f_cartesian", "f_spherical")
+CASES = ("h2", "f_cartesian", "f_spherical", "separated_f")
 FUNCTIONALS = {"LDA_XC_PW": "LDA_X,LDA_C_PW", "PBE": "GGA_X_PBE,GGA_C_PBE"}
 OBSERVABLES = ("energy", "potential", "response", "geometry")
 STEPS = (1e-3, 3e-4, 1e-4)
@@ -88,6 +88,46 @@ def oracle(inputs, points, weights, density, code):
     dm = density * scale[:, None] * scale[None, :]
     _, energy, matrix = ni.nr_uks(mol, grid, code, dm, hermi=1)
     return float(energy), matrix * scale[:, None] * scale[None, :]
+
+
+def load_case(case):
+    """Use pinned fixtures plus a reproducible case with genuinely local f masks."""
+    if case != "separated_f":
+        return load_integration_fixture(case)
+    from vibeqc_compiler.dft import ExplicitGrid
+
+    rng = np.random.default_rng(23640)
+    centers = np.array([[8.0 * i, 0.1 * (i % 2), 0] for i in range(4)])
+    inputs = {
+        "name": case,
+        "atomic_numbers": [1] * 4,
+        "coordinates": centers.tolist(),
+        "shells": [
+            {
+                "atom_index": i,
+                "angular_momentum": angular,
+                "primitives": [[0.7, 1.0], [1.5, -0.1]],
+            }
+            for i in range(4)
+            for angular in (0, 1, 3)
+        ],
+        "basis_representation": "cartesian",
+        "charge": 0,
+        "multiplicity": 1,
+    }
+    points = np.concatenate([r + 0.2 * rng.normal(size=(16, 3)) for r in centers])
+    weights = np.full(len(points), 0.03)
+    grid = ExplicitGrid(
+        points, weights, tuple(np.repeat(np.arange(4), 16).tolist()), {"case": case}
+    )
+    matrix = rng.normal(size=(2, 56, 7)) * 0.05
+    density = matrix @ matrix.swapaxes(-1, -2) + 0.2 * np.eye(56)[None]
+    data = {"density_spin": density}
+    for name, code in FUNCTIONALS.items():
+        energy, potential = oracle(inputs, points, weights, density, code)
+        data[name + "_spin_energy"] = np.array([energy])
+        data[name + "_spin_potential"] = potential
+    return {"inputs": inputs, "inputs_hash": canonical_hash(inputs)}, data, grid
 
 
 def ao_atoms(basis):
@@ -356,7 +396,7 @@ def main():
                 else compact.jet_pullback.after,
             }
     for case in CASES:
-        meta, data, grid = load_integration_fixture(case)
+        meta, data, grid = load_case(case)
         density, direction = data["density_spin"], 0.02 * data["density_spin"]
         with NativeAO(**basis_arguments(meta)) as basis:
             for name in FUNCTIONALS:
@@ -449,6 +489,22 @@ def main():
                                             data[name + "_spin_potential"],
                                         )
                                 if sample == 0:
+                                    row["nao"] = basis.nao
+                                    row["approximation_delta"] = {
+                                        "energy": result["energy"]
+                                        - float(data[name + "_spin_energy"][0]),
+                                        "potential_max_abs": float(
+                                            np.max(
+                                                np.abs(
+                                                    result["potential"]
+                                                    - data[name + "_spin_potential"]
+                                                )
+                                            )
+                                        )
+                                        if observable == "potential"
+                                        else None,
+                                        "scope": "difference from unscreened independent collocation; diagnostic only, not an approximation error bound",
+                                    }
                                     row["resource_plan"] = (
                                         prepared.resource_plan.to_dict()
                                     )
