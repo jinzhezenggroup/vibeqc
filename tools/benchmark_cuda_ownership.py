@@ -1,10 +1,12 @@
-"""Compare complete one-electron migration endpoints from explicit clean builds.
+"""Compare complete CUDA ownership endpoints from explicit clean builds.
 
 Run ``compare`` inside a finite Slurm GPU allocation. Each worker loads one
 build in a fresh process; alternating order reduces cache/order bias. Timings
 include preparation, cold execution, unchanged replay, changed geometry and
 restoration, always through final forces. This tool records evidence and never
 changes a production selector. Raw scalar correctness is validated separately.
+Case isolation pairs each workload in the shared ABBA order before advancing
+to another workload, reducing drift when old/new inventories take many minutes.
 """
 
 from __future__ import annotations
@@ -30,6 +32,40 @@ def capture(argv):
 def write(path, payload):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, sort_keys=True, indent=2) + "\n")
+
+
+def endpoint_inventory(domain):
+    """Return the unchanged workload matrix, independently of process grouping."""
+    inventory = [
+        ("spf", *case)
+        for case in product(
+            ("rhf", "uhf"), ("cartesian", "spherical"), (False, True), (1, 3)
+        )
+    ]
+    inventory += [
+        ("sdf", "rhf", "cartesian", False, 1),
+        ("sdf", "uhf", "spherical", False, 3),
+        ("sdf", "rhf", "spherical", True, 1),
+        ("sdf", "uhf", "spherical", True, 3),
+    ]
+    if domain == "df":
+        inventory = [row for row in inventory if row[3]]
+        inventory += [
+            (family, method, rep, True, count)
+            for family, method in (
+                ("water-def2-svp", "rhf"),
+                ("oh-def2-svp-uhf", "uhf"),
+            )
+            for rep in ("cartesian", "spherical")
+            for count in (1, 3)
+        ]
+    return inventory
+
+
+def case_id(row):
+    """Name a physical workload identically in workers and the driver."""
+    family, method, representation, fitted, count = row
+    return f"{family}/{method}/{representation}/{'df' if fitted else 'direct'}/batch{count}"
 
 
 def worker(args):
@@ -96,6 +132,10 @@ def worker(args):
         ).hexdigest(),
         "selection": args.selection,
         "domain": args.domain,
+        "process_scope": args.process_scope,
+        "benchmark_driver_sha256": hashlib.sha256(
+            Path(__file__).read_bytes()
+        ).hexdigest(),
         "mapping": "thread" if args.domain == "df" else args.mapping,
         "python": sys.version,
         "numpy": np.__version__,
@@ -133,35 +173,7 @@ def worker(args):
         Shell(0, 3, (Primitive(0.6, 1.0),)),
         Shell(1, 0, (Primitive(1.2, 1.0),)),
     )
-    inventory = [
-        ("spf", *case)
-        for case in product(
-            ("rhf", "uhf"), ("cartesian", "spherical"), (False, True), (1, 3)
-        )
-    ]
-    # Preserve representative larger s/d/f workloads too. Their internal
-    # Cartesian size crosses the direct-HF execution threshold, so the small
-    # budgeted fixture alone cannot cover all existing endpoint schedules.
-    inventory += [
-        ("sdf", "rhf", "cartesian", False, 1),
-        ("sdf", "uhf", "spherical", False, 3),
-        ("sdf", "rhf", "spherical", True, 1),
-        ("sdf", "uhf", "spherical", True, 3),
-    ]
-    if args.domain == "df":
-        inventory = [row for row in inventory if row[3]]
-        # Exercise both resident and source planning for real closed/open-shell
-        # molecules. Named basis contractions add radial diversity beyond the
-        # synthetic through-f schedule inventory.
-        inventory += [
-            (family, method, rep, True, count)
-            for family, method in (
-                ("water-def2-svp", "rhf"),
-                ("oh-def2-svp-uhf", "uhf"),
-            )
-            for rep in ("cartesian", "spherical")
-            for count in (1, 3)
-        ]
+    inventory = endpoint_inventory(args.domain)
     for family, method, representation, fitted, count in inventory:
         basis = (
             spf_basis
@@ -169,7 +181,7 @@ def worker(args):
             else (spf_basis[0], Shell(0, 2, (Primitive(0.8, 1.0),)), *spf_basis[2:])
         )
         real_molecule = family not in ("spf", "sdf")
-        key = f"{family}/{method}/{representation}/{'df' if fitted else 'direct'}/batch{count}"
+        key = case_id((family, method, representation, fitted, count))
         if args.case and key not in args.case:
             continue
         # Pair-policy execution itself introduces no allocation, tile buffer
@@ -344,6 +356,95 @@ def worker(args):
         raise ValueError("empty or unknown endpoint inventory")
 
 
+def measure_worker(args, label, cases, path):
+    """Retain one fresh process's record without overwriting an earlier attempt."""
+    if path.exists():
+        raise FileExistsError(f"refusing to overwrite measured sample {path}")
+    argv = [
+        sys.executable,
+        str(Path(__file__).resolve()),
+        "worker",
+        "--domain",
+        args.domain,
+        "--process-scope",
+        args.process_scope,
+        "--root",
+        str(getattr(args, f"{label}_root")),
+        "--build",
+        str(getattr(args, f"{label}_build")),
+        "--selection",
+        "reference" if label == "baseline" else "generated",
+        "--mapping",
+        "thread" if label == "baseline" else "shell_warp",
+        "--output",
+        str(path),
+    ]
+    for case in cases:
+        argv += ["--case", case]
+    subprocess.run(argv, check=True)
+    return json.loads(path.read_text())
+
+
+def collect_runs(args):
+    """Collect every case/sample with either historical or case-isolated ABBA.
+
+    In case mode, individual process files remain immutable. Aggregated sample
+    files only join endpoints whose complete source/build/device/driver metadata
+    is identical. They retain all values and can reconstruct each process record
+    losslessly; no samples are dropped, averaged or selected during aggregation.
+    """
+    from vibeqc_compiler.common.timing import interleaved_selection_order
+
+    if args.process_scope not in ("inventory", "case") or args.samples < 5:
+        raise ValueError("known process scope and at least five samples are required")
+    available = [case_id(row) for row in endpoint_inventory(args.domain)]
+    requested = args.case or available
+    if len(set(requested)) != len(requested) or set(requested) - set(available):
+        raise ValueError("duplicate or unknown endpoint requests")
+    cases = [case for case in available if case in requested]
+    args.output.mkdir(parents=True, exist_ok=True)
+    if (
+        (args.output / "case-workers").exists()
+        or any(args.output.glob("*-*.json"))
+        or (args.output / "comparison.json").exists()
+    ):
+        raise FileExistsError("refusing to reuse an existing measurement directory")
+    order = interleaved_selection_order(args.samples)
+    runs = {label: [None] * args.samples for label in ("baseline", "candidate")}
+    units = [[case] for case in cases] if args.process_scope == "case" else [cases]
+    for index, unit in enumerate(units):
+        counters = {"baseline": 0, "candidate": 0}
+        for label in order:
+            sample = counters[label]
+            counters[label] += 1
+            name = f"{label}-{sample}.json"
+            path = args.output / name
+            if args.process_scope == "case":
+                path = args.output / "case-workers" / str(index) / name
+            run = measure_worker(args, label, unit, path)
+            if [row["case"] for row in run["endpoints"]] != unit:
+                raise ValueError("worker omitted or changed a requested endpoint")
+            previous = runs[label][sample]
+            if previous is None:
+                runs[label][sample] = run
+            else:
+                old_metadata = {k: v for k, v in previous.items() if k != "endpoints"}
+                new_metadata = {k: v for k, v in run.items() if k != "endpoints"}
+                if old_metadata != new_metadata:
+                    raise ValueError(
+                        "case worker source/build/device/driver provenance changed"
+                    )
+                previous["endpoints"].extend(run["endpoints"])
+            if args.process_scope == "case":
+                write(args.output / name, runs[label][sample])
+    counters = {"baseline": 0, "candidate": 0}
+    measured = []
+    for label in order:
+        measured.append((label, runs[label][counters[label]]))
+        counters[label] += 1
+    return runs, measured
+
+
 def compare(args):
     """Retain all samples; use unchanged numerical and 2% endpoint gates.
 
@@ -357,41 +458,10 @@ def compare(args):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "python"))
     from vibeqc_compiler.common.evidence import canonical_hash
     from vibeqc_compiler.common.performance import assess_comparison
-    from vibeqc_compiler.common.timing import interleaved_selection_order
 
     if not os.environ.get("SLURM_JOB_ID"):
         raise RuntimeError("compare requires a finite Slurm GPU allocation")
-    args.output.mkdir(parents=True, exist_ok=True)
-    runs = {"baseline": [], "candidate": []}
-    order = interleaved_selection_order(args.samples)
-    measured = []
-    for label in order:
-        sample = len(runs[label])
-        path = args.output / f"{label}-{sample}.json"
-        if path.exists():
-            raise FileExistsError(f"refusing to overwrite measured sample {path}")
-        argv = [
-            sys.executable,
-            str(Path(__file__).resolve()),
-            "worker",
-            "--domain",
-            args.domain,
-            "--root",
-            str(getattr(args, f"{label}_root")),
-            "--build",
-            str(getattr(args, f"{label}_build")),
-            "--selection",
-            "reference" if label == "baseline" else "generated",
-            "--mapping",
-            "thread" if label == "baseline" else "shell_warp",
-            "--output",
-            str(path),
-        ]
-        for case in args.case or ():
-            argv += ["--case", case]
-        subprocess.run(argv, check=True)
-        runs[label].append(json.loads(path.read_text()))
-        measured.append((label, runs[label][-1]))
+    runs, measured = collect_runs(args)
     expected_cases = [r["case"] for r in runs["baseline"][0]["endpoints"]]
     for label, group in runs.items():
         expected_source = (
@@ -518,6 +588,10 @@ def compare(args):
         "schema": "vibeqc.cuda-ownership-comparison.v1",
         "samples": args.samples,
         "domain": args.domain,
+        "process_scope": args.process_scope,
+        "benchmark_driver_sha256": hashlib.sha256(
+            Path(__file__).read_bytes()
+        ).hexdigest(),
         "energy_atol": 3e-10,
         "force_atol": 3e-9,
         "endpoint_ceiling": 1.02,
@@ -550,6 +624,12 @@ def main():
     c.add_argument("--samples", type=int, default=5)
     for p in (w, c):
         p.add_argument("--case", action="append")
+        p.add_argument(
+            "--process-scope",
+            choices=("inventory", "case"),
+            default="inventory",
+            help="case pairs complete workloads closely in time; inventory reproduces historical ordering",
+        )
         p.add_argument(
             "--domain", choices=("one-electron", "df"), default="one-electron"
         )

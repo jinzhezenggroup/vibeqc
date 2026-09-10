@@ -67,6 +67,20 @@ def compact_comparison(directory):
         run.get("domain", "one-electron") != domain for _, _, run in records
     ):
         raise ValueError("unknown or inconsistent ownership domain")
+    process_scope = records[0][2].get("process_scope", "inventory")
+    driver = records[0][2].get("benchmark_driver_sha256")
+    if (
+        process_scope not in ("inventory", "case")
+        or original.get("process_scope", "inventory") != process_scope
+        or original.get("benchmark_driver_sha256") != driver
+        or any(
+            run.get("process_scope", "inventory") != process_scope
+            or run.get("benchmark_driver_sha256") != driver
+            for _, _, run in records
+        )
+        or (process_scope == "case" and not re.fullmatch(r"[0-9a-f]{64}", driver or ""))
+    ):
+        raise ValueError("inconsistent process scope or benchmark driver provenance")
 
     def intern(value):
         key = canonical_hash(value)
@@ -325,6 +339,7 @@ def main():
         "speedup_claim": False,
         "baseline_revision": baseline["revision"],
         "candidate_revision": candidate["revision"],
+        "process_scope": candidate.get("process_scope", "inventory"),
         "endpoints": rows,
     }
     write(stage / "summary.json", summary)
@@ -402,7 +417,7 @@ def main():
         "--gres=gpu:5090:1",
         "--nodes=1",
         "--ntasks=1",
-        "--time=01:00:00",
+        "--time=02:00:00" if domain == "df" else "--time=01:00:00",
         "python",
         "tools/benchmark_cuda_ownership.py",
         "compare",
@@ -421,6 +436,10 @@ def main():
         "--output",
         ".artifacts/ownership-reproduction",
     ]
+    # Historical measured checkouts predate this option; their omitted field
+    # already means inventory scope and must keep the original replay argv.
+    if "process_scope" in candidate:
+        command += ["--process-scope", candidate["process_scope"]]
     specification = {
         "source": {"revision": candidate["revision"], "dirty": False},
         "reproduction": {

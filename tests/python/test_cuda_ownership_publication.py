@@ -190,3 +190,28 @@ def test_df_summary_cannot_hide_energy_only_failure(tmp_path, corruption, match)
         write(path, run)
     with pytest.raises(ValueError, match=match):
         compact_comparison(tmp_path)
+
+
+@pytest.mark.parametrize("corruption", ["process_scope", "benchmark_driver_sha256"])
+def test_paired_publication_retains_and_checks_measurement_contract(
+    tmp_path, corruption
+):
+    synthetic_df_workers(tmp_path)
+    for path in tmp_path.glob("*-*.json"):
+        run = json.loads(path.read_text())
+        run.update(process_scope="case", benchmark_driver_sha256="0" * 64)
+        write(path, run)
+    comparison = json.loads((tmp_path / "comparison.json").read_text())
+    comparison.update(process_scope="case", benchmark_driver_sha256="0" * 64)
+    write(tmp_path / "comparison.json", comparison)
+    compact, _, _, _, _ = compact_comparison(tmp_path)
+    assert all(
+        compact["records"][run["provenance"]]["process_scope"] == "case"
+        for run in compact["runs"]
+    )
+    path = tmp_path / "candidate-4.json"
+    run = json.loads(path.read_text())
+    run[corruption] = "inventory" if corruption == "process_scope" else "1" * 64
+    write(path, run)
+    with pytest.raises(ValueError, match="process scope or benchmark driver"):
+        compact_comparison(tmp_path)
