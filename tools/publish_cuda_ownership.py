@@ -62,6 +62,11 @@ def compact_comparison(directory):
         raise ValueError("duplicate case IDs")
     sources = {}
     interned = {}
+    domain = records[0][2].get("domain", "one-electron")
+    if domain not in ("one-electron", "df") or any(
+        run.get("domain", "one-electron") != domain for _, _, run in records
+    ):
+        raise ValueError("unknown or inconsistent ownership domain")
 
     def intern(value):
         key = canonical_hash(value)
@@ -74,6 +79,8 @@ def compact_comparison(directory):
         "runs": [],
     }
     for label, sample, run in records:
+        if domain == "df" and any("energy_only" not in e for e in run["endpoints"]):
+            raise ValueError("DF publication requires every energy-only endpoint")
         source = (run["revision"], run["native_source_identity"], run["library_sha256"])
         if run["dirty"] or source != sources.setdefault(label, source):
             raise ValueError("dirty or changing measured source/binary")
@@ -113,6 +120,7 @@ def compact_comparison(directory):
                         "density_fitting": intern(e["density_fitting"]),
                         "seconds": e["seconds"],
                         "results": e["results"],
+                        **({"energy_only": e["energy_only"]} if domain == "df" else {}),
                     }
                     for e in run["endpoints"]
                 ],
@@ -183,6 +191,45 @@ def compact_comparison(directory):
                         else workload,
                     }
                 )
+            if domain == "df":
+                # Value-path regressions must not be hidden by faster force
+                # finalization. Retain and independently gate the fresh public
+                # energy-only calls, including every residual and iteration.
+                value = endpoint["energy_only"]
+                if value["properties"] != ["energy"]:
+                    raise ValueError("invalid energy-only properties")
+                found, expected = value["results"], base["energy_only"]["results"]
+                got = np.asarray([r["energy"] for r in found])
+                want = np.asarray([r["energy"] for r in expected])
+                if got.shape != want.shape or not got.size:
+                    raise ValueError("energy-only result dimensions differ")
+                errors[f"{case}/{label}/{sample}/energy-only/energy"] = block_error(
+                    got, want, atol=3e-10, rtol=0
+                )
+                if any(
+                    not np.isfinite([r["energy_change"], r["density_rms"]]).all()
+                    or type(r["iterations"]) is not int
+                    or r["iterations"] < 1
+                    for r in found
+                ):
+                    raise ValueError("invalid energy-only residual/count diagnostics")
+                record = {
+                    "selection": label,
+                    "seconds": value["seconds"],
+                    "inputs_hash": canonical_hash(
+                        {**inputs, "properties": value["properties"]}
+                    ),
+                    "workload": "energy-only-singlepoints",
+                    "synchronized": True,
+                    "case": case,
+                    "sample": sample,
+                    "phase": "energy-only",
+                }
+                case_timings.append(record)
+                # The shared evidence envelope calls each fresh public call a
+                # cold start; the explicit phase and assessment retain its
+                # separate identity and never pool it with prepared forces.
+                timings.append({**record, "workload": "cold-start"})
         assessment = assess_comparison(case_timings)
         if "workloads" not in assessment:
             raise ValueError(f"shared timing validation failed: {assessment}")
@@ -207,7 +254,7 @@ def compact_comparison(directory):
     return compact, records, errors, timings, rows
 
 
-def validate_resources(resources, baseline, candidate):
+def validate_resources(resources, baseline, candidate, *, domain="one-electron"):
     """Bind object measurements to the exact worker source and build contract.
 
     An exact-source kernel reconstruction is explicit when the historical linked
@@ -219,6 +266,15 @@ def validate_resources(resources, baseline, candidate):
         "baseline-pair": baseline,
         "baseline-reference": baseline,
     }
+    if domain == "df":
+        expected = {
+            "baseline-rhf": baseline,
+            "candidate-rhf": candidate,
+            "baseline-weighted": baseline,
+            "candidate-weighted": candidate,
+        }
+    elif domain != "one-electron":
+        raise ValueError("unknown resource domain")
     if set(resources) != set(expected):
         raise ValueError("resource inventory differs")
     for name, worker in expected.items():
@@ -248,10 +304,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--comparison", type=Path, required=True)
     parser.add_argument("--destination", type=Path, required=True)
+    parser.add_argument("--resources", type=Path)
+    parser.add_argument("--baseline-ref")
+    parser.add_argument("--candidate-ref")
     args = parser.parse_args()
     compact, records, errors, timings, rows = compact_comparison(args.comparison)
     candidate = next(run for label, _, run in records if label == "candidate")
     baseline = records[0][2]
+    domain = candidate.get("domain", "one-electron")
     stage = args.comparison / "publication"
     stage.mkdir(exist_ok=True)
     write(stage / "samples.json", compact)
@@ -268,17 +328,21 @@ def main():
         "endpoints": rows,
     }
     write(stage / "summary.json", summary)
-    resources = {
-        name: json.loads(
-            (ROOT / ".artifacts" / f"231-{name}-resources.json").read_text()
-        )
-        for name in ("candidate-pair", "baseline-pair", "baseline-reference")
-    }
-    validate_resources(resources, baseline, candidate)
+    resources = (
+        json.loads(args.resources.read_text())
+        if args.resources
+        else {
+            name: json.loads(
+                (ROOT / ".artifacts" / f"231-{name}-resources.json").read_text()
+            )
+            for name in ("candidate-pair", "baseline-pair", "baseline-reference")
+        }
+    )
+    validate_resources(resources, baseline, candidate, domain=domain)
     write(stage / "resources.json", resources)
     record = new_evidence(
         tier="endpoint",
-        subject="one-electron CUDA ownership retirement",
+        subject=f"{domain} CUDA ownership retirement",
         inputs_hash=canonical_hash([r["inputs_hash"] for r in timings]),
     )
     record.update(
@@ -310,7 +374,7 @@ def main():
             "The full HF endpoint has no single scalar IR artifact; exact clean source and generated policy identities bind all contributing equations."
         )
     record["memory"]["reason"] = (
-        "Per-case shared plans and scoped observations are retained losslessly in samples.json; the legacy 18-AO direct case has no total-budget guarantee. Native kernel resources are in resources.json."
+        "Per-case shared plans, scoped observations, and explicit resource-scope limitations are retained losslessly in samples.json. Cases exceeding the HF inventory have no total-budget guarantee. Native kernel resources are in resources.json."
     )
     record["compilation"]["reason"] = (
         "Original full build wall time was not captured; Release/FAST_COMPILE=OFF provenance and native kernel resources are retained."
@@ -342,6 +406,8 @@ def main():
         "python",
         "tools/benchmark_cuda_ownership.py",
         "compare",
+        "--domain",
+        domain,
         "--baseline-root",
         "<baseline-checkout>",
         "--baseline-build",
@@ -361,12 +427,13 @@ def main():
             "command": command,
             "baseline_source": {
                 "repository": "https://github.com/njzjz-bot/vibeqc",
-                "ref": "refs/heads/evidence/issue-231-baseline",
+                "ref": args.baseline_ref or "refs/heads/evidence/issue-231-baseline",
                 "revision": baseline["revision"],
             },
             "candidate_source": {
                 "repository": "https://github.com/njzjz-bot/vibeqc",
-                "ref": "refs/heads/codex/issue-231-cuda-ownership",
+                "ref": args.candidate_ref
+                or "refs/heads/codex/issue-231-cuda-ownership",
                 "revision": candidate["revision"],
             },
             "note": "Check out the exact recorded baseline/candidate revisions and use Release, CUDA 12.9.1, sm_120, FAST_COMPILE=OFF; set OMP_NUM_THREADS=1 and OPENBLAS_NUM_THREADS=1.",

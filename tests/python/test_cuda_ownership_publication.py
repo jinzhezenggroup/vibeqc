@@ -116,3 +116,77 @@ def test_resources_must_match_the_measured_workers(tmp_path, field):
     resources["candidate-pair"]["provenance"][field] = "wrong-source-or-build"
     with pytest.raises(ValueError, match="resource/worker provenance mismatch"):
         validate_resources(resources, workers["baseline"], workers["candidate"])
+
+
+def synthetic_df_workers(directory):
+    """Extend reconstructed fixtures solely to exercise the publication schema.
+
+    These CPU-only test inputs are never published as measured DF evidence.
+    """
+    restore_workers(directory, one_case=True)
+    for selection in ("baseline", "candidate"):
+        for index in range(5):
+            path = directory / f"{selection}-{index}.json"
+            run = json.loads(path.read_text())
+            run["domain"] = "df"
+            endpoint = run["endpoints"][0]
+            endpoint["energy_only"] = {
+                "properties": ["energy"],
+                "seconds": 0.1,
+                "results": [
+                    {k: v for k, v in r.items() if k != "forces"}
+                    for r in endpoint["results"]["warm"]
+                ],
+            }
+            write(path, run)
+
+
+def test_df_publication_retains_and_gates_energy_only_calls(tmp_path):
+    synthetic_df_workers(tmp_path)
+    compact, _, errors, timings, rows = compact_comparison(tmp_path)
+    assert len(errors) == 10 * (4 * 2 + 1)
+    assert rows[0]["phase_ratios"]["energy-only-singlepoints"] == 1
+    assert len([t for t in timings if t["phase"] == "energy-only"]) == 10
+    for run in compact["runs"]:
+        original = json.loads(
+            (tmp_path / f"{run['selection']}-{run['sample']}.json").read_text()
+        )
+        assert (
+            run["endpoints"][0]["energy_only"]
+            == original["endpoints"][0]["energy_only"]
+        )
+
+
+@pytest.mark.parametrize(
+    "corruption,match",
+    [
+        ("slow", "numerical or nonregression"),
+        ("energy", "numerical or nonregression"),
+        ("negative", "shared timing validation failed"),
+        ("missing", "requires every energy-only"),
+        ("properties", "energy-only properties"),
+        ("iterations", "energy-only residual/count"),
+    ],
+)
+def test_df_summary_cannot_hide_energy_only_failure(tmp_path, corruption, match):
+    synthetic_df_workers(tmp_path)
+    for index in range(5):
+        path = tmp_path / f"candidate-{index}.json"
+        run = json.loads(path.read_text())
+        endpoint = run["endpoints"][0]
+        value = endpoint["energy_only"]
+        if corruption == "slow":
+            value["seconds"] *= 1.03
+        elif corruption == "energy":
+            value["results"][0]["energy"] += 1e-4
+        elif corruption == "negative":
+            value["seconds"] = -1
+        elif corruption == "missing":
+            del endpoint["energy_only"]
+        elif corruption == "properties":
+            value["properties"].append("forces")
+        elif corruption == "iterations":
+            value["results"][0]["iterations"] = 0
+        write(path, run)
+    with pytest.raises(ValueError, match=match):
+        compact_comparison(tmp_path)
