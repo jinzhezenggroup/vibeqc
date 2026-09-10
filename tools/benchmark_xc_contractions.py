@@ -60,6 +60,7 @@ def gate(actual, expected, *, atol=1e-11, rtol=1e-10):
 
 
 def compare(actual, expected):
+    assert set(actual) == set(expected)
     errors = {}
     for key, value in actual.items():
         if key == "geometry":

@@ -12,6 +12,11 @@ It is permanently reachable on
 The measurement predates this evidence publication; its SHA is not relabeled
 as the later documentation/test commit.
 
+Later review fixes publish cached compiler inputs atomically, preserve matching
+cache hits, verify the compiled source identity, and strengthen output-set and
+svec metric checks. The retained source and timings remain those of the exact
+measured revision above; no current-head construction timing is inferred.
+
 Native source identity:
 `c2167197e5aef83f7e66937ae3832c6ebd6a30d3928fccb733e862a313ac6242`.
 Measured CPU library SHA256:

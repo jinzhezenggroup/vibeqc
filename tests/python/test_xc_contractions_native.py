@@ -42,6 +42,7 @@ def native_factory(tmp_path_factory):
 
 
 def compare(actual, expected):
+    assert set(actual) == set(expected)
     for name in actual:
         if name == "geometry":
             for field in ("centers", "points", "weights"):
@@ -371,3 +372,51 @@ def test_nonempty_strict_spatial_subsets_preserve_all_observables(
             direction,
         )
         compare(prepared.execute(density, **options), expected)
+
+
+def test_concurrent_native_source_publication_and_matching_cache_hits(
+    tmp_path, monkeypatch
+):
+    from concurrent.futures import ThreadPoolExecutor
+
+    from vibeqc_compiler.common.provenance import canonical_hash
+
+    compiler = shutil.which("c++")
+    if compiler is None:
+        pytest.skip("native XC requires a C++ compiler")
+    original_write = Path.write_text
+
+    def no_live_source_rewrite(path, *args, **kwargs):
+        # Direct writes expose a truncated compiler input to concurrent readers.
+        # Logs and unrelated files still use their normal writers.
+        if path.name == "xc.cpp":
+            pytest.fail("rewrote the live native compiler input")
+        return original_write(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "write_text", no_live_source_rewrite)
+
+    def build(_):
+        return NativeContractionProgram(
+            functional("PBE"),
+            "potential",
+            compiler=CppCompilerAdapter(Path(compiler)),
+            cache=tmp_path,
+        )
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        programs = list(pool.map(build, range(4)))
+    assert len({p.artifact.metadata["key"] for p in programs}) == 1
+    for program in programs:
+        assert (
+            program.artifact.metadata["identity"]["source"]
+            == program.metadata["source_sha256"]
+        )
+    source = tmp_path / "source" / canonical_hash(programs[0].metadata) / "xc.cpp"
+    before = source.stat()
+    build(None)
+    after = source.stat()
+    assert (before.st_ino, before.st_mtime_ns) == (after.st_ino, after.st_mtime_ns)
+    assert list(source.parent.glob(".xc-*")) == []
+    original_write(source, "truncated source")
+    with pytest.raises(ValueError, match="native XC source identity mismatch"):
+        build(None)

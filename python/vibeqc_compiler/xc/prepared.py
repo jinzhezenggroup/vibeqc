@@ -255,8 +255,7 @@ class PreparedXCContractions:
             )
             if self.program.spec.spin == "unpolarized" and (
                 not np.array_equal(d[0], d[1])
-                or dd is not None
-                and not np.array_equal(dd[0], dd[1])
+                or (dd is not None and not np.array_equal(dd[0], dd[1]))
             ):
                 raise UnsupportedXC(
                     "unpolarized native XC requires equal spin matrices and directions"

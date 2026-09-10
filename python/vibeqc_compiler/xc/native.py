@@ -7,6 +7,8 @@ is introduced. CPU BLAS consumes the resulting bounded point coefficients.
 """
 
 import ctypes as ct
+import os
+import tempfile
 from hashlib import sha256
 from pathlib import Path
 
@@ -21,6 +23,28 @@ from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 
 from .contractions import ContractionProgram, _pack
 from .program import validate_features
+
+
+def _cache_source(path, source):
+    """Publish complete compiler input without rewriting a cache hit.
+
+    Concurrent misses publish identical bytes via same-directory replacement;
+    another reader sees either no file or the complete immutable source. An
+    existing mismatch remains an error rather than silently repairing a cache.
+    """
+    if path.exists():
+        if path.read_text() != source:
+            raise ValueError("native XC source identity mismatch")
+        return
+    descriptor, temporary = tempfile.mkstemp(prefix=".xc-", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "w") as stream:
+            stream.write(source)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
 
 
 def _variables(graph, roots):
@@ -187,10 +211,13 @@ class NativeContractionProgram(ContractionProgram):
         directory = cache / "source" / identity
         directory.mkdir(parents=True, exist_ok=True)
         path = directory / "xc.cpp"
-        if path.exists() and path.read_text() != source:
-            raise ValueError("native XC source identity mismatch")
-        path.write_text(source)
+        _cache_source(path, source)
         self.artifact = compile_runtime(compiler, cache, path)
+        if (
+            self.artifact.metadata["identity"]["source"]
+            != self.metadata["source_sha256"]
+        ):
+            raise ValueError("native XC compiled source identity mismatch")
         if file_hash(self.artifact.library) != self.artifact.metadata["binary_sha256"]:
             raise ValueError("native XC binary identity mismatch")
         self._library = ct.CDLL(str(self.artifact.library))

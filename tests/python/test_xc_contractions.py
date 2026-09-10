@@ -89,6 +89,14 @@ def test_spin_resolved_response_finite_differences_transpose_and_exchange(name):
         atol=1e-12,
         rtol=1e-10,
     )
+    # Pin the metric against the full trace independently of reciprocal
+    # packing, so a self-consistent wrong off-diagonal scale cannot pass.
+    np.testing.assert_allclose(
+        packed_directions[0] @ packed_actions[1],
+        np.sum(directions[0] * actions[1]),
+        atol=1e-12,
+        rtol=1e-10,
+    )
     swapped = response.evaluate(
         jets, density[::-1], grid.weights, delta_density=directions[0, ::-1]
     )["response"]
