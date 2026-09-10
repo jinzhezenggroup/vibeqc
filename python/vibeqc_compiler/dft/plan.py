@@ -25,6 +25,7 @@ class TilePlan:
     device_bytes: int
     allocation_bytes: int
     provider_bytes: int
+    active_ao_capacity: int | None = None
 
     @property
     def peak_bytes(self):
@@ -32,7 +33,14 @@ class TilePlan:
 
 
 def plan_tiles(
-    basis, *, backend="cpu", order=1, tile_points=256, budget_bytes=256 << 20, grid=None
+    basis,
+    *,
+    backend="cpu",
+    order=1,
+    tile_points=256,
+    budget_bytes=256 << 20,
+    grid=None,
+    active_ao_capacity=None,
 ):
     """Fail before evaluation/allocation; no silent point count/backend changes."""
     jets = len(jet_indices(order))
@@ -41,22 +49,38 @@ def plan_tiles(
     if backend not in ("cpu", "cuda"):
         raise ValueError("unsupported grid backend")
     n, t, a = basis.nao, tile_points, basis.natom
+    if active_ao_capacity is not None:
+        checked_int(active_ao_capacity, "active AO capacity", high=n)
+    m = n if active_ao_capacity is None else active_ao_capacity
     # Point partition scratch is O(tile*atoms), not O(grid*atoms). Charge
     # immutable publication copies, AO validation, feature contractions, D
     # validation/symmetrization and all index/owner arrays conservatively.
     host = (
         basis.numeric_bytes
         + (0 if grid is None else grid.numeric_bytes + grid.setup_scratch_bytes)
-        + 8 * (12 * n * n + (2 * jets + 16) * t * n + 8 * t * a + 128 * t)
+        + 8 * (12 * n * n + (2 * jets + 16) * t * m + 8 * t * a + 128 * t)
         + 8192
     )
+    if active_ao_capacity is not None:
+        host += 8 * (12 * m * m + 2 * m)
     allocation = provider = 0
     if backend == "cuda":
-        numeric = 8 * (basis.packed.size + 2 * n * n + 16 * t + (jets + 8) * t * n)
+        elements = basis.packed.size + 2 * n * n + 16 * t + (jets + 8) * t * m
+        if active_ao_capacity is not None:
+            elements += 2 * n * n + 4 * m * m + m
+        numeric = 8 * elements
         allocation = ((numeric + 255) // 256) * 256 + 256 + (4 << 20)
         provider = 96 << 20
     plan = TilePlan(
-        backend, t, order, n, host, allocation + provider, allocation, provider
+        backend,
+        t,
+        order,
+        n,
+        host,
+        allocation + provider,
+        allocation,
+        provider,
+        active_ao_capacity,
     )
     if plan.peak_bytes > budget_bytes:
         raise ValueError(

@@ -24,6 +24,16 @@ RUNTIME_ADAPTERS = {
     "dft.fixtures": {"Primitive", "Shell"},
 }
 
+# Scalar algebra/emission still has its original IntegralIR package location.
+# AO lowering reuses exactly these neutral facilities, as XC already does;
+# it must not acquire integral recurrence, SCF, or schedule dependencies.
+SCALAR_CLIENTS = {
+    "dft.ao_cuda": {
+        "vibeqc_compiler.integral.expr",
+        "vibeqc_compiler.integral.cuda",
+    },
+}
+
 
 def audit_structure(package: Path = PACKAGE) -> dict:
     """Report forbidden import edges and module sizes without importing code.
@@ -87,7 +97,9 @@ def audit_structure(package: Path = PACKAGE) -> dict:
                 if target.startswith("vibeqc_compiler."):
                     destination = target.split(".")[1]
                     edges.add((owner, destination))
-                    if destination not in ALLOWED[owner]:
+                    if destination not in ALLOWED[
+                        owner
+                    ] and target not in SCALAR_CLIENTS.get(name, set()):
                         errors.append(
                             f"{location}: forbidden {owner} -> {destination} import"
                         )

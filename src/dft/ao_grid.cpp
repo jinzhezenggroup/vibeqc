@@ -79,13 +79,19 @@ AoBasis::AoBasis(const core::System& system) {
 
 void AoBasis::evaluate(const double* points, std::size_t npoint, unsigned order,
                        std::size_t ao_begin, std::size_t count, double* output,
-                       std::size_t elements) const {
+                       std::size_t elements, const std::size_t* ao_ids) const {
   if (order > 3 || ao_begin > nao || count > nao - ao_begin)
     throw std::invalid_argument("invalid AO jet order or AO slice");
   const std::size_t jets = (order + 1) * (order + 2) * (order + 3) / 6;
   if (elements != multiply(multiply(jets, npoint), count) || (npoint && !points) ||
       (elements && !output))
     throw std::invalid_argument("invalid AO jet buffer");
+  // A spatial mask selects records before scientific evaluation. Requiring
+  // sorted unique IDs makes local D[I,I] and matrix scatter unambiguous.
+  if (ao_ids)
+    for (std::size_t i = 0; i < count; ++i)
+      if (ao_ids[i] >= nao || (i && ao_ids[i] <= ao_ids[i - 1]))
+        throw std::invalid_argument("invalid selected AO map");
   for (std::size_t i = 0; i < multiply(3, npoint); ++i)
     if (!std::isfinite(points[i])) throw std::invalid_argument("nonfinite grid point");
   const auto* primitives = packed.data() + 3 * natom;
@@ -95,7 +101,7 @@ void AoBasis::evaluate(const double* points, std::size_t npoint, unsigned order,
     for (const auto& derivative : molecule::cartesian_components(degree)) {
       for (std::size_t point = 0; point < npoint; ++point) {
         for (std::size_t ao = 0; ao < count; ++ao) {
-          const auto* record = aos + 16 * (ao_begin + ao);
+          const auto* record = aos + 16 * (ao_ids ? ao_ids[ao] : ao_begin + ao);
           const auto atom = static_cast<std::size_t>(record[0]);
           std::array<double, 3> r{};
           double r2 = 0;

@@ -58,4 +58,16 @@ int vibeqc_grid_ao_v1(const void* handle, const double* points, std::size_t npoi
                                                   elements);
   });
 }
+/** Selected columns share the normalized AO evaluator; no global AO tile is
+ * materialized. The sorted unique map and its count are explicit ABI inputs. */
+int vibeqc_grid_ao_selected_v1(const void* handle, const double* points, std::size_t npoint,
+                               unsigned order, const std::size_t* ao_ids, std::size_t count,
+                               double* output, std::size_t elements, char* error,
+                               std::size_t size) {
+  return guarded(error, size, [&] {
+    if (!handle || (count && !ao_ids)) throw std::invalid_argument("null selected AO input");
+    static_cast<const AoBasis*>(handle)->evaluate(points, npoint, order, 0, count, output, elements,
+                                                  ao_ids);
+  });
+}
 }

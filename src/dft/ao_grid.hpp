@@ -25,8 +25,11 @@ class AoBasis {
    * total degree then CCA powers: 1,x,y,z,xx,xy,xz,yy,yz,zz,xxx,...,zzz.
    * Output is [jet, point, selected_ao]. Public basis l stays <=3 even when
    * differentiation temporarily raises polynomial powers to six.
+   * Optional sorted unique ao_ids select records directly instead of the
+   * contiguous slice. No omitted AO is evaluated or temporarily stored.
    */
   void evaluate(const double* points, std::size_t npoint, unsigned order, std::size_t ao_begin,
-                std::size_t ao_count, double* output, std::size_t elements) const;
+                std::size_t ao_count, double* output, std::size_t elements,
+                const std::size_t* ao_ids = nullptr) const;
 };
 }  // namespace vibeqc::dft

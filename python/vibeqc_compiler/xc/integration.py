@@ -38,6 +38,7 @@ class XCIntegral:
     points: int
     tiles: int
     backend: str = "cpu"
+    approximation_identity: str | None = None
 
 
 def _tiles(grid, tile_points):
@@ -76,7 +77,7 @@ class FixedDensityXC:
     def spec(self):
         return self._program.spec
 
-    def integrate(self, basis, grid, density, *, tile_points=256):
+    def integrate(self, basis, grid, density, *, tile_points=256, spatial=None):
         """Return E_xc and V_xc with delta E = sum_s Tr(V_s delta D_s).
 
         Total [AO,AO] input means Da=Db=D/2. Separate [2,AO,AO] input
@@ -88,6 +89,10 @@ class FixedDensityXC:
         ExplicitGrid is deliberately a fixed laboratory-frame quadrature;
         use a new grid when molecular geometry/rules change. No identity cache
         can return an old energy, AO tile or potential.
+
+        ``spatial`` selects a prepared CPU local-dense candidate with this
+        exact basis/quadrature. Its fixed mask defines the approximated energy
+        and potential consistently; an AO cutoff is not an energy error bound.
         """
         checked_int(tile_points, "tile points")
         if not isinstance(basis, NativeAO):
@@ -102,6 +107,20 @@ class FixedDensityXC:
             raise ValueError(
                 "stale molecular grid: atoms/charge/spin do not match basis"
             )
+        if spatial is not None:
+            from vibeqc_compiler.dft.spatial_prepared import PreparedSpatialGrid
+
+            if not isinstance(spatial, PreparedSpatialGrid):
+                raise TypeError("expected PreparedSpatialGrid")
+            if spatial.backend != "cpu":
+                raise ValueError(
+                    "CPU fixed-density integration requires a CPU spatial candidate"
+                )
+            if (
+                spatial.basis.identity != basis.identity
+                or spatial.source_grid.identity != grid.identity
+            ):
+                raise ValueError("stale spatial basis/quadrature")
         separate = np.asarray(density).ndim == 3
         d = spin_densities(density, basis.nao)
         if self.spec.spin == "unpolarized" and not np.array_equal(d[0], d[1]):
@@ -111,24 +130,39 @@ class FixedDensityXC:
         potential = np.zeros((nspin, basis.nao, basis.nao))
         electrons = np.zeros(2)
         points = tiles = 0
-        for tile in _tiles(grid, tile_points):
-            jets = basis.evaluate(tile.points, 1)
-            features = density_features(jets, d)
+
+        def collocation():
+            if spatial is not None:
+                for tile in spatial.iter_features(d, include_jets=True):
+                    yield tile, tile.ao_jets, tile.features, tile.ao_ids
+            else:
+                for tile in _tiles(grid, tile_points):
+                    jets = basis.evaluate(tile.points, 1)
+                    yield tile, jets, density_features(jets, d), None
+
+        for tile, jets, features, ao_ids in collocation():
             try:
                 values = self._program.unpack(
                     self._program.evaluate(pack_grid_features(self.spec, features))
                 )
             except UnsupportedXC as error:
+                begin = tile.begin if ao_ids is None else int(tile.point_ids[0])
                 raise UnsupportedXC(
-                    f"XC tile starting at point {tile.begin}: {error}"
+                    f"XC tile starting at point {begin}: {error}"
                 ) from error
             gradient = features["gradient"]
             if self.spec.spin == "unpolarized":
                 gradient = gradient.sum(axis=0)
             energy += float(tile.weights @ values["energy_density"])
-            potential += assemble_potential(
+            block = assemble_potential(
                 self.spec, jets, gradient, values["gradient"], tile.weights
             )
+            if ao_ids is None:
+                potential += block
+            else:
+                # AO maps are sorted and unique. Retain every cross-local-AO
+                # term, and scatter both symmetric legs exactly once.
+                potential[:, ao_ids[:, None], ao_ids[None, :]] += block
             electrons += features["rho"] @ tile.weights
             points += len(tile.weights)
             tiles += 1
@@ -152,12 +186,17 @@ class FixedDensityXC:
             "functional_identity": self.spec.identity,
             "density_identity": density_identity,
         }
+        approximation = None if spatial is None else spatial.tasks.identity
+        contract = {"contract": "fixed-density-xc-v1", **identities}
+        if approximation is not None:
+            contract["spatial_fixed_mask"] = approximation
         return XCIntegral(
             energy=energy,
             potential=immutable(potential),
             electrons=immutable(electrons),
-            identity=canonical_hash({"contract": "fixed-density-xc-v1", **identities}),
+            identity=canonical_hash(contract),
             **identities,
             points=points,
             tiles=tiles,
+            approximation_identity=approximation,
         )

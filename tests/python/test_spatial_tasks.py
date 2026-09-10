@@ -215,3 +215,21 @@ def test_mutated_maps_and_relabelled_generations_fail(fixture):
     changed = ExplicitGrid(grid.points, grid.weights * 2, grid.owners, {})
     with pytest.raises(ValueError, match="generation"):
         replace(tasks, grid_identity=changed.identity).validate(basis, changed)
+
+
+def test_forged_screening_certificate_cannot_drop_large_ao(fixture):
+    basis, grid = fixture
+    policy = SpatialPolicy(region_points=4, screening="absolute_ao_jet", cutoff=1e-8)
+    tasks = build_spatial_tasks(basis, grid, policy=policy)
+    first = tasks.tasks[0]
+    forged = replace(
+        first,
+        ao_ids=np.array([], dtype=int),
+        active_shell_ids=np.array([], dtype=int),
+        discarded_count=basis.nao,
+        discarded_max=np.zeros(len(first.derivatives)),
+    )
+    altered = replace(tasks, tasks=(forged, *tasks.tasks[1:]))
+    assert altered.identity != tasks.identity
+    with pytest.raises(ValueError, match="certified"):
+        altered.validate(basis, grid)

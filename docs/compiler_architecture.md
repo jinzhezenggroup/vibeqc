@@ -11,7 +11,7 @@ NumPy remains the existing dependency for recurrence/reference arithmetic.
 | --- | --- | --- |
 | `integral` | IntegralIR, scalar algebra, recurrence lowering, integral schedules and promotion | `common` |
 | `tensor` | TensorIR, AD, optimization, planning, tensor CUDA emission/execution | `common` |
-| `dft` | Discrete grids, AO jets, density ingredients, prepared tile execution | `common` |
+| `dft` | Discrete grids, AO jets, density ingredients, prepared tile execution | `common`; `ao_cuda` alone also uses the existing scalar `integral.expr` and `integral.cuda` |
 | `xc` | Audited functional expressions, derivatives, point coefficients and XC execution | `common`, `integral`, `dft` |
 | `common` | Backend/target contracts, finite compiler processes, artifacts, hashes, resources and evidence | none of the scientific or user-runtime packages |
 
@@ -27,6 +27,12 @@ basis ABI. Its runtime imports occur only during preparation. Likewise,
 molecular input, and the fixture adapter constructs public shell records only
 when requested. These three narrow exceptions are enumerated by the dependency
 check. No SCF policy belongs in generic compiler code.
+
+AO CUDA lowering borrows the same scalar graph and emitter as XC. Those two
+neutral modules retain their historical IntegralIR paths; the dependency check
+allows only these exact imports from `dft.ao_cuda`, without permitting DFT to
+depend on integral recurrence or method scheduling. This avoids a second
+scientific algebra implementation.
 
 ## Lowering and tuning modules
 

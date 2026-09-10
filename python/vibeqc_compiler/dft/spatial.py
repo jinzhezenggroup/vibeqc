@@ -239,6 +239,21 @@ class SpatialTasks:
             points = grid.points[task.point_ids]
             if np.any(points < task.bounds[0]) or np.any(points > task.bounds[1]):
                 raise ValueError("spatial task bounds do not enclose its points")
+            if len(task.point_ids) > self.policy.region_points:
+                raise ValueError("spatial task exceeds its scientific region capacity")
+            if self.policy.screening != "off" and task.discarded_count:
+                # Public immutable descriptors can still be constructed or
+                # replaced by a caller. Revalidate the bound certificate once
+                # at preparation; trusting supplied diagnostics would permit
+                # a forged mask to silently drop a large AO column.
+                envelopes = ao_region_envelopes(basis, task.bounds, task.derivatives)
+                omitted = np.ones(basis.nao, dtype=bool)
+                omitted[task.ao_ids] = False
+                certified = np.max(envelopes[:, omitted], axis=1)
+                if np.any(certified > task.discarded_max):
+                    raise ValueError(
+                        "spatial mask is not certified by its AO envelopes"
+                    )
             ids.append(task.point_ids)
         actual = np.concatenate(ids) if ids else np.empty(0, dtype=np.int64)
         if not np.array_equal(np.sort(actual), np.arange(len(grid.points))):
@@ -249,6 +264,20 @@ class SpatialTasks:
     @property
     def numeric_bytes(self):
         return sum(task.numeric_bytes for task in self.tasks)
+
+    @property
+    def identity(self):
+        """Bind actual point/mask membership as well as the construction policy.
+
+        A caller-supplied conservative task inventory may retain extra AOs.
+        Its approximated collocation must not share the factory mask identity.
+        """
+        return canonical_hash(
+            {
+                "generation": self.generation_id,
+                "tasks": [task.identity for task in self.tasks],
+            }
+        )
 
 
 def spatial_resource_request(basis, grid, policy):

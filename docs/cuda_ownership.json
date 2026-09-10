@@ -13,12 +13,19 @@
       "reason": "Native plan/arena ownership around the bounded AO/feature kernels.",
       "regions": [
         {
-          "reason": "AO spatial derivative arithmetic and spin-density ingredient contractions; native baseline awaiting common local-task lowering.",
+          "reason": "Normalized primitive traversal and AO/feature layout adapters remain counted conservatively as scientific glue. Axis derivative polynomials and per-AO ingredient arithmetic are compiler-owned.",
           "role": "scientific",
-          "start": "__constant__ int derivatives",
-          "stop": "extern \"C\""
+          "start": "__global__ void ao_kernel",
+          "stop": "// Gather every local matrix element"
         }
       ],
+      "role": "runtime",
+      "subsystem": "ao_grid"
+    },
+    {
+      "path": "src/dft/grid_task_view.cuh",
+      "reason": "Versioned borrowed device buffer, stream and generation ABI; no scientific arithmetic.",
+      "regions": [],
       "role": "runtime",
       "subsystem": "ao_grid"
     },
@@ -450,20 +457,26 @@
       "outputs": [],
       "owner": "python/vibeqc_compiler/integral",
       "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
+    },
+    {
+      "name": "ao_grid_policy",
+      "outputs": [],
+      "owner": "python/vibeqc_compiler/dft/ao_cuda.py",
+      "scope": "JIT through-f/order-three AO polynomials and spin-density ingredient arithmetic; generated policy included before the same dense/local native runtime."
     }
   ],
   "schema": "vibeqc.cuda-ownership.v1",
   "subsystems": {
     "ao_grid": {
-      "current_default": "native bounded CPU/CUDA spatial jets and density features",
+      "current_default": "Dense bounded schedules; explicit local-dense candidate with shared compiler-owned AO/feature policy",
       "evidence": [
         "docs/dft_grid.md"
       ],
-      "generated_capability": "validated AO jet conventions; spatial task and generated contraction integration in #234/#236",
-      "missing_capability": "common local AO/task lowering and complete fixed-density endpoint parity",
+      "generated_capability": "Through-f/order-three AO axis derivatives and spin ingredient arithmetic, shared by dense and selected-column schedules",
+      "missing_capability": "Whole AO traversal remains counted as scientific glue; broader execution promotion remains evidence-based",
       "owner": "ao_grid",
-      "retirement_condition": "retire superseded scientific AO/feature arithmetic when common lowering passes identical-grid gates",
-      "status": "native_baseline"
+      "retirement_condition": "Do not duplicate the removed native axis and feature formulas; retain independent CPU/Libcint numerical fixtures and dense scheduling fallback",
+      "status": "partial"
     },
     "df_derivatives": {
       "current_default": "native Dual/source derivative path; generated explicit derivative bridge",

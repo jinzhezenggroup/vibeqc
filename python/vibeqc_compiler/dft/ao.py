@@ -216,11 +216,42 @@ class NativeAO:
             raise RuntimeError(error.value.decode())
 
     def evaluate(
-        self, points, order=1, *, ao_begin=0, ao_count=None, budget_bytes=64 << 20
+        self,
+        points,
+        order=1,
+        *,
+        ao_begin=0,
+        ao_count=None,
+        ao_ids=None,
+        budget_bytes=64 << 20,
     ):
-        """Return owned [jet,point,AO] data for a checked, unscreened tile."""
+        """Return owned [jet,point,AO] data for a slice or sorted active AO map.
+
+        Selected columns are evaluated directly in native code, including
+        noncontiguous shells. The caller defines any fixed screening mask;
+        this evaluator does not omit small values or derivatives on its own.
+        """
         jets = jet_indices(order)
         checked_int(ao_begin, "AO begin", low=0, high=self.nao)
+        selected = None
+        if ao_ids is not None:
+            if ao_begin != 0 or ao_count is not None:
+                raise ValueError("active AO maps and contiguous slices are exclusive")
+            raw_ids = np.asarray(ao_ids)
+            if raw_ids.ndim != 1 or (
+                raw_ids.size
+                and (
+                    raw_ids.dtype.kind not in "iu"
+                    or np.any(raw_ids < 0)
+                    or np.any(raw_ids >= self.nao)
+                    or np.any(raw_ids[1:] <= raw_ids[:-1])
+                )
+            ):
+                raise ValueError(
+                    "active AO IDs must be sorted unique in-range integers"
+                )
+            selected = np.array(raw_ids, dtype=np.uintp, copy=True)
+            ao_count = len(selected)
         ao_count = self.nao - ao_begin if ao_count is None else ao_count
         checked_int(ao_count, "AO count", low=0, high=self.nao - ao_begin)
         checked_int(budget_bytes, "AO tile budget", high=2**63 - 1)
@@ -229,6 +260,8 @@ class NativeAO:
             raise ValueError("real grid points require shape (n,3)")
         elements = len(jets) * len(raw) * ao_count
         capacity = self.numeric_bytes + 16 * elements + 64 * len(raw) + 4096
+        if selected is not None:
+            capacity += selected.nbytes
         if capacity > budget_bytes:
             raise ValueError(
                 f"AO tile needs {capacity} numeric bytes; budget is {budget_bytes}"
@@ -238,13 +271,29 @@ class NativeAO:
             if not self._handle:
                 raise RuntimeError("AO basis is closed")
             result = np.empty((len(jets), len(points), ao_count))
+            name, selection = "vibeqc_grid_ao_v1", ao_begin
+            if selected is not None:
+                name = "vibeqc_grid_ao_selected_v1"
+                getattr(self._library, name).argtypes = [
+                    ct.c_void_p,
+                    DOUBLE,
+                    ct.c_size_t,
+                    ct.c_uint,
+                    SIZE,
+                    ct.c_size_t,
+                    DOUBLE,
+                    ct.c_size_t,
+                    ct.c_char_p,
+                    ct.c_size_t,
+                ]
+                selection = selected.ctypes.data_as(SIZE)
             self._call(
-                "vibeqc_grid_ao_v1",
+                name,
                 self._handle,
                 pointer(points),
                 len(points),
                 order,
-                ao_begin,
+                selection,
                 ao_count,
                 pointer(result),
                 result.size,
