@@ -111,7 +111,9 @@ clean baseline `1ba6f17` with Release, CUDA fast compilation disabled, CUDA
 1.019427. This establishes non-regression, not a universal speedup. Nineteen
 cases used explicit shared total budgets; the 18-AO Cartesian direct case
 retained the legacy unbudgeted scope because HF inventory v1 supports at most
-16 public AOs. Its scope note remains part of the evidence.
+16 public AOs. Its scope note remains part of the evidence. The checksum-bound
+[bundle](../benchmarks/results/cuda-ownership/README.md) retains all samples,
+inputs, resource observations and the complete per-workload assessments.
 
 `VIBEQC_ONE_ELECTRON_VALUES` and `VIBEQC_DF_VALUES` are retired internal controls
 and no longer affect production dispatch or execution identities. The value

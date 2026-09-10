@@ -503,6 +503,7 @@
     "one_electron_values": {
       "current_default": "Generated S/T/V values on shared shell-warp AO-pair schedule; thread schedule remains diagnostic",
       "evidence": [
+        "benchmarks/results/cuda-ownership/one-electron/publication.json",
         "benchmarks/results/one-electron-values-rtx5090/raw-summary.json",
         "benchmarks/results/one-electron-values-rtx5090/sp8-b3-shell_warp.json"
       ],
