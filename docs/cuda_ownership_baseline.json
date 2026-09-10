@@ -1,0 +1,1013 @@
+{
+  "all_handwritten_scientific_lines": 10192,
+  "baseline_scope": "Native CUDA source corpus unchanged from this revision; report/ledger tooling is introduced alongside this snapshot, before production retirement.",
+  "baseline_source_revision": "dfc9e55f13bc55b4961d7ab5255064a66e38df7b",
+  "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
+  "files": [
+    {
+      "bytes": 5274,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 102,
+        "scientific": 0
+      },
+      "path": "src/cc/cuda_state.cuh",
+      "physical_lines": 120,
+      "reason": "Persistent tensor-state buffers and generic copy/validation; CC equations live in TensorIR.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "76766d10f1c2d1501794e948f13dfd89cfd1ae86589d02f005f95a660c808449",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 13158,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 182,
+        "scientific": 85
+      },
+      "path": "src/dft/cuda_grid.cu",
+      "physical_lines": 283,
+      "reason": "Native plan/arena ownership around the bounded AO/feature kernels.",
+      "regions": [
+        {
+          "code_lines": 85,
+          "first_line": 40,
+          "last_line": 131,
+          "reason": "AO spatial derivative arithmetic and spin-density ingredient contractions; native baseline awaiting common local-task lowering.",
+          "role": "scientific",
+          "start": "__constant__ int derivatives",
+          "stop": "extern \"C\""
+        }
+      ],
+      "role": "runtime",
+      "sha256": "633d3d0a6b420d7af2b51197aa33f9962678dc7af340483ddf609478c0b737e3",
+      "subsystem": "ao_grid"
+    },
+    {
+      "bytes": 4086,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 89,
+        "scientific": 0
+      },
+      "path": "src/dft/xc_runtime.cuh",
+      "physical_lines": 95,
+      "reason": "Generic scalar XC plan allocation, transport, launch, metrics and failure ABI; functional/ingredient kernels are generated before inclusion.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "2df50a599bd0cdc33ae2aca48d29b06364283253f55d5d8fc338d3e5c04bcd55",
+      "subsystem": "xc"
+    },
+    {
+      "bytes": 3566,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 57,
+        "scientific": 0
+      },
+      "path": "src/integrals/eri_geometry.hpp",
+      "physical_lines": 74,
+      "reason": "Shared stable pair geometry numerical primitives for CPU/CUDA; no shell recurrence duplicate.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "4a8432a55b83ca108371251a94e2f8a95bcbf52f467dbe5bd8bb667ea176a6dd",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 6113,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 84,
+        "scientific": 0
+      },
+      "path": "src/integrals/range_moments.hpp",
+      "physical_lines": 120,
+      "reason": "Shared bounded stable moment numerical library called by generated operators; not a second shell/operator lowering.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "4081e54c103158a2365d848c2e57b353b42d6216e6c8bff99527d858f5f6a79c",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 12618,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 179,
+        "scientific": 65
+      },
+      "path": "src/posthf/cuda_low_rank.cu",
+      "physical_lines": 276,
+      "reason": "Retained numerical factorization prefix, normalized packing, transport and owned cuBLAS workspace.",
+      "regions": [
+        {
+          "code_lines": 5,
+          "first_line": 98,
+          "last_line": 103,
+          "reason": "Factorized Coulomb output composition.",
+          "role": "scientific",
+          "start": "__global__ void add_coulomb",
+          "stop": "__global__ void symmetric_output"
+        },
+        {
+          "code_lines": 60,
+          "first_line": 203,
+          "last_line": 265,
+          "reason": "Explicit J/K equation composition and its native calls; counted conservatively including local ABI checks.",
+          "role": "scientific",
+          "start": "int posthf_cholesky_jk_v1",
+          "stop": "int posthf_cholesky_metrics_v1"
+        }
+      ],
+      "role": "runtime",
+      "sha256": "06ab3bd9f7dca92671900dd387d46d1211f7229ea87f562c8df4b8a63b72b13c",
+      "subsystem": "low_rank"
+    },
+    {
+      "bytes": 7792,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 172,
+        "scientific": 0
+      },
+      "path": "src/posthf/cuda_transform.cu",
+      "physical_lines": 180,
+      "reason": "Generic bounded multi-index basis transforms and library/arena ownership.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "8def0987cd6ce786a46d03424b189561c2e592a95cd0b6a4286208c0f5302049",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 6666,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 146,
+        "scientific": 0
+      },
+      "path": "src/posthf/df_bridge.cu",
+      "physical_lines": 156,
+      "reason": "Existing raw-source/metric-factor and bounded public-layout bridge; shared RI semantics are owned upstream.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "22ee5e0c2f0a2562d3a3f87c2d30593de3e798a157baa19b3c5f6344b3ef2117",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 2911,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 52,
+        "scientific": 0
+      },
+      "path": "src/runtime/cuda_runtime.cu",
+      "physical_lines": 68,
+      "reason": "Device availability, discovery and stable runtime ABI.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "7f4b8369774b01af2f5109b1974c8d45af3036a301791f9ffb2371269b5f2c4e",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 6049,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 116,
+        "scientific": 0
+      },
+      "path": "src/runtime/resource_cuda.cuh",
+      "physical_lines": 153,
+      "reason": "Allocation accounting and lifetime guards.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "2040468a6b17df192d1a0dfc9e1752e46fe4a7922bfbe958e948aaf626a2229d",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 5770,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 67,
+        "scientific": 0
+      },
+      "path": "src/scf/aot_shell_registry.hpp",
+      "physical_lines": 117,
+      "reason": "Typed registry and task interfaces; generated entries own class mathematics.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "252642dc8d74659b54f2138c9419501c06691c1832badabd19fe67ba8ad6c8a4",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 5194,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 87
+      },
+      "path": "src/scf/cuda/df_derivatives.cu",
+      "physical_lines": 89,
+      "reason": "Generated derivative contraction/AO traversal glue; compiler owns primitive recurrence math.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "4d3e2fc966732ddc4e807e14354b0d455ccf55ef56ab2e873434a88071e0f09b",
+      "subsystem": "df_derivatives"
+    },
+    {
+      "bytes": 1660,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 20,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/df_derivatives.cuh",
+      "physical_lines": 34,
+      "reason": "Stable derivative view and launch ABI declarations.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "c4e0953793a80213e03e10289f544ad3102c8a10f32c28cec3b7172de9e81d4c",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 18299,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 351
+      },
+      "path": "src/scf/cuda/df_gradient_bridge.cu",
+      "physical_lines": 362,
+      "reason": "Method-specific density/metric response weights plus native bridge; pending reusable generated contractions.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "8587cfdb4b1ec002eef87c791c2f0dced18496da19ad0a759239a6a76645a90e",
+      "subsystem": "df_derivatives"
+    },
+    {
+      "bytes": 26375,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 468
+      },
+      "path": "src/scf/cuda/direct_jk.cuh",
+      "physical_lines": 500,
+      "reason": "Direct J/K consumer contractions and bounded bridge; counted conservatively with local runtime checks.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "845ba9198cef66a5cc5b2acc5d68494935957173b122c403a85137bfd7b9ca4b",
+      "subsystem": "scf_tensor"
+    },
+    {
+      "bytes": 8911,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 151
+      },
+      "path": "src/scf/cuda/one_electron_derivatives.cu",
+      "physical_lines": 167,
+      "reason": "Operator-specific derivative contraction/scheduling glue around generated primitives.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "d7fdd74854670ee1732a561cdaf9d370e6f59cc29ac42c39c3e73707240283bc",
+      "subsystem": "one_electron_derivatives"
+    },
+    {
+      "bytes": 1819,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 17,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/one_electron_derivatives.cuh",
+      "physical_lines": 39,
+      "reason": "First-derivative views and launch declarations.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "06fd15d662b980e2fd3760042678f93566d9e17a52531a83637f776f1c325234",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 5766,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 90,
+        "runtime": 0,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/one_electron_force_reference.cuh",
+      "physical_lines": 102,
+      "reason": "Retained independently gated scalar/cooperative force schedules; values retirement does not supersede force policy.",
+      "regions": [],
+      "role": "performance_exception",
+      "sha256": "50f04268e10c924368ce798d0f7144f87d415740272d983f1085986844849c06",
+      "subsystem": "one_electron_derivatives"
+    },
+    {
+      "bytes": 10970,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 221
+      },
+      "path": "src/scf/cuda/one_electron_gradient_bridge.cu",
+      "physical_lines": 239,
+      "reason": "Density/energy-weighted-density and gradient task bridge around generated derivatives.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "8cb46c1db6dafa0eeab516daef4b84ba29073ec61437d3f3ae744d566c12865d",
+      "subsystem": "one_electron_derivatives"
+    },
+    {
+      "bytes": 13019,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 234,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/one_electron_integrals.cuh",
+      "physical_lines": 245,
+      "reason": "One-electron source setup, metadata staging, launch choice and host publication.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "d8aa51d718b49550f5af168fec18b02bc502cfb26388b2bae84fdf210753d6d9",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 3001,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 47
+      },
+      "path": "src/scf/cuda/one_electron_reference.cuh",
+      "physical_lines": 54,
+      "reason": "Existing handwritten value/response consumer; shared derivative ownership remains explicit after value retirement.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "c83ac4b21b7ba37db77b737e10ca94c5ad55a7f0c5baac0b94a23ca148fcff11",
+      "subsystem": "one_electron_values"
+    },
+    {
+      "bytes": 6581,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 118
+      },
+      "path": "src/scf/cuda/one_electron_values.cu",
+      "physical_lines": 134,
+      "reason": "Native primitive/AO contraction, charge loop, scheduling and symmetric writes around compiler-owned scalar S/T/V.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "ce3e0dcf5f6c86407384b8b7b7d97a6c0ff23773d942cf875c35c5d9e5b72f83",
+      "subsystem": "one_electron_values"
+    },
+    {
+      "bytes": 2077,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 30,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/one_electron_values.cuh",
+      "physical_lines": 51,
+      "reason": "Immutable public normalized AO view and value launch ABI.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "9983b060b4ca914ffd423c08eed4e5d28cfbbe4d6f294b848bea438b548cfa5c",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 5998,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 100
+      },
+      "path": "src/scf/cuda/weighted_eri.cuh",
+      "physical_lines": 114,
+      "reason": "Weighted reference/candidate contractions with explicit retained low-order exception selection.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "d391200ee45bf5f37a68b70c6024e7b3faa903642809ee59c4683cea4abe038d",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 207084,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 2654,
+        "scientific": 987
+      },
+      "path": "src/scf/cuda_density_fitting.cu",
+      "physical_lines": 3953,
+      "reason": "RI planning, ownership, generic eigensolver/DIIS and library runtime.",
+      "regions": [
+        {
+          "code_lines": 49,
+          "first_line": 125,
+          "last_line": 178,
+          "reason": "RI force-response contraction coefficients and reductions.",
+          "role": "scientific",
+          "start": "__global__ void gather_force_auxiliary_matrices_kernel",
+          "stop": "__global__ void gather_auxiliary_tile_kernel"
+        },
+        {
+          "code_lines": 126,
+          "first_line": 206,
+          "last_line": 353,
+          "reason": "Streamed RI J/K, density and energy equations.",
+          "role": "scientific",
+          "start": "__global__ void accumulate_streamed_auxiliary_density_kernel",
+          "stop": "__global__ void update_device_convergence_kernel"
+        },
+        {
+          "code_lines": 441,
+          "first_line": 578,
+          "last_line": 1074,
+          "reason": "Explicit RI J/K equation composition using cuBLAS; conservative region includes staging.",
+          "role": "scientific",
+          "start": "vibeqc_status build_coulomb(",
+          "stop": "vibeqc_status prepare_outputs("
+        },
+        {
+          "code_lines": 371,
+          "first_line": 1110,
+          "last_line": 1498,
+          "reason": "Source and generated derivative force-response equation assembly.",
+          "role": "scientific",
+          "start": "vibeqc_status source_force_response_impl(",
+          "stop": "vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl("
+        }
+      ],
+      "role": "runtime",
+      "sha256": "fbfa408911d9acfa5b876118b4bf5fb369a3bf5b5d13d8277c1a67cf1791289a",
+      "subsystem": "scf_tensor"
+    },
+    {
+      "bytes": 19897,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 429,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda_eigensolver_probe.cu",
+      "physical_lines": 464,
+      "reason": "Diagnostic generic dense eigensolver experiments, synchronization and library comparisons.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "628596452c9bfb391c91d4f1efe75025a928630d23baaec6daf0426b2271ccdb",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 6590,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 117,
+        "scientific": 26
+      },
+      "path": "src/scf/cuda_fock.cu",
+      "physical_lines": 159,
+      "reason": "Dense bucket owner and stable execution interface.",
+      "regions": [
+        {
+          "code_lines": 26,
+          "first_line": 11,
+          "last_line": 38,
+          "reason": "Concrete cached-tensor RHF J/K contraction equation.",
+          "role": "scientific",
+          "start": "__global__ void rhf_fock_bucket_kernel",
+          "stop": "struct CudaFockBucketHandle"
+        }
+      ],
+      "role": "runtime",
+      "sha256": "93330967c98637368a8c219295d170bb0af34aa64fc0229b95975f4131bd9449",
+      "subsystem": "scf_tensor"
+    },
+    {
+      "bytes": 1038913,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 10194,
+        "scientific": 7396
+      },
+      "path": "src/scf/cuda_rhf.cu",
+      "physical_lines": 19586,
+      "reason": "Remaining device recurrences, physical screening bounds and method contractions are conservatively scientific; explicit regions separate generic runtime.",
+      "regions": [
+        {
+          "code_lines": 805,
+          "first_line": 1,
+          "last_line": 1029,
+          "reason": "Includes, task metadata, scalar arithmetic/AD, stable special functions and generic geometry/packing helpers.",
+          "role": "runtime",
+          "start": "#include <cublas_v2.h>",
+          "stop": "__device__ Scalar primitive_overlap("
+        },
+        {
+          "code_lines": 66,
+          "first_line": 1091,
+          "last_line": 1172,
+          "reason": "Angular/task indexing and public-layout helpers.",
+          "role": "runtime",
+          "start": "__device__ unsigned angular_axis(",
+          "stop": "__device__ void boys_values("
+        },
+        {
+          "code_lines": 539,
+          "first_line": 6309,
+          "last_line": 6905,
+          "reason": "State, instrumentation, generic dense eigensolvers and matrix products.",
+          "role": "runtime",
+          "start": "__global__ void initialize_state_kernel",
+          "stop": "__global__ void build_density_kernel"
+        },
+        {
+          "code_lines": 107,
+          "first_line": 6983,
+          "last_line": 7096,
+          "reason": "Validated warm-density copy/normalization and state handling.",
+          "role": "runtime",
+          "start": "__device__ double warm_density_block_sum",
+          "stop": "__global__ void build_fock_kernel"
+        },
+        {
+          "code_lines": 9,
+          "first_line": 7183,
+          "last_line": 7202,
+          "reason": "Generic atomic maximum implementation.",
+          "role": "runtime",
+          "start": "__device__ void atomic_max_double",
+          "stop": "__global__ void build_schwarz_and_shell_pair_bounds_packed_kernel"
+        },
+        {
+          "code_lines": 541,
+          "first_line": 7519,
+          "last_line": 8176,
+          "reason": "Task compaction, signature/class indexing, prefix scans, materialization and queue profiling.",
+          "role": "runtime",
+          "start": "__global__ void compact_active_shell_quartet_tiles_kernel",
+          "stop": "__global__ void build_fock_direct_packed_kernel"
+        },
+        {
+          "code_lines": 64,
+          "first_line": 8318,
+          "last_line": 8385,
+          "reason": "Generic tuple permutations and duplicate suppression.",
+          "role": "runtime",
+          "start": "__device__ void eri_symmetry_permutation",
+          "stop": "__device__ __forceinline__ void accumulate_direct_fock_integral"
+        },
+        {
+          "code_lines": 129,
+          "first_line": 8432,
+          "last_line": 8570,
+          "reason": "Matrix initialization and public/direct basis transforms.",
+          "role": "runtime",
+          "start": "__global__ void initialize_direct_fock_kernel",
+          "stop": "__device__ __forceinline__ void contract_fock_direct_quartet_subtile"
+        },
+        {
+          "code_lines": 18,
+          "first_line": 8753,
+          "last_line": 8772,
+          "reason": "Component-index mapping.",
+          "role": "runtime",
+          "start": "__device__ __forceinline__ unsigned order2_component_index",
+          "stop": "__device__ __noinline__ void contract_fock_direct_order2_task"
+        },
+        {
+          "code_lines": 104,
+          "first_line": 8901,
+          "last_line": 9018,
+          "reason": "Queue/launch wrappers around separately owned scientific contractions.",
+          "role": "runtime",
+          "start": "__global__ void build_fock_direct_quartet_kernel",
+          "stop": "__global__ void subtract_matrix_batches_kernel"
+        },
+        {
+          "code_lines": 149,
+          "first_line": 9019,
+          "last_line": 9179,
+          "reason": "Generic matrix residual and DIIS operations.",
+          "role": "runtime",
+          "start": "__global__ void subtract_matrix_batches_kernel",
+          "stop": "__global__ void compute_energy_kernel"
+        },
+        {
+          "code_lines": 151,
+          "first_line": 9226,
+          "last_line": 9407,
+          "reason": "Convergence controls and iteration-state routing.",
+          "role": "runtime",
+          "start": "__device__ __forceinline__ double direct_fock_energy_roundoff_guard",
+          "stop": "__global__ void build_weighted_density_kernel"
+        },
+        {
+          "code_lines": 13,
+          "first_line": 9462,
+          "last_line": 9475,
+          "reason": "Generic spin-matrix addition.",
+          "role": "runtime",
+          "start": "__global__ void sum_uhf_spin_matrices_kernel",
+          "stop": "__global__ void nuclear_force_kernel"
+        },
+        {
+          "code_lines": 42,
+          "first_line": 11028,
+          "last_line": 11074,
+          "reason": "Generic prefix scans for force signatures.",
+          "role": "runtime",
+          "start": "__global__ void scan_bounded_force_signature_counts_kernel",
+          "stop": "__device__ __forceinline__ bool bounded_generated_class_enabled"
+        },
+        {
+          "code_lines": 164,
+          "first_line": 11502,
+          "last_line": 11701,
+          "reason": "Persistent force task wrappers; primitive/equation contractions are separate above.",
+          "role": "runtime",
+          "start": "__global__ void two_electron_force_quartet_kernel",
+          "stop": "cudaError_t prepare_generated_shell_tasks("
+        },
+        {
+          "code_lines": 7293,
+          "first_line": 11702,
+          "last_line": 19586,
+          "reason": "Host resource planning, library/state/graph execution and ABI dispatch; numerical device equations are classified above.",
+          "role": "runtime",
+          "start": "cudaError_t prepare_generated_shell_tasks(",
+          "stop": null
+        }
+      ],
+      "role": "scientific",
+      "sha256": "77dccfedde241c4678f1115b73422120ce3a1d697050c84c2924d145327462f4",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 15689,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 253,
+        "scientific": 0
+      },
+      "path": "src/scf/direct_task_layout.hpp",
+      "physical_lines": 324,
+      "reason": "Backend-shared task coordinates, capacities and tuple/shell indexing.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "ca957228e707383ca084a4b701666f1b2c94eeb7f90455a16d3a3842474b7591",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 10287,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 206,
+        "scientific": 0
+      },
+      "path": "src/scf/weighted_eri_runtime.hpp",
+      "physical_lines": 247,
+      "reason": "Typed weighted-provider task protocol, execution layout and stable numerical helper boundary.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "6a7513fdb94062eb87182d67bf0d36eff9104dbdf7768bc2dae46b1a6c0c01ae",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 8378,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 173,
+        "scientific": 0
+      },
+      "path": "src/tensor/cuda_runtime.cuh",
+      "physical_lines": 206,
+      "reason": "Shared arena, streams/events, cuBLAS workspace and error/metrics handling.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "c51d195f9046ef306dc25e8820b0a4a741ffcc2047846c2e2fd8147d0b16be2f",
+      "subsystem": "runtime"
+    }
+  ],
+  "generated": [
+    {
+      "files": [],
+      "measurement": "not materialized",
+      "name": "one_electron_values",
+      "outputs": [
+        "generated/generated_one_electron_values.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/one_electron_cuda.py"
+    },
+    {
+      "files": [],
+      "measurement": "not materialized",
+      "name": "one_electron_derivatives",
+      "outputs": [
+        "generated/generated_one_electron_derivatives.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/one_electron_derivatives_cuda.py"
+    },
+    {
+      "files": [],
+      "measurement": "not materialized",
+      "name": "df_values",
+      "outputs": [
+        "generated/df_values.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_cuda.py"
+    },
+    {
+      "files": [],
+      "measurement": "not materialized",
+      "name": "df_derivatives",
+      "outputs": [
+        "generated/generated_df_derivatives.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_derivatives_cuda.py"
+    },
+    {
+      "files": [],
+      "measurement": "not materialized",
+      "name": "weighted_eri",
+      "outputs": [
+        "generated/weighted_eri.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/weighted_eri_cuda.py"
+    },
+    {
+      "files": [],
+      "measurement": "not materialized",
+      "name": "aot_integrals",
+      "outputs": [
+        "generated/production_shell_kernels/**/*.cu",
+        "generated/production_shell_kernels/**/*.cuh",
+        "generated/production_shell_kernels/**/*.hpp"
+      ],
+      "owner": "python/vibeqc_compiler/integral/cuda_lowering.py"
+    },
+    {
+      "files": [],
+      "measurement": "not materialized",
+      "name": "jit_tensor_xc_ao_response",
+      "outputs": [],
+      "owner": "python/vibeqc_compiler/{tensor,xc,dft,integral}",
+      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
+    }
+  ],
+  "generated_bytes": 0,
+  "maintained_code_lines": {
+    "fallback": 0,
+    "oracle": 0,
+    "performance_exception": 90,
+    "runtime": 15573,
+    "scientific": 10102
+  },
+  "migration_ledger": {
+    "ao_grid": {
+      "current_default": "native bounded CPU/CUDA spatial jets and density features",
+      "evidence": [
+        "docs/dft_grid.md"
+      ],
+      "generated_capability": "validated AO jet conventions; spatial task and generated contraction integration in #234/#236",
+      "missing_capability": "common local AO/task lowering and complete fixed-density endpoint parity",
+      "owner": "ao_grid",
+      "retirement_condition": "retire superseded scientific AO/feature arithmetic when common lowering passes identical-grid gates",
+      "status": "native_baseline"
+    },
+    "df_derivatives": {
+      "current_default": "native Dual/source derivative path; generated explicit derivative bridge",
+      "evidence": [
+        "benchmarks/results/df-derivatives-rtx5090"
+      ],
+      "generated_capability": "generated two-/three-center first derivatives and density weights",
+      "missing_capability": "complete schedule/resource/endpoint replacement of old derivatives",
+      "owner": "df_derivatives",
+      "retirement_condition": "retire old derivative recurrence/contraction only after its own complete gates",
+      "status": "performance_exception"
+    },
+    "df_values": {
+      "current_default": "generated Rys values and primitive mapping; old reference selector retained for A/B",
+      "evidence": [
+        "benchmarks/results/generated-df-values-142/promotion.json",
+        "benchmarks/results/generated-df-values-142/README.md"
+      ],
+      "generated_capability": "all two-/three-center values through f, public spherical transforms",
+      "missing_capability": "none for promoted values; derivative fallback is a separate capability",
+      "owner": "df_values",
+      "retirement_condition": "remove legacy value selection/dispatch after default-source parity; preserve CPU/Libcint independent validation",
+      "status": "ready_for_retirement"
+    },
+    "direct_integrals": {
+      "current_default": "AOT class registry where promoted; bounded native fallback and explicit schedule exceptions",
+      "evidence": [
+        "docs/shell_codegen.md",
+        "docs/weighted_eri.md",
+        "docs/second_integral_derivatives.md",
+        "python/vibeqc_compiler/integral/production_shell_classes.json"
+      ],
+      "generated_capability": "IntegralIR values/first derivatives, weighted ERI and second-order providers through f",
+      "missing_capability": "complete replacement is class/schedule-specific; retain unpromoted fallback classes",
+      "owner": "direct_integrals",
+      "retirement_condition": "remove each old scientific class when numerical/resource/full endpoint gates pass and no independent role remains",
+      "status": "partial"
+    },
+    "low_rank": {
+      "current_default": "experimental native matrix-prefix projection and cuBLAS J/K; CPU source and pivot policy",
+      "evidence": [
+        "docs/incremental_low_rank.md"
+      ],
+      "generated_capability": "no new shell/operator formula; existing raw source and shared native runtime",
+      "missing_capability": "generic retained-factor J/K has no integrated TensorIR method adapter yet",
+      "owner": "low_rank",
+      "retirement_condition": "retain generic factorization/packing runtime; migrate J/K equation composition when bounded TensorIR adapter is validated",
+      "status": "experimental"
+    },
+    "one_electron_derivatives": {
+      "current_default": "native scalar/cooperative force and Dual response paths; generated derivative opt-in",
+      "evidence": [
+        "benchmarks/results/one-electron-derivatives-rtx5090/validation-summary.json"
+      ],
+      "generated_capability": "generated fixed-density S/T/V first derivatives and public spherical weights",
+      "missing_capability": "generated complete endpoint/resource performance still needs promotion",
+      "owner": "one_electron_derivatives",
+      "retirement_condition": "retire only after derivative/force gates, independently of values promotion",
+      "status": "performance_exception"
+    },
+    "one_electron_values": {
+      "current_default": "handwritten reference values; generated thread/shell-warp opt-in via VIBEQC_ONE_ELECTRON_VALUES",
+      "evidence": [
+        "benchmarks/results/one-electron-values-rtx5090/raw-summary.json",
+        "benchmarks/results/one-electron-values-rtx5090/sp8-b3-shell_warp.json"
+      ],
+      "generated_capability": "IntegralIR S/T/V all Cartesian s/p/d/f pairs with public spherical contraction",
+      "missing_capability": "complete non-regression evidence and reusable contraction/symmetric-scatter runtime",
+      "owner": "one_electron_values",
+      "retirement_condition": "promote validated generated values, remove old value dispatch and double value instantiation; retain separately owned derivative routines",
+      "status": "promotion_pending"
+    },
+    "runtime": {
+      "current_default": "native shared allocation, stream, graph, ABI and library adapters",
+      "evidence": [
+        "docs/compiler_architecture.md"
+      ],
+      "generated_capability": "not applicable: generic runtime infrastructure",
+      "missing_capability": "none; infrastructure remains native",
+      "owner": "runtime",
+      "retirement_condition": "retain generic runtime; review new embedded scientific formulas separately",
+      "status": "retained"
+    },
+    "scf_tensor": {
+      "current_default": "native RHF/UHF/DF density, J/K, energy and force contractions",
+      "evidence": [
+        "docs/architecture.md"
+      ],
+      "generated_capability": "TensorIR owns general contractions/AD; current native SCF bridges remain concrete",
+      "missing_capability": "integration of method equations into shared generated tensor execution",
+      "owner": "scf_tensor",
+      "retirement_condition": "retain native scientific adapters until generated method endpoint passes; preserve generic solver/BLAS runtime",
+      "status": "native_baseline"
+    },
+    "xc": {
+      "current_default": "generated scalar functional expressions; concrete potential/feature assembly",
+      "evidence": [
+        "docs/xc_expressions.md"
+      ],
+      "generated_capability": "audited scalar XC values/derivatives and TensorIR response primitives",
+      "missing_capability": "compact ingredient-to-potential/response/geometric contraction layer #236",
+      "owner": "xc",
+      "retirement_condition": "replace concrete contraction arithmetic only after independent E/V/response/geometric gates; scalar oracles remain separate",
+      "status": "partial"
+    }
+  },
+  "per_subsystem": {
+    "ao_grid": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 0,
+      "runtime": 182,
+      "scientific": 85
+    },
+    "df_derivatives": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 0,
+      "runtime": 0,
+      "scientific": 438
+    },
+    "direct_integrals": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 0,
+      "runtime": 10194,
+      "scientific": 7496
+    },
+    "low_rank": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 0,
+      "runtime": 179,
+      "scientific": 65
+    },
+    "one_electron_derivatives": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 90,
+      "runtime": 0,
+      "scientific": 372
+    },
+    "one_electron_values": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 0,
+      "runtime": 0,
+      "scientific": 165
+    },
+    "runtime": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 0,
+      "runtime": 2158,
+      "scientific": 0
+    },
+    "scf_tensor": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 0,
+      "runtime": 2771,
+      "scientific": 1481
+    },
+    "xc": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 0,
+      "runtime": 89,
+      "scientific": 0
+    }
+  },
+  "schema": "vibeqc.cuda-ownership-report.v1"
+}

@@ -29,6 +29,12 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: cuda-ownership
+        name: Check native CUDA ownership inventory and source anchors
+        entry: python3 tools/report_cuda_ownership.py --check
+        language: system
+        pass_filenames: false
+        always_run: true
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.16.6
     hooks:

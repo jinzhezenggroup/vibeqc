@@ -1,0 +1,541 @@
+{
+  "classification_status": "Reviewed source regions; operator-specific scientific glue is counted conservatively with its owning function.",
+  "files": [
+    {
+      "path": "src/cc/cuda_state.cuh",
+      "reason": "Persistent tensor-state buffers and generic copy/validation; CC equations live in TensorIR.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/dft/cuda_grid.cu",
+      "reason": "Native plan/arena ownership around the bounded AO/feature kernels.",
+      "regions": [
+        {
+          "reason": "AO spatial derivative arithmetic and spin-density ingredient contractions; native baseline awaiting common local-task lowering.",
+          "role": "scientific",
+          "start": "__constant__ int derivatives",
+          "stop": "extern \"C\""
+        }
+      ],
+      "role": "runtime",
+      "subsystem": "ao_grid"
+    },
+    {
+      "path": "src/dft/xc_runtime.cuh",
+      "reason": "Generic scalar XC plan allocation, transport, launch, metrics and failure ABI; functional/ingredient kernels are generated before inclusion.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "xc"
+    },
+    {
+      "path": "src/integrals/eri_geometry.hpp",
+      "reason": "Shared stable pair geometry numerical primitives for CPU/CUDA; no shell recurrence duplicate.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/integrals/range_moments.hpp",
+      "reason": "Shared bounded stable moment numerical library called by generated operators; not a second shell/operator lowering.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/posthf/cuda_low_rank.cu",
+      "reason": "Retained numerical factorization prefix, normalized packing, transport and owned cuBLAS workspace.",
+      "regions": [
+        {
+          "reason": "Factorized Coulomb output composition.",
+          "role": "scientific",
+          "start": "__global__ void add_coulomb",
+          "stop": "__global__ void symmetric_output"
+        },
+        {
+          "reason": "Explicit J/K equation composition and its native calls; counted conservatively including local ABI checks.",
+          "role": "scientific",
+          "start": "int posthf_cholesky_jk_v1",
+          "stop": "int posthf_cholesky_metrics_v1"
+        }
+      ],
+      "role": "runtime",
+      "subsystem": "low_rank"
+    },
+    {
+      "path": "src/posthf/cuda_transform.cu",
+      "reason": "Generic bounded multi-index basis transforms and library/arena ownership.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/posthf/df_bridge.cu",
+      "reason": "Existing raw-source/metric-factor and bounded public-layout bridge; shared RI semantics are owned upstream.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/runtime/cuda_runtime.cu",
+      "reason": "Device availability, discovery and stable runtime ABI.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/runtime/resource_cuda.cuh",
+      "reason": "Allocation accounting and lifetime guards.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/aot_shell_registry.hpp",
+      "reason": "Typed registry and task interfaces; generated entries own class mathematics.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/df_derivatives.cu",
+      "reason": "Generated derivative contraction/AO traversal glue; compiler owns primitive recurrence math.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "df_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/df_derivatives.cuh",
+      "reason": "Stable derivative view and launch ABI declarations.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/df_gradient_bridge.cu",
+      "reason": "Method-specific density/metric response weights plus native bridge; pending reusable generated contractions.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "df_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/direct_jk.cuh",
+      "reason": "Direct J/K consumer contractions and bounded bridge; counted conservatively with local runtime checks.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "scf_tensor"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_derivatives.cu",
+      "reason": "Operator-specific derivative contraction/scheduling glue around generated primitives.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "one_electron_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_derivatives.cuh",
+      "reason": "First-derivative views and launch declarations.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_force_reference.cuh",
+      "reason": "Retained independently gated scalar/cooperative force schedules; values retirement does not supersede force policy.",
+      "regions": [],
+      "role": "performance_exception",
+      "subsystem": "one_electron_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_gradient_bridge.cu",
+      "reason": "Density/energy-weighted-density and gradient task bridge around generated derivatives.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "one_electron_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_integrals.cuh",
+      "reason": "One-electron source setup, metadata staging, launch choice and host publication.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_reference.cuh",
+      "reason": "Existing handwritten value/response consumer; shared derivative ownership remains explicit after value retirement.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "one_electron_values"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_values.cu",
+      "reason": "Native primitive/AO contraction, charge loop, scheduling and symmetric writes around compiler-owned scalar S/T/V.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "one_electron_values"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_values.cuh",
+      "reason": "Immutable public normalized AO view and value launch ABI.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/weighted_eri.cuh",
+      "reason": "Weighted reference/candidate contractions with explicit retained low-order exception selection.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda_density_fitting.cu",
+      "reason": "RI planning, ownership, generic eigensolver/DIIS and library runtime.",
+      "regions": [
+        {
+          "reason": "RI force-response contraction coefficients and reductions.",
+          "role": "scientific",
+          "start": "__global__ void gather_force_auxiliary_matrices_kernel",
+          "stop": "__global__ void gather_auxiliary_tile_kernel"
+        },
+        {
+          "reason": "Streamed RI J/K, density and energy equations.",
+          "role": "scientific",
+          "start": "__global__ void accumulate_streamed_auxiliary_density_kernel",
+          "stop": "__global__ void update_device_convergence_kernel"
+        },
+        {
+          "reason": "Explicit RI J/K equation composition using cuBLAS; conservative region includes staging.",
+          "role": "scientific",
+          "start": "vibeqc_status build_coulomb(",
+          "stop": "vibeqc_status prepare_outputs("
+        },
+        {
+          "reason": "Source and generated derivative force-response equation assembly.",
+          "role": "scientific",
+          "start": "vibeqc_status source_force_response_impl(",
+          "stop": "vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl("
+        }
+      ],
+      "role": "runtime",
+      "subsystem": "scf_tensor"
+    },
+    {
+      "path": "src/scf/cuda_eigensolver_probe.cu",
+      "reason": "Diagnostic generic dense eigensolver experiments, synchronization and library comparisons.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda_fock.cu",
+      "reason": "Dense bucket owner and stable execution interface.",
+      "regions": [
+        {
+          "reason": "Concrete cached-tensor RHF J/K contraction equation.",
+          "role": "scientific",
+          "start": "__global__ void rhf_fock_bucket_kernel",
+          "stop": "struct CudaFockBucketHandle"
+        }
+      ],
+      "role": "runtime",
+      "subsystem": "scf_tensor"
+    },
+    {
+      "path": "src/scf/cuda_rhf.cu",
+      "reason": "Remaining device recurrences, physical screening bounds and method contractions are conservatively scientific; explicit regions separate generic runtime.",
+      "regions": [
+        {
+          "reason": "Includes, task metadata, scalar arithmetic/AD, stable special functions and generic geometry/packing helpers.",
+          "role": "runtime",
+          "start": "#include <cublas_v2.h>",
+          "stop": "__device__ Scalar primitive_overlap("
+        },
+        {
+          "reason": "Angular/task indexing and public-layout helpers.",
+          "role": "runtime",
+          "start": "__device__ unsigned angular_axis(",
+          "stop": "__device__ void boys_values("
+        },
+        {
+          "reason": "State, instrumentation, generic dense eigensolvers and matrix products.",
+          "role": "runtime",
+          "start": "__global__ void initialize_state_kernel",
+          "stop": "__global__ void build_density_kernel"
+        },
+        {
+          "reason": "Validated warm-density copy/normalization and state handling.",
+          "role": "runtime",
+          "start": "__device__ double warm_density_block_sum",
+          "stop": "__global__ void build_fock_kernel"
+        },
+        {
+          "reason": "Generic atomic maximum implementation.",
+          "role": "runtime",
+          "start": "__device__ void atomic_max_double",
+          "stop": "__global__ void build_schwarz_and_shell_pair_bounds_packed_kernel"
+        },
+        {
+          "reason": "Task compaction, signature/class indexing, prefix scans, materialization and queue profiling.",
+          "role": "runtime",
+          "start": "__global__ void compact_active_shell_quartet_tiles_kernel",
+          "stop": "__global__ void build_fock_direct_packed_kernel"
+        },
+        {
+          "reason": "Generic tuple permutations and duplicate suppression.",
+          "role": "runtime",
+          "start": "__device__ void eri_symmetry_permutation",
+          "stop": "__device__ __forceinline__ void accumulate_direct_fock_integral"
+        },
+        {
+          "reason": "Matrix initialization and public/direct basis transforms.",
+          "role": "runtime",
+          "start": "__global__ void initialize_direct_fock_kernel",
+          "stop": "__device__ __forceinline__ void contract_fock_direct_quartet_subtile"
+        },
+        {
+          "reason": "Component-index mapping.",
+          "role": "runtime",
+          "start": "__device__ __forceinline__ unsigned order2_component_index",
+          "stop": "__device__ __noinline__ void contract_fock_direct_order2_task"
+        },
+        {
+          "reason": "Queue/launch wrappers around separately owned scientific contractions.",
+          "role": "runtime",
+          "start": "__global__ void build_fock_direct_quartet_kernel",
+          "stop": "__global__ void subtract_matrix_batches_kernel"
+        },
+        {
+          "reason": "Generic matrix residual and DIIS operations.",
+          "role": "runtime",
+          "start": "__global__ void subtract_matrix_batches_kernel",
+          "stop": "__global__ void compute_energy_kernel"
+        },
+        {
+          "reason": "Convergence controls and iteration-state routing.",
+          "role": "runtime",
+          "start": "__device__ __forceinline__ double direct_fock_energy_roundoff_guard",
+          "stop": "__global__ void build_weighted_density_kernel"
+        },
+        {
+          "reason": "Generic spin-matrix addition.",
+          "role": "runtime",
+          "start": "__global__ void sum_uhf_spin_matrices_kernel",
+          "stop": "__global__ void nuclear_force_kernel"
+        },
+        {
+          "reason": "Generic prefix scans for force signatures.",
+          "role": "runtime",
+          "start": "__global__ void scan_bounded_force_signature_counts_kernel",
+          "stop": "__device__ __forceinline__ bool bounded_generated_class_enabled"
+        },
+        {
+          "reason": "Persistent force task wrappers; primitive/equation contractions are separate above.",
+          "role": "runtime",
+          "start": "__global__ void two_electron_force_quartet_kernel",
+          "stop": "cudaError_t prepare_generated_shell_tasks("
+        },
+        {
+          "reason": "Host resource planning, library/state/graph execution and ABI dispatch; numerical device equations are classified above.",
+          "role": "runtime",
+          "start": "cudaError_t prepare_generated_shell_tasks(",
+          "stop": null
+        }
+      ],
+      "role": "scientific",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/direct_task_layout.hpp",
+      "reason": "Backend-shared task coordinates, capacities and tuple/shell indexing.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/weighted_eri_runtime.hpp",
+      "reason": "Typed weighted-provider task protocol, execution layout and stable numerical helper boundary.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/tensor/cuda_runtime.cuh",
+      "reason": "Shared arena, streams/events, cuBLAS workspace and error/metrics handling.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    }
+  ],
+  "generated_families": [
+    {
+      "name": "one_electron_values",
+      "outputs": [
+        "generated/generated_one_electron_values.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/one_electron_cuda.py"
+    },
+    {
+      "name": "one_electron_derivatives",
+      "outputs": [
+        "generated/generated_one_electron_derivatives.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/one_electron_derivatives_cuda.py"
+    },
+    {
+      "name": "df_values",
+      "outputs": [
+        "generated/df_values.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_cuda.py"
+    },
+    {
+      "name": "df_derivatives",
+      "outputs": [
+        "generated/generated_df_derivatives.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_derivatives_cuda.py"
+    },
+    {
+      "name": "weighted_eri",
+      "outputs": [
+        "generated/weighted_eri.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/weighted_eri_cuda.py"
+    },
+    {
+      "name": "aot_integrals",
+      "outputs": [
+        "generated/production_shell_kernels/**/*.cu",
+        "generated/production_shell_kernels/**/*.cuh",
+        "generated/production_shell_kernels/**/*.hpp"
+      ],
+      "owner": "python/vibeqc_compiler/integral/cuda_lowering.py"
+    },
+    {
+      "name": "jit_tensor_xc_ao_response",
+      "outputs": [],
+      "owner": "python/vibeqc_compiler/{tensor,xc,dft,integral}",
+      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
+    }
+  ],
+  "schema": "vibeqc.cuda-ownership.v1",
+  "subsystems": {
+    "ao_grid": {
+      "current_default": "native bounded CPU/CUDA spatial jets and density features",
+      "evidence": [
+        "docs/dft_grid.md"
+      ],
+      "generated_capability": "validated AO jet conventions; spatial task and generated contraction integration in #234/#236",
+      "missing_capability": "common local AO/task lowering and complete fixed-density endpoint parity",
+      "owner": "ao_grid",
+      "retirement_condition": "retire superseded scientific AO/feature arithmetic when common lowering passes identical-grid gates",
+      "status": "native_baseline"
+    },
+    "df_derivatives": {
+      "current_default": "native Dual/source derivative path; generated explicit derivative bridge",
+      "evidence": [
+        "benchmarks/results/df-derivatives-rtx5090"
+      ],
+      "generated_capability": "generated two-/three-center first derivatives and density weights",
+      "missing_capability": "complete schedule/resource/endpoint replacement of old derivatives",
+      "owner": "df_derivatives",
+      "retirement_condition": "retire old derivative recurrence/contraction only after its own complete gates",
+      "status": "performance_exception"
+    },
+    "df_values": {
+      "current_default": "generated Rys values and primitive mapping; old reference selector retained for A/B",
+      "evidence": [
+        "benchmarks/results/generated-df-values-142/promotion.json",
+        "benchmarks/results/generated-df-values-142/README.md"
+      ],
+      "generated_capability": "all two-/three-center values through f, public spherical transforms",
+      "missing_capability": "none for promoted values; derivative fallback is a separate capability",
+      "owner": "df_values",
+      "retirement_condition": "remove legacy value selection/dispatch after default-source parity; preserve CPU/Libcint independent validation",
+      "status": "ready_for_retirement"
+    },
+    "direct_integrals": {
+      "current_default": "AOT class registry where promoted; bounded native fallback and explicit schedule exceptions",
+      "evidence": [
+        "docs/shell_codegen.md",
+        "docs/weighted_eri.md",
+        "docs/second_integral_derivatives.md",
+        "python/vibeqc_compiler/integral/production_shell_classes.json"
+      ],
+      "generated_capability": "IntegralIR values/first derivatives, weighted ERI and second-order providers through f",
+      "missing_capability": "complete replacement is class/schedule-specific; retain unpromoted fallback classes",
+      "owner": "direct_integrals",
+      "retirement_condition": "remove each old scientific class when numerical/resource/full endpoint gates pass and no independent role remains",
+      "status": "partial"
+    },
+    "low_rank": {
+      "current_default": "experimental native matrix-prefix projection and cuBLAS J/K; CPU source and pivot policy",
+      "evidence": [
+        "docs/incremental_low_rank.md"
+      ],
+      "generated_capability": "no new shell/operator formula; existing raw source and shared native runtime",
+      "missing_capability": "generic retained-factor J/K has no integrated TensorIR method adapter yet",
+      "owner": "low_rank",
+      "retirement_condition": "retain generic factorization/packing runtime; migrate J/K equation composition when bounded TensorIR adapter is validated",
+      "status": "experimental"
+    },
+    "one_electron_derivatives": {
+      "current_default": "native scalar/cooperative force and Dual response paths; generated derivative opt-in",
+      "evidence": [
+        "benchmarks/results/one-electron-derivatives-rtx5090/validation-summary.json"
+      ],
+      "generated_capability": "generated fixed-density S/T/V first derivatives and public spherical weights",
+      "missing_capability": "generated complete endpoint/resource performance still needs promotion",
+      "owner": "one_electron_derivatives",
+      "retirement_condition": "retire only after derivative/force gates, independently of values promotion",
+      "status": "performance_exception"
+    },
+    "one_electron_values": {
+      "current_default": "handwritten reference values; generated thread/shell-warp opt-in via VIBEQC_ONE_ELECTRON_VALUES",
+      "evidence": [
+        "benchmarks/results/one-electron-values-rtx5090/raw-summary.json",
+        "benchmarks/results/one-electron-values-rtx5090/sp8-b3-shell_warp.json"
+      ],
+      "generated_capability": "IntegralIR S/T/V all Cartesian s/p/d/f pairs with public spherical contraction",
+      "missing_capability": "complete non-regression evidence and reusable contraction/symmetric-scatter runtime",
+      "owner": "one_electron_values",
+      "retirement_condition": "promote validated generated values, remove old value dispatch and double value instantiation; retain separately owned derivative routines",
+      "status": "promotion_pending"
+    },
+    "runtime": {
+      "current_default": "native shared allocation, stream, graph, ABI and library adapters",
+      "evidence": [
+        "docs/compiler_architecture.md"
+      ],
+      "generated_capability": "not applicable: generic runtime infrastructure",
+      "missing_capability": "none; infrastructure remains native",
+      "owner": "runtime",
+      "retirement_condition": "retain generic runtime; review new embedded scientific formulas separately",
+      "status": "retained"
+    },
+    "scf_tensor": {
+      "current_default": "native RHF/UHF/DF density, J/K, energy and force contractions",
+      "evidence": [
+        "docs/architecture.md"
+      ],
+      "generated_capability": "TensorIR owns general contractions/AD; current native SCF bridges remain concrete",
+      "missing_capability": "integration of method equations into shared generated tensor execution",
+      "owner": "scf_tensor",
+      "retirement_condition": "retain native scientific adapters until generated method endpoint passes; preserve generic solver/BLAS runtime",
+      "status": "native_baseline"
+    },
+    "xc": {
+      "current_default": "generated scalar functional expressions; concrete potential/feature assembly",
+      "evidence": [
+        "docs/xc_expressions.md"
+      ],
+      "generated_capability": "audited scalar XC values/derivatives and TensorIR response primitives",
+      "missing_capability": "compact ingredient-to-potential/response/geometric contraction layer #236",
+      "owner": "xc",
+      "retirement_condition": "replace concrete contraction arithmetic only after independent E/V/response/geometric gates; scalar oracles remain separate",
+      "status": "partial"
+    }
+  }
+}
