@@ -8,6 +8,9 @@ namespace {
 namespace products = runtime::cuda_gaussian_products;
 using Policy = generated_df_policy::Derivative;
 constexpr std::size_t terms = molecule::kMaximumAoExpansionTerms;
+// One warp per block exposes small bounded tiles to more multiprocessors;
+// the consumer needs no block-wide shared storage or synchronization.
+constexpr unsigned threads = 32;
 
 /** Full dense weights count once; shared atoms are summed by the runtime sink. */
 __device__ void contract(DfDerivativeBasisView o, DfDerivativeBasisView x, const double* positions,
@@ -51,7 +54,7 @@ cudaError_t launch_df_derivative_tile(DfDerivativeBasisView o, DfDerivativeBasis
     return cudaErrorInvalidValue;
   const auto elements = kind ? x.nbf * x.nbf : o.nbf * o.nbf * x.nbf;
   if (!range.row_length || !range.row_stride || !range.column_stride || range.offset >= elements ||
-      count - 1 > maximum - begin || (count - 1) / 128 >= std::numeric_limits<int>::max())
+      count - 1 > maximum - begin || (count - 1) / threads >= std::numeric_limits<int>::max())
     return cudaErrorInvalidValue;
   // A transposed range is not globally monotone: its last partial row may
   // end below the preceding full row. Check both maxima without overflow.
@@ -65,9 +68,9 @@ cudaError_t launch_df_derivative_tile(DfDerivativeBasisView o, DfDerivativeBasis
   if (!fits(end) || (end / range.row_length > begin / range.row_length &&
                      !fits((end / range.row_length) * range.row_length - 1)))
     return cudaErrorInvalidValue;
-  const auto blocks = schedule ? 1U : static_cast<unsigned>((count - 1) / 128 + 1);
-  derivative_tile<<<blocks, 128, 0, stream>>>(o, x, positions, kind, range, count, weights,
-                                              schedule, gradient, begin);
+  const auto blocks = schedule ? 1U : static_cast<unsigned>((count - 1) / threads + 1);
+  derivative_tile<<<blocks, threads, 0, stream>>>(o, x, positions, kind, range, count, weights,
+                                                  schedule, gradient, begin);
   return cudaPeekAtLastError();
 }
 }  // namespace vibeqc::scf

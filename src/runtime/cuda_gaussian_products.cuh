@@ -20,10 +20,16 @@ struct BasisView {
   const double *term_coefficients{}, *exponents{}, *coefficients{};
 };
 
-/** One real basis factor, with no dummy zero-exponent Gaussian. */
+/** One real factor borrowing its caller's normalized basis metadata.
+ * Views must outlive the contraction. Holding a pointer avoids copying all
+ * nine metadata fields into every factor and enlarging the evaluator's stack.
+ * No dummy zero-exponent Gaussian participates in this traversal.
+ */
 struct Factor {
-  BasisView basis;
-  std::int64_t ao;
+  const BasisView* view{};
+  std::int64_t ao{};
+  __device__ Factor() = default;
+  __device__ Factor(const BasisView& basis, std::int64_t index) : view(&basis), ao(index) {}
 };
 
 /** Generic tensor-product traversal, specialized only by rank and policy.
@@ -47,7 +53,7 @@ struct Product {
     if constexpr (Slot == Rank) {
       Policy::template accumulate<Rank>(result, exponents, centers, angular, weight);
     } else {
-      const auto& basis = factors[Slot].basis;
+      const auto& basis = *factors[Slot].view;
       const auto ao = factors[Slot].ao;
       for (unsigned term = 0; term < basis.term_counts[ao]; ++term) {
         const auto index = ao * TermCapacity + term;
@@ -70,13 +76,13 @@ struct Product {
         double weight = 1.0;
 #pragma unroll
         for (unsigned slot = 0; slot < Rank; ++slot) {
-          exponents[slot] = factors[slot].basis.exponents[primitive[slot]];
-          weight *= factors[slot].basis.coefficients[primitive[slot]];
+          exponents[slot] = factors[slot].view->exponents[primitive[slot]];
+          weight *= factors[slot].view->coefficients[primitive[slot]];
         }
         terms(weight);
       }
     } else {
-      const auto& basis = factors[Slot].basis;
+      const auto& basis = *factors[Slot].view;
       const auto shell = shells[Slot];
       for (auto p = basis.primitive_offsets[shell]; p < basis.primitive_offsets[shell + 1]; ++p) {
         primitive[Slot] = p;
@@ -95,8 +101,8 @@ __device__ typename Policy::Accumulator contract(const Factor (&factors)[Rank],
   product.lanes = lanes;
 #pragma unroll
   for (unsigned slot = 0; slot < Rank; ++slot) {
-    product.shells[slot] = factors[slot].basis.ao_shells[factors[slot].ao];
-    product.atoms[slot] = factors[slot].basis.shell_atoms[product.shells[slot]];
+    product.shells[slot] = factors[slot].view->ao_shells[factors[slot].ao];
+    product.atoms[slot] = factors[slot].view->shell_atoms[product.shells[slot]];
     const auto* r = positions + 3 * product.atoms[slot];
     product.centers[slot] = {r[0], r[1], r[2]};
   }
@@ -114,7 +120,7 @@ __device__ double coordinate(const Factor (&factors)[Rank], const Response& resp
   double value = 0;
 #pragma unroll
   for (unsigned slot = 0; slot < Rank; ++slot) {
-    const auto basis = factors[slot].basis;
+    const auto& basis = *factors[slot].view;
     if (basis.shell_atoms[basis.ao_shells[factors[slot].ao]] == coordinate / 3)
       value += response.gradient[slot][coordinate % 3];
   }
@@ -127,7 +133,7 @@ __device__ void scatter(const Factor (&factors)[Rank], const Response& response,
                         double* gradient) {
 #pragma unroll
   for (unsigned slot = 0; slot < Rank; ++slot) {
-    const auto basis = factors[slot].basis;
+    const auto& basis = *factors[slot].view;
     const auto atom = basis.shell_atoms[basis.ao_shells[factors[slot].ao]];
 #pragma unroll
     for (unsigned axis = 0; axis < 3; ++axis)
