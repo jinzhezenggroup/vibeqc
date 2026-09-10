@@ -171,7 +171,7 @@ file(GLOB_RECURSE _vibeqc_identity_inputs CONFIGURE_DEPENDS
      "python/vibeqc_compiler/*.json" "python/vibeqc/*.py")
 list(APPEND _vibeqc_identity_inputs "CMakeLists.txt" "tools/generate_shell_kernels.py"
      "tools/generate_df_kernels.py" "tools/generate_weighted_eri_kernels.py"
-     "tools/generate_one_electron_kernels.py")
+     "tools/generate_one_electron_kernels.py" "tools/generate_grid_kernels.py")
 list(SORT _vibeqc_identity_inputs)
 set(_vibeqc_identity_text "")
 foreach(_vibeqc_identity_path IN LISTS _vibeqc_identity_inputs)
@@ -265,8 +265,19 @@ if(VIBEQC_ENABLE_CUDA)
             ${VIBEQC_DF_GENERATOR_INPUTS}
     VERBATIM)
   target_sources(vibeqc PRIVATE "${VIBEQC_WEIGHTED_ERI_HEADER}")
+  # Compile the same generated policy/runtime composition used by the JIT
+  # grid owner. The native runtime no longer defines scientific AO formulas.
+  set(VIBEQC_GRID_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_grid_policy.cu")
+  add_custom_command(
+    OUTPUT "${VIBEQC_GRID_SOURCE}"
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_grid_kernels.py"
+            --output "${VIBEQC_GRID_SOURCE}"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_grid_kernels.py"
+            ${VIBEQC_DF_GENERATOR_INPUTS}
+    VERBATIM)
+  target_include_directories(vibeqc PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/dft")
   target_sources(vibeqc PRIVATE
-    src/dft/cuda_grid.cu
+    "${VIBEQC_GRID_SOURCE}"
     src/posthf/df_bridge.cu
     src/scf/cuda/rhf_policy.cpp
     src/runtime/cuda_runtime.cu

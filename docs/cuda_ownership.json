@@ -460,9 +460,11 @@
     },
     {
       "name": "ao_grid_policy",
-      "outputs": [],
+      "outputs": [
+        "generated/generated_grid_policy.cu"
+      ],
       "owner": "python/vibeqc_compiler/dft/ao_cuda.py",
-      "scope": "JIT through-f/order-three AO polynomials and spin-density ingredient arithmetic; generated policy included before the same dense/local native runtime."
+      "scope": "Shared CMake/JIT through-f/order-three AO polynomials and spin-density ingredient arithmetic; generated policy included before the same dense/local native runtime."
     }
   ],
   "schema": "vibeqc.cuda-ownership.v1",
