@@ -81,3 +81,25 @@ gates pass. Generated DF values already have promotion evidence; their old
 value selector and derivative fallback must be considered separately. New
 XC/TensorIR/CC/AD work follows the same ownership boundary and reuses the
 existing compiler, native cache and resource planner.
+
+The one-electron candidate now instantiates `runtime/cuda_ao_pairs.cuh` with a
+generated `ValuePolicy`. The runtime owns normalized primitive/AO traversal,
+thread/shell-warp pair ownership and symmetric channel stores. The compiler
+owns nuclear-charge reduction, S/T/V accumulation and the H=T+V output map.
+Adding an operator class within the scalar family's supported domain therefore
+does not require another native contraction kernel. The policy is a separate
+generated artifact so changes to execution glue do not rewrite the existing
+scalar mathematical header. This extraction alone is not a production
+promotion; the old selector remains until the numerical/resource/endpoint
+evidence supports retirement.
+
+`tools/benchmark_cuda_ownership.py compare` compares explicit clean source
+checkouts and matching optimized libraries in separate processes. It retains
+five or more samples in the shared ABBA order, resource plans/observations,
+and all final energies, forces, residuals and iteration counts. Cold, unchanged,
+changed and restored geometries have separate timing records. The structural
+retirement gate permits at most 2% median regression in each workload and keeps
+the existing energy (3e-10 Hartree) and force (3e-9 Hartree/Bohr) tolerances.
+The common significance/noise report is retained separately; non-regression
+does not establish a speedup. Native compilation and independent integral
+validation remain required alongside these complete HF measurements.

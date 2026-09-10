@@ -25,6 +25,10 @@ from vibeqc_compiler.integral.one_electron_derivatives_cuda import (
     emit_one_electron_derivatives_cuda,
     one_electron_derivative_inventory,
 )
+from vibeqc_compiler.integral.one_electron_policy_cuda import (
+    emit_one_electron_policy_cuda,
+    one_electron_policy_inventory,
+)
 
 from tools.generate_df_kernels import write_if_changed
 
@@ -35,7 +39,13 @@ def main():
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--inventory", type=Path)
     parser.add_argument("--derivatives", action="store_true")
+    parser.add_argument("--policy-output", type=Path)
     args = parser.parse_args()
+    if args.derivatives and args.policy_output:
+        parser.error("--policy-output applies only to values")
+    policy_source = emit_one_electron_policy_cuda() if args.policy_output else None
+    if policy_source is not None:
+        write_if_changed(args.policy_output, policy_source)
     source = (
         emit_one_electron_derivatives_cuda()
         if args.derivatives
@@ -51,6 +61,11 @@ def main():
             ),
             "source_sha256": hashlib.sha256(source.encode()).hexdigest(),
         }
+        if policy_source is not None:
+            payload["execution_policy"] = {
+                **one_electron_policy_inventory(),
+                "source_sha256": hashlib.sha256(policy_source.encode()).hexdigest(),
+            }
         write_if_changed(
             args.inventory, json.dumps(payload, sort_keys=True, indent=2) + "\n"
         )

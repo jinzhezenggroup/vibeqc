@@ -124,3 +124,64 @@ def test_policy_changes_rebuild_reused_direct_plan(monkeypatch):
             controls = prepared._warm_metadata[0]["controls"]["runtime_policy"]
             assert controls["VIBEQC_ONE_ELECTRON_VALUES"] == selection
             assert controls["VIBEQC_ONE_ELECTRON_VALUE_MAPPING"] == mapping
+
+
+@pytest.mark.parametrize("representation", ["cartesian", "spherical"])
+@pytest.mark.parametrize("mapping", ["thread", "shell_warp"])
+def test_generated_pair_policy_hcore_matches_independent_libcint(
+    monkeypatch, representation, mapping
+):
+    """Exercise normalized pair traversal independently of an SCF fixed point.
+
+    Negative contraction coefficients, every s/p/d/f shell, unequal charges
+    and moved nuclei cover the policy's weighting, component and nuclear loops.
+    The independent oracle applies its own Cartesian normalization convention.
+    """
+    from vibeqc.fock import FockBuildSpec, FockPlan, FockTerm
+    from vibeqc_compiler.dft import NativeAO
+    from vibeqc_compiler.dft.fixtures import basis_arguments
+
+    from tools.generate_validation_references import pyscf_molecule
+
+    assert os.environ.get("SLURM_JOB_ID"), "GPU tests require Slurm"
+    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUES", "generated")
+    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", mapping)
+    inputs = {
+        "atomic_numbers": [2, 1],
+        "coordinates": [[0.2, -0.3, 0.1], [-0.4, 0.15, 0.8]],
+        "shells": [
+            {
+                "atom_index": atom,
+                "angular_momentum": angular,
+                "primitives": [[0.35 + 0.4 * atom, 1.0], [1.13, -0.15]],
+            }
+            for atom in (0, 1)
+            for angular in range(4)
+        ],
+        "basis_representation": representation,
+        "charge": 1,
+        "multiplicity": 1,
+    }
+    # No ERI tensor is needed to validate the one-electron production consumer.
+    spec = FockBuildSpec(
+        coulomb=FockTerm(False), exchange=FockTerm(False), derivative_order=0
+    )
+    for displacement in (0.0, 0.017):
+        inputs["coordinates"][1][0] += displacement
+        mol, scale, _ = pyscf_molecule(inputs)
+        expected = (mol.intor("int1e_kin") + mol.intor("int1e_nuc")) * (
+            scale[:, None] * scale[None, :]
+        )
+        with (
+            NativeAO(**basis_arguments({"inputs": inputs})) as basis,
+            FockPlan(basis, spec, device="cuda") as plan,
+        ):
+            actual = plan.evaluate(np.eye(expected.shape[0])).fock
+            np.testing.assert_allclose(actual, expected, atol=1e-11, rtol=3e-12)
+            if representation == "cartesian":
+                np.testing.assert_array_equal(actual, actual.T)
+            else:
+                # This public source transforms Cartesian matrices with two
+                # library contractions; their opposite reduction orders may
+                # differ by roundoff despite exact symmetry at the pair store.
+                np.testing.assert_allclose(actual, actual.T, atol=1e-14, rtol=0)

@@ -1,0 +1,359 @@
+"""Compare complete one-electron migration endpoints from explicit clean builds.
+
+Run ``compare`` inside a finite Slurm GPU allocation. Each worker loads one
+build in a fresh process; alternating order reduces cache/order bias. Timings
+include preparation, cold execution, unchanged replay, changed geometry and
+restoration, always through final forces. This tool records evidence and never
+changes a production selector. Raw scalar correctness is validated separately.
+"""
+
+from __future__ import annotations
+
+import argparse
+import ctypes
+import hashlib
+import json
+import os
+import subprocess
+import sys
+from itertools import product
+from pathlib import Path
+from time import perf_counter
+
+
+def capture(argv):
+    """Run a checked command without shell interpolation."""
+    return subprocess.check_output(argv, text=True).strip()
+
+
+def write(path, payload):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, sort_keys=True, indent=2) + "\n")
+
+
+def worker(args):
+    """Measure synchronized public endpoints and retain actual plan diagnostics."""
+    if not os.environ.get("SLURM_JOB_ID"):
+        raise RuntimeError("real GPU measurements require Slurm")
+    if capture(["git", "-C", str(args.root), "status", "--porcelain"]):
+        raise RuntimeError("endpoint evidence requires a clean source checkout")
+    sys.path.insert(0, str(args.root / "python"))
+    import numpy as np
+    from vibeqc import Calculator, Primitive, Shell
+    from vibeqc.autotune import source_identity
+    from vibeqc_compiler.common.resources import ResourceBudget
+
+    os.environ["VIBEQC_LIBRARY"] = str(args.build / "libvibeqc.so")
+    os.environ["VIBEQC_ONE_ELECTRON_VALUES"] = args.selection
+    os.environ["VIBEQC_ONE_ELECTRON_VALUE_MAPPING"] = args.mapping
+    library = ctypes.CDLL(os.environ["VIBEQC_LIBRARY"])
+    library.vibeqc_get_source_identity.restype = ctypes.c_char_p
+    if library.vibeqc_get_source_identity().decode() != source_identity(args.root):
+        raise RuntimeError(
+            "selected library does not match the measured source checkout"
+        )
+    cache = (args.build / "CMakeCache.txt").read_text()
+    if "VIBEQC_CUDA_FAST_COMPILE:BOOL=OFF" not in cache:
+        raise RuntimeError("production timing requires FAST_COMPILE=OFF")
+    if "CMAKE_BUILD_TYPE:STRING=Release" not in cache:
+        raise RuntimeError("production timing requires Release")
+    if args.case and len(set(args.case)) != len(args.case):
+        raise ValueError("duplicate endpoint requests")
+    records = {
+        "schema": "vibeqc.cuda-ownership-endpoints.v1",
+        "revision": capture(["git", "-C", str(args.root), "rev-parse", "HEAD"]),
+        "dirty": False,
+        "native_source_identity": library.vibeqc_get_source_identity().decode(),
+        "library_sha256": hashlib.sha256(
+            (args.build / "libvibeqc.so").read_bytes()
+        ).hexdigest(),
+        "selection": args.selection,
+        "mapping": args.mapping,
+        "python": sys.version,
+        "numpy": np.__version__,
+        "slurm_job_id": os.environ["SLURM_JOB_ID"],
+        "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
+        "gpu": capture(
+            [
+                "nvidia-smi",
+                "--query-gpu=name,uuid,driver_version",
+                "--format=csv,noheader",
+            ]
+        ),
+        "build_settings": [
+            line
+            for line in cache.splitlines()
+            if line.startswith(
+                (
+                    "CMAKE_BUILD_TYPE:",
+                    "CMAKE_CUDA_ARCHITECTURES:",
+                    "VIBEQC_CUDA_FAST_COMPILE:",
+                    "VIBEQC_AOT_PROFILE:",
+                )
+            )
+        ],
+        "endpoints": [],
+    }
+    # Load the CUDA context/library before either candidate's cold plan timing.
+    Calculator(device="cuda").singlepoint([("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))])
+    basis = (
+        Shell(0, 0, (Primitive(1.5, 1.0), Primitive(0.7, -0.1))),
+        Shell(0, 2, (Primitive(0.8, 1.0),)),
+        Shell(0, 3, (Primitive(0.6, 1.0),)),
+        Shell(1, 0, (Primitive(1.2, 1.0),)),
+    )
+    for method, representation, fitted, count in product(
+        ("rhf", "uhf"), ("cartesian", "spherical"), (False, True), (1, 3)
+    ):
+        key = f"{method}/{representation}/{'df' if fitted else 'direct'}/batch{count}"
+        if args.case and key not in args.case:
+            continue
+        # Both budgets are explicit across the matrix; pair-policy execution
+        # itself introduces no allocation, tile buffer or retained cache.
+        df_budget = (1 if count == 1 else 4) << 20
+        budget = ResourceBudget(
+            host_bytes=512 << 20, device_bytes=(256 if count == 1 else 512) << 20
+        )
+        atoms = [
+            [("He", (0.0, 0.0, -0.7 - 0.1 * i)), ("H", (0.1, 0.0, 0.7))]
+            for i in range(count)
+        ]
+        charge, multiplicity = (1, 1) if method == "rhf" else (0, 2)
+        calc = Calculator(
+            method=method,
+            device="cuda",
+            basis=basis,
+            basis_representation=representation,
+            density_fitting="cuda" if fitted else "none",
+            density_fitting_memory_budget_bytes=df_budget,
+            energy_tolerance=1e-12,
+            density_tolerance=1e-10,
+            screening_tolerance=1e-14,
+        )
+        row = {
+            "case": key,
+            "atoms": atoms,
+            "df_budget_bytes": df_budget,
+            "seconds": {},
+            "results": {},
+        }
+        start = perf_counter()
+        prepared = calc.prepare_batch(
+            atoms,
+            charges=[charge] * count,
+            multiplicities=[multiplicity] * count,
+            budget=budget,
+        )
+        row["seconds"]["prepare"] = perf_counter() - start
+        original = [np.array([r for _, r in system]) for system in atoms]
+        moved = [r.copy() for r in original]
+        for i, positions in enumerate(moved):
+            positions[1, 0] += 0.013 * (i + 1)
+        with prepared:
+            row["resource_plan"] = prepared.resource_plan.to_dict()
+            for phase, positions in (
+                ("cold", None),
+                ("warm", None),
+                ("moved", moved),
+                ("restored", original),
+            ):
+                start = perf_counter()
+                result = prepared.execute(positions, strict=True)
+                row["seconds"][phase] = perf_counter() - start
+                if phase == "cold":
+                    # Keep the same density seed for each replay workload.
+                    prepared.set_warm_start_updates(False)
+                if any(
+                    not r.converged or r.executed_backend != "cuda"
+                    for r in result.items
+                ):
+                    raise RuntimeError("wrong backend or unconverged endpoint")
+                row["results"][phase] = [
+                    {
+                        "energy": r.energy,
+                        "forces": r.forces.tolist(),
+                        "iterations": r.iterations,
+                        "energy_change": r.energy_change,
+                        "density_rms": r.density_rms,
+                    }
+                    for r in result.items
+                ]
+            row["density_fitting"] = (
+                [
+                    d.to_dict()
+                    for d in prepared.last_density_fitting_metric_diagnostics()
+                ]
+                if fitted
+                else []
+            )
+            row["observed_resources"] = prepared.resource_diagnostics
+        row["seconds"]["complete"] = sum(row["seconds"].values())
+        records["endpoints"].append(row)
+        write(args.output, records)
+        print(json.dumps({"case": key, "seconds": row["seconds"]}), flush=True)
+
+    if not records["endpoints"] or (
+        args.case and len(records["endpoints"]) != len(args.case)
+    ):
+        raise ValueError("empty or unknown endpoint inventory")
+
+
+def compare(args):
+    """Retain all samples; use unchanged numerical and 2% endpoint gates.
+
+    The 2% gate is a non-regression ceiling, not a significant-speedup claim.
+    Require non-regression for each cold/replay/changed-geometry endpoint.
+    The shared significance/noise assessment is retained separately. Additional samples may resolve a noisy failed gate;
+    the threshold is not widened after observing data.
+    """
+    import numpy as np
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "python"))
+    from vibeqc_compiler.common.evidence import canonical_hash
+    from vibeqc_compiler.common.performance import assess_comparison
+    from vibeqc_compiler.common.timing import interleaved_selection_order
+
+    if not os.environ.get("SLURM_JOB_ID"):
+        raise RuntimeError("compare requires a finite Slurm GPU allocation")
+    args.output.mkdir(parents=True, exist_ok=True)
+    runs = {"baseline": [], "candidate": []}
+    order = interleaved_selection_order(args.samples)
+    measured = []
+    for label in order:
+        sample = len(runs[label])
+        path = args.output / f"{label}-{sample}.json"
+        if path.exists():
+            raise FileExistsError(f"refusing to overwrite measured sample {path}")
+        argv = [
+            sys.executable,
+            str(Path(__file__).resolve()),
+            "worker",
+            "--root",
+            str(getattr(args, f"{label}_root")),
+            "--build",
+            str(getattr(args, f"{label}_build")),
+            "--selection",
+            "reference" if label == "baseline" else "generated",
+            "--mapping",
+            "thread" if label == "baseline" else "shell_warp",
+            "--output",
+            str(path),
+        ]
+        for case in args.case or ():
+            argv += ["--case", case]
+        subprocess.run(argv, check=True)
+        runs[label].append(json.loads(path.read_text()))
+        measured.append((label, runs[label][-1]))
+    rows = []
+    for index, base in enumerate(runs["baseline"][0]["endpoints"]):
+        row = {
+            "case": base["case"],
+            "max_energy_error": 0.0,
+            "max_force_error": 0.0,
+            "phase_ratios": {},
+        }
+        for group in runs.values():
+            for run in group:
+                other = run["endpoints"][index]
+                if other["case"] != base["case"]:
+                    raise ValueError("endpoint inventories differ")
+                for phase in base["results"]:
+                    for got, want in zip(
+                        other["results"][phase], base["results"][phase], strict=True
+                    ):
+                        row["max_energy_error"] = max(
+                            row["max_energy_error"], abs(got["energy"] - want["energy"])
+                        )
+                        row["max_force_error"] = max(
+                            row["max_force_error"],
+                            float(
+                                np.max(np.abs(np.array(got["forces"]) - want["forces"]))
+                            ),
+                        )
+        samples = []
+        phase_names = {
+            "cold": "cold-start",
+            "warm": "unchanged-geometry",
+            "moved": "changed-geometry",
+            "restored": "restored-geometry",
+        }
+        for phase, workload in phase_names.items():
+            for label, run in measured:
+                endpoint = run["endpoints"][index]
+                seconds = endpoint["seconds"][phase]
+                if phase == "cold":
+                    seconds += endpoint["seconds"]["prepare"]
+                samples.append(
+                    {
+                        "selection": label,
+                        "seconds": seconds,
+                        "inputs_hash": canonical_hash(
+                            {
+                                "case": endpoint["case"],
+                                "atoms": endpoint["atoms"],
+                                "df_budget_bytes": endpoint["df_budget_bytes"],
+                            }
+                        ),
+                        "workload": workload,
+                        "synchronized": True,
+                    }
+                )
+        comparison = assess_comparison(samples)
+        if "workloads" not in comparison:
+            raise ValueError(f"shared timing validation failed: {comparison}")
+        row["shared_comparison"] = comparison
+        for workload, summary in comparison["workloads"].items():
+            row["phase_ratios"][workload] = 1 - summary["relative_improvement"]
+        row["numerical_passed"] = (
+            row["max_energy_error"] <= 3e-10 and row["max_force_error"] <= 3e-9
+        )
+        row["endpoint_passed"] = all(
+            ratio <= 1.02 for ratio in row["phase_ratios"].values()
+        )
+        rows.append(row)
+    report = {
+        "schema": "vibeqc.cuda-ownership-comparison.v1",
+        "samples": args.samples,
+        "energy_atol": 3e-10,
+        "force_atol": 3e-9,
+        "endpoint_ceiling": 1.02,
+        "endpoints": rows,
+        "passed": all(r["numerical_passed"] and r["endpoint_passed"] for r in rows),
+    }
+    write(args.output / "comparison.json", report)
+    print(json.dumps(report), flush=True)
+    if not report["passed"]:
+        raise SystemExit(1)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="command", required=True)
+    w = commands.add_parser("worker")
+    for name in ("root", "build", "output"):
+        w.add_argument(f"--{name}", type=Path, required=True)
+    w.add_argument("--selection", choices=("reference", "generated"), required=True)
+    w.add_argument("--mapping", choices=("thread", "shell_warp"), required=True)
+    c = commands.add_parser("compare")
+    for name in (
+        "baseline-root",
+        "baseline-build",
+        "candidate-root",
+        "candidate-build",
+        "output",
+    ):
+        c.add_argument(f"--{name}", type=Path, required=True)
+    c.add_argument("--samples", type=int, default=5)
+    for p in (w, c):
+        p.add_argument("--case", action="append")
+    args = parser.parse_args()
+    if args.command == "compare" and args.samples < 5:
+        parser.error("at least five samples are required")
+    for key, value in vars(args).items():
+        if isinstance(value, Path):
+            setattr(args, key, value.resolve())
+    (worker if args.command == "worker" else compare)(args)
+
+
+if __name__ == "__main__":
+    main()

@@ -78,6 +78,13 @@
       "subsystem": "runtime"
     },
     {
+      "path": "src/runtime/cuda_ao_pairs.cuh",
+      "reason": "Typed normalized AO/primitive traversal, pair schedules and symmetric channel stores; all operator semantics supplied by generated policy.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
       "path": "src/runtime/cuda_runtime.cu",
       "reason": "Device availability, discovery and stable runtime ABI.",
       "regions": [],
@@ -170,9 +177,9 @@
     },
     {
       "path": "src/scf/cuda/one_electron_values.cu",
-      "reason": "Native primitive/AO contraction, charge loop, scheduling and symmetric writes around compiler-owned scalar S/T/V.",
+      "reason": "Launch adapter instantiating generated value policy on shared pair schedules; no operator arithmetic.",
       "regions": [],
-      "role": "scientific",
+      "role": "runtime",
       "subsystem": "one_electron_values"
     },
     {
@@ -372,7 +379,8 @@
     {
       "name": "one_electron_values",
       "outputs": [
-        "generated/generated_one_electron_values.cuh"
+        "generated/generated_one_electron_values.cuh",
+        "generated/generated_one_electron_policy.cuh"
       ],
       "owner": "python/vibeqc_compiler/integral/one_electron_cuda.py"
     },
@@ -499,7 +507,7 @@
         "benchmarks/results/one-electron-values-rtx5090/sp8-b3-shell_warp.json"
       ],
       "generated_capability": "IntegralIR S/T/V all Cartesian s/p/d/f pairs with public spherical contraction",
-      "missing_capability": "complete non-regression evidence and reusable contraction/symmetric-scatter runtime",
+      "missing_capability": "complete non-regression and native resource evidence for the generated policy on shared AO-pair traversal",
       "owner": "one_electron_values",
       "retirement_condition": "promote validated generated values, remove old value dispatch and double value instantiation; retain separately owned derivative routines",
       "status": "promotion_pending"

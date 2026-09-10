@@ -230,15 +230,17 @@ if(VIBEQC_ENABLE_CUDA)
   # One-electron lowering is compiled in its own TU, keeping the generic HF
   # fallback independent of generated scalar-family source size.
   set(VIBEQC_ONE_ELECTRON_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_one_electron_values.cuh")
+  set(VIBEQC_ONE_ELECTRON_POLICY_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_one_electron_policy.cuh")
   add_custom_command(
-    OUTPUT "${VIBEQC_ONE_ELECTRON_HEADER}"
+    OUTPUT "${VIBEQC_ONE_ELECTRON_HEADER}" "${VIBEQC_ONE_ELECTRON_POLICY_HEADER}"
     COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_one_electron_kernels.py"
             --output "${VIBEQC_ONE_ELECTRON_HEADER}"
+            --policy-output "${VIBEQC_ONE_ELECTRON_POLICY_HEADER}"
     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_one_electron_kernels.py"
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
             ${VIBEQC_DF_GENERATOR_INPUTS}
     VERBATIM)
-  target_sources(vibeqc PRIVATE "${VIBEQC_ONE_ELECTRON_HEADER}"
+  target_sources(vibeqc PRIVATE "${VIBEQC_ONE_ELECTRON_HEADER}" "${VIBEQC_ONE_ELECTRON_POLICY_HEADER}"
                  src/scf/cuda/one_electron_values.cu)
   set(VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_one_electron_derivatives.cuh")
   add_custom_command(
