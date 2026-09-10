@@ -298,6 +298,42 @@ def worker(args):
             )
             row["observed_resources"] = prepared.resource_diagnostics
         row["seconds"]["complete"] = sum(row["seconds"].values())
+        if args.domain == "df":
+            # Sharing value traversal must also preserve callers that omit the
+            # force consumer. These are fresh public singlepoints, not prepared
+            # replay timings, and are kept separate from the four force phases.
+            start = perf_counter()
+            values = [
+                calc.singlepoint(
+                    system,
+                    charge=charge,
+                    multiplicity=multiplicity,
+                    properties=("energy",),
+                )
+                for system in atoms
+            ]
+            elapsed = perf_counter() - start
+            if any(
+                not r.converged
+                or r.executed_backend != "cuda"
+                or r.forces is not None
+                or not np.isfinite([r.energy, r.energy_change, r.density_rms]).all()
+                for r in values
+            ):
+                raise RuntimeError("invalid energy-only endpoint")
+            row["energy_only"] = {
+                "seconds": elapsed,
+                "properties": ["energy"],
+                "results": [
+                    {
+                        "energy": r.energy,
+                        "iterations": r.iterations,
+                        "energy_change": r.energy_change,
+                        "density_rms": r.density_rms,
+                    }
+                    for r in values
+                ],
+            }
         records["endpoints"].append(row)
         write(args.output, records)
         print(json.dumps({"case": key, "seconds": row["seconds"]}), flush=True)
@@ -433,6 +469,44 @@ def compare(args):
         row["shared_comparison"] = comparison
         for workload, summary in comparison["workloads"].items():
             row["phase_ratios"][workload] = 1 - summary["relative_improvement"]
+        if args.domain == "df":
+            energy_samples = []
+            for label, run in measured:
+                endpoint = run["endpoints"][index]
+                value = endpoint["energy_only"]
+                for got, want in zip(
+                    value["results"], base["energy_only"]["results"], strict=True
+                ):
+                    row["max_energy_error"] = max(
+                        row["max_energy_error"], abs(got["energy"] - want["energy"])
+                    )
+                energy_samples.append(
+                    {
+                        "selection": label,
+                        "seconds": value["seconds"],
+                        "inputs_hash": canonical_hash(
+                            {
+                                "case": endpoint["case"],
+                                "atoms": endpoint["atoms"],
+                                "basis": endpoint["basis"],
+                                "df_budget_bytes": endpoint["df_budget_bytes"],
+                                "properties": value["properties"],
+                            }
+                        ),
+                        "workload": "energy-only-singlepoints",
+                        "synchronized": True,
+                    }
+                )
+            energy_comparison = assess_comparison(energy_samples)
+            if "workloads" not in energy_comparison:
+                raise ValueError(f"invalid energy-only timings: {energy_comparison}")
+            row["energy_only_comparison"] = energy_comparison
+            row["phase_ratios"]["energy-only-singlepoints"] = (
+                1
+                - energy_comparison["workloads"]["energy-only-singlepoints"][
+                    "relative_improvement"
+                ]
+            )
         row["numerical_passed"] = (
             row["max_energy_error"] <= 3e-10 and row["max_force_error"] <= 3e-9
         )
