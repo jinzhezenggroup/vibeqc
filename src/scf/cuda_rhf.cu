@@ -5978,13 +5978,14 @@ __device__ runtime::cuda_gaussian_products::BasisView df_basis_view(const Device
  * Metric uses two real factors; three-center uses three. Mathematical center
  * channels are projected onto physical atoms only after primitive contraction.
  * The packed dummy remains an ABI detail and never enters a scientific policy.
+ * Let the compiler inline this metadata adapter. Forcing a device call spills
+ * the surrounding transformed-tile state across each Cartesian component;
+ * scalar mathematical evaluators retain their own independent call boundaries.
  */
 template <bool Derivative, bool Metric>
-__device__ __noinline__ double contracted_df(const DeviceBatch& batch, std::int32_t system,
-                                             std::int32_t first, std::int32_t second,
-                                             std::int32_t auxiliary, std::int32_t dummy,
-                                             std::int64_t coordinate, unsigned lane = 0U,
-                                             unsigned lanes = 1U) {
+__device__ double contracted_df(const DeviceBatch& batch, std::int32_t system, std::int32_t first,
+                                std::int32_t second, std::int32_t auxiliary, std::int32_t dummy,
+                                std::int64_t coordinate, unsigned lane = 0U, unsigned lanes = 1U) {
   (void)dummy;
   namespace products = runtime::cuda_gaussian_products;
   using Policy =
