@@ -82,7 +82,14 @@ class IncrementalCholesky:
     """
 
     def __init__(
-        self, columns, *, rank_capacity, pair_tile=256, export_rank_tile=1, budget=None
+        self,
+        columns,
+        *,
+        rank_capacity,
+        pair_tile=256,
+        export_rank_tile=1,
+        budget=None,
+        _execution_requests=(),
     ):
         started = time.perf_counter()
         self._lock = threading.RLock()
@@ -138,7 +145,9 @@ class IncrementalCholesky:
                 "caller-retained detached exports",
             ),
         )
-        self._resource_plan = plan_resources((request,), budget)
+        # A native execution policy contributes its owned allocations before
+        # either source reads or host/device allocation can begin.
+        self._resource_plan = plan_resources((request, *_execution_requests), budget)
         self._resource_plan.require_feasible()
         self._factors = np.zeros((rank_capacity, n))
         self._original = np.empty(n)
@@ -223,6 +232,15 @@ class IncrementalCholesky:
     def _roundoff(self):
         return 64 * np.finfo(np.float64).eps * self._scale * (self.rank + 1)
 
+    def _project_column(self, column, pivot):
+        """Subtract the retained prefix; native policies may keep it resident."""
+        if self.rank:
+            column -= self._factors[: self.rank].T @ self._factors[: self.rank, pivot]
+        return column
+
+    def _commit_native_column(self, column):
+        """Execution-policy hook, called after validation and before host commit."""
+
     def _pivot(self, pivot, diagonal):
         """Validate an entire new Schur column before mutating the prefix."""
         n = self.space.size
@@ -232,8 +250,7 @@ class IncrementalCholesky:
             column[begin : begin + count] = self._values(
                 self._columns.column(pivot, begin, count), count
             )
-        if self.rank:
-            column -= self._factors[: self.rank].T @ self._factors[: self.rank, pivot]
+        column = self._project_column(column, pivot)
         allowance = self._roundoff()
         if abs(column[pivot] - diagonal) > allowance:
             raise ValueError("source diagonal and incremental Schur column disagree")
@@ -270,6 +287,7 @@ class IncrementalCholesky:
             sha256(column_bytes).hexdigest(),
         )
         # Everything which can reject scientific data precedes this commit.
+        self._commit_native_column(column)
         self._factors[self.rank] = column
         self._residual[:] = remaining
         self._factor_digest.update(column_bytes)

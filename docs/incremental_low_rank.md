@@ -4,8 +4,9 @@ The experimental post-HF provider starts from the existing unscreened native
 raw integral source. `CoulombColumns` reads bounded diagonal/column pieces;
 `IncrementalCholesky` retains a fixed-capacity factor prefix and appends actual
 new pivots. It never constructs a molecular four-index tensor. This initial
-slice implements CPU factorization and J/K/MO consumers; native GPU execution
-and solver refinement are separate integration work.
+implementation supplies CPU factorization and J/K/MO consumers, a native CUDA
+execution policy, and staged RHF initialization with exact-target cleanup.
+These remain experimental internal post-HF tools, not installed public APIs.
 
 `PairSpace` enumerates `(mu, nu)` with `nu <= mu` in row order. Its normalized
 coordinate is `sqrt(m) * D[mu,nu]`, where multiplicity m is one on the diagonal
@@ -82,3 +83,52 @@ therefore cannot treat it as a successful relaxed-target calculation. Both the
 observed difference and conditional tensor diagnostics remain available for
 later refinement decisions. Consumer/audit memory is composed with the same
 factor resource owner; impossible combined allocations fail before execution.
+
+## CUDA execution and staged initialization
+
+`CudaIncrementalCholesky` keeps actual factor prefixes on both host and device.
+CPU native raw integrals supply one column at a time; CUDA subtracts the
+retained prefix in deterministic rank order. CPU owns pivot selection,
+PSD/roundoff checks and the final commitment decision. Only the raw, projected
+and newly committed columns cross the device boundary during refinement.
+The host mirror supplies bounded CPU MO transformations. Native J/K streams
+one physical factor through cuBLAS contractions; outputs are explicitly copied
+to host. No new shell/operator formula or separate CUDA runtime is introduced.
+
+Shared resource preflight counts both factor mirrors, numeric workspace and
+the reused CUDA Context's cuBLAS allowance before source reads/device creation.
+The native arena is checked against the plan, and execution performs no device
+allocation. A failed factor upload invalidates the device owner; later calls
+fail closed. CUDA section timing events are enabled and can add substantial
+overhead for tiny contractions. Reported section times exclude some host and
+runtime work; whole-solve wall time is the comparison metric.
+
+`solve_refined_rhf(factor, target, stages)` consumes explicit `RefinementStage`
+objects with monotonically tightening pair-diagonal thresholds/rank caps and
+bounded iteration counts. A simple damped host RHF initializer carries only
+the density between stages. Each changed factor generation gets a new consumer
+and a fresh Fock/commutator residual. No DIIS/Krylov history is retained. The
+electronic-energy jump at the same density records observed sensitivity to
+refinement; it is not a bound on relaxed observables. This predetermined policy
+does not yet choose thresholds automatically from a requested energy/force error.
+
+Final cleanup always calls the existing `FockPlan.solve(initial_density=...)`
+for the identical unscreened full-Coulomb closed-shell RHF target. That solve
+starts fresh DIIS history and must converge; failure propagates. Only its
+energy, density and optional exact forces appear in `result.exact`. The wrapper
+rejects DF/range/operator, geometry/basis and ensemble mismatches. Factor/pivot
+derivatives remain unsupported, and no approximate-stage energy is labeled
+consistent with the exact forces. The initializer's shared memory plan covers
+its factor/source and numeric workspace; the separately owned exact FockPlan
+retains its own native resource controls, reported separately.
+
+`tools/validate_low_rank.py` compares fixed-rank and staged initialization plus
+exact cleanup with direct exact SCF. Existing fixed-auxiliary DF is measured
+separately, with explicit energy/force differences from the exact target.
+Independent pinned H2/water/LiH fixtures gate final energies/densities; matched
+exact cleanup gates forces. Small dense reconstructions gate same-approximation
+J/K and conditional pair residual diagnostics only in the reference driver.
+Raw timing samples include setup, source reads, rank extension, transfers and
+cleanup through forces. Compilation, destruction and reference comparisons are
+outside that clock. The small fixtures establish correctness and measured
+overhead, not a production speedup or large-system scaling claim.

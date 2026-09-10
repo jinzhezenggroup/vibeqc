@@ -103,7 +103,9 @@ class LowRankProvider:
             ResourceIdentity(
                 "posthf",
                 "cholesky_contraction",
-                "cpu",
+                "cuda"
+                if observable == "J_K" and hasattr(self.factor, "_native_jk")
+                else "cpu",
                 "fp64",
                 json.dumps({"nbf": self.factor.space.nbf, "rank": self.factor.rank}),
                 (observable,),
@@ -158,6 +160,8 @@ class LowRankProvider:
             # Inputs, total density, physical factor, ordered matmul temporaries,
             # accumulators and irreversible detached publication can coexist.
             plan = self._plan("J_K", (12 + 8 * spins) * n * n)
+            if hasattr(self.factor, "_native_jk"):
+                return self.factor._native_jk(density, plan)
             started = time.perf_counter()
             blocks = density.reshape(spins, n, n).copy()
             total = blocks.sum(axis=0)
