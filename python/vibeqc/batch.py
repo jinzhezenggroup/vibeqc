@@ -102,7 +102,7 @@ class ShellClassProfileEntry:
 
 @dataclass(frozen=True)
 class DensityFittingMetricDiagnostic:
-    """CUDA DF metric conditioning and allocation evidence for one plan slot."""
+    """CUDA DF value/J/K plan evidence; peaks exclude generated-force staging."""
 
     bucket_id: int
     system_index: int

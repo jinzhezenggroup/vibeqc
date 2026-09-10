@@ -1542,9 +1542,9 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
     }
   }
   if (candidate->integral_source != nullptr) {
-    // Source-backed force response is streamed after SCF. Retain the compact
-    // metric and pseudoinverse on the host so the force pass can form dM+ one
-    // coordinate at a time without reconstructing the full DF tensor.
+    // Generated force weights reuse the compact host metric and pseudoinverse.
+    // Apply the spectral reverse map once to the accumulated metric weight,
+    // without coordinate-wise derivatives or reconstructing the full DF tensor.
     try {
       candidate->host_metrics = metrics;
       candidate->host_metric_inverse.assign(all_metric_elements, 0.0);

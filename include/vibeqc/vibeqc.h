@@ -84,11 +84,11 @@ enum {
 };
 
 /**
- * Setup-time CUDA density-fitting metric and allocation evidence.
+ * Setup-time CUDA DF metric and value/J/K plan evidence; peaks are estimates.
  *
- * Records are returned in plan-slot order for the most recent CUDA DF batch
- * execution. `system_index` identifies the original prepared-batch input and
- * `bucket_id` identifies the fleet bucket that owns the plan.
+ * Plan-slot order: system_index is the original input, bucket_id its owning bucket.
+ * Peaks exclude generated-force staging and opaque provider allocations. Whole-HF
+ * resource observations separately account for tracked response allocations.
  */
 typedef struct vibeqc_density_fitting_metric_diagnostic {
   uint32_t bucket_id;
