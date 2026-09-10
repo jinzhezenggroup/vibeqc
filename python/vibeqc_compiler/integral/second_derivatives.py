@@ -24,6 +24,25 @@ from .shell_spec import AXES, cartesian_components
 from .weighted_eri import CENTERS, build_weighted_eri_ir, build_weighted_eri_kernel
 
 
+def require_second_consumer(integral):
+    """Validate the single-consumer invariant before reading second-order fields.
+
+    General IntegralIR can represent multiple consumers. Native second-order
+    artifacts and their record/public-input adapters implement exactly one.
+    This inexpensive check also protects manually constructed artifact objects
+    without repeating native hash validation for every streamed primitive.
+    """
+    if integral.derivative is None or integral.derivative.order != 2:
+        raise ValueError("second derivative lowering requires explicit order two")
+    if len(integral.contractions) != 1 or not isinstance(
+        integral.contractions[0], SecondDerivative
+    ):
+        raise ValueError(
+            "second derivative lowering requires one explicit second-order consumer"
+        )
+    return integral.contractions[0]
+
+
 def _second_ir(integral, output, packing, memory_budget_bytes):
     """Retain the value operator/signature and declare a separate output ABI."""
     derivative = integral.operator.nuclear_derivative(order=2)
@@ -184,7 +203,7 @@ def _one_electron_primal(integral, indices, primal_form):
     )
     value_ir = replace(integral, derivative=None, contractions=template.contractions)
     components = tuple(
-        product(*(cartesian_components(l) for l in integral.signature.angular))
+        product(*(cartesian_components(order) for order in integral.signature.angular))
     )
     graph = Graph()
     values = []
@@ -238,15 +257,7 @@ def build_second_derivative_kernel(
     or HVP rows before AD, so a backend can bound liveness by output tiling.
     Algebra choices expose valid optimize-before/after-AD validation schedules.
     """
-    if integral.derivative is None or integral.derivative.order != 2:
-        raise ValueError("second derivative lowering requires explicit order two")
-    if len(integral.contractions) != 1 or not isinstance(
-        integral.contractions[0], SecondDerivative
-    ):
-        raise ValueError(
-            "second derivative lowering requires one explicit second-order consumer"
-        )
-    consumer = integral.contractions[0]
+    consumer = require_second_consumer(integral)
     count = integral.signature.component_count
     indices = (
         tuple(range(count)) if component_indices is None else tuple(component_indices)
@@ -374,9 +385,9 @@ def build_second_derivative_kernel(
                 pairs[index] if consumer.packing == "svec" else divmod(index, dimension)
             )
             root = graph.sum(
-                a * b * mixed(min(k, l), max(k, l))
+                a * b * mixed(min(k, coordinate), max(k, coordinate))
                 for k, a in row(i)
-                for l, b in row(j)
+                for coordinate, b in row(j)
             )
             outputs.append(
                 root * (sqrt(2) if consumer.packing == "svec" and i != j else 1)

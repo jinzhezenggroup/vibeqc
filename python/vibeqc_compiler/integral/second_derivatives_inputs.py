@@ -147,7 +147,7 @@ def prepare_second_shell_stream(
         or any(
             original.atom_index is not None and original.atom_index != public.atom_index
             for original, public in zip(
-                declared.center_bindings, signature.center_bindings
+                declared.center_bindings, signature.center_bindings, strict=True
             )
         )
     ):

@@ -453,7 +453,7 @@ def run(args):
             "--architecture",
             args.architecture,
             "--output",
-            ".artifacts/second-reproduction",
+            f".artifacts/second-reproduction-{args.backend}",
         ]
         if args.backend == "cuda":
             argv = [

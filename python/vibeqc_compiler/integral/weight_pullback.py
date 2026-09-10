@@ -35,7 +35,7 @@ def normalized_cartesian_components(angular, weights, scale=1.0):
     Cartesian product, so no primitive-product tensor is materialized here.
     """
     components = []
-    labels = tuple(cartesian_components(l) for l in angular)
+    labels = tuple(cartesian_components(order) for order in angular)
     if weights.shape != tuple(map(len, labels)) or np.iscomplexobj(weights):
         raise ValueError("Cartesian weight shape or scalar type is invalid")
     for coordinate in np.ndindex(weights.shape):

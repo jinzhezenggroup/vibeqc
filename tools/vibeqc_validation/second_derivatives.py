@@ -122,14 +122,18 @@ def libcint_one_electron_hessian(family, angular, exponents, centers, charge=1.0
     mol = gto.M(
         atom=[("ghost-H", centers[0]), ("ghost-He", centers[1])],
         basis={
-            name: [[l, [e, 1]]]
-            for name, l, e in zip(("H", "He"), angular, exponents, strict=True)
+            name: [[angular_momentum, [e, 1]]]
+            for name, angular_momentum, e in zip(
+                ("H", "He"), angular, exponents, strict=True
+            )
         },
         unit="Bohr",
         cart=True,
         verbose=0,
     )
-    components = tuple(cartesian_components(l) for l in angular)
+    components = tuple(
+        cartesian_components(angular_momentum) for angular_momentum in angular
+    )
     norms = [
         _gaussian_squared_norm(e, c)
         for e, cs in zip(exponents, components, strict=True)
@@ -183,14 +187,16 @@ def libcint_eri_hessian(angular, exponents, centers):
             for name, position in zip(names, centers, strict=True)
         ],
         basis={
-            name: [[l, [e, 1]]]
-            for name, l, e in zip(names, angular, exponents, strict=True)
+            name: [[angular_momentum, [e, 1]]]
+            for name, angular_momentum, e in zip(names, angular, exponents, strict=True)
         },
         unit="Bohr",
         cart=True,
         verbose=0,
     )
-    components = tuple(cartesian_components(l) for l in angular)
+    components = tuple(
+        cartesian_components(angular_momentum) for angular_momentum in angular
+    )
     shape = tuple(map(len, components))
     norms = [
         _gaussian_squared_norm(e, c)
@@ -309,14 +315,16 @@ def libcint_primitive_gradient(family, angular, exponents, centers, charge=1.0):
     mol = gto.M(
         atom=[(f"ghost-{name}", position) for name, position in zip(names, centers)],
         basis={
-            name: [[l, [e, 1]]]
-            for name, l, e in zip(names, angular, exponents, strict=True)
+            name: [[angular_momentum, [e, 1]]]
+            for name, angular_momentum, e in zip(names, angular, exponents, strict=True)
         },
         unit="Bohr",
         cart=True,
         verbose=0,
     )
-    labels = tuple(cartesian_components(l) for l in angular)
+    labels = tuple(
+        cartesian_components(angular_momentum) for angular_momentum in angular
+    )
     shape = tuple(map(len, labels))
     norms = [
         _gaussian_squared_norm(e, component)

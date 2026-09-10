@@ -10,7 +10,7 @@ from vibeqc_compiler.common.provenance import canonical_hash
 from .cuda import CudaEmitter
 from .expr import AlgebraForm, AlgebraFusion, AlgebraOrdering, RematerializationPolicy
 from .ir_serialization import integral_to_payload
-from .second_derivatives import SecondDerivativeKernel
+from .second_derivatives import SecondDerivativeKernel, require_second_consumer
 
 SECOND_RECORD_TAG = 0x32445648
 
@@ -45,10 +45,11 @@ def emit_second_derivative_primitive(kernel: SecondDerivativeKernel, *, backend=
         raise ValueError(
             "native second derivatives require one to twelve coordinate outputs per tile"
         )
+    consumer = require_second_consumer(kernel.integral)
     is_eri = len(kernel.integral.signature.shells) == 4
     count = len(kernel.integral.operator.centers)
-    raw = kernel.integral.contractions[0].weights is None
-    hvp = kernel.integral.contractions[0].output == "weighted_hvp"
+    raw = consumer.weights is None
+    hvp = consumer.output == "weighted_hvp"
     qualifier = "__device__ __forceinline__" if backend == "cuda" else "inline"
     lines = [
         "#include <cmath>",

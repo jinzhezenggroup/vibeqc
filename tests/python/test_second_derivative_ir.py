@@ -5,6 +5,7 @@ import json
 from dataclasses import replace
 
 import pytest
+from vibeqc_compiler.integral.blocks import RawBlock, TensorLayout
 from vibeqc_compiler.integral.capabilities import query_integral_capability
 from vibeqc_compiler.integral.ir import four_center_eri_operator
 from vibeqc_compiler.integral.ir_serialization import (
@@ -17,6 +18,18 @@ from vibeqc_compiler.integral.second_derivatives import (
     build_one_electron_second_ir,
     build_second_derivative_kernel,
 )
+from vibeqc_compiler.integral.second_derivatives_execute import (
+    CompiledSecondDerivative,
+    SecondPrimitive,
+    pack_second_primitive,
+)
+from vibeqc_compiler.integral.second_derivatives_inputs import (
+    prepare_second_shell_stream,
+)
+from vibeqc_compiler.integral.second_derivatives_native import (
+    emit_second_derivative_primitive,
+)
+from vibeqc_compiler.integral.weighted_eri import build_weighted_eri_ir
 
 
 @pytest.mark.parametrize(
@@ -80,6 +93,45 @@ def test_strict_second_consumer_decoder_never_defaults_weights_or_direction():
     payload["contractions"][0]["output_layout"]["indices"] = ["atom", "xyz"]
     with pytest.raises(ValueError, match="axes"):
         integral_from_payload(payload)
+
+
+@pytest.mark.parametrize("kind", ["raw_first", "weighted_first", "second_first"])
+def test_mixed_consumers_fail_before_artifact_or_record_access(kind):
+    """Even manually forged artifacts must reject general multi-consumer IR."""
+    ir = build_eri_second_ir((1, 0, 0, 0))
+    raw = RawBlock(
+        TensorLayout(
+            ("center", "xyz", *ir.signature.tensor_indices),
+            (4, 3, *ir.signature.component_shape),
+        ),
+        1 << 20,
+    )
+    extra = (
+        build_weighted_eri_ir((1, 0, 0, 0)).contractions[0]
+        if kind == "weighted_first"
+        else raw
+    )
+    consumers = (
+        (*ir.contractions, extra)
+        if kind == "second_first"
+        else (extra, *ir.contractions)
+    )
+    mixed = replace(ir, contractions=consumers)
+    # The general representation can round trip this request, while the
+    # bounded native provider must fail before accessing a native library.
+    assert integral_from_payload(integral_to_payload(mixed)) == mixed
+    artifact = CompiledSecondDerivative(None, mixed, (0,), (0,), "cpu", "forged")
+    kernel = build_second_derivative_kernel(ir, (0,), output_indices=(0,))
+    primitive = SecondPrimitive((), ())
+    for operation in (
+        artifact.validate,
+        lambda: pack_second_primitive(artifact, primitive),
+        lambda: prepare_second_shell_stream(artifact, (), ()),
+        lambda: build_second_derivative_kernel(mixed, (0,), output_indices=(0,)),
+        lambda: emit_second_derivative_primitive(replace(kernel, integral=mixed)),
+    ):
+        with pytest.raises(ValueError, match="one explicit second-order consumer"):
+            operation()
 
 
 def test_range_second_intent_retains_omega_but_lowering_does_not_claim_support():

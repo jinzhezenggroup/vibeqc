@@ -47,7 +47,7 @@ from vibeqc_compiler.common.resources import (
 
 from .ir import IntegralIR
 from .ir_serialization import integral_to_payload
-from .second_derivatives import build_second_derivative_kernel
+from .second_derivatives import build_second_derivative_kernel, require_second_consumer
 from .second_derivatives_native import (
     SECOND_RECORD_TAG,
     emit_second_derivative_runtime,
@@ -68,6 +68,7 @@ class CompiledSecondDerivative:
 
     def validate(self):
         """Reject replaced metadata before loading an artifact or allocating buffers."""
+        require_second_consumer(self.integral)
         if (
             second_program_identity(
                 self.integral, self.component_indices, self.output_indices, self.backend
@@ -197,6 +198,7 @@ def pack_second_primitive(artifact, primitive):
     if not isinstance(primitive, SecondPrimitive):
         raise TypeError("expected a SecondPrimitive record")
     integral = artifact.integral
+    consumer = require_second_consumer(integral)
     count, shells = len(integral.operator.centers), len(integral.signature.shells)
     exponents = _finite(primitive.exponents, shells, "primitive exponents")
     if any(value <= 0 for value in exponents):
@@ -210,7 +212,7 @@ def pack_second_primitive(artifact, primitive):
         for center in primitive.centers
         for value in _finite(center, 3, "primitive center")
     )
-    raw = integral.contractions[0].weights is None
+    raw = consumer.weights is None
     weights = primitive.weights
     if weights is None and raw:
         weights = (1.0,) * len(artifact.component_indices)
@@ -221,7 +223,7 @@ def pack_second_primitive(artifact, primitive):
     )
     if raw and any(weight != 1 for weight in weights):
         raise ValueError("raw second derivatives require unit component weights")
-    hvp = integral.contractions[0].output == "weighted_hvp"
+    hvp = consumer.output == "weighted_hvp"
     directions = 3 * len(integral.requested_derivative_centers) if hvp else 0
     direction = primitive.direction
     if hvp:
