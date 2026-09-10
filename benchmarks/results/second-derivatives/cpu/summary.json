@@ -1,0 +1,8 @@
+{
+  "case_count": 9,
+  "dirty": false,
+  "maximum_analytic_error": 1.199040866595169e-14,
+  "passed": true,
+  "revision": "9f120deb8825a8272d3fbdb5c79fae4980fbd064",
+  "scope": "Selected partial-Hessian/HVP integral endpoints; no molecular Hessian or speedup promotion."
+}

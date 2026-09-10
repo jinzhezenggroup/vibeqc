@@ -1,0 +1,4218 @@
+{
+  "0f8a3f5ed7d2eaadc7ef8ee55b00b9000d5f13628448f4634ed99a236ea54889": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "731be896fb5ef6482af0255d365d74f164596f4fc029c518a0638e14a354063e",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1104,
+      "pageable": 1104,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 640,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 320,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "weighted_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"8b7f3c94df6ea185579e8d7a4fda8503e32d554ea6934d8a0b2d39b7229d28de\", \"device\": 0, \"program\": \"0f8a3f5ed7d2eaadc7ef8ee55b00b9000d5f13628448f4634ed99a236ea54889\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 784,
+      "pageable": 784,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "18b0a19508ba5ee5052274a2ed8d424a83ef82d1ed2389545f3c59c93fe5854e": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "8ff342b56c86c6a6b1094419891d538f9722dcd24247ef530807b08a5ff2064c",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1248,
+      "pageable": 1248,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 640,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 320,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "weighted_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"eea3bb1a5eba9b383cfa463a4b42a671002a48e783e4339ab340b3869daa47f2\", \"device\": 0, \"program\": \"18b0a19508ba5ee5052274a2ed8d424a83ef82d1ed2389545f3c59c93fe5854e\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 928,
+      "pageable": 928,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "1b7a74e3ca6496a110ffeb02dd55af407ff141cc7adf189b8ed2b020e4111b4e": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "a49bed14ba3b74d65f9f10c879d7bc85d5cf1a7562184e1a23ff194d405ad067",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1224,
+      "pageable": 1224,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 624,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "raw_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"5c2075569dc7a0e8b5ea2b2f40ee3fef0137111740f97c9b838d5ebde6da85ed\", \"device\": 0, \"program\": \"1b7a74e3ca6496a110ffeb02dd55af407ff141cc7adf189b8ed2b020e4111b4e\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 912,
+      "pageable": 912,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "273dc073310ebceebef1ddc0021c1246226a8436502c4e913598e2a9487a2500": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "4f5f9baaea2a0ce230fa10b1aeb1d5904ba822d2c4e77bf5578970fba350a7fe",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 960,
+      "pageable": 960,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 8,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 624,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 8,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 8,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "weighted_hvp"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"55b09b66d8bdce84f96fabe50b01b64dc519302c4ac949ba5b58989a2f72db1c\", \"device\": 0, \"program\": \"273dc073310ebceebef1ddc0021c1246226a8436502c4e913598e2a9487a2500\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 648,
+      "pageable": 648,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "2d04ca53005616d34e3c2cd12a20a7ff8211effafcf4d6020406d6344d307e15": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "dc190ed03e21c25f3b85db0c95155e6f21b528a1b683f41f710dd96a38d4f649",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1152,
+      "pageable": 1152,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 624,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "raw_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"17c6a4f5c324d686bd3a7de65dff26d5e10024c51bc94c01d4cf7bc3cf7cf266\", \"device\": 0, \"program\": \"2d04ca53005616d34e3c2cd12a20a7ff8211effafcf4d6020406d6344d307e15\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 840,
+      "pageable": 840,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "3275af7a6b9c35dc60b81955b10f3d10c30f64d7322d4acae2cb0261e7152577": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "378af0a11184d4520160ee8e14f292c2e1c06b1ad0b31999bd407a6aa065108c",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1176,
+      "pageable": 1176,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 640,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 320,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "weighted_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"27e5581acab0be40077356c52a81376fdfe6597d4a3bcc2d801b4ac450b083ac\", \"device\": 0, \"program\": \"3275af7a6b9c35dc60b81955b10f3d10c30f64d7322d4acae2cb0261e7152577\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 856,
+      "pageable": 856,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "3c4a65aa94c28aee45e3c3f98db5a3e74771e0776372c3bc0a1793497939ebe9": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "e1e4c37c581f70d1b983eac336e45d78292f9b7a67c3fb23e048773105846b83",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1152,
+      "pageable": 1152,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 624,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "raw_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"8d7674f7af91085894177d8658d2ad432ac901c0efae7b82fb2731e4651dc235\", \"device\": 0, \"program\": \"3c4a65aa94c28aee45e3c3f98db5a3e74771e0776372c3bc0a1793497939ebe9\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 840,
+      "pageable": 840,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "3f3f4a86cf6151d5b8c56ada80c3fc768ea3af484cf3297d5e7e4e1df695c99a": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "34e041bc232a65e769627ee447b6feb880db0d1c80ecf173117f83457c31448f",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1224,
+      "pageable": 1224,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 624,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "raw_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"86f03ca41cdaf319d47f80b58769977a0a461512d8c556566ed4d7bdb44ff6e7\", \"device\": 0, \"program\": \"3f3f4a86cf6151d5b8c56ada80c3fc768ea3af484cf3297d5e7e4e1df695c99a\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 912,
+      "pageable": 912,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "4a144510d0934233be71cd0bd9c274218a88d3e618fef00df6a00d79bc6b9cae": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "22a7da2786022538d84627adf9e3601046e7ba830cf5b329d1671053289235aa",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1176,
+      "pageable": 1176,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 640,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 320,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "weighted_hvp"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"7405b1d2210db6095197b1d688bbd778634adfbe17658eeb82328fc654929c86\", \"device\": 0, \"program\": \"4a144510d0934233be71cd0bd9c274218a88d3e618fef00df6a00d79bc6b9cae\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 856,
+      "pageable": 856,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "4a474f1059d66086537e7f95015e350f14f1bdcb4d1c1fb839c0a415dc289f1d": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "652caa54dc22bbafe109de7610877396329dc7e6788a5d62cef2cf9ee9e94e5e",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1248,
+      "pageable": 1248,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 640,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 320,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "weighted_hvp"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"2c4185a499a12cfc8a2392af517904a68e87695267d2dfec3f9840d289eea9f1\", \"device\": 0, \"program\": \"4a474f1059d66086537e7f95015e350f14f1bdcb4d1c1fb839c0a415dc289f1d\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 928,
+      "pageable": 928,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "5830669bf603e6ca6c61b2a1d5875c4df87eb6752bb2eaf496fcbfeb0a49b878": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "36685a6332742fccee5eb860fc5ede6c501d98b805408cd9ee4d41b1248625c3",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1248,
+      "pageable": 1248,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 640,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 320,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "weighted_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"4c2a41db8b19f353522350a5275f9abdec53bb1a90197d79aaeaab766c23c586\", \"device\": 0, \"program\": \"5830669bf603e6ca6c61b2a1d5875c4df87eb6752bb2eaf496fcbfeb0a49b878\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 928,
+      "pageable": 928,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "71ff3f5df36d14a8f3f36b4856a258ff5da985155ca895b652a748985018a85e": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "2b4dfec750be2784fbfd20e1c24799d1e15411fc6d0b0e84f2e1cbe73a2729de",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1104,
+      "pageable": 1104,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 640,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 320,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "weighted_hvp"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"82c5eb92d5d2b54fb60b450d03d75c8b94c04307fe93c1b018d4aca06849b2da\", \"device\": 0, \"program\": \"71ff3f5df36d14a8f3f36b4856a258ff5da985155ca895b652a748985018a85e\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 784,
+      "pageable": 784,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "7628d1a3ce4b24db3066daf513de63c1620c803987430609091b100f4d24d924": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "b65b0d8e8564e1464b7497aac9e87b9707f3767a2f8cafad7f38b592178b336e",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1248,
+      "pageable": 1248,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 640,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 320,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "weighted_hvp"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"6611718feb0d0846fdeb9615225c44c174266b6cd8ed39aeee4d892e410b82cd\", \"device\": 0, \"program\": \"7628d1a3ce4b24db3066daf513de63c1620c803987430609091b100f4d24d924\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 928,
+      "pageable": 928,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "7d0e93a668239d8b9e39bfa113f6965b7c4cd07132ace6ac855689634615f90f": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "d09baf879dbf085808e443c9178ec0124a031e89dd062368cd201bbf1ed71ff0",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1080,
+      "pageable": 1080,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 624,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "raw_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"5b986b1508c21f3cf9712d175e5146670e6f1e9497e3adc394dc637d087cec46\", \"device\": 0, \"program\": \"7d0e93a668239d8b9e39bfa113f6965b7c4cd07132ace6ac855689634615f90f\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 768,
+      "pageable": 768,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "7eb158f71c2adc656e0c1188c3e8ee8e222061534e19efc1dceadc706490b174": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "b44f6171dca146d8a2779354aba17608ab2eb9b3faf3a916de062dd773d82390",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1224,
+      "pageable": 1224,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 624,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "raw_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"98a98ee9576df5da87a522fd1e93e4ada5f10fe9f3c37261649a1f07bedad414\", \"device\": 0, \"program\": \"7eb158f71c2adc656e0c1188c3e8ee8e222061534e19efc1dceadc706490b174\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 912,
+      "pageable": 912,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "8a09f28e21b0335fce82ccc22289bb2d02d679b18c283fe7878839f47409ad5d": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "a9a918cdafc978c879d5078d5adbca613820c6f8fdcdf2cf0a3fd3773575bf0c",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1248,
+      "pageable": 1248,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 640,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 320,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "weighted_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"19f4b7ffe4774985cc6d1940f26522df941071c6b884f0bf9470d086ac1d0c55\", \"device\": 0, \"program\": \"8a09f28e21b0335fce82ccc22289bb2d02d679b18c283fe7878839f47409ad5d\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 928,
+      "pageable": 928,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "912f0008524970c9d963055d4fb11bf511352cdbb45eb8fc88612f9b42b62205": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "06c7d83618c4477514d4cec4f6fdaf0db144a0de796cb3891d1701fc652d25a4",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 960,
+      "pageable": 960,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 8,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 624,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 8,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 8,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "weighted_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"9cbd984821cdc0d03381fb6377a465d472b2f674ee81c910fe7e6f9d5d17a2d1\", \"device\": 0, \"program\": \"912f0008524970c9d963055d4fb11bf511352cdbb45eb8fc88612f9b42b62205\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 648,
+      "pageable": 648,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "94b1e9ded2be0774ef4a2711fb480c4ac65715837aab8d344acba98e60421a63": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "8bc58f9c481c77f68a85ea3d4deebbf5cda8c1691443d075398ee408a14d3076",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1104,
+      "pageable": 1104,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 640,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 320,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "weighted_hvp"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"03ee73d4ac2cf72d007b8a61dedda94e9434b2afab8a870dfc15e92656f3cc9f\", \"device\": 0, \"program\": \"94b1e9ded2be0774ef4a2711fb480c4ac65715837aab8d344acba98e60421a63\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 784,
+      "pageable": 784,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "94fb753fd5f18e10fa885604bf8d557473346924c8f0fee174ce01912cca40f9": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "ee95f1ff7ec01f068ab95b89ec04901eb346748f1e097032b1c09dd48a323fdc",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1152,
+      "pageable": 1152,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 624,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "raw_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"deafdbd1aa512894f5501ed5db2cf286f2a8984a84dfe93fa276cfc35cd7dbbd\", \"device\": 0, \"program\": \"94fb753fd5f18e10fa885604bf8d557473346924c8f0fee174ce01912cca40f9\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 840,
+      "pageable": 840,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "9645066aff7f404fd56c3835d6e0453b8f737c186e4faebf9e4a3c1a5cf4809b": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "69552079dea7e6e8c0d0ff99ba0f2425e34b73ae8c8e56243a4d238f3aeb5d8c",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1080,
+      "pageable": 1080,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 624,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "raw_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"ec6b9731ab090514650b7c9a71a2d31206b25b8a057c298c895b0c36b07f02bf\", \"device\": 0, \"program\": \"9645066aff7f404fd56c3835d6e0453b8f737c186e4faebf9e4a3c1a5cf4809b\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 768,
+      "pageable": 768,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "96d4b0c8280cf6d906276a169f7e720a5faaf451372997a7a6175379986b7111": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "3420e14334c44f6722041affa3cd48c89222b6732797613d0240ccdcda31c9c5",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1080,
+      "pageable": 1080,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 624,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "raw_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"3f9dbf94d9e37784c808f91d11d9d1a35b5e46ee96a59e5e78d76c46ad7e3ee3\", \"device\": 0, \"program\": \"96d4b0c8280cf6d906276a169f7e720a5faaf451372997a7a6175379986b7111\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 768,
+      "pageable": 768,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "9d9b177f6bd4350ab3d58e432cd937275f39605337ecf114f9b9ac2cc8df74e4": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "9cf2ac2c2350eca20bca4287fddf385ebd14bba849d49209c2614bdb53c0caa0",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1224,
+      "pageable": 1224,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 624,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "raw_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"7bb4b0daf31e17d10010f3b31546d8b26e7da327b86309d1fd035631cee78935\", \"device\": 0, \"program\": \"9d9b177f6bd4350ab3d58e432cd937275f39605337ecf114f9b9ac2cc8df74e4\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 912,
+      "pageable": 912,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "a103cc1f1c08fb6ee08d475af09389664fd47b8795c2f69f7c51f725d98d47f9": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "2daef50b4bf39946923b43ffa00c420e201d3d843eafb9616e1fcc71211b664d",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1224,
+      "pageable": 1224,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 624,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "raw_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"36d9ca72b2b4e64db955ad2a655c1323e59b988af25c265f2a40552f3f1fc9af\", \"device\": 0, \"program\": \"a103cc1f1c08fb6ee08d475af09389664fd47b8795c2f69f7c51f725d98d47f9\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 912,
+      "pageable": 912,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "a12c654d167a3b54fbd2e0d4222803afae6ec2d5e11c64530e359b59f53dcca2": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "9e5329e3e62e4dc0d6a58677ad81c319379608587ff90cab0755a04c958e9063",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1104,
+      "pageable": 1104,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 640,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 320,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "weighted_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"c1e25d25261cf318ef475437dbfc6ab68addfcb98f5691d1390a69a4239a751a\", \"device\": 0, \"program\": \"a12c654d167a3b54fbd2e0d4222803afae6ec2d5e11c64530e359b59f53dcca2\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 784,
+      "pageable": 784,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "a882e04ac64a28ddb040e0b913d283823a390a2435331870fd8b2a014f0a1d1f": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "0f8aab8e111b3b4df8905d8d194878686349eb127ddcd67a1a4748eb272f6649",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1176,
+      "pageable": 1176,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 640,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 320,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "weighted_hvp"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"1def534320330e264f4158e00f53738c307c3ed848438fbdde70b73b5e36379b\", \"device\": 0, \"program\": \"a882e04ac64a28ddb040e0b913d283823a390a2435331870fd8b2a014f0a1d1f\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 856,
+      "pageable": 856,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "b02c4ffc43195e2e0516cdf0b3c722279a4b6cd2dad1fcd6a24595b33e6c0a49": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "866eb1c808a052481e1c27c617cc59f58feb40ae28b2d6696aa6d4053f4547f8",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1224,
+      "pageable": 1224,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 624,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "raw_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"c8bcffd1de3adb7cbe549a09caddb7e89e53a2fcddacea9d5fc0a98e2f7dfb44\", \"device\": 0, \"program\": \"b02c4ffc43195e2e0516cdf0b3c722279a4b6cd2dad1fcd6a24595b33e6c0a49\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 912,
+      "pageable": 912,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "c2fe064a052f4d85e917937c22e4ee76a5bceced7e8f1d6f44fffe3769e4b5bf": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "a4343054ade2b44e4216d1f2c6cab4f3db3d5dfaadcf450d2d37900525700523",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1152,
+      "pageable": 1152,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 624,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "raw_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"9ffd77282f8873f8275356c5af033c5c9974d3a123812ee4c3b49bf050f60b33\", \"device\": 0, \"program\": \"c2fe064a052f4d85e917937c22e4ee76a5bceced7e8f1d6f44fffe3769e4b5bf\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 840,
+      "pageable": 840,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "da943d431b172a04c227e5fa551cfa20e1b3fe5456f04a15768e587ca4a938f2": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "8018598efa1c8655ade2f75dc5704d12129a5f869b821513266e1a952dabe198",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1176,
+      "pageable": 1176,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 640,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 72,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 320,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "weighted_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"f1ac2c4489ee6042f1d4de66fddbd8bf90b48915f1d6c20a271437f433b46292\", \"device\": 0, \"program\": \"da943d431b172a04c227e5fa551cfa20e1b3fe5456f04a15768e587ca4a938f2\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 856,
+      "pageable": 856,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "ece0dc3064f604657e26482ce4b5ae0d1ae0eda21c8bbfc2049aa37e706ad149": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "7d06a67e267faf9592b8fc53b074e00b9351fe98e7a9083bf7297443676a54f7",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 960,
+      "pageable": 960,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 8,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 624,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 8,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 8,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "raw_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"7f9271acb5c5f944f305b738632815db64bc98e30712ad551e275fadfe1d7d5b\", \"device\": 0, \"program\": \"ece0dc3064f604657e26482ce4b5ae0d1ae0eda21c8bbfc2049aa37e706ad149\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 648,
+      "pageable": 648,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "f31780e5a37d9eceebfafe6314376895d4703f36c575a8b06dcbc4d38f0d0f17": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "a19a0b01db5880864a0998f917d3edc0ca1edbd975d01ed12bcf62fc288ff879",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1080,
+      "pageable": 1080,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 624,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 48,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 312,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "raw_hessian"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"bf4c284b2aea9c7382ba53fe54185f5e7843efadc418e6fee0865399e0d72aa5\", \"device\": 0, \"program\": \"f31780e5a37d9eceebfafe6314376895d4703f36c575a8b06dcbc4d38f0d0f17\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 768,
+      "pageable": 768,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  },
+  "f987c5f12bc4f4aee9b5da1b59b4ea8e52baeb770737567c9e2ebaace5310de2": {
+    "budget": {
+      "device_bytes": 67108864,
+      "device_reserve_bytes": 0,
+      "headroom_fraction": 0.0,
+      "host_bytes": 67108864,
+      "host_reserve_bytes": 0,
+      "per_device_bytes": [],
+      "pinned_host_bytes": null,
+      "schema_version": 1
+    },
+    "diagnostic": null,
+    "identity": "bf55956a36d56e6a2238d827d0327b0e706cacb54272a88155409720b5b110cb",
+    "limits": {
+      "device": 67108864,
+      "host": 67108864
+    },
+    "peak_bytes": {
+      "device": 0,
+      "host": 1248,
+      "pageable": 1248,
+      "pinned": 0
+    },
+    "peak_phases": {
+      "host": 1,
+      "pageable": 1
+    },
+    "requests": [
+      {
+        "candidates": [
+          {
+            "decisions": [],
+            "estimates": [
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "native_publication",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 640,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "record_staging",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 0,
+                "kind": "persistent",
+                "last_phase": 1,
+                "name": "chunk_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 96,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "output",
+                "last_phase": 1,
+                "name": "detached_result",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              },
+              {
+                "accounting": "capacity_bound",
+                "bytes": 320,
+                "cacheable": false,
+                "first_phase": 1,
+                "kind": "workspace",
+                "last_phase": 1,
+                "name": "packed_record",
+                "recomputable": false,
+                "space": "pageable",
+                "streamed_bytes": 0
+              }
+            ],
+            "mode": "streamed",
+            "name": "generated_unscreened",
+            "relative_cost": 0
+          }
+        ],
+        "identity": {
+          "backend": "cpu",
+          "method": "integrals",
+          "observables": [
+            "weighted_hvp"
+          ],
+          "precision": "fp64",
+          "provider": "generated_second_derivative",
+          "schedule": "bounded_coordinate_tile_v1",
+          "schema_version": 1,
+          "topology": "{\"artifact\": \"de9be8dd01033b97dc414cdb7fa72d50ae87070eead2233a7c1341e4af832248\", \"device\": 0, \"program\": \"f987c5f12bc4f4aee9b5da1b59b4ea8e52baeb770737567c9e2ebaace5310de2\", \"records\": 2, \"tiles\": 1}"
+        },
+        "infeasible_reason": null,
+        "name": "second_derivative",
+        "scope_exclusions": [
+          "caller-owned primitive records",
+          "Python/compiler metadata",
+          "native call stacks and CUDA context"
+        ],
+        "unsupported_reason": null
+      }
+    ],
+    "resident_bytes": {
+      "device": 0,
+      "host": 928,
+      "pageable": 928,
+      "pinned": 0
+    },
+    "schema_version": 1,
+    "selections": [
+      [
+        "second_derivative",
+        "generated_unscreened"
+      ]
+    ],
+    "status": "feasible"
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "archives": [],
+  "decision": {
+    "reason": "Independent raw/weighted Hessian blocks and HVPs, three-step Libcint first-gradient differences, diagnostic timings and bounded native resources. No schedule promotion.",
+    "scope": "numerical",
+    "status": "accepted"
+  },
+  "files": [
+    {
+      "bytes": 23198,
+      "path": "evidence.json",
+      "role": "evidence",
+      "sha256": "5e738150d88af00887b2c40d0d7737b76d581deaf4c72e80e1fdd0dd95d32684"
+    },
+    {
+      "bytes": 273,
+      "path": "summary.json",
+      "role": "summary",
+      "sha256": "6fd0ee7edb69a4aee91142b40ed1055328a6bc378b173ce4e43e691067e967aa"
+    },
+    {
+      "bytes": 106937,
+      "path": "samples.json",
+      "role": "samples",
+      "sha256": "68b08d6b83414a92b2d970b9ddb57f311aab8b4fe6fcc5883ad29a4282672b78"
+    },
+    {
+      "bytes": 142667,
+      "path": "resources.json",
+      "role": "input",
+      "sha256": "dbd256a3c049ff8a73f1ebc007938f749db72ea647dbe50b13f0cf1ba8e9fc9d"
+    },
+    {
+      "bytes": 70342,
+      "path": "artifacts.json",
+      "role": "input",
+      "sha256": "3488791373450a95073acfc2845e615653cad07ed071664d021eac5b0f921be0"
+    }
+  ],
+  "reproduction": {
+    "command": [
+      "srun",
+      "--partition=main",
+      "--gres=gpu:5090:1",
+      "--nodes=1",
+      "--ntasks=1",
+      "--time=00:15:00",
+      "env",
+      "OMP_NUM_THREADS=1",
+      "OPENBLAS_NUM_THREADS=1",
+      "python",
+      "tools/validate_second_derivatives.py",
+      "--backend",
+      "cuda",
+      "--samples",
+      "5",
+      "--architecture",
+      "sm_120",
+      "--output",
+      ".artifacts/second-reproduction-cuda"
+    ]
+  },
+  "schema": "vibeqc.benchmark-publication.v1",
+  "source": {
+    "dirty": false,
+    "revision": "9f120deb8825a8272d3fbdb5c79fae4980fbd064"
+  }
+}

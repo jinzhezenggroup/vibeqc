@@ -1,0 +1,2390 @@
+{
+  "04807ec485c2361d60c3f26f991bd0da465d7cf6bc6dfe2dd534fd8d1c990917": {
+    "angular": [
+      3,
+      0,
+      0,
+      0
+    ],
+    "binary_sha256": "77b0a09ac54696634f6b8fc2bb7bf38d0b77702a757cae22a76cc275ade7a23b",
+    "compile_seconds": 3.6161232909653336,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__6cfdb83a_67_3af37e743076c62c41dfda7285676b5a55eb348d0bac324cb9df5d4f3776f1f1_cu_984f033e7ProgramENS1_16CoordinateOutputILj12EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 255,
+        "shared_bytes": 0,
+        "spill_load_bytes": 624,
+        "spill_store_bytes": 624,
+        "stack_bytes": 1120
+      }
+    ],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "8edfe29d2e28506d03a2d570c590593c7c8dbbf5622e8cdb7f5e530b3ef77574",
+    "output": "weighted_hessian",
+    "output_indices": [
+      1,
+      18,
+      35,
+      40,
+      57,
+      62,
+      79,
+      84,
+      101,
+      118,
+      123,
+      140
+    ],
+    "source_sha256": "f2a5224af31940c00620c09154f7d157b52fdec98765ef06c5cd572d98597d34",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "067e02f5051e3643d43162b078a7843b94d8378275fe22f611c335b34b48c1b0": {
+    "angular": [
+      3,
+      0,
+      0,
+      0
+    ],
+    "binary_sha256": "50ebf107b4059d6957537d715d3ef5a7fb9c4955f10ece82367ed2a9c58c963a",
+    "compile_seconds": 3.514601252041757,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__f0d033fc_67_4b85e2865b6711525ede41536402f3716f8499c8b80cdeca21b07ff85792e532_cu_984f033e7ProgramENS1_16CoordinateOutputILj12EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 255,
+        "shared_bytes": 0,
+        "spill_load_bytes": 88,
+        "spill_store_bytes": 88,
+        "stack_bytes": 608
+      }
+    ],
+    "component_indices": [
+      4
+    ],
+    "native_key": "fce622e41eede8167fa5cddb1da60e4b17db8ce6e6e9a4acc9db2ef1ae05cbf7",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      18,
+      35,
+      40,
+      57,
+      62,
+      79,
+      84,
+      101,
+      118,
+      123,
+      140
+    ],
+    "source_sha256": "5a789fd2499d2ebd92194c8dd8e22f92fffb5080297a3b222b2b00bfdc5dbb59",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "0b95f49e1366a7402f38fb6e7c27bfde7a7ae40dc1a3e08a6370b9c7801939df": {
+    "angular": [
+      2,
+      1,
+      0,
+      1
+    ],
+    "binary_sha256": "a65c0fd9935621852f6289c8641862ba4fb9191b925c8a8d697b357564b1075a",
+    "compile_seconds": 3.753951715072617,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__5611d1ea_67_fb1fcb98cf10e33e0236121caca5fe766d96d44d6793743c97751fac246a49d2_cu_984f033e7ProgramENS1_16CoordinateOutputILj12EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 255,
+        "shared_bytes": 0,
+        "spill_load_bytes": 840,
+        "spill_store_bytes": 768,
+        "stack_bytes": 1152
+      }
+    ],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "83eb00b9a3fed4cd00487839f38a9441611cb6f2b596466b0c3d41b31047d0fe",
+    "output": "weighted_hessian",
+    "output_indices": [
+      1,
+      18,
+      35,
+      40,
+      57,
+      62,
+      79,
+      84,
+      101,
+      118,
+      123,
+      140
+    ],
+    "source_sha256": "b131ad4cd676b24ffa5d1492a95e534f213496f8d00fc1386c6452d2a89c10fc",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "16a5c89ded9cdc5e1b2b8326142065f1ae600545c6fd02eeb756da1b88bab474": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "f972d5cd13f25a3f7aeb4d055f73fa2b747568a955c1a4a9e4adfa232a388f62",
+    "compile_seconds": 3.2012801389209926,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__d777238c_67_3a7f5542c2fd3f9f83c81e9c7be66d5860f46302f6516c4ebce9f6e02405db06_cu_984f033e7ProgramENS1_16CoordinateOutputILj6EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 54,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      }
+    ],
+    "component_indices": [
+      4
+    ],
+    "native_key": "af3beaa077e7f21937c3bf41fabf54418cee4cebf652e064560db06311ff0ca2",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      6,
+      17,
+      22,
+      27,
+      32
+    ],
+    "source_sha256": "db1e74616d319ad560f50d73cc0b033942a9d5a66cc781d9fe299ac295cbdbbe",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "250eea735b29eeda6105e95df337087fc421a488a9f6cc8aad024f02f7b5ae9e": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "0d30bc07caaec8dd4abb9d5636dd9ef016d0acdf304bc31a29a9f2a57a49df0b",
+    "compile_seconds": 3.445688979001716,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__4372a334_67_80b6d592555d170d60545d50e8d8d040b1dc81ffcbb36e1c5ac8b9125c36389c_cu_984f033e7ProgramENS1_16CoordinateOutputILj9EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 254,
+        "shared_bytes": 0,
+        "spill_load_bytes": 8,
+        "spill_store_bytes": 8,
+        "stack_bytes": 528
+      }
+    ],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "ee142fbf2041dd6d0a06286d24e1492c84d7855494001c9272270974f197e46b",
+    "output": "weighted_hessian",
+    "output_indices": [
+      1,
+      15,
+      20,
+      34,
+      39,
+      53,
+      58,
+      63,
+      77
+    ],
+    "source_sha256": "67cb5f5e63c9b469f3e5391d637c3d25170f866dc3e65534923677bf36db8ecc",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "3785d7b2b4a6c86adc203d834a0a579a81a8be36aaac4a140b88e6b00969d1dc": {
+    "angular": [
+      3,
+      0,
+      0,
+      0
+    ],
+    "binary_sha256": "c087fe6de4c6a13849150645630fbc7877712664a5a2beedf5f0acde786f580f",
+    "compile_seconds": 3.4056613370776176,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__de8f2a1a_67_b977bb88ffd6f66b02b2998814562a06a10793bcfca7db810c062b31730ec341_cu_984f033e7ProgramENS1_16CoordinateOutputILj12EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 148,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 512
+      }
+    ],
+    "component_indices": [
+      0
+    ],
+    "native_key": "ad251562b9fb66cc818e9a720dd9daa3802e85d35992d82230ed6cb675aef34f",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      18,
+      35,
+      40,
+      57,
+      62,
+      79,
+      84,
+      101,
+      118,
+      123,
+      140
+    ],
+    "source_sha256": "3f803240bc1256e99c7ff5fde83d3671a7db4db7f4d9c52edc4b62994c04a14e",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "3e2826ff4b94e068aec9dcf7dad56e2577efa917cb9229a008da0d7e078e4e1e": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "836cb8f83081781a6d53dbfe433e3548fc641c519b1270ebf870de4de3b74ff0",
+    "compile_seconds": 3.197207646910101,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__54893606_67_fc3d872aaf12354f785a5cfe6e63c3afc1f7f49f484283cd8c8f18e301734d02_cu_984f033e7ProgramENS1_16CoordinateOutputILj6EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 50,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      }
+    ],
+    "component_indices": [
+      0
+    ],
+    "native_key": "e01c5617ae117e6a38b2620c66115403c6b2d784ff0d4ba2ee0ffc8574ae95d8",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      6,
+      17,
+      22,
+      27,
+      32
+    ],
+    "source_sha256": "a4f74beb94ccb612efd307025f7effed4f0b65769f960ee593c577427b80cf6c",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "4395304ffd076080ace7d5e48e07f0316c8a39156056777ca58c7186a1a8362b": {
+    "angular": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "binary_sha256": "d262378e3aad151adb2e923a67d1c79c2af87c98b4d7bcbebf5a1452dd2fedbd",
+    "compile_seconds": 3.3664761800318956,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__13978aa3_67_a42c5d3777c2bd103df13a550a13652e40841c842bbbd73a9ccdda309e3ce573_cu_984f033e7ProgramENS1_16CoordinateOutputILj12EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 150,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 512
+      }
+    ],
+    "component_indices": [
+      0,
+      2
+    ],
+    "native_key": "deca174e1f3a2788e41ec92d6a7a706382e432a8cd1431243f7be988c093820b",
+    "output": "weighted_hessian",
+    "output_indices": [
+      1,
+      18,
+      35,
+      40,
+      57,
+      62,
+      79,
+      84,
+      101,
+      118,
+      123,
+      140
+    ],
+    "source_sha256": "0c6dee41e595d2e0a3c45871c9aae732e3c53f54f8854ebed4dbf75d2c3832bd",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "493165b0b5c54b3fbae6cefc4c12c9af56b447e6017b4de306575851a57d35bd": {
+    "angular": [
+      2,
+      1,
+      0,
+      1
+    ],
+    "binary_sha256": "eb93a7fafdd288439bd5b36b39d5df590ec8817fb8b0e392bb1f06dddf353274",
+    "compile_seconds": 3.4598939439747483,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__959d1407_67_1f9f075297ff50cb8773ec7b4c7af545d4396e162db6f64b95cbd43bcc7a6cde_cu_984f033e7ProgramENS1_16CoordinateOutputILj12EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 206,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 512
+      }
+    ],
+    "component_indices": [
+      0
+    ],
+    "native_key": "5e331a26eb982c843773f494549fbaf127c0b825fe2eb1d038ca58b174241105",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      18,
+      35,
+      40,
+      57,
+      62,
+      79,
+      84,
+      101,
+      118,
+      123,
+      140
+    ],
+    "source_sha256": "902d99f3456fee5e719ce522bd79c57e1aa9dfad43316b147dd225ca0dad2080",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "51a2f8ab7a8ebdc5b1856c6e4ed729251b0f9528a9d6b9c051d56515c612126f": {
+    "angular": [
+      3,
+      3,
+      3,
+      3
+    ],
+    "binary_sha256": "6efc752455f52ac4e315c2165457e57e60fb03758197798b63a9494737b7cca9",
+    "compile_seconds": 3.954287812113762,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__ca2455b0_67_4edcb0d99d4023b059c2424f3ce6133c4d3f51d0980970784c307604d9193527_cu_984f033e7ProgramENS1_16CoordinateOutputILj1EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 254,
+        "shared_bytes": 0,
+        "spill_load_bytes": 2040,
+        "spill_store_bytes": 1856,
+        "stack_bytes": 2176
+      }
+    ],
+    "component_indices": [
+      0
+    ],
+    "native_key": "cac555db4b7b3e3ad12d9e636e149019be07565abdf98ee70bb227a031ead2b5",
+    "output": "weighted_hessian",
+    "output_indices": [
+      0
+    ],
+    "source_sha256": "307d17bf2867fc44f0e91086c9debddb0f245b3cbe633164f5b874a4a138fb54",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "57a70f84bf1113a92911e546cf8be29f799b6b11494dbc1956bedb0d0456d7fe": {
+    "angular": [
+      3,
+      3,
+      3,
+      3
+    ],
+    "binary_sha256": "853f7647496b7f4030f79b3ab0313496c797cdf8078e95b363ca651f1cc0731f",
+    "compile_seconds": 5.3689543979708105,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__55938560_67_097f5072965c0a1e4c34da4c1473f03449ce5524e19204c581c09bfa63a0f6ed_cu_984f033e7ProgramENS1_16CoordinateOutputILj1EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 254,
+        "shared_bytes": 0,
+        "spill_load_bytes": 11592,
+        "spill_store_bytes": 10176,
+        "stack_bytes": 6432
+      }
+    ],
+    "component_indices": [
+      0
+    ],
+    "native_key": "62fd7dc1f063321e62b5bc5eb01bd89a63b0e347533e5727b7b471d6adeb304e",
+    "output": "weighted_hvp",
+    "output_indices": [
+      0
+    ],
+    "source_sha256": "6d0ae26b88bb22cea8abd19126aaafe6840fc27d0088ced22b7c5fd248a46d06",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "5deb1ffdbd5246feba207b95260026444ee50d5a8b1a2fe5ddb9f1e9e8a9ee0d": {
+    "angular": [
+      3,
+      0
+    ],
+    "binary_sha256": "85d560c658f34ba8374958734100bc34b92d22cd24324ea090f602fad312cbc2",
+    "compile_seconds": 3.312168386997655,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__e09c8cfb_67_2ca0207971ad510463ecaa0a494394ade12c830b7ca18805353827f98029c9a3_cu_984f033e7ProgramENS1_16CoordinateOutputILj9EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 132,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 512
+      }
+    ],
+    "component_indices": [
+      0
+    ],
+    "native_key": "625feadd30460e2aece65f78d1dbed415183ad16e84516132ce1fec798f1b47d",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      15,
+      20,
+      34,
+      39,
+      53,
+      58,
+      63,
+      77
+    ],
+    "source_sha256": "494875bfb1f53e5144a8c52ed5a514d21508d4860abcf8a755a92703a5d7a307",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "63aff6115dcb8f9d000a95628068954beacbf8da0c9c37214719bfaa4136519b": {
+    "angular": [
+      3,
+      3,
+      3,
+      3
+    ],
+    "binary_sha256": "817716b7c92f6a689571e0609d9cf7492a41db64e930e7edc01bdead60df0103",
+    "compile_seconds": 3.969652189873159,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__bfe5802a_67_114a50e9867f20684c26b910daea475cd72909735ac3271d14f829e4fc5d3ae6_cu_984f033e7ProgramENS1_16CoordinateOutputILj1EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 254,
+        "shared_bytes": 0,
+        "spill_load_bytes": 2040,
+        "spill_store_bytes": 1856,
+        "stack_bytes": 2176
+      }
+    ],
+    "component_indices": [
+      0
+    ],
+    "native_key": "f1ccecc5d004daa6ddb9874b15a340f35fcf04294fdc015614ea0bec551cbacb",
+    "output": "raw_hessian",
+    "output_indices": [
+      0
+    ],
+    "source_sha256": "b77e895d233ead517c754fffb1107f8329be45a8f9a095821cc3d9da1a8fea15",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "667afc517338cff125ac605f4d4cbfddb612274676d9f60a591ad0dce14972d9": {
+    "angular": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "binary_sha256": "31867c275b6095d45175261efe564214dbb215173486c9922aecc09d6eeafa46",
+    "compile_seconds": 3.5638131629675627,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__6c2f2458_67_810354f147a957939f32a5d61d92ddcafefa3a5a00ba0d5fa5ebd41892537f95_cu_984f033e7ProgramENS1_16CoordinateOutputILj12EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 255,
+        "shared_bytes": 0,
+        "spill_load_bytes": 520,
+        "spill_store_bytes": 520,
+        "stack_bytes": 1040
+      }
+    ],
+    "component_indices": [
+      0,
+      2
+    ],
+    "native_key": "e3e51072a0e4e30a8d506e13466d34ee63fcdc3d47acd976c423e0ad2e152f4b",
+    "output": "weighted_hvp",
+    "output_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "source_sha256": "778d808a8337013db16a179dcfcca23c2a31330767abcfefbf10d0cc8c07e8f0",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "6a4ff464097232cb6be0a2fb013dfdaf09ee72ec85f267348f7977dc95052414": {
+    "angular": [
+      3,
+      0
+    ],
+    "binary_sha256": "26baba4c56914badf8ccc4005b0b7e56573f854b4cd8821ad2323280eba4ddbe",
+    "compile_seconds": 3.3748232419602573,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__f75e149e_67_286f10af75ca3747ce157dfc55abc5a7ae24c8aeb7053ad5cc347a8006ccb2a4_cu_984f033e7ProgramENS1_16CoordinateOutputILj9EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 240,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 512
+      }
+    ],
+    "component_indices": [
+      4
+    ],
+    "native_key": "306433af20c60d7460487bdb5ae54ff28b82724a79b780e3150a3495030adb10",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      15,
+      20,
+      34,
+      39,
+      53,
+      58,
+      63,
+      77
+    ],
+    "source_sha256": "5b6039ff7bea09f7f7d1298c85fd065cb9d8251a1df8e0054b8ea18293bd06e4",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "74684b3b8969bee451d3a096b48cb75381170c84a2b45693d546eb7e00208aa5": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "39aa0e13b7b96fb07b75380aeac4cdd1dfc9def9cb2c9fde47c4664b2ccb29d7",
+    "compile_seconds": 3.208771905163303,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__1d12edab_67_7988a825e57f008d8ff5c1c3f58dacb039e25db5bb195a286d706a7afecccdba_cu_984f033e7ProgramENS1_16CoordinateOutputILj6EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 64,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      }
+    ],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "3e658fb1bfcda56ebf39444df5866996a9ac5fddcf9da494f9963f8dadcca730",
+    "output": "weighted_hessian",
+    "output_indices": [
+      1,
+      6,
+      17,
+      22,
+      27,
+      32
+    ],
+    "source_sha256": "e23fc99b3c2d9b78c9285b924aa452f45e63254c946ce78670ed8d21aa5fd5f9",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "75e874a05a3b0e41943971d240f0a3910a2bb71e0f78d2f7efff667964f7d185": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "c6c4f4dfc535bd53771178688f3ddf05ba0614e4d02b4c33f625df66209ecee4",
+    "compile_seconds": 3.227345847990364,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__a2fec8cd_67_a66ef72ba478fbe49921fd1f7fa265ea9f7f6a4c544a13e17a72dc35bfc6135f_cu_984f033e7ProgramENS1_16CoordinateOutputILj6EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 68,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      }
+    ],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "abe67d49fbcd31c7a90f813496a3d2e4ef5d6773d5317445bae35ef169e200a0",
+    "output": "weighted_hvp",
+    "output_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "source_sha256": "fa7c2949e969d2d915caba7ac7dc2cb89b544d890c0a0e93716d13c14a510a7d",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "8125840be2ed0ada46a98c4831a0f5dcbb139124d6408a37f1810a746490f205": {
+    "angular": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "binary_sha256": "280c4afe8dabcd9599d9e7da1191e9c86b8e726b50e48be60217d7e9dac3512e",
+    "compile_seconds": 3.3720958530902863,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__b9678f9a_67_39b95bf5f1c7fbfc7ffcc3a01e58ddbf0f7c839c901628c9a520da81cd7384fb_cu_984f033e7ProgramENS1_16CoordinateOutputILj12EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 136,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 512
+      }
+    ],
+    "component_indices": [
+      0
+    ],
+    "native_key": "149e94140421ea7349df47774bf1acd1ac6501e3a4cfe97bd06323bd81b99379",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      18,
+      35,
+      40,
+      57,
+      62,
+      79,
+      84,
+      101,
+      118,
+      123,
+      140
+    ],
+    "source_sha256": "d11a5e18cbaad373ad8db59ca13f2ca1ee3dd532f1a033d60714059012135b12",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "88a23a50ac652d3560bead5949f3ab2fa2221d5fb2682edf53b20aad9b6218b5": {
+    "angular": [
+      2,
+      1,
+      0,
+      1
+    ],
+    "binary_sha256": "518bd3a242ba6a80e36adbbdebf09b4714b7cce570fdedb8173bab93123320f7",
+    "compile_seconds": 3.642985485959798,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__59180a27_67_4f4ec7e49e61d57f9f7d0fc541f219019831a3f11815d1ac2dc55197d099bc35_cu_984f033e7ProgramENS1_16CoordinateOutputILj12EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 254,
+        "shared_bytes": 0,
+        "spill_load_bytes": 56,
+        "spill_store_bytes": 56,
+        "stack_bytes": 576
+      }
+    ],
+    "component_indices": [
+      4
+    ],
+    "native_key": "741cc46fee0f35efcd8278f380311b89f158604fbf6dafd568a506c2ae02d257",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      18,
+      35,
+      40,
+      57,
+      62,
+      79,
+      84,
+      101,
+      118,
+      123,
+      140
+    ],
+    "source_sha256": "0c73eabe105d53e4426e670c4cf425916d26c836562a1080458168f64b7e05ae",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "9679f4cadbf22106a3044989ca17f495124f90e228352f3a67474bb2a6f45388": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "b127430ed3b6c358e263622667f40879999d1c0293038f8fe7ce89649198d39f",
+    "compile_seconds": 3.26830931706354,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__4be87f53_67_e64cbeed2f9df3b80bc166bb53a040f139b2a54727eb01bacd84c2c983d0835a_cu_984f033e7ProgramENS1_16CoordinateOutputILj6EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 94,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      }
+    ],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "1f58d97c065e55627354787cf57742b0124c1396fe3cb4b25ff951a15f932e23",
+    "output": "weighted_hvp",
+    "output_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "source_sha256": "443e829c9f4fa153cb86e49976a70a3afbffcb945fbafdb27044e16132770bb2",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "9b49fd25becba9353424c72c602c49136a7d989feb13d5cd28219321c601a561": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "bf5f30684ac34ba8dce60da61542a8ac4a357ae634a674952cc20966716035c1",
+    "compile_seconds": 3.306643303949386,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__6537fe06_67_c387005a913222652a8a444e1f1276e1202e53ce5bfc9c4b73147f8ecdc8a07a_cu_984f033e7ProgramENS1_16CoordinateOutputILj9EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 134,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 512
+      }
+    ],
+    "component_indices": [
+      0
+    ],
+    "native_key": "445d8d6c125583fd12390b7d672ff10337e5f3a0c67fbaaab333b66fea610ec8",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      15,
+      20,
+      34,
+      39,
+      53,
+      58,
+      63,
+      77
+    ],
+    "source_sha256": "a8029500388457a5739adf13143a3fa490c4086b7e759c104c42398b9278da1f",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "9b96549ab263a6aa940a6b0ef61129cfd856838acbe63b5d8976b66717dd24f4": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "90378335993b659225c320e00079939918af2ad4d8bd94caa5ff12ca9acd35e7",
+    "compile_seconds": 3.7762379380874336,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__6682f61c_67_18ee65271ca75d0504ee05aa8053defda7a65fac5cbbe7c8ef00060b8bcbbd87_cu_984f033e7ProgramENS1_16CoordinateOutputILj9EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 254,
+        "shared_bytes": 0,
+        "spill_load_bytes": 1816,
+        "spill_store_bytes": 1752,
+        "stack_bytes": 1872
+      }
+    ],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "83c69053d3f83361f5e4b9d14c2da2c5779f33ef20a7a25a56130895febe82f1",
+    "output": "weighted_hvp",
+    "output_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "source_sha256": "6a74a8a387948f07b6c608f18e4f0200b824718b4f89e6beb9c02f7dc90a6dfe",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "9caf553c84febdca7d0fd635a96ac08274d6bf286f3aa43a54ca754b5c0f0913": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "3ff9d0a066d333cc6068e554268f5216031446c067eedb8c11b75c45ea256fd9",
+    "compile_seconds": 3.2041446790099144,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__43c811d9_67_619979b429b0b41964540bb6509bcddfdd80b42ff5f65ecb6f1e91fbb960e6ea_cu_984f033e7ProgramENS1_16CoordinateOutputILj6EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 58,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      }
+    ],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "80139889092c2b3ae9d4c9bf929d14b342e42220667146b3db5f68a704e80e70",
+    "output": "weighted_hessian",
+    "output_indices": [
+      1,
+      6,
+      17,
+      22,
+      27,
+      32
+    ],
+    "source_sha256": "f46b73bff5c55107a3c848a8d30101bd93faf0724d96d19706a88b6b3e80f563",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "b144698e9f1c9c6e4ddefac15afaced4f0bc9f59c0ac42fd68567bc3aab43d50": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "d40ba082a6659876eb330dfea3ee3439ab61ae93411c5292d67d10d7c628c17e",
+    "compile_seconds": 3.3657808620482683,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__ea9f8867_67_1b4c91a07409220c015a406fb7376898ad32b855c9d621c3bcffd084d1d73581_cu_984f033e7ProgramENS1_16CoordinateOutputILj9EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 248,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 512
+      }
+    ],
+    "component_indices": [
+      4
+    ],
+    "native_key": "e191fc76920d79bb1eb21bf741f54ab76f8eb54268c62a348da563f6c5205f7b",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      15,
+      20,
+      34,
+      39,
+      53,
+      58,
+      63,
+      77
+    ],
+    "source_sha256": "0261b10f2400371e5b93d12688e617bce66eebcc12965b5826b8d41e23675844",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "b53b765144443a63e14d7684edfbe104d5f039cd579cb5d936c3a8de69d0778f": {
+    "angular": [
+      3,
+      0,
+      0,
+      0
+    ],
+    "binary_sha256": "b9a31cf168620399bd1b8d93aee717bce3fc823814e3dccc6a0403677fe45c7c",
+    "compile_seconds": 4.254747546976432,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__fd0d2e1c_67_cd851b00cacbb3fc45f05afb31f0a2ecace5e80040fa35a16bcb1c3eb7d13e3e_cu_984f033e7ProgramENS1_16CoordinateOutputILj12EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 255,
+        "shared_bytes": 0,
+        "spill_load_bytes": 4232,
+        "spill_store_bytes": 3864,
+        "stack_bytes": 3152
+      }
+    ],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "c5e4bc69642069b3741c5bc6e619cf994cfaf91513fd52672d9a6140f83d4116",
+    "output": "weighted_hvp",
+    "output_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "source_sha256": "5e50a696e0e1f8f7277da7e545249a41db7427ee007db064a245b4b87ecae6fa",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "bfc48c87aba008ba2a9c5b6d003acefa67eb980c3ad8ebf3cf6a845b6ae4aaf4": {
+    "angular": [
+      3,
+      0
+    ],
+    "binary_sha256": "e7bde59334251b113dba25a0862ed9374a896e515c3d323abd47f58a7d084b13",
+    "compile_seconds": 3.724111839197576,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__654f4302_67_77c2438991aa3429c491a8c96f3e829e53bacd23ad4656bddf211c301e3f9da7_cu_984f033e7ProgramENS1_16CoordinateOutputILj9EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 254,
+        "shared_bytes": 0,
+        "spill_load_bytes": 1520,
+        "spill_store_bytes": 1464,
+        "stack_bytes": 1584
+      }
+    ],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "8479033489b16e0dd27f1b679221e10bc96a5e78bc82a678385a50975a570233",
+    "output": "weighted_hvp",
+    "output_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "source_sha256": "79a10f89947683abd169fbc890938b8f73922b2c509a5686feeb8962efcf8d4e",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "c8ef2d9843671a1e48b03b06f7027b016cafd97ebd593803ce100e89d9440569": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "40cc3e080503cb667dcd60b0bfa1e23dbe0c70e8ee96d6798197131c2f316b41",
+    "compile_seconds": 3.2022810908965766,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__f85df4f7_67_4f75210a2c2d6d97b8d487bddaf00e41b0e0b6dea7543510618a793ce4a9668f_cu_984f033e7ProgramENS1_16CoordinateOutputILj6EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 54,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      }
+    ],
+    "component_indices": [
+      4
+    ],
+    "native_key": "1caffecb3dbe77b30ef8332e45f8d2d3241d1639b6836f54162414d5db16671d",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      6,
+      17,
+      22,
+      27,
+      32
+    ],
+    "source_sha256": "c052b475c49d50d30208a6edb382f88cec07e0027fd81f234fe23eb267ef52f7",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "ccfe36cc48174fdc95411461ff4a0f751ace8bd400aecab570b2d88a52fe09a6": {
+    "angular": [
+      2,
+      1,
+      0,
+      1
+    ],
+    "binary_sha256": "3be63005f491b60646c34f6055eb0d3523afebe30045e2111b2cc6c48937a325",
+    "compile_seconds": 4.715818477794528,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__cb9027df_67_f7a37c4935f7152f9dd2c7a3424e2d50d29ab1401d5ef27a103c19c79b2dbfc9_cu_984f033e7ProgramENS1_16CoordinateOutputILj12EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 255,
+        "shared_bytes": 0,
+        "spill_load_bytes": 8552,
+        "spill_store_bytes": 7576,
+        "stack_bytes": 4720
+      }
+    ],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "6839acc42674d657b9a8959b536597b7092d1866fe9fb4a9828a7c7bca0da1c0",
+    "output": "weighted_hvp",
+    "output_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "source_sha256": "2c6564e2a6f0eaeb7d1f5144930b7da4f318505d15fd6df37cb611b7dbf5a4b2",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "d97157d2b49098b251e4a3c6190d7978b2135870881678eb26dfdbfbce5c9631": {
+    "angular": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "binary_sha256": "4b6d222fc10575c18549f2da7625d3b4b7f17ad73a731bf012bed340bccad69d",
+    "compile_seconds": 3.362858499865979,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__456403fc_67_ade13b4ab89999d9faf3d2c43560ca1e751c481446bd7fb792f6aa4f2b78ed53_cu_984f033e7ProgramENS1_16CoordinateOutputILj12EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 122,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 512
+      }
+    ],
+    "component_indices": [
+      2
+    ],
+    "native_key": "9adba12674c1d4edc3316f9377aa4b018686de9368bd8031aa9486fa2a5c81ca",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      18,
+      35,
+      40,
+      57,
+      62,
+      79,
+      84,
+      101,
+      118,
+      123,
+      140
+    ],
+    "source_sha256": "85f3132abcda16b3e6e4cd15f3fd30603528484cf33865cb7a2a509bfd02f407",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "ebc76d5ad1800eeace5b38e1d7c8372a701f3c19b209652122734d92bc9527a0": {
+    "angular": [
+      3,
+      0
+    ],
+    "binary_sha256": "6435db9d318c0d5f6f331b25f0f22e7a611c78fd459f0efb7fb753795d0f87b6",
+    "compile_seconds": 3.422020968981087,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__601cb970_67_38b79c704bb20801b5ed39462556b981544dcec6c02b158922c56732aa247b42_cu_984f033e7ProgramENS1_16CoordinateOutputILj9EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 254,
+        "shared_bytes": 0,
+        "spill_load_bytes": 8,
+        "spill_store_bytes": 8,
+        "stack_bytes": 528
+      }
+    ],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "5eb9870ac705a0137695857f4b7a0641f1fa65c880455777b5b647dcf01f7646",
+    "output": "weighted_hessian",
+    "output_indices": [
+      1,
+      15,
+      20,
+      34,
+      39,
+      53,
+      58,
+      63,
+      77
+    ],
+    "source_sha256": "0f05c5fd4062861c7ae573e93cf219e34151c79f5fde5efc78f165bfc10d177d",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "f137d740fc025e144880adb04e8c0963da9f8fe177cd315b10d0fb090c866551": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "5e193051a66d0f02dc553cb8629d2294764e6d305778e06c51f29c5c3f2c10c5",
+    "compile_seconds": 3.1893521670717746,
+    "compiler_resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "registers": 26,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN6vibeqc3scf16weighted_runtime8contractIN100_GLOBAL__N__d955f631_67_e7e1b3a6a0b9dca390bfd11480f5a5933c6a353e56e00739037005944a9f6266_cu_984f033e7ProgramENS1_16CoordinateOutputILj6EEEEEvPKNT_6RecordEmPNT0_6ResultEPi",
+        "registers": 54,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      }
+    ],
+    "component_indices": [
+      0
+    ],
+    "native_key": "b98e64efbb9bf4c59f0c3f68a31036e7589e90f6419fefe26be219b0697e3d24",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      6,
+      17,
+      22,
+      27,
+      32
+    ],
+    "source_sha256": "688bca103d640906c92c80236afa8d1e8a6e34c6f384c6076c6a63e888509251",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  }
+}
