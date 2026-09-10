@@ -53,6 +53,22 @@ an implementation requirement of differentiation and does not expose a new
 public shell family. A metric primitive uses its two real auxiliary centers;
 no normalized dummy basis contributes to its derivative.
 
+Bulk coordinate tensors, bounded metric/three-center source tiles, and the
+externally weighted consumer instantiate the same generated derivative policy.
+`src/runtime/cuda_gaussian_products.cuh` owns rank-generic traversal of normalized
+primitive products and sparse Cartesian AO terms. Its policy supplies the
+scientific evaluator and accumulated channels; the traversal supplies cyclic
+lane ownership, physical atom projection, and final gradient scatter. DF values
+instantiate this same runtime with a separately generated value policy.
+Adding a supported angular class therefore does not require another native
+formula-specific contraction loop. Coordinate consumers project the contracted
+center channels, while weighted consumers scatter them after contraction.
+
+The shared generated scalar headers use internal device linkage so independent
+CUDA translation units can include them safely. Value and derivative policies
+have separate headers; a derivative-only consumer does not register unused Rys
+value tables. CPU and libcint definitions remain independent numerical oracles.
+
 `--derivatives` selects these programs in `tools/generate_df_kernels.py` and
 `tools/validate_df_values.py`. Raw all-class fixtures include coincident
 centers, center translation, independent libcint derivatives, spherical

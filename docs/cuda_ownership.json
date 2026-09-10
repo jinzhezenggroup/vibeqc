@@ -505,7 +505,7 @@
       "status": "partial"
     },
     "df_derivatives": {
-      "current_default": "native Dual/source derivative path; generated explicit derivative bridge",
+      "current_default": "Generated center definitions for bulk/source derivatives; coordinate-wise HF response still selected by default pending weighted-response promotion",
       "evidence": [
         "benchmarks/results/df-derivatives-rtx5090/raw-summary.json"
       ],
@@ -533,10 +533,11 @@
         "docs/shell_codegen.md",
         "docs/weighted_eri.md",
         "docs/second_integral_derivatives.md",
-        "python/vibeqc_compiler/integral/production_shell_classes.json"
+        "python/vibeqc_compiler/integral/production_shell_classes.json",
+        "benchmarks/results/weighted-eri-144/README.md"
       ],
       "generated_capability": "IntegralIR values/first derivatives, weighted ERI and second-order providers through f",
-      "missing_capability": "complete replacement is class/schedule-specific; retain unpromoted fallback classes",
+      "missing_capability": "Class/consumer-specific lowering and complete endpoint promotion remain necessary. The archived 72-run weighted-ERI comparison has ratios crossing one, so psss remains a measured production exception. Unpromoted registry classes retain their bounded fallback; generated source existence alone does not authorize class retirement.",
       "owner": "direct_integrals",
       "retirement_condition": "remove each old scientific class when numerical/resource/full endpoint gates pass and no independent role remains",
       "status": "partial"
@@ -555,10 +556,13 @@
     "one_electron_derivatives": {
       "current_default": "native scalar/cooperative force and Dual response paths; generated derivative opt-in",
       "evidence": [
-        "benchmarks/results/one-electron-derivatives-rtx5090/validation-summary.json"
+        "benchmarks/results/one-electron-derivatives-rtx5090/validation-summary.json",
+        "docs/one_electron_derivatives.md",
+        "benchmarks/results/one-electron-derivatives-rtx5090/sp8-df-b3-thread.json",
+        "benchmarks/results/one-electron-derivatives-rtx5090/sdf18-thread.json"
       ],
       "generated_capability": "generated fixed-density S/T/V first derivatives and public spherical weights",
-      "missing_capability": "generated complete endpoint/resource performance still needs promotion",
+      "missing_capability": "Generated response needs schedules that remove measured complete-endpoint regressions: resident DF warm replay 4.586/5.429 ms and Direct sdf18 changed geometry 36.667/39.352 ms (native/generated, archived revisions). These measurements justify retention, not a completed derivative migration.",
       "owner": "one_electron_derivatives",
       "retirement_condition": "retire only after derivative/force gates, independently of values promotion",
       "status": "performance_exception"
