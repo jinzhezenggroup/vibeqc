@@ -1,6 +1,8 @@
 #ifndef VIBEQC_INTEGRALS_ERI_GEOMETRY_HPP
 #define VIBEQC_INTEGRALS_ERI_GEOMETRY_HPP
 
+#include <type_traits>
+
 #include "integrals/range_moments.hpp"
 
 #ifdef __CUDACC__
@@ -21,10 +23,15 @@ namespace vibeqc::integrals {
  * not replace the established full-Coulomb native/HF geometry path. Derived
  * overflow is reported to the caller; there is no fallback to another kernel.
  */
-template <typename Geometry>
+template <typename Geometry, unsigned MaximumOrder = 13>
 VIBEQC_ERI_HD bool make_eri_geometry(const double* exponents, const double* centers,
                                      unsigned maximum_order, CoulombRange range, double omega,
                                      Geometry& geometry) {
+  // The explicit bound protects both legacy fourteen-moment geometry and
+  // second-order geometry. A smaller caller array cannot silently overflow.
+  static_assert(std::extent<decltype(geometry.boys)>::value > MaximumOrder,
+                "ERI geometry must own every moment in its declared domain");
+  if (maximum_order > MaximumOrder) return false;
   if (!exponents || !centers) return false;
   for (unsigned slot = 0; slot < 4; ++slot) {
     if (!std::isfinite(exponents[slot]) || exponents[slot] <= 0) return false;
@@ -59,8 +66,8 @@ VIBEQC_ERI_HD bool make_eri_geometry(const double* exponents, const double* cent
   geometry.prefactor =
       (2 * std::pow(pi, 2.5) / p / q / std::sqrt(p + q)) * std::exp(-decay_argument);
   return std::isfinite(geometry.prefactor) &&
-         range_moments(maximum_order, geometry.rho * distance, geometry.rho, range, omega,
-                       geometry.boys);
+         bounded_range_moments<MaximumOrder>(maximum_order, geometry.rho * distance, geometry.rho,
+                                             range, omega, geometry.boys);
 }
 }  // namespace vibeqc::integrals
 #undef VIBEQC_ERI_HD

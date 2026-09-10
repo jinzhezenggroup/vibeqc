@@ -44,6 +44,58 @@ to all corresponding center slots before HVP evaluation, then sum those slots
 when publishing the atom response. This applies the chain rule `A.T H A`.
 Coincident coordinates alone never identify two mathematical centers.
 
+`SecondAtomMap` expands directions and scatters HVPs using sorted distinct
+physical atom labels; it also provides the small diagnostic two-index Hessian
+scatter. Its mapping is explicit and cannot be inferred from coordinates.
+
+## Bounded native execution
+
+`compile_second_derivative` accepts an explicit `CppCompilerAdapter` or
+`CudaCompilerAdapter` and uses the shared hash-verified native compiler cache.
+It compiles one to twelve coordinate outputs and at most 64 selected Cartesian
+components. `second_coordinate_tiles` partitions a dense/svec Hessian or HVP
+into explicit coordinate selections, with six outputs per tile by default.
+Geometry may be recomputed between tiles to bound scalar liveness. Native
+raw output requires one selected AO component per compiled helper.
+
+`PreparedSecondDerivative` retains the shared weighted-integral runtime owner
+with a coordinate-output policy. It consumes a single-pass iterable of
+`SecondPrimitive` records, each containing mathematical-center geometry,
+packed fixed weights, a fixed normalization scale and an optional direction.
+Its tagged record has the established 208-byte primitive prefix, one double
+per selected component and twelve direction doubles. Stride and tag checks
+prevent the new suffix from being interpreted as a first-gradient record.
+Second-order ERI geometry owns fifteen Boys moments. The legacy fourteen-moment
+API still rejects order fourteen without modifying its output buffer.
+
+The shared resource planner accounts for record staging, native publication
+storage, compact chunk results, detached results and the CUDA arena. A retained
+owner rejects impossible capacities before allocating or loading a device.
+Partial and empty chunks are supported. Invalid inputs, nonfinite arithmetic
+and late stream failures do not publish partial results; the owner can be
+replayed afterward. Call stacks, compiler/Python metadata, caller-owned inputs
+and CUDA context overhead are named scope exclusions. Kernel register, stack
+and spill reports remain visible as compiler-resource diagnostics.
+
+`prepare_second_shell_stream` freezes contracted shell inputs using the same
+public-weight pullback and angular normalization as first derivatives. Input
+primitive coefficients already include the native radial normalization.
+Weighted requests accept full shell `WeightTile` inputs, including padded
+strides. Real-spherical inputs require an explicit public `ShellSignature` and
+Cartesian-to-public projection matrices. Every nonzero pulled-back component
+must belong to the compiled subset; incomplete coverage fails explicitly.
+A weighted Hessian with a unit public cotangent evaluates a raw public
+component, including spherical components. The adapter's numeric peak is
+composed with the prepared owner's budget before execution.
+
+`query_integral_capability` exposes the separate `cpu_second_derivatives` and
+`cuda_second_derivatives` backends. Eligibility requires explicit coordinate
+tiling where the full output exceeds twelve coordinates. It does not change
+the existing direct-HF/first-gradient reports. Execution diagnostics separately
+record source lowering, compilation, successful execution, independent
+numerical-gate status and the unavailable method endpoint. A successful call
+does not itself run or claim an independent numerical gate.
+
 ## Scientific validation
 
 The optional `tools/vibeqc_validation/second_derivatives.py` uses Libcint's
@@ -52,7 +104,8 @@ fixtures. Its imports are outside the installed compiler/runtime dependency
 path. The tests cover asymmetric p/d and f cases, independent ERI diagonal,
 same-pair and cross-pair blocks, translation on both indices, same-center
 limits, packed normalization, arbitrary signed weights, raw/HVP agreement,
-output tiling and optimize-before/after-differentiation schedules.
+output tiling and optimize-before/after-differentiation schedules. Contracted
+Cartesian/spherical HVPs use independent first-gradient finite differences.
 
 Second derivatives use a separate scale-aware gate: with
 `s = max(1, max(abs(H)))`, analytic raw blocks have absolute tolerance

@@ -84,7 +84,11 @@ class CapabilityCheck:
 
 
 def query_integral_capability(
-    integral: IntegralIR, *, backend: str = "cuda", component_indices=None
+    integral: IntegralIR,
+    *,
+    backend: str = "cuda",
+    component_indices=None,
+    output_indices=None,
 ) -> CapabilityCheck:
     """Query the existing backend's semantic input boundary without emitting code.
 
@@ -95,6 +99,46 @@ def query_integral_capability(
     a weighted request and silently apply an HF contraction.
     """
     reasons = []
+    if backend in ("cpu_second_derivatives", "cuda_second_derivatives"):
+        from .blocks import SecondDerivative
+        from .second_derivatives import build_second_derivative_kernel
+
+        try:
+            if len(integral.contractions) != 1 or not isinstance(
+                integral.contractions[0], SecondDerivative
+            ):
+                raise ValueError(
+                    "second derivative backend requires one explicit second-order consumer"
+                )
+            consumer = integral.contractions[0]
+            dimension = 3 * len(integral.requested_derivative_centers)
+            size = (
+                dimension
+                if consumer.output == "weighted_hvp"
+                else (
+                    dimension * (dimension + 1) // 2
+                    if consumer.packing == "svec"
+                    else dimension**2
+                )
+            )
+            selected = (
+                tuple(range(size)) if output_indices is None else tuple(output_indices)
+            )
+            if not 1 <= len(selected) <= 12:
+                raise ValueError(
+                    "select one to twelve coordinate outputs per native second-derivative tile"
+                )
+            build_second_derivative_kernel(
+                integral, component_indices, output_indices=selected
+            )
+        except (TypeError, ValueError) as error:
+            return CapabilityCheck(False, reasons=(str(error),))
+        return CapabilityCheck(True, schedules=("bounded_coordinate_tile_v1",))
+    if output_indices is not None:
+        return CapabilityCheck(
+            False,
+            reasons=("this backend does not accept second-derivative output indices",),
+        )
     if backend in ("cpu_range_weighted_eri", "cuda_range_weighted_eri"):
         from .weighted_eri import canonical_range_weighted_eri_ir
 

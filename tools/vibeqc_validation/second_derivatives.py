@@ -4,7 +4,7 @@ This module belongs to the optional reference tools. Native generated execution
 does not import NumPy quadrature, SciPy or PySCF to evaluate its primitives.
 """
 
-from math import pi, prod
+from math import pi, prod, sqrt
 
 import numpy as np
 from vibeqc_compiler.integral.shell_spec import cartesian_components
@@ -223,4 +223,79 @@ def libcint_eri_hessian(angular, exponents, centers):
             )
             result[first, :, second] = block
             result[second, :, first] = block.transpose(1, 0, 2, 3, 4, 5)
+    return result
+
+
+def contracted_public_first_gradient(family, inputs, centers, weights):
+    """Independent Libcint first gradients for contracted Cartesian/spherical FD.
+
+    The caller holds the public cotangent fixed while displacing mathematical
+    centers. Nuclear attraction moves its explicit external center separately
+    from the two Gaussian centers. No generated derivative graph is involved.
+    """
+    from tools.generate_validation_references import pyscf_molecule, quartet_data
+
+    mol, scales, _ = pyscf_molecule(
+        {
+            **inputs,
+            "coordinates": np.asarray(centers)[: len(inputs["coordinates"])].tolist(),
+        }
+    )
+    if family == "eri":
+        gradient = np.asarray(quartet_data(mol, scales)["gradient"])
+        return np.sum(gradient * weights, axis=(2, 3, 4, 5))
+    operator, factor = {
+        "overlap": ("ovlp", 1),
+        "kinetic": ("kin", 1),
+        "nuclear_attraction": ("rinv", -inputs["operator_charge"]),
+    }[family]
+    origin = centers[2] if family == "nuclear_attraction" else (0, 0, 0)
+    with mol.with_rinv_origin(origin):
+        first = -factor * mol.intor_by_shell(f"int1e_ip{operator}", (0, 1), comp=3)
+        second = -factor * mol.intor_by_shell(
+            f"int1e_ip{operator}", (1, 0), comp=3
+        ).transpose(0, 2, 1)
+    gradient = np.array(
+        [first, second] + ([-first - second] if family == "nuclear_attraction" else [])
+    )
+    offset = mol.ao_loc_nr()[1]
+    gradient *= (
+        scales[:offset][None, None, :, None] * scales[offset:][None, None, None, :]
+    )
+    return np.sum(gradient * weights, axis=(2, 3))
+
+
+def normalized_cartesian_rotation(angular, rotation):
+    """Independent polynomial rotation in the unit-Cartesian shell convention.
+
+    Expand each rotated coordinate monomial directly, then apply the ratio of
+    closed even Gaussian moments. This validation transform is independent of
+    derivative DAGs and supports arbitrary orthogonal three-dimensional R.
+    """
+    rotation = np.asarray(rotation, dtype=float)
+    if rotation.shape != (3, 3) or not np.isfinite(rotation).all():
+        raise ValueError("Cartesian rotation requires a finite 3 by 3 matrix")
+    np.testing.assert_allclose(rotation.T @ rotation, np.eye(3), atol=2e-14)
+    labels = cartesian_components(angular)
+    powers = tuple(
+        tuple(component.count(axis) for axis in "xyz") for component in labels
+    )
+    norms = [prod(prod(range(1, 2 * n, 2)) for n in power) for power in powers]
+    result = np.zeros((len(labels), len(labels)))
+    for row, label in enumerate(labels):
+        polynomial = {(0, 0, 0): 1.0}
+        for axis in label:
+            updated = {}
+            for power, coefficient in polynomial.items():
+                for column in range(3):
+                    key = tuple(n + int(i == column) for i, n in enumerate(power))
+                    updated[key] = (
+                        updated.get(key, 0)
+                        + coefficient * rotation["xyz".index(axis), column]
+                    )
+            polynomial = updated
+        for column, power in enumerate(powers):
+            result[row, column] = polynomial.get(power, 0) * sqrt(
+                norms[column] / norms[row]
+            )
     return result

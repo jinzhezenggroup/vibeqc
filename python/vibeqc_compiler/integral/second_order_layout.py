@@ -158,6 +158,65 @@ class CenterRecovery:
             return np.asarray(self.rows, dtype=float) @ independent
 
 
+@dataclass(frozen=True, slots=True)
+class SecondAtomMap:
+    """Exact shell-center to physical-atom chain rule for small response tiles.
+
+    Atom direction/output rows use sorted distinct physical atom indices.
+    Repeated indices remain separate mathematical centers until the input
+    direction is expanded and the resulting HVP is scattered. This implements
+    A.T H A even when multiple basis slots share one atom.
+    """
+
+    centers: tuple[int, ...]
+    center_atoms: tuple[int, ...]
+
+    def __post_init__(self):
+        object.__setattr__(self, "centers", tuple(self.centers))
+        object.__setattr__(self, "center_atoms", tuple(self.center_atoms))
+        HessianLayout(self.centers)
+        if len(self.centers) != len(self.center_atoms):
+            raise ValueError(
+                "each requested mathematical center needs one physical atom"
+            )
+        for atom in self.center_atoms:
+            checked_index(atom, "physical atom")
+
+    @property
+    def atom_indices(self):
+        """Stable compact atom output order, including noncontiguous atom labels."""
+        return tuple(sorted(set(self.center_atoms)))
+
+    @property
+    def matrix(self):
+        """Center-to-atom incidence; its transpose scatters a center response."""
+        return np.array(
+            [
+                [int(atom == other) for other in self.atom_indices]
+                for atom in self.center_atoms
+            ],
+            dtype=float,
+        )
+
+    def expand_direction(self, atom_direction):
+        """Copy each physical atom displacement to all requested center slots."""
+        atom_direction = _finite_array(atom_direction, (len(self.atom_indices), 3))
+        return self.matrix @ atom_direction
+
+    def scatter_hvp(self, center_response):
+        """Sum center responses only after complete translation recovery."""
+        center_response = _finite_array(center_response, (len(self.centers), 3))
+        with np.errstate(over="raise", invalid="raise"):
+            return self.matrix.T @ center_response
+
+    def scatter_hessian(self, center_hessian):
+        """Diagnostic small-block chain rule on both coordinate indices."""
+        center_hessian = _finite_array(center_hessian, (3 * len(self.centers),) * 2)
+        incidence = np.kron(self.matrix, np.eye(3))
+        with np.errstate(over="raise", invalid="raise"):
+            return incidence.T @ center_hessian @ incidence
+
+
 def second_center_recovery(
     operator: OperatorSpec, derivative: DerivativeSpec
 ) -> CenterRecovery:
@@ -183,6 +242,29 @@ def second_center_recovery(
         for c in centers
     )
     return CenterRecovery(centers, independent, rows)
+
+
+def second_coordinate_tiles(centers, *, packing="dense", hvp=False, tile_size=6):
+    """Partition shell-local coordinate outputs without allocating a Hessian.
+
+    Native helpers own at most twelve coordinates each. The default six-root
+    tile permits recomputation of geometry across tiles to bound scalar CSE
+    liveness; callers may choose any explicit size in the validated interval.
+    AO component tiling remains an independent consumer selection.
+    """
+    checked_index(tile_size, "coordinate tile size", minimum=1)
+    if tile_size > 12 or type(hvp) is not bool:
+        raise ValueError(
+            "coordinate tiling requires a boolean HVP flag and at most twelve roots"
+        )
+    layout = HessianLayout(centers, packing)
+    if hvp and packing != "dense":
+        raise ValueError("HVP coordinate outputs are not svec Hessian pairs")
+    size = layout.dimension if hvp else layout.tensor_layout.storage_elements
+    return tuple(
+        tuple(range(begin, min(size, begin + tile_size)))
+        for begin in range(0, size, tile_size)
+    )
 
 
 def _finite_array(value, shape):

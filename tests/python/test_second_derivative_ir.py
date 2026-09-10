@@ -102,3 +102,23 @@ def test_lowering_requires_explicit_raw_and_bounded_output_selections():
     ir = replace(ir, contractions=(replace(ir.contractions[0], memory_budget_bytes=7),))
     with pytest.raises(ValueError, match="memory budget"):
         build_second_derivative_kernel(ir, (0,), output_indices=(0,))
+
+
+def test_native_capability_is_separate_from_first_force_and_requires_coordinate_tiles():
+    from vibeqc_compiler.integral.second_order_layout import second_coordinate_tiles
+
+    raw = build_eri_second_ir((3, 0, 0, 0), output="raw_hessian")
+    for backend in ("cpu_second_derivatives", "cuda_second_derivatives"):
+        assert not query_integral_capability(
+            raw, backend=backend, component_indices=(0,)
+        ).supported
+        assert query_integral_capability(
+            raw, backend=backend, component_indices=(0,), output_indices=(0, 13)
+        ).supported
+        assert not query_integral_capability(
+            raw, backend=backend, component_indices=(0,), output_indices=(True,)
+        ).supported
+    tiles = second_coordinate_tiles(raw.requested_derivative_centers)
+    assert tuple(i for tile in tiles for i in tile) == tuple(range(144))
+    assert max(map(len, tiles)) == 6
+    assert not query_integral_capability(raw, output_indices=(0,)).supported

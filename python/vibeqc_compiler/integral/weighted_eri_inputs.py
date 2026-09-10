@@ -20,6 +20,7 @@ from .ir import OperatorFamily
 from .range_separation import CoulombKernelFamily
 from .shell_signature import BasisConvention, checked_index
 from .shell_spec import cartesian_components
+from .weight_pullback import normalized_cartesian_components, pullback_public_weights
 
 PRIMITIVE_RECORD = struct.Struct("<II12I4d12d3d")
 assert PRIMITIVE_RECORD.size == 208
@@ -218,29 +219,9 @@ def prepare_weighted_eri_stream(
         if not math.isfinite(value):
             raise ValueError("external ERI weights must be finite")
         weights[logical] = value
-    if projections is not None:
-        matrices = tuple(np.asarray(p, dtype=float) for p in projections)
-        for axis, matrix in enumerate(matrices):
-            if not np.isfinite(matrix).all():
-                raise ValueError("public projection shape or values are invalid")
-            weights = np.moveaxis(
-                np.tensordot(matrix, weights, axes=(1, axis)), 0, axis
-            )
+    weights = pullback_public_weights(weights, projections)
     scale = consumer.output_sign * consumer.weights.sign * consumer.weights.prefactor
-    components = []
-    labels = tuple(cartesian_components(l) for l in angular)
-    for coordinate in np.ndindex(weights.shape):
-        quantums = tuple(
-            labels[axis][component].count(x)
-            for axis, component in enumerate(coordinate)
-            for x in "xyz"
-        )
-        norm = math.prod(math.prod(range(1, 2 * power, 2)) for power in quantums)
-        weight = float(weights[coordinate]) * scale / math.sqrt(norm)
-        if not math.isfinite(weight):
-            raise ValueError("normalized external weight overflow")
-        if weight != 0.0:
-            components.append((quantums, weight))
+    components = normalized_cartesian_components(angular, weights, scale)
     fused_weights = None
     if generated and angular == (1, 0, 0, 0) and components:
         fused = [0.0] * 3

@@ -21,6 +21,47 @@ namespace vibeqc::scf::weighted_runtime {
 
 using Result = CudaWeightedEriResult;
 
+#ifdef __CUDACC__
+#define VIBEQC_RESULT_HD __host__ __device__
+#else
+#define VIBEQC_RESULT_HD
+#endif
+
+/** Legacy value/gradient ABI, retained as the default result policy. */
+struct GradientOutput {
+  using Result = CudaWeightedEriResult;
+  static constexpr unsigned count = 13;
+  VIBEQC_RESULT_HD static double& element(Result& result, unsigned i) {
+    return i == 0 ? result.value : result.center[(i - 1) / 3][(i - 1) % 3];
+  }
+};
+
+/** A compile-time bounded coordinate tile for second-order consumers.
+ * The storage owner, chunking, atomic reduction, failure handling and
+ * transactional publication below remain common to both result families.
+ */
+template <unsigned Count>
+struct CoordinateOutput {
+  static_assert(Count > 0 && Count <= 12, "select one to twelve coordinate outputs per tile");
+  struct Result {
+    double values[Count];
+  };
+  static constexpr unsigned count = Count;
+  VIBEQC_RESULT_HD static double& element(Result& result, unsigned i) { return result.values[i]; }
+};
+
+template <class Output>
+VIBEQC_RESULT_HD void accumulate(typename Output::Result& target, typename Output::Result& value) {
+  for (unsigned i = 0; i < Output::count; ++i) {
+#ifdef __CUDA_ARCH__
+    atomicAdd(&Output::element(target, i), Output::element(value, i));
+#else
+    Output::element(target, i) += Output::element(value, i);
+#endif
+  }
+}
+#undef VIBEQC_RESULT_HD
+
 struct NumericalFailure : std::runtime_error {
   using std::runtime_error::runtime_error;
 };
@@ -53,9 +94,10 @@ inline void validate_primitive(const CudaWeightedEriPrimitive& record, std::size
 }
 
 #ifdef __CUDACC__
-template <class Program>
-__global__ void contract(const typename Program::Record* records, std::size_t count, Result* output,
-                         int* error) {
+template <class Program, class Output>
+__global__ void contract(const typename Program::Record* records, std::size_t count,
+                         typename Output::Result* output, int* error) {
+  using Result = typename Output::Result;
   for (std::size_t i = std::size_t(blockIdx.x) * blockDim.x + threadIdx.x; i < count;
        i += std::size_t(blockDim.x) * gridDim.x) {
     Result result{};
@@ -64,9 +106,7 @@ __global__ void contract(const typename Program::Record* records, std::size_t co
       continue;
     }
     auto& target = output[Program::base(records[i]).output_tile];
-    atomicAdd(&target.value, result.value);
-    for (unsigned c = 0; c < 4; ++c)
-      for (unsigned a = 0; a < 3; ++a) atomicAdd(&target.center[c][a], result.center[c][a]);
+    accumulate<Output>(target, result);
   }
 }
 #endif
@@ -82,10 +122,11 @@ __global__ void contract(const typename Program::Record* records, std::size_t co
  * destruction require caller serialization. A failed run never modifies the
  * caller's output buffer.
  */
-template <class Program>
+template <class Program, class Output = GradientOutput>
 class Plan {
  public:
   using Record = typename Program::Record;
+  using Result = typename Output::Result;
 
   Plan(int device, int major, int minor, std::size_t capacity, std::size_t tiles,
        std::size_t budget)
@@ -151,8 +192,8 @@ class Plan {
         // Grid-stride traversal bounds launch dimensions for large capacities.
         const auto blocks =
             static_cast<unsigned>(std::min<std::size_t>((count - 1) / 64 + 1, 65535));
-        contract<Program><<<blocks, 64, 0, context_.stream>>>(device_records, count, device_results,
-                                                              context_.error);
+        contract<Program, Output><<<blocks, 64, 0, context_.stream>>>(
+            device_records, count, device_results, context_.error);
         cuda_check(cudaGetLastError());
       }
     });
@@ -176,17 +217,13 @@ class Plan {
       if (!Program::evaluate(records[i], value))
         throw NumericalFailure("weighted ERI primitive produced a nonfinite result");
       auto& target = candidate_[Program::base(records[i]).output_tile];
-      target.value += value.value;
-      for (unsigned c = 0; c < 4; ++c)
-        for (unsigned a = 0; a < 3; ++a) target.center[c][a] += value.center[c][a];
+      accumulate<Output>(target, value);
     }
 #endif
     for (std::size_t i = 0; i < tiles; ++i) {
-      if (!std::isfinite(candidate_[i].value))
-        throw NumericalFailure("weighted ERI scalar overflow");
-      for (const auto& center : candidate_[i].center)
-        for (double value : center)
-          if (!std::isfinite(value)) throw NumericalFailure("weighted ERI derivative overflow");
+      for (unsigned j = 0; j < Output::count; ++j)
+        if (!std::isfinite(Output::element(candidate_[i], j)))
+          throw NumericalFailure("weighted integral output overflow");
     }
     if (tiles) std::copy_n(candidate_.data(), tiles, output);
   }

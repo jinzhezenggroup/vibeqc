@@ -18,7 +18,7 @@ namespace vibeqc::integrals {
  */
 enum class CoulombRange : std::uint32_t { Full = 0, Long = 1, Short = 2 };
 
-/** Positive interval quadrature for modified Boys moments through order 13.
+/** Positive interval quadrature with an explicit compile-time moment bound.
  *
  * LR integrates u^(2n) exp(-T u^2) over [0, omega/hypot(omega,sqrt(rho))];
  * SR integrates over the complementary interval. In particular, SR never
@@ -36,9 +36,12 @@ enum class CoulombRange : std::uint32_t { Full = 0, Long = 1, Short = 2 };
  * maximum_order+1 doubles. Geometry derivatives consume the next moment via
  * dF_n/dT = -F_(n+1), rather than differentiating quadrature or clipping branches.
  */
-VIBEQC_RANGE_HD inline bool range_moments(unsigned maximum_order, double argument, double rho,
-                                          CoulombRange range, double omega, double* output) {
-  if (!output || maximum_order > 13 || !std::isfinite(argument) || argument < 0 ||
+template <unsigned MaximumOrder>
+VIBEQC_RANGE_HD inline bool bounded_range_moments(unsigned maximum_order, double argument,
+                                                  double rho, CoulombRange range, double omega,
+                                                  double* output) {
+  static_assert(MaximumOrder <= 14, "the validated quadrature domain ends at order 14");
+  if (!output || maximum_order > MaximumOrder || !std::isfinite(argument) || argument < 0 ||
       !std::isfinite(rho) || rho <= 0 || !std::isfinite(omega) || omega < 0 ||
       static_cast<std::uint32_t>(range) > 2 || (range == CoulombRange::Full && omega != 0))
     return false;
@@ -101,6 +104,16 @@ VIBEQC_RANGE_HD inline bool range_moments(unsigned maximum_order, double argumen
     factor *= upper * upper;
   }
   return true;
+}
+
+/** Preserve the first-derivative moment boundary and caller storage contract.
+ * Second-order geometry must opt into bounded_range_moments<14> with fifteen
+ * owned doubles. Calling the established API with order fourteen still fails
+ * before touching its output, protecting existing fourteen-element buffers.
+ */
+VIBEQC_RANGE_HD inline bool range_moments(unsigned maximum_order, double argument, double rho,
+                                          CoulombRange range, double omega, double* output) {
+  return bounded_range_moments<13>(maximum_order, argument, rho, range, omega, output);
 }
 }  // namespace vibeqc::integrals
 #undef VIBEQC_RANGE_HD
