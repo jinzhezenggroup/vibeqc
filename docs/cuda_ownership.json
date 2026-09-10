@@ -578,14 +578,16 @@
       "status": "native_baseline"
     },
     "xc": {
-      "current_default": "generated scalar functional expressions; concrete potential/feature assembly",
+      "current_default": "generated scalar expressions and shared compact CPU potential/response contractions; explicit bounded native CPU candidate",
       "evidence": [
-        "docs/xc_expressions.md"
+        "docs/xc_expressions.md",
+        "docs/xc_contractions.md",
+        "benchmarks/results/xc-contractions/README.md"
       ],
-      "generated_capability": "audited scalar XC values/derivatives and TensorIR response primitives",
-      "missing_capability": "compact ingredient-to-potential/response/geometric contraction layer #236",
+      "generated_capability": "audited scalar XC derivatives and compact native CPU LDA/GGA E/V, spin response and fixed-D geometric partials",
+      "missing_capability": "native GPU XC contractions and complete stationary method integration/promotion remain with #162/#163/#168",
       "owner": "xc",
-      "retirement_condition": "replace concrete contraction arithmetic only after independent E/V/response/geometric gates; scalar oracles remain separate",
+      "retirement_condition": "duplicated CPU coefficient/response formulas retired after independent E/V and derivative gates; retain external/formula oracles; GPU promotion requires its own complete endpoint evidence",
       "status": "partial"
     }
   }

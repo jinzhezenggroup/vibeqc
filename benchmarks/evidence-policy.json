@@ -270,6 +270,11 @@
       "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
       "sha256": "f7a7bf25f3a6bacbf74e78b04d575affbb076f7ab4c93dc5641fee7f9abb0a32"
     },
+    "benchmarks/results/xc-contractions/samples.json": {
+      "owner": "XC contraction evidence (#236)",
+      "reason": "128 complete dense/local LDA/PBE energy, potential, response and geometry cases with five raw samples each, source/compiler identities, shared numeric resource plans and independent three-step derivative projections. This is the selected reproducible evidence, with no logs or transient artifacts.",
+      "sha256": "80e43ed2f01b5a29fa2b8f420847898791f85c098968b09f78ebec293538ed6a"
+    },
     "benchmarks/results/xc-integration-162/raw-evidence.zip": {
       "owner": "xc-integration-162",
       "reason": "Legacy compact hash-verified scientific evidence archive consumed by test_evidence_archives.py and documented reproduction instructions. Contains unique endpoint/reference/source records; do not replace permanent replay data with expiring artifacts.",
