@@ -2,7 +2,7 @@
 
 import pytest
 
-from tools.report_cuda_ownership import code_lines, ownership_report
+from tools.report_cuda_ownership import code_lines, ownership_report, validate_baseline
 
 
 def ledger_for(tmp_path):
@@ -14,16 +14,18 @@ def ledger_for(tmp_path):
         "schema": "vibeqc.cuda-ownership.v1",
         "subsystems": {
             "sample": {
-                name: "explicit test policy"
-                for name in (
-                    "owner",
-                    "current_default",
-                    "generated_capability",
-                    "missing_capability",
-                    "retirement_condition",
-                    "evidence",
-                    "status",
-                )
+                "evidence": ["src/sample.cu"],
+                **{
+                    name: "explicit test policy"
+                    for name in (
+                        "owner",
+                        "current_default",
+                        "generated_capability",
+                        "missing_capability",
+                        "retirement_condition",
+                        "status",
+                    )
+                },
             }
         },
         "files": [
@@ -41,7 +43,9 @@ def ledger_for(tmp_path):
                 ],
             }
         ],
-        "generated_families": [{"name": "test", "outputs": ["generated/*.cuh"]}],
+        "generated_families": [
+            {"name": "test", "owner": "src/sample.cu", "outputs": ["generated/*.cuh"]}
+        ],
     }
 
 
@@ -82,6 +86,30 @@ def test_generated_build_output_is_separate_and_not_counted_twice(tmp_path):
     assert len(report["generated"][0]["files"]) == 1
     assert report["generated"][0]["files"][0]["code_lines"] == 1
     assert report["generated_bytes"] > 0
+    ledger["generated_families"].append(
+        {**ledger["generated_families"][0], "name": "collision"}
+    )
+    with pytest.raises(ValueError, match="multiple families"):
+        ownership_report(tmp_path, ledger, tmp_path / "build")
+
+
+def test_stale_generated_owner_and_evidence_paths_are_rejected(tmp_path):
+    ledger = ledger_for(tmp_path)
+    ledger["generated_families"][0]["owner"] = "missing_generator.py"
+    with pytest.raises(ValueError, match="stale owner"):
+        ownership_report(tmp_path, ledger)
+    ledger["generated_families"][0]["owner"] = "src/sample.cu"
+    ledger["subsystems"]["sample"]["evidence"] = ["missing_evidence.json"]
+    with pytest.raises(ValueError, match="stale evidence"):
+        ownership_report(tmp_path, ledger)
+
+
+def test_edited_baseline_aggregate_cannot_claim_retirement(tmp_path):
+    report = ownership_report(tmp_path, ledger_for(tmp_path))
+    validate_baseline(report)
+    report["maintained_code_lines"]["scientific"] += 10
+    with pytest.raises(ValueError, match="totals differ"):
+        validate_baseline(report)
 
 
 def test_physical_count_preserves_literals_and_drops_comments():

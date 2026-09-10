@@ -147,6 +147,11 @@ def ownership_report(root, ledger, build=None):
         ):
             if not owner.get(field):
                 raise ValueError(f"subsystem {name} lacks {field}")
+        evidence = owner["evidence"]
+        if not isinstance(evidence, list) or not all(
+            isinstance(path, str) and (root / path).is_file() for path in evidence
+        ):
+            raise ValueError(f"subsystem {name} has stale evidence paths")
     files, totals, subsystems = [], dict.fromkeys(ROLES, 0), {}
     for row in sorted(records, key=lambda value: value["path"]):
         source = (root / row["path"]).read_text()
@@ -200,14 +205,26 @@ def ownership_report(root, ledger, build=None):
                 "sha256": hashlib.sha256(source.encode()).hexdigest(),
             }
         )
-    generated, seen = [], set()
+    generated, seen = [], {}
+    names = [family["name"] for family in ledger["generated_families"]]
+    if len(set(names)) != len(names):
+        raise ValueError("duplicate generated family name")
     for family in ledger["generated_families"]:
+        owner = family.get("owner")
+        if not isinstance(owner, str) or not (root / owner).exists():
+            raise ValueError(f"generated family {family['name']} has stale owner path")
         found = []
         if build is not None:
             for pattern in family["outputs"]:
                 for path in sorted(build.glob(pattern)):
-                    if path.is_file() and path not in seen:
-                        seen.add(path)
+                    if path.is_file():
+                        if path in seen:
+                            if seen[path] != family["name"]:
+                                raise ValueError(
+                                    f"generated output claimed by multiple families: {path}"
+                                )
+                            continue
+                        seen[path] = family["name"]
                         raw = path.read_bytes()
                         found.append(
                             {
@@ -241,6 +258,29 @@ def ownership_report(root, ledger, build=None):
     }
 
 
+def validate_baseline(baseline):
+    """Reject internally inconsistent historical totals before claiming a delta."""
+    if baseline.get("schema") != "vibeqc.cuda-ownership-report.v1":
+        raise ValueError("baseline uses a different ownership report schema")
+    totals = dict.fromkeys(ROLES, 0)
+    paths = set()
+    for row in baseline["files"]:
+        if row["path"] in paths:
+            raise ValueError("duplicate baseline file")
+        paths.add(row["path"])
+        for role in ROLES:
+            value = row["code_lines"][role]
+            if type(value) is not int or value < 0:
+                raise ValueError("invalid baseline code-line count")
+            totals[role] += value
+    if (
+        totals != baseline["maintained_code_lines"]
+        or sum(totals[role] for role in SCIENTIFIC)
+        != baseline["all_handwritten_scientific_lines"]
+    ):
+        raise ValueError("baseline totals differ from file records")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -254,8 +294,7 @@ def main():
     report = ownership_report(ROOT, json.loads(args.ledger.read_text()), args.build)
     if args.baseline:
         baseline = json.loads(args.baseline.read_text())
-        if baseline.get("schema") != report["schema"]:
-            raise ValueError("baseline uses a different ownership report schema")
+        validate_baseline(baseline)
         old = {row["path"]: row for row in baseline["files"]}
         current = {row["path"]: row for row in report["files"]}
         report["delta"] = {

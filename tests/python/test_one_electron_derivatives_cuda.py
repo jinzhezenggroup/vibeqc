@@ -114,11 +114,11 @@ def test_generated_derivatives_preserve_complete_scf_forces(
         "count": count,
     }
     monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "reference")
-    reference = run_case(monkeypatch, "reference", "thread", **options)
+    reference = run_case(monkeypatch, mapping="thread", **options)
     monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
     for mapping in ("thread", "shell_warp"):
         monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", mapping)
-        actual = run_case(monkeypatch, "reference", "thread", **options)
+        actual = run_case(monkeypatch, mapping="thread", **options)
         for left, right in zip(reference, actual):
             np.testing.assert_allclose(
                 left.energies, right.energies, atol=3e-10, rtol=0

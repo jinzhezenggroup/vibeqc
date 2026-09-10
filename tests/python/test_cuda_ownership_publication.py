@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from tools.publish_cuda_ownership import compact_comparison, write
+from tools.publish_cuda_ownership import compact_comparison, validate_resources, write
 from tools.vibeqc_validation.publication import validate_publication
 
 BUNDLE = (
@@ -100,3 +100,19 @@ def test_published_checksums_and_decision():
     files["samples.json"] += b" "
     with pytest.raises(ValueError, match="checksum/size mismatch"):
         validate_publication(manifest, files)
+
+
+@pytest.mark.parametrize(
+    "field", ["revision", "native_source_identity", "library_sha256", "build_settings"]
+)
+def test_resources_must_match_the_measured_workers(tmp_path, field):
+    compact = restore_workers(tmp_path, one_case=True)
+    workers = {
+        row["selection"]: compact["records"][row["provenance"]]
+        for row in compact["runs"]
+    }
+    resources = json.loads((BUNDLE / "resources.json").read_text())
+    validate_resources(resources, workers["baseline"], workers["candidate"])
+    resources["candidate-pair"]["provenance"][field] = "wrong-source-or-build"
+    with pytest.raises(ValueError, match="resource/worker provenance mismatch"):
+        validate_resources(resources, workers["baseline"], workers["candidate"])

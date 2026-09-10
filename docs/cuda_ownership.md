@@ -129,3 +129,12 @@ derivatives or other integral paths. The remaining one-electron response kernel
 is classified as a derivative performance exception, so that reclassification
 cannot be counted as physical deletion. Native generic traversal growth and
 scientific region changes are disclosed separately in the reproducible report.
+
+## Scope of the first retirement phase
+
+PR #252 references #231 and must leave it open. One completed value retirement,
+the inventory and the migration ledger do not complete its broader work items.
+DF derivative definitions and operator-specific contraction/mapping still need
+generated integration, independent numerical/resource/endpoint validation and
+retirement of superseded production arithmetic after passing those gates.
+Retained exceptions are outstanding work, not delivered replacements.

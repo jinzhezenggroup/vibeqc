@@ -388,9 +388,9 @@ def test_df_generated_sdf_bucket_preserves_all_geometry_phases(
     }
     monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
     monkeypatch.setenv("VIBEQC_DF_DERIVATIVES", "reference")
-    expected = run_case(monkeypatch, "reference", "thread", **kwargs)
+    expected = run_case(monkeypatch, mapping="thread", **kwargs)
     monkeypatch.setenv("VIBEQC_DF_DERIVATIVES", "generated")
-    actual = run_case(monkeypatch, "reference", "thread", **kwargs)
+    actual = run_case(monkeypatch, mapping="thread", **kwargs)
     for reference, result in zip(expected, actual):
         np.testing.assert_allclose(
             result.energies, reference.energies, atol=3e-10, rtol=0

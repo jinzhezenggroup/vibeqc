@@ -377,10 +377,16 @@
   ],
   "generated_families": [
     {
+      "name": "one_electron_value_policy",
+      "outputs": [
+        "generated/generated_one_electron_policy.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/one_electron_policy_cuda.py"
+    },
+    {
       "name": "one_electron_values",
       "outputs": [
-        "generated/generated_one_electron_values.cuh",
-        "generated/generated_one_electron_policy.cuh"
+        "generated/generated_one_electron_values.cuh"
       ],
       "owner": "python/vibeqc_compiler/integral/one_electron_cuda.py"
     },
@@ -422,9 +428,27 @@
       "owner": "python/vibeqc_compiler/integral/cuda_lowering.py"
     },
     {
-      "name": "jit_tensor_xc_ao_response",
+      "name": "jit_tensor",
       "outputs": [],
-      "owner": "python/vibeqc_compiler/{tensor,xc,dft,integral}",
+      "owner": "python/vibeqc_compiler/tensor",
+      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
+    },
+    {
+      "name": "jit_xc",
+      "outputs": [],
+      "owner": "python/vibeqc_compiler/xc",
+      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
+    },
+    {
+      "name": "jit_dft",
+      "outputs": [],
+      "owner": "python/vibeqc_compiler/dft",
+      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
+    },
+    {
+      "name": "jit_integral",
+      "outputs": [],
+      "owner": "python/vibeqc_compiler/integral",
       "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
     }
   ],
@@ -444,7 +468,7 @@
     "df_derivatives": {
       "current_default": "native Dual/source derivative path; generated explicit derivative bridge",
       "evidence": [
-        "benchmarks/results/df-derivatives-rtx5090"
+        "benchmarks/results/df-derivatives-rtx5090/raw-summary.json"
       ],
       "generated_capability": "generated two-/three-center first derivatives and density weights",
       "missing_capability": "complete schedule/resource/endpoint replacement of old derivatives",

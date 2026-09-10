@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -206,6 +207,43 @@ def compact_comparison(directory):
     return compact, records, errors, timings, rows
 
 
+def validate_resources(resources, baseline, candidate):
+    """Bind object measurements to the exact worker source and build contract.
+
+    An exact-source kernel reconstruction is explicit when the historical linked
+    candidate library was replaced by the final retirement build. It is resource
+    evidence, not a claim that the reconstructed object was the timed binary.
+    """
+    expected = {
+        "candidate-pair": candidate,
+        "baseline-pair": baseline,
+        "baseline-reference": baseline,
+    }
+    if set(resources) != set(expected):
+        raise ValueError("resource inventory differs")
+    for name, worker in expected.items():
+        row = resources[name]
+        provenance = row.get("provenance", {})
+        for field in (
+            "revision",
+            "native_source_identity",
+            "library_sha256",
+            "build_settings",
+        ):
+            if provenance.get(field) != worker[field]:
+                raise ValueError(f"resource/worker provenance mismatch: {name}/{field}")
+        if (
+            not re.fullmatch(r"[0-9a-f]{64}", row.get("object_sha256", ""))
+            or type(row.get("object_bytes")) is not int
+            or row["object_bytes"] <= 0
+            or row.get("measurement")
+            not in ("original-object", "exact-source-kernel-reconstruction")
+            or not row.get("compiler")
+            or not row.get("resources")
+        ):
+            raise ValueError(f"incomplete native resource measurement: {name}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--comparison", type=Path, required=True)
@@ -236,6 +274,7 @@ def main():
         )
         for name in ("candidate-pair", "baseline-pair", "baseline-reference")
     }
+    validate_resources(resources, baseline, candidate)
     write(stage / "resources.json", resources)
     record = new_evidence(
         tier="endpoint",
@@ -320,6 +359,16 @@ def main():
         "source": {"revision": candidate["revision"], "dirty": False},
         "reproduction": {
             "command": command,
+            "baseline_source": {
+                "repository": "https://github.com/njzjz-bot/vibeqc",
+                "ref": "refs/heads/evidence/issue-231-baseline",
+                "revision": baseline["revision"],
+            },
+            "candidate_source": {
+                "repository": "https://github.com/njzjz-bot/vibeqc",
+                "ref": "refs/heads/codex/issue-231-cuda-ownership",
+                "revision": candidate["revision"],
+            },
             "note": "Check out the exact recorded baseline/candidate revisions and use Release, CUDA 12.9.1, sm_120, FAST_COMPILE=OFF; set OMP_NUM_THREADS=1 and OPENBLAS_NUM_THREADS=1.",
         },
         "decision": {

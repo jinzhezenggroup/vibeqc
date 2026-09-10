@@ -25,13 +25,23 @@
       "sha256": "08a7ea3b27b18d3cda86054abef266a8bdb490e405f6406fc7b0c6c8063295c1"
     },
     {
-      "bytes": 1312,
+      "bytes": 4991,
       "path": "resources.json",
       "role": "summary",
-      "sha256": "dad8aed5a28012cd964206c9004089d5d9ca44f5c1348d305f4d181037734b18"
+      "sha256": "5dce2baab5bbb41b4ee544875c8e4b3362ff23047532514282fda135b7f588a3"
     }
   ],
   "reproduction": {
+    "baseline_source": {
+      "ref": "refs/heads/evidence/issue-231-baseline",
+      "repository": "https://github.com/njzjz-bot/vibeqc",
+      "revision": "1ba6f175caed656729e0863880251cc315232b1c"
+    },
+    "candidate_source": {
+      "ref": "refs/heads/codex/issue-231-cuda-ownership",
+      "repository": "https://github.com/njzjz-bot/vibeqc",
+      "revision": "fdc7f40737fae85e9a25d771158ffdd1cace2b00"
+    },
     "command": [
       "srun",
       "--partition=main",

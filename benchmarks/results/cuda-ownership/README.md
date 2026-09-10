@@ -2,8 +2,10 @@
 
 The `one-electron` bundle supports the generated S/T/V value promotion in #231.
 It compares clean candidate `fdc7f40737fae85e9a25d771158ffdd1cace2b00` with clean
-handwritten baseline `1ba6f17` (the complete baseline revision is retained in
-`summary.json`). Both libraries used Release, CUDA 12.9.1, sm_120 and
+handwritten baseline `1ba6f175caed656729e0863880251cc315232b1c`, retained at
+[`njzjz-bot/vibeqc: evidence/issue-231-baseline`](https://github.com/njzjz-bot/vibeqc/tree/evidence/issue-231-baseline).
+The publication manifest binds both exact revisions and their fetchable source
+repositories/refs. Both libraries used Release, CUDA 12.9.1, sm_120 and
 `VIBEQC_CUDA_FAST_COMPILE=OFF` on an RTX 5090 in Slurm job 9179.
 
 Five samples per source used the shared ABBA ordering. Each case has separate
@@ -50,8 +52,17 @@ python tools/publish_cuda_ownership.py \
 The publisher recomputes numerical and non-regression gates from the original
 workers before calling the common publication API. The three kernel resource
 JSON inputs are recorded under `.artifacts/231-*-resources.json`; copy the
-retained entries there for an archival replay or collect fresh resource records
-from matching objects for a new measurement. Publication never overwrites an
+retained entries there for an archival replay. Each record binds the worker
+revision, native source identity, build settings, timing-library hash, object
+hash/size and CUDA compiler identity. Publication rejects mismatched records.
+The baseline records come from the original optimized objects. The candidate
+resource record is explicitly an exact-source kernel reconstruction: its timed
+linked library was replaced during retirement. Regenerating the scalar/policy
+headers at `fdc7f40` and compiling `src/scf/cuda/one_electron_values.cu` with the
+recorded Release/C++20/sm_120 flags reproduces every archived kernel symbol and
+resource count. The record does not claim that reconstructed object was the
+original timed binary. Use `cuobjdump --dump-resource-usage` on the matching
+objects when collecting a new measurement. Publication never overwrites an
 existing bundle. The CPU integrity tests reconstruct workers entirely from
 retained data, reproduce all gates, and reject corrupted measurements.
 
