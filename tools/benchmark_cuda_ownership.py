@@ -85,7 +85,7 @@ def worker(args):
         ).hexdigest(),
         "selection": args.selection,
         "domain": args.domain,
-        "mapping": args.mapping,
+        "mapping": "thread" if args.domain == "df" else args.mapping,
         "python": sys.version,
         "numpy": np.__version__,
         "slurm_job_id": os.environ["SLURM_JOB_ID"],

@@ -19,8 +19,10 @@
 #include <string>
 #include <vector>
 
+#include "integrals/s_integrals.hpp"
 #include "molecule/basis.hpp"
 #include "scf/cuda_density_fitting.hpp"
+#include "scf/cuda_density_fitting_integrals.hpp"
 
 namespace {
 using Clock = std::chrono::steady_clock;
@@ -64,7 +66,9 @@ void read_shells(std::istream& input, System& system, std::size_t count) {
 
 int main(int argc, char** argv) {
   try {
-    require(argc == 5, "usage: probe input output-prefix pair-tile auxiliary-tile");
+    require(argc == 5 || (argc == 6 && std::string(argv[5]) == "--derivatives"),
+            "usage: probe input output-prefix pair-tile auxiliary-tile [--derivatives]");
+    const bool derivatives = argc == 6;
     require(std::getenv("SLURM_JOB_ID") != nullptr, "native DF probe requires a Slurm allocation");
     const std::string prefix = argv[2];
     const std::size_t pair_tile = std::stoul(argv[3]), auxiliary_tile = std::stoul(argv[4]);
@@ -108,7 +112,9 @@ int main(int argc, char** argv) {
     const auto source_host_peak_bytes =
         cuda_density_fitting_integral_source_host_peak_bytes(source.get());
     const std::size_t pairs = nbf * nbf;
-    const std::size_t tile_elements = std::min(pairs, pair_tile) * std::min(naux, auxiliary_tile);
+    const std::size_t tile_elements =
+        std::max(std::min(pairs, pair_tile) * std::min(naux, auxiliary_tile),
+                 derivatives ? naux * std::min(naux, auxiliary_tile) : 0U);
     cudaStream_t stream;
     check(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
     double* device;
@@ -158,6 +164,60 @@ int main(int argc, char** argv) {
       }
     }
     const double raw_ms = milliseconds(start);
+    if (derivatives) {
+      // Exercise both bulk and bounded public-basis APIs against independent
+      // libcint center derivatives. The second system catches accidental use
+      // of a local coordinate as a packed fleet-global derivative seed.
+      std::vector<double> da, dm, bulk_da, bulk_dm;
+      std::vector<vibeqc::integrals::DensityFittingIntegralData> bulk;
+      require(build_cuda_density_fitting_integrals_batch(0, orbital, auxiliary, bulk, detail) ==
+                  VIBEQC_STATUS_SUCCESS,
+              detail);
+      for (std::size_t system = 0; system < count; ++system) {
+        const auto projected = vibeqc::integrals::transform_density_fitting_integrals(
+            bulk[system], orbital[system], auxiliary[system]);
+        bulk_da.insert(bulk_da.end(), projected.three_center_derivative.begin(),
+                       projected.three_center_derivative.end());
+        bulk_dm.insert(bulk_dm.end(), projected.metric_derivative.begin(),
+                       projected.metric_derivative.end());
+        const auto coordinates = 3 * orbital[system].atoms.size();
+        const auto abase = da.size(), mbase = dm.size();
+        da.resize(abase + coordinates * pairs * naux);
+        dm.resize(mbase + coordinates * naux * naux);
+        for (std::size_t coordinate = 0; coordinate < coordinates; ++coordinate) {
+          for (std::size_t pair = 0; pair < pairs; pair += pair_tile) {
+            const auto pcount = std::min(pair_tile, pairs - pair);
+            for (std::size_t aux = 0; aux < naux; aux += auxiliary_tile) {
+              const auto acount = std::min(auxiliary_tile, naux - aux);
+              require(generate_cuda_density_fitting_raw_tile(
+                          source.get(), system, pair, pcount, aux, acount, coordinate, stream,
+                          device, detail) == VIBEQC_STATUS_SUCCESS,
+                      detail);
+              check(cudaMemcpyAsync(tile.data(), device, pcount * acount * sizeof(double),
+                                    cudaMemcpyDeviceToHost, stream));
+              check(cudaStreamSynchronize(stream));
+              for (std::size_t p = 0; p < pcount; ++p)
+                std::copy_n(tile.data() + p * acount, acount,
+                            da.data() + abase + (coordinate * pairs + pair + p) * naux + aux);
+            }
+          }
+          for (std::size_t row = 0; row < naux; row += auxiliary_tile) {
+            const auto rows = std::min(auxiliary_tile, naux - row);
+            require(generate_cuda_density_fitting_metric_derivative_tile(
+                        source.get(), system, row, rows, coordinate, stream, device, detail) ==
+                        VIBEQC_STATUS_SUCCESS,
+                    detail);
+            check(cudaMemcpyAsync(dm.data() + mbase + (coordinate * naux + row) * naux, device,
+                                  rows * naux * sizeof(double), cudaMemcpyDeviceToHost, stream));
+            check(cudaStreamSynchronize(stream));
+          }
+        }
+      }
+      write_values(prefix + "-raw_derivative.bin", da);
+      write_values(prefix + "-metric_derivative.bin", dm);
+      write_values(prefix + "-bulk_raw_derivative.bin", bulk_da);
+      write_values(prefix + "-bulk_metric_derivative.bin", bulk_dm);
+    }
     check(cudaFree(device));
     check(cudaStreamDestroy(stream));
     write_values(prefix + "-metric.bin", metric);

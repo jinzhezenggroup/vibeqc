@@ -97,11 +97,18 @@ def write_input(path, systems):
     path.write_text("\n".join(rows) + "\n")
 
 
-def references(systems):
+def references(systems, *, derivatives=False):
     """Raw libcint values and an independently ordered dense RI contraction."""
     result = {key: [] for key in ("metric", "raw", "j", "k", "uj", "ka", "kb")}
     diagnostics = []
+    responses = {key: [] for key in ("raw_derivative", "metric_derivative")}
     for item, (orbital, auxiliary) in enumerate(systems):
+        if derivatives:
+            from tools.vibeqc_validation.df_gradient import reference_df_matrices
+
+            _, _, da, dm = reference_df_matrices(orbital, auxiliary)
+            responses["raw_derivative"].append(da.reshape((-1, *da.shape[2:])))
+            responses["metric_derivative"].append(dm.reshape((-1, *dm.shape[2:])))
         mol, scale, _ = pyscf_molecule(orbital)
         aux, aux_scale, _ = pyscf_molecule(auxiliary)
         metric = aux.intor("int2c2e") * np.outer(aux_scale, aux_scale)
@@ -133,12 +140,16 @@ def references(systems):
                 "condition_number": float(values.max() / values[retained].min()),
             }
         )
+    if derivatives:
+        result.update(responses)
+        result.update({"bulk_" + key: value for key, value in responses.items()})
     return {key: np.asarray(value) for key, value in result.items()}, diagnostics
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--probe", type=Path, required=True)
+    parser.add_argument("--derivatives", action="store_true")
     parser.add_argument("--directory", type=Path, required=True)
     parser.add_argument(
         "--cases",
@@ -185,7 +196,7 @@ def main():
                 auxiliary["shells"].insert(0, copy.deepcopy(auxiliary["shells"][0]))
         inputs = directory / f"{case}.txt"
         write_input(inputs, systems)
-        expected, diagnostics = references(systems)
+        expected, diagnostics = references(systems, derivatives=args.derivatives)
         np.savez(directory / f"{case}-reference.npz", **expected)
         nbf, naux = expected["raw"].shape[1], expected["raw"].shape[-1]
         # Generated values are the sole native definition. The independent
@@ -206,6 +217,8 @@ def main():
                     str(pair_tile),
                     str(aux_tile),
                 ]
+                if args.derivatives:
+                    command.append("--derivatives")
                 run = subprocess.run(
                     command,
                     env=env,
