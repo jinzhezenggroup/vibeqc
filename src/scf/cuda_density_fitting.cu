@@ -454,9 +454,9 @@ struct CudaDensityFittingJkPlan {
   double* exchange_contributions{};
   double* exchange_tile_output{};
   double* exchange_density_column_major{};
-  // Source-backed force response regenerates metric derivatives in bounded
-  // auxiliary-row tiles. Retain only compact metric factors on the host; no
-  // full three-center derivative tensor is kept between calls.
+  // Bounded response weights borrow compact metric factors on the host.
+  // Generated center derivatives contract on device; no complete derivative
+  // tensor is retained between force calls.
   std::vector<double> host_metrics;
   std::vector<double> host_metric_inverse;
   // Partial auxiliary tiles normally use host-backed raw values.  A source-

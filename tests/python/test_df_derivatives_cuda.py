@@ -421,7 +421,8 @@ def test_auxiliary_only_atom_hf_energy_derivative(
 def test_df_generated_sdf_bucket_preserves_all_geometry_phases(
     monkeypatch, method, representation
 ):
-    from test_one_electron_values_cuda import run_case
+    from pyscf import gto, scf
+    from test_one_electron_values_cuda import run_case, sdf_case_inputs
 
     assert os.environ.get("SLURM_JOB_ID"), "GPU tests require Slurm"
     kwargs = {
@@ -431,15 +432,48 @@ def test_df_generated_sdf_bucket_preserves_all_geometry_phases(
         "count": 3,
     }
     monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
-    expected = run_case(monkeypatch, mapping="thread", device="cpu", **kwargs)
     actual = run_case(monkeypatch, mapping="thread", **kwargs)
-    for reference, result in zip(expected, actual):
-        np.testing.assert_allclose(
-            result.energies, reference.energies, atol=3e-10, rtol=0
-        )
-        for left, right in zip(reference.items, result.items):
+    basis, systems, charge, multiplicity = sdf_case_inputs(method, kwargs["count"])
+    # Libcint/PySCF provides an independent complete-force oracle, including
+    # the moving auxiliary basis. Reuse only identical reference geometries;
+    # the CUDA calculation above still executes all four prepared phases.
+    expected = {}
+    for moved, result in zip((False, False, True, False), actual, strict=True):
+        for item, right in enumerate(result.items):
+            if (moved, item) not in expected:
+                atoms = [
+                    (f"{z}{i}", np.array(r)) for i, (z, r) in enumerate(systems[item])
+                ]
+                if moved:
+                    atoms[1][1][0] += 0.013 * (item + 1)
+                reference_basis = {label: [] for label, _ in atoms}
+                for shell in basis:
+                    reference_basis[atoms[shell.atom_index][0]].append(
+                        [shell.angular_momentum]
+                        + [[p.exponent, p.coefficient] for p in shell.primitives]
+                    )
+                molecule = gto.M(
+                    atom=atoms,
+                    basis=reference_basis,
+                    unit="Bohr",
+                    cart=representation == "cartesian",
+                    charge=charge,
+                    spin=multiplicity - 1,
+                    verbose=0,
+                )
+                reference = (scf.RHF if method == "rhf" else scf.UHF)(
+                    molecule
+                ).density_fit(auxbasis=reference_basis)
+                reference.conv_tol, reference.conv_tol_grad = 1e-13, 1e-10
+                reference.kernel()
+                assert reference.converged
+                gradient = reference.nuc_grad_method()
+                gradient.auxbasis_response = True
+                expected[moved, item] = reference.e_tot, -gradient.kernel()
+            energy, forces = expected[moved, item]
             assert right.executed_backend == "cuda"
-            np.testing.assert_allclose(right.forces, left.forces, atol=3e-9, rtol=0)
+            np.testing.assert_allclose(right.energy, energy, atol=3e-10, rtol=0)
+            np.testing.assert_allclose(right.forces, forces, atol=3e-9, rtol=0)
 
 
 def test_df_generated_failed_item_preserves_successful_neighbor(monkeypatch):
