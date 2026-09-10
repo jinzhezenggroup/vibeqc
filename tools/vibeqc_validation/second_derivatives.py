@@ -299,3 +299,58 @@ def normalized_cartesian_rotation(angular, rotation):
                 norms[column] / norms[row]
             )
     return result
+
+
+def libcint_primitive_gradient(family, angular, exponents, centers, charge=1.0):
+    """Unnormalized primitive first derivatives for independent directional FD."""
+    from pyscf import gto
+
+    names = ("H", "He", "Li", "Be")[: len(angular)]
+    mol = gto.M(
+        atom=[(f"ghost-{name}", position) for name, position in zip(names, centers)],
+        basis={
+            name: [[l, [e, 1]]]
+            for name, l, e in zip(names, angular, exponents, strict=True)
+        },
+        unit="Bohr",
+        cart=True,
+        verbose=0,
+    )
+    labels = tuple(cartesian_components(l) for l in angular)
+    shape = tuple(map(len, labels))
+    norms = [
+        _gaussian_squared_norm(e, component)
+        for e, components in zip(exponents, labels, strict=True)
+        for component in components
+    ]
+    scales = np.split(
+        np.sqrt(mol.intor("int1e_ovlp_cart").diagonal() / norms), np.cumsum(shape)[:-1]
+    )
+    normalization = np.ones(shape)
+    for slot, scale in enumerate(scales):
+        dimensions = [1] * len(shape)
+        dimensions[slot] = len(scale)
+        normalization *= scale.reshape(dimensions)
+    if family == "eri":
+        blocks = []
+        for order in ((0, 1, 2, 3), (1, 0, 2, 3), (2, 3, 0, 1), (3, 2, 0, 1)):
+            raw = -mol.intor_by_shell("int2e_ip1_cart", order, comp=3)
+            blocks.append(raw.transpose(0, *(1 + order.index(i) for i in range(4))))
+    else:
+        operator, factor = {
+            "overlap": ("ovlp", 1),
+            "kinetic": ("kin", 1),
+            "nuclear_attraction": ("rinv", -charge),
+        }[family]
+        origin = centers[2] if family == "nuclear_attraction" else (0, 0, 0)
+        with mol.with_rinv_origin(origin):
+            first = -factor * mol.intor_by_shell(
+                f"int1e_ip{operator}_cart", (0, 1), comp=3
+            )
+            second = -factor * mol.intor_by_shell(
+                f"int1e_ip{operator}_cart", (1, 0), comp=3
+            ).transpose(0, 2, 1)
+        blocks = [first, second] + (
+            [-first - second] if family == "nuclear_attraction" else []
+        )
+    return np.asarray(blocks) / normalization

@@ -118,3 +118,18 @@ between two generated paths supplements these independent checks.
 Native/compiler, numerical-evidence and method-endpoint acceptance are separate
 stages. Passing these scalar gates alone does not promote a production
 schedule or advertise a molecular Hessian.
+
+`tools/validate_second_derivatives.py` reproduces compact raw/weighted/HVP
+evidence for nine asymmetric/coincident S/T/V and ERI cases, including a
+minimum coordinate/component f/f/f/f tile. It records three signed primitive
+contributions, independent analytic blocks, three-step Libcint first-gradient
+differences, cold/warm timing samples and actual compiler/resource identities.
+It refuses to publish dirty source or an incomplete selected case inventory.
+The timing scope is the prepared primitive provider, with external-weight
+preparation and independent reference construction outside the samples.
+
+`tools/validate_second_ownership.py --backend cpu --output <new-directory>`
+builds ASan/UBSan lifecycle executables. The CUDA mode uses compute-sanitizer
+memcheck, including leak checks; execute it under a finite Slurm allocation.
+It exercises attraction HVPs, four-center HVPs and the f/f/f/f raw moment bound,
+with invalid/empty chunks and successful replay after failure.
