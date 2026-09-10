@@ -97,23 +97,41 @@ def worker(args):
     }
     # Load the CUDA context/library before either candidate's cold plan timing.
     Calculator(device="cuda").singlepoint([("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))])
-    # Keep Cartesian endpoints at 15 AOs, inside the existing <=16-AO
-    # direct-HF resource inventory. The independent larger s/d/f numerical
-    # suite remains separate; this timing fixture adds p-containing endpoints.
-    basis = (
+    # Keep the main Cartesian inventory at 15 AOs, inside the existing <=16-AO
+    # direct-HF resource inventory. Larger legacy endpoints below explicitly
+    # disclose where that shared total-budget guarantee is unavailable.
+    spf_basis = (
         Shell(0, 0, (Primitive(1.5, 1.0), Primitive(0.7, -0.1))),
         Shell(0, 1, (Primitive(0.8, 1.0),)),
         Shell(0, 3, (Primitive(0.6, 1.0),)),
         Shell(1, 0, (Primitive(1.2, 1.0),)),
     )
-    for method, representation, fitted, count in product(
-        ("rhf", "uhf"), ("cartesian", "spherical"), (False, True), (1, 3)
-    ):
-        key = f"{method}/{representation}/{'df' if fitted else 'direct'}/batch{count}"
+    inventory = [
+        ("spf", *case)
+        for case in product(
+            ("rhf", "uhf"), ("cartesian", "spherical"), (False, True), (1, 3)
+        )
+    ]
+    # Preserve representative larger s/d/f workloads too. Their internal
+    # Cartesian size crosses the direct-HF execution threshold, so the small
+    # budgeted fixture alone cannot cover all existing endpoint schedules.
+    inventory += [
+        ("sdf", "rhf", "cartesian", False, 1),
+        ("sdf", "uhf", "spherical", False, 3),
+        ("sdf", "rhf", "spherical", True, 1),
+        ("sdf", "uhf", "spherical", True, 3),
+    ]
+    for family, method, representation, fitted, count in inventory:
+        basis = (
+            spf_basis
+            if family == "spf"
+            else (spf_basis[0], Shell(0, 2, (Primitive(0.8, 1.0),)), *spf_basis[2:])
+        )
+        key = f"{family}/{method}/{representation}/{'df' if fitted else 'direct'}/batch{count}"
         if args.case and key not in args.case:
             continue
-        # Both budgets are explicit across the matrix; pair-policy execution
-        # itself introduces no allocation, tile buffer or retained cache.
+        # Pair-policy execution itself introduces no allocation, tile buffer
+        # or retained cache. Record both budgets where the HF inventory applies.
         df_budget = (1 if count == 1 else 4) << 20
         # The shared HF planner reserves 512 MiB for opaque CUDA libraries,
         # in addition to explicit DF/force workspace; the DF sub-budget alone
@@ -121,6 +139,14 @@ def worker(args):
         budget = ResourceBudget(
             host_bytes=512 << 20, device_bytes=(1 if count == 1 else 2) << 30
         )
+        resource_note = None
+        if family == "sdf" and representation == "cartesian" and not fitted:
+            budget = None
+            resource_note = (
+                "Existing 18-AO direct endpoint: shared HF inventory v1 supports only <=16 public AOs. "
+                "Measure the legacy unbudgeted endpoint explicitly; no total-budget guarantee is claimed. "
+                "The one-electron pair policy introduces no allocation and its native resources are measured separately."
+            )
         atoms = [
             [("He", (0.0, 0.0, -0.7 - 0.1 * i)), ("H", (0.1, 0.0, 0.7))]
             for i in range(count)
@@ -143,6 +169,7 @@ def worker(args):
             "atoms": atoms,
             "basis": [asdict(shell) for shell in basis],
             "df_budget_bytes": df_budget,
+            "resource_scope_note": resource_note,
             "seconds": {},
             "results": {},
         }
@@ -158,7 +185,11 @@ def worker(args):
         for i, positions in enumerate(moved):
             positions[1, 0] += 0.013 * (i + 1)
         with prepared:
-            row["resource_plan"] = prepared.resource_plan.to_dict()
+            row["resource_plan"] = (
+                None
+                if prepared.resource_plan is None
+                else prepared.resource_plan.to_dict()
+            )
             for phase, positions in (
                 ("cold", None),
                 ("warm", None),
