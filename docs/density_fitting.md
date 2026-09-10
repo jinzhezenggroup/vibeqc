@@ -1,6 +1,6 @@
 # Density-fitting implementation boundary
 
-The opt-in [generated DF response](df_derivatives.md) contracts independent
+The [generated DF response](df_derivatives.md) contracts independent
 three-center and metric weights on CUDA without complete nuclear-derivative
 tensors. That page documents the RHF/UHF reverse chain, bounded host staging,
 metric rank-crossing diagnostics, and measured endpoint evidence.
@@ -41,11 +41,10 @@ and failure status.
   J/K plan for a single system and one batched plan per compatible fleet bucket;
   densities, Fock assembly, batched eigensolves, and convergence reductions stay
   on the device, with a host-orchestrated fallback for provider limitations.
-  CUDA finalization now dispatches the raw three-center, metric-response, and
-  exchange quadratic contractions through the persistent plan stream. The
-  one-electron/overlap Pulay assembly remains on the host, with the validated
-  host two-electron oracle retained as an automatic fallback for unsupported
-  devices or scratch-allocation failures.
+  CUDA finalization constructs bounded raw-value response weights and contracts
+  the shared generated center derivatives on the persistent plan stream.
+  One-electron/overlap Pulay assembly remains on the host. CUDA response failures
+  propagate; independent CPU response remains the implementation for CPU callers.
 - A persistent homogeneous CUDA J/K plan performs device-side metric
   eigendecomposition and inverse-square-root construction, cuBLAS three-center
   transforms and RI-J, and auxiliary-tiled two-GEMM RI-K for RHF and UHF. The
@@ -56,9 +55,10 @@ and failure status.
   device-resident tensor.
 - A deterministic planner for batch, AO-pair, auxiliary, and occupied-orbital
   tiles. Its positive budget bounds the persistent CUDA plan and bounded
-  generation/contraction tiles; force-response scratch is reported separately
-  in peak diagnostics, and budgeted Fleet calls deliberately do not retain
-  derivative tensors between executions.
+  generation/contraction tiles. A positive DF request is split equally between
+  this value/J/K plan and generated force staging. Metric diagnostics describe
+  the value/J/K plan; the whole-HF resource ledger also charges response storage.
+  CUDA HF calls do not retain full derivative tensors between executions.
 - CUDA DF batch plans retain setup diagnostics for every compatible slot:
   effective rank, metric condition number, solver workspace, selected auxiliary
   tile, and conservative host/device resident and peak byte counts. Native
@@ -68,9 +68,10 @@ and failure status.
   `PreparedBatch.last_density_fitting_metric_diagnostics()`.
 
 The CPU integral routines remain an independent numerical oracle. CUDA DF
-preparation now generates raw Cartesian metric/three-center values and first
-derivatives on device, then applies the shared public-basis transform; it does
-not silently fall back to CPU integral evaluation when CUDA generation fails.
+preparation generates raw Cartesian metric/three-center values on device and
+applies the shared public-basis transform. Raw derivative APIs use the same
+generated center definitions as weighted HF response. CUDA generation failures
+propagate instead of silently selecting CPU integral evaluation.
 
 ## Execution notes and acceptance boundary
 
@@ -84,8 +85,9 @@ not silently fall back to CPU integral evaluation when CUDA generation fails.
   only the affected bucket's geometry-dependent plan.  Streamed plans retain
   bounded AO-pair/auxiliary tiles and use the same persistent workspaces; their
   host tile transfers intentionally remain outside Graph capture.
-- Device-resident raw RI-J/K analytic-force response is implemented for RHF
-  and UHF, including metric pseudoinverse and auxiliary response terms.
+- Generated weighted RI-J/K analytic-force response supports RHF and UHF,
+  including metric pseudoinverse and auxiliary response terms. Bounded host
+  weight staging and raw-value transfers remain part of the execution cost.
   One-electron and overlap-Pulay assembly remains host-side and uses the same
   variational weighted-density convention as the CPU oracle.
 - `benchmarks/real_molecule_gate.py --density-fitting cuda` runs a separate
@@ -137,15 +139,16 @@ Data placement depends on the existing planner route:
 backend, mapping, device public transform, and host metric staging. Existing
 metric diagnostics retain threshold, effective rank, condition number, and
 host/device resident and peak byte counts. The eigendecomposition, regular
-cuBLAS contractions, derivative recurrence, force-scratch accounting, and
-direct-SCF acceptance gates are unchanged.
+cuBLAS contractions and direct-SCF acceptance gates remain native runtime and
+independent validation concerns. Removing obsolete derivative scratch from plan
+estimates does not by itself establish a measured whole-process peak reduction.
 
 Generated values are the default, with primitive-oriented warps in the bounded
 source. The bulk compatibility builder retains one thread per output. The
 promotion evidence is in
 [`benchmarks/results/generated-df-values-142`](../benchmarks/results/generated-df-values-142/README.md).
-For bounded comparisons, `VIBEQC_DF_VALUES=generated` explicitly selects this
-route and `VIBEQC_DF_VALUES=reference` selects the previous Hermite evaluator.
+`VIBEQC_DF_VALUES` is retired. Reproducing the previous Hermite evaluator requires
+the exact historical checkout recorded in that archive.
 `VIBEQC_DF_VALUE_MAPPING=auxiliary|component|primitive` compares contiguous
 auxiliary writes, contiguous AO-pair work, and one primitive-reduction warp per
 output. Auxiliary/component mappings remain diagnostic overrides; the component
@@ -162,7 +165,8 @@ Manual validation tools must run through a finite Slurm allocation:
 - `tools/validate_df_source.py --probe build/cuda/vibeqc_df_value_probe` checks
   reconstructed full tensors across native tile boundaries, different batch
   primitive offsets and geometries, and RHF/UHF RI-J/K with identical metric
-  thresholds. It compares all three source mappings with the reference path.
+  thresholds. It compares all three source mappings against independent libcint
+  tensors and NumPy RI-J/K. Add `--derivatives` to check bulk/source responses.
 - `tools/validate_df_endpoints.py` compares public RHF/UHF energy-force
   endpoints at batch one/multiple and two positive budgets plus the bulk route.
   Cold setup/SCF, changed-geometry rebuilding, and warm reuse are reported

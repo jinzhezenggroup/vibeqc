@@ -1,10 +1,11 @@
 # Generated density-fitting response
 
-The opt-in `VIBEQC_DF_DERIVATIVES=generated` path computes the two-electron
-part of DF-HF gradients by generating derivatives and immediately contracting
-external response weights on CUDA. `reference` remains the default. The
-separate `VIBEQC_ONE_ELECTRON_DERIVATIVES` selector controls overlap, kinetic,
-and nuclear-attraction response; neither selector changes the DF Hamiltonian.
+CUDA DF-HF gradients use generated two-/three-center derivatives and contract
+external response weights before downloading the gradient. The former
+coordinate-wise CUDA force implementations and `VIBEQC_DF_DERIVATIVES` selector
+are removed. CPU DF calculations and independent CPU/libcint validation remain
+available. The separate `VIBEQC_ONE_ELECTRON_DERIVATIVES` selector still controls
+overlap, kinetic, and nuclear-attraction response and has its own promotion gate.
 
 ## Independent response contract
 
@@ -103,8 +104,8 @@ Partial auxiliary blocks deliberately reread Q slices and recompute exchange
 responses. Retaining all such responses can exceed the same hard budget;
 secondary blocking or an explicitly charged optional cache remains future
 performance work. The generated adapter applies the metric reverse map once
-per HF response. The previous coordinate-wise oracle still repeats the metric
-eigendecomposition; reusing it is a separate reference-path optimization.
+per HF response. Raw coordinate derivatives remain available through the generated
+integral API; complete CUDA HF response no longer materializes those tensors.
 
 The metric weight is the self-adjoint spectral Frechet response of the
 truncated pseudoinverse applied to `bar_(M+)`. In an eigenbasis its divided
@@ -153,12 +154,17 @@ spin-density temporary against the response portion. Without an explicit
 request, the response cap is 128 MiB. A resource ledger, when requested,
 enforces total owned device allocations across the complete execution.
 Prepared response state and its CUDA plan are invalidated together when the
-selector, mapping, effective budget, or metric cutoff changes; geometry invalidation follows
-the existing fixed-topology plan contract. Generated response failures
-propagate before any legacy oracle-fallback guard. Python singlepoint errors
+mapping, effective budget, or metric cutoff changes; geometry invalidation follows
+the existing fixed-topology plan contract. Energy-only caches do not require a
+bound response. Generated response failures propagate through CUDA force assembly. Python singlepoint errors
 retain the native scientific diagnostic before destroying its context.
 
-## Validation and reproduction
+## Historical validation and reproduction
+
+The archive below describes the earlier opt-in implementation at its recorded
+revisions. Reproduce selector comparisons from those checkouts; the current tree
+cannot select the deleted coordinate-wise implementation. These historical
+measurements alone do not establish promotion of the current shared traversal.
 
 The raw RTX 5090 archive at
 `benchmarks/results/df-derivatives-rtx5090/` contains 162 fixtures and 67,679
@@ -270,6 +276,7 @@ split, charge UHF spin staging, preserve structured resource exceptions, and
 invalidate retained plans when the metric cutoff changes. Their validation
 is archived separately and does not overwrite performance provenance.
 
-The generated path remains opt-in. These artificial small workloads support
-the implementation and show endpoint gains, but do not satisfy the broader
-production Direct-HF or real-molecule promotion gates.
+At these archived revisions the generated path remained opt-in. The artificial
+small workloads supported integration, but did not establish the broader
+real-molecule promotion gate. Direct-HF and one-electron derivatives have separate
+promotion requirements.

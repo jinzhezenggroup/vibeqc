@@ -1309,10 +1309,11 @@ int main() {
             total[i * raw.nbf + j] = alpha[i * raw.nbf + j] + beta[i * raw.nbf + j];
           }
         for (bool unrestricted : {false, true}) {
-          const auto oracle =
+          const auto oracle_derivative =
               unrestricted
                   ? vibeqc::scf::build_density_fitting_uhf_gradient(raw, alpha, beta, 1e-12)
-                  : vibeqc::scf::build_density_fitting_rhf_gradient(raw, total, 1e-12);
+                        .derivative
+                  : vibeqc::scf::build_density_fitting_rhf_gradient(raw, total, 1e-12).derivative;
           const std::vector<vibeqc::scf::DensityFittingDensityResponse> terms =
               unrestricted
                   ? std::vector<vibeqc::scf::DensityFittingDensityResponse>{{total, 1, 0},
@@ -1327,7 +1328,7 @@ int main() {
                     terms, 0, 65536, 3, actual, cuda_detail) == VIBEQC_STATUS_SUCCESS,
                 cuda_detail.c_str());
             require_matrix_close(
-                actual, oracle.derivative, 5e-10,
+                actual, oracle_derivative, 5e-10,
                 "batched generated DF response differs from independent CPU oracle");
           }
         }
