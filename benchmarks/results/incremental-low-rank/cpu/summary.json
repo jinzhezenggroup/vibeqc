@@ -1,0 +1,71 @@
+{
+  "decision": "Numerical experimental acceptance only; small-system timings establish no speedup.",
+  "maximum_gate_error": 9.709519244172071e-09,
+  "passed": true,
+  "results": [
+    {
+      "case": "h2",
+      "median_total_seconds": 0.01030821492895484,
+      "mode": "exact"
+    },
+    {
+      "case": "h2",
+      "median_total_seconds": 0.014495131792500615,
+      "mode": "fixed_rank"
+    },
+    {
+      "case": "h2",
+      "median_total_seconds": 0.015058569144457579,
+      "mode": "adaptive_rank"
+    },
+    {
+      "case": "h2",
+      "median_total_seconds": 0.012331122998148203,
+      "mode": "density_fitted"
+    },
+    {
+      "case": "water",
+      "median_total_seconds": 3.442308963043615,
+      "mode": "exact"
+    },
+    {
+      "case": "water",
+      "median_total_seconds": 3.6052113748155534,
+      "mode": "fixed_rank"
+    },
+    {
+      "case": "water",
+      "median_total_seconds": 3.629118877928704,
+      "mode": "adaptive_rank"
+    },
+    {
+      "case": "water",
+      "median_total_seconds": 3.5423914801795036,
+      "mode": "density_fitted"
+    },
+    {
+      "case": "lih",
+      "median_total_seconds": 1.9290468220133334,
+      "mode": "exact"
+    },
+    {
+      "case": "lih",
+      "median_total_seconds": 2.057456956943497,
+      "mode": "fixed_rank"
+    },
+    {
+      "case": "lih",
+      "median_total_seconds": 2.04732480016537,
+      "mode": "adaptive_rank"
+    },
+    {
+      "case": "lih",
+      "median_total_seconds": 2.001838066149503,
+      "mode": "density_fitted"
+    }
+  ],
+  "source": {
+    "dirty": false,
+    "revision": "dfc9e55f13bc55b4961d7ab5255064a66e38df7b"
+  }
+}
