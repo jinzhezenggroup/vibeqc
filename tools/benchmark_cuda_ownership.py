@@ -111,8 +111,11 @@ def worker(args):
         # Both budgets are explicit across the matrix; pair-policy execution
         # itself introduces no allocation, tile buffer or retained cache.
         df_budget = (1 if count == 1 else 4) << 20
+        # The shared HF planner reserves 512 MiB for opaque CUDA libraries,
+        # in addition to explicit DF/force workspace; the DF sub-budget alone
+        # is not a bound on the complete endpoint.
         budget = ResourceBudget(
-            host_bytes=512 << 20, device_bytes=(256 if count == 1 else 512) << 20
+            host_bytes=512 << 20, device_bytes=(1 if count == 1 else 2) << 30
         )
         atoms = [
             [("He", (0.0, 0.0, -0.7 - 0.1 * i)), ("H", (0.1, 0.0, 0.7))]
