@@ -6099,7 +6099,20 @@ __global__ void build_cuda_df_transformed_tile_kernel(
   double value = 0.0;
   const std::size_t source_begin = apply_metric_transform ? 0U : auxiliary;
   const std::size_t source_end = apply_metric_transform ? public_naux : source_begin + 1U;
-  for (std::size_t source = source_begin; source < source_end; ++source) {
+  // A transformed output reduces over both source auxiliaries and primitive
+  // products. The generated schedule splits those independent extents so short
+  // contractions do not leave most of the warp idle. Raw tiles have only one
+  // source term and keep their full primitive-product partition. Every lane
+  // still reaches the final output reduction, including ragged source tails.
+  constexpr unsigned source_primitive_lanes =
+      generated_df_policy::ValueSourceSchedule::primitive_lanes;
+  static_assert(source_primitive_lanes && source_primitive_lanes <= 32U &&
+                !(source_primitive_lanes & (source_primitive_lanes - 1U)));
+  const unsigned primitive_lanes =
+      lanes == 32U && apply_metric_transform ? source_primitive_lanes : lanes;
+  const unsigned source_lanes = lanes / primitive_lanes;
+  for (std::size_t source = source_begin + lane / primitive_lanes; source < source_end;
+       source += source_lanes) {
     double transformed_raw = 0.0;
     for (std::size_t first = 0; first < cartesian_orbital_count; ++first) {
       const double first_coefficient =
@@ -6119,7 +6132,8 @@ __global__ void build_cuda_df_transformed_tile_kernel(
               batch, static_cast<std::int32_t>(system), static_cast<std::int32_t>(first),
               static_cast<std::int32_t>(second),
               static_cast<std::int32_t>(cartesian_orbital_count + cartesian_auxiliary),
-              static_cast<std::int32_t>(dummy_index), derivative_coordinate, lane, lanes);
+              static_cast<std::int32_t>(dummy_index), derivative_coordinate, lane % primitive_lanes,
+              primitive_lanes);
           transformed_raw += first_coefficient * second_coefficient * auxiliary_coefficient * raw;
         }
       }
