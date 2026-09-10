@@ -10,11 +10,10 @@ import numpy as np
 from vibeqc_compiler.common.arrays import immutable
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.dft import ExplicitGrid, MolecularGrid, NativeAO
-from vibeqc_compiler.dft.features import density_features, spin_densities
+from vibeqc_compiler.dft.features import spin_densities
 from vibeqc_compiler.dft.grid import GridTile, checked_int
 
-from .potential import assemble_potential
-from .program import build_program, pack_grid_features
+from .contractions import ContractionProgram
 from .spec import FunctionalSpec, UnsupportedXC
 
 
@@ -71,7 +70,8 @@ class FixedDensityXC:
             raise UnsupportedXC(
                 "fixed-density LDA/GGA integration requires semilocal metadata"
             )
-        self._program = build_program(spec, order=1)
+        self._contraction = ContractionProgram(spec)
+        self._program = self._contraction.program
 
     @property
     def spec(self):
@@ -133,12 +133,24 @@ class FixedDensityXC:
 
         def collocation():
             if spatial is not None:
-                for tile in spatial.iter_features(d, include_jets=True):
+                ingredients = (
+                    ("rho",)
+                    if self._contraction.contract.ingredients.family == "lda"
+                    else ("rho", "gradient", "sigma")
+                )
+                for tile in spatial.iter_features(
+                    d,
+                    include_jets=True,
+                    ingredients=ingredients,
+                    order=self._contraction.contract.ao_order,
+                ):
                     yield tile, tile.ao_jets, tile.features, tile.ao_ids
             else:
                 for tile in _tiles(grid, tile_points):
-                    jets = basis.evaluate(tile.points, 1)
-                    yield tile, jets, density_features(jets, d), None
+                    jets = basis.evaluate(
+                        tile.points, self._contraction.contract.ao_order
+                    )
+                    yield tile, jets, self._contraction.features(jets, d), None
 
         for tile, jets, features, ao_ids in collocation():
             if ao_ids is not None and len(ao_ids) == 0:
@@ -149,21 +161,14 @@ class FixedDensityXC:
                 tiles += 1
                 continue
             try:
-                values = self._program.unpack(
-                    self._program.evaluate(pack_grid_features(self.spec, features))
-                )
+                values = self._contraction.potential_tile(jets, features, tile.weights)
             except UnsupportedXC as error:
                 begin = tile.begin if ao_ids is None else int(tile.point_ids[0])
                 raise UnsupportedXC(
                     f"XC tile starting at point {begin}: {error}"
                 ) from error
-            gradient = features["gradient"]
-            if self.spec.spin == "unpolarized":
-                gradient = gradient.sum(axis=0)
-            energy += float(tile.weights @ values["energy_density"])
-            block = assemble_potential(
-                self.spec, jets, gradient, values["gradient"], tile.weights
-            )
+            energy += values["energy"]
+            block = values["potential"]
             if ao_ids is None:
                 potential += block
             else:

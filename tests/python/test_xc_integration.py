@@ -248,9 +248,11 @@ def test_independent_gate_rejects_deliberate_factor_faults(monkeypatch, fault):
             integration, "spin_densities", lambda d, n: 2 * original(d, n)
         )
     else:
-        original = integration.assemble_potential
+        from vibeqc_compiler.xc import contractions
+
+        original = contractions.assemble_coefficients
         monkeypatch.setattr(
-            integration, "assemble_potential", lambda *args: 2 * original(*args)
+            contractions, "assemble_coefficients", lambda *args: 2 * original(*args)
         )
     with NativeAO(**basis_arguments(meta)) as basis:
         bad = consumer("PBE").integrate(

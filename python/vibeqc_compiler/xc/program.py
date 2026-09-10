@@ -7,6 +7,7 @@ from itertools import combinations_with_replacement
 
 import numpy as np
 
+from vibeqc_compiler.common.array_graph import evaluate_array_graph
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.integral.expr import AlgebraForm
 
@@ -126,34 +127,11 @@ class XCProgram:
         if not np.any(active):
             return result
         variables = dict(zip(self.spec.features, x[:, active], strict=True))
-        values = {}
-        # Shared intermediates are evaluated once for the requested roots.
-        # This is a diagnostic interpreter, not the CUDA execution fallback.
-        with np.errstate(all="raise"):
-            for index in self.graph.topological_order(self.roots):
-                node = self.graph.nodes[index]
-                args = [values[i] for i in node.arguments]
-                if node.operation == "constant":
-                    value = float(node.payload)
-                elif node.operation == "variable":
-                    value = variables[node.payload]
-                elif node.operation == "add":
-                    value = sum(args)
-                elif node.operation == "multiply":
-                    value = 1
-                    for arg in args:
-                        value = value * arg
-                elif node.operation == "reciprocal":
-                    value = 1 / args[0]
-                elif node.operation == "power":
-                    value = args[0] ** float(node.payload)
-                elif node.operation in ("exp", "log", "log1p", "expm1"):
-                    value = getattr(np, node.operation)(args[0])
-                else:
-                    raise UnsupportedXC(f"unsupported XC primitive {node.operation!r}")
-                values[index] = value
-        for row, root in enumerate(self.roots):
-            result[row, active] = values[root.identifier]
+        # The same scalar-DAG interpreter serves generated ingredient pullbacks.
+        for row, value in enumerate(
+            evaluate_array_graph(self.graph, self.roots, variables)
+        ):
+            result[row, active] = value
         if not np.all(np.isfinite(result)):
             raise ArithmeticError("nonfinite XC output")
         return result

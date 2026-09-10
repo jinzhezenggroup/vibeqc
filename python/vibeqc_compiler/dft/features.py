@@ -40,16 +40,36 @@ def _publish(rho, gradient, tau):
     }
 
 
-def density_features(jets, density):
+def density_features(jets, density, *, ingredients=None):
     """Contract rho, grad(rho), sigma(aa,ab,bb), tau=1/2 sum D gradχ·gradχ.
 
     rho/tau have shape [spin,point], gradient [spin,point,xyz], and sigma
     [aa/ab/bb,point]. The cross-spin sigma_ab carries no extra factor of two.
     This CPU reference uses matrix contractions and includes all active AOs.
+
+    ``ingredients`` prunes unneeded reductions for semilocal consumers. A
+    rho-only request accepts value-only jets; omitting tau avoids its three
+    additional density-matrix products per spin. The default preserves the
+    full diagnostic feature ABI.
     """
+    requested = (
+        ("rho", "gradient", "sigma", "tau")
+        if ingredients is None
+        else tuple(ingredients)
+    )
+    if (
+        not requested
+        or len(set(requested)) != len(requested)
+        or any(k not in ("rho", "gradient", "sigma", "tau") for k in requested)
+    ):
+        raise ValueError("unsupported or duplicate density ingredient")
+    need_gradient = "gradient" in requested or "sigma" in requested
+    need_first = need_gradient or "tau" in requested
     jets = np.asarray(jets)
-    if jets.ndim != 3 or jets.shape[0] not in (4, 10, 20):
-        raise ValueError("density features require AO values and first derivatives")
+    if jets.ndim != 3 or jets.shape[0] not in (
+        (4, 10, 20) if need_first else (1, 4, 10, 20)
+    ):
+        raise ValueError("density features require the requested AO derivative domain")
     if np.iscomplexobj(jets) or not np.isfinite(jets).all():
         raise ValueError("AO jets must be finite and real")
     d = spin_densities(density, jets.shape[2])
@@ -57,21 +77,36 @@ def density_features(jets, density):
     rho, gradient, tau = [], [], []
     for spin in d:
         w = value @ spin
-        rho.append(np.sum(value * w, axis=1))
-        gradient.append(
-            np.stack(
-                [2 * np.sum(derivative * w, axis=1) for derivative in derivatives],
-                axis=-1,
+        if "rho" in requested:
+            rho.append(np.sum(value * w, axis=1))
+        if need_gradient:
+            gradient.append(
+                np.stack(
+                    [2 * np.sum(derivative * w, axis=1) for derivative in derivatives],
+                    axis=-1,
+                )
             )
-        )
-        tau.append(
-            0.5
-            * sum(
-                np.sum((derivative @ spin) * derivative, axis=1)
-                for derivative in derivatives
+        if "tau" in requested:
+            tau.append(
+                0.5
+                * sum(
+                    np.sum((derivative @ spin) * derivative, axis=1)
+                    for derivative in derivatives
+                )
             )
+    values = {
+        "rho": np.asarray(rho),
+        "gradient": np.asarray(gradient),
+        "tau": np.asarray(tau),
+    }
+    if "sigma" in requested:
+        values["sigma"] = np.stack(
+            [
+                np.sum(values["gradient"][a] * values["gradient"][b], axis=1)
+                for a, b in ((0, 0), (0, 1), (1, 1))
+            ]
         )
-    return _publish(np.asarray(rho), np.asarray(gradient), np.asarray(tau))
+    return {key: immutable(values[key]) for key in requested}
 
 
 def orbital_features(jets, coefficients, occupations):

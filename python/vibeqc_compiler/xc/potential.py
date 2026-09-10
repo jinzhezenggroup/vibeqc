@@ -4,6 +4,8 @@ import numpy as np
 
 from vibeqc_compiler.common.arrays import immutable
 
+from .coefficients import coefficient_program
+
 
 def potential_coefficients(spec, density_gradient, xc_gradient):
     """Return scalar, spatial-gradient and kinetic AO bilinear coefficients.
@@ -14,27 +16,9 @@ def potential_coefficients(spec, density_gradient, xc_gradient):
     from tau=one-half sum D_mu_nu grad(phi_mu) dot grad(phi_nu), not a spin
     degeneracy factor. The caller applies quadrature weights exactly once.
     """
-    gradient, v = np.asarray(density_gradient), np.asarray(xc_gradient)
-    if v.ndim != 2 or v.shape[0] != len(spec.features):
-        raise ValueError("invalid XC feature gradient")
-    npoint = v.shape[1]
-    if spec.spin == "polarized":
-        if gradient.shape != (2, npoint, 3):
-            raise ValueError("density gradients require [spin,point,xyz]")
-        spatial = np.stack(
-            (
-                2 * v[2, :, None] * gradient[0] + v[3, :, None] * gradient[1],
-                v[3, :, None] * gradient[0] + 2 * v[4, :, None] * gradient[1],
-            )
-        )
-        return {"rho": v[:2], "gradient": spatial, "tau": v[5:7] / 2}
-    if gradient.shape != (npoint, 3):
-        raise ValueError("unpolarized density gradient requires [point,xyz]")
-    return {
-        "rho": v[:1],
-        "gradient": (2 * v[1, :, None] * gradient)[None],
-        "tau": v[2:3] / 2,
-    }
+    return coefficient_program(spec.spin, kinetic=True).evaluate(
+        density_gradient, xc_gradient
+    )
 
 
 def assemble_potential(spec, jets, density_gradient, xc_gradient, weights):
@@ -54,19 +38,52 @@ def assemble_potential(spec, jets, density_gradient, xc_gradient, weights):
     ):
         raise ValueError("potential point/weight/feature shape mismatch")
     coefficients = potential_coefficients(spec, gradient, v)
+    return assemble_coefficients(jets, coefficients, weights)
+
+
+def assemble_coefficients(jets, coefficients, weights):
+    """Contract compact point coefficients with at most two GEMMs per spin.
+
+    The scalar and gradient bilinears share this sole production assembly
+    owner. LDA needs one value panel and one GEMM; GGA combines three spatial
+    coefficients into one panel before its second GEMM. Optional kinetic
+    coefficients preserve the legacy synthetic tau-half contract.
+    """
+    jets, weights = immutable(jets), immutable(weights)
+    if jets.ndim != 3 or jets.shape[0] not in (1, 4, 10, 20):
+        raise ValueError("invalid AO jet domain for compact assembly")
+    rho = immutable(coefficients["rho"])
+    if (
+        rho.ndim != 2
+        or rho.shape[0] not in (1, 2)
+        or rho.shape[1] != jets.shape[1]
+        or weights.shape != (jets.shape[1],)
+    ):
+        raise ValueError("coefficient point/spin/weight shape mismatch")
+    if set(coefficients) - {"rho", "gradient", "tau"}:
+        raise ValueError("unsupported compact coefficient")
+    spatial = coefficients.get("gradient")
+    kinetic = coefficients.get("tau")
+    if spatial is not None:
+        spatial = immutable(spatial, shape=(*rho.shape, 3))
+    if kinetic is not None:
+        kinetic = immutable(kinetic, shape=rho.shape)
+    if (spatial is not None or kinetic is not None) and jets.shape[0] < 4:
+        raise ValueError("gradient/kinetic assembly requires first AO derivatives")
     phi, derivatives = jets[0], jets[1:4]
     matrices = []
-    for rho, spatial, tau in zip(
-        coefficients["rho"], coefficients["gradient"], coefficients["tau"], strict=True
-    ):
-        matrix = phi.T @ ((weights * rho)[:, None] * phi)
-        panel = sum(spatial[:, k, None] * derivatives[k] for k in range(3))
-        cross = phi.T @ (weights[:, None] * panel)
-        matrix += cross + cross.T
+    for spin in range(len(rho)):
+        matrix = phi.T @ ((weights * rho[spin])[:, None] * phi)
+        if spatial is not None:
+            panel = sum(spatial[spin, :, k, None] * derivatives[k] for k in range(3))
+            cross = phi.T @ (weights[:, None] * panel)
+            matrix += cross + cross.T
         # The current LDA/GGA inventory has zero tau partials. Keep the
         # existing coefficient contract testable without claiming meta-GGA.
-        if np.any(tau):
+        if kinetic is not None and np.any(kinetic[spin]):
             for derivative in derivatives:
-                matrix += derivative.T @ ((weights * tau)[:, None] * derivative)
+                matrix += derivative.T @ (
+                    (weights * kinetic[spin])[:, None] * derivative
+                )
         matrices.append(0.5 * (matrix + matrix.T))
     return immutable(matrices)

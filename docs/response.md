@@ -113,6 +113,12 @@ response. `CPKSResponseOperator` adds that kernel to the J/K response action.
 The kernel/reference basis, grid, functional, and density identities must
 match exactly.
 
+The [common contraction generator](xc_contractions.md) owns the scalar-Hessian
+chain rule and AO assembly. `apply_spin()` preserves functional-spin channels
+and cross-spin terms; `apply()` retains the restricted mean. An optional
+matching `PreparedXCContractions` response owner selects bounded native CPU
+execution through `prepared=...`, with its shared numeric resource plan.
+
 Exact exchange, range-separated exchange, and unvalidated nonzero tau
 derivatives fail closed. The public path also requires a converged `KS`
 reference. Because the converged RKS/UKS endpoint is still owned by #162, no

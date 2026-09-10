@@ -304,12 +304,27 @@ class PreparedSpatialGrid:
             for begin in range(0, len(task.point_ids), self.tile_plan.tile_points):
                 yield task, task.point_ids[begin : begin + self.tile_plan.tile_points]
 
-    def iter_features(self, density, *, include_jets=False):
-        """Yield detached diagnostic feature tiles; a new execution invalidates old iterators."""
+    def iter_features(
+        self, density, *, include_jets=False, ingredients=None, order=None
+    ):
+        """Yield detached tiles; a new execution invalidates old iterators.
+
+        CPU consumers may request fewer ingredients/jets than the screening
+        certificate covers, preserving the same fixed mask while avoiding
+        unused reductions. The current CUDA diagnostic ABI remains full.
+        """
         with self._lock:
             self._check()
             if type(include_jets) is not bool:
                 raise ValueError("include_jets must be boolean")
+            order = self.tile_plan.order if order is None else order
+            checked_int(order, "consumer AO order", low=0, high=self.tile_plan.order)
+            if self._cuda and (
+                ingredients is not None or order != self.tile_plan.order
+            ):
+                raise ValueError(
+                    "pruned spatial ingredients currently require CPU execution"
+                )
             d = spin_densities(density, self.basis.nao)
             self._execution += 1
             execution = self._execution
@@ -330,14 +345,14 @@ class PreparedSpatialGrid:
                     started = time.perf_counter()
                     jets = self.basis.evaluate(
                         points,
-                        self.tile_plan.order,
+                        order,
                         ao_ids=task.ao_ids,
                         budget_bytes=MAX_BYTES,
                     )
                     self.timings["ao_seconds"] += time.perf_counter() - started
                     started = time.perf_counter()
                     local_d = d[:, task.ao_ids[:, None], task.ao_ids[None, :]]
-                    values = density_features(jets, local_d)
+                    values = density_features(jets, local_d, ingredients=ingredients)
                     self.timings["density_seconds"] += time.perf_counter() - started
                 self.timings["tiles"] += 1
                 result = SpatialFeatureTile(

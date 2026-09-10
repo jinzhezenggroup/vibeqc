@@ -2,7 +2,9 @@
 
 This internal CPU tooling slice integrates an explicit fixed density and
 assembles its AO potential. It reuses DFT01's native AO jets, grid tiles and
-density features, and DFT02's audited expressions and `potential_coefficients`.
+density features, and DFT02's audited expressions. The common [contraction
+generator](xc_contractions.md) now owns minimal point coefficients and assembly;
+LDA skips gradient/tau reductions and GGA skips tau.
 It does not register RKS/UKS, iterate SCF, implement nuclear gradients, or run
 GPU prepared XC. It completes only this step of [#162](https://github.com/jinzhezenggroup/vibeqc/issues/162).
 

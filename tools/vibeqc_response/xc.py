@@ -4,17 +4,22 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from hashlib import sha256
+from time import perf_counter
 
 import numpy as np
 from vibeqc.profiles import canonical_hash
 from vibeqc_compiler.dft import ExplicitGrid, MolecularGrid
-from vibeqc_compiler.dft.features import density_features, spin_densities
+from vibeqc_compiler.dft.features import spin_densities
 from vibeqc_compiler.dft.grid import GridTile, checked_int
-from vibeqc_compiler.xc.potential import assemble_potential
-from vibeqc_compiler.xc.program import build_program, pack_grid_features
+from vibeqc_compiler.xc.contractions import (
+    ContractionProgram,
+    density_feature_response,
+)
 from vibeqc_compiler.xc.spec import UnsupportedXC
 
 from tools.vibeqc_posthf.reference import immutable
+
+__all__ = ["FixedDensityXCDerivativeKernel", "density_feature_response"]
 
 
 def _tiles(grid, tile_points):
@@ -31,55 +36,6 @@ def _tiles(grid, tile_points):
             )
 
 
-def density_feature_response(jets, density, delta_density):
-    """Return first-order density-feature response for a supplied AO matrix.
-
-    The response is linear in ``delta_density``.  It uses the same spatial AO
-    jets and spin conventions as :func:`density_features`; no finite
-    differences or numerical denominators are introduced.
-    """
-    jets = np.asarray(jets)
-    if jets.ndim != 3 or jets.shape[0] != 4:
-        raise ValueError("feature response requires first-order AO jets")
-    d = spin_densities(density, jets.shape[2])
-    dd = spin_densities(delta_density, jets.shape[2])
-    value, derivatives = jets[0], jets[1:4]
-    rho, gradient, tau = [], [], []
-    sigma = []
-    for spin in range(2):
-        weighted = value @ d[spin]
-        delta_weighted = value @ dd[spin]
-        current_gradient = np.stack(
-            [2 * np.sum(derivative * weighted, axis=1) for derivative in derivatives],
-            axis=-1,
-        )
-        delta_rho = np.sum(value * delta_weighted, axis=1)
-        delta_gradient = np.stack(
-            [
-                2 * np.sum(derivative * delta_weighted, axis=1)
-                for derivative in derivatives
-            ],
-            axis=-1,
-        )
-        delta_tau = 0.5 * sum(
-            np.sum((derivative @ dd[spin]) * derivative, axis=1)
-            for derivative in derivatives
-        )
-        rho.append(delta_rho)
-        gradient.append(delta_gradient)
-        tau.append(delta_tau)
-        sigma.append(current_gradient)
-    sigma_aa = 2.0 * np.sum(sigma[0] * gradient[0], axis=1)
-    sigma_ab = np.sum(sigma[0] * gradient[1] + sigma[1] * gradient[0], axis=1)
-    sigma_bb = 2.0 * np.sum(sigma[1] * gradient[1], axis=1)
-    return {
-        "rho": immutable(np.asarray(rho)),
-        "gradient": immutable(np.asarray(gradient)),
-        "sigma": immutable(np.stack((sigma_aa, sigma_ab, sigma_bb))),
-        "tau": immutable(np.asarray(tau)),
-    }
-
-
 class FixedDensityXCDerivativeKernel:
     """Analytic second-derivative kernel for one fixed basis/grid/density.
 
@@ -87,9 +43,16 @@ class FixedDensityXCDerivativeKernel:
     it with the exact first-order feature response.  It is deliberately bound
     to one reference density and fails closed on exact-exchange/RSH metadata or
     a nonzero tau derivative that has not been validated for CPKS.
+
+    An optional borrowed ``prepared`` response owner selects bounded native
+    CPU execution with the identical contract, basis and grid. Its resource
+    plan defines the numeric-capacity scope of the reported peak statistic;
+    closing the kernel does not transfer ownership of that prepared object.
     """
 
-    def __init__(self, spec, basis, grid, reference_density, *, tile_points=256):
+    def __init__(
+        self, spec, basis, grid, reference_density, *, tile_points=256, prepared=None
+    ):
         checked_int(tile_points, "XC response tile points")
         if spec.exact_exchange or spec.range_omega or spec.long_range_exchange:
             raise UnsupportedXC(
@@ -109,7 +72,22 @@ class FixedDensityXCDerivativeKernel:
         self.grid = grid
         self.reference_density = immutable(reference_density)
         self.tile_points = tile_points
-        self._program = build_program(spec, order=2)
+        self._contraction = ContractionProgram(spec, "response")
+        if prepared is not None:
+            from vibeqc_compiler.xc.prepared import PreparedXCContractions
+
+            if not isinstance(prepared, PreparedXCContractions):
+                raise TypeError("expected a prepared native XC contraction owner")
+            if (
+                prepared.program.contract.identity
+                != self._contraction.contract.identity
+                or prepared.basis.identity != basis.identity
+                or prepared.grid.identity != grid.identity
+            ):
+                raise ValueError("prepared XC response contract/basis/grid mismatch")
+            prepared._check()
+        self._prepared = prepared
+        self._program = self._contraction.program
         self.geometry_hash = canonical_hash([asdict(atom) for atom in basis.atoms])
         self.basis_hash = canonical_hash(
             {
@@ -122,7 +100,9 @@ class FixedDensityXCDerivativeKernel:
         self.functional_identity = spec.identity
         self.identity = canonical_hash(
             {
-                "backend": "fixed-density-xc-feature-hessian-v1",
+                "backend": "fixed-density-xc-feature-hessian-v2",
+                "contraction": self._contraction.contract.identity,
+                "prepared": None if prepared is None else prepared.identity,
                 "functional_identity": self.functional_identity,
                 "basis_hash": self.basis_hash,
                 "geometry_hash": self.geometry_hash,
@@ -140,84 +120,57 @@ class FixedDensityXCDerivativeKernel:
             "peak_bytes": 0,
         }
 
-    def apply(self, delta_density):
-        """Return the AO response potential for one density response."""
-        d = spin_densities(self.reference_density, self.basis.nao)
-        dd = spin_densities(delta_density, self.basis.nao)
-        if self.spec.spin == "unpolarized" and not np.array_equal(dd[0], dd[1]):
+    def apply_spin(self, delta_density):
+        """Return functional-spin response before the restricted solver reduction.
+
+        Polarized requests keep alpha/beta and cross-spin terms separately.
+        Unpolarized requests have one total-density functional channel. The
+        common contraction layer owns all XC differentiation and assembly.
+        """
+        started = perf_counter()
+        density = spin_densities(self.reference_density, self.basis.nao)
+        direction = spin_densities(delta_density, self.basis.nao)
+        if self.spec.spin == "unpolarized" and (
+            not np.array_equal(density[0], density[1])
+            or not np.array_equal(direction[0], direction[1])
+        ):
             raise UnsupportedXC(
-                "unpolarized XC response requires equal spin-density responses"
+                "unpolarized response requires equal spin matrices and directions"
             )
-        del d
-        response = np.zeros((self.basis.nao, self.basis.nao))
+        nspin = 2 if self.spec.spin == "polarized" else 1
+        if self._prepared is not None:
+            result = self._prepared.execute(density, delta_density=direction)
+            self.statistics["actions"] += 1
+            self.statistics["tiles"] += self._prepared.statistics["tiles"]
+            self.statistics["seconds"] += perf_counter() - started
+            self.statistics["peak_bytes"] = self._prepared.resource_plan.peak_bytes[
+                "host"
+            ]
+            return result["response"]
+        response = np.zeros((nspin, self.basis.nao, self.basis.nao))
         for tile in _tiles(self.grid, self.tile_points):
-            jets = self.basis.evaluate(tile.points, 1)
-            features = density_features(jets, self.reference_density)
-            delta_features = density_feature_response(
-                jets, self.reference_density, delta_density
-            )
-            packed = pack_grid_features(self.spec, features)
-            delta_packed = pack_grid_features(self.spec, delta_features)
-            values = self._program.unpack(self._program.evaluate(packed))
-            hessian = values["hessian"]
-            tau_indices = [
-                index
-                for index, name in enumerate(self.spec.features)
-                if name.startswith("tau")
-            ]
-            if tau_indices and (
-                np.any(values["gradient"][tau_indices])
-                or np.any(hessian[tau_indices, :])
-                or np.any(hessian[:, tau_indices])
-            ):
-                raise UnsupportedXC(
-                    "nonzero tau feature derivatives are not validated for CPKS"
-                )
-            delta_gradient = np.einsum(
-                "ijp,jp->ip", hessian, delta_packed, optimize=False
-            )
-            density_gradient = features["gradient"]
-            delta_density_gradient = delta_features["gradient"]
-            if self.spec.spin == "unpolarized":
-                density_gradient = density_gradient.sum(axis=0)
-                delta_density_gradient = delta_density_gradient.sum(axis=0)
-            # The response has two independent first-order terms:
-            # dV = (dV/de)(de/dD) dD + (dV/d(grad D)) (d grad D/dD) dD.
-            # The first term uses the response feature gradient with only the
-            # reference sigma coefficients; the rho/tau coefficients are
-            # supplied by the second term through the feature Hessian.
-            sigma_indices = [
-                index
-                for index, name in enumerate(self.spec.features)
-                if name.startswith("sigma")
-            ]
-            reference_sigma_only = np.zeros_like(values["gradient"])
-            reference_sigma_only[sigma_indices] = values["gradient"][sigma_indices]
-            tile_response = assemble_potential(
-                self.spec,
+            jets = self.basis.evaluate(tile.points, self._contraction.contract.ao_order)
+            values = self._contraction.evaluate(
                 jets,
-                delta_density_gradient,
-                reference_sigma_only,
+                density,
                 tile.weights,
+                delta_density=direction,
             )
-            tile_response = tile_response + assemble_potential(
-                self.spec,
-                jets,
-                density_gradient,
-                delta_gradient,
-                tile.weights,
-            )
-            # Restricted total-density variations split equally between the
-            # two spin channels, so the separate alpha/beta potentials must be
-            # averaged (unpolarized has one functional-spin channel).
-            response += np.mean(tile_response, axis=0)
+            response += values["response"]
             self.statistics["tiles"] += 1
         self.statistics["actions"] += 1
+        self.statistics["seconds"] += perf_counter() - started
+        # Preserve the legacy statistic's limited matrix-capacity scope.
+        # A complete native execution plan reports its separate resource bound.
         self.statistics["peak_bytes"] = max(
             self.statistics["peak_bytes"],
             4 * self.basis.nao * self.basis.nao * 8,
         )
         return immutable(response)
+
+    def apply(self, delta_density):
+        """Restricted solver adapter: total-D directions split equally by spin."""
+        return immutable(self.apply_spin(delta_density).mean(axis=0))
 
     def apply_transpose(self, delta_density):
         """Apply the symmetric semilocal kernel transpose."""
