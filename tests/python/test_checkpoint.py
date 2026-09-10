@@ -446,7 +446,15 @@ def test_source_convergence_metadata_cannot_bypass_target_solve(tmp_path):
         assert result.energy != -100 and result.iterations > 1
 
 
-def test_no_checkpoint_cold_run_remains_available_after_clear(tmp_path):
+def test_no_checkpoint_cold_run_remains_available_after_clear(tmp_path, monkeypatch):
+    # This check deliberately requires bitwise equality. The ordinary CUDA
+    # one-electron response uses FP64 atomics with an unspecified addition
+    # order, so select its existing serial generated schedule for this check.
+    # The other restart cases exercise the default response and retain their
+    # independent numerical comparisons. CPU execution is already deterministic.
+    if DEVICE == "cuda":
+        monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
+        monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", "serial")
     path = tmp_path / "state"
     expected = save(path).items[0]
     with calc().prepare_batch([H2]) as target:
