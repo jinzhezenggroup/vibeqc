@@ -60,7 +60,12 @@ class DeviceGridTask:
         return self._view
 
     def scatter(self, local=None, *, reset=False, download=False):
-        """Accumulate symmetric spin-local matrices through the explicit AO map."""
+        """Accumulate symmetric spin-local matrices through the explicit AO map.
+
+        A device failure may partially update the global matrix. Retry with
+        ``reset=True`` (or start a new density execution) to discard it; error
+        status is fresh for every scatter attempt.
+        """
         view = self.view
         if type(reset) is not bool or type(download) is not bool:
             raise ValueError("scatter flags must be boolean")

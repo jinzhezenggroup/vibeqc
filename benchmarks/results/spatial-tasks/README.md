@@ -73,6 +73,13 @@ stacks beyond the allowance are explicit exclusions. Replacement peak and
 lease-lifetime behavior are exercised by tests, separately from these fresh
 construction timings.
 
+A later review fix makes each density upload automatically clear the local
+plan's global potential. Repeated device-task executions therefore use default
+scatter safely. The original measured workers explicitly reset their first
+scatter; archived timings retain those exact historical sources and do not
+measure the later automatic reset. The updated path has separate repeated-
+execution numerical and sanitizer coverage, without a new performance claim.
+
 The optimized CUDA AO kernel uses 50 registers, down from 122 in the first
 local implementation. The feature/gather/scatter kernels use 56/32/28
 registers. All report zero spills, stack and shared memory. Cold compilation
@@ -130,11 +137,22 @@ explicitly; adjust that compiler path for an equivalent local installation.
 Preserve Slurm's assigned device visibility. The existing content-addressed
 CUDA compiler captures toolchain, flags, source/header hashes, binary hash,
 compilation time and kernel resources; the worker checks CPU native source
-identity. Use the current benchmark driver with `--dense-only`, historical
-`--root` and its matching CPU library for the six historical workers. Save
-them as `234-optimized-dense-{baseline,candidate}-{0,1,2}.json` in the same
-reproduction directory, in the process order above. Then publish into a new
-directory:
+identity. The six historical workers must also use **CUDA through Slurm**:
+
+```bash
+srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 \
+  --time=00:10:00 python tools/benchmark_spatial_tasks.py \
+  --root <historical-checkout> \
+  --library <historical-checkout>/.artifacts/spatial-cpu-build/libvibeqc.so \
+  --cache .artifacts/spatial-cuda-cache --backend cuda --dense-only --samples 5 \
+  --output .artifacts/reproduction/234-optimized-dense-<side>-<index>.json
+```
+
+Select the exact baseline/candidate revisions listed above and run in order
+`baseline-0`, `candidate-0`, `candidate-1`, `baseline-1`, `baseline-2`,
+`candidate-2`. Each worker is a separate process with a matching CPU library
+for its independent reference. CPU-only historical workers are not accepted
+by this CUDA comparison. Then publish into a new directory:
 
 ```bash
 python tools/publish_spatial_tasks.py --artifacts .artifacts/reproduction \

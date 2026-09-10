@@ -141,6 +141,13 @@ class FixedDensityXC:
                     yield tile, jets, density_features(jets, d), None
 
         for tile, jets, features, ao_ids in collocation():
+            if ao_ids is not None and len(ao_ids) == 0:
+                # A structurally empty fixed mask defines a constant-zero
+                # contribution for every D. No scalar vacuum derivative is
+                # evaluated; nonempty masks retain the usual domain checks.
+                points += len(tile.weights)
+                tiles += 1
+                continue
             try:
                 values = self._program.unpack(
                     self._program.evaluate(pack_grid_features(self.spec, features))

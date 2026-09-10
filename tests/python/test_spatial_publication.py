@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 
 import pytest
+from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.common.resources import ResourcePlan, plan_resources
 
 from tools.publish_spatial_tasks import dense_comparison, summarize, validate_run, write
 from tools.vibeqc_validation.publication import validate_publication
@@ -96,6 +98,28 @@ def test_worker_corruption_is_rejected(damage, message):
     elif damage == "negative_observation":
         sample["native_metrics"]["provider_retained_bytes"] = -1
     with pytest.raises(ValueError, match=message):
+        validate_run(run)
+
+
+def test_missing_execution_request_has_a_publication_diagnostic():
+    run = worker("cuda")
+    row = run["cases"][2]
+    plan = ResourcePlan.from_dict(row["resource_plan"])
+    remaining = tuple(r for r in plan.requests if r.name != "spatial_execution")
+    row["resource_plan"] = plan_resources(remaining, plan.budget).to_dict()
+    with pytest.raises(ValueError, match="spatial execution candidate"):
+        validate_run(run)
+
+
+def test_empty_execution_candidates_are_rejected_as_invalid_data():
+    run = worker("cuda")
+    plan = run["cases"][2]["resource_plan"]
+    next(r for r in plan["requests"] if r["name"] == "spatial_execution")[
+        "candidates"
+    ] = []
+    plan.pop("identity")
+    plan["identity"] = canonical_hash(plan)
+    with pytest.raises(ValueError, match="neither a provider"):
         validate_run(run)
 
 

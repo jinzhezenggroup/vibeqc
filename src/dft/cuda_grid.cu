@@ -233,6 +233,9 @@ int grid_cuda_density_v1(void* pointer, const double* density, size_t elements, 
     ctx.section(true, ctx.metrics.input_ms, [&] {
       cuda_check(
           cudaMemcpyAsync(p.density, density, elements * 8, cudaMemcpyHostToDevice, ctx.stream));
+      // A density upload starts a new execution, even when D is unchanged.
+      // Scatter accumulates across its tasks, never across separate executions.
+      if (p.local) cuda_check(cudaMemsetAsync(p.potential, 0, elements * 8, ctx.stream));
     });
     p.density_ready = true;
   });
@@ -370,6 +373,7 @@ int grid_cuda_scatter_v1(void* pointer, std::uint64_t generation, const double* 
       throw std::invalid_argument("stale local grid view");
     const size_t count = 2 * p.last_active * p.last_active;
     ctx.section(true, ctx.metrics.input_ms, [&] {
+      cuda_check(cudaMemsetAsync(ctx.error, 0, sizeof(int), ctx.stream));
       if (reset) cuda_check(cudaMemsetAsync(p.potential, 0, 2 * p.nao * p.nao * 8, ctx.stream));
       if (host_local && count) {
         for (size_t i = 0; i < count; ++i)

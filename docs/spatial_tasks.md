@@ -73,6 +73,10 @@ potential matrices, then call `lease.scatter()`. The ordinary path downloads
 only the scalar error status. Host local matrices and global matrix downloads
 are explicit diagnostic options.
 
+Starting `device_tasks(density)` establishes a fresh zero global potential,
+including when the density is unchanged. Default `lease.scatter()` accumulates
+only within that execution; callers do not need a first-task reset flag.
+
 A lease expires before the next task, when its context exits, or when the
 outer iterator closes. The owner rejects density replacement, reconfiguration,
 nested tasks and closure during a lease; native scatter also checks the exact

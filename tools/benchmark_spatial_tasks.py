@@ -145,9 +145,9 @@ def main():
             centers = np.array([[6.0 * i, 0.1 * (i % 2), 0] for i in range(natom)])
             atoms = [("H", tuple(r)) for r in centers]
             shells = tuple(
-                Shell(i, l, (Primitive(0.7, 1), Primitive(1.5, -0.1)))
+                Shell(i, angular, (Primitive(0.7, 1), Primitive(1.5, -0.1)))
                 for i in range(natom)
-                for l in (0, 1, 3)
+                for angular in (0, 1, 3)
             )
             points = np.concatenate(
                 [r + 0.2 * rng.normal(size=(32, 3)) for r in centers]

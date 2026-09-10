@@ -16,9 +16,9 @@ from vibeqc_compiler.dft.spatial_prepared import PreparedSpatialGrid
 @pytest.fixture(params=["cartesian", "spherical"])
 def local_case(request):
     shells = tuple(
-        Shell(atom, l, (Primitive(1.0, 1.0), Primitive(2.0, -0.1)))
+        Shell(atom, angular, (Primitive(1.0, 1.0), Primitive(2.0, -0.1)))
         for atom in (0, 1)
-        for l in (0, 1, 2, 3)
+        for angular in (0, 1, 2, 3)
     )
     rng = np.random.default_rng(2341)
     points = np.concatenate(
@@ -36,6 +36,33 @@ def local_case(request):
         orbitals = rng.normal(size=(2, basis.nao, 5))
         density = orbitals @ orbitals.swapaxes(1, 2)
         yield basis, grid, density
+
+
+def test_empty_fixed_mask_has_zero_xc_without_evaluating_vacuum_derivatives(local_case):
+    from vibeqc_compiler.xc import FixedDensityXC, UnsupportedXC, functional
+
+    basis, grid, density = local_case
+    far = replace(grid, points=grid.points + 100)
+    with PreparedSpatialGrid(
+        basis,
+        far,
+        policy=SpatialPolicy(region_points=3, screening="absolute_ao_jet", cutoff=1e-8),
+        tile_points=2,
+    ) as prepared:
+        assert all(len(task.ao_ids) == 0 for task in prepared.tasks.tasks)
+        result = FixedDensityXC(functional("PBE")).integrate(
+            basis, far, density, spatial=prepared
+        )
+        assert result.energy == 0 and np.count_nonzero(result.potential) == 0
+        assert np.count_nonzero(result.electrons) == 0
+        assert result.points == len(far.points)
+        assert result.tiles == sum(
+            (len(t.point_ids) + 1) // 2 for t in prepared.tasks.tasks
+        )
+    # An ordinary nonempty collocation at D=0 still has undefined scalar
+    # derivatives; the empty-mask branch must not become vacuum clipping.
+    with pytest.raises(UnsupportedXC, match="vacuum"):
+        FixedDensityXC(functional("PBE")).integrate(basis, grid, np.zeros_like(density))
 
 
 def test_selected_native_jets_match_dense_including_empty_and_noncontiguous(local_case):

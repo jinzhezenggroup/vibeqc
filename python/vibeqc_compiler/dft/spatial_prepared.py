@@ -374,9 +374,12 @@ class PreparedSpatialGrid:
                         yield task, ids, lease
 
             result = iterator()
-            try:
-                yield result
-            finally:
+        # The lease flag rejects competing operations promptly. Keeping this
+        # lock across user code would instead block other threads indefinitely.
+        try:
+            yield result
+        finally:
+            with self._lock:
                 result.close()
                 self._leased = False
 

@@ -82,7 +82,13 @@ def validate_run(run, *, dense_only=False):
                 raise ValueError("resource plan/worker budget mismatch")
             # A self-consistent plan can still belong to a different workload.
             # Bind its declared topology and native capacities to this worker.
-            request = next(r for r in plan.requests if r.name == "spatial_execution")
+            request = next(
+                (r for r in plan.requests if r.name == "spatial_execution"), None
+            )
+            if request is None or len(request.candidates) != 1:
+                raise ValueError(
+                    "resource plan requires one spatial execution candidate"
+                )
             topology = json.loads(request.identity.topology)
             if (
                 topology
