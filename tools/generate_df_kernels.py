@@ -32,6 +32,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--inventory", type=Path)
     parser.add_argument("--derivatives", action="store_true")
+    parser.add_argument("--policy-output", type=Path)
     args = parser.parse_args()
     if args.derivatives:
         from vibeqc_compiler.integral.df_derivatives_cuda import (
@@ -44,6 +45,10 @@ def main() -> None:
         emitter, inventory = emit_df_values_cuda, df_program_inventory
     source = emitter()
     write_if_changed(args.output, source)
+    if args.policy_output:
+        from vibeqc_compiler.integral.df_policy import emit_df_policy_cuda
+
+        write_if_changed(args.policy_output, emit_df_policy_cuda())
     if args.inventory:
         payload = {
             **inventory(),

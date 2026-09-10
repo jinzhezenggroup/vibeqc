@@ -92,6 +92,13 @@
       "subsystem": "runtime"
     },
     {
+      "path": "src/runtime/cuda_gaussian_products.cuh",
+      "reason": "Rank-generic normalized primitive/AO tensor products, cyclic lane ownership and physical-center projection/scatter; generated policies own all operator formulas.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
       "path": "src/runtime/cuda_runtime.cu",
       "reason": "Device availability, discovery and stable runtime ABI.",
       "regions": [],
@@ -114,9 +121,9 @@
     },
     {
       "path": "src/scf/cuda/df_derivatives.cu",
-      "reason": "Generated derivative contraction/AO traversal glue; compiler owns primitive recurrence math.",
+      "reason": "Full dense weight indexing and bounded launch adapter to the shared generated response policy and generic normalized-basis traversal.",
       "regions": [],
-      "role": "scientific",
+      "role": "runtime",
       "subsystem": "df_derivatives"
     },
     {
@@ -355,6 +362,12 @@
           "role": "runtime",
           "start": "cudaError_t prepare_generated_shell_tasks(",
           "stop": null
+        },
+        {
+          "reason": "Packed basis ABI adapter and generated-policy instantiation; no DF recurrence or operator-specific primitive contraction.",
+          "role": "runtime",
+          "start": "/** Borrow the packed integral metadata through the common normalized-basis ABI. */",
+          "stop": "#include \"scf/cuda/weighted_eri.cuh\""
         }
       ],
       "role": "scientific",
@@ -465,6 +478,13 @@
       ],
       "owner": "python/vibeqc_compiler/dft/ao_cuda.py",
       "scope": "Shared CMake/JIT through-f/order-three AO polynomials and spin-density ingredient arithmetic; generated policy included before the same dense/local native runtime."
+    },
+    {
+      "name": "df_policies",
+      "outputs": [
+        "generated/generated_df_policy.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_policy.py"
     }
   ],
   "schema": "vibeqc.cuda-ownership.v1",
@@ -488,8 +508,8 @@
       "evidence": [
         "benchmarks/results/df-derivatives-rtx5090/raw-summary.json"
       ],
-      "generated_capability": "generated two-/three-center first derivatives and density weights",
-      "missing_capability": "complete schedule/resource/endpoint replacement of old derivatives",
+      "generated_capability": "Two-/three-center raw coordinate derivatives and external weighted responses instantiate the same generated center channels on shared rank-generic normalized primitive/AO products.",
+      "missing_capability": "Completion candidate awaiting independent raw/source/HF validation and optimized resource/endpoint promotion. The coordinate-wise HF response remains until those gates pass.",
       "owner": "df_derivatives",
       "retirement_condition": "retire old derivative recurrence/contraction only after its own complete gates",
       "status": "performance_exception"

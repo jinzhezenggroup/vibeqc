@@ -21,8 +21,9 @@
 #include <utility>
 #include <vector>
 
-#include "df_values.cuh"
+#include "generated_df_policy.cuh"
 #include "molecule/basis.hpp"
+#include "runtime/cuda_gaussian_products.cuh"
 #include "runtime/resource_cuda.cuh"
 #include "runtime/resource_usage.hpp"
 #include "scf/aot_shell_registry.hpp"
@@ -5964,92 +5965,48 @@ __global__ void build_eri_kernel(DeviceBatch batch, double* eri) {
   eri[element] = contracted_eri<double>(batch, system, i, j, k, l, -1);
 }
 
-/**
- * Contract generated raw DF values using the production normalization data.
- *
- * Metric has two auxiliary slots; three-center has two orbital slots and one
- * auxiliary slot. No normalized dummy primitive participates in these value
- * expressions. Sparse public AO expansions are supported, although the tiled
- * source passes Cartesian AOs and applies its public transforms at the write.
- * Runtime primitive lengths are deliberately independent of angular IR. A
- * primitive-oriented warp owns one output and distributes primitive products
- * by lane; the caller reduces partial values after all public-basis transforms.
- */
-template <bool Metric>
-__device__ __noinline__ double contracted_generated_df(const DeviceBatch& batch,
-                                                       std::int32_t system, std::int32_t first,
-                                                       std::int32_t second, std::int32_t auxiliary,
-                                                       unsigned lane, unsigned lanes) {
-  const std::int64_t base = static_cast<std::int64_t>(system) * batch.nbf;
-  const std::int64_t i = base + first;
-  const std::int64_t j = Metric ? i : base + second;
-  const std::int64_t k = base + auxiliary;
-  const auto si = batch.ao_shells[i], sj = batch.ao_shells[j], sk = batch.ao_shells[k];
-  const auto a_position = atom_position<double>(batch, batch.shell_atoms[si], -1);
-  const auto b_position = atom_position<double>(batch, batch.shell_atoms[sj], -1);
-  const auto c_position = atom_position<double>(batch, batch.shell_atoms[sk], -1);
-  const generated_df::Vec3 A{a_position.x, a_position.y, a_position.z};
-  const generated_df::Vec3 B{b_position.x, b_position.y, b_position.z};
-  const generated_df::Vec3 C{c_position.x, c_position.y, c_position.z};
-  const std::int64_t b_begin = Metric ? 0 : batch.shell_primitive_offsets[sj];
-  const std::int64_t b_end = Metric ? 1 : batch.shell_primitive_offsets[sj + 1];
-  unsigned primitive_lane = 0U;
-  double result = 0.0;
-  for (auto a = batch.shell_primitive_offsets[si]; a < batch.shell_primitive_offsets[si + 1]; ++a) {
-    for (auto b = b_begin; b < b_end; ++b) {
-      for (auto c = batch.shell_primitive_offsets[sk]; c < batch.shell_primitive_offsets[sk + 1];
-           ++c) {
-        // Lanes is one or 32. Cycling avoids multiplying unbounded contraction
-        // lengths merely to calculate a primitive's scheduling index.
-        const unsigned owner = primitive_lane;
-        primitive_lane = (primitive_lane + 1U) % lanes;
-        if (owner != lane) continue;
-        double weight = batch.primitive_coefficients[a] * batch.primitive_coefficients[c];
-        if constexpr (!Metric) weight *= batch.primitive_coefficients[b];
-        for (unsigned ti = 0; ti < batch.ao_term_counts[i]; ++ti) {
-          const auto ai = ao_angular(batch, i, ti);
-          const generated_df::Angular ai_df{ai.x, ai.y, ai.z};
-          const unsigned second_terms = Metric ? 1U : batch.ao_term_counts[j];
-          for (unsigned tj = 0; tj < second_terms; ++tj) {
-            const auto aj = ao_angular(batch, j, tj);
-            const generated_df::Angular aj_df{aj.x, aj.y, aj.z};
-            for (unsigned tk = 0; tk < batch.ao_term_counts[k]; ++tk) {
-              const auto ak = ao_angular(batch, k, tk);
-              const generated_df::Angular ak_df{ak.x, ak.y, ak.z};
-              double coefficient =
-                  ao_term_coefficient(batch, i, ti) * ao_term_coefficient(batch, k, tk);
-              double value;
-              if constexpr (Metric) {
-                value = generated_df::metric(batch.primitive_exponents[a], A, ai_df,
-                                             batch.primitive_exponents[c], C, ak_df);
-              } else {
-                coefficient *= ao_term_coefficient(batch, j, tj);
-                value = generated_df::three_center(batch.primitive_exponents[a], A, ai_df,
-                                                   batch.primitive_exponents[b], B, aj_df,
-                                                   batch.primitive_exponents[c], C, ak_df);
-              }
-              result += weight * coefficient * value;
-            }
-          }
-        }
-      }
-    }
-  }
-  return result;
+/** Borrow the packed integral metadata through the common normalized-basis ABI. */
+__device__ runtime::cuda_gaussian_products::BasisView df_basis_view(const DeviceBatch& batch) {
+  return {
+      static_cast<std::size_t>(batch.nbf), batch.shell_atoms,         batch.ao_shells,
+      batch.shell_primitive_offsets,       batch.ao_term_counts,      batch.ao_term_angular,
+      batch.ao_term_coefficients,          batch.primitive_exponents, batch.primitive_coefficients};
 }
 
-/** Generated values are the sole production DF value definition.
- * Dual derivatives retain the separately gated shared ERI recurrence; this
- * does not instantiate a parallel handwritten value branch. */
+/** Values and coordinate responses instantiate the same generic basis traversal.
+ * Metric uses two real factors; three-center uses three. Mathematical center
+ * channels are projected onto physical atoms only after primitive contraction.
+ * The packed dummy remains an ABI detail and never enters a scientific policy.
+ */
 template <bool Derivative, bool Metric>
-__device__ std::conditional_t<Derivative, Dual, double> contracted_df(
-    const DeviceBatch& batch, std::int32_t system, std::int32_t first, std::int32_t second,
-    std::int32_t auxiliary, std::int32_t dummy, std::int64_t coordinate, unsigned lane = 0U,
-    unsigned lanes = 1U) {
+__device__ __noinline__ double contracted_df(const DeviceBatch& batch, std::int32_t system,
+                                             std::int32_t first, std::int32_t second,
+                                             std::int32_t auxiliary, std::int32_t dummy,
+                                             std::int64_t coordinate, unsigned lane = 0U,
+                                             unsigned lanes = 1U) {
+  (void)dummy;
+  namespace products = runtime::cuda_gaussian_products;
+  using Policy =
+      std::conditional_t<Derivative, generated_df_policy::Derivative, generated_df_policy::Value>;
+  constexpr unsigned rank = Metric ? 2 : 3;
+  const auto basis = df_basis_view(batch);
+  const std::int64_t base = static_cast<std::int64_t>(system) * batch.nbf;
+  products::Factor factors[rank]{{basis, base + first}, {basis, base + auxiliary}};
+  if constexpr (!Metric) {
+    factors[1] = {basis, base + second};
+    factors[2] = {basis, base + auxiliary};
+  }
   if constexpr (Derivative) {
-    return contracted_eri<Dual>(batch, system, first, second, auxiliary, dummy, coordinate);
+    bool affected = false;
+    for (unsigned slot = 0; slot < rank; ++slot)
+      affected = affected || basis.shell_atoms[basis.ao_shells[factors[slot].ao]] == coordinate / 3;
+    if (!affected) return 0.0;
+    const auto result =
+        products::contract<Policy, kMaximumAoExpansionTerms>(factors, batch.positions, lane, lanes);
+    return products::coordinate(factors, result, coordinate);
   } else {
-    return contracted_generated_df<Metric>(batch, system, first, second, auxiliary, lane, lanes);
+    return products::contract<Policy, kMaximumAoExpansionTerms>(factors, batch.positions, lane,
+                                                                lanes);
   }
 }
 
@@ -6082,11 +6039,7 @@ __global__ void build_cuda_df_integrals_kernel(
         static_cast<std::int32_t>(dummy_index),
         static_cast<std::int32_t>(orbital_count + second_aux),
         static_cast<std::int32_t>(dummy_index), system_derivative_coordinate);
-    if constexpr (Derivative) {
-      metric[local_system * metric_elements + system_local] = value.derivative;
-    } else {
-      metric[local_system * metric_elements + system_local] = value;
-    }
+    metric[local_system * metric_elements + system_local] = value;
     return;
   }
 
@@ -6100,11 +6053,7 @@ __global__ void build_cuda_df_integrals_kernel(
       static_cast<std::int32_t>(second_orbital),
       static_cast<std::int32_t>(orbital_count + auxiliary), static_cast<std::int32_t>(dummy_index),
       system_derivative_coordinate);
-  if constexpr (Derivative) {
-    three_center[local_system * three_center_elements + local] = value.derivative;
-  } else {
-    three_center[local_system * three_center_elements + local] = value;
-  }
+  three_center[local_system * three_center_elements + local] = value;
 }
 
 /**
@@ -6164,18 +6113,12 @@ __global__ void build_cuda_df_transformed_tile_kernel(
               system_auxiliary_to_cartesian[source * cartesian_auxiliary_count +
                                             cartesian_auxiliary];
           if (auxiliary_coefficient == 0.0) continue;
-          using Scalar = std::conditional_t<Derivative, Dual, double>;
-          const Scalar raw = contracted_df<Derivative, false>(
+          const double raw = contracted_df<Derivative, false>(
               batch, static_cast<std::int32_t>(system), static_cast<std::int32_t>(first),
               static_cast<std::int32_t>(second),
               static_cast<std::int32_t>(cartesian_orbital_count + cartesian_auxiliary),
               static_cast<std::int32_t>(dummy_index), derivative_coordinate, lane, lanes);
-          if constexpr (Derivative) {
-            transformed_raw +=
-                first_coefficient * second_coefficient * auxiliary_coefficient * raw.derivative;
-          } else {
-            transformed_raw += first_coefficient * second_coefficient * auxiliary_coefficient * raw;
-          }
+          transformed_raw += first_coefficient * second_coefficient * auxiliary_coefficient * raw;
         }
       }
     }
@@ -6228,18 +6171,13 @@ __global__ void build_cuda_df_metric_source_kernel(
       const double second_coefficient =
           system_auxiliary_to_cartesian[second * cartesian_auxiliary_count + cartesian_second];
       if (second_coefficient == 0.0) continue;
-      using Scalar = std::conditional_t<Derivative, Dual, double>;
-      const Scalar raw = contracted_df<Derivative, true>(
+      const double raw = contracted_df<Derivative, true>(
           batch, static_cast<std::int32_t>(system),
           static_cast<std::int32_t>(cartesian_orbital_count + cartesian_first),
           static_cast<std::int32_t>(dummy_index),
           static_cast<std::int32_t>(cartesian_orbital_count + cartesian_second),
           static_cast<std::int32_t>(dummy_index), derivative_coordinate, lane, lanes);
-      if constexpr (Derivative) {
-        value += first_coefficient * second_coefficient * raw.derivative;
-      } else {
-        value += first_coefficient * second_coefficient * raw;
-      }
+      value += first_coefficient * second_coefficient * raw;
     }
   }
   if (lanes == 32U) {

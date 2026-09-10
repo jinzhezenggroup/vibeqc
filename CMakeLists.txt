@@ -209,14 +209,16 @@ if(VIBEQC_ENABLE_CUDA)
   file(GLOB_RECURSE VIBEQC_DF_GENERATOR_INPUTS CONFIGURE_DEPENDS
        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/*.py")
   set(VIBEQC_DF_GENERATED_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/df_values.cuh")
+  set(VIBEQC_DF_POLICY_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_policy.cuh")
   add_custom_command(
-    OUTPUT "${VIBEQC_DF_GENERATED_HEADER}"
+    OUTPUT "${VIBEQC_DF_GENERATED_HEADER}" "${VIBEQC_DF_POLICY_HEADER}"
     COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
             --output "${VIBEQC_DF_GENERATED_HEADER}"
+            --policy-output "${VIBEQC_DF_POLICY_HEADER}"
     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
             ${VIBEQC_DF_GENERATOR_INPUTS}
     VERBATIM)
-  target_sources(vibeqc PRIVATE "${VIBEQC_DF_GENERATED_HEADER}")
+  target_sources(vibeqc PRIVATE "${VIBEQC_DF_GENERATED_HEADER}" "${VIBEQC_DF_POLICY_HEADER}")
   set(VIBEQC_DF_DERIVATIVE_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_derivatives.cuh")
   add_custom_command(
     OUTPUT "${VIBEQC_DF_DERIVATIVE_HEADER}"

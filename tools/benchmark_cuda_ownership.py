@@ -45,8 +45,14 @@ def worker(args):
     from vibeqc_compiler.common.resources import ResourceBudget
 
     os.environ["VIBEQC_LIBRARY"] = str(args.build / "libvibeqc.so")
-    os.environ["VIBEQC_ONE_ELECTRON_VALUES"] = args.selection
-    os.environ["VIBEQC_ONE_ELECTRON_VALUE_MAPPING"] = args.mapping
+    if args.domain == "df":
+        os.environ["VIBEQC_DF_DERIVATIVES"] = args.selection
+        os.environ["VIBEQC_DF_DERIVATIVE_MAPPING"] = "thread"
+        # Keep the independent one-electron force route identical on both sides.
+        os.environ.pop("VIBEQC_ONE_ELECTRON_DERIVATIVES", None)
+    else:
+        os.environ["VIBEQC_ONE_ELECTRON_VALUES"] = args.selection
+        os.environ["VIBEQC_ONE_ELECTRON_VALUE_MAPPING"] = args.mapping
     library = ctypes.CDLL(os.environ["VIBEQC_LIBRARY"])
     library.vibeqc_get_source_identity.restype = ctypes.c_char_p
     if library.vibeqc_get_source_identity().decode() != source_identity(args.root):
@@ -54,7 +60,8 @@ def worker(args):
             "selected library does not match the measured source checkout"
         )
     if (
-        args.selection == "reference"
+        args.domain == "one-electron"
+        and args.selection == "reference"
         and "bool generated_one_electron_values_requested("
         not in (args.root / "src/scf/cuda/rhf_policy.cpp").read_text()
     ):
@@ -77,6 +84,7 @@ def worker(args):
             (args.build / "libvibeqc.so").read_bytes()
         ).hexdigest(),
         "selection": args.selection,
+        "domain": args.domain,
         "mapping": args.mapping,
         "python": sys.version,
         "numpy": np.__version__,
@@ -129,18 +137,35 @@ def worker(args):
         ("sdf", "rhf", "spherical", True, 1),
         ("sdf", "uhf", "spherical", True, 3),
     ]
+    if args.domain == "df":
+        inventory = [row for row in inventory if row[3]]
+        # Exercise both resident and source planning for real closed/open-shell
+        # molecules. Named basis contractions add radial diversity beyond the
+        # synthetic through-f schedule inventory.
+        inventory += [
+            (family, method, rep, True, count)
+            for family, method in (
+                ("water-def2-svp", "rhf"),
+                ("oh-def2-svp-uhf", "uhf"),
+            )
+            for rep in ("cartesian", "spherical")
+            for count in (1, 3)
+        ]
     for family, method, representation, fitted, count in inventory:
         basis = (
             spf_basis
             if family == "spf"
             else (spf_basis[0], Shell(0, 2, (Primitive(0.8, 1.0),)), *spf_basis[2:])
         )
+        real_molecule = family not in ("spf", "sdf")
         key = f"{family}/{method}/{representation}/{'df' if fitted else 'direct'}/batch{count}"
         if args.case and key not in args.case:
             continue
         # Pair-policy execution itself introduces no allocation, tile buffer
         # or retained cache. Record both budgets where the HF inventory applies.
         df_budget = (1 if count == 1 else 4) << 20
+        if args.domain == "df" and real_molecule and count == 1:
+            df_budget = 0
         # The shared HF planner reserves 512 MiB for opaque CUDA libraries,
         # in addition to explicit DF/force workspace; the DF sub-budget alone
         # is not a bound on the complete endpoint.
@@ -160,6 +185,26 @@ def worker(args):
             for i in range(count)
         ]
         charge, multiplicity = (1, 1) if method == "rhf" else (0, 2)
+        if real_molecule:
+            sys.path.insert(0, str(args.root))
+            from benchmarks._cases import benchmark_cases
+
+            fixture = benchmark_cases()[family]
+            basis = fixture.vibeqc_basis
+            atoms = [
+                [
+                    (element, tuple(np.asarray(r) * (1 + 0.01 * i)))
+                    for element, r in fixture.atoms
+                ]
+                for i in range(count)
+            ]
+            charge, multiplicity = fixture.charge, fixture.multiplicity
+            budget = None
+            resource_note = (
+                "Named molecular basis exceeds the <=16-orbital-AO whole-HF resource inventory. "
+                "Record actual DF plan diagnostics; scoped derivative allocations are validated separately. "
+                "No total-budget guarantee is claimed for this existing larger endpoint."
+            )
         calc = Calculator(
             method=method,
             device="cuda",
@@ -175,7 +220,9 @@ def worker(args):
         row = {
             "case": key,
             "atoms": atoms,
-            "basis": [asdict(shell) for shell in basis],
+            "basis": basis
+            if isinstance(basis, str)
+            else [asdict(shell) for shell in basis],
             "df_budget_bytes": df_budget,
             "resource_scope_note": resource_note,
             "seconds": {},
@@ -280,6 +327,8 @@ def compare(args):
             sys.executable,
             str(Path(__file__).resolve()),
             "worker",
+            "--domain",
+            args.domain,
             "--root",
             str(getattr(args, f"{label}_root")),
             "--build",
@@ -383,6 +432,7 @@ def compare(args):
     report = {
         "schema": "vibeqc.cuda-ownership-comparison.v1",
         "samples": args.samples,
+        "domain": args.domain,
         "energy_atol": 3e-10,
         "force_atol": 3e-9,
         "endpoint_ceiling": 1.02,
@@ -415,6 +465,9 @@ def main():
     c.add_argument("--samples", type=int, default=5)
     for p in (w, c):
         p.add_argument("--case", action="append")
+        p.add_argument(
+            "--domain", choices=("one-electron", "df"), default="one-electron"
+        )
     args = parser.parse_args()
     if args.command == "compare" and args.samples < 5:
         parser.error("at least five samples are required")
