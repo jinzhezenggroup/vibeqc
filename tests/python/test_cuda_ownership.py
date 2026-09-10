@@ -1,8 +1,32 @@
 """Prevent new CUDA files and stale semantic anchors from escaping the ledger."""
 
+import copy
+import json
+from pathlib import Path
+
 import pytest
 
+from tools.compare_cuda_ownership import compare
 from tools.report_cuda_ownership import code_lines, ownership_report, validate_baseline
+
+
+def test_versioned_current_report_matches_maintained_source_and_ledger():
+    """Keep the current source snapshot reproducible without materializing CUDA."""
+    root = Path(__file__).resolve().parents[2]
+    ledger = json.loads((root / "docs/cuda_ownership.json").read_text())
+    current = json.loads((root / "docs/cuda_ownership_current.json").read_text())
+    fresh = ownership_report(root, ledger)
+    validate_baseline(current)
+    for key in (
+        "files",
+        "maintained_code_lines",
+        "all_handwritten_scientific_lines",
+        "per_subsystem",
+        "migration_ledger",
+    ):
+        assert current[key] == fresh[key], (
+            "regenerate docs/cuda_ownership_current.json for the current source/ledger"
+        )
 
 
 def ledger_for(tmp_path):
@@ -132,3 +156,38 @@ def test_overlapping_regions_and_new_cuda_header_are_rejected(tmp_path):
     )
     with pytest.raises(ValueError, match="overlapping"):
         ownership_report(tmp_path, ledger)
+
+
+def test_physical_edits_and_unchanged_reclassification_are_separate(tmp_path):
+    old_root, new_root = tmp_path / "old", tmp_path / "new"
+    old_root.mkdir()
+    new_root.mkdir()
+    old_ledger = ledger_for(old_root)
+    new_ledger = ledger_for(new_root)
+    new_ledger["files"][0]["regions"][0]["role"] = "runtime"
+    with (new_root / "src/sample.cu").open("a") as stream:
+        stream.write("void another_runtime() {}\n")
+    result = compare(
+        old_root,
+        ownership_report(old_root, old_ledger),
+        new_root,
+        ownership_report(new_root, new_ledger),
+    )
+    assert result["added"] == {"runtime": 1}
+    assert result["removed"] == {}
+    assert result["unchanged_lines_reclassified"] == {"scientific -> runtime": 1}
+    assert result["net_role_delta"]["runtime"] == 2
+    assert result["net_role_delta"]["scientific"] == -1
+
+
+def test_stale_source_or_inconsistent_totals_cannot_claim_retirement(tmp_path):
+    ledger = ledger_for(tmp_path)
+    report = ownership_report(tmp_path, ledger)
+    corrupted = copy.deepcopy(report)
+    corrupted["files"][0]["sha256"] = "0" * 64
+    with pytest.raises(ValueError, match="identity mismatch"):
+        compare(tmp_path, report, tmp_path, corrupted)
+    corrupted = copy.deepcopy(report)
+    corrupted["maintained_code_lines"]["scientific"] += 1
+    with pytest.raises(ValueError, match="totals differ"):
+        compare(tmp_path, report, tmp_path, corrupted)

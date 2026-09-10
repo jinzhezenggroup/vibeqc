@@ -129,8 +129,11 @@ threshold can diagnose distance from their cutoff; HF supplies that threshold.
 The iterative CUDA DF J/K, density, and eigensolver path remains intact.
 Generated force finalization replaces complete coordinate-indexed dA/dM
 storage with a small device gradient and bounded weight tiles. `thread`
-(the default) assigns one dense element to each CUDA thread; `serial` is an
-explicit deterministic traversal selected with
+(the retained default mapping name) uses a generated 32-thread block schedule:
+four lanes split one element's primitive products, and eight elements progress
+per warp. Generic subgroup reduction combines center channels before one lane
+scatters them to physical atoms. Zero weights and ragged tile tails preserve
+complete participating subgroups. `serial` is an explicit deterministic traversal selected with
 `VIBEQC_DF_DERIVATIVE_MAPPING=serial`.
 
 The standalone `maximum_bytes` limit bounds owned numeric host staging and
@@ -158,6 +161,16 @@ mapping, effective budget, or metric cutoff changes; geometry invalidation follo
 the existing fixed-topology plan contract. Energy-only caches do not require a
 bound response. Generated response failures propagate through CUDA force assembly. Python singlepoint errors
 retain the native scientific diagnostic before destroying its context.
+
+## Completed shared-traversal retirement
+
+The final [DF ownership bundle](../benchmarks/results/cuda-ownership/df/README.md)
+binds the complete five-sample, 18-case comparison to the source and original
+optimized objects that include the old response's removal. It retains all four
+energy-plus-force geometry phases and the separate energy-only numerical and
+2% non-regression gates. Independent CPU/libcint/PySCF comparisons, full native
+and Python integration tests and actual-library sanitizer results accompany it.
+Historical opt-in timings below describe their recorded source only.
 
 ## Historical validation and reproduction
 

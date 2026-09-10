@@ -77,7 +77,9 @@ unless its independently documented role still requires it.
 One-electron values are the first consolidation target. Their derivative and
 force routines have separate gates and remain explicit exceptions until those
 gates pass. Generated DF values have archived promotion evidence; their superseded
-value selector is now removed. The derivative fallback remains separately gated. New
+value selector is removed. DF values, raw/source derivatives and weighted HF
+response now share generated scientific policies and generic normalized traversal;
+the superseded coordinate-wise CUDA response has been removed. New
 XC/TensorIR/CC/AD work follows the same ownership boundary and reuses the
 existing compiler, native cache and resource planner.
 
@@ -140,11 +142,74 @@ is classified as a derivative performance exception, so that reclassification
 cannot be counted as physical deletion. Native generic traversal growth and
 scientific region changes are disclosed separately in the reproducible report.
 
-## Scope of the first retirement phase
+## Completion across both retirement phases
 
-PR #252 references #231 and must leave it open. One completed value retirement,
-the inventory and the migration ledger do not complete its broader work items.
-DF derivative definitions and operator-specific contraction/mapping still need
-generated integration, independent numerical/resource/endpoint validation and
-retirement of superseded production arithmetic after passing those gates.
-Retained exceptions are outstanding work, not delivered replacements.
+PR #252 delivered the first value retirement and uses `Refs #231`. Its minimum
+acceptance result did not complete the parent's broader DF work. The second
+phase completes that work: generated DF value/center-derivative policies share
+rank-generic normalized AO/primitive traversal, bounded two-dimensional weight
+ranges, subgroup reductions and physical-atom scatter. The compiler owns the
+four-lane weighted and transformed-source schedules. Bulk/source derivatives
+no longer call the handwritten four-center Dual contraction.
+
+The final [DF evidence bundle](../benchmarks/results/cuda-ownership/df/README.md)
+validates the source that removes the coordinate-wise raw/source RHF/UHF force
+implementations, obsolete metric/coordinate scratch and the derivative selector.
+Generated weighted response is the sole CUDA HF finalizer; its failures propagate.
+Independent CPU/libcint/PySCF oracles and generated raw derivative APIs remain.
+Native metric factors, J/K equations, cuBLAS/cuSOLVER and solver/plan infrastructure
+retain their explicit owners. Their continued presence does not create a second
+DF integral recurrence.
+
+| #231 work items | Delivered behavior and review surface |
+| --- | --- |
+| 1–3: inventory, reproducible report, migration ledger | Complete file/region and generated-family inventory, checked source anchors, current defaults, evidence and retirement conditions in `cuda_ownership.json` and the versioned report. |
+| 4: reduce operator-specific glue | Shared AO-pair and rank-generic Gaussian products, bounded strided ranges, subgroup reductions and generic stores/scatter; generated policies supply operator semantics. |
+| 5: one-electron values | Phase 1 promoted shared generated S/T/V values after the 20-case comparison and removed the handwritten double-value kernel and dispatches. |
+| 6: DF values and derivatives | Phase 2 unifies bulk/source/weighted mathematics and removes the old CUDA coordinate response after independent numerical, resource and full endpoint gates. |
+| 7 and 9: prospective rule and duplication guard | PR disclosure, compiler dependency checks and CI/pre-commit ownership inventory checks remain required for substantive scientific CUDA/codegen changes. |
+| 8 and 10: measured retirement and compiler-directed specialization | Immutable baseline/candidate builds, full unchanged per-case gates, original-object resources and compiler-owned schedules support actual removal. Slower exceptions retain their recorded evidence and conditions. |
+
+Against phase 2's exact baseline `4f36c6e`, scientific CUDA has **+23 / -512**
+physical code lines, while runtime CUDA has **+243 / -444**. The 23 added
+scientific lines are conservatively counted launch/range adapters (6) and
+output/transformed-source mapping (17); integral recurrences remain generated.
+Another **37
+unchanged lines** move from scientific to runtime classification; these are not
+physical deletion. The reconciled category deltas are scientific **-526** and
+runtime **-164**, a total maintained-CUDA reduction of **690** lines. The
+original pre-phase-1 baseline remains in `cuda_ownership_baseline.json`; the
+current report separately exposes the overall change against it. Across both
+phases, the combined scientific/oracle/exception count falls from **10,192 to
+9,499** (**-693**); generic runtime rises from **15,573 to 15,665** (**+92**).
+The overall maintained-CUDA change is therefore **-601**, with the runtime
+growth and classification changes visible independently.
+
+Reproduce both the semantic report and physical edit accounting without a GPU:
+
+```bash
+python tools/report_cuda_ownership.py --check
+python tools/report_cuda_ownership.py --build <matching-candidate-build> \
+  --baseline docs/cuda_ownership_baseline.json --output .artifacts/current.json
+python tools/compare_cuda_ownership.py \
+  --baseline-root <phase-2-baseline-checkout> \
+  --baseline-report benchmarks/results/cuda-ownership/df/ownership-baseline.json \
+  --candidate-root . --candidate-report .artifacts/current.json \
+  --output .artifacts/physical-lines.json
+```
+
+`docs/cuda_ownership_current.json` is the versioned current report, including
+separately measured generated output. CPU CI verifies its maintained-source and
+ledger entries against the current tree; regenerate this snapshot when those
+entries change. The bundle's ownership provenance binds
+the phase-2 sources and report commands. The physical comparison verifies each
+source hash and reconciles edits/reclassification with every role's totals.
+
+The existing one-electron derivative and Direct schedule exceptions retain
+their owners, measured regressions and retirement conditions in the ledger.
+They are not claimed as delivered replacements. Native SCF/low-rank method
+adapters have no equivalent integrated TensorIR endpoint yet; XC GPU and complete
+stationary integration remain scoped to #162/#163/#168. These cases follow the
+issue's explicit oracle/fallback/performance-exception and prospective rules;
+adding their future capabilities requires its own full promotion and removal
+evidence. Completing DF consolidation does not erase or relabel that work.

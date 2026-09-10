@@ -1,5 +1,23 @@
 # CUDA ownership retirement evidence
 
+The two completed phases retain independent, reproducible evidence:
+
+- [One-electron values](one-electron/publication.json): the first generated S/T/V
+  promotion and retirement delivered by #252.
+- [DF values and derivatives](df/README.md): shared generated bulk/source/weighted
+  mathematics and removal of the coordinate-wise CUDA HF response in #255.
+  Its complete 18-case, five-sample paired comparison passes all 90 gates (worst
+  ratio 1.007245172); native/GPU integration, independent libcint checks and both
+  sanitizers pass. The earlier rejected full comparison and subsequent diagnostic
+  evidence remain explicitly labeled and retained alongside the accepted bundle.
+
+The versioned [current ownership report](../../../docs/cuda_ownership_current.json)
+and [physical accounting](df/physical-lines.json) distinguish scientific/runtime
+edits from unchanged lines that changed category. Neither kernel resources nor
+removed plan estimates are claims of measured whole-HF peak-memory savings.
+
+## First-phase one-electron evidence
+
 The `one-electron` bundle supports the generated S/T/V value promotion in #231.
 It compares clean candidate `fdc7f40737fae85e9a25d771158ffdd1cace2b00` with clean
 handwritten baseline `1ba6f175caed656729e0863880251cc315232b1c`, retained at

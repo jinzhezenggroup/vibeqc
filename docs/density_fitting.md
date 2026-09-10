@@ -143,8 +143,11 @@ cuBLAS contractions and direct-SCF acceptance gates remain native runtime and
 independent validation concerns. Removing obsolete derivative scratch from plan
 estimates does not by itself establish a measured whole-process peak reduction.
 
-Generated values are the default, with primitive-oriented warps in the bounded
-source. The bulk compatibility builder retains one thread per output. The
+Generated values are the default. For transformed bounded-source outputs,
+the compiler assigns four lanes to each primitive product partition and eight
+auxiliary source terms to the warp; every lane reaches the final output sum,
+including ragged source tails. Raw source tiles keep a full primitive-reduction
+warp. The bulk compatibility builder retains one thread per output. The
 promotion evidence is in
 [`benchmarks/results/generated-df-values-142`](../benchmarks/results/generated-df-values-142/README.md).
 `VIBEQC_DF_VALUES` is retired. Reproducing the previous Hermite evaluator requires
@@ -153,9 +156,13 @@ the exact historical checkout recorded in that archive.
 auxiliary writes, contiguous AO-pair work, and one primitive-reduction warp per
 output. Auxiliary/component mappings remain diagnostic overrides; the component
 mapping was rejected for automatic selection after its endpoint regression.
-These source choices are frozen at source creation. Derivatives retain
-their existing scheduling. The three mappings share the same generated
-primitive functions; no separate four-center tuning pipeline is duplicated.
+These source choices are frozen at source creation. Coordinate derivatives
+instantiate the shared generated center policy; weighted HF derivatives use
+their independently generated four-lane schedule. The mappings share scientific
+definitions and rank-generic traversal; no parallel handwritten DF recurrence
+or separate four-center tuning pipeline is duplicated. The final source and
+energy-only gates are retained in the
+[DF retirement bundle](../benchmarks/results/cuda-ownership/df/README.md).
 
 Manual validation tools must run through a finite Slurm allocation:
 

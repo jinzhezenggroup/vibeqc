@@ -1,7 +1,11 @@
 """Verify lossless endpoint retention and reject corrupted retirement evidence."""
 
+import ast
+import gzip
+import hashlib
 import json
 from pathlib import Path
+from xml.etree import ElementTree
 
 import pytest
 
@@ -14,9 +18,9 @@ BUNDLE = (
 )
 
 
-def restore_workers(directory, *, one_case=False):
+def restore_workers(directory, *, one_case=False, bundle=BUNDLE):
     """Reconstruct original workers solely from permanent retained records."""
-    compact = json.loads((BUNDLE / "samples.json").read_text())
+    compact = json.loads((bundle / "samples.json").read_text())
     records = compact["records"]
     for entry in compact["runs"]:
         run = dict(records[entry["provenance"]])
@@ -26,22 +30,39 @@ def restore_workers(directory, *, one_case=False):
             for key in ("resource_plan", "observed_resources", "density_fitting"):
                 expanded[key] = records[endpoint[key]]
             expanded.update(seconds=endpoint["seconds"], results=endpoint["results"])
+            if "energy_only" in endpoint:
+                expanded["energy_only"] = endpoint["energy_only"]
             run["endpoints"].append(expanded)
         write(directory / f"{entry['selection']}-{entry['sample']}.json", run)
     write(
         directory / "comparison.json",
-        {"samples": 5, "passed": True, "endpoint_ceiling": 1.02},
+        {
+            "samples": 5,
+            "passed": True,
+            "endpoint_ceiling": 1.02,
+            **{
+                key: records[compact["runs"][0]["provenance"]][key]
+                for key in ("process_scope", "benchmark_driver_sha256")
+                if key in records[compact["runs"][0]["provenance"]]
+            },
+        },
     )
     return compact
 
 
-def test_retained_workers_round_trip_and_recompute_all_gates(tmp_path):
-    original = restore_workers(tmp_path)
+@pytest.mark.parametrize(
+    "bundle,cases,error_blocks",
+    [(BUNDLE, 20, 8), (BUNDLE.parent / "df", 18, 9)],
+)
+def test_retained_workers_round_trip_and_recompute_all_gates(
+    tmp_path, bundle, cases, error_blocks
+):
+    original = restore_workers(tmp_path, bundle=bundle)
     compact, _, errors, _, rows = compact_comparison(tmp_path)
     assert compact == original
-    assert len(rows) == 20
-    assert len(errors) == 20 * 10 * 4 * 2
-    summary = json.loads((BUNDLE / "summary.json").read_text())
+    assert len(rows) == cases
+    assert len(errors) == cases * 10 * error_blocks
+    summary = json.loads((bundle / "summary.json").read_text())
     assert rows == summary["endpoints"]
     assert all(e["passed"] for e in errors.values())
 
@@ -89,9 +110,10 @@ def test_accepted_summary_cannot_hide_corrupted_worker(tmp_path, corruption, mat
         compact_comparison(tmp_path)
 
 
-def test_published_checksums_and_decision():
-    manifest = json.loads((BUNDLE / "publication.json").read_text())
-    files = {e["path"]: (BUNDLE / e["path"]).read_bytes() for e in manifest["files"]}
+@pytest.mark.parametrize("bundle", [BUNDLE, BUNDLE.parent / "df"])
+def test_published_checksums_and_decision(bundle):
+    manifest = json.loads((bundle / "publication.json").read_text())
+    files = {e["path"]: (bundle / e["path"]).read_bytes() for e in manifest["files"]}
     validate_publication(manifest, files)
     assert manifest["decision"]["scope"] == "numerical"
     evidence = json.loads(files["evidence.json"])
@@ -105,17 +127,220 @@ def test_published_checksums_and_decision():
 @pytest.mark.parametrize(
     "field", ["revision", "native_source_identity", "library_sha256", "build_settings"]
 )
-def test_resources_must_match_the_measured_workers(tmp_path, field):
-    compact = restore_workers(tmp_path, one_case=True)
+@pytest.mark.parametrize(
+    "bundle,resource_name,domain",
+    [
+        (BUNDLE, "candidate-pair", "one-electron"),
+        (BUNDLE.parent / "df", "candidate-rhf", "df"),
+    ],
+)
+def test_resources_must_match_the_measured_workers(
+    tmp_path, field, bundle, resource_name, domain
+):
+    compact = restore_workers(tmp_path, one_case=True, bundle=bundle)
     workers = {
         row["selection"]: compact["records"][row["provenance"]]
         for row in compact["runs"]
     }
-    resources = json.loads((BUNDLE / "resources.json").read_text())
-    validate_resources(resources, workers["baseline"], workers["candidate"])
-    resources["candidate-pair"]["provenance"][field] = "wrong-source-or-build"
+    resources = json.loads((bundle / "resources.json").read_text())
+    validate_resources(
+        resources, workers["baseline"], workers["candidate"], domain=domain
+    )
+    resources[resource_name]["provenance"][field] = "wrong-source-or-build"
     with pytest.raises(ValueError, match="resource/worker provenance mismatch"):
-        validate_resources(resources, workers["baseline"], workers["candidate"])
+        validate_resources(
+            resources, workers["baseline"], workers["candidate"], domain=domain
+        )
+
+
+def test_final_df_validation_is_bound_to_the_endpoint_library():
+    """Recheck retained integration/oracle evidence independently of its archiver."""
+    bundle = BUNDLE.parent / "df"
+    manifest = json.loads((bundle / "validation-files.json").read_text())
+    for row in manifest["files"]:
+        data = (bundle / row["path"]).read_bytes()
+        assert len(data) == row["bytes"]
+        assert hashlib.sha256(data).hexdigest() == row["sha256"]
+    validation = json.loads((bundle / "validation.json").read_text())
+    compact = json.loads((bundle / "samples.json").read_text())
+    for run in compact["runs"]:
+        if run["selection"] == "candidate":
+            worker = compact["records"][run["provenance"]]
+            assert validation["endpoint_revision"] == worker["revision"]
+            for key in ("native_source_identity", "library_sha256"):
+                assert validation["source"][key] == worker[key]
+    assert (
+        validation["validation_source"]["revision"] == validation["source"]["revision"]
+    )
+    assert len(validation["gpu_suite_drivers"]) == 6
+    assert sum(row["tests"] for row in validation["gpu_suite_drivers"]) == 143
+    inventory = validation["gpu_case_inventory"]
+    assert len(inventory["collected"]) == len(set(inventory["collected"])) == 143
+    assert sorted(inventory["collected"]) == sorted(inventory["executed"])
+    for stage in validation["gpu_stage_sources"].values():
+        for key in ("revision", "native_source_identity", "library_sha256"):
+            assert stage[key] == validation["source"][key]
+    raw = json.loads((bundle / "raw-source.json").read_text())
+    assert raw["library_hash"] == validation["source"]["library_sha256"]
+    assert len(raw["runs"]) == 24
+    assert all(row["passed"] and row["ranks_match"] for row in raw["runs"])
+    assert all(
+        error["passed"] for row in raw["runs"] for error in row["errors"].values()
+    )
+    original = validation["original_files"]
+    for row in original.values():
+        data = row["text"].encode()
+        assert len(data) == row["bytes"]
+        assert hashlib.sha256(data).hexdigest() == row["sha256"]
+    for name, skipped in (("cpu", 2), ("runtime", 0), ("cuda", 0)):
+        suites = list(
+            ElementTree.fromstring(original[name + ".xml"]["text"]).iter("testsuite")
+        )
+        assert suites and sum(int(s.attrib["tests"]) for s in suites) > 0
+        assert sum(int(s.attrib["skipped"]) for s in suites) == skipped
+        assert all(
+            int(s.attrib["errors"]) == int(s.attrib["failures"]) == 0 for s in suites
+        )
+    for backend, count in (("cpu", 15), ("cuda", 18)):
+        assert validation["native_tests_passed"][backend] == count
+        assert (
+            f"100% tests passed, 0 tests failed out of {count}"
+            in original[backend + "-native.log"]["text"]
+        )
+    for name in ("memcheck", "synccheck"):
+        assert "ERROR SUMMARY: 0 errors" in original[name + ".log"]["text"]
+        assert validation["sanitizers"][name]["tests_passed"] == 3
+
+
+def test_rejected_inventory_run_is_lossless_and_still_fails_raw_gates(tmp_path):
+    """Retain the failed complete matrix even after the paired matrix passes."""
+    bundle = BUNDLE.parent / "df"
+    manifest = json.loads((bundle / "rejected-inventory-run.json").read_text())
+    assert manifest["decision"] == "rejected"
+    assert manifest["promotion_evidence"] is False
+    archive = manifest["archive"]
+    data = (bundle / archive["path"]).read_bytes()
+    assert len(data) == archive["bytes"]
+    assert hashlib.sha256(data).hexdigest() == archive["sha256"]
+    raw = gzip.decompress(data)
+    assert len(raw) == archive["uncompressed_bytes"]
+    assert hashlib.sha256(raw).hexdigest() == archive["uncompressed_sha256"]
+    original = json.loads(raw)["original_files"]
+    expected = {"comparison.json"} | {
+        f"{selection}-{sample}.json"
+        for selection in ("baseline", "candidate")
+        for sample in range(5)
+    }
+    assert set(original) == set(manifest["original_files"]) == expected
+    for name, row in original.items():
+        data = row["text"].encode()
+        assert len(data) == row["bytes"] == manifest["original_files"][name]["bytes"]
+        assert hashlib.sha256(data).hexdigest() == row["sha256"]
+        assert row["sha256"] == manifest["original_files"][name]["sha256"]
+        (tmp_path / name).write_bytes(data)
+        if name != "comparison.json":
+            worker = json.loads(data)
+            assert len(worker["endpoints"]) == 18
+            assert worker["slurm_job_id"] == "9229"
+    comparison = json.loads((tmp_path / "comparison.json").read_text())
+    assert comparison["passed"] is False
+    failed = [
+        {"case": row["case"], "phase": phase, "median_ratio": ratio}
+        for row in comparison["endpoints"]
+        for phase, ratio in row["phase_ratios"].items()
+        if ratio > comparison["endpoint_ceiling"]
+    ]
+    assert failed == manifest["failed_gates"] and len(failed) == 1
+    # Even an incorrectly accepted summary cannot hide the actual regression.
+    comparison["passed"] = True
+    write(tmp_path / "comparison.json", comparison)
+    with pytest.raises(ValueError, match="raw numerical or nonregression gate failed"):
+        compact_comparison(tmp_path)
+
+
+def test_final_df_archive_reconstructs_all_original_case_process_bytes(tmp_path):
+    """Bind the lossless aggregate to all 180 immutable measurement processes."""
+    bundle = BUNDLE.parent / "df"
+    restore_workers(tmp_path, bundle=bundle)
+    manifest = json.loads((bundle / "process-files.json").read_text())
+    assert manifest["process_scope"] == "case" and len(manifest["files"]) == 180
+    identities = set()
+    for row in manifest["files"]:
+        identity = row["case"], row["selection"], row["sample"]
+        assert identity not in identities
+        identities.add(identity)
+        aggregate = json.loads(
+            (tmp_path / f"{row['selection']}-{row['sample']}.json").read_text()
+        )
+        aggregate["endpoints"] = [
+            endpoint
+            for endpoint in aggregate["endpoints"]
+            if endpoint["case"] == row["case"]
+        ]
+        assert len(aggregate["endpoints"]) == 1
+        assert (
+            aggregate["benchmark_driver_sha256"] == manifest["benchmark_driver_sha256"]
+        )
+        data = (json.dumps(aggregate, sort_keys=True, indent=2) + "\n").encode()
+        assert len(data) == row["bytes"]
+        assert hashlib.sha256(data).hexdigest() == row["sha256"]
+
+
+def test_checkpoint_diagnosis_retains_failed_trials_and_exact_assertions():
+    """The deterministic test setup must preserve the original bitwise gates."""
+    bundle = BUNDLE.parent / "df"
+    manifest = json.loads(
+        (bundle / "checkpoint-validation-diagnostics.json").read_text()
+    )
+    archive = manifest["archive"]
+    data = (bundle / archive["path"]).read_bytes()
+    assert len(data) == archive["bytes"]
+    assert hashlib.sha256(data).hexdigest() == archive["sha256"]
+    data = gzip.decompress(data)
+    assert len(data) == archive["uncompressed_bytes"]
+    assert hashlib.sha256(data).hexdigest() == archive["uncompressed_sha256"]
+    originals = json.loads(data)["original_files"]
+    assert set(originals) == set(manifest["original_files"])
+    for name, row in originals.items():
+        data = row["text"].encode()
+        assert len(data) == row["bytes"] == manifest["original_files"][name]["bytes"]
+        assert hashlib.sha256(data).hexdigest() == row["sha256"]
+        assert row["sha256"] == manifest["original_files"][name]["sha256"]
+    for mode, job in (("default", "9236"), ("serial", "9237")):
+        rows = json.loads(originals[f"checkpoint-roundoff-{job}/results.json"]["text"])
+        assert len(rows) == 40
+        for selection in ("baseline", "candidate"):
+            trials = [row for row in rows if row["selection"] == selection]
+            summary = manifest["diagnostic_trials"][mode][selection]
+            assert len(trials) == summary["trials"] == 20
+            assert sum(bool(row["exit_code"]) for row in trials) == summary["failures"]
+            if mode == "serial":
+                assert summary["failures"] == 0
+            else:
+                assert summary["failures"] > 0
+
+    def body(text):
+        return next(
+            node.body
+            for node in ast.parse(text).body
+            if isinstance(node, ast.FunctionDef)
+            and node.name == "test_no_checkpoint_cold_run_remains_available_after_clear"
+        )
+
+    old = body(originals["original-checkpoint-test.py"]["text"])
+    validated = originals["validated-checkpoint-test.py"]
+    current = body(validated["text"])
+    validation = json.loads((bundle / "validation.json").read_text())
+    driver = next(
+        row
+        for row in validation["gpu_suite_drivers"]
+        if row["source"] == "tests/python/test_checkpoint.py"
+    )
+    assert validated["sha256"] == driver["source_sha256"]
+    # Only the explicit CUDA schedule setup precedes the original test body;
+    # inputs, exact energy/force assertions and checkpoint-clear checks survive.
+    assert isinstance(current[0], ast.If)
+    assert [ast.dump(node) for node in current[1:]] == [ast.dump(node) for node in old]
 
 
 def synthetic_df_workers(directory):

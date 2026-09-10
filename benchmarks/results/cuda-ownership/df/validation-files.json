@@ -1,0 +1,95 @@
+{
+  "files": [
+    {
+      "bytes": 10006,
+      "path": "README.md",
+      "sha256": "9a81a46e446ae3c8ae5bc153f16e1d26289996316294e361995db6ebc129f711"
+    },
+    {
+      "bytes": 17733,
+      "path": "checkpoint-validation-diagnostics.json",
+      "sha256": "cfbae6b183369c5bae8249513d12d3e84af1989ec80777270051c216b955dafb"
+    },
+    {
+      "bytes": 31605,
+      "path": "checkpoint-validation-diagnostics.json.gz",
+      "sha256": "78dd5b80af4ff1f9c2210c8655755b992cde8c76b135e048f901e4cd3044fe5c"
+    },
+    {
+      "bytes": 3617,
+      "path": "collect-resources.py",
+      "sha256": "51a5cae9ecd0cc5dcd13f6d2ba1ed304439ce290f945de1590e0072d8744d962"
+    },
+    {
+      "bytes": 734,
+      "path": "fixtures/cartesian.txt",
+      "sha256": "b2d67dee0799cfcb2f78eee42b24bee5ec1d2d5a6c38f5d9012b26cfaba257a8"
+    },
+    {
+      "bytes": 2302,
+      "path": "fixtures/dependent.txt",
+      "sha256": "b652a993e76e212d76337e49900faded7cdbc7eb8621473fac6d465005614016"
+    },
+    {
+      "bytes": 1814,
+      "path": "fixtures/long.txt",
+      "sha256": "796dc84f2a8d1680b7402ef91eddc9f0d16cc3d1cc830821e4f8d6142349f070"
+    },
+    {
+      "bytes": 734,
+      "path": "fixtures/spherical.txt",
+      "sha256": "28504b5f062df97d6112e952de5681d3c02efb7cb9e9a3ffaa7f21a5a57da061"
+    },
+    {
+      "bytes": 125980,
+      "path": "oh-diagnostic.json",
+      "sha256": "90a23962e51b76ef285e2aa1dc32f4b3d05864b4dc3bf855b35a6a5403357576"
+    },
+    {
+      "bytes": 43792,
+      "path": "ownership-baseline.json",
+      "sha256": "ba5f742845605d7d88fb6897d59d7e7d32897828542fea535403d36843796fe8"
+    },
+    {
+      "bytes": 3967,
+      "path": "ownership-provenance.json",
+      "sha256": "0854f76071f61c81a796aae98885524a013c70801d3afd1c26d0dab543ec6182"
+    },
+    {
+      "bytes": 493,
+      "path": "physical-lines.json",
+      "sha256": "c6206e8c7f112e288266a8486e1fc277940e2cda09e3ebfd5a75d148522cc68d"
+    },
+    {
+      "bytes": 48550,
+      "path": "process-files.json",
+      "sha256": "22959bfd9f5c4009fd559de73a7cee3906d7bfd077fd8f47adbc1c25562a5aeb"
+    },
+    {
+      "bytes": 163067,
+      "path": "raw-source.json",
+      "sha256": "5c483f8bd0140336c40fd12a09f921c9af76964ffd4d14d55b7c0897cd169183"
+    },
+    {
+      "bytes": 3234,
+      "path": "rejected-inventory-run.json",
+      "sha256": "453f37edefebd69e3553e1a74ca9f93c235fabf9296bfe053ea1a1c04f9d6277"
+    },
+    {
+      "bytes": 270744,
+      "path": "rejected-inventory-run.json.gz",
+      "sha256": "579d1edae2916632ca67eeba09be97003abea88e0cf13a922f0e993ac7b0f91c"
+    },
+    {
+      "bytes": 6174,
+      "path": "validate-gpu.sh",
+      "sha256": "21d97d427eae0221bc59d56d47cd248c9380156bc5e58189a00513d9fee0190d"
+    },
+    {
+      "bytes": 155087,
+      "path": "validation.json",
+      "sha256": "8d78b766ceb1eedf6bfa7338808a2647e89a96b023d3cd7ed19f06f09ee9ded6"
+    }
+  ],
+  "schema": "vibeqc.df-retirement-validation-files.v1"
+}

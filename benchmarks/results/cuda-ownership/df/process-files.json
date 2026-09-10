@@ -1,0 +1,1449 @@
+{
+  "benchmark_driver_sha256": "f0eb432800eaad350edf116f5c598f55480a7ab02647b529c9c40db0cd895854",
+  "encoding": "UTF-8, json.dumps(sort_keys=True, indent=2) followed by newline",
+  "files": [
+    {
+      "bytes": 23590,
+      "case": "spf/rhf/cartesian/df/batch1",
+      "path": "case-workers/0/baseline-0.json",
+      "sample": 0,
+      "selection": "baseline",
+      "sha256": "b3f6f4d98cbb3244422a93f333e5a7e5941d5f05858c5f2f7aa073ee9fc41f6a"
+    },
+    {
+      "bytes": 23586,
+      "case": "spf/rhf/cartesian/df/batch1",
+      "path": "case-workers/0/baseline-1.json",
+      "sample": 1,
+      "selection": "baseline",
+      "sha256": "002273a3d6657250f1fa9c6b4c098dd1758ac19daf47bbb2a5150350e3e3feef"
+    },
+    {
+      "bytes": 23589,
+      "case": "spf/rhf/cartesian/df/batch1",
+      "path": "case-workers/0/baseline-2.json",
+      "sample": 2,
+      "selection": "baseline",
+      "sha256": "8e8f17cf7b4a31c7c83dd4bb003d41fbbde43b4dc07282f072d0aa03221b4046"
+    },
+    {
+      "bytes": 23591,
+      "case": "spf/rhf/cartesian/df/batch1",
+      "path": "case-workers/0/baseline-3.json",
+      "sample": 3,
+      "selection": "baseline",
+      "sha256": "c1770b30b7893764efd60379585d815e1a919de26d3e4fe8ecc787218f0655fc"
+    },
+    {
+      "bytes": 23590,
+      "case": "spf/rhf/cartesian/df/batch1",
+      "path": "case-workers/0/baseline-4.json",
+      "sample": 4,
+      "selection": "baseline",
+      "sha256": "d00c681950193eda1b59e7f7c2f753812d99089c6fa7261c3d574791dd541b92"
+    },
+    {
+      "bytes": 23541,
+      "case": "spf/rhf/cartesian/df/batch1",
+      "path": "case-workers/0/candidate-0.json",
+      "sample": 0,
+      "selection": "candidate",
+      "sha256": "13b6c4a0565bfef9eb4ec5c73ba804abc18330eace95247adcd91c190acdd639"
+    },
+    {
+      "bytes": 23544,
+      "case": "spf/rhf/cartesian/df/batch1",
+      "path": "case-workers/0/candidate-1.json",
+      "sample": 1,
+      "selection": "candidate",
+      "sha256": "67fbab461fe43e4af6c1108131d6c90414b2ece17293dde500a7267d1d1b2fb5"
+    },
+    {
+      "bytes": 23544,
+      "case": "spf/rhf/cartesian/df/batch1",
+      "path": "case-workers/0/candidate-2.json",
+      "sample": 2,
+      "selection": "candidate",
+      "sha256": "e02cd36a0f18859f285198e34797b724d6ad6086ec86183c3c3ec62e4904a5fe"
+    },
+    {
+      "bytes": 23542,
+      "case": "spf/rhf/cartesian/df/batch1",
+      "path": "case-workers/0/candidate-3.json",
+      "sample": 3,
+      "selection": "candidate",
+      "sha256": "2a99be8f7ab28cf8c349ae411798790801688cd0d07c62379438760c63f69e98"
+    },
+    {
+      "bytes": 23542,
+      "case": "spf/rhf/cartesian/df/batch1",
+      "path": "case-workers/0/candidate-4.json",
+      "sample": 4,
+      "selection": "candidate",
+      "sha256": "c5a8750754648c617e92cdc32cd4ece04db2b32aa84575869fa398a9942dc60a"
+    },
+    {
+      "bytes": 32654,
+      "case": "spf/rhf/cartesian/df/batch3",
+      "path": "case-workers/1/baseline-0.json",
+      "sample": 0,
+      "selection": "baseline",
+      "sha256": "0c103c208fd653988158cc0896236ce95b8e55400809b29dd12b5efaf82ef097"
+    },
+    {
+      "bytes": 32653,
+      "case": "spf/rhf/cartesian/df/batch3",
+      "path": "case-workers/1/baseline-1.json",
+      "sample": 1,
+      "selection": "baseline",
+      "sha256": "0f6f6925c5e7caa991a24c38b242236a57ae43bcb6021fd4e33b55882adf9280"
+    },
+    {
+      "bytes": 32654,
+      "case": "spf/rhf/cartesian/df/batch3",
+      "path": "case-workers/1/baseline-2.json",
+      "sample": 2,
+      "selection": "baseline",
+      "sha256": "e7b38b3c1857b7fcc075b7bde112dbf7dca2f5e245bc49ebc007b2ad6617d202"
+    },
+    {
+      "bytes": 32652,
+      "case": "spf/rhf/cartesian/df/batch3",
+      "path": "case-workers/1/baseline-3.json",
+      "sample": 3,
+      "selection": "baseline",
+      "sha256": "5435b7d372ed02fe8a92e8ea19813ad042ba86d92cc39c8e3eff7cf9c7e0a997"
+    },
+    {
+      "bytes": 32652,
+      "case": "spf/rhf/cartesian/df/batch3",
+      "path": "case-workers/1/baseline-4.json",
+      "sample": 4,
+      "selection": "baseline",
+      "sha256": "1c2aab5a6d65eff9fc0fe6ddd1c28b45a8c4f38ece0aed5f86135c5583c11f54"
+    },
+    {
+      "bytes": 32597,
+      "case": "spf/rhf/cartesian/df/batch3",
+      "path": "case-workers/1/candidate-0.json",
+      "sample": 0,
+      "selection": "candidate",
+      "sha256": "30329af1ed5bcaed66c3a37c9a5c91c58daa2f60583af33e4b517c9738a173d3"
+    },
+    {
+      "bytes": 32595,
+      "case": "spf/rhf/cartesian/df/batch3",
+      "path": "case-workers/1/candidate-1.json",
+      "sample": 1,
+      "selection": "candidate",
+      "sha256": "7e9a835367121c00ad91d7370f57f9176b7565e25de513bb638329e2b14960ec"
+    },
+    {
+      "bytes": 32592,
+      "case": "spf/rhf/cartesian/df/batch3",
+      "path": "case-workers/1/candidate-2.json",
+      "sample": 2,
+      "selection": "candidate",
+      "sha256": "3bd4849e69a0a9eef1cfafdf6d2e0dca19f9f92894395e9660e9c68e7f96db7a"
+    },
+    {
+      "bytes": 32598,
+      "case": "spf/rhf/cartesian/df/batch3",
+      "path": "case-workers/1/candidate-3.json",
+      "sample": 3,
+      "selection": "candidate",
+      "sha256": "1acf84073403ef37a0fcfca69a6491886869ac70e548631b79126dfc05d7fb60"
+    },
+    {
+      "bytes": 32592,
+      "case": "spf/rhf/cartesian/df/batch3",
+      "path": "case-workers/1/candidate-4.json",
+      "sample": 4,
+      "selection": "candidate",
+      "sha256": "c083754e45775997c961e4ba27187119f4730bf554e615a7d038c3c4fba9ff14"
+    },
+    {
+      "bytes": 5729,
+      "case": "water-def2-svp/rhf/cartesian/df/batch1",
+      "path": "case-workers/10/baseline-0.json",
+      "sample": 0,
+      "selection": "baseline",
+      "sha256": "b2405d566fdd8b9e2e5a1860537a23d81cd22184bcb4ce5a23817a5b15d6c455"
+    },
+    {
+      "bytes": 5732,
+      "case": "water-def2-svp/rhf/cartesian/df/batch1",
+      "path": "case-workers/10/baseline-1.json",
+      "sample": 1,
+      "selection": "baseline",
+      "sha256": "7092606bec5dce25e181a2fad7e93bc761f46145e51227a3d8ff5a465f81098e"
+    },
+    {
+      "bytes": 5732,
+      "case": "water-def2-svp/rhf/cartesian/df/batch1",
+      "path": "case-workers/10/baseline-2.json",
+      "sample": 2,
+      "selection": "baseline",
+      "sha256": "c9a52db83d055b045a4167f0be39251c5cc13e247de21fc9aba019525ac07cbf"
+    },
+    {
+      "bytes": 5732,
+      "case": "water-def2-svp/rhf/cartesian/df/batch1",
+      "path": "case-workers/10/baseline-3.json",
+      "sample": 3,
+      "selection": "baseline",
+      "sha256": "1f708e3803504a004fdd037d70fd1d660999e6c4a6ca3e30e511f5801e482bec"
+    },
+    {
+      "bytes": 5731,
+      "case": "water-def2-svp/rhf/cartesian/df/batch1",
+      "path": "case-workers/10/baseline-4.json",
+      "sample": 4,
+      "selection": "baseline",
+      "sha256": "4e52b64868305b55ba327c92b5c6b3095dc4fd3b97d45f24726e05a0defdfda5"
+    },
+    {
+      "bytes": 5760,
+      "case": "water-def2-svp/rhf/cartesian/df/batch1",
+      "path": "case-workers/10/candidate-0.json",
+      "sample": 0,
+      "selection": "candidate",
+      "sha256": "1d3a5b8ed9c7bc58e490724d3d4ffcf718c56e760fb070204daab09712805a09"
+    },
+    {
+      "bytes": 5773,
+      "case": "water-def2-svp/rhf/cartesian/df/batch1",
+      "path": "case-workers/10/candidate-1.json",
+      "sample": 1,
+      "selection": "candidate",
+      "sha256": "45d3ce7ea874057d482542c5d1111ebb67140c1d775560fe65abcc966aaad5b6"
+    },
+    {
+      "bytes": 5765,
+      "case": "water-def2-svp/rhf/cartesian/df/batch1",
+      "path": "case-workers/10/candidate-2.json",
+      "sample": 2,
+      "selection": "candidate",
+      "sha256": "9b85a36377e16e03682291cd8d5868d6938d4a09e3ace930a89fb1b1efb917fe"
+    },
+    {
+      "bytes": 5767,
+      "case": "water-def2-svp/rhf/cartesian/df/batch1",
+      "path": "case-workers/10/candidate-3.json",
+      "sample": 3,
+      "selection": "candidate",
+      "sha256": "f3758e33a13b26fa6bfc8fa4072c63918d6262b2d64525fe67d94967da6ea158"
+    },
+    {
+      "bytes": 5763,
+      "case": "water-def2-svp/rhf/cartesian/df/batch1",
+      "path": "case-workers/10/candidate-4.json",
+      "sample": 4,
+      "selection": "candidate",
+      "sha256": "66e8caa6f67d20962d41b578d996020e5f2b6f6a3e5e98f0bf406ab71f7f5e99"
+    },
+    {
+      "bytes": 13745,
+      "case": "water-def2-svp/rhf/cartesian/df/batch3",
+      "path": "case-workers/11/baseline-0.json",
+      "sample": 0,
+      "selection": "baseline",
+      "sha256": "7b7b2c8003ac72e55b629660efb2df2b5dfb756ba7b04fa325687163c714c426"
+    },
+    {
+      "bytes": 13751,
+      "case": "water-def2-svp/rhf/cartesian/df/batch3",
+      "path": "case-workers/11/baseline-1.json",
+      "sample": 1,
+      "selection": "baseline",
+      "sha256": "e58890c9204098e68be540f476d636e487a7d3f5f3b79ebe5cb2c1003593f39c"
+    },
+    {
+      "bytes": 13750,
+      "case": "water-def2-svp/rhf/cartesian/df/batch3",
+      "path": "case-workers/11/baseline-2.json",
+      "sample": 2,
+      "selection": "baseline",
+      "sha256": "9a7c8fda0b148b344cf29f28d76da7594e7c7c1a2ec20d449fa7dcc915ff2564"
+    },
+    {
+      "bytes": 13751,
+      "case": "water-def2-svp/rhf/cartesian/df/batch3",
+      "path": "case-workers/11/baseline-3.json",
+      "sample": 3,
+      "selection": "baseline",
+      "sha256": "2870716c75fcad3e8a05b580d3010ad6928da8054baa361de9edbc93d8df8d6c"
+    },
+    {
+      "bytes": 13752,
+      "case": "water-def2-svp/rhf/cartesian/df/batch3",
+      "path": "case-workers/11/baseline-4.json",
+      "sample": 4,
+      "selection": "baseline",
+      "sha256": "aa8de0a1bd2f8f07d91b2ea1ad2521a316ab3e2e083bc6f0425b0b2114192608"
+    },
+    {
+      "bytes": 13755,
+      "case": "water-def2-svp/rhf/cartesian/df/batch3",
+      "path": "case-workers/11/candidate-0.json",
+      "sample": 0,
+      "selection": "candidate",
+      "sha256": "a829f581bd1065993df19b0c780eb62ea29ccb8272eb5fa1531bdd3f6a57dce3"
+    },
+    {
+      "bytes": 13755,
+      "case": "water-def2-svp/rhf/cartesian/df/batch3",
+      "path": "case-workers/11/candidate-1.json",
+      "sample": 1,
+      "selection": "candidate",
+      "sha256": "0565f5dfb8a141fb580ad4a3f1bace87d68c3b4ace9c3f31b706082a3b6beb06"
+    },
+    {
+      "bytes": 13757,
+      "case": "water-def2-svp/rhf/cartesian/df/batch3",
+      "path": "case-workers/11/candidate-2.json",
+      "sample": 2,
+      "selection": "candidate",
+      "sha256": "07a7942ff5e52dbc4c9d72f772165aba29903825e766715ac968855d8261744a"
+    },
+    {
+      "bytes": 13747,
+      "case": "water-def2-svp/rhf/cartesian/df/batch3",
+      "path": "case-workers/11/candidate-3.json",
+      "sample": 3,
+      "selection": "candidate",
+      "sha256": "2f435cb9e5097552a5cef49ad14052ff260ba28a54eaf270ae01c6fd933a3a1c"
+    },
+    {
+      "bytes": 13752,
+      "case": "water-def2-svp/rhf/cartesian/df/batch3",
+      "path": "case-workers/11/candidate-4.json",
+      "sample": 4,
+      "selection": "candidate",
+      "sha256": "bf77bb3dec859fcff0393e7049d2e256c88ea3f65d8d9d685bdf7b99e210150a"
+    },
+    {
+      "bytes": 5733,
+      "case": "water-def2-svp/rhf/spherical/df/batch1",
+      "path": "case-workers/12/baseline-0.json",
+      "sample": 0,
+      "selection": "baseline",
+      "sha256": "a5c30b2d8ada43ff68a0549717ea6942a3807a9c95157fe45e473b3dc6db148b"
+    },
+    {
+      "bytes": 5734,
+      "case": "water-def2-svp/rhf/spherical/df/batch1",
+      "path": "case-workers/12/baseline-1.json",
+      "sample": 1,
+      "selection": "baseline",
+      "sha256": "a86f0728843acc52c964f875b977d7288735ba9165629a7c62a935022d471689"
+    },
+    {
+      "bytes": 5732,
+      "case": "water-def2-svp/rhf/spherical/df/batch1",
+      "path": "case-workers/12/baseline-2.json",
+      "sample": 2,
+      "selection": "baseline",
+      "sha256": "beaab9b7112ff17771da1ff8c5774fbe02d498083d69392d120d48b800364818"
+    },
+    {
+      "bytes": 5731,
+      "case": "water-def2-svp/rhf/spherical/df/batch1",
+      "path": "case-workers/12/baseline-3.json",
+      "sample": 3,
+      "selection": "baseline",
+      "sha256": "f3c3ca635471cd62f33037e24719da3837d9de9dde1251cbc1647e9186dca38a"
+    },
+    {
+      "bytes": 5732,
+      "case": "water-def2-svp/rhf/spherical/df/batch1",
+      "path": "case-workers/12/baseline-4.json",
+      "sample": 4,
+      "selection": "baseline",
+      "sha256": "fa6dd4302253ba0f817538fafcbb18f73dfc133de501d46ee6bc00f4e6989421"
+    },
+    {
+      "bytes": 5775,
+      "case": "water-def2-svp/rhf/spherical/df/batch1",
+      "path": "case-workers/12/candidate-0.json",
+      "sample": 0,
+      "selection": "candidate",
+      "sha256": "cb4f61bac6830d373ea69dadeb261ac5a522e7129b0f58dc03efa5ba27b8f10f"
+    },
+    {
+      "bytes": 5773,
+      "case": "water-def2-svp/rhf/spherical/df/batch1",
+      "path": "case-workers/12/candidate-1.json",
+      "sample": 1,
+      "selection": "candidate",
+      "sha256": "ada27c93f3df0a93c7e789114e12e62ffebd91ddbd2bcfd128f3616bc2e33e2f"
+    },
+    {
+      "bytes": 5774,
+      "case": "water-def2-svp/rhf/spherical/df/batch1",
+      "path": "case-workers/12/candidate-2.json",
+      "sample": 2,
+      "selection": "candidate",
+      "sha256": "e4386f861aea85ab606002c9badbeb845f1374de1eb28a703830aab4fe82efb7"
+    },
+    {
+      "bytes": 5771,
+      "case": "water-def2-svp/rhf/spherical/df/batch1",
+      "path": "case-workers/12/candidate-3.json",
+      "sample": 3,
+      "selection": "candidate",
+      "sha256": "faa7073ce5cf4ae62ba8b458b27e11664ef3a0e8d627b1f7eb0037fab7043723"
+    },
+    {
+      "bytes": 5773,
+      "case": "water-def2-svp/rhf/spherical/df/batch1",
+      "path": "case-workers/12/candidate-4.json",
+      "sample": 4,
+      "selection": "candidate",
+      "sha256": "de1ecf66f3428fda5168e0878521ea14c42b0372a1c50de2db640a2a16ddb620"
+    },
+    {
+      "bytes": 13754,
+      "case": "water-def2-svp/rhf/spherical/df/batch3",
+      "path": "case-workers/13/baseline-0.json",
+      "sample": 0,
+      "selection": "baseline",
+      "sha256": "5d8b91483d3885d47ea86b595b5793a4f0435d04c4ee9c76225e1406d4db5306"
+    },
+    {
+      "bytes": 13753,
+      "case": "water-def2-svp/rhf/spherical/df/batch3",
+      "path": "case-workers/13/baseline-1.json",
+      "sample": 1,
+      "selection": "baseline",
+      "sha256": "061c0bd35fc08cca1efb181b3c311fa355acc4217a2febf49cd5bf47c3c45639"
+    },
+    {
+      "bytes": 13755,
+      "case": "water-def2-svp/rhf/spherical/df/batch3",
+      "path": "case-workers/13/baseline-2.json",
+      "sample": 2,
+      "selection": "baseline",
+      "sha256": "5cdc8c34b27891644dfc76068a7c2b73e39349b2d9a24474754a954cc91a2ded"
+    },
+    {
+      "bytes": 13755,
+      "case": "water-def2-svp/rhf/spherical/df/batch3",
+      "path": "case-workers/13/baseline-3.json",
+      "sample": 3,
+      "selection": "baseline",
+      "sha256": "9e185384de13902ffa19ea4d1ce7dcd590b2d0505cb918332cece3972f760948"
+    },
+    {
+      "bytes": 13754,
+      "case": "water-def2-svp/rhf/spherical/df/batch3",
+      "path": "case-workers/13/baseline-4.json",
+      "sample": 4,
+      "selection": "baseline",
+      "sha256": "9d36737fbf275f8620ff519e25c1646237d54c52753e155ee43cb6704d492db3"
+    },
+    {
+      "bytes": 13723,
+      "case": "water-def2-svp/rhf/spherical/df/batch3",
+      "path": "case-workers/13/candidate-0.json",
+      "sample": 0,
+      "selection": "candidate",
+      "sha256": "ce639fd2bacdcf93af267e1b6e6184bc12b05b9a180b5a26b40f0667e8be3e7f"
+    },
+    {
+      "bytes": 13719,
+      "case": "water-def2-svp/rhf/spherical/df/batch3",
+      "path": "case-workers/13/candidate-1.json",
+      "sample": 1,
+      "selection": "candidate",
+      "sha256": "da9efcfa88f8ac36f07f4ec9627c73b4e37c1bc270322e85898759339fd6c6f2"
+    },
+    {
+      "bytes": 13725,
+      "case": "water-def2-svp/rhf/spherical/df/batch3",
+      "path": "case-workers/13/candidate-2.json",
+      "sample": 2,
+      "selection": "candidate",
+      "sha256": "eb59f22de9173bf544a314b558a142f7edb6f4c8e41dab85456e0880b3225f1d"
+    },
+    {
+      "bytes": 13721,
+      "case": "water-def2-svp/rhf/spherical/df/batch3",
+      "path": "case-workers/13/candidate-3.json",
+      "sample": 3,
+      "selection": "candidate",
+      "sha256": "bac26d2a8b7dff68e002a5852c4a66567f9b589fcf1fd92c0c3b178f2318e841"
+    },
+    {
+      "bytes": 13721,
+      "case": "water-def2-svp/rhf/spherical/df/batch3",
+      "path": "case-workers/13/candidate-4.json",
+      "sample": 4,
+      "selection": "candidate",
+      "sha256": "d7a02301942797650e48852a91cc69e4d4de510202b60a708021cea5c8fc07b9"
+    },
+    {
+      "bytes": 4981,
+      "case": "oh-def2-svp-uhf/uhf/cartesian/df/batch1",
+      "path": "case-workers/14/baseline-0.json",
+      "sample": 0,
+      "selection": "baseline",
+      "sha256": "16a4f80ed8c83702a87aaebdbdb10b2a24a6192f81f5abd1e57060413dc636ea"
+    },
+    {
+      "bytes": 4981,
+      "case": "oh-def2-svp-uhf/uhf/cartesian/df/batch1",
+      "path": "case-workers/14/baseline-1.json",
+      "sample": 1,
+      "selection": "baseline",
+      "sha256": "dbf095fc7e310b5e33520c1299dd42824475c894486bbb412c73ab95ade95a22"
+    },
+    {
+      "bytes": 4981,
+      "case": "oh-def2-svp-uhf/uhf/cartesian/df/batch1",
+      "path": "case-workers/14/baseline-2.json",
+      "sample": 2,
+      "selection": "baseline",
+      "sha256": "e12e9b9cc526212fd705ca378ad51c6071f3a1c96805a57a3946cadaef112305"
+    },
+    {
+      "bytes": 4982,
+      "case": "oh-def2-svp-uhf/uhf/cartesian/df/batch1",
+      "path": "case-workers/14/baseline-3.json",
+      "sample": 3,
+      "selection": "baseline",
+      "sha256": "e9d1fd4ab0f56dcee27e9d762e703500cd1b1e29222ed9e2b8ce9f1e292a4237"
+    },
+    {
+      "bytes": 4981,
+      "case": "oh-def2-svp-uhf/uhf/cartesian/df/batch1",
+      "path": "case-workers/14/baseline-4.json",
+      "sample": 4,
+      "selection": "baseline",
+      "sha256": "710d6e622b82bb51ea5d5bd65012bbab1827fca49af77894558bd639d033b9db"
+    },
+    {
+      "bytes": 4977,
+      "case": "oh-def2-svp-uhf/uhf/cartesian/df/batch1",
+      "path": "case-workers/14/candidate-0.json",
+      "sample": 0,
+      "selection": "candidate",
+      "sha256": "67a9e422e51d9a4b9e16cf349b0bf99cd19ff780fbecd86a8819bdfe7b0ed93d"
+    },
+    {
+      "bytes": 4977,
+      "case": "oh-def2-svp-uhf/uhf/cartesian/df/batch1",
+      "path": "case-workers/14/candidate-1.json",
+      "sample": 1,
+      "selection": "candidate",
+      "sha256": "cc07c9744d6b1fa137bfab246de204427666b627a2d4f8b10b070ba6ed86b220"
+    },
+    {
+      "bytes": 4977,
+      "case": "oh-def2-svp-uhf/uhf/cartesian/df/batch1",
+      "path": "case-workers/14/candidate-2.json",
+      "sample": 2,
+      "selection": "candidate",
+      "sha256": "bcefe013d81e8c61acb45b4cd89705393947f6db10b06ffba0852f16e04d3b22"
+    },
+    {
+      "bytes": 4975,
+      "case": "oh-def2-svp-uhf/uhf/cartesian/df/batch1",
+      "path": "case-workers/14/candidate-3.json",
+      "sample": 3,
+      "selection": "candidate",
+      "sha256": "2460004654fcb4d28d0f3ac8b810731efd0f17b3ed766f439adb977f57ef6b09"
+    },
+    {
+      "bytes": 4971,
+      "case": "oh-def2-svp-uhf/uhf/cartesian/df/batch1",
+      "path": "case-workers/14/candidate-4.json",
+      "sample": 4,
+      "selection": "candidate",
+      "sha256": "218a99a325971adc885f3a8184442546834bfce3d9e4969269c496832c1cacd0"
+    },
+    {
+      "bytes": 11473,
+      "case": "oh-def2-svp-uhf/uhf/cartesian/df/batch3",
+      "path": "case-workers/15/baseline-0.json",
+      "sample": 0,
+      "selection": "baseline",
+      "sha256": "dd03cca965c7d73e1c8636aa7871bf953e757d7d6ad365557966b5288494f1e2"
+    },
+    {
+      "bytes": 11471,
+      "case": "oh-def2-svp-uhf/uhf/cartesian/df/batch3",
+      "path": "case-workers/15/baseline-1.json",
+      "sample": 1,
+      "selection": "baseline",
+      "sha256": "fb93a0def3038a881bf731d9312250303331ce2f85cf38b50918e7eeaec21034"
+    },
+    {
+      "bytes": 11470,
+      "case": "oh-def2-svp-uhf/uhf/cartesian/df/batch3",
+      "path": "case-workers/15/baseline-2.json",
+      "sample": 2,
+      "selection": "baseline",
+      "sha256": "63025b3c4c8868108f1c07a4c84a9894e64cddaf6e6375bf2f083721ef9bd168"
+    },
+    {
+      "bytes": 11470,
+      "case": "oh-def2-svp-uhf/uhf/cartesian/df/batch3",
+      "path": "case-workers/15/baseline-3.json",
+      "sample": 3,
+      "selection": "baseline",
+      "sha256": "6068c51dd06db8f45c2f282ca84792cfd17fb1006f1231b08184b4453ff627b7"
+    },
+    {
+      "bytes": 11472,
+      "case": "oh-def2-svp-uhf/uhf/cartesian/df/batch3",
+      "path": "case-workers/15/baseline-4.json",
+      "sample": 4,
+      "selection": "baseline",
+      "sha256": "7b857340f43ca3277d02e331044c881e2a90319c7c38ba71c54436742d7e6290"
+    },
+    {
+      "bytes": 11506,
+      "case": "oh-def2-svp-uhf/uhf/cartesian/df/batch3",
+      "path": "case-workers/15/candidate-0.json",
+      "sample": 0,
+      "selection": "candidate",
+      "sha256": "6a0d21d6f674ce4d70a13e7ec3ec1b3b5a1502ffb8f0c849ada29a867b0ed89d"
+    },
+    {
+      "bytes": 11506,
+      "case": "oh-def2-svp-uhf/uhf/cartesian/df/batch3",
+      "path": "case-workers/15/candidate-1.json",
+      "sample": 1,
+      "selection": "candidate",
+      "sha256": "7d089c98836bc1bb1c4cf7a71038d43c771caf824ee4c06f979764c34d260717"
+    },
+    {
+      "bytes": 11511,
+      "case": "oh-def2-svp-uhf/uhf/cartesian/df/batch3",
+      "path": "case-workers/15/candidate-2.json",
+      "sample": 2,
+      "selection": "candidate",
+      "sha256": "9f015cf28cd8c8084e41e4dd8ee97405b5894b9b329ca646b2ccf0acb33b96e0"
+    },
+    {
+      "bytes": 11505,
+      "case": "oh-def2-svp-uhf/uhf/cartesian/df/batch3",
+      "path": "case-workers/15/candidate-3.json",
+      "sample": 3,
+      "selection": "candidate",
+      "sha256": "d9abec974bbfd2523cd7fa7d06196ce5c3bd659d90d808f83d92003a946e6c7c"
+    },
+    {
+      "bytes": 11511,
+      "case": "oh-def2-svp-uhf/uhf/cartesian/df/batch3",
+      "path": "case-workers/15/candidate-4.json",
+      "sample": 4,
+      "selection": "candidate",
+      "sha256": "369ca30ed65988a77fe3b121d2c89f2b9c2bef83cc2dc228d8c30e642efd4f66"
+    },
+    {
+      "bytes": 5089,
+      "case": "oh-def2-svp-uhf/uhf/spherical/df/batch1",
+      "path": "case-workers/16/baseline-0.json",
+      "sample": 0,
+      "selection": "baseline",
+      "sha256": "f86e8630d879ac70423aa25274b4bb7e04f45f835ab6f81a1cb90d50285b0145"
+    },
+    {
+      "bytes": 5089,
+      "case": "oh-def2-svp-uhf/uhf/spherical/df/batch1",
+      "path": "case-workers/16/baseline-1.json",
+      "sample": 1,
+      "selection": "baseline",
+      "sha256": "d6f4f8f3df757f087609f50bdd0ee724c182a44f39eb3286b3718177668c7de4"
+    },
+    {
+      "bytes": 5087,
+      "case": "oh-def2-svp-uhf/uhf/spherical/df/batch1",
+      "path": "case-workers/16/baseline-2.json",
+      "sample": 2,
+      "selection": "baseline",
+      "sha256": "56c0adf4c83781236886f09dd411b250a526979af57ac1c41d2407d92d38a47c"
+    },
+    {
+      "bytes": 5089,
+      "case": "oh-def2-svp-uhf/uhf/spherical/df/batch1",
+      "path": "case-workers/16/baseline-3.json",
+      "sample": 3,
+      "selection": "baseline",
+      "sha256": "a0b2731c82bdd20bcf16f7d1f82b28003d8bf87efe4e48c7a565ac4e930d6fd8"
+    },
+    {
+      "bytes": 5089,
+      "case": "oh-def2-svp-uhf/uhf/spherical/df/batch1",
+      "path": "case-workers/16/baseline-4.json",
+      "sample": 4,
+      "selection": "baseline",
+      "sha256": "709072cf5cd4a437113fb62d9ade6a9fc8c15f8475685abac77b7a76c75b5e31"
+    },
+    {
+      "bytes": 5044,
+      "case": "oh-def2-svp-uhf/uhf/spherical/df/batch1",
+      "path": "case-workers/16/candidate-0.json",
+      "sample": 0,
+      "selection": "candidate",
+      "sha256": "79a7144e8bab4f50c9ce5b476ce7df1dff8d986f97cbd53ef0b5e82e2daf7c65"
+    },
+    {
+      "bytes": 5043,
+      "case": "oh-def2-svp-uhf/uhf/spherical/df/batch1",
+      "path": "case-workers/16/candidate-1.json",
+      "sample": 1,
+      "selection": "candidate",
+      "sha256": "5ed1d1196db24630c699a3f7a2cdc58e3b7f839a1e8f2d243660ed2702ce7351"
+    },
+    {
+      "bytes": 5044,
+      "case": "oh-def2-svp-uhf/uhf/spherical/df/batch1",
+      "path": "case-workers/16/candidate-2.json",
+      "sample": 2,
+      "selection": "candidate",
+      "sha256": "b2b24a09c7605245ef7cc800891f09094cf866b34305b0116743b7458d7ba87b"
+    },
+    {
+      "bytes": 5047,
+      "case": "oh-def2-svp-uhf/uhf/spherical/df/batch1",
+      "path": "case-workers/16/candidate-3.json",
+      "sample": 3,
+      "selection": "candidate",
+      "sha256": "056a1d313fc558520e246261d18ea3e6c31d56aa9872cd72282367232a921127"
+    },
+    {
+      "bytes": 5043,
+      "case": "oh-def2-svp-uhf/uhf/spherical/df/batch1",
+      "path": "case-workers/16/candidate-4.json",
+      "sample": 4,
+      "selection": "candidate",
+      "sha256": "9c5ac4d8337ebe855fd37dd7a12efb9db02418044c28ec8c0d14f48660648226"
+    },
+    {
+      "bytes": 11482,
+      "case": "oh-def2-svp-uhf/uhf/spherical/df/batch3",
+      "path": "case-workers/17/baseline-0.json",
+      "sample": 0,
+      "selection": "baseline",
+      "sha256": "9ce4d08c722cc521d6ccff96af732efe6a219fcca7a1d6d2868b3fdf5fed67b9"
+    },
+    {
+      "bytes": 11482,
+      "case": "oh-def2-svp-uhf/uhf/spherical/df/batch3",
+      "path": "case-workers/17/baseline-1.json",
+      "sample": 1,
+      "selection": "baseline",
+      "sha256": "24d264ae17c47ce1ee6fe8dfe45a1ee6fea26ba2f22febe76f38706abd7343f9"
+    },
+    {
+      "bytes": 11482,
+      "case": "oh-def2-svp-uhf/uhf/spherical/df/batch3",
+      "path": "case-workers/17/baseline-2.json",
+      "sample": 2,
+      "selection": "baseline",
+      "sha256": "d459189decda2dfef9e66c8b43bb8d84324670d15ee3dcce1b287034673d3ed1"
+    },
+    {
+      "bytes": 11482,
+      "case": "oh-def2-svp-uhf/uhf/spherical/df/batch3",
+      "path": "case-workers/17/baseline-3.json",
+      "sample": 3,
+      "selection": "baseline",
+      "sha256": "af412f5ce4d89438e4f4edd11e80db035ce6249547b1eef0cd6db14bbc5d4216"
+    },
+    {
+      "bytes": 11481,
+      "case": "oh-def2-svp-uhf/uhf/spherical/df/batch3",
+      "path": "case-workers/17/baseline-4.json",
+      "sample": 4,
+      "selection": "baseline",
+      "sha256": "5db57691153a9774c3de82ef02e609f76d099d034b21f0ad9eeb72fb324788ab"
+    },
+    {
+      "bytes": 11499,
+      "case": "oh-def2-svp-uhf/uhf/spherical/df/batch3",
+      "path": "case-workers/17/candidate-0.json",
+      "sample": 0,
+      "selection": "candidate",
+      "sha256": "aaf1aebb72d232b10bf33a8c0e9a065a960102daabda23e63bfafc72d74f3c09"
+    },
+    {
+      "bytes": 11497,
+      "case": "oh-def2-svp-uhf/uhf/spherical/df/batch3",
+      "path": "case-workers/17/candidate-1.json",
+      "sample": 1,
+      "selection": "candidate",
+      "sha256": "6edd073fb63061d6d62ae88042454205fc1cc17c421cb4c6555c1915e93baa96"
+    },
+    {
+      "bytes": 11495,
+      "case": "oh-def2-svp-uhf/uhf/spherical/df/batch3",
+      "path": "case-workers/17/candidate-2.json",
+      "sample": 2,
+      "selection": "candidate",
+      "sha256": "a46611bea0a9be9ed089e6d9353af54a3b2a065c3cb6e409429566af0abf0c1e"
+    },
+    {
+      "bytes": 11499,
+      "case": "oh-def2-svp-uhf/uhf/spherical/df/batch3",
+      "path": "case-workers/17/candidate-3.json",
+      "sample": 3,
+      "selection": "candidate",
+      "sha256": "1529945b52739649fe13395a510a4e65bd33c3c37b0dbf62edcda906b9c2efae"
+    },
+    {
+      "bytes": 11505,
+      "case": "oh-def2-svp-uhf/uhf/spherical/df/batch3",
+      "path": "case-workers/17/candidate-4.json",
+      "sample": 4,
+      "selection": "candidate",
+      "sha256": "c56cc15ee30dbe41025595773a83374949de42965561719bb4cd35c01e68d045"
+    },
+    {
+      "bytes": 23621,
+      "case": "spf/rhf/spherical/df/batch1",
+      "path": "case-workers/2/baseline-0.json",
+      "sample": 0,
+      "selection": "baseline",
+      "sha256": "528867480583a06ef7082fb70cce2812f509cb29ad59aedc996f1ecd0e079569"
+    },
+    {
+      "bytes": 23621,
+      "case": "spf/rhf/spherical/df/batch1",
+      "path": "case-workers/2/baseline-1.json",
+      "sample": 1,
+      "selection": "baseline",
+      "sha256": "f91a87128cee2a89679f08ddb4337f6a734e5b872203e9947755c94160cc17e0"
+    },
+    {
+      "bytes": 23619,
+      "case": "spf/rhf/spherical/df/batch1",
+      "path": "case-workers/2/baseline-2.json",
+      "sample": 2,
+      "selection": "baseline",
+      "sha256": "2476b74ddf0c9850e6261a0153e01f2eb75031c800ceacfda7076809c142e75d"
+    },
+    {
+      "bytes": 23619,
+      "case": "spf/rhf/spherical/df/batch1",
+      "path": "case-workers/2/baseline-3.json",
+      "sample": 3,
+      "selection": "baseline",
+      "sha256": "08a5c6a102b20e7075077057f7a522cbb68e552edf293efba251ea147439c141"
+    },
+    {
+      "bytes": 23620,
+      "case": "spf/rhf/spherical/df/batch1",
+      "path": "case-workers/2/baseline-4.json",
+      "sample": 4,
+      "selection": "baseline",
+      "sha256": "f80603164d81f3971a515c8c57eb9ffcda7e0ab7586fbb69333ce71d6a42f496"
+    },
+    {
+      "bytes": 23543,
+      "case": "spf/rhf/spherical/df/batch1",
+      "path": "case-workers/2/candidate-0.json",
+      "sample": 0,
+      "selection": "candidate",
+      "sha256": "207b467c6cbdefe1bab32e87c4e1c07e94b90bb3c5f71378e54e1ea691e5aaa6"
+    },
+    {
+      "bytes": 23542,
+      "case": "spf/rhf/spherical/df/batch1",
+      "path": "case-workers/2/candidate-1.json",
+      "sample": 1,
+      "selection": "candidate",
+      "sha256": "0ee05b130d56b4eeeb7907f63a74ff1e7470f97d760358138fff3203e907d577"
+    },
+    {
+      "bytes": 23541,
+      "case": "spf/rhf/spherical/df/batch1",
+      "path": "case-workers/2/candidate-2.json",
+      "sample": 2,
+      "selection": "candidate",
+      "sha256": "814ceea53d0c0aeee8c069086607bc8e900b410d67bd33656f3e1e59be5de594"
+    },
+    {
+      "bytes": 23544,
+      "case": "spf/rhf/spherical/df/batch1",
+      "path": "case-workers/2/candidate-3.json",
+      "sample": 3,
+      "selection": "candidate",
+      "sha256": "386a371b1e8f0d3f234343d97682b0a5d9c32b984fccc5f2f08584b837e623ae"
+    },
+    {
+      "bytes": 23543,
+      "case": "spf/rhf/spherical/df/batch1",
+      "path": "case-workers/2/candidate-4.json",
+      "sample": 4,
+      "selection": "candidate",
+      "sha256": "af8f48b142850edfeb60bd86e12d3f0ae5a9b9b1cb8f71b29ac8b59593c0aa9d"
+    },
+    {
+      "bytes": 32672,
+      "case": "spf/rhf/spherical/df/batch3",
+      "path": "case-workers/3/baseline-0.json",
+      "sample": 0,
+      "selection": "baseline",
+      "sha256": "6f64508adfae3f1840852c74766637bbb44d303779be65d308b9a49d9ef38a14"
+    },
+    {
+      "bytes": 32669,
+      "case": "spf/rhf/spherical/df/batch3",
+      "path": "case-workers/3/baseline-1.json",
+      "sample": 1,
+      "selection": "baseline",
+      "sha256": "57d02ae5a185cb9e12fc6d256e2976deda4d23cd96b94d3eae72383fc56e2ec1"
+    },
+    {
+      "bytes": 32669,
+      "case": "spf/rhf/spherical/df/batch3",
+      "path": "case-workers/3/baseline-2.json",
+      "sample": 2,
+      "selection": "baseline",
+      "sha256": "af1965b45739488602f2499985f6a04240dae08d26395bf40c1c2ede424ddae1"
+    },
+    {
+      "bytes": 32670,
+      "case": "spf/rhf/spherical/df/batch3",
+      "path": "case-workers/3/baseline-3.json",
+      "sample": 3,
+      "selection": "baseline",
+      "sha256": "036dc61fdf34a6dea08cad4a3f427fe54345659daef7b3cc74502a9bb1a869d8"
+    },
+    {
+      "bytes": 32670,
+      "case": "spf/rhf/spherical/df/batch3",
+      "path": "case-workers/3/baseline-4.json",
+      "sample": 4,
+      "selection": "baseline",
+      "sha256": "407225ad8421e7f651639ffba164521b0075b6fdb083a85e0b17febaebfb2572"
+    },
+    {
+      "bytes": 32599,
+      "case": "spf/rhf/spherical/df/batch3",
+      "path": "case-workers/3/candidate-0.json",
+      "sample": 0,
+      "selection": "candidate",
+      "sha256": "1bf273327f78ba09eb91bf6f8b52a2d45e1b68ac22118b345b794260807e2d70"
+    },
+    {
+      "bytes": 32600,
+      "case": "spf/rhf/spherical/df/batch3",
+      "path": "case-workers/3/candidate-1.json",
+      "sample": 1,
+      "selection": "candidate",
+      "sha256": "f2a3889ff0f02a4e017e5bab33cdf84680d604f7e23371478d7e35cc8d42595e"
+    },
+    {
+      "bytes": 32599,
+      "case": "spf/rhf/spherical/df/batch3",
+      "path": "case-workers/3/candidate-2.json",
+      "sample": 2,
+      "selection": "candidate",
+      "sha256": "767507e1d20d43be65c166b4cae7d03d9f9b85d1ca76c9703836d6392a812817"
+    },
+    {
+      "bytes": 32600,
+      "case": "spf/rhf/spherical/df/batch3",
+      "path": "case-workers/3/candidate-3.json",
+      "sample": 3,
+      "selection": "candidate",
+      "sha256": "43396aaf864b4eb5a85270553f6f06095965cedc9a0686a5f8c7bcfea64e65c4"
+    },
+    {
+      "bytes": 32598,
+      "case": "spf/rhf/spherical/df/batch3",
+      "path": "case-workers/3/candidate-4.json",
+      "sample": 4,
+      "selection": "candidate",
+      "sha256": "add54063f45dfba3f453bff9ee482ef41e8d3e93096a0e96a6b705031b9e8253"
+    },
+    {
+      "bytes": 23626,
+      "case": "spf/uhf/cartesian/df/batch1",
+      "path": "case-workers/4/baseline-0.json",
+      "sample": 0,
+      "selection": "baseline",
+      "sha256": "7a718bfc81e2cde5ac175d392da66f8a30bc8c5e6dcdf3fb06507848706394e3"
+    },
+    {
+      "bytes": 23627,
+      "case": "spf/uhf/cartesian/df/batch1",
+      "path": "case-workers/4/baseline-1.json",
+      "sample": 1,
+      "selection": "baseline",
+      "sha256": "60d55405f071cd1a40482a98595e0dec8d785f21e8074a19a4a4bffa29007019"
+    },
+    {
+      "bytes": 23623,
+      "case": "spf/uhf/cartesian/df/batch1",
+      "path": "case-workers/4/baseline-2.json",
+      "sample": 2,
+      "selection": "baseline",
+      "sha256": "bda7cdb2db12c10910a0c95d2acfd638a0e93fb58e1bcb77e5c48f9e3a2ab22f"
+    },
+    {
+      "bytes": 23625,
+      "case": "spf/uhf/cartesian/df/batch1",
+      "path": "case-workers/4/baseline-3.json",
+      "sample": 3,
+      "selection": "baseline",
+      "sha256": "e1502005c6cce8fb019472f95674eb0722f703974167555f78873daa0d1478b6"
+    },
+    {
+      "bytes": 23626,
+      "case": "spf/uhf/cartesian/df/batch1",
+      "path": "case-workers/4/baseline-4.json",
+      "sample": 4,
+      "selection": "baseline",
+      "sha256": "6d4a66e68d0bdc560623420e42f5da27e44c990f8ef83fc04e82e6ada8574389"
+    },
+    {
+      "bytes": 23536,
+      "case": "spf/uhf/cartesian/df/batch1",
+      "path": "case-workers/4/candidate-0.json",
+      "sample": 0,
+      "selection": "candidate",
+      "sha256": "8fec240e29a5a3dbdb26b0dacb89d543222ec1ac083588666641da973a567ae6"
+    },
+    {
+      "bytes": 23538,
+      "case": "spf/uhf/cartesian/df/batch1",
+      "path": "case-workers/4/candidate-1.json",
+      "sample": 1,
+      "selection": "candidate",
+      "sha256": "2f16a5110a0b5d02fe6705887c6939374195056c2c7c9c1158fdb96e0256139c"
+    },
+    {
+      "bytes": 23538,
+      "case": "spf/uhf/cartesian/df/batch1",
+      "path": "case-workers/4/candidate-2.json",
+      "sample": 2,
+      "selection": "candidate",
+      "sha256": "1fc4774399d1dee7003504341b7f1f9453b54ae00c691e2f08001b5e50ddaaea"
+    },
+    {
+      "bytes": 23537,
+      "case": "spf/uhf/cartesian/df/batch1",
+      "path": "case-workers/4/candidate-3.json",
+      "sample": 3,
+      "selection": "candidate",
+      "sha256": "3e692697703c5bf45cbd98cd16db8b6ca3a077b00a88c116873675d1a6939432"
+    },
+    {
+      "bytes": 23538,
+      "case": "spf/uhf/cartesian/df/batch1",
+      "path": "case-workers/4/candidate-4.json",
+      "sample": 4,
+      "selection": "candidate",
+      "sha256": "27bbf768674c2f0cfe01a1338206d023cdcd111d2618ddb43a26cb73977f6780"
+    },
+    {
+      "bytes": 32624,
+      "case": "spf/uhf/cartesian/df/batch3",
+      "path": "case-workers/5/baseline-0.json",
+      "sample": 0,
+      "selection": "baseline",
+      "sha256": "0c5ca601d987c127d6aa23f692a1918fa5979351192116e51aafcaf09ee450c7"
+    },
+    {
+      "bytes": 32623,
+      "case": "spf/uhf/cartesian/df/batch3",
+      "path": "case-workers/5/baseline-1.json",
+      "sample": 1,
+      "selection": "baseline",
+      "sha256": "8410ad327b3156daa96d110f20a40ff9fa8c1b0f51d947291647dcc395fb3e73"
+    },
+    {
+      "bytes": 32624,
+      "case": "spf/uhf/cartesian/df/batch3",
+      "path": "case-workers/5/baseline-2.json",
+      "sample": 2,
+      "selection": "baseline",
+      "sha256": "9e3d35190e410258468a2929fd630e19281a01febc205b24b9a211e7c96348c1"
+    },
+    {
+      "bytes": 32625,
+      "case": "spf/uhf/cartesian/df/batch3",
+      "path": "case-workers/5/baseline-3.json",
+      "sample": 3,
+      "selection": "baseline",
+      "sha256": "d8e035ef705b46f236507c19a1288a229fc76df3c72bebd731248d61a3f18e23"
+    },
+    {
+      "bytes": 32622,
+      "case": "spf/uhf/cartesian/df/batch3",
+      "path": "case-workers/5/baseline-4.json",
+      "sample": 4,
+      "selection": "baseline",
+      "sha256": "33b9405bd439e5f48091eb599b6ae75a5b5ca670a5d19530716bffda6e96d337"
+    },
+    {
+      "bytes": 32580,
+      "case": "spf/uhf/cartesian/df/batch3",
+      "path": "case-workers/5/candidate-0.json",
+      "sample": 0,
+      "selection": "candidate",
+      "sha256": "3e83f3af144c91fc64a4f16f536d105cca99231843de7f88c95d05a8068c41a0"
+    },
+    {
+      "bytes": 32578,
+      "case": "spf/uhf/cartesian/df/batch3",
+      "path": "case-workers/5/candidate-1.json",
+      "sample": 1,
+      "selection": "candidate",
+      "sha256": "e3f3a5ab703baaf80ee079da903f727fc13a0ad6a8729ce010094c9cda8a0e8a"
+    },
+    {
+      "bytes": 32580,
+      "case": "spf/uhf/cartesian/df/batch3",
+      "path": "case-workers/5/candidate-2.json",
+      "sample": 2,
+      "selection": "candidate",
+      "sha256": "f45c4766eb281631dba16612b733d2001469def0083e68eb559ec3815ef8ada1"
+    },
+    {
+      "bytes": 32581,
+      "case": "spf/uhf/cartesian/df/batch3",
+      "path": "case-workers/5/candidate-3.json",
+      "sample": 3,
+      "selection": "candidate",
+      "sha256": "2d7b0d514491e21d2160ce36a50064342cd21af7f2235382fcd73fe379c3e7e7"
+    },
+    {
+      "bytes": 32578,
+      "case": "spf/uhf/cartesian/df/batch3",
+      "path": "case-workers/5/candidate-4.json",
+      "sample": 4,
+      "selection": "candidate",
+      "sha256": "490c8a460c187bf4eca5bffa56d6f507d7cf6c9783d3b4d0f86fbcf5d36c750d"
+    },
+    {
+      "bytes": 23627,
+      "case": "spf/uhf/spherical/df/batch1",
+      "path": "case-workers/6/baseline-0.json",
+      "sample": 0,
+      "selection": "baseline",
+      "sha256": "14d23d31aa8656fbf48403a79c776326ee6011c98c2fb2779b5b24f7951a746b"
+    },
+    {
+      "bytes": 23628,
+      "case": "spf/uhf/spherical/df/batch1",
+      "path": "case-workers/6/baseline-1.json",
+      "sample": 1,
+      "selection": "baseline",
+      "sha256": "ea72fd1e298c7b831e771ab51bd7e911244a113ee562c1eeb26d30f6a4e98c6e"
+    },
+    {
+      "bytes": 23627,
+      "case": "spf/uhf/spherical/df/batch1",
+      "path": "case-workers/6/baseline-2.json",
+      "sample": 2,
+      "selection": "baseline",
+      "sha256": "d908cf9d10ae678564d01976824b0aedddedb474bbb05de282824c01d8f8852a"
+    },
+    {
+      "bytes": 23625,
+      "case": "spf/uhf/spherical/df/batch1",
+      "path": "case-workers/6/baseline-3.json",
+      "sample": 3,
+      "selection": "baseline",
+      "sha256": "8236f3ad2a7a579c558ef976df458e222d88d389543977433be8e054e468639c"
+    },
+    {
+      "bytes": 23626,
+      "case": "spf/uhf/spherical/df/batch1",
+      "path": "case-workers/6/baseline-4.json",
+      "sample": 4,
+      "selection": "baseline",
+      "sha256": "3bb2d68875a1f068339575ae5e2a70cd48ab0693acb80cab8ae03b0a15e9f546"
+    },
+    {
+      "bytes": 23544,
+      "case": "spf/uhf/spherical/df/batch1",
+      "path": "case-workers/6/candidate-0.json",
+      "sample": 0,
+      "selection": "candidate",
+      "sha256": "7897d5423d0104e8348b346543e2c2f1390ffd847286d537dd6a3f70bb321bb3"
+    },
+    {
+      "bytes": 23546,
+      "case": "spf/uhf/spherical/df/batch1",
+      "path": "case-workers/6/candidate-1.json",
+      "sample": 1,
+      "selection": "candidate",
+      "sha256": "cbe7d5489316325c73c4511e1eb3f8cd669fa1c8b051160ab5aeba59d6ca66a6"
+    },
+    {
+      "bytes": 23546,
+      "case": "spf/uhf/spherical/df/batch1",
+      "path": "case-workers/6/candidate-2.json",
+      "sample": 2,
+      "selection": "candidate",
+      "sha256": "4f5beefc44e166d20a09f178c8b4c6ab95ba2c0e6ae1093019a400f6e630037e"
+    },
+    {
+      "bytes": 23545,
+      "case": "spf/uhf/spherical/df/batch1",
+      "path": "case-workers/6/candidate-3.json",
+      "sample": 3,
+      "selection": "candidate",
+      "sha256": "b2feee1a940eb8e89afc700bbb6770e352499943eea5ea651c210486c906d2a8"
+    },
+    {
+      "bytes": 23544,
+      "case": "spf/uhf/spherical/df/batch1",
+      "path": "case-workers/6/candidate-4.json",
+      "sample": 4,
+      "selection": "candidate",
+      "sha256": "790774936be6d5428e18c292d170213d6191c12d5732ae7c1f4a365dfa87ef93"
+    },
+    {
+      "bytes": 32682,
+      "case": "spf/uhf/spherical/df/batch3",
+      "path": "case-workers/7/baseline-0.json",
+      "sample": 0,
+      "selection": "baseline",
+      "sha256": "7913bf824372722623bbafa2e9b7bc9f8e636bcfb0ab234d6b42117eb77ccd3d"
+    },
+    {
+      "bytes": 32683,
+      "case": "spf/uhf/spherical/df/batch3",
+      "path": "case-workers/7/baseline-1.json",
+      "sample": 1,
+      "selection": "baseline",
+      "sha256": "04b817fd9a5b300f2c9e2cd4094ffb5a19a3ceb27481729fb779737a32b5666a"
+    },
+    {
+      "bytes": 32681,
+      "case": "spf/uhf/spherical/df/batch3",
+      "path": "case-workers/7/baseline-2.json",
+      "sample": 2,
+      "selection": "baseline",
+      "sha256": "26a781c7a033189028e661627a7d5bac50d1056ba4d65fc0af8cb0ec79990483"
+    },
+    {
+      "bytes": 32684,
+      "case": "spf/uhf/spherical/df/batch3",
+      "path": "case-workers/7/baseline-3.json",
+      "sample": 3,
+      "selection": "baseline",
+      "sha256": "4387aa8fdc8dc3480b550fe489ccf84d7ca1ad21b4353f20898dd1917a948011"
+    },
+    {
+      "bytes": 32683,
+      "case": "spf/uhf/spherical/df/batch3",
+      "path": "case-workers/7/baseline-4.json",
+      "sample": 4,
+      "selection": "baseline",
+      "sha256": "7165725ff6614b5c6e4863f4317bbdd05f3dbce173b8502dfd7aa02e7c1f1df0"
+    },
+    {
+      "bytes": 32598,
+      "case": "spf/uhf/spherical/df/batch3",
+      "path": "case-workers/7/candidate-0.json",
+      "sample": 0,
+      "selection": "candidate",
+      "sha256": "7a576d876d341e38151f1afb0c9e79f60e3ccbc769239d4afe5e7b31503b301e"
+    },
+    {
+      "bytes": 32603,
+      "case": "spf/uhf/spherical/df/batch3",
+      "path": "case-workers/7/candidate-1.json",
+      "sample": 1,
+      "selection": "candidate",
+      "sha256": "6683b0b7be4de61d661716b984908296006107e489ea95db96af642bf2543322"
+    },
+    {
+      "bytes": 32601,
+      "case": "spf/uhf/spherical/df/batch3",
+      "path": "case-workers/7/candidate-2.json",
+      "sample": 2,
+      "selection": "candidate",
+      "sha256": "62bb464c8ad97f3deb1bda6f6464ac2e9f8e2fb7ba530cf6f62a49f1fe9ebe5a"
+    },
+    {
+      "bytes": 32601,
+      "case": "spf/uhf/spherical/df/batch3",
+      "path": "case-workers/7/candidate-3.json",
+      "sample": 3,
+      "selection": "candidate",
+      "sha256": "9c941da00afcfad440ff36b29fd38fd76657286622f09b1333015551b9f2bee8"
+    },
+    {
+      "bytes": 32601,
+      "case": "spf/uhf/spherical/df/batch3",
+      "path": "case-workers/7/candidate-4.json",
+      "sample": 4,
+      "selection": "candidate",
+      "sha256": "cd486329e470f91d4a580d124cd02964885539a0c8cc680c2121ecba1f8e0c29"
+    },
+    {
+      "bytes": 23619,
+      "case": "sdf/rhf/spherical/df/batch1",
+      "path": "case-workers/8/baseline-0.json",
+      "sample": 0,
+      "selection": "baseline",
+      "sha256": "2769fc4cb63a6368f57fa46023b4e70b75417d9698f149d361fd49cfa2e358bd"
+    },
+    {
+      "bytes": 23619,
+      "case": "sdf/rhf/spherical/df/batch1",
+      "path": "case-workers/8/baseline-1.json",
+      "sample": 1,
+      "selection": "baseline",
+      "sha256": "5d0adcc3c9acdb75839a5eabb41cc9e80066ec40237a2b259b6bdb5c7e910ec8"
+    },
+    {
+      "bytes": 23621,
+      "case": "sdf/rhf/spherical/df/batch1",
+      "path": "case-workers/8/baseline-2.json",
+      "sample": 2,
+      "selection": "baseline",
+      "sha256": "97c011c7c0f12d0d22ace814e53a9e9cbe1d1da63dcb232107f40a17629c1747"
+    },
+    {
+      "bytes": 23622,
+      "case": "sdf/rhf/spherical/df/batch1",
+      "path": "case-workers/8/baseline-3.json",
+      "sample": 3,
+      "selection": "baseline",
+      "sha256": "0837b992a07de25409ef7bc1ab2a5ef3aeb137d6c64fd28f3acc64b1032ad7a3"
+    },
+    {
+      "bytes": 23619,
+      "case": "sdf/rhf/spherical/df/batch1",
+      "path": "case-workers/8/baseline-4.json",
+      "sample": 4,
+      "selection": "baseline",
+      "sha256": "9048848fcebcec69b8b73347198d5c697cf4ca55854fec0e3c2b71c013c521d0"
+    },
+    {
+      "bytes": 23502,
+      "case": "sdf/rhf/spherical/df/batch1",
+      "path": "case-workers/8/candidate-0.json",
+      "sample": 0,
+      "selection": "candidate",
+      "sha256": "0b7d3838d80624d25da8f44c40113e349e97aeb67526b3472ad63c5f52d14c0e"
+    },
+    {
+      "bytes": 23500,
+      "case": "sdf/rhf/spherical/df/batch1",
+      "path": "case-workers/8/candidate-1.json",
+      "sample": 1,
+      "selection": "candidate",
+      "sha256": "1cba9817f4d85f4e05e12cd05a385c7c242c936a5a89e27e2cd7bf31ca4a5a6c"
+    },
+    {
+      "bytes": 23502,
+      "case": "sdf/rhf/spherical/df/batch1",
+      "path": "case-workers/8/candidate-2.json",
+      "sample": 2,
+      "selection": "candidate",
+      "sha256": "aa81077e752c15063473f08ff7d46bc067c99b0d154aa53a609a89974b815d8f"
+    },
+    {
+      "bytes": 23500,
+      "case": "sdf/rhf/spherical/df/batch1",
+      "path": "case-workers/8/candidate-3.json",
+      "sample": 3,
+      "selection": "candidate",
+      "sha256": "697b5d55cc30e8daae5e41f203f7dcd8ae34801203ea5651fb217bbf8e617106"
+    },
+    {
+      "bytes": 23501,
+      "case": "sdf/rhf/spherical/df/batch1",
+      "path": "case-workers/8/candidate-4.json",
+      "sample": 4,
+      "selection": "candidate",
+      "sha256": "acf5640490b7c662c3eb7a735b6afe10c37f497595eadf545f38e93ac2ce6153"
+    },
+    {
+      "bytes": 32679,
+      "case": "sdf/uhf/spherical/df/batch3",
+      "path": "case-workers/9/baseline-0.json",
+      "sample": 0,
+      "selection": "baseline",
+      "sha256": "2ef26221119ab95a77d6c768ded6c7981da89c57d48d2778a99be3244c124aa7"
+    },
+    {
+      "bytes": 32681,
+      "case": "sdf/uhf/spherical/df/batch3",
+      "path": "case-workers/9/baseline-1.json",
+      "sample": 1,
+      "selection": "baseline",
+      "sha256": "fe60aae7d388ba2ea1b92eaff266dd2201ec7c2b0ddb2a437e5945a251dc54d2"
+    },
+    {
+      "bytes": 32681,
+      "case": "sdf/uhf/spherical/df/batch3",
+      "path": "case-workers/9/baseline-2.json",
+      "sample": 2,
+      "selection": "baseline",
+      "sha256": "9099b6c3cb0c87b7b2626f664de270b3bc483602891bdfed5323016120035040"
+    },
+    {
+      "bytes": 32678,
+      "case": "sdf/uhf/spherical/df/batch3",
+      "path": "case-workers/9/baseline-3.json",
+      "sample": 3,
+      "selection": "baseline",
+      "sha256": "368ed28f57c4d479bce2631882d0aac50a99b29ad633ae56da25800510ddf454"
+    },
+    {
+      "bytes": 32679,
+      "case": "sdf/uhf/spherical/df/batch3",
+      "path": "case-workers/9/baseline-4.json",
+      "sample": 4,
+      "selection": "baseline",
+      "sha256": "46905a3b1f215c6bcfd62be93be3134145ddf673dfa935af9ea00ae608741a22"
+    },
+    {
+      "bytes": 32615,
+      "case": "sdf/uhf/spherical/df/batch3",
+      "path": "case-workers/9/candidate-0.json",
+      "sample": 0,
+      "selection": "candidate",
+      "sha256": "64e282d060e1e5181db6b86f33c519dff43ec0a32be801247e966e46f22ebbf3"
+    },
+    {
+      "bytes": 32613,
+      "case": "sdf/uhf/spherical/df/batch3",
+      "path": "case-workers/9/candidate-1.json",
+      "sample": 1,
+      "selection": "candidate",
+      "sha256": "9ead10afffe5fdf2887feb8847c8ff89b6308eb69daa94a17045451851acb3a4"
+    },
+    {
+      "bytes": 32614,
+      "case": "sdf/uhf/spherical/df/batch3",
+      "path": "case-workers/9/candidate-2.json",
+      "sample": 2,
+      "selection": "candidate",
+      "sha256": "60c4d1fe680a9518726b4d9eee2b1ccbf3c8c5334a9081f3c8d690b3540ee573"
+    },
+    {
+      "bytes": 32613,
+      "case": "sdf/uhf/spherical/df/batch3",
+      "path": "case-workers/9/candidate-3.json",
+      "sample": 3,
+      "selection": "candidate",
+      "sha256": "d2dfa1df36de6c05f9b3a6de258b444a97b3e349dbd09e458bd2230a99312fab"
+    },
+    {
+      "bytes": 32613,
+      "case": "sdf/uhf/spherical/df/batch3",
+      "path": "case-workers/9/candidate-4.json",
+      "sample": 4,
+      "selection": "candidate",
+      "sha256": "c936dff17b7e65e64bb1e6a268ce7ac457c53cff7aabf85c54305b27ed03e0f4"
+    }
+  ],
+  "process_scope": "case",
+  "reconstruction": "Expand samples.json, then keep exactly the indicated case from the selection/sample aggregate; all other metadata is unchanged.",
+  "schema": "vibeqc.ownership-case-process-files.v1"
+}
