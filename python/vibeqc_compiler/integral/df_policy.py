@@ -28,10 +28,17 @@ def emit_df_policy_cuda(*, derivatives=False):
   __device__ static void accumulate(double& out, const double* e, const Vec3* r,
                                     const Angular* a, double weight) {
     static_assert(Rank == 2 || Rank == 3);
+    // Scalar evaluators take references. Isolate their small arguments so an
+    // escaped reference does not force the complete traversal state to local
+    // memory; the runtime's arrays can then be scalarized into registers.
+    const Vec3 first=r[0], second=r[1];
+    const Angular first_angular=a[0], second_angular=a[1];
     if constexpr (Rank == 2)
-      out += weight * generated_df::metric(e[0],r[0],a[0],e[1],r[1],a[1]);
-    else
-      out += weight * generated_df::three_center(e[0],r[0],a[0],e[1],r[1],a[1],e[2],r[2],a[2]);
+      out += weight * generated_df::metric(e[0],first,first_angular,e[1],second,second_angular);
+    else {
+      const Vec3 third=r[2]; const Angular third_angular=a[2];
+      out += weight * generated_df::three_center(e[0],first,first_angular,e[1],second,second_angular,e[2],third,third_angular);
+    }
   }
 };
 """
@@ -44,10 +51,15 @@ def emit_df_policy_cuda(*, derivatives=False):
                                     const Angular* a, double weight) {
     static_assert(Rank == 2 || Rank == 3);
     generated_df_derivatives::Response result;
+    // Keep callee reference arguments independent of the traversal aggregate.
+    const Vec3 first=r[0], second=r[1];
+    const Angular first_angular=a[0], second_angular=a[1];
     if constexpr (Rank == 2)
-      result = generated_df_derivatives::metric(e[0],r[0],a[0],e[1],r[1],a[1]);
-    else
-      result = generated_df_derivatives::three_center(e[0],r[0],a[0],e[1],r[1],a[1],e[2],r[2],a[2]);
+      result = generated_df_derivatives::metric(e[0],first,first_angular,e[1],second,second_angular);
+    else {
+      const Vec3 third=r[2]; const Angular third_angular=a[2];
+      result = generated_df_derivatives::three_center(e[0],first,first_angular,e[1],second,second_angular,e[2],third,third_angular);
+    }
     const Vec3 channels[3]{result.first, Rank == 2 ? result.third : result.second, result.third};
 #pragma unroll
     for (unsigned slot=0;slot<Rank;++slot) {
