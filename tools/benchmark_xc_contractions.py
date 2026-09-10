@@ -316,7 +316,7 @@ def main():
             "cxx": capture(["c++", "--version"]),
             "pyscf": pyscf.__version__,
             "libxc": libxc.__version__,
-            "numint_sha256": file_hash(numint.__file__),
+            "numint_sha256": file_hash(Path(numint.__file__)),
             "threads": {
                 k: os.environ.get(k)
                 for k in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS")
