@@ -161,6 +161,30 @@ def test_public_coverage_and_composed_budget_fail_before_execution(compiler):
         TensorLayout(signature.tensor_indices, signature.component_shape),
         weights.ravel(),
     )
+    from vibeqc_compiler.integral.shell_signature import CenterBinding
+
+    for malformed in (
+        replace(
+            signature,
+            shells=(
+                replace(signature.shells[0], role="auxiliary"),
+                signature.shells[1],
+            ),
+        ),
+        replace(
+            signature, center_bindings=signature.center_bindings + (CenterBinding(3),)
+        ),
+    ):
+        with pytest.raises(ValueError, match="roles and center bindings"):
+            prepare_second_shell_stream(
+                partial,
+                primitives,
+                centers,
+                tile,
+                public_signature=malformed,
+                projections=projections,
+                direction=direction,
+            )
     with pytest.raises(ValueError, match="compiled Cartesian subset"):
         prepare_second_shell_stream(
             partial,

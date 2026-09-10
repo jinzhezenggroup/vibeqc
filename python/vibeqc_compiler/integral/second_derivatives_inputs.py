@@ -22,7 +22,7 @@ from vibeqc_compiler.common.resources import (
 
 from .blocks import WeightTile
 from .second_derivatives_execute import SecondPrimitive, pack_second_primitive
-from .shell_signature import BasisConvention
+from .shell_signature import BasisConvention, ShellSignature
 from .shell_spec import cartesian_components
 from .weight_pullback import normalized_cartesian_components, pullback_public_weights
 
@@ -128,11 +128,31 @@ def prepare_second_shell_stream(
         raise ValueError("second public output tile exceeds uint32")
     integral = artifact.integral
     signature = integral.signature if public_signature is None else public_signature
+    if not isinstance(signature, ShellSignature):
+        raise TypeError("public signature must be a ShellSignature")
     if signature.angular != integral.signature.angular or tuple(
         s.center for s in signature.shells
     ) != tuple(s.center for s in integral.signature.shells):
         raise ValueError(
             "public signature must preserve compiled shell angular momenta and centers"
+        )
+    # A public AO transform changes representation, never basis-space roles,
+    # the external-center inventory or an already-fixed physical atom binding.
+    declared = integral.signature
+    if (
+        tuple(s.role for s in signature.shells)
+        != tuple(s.role for s in declared.shells)
+        or tuple(b.center for b in signature.center_bindings)
+        != integral.operator.centers
+        or any(
+            original.atom_index is not None and original.atom_index != public.atom_index
+            for original, public in zip(
+                declared.center_bindings, signature.center_bindings
+            )
+        )
+    ):
+        raise ValueError(
+            "public signature must preserve compiled roles and center bindings"
         )
     count, centers_count = len(signature.shells), len(integral.operator.centers)
     if (
