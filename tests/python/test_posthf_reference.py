@@ -10,6 +10,7 @@ from tools.vibeqc_posthf.conventions import MOBlock
 from tools.vibeqc_posthf.fixtures import fixture_snapshot, load_fixture
 from tools.vibeqc_posthf.mp2 import restricted_mp2, spin_orbital_mp2
 from tools.vibeqc_posthf.oracle import dense_ao_to_mo
+from tools.vibeqc_posthf.providers import BlockResult
 
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih", "f_heh"])
@@ -21,7 +22,8 @@ def test_dense_elements_and_independent_mp2(name):
     block = MOBlock.from_spaces(s, "ovov")
     g = mo[np.ix_(*block.slots)]
     provider = SimpleNamespace(
-        snapshot=s, get=lambda request: SimpleNamespace(to_host=lambda: g)
+        snapshot=s,
+        get=lambda request: BlockResult(request, g, s.identity, s.hamiltonian_id, {}),
     )
     result = restricted_mp2(s, provider)
     assert (
@@ -119,7 +121,9 @@ def test_small_denominators_are_not_clamped():
     s = replace(s, fock=f, orbital_energies=eps)
     provider = SimpleNamespace(
         snapshot=s,
-        get=lambda request: SimpleNamespace(to_host=lambda: np.ones((1,) * 4)),
+        get=lambda request: BlockResult(
+            request, np.ones((1,) * 4), s.identity, s.hamiltonian_id, {}
+        ),
     )
     with pytest.raises(ValueError, match="no regularization"):
         restricted_mp2(s, provider)

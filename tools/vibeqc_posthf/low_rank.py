@@ -84,6 +84,7 @@ class IncrementalCholesky:
     def __init__(
         self, columns, *, rank_capacity, pair_tile=256, export_rank_tile=1, budget=None
     ):
+        started = time.perf_counter()
         self._lock = threading.RLock()
         columns.check()
         self._columns = columns
@@ -151,9 +152,11 @@ class IncrementalCholesky:
         self._residual = self._original.copy()
         self._scale = float(np.max(self._original))
         self._history = []
+        self._refinements = []
         self._rank = 0
         self._closed = False
         self._factor_digest = sha256()
+        self._setup_seconds = time.perf_counter() - started
 
     @staticmethod
     def _values(value, count):
@@ -315,7 +318,7 @@ class IncrementalCholesky:
                     status = "roundoff_limited"
                     break
                 self._pivot(pivot, diagonal)
-            return RefinementResult(
+            result = RefinementResult(
                 old_identity,
                 self.identity,
                 old_rank,
@@ -324,6 +327,8 @@ class IncrementalCholesky:
                 status,
                 time.perf_counter() - started,
             )
+            self._refinements.append(result)
+            return result
 
     def factor_tile(self, begin, count, *, identity=None):
         """Detach at most the reserved rank tile; reject a stale captured generation."""
@@ -369,6 +374,9 @@ class IncrementalCholesky:
                 "observable_certification": "unverified",
                 "derivatives": "unsupported: truncated pivot/rank policy is not differentiated",
                 "history": [asdict(row) for row in self._history],
+                "refinements": [asdict(row) for row in self._refinements],
+                "setup_seconds": self._setup_seconds,
+                "refinement_seconds": sum(row.seconds for row in self._refinements),
             }
 
     def close(self):

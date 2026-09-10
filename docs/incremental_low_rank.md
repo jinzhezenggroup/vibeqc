@@ -4,8 +4,8 @@ The experimental post-HF provider starts from the existing unscreened native
 raw integral source. `CoulombColumns` reads bounded diagonal/column pieces;
 `IncrementalCholesky` retains a fixed-capacity factor prefix and appends actual
 new pivots. It never constructs a molecular four-index tensor. This initial
-slice implements CPU factorization; native GPU consumers and solver refinement
-are separate integration work.
+slice implements CPU factorization and J/K/MO consumers; native GPU execution
+and solver refinement are separate integration work.
 
 `PairSpace` enumerates `(mu, nu)` with `nu <= mu` in row order. Its normalized
 coordinate is `sqrt(m) * D[mu,nu]`, where multiplicity m is one on the diagonal
@@ -55,3 +55,30 @@ packed/full contractions, partial tiles, zero/tiny/ill-conditioned matrices,
 failed updates, immutable exports and two memory limits. Independent pinned
 PySCF AO fixtures validate raw columns and tight-threshold recovery for H2,
 water and LiH, plus selected spherical f-shell columns.
+
+## Fixed-generation consumers and accuracy
+
+`LowRankProvider(factor, snapshot=None, budget=...)` captures one immutable
+factor identity. `jk(D)` returns raw J[D] and K[D] for one real symmetric
+density. Passing alpha/beta densities returns J[Da+Db] and separate Ka/Kb.
+Occupation and exchange prefactors belong to the consuming RHF/UHF method.
+The implementation streams physical factors and uses matrix contractions;
+there is no global four-index AO tensor or retained rank-by-AO-by-AO array.
+
+With a validated exact `ReferenceSnapshot`, `get(MOBlock(...))` produces only
+the requested chemists' MO block. Its `reference_id` continues to identify
+the exact orbitals, while `hamiltonian_id` identifies the Cholesky correlation
+approximation. Existing same-Hamiltonian MP2/CC entrypoints reject this mixed
+reference/correlation combination; an approximate-correlation method adapter
+must define it explicitly. No reference energy or orbital identity is relabeled.
+Refining the factor invalidates an existing consumer before J/K or MO output;
+create a new view and rebuild dependent residuals/history.
+
+`audit_fixed_density` compares the RHF two-electron energy with the original
+unscreened raw provider at identical density. It returns the existing NUM01
+`ErrorEvidence` with source `integral_factorization`, scope `fixed_density`,
+and distinct target/evaluated model identities. The shared accuracy assessment
+therefore cannot treat it as a successful relaxed-target calculation. Both the
+observed difference and conditional tensor diagnostics remain available for
+later refinement decisions. Consumer/audit memory is composed with the same
+factor resource owner; impossible combined allocations fail before execution.

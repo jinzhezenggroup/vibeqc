@@ -32,7 +32,15 @@ def restricted_mp2(snapshot, provider, *, denominator_threshold=1e-10):
         raise ValueError("MP2 provider/reference mismatch")
     if not np.isfinite(denominator_threshold) or denominator_threshold <= 0:
         raise ValueError("denominator_threshold must be finite and positive")
-    g = ovov_to_ijab(provider.get(MOBlock.from_spaces(snapshot, "ovov")).to_host())
+    block = provider.get(MOBlock.from_spaces(snapshot, "ovov"))
+    if (
+        getattr(block, "reference_id", None) != snapshot.identity
+        or getattr(block, "hamiltonian_id", None) != snapshot.hamiltonian_id
+    ):
+        raise ValueError(
+            "MP2 block/reference Hamiltonian mismatch; approximate correlation requires an explicit adapter"
+        )
+    g = ovov_to_ijab(block.to_host())
     o = snapshot.orbital_energies[: snapshot.nocc]
     v = snapshot.orbital_energies[snapshot.nocc :]
     denominator = (
