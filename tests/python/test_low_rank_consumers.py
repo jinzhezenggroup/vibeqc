@@ -16,6 +16,7 @@ from tools.vibeqc_posthf.low_rank import IncrementalCholesky
 from tools.vibeqc_posthf.low_rank_accuracy import audit_fixed_density
 from tools.vibeqc_posthf.low_rank_consumers import LowRankProvider
 from tools.vibeqc_posthf.mp2 import restricted_mp2
+from tools.vibeqc_posthf.sources import NativeSource
 
 
 def dense_approximation(factor):
@@ -127,6 +128,39 @@ def test_mo_blocks_retain_exact_reference_and_approximate_correlation_identity()
             atol=3e-11,
             rtol=1e-10,
         )
+
+
+@pytest.mark.parametrize("charge,multiplicity", [(2, 1), (0, 3)])
+def test_mo_reference_rejects_changed_electronic_ensemble_at_identical_ao_topology(
+    charge, multiplicity
+):
+    original, arrays = source_for("water")
+    metadata, _ = load_fixture("water")
+    snapshot = fixture_snapshot(metadata, arrays)
+    with (
+        original,
+        NativeSource(
+            original.atoms,
+            basis=original.shells,
+            auxiliary_basis=original.auxiliary_shells,
+            representation=original.representation,
+            charge=charge,
+            multiplicity=multiplicity,
+        ) as changed,
+    ):
+        # Each case keeps every preexisting compatibility check satisfied:
+        # either charge/electron count or only spin multiplicity differs.
+        assert changed.geometry_hash == snapshot.geometry_hash
+        assert changed.basis_hash == snapshot.basis_hash
+        assert changed.nbf == snapshot.nmo
+        assert changed.representation == snapshot.representation
+        columns = CoulombColumns(changed)
+        with IncrementalCholesky(columns, rank_capacity=0) as factor:
+            before = dict(columns.statistics)
+            with pytest.raises(ValueError, match="reference and target"):
+                LowRankProvider(factor, snapshot)
+            assert columns.statistics == before
+            assert factor.rank == 0
 
 
 def test_fixed_density_accuracy_evidence_cannot_certify_the_exact_relaxed_target():

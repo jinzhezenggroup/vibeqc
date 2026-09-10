@@ -67,7 +67,9 @@ The implementation streams physical factors and uses matrix contractions;
 there is no global four-index AO tensor or retained rank-by-AO-by-AO array.
 
 With a validated exact `ReferenceSnapshot`, `get(MOBlock(...))` produces only
-the requested chemists' MO block. Its `reference_id` continues to identify
+the requested chemists' MO block. Source and reference must agree on geometry,
+basis, representation and electron count. The snapshot's closed-shell 2/0
+occupations require source multiplicity one. Its `reference_id` continues to identify
 the exact orbitals, while `hamiltonian_id` identifies the Cholesky correlation
 approximation. Existing same-Hamiltonian MP2/CC entrypoints reject this mixed
 reference/correlation combination; an approximate-correlation method adapter

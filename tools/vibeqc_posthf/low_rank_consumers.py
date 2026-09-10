@@ -64,9 +64,14 @@ class LowRankProvider:
         self._closed = False
         if snapshot is not None:
             source = getattr(factor._columns, "source", None)
+            # Equal AO topology does not establish an equal electronic state.
+            # ReferenceSnapshot has closed-shell 2/0 occupations; the raw-source
+            # identity also includes charge and multiplicity, so both must agree.
             if (
                 source is None
                 or snapshot.nmo != factor.space.nbf
+                or snapshot.electron_count != source.electron_count
+                or source.multiplicity != 1
                 or snapshot.geometry_hash != source.geometry_hash
                 or snapshot.basis_hash != source.basis_hash
                 or snapshot.representation != source.representation
