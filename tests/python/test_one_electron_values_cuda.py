@@ -16,10 +16,12 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def run_case(monkeypatch, selection, mapping, *, method, representation, fitted, count):
+def run_case(monkeypatch, mapping, *, method, representation, fitted, count):
     """Exercise cold, unchanged and changed geometry on one fixed topology."""
-    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUES", selection)
-    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", mapping)
+    if mapping is None:
+        monkeypatch.delenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", raising=False)
+    else:
+        monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", mapping)
     # An s/d/f atom plus a separate s atom covers sparse real-spherical f
     # expansions without making this one-electron gate a large ERI benchmark.
     basis = (
@@ -75,9 +77,11 @@ def test_generated_schedules_preserve_scf_and_geometry(
         "fitted": fitted,
         "count": count,
     }
-    reference = run_case(monkeypatch, "reference", "thread", **kwargs)
-    for mapping in ("thread", "shell_warp"):
-        actual = run_case(monkeypatch, "generated", mapping, **kwargs)
+    # Same-expression schedule parity is distinct from independent correctness:
+    # Libcint below and archived clean-baseline endpoint evidence own that gate.
+    reference = run_case(monkeypatch, "thread", **kwargs)
+    for mapping in ("shell_warp", None):
+        actual = run_case(monkeypatch, mapping, **kwargs)
         for expected, found in zip(reference, actual):
             np.testing.assert_allclose(
                 found.energies, expected.energies, atol=3e-10, rtol=0
@@ -101,16 +105,10 @@ def test_policy_changes_rebuild_reused_direct_plan(monkeypatch):
     moved = np.array([r for _, r in atoms], dtype=float)
     moved[1, 0] += 0.01
     calc = Calculator(device="cuda", energy_tolerance=1e-12, density_tolerance=1e-10)
-    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUES", "reference")
     monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", "thread")
     with calc.prepare_batch([atoms]) as prepared:
         prepared.execute(strict=True)
-        for selection, mapping in (
-            ("generated", "thread"),
-            ("generated", "shell_warp"),
-            ("reference", "thread"),
-        ):
-            monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUES", selection)
+        for mapping in ("thread", "shell_warp", "thread"):
             monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", mapping)
             actual = prepared.execute([moved], strict=True)
             with calc.prepare_batch([[("H", tuple(r)) for r in moved]]) as fresh:
@@ -122,7 +120,8 @@ def test_policy_changes_rebuild_reused_direct_plan(monkeypatch):
                 actual.items[0].forces, expected.items[0].forces, atol=3e-9, rtol=0
             )
             controls = prepared._warm_metadata[0]["controls"]["runtime_policy"]
-            assert controls["VIBEQC_ONE_ELECTRON_VALUES"] == selection
+            assert "VIBEQC_ONE_ELECTRON_VALUES" not in controls
+            assert "VIBEQC_DF_VALUES" not in controls
             assert controls["VIBEQC_ONE_ELECTRON_VALUE_MAPPING"] == mapping
 
 
@@ -144,7 +143,6 @@ def test_generated_pair_policy_hcore_matches_independent_libcint(
     from tools.generate_validation_references import pyscf_molecule
 
     assert os.environ.get("SLURM_JOB_ID"), "GPU tests require Slurm"
-    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUES", "generated")
     monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", mapping)
     inputs = {
         "atomic_numbers": [2, 1],

@@ -11,9 +11,8 @@ target even when its scalar arithmetic is already generated.
 `cuda_ownership.json` is the versioned semantic ledger. It records current
 defaults, generated capabilities, missing replacement capabilities, evidence
 and retirement conditions. A generic runtime primitive is not a duplicate
-scientific implementation. Conversely, naming a production implementation
-"reference" does not make it a disposable oracle: current one-electron values
-still use that implementation by default. CPU and external independent
+scientific implementation. A retained production exception must be measured and tracked; calling it
+"reference" does not make it an independent oracle. CPU and external independent
 references remain outside the maintained CUDA counts.
 
 Run the reproducible report with standard Python; no CUDA device is needed:
@@ -77,8 +76,8 @@ unless its independently documented role still requires it.
 
 One-electron values are the first consolidation target. Their derivative and
 force routines have separate gates and remain explicit exceptions until those
-gates pass. Generated DF values already have promotion evidence; their old
-value selector and derivative fallback must be considered separately. New
+gates pass. Generated DF values have archived promotion evidence; their superseded
+value selector is now removed. The derivative fallback remains separately gated. New
 XC/TensorIR/CC/AD work follows the same ownership boundary and reuses the
 existing compiler, native cache and resource planner.
 
@@ -89,9 +88,9 @@ owns nuclear-charge reduction, S/T/V accumulation and the H=T+V output map.
 Adding an operator class within the scalar family's supported domain therefore
 does not require another native contraction kernel. The policy is a separate
 generated artifact so changes to execution glue do not rewrite the existing
-scalar mathematical header. This extraction alone is not a production
-promotion; the old selector remains until the numerical/resource/endpoint
-evidence supports retirement.
+scalar mathematical header. The optimized five-sample, 20-case comparison passed the existing numerical
+and 2% endpoint gates. The shared shell-warp policy is now the value default;
+the handwritten value kernel and all value dispatch branches are removed.
 
 `tools/benchmark_cuda_ownership.py compare` compares explicit clean source
 checkouts and matching optimized libraries in separate processes. It retains
@@ -103,3 +102,28 @@ the existing energy (3e-10 Hartree) and force (3e-9 Hartree/Bohr) tolerances.
 The common significance/noise report is retained separately; non-regression
 does not establish a speedup. Native compilation and independent integral
 validation remain required alongside these complete HF measurements.
+
+
+The accepted one-electron comparison measured clean candidate `fdc7f40` against
+clean baseline `1ba6f17` with Release, CUDA fast compilation disabled, CUDA
+12.9.1 and sm_120. All 20 cases and four phases passed: maximum energy error
+7.1055e-15 Hartree, force error 9.437e-15 Hartree/Bohr, and maximum median ratio
+1.019427. This establishes non-regression, not a universal speedup. Nineteen
+cases used explicit shared total budgets; the 18-AO Cartesian direct case
+retained the legacy unbudgeted scope because HF inventory v1 supports at most
+16 public AOs. Its scope note remains part of the evidence.
+
+`VIBEQC_ONE_ELECTRON_VALUES` and `VIBEQC_DF_VALUES` are retired internal controls
+and no longer affect production dispatch or execution identities. The value
+mapping controls still select measured/diagnostic schedules of the same
+compiler-owned definitions. Historical old/new reproduction must use the exact
+older source checkout; current DF endpoint tools explicitly compare generated
+schedules and no longer label another generated execution a handwritten oracle.
+The ownership benchmark rejects reference selection on a retired checkout.
+
+Retirement removes the double one-electron value kernel and Hermite DF value
+dispatch. It does not delete shared overlap/Hcore/ERI recurrences needed by Dual
+derivatives or other integral paths. The remaining one-electron response kernel
+is classified as a derivative performance exception, so that reclassification
+cannot be counted as physical deletion. Native generic traversal growth and
+scientific region changes are disclosed separately in the reproducible report.

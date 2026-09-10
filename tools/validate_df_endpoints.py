@@ -1,8 +1,10 @@
-"""Measure complete old/new CUDA DF energy-force endpoints under Slurm.
+"""Compare generated CUDA DF schedules on complete energy-force endpoints.
 
 Cold execution includes setup and SCF; changed geometry invalidates the source;
 warm samples reuse the fixed-geometry plan and converged density. These timings
 are reported separately so cached work cannot masquerade as integral speedup.
+The handwritten value route was retired after its archived promotion gate.
+Reproducing that historical A/B requires its exact older source checkout.
 """
 
 # Source-tree CLI bootstrap for transitive compiler clients.
@@ -34,9 +36,6 @@ from tools.vibeqc_validation.schema import file_hash
 
 def run_endpoint(method, batch, budget, route, repeats):
     """Use public prepared batches, including changed coordinates and forces."""
-    os.environ["VIBEQC_DF_VALUES"] = (
-        "reference" if route == "reference" else "generated"
-    )
     os.environ["VIBEQC_DF_VALUE_MAPPING"] = route
     geometry = [("O", [0.0, 0.0, 0.0]), ("H", [0.0, 1.43, 1.11])]
     if method == "rhf":
@@ -127,6 +126,11 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument(
+        "--baseline-route",
+        choices=("auxiliary", "component", "primitive"),
+        default="auxiliary",
+    )
+    parser.add_argument(
         "--budgets", nargs="+", type=int, default=[0, 8 * 1024**2, 16 * 1024**2]
     )
     parser.add_argument("--batches", nargs="+", type=int, default=[1, 2])
@@ -152,7 +156,9 @@ def main():
         parser.error("run this real GPU endpoint through srun")
     report = {
         "schema": "vibeqc.df_endpoint_validation",
-        "version": 1,
+        "version": 2,
+        "comparison_kind": "generated_schedule_parity",
+        "baseline_route": args.baseline_route,
         "library": os.environ["VIBEQC_LIBRARY"],
         "library_hash": file_hash(Path(os.environ["VIBEQC_LIBRARY"])),
         "slurm_job_id": os.environ["SLURM_JOB_ID"],
@@ -172,9 +178,9 @@ def main():
                 # Each measured run still creates a fresh basis/source/plan,
                 # so source setup is cold without charging context startup
                 # exclusively to the first reference measurement.
-                run_endpoint(method, batch, budget, "reference", 1)
+                run_endpoint(method, batch, budget, args.baseline_route, 1)
                 baseline = run_endpoint(
-                    method, batch, budget, "reference", args.repeats
+                    method, batch, budget, args.baseline_route, args.repeats
                 )
                 # Bulk generation has one mapping; repeating it under each
                 # source-only override would duplicate the same measurement.

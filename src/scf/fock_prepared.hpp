@@ -10,7 +10,6 @@ namespace vibeqc::scf {
 /** Backend variants frozen into the prepared source; mathematical identity
  * remains in ResolvedFockBuild::spec. These switches never authorize DF. */
 struct FockExecutionVariant {
-  bool generated_one_electron_values{}, generated_df_values{};
   unsigned one_electron_value_mapping{}, df_value_mapping{}, df_derivative_mapping{};
   bool operator==(const FockExecutionVariant&) const = default;
 };

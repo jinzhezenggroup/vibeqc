@@ -126,11 +126,10 @@ bool one_electron_force_scalar_requested() noexcept {
   return selection == nullptr || std::strcmp(selection, "0") == 0;
 }
 
-bool generated_one_electron_values_requested() noexcept {
-  return selected("VIBEQC_ONE_ELECTRON_VALUES", "generated");
-}
-
 unsigned one_electron_value_mapping_requested() noexcept {
+  // The shared shell-warp policy passed the complete ownership-migration
+  // endpoint gate. Keep the thread layout as an explicit diagnostic schedule.
+  if (std::getenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING") == nullptr) return 1U;
   return selected("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", "shell_warp") ? 1U : 0U;
 }
 
@@ -156,13 +155,6 @@ bool generated_df_derivatives_requested() noexcept {
 }
 unsigned df_derivative_mapping_requested() noexcept {
   return selected("VIBEQC_DF_DERIVATIVE_MAPPING", "serial") ? 1U : 0U;
-}
-
-bool generated_df_values_requested() noexcept {
-  // The generated value route passed the archived all-class raw, resource,
-  // RI-J/K, and public RHF/UHF endpoint gates. Keep the old route selectable
-  // for independent A/B checks; unrecognized explicit choices also fall back.
-  return std::getenv("VIBEQC_DF_VALUES") == nullptr || selected("VIBEQC_DF_VALUES", "generated");
 }
 
 unsigned df_value_mapping_requested() noexcept {

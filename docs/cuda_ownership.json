@@ -170,10 +170,10 @@
     },
     {
       "path": "src/scf/cuda/one_electron_reference.cuh",
-      "reason": "Existing handwritten value/response consumer; shared derivative ownership remains explicit after value retirement.",
+      "reason": "Only the separately gated Dual first-coordinate response kernel remains; the double value kernel and dispatch were removed.",
       "regions": [],
-      "role": "scientific",
-      "subsystem": "one_electron_values"
+      "role": "performance_exception",
+      "subsystem": "one_electron_derivatives"
     },
     {
       "path": "src/scf/cuda/one_electron_values.cu",
@@ -453,16 +453,16 @@
       "status": "performance_exception"
     },
     "df_values": {
-      "current_default": "generated Rys values and primitive mapping; old reference selector retained for A/B",
+      "current_default": "Generated Rys values only; primitive-oriented source mapping by default",
       "evidence": [
         "benchmarks/results/generated-df-values-142/promotion.json",
         "benchmarks/results/generated-df-values-142/README.md"
       ],
       "generated_capability": "all two-/three-center values through f, public spherical transforms",
-      "missing_capability": "none for promoted values; derivative fallback is a separate capability",
+      "missing_capability": "None for promoted values; shared ERI/Dual recurrences still serve other scientific domains",
       "owner": "df_values",
-      "retirement_condition": "remove legacy value selection/dispatch after default-source parity; preserve CPU/Libcint independent validation",
-      "status": "ready_for_retirement"
+      "retirement_condition": "Completed: legacy Hermite value selection and dispatch removed from bulk and bounded sources; retain derivative-only shared recurrence",
+      "status": "retired"
     },
     "direct_integrals": {
       "current_default": "AOT class registry where promoted; bounded native fallback and explicit schedule exceptions",
@@ -501,16 +501,16 @@
       "status": "performance_exception"
     },
     "one_electron_values": {
-      "current_default": "handwritten reference values; generated thread/shell-warp opt-in via VIBEQC_ONE_ELECTRON_VALUES",
+      "current_default": "Generated S/T/V values on shared shell-warp AO-pair schedule; thread schedule remains diagnostic",
       "evidence": [
         "benchmarks/results/one-electron-values-rtx5090/raw-summary.json",
         "benchmarks/results/one-electron-values-rtx5090/sp8-b3-shell_warp.json"
       ],
       "generated_capability": "IntegralIR S/T/V all Cartesian s/p/d/f pairs with public spherical contraction",
-      "missing_capability": "complete non-regression and native resource evidence for the generated policy on shared AO-pair traversal",
+      "missing_capability": "None for value replacement; independent derivative/force exceptions remain separately owned",
       "owner": "one_electron_values",
-      "retirement_condition": "promote validated generated values, remove old value dispatch and double value instantiation; retain separately owned derivative routines",
-      "status": "promotion_pending"
+      "retirement_condition": "Completed: handwritten double-value kernel, selection flag and three dispatch branches removed; preserve external/CPU oracles",
+      "status": "retired"
     },
     "runtime": {
       "current_default": "native shared allocation, stream, graph, ABI and library adapters",

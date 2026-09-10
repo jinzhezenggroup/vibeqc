@@ -188,15 +188,15 @@ def main():
         expected, diagnostics = references(systems)
         np.savez(directory / f"{case}-reference.npz", **expected)
         nbf, naux = expected["raw"].shape[1], expected["raw"].shape[-1]
-        for mapping in ("reference", "auxiliary", "component", "primitive"):
+        # Generated values are the sole native definition. The independent
+        # Libcint/NumPy oracle above validates every mapping; historical native
+        # A/B reproduction belongs to the archived promotion source checkout.
+        for mapping in ("auxiliary", "component", "primitive"):
             for pair_tile, aux_tile in ((nbf * nbf, naux), (7, 3)):
                 name = f"{case}-{mapping}-p{pair_tile}-a{aux_tile}"
                 prefix = directory / name
                 env = {
                     **os.environ,
-                    "VIBEQC_DF_VALUES": "reference"
-                    if mapping == "reference"
-                    else "generated",
                     "VIBEQC_DF_VALUE_MAPPING": mapping,
                 }
                 command = [

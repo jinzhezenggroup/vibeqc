@@ -305,14 +305,11 @@ extern "C" vibeqc_status vibeqc_fock_plan_diagnostic(const vibeqc_fock_plan* pla
                 : info.variant.df_derivative_mapping                        ? "generated-serial"
                                                                             : "generated-atomic");
   std::snprintf(out.one_electron_value_backend, sizeof(out.one_electron_value_backend), "%s",
-                !cuda                                        ? "cpu-reference"
-                : info.variant.generated_one_electron_values ? "cuda-generated"
-                                                             : "cuda-reference");
+                cuda ? "cuda-generated" : "cpu-reference");
   std::snprintf(out.one_electron_value_mapping, sizeof(out.one_electron_value_mapping), "%s",
-                !cuda                                         ? "dense"
-                : !info.variant.generated_one_electron_values ? "pair-thread"
-                : info.variant.one_electron_value_mapping     ? "shell-warp"
-                                                              : "pair-thread");
+                !cuda                                     ? "dense"
+                : info.variant.one_electron_value_mapping ? "shell-warp"
+                                                          : "pair-thread");
   // Prepared one-electron response owns the Dual pair-kernel matrices;
   // fused force-bridge environment selectors do not affect this source.
   std::snprintf(out.one_electron_response_mapping, sizeof(out.one_electron_response_mapping), "%s",

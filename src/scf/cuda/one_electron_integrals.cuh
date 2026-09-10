@@ -177,19 +177,13 @@ vibeqc_status build_cuda_one_electron_integrals_impl(int device_id, const core::
   if (include_nuclear_derivatives) output.nuclear_repulsion_derivative.resize(output.ncoord);
   constexpr unsigned threads = 128U;
   const unsigned pair_blocks = static_cast<unsigned>((pair_count + threads - 1U) / threads);
-  if (cuda_policy::generated_one_electron_values_requested()) {
-    cuda_error = launch_generated_one_electron_values(
-        one_electron_view(device_batch), device_pair_first, device_pair_second, pair_count,
-        cuda_policy::one_electron_value_mapping_requested(), device_overlap, device_hcore, stream);
-    if (cuda_error != cudaSuccess) {
-      detail = "generated CUDA one-electron value launch failed";
-      release();
-      return cuda_status(cuda_error);
-    }
-  } else {
-    build_cuda_one_electron_integrals_kernel<false>
-        <<<pair_blocks, threads, 0, stream>>>(device_batch, device_pair_first, device_pair_second,
-                                              pair_count, -1, device_overlap, device_hcore);
+  cuda_error = launch_generated_one_electron_values(
+      one_electron_view(device_batch), device_pair_first, device_pair_second, pair_count,
+      cuda_policy::one_electron_value_mapping_requested(), device_overlap, device_hcore, stream);
+  if (cuda_error != cudaSuccess) {
+    detail = "generated CUDA one-electron value launch failed";
+    release();
+    return cuda_status(cuda_error);
   }
   build_cuda_nuclear_repulsion_kernel<false><<<1, 1, 0, stream>>>(device_batch, -1, device_nuclear);
   cuda_error = cudaGetLastError();
@@ -210,7 +204,7 @@ vibeqc_status build_cuda_one_electron_integrals_impl(int device_id, const core::
                                    cuda_error == cudaSuccess && coordinate < output.ncoord;
        ++coordinate) {
     if (include_derivatives)
-      build_cuda_one_electron_integrals_kernel<true><<<pair_blocks, threads, 0, stream>>>(
+      build_cuda_one_electron_derivatives_kernel<<<pair_blocks, threads, 0, stream>>>(
           device_batch, device_pair_first, device_pair_second, pair_count,
           static_cast<std::int64_t>(coordinate), device_overlap, device_hcore);
     if (include_nuclear_derivatives)

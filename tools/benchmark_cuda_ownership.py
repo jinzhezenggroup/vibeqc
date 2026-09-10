@@ -53,6 +53,14 @@ def worker(args):
         raise RuntimeError(
             "selected library does not match the measured source checkout"
         )
+    if (
+        args.selection == "reference"
+        and "bool generated_one_electron_values_requested("
+        not in (args.root / "src/scf/cuda/rhf_policy.cpp").read_text()
+    ):
+        raise RuntimeError(
+            "handwritten one-electron values were retired; select an archived baseline checkout"
+        )
     cache = (args.build / "CMakeCache.txt").read_text()
     if "VIBEQC_CUDA_FAST_COMPILE:BOOL=OFF" not in cache:
         raise RuntimeError("production timing requires FAST_COMPILE=OFF")

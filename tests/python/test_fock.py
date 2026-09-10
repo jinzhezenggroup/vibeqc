@@ -349,10 +349,10 @@ def test_identity_uses_normalized_native_controls(scalar, approximation):
 @pytest.mark.skipif(DEVICE != "cuda", reason="CUDA execution-variant diagnostics")
 def test_one_electron_execution_variant_identity_is_frozen(monkeypatch):
     with NativeAO(ATOMS) as basis:
-        monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUES", "reference")
+        monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", "thread")
         with FockPlan(basis, device="cuda") as original:
             before = original.diagnostics
-            monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUES", "generated")
+            assert before["one_electron_value_backend"] == "cuda-generated"
             monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", "shell_warp")
             with FockPlan(basis, device="cuda") as generated:
                 assert original.identity == generated.identity
@@ -370,3 +370,26 @@ def test_one_electron_execution_variant_identity_is_frozen(monkeypatch):
                     generated.evaluate(np.eye(2)).fock,
                     atol=2e-11,
                 )
+
+
+@pytest.mark.skipif(DEVICE != "cuda", reason="retired CUDA value selector diagnostics")
+def test_retired_value_controls_cannot_restore_handwritten_dispatch(monkeypatch):
+    spec = FockBuildSpec(
+        coulomb=term("density_fitted", 1.0), exchange=term("density_fitted", -0.5)
+    )
+    monkeypatch.delenv("VIBEQC_ONE_ELECTRON_VALUES", raising=False)
+    monkeypatch.delenv("VIBEQC_DF_VALUES", raising=False)
+    monkeypatch.delenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", raising=False)
+    with NativeAO(ATOMS) as basis, FockPlan(basis, spec, device="cuda") as original:
+        before = original.diagnostics
+        monkeypatch.setenv("VIBEQC_ONE_ELECTRON_VALUES", "reference")
+        monkeypatch.setenv("VIBEQC_DF_VALUES", "reference")
+        with FockPlan(basis, spec, device="cuda") as replay:
+            assert replay.execution_identity == original.execution_identity
+            assert replay.diagnostics["one_electron_value_backend"] == "cuda-generated"
+            assert replay.diagnostics["one_electron_value_mapping"] == "shell-warp"
+            assert replay.diagnostics["df_value_backend"] == "generated_rys"
+            assert original.diagnostics == before
+            np.testing.assert_array_equal(
+                replay.evaluate(np.eye(2)).fock, original.evaluate(np.eye(2)).fock
+            )
