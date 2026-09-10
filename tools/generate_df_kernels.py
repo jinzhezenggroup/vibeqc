@@ -48,7 +48,9 @@ def main() -> None:
     if args.policy_output:
         from vibeqc_compiler.integral.df_policy import emit_df_policy_cuda
 
-        write_if_changed(args.policy_output, emit_df_policy_cuda())
+        write_if_changed(
+            args.policy_output, emit_df_policy_cuda(derivatives=args.derivatives)
+        )
     if args.inventory:
         payload = {
             **inventory(),

@@ -482,7 +482,8 @@
     {
       "name": "df_policies",
       "outputs": [
-        "generated/generated_df_policy.cuh"
+        "generated/generated_df_policy.cuh",
+        "generated/generated_df_derivative_policy.cuh"
       ],
       "owner": "python/vibeqc_compiler/integral/df_policy.py"
     }

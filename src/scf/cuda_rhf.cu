@@ -21,6 +21,7 @@
 #include <utility>
 #include <vector>
 
+#include "generated_df_derivative_policy.cuh"
 #include "generated_df_policy.cuh"
 #include "molecule/basis.hpp"
 #include "runtime/cuda_gaussian_products.cuh"

@@ -48,6 +48,8 @@ def worker(args):
     if args.domain == "df":
         os.environ["VIBEQC_DF_DERIVATIVES"] = args.selection
         os.environ["VIBEQC_DF_DERIVATIVE_MAPPING"] = "thread"
+        os.environ["VIBEQC_DF_VALUE_MAPPING"] = "primitive"
+        os.environ["VIBEQC_ONE_ELECTRON_VALUE_MAPPING"] = "shell_warp"
         # Keep the independent one-electron force route identical on both sides.
         os.environ.pop("VIBEQC_ONE_ELECTRON_DERIVATIVES", None)
     else:
@@ -67,6 +69,15 @@ def worker(args):
     ):
         raise RuntimeError(
             "handwritten one-electron values were retired; select an archived baseline checkout"
+        )
+    if (
+        args.domain == "df"
+        and args.selection == "reference"
+        and "bool generated_df_derivatives_requested("
+        not in (args.root / "src/scf/cuda/rhf_policy.cpp").read_text()
+    ):
+        raise RuntimeError(
+            "coordinate-wise DF response was retired; select an archived baseline checkout"
         )
     cache = (args.build / "CMakeCache.txt").read_text()
     if "VIBEQC_CUDA_FAST_COMPILE:BOOL=OFF" not in cache:

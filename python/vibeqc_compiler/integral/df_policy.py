@@ -7,15 +7,20 @@ center channels, including the translation-derived auxiliary contribution.
 """
 
 
-def emit_df_policy_cuda():
-    """Emit value and first-response policies with one common runtime contract."""
-    return r"""// Generated DF value/response policies; runtime owns basis traversal.
-#ifndef VIBEQC_GENERATED_DF_POLICY_CUH
-#define VIBEQC_GENERATED_DF_POLICY_CUH
-#include "df_values.cuh"
-#include "generated_df_derivatives.cuh"
-namespace vibeqc::scf::generated_df_policy {
-struct Value {
+def emit_df_policy_cuda(*, derivatives=False):
+    """Emit one consumer's policy without registering unused device tables.
+
+    CUDA emits host registration symbols even for device definitions. Keep
+    values separate so a derivative-only TU carries no unused Rys value data;
+    scalar headers themselves use internal linkage for safe multi-TU reuse.
+    """
+    guard = (
+        "VIBEQC_GENERATED_DF_"
+        + ("DERIVATIVE" if derivatives else "VALUE")
+        + "_POLICY_CUH"
+    )
+    header = "generated_df_derivatives.cuh" if derivatives else "df_values.cuh"
+    value = r"""struct Value {
   using Vec3 = generated_df::Vec3;
   using Angular = generated_df::Angular;
   using Accumulator = double;
@@ -29,7 +34,8 @@ struct Value {
       out += weight * generated_df::three_center(e[0],r[0],a[0],e[1],r[1],a[1],e[2],r[2],a[2]);
   }
 };
-struct Derivative {
+"""
+    derivative = r"""struct Derivative {
   using Vec3 = generated_df_derivatives::Vec3;
   using Angular = generated_df_derivatives::Angular;
   struct Accumulator { double gradient[3][3]{}; };
@@ -51,6 +57,12 @@ struct Derivative {
     }
   }
 };
-} // namespace vibeqc::scf::generated_df_policy
-#endif
 """
+    return (
+        "// Generated DF policy; runtime owns normalized basis traversal.\n"
+        f"#ifndef {guard}\n#define {guard}\n"
+        f'#include "{header}"\n'
+        "namespace vibeqc::scf::generated_df_policy {\n"
+        + (derivative if derivatives else value)
+        + "} // namespace vibeqc::scf::generated_df_policy\n#endif\n"
+    )

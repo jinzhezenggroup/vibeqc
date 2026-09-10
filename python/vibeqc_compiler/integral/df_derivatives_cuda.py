@@ -149,4 +149,6 @@ __device__ __forceinline__ Response three_center(double alpha,Vec3 A,Angular a,
 #endif
 """,
     ]
-    return "\n".join(lines)
+    # Raw and weighted consumers compile this same definition in separate TUs.
+    # Device functions need internal linkage, including their NVCC host stubs.
+    return "\n".join(lines).replace("__device__", "static __device__")

@@ -199,4 +199,8 @@ __device__ __forceinline__ double three_center(
 }  // namespace vibeqc::scf::generated_df
 #endif
 """
-    return prefix + tables + emit_df_axis_cuda() + suffix
+    # Scalar headers are shared across typed consumers. Internal CUDA linkage
+    # prevents NVCC host registration symbols and tables from violating ODR.
+    return (prefix + tables + emit_df_axis_cuda() + suffix).replace(
+        "__device__", "static __device__"
+    )

@@ -1,6 +1,6 @@
 #include <limits>
 
-#include "generated_df_policy.cuh"
+#include "generated_df_derivative_policy.cuh"
 #include "molecule/basis.hpp"
 #include "scf/cuda/df_derivatives.cuh"
 namespace vibeqc::scf {

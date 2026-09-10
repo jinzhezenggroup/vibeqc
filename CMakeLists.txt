@@ -220,13 +220,15 @@ if(VIBEQC_ENABLE_CUDA)
     VERBATIM)
   target_sources(vibeqc PRIVATE "${VIBEQC_DF_GENERATED_HEADER}" "${VIBEQC_DF_POLICY_HEADER}")
   set(VIBEQC_DF_DERIVATIVE_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_derivatives.cuh")
+  set(VIBEQC_DF_DERIVATIVE_POLICY_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_derivative_policy.cuh")
   add_custom_command(
-    OUTPUT "${VIBEQC_DF_DERIVATIVE_HEADER}"
+    OUTPUT "${VIBEQC_DF_DERIVATIVE_HEADER}" "${VIBEQC_DF_DERIVATIVE_POLICY_HEADER}"
     COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
             --derivatives --output "${VIBEQC_DF_DERIVATIVE_HEADER}"
+            --policy-output "${VIBEQC_DF_DERIVATIVE_POLICY_HEADER}"
     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py" ${VIBEQC_DF_GENERATOR_INPUTS}
     VERBATIM)
-  target_sources(vibeqc PRIVATE "${VIBEQC_DF_DERIVATIVE_HEADER}"
+  target_sources(vibeqc PRIVATE "${VIBEQC_DF_DERIVATIVE_HEADER}" "${VIBEQC_DF_DERIVATIVE_POLICY_HEADER}"
                  src/scf/cuda/df_derivatives.cu src/scf/cuda/df_gradient_bridge.cu)
 
   # One-electron lowering is compiled in its own TU, keeping the generic HF
