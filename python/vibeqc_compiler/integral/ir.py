@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from enum import Enum
 from math import isfinite
 
-from .blocks import RawBlock, WeightedDerivative
+from .blocks import RawBlock, SecondDerivative, WeightedDerivative
 from .range_separation import CoulombKernel, CoulombKernelFamily
 from .shell_signature import ShellSignature, checked_index
 from .shell_spec import ShellClassSpec
@@ -430,7 +430,9 @@ class IntegralIR:
     spec: ShellClassSpec | ShellSignature
     operator: OperatorSpec
     derivative: DerivativeSpec | None
-    contractions: tuple[ContractionSpec | RawBlock | WeightedDerivative, ...]
+    contractions: tuple[
+        ContractionSpec | RawBlock | WeightedDerivative | SecondDerivative, ...
+    ]
     recurrence: str = "subset_wick"
 
     def __post_init__(self) -> None:
@@ -439,7 +441,9 @@ class IntegralIR:
                 "integral spec must be a shell signature or legacy shell class"
             )
         if any(
-            not isinstance(c, (ContractionSpec, RawBlock, WeightedDerivative))
+            not isinstance(
+                c, (ContractionSpec, RawBlock, WeightedDerivative, SecondDerivative)
+            )
             for c in self.contractions
         ):
             raise TypeError(
@@ -497,9 +501,20 @@ class IntegralIR:
                 "Hermite recurrence currently requires a one-electron operator"
             )
 
+        second_requested = any(
+            isinstance(item, SecondDerivative) for item in self.contractions
+        )
+        if second_requested and (self.derivative is None or self.derivative.order != 2):
+            raise ValueError(
+                "second derivative consumers require explicit derivative order two"
+            )
         if self.operator.range_separated and (
             self.recurrence != "subset_wick"
-            or (self.derivative is not None and self.derivative.order != 1)
+            or (
+                self.derivative is not None
+                and self.derivative.order != 1
+                and not second_requested
+            )
         ):
             raise ValueError(
                 "range-separated IR currently supports subset_wick values/first derivatives"
@@ -541,13 +556,17 @@ class IntegralIR:
                         raise ValueError(
                             f"derivative order {self.derivative.order} requires {expected_output.value} output"
                         )
-            elif not weighted_requested and not any(
-                isinstance(item, RawBlock) for item in self.contractions
+            elif (
+                not weighted_requested
+                and not second_requested
+                and not any(isinstance(item, RawBlock) for item in self.contractions)
             ):
                 raise ValueError("a derivative spec requires a derivative contraction")
         for contraction in self.contractions:
             if isinstance(contraction, (RawBlock, WeightedDerivative)):
                 self._validate_block_consumer(contraction)
+            elif isinstance(contraction, SecondDerivative):
+                self._validate_second_consumer(contraction)
 
         if self.recurrence.startswith("rys"):
             if self.operator.family in (OperatorFamily.OVERLAP, OperatorFamily.KINETIC):
@@ -568,6 +587,46 @@ class IntegralIR:
             if isinstance(self.spec, ShellClassSpec)
             else self.spec
         )
+
+    def _validate_second_consumer(self, consumer: SecondDerivative) -> None:
+        """Keep second-order pair/direction axes distinct from first-force layouts."""
+        count = len(self.requested_derivative_centers)
+        if consumer.output == "weighted_hvp":
+            prefix, shape = ("center", "xyz"), (count, 3)
+        elif consumer.packing == "svec":
+            dimension = 3 * count
+            prefix, shape = (
+                ("symmetric_coordinate_pair",),
+                (dimension * (dimension + 1) // 2,),
+            )
+        else:
+            prefix, shape = (
+                ("center_row", "xyz_row", "center_column", "xyz_column"),
+                (count, 3, count, 3),
+            )
+        signature = self.signature
+        raw = consumer.output == "raw_hessian"
+        expected = prefix + (signature.tensor_indices if raw else ())
+        layout = consumer.output_layout
+        if layout.indices != expected or layout.shape[: len(shape)] != shape:
+            raise ValueError(
+                "second derivative output requires its declared Hessian-pair or HVP axes"
+            )
+        if raw:
+            component_shape = layout.shape[len(shape) :]
+        else:
+            if consumer.weights.layout.indices != signature.tensor_indices:
+                raise ValueError(
+                    "second derivative weights must follow the shell tensor axes"
+                )
+            component_shape = consumer.weights.layout.shape
+        if any(
+            size > full
+            for size, full in zip(
+                component_shape, signature.component_shape, strict=True
+            )
+        ):
+            raise ValueError("second derivative component shape exceeds the shell")
 
     def _validate_block_consumer(self, consumer: RawBlock | WeightedDerivative) -> None:
         """Check scientific tensor axes; per-tile budgets are checked on requests."""
@@ -684,7 +743,9 @@ def build_integral_ir(
     *,
     operator: OperatorSpec = FOUR_CENTER_ERI_OPERATOR,
     derivative: DerivativeSpec | None = None,
-    contractions: tuple[ContractionSpec | RawBlock | WeightedDerivative, ...]
+    contractions: tuple[
+        ContractionSpec | RawBlock | WeightedDerivative | SecondDerivative, ...
+    ]
     | None = None,
     recurrence: str = "subset_wick",
 ) -> IntegralIR:

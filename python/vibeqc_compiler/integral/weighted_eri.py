@@ -100,7 +100,10 @@ class WeightedEriKernel:
 
 
 def build_weighted_eri_kernel(
-    integral: IntegralIR, component_indices: tuple[int, ...] | None = None
+    integral: IntegralIR,
+    component_indices: tuple[int, ...] | None = None,
+    *,
+    primal_form: AlgebraForm = AlgebraForm.FACTORED_NARY,
 ) -> WeightedEriKernel:
     """Precontract Hermite coefficients, then differentiate the weighted scalar.
 
@@ -110,6 +113,8 @@ def build_weighted_eri_kernel(
     can partition a large class into explicit subsets of at most 64 components;
     this code-size bound is a lowering choice, not a mathematical domain limit.
     Uncompiled subsets retain the unscreened native external-weight fallback.
+    ``primal_form`` permits algebra/AD commutation checks; its default preserves
+    the established first-derivative graph and emitted source.
     """
     if (
         integral.operator.family
@@ -204,7 +209,7 @@ def build_weighted_eri_kernel(
     scale = consumer.output_sign * consumer.weights.sign * consumer.weights.prefactor
     # Factor the scalar before AD so component weights share expensive states.
     graph, (value,) = graph.apply_algebra_form(
-        (scale * value,), AlgebraForm.FACTORED_NARY
+        (scale * value,), AlgebraForm(primal_form)
     )
     prefactor = graph.variable("prefactor")
     rho = graph.variable("rho")

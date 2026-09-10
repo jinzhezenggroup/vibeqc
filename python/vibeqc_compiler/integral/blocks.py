@@ -178,6 +178,64 @@ class WeightedDerivative:
 
 
 @dataclass(frozen=True, slots=True)
+class SecondDerivative:
+    """Explicit raw Hessian, fixed-weight Hessian or fixed-weight HVP intent.
+
+    Weights and the named HVP direction are held fixed during coordinate
+    differentiation. Electronic response and molecular assembly belong to a
+    later method layer. Dense and svec Hessians use separately named layouts;
+    HVP directions always follow the requested mathematical-center xyz order.
+    This new consumer tag never enters the legacy first-force registry.
+    """
+
+    output_layout: TensorLayout
+    memory_budget_bytes: int
+    weights: WeightDescriptor | None = None
+    output: str = "raw_hessian"
+    packing: str = "dense"
+    direction_source: str | None = None
+    output_sign: int = 1
+
+    def __post_init__(self):
+        checked_index(
+            self.memory_budget_bytes, "second derivative memory budget", minimum=1
+        )
+        _sign(self.output_sign, "second derivative output sign")
+        if self.output not in ("raw_hessian", "weighted_hessian", "weighted_hvp"):
+            raise ValueError("unknown second derivative output")
+        if self.packing not in ("dense", "svec"):
+            raise ValueError("second derivative packing must be dense or svec")
+        if self.output == "raw_hessian":
+            if self.weights is not None:
+                raise ValueError("raw Hessian output cannot consume external weights")
+        elif not isinstance(self.weights, WeightDescriptor):
+            raise ValueError(
+                "contracted second derivatives require explicit external weights"
+            )
+        if self.output == "weighted_hvp":
+            if (
+                self.packing != "dense"
+                or not isinstance(self.direction_source, str)
+                or not self.direction_source.strip()
+            ):
+                raise ValueError(
+                    "HVP output requires a named fixed direction and dense center/xyz layout"
+                )
+        elif self.direction_source is not None:
+            raise ValueError("a Hessian output cannot also consume an HVP direction")
+
+    @property
+    def consumer(self):
+        """Versioned second-order consumer, distinct from first derivatives."""
+        return "second_derivative"
+
+    @property
+    def kernel_consumer(self):
+        """Second integral derivatives do not enable direct HF force kernels."""
+        return None
+
+
+@dataclass(frozen=True, slots=True)
 class ShellTile:
     """AO component offsets and extents within one shell tuple."""
 

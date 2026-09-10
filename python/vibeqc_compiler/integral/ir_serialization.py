@@ -5,7 +5,13 @@ silently acquire today's defaults and then alias an existing compiled cache.
 Legacy production profiles continue to use their existing schema and loader.
 """
 
-from .blocks import RawBlock, TensorLayout, WeightDescriptor, WeightedDerivative
+from .blocks import (
+    RawBlock,
+    SecondDerivative,
+    TensorLayout,
+    WeightDescriptor,
+    WeightedDerivative,
+)
 from .ir import (
     ContractionSpec,
     DerivativeSpec,
@@ -21,6 +27,7 @@ from .shell_spec import ShellClassSpec
 
 INTEGRAL_SCHEMA_VERSION = 1
 RANGE_INTEGRAL_SCHEMA_VERSION = 2
+SECOND_INTEGRAL_SCHEMA_VERSION = 3
 INTEGRAL_SCHEMA = "vibeqc.integral_ir"
 
 
@@ -65,6 +72,24 @@ def _layout(payload):
 
 
 def _consumer_payload(consumer):
+    if isinstance(consumer, SecondDerivative):
+        return {
+            "consumer": consumer.consumer,
+            "output_layout": consumer.output_layout.to_payload(),
+            "memory_budget_bytes": consumer.memory_budget_bytes,
+            "weights": None
+            if consumer.weights is None
+            else {
+                "source": consumer.weights.source,
+                "layout": consumer.weights.layout.to_payload(),
+                "sign": consumer.weights.sign,
+                "prefactor": consumer.weights.prefactor,
+            },
+            "output": consumer.output,
+            "packing": consumer.packing,
+            "direction_source": consumer.direction_source,
+            "output_sign": consumer.output_sign,
+        }
     if isinstance(consumer, ContractionSpec):
         return {
             "consumer": consumer.consumer.value,
@@ -97,6 +122,38 @@ def _consumer(payload):
     if not isinstance(payload, dict) or "consumer" not in payload:
         raise ValueError("consumer record requires a consumer tag")
     kind = payload["consumer"]
+    if kind == "second_derivative":
+        _record(
+            payload,
+            (
+                "consumer",
+                "output_layout",
+                "memory_budget_bytes",
+                "weights",
+                "output",
+                "packing",
+                "direction_source",
+                "output_sign",
+            ),
+        )
+        weights = payload["weights"]
+        if weights is not None:
+            _record(weights, ("source", "layout", "sign", "prefactor"))
+            weights = WeightDescriptor(
+                weights["source"],
+                _layout(weights["layout"]),
+                weights["sign"],
+                weights["prefactor"],
+            )
+        return SecondDerivative(
+            _layout(payload["output_layout"]),
+            payload["memory_budget_bytes"],
+            weights,
+            payload["output"],
+            payload["packing"],
+            payload["direction_source"],
+            payload["output_sign"],
+        )
     if kind in ("direct_fock", "direct_force"):
         _record(payload, ("consumer", "density", "output"))
         return ContractionSpec(kind, tuple(payload["density"]), payload["output"])
@@ -162,7 +219,9 @@ def integral_to_payload(integral: IntegralIR) -> dict[str, object]:
     derivative = integral.derivative
     return {
         "schema": INTEGRAL_SCHEMA,
-        "schema_version": RANGE_INTEGRAL_SCHEMA_VERSION
+        "schema_version": SECOND_INTEGRAL_SCHEMA_VERSION
+        if any(isinstance(c, SecondDerivative) for c in integral.contractions)
+        else RANGE_INTEGRAL_SCHEMA_VERSION
         if operator.range_separated
         else INTEGRAL_SCHEMA_VERSION,
         "spec": spec,
@@ -209,7 +268,11 @@ def integral_from_payload(payload: dict[str, object]) -> IntegralIR:
         payload["schema"] != INTEGRAL_SCHEMA
         or type(payload["schema_version"]) is not int
         or payload["schema_version"]
-        not in (INTEGRAL_SCHEMA_VERSION, RANGE_INTEGRAL_SCHEMA_VERSION)
+        not in (
+            INTEGRAL_SCHEMA_VERSION,
+            RANGE_INTEGRAL_SCHEMA_VERSION,
+            SECOND_INTEGRAL_SCHEMA_VERSION,
+        )
     ):
         raise ValueError("unsupported integral IR schema")
     s = payload["spec"]
@@ -233,7 +296,12 @@ def integral_from_payload(payload: dict[str, object]) -> IntegralIR:
         spec = ShellSignature(shells, bindings, s["legacy_class"])
     else:
         raise ValueError("unknown shell specification kind")
-    ranged = payload["schema_version"] == RANGE_INTEGRAL_SCHEMA_VERSION
+    ranged = payload["schema_version"] == RANGE_INTEGRAL_SCHEMA_VERSION or (
+        payload["schema_version"] == SECOND_INTEGRAL_SCHEMA_VERSION
+        and isinstance(payload["operator"], dict)
+        and payload["operator"].get("family")
+        in (OperatorFamily.LONG_RANGE_ERI, OperatorFamily.SHORT_RANGE_ERI)
+    )
     o = _record(
         payload["operator"],
         ("family", "centers", "invariants", "external_centers", "permutations")
@@ -267,10 +335,17 @@ def integral_from_payload(payload: dict[str, object]) -> IntegralIR:
             _coordinates(d["centers"]),
             tuple(_invariant(i) for i in d["invariants"]),
         )
+    consumers = tuple(_consumer(c) for c in payload["contractions"])
+    if any(isinstance(c, SecondDerivative) for c in consumers) != (
+        payload["schema_version"] == SECOND_INTEGRAL_SCHEMA_VERSION
+    ):
+        raise ValueError(
+            "second derivative consumers require integral IR schema version 3"
+        )
     return IntegralIR(
         spec,
         operator,
         derivative,
-        tuple(_consumer(c) for c in payload["contractions"]),
+        consumers,
         payload["recurrence"],
     )
