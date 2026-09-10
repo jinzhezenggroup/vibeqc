@@ -220,13 +220,14 @@ def main():
                                         device_bytes=device_budget,
                                     ),
                                 )
+                                construction = time.perf_counter() - started
                                 cuda = owner._cuda
                                 row["mask_identity"] = owner.tasks.identity
                                 row["active_aos"] = [
                                     len(t.ao_ids) for t in owner.tasks.tasks
                                 ]
                                 row["metadata_bytes"] = owner.tasks.numeric_bytes
-                                row["resource_plan"] = asdict(owner.resource_plan)
+                                row["resource_plan"] = owner.resource_plan.to_dict()
                                 tiles = [(ids, t.ao_ids) for t, ids in owner._tiles()]
                                 row["tile_plan"] = asdict(owner.tile_plan)
                             else:
@@ -250,7 +251,7 @@ def main():
                                         tile_points=tile_points,
                                         budget_bytes=host_budget + device_budget,
                                     )
-                            construction = time.perf_counter() - started
+                                construction = time.perf_counter() - started
                             try:
                                 # Reference construction is outside every execution clock.
                                 if sample == 0 and mode != "dense":
