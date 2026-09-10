@@ -106,11 +106,24 @@
       "subsystem": "runtime"
     },
     {
+      "path": "src/runtime/cuda_subgroup.cuh",
+      "reason": "Power-of-two subgroup reduction of fixed channel arrays; masks and arithmetic are independent of integral family.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
       "path": "src/runtime/resource_cuda.cuh",
       "reason": "Allocation accounting and lifetime guards.",
       "regions": [],
       "role": "runtime",
       "subsystem": "runtime"
+    },
+    {
+      "path": "src/runtime/strided_range.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Generic two-dimensional strided tile indexing shared by bounded host producers and CUDA consumers; no scientific expressions."
     },
     {
       "path": "src/scf/aot_shell_registry.hpp",
@@ -393,12 +406,6 @@
       "regions": [],
       "role": "runtime",
       "subsystem": "runtime"
-    },
-    {
-      "path": "src/runtime/strided_range.hpp",
-      "role": "runtime",
-      "subsystem": "runtime",
-      "reason": "Generic two-dimensional strided tile indexing shared by bounded host producers and CUDA consumers; no scientific expressions."
     }
   ],
   "generated_families": [

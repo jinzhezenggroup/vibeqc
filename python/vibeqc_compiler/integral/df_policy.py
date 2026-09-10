@@ -7,6 +7,26 @@ center channels, including the translation-derived auxiliary contribution.
 """
 
 
+def emit_df_derivative_schedule_cuda():
+    """Emit weighted-response scheduling independently of scalar mathematics.
+
+    Four lanes split long primitive products while keeping eight independent
+    outputs per warp. A separate artifact lets measured scheduling changes
+    leave raw value/derivative consumers and their mathematical policy intact.
+    """
+    return """// Generated weighted DF schedule; generic runtime performs the reduction.
+#ifndef VIBEQC_GENERATED_DF_DERIVATIVE_SCHEDULE_CUH
+#define VIBEQC_GENERATED_DF_DERIVATIVE_SCHEDULE_CUH
+namespace vibeqc::scf::generated_df_policy {
+struct WeightedSchedule {
+  static constexpr unsigned block_threads = 32;
+  static constexpr unsigned lanes_per_element = 4;
+};
+} // namespace vibeqc::scf::generated_df_policy
+#endif
+"""
+
+
 def emit_df_policy_cuda(*, derivatives=False):
     """Emit one consumer's policy without registering unused device tables.
 

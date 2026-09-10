@@ -119,6 +119,36 @@ def test_arbitrary_raw_fused_and_two_budgets_with_auxiliary_motion(
             )
 
 
+@pytest.mark.parametrize("tile_elements", [1, 7, 13])
+def test_cooperative_sparse_weights_and_ragged_primitive_partitions(tile_elements):
+    """Zero-weight groups and partial warps must preserve the shuffle mask.
+
+    Unequal odd contraction lengths leave different primitive remainders in
+    each subgroup. The oracle contracts libcint derivatives with the original
+    sparse weights, independently of CUDA lane ownership and reduction order.
+    """
+    assert os.environ.get("SLURM_JOB_ID"), "GPU tests require Slurm"
+    oi, xi = fixture_inputs("spherical", False)
+    oi["shells"][0]["primitives"].append([0.31, 0.12])
+    xi["shells"][0]["primitives"].extend([[0.27, 0.13], [0.41, -0.08], [2.2, 0.07]])
+    a, m, da, dm = reference_df_matrices(oi, xi)
+    wa, wm = np.zeros_like(a), np.zeros_like(m)
+    wa.flat[::5] = np.linspace(-0.2, 0.3, wa.flat[::5].size)
+    wm.flat[::3] = np.linspace(0.1, -0.4, wm.flat[::3].size)
+    expected = np.einsum("axijp,ijp->ax", da, wa) + np.einsum("axpq,pq->ax", dm, wm)
+    atoms = [(z, tuple(r)) for z, r in zip(("He", "H", "H"), oi["coordinates"])]
+    actual, _ = execute_df_gradient(
+        calculator(oi),
+        calculator(xi),
+        atoms,
+        wa,
+        wm,
+        schedule=0,
+        maximum_tile_elements=tile_elements,
+    )
+    np.testing.assert_allclose(actual, expected, atol=2e-9, rtol=2e-11)
+
+
 @pytest.mark.parametrize(
     "orbital_rep,auxiliary_rep",
     [("cartesian", "spherical"), ("spherical", "cartesian")],

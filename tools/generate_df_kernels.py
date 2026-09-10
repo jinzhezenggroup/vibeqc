@@ -33,7 +33,10 @@ def main() -> None:
     parser.add_argument("--inventory", type=Path)
     parser.add_argument("--derivatives", action="store_true")
     parser.add_argument("--policy-output", type=Path)
+    parser.add_argument("--schedule-output", type=Path)
     args = parser.parse_args()
+    if args.schedule_output and not args.derivatives:
+        parser.error("--schedule-output requires --derivatives")
     if args.derivatives:
         from vibeqc_compiler.integral.df_derivatives_cuda import (
             df_derivative_inventory,
@@ -51,6 +54,10 @@ def main() -> None:
         write_if_changed(
             args.policy_output, emit_df_policy_cuda(derivatives=args.derivatives)
         )
+    if args.schedule_output:
+        from vibeqc_compiler.integral.df_policy import emit_df_derivative_schedule_cuda
+
+        write_if_changed(args.schedule_output, emit_df_derivative_schedule_cuda())
     if args.inventory:
         payload = {
             **inventory(),
