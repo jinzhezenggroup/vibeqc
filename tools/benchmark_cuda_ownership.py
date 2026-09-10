@@ -16,6 +16,7 @@ import json
 import os
 import subprocess
 import sys
+from dataclasses import asdict
 from itertools import product
 from pathlib import Path
 from time import perf_counter
@@ -96,9 +97,12 @@ def worker(args):
     }
     # Load the CUDA context/library before either candidate's cold plan timing.
     Calculator(device="cuda").singlepoint([("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))])
+    # Keep Cartesian endpoints at 15 AOs, inside the existing <=16-AO
+    # direct-HF resource inventory. The independent larger s/d/f numerical
+    # suite remains separate; this timing fixture adds p-containing endpoints.
     basis = (
         Shell(0, 0, (Primitive(1.5, 1.0), Primitive(0.7, -0.1))),
-        Shell(0, 2, (Primitive(0.8, 1.0),)),
+        Shell(0, 1, (Primitive(0.8, 1.0),)),
         Shell(0, 3, (Primitive(0.6, 1.0),)),
         Shell(1, 0, (Primitive(1.2, 1.0),)),
     )
@@ -137,6 +141,7 @@ def worker(args):
         row = {
             "case": key,
             "atoms": atoms,
+            "basis": [asdict(shell) for shell in basis],
             "df_budget_bytes": df_budget,
             "seconds": {},
             "results": {},
@@ -315,6 +320,7 @@ def compare(args):
                             {
                                 "case": endpoint["case"],
                                 "atoms": endpoint["atoms"],
+                                "basis": endpoint["basis"],
                                 "df_budget_bytes": endpoint["df_budget_bytes"],
                             }
                         ),
