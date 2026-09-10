@@ -93,9 +93,12 @@ The bounded host adapter in `src/scf/df_response_weights.cpp` forms
 
 RHF uses `(c_J,c_K)=(1,1/4)`. UHF adds total-density `(1,0)` and the two
 spin-density `(0,1/2)` contributions. The adapter retains only a bounded
-auxiliary block of raw AO matrices and response weights. Its strided callback
-maps weight k to `offset+k*stride`, avoiding a complete transpose into dense
-A-weight storage. Callback uploads finish before these host buffers are reused.
+auxiliary block of raw AO matrices and response weights. Its two-dimensional
+strided callback submits that whole block, avoiding a complete transpose into
+dense A-weight storage. The same range mapping preserves row position when an
+upload splits a block inside an AO row. Exposing auxiliary and AO-pair work in
+one launch avoids underfilling the GPU with one small kernel per auxiliary.
+Callback uploads finish before these host buffers are reused.
 Partial auxiliary blocks deliberately reread Q slices and recompute exchange
 responses. Retaining all such responses can exceed the same hard budget;
 secondary blocking or an explicitly charged optional cache remains future

@@ -186,8 +186,8 @@ vibeqc_status execute_cuda_df_gradient(int device, const core::System& orbital,
                               cudaMemcpyHostToDevice, arena.stream));
         arena.stats.host_to_device_bytes += count * sizeof(double);
         ++arena.stats.uploads;
-        check(launch_df_derivative_tile(o, x, r, kind, begin, count, weights, schedule, output,
-                                        arena.stream));
+        check(launch_df_derivative_tile(o, x, r, kind, {begin, 1, 1, 1}, count, weights, schedule,
+                                        output, arena.stream));
         ++arena.stats.tiles;
       }
     }
@@ -276,7 +276,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
     if (arena.stats.host_bytes >= maximum_bytes) throw std::bad_alloc();
     check(cudaMemsetAsync(output, 0, result.size() * sizeof(double), arena.stream));
     const auto weight_tile =
-        std::min({std::size_t{65536}, std::max(n * n, a * a),
+        std::min({std::size_t{65536}, std::max(n * n * a, a * a),
                   (maximum_bytes - arena.stats.device_bytes) / sizeof(double)});
     if (!weight_tile) throw std::bad_alloc();
     auto* weights = static_cast<double*>(arena.allocate(weight_tile * sizeof(double)));
@@ -307,8 +307,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
           }
           drained = true;
         },
-        [&](unsigned kind, std::size_t offset, std::size_t stride,
-            std::span<const double> host_weights) {
+        [&](unsigned kind, runtime::StridedRange range, std::span<const double> host_weights) {
           bool drained = false;
           auto drain = [&] {
             if (!drained) (void)cudaStreamSynchronize(arena.stream);
@@ -320,8 +319,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
                                   cudaMemcpyHostToDevice, arena.stream));
             arena.stats.host_to_device_bytes += count * sizeof(double);
             ++arena.stats.uploads;
-            check(launch_df_derivative_tile(o, x, r, kind, offset + begin * stride, count, weights,
-                                            schedule, output, arena.stream, stride));
+            check(launch_df_derivative_tile(o, x, r, kind, range, count, weights, schedule, output,
+                                            arena.stream, begin));
             ++arena.stats.tiles;
           }
           // The adapter reuses this host span after returning. Drain all its

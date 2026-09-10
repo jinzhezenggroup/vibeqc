@@ -103,6 +103,16 @@ The common significance/noise report is retained separately; non-regression
 does not establish a speedup. Native compilation and independent integral
 validation remain required alongside these complete HF measurements.
 
+The same benchmark's `--domain df` inventory includes through-f fitted RHF/UHF,
+Cartesian/spherical representations, batches of one/three, constrained source
+budgets, and water/OH with def2-SVP. Each worker additionally times fresh public
+energy-only singlepoints, so changing shared value traversal cannot hide its
+cost inside a faster force response. Those samples have their own numerical
+and 2% median endpoint gates. Publication retains their energies, residuals,
+iteration counts, and individual timings and recomputes all gates from workers.
+Use explicit clean historical and candidate checkouts; the benchmark rejects
+selection of a retired reference route on a current tree.
+
 
 The accepted one-electron comparison measured clean candidate `fdc7f40` against
 clean baseline `1ba6f17` with Release, CUDA fast compilation disabled, CUDA

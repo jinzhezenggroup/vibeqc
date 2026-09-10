@@ -6,6 +6,8 @@
 #include <span>
 #include <vector>
 
+#include "runtime/strided_range.hpp"
+
 namespace vibeqc::scf {
 
 /** A symmetric density contribution to .5*cJ*rho^T M+ rho - cK*Q:M+.
@@ -24,9 +26,11 @@ struct DensityFittingResponseWeightResources {
 /** Derive bounded external A/M weights from one or more HF density terms.
  *
  * read_values(P, output) supplies the full row-major AO matrix A[:,:,P].
- * consume(kind, offset, stride, weights) consumes a transient weight span;
+ * consume(kind, range, weights) consumes a transient weight span;
  * it must finish reading that span before returning. kind=0 is full dense
- * A[mu,nu,P], kind=1 is full dense M[P,Q]. Element k maps to offset+k*stride.
+ * A[mu,nu,P], kind=1 is full dense M[P,Q]. Element k maps to range.index(k).
+ * Each bounded auxiliary block is submitted together so the consumer can
+ * expose parallelism across both AO pairs and auxiliary functions.
  * These are positive energy derivatives with unit dense multiplicity.
  *
  * Only a bounded auxiliary block of AO matrices is retained. The metric
@@ -40,8 +44,7 @@ DensityFittingResponseWeightResources contract_density_fitting_response_weights(
     const std::vector<double>& inverse, std::span<const DensityFittingDensityResponse> terms,
     double relative_threshold, std::size_t maximum_bytes, std::size_t maximum_auxiliary_tile,
     const std::function<void(std::size_t, std::span<double>)>& read_values,
-    const std::function<void(unsigned, std::size_t, std::size_t, std::span<const double>)>&
-        consume);
+    const std::function<void(unsigned, runtime::StridedRange, std::span<const double>)>& consume);
 
 }  // namespace vibeqc::scf
 #endif

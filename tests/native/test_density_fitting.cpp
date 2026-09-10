@@ -516,15 +516,13 @@ int main() {
             for (std::size_t ij = 0; ij < matrix; ++ij)
               output[ij] = integrals.three_center[ij * a + p];
           },
-          [&](unsigned kind, std::size_t offset, std::size_t stride,
-              std::span<const double> weights) {
+          [&](unsigned kind, vibeqc::runtime::StridedRange range, std::span<const double> weights) {
             const auto& raw =
                 kind ? integrals.metric_derivative : integrals.three_center_derivative;
             const auto elements = kind ? a * a : matrix * a;
             for (std::size_t coordinate = 0; coordinate < integrals.ncoord; ++coordinate)
               for (std::size_t k = 0; k < weights.size(); ++k)
-                derivative[coordinate] +=
-                    weights[k] * raw[coordinate * elements + offset + k * stride];
+                derivative[coordinate] += weights[k] * raw[coordinate * elements + range.index(k)];
           });
       require(stats.host_peak_bytes <= budget,
               "HF external weights exceed the host scratch budget");

@@ -33,8 +33,9 @@ struct Factor {
  */
 template <class Policy, unsigned Rank, std::size_t TermCapacity>
 struct Product {
-  Factor factors[Rank];
+  const Factor (&factors)[Rank];
   std::int32_t shells[Rank], atoms[Rank];
+  std::int64_t primitive[Rank];
   typename Policy::Vec3 centers[Rank];
   typename Policy::Angular angular[Rank];
   double exponents[Rank];
@@ -46,7 +47,7 @@ struct Product {
     if constexpr (Slot == Rank) {
       Policy::template accumulate<Rank>(result, exponents, centers, angular, weight);
     } else {
-      const auto basis = factors[Slot].basis;
+      const auto& basis = factors[Slot].basis;
       const auto ao = factors[Slot].ao;
       for (unsigned term = 0; term < basis.term_counts[ao]; ++term) {
         const auto index = ao * TermCapacity + term;
@@ -58,17 +59,28 @@ struct Product {
   }
 
   template <unsigned Slot = 0>
-  __device__ void primitives(double weight = 1.0) {
+  __device__ void primitives() {
     if constexpr (Slot == Rank) {
       const auto current = owner;
-      owner = (owner + 1U) % lanes;
-      if (current == lane) terms(weight);
+      if (++owner == lanes) owner = 0;
+      if (current == lane) {
+        // A cooperative lane loads arithmetic inputs only for products it
+        // owns. Loading them while enumerating every other lane's products
+        // needlessly extends live ranges and inflates per-thread stack state.
+        double weight = 1.0;
+#pragma unroll
+        for (unsigned slot = 0; slot < Rank; ++slot) {
+          exponents[slot] = factors[slot].basis.exponents[primitive[slot]];
+          weight *= factors[slot].basis.coefficients[primitive[slot]];
+        }
+        terms(weight);
+      }
     } else {
-      const auto basis = factors[Slot].basis;
+      const auto& basis = factors[Slot].basis;
       const auto shell = shells[Slot];
       for (auto p = basis.primitive_offsets[shell]; p < basis.primitive_offsets[shell + 1]; ++p) {
-        exponents[Slot] = basis.exponents[p];
-        primitives<Slot + 1>(weight * basis.coefficients[p]);
+        primitive[Slot] = p;
+        primitives<Slot + 1>();
       }
     }
   }
@@ -78,12 +90,11 @@ template <class Policy, std::size_t TermCapacity, unsigned Rank>
 __device__ typename Policy::Accumulator contract(const Factor (&factors)[Rank],
                                                  const double* positions, unsigned lane = 0,
                                                  unsigned lanes = 1) {
-  Product<Policy, Rank, TermCapacity> product{};
+  Product<Policy, Rank, TermCapacity> product{factors};
   product.lane = lane;
   product.lanes = lanes;
 #pragma unroll
   for (unsigned slot = 0; slot < Rank; ++slot) {
-    product.factors[slot] = factors[slot];
     product.shells[slot] = factors[slot].basis.ao_shells[factors[slot].ao];
     product.atoms[slot] = factors[slot].basis.shell_atoms[product.shells[slot]];
     const auto* r = positions + 3 * product.atoms[slot];

@@ -27,34 +27,47 @@ __device__ void contract(DfDerivativeBasisView o, DfDerivativeBasisView x, const
   }
 }
 __global__ void derivative_tile(DfDerivativeBasisView o, DfDerivativeBasisView x,
-                                const double* positions, unsigned kind, std::size_t offset,
+                                const double* positions, unsigned kind, runtime::StridedRange range,
                                 std::size_t count, const double* weights, unsigned schedule,
-                                double* gradient, std::size_t stride) {
+                                double* gradient, std::size_t begin) {
   const auto thread = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
   if (schedule) {
     if (thread == 0)
       for (std::size_t item = 0; item < count; ++item)
-        contract(o, x, positions, kind, offset + item * stride, weights[item], gradient);
+        contract(o, x, positions, kind, range.index(begin + item), weights[item], gradient);
   } else if (thread < count)
-    contract(o, x, positions, kind, offset + thread * stride, weights[thread], gradient);
+    contract(o, x, positions, kind, range.index(begin + thread), weights[thread], gradient);
 }
 }  // namespace
 cudaError_t launch_df_derivative_tile(DfDerivativeBasisView o, DfDerivativeBasisView x,
-                                      const double* positions, unsigned kind, std::size_t offset,
-                                      std::size_t count, const double* weights, unsigned schedule,
-                                      double* gradient, cudaStream_t stream, std::size_t stride) {
+                                      const double* positions, unsigned kind,
+                                      runtime::StridedRange range, std::size_t count,
+                                      const double* weights, unsigned schedule, double* gradient,
+                                      cudaStream_t stream, std::size_t begin) {
   const auto maximum = std::numeric_limits<std::size_t>::max();
   if (!o.nbf || !x.nbf || kind > 1 || schedule > 1 || !positions || !weights || !gradient ||
       !count || o.nbf > maximum / o.nbf || o.nbf * o.nbf > maximum / x.nbf ||
       x.nbf > maximum / x.nbf)
     return cudaErrorInvalidValue;
   const auto elements = kind ? x.nbf * x.nbf : o.nbf * o.nbf * x.nbf;
-  if (!stride || offset >= elements || count - 1 > (elements - 1 - offset) / stride ||
-      (count - 1) / 128 >= std::numeric_limits<int>::max())
+  if (!range.row_length || !range.row_stride || !range.column_stride || range.offset >= elements ||
+      count - 1 > maximum - begin || (count - 1) / 128 >= std::numeric_limits<int>::max())
+    return cudaErrorInvalidValue;
+  // A transposed range is not globally monotone: its last partial row may
+  // end below the preceding full row. Check both maxima without overflow.
+  const auto fits = [&](std::size_t index) {
+    const auto row = index / range.row_length, column = index % range.row_length;
+    const auto remaining = elements - 1 - range.offset;
+    return row <= remaining / range.row_stride &&
+           column <= (remaining - row * range.row_stride) / range.column_stride;
+  };
+  const auto end = begin + count - 1;
+  if (!fits(end) || (end / range.row_length > begin / range.row_length &&
+                     !fits((end / range.row_length) * range.row_length - 1)))
     return cudaErrorInvalidValue;
   const auto blocks = schedule ? 1U : static_cast<unsigned>((count - 1) / 128 + 1);
-  derivative_tile<<<blocks, 128, 0, stream>>>(o, x, positions, kind, offset, count, weights,
-                                              schedule, gradient, stride);
+  derivative_tile<<<blocks, 128, 0, stream>>>(o, x, positions, kind, range, count, weights,
+                                              schedule, gradient, begin);
   return cudaPeekAtLastError();
 }
 }  // namespace vibeqc::scf

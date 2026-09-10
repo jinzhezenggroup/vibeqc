@@ -13,8 +13,7 @@ DensityFittingResponseWeightResources contract_density_fitting_response_weights(
     const std::vector<double>& inverse, std::span<const DensityFittingDensityResponse> terms,
     double relative_threshold, std::size_t maximum_bytes, std::size_t maximum_auxiliary_tile,
     const std::function<void(std::size_t, std::span<double>)>& read_values,
-    const std::function<void(unsigned, std::size_t, std::size_t, std::span<const double>)>&
-        consume) {
+    const std::function<void(unsigned, runtime::StridedRange, std::span<const double>)>& consume) {
   const auto maximum = std::numeric_limits<std::size_t>::max() / sizeof(double);
   if (!std::isfinite(relative_threshold) || relative_threshold <= 0 || relative_threshold >= 1 ||
       !n || !a || !maximum_bytes || terms.empty() || n > maximum / n || a > maximum / a ||
@@ -114,15 +113,14 @@ DensityFittingResponseWeightResources contract_density_fitting_response_weights(
           }
         }
       }
-      for (std::size_t p = 0; p < count; ++p) {
-        consume(0, begin + p, a, std::span<const double>(weight_block).subspan(p * matrix, matrix));
-        ++resources.weight_tiles;
-      }
+      consume(0, {begin, matrix, 1, a},
+              std::span<const double>(weight_block).first(count * matrix));
+      ++resources.weight_tiles;
     }
   }
   const auto bar_metric =
       density_fitting_metric_inverse_response(metric, inverse, bar_inverse, a, relative_threshold);
-  consume(1, 0, 1, bar_metric);
+  consume(1, {}, bar_metric);
   ++resources.weight_tiles;
   return resources;
 }
