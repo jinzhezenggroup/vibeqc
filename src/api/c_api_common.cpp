@@ -26,6 +26,8 @@ const char* vibeqc_status_message(vibeqc_status status) {
       return "out of memory";
     case VIBEQC_STATUS_INTERNAL_ERROR:
       return "internal error";
+    case VIBEQC_STATUS_PRECISION_UNAVAILABLE:
+      return "precision provenance not yet populated";
   }
   return "unknown status";
 }

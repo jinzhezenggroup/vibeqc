@@ -6,6 +6,7 @@
 
 #include "api/error.hpp"
 #include "api/handles.hpp"
+#include "api/precision.hpp"
 #include "methods/method.hpp"
 #include "vibeqc/vibeqc.h"
 
@@ -38,6 +39,7 @@ vibeqc_status vibeqc_batch_prepare(vibeqc_context* context, const vibeqc_system*
     candidate->context = context;
     candidate->atom_counts = std::move(atom_counts);
     candidate->last_fock_builds.resize(system_count);
+    candidate->precision.resize(system_count);
     candidate->plan = vibeqc::methods::prepare_batch(context->state, std::move(native_systems),
                                                      *descriptor, flags);
     *batch = candidate.release();
@@ -357,6 +359,9 @@ vibeqc_status vibeqc_batch_execute(vibeqc_batch* batch, const vibeqc_batch_input
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   std::fill(batch->last_fock_builds.begin(), batch->last_fock_builds.end(), 0);
+  // Invalidate before validation/execution so rejected or throwing replays
+  // cannot expose a record from the previous run.
+  std::fill(batch->precision.begin(), batch->precision.end(), std::nullopt);
   const std::uint32_t system_count = vibeqc_batch_get_system_count(batch);
   if (result_count != system_count || ((inputs == nullptr) != (input_count == 0)) ||
       (inputs != nullptr && input_count != system_count)) {
@@ -401,6 +406,9 @@ vibeqc_status vibeqc_batch_execute(vibeqc_batch* batch, const vibeqc_batch_input
     for (std::uint32_t i = 0; i < system_count; ++i) {
       vibeqc_batch_item_result_descriptor& output = results[i];
       const vibeqc::methods::BatchItemResult& item = native[i];
+      if (item.status == VIBEQC_STATUS_SUCCESS || item.status == VIBEQC_STATUS_NOT_CONVERGED) {
+        batch->precision[i] = item.calculation.precision;
+      }
       // A retry may have spent additional builds before throwing, and CUDA
       // does not yet export this counter. Never report a partial count as total.
       if (!item.warm_start_fallback &&
@@ -429,6 +437,15 @@ vibeqc_status vibeqc_batch_execute(vibeqc_batch* batch, const vibeqc_batch_input
   } catch (...) {
     return vibeqc::api::map_exception(&batch->context->last_detail);
   }
+}
+
+vibeqc_status vibeqc_batch_get_precision_provenance(const vibeqc_batch* batch, uint32_t index,
+                                                    vibeqc_precision_provenance* out) {
+  if (batch == nullptr || index >= batch->precision.size()) {
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  if (!batch->precision[index].has_value()) return VIBEQC_STATUS_PRECISION_UNAVAILABLE;
+  return vibeqc::api::copy_precision_provenance(*batch->precision[index], out);
 }
 
 vibeqc_status vibeqc_batch_get_last_fock_builds(const vibeqc_batch* batch, uint32_t index,

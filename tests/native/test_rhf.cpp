@@ -137,6 +137,143 @@ Evaluation h2(double distance, bool verify_energy_only = false,
   return evaluation;
 }
 
+/** A single-atom RHF preparation with one s-shell of \p primitive_count primitives. */
+struct PreparedSingleAtom {
+  vibeqc_context* context;
+  vibeqc_system* system;
+  vibeqc_calculation* calculation;
+};
+
+PreparedSingleAtom prepare_single_atom_rhf(int atomic_number, std::size_t primitive_count) {
+  vibeqc_context_descriptor context_descriptor{sizeof(vibeqc_context_descriptor),
+                                               VIBEQC_ABI_VERSION, 0, VIBEQC_BACKEND_CPU_REFERENCE};
+  vibeqc_context* context = nullptr;
+  require(vibeqc_context_create(&context_descriptor, &context) == VIBEQC_STATUS_SUCCESS,
+          "single-atom context creation failed");
+
+  const std::array<vibeqc_atom, 1> atoms{{{atomic_number, 0.0, 0.0, 0.0}}};
+  const vibeqc_primitive primitives[4] = {{1.0, 1.0}, {1.0, 1.0}, {1.0, 1.0}, {1.0, 1.0}};
+  const std::array<vibeqc_shell, 1> shells{{{0, 0, 0, static_cast<uint32_t>(primitive_count)}}};
+  vibeqc_system_descriptor system_descriptor{sizeof(vibeqc_system_descriptor),
+                                             VIBEQC_ABI_VERSION,
+                                             atoms.data(),
+                                             static_cast<uint32_t>(atoms.size()),
+                                             shells.data(),
+                                             static_cast<uint32_t>(shells.size()),
+                                             primitives,
+                                             static_cast<uint32_t>(primitive_count),
+                                             0,
+                                             1};
+  vibeqc_system* system = nullptr;
+  require(vibeqc_system_create(context, &system_descriptor, &system) == VIBEQC_STATUS_SUCCESS,
+          "single-atom system creation failed");
+
+  vibeqc_method_descriptor method{sizeof(vibeqc_method_descriptor),
+                                  VIBEQC_ABI_VERSION,
+                                  VIBEQC_METHOD_RHF,
+                                  100,
+                                  8,
+                                  1.0e-12,
+                                  1.0e-10,
+                                  1.0e-14};
+  method.density_fitting_mode = VIBEQC_DENSITY_FITTING_NONE;
+  method.density_fitting_memory_budget_bytes = 0;
+  method.precision_mode = VIBEQC_PRECISION_FP64;
+  vibeqc_calculation* calculation = nullptr;
+  require(
+      vibeqc_calculation_prepare(context, system, &method, &calculation) == VIBEQC_STATUS_SUCCESS,
+      "single-atom calculation preparation failed");
+
+  return {context, system, calculation};
+}
+
+/**
+ * The provenance getter must report availability honestly. Both the availability
+ * query (a NULL \p out) and the copy-out are gated on whether a completed
+ * execution has populated the record: UNAVAILABLE before a run and after one that
+ * threw, SUCCESS after a normal return. This pins the \p precision_available gate
+ * so a stale record can never be serialized from a failed or not-yet-run run.
+ */
+void verify_precision_provenance_gate() {
+  // He: Z=2, two s primitives -> two AOs, one occupied pair, converges.
+  {
+    const PreparedSingleAtom he = prepare_single_atom_rhf(2, 2);
+    vibeqc_precision_provenance prov{sizeof(vibeqc_precision_provenance), VIBEQC_ABI_VERSION};
+    require(vibeqc_calculation_get_precision_provenance(he.calculation, &prov) ==
+                VIBEQC_STATUS_PRECISION_UNAVAILABLE,
+            "provenance must be unavailable before any execution");
+    require(vibeqc_calculation_get_precision_provenance(he.calculation, nullptr) ==
+                VIBEQC_STATUS_PRECISION_UNAVAILABLE,
+            "availability query must be unavailable before any execution");
+
+    double forces[3] = {0.0, 0.0, 0.0};
+    vibeqc_result_descriptor result{
+        sizeof(vibeqc_result_descriptor), VIBEQC_ABI_VERSION, 0.0, forces, 3, 0, 0.0, 0.0, 0,
+        VIBEQC_BACKEND_CPU_REFERENCE};
+    const vibeqc_status executed = vibeqc_calculation_execute(he.calculation, &result);
+    require(executed == VIBEQC_STATUS_SUCCESS && result.converged == 1,
+            "He RHF reference run did not converge");
+    require(
+        vibeqc_calculation_get_precision_provenance(he.calculation, &prov) == VIBEQC_STATUS_SUCCESS,
+        "provenance must be available after a completed run");
+    require(prov.requested_mode == VIBEQC_PRECISION_FP64,
+            "completed run reports the requested fp64 policy");
+    require(vibeqc_calculation_get_precision_provenance(he.calculation, nullptr) ==
+                VIBEQC_STATUS_SUCCESS,
+            "availability query must be available after a completed run");
+    // Both descriptor fields are part of the contract: an exactly sized struct
+    // that advertises a foreign ABI must be rejected and left untouched rather
+    // than filled with the current layout.
+    vibeqc_precision_provenance foreign_abi{sizeof(vibeqc_precision_provenance),
+                                            VIBEQC_ABI_VERSION + 1U};
+    foreign_abi.policy_version = 4242U;
+    foreign_abi.requested_mode = 4242;
+    require(vibeqc_calculation_get_precision_provenance(he.calculation, &foreign_abi) ==
+                VIBEQC_STATUS_ABI_MISMATCH,
+            "a foreign abi_version must be rejected");
+    require(foreign_abi.policy_version == 4242U && foreign_abi.requested_mode == 4242 &&
+                foreign_abi.struct_size == sizeof(vibeqc_precision_provenance) &&
+                foreign_abi.mixed_precision_reserved_error == 0.0 &&
+                foreign_abi.refinement_iterations == 0,
+            "a rejected descriptor must not be modified");
+    vibeqc_precision_provenance short_size{sizeof(vibeqc_precision_provenance) - 1U,
+                                           VIBEQC_ABI_VERSION};
+    require(vibeqc_calculation_get_precision_provenance(he.calculation, &short_size) ==
+                VIBEQC_STATUS_ABI_MISMATCH,
+            "a short descriptor must be rejected");
+    vibeqc_calculation_destroy(he.calculation);
+    vibeqc_system_destroy(he.system);
+    vibeqc_context_destroy(he.context);
+  }
+  // Be: Z=4, one s primitive -> one AO but two occupied pairs, so the cold
+  // host plan throws after prepare succeeds ("basis has fewer orbitals than
+  // occupied electron pairs"). A throw must reset the record back to
+  // unavailable rather than leak the previous run's provenance.
+  {
+    const PreparedSingleAtom be = prepare_single_atom_rhf(4, 1);
+    vibeqc_precision_provenance prov{sizeof(vibeqc_precision_provenance), VIBEQC_ABI_VERSION};
+    require(vibeqc_calculation_get_precision_provenance(be.calculation, &prov) ==
+                VIBEQC_STATUS_PRECISION_UNAVAILABLE,
+            "provenance must be unavailable before a failing execution");
+
+    double forces[3] = {0.0, 0.0, 0.0};
+    vibeqc_result_descriptor result{
+        sizeof(vibeqc_result_descriptor), VIBEQC_ABI_VERSION, 0.0, forces, 3, 0, 0.0, 0.0, 0,
+        VIBEQC_BACKEND_CPU_REFERENCE};
+    const vibeqc_status executed = vibeqc_calculation_execute(be.calculation, &result);
+    require(executed != VIBEQC_STATUS_SUCCESS, "Be/1s RHF must fail to converge");
+    require(vibeqc_calculation_get_precision_provenance(be.calculation, &prov) ==
+                VIBEQC_STATUS_PRECISION_UNAVAILABLE,
+            "provenance must fall back to unavailable after a failed execution");
+    require(vibeqc_calculation_get_precision_provenance(be.calculation, nullptr) ==
+                VIBEQC_STATUS_PRECISION_UNAVAILABLE,
+            "availability query must fall back to unavailable after a failed execution");
+    vibeqc_calculation_destroy(be.calculation);
+    vibeqc_system_destroy(be.system);
+    vibeqc_context_destroy(be.context);
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -151,6 +288,8 @@ int main() {
     require(vibeqc_method_available(VIBEQC_METHOD_WB97M_V, &available) == VIBEQC_STATUS_SUCCESS &&
                 available == 0,
             "wB97M-V must remain explicitly unavailable");
+
+    verify_precision_provenance_gate();
 
     vibeqc_method_capabilities_descriptor capabilities{
         sizeof(vibeqc_method_capabilities_descriptor), VIBEQC_ABI_VERSION, 0, 0, 0, 0, 0};

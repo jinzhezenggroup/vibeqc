@@ -50,6 +50,14 @@ static_assert(direct_quartet_subtiles_per_tile(6) == 8);
 
 /** Total shell angular orders from ssss (0) through ffff (12). */
 inline constexpr std::size_t kDirectQuartetAngularOrderCount = 13;
+/**
+ * Lowest total angular order admitted to the mixed FP32 Fock route.
+ *
+ * Lower orders run on shell-fused FP64 workers; routing them through the generic
+ * mixed evaluator would trade a scheduling win for an arithmetic one, so the
+ * mixed-capable census and the per-tile gate both start at this order.
+ */
+inline constexpr std::size_t kDirectQuartetMixedFockMinimumAngularOrder = 3;
 inline constexpr std::uint8_t kDirectQuartetMaximumShellAngular = 3;
 
 /** Canonical unordered shell-pair and pair-of-pairs classes for s/p/d/f. */
@@ -133,6 +141,10 @@ struct DirectQuartetTaskLayout {
   // Previous padding multiplier derived from max(shell-pair AOs)^2.
   std::size_t maximum_tiles_per_shell_quartet{};
   std::size_t uniform_tile_count{};
+  // Exact per-system tile counts inside the mixed-capable angular orders. The
+  // accumulated FP32-error budget is evaluated per item, so a batch keeps each
+  // system's own census instead of one aggregate.
+  std::vector<std::size_t> system_mixed_capable_tile_counts{};
 };
 
 inline bool checked_task_add(std::size_t first, std::size_t second, std::size_t& result) noexcept {
@@ -162,7 +174,8 @@ inline bool make_direct_quartet_task_layout(
     const std::vector<std::uint8_t>& shell_angular,
     const std::vector<std::int64_t>& system_shell_pair_offsets,
     const std::vector<std::int32_t>& shell_pair_first,
-    const std::vector<std::int32_t>& shell_pair_second, DirectQuartetTaskLayout& layout) {
+    const std::vector<std::int32_t>& shell_pair_second,
+    std::size_t mixed_capable_minimum_angular_order, DirectQuartetTaskLayout& layout) {
   if (shell_ao_offsets.empty() || shell_angular.size() != shell_ao_offsets.size() - 1 ||
       system_shell_pair_offsets.empty() || shell_pair_first.empty() ||
       shell_pair_first.size() != shell_pair_second.size() ||
@@ -219,6 +232,7 @@ inline bool make_direct_quartet_task_layout(
   }
 
   DirectQuartetTaskLayout made{};
+  made.system_mixed_capable_tile_counts.assign(system_shell_pair_offsets.size() - 1, 0);
   for (std::size_t system = 0; system + 1 < system_shell_pair_offsets.size(); ++system) {
     const std::int64_t begin_value = system_shell_pair_offsets[system];
     const std::int64_t end_value = system_shell_pair_offsets[system + 1];
@@ -271,6 +285,11 @@ inline bool make_direct_quartet_task_layout(
                               made.angular_order_tile_counts[angular_order]) ||
             !checked_task_add(made.shell_class_tile_counts[shell_class], tile_count,
                               made.shell_class_tile_counts[shell_class])) {
+          return false;
+        }
+        if (angular_order >= mixed_capable_minimum_angular_order &&
+            !checked_task_add(made.system_mixed_capable_tile_counts[system], tile_count,
+                              made.system_mixed_capable_tile_counts[system])) {
           return false;
         }
         if (!checked_task_add(made.shell_quartet_count, 1, made.shell_quartet_count) ||

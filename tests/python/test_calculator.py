@@ -13,6 +13,35 @@ def test_h2_energy_and_force_invariance():
     assert result.executed_backend == "cpu_reference"
 
 
+def test_precision_provenance_reports_the_policy_that_actually_ran():
+    """The public policy round-trips and the provenance stays honest.
+
+    The CPU host plan always builds the FP64 Fock, so an ``auto`` request must
+    report 64 effective bits with no mixed cutoff, no reserved budget, and no
+    target refinement instead of claiming a mixed operator ran.
+    """
+    atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
+    fp64 = Calculator(
+        method="rhf", basis="sto-3g", device="cpu", precision="fp64"
+    ).singlepoint(atoms)
+    automatic = Calculator(
+        method="rhf", basis="sto-3g", device="cpu", precision="auto"
+    ).singlepoint(atoms)
+    assert automatic.energy == pytest.approx(fp64.energy, abs=1.0e-12)
+    assert fp64.precision is not None
+    assert automatic.precision is not None
+    assert fp64.precision["requested_mode"] == "fp64"
+    assert automatic.precision["requested_mode"] == "auto"
+    for result in (fp64, automatic):
+        assert result.precision["effective_bits"] == 64
+        assert result.precision["strict_refinement_applied"] is False
+        assert result.precision["mixed_precision_fock_threshold"] == 0.0
+        assert result.precision["mixed_precision_reserved_error"] == 0.0
+        assert result.precision["refinement_iterations"] == 0
+    with pytest.raises(ValueError):
+        Calculator(method="rhf", basis="sto-3g", device="cpu", precision="tf32")
+
+
 @pytest.mark.parametrize(
     ("method", "charge", "multiplicity"),
     (("rhf", 0, 1), ("uhf", 1, 2)),

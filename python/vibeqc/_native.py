@@ -13,10 +13,13 @@ from pathlib import Path
 ABI_VERSION = 0
 STATUS_SUCCESS = 0
 STATUS_INVALID_ARGUMENT = 1
+STATUS_ABI_MISMATCH = 2
 STATUS_NOT_IMPLEMENTED = 3
 STATUS_NOT_CONVERGED = 4
 STATUS_SCF_NOT_CONVERGED = 4
 STATUS_OUT_OF_MEMORY = 7
+STATUS_INTERNAL_ERROR = 8
+STATUS_PRECISION_UNAVAILABLE = 9
 METHOD_RHF = 1
 METHOD_UHF = 2
 METHOD_WB97M_V = 3
@@ -33,6 +36,8 @@ DENSITY_FITTING_NONE = 0
 DENSITY_FITTING_CPU_REFERENCE = 1
 DENSITY_FITTING_CUDA = 2
 DENSITY_FITTING_AUTO = 3
+PRECISION_FP64 = 0
+PRECISION_AUTO = 1
 BASIS_CARTESIAN = 0
 BASIS_SPHERICAL = 1
 BATCH_ENABLE_WARM_STARTS = 1 << 0
@@ -171,6 +176,7 @@ class MethodDescriptor(ctypes.Structure):
         ("density_fitting_auxiliary_basis", ctypes.c_void_p),
         ("density_fitting_relative_threshold", ctypes.c_double),
         ("density_fitting_memory_budget_bytes", ctypes.c_uint64),
+        ("precision_mode", ctypes.c_int32),
     ]
 
 
@@ -198,6 +204,20 @@ class ResultDescriptor(ctypes.Structure):
         ("density_rms", ctypes.c_double),
         ("converged", ctypes.c_int32),
         ("executed_backend", ctypes.c_int),
+    ]
+
+
+class PrecisionProvenance(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("policy_version", ctypes.c_uint32),
+        ("requested_mode", ctypes.c_int32),
+        ("effective_bits", ctypes.c_uint32),
+        ("mixed_precision_fock_threshold", ctypes.c_double),
+        ("strict_refinement_applied", ctypes.c_int32),
+        ("mixed_precision_reserved_error", ctypes.c_double),
+        ("refinement_iterations", ctypes.c_int32),
     ]
 
 
@@ -436,6 +456,15 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
         ctypes.POINTER(ctypes.c_uint64),
     ]
     library.vibeqc_batch_get_last_fock_builds.restype = ctypes.c_int
+    # Optional queries preserve loading of libraries built before provenance.
+    for name, arguments in (
+        ("vibeqc_calculation_get_precision_provenance", [ctypes.c_void_p]),
+        ("vibeqc_batch_get_precision_provenance", [ctypes.c_void_p, ctypes.c_uint32]),
+    ):
+        getter = getattr(library, name, None)
+        if getter is not None:
+            getter.argtypes = [*arguments, ctypes.POINTER(PrecisionProvenance)]
+            getter.restype = ctypes.c_int
     library.vibeqc_calculation_prepare.argtypes = [
         ctypes.c_void_p,
         ctypes.c_void_p,

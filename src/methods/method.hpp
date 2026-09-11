@@ -12,6 +12,7 @@
 
 #include "core/types.hpp"
 #include "scf/cuda_density_fitting.hpp"
+#include "scf/types.hpp"
 #include "scf/warm_state.hpp"
 #include "vibeqc/vibeqc.h"
 
@@ -42,6 +43,8 @@ struct Result {
   vibeqc_backend executed_backend{VIBEQC_BACKEND_CPU_REFERENCE};
   /** Existing CPU physical Fock evaluation counter; zero means unavailable. */
   std::size_t fock_builds{};
+  /** How the requested precision policy resolved in the executed backend. */
+  scf::PrecisionProvenance precision{};
 };
 
 struct BatchItemResult {

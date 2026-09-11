@@ -3,6 +3,7 @@
 
 #include "api/error.hpp"
 #include "api/handles.hpp"
+#include "api/precision.hpp"
 #include "methods/method.hpp"
 #include "vibeqc/vibeqc.h"
 
@@ -48,10 +49,17 @@ vibeqc_status vibeqc_calculation_execute(vibeqc_calculation* calculation,
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
 
+  // Reset to the conservative FP64 record before the run so a failed or
+  // fallback execution can never expose the previous successful mixed run.
+  calculation->precision = {};
+  calculation->precision_available = false;
   try {
     // NULL/zero is an execution request, not merely a copy-out choice: the
     // backend must not launch or assemble analytic-force work in this mode.
     vibeqc::methods::Result native = calculation->plan->execute(!omit_forces);
+    // A normal return (converged or not) is a completed run: record what ran.
+    calculation->precision = native.precision;
+    calculation->precision_available = true;
     output->energy = native.energy;
     output->iterations = native.convergence.iterations;
     output->energy_change = native.convergence.energy_change;
@@ -71,6 +79,22 @@ vibeqc_status vibeqc_calculation_execute(vibeqc_calculation* calculation,
   } catch (...) {
     return vibeqc::api::map_exception(&calculation->context->last_detail);
   }
+}
+
+vibeqc_status vibeqc_calculation_get_precision_provenance(const vibeqc_calculation* calculation,
+                                                          vibeqc_precision_provenance* out) {
+  if (calculation == nullptr) {
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  // A completed run (converged or not) populates \p precision and sets
+  // \p precision_available; execute() resets it to false before the run so a
+  // failed or not-yet-run execution never exposes a stale record. Gate both the
+  // availability query (a NULL \p out) and the copy-out on it so callers see
+  // an honest non-success result until a run has actually resolved.
+  if (!calculation->precision_available) {
+    return VIBEQC_STATUS_PRECISION_UNAVAILABLE;
+  }
+  return vibeqc::api::copy_precision_provenance(calculation->precision, out);
 }
 
 }  // extern "C"

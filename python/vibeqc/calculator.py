@@ -81,6 +81,7 @@ class Result:
     basis_metadata: dict = field(default_factory=dict)
     accuracy: AccuracyAssessment | None = None
     resource_diagnostics: dict | None = None
+    precision: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -273,6 +274,7 @@ class Calculator:
         density_tolerance: float = 1.0e-8,
         diis_history: int = 8,
         screening_tolerance: float = 1.0e-12,
+        precision: str = "fp64",
         target_accuracy: TargetAccuracy | None = None,
         resource_budget=None,
     ) -> None:
@@ -375,6 +377,14 @@ class Calculator:
         self._screening_tolerance = float(screening_tolerance)
         if self._screening_tolerance <= 0.0:
             raise ValueError("screening_tolerance must be positive")
+        precision_modes = {
+            "fp64": _native.PRECISION_FP64,
+            "auto": _native.PRECISION_AUTO,
+        }
+        try:
+            self._precision_mode = precision_modes[str(precision).lower()]
+        except KeyError as error:
+            raise ValueError("precision must be 'fp64' or 'auto'") from error
         self._library = _native.load_library(device=device, device_id=self._device_id)
 
         available = ctypes.c_int32()
@@ -441,7 +451,50 @@ class Calculator:
             auxiliary_basis,
             self._density_fitting_relative_threshold,
             df_budget,
+            self._precision_mode,
         )
+
+    def _precision_provenance(
+        self, calculation: ctypes.c_void_p, index: int | None = None
+    ) -> dict | None:
+        """Read a calculation's policy, or an input-indexed batch item's policy.
+
+        Returns ``None`` when the loaded library predates the query or when no
+        completed execution has populated the record yet (the native getter
+        reports :data:`STATUS_PRECISION_UNAVAILABLE`), so older builds and
+        pre-run queries both degrade to ``None`` instead of an error.
+        """
+        name = (
+            "vibeqc_calculation_get_precision_provenance"
+            if index is None
+            else "vibeqc_batch_get_precision_provenance"
+        )
+        getter = getattr(self._library, name, None)
+        if getter is None:
+            return None
+        provenance = _native.PrecisionProvenance(
+            ctypes.sizeof(_native.PrecisionProvenance), _native.ABI_VERSION
+        )
+        arguments = (calculation,) if index is None else (calculation, index)
+        status = getter(*arguments, ctypes.byref(provenance))
+        if status == _native.STATUS_PRECISION_UNAVAILABLE:
+            return None
+        _native.check(self._library, status)
+        return {
+            "policy_version": provenance.policy_version,
+            "requested_mode": (
+                "auto"
+                if provenance.requested_mode == _native.PRECISION_AUTO
+                else "fp64"
+            ),
+            "effective_bits": provenance.effective_bits,
+            "mixed_precision_fock_threshold": provenance.mixed_precision_fock_threshold,
+            "strict_refinement_applied": bool(provenance.strict_refinement_applied),
+            "mixed_precision_reserved_error": (
+                provenance.mixed_precision_reserved_error
+            ),
+            "refinement_iterations": provenance.refinement_iterations,
+        }
 
     def _shells_for_atoms(
         self,
@@ -506,6 +559,7 @@ class Calculator:
                 "density_tolerance": self._density_tolerance,
                 "max_iterations": self._max_iterations,
                 "diis_history": self._diis_history,
+                "precision": self._precision_mode,
                 "target_accuracy": self._target_accuracy.to_dict()
                 if self._target_accuracy
                 else None,
@@ -737,6 +791,10 @@ class Calculator:
             energy_tolerance=self._energy_tolerance,
             density_tolerance=self._density_tolerance,
             screening_tolerance=self._screening_tolerance,
+            precision={
+                _native.PRECISION_FP64: "fp64",
+                _native.PRECISION_AUTO: "auto",
+            }[self._precision_mode],
             density_fitting_relative_threshold=self._density_fitting_relative_threshold,
             density_fitting_memory_budget_bytes=self._density_fitting_memory_budget_bytes,
             device_id=self._device_id,
@@ -976,6 +1034,7 @@ class Calculator:
                 density_rms=result_descriptor.density_rms,
                 executed_backend=backend,
                 resource_diagnostics=resource_diagnostics,
+                precision=self._precision_provenance(calculation),
                 basis_metadata=self.basis_metadata(
                     native_atoms, charge=charge, multiplicity=multiplicity
                 ),

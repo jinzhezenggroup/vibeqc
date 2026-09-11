@@ -106,7 +106,8 @@ vibeqc::scf::detail::DirectQuartetTaskLayout direct_task_layout(
   vibeqc::scf::detail::DirectQuartetTaskLayout layout;
   require(vibeqc::scf::detail::make_direct_quartet_task_layout(
               shell_ao_offsets, shell_angular, system_shell_pair_offsets, shell_pair_first,
-              shell_pair_second, layout),
+              shell_pair_second, vibeqc::scf::detail::kDirectQuartetMixedFockMinimumAngularOrder,
+              layout),
           "direct-J/K task layout rejected a valid shell topology");
   return layout;
 }
@@ -130,14 +131,14 @@ int main() {
       const std::vector<std::int64_t> system_pair_offsets{0, 1};
       const std::vector<std::int32_t> shell_pair{0};
       vibeqc::scf::detail::DirectQuartetTaskLayout invalid_layout;
-      require(
-          !vibeqc::scf::detail::make_direct_quartet_task_layout(
-              shell_ao_offsets, {4}, system_pair_offsets, shell_pair, shell_pair, invalid_layout),
-          "direct-J/K task layout accepted angular momentum above f");
-      require(
-          !vibeqc::scf::detail::make_direct_quartet_task_layout(
-              shell_ao_offsets, {}, system_pair_offsets, shell_pair, shell_pair, invalid_layout),
-          "direct-J/K task layout accepted missing shell angular data");
+      require(!vibeqc::scf::detail::make_direct_quartet_task_layout(
+                  shell_ao_offsets, {4}, system_pair_offsets, shell_pair, shell_pair,
+                  vibeqc::scf::detail::kDirectQuartetMixedFockMinimumAngularOrder, invalid_layout),
+              "direct-J/K task layout accepted angular momentum above f");
+      require(!vibeqc::scf::detail::make_direct_quartet_task_layout(
+                  shell_ao_offsets, {}, system_pair_offsets, shell_pair, shell_pair,
+                  vibeqc::scf::detail::kDirectQuartetMixedFockMinimumAngularOrder, invalid_layout),
+              "direct-J/K task layout accepted missing shell angular data");
     }
     const vibeqc::core::System system = hydrogen_sp_dimer();
     require(vibeqc::molecule::ao_count(system) == 8,

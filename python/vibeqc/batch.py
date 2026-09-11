@@ -35,6 +35,8 @@ class BatchItemResult:
     accuracy: AccuracyAssessment | None = None
     restart_origin: str = "cold"
     fock_builds: int | None = None
+    # None means this item did not complete a solve, or the library predates the query.
+    precision: dict | None = None
 
     @property
     def succeeded(self) -> bool:
@@ -686,6 +688,9 @@ class PreparedBatch:
                     warm_start_used=bool(output.warm_start_used),
                     warm_start_fallback=bool(output.warm_start_fallback),
                     basis_metadata=deepcopy(self._basis_metadata[index]),
+                    precision=self._calculator._precision_provenance(
+                        self._batch, index
+                    ),
                     accuracy=accuracy,
                     restart_origin=(
                         "cold_fallback"

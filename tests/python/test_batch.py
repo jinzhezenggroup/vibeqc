@@ -3,6 +3,120 @@ import pytest
 from vibeqc import Calculator, Primitive, Shell
 
 
+def test_batch_precision_provenance_availability_abi_and_failed_replay():
+    """Each public batch slot owns its record; failed replays cannot leak it."""
+    import ctypes
+
+    from vibeqc import _native
+
+    calculator = Calculator(precision="auto", device="cpu")
+    with calculator.prepare_batch(systems()[:2]) as prepared:
+        getter = prepared._library.vibeqc_batch_get_precision_provenance
+        record = _native.PrecisionProvenance(
+            ctypes.sizeof(_native.PrecisionProvenance), _native.ABI_VERSION
+        )
+        record.effective_bits = 123
+        original = bytes(record)
+        assert getter(prepared._batch, 0, None) == _native.STATUS_PRECISION_UNAVAILABLE
+        assert (
+            getter(prepared._batch, 0, ctypes.byref(record))
+            == _native.STATUS_PRECISION_UNAVAILABLE
+        )
+        assert bytes(record) == original
+        assert getter(prepared._batch, 2, None) == _native.STATUS_INVALID_ARGUMENT
+
+        result = prepared.execute(strict=True)
+        for item in result.items:
+            assert item.precision["requested_mode"] == "auto"
+            assert item.precision["effective_bits"] == 64
+            assert item.precision["refinement_iterations"] == 0
+        assert getter(prepared._batch, 0, None) == _native.STATUS_SUCCESS
+        for size, abi in (
+            (ctypes.sizeof(record), _native.ABI_VERSION + 1),
+            (ctypes.sizeof(record) - 1, _native.ABI_VERSION),
+        ):
+            record.struct_size, record.abi_version = size, abi
+            original = bytes(record)
+            assert (
+                getter(prepared._batch, 0, ctypes.byref(record))
+                == _native.STATUS_ABI_MISMATCH
+            )
+            assert bytes(record) == original
+
+        failed = prepared.execute([np.zeros((1, 3)), None])
+        assert failed.items[0].precision is None
+        assert failed.items[1].precision == result.items[1].precision
+        assert getter(prepared._batch, 0, None) == _native.STATUS_PRECISION_UNAVAILABLE
+        # Reject the entire invocation with a wrong result count, after a
+        # successful neighbor populated its record in the previous call.
+        outputs = (_native.BatchItemResultDescriptor * 1)()
+        assert (
+            prepared._library.vibeqc_batch_execute(prepared._batch, None, 0, outputs, 1)
+            == _native.STATUS_INVALID_ARGUMENT
+        )
+        assert getter(prepared._batch, 1, None) == _native.STATUS_PRECISION_UNAVAILABLE
+
+
+def test_unconverged_batch_retains_completed_precision_record():
+    """Nonconvergence still reports the operator used by the completed solve."""
+    result = Calculator(
+        device="cpu", precision="auto", max_iterations=1
+    ).batch_singlepoint(systems()[:1])
+    assert not result.items[0].converged
+    assert result.items[0].precision["requested_mode"] == "auto"
+    assert result.items[0].precision["effective_bits"] == 64
+
+
+@pytest.mark.parametrize("method,charge,multiplicity", [("rhf", 1, 1), ("uhf", 2, 2)])
+def test_cuda_public_batch_precision_is_per_item(method, charge, multiplicity):
+    """A cold and a warm public batch item report independently resolved routes."""
+    atoms = [("He", (0.0, 0.0, -0.8)), ("H", (0.0, 0.0, 0.8))]
+    shells = tuple(
+        Shell(atom, angular, (Primitive(exponent, 1.0),))
+        for atom, angular, exponent in (
+            (0, 0, 4.0),
+            (0, 0, 0.7),
+            (0, 1, 1.2),
+            (0, 2, 0.6),
+            (1, 0, 2.0),
+            (1, 0, 0.4),
+            (1, 1, 0.8),
+            (1, 2, 0.45),
+        )
+    )
+    try:
+        calculator = Calculator(
+            device="cuda",
+            method=method,
+            basis=shells,
+            basis_representation="spherical",
+            precision="auto",
+        )
+        prepared = calculator.prepare_batch(
+            [atoms, atoms],
+            charges=[charge, charge],
+            multiplicities=[multiplicity, multiplicity],
+            warm_start=True,
+        )
+    except RuntimeError as error:
+        pytest.skip(f"CUDA device unavailable: {error}")
+    with prepared:
+        # Only item 1 establishes a warm state; item 0 has a malformed geometry.
+        initial = prepared.execute([np.zeros((1, 3)), None])
+        assert initial.failure_indices == (0,)
+        result = prepared.execute(strict=True)
+    cold, warm = result.items
+    assert not cold.warm_start_used and warm.warm_start_used
+    assert cold.precision["effective_bits"] == 64
+    assert cold.precision["refinement_iterations"] == 0
+    assert warm.precision["effective_bits"] == 32
+    assert warm.precision["strict_refinement_applied"]
+    assert warm.precision["refinement_iterations"] >= 1
+    assert warm.precision["mixed_precision_fock_threshold"] > 0
+    assert cold.energy == pytest.approx(warm.energy, abs=2e-8)
+    assert np.allclose(cold.forces, warm.forces, atol=2e-7, rtol=0)
+
+
 def systems():
     return [
         [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))],

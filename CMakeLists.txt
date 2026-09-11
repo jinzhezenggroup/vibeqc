@@ -160,6 +160,7 @@ add_library(vibeqc SHARED
   src/scf/fock_prepared.cpp
   src/scf/fock_execution.cpp
   src/scf/rhf.cpp
+  src/scf/cuda/rhf_policy.cpp
 )
 
 # A local tuned library may replace this build only when its scientific source
@@ -285,7 +286,6 @@ if(VIBEQC_ENABLE_CUDA)
   target_sources(vibeqc PRIVATE
     "${VIBEQC_GRID_SOURCE}"
     src/posthf/df_bridge.cu
-    src/scf/cuda/rhf_policy.cpp
     src/runtime/cuda_runtime.cu
     src/scf/cuda_density_fitting.cu
     src/scf/cuda_eigensolver_probe.cu
@@ -634,6 +634,15 @@ if(VIBEQC_BUILD_TESTS)
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
   add_test(NAME vibeqc_mixed_precision_tests
     COMMAND vibeqc_mixed_precision_tests)
+
+  # Pure host policy controller and CPU provenance; no CUDA device required.
+  add_executable(vibeqc_precision_policy_tests
+    tests/native/test_precision_policy.cpp)
+  target_link_libraries(vibeqc_precision_policy_tests PRIVATE vibeqc)
+  target_include_directories(vibeqc_precision_policy_tests
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  add_test(NAME vibeqc_precision_policy_tests
+    COMMAND vibeqc_precision_policy_tests)
 
   # This test requires a tuned registry and deliberately rejects the portable
   # stub used when AOT shells are disabled. Other CUDA tests use either build.

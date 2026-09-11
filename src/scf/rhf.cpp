@@ -1566,11 +1566,15 @@ ScfResult run_prepared_fock_strategy(const PreparedFockPlan& plan, const ScfOpti
   if (strategy.spec.spin == FockSpin::Restricted &&
       (system.electron_count <= 0 || system.electron_count % 2 || system.multiplicity != 1))
     throw std::invalid_argument("restricted Fock SCF requires a closed-shell electron count");
-  return strategy.spec.spin == FockSpin::Unrestricted
-             ? run_uhf_host_plan(system, options, plan.one_electron(), plan, plan.cpu_fitted_data(),
-                                 initial_density)
-             : run_rhf_host_plan(system, options, plan.one_electron(), plan, plan.cpu_fitted_data(),
-                                 initial_density);
+  ScfResult result = strategy.spec.spin == FockSpin::Unrestricted
+                         ? run_uhf_host_plan(system, options, plan.one_electron(), plan,
+                                             plan.cpu_fitted_data(), initial_density)
+                         : run_rhf_host_plan(system, options, plan.one_electron(), plan,
+                                             plan.cpu_fitted_data(), initial_density);
+  // The host (value) Fock build is always FP64; report the requested policy so
+  // provenance distinguishes "asked fp64" from "asked auto, collapsed to FP64".
+  result.precision.requested_mode = options.precision_mode.value_or(VIBEQC_PRECISION_FP64);
+  return result;
 }
 
 ScfResult run_cpu_fock_strategy(const core::System& system, const core::System* auxiliary,

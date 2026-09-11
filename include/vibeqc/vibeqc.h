@@ -32,7 +32,14 @@ enum {
   VIBEQC_STATUS_NUMERICAL_FAILURE = 5,
   VIBEQC_STATUS_CUDA_ERROR = 6,
   VIBEQC_STATUS_OUT_OF_MEMORY = 7,
-  VIBEQC_STATUS_INTERNAL_ERROR = 8
+  VIBEQC_STATUS_INTERNAL_ERROR = 8,
+  /**
+   * A run has been prepared but the precision-provenance query ran before a
+   * completed execution (or after one that threw). Not an error in the run
+   * itself: the \p fp64 record is simply not yet populated. Serializing callers
+   * treat this as "no provenance yet" (e.g. Python returns None).
+   */
+  VIBEQC_STATUS_PRECISION_UNAVAILABLE = 9
 };
 
 typedef int32_t vibeqc_method;
@@ -73,6 +80,28 @@ enum {
   VIBEQC_DENSITY_FITTING_CUDA = 2,
   /** Select CUDA when requested by the context, otherwise use CPU reference. */
   VIBEQC_DENSITY_FITTING_AUTO = 3
+};
+
+/**
+ * Floating-point execution policy for the selected mean-field method.
+ *
+ * \p fp64 keeps the current bit-for-bit exact execution. \p auto enables the
+ * profile-backed lower-precision contraction route, deriving its tile
+ * threshold from the requested tolerances and always finishing with a strict
+ * FP64 refinement of the converged density.
+ */
+typedef int32_t vibeqc_precision_mode;
+enum {
+  /** Preserve the existing double-precision execution (the default). */
+  VIBEQC_PRECISION_FP64 = 0,
+  /**
+   * Select a lower-precision contraction route only when the accumulated-error
+   * budget certifies it for the requested accuracy, and always finish with a
+   * strict FP64 target refinement that continues exact iterations until the
+   * requested criteria are met. When the budget cannot certify a cutoff the
+   * policy keeps the FP64 operator instead of accumulating rounding.
+   */
+  VIBEQC_PRECISION_AUTO = 1
 };
 
 typedef int32_t vibeqc_basis_representation;
@@ -353,7 +382,45 @@ typedef struct vibeqc_method_descriptor {
   double density_fitting_relative_threshold;
   /** Planner budget in bytes; zero selects the implementation default. */
   uint64_t density_fitting_memory_budget_bytes;
+  /**
+   * Optional floating-point execution policy. Absent or zero callers keep the
+   * double-precision default; \p auto enables the safe lower-precision route.
+   */
+  vibeqc_precision_mode precision_mode;
 } vibeqc_method_descriptor;
+
+/**
+ * Read-only record of how the requested precision policy resolved. Populated by
+ * \p vibeqc_calculation_get_precision_provenance after a prepared run; callers
+ * that predate this field never see it because the out-parameter is optional.
+ */
+typedef struct vibeqc_precision_provenance {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  /** Policy version the resolver honored. */
+  uint32_t policy_version;
+  /** Requested mode (\p vibeqc_precision_mode). */
+  int32_t requested_mode;
+  /** Effective Fock precision: 64 for FP64, 32 when a mixed route is active. */
+  uint32_t effective_bits;
+  /** Tile threshold for \p auto; zero when the mixed route is not active. */
+  double mixed_precision_fock_threshold;
+  /** The strict FP64 target refinement ran at the end of the run. */
+  int32_t strict_refinement_applied;
+  /**
+   * Accumulated FP32 Fock rounding the \p auto admission budget certified, or
+   * zero when the cutoff was uncertified (explicit diagnostic override) or the
+   * mixed route did not run. A zero threshold with a zero reserved error means
+   * the FP64 operator was kept because no cutoff fit the requested accuracy.
+   */
+  double mixed_precision_reserved_error;
+  /**
+   * FP64 target-precision iterations executed after the mixed iterative stage.
+   * Zero when the mixed route did not run; the reported \p iterations count
+   * includes these refinement iterations.
+   */
+  int32_t refinement_iterations;
+} vibeqc_precision_provenance;
 
 /** Executable capabilities for one method identifier. */
 typedef struct vibeqc_method_capabilities_descriptor {
@@ -544,6 +611,35 @@ VIBEQC_API void vibeqc_calculation_destroy(vibeqc_calculation* calculation);
  */
 VIBEQC_API vibeqc_status vibeqc_calculation_execute(vibeqc_calculation* calculation,
                                                     vibeqc_result_descriptor* result);
+
+/**
+ * Read the precision policy that resolved for a prepared run. Both the
+ * availability query (a NULL \p out) and the copy-out are gated on whether a
+ * completed execution has populated the record:
+ *
+ * - Before any execution, and after an execution that threw, the query returns
+ *   \p VIBEQC_STATUS_PRECISION_UNAVAILABLE (and leaves \p out untouched).
+ * - After a normal execution return (converged or not) the resolved record is
+ *   copied into \p out and SUCCESS is returned.
+ *
+ * The out-parameter must carry the current struct_size/abi_version. A NULL
+ * \p out is a cheap availability probe that never writes. Adding this query
+ * never changes existing descriptors.
+ */
+VIBEQC_API vibeqc_status vibeqc_calculation_get_precision_provenance(
+    const vibeqc_calculation* calculation, vibeqc_precision_provenance* out);
+
+/**
+ * Read one batch item's precision record by its original input index.
+ * The descriptor and NULL availability probe follow the single-calculation
+ * query. Records are cleared on each execution and populated independently for
+ * SUCCESS/NOT_CONVERGED items; rejected or throwing items return
+ * VIBEQC_STATUS_PRECISION_UNAVAILABLE without writing to out. An out-of-range
+ * index returns VIBEQC_STATUS_INVALID_ARGUMENT.
+ */
+VIBEQC_API vibeqc_status vibeqc_batch_get_precision_provenance(const vibeqc_batch* batch,
+                                                               uint32_t index,
+                                                               vibeqc_precision_provenance* out);
 
 /**
  * Prepare a persistent ragged fleet plan. Systems may have different atom,

@@ -3717,22 +3717,46 @@ def test_cached_direct_plan_reuses_immutable_task_layout():
     assert "**plan, candidate, options" in source
 
 
-def test_bounded_streaming_fock_forwards_mixed_precision_policy():
-    """Keep bounded streaming eligible for mixed work and final FP64 rebuilds."""
+def test_mixed_precision_is_budgeted_per_item_on_the_prepared_census():
+    """Keep the mixed route budgeted on the prepared census and refined in FP64.
+
+    The public ``auto`` policy resolves the FP32 cutoff from the accumulated-error
+    budget and the mixed-capable tile census of this reference, so a route that
+    cannot supply a census (bounded streaming) keeps the FP64 operator instead of
+    accumulating an unbounded rounding error. The cutoff and the admission are
+    resolved per item, so one batch keeps a cold item on the exact FP64 operator
+    while a warm item runs the mixed route. The legacy diagnostic switch stays a
+    separate, deliberately unbudgeted override.
+    """
 
     source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
         encoding="utf-8"
     )
     threshold_begin = source.index(
-        "const std::optional<double> requested_mixed_precision_fock_threshold"
+        "const MixedPrecisionFockPolicy requested_precision_policy"
     )
     threshold_end = source.index(
         "const bool requested_mixed_precision_fock", threshold_begin
     )
+    resolution = source[threshold_begin:threshold_end]
     assert re.search(
-        r"requested_quartet_direct\s*\?\s*configured_mixed_precision_fock_threshold",
-        source[threshold_begin:threshold_end],
+        r"requested_quartet_direct\s*\?\s*resolve_mixed_precision_fock_policy\(",
+        resolution,
     )
+    assert "mixed_precision_eligible_tile_count" in resolution
+    # The per-item census is kept per system, uploaded per execution, and read
+    # both by the tile gate and by the per-item refinement entry.
+    assert "system_mixed_capable_tile_counts" in source
+    assert "mixed_precision_system_census" in source
+    assert "mixed_fock_item_cutoff(mixed_precision_cutoff_ceiling" in source
+    assert "host_mixed_item_census.data()" in source
+    assert "enter_target_refinement_kernel<<<" in source
+    policy = (REPOSITORY_ROOT / "src" / "scf" / "cuda" / "rhf_policy.cpp").read_text(
+        encoding="utf-8"
+    )
+    assert "admit_auto_mixed_precision_fock" in policy
+    assert "kMixedPrecisionFloat32UnitRoundoff * eligible_tiles" in policy
+    assert "resolve_mixed_precision_item" in policy
     assert "allow_mixed_precision && mixed_precision_fock" in source
     # The finalization path must explicitly disable the iterative mixed route.
     assert "launch_fock_builder(density, false)" in source

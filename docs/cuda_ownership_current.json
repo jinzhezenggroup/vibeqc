@@ -1,31 +1,6 @@
 {
-  "all_handwritten_scientific_lines": 9499,
+  "all_handwritten_scientific_lines": 9509,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
-  "delta": {
-    "added_files": [
-      "src/dft/grid_task_view.cuh",
-      "src/runtime/cuda_ao_pairs.cuh",
-      "src/runtime/cuda_gaussian_products.cuh",
-      "src/runtime/cuda_subgroup.cuh",
-      "src/runtime/strided_range.hpp"
-    ],
-    "maintained_code_lines": {
-      "fallback": 0,
-      "oracle": 0,
-      "performance_exception": 32,
-      "runtime": 92,
-      "scientific": -725
-    },
-    "reclassified_files": [
-      "src/dft/cuda_grid.cu",
-      "src/scf/cuda/df_derivatives.cu",
-      "src/scf/cuda/one_electron_reference.cuh",
-      "src/scf/cuda/one_electron_values.cu",
-      "src/scf/cuda_density_fitting.cu",
-      "src/scf/cuda_rhf.cu"
-    ],
-    "removed_files": []
-  },
   "files": [
     {
       "bytes": 5274,
@@ -639,22 +614,22 @@
       "subsystem": "scf_tensor"
     },
     {
-      "bytes": 1035046,
+      "bytes": 1048372,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 10206,
-        "scientific": 7312
+        "runtime": 10376,
+        "scientific": 7322
       },
       "path": "src/scf/cuda_rhf.cu",
-      "physical_lines": 19514,
+      "physical_lines": 19754,
       "reason": "Remaining device recurrences, physical screening bounds and method contractions are conservatively scientific; explicit regions separate generic runtime.",
       "regions": [
         {
-          "code_lines": 807,
+          "code_lines": 815,
           "first_line": 1,
-          "last_line": 1031,
+          "last_line": 1047,
           "reason": "Includes, task metadata, scalar arithmetic/AD, stable special functions and generic geometry/packing helpers.",
           "role": "runtime",
           "start": "#include <cublas_v2.h>",
@@ -662,8 +637,8 @@
         },
         {
           "code_lines": 66,
-          "first_line": 1093,
-          "last_line": 1174,
+          "first_line": 1109,
+          "last_line": 1190,
           "reason": "Angular/task indexing and public-layout helpers.",
           "role": "runtime",
           "start": "__device__ unsigned angular_axis(",
@@ -671,8 +646,8 @@
         },
         {
           "code_lines": 539,
-          "first_line": 6262,
-          "last_line": 6858,
+          "first_line": 6278,
+          "last_line": 6874,
           "reason": "State, instrumentation, generic dense eigensolvers and matrix products.",
           "role": "runtime",
           "start": "__global__ void initialize_state_kernel",
@@ -680,8 +655,8 @@
         },
         {
           "code_lines": 107,
-          "first_line": 6936,
-          "last_line": 7049,
+          "first_line": 6952,
+          "last_line": 7065,
           "reason": "Validated warm-density copy/normalization and state handling.",
           "role": "runtime",
           "start": "__device__ double warm_density_block_sum",
@@ -689,17 +664,17 @@
         },
         {
           "code_lines": 9,
-          "first_line": 7136,
-          "last_line": 7155,
+          "first_line": 7152,
+          "last_line": 7171,
           "reason": "Generic atomic maximum implementation.",
           "role": "runtime",
           "start": "__device__ void atomic_max_double",
           "stop": "__global__ void build_schwarz_and_shell_pair_bounds_packed_kernel"
         },
         {
-          "code_lines": 541,
-          "first_line": 7472,
-          "last_line": 8129,
+          "code_lines": 547,
+          "first_line": 7504,
+          "last_line": 8169,
           "reason": "Task compaction, signature/class indexing, prefix scans, materialization and queue profiling.",
           "role": "runtime",
           "start": "__global__ void compact_active_shell_quartet_tiles_kernel",
@@ -707,8 +682,8 @@
         },
         {
           "code_lines": 64,
-          "first_line": 8271,
-          "last_line": 8338,
+          "first_line": 8311,
+          "last_line": 8378,
           "reason": "Generic tuple permutations and duplicate suppression.",
           "role": "runtime",
           "start": "__device__ void eri_symmetry_permutation",
@@ -716,8 +691,8 @@
         },
         {
           "code_lines": 129,
-          "first_line": 8385,
-          "last_line": 8523,
+          "first_line": 8425,
+          "last_line": 8563,
           "reason": "Matrix initialization and public/direct basis transforms.",
           "role": "runtime",
           "start": "__global__ void initialize_direct_fock_kernel",
@@ -725,8 +700,8 @@
         },
         {
           "code_lines": 18,
-          "first_line": 8706,
-          "last_line": 8725,
+          "first_line": 8746,
+          "last_line": 8765,
           "reason": "Component-index mapping.",
           "role": "runtime",
           "start": "__device__ __forceinline__ unsigned order2_component_index",
@@ -734,8 +709,8 @@
         },
         {
           "code_lines": 104,
-          "first_line": 8854,
-          "last_line": 8971,
+          "first_line": 8894,
+          "last_line": 9011,
           "reason": "Queue/launch wrappers around separately owned scientific contractions.",
           "role": "runtime",
           "start": "__global__ void build_fock_direct_quartet_kernel",
@@ -743,17 +718,17 @@
         },
         {
           "code_lines": 149,
-          "first_line": 8972,
-          "last_line": 9132,
+          "first_line": 9012,
+          "last_line": 9172,
           "reason": "Generic matrix residual and DIIS operations.",
           "role": "runtime",
           "start": "__global__ void subtract_matrix_batches_kernel",
           "stop": "__global__ void compute_energy_kernel"
         },
         {
-          "code_lines": 151,
-          "first_line": 9179,
-          "last_line": 9360,
+          "code_lines": 173,
+          "first_line": 9219,
+          "last_line": 9429,
           "reason": "Convergence controls and iteration-state routing.",
           "role": "runtime",
           "start": "__device__ __forceinline__ double direct_fock_energy_roundoff_guard",
@@ -761,8 +736,8 @@
         },
         {
           "code_lines": 13,
-          "first_line": 9415,
-          "last_line": 9428,
+          "first_line": 9484,
+          "last_line": 9497,
           "reason": "Generic spin-matrix addition.",
           "role": "runtime",
           "start": "__global__ void sum_uhf_spin_matrices_kernel",
@@ -770,8 +745,8 @@
         },
         {
           "code_lines": 42,
-          "first_line": 10981,
-          "last_line": 11027,
+          "first_line": 11050,
+          "last_line": 11096,
           "reason": "Generic prefix scans for force signatures.",
           "role": "runtime",
           "start": "__global__ void scan_bounded_force_signature_counts_kernel",
@@ -779,17 +754,17 @@
         },
         {
           "code_lines": 164,
-          "first_line": 11455,
-          "last_line": 11654,
+          "first_line": 11524,
+          "last_line": 11723,
           "reason": "Persistent force task wrappers; primitive/equation contractions are separate above.",
           "role": "runtime",
           "start": "__global__ void two_electron_force_quartet_kernel",
           "stop": "cudaError_t prepare_generated_shell_tasks("
         },
         {
-          "code_lines": 7268,
-          "first_line": 11655,
-          "last_line": 19514,
+          "code_lines": 7402,
+          "first_line": 11724,
+          "last_line": 19754,
           "reason": "Host resource planning, library/state/graph execution and ABI dispatch; numerical device equations are classified above.",
           "role": "runtime",
           "start": "cudaError_t prepare_generated_shell_tasks(",
@@ -797,8 +772,8 @@
         },
         {
           "code_lines": 35,
-          "first_line": 5969,
-          "last_line": 6014,
+          "first_line": 5985,
+          "last_line": 6030,
           "reason": "Packed basis ABI adapter and generated-policy instantiation; no DF recurrence or operator-specific primitive contraction.",
           "role": "runtime",
           "start": "/** Borrow the packed integral metadata through the common normalized-basis ABI. */",
@@ -806,24 +781,24 @@
         }
       ],
       "role": "scientific",
-      "sha256": "3b626ec654d7a9f50457a20ce5608350e34dc352e3ac36b637d9c7072d5edd56",
+      "sha256": "c1999a043fc850c4774d454208cd36d4b27bdc31b4f3a2cf1538b7e1739b5057",
       "subsystem": "direct_integrals"
     },
     {
-      "bytes": 15689,
+      "bytes": 16764,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 253,
+        "runtime": 262,
         "scientific": 0
       },
       "path": "src/scf/direct_task_layout.hpp",
-      "physical_lines": 324,
+      "physical_lines": 343,
       "reason": "Backend-shared task coordinates, capacities and tuple/shell indexing.",
       "regions": [],
       "role": "runtime",
-      "sha256": "ca957228e707383ca084a4b701666f1b2c94eeb7f90455a16d3a3842474b7591",
+      "sha256": "53fea89b8c454fd485c3c0717800592b83303663632510f86976f9788091b54e",
       "subsystem": "runtime"
     },
     {
@@ -863,15 +838,8 @@
   ],
   "generated": [
     {
-      "files": [
-        {
-          "bytes": 1687,
-          "code_lines": 36,
-          "path": "generated/generated_one_electron_policy.cuh",
-          "sha256": "1b14c7b270eb4f910954877ce8e5e1a8edac24d45fef6e5ab9d94b0b6c8486f5"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "one_electron_value_policy",
       "outputs": [
         "generated/generated_one_electron_policy.cuh"
@@ -879,15 +847,8 @@
       "owner": "python/vibeqc_compiler/integral/one_electron_policy_cuda.py"
     },
     {
-      "files": [
-        {
-          "bytes": 3100551,
-          "code_lines": 84286,
-          "path": "generated/generated_one_electron_values.cuh",
-          "sha256": "8bf6520e91fe350a18728609a2235b4569284fb75d5491ff505a865c6752f84d"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "one_electron_values",
       "outputs": [
         "generated/generated_one_electron_values.cuh"
@@ -895,15 +856,8 @@
       "owner": "python/vibeqc_compiler/integral/one_electron_cuda.py"
     },
     {
-      "files": [
-        {
-          "bytes": 7647656,
-          "code_lines": 207007,
-          "path": "generated/generated_one_electron_derivatives.cuh",
-          "sha256": "ca1986d56310dfb90fa21c2824da3ff722715372f6a103d8801cadc2661022af"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "one_electron_derivatives",
       "outputs": [
         "generated/generated_one_electron_derivatives.cuh"
@@ -911,15 +865,8 @@
       "owner": "python/vibeqc_compiler/integral/one_electron_derivatives_cuda.py"
     },
     {
-      "files": [
-        {
-          "bytes": 488615,
-          "code_lines": 6078,
-          "path": "generated/df_values.cuh",
-          "sha256": "4815279a8631f59110e410a116ce4791b24cc12f23c621df565539caefa5a8ad"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "df_values",
       "outputs": [
         "generated/df_values.cuh"
@@ -927,15 +874,8 @@
       "owner": "python/vibeqc_compiler/integral/df_cuda.py"
     },
     {
-      "files": [
-        {
-          "bytes": 715689,
-          "code_lines": 21976,
-          "path": "generated/generated_df_derivatives.cuh",
-          "sha256": "47065f8272f4f1fbe042a2976f539a4e4e4e3f5679315e727ea465f4d94e26da"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "df_derivatives",
       "outputs": [
         "generated/generated_df_derivatives.cuh"
@@ -943,15 +883,8 @@
       "owner": "python/vibeqc_compiler/integral/df_derivatives_cuda.py"
     },
     {
-      "files": [
-        {
-          "bytes": 6976,
-          "code_lines": 140,
-          "path": "generated/weighted_eri.cuh",
-          "sha256": "3a320765b77e53391d5a0fcfa81d40e714de3a77ef2ead0934dacce0b534270c"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "weighted_eri",
       "outputs": [
         "generated/weighted_eri.cuh"
@@ -959,69 +892,8 @@
       "owner": "python/vibeqc_compiler/integral/weighted_eri_cuda.py"
     },
     {
-      "files": [
-        {
-          "bytes": 5411313,
-          "code_lines": 87485,
-          "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_0.cu",
-          "sha256": "a5c16bb800d7932cdac9172f47e0fa5b6d5db4923dfa7aa048e7d1a7cf0636bf"
-        },
-        {
-          "bytes": 2538460,
-          "code_lines": 41159,
-          "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_1.cu",
-          "sha256": "cbe442cd1a68e9424f7008850e0056bcda3f61a78fc01e5a6381070594acd1fc"
-        },
-        {
-          "bytes": 1771129,
-          "code_lines": 28991,
-          "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_2.cu",
-          "sha256": "c6db029c35f589fd6f8c7376d047dadf1a969223f41f01b62d53ed1c7994f26a"
-        },
-        {
-          "bytes": 1350250,
-          "code_lines": 21734,
-          "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_3.cu",
-          "sha256": "f7f0fcf2c61bea04438c45de57c105c21ca9bb54680a8d1861fca3dbe04d6c46"
-        },
-        {
-          "bytes": 1093094,
-          "code_lines": 17566,
-          "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_4.cu",
-          "sha256": "c514b912fae0fab0b7c5c8c1dc5acc8dfb37a89e65e912fc1b445cd066927748"
-        },
-        {
-          "bytes": 1034512,
-          "code_lines": 16847,
-          "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_5.cu",
-          "sha256": "7be5c404b378a366e90a2a5fb9da3d557b4d61198bcd5ebc005b9b4159386fbf"
-        },
-        {
-          "bytes": 871861,
-          "code_lines": 14268,
-          "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_6.cu",
-          "sha256": "6fe5a223f9b7e2d5f27768ec5d661e93ca5b4b8bacf1f1a61955ab72689deae2"
-        },
-        {
-          "bytes": 979891,
-          "code_lines": 16017,
-          "path": "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_shard_7.cu",
-          "sha256": "69883972e00d71fc9c9590aace3cdb4ba00654943f90cdd4d23c04c2f561ede9"
-        },
-        {
-          "bytes": 61259,
-          "code_lines": 828,
-          "path": "generated/production_shell_kernels/vibeqc_generated_shell_registry.cu",
-          "sha256": "9d8ba1e55539f177f318569a513aad001b4bfe53be59cf1f6a5c943287581955"
-        },
-        {
-          "bytes": 1779,
-          "code_lines": 48,
-          "path": "generated/production_shell_kernels/vibeqc_generated_shell_registry.hpp",
-          "sha256": "c92c38b48c8d4368f98620f1455c44427a340b834c3d7315fb0f628ecc2a33a9"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "aot_integrals",
       "outputs": [
         "generated/production_shell_kernels/**/*.cu",
@@ -1032,7 +904,7 @@
     },
     {
       "files": [],
-      "measurement": "explicit build",
+      "measurement": "not materialized",
       "name": "jit_tensor",
       "outputs": [],
       "owner": "python/vibeqc_compiler/tensor",
@@ -1040,7 +912,7 @@
     },
     {
       "files": [],
-      "measurement": "explicit build",
+      "measurement": "not materialized",
       "name": "jit_xc",
       "outputs": [],
       "owner": "python/vibeqc_compiler/xc",
@@ -1048,7 +920,7 @@
     },
     {
       "files": [],
-      "measurement": "explicit build",
+      "measurement": "not materialized",
       "name": "jit_dft",
       "outputs": [],
       "owner": "python/vibeqc_compiler/dft",
@@ -1056,22 +928,15 @@
     },
     {
       "files": [],
-      "measurement": "explicit build",
+      "measurement": "not materialized",
       "name": "jit_integral",
       "outputs": [],
       "owner": "python/vibeqc_compiler/integral",
       "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
     },
     {
-      "files": [
-        {
-          "bytes": 4440,
-          "code_lines": 167,
-          "path": "generated/generated_grid_policy.cu",
-          "sha256": "bd96ba89df6ee13b6e98e67a0c008f36fa583cf15a64348ccde21941b71b8493"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "ao_grid_policy",
       "outputs": [
         "generated/generated_grid_policy.cu"
@@ -1080,27 +945,8 @@
       "scope": "Shared CMake/JIT through-f/order-three AO polynomials and spin-density ingredient arithmetic; generated policy included before the same dense/local native runtime."
     },
     {
-      "files": [
-        {
-          "bytes": 1602,
-          "code_lines": 27,
-          "path": "generated/generated_df_policy.cuh",
-          "sha256": "0a6389d7c326c5a162e4768d2535433445ccb32a345ad95957191fe6a5289b20"
-        },
-        {
-          "bytes": 1611,
-          "code_lines": 32,
-          "path": "generated/generated_df_derivative_policy.cuh",
-          "sha256": "beb7ee985095e7ace0d466be897e4dadbbd5adcbe80fbacca55e2d64dcbbd30b"
-        },
-        {
-          "bytes": 407,
-          "code_lines": 9,
-          "path": "generated/generated_df_derivative_schedule.cuh",
-          "sha256": "5caba2a73da662358777f7640b91d5f77710b22f4ac38a8c401225f6472e89af"
-        }
-      ],
-      "measurement": "explicit build",
+      "files": [],
+      "measurement": "not materialized",
       "name": "df_policies",
       "outputs": [
         "generated/generated_df_policy.cuh",
@@ -1110,13 +956,13 @@
       "owner": "python/vibeqc_compiler/integral/df_policy.py"
     }
   ],
-  "generated_bytes": 27082782,
+  "generated_bytes": 0,
   "maintained_code_lines": {
     "fallback": 0,
     "oracle": 0,
     "performance_exception": 122,
-    "runtime": 15665,
-    "scientific": 9377
+    "runtime": 15844,
+    "scientific": 9387
   },
   "migration_ledger": {
     "ao_grid": {
@@ -1268,8 +1114,8 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 10206,
-      "scientific": 7412
+      "runtime": 10376,
+      "scientific": 7422
     },
     "low_rank": {
       "fallback": 0,
@@ -1296,7 +1142,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 2378,
+      "runtime": 2387,
       "scientific": 0
     },
     "scf_tensor": {

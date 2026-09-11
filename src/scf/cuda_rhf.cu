@@ -65,6 +65,8 @@ namespace {
 //   kTightConvergedFockReuseDensityRms = 1.0e-12
 //   kExpandedConvergedFockReuseDensityTolerance = 1.0e-9
 //   kExpandedConvergedFockReuseDensityRms = 2.0e-9
+//   kAutoMixedPrecisionErrorBudgetFraction = 6.25e-02
+//   kFloat32UnitRoundoff = 5.9604644775390625e-08
 using cuda_policy::bounded_direct_aot_only_diagnostic_requested;
 using cuda_policy::bounded_direct_count_diagnostic_requested;
 using cuda_policy::bounded_direct_fock_only_diagnostic_requested;
@@ -75,6 +77,8 @@ using cuda_policy::converged_fock_reuse_density_rms;
 using cuda_policy::direct_tile_validation_requested;
 using cuda_policy::force_density_product_screening_requested;
 using cuda_policy::graph_native_eigensolver_override_requested;
+using cuda_policy::MixedPrecisionFockPolicy;
+using cuda_policy::MixedPrecisionItemPolicy;
 using cuda_policy::one_electron_force_scalar_requested;
 using cuda_policy::ppps_resident_block_threads_requested;
 using cuda_policy::ppps_signature_bucketing_requested;
@@ -82,10 +86,21 @@ using cuda_policy::ppss_signature_bucketing_requested;
 using cuda_policy::psps_signature_bucketing_requested;
 using cuda_policy::resident_ppps_bra_requested;
 using cuda_policy::resident_psss_bra_requested;
+using cuda_policy::resolve_mixed_precision_fock_policy;
+using cuda_policy::resolve_mixed_precision_item;
 using cuda_policy::reuse_converged_fock_requested;
 using cuda_policy::xsyev_probe_skip_diagnostic_requested;
 
 constexpr double kPi = 3.141592653589793238462643383279502884;
+
+/**
+ * IEEE-754 binary32 unit roundoff, mirroring the shared policy constant so the
+ * host admission and this device gate resolve the identical cutoff. The
+ * assertion below keeps the two definitions from drifting apart.
+ */
+constexpr double kMixedPrecisionFloat32UnitRoundoff = 5.9604644775390625e-08;
+static_assert(kMixedPrecisionFloat32UnitRoundoff ==
+              cuda_policy::kMixedPrecisionFloat32UnitRoundoff);
 constexpr int kMaximumAngularMomentum = 3;
 constexpr std::size_t kMaximumAoExpansionTerms = molecule::kMaximumAoExpansionTerms;
 constexpr int kHermiteIDimension = kMaximumAngularMomentum + 1;
@@ -153,7 +168,8 @@ static_assert(kPersistentFockAngularOrderCount <= detail::kDirectQuartetAngularO
 // mixed queue limited to the remaining partitions avoids duplicating the
 // dominant low-order topology capacity solely for records that can never be
 // routed to an FP32 recurrence.
-constexpr unsigned kMixedFockMinimumAngularOrder = 3;
+constexpr unsigned kMixedFockMinimumAngularOrder =
+    detail::kDirectQuartetMixedFockMinimumAngularOrder;
 static_assert(kMixedFockMinimumAngularOrder < detail::kDirectQuartetAngularOrderCount);
 // An ssss shell quartet is exactly one Cartesian AO quartet. Assign one whole
 // shell task to each lane instead of leaving 31 lanes idle in the generic
@@ -7468,6 +7484,22 @@ __device__ __forceinline__ bool direct_shell_quartet_survives_screening(
   }
 }
 
+/**
+ * Contribution cutoff for one item's FP32 tiles: the largest cutoff whose
+ * worst-case accumulation `eps32 * cutoff * census` fits the reserved error.
+ * A zero census keeps the whole item on the exact FP64 path, and an
+ * item-agnostic diagnostic cutoff (no per-item budget) is returned unchanged.
+ */
+__device__ __forceinline__ double mixed_fock_item_cutoff(double cutoff_ceiling, double budget_error,
+                                                         const std::uint32_t* item_census,
+                                                         std::int32_t item) {
+  if (!(cutoff_ceiling > 0.0) || item_census == nullptr) return 0.0;
+  const std::uint32_t census = item_census[item];
+  if (census == 0U) return 0.0;
+  if (!(budget_error > 0.0)) return cutoff_ceiling;
+  return fmin(cutoff_ceiling,
+              budget_error / (kMixedPrecisionFloat32UnitRoundoff * static_cast<double>(census)));
+}
 template <bool Unrestricted, DirectScreeningPurpose Purpose>
 __global__ void compact_active_shell_quartet_tiles_kernel(
     DeviceBatch batch, double screening_tolerance, const double* shell_pair_bounds,
@@ -7475,7 +7507,9 @@ __global__ void compact_active_shell_quartet_tiles_kernel(
     const std::uint32_t* active_shell_quartet_tile_offsets,
     std::uint32_t* active_shell_quartet_tile_counts,
     ActiveShellQuartetTile* active_shell_quartet_tiles, bool mixed_precision_enabled,
-    double fp64_threshold, const std::uint32_t* fp32_shell_quartet_tile_offsets,
+    double mixed_precision_cutoff_ceiling, double mixed_precision_budget_error,
+    const std::uint32_t* mixed_precision_item_census,
+    const std::uint32_t* fp32_shell_quartet_tile_offsets,
     std::uint32_t* fp32_shell_quartet_tile_counts,
     ActiveShellQuartetTile* fp32_shell_quartet_tiles) {
   const std::size_t shell_quartet = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
@@ -7526,8 +7560,14 @@ __global__ void compact_active_shell_quartet_tiles_kernel(
   if constexpr (Purpose == DirectScreeningPurpose::Fock) {
     // Low-order shell-fused workers remain FP64; routing them through the
     // generic evaluator would conflate precision with a scheduling regression.
-    use_fp32 = mixed_precision_enabled && angular_order >= kMixedFockMinimumAngularOrder &&
-               fp32_shell_quartet_tile_counts != nullptr && contribution_bound < fp64_threshold;
+    // The cutoff is per item: a system without a certified census keeps every
+    // one of its tiles in the FP64 list regardless of its batch neighbors.
+    const double item_cutoff =
+        mixed_fock_item_cutoff(mixed_precision_cutoff_ceiling, mixed_precision_budget_error,
+                               mixed_precision_item_census, system);
+    use_fp32 = mixed_precision_enabled && item_cutoff > 0.0 &&
+               angular_order >= kMixedFockMinimumAngularOrder &&
+               fp32_shell_quartet_tile_counts != nullptr && contribution_bound < item_cutoff;
   }
   std::uint32_t* selected_counts =
       use_fp32 ? fp32_shell_quartet_tile_counts : active_shell_quartet_tile_counts;
@@ -9333,6 +9373,35 @@ __global__ void select_converged_kernel(std::int32_t batch_size, const std::uint
   }
 }
 
+/**
+ * Enter the exact target-precision refinement for the items that used the mixed
+ * iterative operator: their energy baseline and DIIS history were built from a
+ * different operator, so both are cleared and the item continues from the mixed
+ * density in exact FP64. Items that never used mixed precision keep their own
+ * verdict, and a failed item is never revived.
+ */
+__global__ void enter_target_refinement_kernel(
+    std::int32_t batch_size, const std::uint32_t* item_census, std::uint8_t* active,
+    std::uint8_t* converged, const std::uint8_t* failed, std::uint32_t* iterations,
+    double* previous_energy, double* energy_change, double* density_rms, std::uint32_t* diis_count,
+    std::uint32_t* diis_head) {
+  const std::int32_t system =
+      static_cast<std::int32_t>(static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x);
+  if (system >= batch_size) return;
+  if (failed[system] != 0) return;
+  if (item_census == nullptr || item_census[system] == 0U) {
+    active[system] = 0;
+    return;
+  }
+  active[system] = 1;
+  converged[system] = 0;
+  iterations[system] = 0;
+  previous_energy[system] = CUDART_INF;
+  energy_change[system] = CUDART_INF;
+  density_rms[system] = CUDART_INF;
+  diis_count[system] = 0;
+  diis_head[system] = 0;
+}
 /**
  * Partition converged systems between retained-Fock reuse and exact rebuild.
  *
@@ -12145,6 +12214,8 @@ struct ArenaLayout {
   std::size_t primitive_coefficients{};
   std::size_t occupied{};
   std::size_t warm_mask{};
+  /** Per-item mixed-precision census: zero keeps that item in the FP64 lists. */
+  std::size_t mixed_item_census{};
   std::size_t warm_density{};
   // Setup-only flags for rejecting an external warm density before graph
   // capture.  They are deliberately separate from `failed`, whose lifetime
@@ -12359,6 +12430,8 @@ bool make_layout(std::size_t batch_size, std::size_t nbf, std::size_t direct_nbf
       !append_array<double>(primitives, cursor, made.primitive_coefficients) ||
       !append_array<std::int32_t>(batch_size * spin_count, cursor, made.occupied) ||
       !append_array<std::uint8_t>(batch_size, cursor, made.warm_mask) ||
+      !append_array<std::uint32_t>(mixed_precision_fock ? batch_size : 0, cursor,
+                                   made.mixed_item_census) ||
       !append_array<double>(spin_matrices, cursor, made.warm_density) ||
       !append_array<std::uint8_t>(batch_size, cursor, made.warm_invalid) ||
       !append_array<double>(matrices, cursor, made.overlap) ||
@@ -14081,6 +14154,10 @@ struct CudaRhfBucketPlan {
   bool reuse_converged_fock{};
   bool mixed_precision_fock{};
   double mixed_precision_fock_threshold{};
+  /** Largest item census the batch admission ceiling was bound to. */
+  std::size_t mixed_precision_eligible_tile_count{};
+  /** Exact per-system mixed-capable tile census the per-item budget divides. */
+  std::vector<std::uint32_t> mixed_precision_system_census;
   bool warm_start_updates_enabled{true};
   bool cublas_enabled{true};
   bool retry_without_cublas{};
@@ -14127,6 +14204,7 @@ bool same_options(const ScfOptions& first, const ScfOptions& second) {
          first.density_tolerance == second.density_tolerance &&
          first.screening_tolerance == second.screening_tolerance &&
          first.compute_forces == second.compute_forces &&
+         first.precision_mode == second.precision_mode &&
          first.resolved_fock_build == second.resolved_fock_build;
 }
 
@@ -14588,7 +14666,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     // every warm replay adds substantial host latency at large AO counts.
     if (!detail::make_direct_quartet_task_layout(
             host.shell_direct_ao_offsets, host.shell_angular, host.system_shell_pair_offsets,
-            host.shell_pair_first, host.shell_pair_second, direct_task_layout) ||
+            host.shell_pair_first, host.shell_pair_second, kMixedFockMinimumAngularOrder,
+            direct_task_layout) ||
         direct_task_layout.shell_quartet_count != total_shell_quartets) {
       fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
       return outputs;
@@ -14617,10 +14696,37 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     total_shell_quartet_tiles =
         requested_bounded_direct_streaming ? 0 : plan.total_shell_quartet_tiles;
   }
-  const std::optional<double> requested_mixed_precision_fock_threshold =
+  // Per-item mixed-capable tile census: the FP32-error budget is evaluated for
+  // every system on its own count. Bounded streaming keeps zeros, which the
+  // policy refuses rather than guesses, and the largest census is the batch
+  // ceiling that decides whether the plan allocates the route at all.
+  std::vector<std::size_t> mixed_precision_system_census(batch_size, 0U);
+  if (requested_quartet_direct && !requested_bounded_direct_streaming) {
+    if (first_setup) {
+      mixed_precision_system_census = direct_task_layout.system_mixed_capable_tile_counts;
+      if (mixed_precision_system_census.size() != batch_size) {
+        fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
+        return outputs;
+      }
+    } else if (plan.mixed_precision_system_census.size() == batch_size) {
+      for (std::size_t system = 0; system < batch_size; ++system) {
+        mixed_precision_system_census[system] = plan.mixed_precision_system_census[system];
+      }
+    }
+  }
+  const std::size_t mixed_precision_eligible_tile_count =
+      mixed_precision_system_census.empty()
+          ? 0U
+          : *std::max_element(mixed_precision_system_census.begin(),
+                              mixed_precision_system_census.end());
+  const MixedPrecisionFockPolicy requested_precision_policy =
       requested_quartet_direct
-          ? configured_mixed_precision_fock_threshold(options.screening_tolerance)
-          : std::nullopt;
+          ? resolve_mixed_precision_fock_policy(
+                options.precision_mode, options.energy_tolerance, options.screening_tolerance,
+                static_cast<double>(mixed_precision_eligible_tile_count))
+          : MixedPrecisionFockPolicy{};
+  const std::optional<double> requested_mixed_precision_fock_threshold =
+      requested_precision_policy.threshold;
   const bool requested_mixed_precision_fock = requested_mixed_precision_fock_threshold.has_value();
   // An iterative mixed Fock is not the exact final matrix associated with the
   // converged density. Force a complete FP64 rebuild before final energy,
@@ -14868,6 +14974,17 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     plan.reuse_converged_fock = requested_reuse_converged_fock;
     plan.mixed_precision_fock = requested_mixed_precision_fock;
     plan.mixed_precision_fock_threshold = requested_mixed_precision_fock_threshold.value_or(0.0);
+    plan.mixed_precision_eligible_tile_count = mixed_precision_eligible_tile_count;
+    plan.mixed_precision_system_census.assign(mixed_precision_system_census.size(), 0U);
+    for (std::size_t system = 0; system < mixed_precision_system_census.size(); ++system) {
+      if (mixed_precision_system_census[system] >
+          static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max())) {
+        fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
+        return outputs;
+      }
+      plan.mixed_precision_system_census[system] =
+          static_cast<std::uint32_t>(mixed_precision_system_census[system]);
+    }
     plan.options = options;
     plan.topology = host;
     // Positions and warm guesses are dynamic execution inputs, not part of
@@ -15123,6 +15240,12 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       arena_pointer<double>(resources.arena_, layout.primitive_coefficients);
   auto occupied = arena_pointer<std::int32_t>(resources.arena_, layout.occupied);
   auto warm_mask = arena_pointer<std::uint8_t>(resources.arena_, layout.warm_mask);
+  // Per-item admission gate consumed by the tile compaction and the target
+  // refinement. It is only allocated when the plan may run the mixed route.
+  std::uint32_t* mixed_precision_item_census =
+      mixed_precision_fock
+          ? arena_pointer<std::uint32_t>(resources.arena_, layout.mixed_item_census)
+          : nullptr;
   auto warm_density = arena_pointer<double>(resources.arena_, layout.warm_density);
   auto warm_invalid = arena_pointer<std::uint8_t>(resources.arena_, layout.warm_invalid);
   auto overlap = arena_pointer<double>(resources.arena_, layout.overlap);
@@ -15480,7 +15603,28 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       host_generated_fock_shell_class_mask & kNativeStreamingFockShellClassMask;
   const std::uint64_t host_uncovered_fock_shell_class_mask =
       host_present_shell_class_mask & ~host_generated_fock_shell_class_mask;
+  // Per-item admission: each item divides the certified batch budget with its
+  // own mixed-capable census and only enters the mixed route from a validated
+  // warm state, because the reserved error bounds the perturbation of a known
+  // state rather than of a cold guess. A refused item keeps a zero census, so
+  // its tiles stay in the FP64 lists while its neighbors may still use mixed.
+  // An explicit diagnostic cutoff stays item agnostic.
+  std::vector<std::uint32_t> host_mixed_item_census(batch_size, 0U);
+  std::vector<double> host_mixed_item_threshold(batch_size, 0.0);
+  if (mixed_precision_fock) {
+    for (std::size_t system = 0; system < batch_size; ++system) {
+      const MixedPrecisionItemPolicy item = resolve_mixed_precision_item(
+          requested_precision_policy, host.warm_mask[system] != 0,
+          mixed_precision_system_census[system], options.screening_tolerance);
+      if (!item.admitted) continue;
+      host_mixed_item_census[system] = item.census;
+      host_mixed_item_threshold[system] = item.threshold;
+    }
+  }
   const std::pair<const void*, std::pair<void*, std::size_t>> dynamic_uploads[] = {
+      {host_mixed_item_census.data(),
+       {mixed_precision_item_census,
+        mixed_precision_fock ? host_mixed_item_census.size() * sizeof(std::uint32_t) : 0}},
       {host.warm_mask.data(),
        {warm_mask, device_resident_density_hit ? 0 : host.warm_mask.size() * sizeof(std::uint8_t)}},
       {host.warm_density.data(),
@@ -15770,7 +15914,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
               device_batch, options.screening_tolerance, shell_pair_bounds,
               shell_pair_density_bounds, active, active_shell_quartet_tile_offsets,
               active_shell_quartet_tile_counts, active_shell_quartet_tiles,
-              allow_mixed_precision && mixed_precision_fock, mixed_precision_fock_threshold,
+              allow_mixed_precision && mixed_precision_fock,
+              requested_precision_policy.item_cutoff_ceiling,
+              requested_precision_policy.item_budget_error, mixed_precision_item_census,
               fp32_shell_quartet_tile_offsets, fp32_shell_quartet_tile_counts,
               fp32_shell_quartet_tiles);
     } else {
@@ -15790,7 +15936,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
               device_batch, options.screening_tolerance, shell_pair_bounds,
               shell_pair_density_bounds, active, active_shell_quartet_tile_offsets,
               active_shell_quartet_tile_counts, active_shell_quartet_tiles,
-              allow_mixed_precision && mixed_precision_fock, mixed_precision_fock_threshold,
+              allow_mixed_precision && mixed_precision_fock,
+              requested_precision_policy.item_cutoff_ceiling,
+              requested_precision_policy.item_budget_error, mixed_precision_item_census,
               fp32_shell_quartet_tile_offsets, fp32_shell_quartet_tile_counts,
               fp32_shell_quartet_tiles);
     }
@@ -15824,15 +15972,15 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
           <<<blocks_for(total_shell_quartets), threads, 0, resources.stream_>>>(
               device_batch, options.screening_tolerance, shell_pair_bounds,
               shell_pair_density_bounds, active, active_shell_quartet_tile_offsets,
-              active_shell_quartet_tile_counts, active_shell_quartet_tiles, false, 0.0, nullptr,
-              nullptr, nullptr);
+              active_shell_quartet_tile_counts, active_shell_quartet_tiles, false, 0.0, 0.0,
+              nullptr, nullptr, nullptr, nullptr);
     } else {
       compact_active_shell_quartet_tiles_kernel<false, DirectScreeningPurpose::Force>
           <<<blocks_for(total_shell_quartets), threads, 0, resources.stream_>>>(
               device_batch, options.screening_tolerance, shell_pair_bounds,
               shell_pair_density_bounds, active, active_shell_quartet_tile_offsets,
-              active_shell_quartet_tile_counts, active_shell_quartet_tiles, false, 0.0, nullptr,
-              nullptr, nullptr);
+              active_shell_quartet_tile_counts, active_shell_quartet_tiles, false, 0.0, 0.0,
+              nullptr, nullptr, nullptr, nullptr);
     }
     if (direct_tile_validation && resources.direct_tile_validation_ != nullptr) {
       cudaError_t validation_error =
@@ -16568,8 +16716,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
        ordinary_eigensolver_family == CudaEigensolverFamily::xsyevd) &&
       graph_eigensolver_family != ordinary_eigensolver_family;
 
-  const auto launch_iteration_pre_eigensolver = [&]() -> vibeqc_status {
-    const cudaError_t fock_error = launch_fock_builder(density, true);
+  const auto launch_iteration_pre_eigensolver = [&](bool allow_mixed_precision) -> vibeqc_status {
+    const cudaError_t fock_error = launch_fock_builder(density, allow_mixed_precision);
     if (fock_error != cudaSuccess) return cuda_status(fock_error);
     if (fock_only_iteration) return VIBEQC_STATUS_SUCCESS;
 
@@ -16696,7 +16844,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       fill_global_failure(outputs, cuda_status(cuda_error));
       return outputs;
     }
-    status = launch_iteration_pre_eigensolver();
+    status = launch_iteration_pre_eigensolver(true);
     if (status == VIBEQC_STATUS_SUCCESS && !fock_only_iteration && !split_provider_iteration) {
       status = launch_iteration_eigensolver(graph_eigensolver_family);
     }
@@ -16986,6 +17134,75 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     return outputs;
   }
 
+  // ---------------------------------------------------------------------------
+  // Target-precision refinement.
+  //
+  // The mixed Fock is only the iterative operator, so a density converged under
+  // it is not a converged solution of the requested FP64 equations. Promote the
+  // items that used mixed precision to exact FP64 from their mixed density and
+  // continue until the same criteria are met. An item that exhausts the bound
+  // stays unconverged, so a noisy state is never reported as a success, and the
+  // refinement cost is counted in the reported iterations.
+  // ---------------------------------------------------------------------------
+  std::vector<std::uint32_t> host_mixed_iterations(batch_size, 0U);
+  if (mixed_precision_fock) {
+    cuda_error = cudaMemcpyAsync(host_mixed_iterations.data(), iterations,
+                                 batch_size * sizeof(std::uint32_t), cudaMemcpyDeviceToHost,
+                                 resources.stream_);
+    if (cuda_error == cudaSuccess) {
+      cuda_error = cudaStreamSynchronize(resources.stream_);
+    }
+    if (cuda_error != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
+    // Only the items that actually ran the mixed operator re-enter the loop.
+    enter_target_refinement_kernel<<<blocks_for(batch_size), threads, 0, resources.stream_>>>(
+        static_cast<std::int32_t>(batch_size), mixed_precision_item_census, active, converged,
+        failed, iterations, previous_energy, energy_change, density_rms, diis_count, diis_head);
+    std::vector<std::uint8_t> host_refinement_active(batch_size, 0U);
+    cuda_error =
+        cudaMemcpyAsync(host_refinement_active.data(), active, batch_size * sizeof(std::uint8_t),
+                        cudaMemcpyDeviceToHost, resources.stream_);
+    if (cuda_error == cudaSuccess) {
+      cuda_error = cudaStreamSynchronize(resources.stream_);
+    }
+    if (cuda_error != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
+    // A mixed density within the reserved budget needs only a few exact
+    // iterations; the full iteration bound applies so a pathological state
+    // reports an honest non-convergence instead of a clamped success. Each item
+    // leaves the loop on its own convergence, so a stagnating item is promoted
+    // without holding back or dictating the precision of its neighbors.
+    for (std::uint32_t refinement = 0; refinement < options.max_iterations; ++refinement) {
+      if (std::none_of(host_refinement_active.begin(), host_refinement_active.end(),
+                       [](std::uint8_t value) { return value != 0; })) {
+        break;
+      }
+      status = launch_iteration_pre_eigensolver(false);
+      if (status == VIBEQC_STATUS_SUCCESS) {
+        status = launch_iteration_eigensolver(ordinary_eigensolver_family);
+      }
+      if (status == VIBEQC_STATUS_SUCCESS) {
+        status = launch_iteration_post_eigensolver(false);
+      }
+      if (status != VIBEQC_STATUS_SUCCESS) break;
+      cuda_error =
+          cudaMemcpyAsync(host_refinement_active.data(), active, batch_size * sizeof(std::uint8_t),
+                          cudaMemcpyDeviceToHost, resources.stream_);
+      if (cuda_error == cudaSuccess) {
+        cuda_error = cudaStreamSynchronize(resources.stream_);
+      }
+      if (cuda_error != cudaSuccess) break;
+    }
+    if (status != VIBEQC_STATUS_SUCCESS || cuda_error != cudaSuccess) {
+      fill_global_failure(outputs,
+                          status != VIBEQC_STATUS_SUCCESS ? status : cuda_status(cuda_error));
+      return outputs;
+    }
+  }
   std::uint32_t host_final_fock_rebuild_count = static_cast<std::uint32_t>(batch_size);
   if (reuse_converged_fock) {
     // Partition on the device because density RMS is already per-system. This
@@ -18061,15 +18278,35 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     plan.resident_previous_energy.clear();
   }
 
+  // The mixed-precision Fock decision (already gated on quartet-direct) and its
+  // forced final FP64 rebuild are fixed for the plan; report what actually ran.
+  const int32_t requested_precision_mode = options.precision_mode.value_or(VIBEQC_PRECISION_FP64);
+  const bool precision_route_enabled = plan.mixed_precision_fock;
   for (std::size_t system = 0; system < batch_size; ++system) {
     RhfBucketItem& output = outputs[system];
     ScfResult& result = output.scf;
+    // The mixed operator belongs to this item alone: an item that stayed on the
+    // exact operator reports it, with its own cutoff, budget and refinement
+    // cost, regardless of what its batch neighbors resolved.
+    const bool precision_item_mixed =
+        precision_route_enabled && host_mixed_item_census[system] != 0U;
     result.energy = host_energy[system];
-    result.iterations = host_iterations[system];
+    // The refinement iterations are reported as part of the complete solve.
+    result.iterations = precision_item_mixed
+                            ? host_mixed_iterations[system] + host_iterations[system]
+                            : host_iterations[system];
     result.energy_change = host_energy_change[system];
     result.density_rms = host_density_rms[system];
     result.converged = host_converged[system] != 0 && host_failed[system] == 0;
     result.initial_density_used = host.warm_mask[system] != 0;
+    result.precision.requested_mode = requested_precision_mode;
+    result.precision.effective_bits = precision_item_mixed ? 32U : 64U;
+    result.precision.mixed_precision_fock_threshold =
+        precision_item_mixed ? host_mixed_item_threshold[system] : 0.0;
+    result.precision.strict_refinement_applied = precision_item_mixed;
+    result.precision.mixed_precision_reserved_error =
+        precision_item_mixed ? requested_precision_policy.item_budget_error : 0.0;
+    result.precision.refinement_iterations = precision_item_mixed ? host_iterations[system] : 0U;
     const std::size_t density_stride = spin_count * matrix_size;
     result.density.assign(host_density.begin() + system * density_stride,
                           host_density.begin() + (system + 1) * density_stride);
@@ -18232,7 +18469,10 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
   }
   const std::optional<double> mixed_precision_fock_threshold =
       *plan != nullptr && (*plan)->quartet_direct
-          ? configured_mixed_precision_fock_threshold(options.screening_tolerance)
+          ? resolve_mixed_precision_fock_policy(
+                options.precision_mode, options.energy_tolerance, options.screening_tolerance,
+                static_cast<double>((*plan)->mixed_precision_eligible_tile_count))
+                .threshold
           : std::nullopt;
   const bool mixed_precision_fock = mixed_precision_fock_threshold.has_value();
   const bool reuse_converged_fock = reuse_converged_fock_requested() && !mixed_precision_fock;

@@ -67,6 +67,19 @@ std::optional<core::System> density_fitting_auxiliary_template(
   return descriptor.density_fitting_auxiliary_basis->data;
 }
 
+std::optional<vibeqc_precision_mode> precision_mode(const vibeqc_method_descriptor& descriptor) {
+  if (!method_field_present(descriptor, offsetof(vibeqc_method_descriptor, precision_mode),
+                            sizeof(descriptor.precision_mode))) {
+    // Callers built before this field kept the legacy diagnostic switch.
+    return std::nullopt;
+  }
+  const auto mode = descriptor.precision_mode;
+  if (mode != VIBEQC_PRECISION_FP64 && mode != VIBEQC_PRECISION_AUTO) {
+    throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unknown floating-point precision mode");
+  }
+  return mode;
+}
+
 scf::ScfOptions scf_options(const vibeqc_method_descriptor& descriptor) {
   scf::ScfOptions options;
   options.max_iterations = descriptor.max_iterations == 0 ? 100 : descriptor.max_iterations;
@@ -80,6 +93,7 @@ scf::ScfOptions scf_options(const vibeqc_method_descriptor& descriptor) {
   options.density_fitting_mode = density_fitting_mode(descriptor);
   options.density_fitting_relative_threshold = density_fitting_threshold(descriptor);
   options.density_fitting_memory_budget_bytes = density_fitting_memory_budget(descriptor);
+  options.precision_mode = precision_mode(descriptor);
   if (options.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE &&
       (!(options.density_fitting_relative_threshold > 0.0) ||
        !(options.density_fitting_relative_threshold < 1.0) ||
@@ -145,6 +159,7 @@ Result adapt_result(scf::ScfResult native, vibeqc_backend backend) {
   result.convergence.converged = native.converged;
   result.executed_backend = backend;
   result.fock_builds = native.fock_builds;
+  result.precision = native.precision;
   return result;
 }
 

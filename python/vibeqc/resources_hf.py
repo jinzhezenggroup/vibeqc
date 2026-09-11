@@ -256,6 +256,7 @@ def hf_resource_request(
     energy_tolerance=1e-10,
     density_tolerance=1e-8,
     screening_tolerance=1e-12,
+    precision="fp64",
     density_fitting_relative_threshold=1e-10,
     density_fitting_memory_budget_bytes=0,
     name="hf",
@@ -304,6 +305,8 @@ def hf_resource_request(
             raise ValueError("HF numerical controls must be positive finite")
     if density_fitting_relative_threshold >= 1:
         raise ValueError("DF metric threshold must be below one")
+    if precision not in ("fp64", "auto"):
+        raise ValueError("precision must be 'fp64' or 'auto'")
     fitted = density_fitting != "none"
     executed_backend = "cpu" if density_fitting in ("cpu", "cpu_reference") else backend
     if density_fitting == "cuda" and backend != "cuda":
@@ -364,6 +367,7 @@ def hf_resource_request(
         "energy_tolerance": energy_tolerance,
         "density_tolerance": density_tolerance,
         "screening_tolerance": screening_tolerance,
+        "precision": precision,
         "density_fitting_relative_threshold": density_fitting_relative_threshold,
         "density_fitting": density_fitting,
         "density_fitting_memory_budget_bytes": density_fitting_memory_budget_bytes,
@@ -379,7 +383,7 @@ def hf_resource_request(
         method,
         "native-hf-df-v1" if fitted else "native-hf-direct-v1",
         executed_backend,
-        "fp64",
+        precision,
         json.dumps({"items": items}),
         ("energy", "forces"),
         json.dumps(controls, sort_keys=True),
