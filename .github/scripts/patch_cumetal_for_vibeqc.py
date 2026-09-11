@@ -50,6 +50,23 @@ replace_once(
     "cudaDeviceProp reserved ABI slots",
 )
 
+# Clang checks device bodies during its host pass, when __CUDA_ARCH__ is unset.
+# The pinned shim only exposes nan() in the device pass, so generated invalid-
+# domain sentinels otherwise resolve to the host-only libc declaration. Keep
+# the constant-NaN shim callable in both passes, including host CUDA functions.
+replace_once(
+    cuda_header,
+    "#if defined(__CUDA_ARCH__)\n"
+    "static __device__ __forceinline__ double __cumetal_nan(const char*) {\n"
+    '    return __builtin_nan("");\n'
+    "}\n#define nan __cumetal_nan\n#endif\n",
+    "#if defined(__clang__) && defined(__CUDA__)\n"
+    "static __host__ __device__ __forceinline__ double __cumetal_nan(const char*) {\n"
+    '    return __builtin_nan("");\n'
+    "}\n#define nan __cumetal_nan\n#endif\n",
+    "CUDA nan shim during Clang host/device parsing",
+)
+
 cuda_runtime = SOURCE / "runtime/rt/cuda_runtime.cpp"
 replace_once(
     cuda_runtime,
