@@ -29,6 +29,14 @@ def replace_once(path: Path, old: str, new: str, description: str) -> None:
 cuda_header = SOURCE / "runtime/api/cuda_runtime.h"
 replace_once(
     cuda_header,
+    "#pragma once\n",
+    "#pragma once\n"
+    "// Match the pinned provider's cudaRuntimeGetVersion compatibility identity.\n"
+    "#ifndef CUDART_VERSION\n#define CUDART_VERSION 12000\n#endif\n",
+    "CUDA runtime version macro for native toolkit provenance",
+)
+replace_once(
+    cuda_header,
     "    int maxThreadsPerMultiProcessor; // Max threads per SM\n",
     "    int maxThreadsPerMultiProcessor; // Max threads per SM\n"
     "    int maxBlocksPerMultiProcessor;  // Max resident blocks per SM\n"
