@@ -1,5 +1,6 @@
 #include "scf/cuda/rhf_policy.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>

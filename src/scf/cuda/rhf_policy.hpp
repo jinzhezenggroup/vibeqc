@@ -1,6 +1,7 @@
 #ifndef VIBEQC_SCF_CUDA_RHF_POLICY_HPP
 #define VIBEQC_SCF_CUDA_RHF_POLICY_HPP
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 
