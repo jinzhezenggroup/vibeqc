@@ -84,7 +84,8 @@ bool test_indexing(cudaStream_t stream) {
 
   for (std::size_t i = 0; i < size; ++i) {
     const float expected = 2.0F * input[i] + 1.0F;
-    if (std::fabs(output[i] - expected) > 1.0e-6F) {
+    // Negate the passing predicate so NaN is a failure as well as large error.
+    if (!(std::fabs(output[i] - expected) <= 1.0e-6F)) {
       std::fprintf(stderr, "FAIL: indexing[%zu]=%.7g expected=%.7g\n", i,
                    static_cast<double>(output[i]), static_cast<double>(expected));
       return false;
@@ -218,7 +219,7 @@ bool test_cublas(cudaStream_t stream) {
   if (!ok) return false;
 
   for (std::size_t i = 0; i < a.size(); ++i) {
-    if (std::fabs(c[i] - a[i]) > 1.0e-5F) return false;
+    if (!(std::fabs(c[i] - a[i]) <= 1.0e-5F)) return false;
   }
   return true;
 }
