@@ -178,6 +178,8 @@ bool test_cublas(cudaStream_t stream) {
 
   bool ok = check_cublas(cublasCreate(&handle), "cublasCreate") &&
             check_cublas(cublasSetStream(handle, stream), "cublasSetStream") &&
+            check_cublas(cublasSetAtomicsMode(handle, CUBLAS_ATOMICS_NOT_ALLOWED),
+                         "cublasSetAtomicsMode") &&
             check_cuda(cudaMalloc(&workspace, 4096), "cudaMalloc(cuBLAS workspace)") &&
             check_cublas(cublasSetWorkspace(handle, workspace, 4096), "cublasSetWorkspace") &&
             check_cuda(cudaMalloc(reinterpret_cast<void**>(&device_a), 4 * sizeof(float)),
@@ -186,6 +188,12 @@ bool test_cublas(cudaStream_t stream) {
                        "cudaMalloc(SGEMM B)") &&
             check_cuda(cudaMalloc(reinterpret_cast<void**>(&device_c), 4 * sizeof(float)),
                        "cudaMalloc(SGEMM C)");
+  if (ok) {
+    // Exercise the same control used by generated tensor/grid consumers.
+    cublasAtomicsMode_t mode = CUBLAS_ATOMICS_ALLOWED;
+    ok = check_cublas(cublasGetAtomicsMode(handle, &mode), "cublasGetAtomicsMode") &&
+         mode == CUBLAS_ATOMICS_NOT_ALLOWED;
+  }
   if (ok) {
     ok = check_cuda(
              cudaMemcpyAsync(device_a, a.data(), 4 * sizeof(float), cudaMemcpyHostToDevice, stream),
