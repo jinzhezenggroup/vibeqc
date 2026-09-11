@@ -1,0 +1,378 @@
+{
+  "bse_commit": "4adaf1372c7101620ca1a9f3130be9ae97fb8f30",
+  "bse_reported_version": "0.1.dev1+g4adaf1372",
+  "cases": [
+    {
+      "ao_labels": [
+        "0  O 1s    ",
+        "0  O 2s    ",
+        "0  O 2px   ",
+        "0  O 2py   ",
+        "0  O 2pz   ",
+        "1  H 1s    ",
+        "2  H 1s    "
+      ],
+      "atoms": [
+        [
+          "O",
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          "H",
+          [
+            0,
+            -1.43,
+            1.1
+          ]
+        ],
+        [
+          "H",
+          [
+            0,
+            1.43,
+            1.1
+          ]
+        ]
+      ],
+      "changed_atoms": [
+        [
+          "O",
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          "H",
+          [
+            0,
+            -1.43,
+            1.1
+          ]
+        ],
+        [
+          "H",
+          [
+            0.07,
+            1.41,
+            1.1300000000000001
+          ]
+        ]
+      ],
+      "charge": 0,
+      "electrons": [
+        5,
+        5
+      ],
+      "multiplicity": 1,
+      "name": "water_cartesian",
+      "nao": 7,
+      "representation": "cartesian",
+      "source": "sto-3g-ho.json"
+    },
+    {
+      "ao_labels": [
+        "0 O 1s    ",
+        "0 O 2s    ",
+        "0 O 2px   ",
+        "0 O 2py   ",
+        "0 O 2pz   ",
+        "1 H 1s    ",
+        "2 H 1s    "
+      ],
+      "atoms": [
+        [
+          "O",
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          "H",
+          [
+            0,
+            -1.43,
+            1.1
+          ]
+        ],
+        [
+          "H",
+          [
+            0,
+            1.43,
+            1.1
+          ]
+        ]
+      ],
+      "changed_atoms": [
+        [
+          "O",
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          "H",
+          [
+            0,
+            -1.43,
+            1.1
+          ]
+        ],
+        [
+          "H",
+          [
+            0.07,
+            1.41,
+            1.1300000000000001
+          ]
+        ]
+      ],
+      "charge": 0,
+      "electrons": [
+        5,
+        5
+      ],
+      "multiplicity": 1,
+      "name": "water_spherical",
+      "nao": 7,
+      "representation": "spherical",
+      "source": "sto-3g-ho.json"
+    },
+    {
+      "ao_labels": [
+        "0 Fe 1s    ",
+        "0 Fe 2s    ",
+        "0 Fe 2px   ",
+        "0 Fe 2py   ",
+        "0 Fe 2pz   ",
+        "0 Fe 3dxx  ",
+        "0 Fe 3dxy  ",
+        "0 Fe 3dxz  ",
+        "0 Fe 3dyy  ",
+        "0 Fe 3dyz  ",
+        "0 Fe 3dzz  "
+      ],
+      "atoms": [
+        [
+          "Fe",
+          [
+            0,
+            0,
+            0
+          ]
+        ]
+      ],
+      "changed_atoms": [
+        [
+          "Fe",
+          [
+            0.07,
+            -0.02,
+            0.03
+          ]
+        ]
+      ],
+      "charge": 24,
+      "electrons": [
+        1,
+        1
+      ],
+      "multiplicity": 1,
+      "name": "fe_ion_cartesian",
+      "nao": 11,
+      "representation": "cartesian",
+      "source": "synthetic-fe-h.json"
+    },
+    {
+      "ao_labels": [
+        "0 Fe 1s    ",
+        "0 Fe 2s    ",
+        "0 Fe 2px   ",
+        "0 Fe 2py   ",
+        "0 Fe 2pz   ",
+        "0 Fe 3dxy  ",
+        "0 Fe 3dyz  ",
+        "0 Fe 3dz^2 ",
+        "0 Fe 3dxz  ",
+        "0 Fe 3dx2-y2"
+      ],
+      "atoms": [
+        [
+          "Fe",
+          [
+            0,
+            0,
+            0
+          ]
+        ]
+      ],
+      "changed_atoms": [
+        [
+          "Fe",
+          [
+            0.07,
+            -0.02,
+            0.03
+          ]
+        ]
+      ],
+      "charge": 24,
+      "electrons": [
+        1,
+        1
+      ],
+      "multiplicity": 1,
+      "name": "fe_ion_spherical",
+      "nao": 10,
+      "representation": "spherical",
+      "source": "synthetic-fe-h.json"
+    },
+    {
+      "ao_labels": [
+        "0 Fe 1s    ",
+        "0 Fe 2s    ",
+        "0 Fe 2px   ",
+        "0 Fe 2py   ",
+        "0 Fe 2pz   ",
+        "0 Fe 3dxx  ",
+        "0 Fe 3dxy  ",
+        "0 Fe 3dxz  ",
+        "0 Fe 3dyy  ",
+        "0 Fe 3dyz  ",
+        "0 Fe 3dzz  ",
+        "1  H 1s    "
+      ],
+      "atoms": [
+        [
+          "Fe",
+          [
+            0,
+            0,
+            -0.3
+          ]
+        ],
+        [
+          "H",
+          [
+            0.2,
+            0.1,
+            1.7
+          ]
+        ]
+      ],
+      "changed_atoms": [
+        [
+          "Fe",
+          [
+            0,
+            0,
+            -0.3
+          ]
+        ],
+        [
+          "H",
+          [
+            0.27,
+            0.08,
+            1.73
+          ]
+        ]
+      ],
+      "charge": 25,
+      "electrons": [
+        1,
+        1
+      ],
+      "multiplicity": 1,
+      "name": "fe_h_ion_cartesian",
+      "nao": 12,
+      "representation": "cartesian",
+      "source": "synthetic-fe-h.json"
+    },
+    {
+      "ao_labels": [
+        "0 Fe 1s    ",
+        "0 Fe 2s    ",
+        "0 Fe 2px   ",
+        "0 Fe 2py   ",
+        "0 Fe 2pz   ",
+        "0 Fe 3dxy  ",
+        "0 Fe 3dyz  ",
+        "0 Fe 3dz^2 ",
+        "0 Fe 3dxz  ",
+        "0 Fe 3dx2-y2",
+        "1 H 1s    "
+      ],
+      "atoms": [
+        [
+          "Fe",
+          [
+            0,
+            0,
+            -0.3
+          ]
+        ],
+        [
+          "H",
+          [
+            0.2,
+            0.1,
+            1.7
+          ]
+        ]
+      ],
+      "changed_atoms": [
+        [
+          "Fe",
+          [
+            0,
+            0,
+            -0.3
+          ]
+        ],
+        [
+          "H",
+          [
+            0.27,
+            0.08,
+            1.73
+          ]
+        ]
+      ],
+      "charge": 25,
+      "electrons": [
+        1,
+        1
+      ],
+      "multiplicity": 1,
+      "name": "fe_h_ion_spherical",
+      "nao": 11,
+      "representation": "spherical",
+      "source": "synthetic-fe-h.json"
+    }
+  ],
+  "files": {
+    "BSE-LICENSE": "14b5a1c21a9e0966e295b9e3d66c0cee9475ffe5931e74d063c3713e2ae9a496",
+    "cc-pvtz-fe.json": "22d8a30a474519f68fd210e8161dbff349888097abe2ea30f2ba14cafea73dbe",
+    "def2-tzvp-au.json": "302b9e1b70bbcbe47a02ea54ec51445836cecb355fd49379019818c34e35952e",
+    "oracles.npz": "62c4effe98505ccb72e524cfe8673bbd01a405a551d06c60d161b762d059b388",
+    "sto-3g-ho.json": "19720c4b49afc7e153d5929908fa493f76cca0c2c2dcb7c68152b1a6ac01b375",
+    "synthetic-fe-h.json": "f70f6ec8453b7878eb1e404555539f9067576ccc76d8f393424bad0c703c24ad"
+  },
+  "generator_sha256": "925bd2cea85b7bfa7651693260b1211a5751969ca7a4bf223bc24e13d8d90665",
+  "license": "BSD-3-Clause",
+  "numpy": "2.4.6",
+  "pyscf": "2.14.0",
+  "schema": 1,
+  "synthetic_fe_data": "VibeQC original diagnostic basis; GPL-3.0-or-later. Hydrogen is unchanged BSE STO-3G."
+}

@@ -1,19 +1,20 @@
-"""Compatibility specialization for the original ``dppp`` CUDA pilot."""
+"""Compatibility forwarding only; see docs/compiler_architecture.md.
 
-from . import cuda_lowering as _implementation
+Remove after downstream callers have migrated for one release and the legacy
+import compatibility tests are the only repository users. No duplicate IR,
+class definitions or cache implementation belongs here.
+"""
 
-DpppFusedPlan = _implementation.DpppFusedPlan
-_specialize_dppp_identifiers = _implementation._specialize_dppp_identifiers
-build_dppp_fused_plan = _implementation.build_dppp_fused_plan
-dppp_components = _implementation.dppp_components
-emit_dppp_fused_cuda = _implementation.emit_dppp_fused_cuda
-evaluate_dppp_fused_component = _implementation.evaluate_dppp_fused_component
+import sys
+from pathlib import Path
 
-__all__ = [
-    "DpppFusedPlan",
-    "_specialize_dppp_identifiers",
-    "build_dppp_fused_plan",
-    "dppp_components",
-    "emit_dppp_fused_cuda",
-    "evaluate_dppp_fused_component",
-]
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "python"))
+from importlib import import_module
+
+_target = import_module("vibeqc_compiler.integral.dppp_specialization")
+
+if __name__ == "__main__":
+    if hasattr(_target, "main"):
+        raise SystemExit(_target.main())
+else:
+    sys.modules[__name__] = _target

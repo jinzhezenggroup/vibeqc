@@ -1,0 +1,1189 @@
+{
+  "attachments": [
+    {
+      "path": "samples.json",
+      "sha256": "7ea10df0b8c9616ede66380bcb010af55b4bc40f30152561ab15142cccfc8d56"
+    },
+    {
+      "path": "provenance.json",
+      "sha256": "b9a1ba03095f036b472fc5627b52d36def3623aca17a5223e171af413f2e6aa9"
+    },
+    {
+      "path": "summary.json",
+      "sha256": "48f193c0351566b5133bfefd2bf81584e949b2e35113cf3e1eaa456b6b0a584c"
+    }
+  ],
+  "backend_selected": "cuda",
+  "block_errors": {
+    "h2/rhf/density_fitted/batch_four_cold/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4
+      ]
+    },
+    "h2/rhf/density_fitted/batch_four_cold/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4,
+        2,
+        3
+      ]
+    },
+    "h2/rhf/density_fitted/batch_four_warm/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4
+      ]
+    },
+    "h2/rhf/density_fitted/batch_four_warm/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4,
+        2,
+        3
+      ]
+    },
+    "h2/rhf/density_fitted/changed_geometry/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "h2/rhf/density_fitted/changed_geometry/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        2,
+        3
+      ]
+    },
+    "h2/rhf/density_fitted/singlepoint/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "h2/rhf/density_fitted/singlepoint/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        2,
+        3
+      ]
+    },
+    "h2/rhf/density_fitted/warm_replay/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "h2/rhf/density_fitted/warm_replay/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        2,
+        3
+      ]
+    },
+    "h2/rhf/exact/batch_four_cold/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4
+      ]
+    },
+    "h2/rhf/exact/batch_four_cold/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 5.551115123125783e-17,
+      "max_scaled_error": 2.7755575615628914e-09,
+      "passed": true,
+      "rms_error": 7.417989609027187e-18,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4,
+        2,
+        3
+      ]
+    },
+    "h2/rhf/exact/batch_four_warm/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4
+      ]
+    },
+    "h2/rhf/exact/batch_four_warm/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 5.551115123125783e-17,
+      "max_scaled_error": 2.7755575615628914e-09,
+      "passed": true,
+      "rms_error": 1.0490621510628939e-17,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4,
+        2,
+        3
+      ]
+    },
+    "h2/rhf/exact/changed_geometry/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "h2/rhf/exact/changed_geometry/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        2,
+        3
+      ]
+    },
+    "h2/rhf/exact/singlepoint/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "h2/rhf/exact/singlepoint/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        2,
+        3
+      ]
+    },
+    "h2/rhf/exact/warm_replay/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "h2/rhf/exact/warm_replay/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        2,
+        3
+      ]
+    },
+    "h2/uhf/density_fitted/batch_four_cold/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4
+      ]
+    },
+    "h2/uhf/density_fitted/batch_four_cold/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4,
+        2,
+        3
+      ]
+    },
+    "h2/uhf/density_fitted/batch_four_warm/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4
+      ]
+    },
+    "h2/uhf/density_fitted/batch_four_warm/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4,
+        2,
+        3
+      ]
+    },
+    "h2/uhf/density_fitted/changed_geometry/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "h2/uhf/density_fitted/changed_geometry/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        2,
+        3
+      ]
+    },
+    "h2/uhf/density_fitted/singlepoint/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "h2/uhf/density_fitted/singlepoint/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        2,
+        3
+      ]
+    },
+    "h2/uhf/density_fitted/warm_replay/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "h2/uhf/density_fitted/warm_replay/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        2,
+        3
+      ]
+    },
+    "h2/uhf/exact/batch_four_cold/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4
+      ]
+    },
+    "h2/uhf/exact/batch_four_cold/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 5.551115123125783e-17,
+      "max_scaled_error": 2.7755575615628914e-09,
+      "passed": true,
+      "rms_error": 1.1331166295920986e-17,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4,
+        2,
+        3
+      ]
+    },
+    "h2/uhf/exact/batch_four_warm/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4
+      ]
+    },
+    "h2/uhf/exact/batch_four_warm/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 5.551115123125783e-17,
+      "max_scaled_error": 2.7755575615628914e-09,
+      "passed": true,
+      "rms_error": 1.1331166295920986e-17,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4,
+        2,
+        3
+      ]
+    },
+    "h2/uhf/exact/changed_geometry/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "h2/uhf/exact/changed_geometry/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        2,
+        3
+      ]
+    },
+    "h2/uhf/exact/singlepoint/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "h2/uhf/exact/singlepoint/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        2,
+        3
+      ]
+    },
+    "h2/uhf/exact/warm_replay/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "h2/uhf/exact/warm_replay/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        2,
+        3
+      ]
+    },
+    "nbf=16/density_fitted/coulomb": {
+      "atol": 2e-11,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        256
+      ]
+    },
+    "nbf=16/density_fitted/exchange": {
+      "atol": 2e-11,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        256
+      ]
+    },
+    "nbf=2/density_fitted/coulomb": {
+      "atol": 2e-11,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        4
+      ]
+    },
+    "nbf=2/density_fitted/exchange": {
+      "atol": 2e-11,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        4
+      ]
+    },
+    "water/rhf/density_fitted/batch_four_cold/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4
+      ]
+    },
+    "water/rhf/density_fitted/batch_four_cold/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4,
+        3,
+        3
+      ]
+    },
+    "water/rhf/density_fitted/batch_four_warm/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4
+      ]
+    },
+    "water/rhf/density_fitted/batch_four_warm/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4,
+        3,
+        3
+      ]
+    },
+    "water/rhf/density_fitted/changed_geometry/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "water/rhf/density_fitted/changed_geometry/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        3,
+        3
+      ]
+    },
+    "water/rhf/density_fitted/singlepoint/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "water/rhf/density_fitted/singlepoint/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        3,
+        3
+      ]
+    },
+    "water/rhf/density_fitted/warm_replay/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "water/rhf/density_fitted/warm_replay/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        3,
+        3
+      ]
+    },
+    "water/rhf/exact/batch_four_cold/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4
+      ]
+    },
+    "water/rhf/exact/batch_four_cold/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 5.502542865798432e-15,
+      "max_scaled_error": 2.751271432899216e-07,
+      "passed": true,
+      "rms_error": 8.538284158551121e-16,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4,
+        3,
+        3
+      ]
+    },
+    "water/rhf/exact/batch_four_warm/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4
+      ]
+    },
+    "water/rhf/exact/batch_four_warm/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 7.979727989493313e-15,
+      "max_scaled_error": 3.9898639947466563e-07,
+      "passed": true,
+      "rms_error": 1.0975048171610487e-15,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4,
+        3,
+        3
+      ]
+    },
+    "water/rhf/exact/changed_geometry/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "water/rhf/exact/changed_geometry/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 3.524958103184872e-15,
+      "max_scaled_error": 1.762479051592436e-07,
+      "passed": true,
+      "rms_error": 8.562455480825981e-16,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        3,
+        3
+      ]
+    },
+    "water/rhf/exact/singlepoint/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "water/rhf/exact/singlepoint/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 2.1649348980190553e-15,
+      "max_scaled_error": 1.0824674490095276e-07,
+      "passed": true,
+      "rms_error": 5.871006708677738e-16,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        3,
+        3
+      ]
+    },
+    "water/rhf/exact/warm_replay/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "water/rhf/exact/warm_replay/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 2.4702462297909733e-15,
+      "max_scaled_error": 1.2351231148954867e-07,
+      "passed": true,
+      "rms_error": 6.490442120884755e-16,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        3,
+        3
+      ]
+    },
+    "water/uhf/density_fitted/batch_four_cold/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4
+      ]
+    },
+    "water/uhf/density_fitted/batch_four_cold/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4,
+        3,
+        3
+      ]
+    },
+    "water/uhf/density_fitted/batch_four_warm/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4
+      ]
+    },
+    "water/uhf/density_fitted/batch_four_warm/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4,
+        3,
+        3
+      ]
+    },
+    "water/uhf/density_fitted/changed_geometry/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "water/uhf/density_fitted/changed_geometry/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        3,
+        3
+      ]
+    },
+    "water/uhf/density_fitted/singlepoint/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "water/uhf/density_fitted/singlepoint/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        3,
+        3
+      ]
+    },
+    "water/uhf/density_fitted/warm_replay/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "water/uhf/density_fitted/warm_replay/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        3,
+        3
+      ]
+    },
+    "water/uhf/exact/batch_four_cold/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4
+      ]
+    },
+    "water/uhf/exact/batch_four_cold/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 6.800116025829084e-15,
+      "max_scaled_error": 3.400058012914542e-07,
+      "passed": true,
+      "rms_error": 9.87515108336697e-16,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4,
+        3,
+        3
+      ]
+    },
+    "water/uhf/exact/batch_four_warm/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4
+      ]
+    },
+    "water/uhf/exact/batch_four_warm/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 9.034439862887211e-15,
+      "max_scaled_error": 4.5172199314436057e-07,
+      "passed": true,
+      "rms_error": 1.1582973970845097e-15,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        4,
+        3,
+        3
+      ]
+    },
+    "water/uhf/exact/changed_geometry/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "water/uhf/exact/changed_geometry/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 2.733924198139448e-15,
+      "max_scaled_error": 1.366962099069724e-07,
+      "passed": true,
+      "rms_error": 6.440279041013863e-16,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        3,
+        3
+      ]
+    },
+    "water/uhf/exact/singlepoint/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "water/uhf/exact/singlepoint/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 3.2335245592207684e-15,
+      "max_scaled_error": 1.6167622796103842e-07,
+      "passed": true,
+      "rms_error": 7.191141651035102e-16,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        3,
+        3
+      ]
+    },
+    "water/uhf/exact/warm_replay/energy": {
+      "atol": 2e-09,
+      "max_absolute_error": 0.0,
+      "max_scaled_error": 0.0,
+      "passed": true,
+      "rms_error": 0.0,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1
+      ]
+    },
+    "water/uhf/exact/warm_replay/forces": {
+      "atol": 2e-08,
+      "max_absolute_error": 1.6930901125533637e-15,
+      "max_scaled_error": 8.465450562766819e-08,
+      "passed": true,
+      "rms_error": 5.513837965861244e-16,
+      "rtol": 0.0,
+      "shape": [
+        7,
+        1,
+        3,
+        3
+      ]
+    }
+  },
+  "compilation": {
+    "reason": "Production Release/FAST_COMPILE=OFF builds are identified; complete matched compilation timing was not collected.",
+    "seconds": null
+  },
+  "device": "NVIDIA GeForce RTX 5090, GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8, 580.95.05",
+  "hardware": {
+    "reason": null,
+    "status": "pass"
+  },
+  "hash_reasons": {
+    "ir": "A complete legacy HF endpoint composes several existing integral and solver implementations; no single IntegralIR identifies the entire endpoint. Exact native source identity, explicit mathematical inputs, actual backend and prepared execution diagnostics are retained."
+  },
+  "hashes": {
+    "equation": "5854249658b2a54ba06ab469eb80d19bc0f785522fbecf399e6e01376de81f53",
+    "ir": null,
+    "schedule": "0b6339f3eede1fc9934ce823e4c2551cb8e8dddbd59e56e422116d8365c84ab3",
+    "source": "62a3c3743c86564191b54821e76a6d4f0f1e527e96ef4f80709e28069d10c303"
+  },
+  "inputs_hash": "c2e043e630bdd6de69676d439c2509874384479d40031fba94a31b9f2f45e5cd",
+  "memory": {
+    "allocated_bytes": null,
+    "peak_bytes": null,
+    "reason": "This study retains existing plan allocation diagnostics but does not measure complete endpoint peak memory."
+  },
+  "performance": {
+    "reason": "Speedup promotion is outside this architecture study; complete endpoint timings and explicit non-regression review are retained in summary.json.",
+    "status": "not-run"
+  },
+  "residuals": {},
+  "revision": "913fb20a25aab87363b19e9d788580230493b688",
+  "schema": "vibeqc.validation",
+  "schema_version": 1,
+  "settings": {
+    "baseline_revision": "3da58410bb02a903ea6341a7caac0afc9314355b",
+    "comparison_scope": "Architecture non-regression; no speedup promotion",
+    "device": "cuda",
+    "fast_compile": false,
+    "same_approximation": true
+  },
+  "solver_iterations": [],
+  "solver_trace_reason": "not exposed by executor",
+  "stages": {
+    "compilation": {
+      "reason": null,
+      "status": "pass"
+    },
+    "endpoint": {
+      "reason": null,
+      "status": "pass"
+    },
+    "numerical": {
+      "reason": null,
+      "status": "pass"
+    },
+    "production": {
+      "reason": "no evidence registered",
+      "status": "not-run"
+    },
+    "representation": {
+      "reason": "no evidence registered",
+      "status": "not-run"
+    },
+    "source": {
+      "reason": "no evidence registered",
+      "status": "not-run"
+    }
+  },
+  "subject": "Independent Fock provider same-path cuda endpoints",
+  "tier": "endpoint",
+  "timings": [],
+  "toolchain": {
+    "build": {
+      "CMAKE_BUILD_TYPE": "Release",
+      "CMAKE_CUDA_ARCHITECTURES": "120",
+      "CMAKE_CUDA_COMPILER": "/group/software/cuda-12.9.1/bin/nvcc",
+      "CMAKE_CXX_COMPILER": "/usr/bin/c++",
+      "VIBEQC_AOT_PROFILE": "auto",
+      "VIBEQC_CUDA_FAST_COMPILE": "OFF",
+      "VIBEQC_CUDA_SPLIT_COMPILE_THREADS": "1",
+      "VIBEQC_ENABLE_AOT_SHELLS": "ON"
+    },
+    "cxx": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0",
+    "numpy": "2.4.6",
+    "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0",
+    "python": "3.11.14 (main, Feb 12 2026, 00:42:50) [Clang 21.1.4 ]"
+  }
+}

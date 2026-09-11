@@ -1,6 +1,7 @@
 #ifndef VIBEQC_SCF_MEAN_FIELD_HPP
 #define VIBEQC_SCF_MEAN_FIELD_HPP
 
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -13,6 +14,52 @@ namespace vibeqc::scf {
 
 struct CudaDensityFittingMetricDiagnostic;
 struct CudaDensityFittingJkPlan;
+class PreparedFockPlan;
+
+/** Validate controls and derive the requested value/force capability for this
+ * execution without changing the immutable prepared method request. */
+ResolvedFockBuild fock_strategy_for_execution(const ScfOptions& options);
+ScfResult run_prepared_fock_strategy(const PreparedFockPlan& plan, const ScfOptions& options,
+                                     const std::vector<double>* initial_density = nullptr);
+
+/** Reuse independent CUDA sources when immutable inputs match. Build a new
+ * candidate completely before replacing cached sources; fused standard HF
+ * and the existing CPU storage lifetime retain their established dispatch. */
+ScfResult run_fock_strategy_cached(std::unique_ptr<PreparedFockPlan>& cache,
+                                   const core::System& system, const core::System* auxiliary,
+                                   const ScfOptions& options, int device_id,
+                                   const std::vector<double>* initial_density = nullptr);
+
+/** Rebuild only the source overlap on the CPU and apply the shared SCF
+ * ensemble-density guard (Hermiticity, metric occupations, electron/spin trace).
+ * This does not assert target compatibility or target convergence. */
+void validate_hf_warm_density(const core::System& source, vibeqc_method method,
+                              const std::vector<double>& density);
+
+/** Execute the existing CPU SCF solver with an explicitly resolved independent
+ * J/K model. Iterations, final energy and analytic forces share one provider
+ * binding. A null auxiliary pointer uses the orbital basis for requested DF
+ * terms. This does not add XC or advertise a complete DFT method.
+ */
+ScfResult run_cpu_fock_strategy(const core::System& system, const core::System* auxiliary,
+                                const ScfOptions& options,
+                                const std::vector<double>* initial_density = nullptr);
+
+/** General independent CUDA route. Reuses host DIIS/eigensolve/finalization
+ * control with CUDA direct/DF J/K and matched two-electron derivatives. The
+ * standard HF entry retains its existing fused device solver separately. */
+ScfResult run_cuda_independent_fock_strategy(const core::System& system,
+                                             const core::System* auxiliary,
+                                             const ScfOptions& options, int device_id,
+                                             const std::vector<double>* initial_density = nullptr);
+
+/** Method-neutral single-item dispatch. CPU independent providers and existing
+ * CUDA fused HF schedules share this boundary; callers supply semantics through
+ * options.resolved_fock_build instead of branching on a combined DF enum.
+ */
+ScfResult run_fock_strategy(const core::System& system, const core::System* auxiliary,
+                            const ScfOptions& options, int device_id,
+                            const std::vector<double>* initial_density = nullptr);
 
 /** Run closed-shell RHF and assemble its variational analytic gradient. */
 ScfResult run_rhf(const core::System& system, const ScfOptions& options,

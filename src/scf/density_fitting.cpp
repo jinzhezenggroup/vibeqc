@@ -7,6 +7,8 @@
 #include <stdexcept>
 #include <vector>
 
+#include "molecule/basis.hpp"
+
 namespace vibeqc::scf {
 namespace {
 
@@ -181,6 +183,14 @@ std::vector<double> build_coulomb(const DensityFittingThreeCenter& three_center,
   return coulomb;
 }
 
+// Keep this hot scalar contraction aligned independently of surrounding
+// dispatch changes. On GCC/Zen 2, a 16-byte function shift made the unchanged
+// loops about 31% slower at nbf=16; 32-byte alignment restores the baseline
+// without changing arithmetic or its reduction order. Other compilers may
+// ignore this optional layout hint.
+#if __has_cpp_attribute(gnu::aligned)
+[[gnu::aligned(32)]]
+#endif
 std::vector<double> build_exchange(const DensityFittingThreeCenter& three_center,
                                    const std::vector<double>& density) {
   const std::size_t nbf = three_center.nbf;
@@ -263,99 +273,11 @@ std::vector<double> metric_pseudoinverse(const integrals::DensityFittingIntegral
 
 std::vector<double> metric_pseudoinverse_derivative(
     const integrals::DensityFittingIntegralData& data, const std::vector<double>& inverse,
-    const double* metric_derivative) {
-  const std::size_t naux = data.naux;
-  std::vector<double> symmetric_metric(naux * naux, 0.0);
-  std::vector<double> symmetric_derivative(naux * naux, 0.0);
-  for (std::size_t row = 0; row < naux; ++row) {
-    for (std::size_t column = 0; column < naux; ++column) {
-      symmetric_metric[index(row, column, naux)] =
-          0.5 * (data.metric[index(row, column, naux)] + data.metric[index(column, row, naux)]);
-      symmetric_derivative[index(row, column, naux)] =
-          0.5 * (metric_derivative[index(row, column, naux)] +
-                 metric_derivative[index(column, row, naux)]);
-    }
-  }
-
-  // For a fixed-rank symmetric positive-semidefinite metric, the derivative
-  // of the Moore-Penrose inverse is
-  //   dM+ = -M+ dM M+ + M+^2 dM (I-MM+) + (I-M+M) dM M+^2.
-  // The projector terms are essential when the thresholded null space mixes
-  // with retained auxiliary directions; the common -M+ dM M+ shortcut is
-  // correct only for a strictly full-rank metric.
-  std::vector<double> metric_inverse_squared(naux * naux, 0.0);
-  std::vector<double> left_null_projector(naux * naux, 0.0);
-  std::vector<double> right_null_projector(naux * naux, 0.0);
-  for (std::size_t row = 0; row < naux; ++row) {
-    for (std::size_t column = 0; column < naux; ++column) {
-      double inverse_squared = 0.0;
-      double metric_times_inverse = 0.0;
-      double inverse_times_metric = 0.0;
-      for (std::size_t item = 0; item < naux; ++item) {
-        inverse_squared += inverse[index(row, item, naux)] * inverse[index(item, column, naux)];
-        metric_times_inverse +=
-            symmetric_metric[index(row, item, naux)] * inverse[index(item, column, naux)];
-        inverse_times_metric +=
-            inverse[index(row, item, naux)] * symmetric_metric[index(item, column, naux)];
-      }
-      metric_inverse_squared[index(row, column, naux)] = inverse_squared;
-      left_null_projector[index(row, column, naux)] =
-          (row == column ? 1.0 : 0.0) - metric_times_inverse;
-      right_null_projector[index(row, column, naux)] =
-          (row == column ? 1.0 : 0.0) - inverse_times_metric;
-    }
-  }
-
-  // Evaluate the three matrix products as O(naux^3) contractions.  The
-  // original four-index expansion is algebraically identical but becomes a
-  // dominant cost for realistic auxiliary bases (and is unnecessary because
-  // all factors are dense square matrices).
-  const auto multiply_square = [&](const std::vector<double>& first,
-                                   const std::vector<double>& second) {
-    std::vector<double> product(naux * naux, 0.0);
-    for (std::size_t row = 0; row < naux; ++row) {
-      for (std::size_t item = 0; item < naux; ++item) {
-        const double value = first[index(row, item, naux)];
-        if (value == 0.0) continue;
-        for (std::size_t column = 0; column < naux; ++column) {
-          product[index(row, column, naux)] += value * second[index(item, column, naux)];
-        }
-      }
-    }
-    return product;
-  };
-  const std::vector<double> inverse_derivative_left =
-      multiply_square(inverse, symmetric_derivative);
-  const std::vector<double> first_term = multiply_square(inverse_derivative_left, inverse);
-  const std::vector<double> squared_derivative_left =
-      multiply_square(metric_inverse_squared, symmetric_derivative);
-  const std::vector<double> second_term =
-      multiply_square(squared_derivative_left, left_null_projector);
-  const std::vector<double> null_derivative_left =
-      multiply_square(right_null_projector, symmetric_derivative);
-  const std::vector<double> third_term =
-      multiply_square(null_derivative_left, metric_inverse_squared);
-
-  std::vector<double> derivative(naux * naux, 0.0);
-  for (std::size_t row = 0; row < naux; ++row) {
-    for (std::size_t column = 0; column < naux; ++column) {
-      const std::size_t item = index(row, column, naux);
-      derivative[item] = -first_term[item] + second_term[item] + third_term[item];
-    }
-  }
-  // Symmetry is an invariant of the Coulomb metric and its Moore-Penrose
-  // inverse. Enforce it explicitly so tiny eigensolver/BLAS roundoff cannot
-  // leak a skew component into the subsequent quadratic contraction.
-  for (std::size_t row = 0; row < naux; ++row) {
-    for (std::size_t column = row + 1; column < naux; ++column) {
-      const double symmetric =
-          0.5 * (derivative[index(row, column, naux)] + derivative[index(column, row, naux)]);
-      derivative[index(row, column, naux)] = symmetric;
-      derivative[index(column, row, naux)] = symmetric;
-    }
-  }
-  require_finite(derivative, "DF metric pseudoinverse derivative is non-finite");
-  return derivative;
+    const double* metric_derivative, double relative_threshold = 0.0) {
+  const std::size_t elements = data.naux * data.naux;
+  return density_fitting_metric_inverse_response(
+      data.metric, inverse, std::vector<double>(metric_derivative, metric_derivative + elements),
+      data.naux, relative_threshold);
 }
 
 void validate_gradient_density(const std::vector<double>& density, std::size_t nbf,
@@ -468,8 +390,7 @@ double exchange_quadratic_derivative(const integrals::DensityFittingIntegralData
   return derivative;
 }
 
-std::size_t workspace_bytes(std::size_t batch_tile, std::size_t ao_pair_tile,
-                            std::size_t auxiliary_tile, std::size_t occupied_tile,
+std::size_t workspace_bytes(std::size_t ao_pair_tile, std::size_t auxiliary_tile,
                             std::size_t batch_size, std::size_t nbf, std::size_t naux,
                             std::size_t metric_bytes, std::size_t fixed_device_bytes) {
   // The CUDA plan keeps seven AO matrices and one auxiliary vector for the
@@ -496,24 +417,19 @@ std::size_t workspace_bytes(std::size_t batch_tile, std::size_t ao_pair_tile,
       7.0L * matrix_elements + static_cast<long double>(batch_size) * naux + 3.0L * tile_elements +
       ((auxiliary_tile < naux || ao_pair_tile < nbf * nbf) ? tile_elements : 0.0L) +
       ((auxiliary_tile < naux || ao_pair_tile < nbf * nbf) ? 0.0L : tensor_elements);
-  // Force-response scratch is allocated one system/coordinate at a time by
-  // the finalizer and is not part of the persistent contraction-plan budget.
-  // It is still reported in CUDA diagnostics as part of peak_device_bytes.
+  // Generated response staging has its own budget in the finalizer; this
+  // planner covers value/SCF storage and reserves no retired coordinate scratch.
   // One-electron/Pulay assembly and the lazy device SCF driver retain up to
   // nine AO matrices per active batch item (the unrestricted state is the
   // upper bound).  Charge the full upper bound here so a positive budget
   // cannot be consumed entirely by J/K before the SCF state is allocated.
   const long double one_electron_doubles =
       9.0L * static_cast<long double>(batch_size) * static_cast<long double>(nbf) * nbf;
-  const long double force_scratch_doubles =
-      2.0L * tile_elements + 2.0L * naux * naux +
-      2.0L * static_cast<long double>(batch_tile) * static_cast<long double>(nbf) * nbf +
-      static_cast<long double>(batch_tile) * occupied_tile * nbf;
-  const long double bytes = static_cast<long double>(fixed_device_bytes) +
-                            static_cast<long double>(metric_bytes) * batch_size +
-                            (setup_doubles + solver_workspace_doubles + contraction_doubles +
-                             one_electron_doubles + force_scratch_doubles) *
-                                sizeof(double);
+  const long double bytes =
+      static_cast<long double>(fixed_device_bytes) +
+      static_cast<long double>(metric_bytes) * batch_size +
+      (setup_doubles + solver_workspace_doubles + contraction_doubles + one_electron_doubles) *
+          sizeof(double);
   if (bytes > static_cast<long double>(std::numeric_limits<std::size_t>::max())) {
     return std::numeric_limits<std::size_t>::max();
   }
@@ -530,7 +446,7 @@ std::vector<double> density_fitting_metric_pseudoinverse(
 
 std::vector<double> density_fitting_metric_pseudoinverse_derivative(
     const integrals::DensityFittingIntegralData& integrals, const std::vector<double>& inverse,
-    std::size_t coordinate) {
+    std::size_t coordinate, double relative_threshold) {
   validate_density_fitting_derivative_data(integrals);
   if (inverse.size() != integrals.naux * integrals.naux) {
     throw std::invalid_argument("DF metric pseudoinverse dimensions are inconsistent");
@@ -540,7 +456,87 @@ std::vector<double> density_fitting_metric_pseudoinverse_derivative(
   }
   const std::size_t metric_elements = integrals.naux * integrals.naux;
   return metric_pseudoinverse_derivative(
-      integrals, inverse, integrals.metric_derivative.data() + coordinate * metric_elements);
+      integrals, inverse, integrals.metric_derivative.data() + coordinate * metric_elements,
+      relative_threshold);
+}
+
+std::vector<double> density_fitting_metric_inverse_response(const std::vector<double>& metric,
+                                                            const std::vector<double>& inverse,
+                                                            const std::vector<double>& response,
+                                                            std::size_t n,
+                                                            double relative_threshold) {
+  const auto elements = checked_matrix_elements(n, "DF metric response dimension is invalid");
+  if (metric.size() != elements || inverse.size() != elements || response.size() != elements ||
+      !std::isfinite(relative_threshold) || relative_threshold < 0.0 || relative_threshold >= 1.0)
+    throw std::invalid_argument("DF metric response dimensions or threshold are inconsistent");
+  require_finite(metric, "DF metric response requires a finite metric");
+  require_finite(inverse, "DF metric response requires a finite inverse");
+  require_finite(response, "DF metric response requires finite weights");
+  std::vector<double> symmetric(elements), weights(elements);
+  for (std::size_t i = 0; i < n; ++i)
+    for (std::size_t j = 0; j < n; ++j) {
+      symmetric[i * n + j] = 0.5 * (metric[i * n + j] + metric[j * n + i]);
+      weights[i * n + j] = 0.5 * (response[i * n + j] + response[j * n + i]);
+    }
+  const auto eigen = symmetric_eigen(std::move(symmetric), n);
+  const auto& q = eigen.vectors;
+  const double largest = eigen.values.back();
+  if (!(largest > 0.0)) throw std::runtime_error("DF metric has no positive response subspace");
+  const double cutoff = relative_threshold * largest;
+  // Match the eigensolver's relative resolution. A cutoff inside this interval
+  // cannot define a reproducible derivative even if this call chooses a rank.
+  const double resolution = 128 * std::numeric_limits<double>::epsilon() * largest;
+  std::vector<bool> retained(n);
+  std::vector<double> temp(elements, 0.0), transformed(elements, 0.0);
+  for (std::size_t i = 0; i < n; ++i) {
+    double inverse_eigenvalue = 0.0;
+    for (std::size_t row = 0; row < n; ++row)
+      for (std::size_t column = 0; column < n; ++column)
+        inverse_eigenvalue += q[row * n + i] * inverse[row * n + column] * q[column * n + i];
+    retained[i] = eigen.values[i] * inverse_eigenvalue > 0.5;
+    if (relative_threshold > 0.0) {
+      if (std::abs(eigen.values[i] - cutoff) <= resolution)
+        throw std::runtime_error("DF metric rank crossing: eigenvalue is unresolved at the cutoff");
+      if (retained[i] != (eigen.values[i] > cutoff))
+        throw std::invalid_argument("DF metric inverse active subspace differs from its threshold");
+    }
+  }
+  if (std::none_of(retained.begin(), retained.end(), [](bool keep) { return keep; }))
+    throw std::invalid_argument("DF metric inverse retains no positive subspace");
+  // Q^T E Q and Q (L .* Ehat) Q^T are four cubic matrix products. The divided
+  // differences handle subspace motion, including finite discarded eigenvalues.
+  for (std::size_t i = 0; i < n; ++i)
+    for (std::size_t j = 0; j < n; ++j)
+      for (std::size_t k = 0; k < n; ++k) temp[i * n + j] += weights[i * n + k] * q[k * n + j];
+  for (std::size_t i = 0; i < n; ++i)
+    for (std::size_t j = 0; j < n; ++j) {
+      for (std::size_t k = 0; k < n; ++k) transformed[i * n + j] += q[k * n + i] * temp[k * n + j];
+      double divided = 0.0;
+      if (retained[i] && retained[j]) {
+        divided = -1.0 / (eigen.values[i] * eigen.values[j]);
+      } else if (retained[i] != retained[j]) {
+        const double gap = eigen.values[i] - eigen.values[j];
+        if (std::abs(gap) <= resolution)
+          throw std::runtime_error("DF metric retained/discarded subspaces are unresolved");
+        divided = ((retained[i] ? 1.0 / eigen.values[i] : 0.0) -
+                   (retained[j] ? 1.0 / eigen.values[j] : 0.0)) /
+                  gap;
+      }
+      transformed[i * n + j] *= divided;
+    }
+  std::fill(temp.begin(), temp.end(), 0.0);
+  std::vector<double> result(elements, 0.0);
+  for (std::size_t i = 0; i < n; ++i)
+    for (std::size_t j = 0; j < n; ++j)
+      for (std::size_t k = 0; k < n; ++k) temp[i * n + j] += q[i * n + k] * transformed[k * n + j];
+  for (std::size_t i = 0; i < n; ++i)
+    for (std::size_t j = 0; j < n; ++j)
+      for (std::size_t k = 0; k < n; ++k) result[i * n + j] += temp[i * n + k] * q[j * n + k];
+  for (std::size_t i = 0; i < n; ++i)
+    for (std::size_t j = i + 1; j < n; ++j)
+      result[i * n + j] = result[j * n + i] = 0.5 * (result[i * n + j] + result[j * n + i]);
+  require_finite(result, "DF metric inverse response is non-finite");
+  return result;
 }
 
 DensityFittingMetricFactor factor_density_fitting_metric(const std::vector<double>& metric,
@@ -633,41 +629,47 @@ DensityFittingThreeCenter orthonormalize_density_fitting_three_center(
 }
 
 DensityFittingRhfJk build_density_fitting_rhf_jk(const DensityFittingThreeCenter& three_center,
-                                                 const std::vector<double>& density) {
+                                                 const std::vector<double>& density,
+                                                 JkTermSelection terms) {
   validate_three_center(three_center);
   const std::size_t matrix_elements =
       checked_matrix_elements(three_center.nbf, "DF orbital dimension is invalid");
   validate_density(density, matrix_elements);
   return {
       three_center.nbf,
-      build_coulomb(three_center, density),
-      build_exchange(three_center, density),
+      terms.coulomb ? build_coulomb(three_center, density) : std::vector<double>{},
+      terms.exchange ? build_exchange(three_center, density) : std::vector<double>{},
   };
 }
 
 DensityFittingUhfJk build_density_fitting_uhf_jk(const DensityFittingThreeCenter& three_center,
                                                  const std::vector<double>& alpha_density,
-                                                 const std::vector<double>& beta_density) {
+                                                 const std::vector<double>& beta_density,
+                                                 JkTermSelection terms) {
   validate_three_center(three_center);
   const std::size_t matrix_elements =
       checked_matrix_elements(three_center.nbf, "DF orbital dimension is invalid");
   validate_density(alpha_density, matrix_elements);
   validate_density(beta_density, matrix_elements);
-  std::vector<double> total_density(matrix_elements, 0.0);
-  for (std::size_t element = 0; element < matrix_elements; ++element) {
-    total_density[element] = alpha_density[element] + beta_density[element];
+  std::vector<double> total_density;
+  if (terms.coulomb) {
+    total_density.resize(matrix_elements);
+    for (std::size_t element = 0; element < matrix_elements; ++element)
+      total_density[element] = alpha_density[element] + beta_density[element];
   }
   return {
       three_center.nbf,
-      build_coulomb(three_center, total_density),
-      build_exchange(three_center, alpha_density),
-      build_exchange(three_center, beta_density),
+      terms.coulomb ? build_coulomb(three_center, total_density) : std::vector<double>{},
+      terms.exchange ? build_exchange(three_center, alpha_density) : std::vector<double>{},
+      terms.exchange ? build_exchange(three_center, beta_density) : std::vector<double>{},
   };
 }
 
 DensityFittingRhfGradient build_density_fitting_rhf_gradient(
     const integrals::DensityFittingIntegralData& integrals, const std::vector<double>& density,
-    double relative_threshold) {
+    double relative_threshold, JkCoefficients coefficients) {
+  if (!std::isfinite(coefficients.coulomb) || !std::isfinite(coefficients.exchange))
+    throw std::invalid_argument("DF gradient coefficients must be finite");
   validate_density_fitting_derivative_data(integrals);
   validate_gradient_density(density, integrals.nbf, "DF RHF gradient density is inconsistent");
   const std::vector<double> inverse = metric_pseudoinverse(integrals, relative_threshold);
@@ -683,16 +685,22 @@ DensityFittingRhfGradient build_density_fitting_rhf_gradient(
     const double* three_center_derivative =
         integrals.three_center_derivative.data() + coordinate * three_center_elements;
     const std::vector<double> inverse_derivative =
-        metric_pseudoinverse_derivative(integrals, inverse, metric_derivative);
-    const double coulomb = coulomb_quadratic_derivative(
-        integrals, density, inverse, inverse_derivative, three_center_derivative);
-    const double exchange = exchange_quadratic_derivative(
-        integrals, density, inverse, inverse_derivative, three_center_derivative);
+        metric_pseudoinverse_derivative(integrals, inverse, metric_derivative, relative_threshold);
+    const double coulomb =
+        coefficients.coulomb == 0.0
+            ? 0.0
+            : coulomb_quadratic_derivative(integrals, density, inverse, inverse_derivative,
+                                           three_center_derivative);
+    const double exchange =
+        coefficients.exchange == 0.0
+            ? 0.0
+            : exchange_quadratic_derivative(integrals, density, inverse, inverse_derivative,
+                                            three_center_derivative);
     // `coulomb` already differentiates 1/2 (P|P)DF, while `exchange`
-    // differentiates the unweighted exchange quadratic. Apply the RHF
-    // exchange coefficient here, matching the closed-shell convention used
-    // throughout the existing SCF implementation.
-    result.derivative[coordinate] = coulomb - 0.25 * exchange;
+    // differentiates the unweighted exchange quadratic. The signed Fock
+    // exchange coefficient therefore needs the extra energy factor 1/2.
+    result.derivative[coordinate] =
+        coefficients.coulomb * coulomb + 0.5 * coefficients.exchange * exchange;
     result.forces[coordinate] = -result.derivative[coordinate];
   }
   return result;
@@ -701,7 +709,9 @@ DensityFittingRhfGradient build_density_fitting_rhf_gradient(
 DensityFittingUhfGradient build_density_fitting_uhf_gradient(
     const integrals::DensityFittingIntegralData& integrals,
     const std::vector<double>& alpha_density, const std::vector<double>& beta_density,
-    double relative_threshold) {
+    double relative_threshold, JkCoefficients coefficients) {
+  if (!std::isfinite(coefficients.coulomb) || !std::isfinite(coefficients.exchange))
+    throw std::invalid_argument("DF gradient coefficients must be finite");
   validate_density_fitting_derivative_data(integrals);
   validate_gradient_density(alpha_density, integrals.nbf,
                             "DF UHF alpha gradient density is inconsistent");
@@ -725,16 +735,26 @@ DensityFittingUhfGradient build_density_fitting_uhf_gradient(
     const double* three_center_derivative =
         integrals.three_center_derivative.data() + coordinate * three_center_elements;
     const std::vector<double> inverse_derivative =
-        metric_pseudoinverse_derivative(integrals, inverse, metric_derivative);
-    const double coulomb = coulomb_quadratic_derivative(
-        integrals, total_density, inverse, inverse_derivative, three_center_derivative);
-    const double alpha_exchange = exchange_quadratic_derivative(
-        integrals, alpha_density, inverse, inverse_derivative, three_center_derivative);
-    const double beta_exchange = exchange_quadratic_derivative(
-        integrals, beta_density, inverse, inverse_derivative, three_center_derivative);
-    // `coulomb` already differentiates 1/2 J(Pa+Pb), and each exchange
-    // quadratic receives the UHF -1/2 coefficient.
-    result.derivative[coordinate] = coulomb - 0.5 * alpha_exchange - 0.5 * beta_exchange;
+        metric_pseudoinverse_derivative(integrals, inverse, metric_derivative, relative_threshold);
+    const double coulomb =
+        coefficients.coulomb == 0.0
+            ? 0.0
+            : coulomb_quadratic_derivative(integrals, total_density, inverse, inverse_derivative,
+                                           three_center_derivative);
+    const double alpha_exchange =
+        coefficients.exchange == 0.0
+            ? 0.0
+            : exchange_quadratic_derivative(integrals, alpha_density, inverse, inverse_derivative,
+                                            three_center_derivative);
+    const double beta_exchange =
+        coefficients.exchange == 0.0
+            ? 0.0
+            : exchange_quadratic_derivative(integrals, beta_density, inverse, inverse_derivative,
+                                            three_center_derivative);
+    // Keep the established spin-by-spin summation order for standard UHF.
+    result.derivative[coordinate] = coefficients.coulomb * coulomb +
+                                    0.5 * coefficients.exchange * alpha_exchange +
+                                    0.5 * coefficients.exchange * beta_exchange;
     result.forces[coordinate] = -result.derivative[coordinate];
   }
   return result;
@@ -862,9 +882,8 @@ DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch_size, std::s
       false,
   };
   auto update_bytes = [&]() {
-    plan.peak_workspace_bytes =
-        workspace_bytes(plan.batch_tile, plan.ao_pair_tile, plan.auxiliary_tile, plan.occupied_tile,
-                        batch_size, nbf, naux, metric_bytes, fixed_device_bytes);
+    plan.peak_workspace_bytes = workspace_bytes(plan.ao_pair_tile, plan.auxiliary_tile, batch_size,
+                                                nbf, naux, metric_bytes, fixed_device_bytes);
   };
   update_bytes();
   // A zero budget is the documented sentinel for the implementation's
@@ -890,6 +909,27 @@ DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch_size, std::s
   plan.stores_full_three_center = plan.batch_tile == batch_size &&
                                   plan.ao_pair_tile == ao_pair_count && plan.auxiliary_tile == naux;
   return plan;
+}
+
+std::size_t density_fitting_source_metadata_bytes(std::size_t batch, std::size_t atoms,
+                                                  std::size_t shells, std::size_t cartesian_aos,
+                                                  std::size_t primitives,
+                                                  std::size_t transform_elements) {
+  std::size_t bytes = 32;  // atom and three shell offset vectors' final entries
+  const auto add = [&](std::size_t count, std::size_t width) {
+    std::size_t product = 0;
+    if (!checked_multiply(count, width, product) ||
+        product > std::numeric_limits<std::size_t>::max() - bytes)
+      throw std::overflow_error("DF source metadata overflows size_t");
+    bytes += product;
+  };
+  add(batch, 8);
+  add(atoms, 32);   // system/element indices and Cartesian positions
+  add(shells, 29);  // center/angular values and three shell offset arrays
+  add(cartesian_aos, 20 + 11 * molecule::kMaximumAoExpansionTerms);
+  add(primitives, 16);
+  add(transform_elements, 8);
+  return bytes;
 }
 
 }  // namespace vibeqc::scf

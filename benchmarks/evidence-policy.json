@@ -1,0 +1,286 @@
+{
+  "exceptions": {
+    "benchmarks/results/accuracy-173/arithmetic/states.npz": {
+      "owner": "accuracy-173",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "b50cea6e398d8c27982c712e4415d29da003c9231c18bc0c6a1acd5d21a052a4"
+    },
+    "benchmarks/results/accuracy-173/cpu/states.npz": {
+      "owner": "accuracy-173",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "4e857ea2e2a055826349e113ef46020e51f66efd14ef47bca9c0fad43ebeca33"
+    },
+    "benchmarks/results/accuracy-173/cuda/states.npz": {
+      "owner": "accuracy-173",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "3ed5b08cd734735ce6f7a1ad08758010277b8ce560cbf82721e6fd41f4e9d242"
+    },
+    "benchmarks/results/df-derivatives-rtx5090/performance-source.patch.gz": {
+      "owner": "df-derivatives-rtx5090",
+      "reason": "Exact measured dirty-source reconstruction patch tied to the benchmark provenance; required to reproduce historical scientific code.",
+      "sha256": "ac5300c5d51f89e3ca850e4b1f03fecb3c9fbb6c878aa925c0bd5d9021b6725f"
+    },
+    "benchmarks/results/local-spaces-182/states.npz": {
+      "owner": "local-spaces-182",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "82b5540a2ef80eba4d64e5d82d89c52c31a94313bc82b8b761b6d4df33af4b01"
+    },
+    "benchmarks/results/rccsd-148-a/raw-evidence.zip": {
+      "owner": "rccsd-148-a",
+      "reason": "Legacy compact hash-verified scientific evidence archive consumed by test_evidence_archives.py and documented reproduction instructions. Contains unique endpoint/reference/source records; do not replace permanent replay data with expiring artifacts.",
+      "sha256": "f4c11760dd15afa092fec00baf577b8b38de646399b4ff1570820d041b1f2311"
+    },
+    "benchmarks/results/rccsd-148-b/raw-evidence.zip": {
+      "owner": "rccsd-148-b",
+      "reason": "Legacy compact hash-verified scientific evidence archive consumed by test_evidence_archives.py and documented reproduction instructions. Contains unique endpoint/reference/source records; do not replace permanent replay data with expiring artifacts.",
+      "sha256": "c6fd591623424312bb80a880eb3a70c34021b4a6ac38f0451622fa525f5f74b5"
+    },
+    "benchmarks/results/rccsd-148-c/raw-evidence.zip": {
+      "owner": "rccsd-148-c",
+      "reason": "Legacy compact hash-verified scientific evidence archive consumed by test_evidence_archives.py and documented reproduction instructions. Contains unique endpoint/reference/source records; do not replace permanent replay data with expiring artifacts.",
+      "sha256": "bd6879e101dc3a47e6ec4bd517014859a95f13033d85a4a01447fc91da6007f4"
+    },
+    "benchmarks/results/rccsd-149-a/raw-evidence.zip": {
+      "owner": "rccsd-149-a",
+      "reason": "Legacy compact hash-verified scientific evidence archive consumed by test_evidence_archives.py and documented reproduction instructions. Contains unique endpoint/reference/source records; do not replace permanent replay data with expiring artifacts.",
+      "sha256": "dee1ead19fb45abeb7f07934c9b642dd9dbd8716a9634469285a2cadd56e0a72"
+    },
+    "benchmarks/results/scf-proposals-186/ch4-0-cold.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "77a7d748b2cc0f2cef6b146ef8765557b6c9762664df4937267b960ce49b3edc"
+    },
+    "benchmarks/results/scf-proposals-186/ch4-0-failed.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "119ffdb1fcf2f700bf71b4e0be7f84ed246a0948089af272cfcc75b4c3a2d3bd"
+    },
+    "benchmarks/results/scf-proposals-186/ch4-0-proposal.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "323be145061c3b29a9e4d4fef02627be96254ecd9086e9fda9f7c57ef962e57f"
+    },
+    "benchmarks/results/scf-proposals-186/ch4-1-cold.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "040592672bd24ef3671ee02e0d299574f34a8db7f083767c28091cea9bbc4033"
+    },
+    "benchmarks/results/scf-proposals-186/ch4-1-failed.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "0faaefab3c996bb77c0f5357b3046ac2fbcf8e502b9fe8271cec1c7c0784a720"
+    },
+    "benchmarks/results/scf-proposals-186/ch4-1-proposal.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "601ee7ee898191b374680c2f84811a458cc848ec0b45a5fd072651c06a2ac4ec"
+    },
+    "benchmarks/results/scf-proposals-186/ch4-2-cold.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "40199eeb1d155cf4656d5d8df98558347ac67703a3d90c3d15adee4668e1f691"
+    },
+    "benchmarks/results/scf-proposals-186/ch4-2-failed.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "e3841fbbf5cbfd8a22cf67a54fde5f024302cfb1daf043fa9d3dc8eb7637ff6d"
+    },
+    "benchmarks/results/scf-proposals-186/ch4-2-proposal.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "1e4118b7b9786f6b0839aee548506669f30ba616068f6453b9d970627ebce4d3"
+    },
+    "benchmarks/results/scf-proposals-186/h2-0-cold.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "29a91a4f592ee86b31b2436134faf18c56281d650f2346cf77a949dca92c3126"
+    },
+    "benchmarks/results/scf-proposals-186/h2-0-failed.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "7aaf9674c573bb2c819f466ba9044b8c1be04464df361fbce6724e550f5a5b2c"
+    },
+    "benchmarks/results/scf-proposals-186/h2-0-proposal.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "29a91a4f592ee86b31b2436134faf18c56281d650f2346cf77a949dca92c3126"
+    },
+    "benchmarks/results/scf-proposals-186/h2-1-cold.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "59e86d78c26f2aaa6d5c840b712b514c3c4dbdec2dbd7ab44ed64d826f21a8f6"
+    },
+    "benchmarks/results/scf-proposals-186/h2-1-failed.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "4eadf10baae7f228aa8a60e95cbb5c7b4cf69df2bad9f85af320bb0049e9d400"
+    },
+    "benchmarks/results/scf-proposals-186/h2-1-proposal.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "59e86d78c26f2aaa6d5c840b712b514c3c4dbdec2dbd7ab44ed64d826f21a8f6"
+    },
+    "benchmarks/results/scf-proposals-186/h2-2-cold.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "a1d04bd59278612486997d0d751f3ed4a64c6701fe073d02ddb6038f692c3a5f"
+    },
+    "benchmarks/results/scf-proposals-186/h2-2-failed.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "67bc0c354ab59d31ac0997f1f4cf69533ba8eb4f6a935fe06b4f2381e8bcc07d"
+    },
+    "benchmarks/results/scf-proposals-186/h2-2-proposal.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "a1d04bd59278612486997d0d751f3ed4a64c6701fe073d02ddb6038f692c3a5f"
+    },
+    "benchmarks/results/scf-proposals-186/h2-def2-svp-0-cold.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "8a61666a2bd91d6d5bc26ad09d25277add177501fdbf565cb0664e1aa7ca1bf8"
+    },
+    "benchmarks/results/scf-proposals-186/h2-def2-svp-0-failed.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "3c83986d9b0f39bd3d27f15134daeb763f997ba84a7525758d6d4a9b1f267500"
+    },
+    "benchmarks/results/scf-proposals-186/h2-def2-svp-0-proposal.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "ee207a4c38dd3c0ac64bb0197a72e3792157101e347e7ee176d9cef084e8fb49"
+    },
+    "benchmarks/results/scf-proposals-186/h2-def2-svp-1-cold.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "1e4a7b19cfcf77bdda38f9291dd41b922e8b5b9ca0f4e12c21f81245374a7ab0"
+    },
+    "benchmarks/results/scf-proposals-186/h2-def2-svp-1-failed.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "64cd76e3f758bc772be1a9c6643b15cbdba9dea67393ab7a05b8f234c3a9d4fe"
+    },
+    "benchmarks/results/scf-proposals-186/h2-def2-svp-1-proposal.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "76763e113219b15bab84e60f781226a0e7fe29ce9f85ee28bfb2c0d6bf81f66e"
+    },
+    "benchmarks/results/scf-proposals-186/h2-def2-svp-2-cold.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "63ef237dbb39c829c152f6d2e6b529a0d2c5bbfccb7a0c086dfc63eee0956efe"
+    },
+    "benchmarks/results/scf-proposals-186/h2-def2-svp-2-failed.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "4b2a9db8f52de0866b0dca599004d253aff5f73bb23d3f56feef3881e276d0de"
+    },
+    "benchmarks/results/scf-proposals-186/h2-def2-svp-2-proposal.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "adddff6c27edf3ae67a62096aef3de288efdc5c1ba7476c56dc7638b5792224f"
+    },
+    "benchmarks/results/scf-proposals-186/h2o-0-cold.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "070cbca18c4d6dbf4d23133eba9ba3ebdc8d959cf83b44c1766fe5d96c9039c7"
+    },
+    "benchmarks/results/scf-proposals-186/h2o-0-failed.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "5c607beaa5f9a2d1052cc9b619740189aed6f4bc79ce4c4477d14ac3e0c5a7ad"
+    },
+    "benchmarks/results/scf-proposals-186/h2o-0-proposal.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "b1cab2a2b0d6f179c24852d9af0a9d15acd351cd89c7e8b8d7dcdfcb0cb36d1a"
+    },
+    "benchmarks/results/scf-proposals-186/h2o-1-cold.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "1403abef9c7a946143d91687ee79831a77042e6a77ea571b61c9703e1dbbf20e"
+    },
+    "benchmarks/results/scf-proposals-186/h2o-1-failed.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "46fcab801b92d8497fb2fc2f6c96816b8876e36d26e9c4910a30610d47fe747a"
+    },
+    "benchmarks/results/scf-proposals-186/h2o-1-proposal.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "4079b2401080703e2a97dce0eb111ac479c2b03b8896a578dcf3b7ea6bc5e143"
+    },
+    "benchmarks/results/scf-proposals-186/h2o-2-cold.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "6b3ffc45c26ed572c0afda88493c6a92ea816027c79ed683294c2aa8a90ec55e"
+    },
+    "benchmarks/results/scf-proposals-186/h2o-2-failed.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "0183eff1c0efffcd4089cf35332f5bee365cddeecad11bf7bbc5b83f81203287"
+    },
+    "benchmarks/results/scf-proposals-186/h2o-2-proposal.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "4cfcb99b60da49217da8a03333cc2800073abeeceb3cce4fedf9412b35876f09"
+    },
+    "benchmarks/results/scf-proposals-186/hf-plus-uhf-0-cold.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "7814532b0598fd7e744598dab37a5fae1586ae135d9f1a274cda7b4301714d36"
+    },
+    "benchmarks/results/scf-proposals-186/hf-plus-uhf-0-failed.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "4bce1c0f485cc5ba1b9b98a190bdda138688db8077e86320b5c3ba541f24f08a"
+    },
+    "benchmarks/results/scf-proposals-186/hf-plus-uhf-0-proposal.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "9eb67394f9cc102ae94114558cfa41c4b2f756ec7d47b203a405b1c59a3baf52"
+    },
+    "benchmarks/results/scf-proposals-186/hf-plus-uhf-1-cold.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "29f83463a01ead7c53b00191760f13915e9350cd2da5e74000181cb0e635734b"
+    },
+    "benchmarks/results/scf-proposals-186/hf-plus-uhf-1-failed.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "2c7a7b8bb33d537d6509cae479798ff5c2aaf391b323279abb253bcfecff951b"
+    },
+    "benchmarks/results/scf-proposals-186/hf-plus-uhf-1-proposal.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "e5436121f586433a7aa743853b474b854b0dbd797fa213b7ab59438184ae370d"
+    },
+    "benchmarks/results/scf-proposals-186/hf-plus-uhf-2-cold.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "1a566b7ca4abba1b69e9ec761772ef496e4e0fe1aa5a347ecf2b2e2bc25b8d83"
+    },
+    "benchmarks/results/scf-proposals-186/hf-plus-uhf-2-failed.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "17b7ae69a69be60d7624896b5333962b229d96db3cb7a5cd32fe96582d9a584d"
+    },
+    "benchmarks/results/scf-proposals-186/hf-plus-uhf-2-proposal.npz": {
+      "owner": "scf-proposals-186",
+      "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
+      "sha256": "f7a7bf25f3a6bacbf74e78b04d575affbb076f7ab4c93dc5641fee7f9abb0a32"
+    },
+    "benchmarks/results/xc-contractions/samples.json": {
+      "owner": "XC contraction evidence (#236)",
+      "reason": "128 complete dense/local LDA/PBE energy, potential, response and geometry cases with five raw samples each, source/compiler identities, shared numeric resource plans and independent three-step derivative projections. This is the selected reproducible evidence, with no logs or transient artifacts.",
+      "sha256": "80e43ed2f01b5a29fa2b8f420847898791f85c098968b09f78ebec293538ed6a"
+    },
+    "benchmarks/results/xc-integration-162/raw-evidence.zip": {
+      "owner": "xc-integration-162",
+      "reason": "Legacy compact hash-verified scientific evidence archive consumed by test_evidence_archives.py and documented reproduction instructions. Contains unique endpoint/reference/source records; do not replace permanent replay data with expiring artifacts.",
+      "sha256": "d8b21b9660bab21a13a1a9f4014f5468c5aa4811cf632167988c7f08ff8b8a0f"
+    }
+  },
+  "review_size_bytes": 1048576,
+  "schema": "vibeqc.retention-policy.v1"
+}

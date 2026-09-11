@@ -1,0 +1,29 @@
+{
+  "classes": {
+    "accepted-evidence": {
+      "bytes": 25529272,
+      "files": 571
+    },
+    "generated-build": {
+      "bytes": 0,
+      "files": 0
+    },
+    "reference": {
+      "bytes": 2428071,
+      "files": 89
+    },
+    "source": {
+      "bytes": 7748165,
+      "files": 501
+    },
+    "transient": {
+      "bytes": 3482611,
+      "files": 161
+    },
+    "unknown": {
+      "bytes": 4660,
+      "files": 4
+    }
+  },
+  "schema": "vibeqc.retention-inventory.v1"
+}

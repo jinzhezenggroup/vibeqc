@@ -1,0 +1,873 @@
+{
+  "attachments": [],
+  "backend_selected": "cuda",
+  "binary_sha256": "54fda42072cc6e80311d47a613f6932bca1562de67cdbcdfa4ae0c9364817c61",
+  "block_errors": {
+    "boundary": {
+      "atol": 1e-08,
+      "max_absolute_error": 1.881668859713778e+29,
+      "max_scaled_error": 0.01885317270319097,
+      "passed": true,
+      "rms_error": 9.917265664845646e+27,
+      "rtol": 2e-06,
+      "shape": [
+        36,
+        10
+      ]
+    },
+    "changed_features": {
+      "atol": 1e-09,
+      "max_absolute_error": 2.9103830456733704e-11,
+      "max_scaled_error": 7.446417041764157e-06,
+      "passed": true,
+      "rms_error": 4.905625104161472e-12,
+      "rtol": 1e-10,
+      "shape": [
+        36
+      ]
+    },
+    "consumer": {
+      "atol": 1e-09,
+      "max_absolute_error": 9.094947017729282e-13,
+      "max_scaled_error": 1.7945507531245898e-06,
+      "passed": true,
+      "rms_error": 1.5158245029548803e-13,
+      "rtol": 1e-10,
+      "shape": [
+        36
+      ]
+    },
+    "typical": {
+      "atol": 1e-11,
+      "max_absolute_error": 1.8189894035458565e-11,
+      "max_scaled_error": 0.0008853989322052119,
+      "passed": true,
+      "rms_error": 5.384769459571245e-13,
+      "rtol": 1e-10,
+      "shape": [
+        36,
+        36
+      ]
+    }
+  },
+  "build_seconds": 0.17921732109971344,
+  "capability": {
+    "compiled": true,
+    "emitted": true,
+    "exact_exchange_evaluated": false,
+    "expression_hash": "7eed6d913626c797880409a8ac595600713fd1cf8588d8233710f5a2d57450d4",
+    "functional": {
+      "components": [
+        [
+          "GGA_X_PBE",
+          "1"
+        ],
+        [
+          "GGA_C_PBE",
+          "1"
+        ]
+      ],
+      "derivative_orders": [
+        0,
+        1,
+        2
+      ],
+      "domain": "interior-v1: no clipping; see docs/xc_expressions.md",
+      "energy": "hartree/bohr^3; e_xc=(rho_a+rho_b)*epsilon_xc",
+      "exact_exchange": "0",
+      "expression_source_sha256": "38b1cb754d18059f418a5564957e97c6ab05228d189a2b7ca99d572658a882b8",
+      "features": [
+        "rho_a",
+        "rho_b",
+        "sigma_aa",
+        "sigma_ab",
+        "sigma_bb",
+        "tau_a",
+        "tau_b"
+      ],
+      "identifier": "PBE",
+      "ingredients": [
+        "rho",
+        "sigma"
+      ],
+      "license": "MPL-2.0",
+      "long_range_exchange": "0",
+      "range_omega": "0",
+      "source_manifest_sha256": "230cd37e89428f0d5df736f875608819ffdff526912dfaa58fcb7f80d163804c",
+      "spin": "polarized",
+      "version": "libxc-7.0.0/interior-v1"
+    },
+    "hartree_evaluated": false,
+    "identity": "a6d8e6cdfbe7e9dc18cbb79c547f9b1e3c809da256b7c16d02f3d20cd5955248",
+    "nuclear_energy_evaluated": false,
+    "promoted": false,
+    "public_dft": false,
+    "reason": "explicit XC kernel candidate; promotion requires downstream workflow evidence",
+    "represented": true,
+    "validated": true
+  },
+  "compilation": {
+    "reason": null,
+    "seconds": 7.6894663439597934
+  },
+  "device": {
+    "host": "node3",
+    "nvidia_smi": "NVIDIA GeForce RTX 5090, GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8, 580.95.05"
+  },
+  "dirty": false,
+  "feature_consumer_speedup": 3.586458222570257,
+  "hardware": {
+    "probe": "nvidia-smi and native architecture check",
+    "reason": null,
+    "status": "pass"
+  },
+  "hash_reasons": {},
+  "hashes": {
+    "equation": "bfb8d041a0f3701bdfb8fb575a452b84d5b2b9fd0f9d5fd94e4f5e4d64b59b95",
+    "ir": "7eed6d913626c797880409a8ac595600713fd1cf8588d8233710f5a2d57450d4",
+    "schedule": "a6d8e6cdfbe7e9dc18cbb79c547f9b1e3c809da256b7c16d02f3d20cd5955248",
+    "source": "9550024208b74fcabe71721eb8b79fbba17942fdd2f9807069d9620f1e3bbd90"
+  },
+  "identity": "a6d8e6cdfbe7e9dc18cbb79c547f9b1e3c809da256b7c16d02f3d20cd5955248",
+  "inputs_hash": "7eed6d913626c797880409a8ac595600713fd1cf8588d8233710f5a2d57450d4",
+  "memory": {
+    "allocated_bytes": 241920,
+    "device_capacity": 88320,
+    "host_capacity": 153600,
+    "observed_device_delta": 4194304,
+    "observed_prepare_device_delta": 2097152,
+    "peak_bytes": null,
+    "reason": "numeric capacity bounded; allocator/runtime high-water mark not independently profiled"
+  },
+  "metrics": {
+    "device_ms": 0.0,
+    "driver_version": 13000,
+    "input_ms": 2.1724479934200644,
+    "kernel_ms": 255.71529638767242,
+    "library_ms": 0.0,
+    "observed_device_delta": 4194304,
+    "output_ms": 5.680800002068281,
+    "owned_device_bytes": 88320,
+    "packing_ms": 0.0,
+    "prepare_device_delta": 2097152,
+    "provider_retained_bytes": 0,
+    "runtime_version": 12090
+  },
+  "performance": {
+    "reason": "no downstream SCF endpoint; reported ratios are feature-consumer observations only",
+    "status": "not-run"
+  },
+  "prepare_compile_wall_seconds": 0.08965496416203678,
+  "prepare_seconds": 0.08040667092427611,
+  "reference_diagnostics": {
+    "boundary": {
+      "oracle": "independent closed-form exchange + Libxc 7.0.0 correlation",
+      "raw_libxc_error": {
+        "atol": 1e-08,
+        "max_absolute_error": 1.1251999733496332e+36,
+        "max_scaled_error": 500018.31319580605,
+        "passed": false,
+        "rms_error": 5.930324564909335e+34,
+        "rtol": 2e-06,
+        "shape": [
+          36,
+          10
+        ]
+      },
+      "reference_metadata": {
+        "arrays_sha256": "2a0381cfb858bd1305631db42bfd6d566c8969eb6fa0280a2f710327d38e0ca9",
+        "boundary_rationale": "Nearly polarized spin interpolation loses relative accuracy in Libxc's 1-z subtraction; large density and gradient ratios amplify high derivatives. Scale-aware gate applies only to named boundary fixtures; no clipping is applied by VibeQC.",
+        "boundary_tolerance": {
+          "atol": 1e-08,
+          "rtol": 2e-06
+        },
+        "codes": {
+          "GGA_C_PBE": "GGA_C_PBE",
+          "GGA_X_PBE": "GGA_X_PBE",
+          "LDA_C_PW": "LDA_C_PW",
+          "LDA_C_PW_MOD": "LDA_C_PW_MOD",
+          "LDA_X": "LDA_X",
+          "LDA_XC_PW": "LDA_X,LDA_C_PW",
+          "PBE": "GGA_X_PBE,GGA_C_PBE"
+        },
+        "conventions": "energy per volume; spin sigma_ab without factor two; tau=one-half gradient square; packed upper Hessian",
+        "libxc": "7.0.0",
+        "numpy": "2.4.6",
+        "oracle": "independent closed-form exchange + Libxc 7.0.0 correlation",
+        "pyscf": "2.14.0",
+        "schema": 1,
+        "script_sha256": "887adec4b3f5210949c6793c91f66cd0f75307ec1395085ea8796c490cee26ee",
+        "typical_tolerance": {
+          "atol": 1e-11,
+          "rtol": 1e-10
+        }
+      }
+    },
+    "typical": {
+      "oracle": "Libxc 7.0.0",
+      "raw_libxc_error": {
+        "atol": 1e-11,
+        "max_absolute_error": 1.8189894035458565e-11,
+        "max_scaled_error": 0.0008853989322052119,
+        "passed": true,
+        "rms_error": 5.384769459571245e-13,
+        "rtol": 1e-10,
+        "shape": [
+          36,
+          36
+        ]
+      },
+      "reference_metadata": {
+        "arrays_sha256": "2a0381cfb858bd1305631db42bfd6d566c8969eb6fa0280a2f710327d38e0ca9",
+        "boundary_rationale": "Nearly polarized spin interpolation loses relative accuracy in Libxc's 1-z subtraction; large density and gradient ratios amplify high derivatives. Scale-aware gate applies only to named boundary fixtures; no clipping is applied by VibeQC.",
+        "boundary_tolerance": {
+          "atol": 1e-08,
+          "rtol": 2e-06
+        },
+        "codes": {
+          "GGA_C_PBE": "GGA_C_PBE",
+          "GGA_X_PBE": "GGA_X_PBE",
+          "LDA_C_PW": "LDA_C_PW",
+          "LDA_C_PW_MOD": "LDA_C_PW_MOD",
+          "LDA_X": "LDA_X",
+          "LDA_XC_PW": "LDA_X,LDA_C_PW",
+          "PBE": "GGA_X_PBE,GGA_C_PBE"
+        },
+        "conventions": "energy per volume; spin sigma_ab without factor two; tau=one-half gradient square; packed upper Hessian",
+        "libxc": "7.0.0",
+        "numpy": "2.4.6",
+        "oracle": "Libxc 7.0.0",
+        "pyscf": "2.14.0",
+        "schema": 1,
+        "script_sha256": "887adec4b3f5210949c6793c91f66cd0f75307ec1395085ea8796c490cee26ee",
+        "typical_tolerance": {
+          "atol": 1e-11,
+          "rtol": 1e-10
+        }
+      }
+    }
+  },
+  "residuals": {},
+  "resources": [
+    {
+      "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+      "registers": 26,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_35PKdPdmPi",
+      "registers": 14,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_34PKdPdmPi",
+      "registers": 14,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_33PKdPdmPi",
+      "registers": 14,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_32PKdPdmPi",
+      "registers": 12,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_31PKdPdmPi",
+      "registers": 14,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_30PKdPdmPi",
+      "registers": 62,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_29PKdPdmPi",
+      "registers": 14,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_28PKdPdmPi",
+      "registers": 14,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_27PKdPdmPi",
+      "registers": 60,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_26PKdPdmPi",
+      "registers": 60,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_25PKdPdmPi",
+      "registers": 14,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_24PKdPdmPi",
+      "registers": 14,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_23PKdPdmPi",
+      "registers": 60,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_22PKdPdmPi",
+      "registers": 60,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_21PKdPdmPi",
+      "registers": 62,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_20PKdPdmPi",
+      "registers": 14,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_19PKdPdmPi",
+      "registers": 14,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_18PKdPdmPi",
+      "registers": 122,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_17PKdPdmPi",
+      "registers": 118,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_16PKdPdmPi",
+      "registers": 122,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_15PKdPdmPi",
+      "registers": 136,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_14PKdPdmPi",
+      "registers": 14,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_13PKdPdmPi",
+      "registers": 14,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_12PKdPdmPi",
+      "registers": 122,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_11PKdPdmPi",
+      "registers": 122,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z11xc_group_10PKdPdmPi",
+      "registers": 126,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z10xc_group_9PKdPdmPi",
+      "registers": 132,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z10xc_group_8PKdPdmPi",
+      "registers": 138,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z10xc_group_7PKdPdmPi",
+      "registers": 14,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z10xc_group_6PKdPdmPi",
+      "registers": 14,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z10xc_group_5PKdPdmPi",
+      "registers": 72,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z10xc_group_4PKdPdmPi",
+      "registers": 64,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z10xc_group_3PKdPdmPi",
+      "registers": 72,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z10xc_group_2PKdPdmPi",
+      "registers": 116,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z10xc_group_1PKdPdmPi",
+      "registers": 118,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    },
+    {
+      "function": "_Z10xc_group_0PKdPdmPi",
+      "registers": 58,
+      "shared_bytes": 0,
+      "spill_load_bytes": 0,
+      "spill_store_bytes": 0,
+      "stack_bytes": 0
+    }
+  ],
+  "revision": "ac7c15219acb1c8a5eab68d640cb4291d4089ec8",
+  "schema": "vibeqc.validation",
+  "schema_version": 1,
+  "settings": {
+    "device": "cuda",
+    "fast_compile": false,
+    "order": 2,
+    "points": 8192,
+    "repeats": 5,
+    "scope": "bounded feature-array consumer; no SCF/force endpoint",
+    "threads": 128,
+    "tile_points": 256,
+    "variant": "baseline"
+  },
+  "solver_iterations": [],
+  "solver_trace_reason": "not exposed by executor",
+  "spill_free": true,
+  "stages": {
+    "compilation": {
+      "reason": null,
+      "status": "pass"
+    },
+    "endpoint": {
+      "reason": null,
+      "scope": "fixed-feature upload/evaluation/download/consumption only",
+      "status": "pass"
+    },
+    "numerical": {
+      "reason": null,
+      "status": "pass"
+    },
+    "production": {
+      "reason": "no evidence registered",
+      "status": "not-run"
+    },
+    "representation": {
+      "reason": null,
+      "status": "pass"
+    },
+    "source": {
+      "reason": null,
+      "status": "pass"
+    }
+  },
+  "subject": "XC/PBE/polarized/baseline",
+  "tier": "endpoint",
+  "timings": [
+    {
+      "diagnostics": {
+        "checksum_error": {
+          "atol": 1e-09,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-10,
+          "shape": [
+            36
+          ]
+        },
+        "scope": "fixed features"
+      },
+      "inputs_hash": "9d7e6b061f4e76f29c4039fd74d0b9d157e57702ef12be90d9d6015992380d5e",
+      "repeat": 0,
+      "seconds": 0.15308781806379557,
+      "selection": "baseline",
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "checksum_error": {
+          "atol": 1e-09,
+          "max_absolute_error": 9.094947017729282e-13,
+          "max_scaled_error": 1.7945507531245898e-06,
+          "passed": true,
+          "rms_error": 1.5158245029548803e-13,
+          "rtol": 1e-10,
+          "shape": [
+            36
+          ]
+        },
+        "scope": "fixed features"
+      },
+      "inputs_hash": "9d7e6b061f4e76f29c4039fd74d0b9d157e57702ef12be90d9d6015992380d5e",
+      "repeat": 0,
+      "seconds": 0.0427096551284194,
+      "selection": "candidate",
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "checksum_error": {
+          "atol": 1e-09,
+          "max_absolute_error": 9.094947017729282e-13,
+          "max_scaled_error": 1.7945507531245898e-06,
+          "passed": true,
+          "rms_error": 1.5158245029548803e-13,
+          "rtol": 1e-10,
+          "shape": [
+            36
+          ]
+        },
+        "scope": "fixed features"
+      },
+      "inputs_hash": "9d7e6b061f4e76f29c4039fd74d0b9d157e57702ef12be90d9d6015992380d5e",
+      "repeat": 1,
+      "seconds": 0.04263703594915569,
+      "selection": "candidate",
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "checksum_error": {
+          "atol": 1e-09,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-10,
+          "shape": [
+            36
+          ]
+        },
+        "scope": "fixed features"
+      },
+      "inputs_hash": "9d7e6b061f4e76f29c4039fd74d0b9d157e57702ef12be90d9d6015992380d5e",
+      "repeat": 1,
+      "seconds": 0.15291988803073764,
+      "selection": "baseline",
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "checksum_error": {
+          "atol": 1e-09,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-10,
+          "shape": [
+            36
+          ]
+        },
+        "scope": "fixed features"
+      },
+      "inputs_hash": "9d7e6b061f4e76f29c4039fd74d0b9d157e57702ef12be90d9d6015992380d5e",
+      "repeat": 2,
+      "seconds": 0.1526528880931437,
+      "selection": "baseline",
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "checksum_error": {
+          "atol": 1e-09,
+          "max_absolute_error": 9.094947017729282e-13,
+          "max_scaled_error": 1.7945507531245898e-06,
+          "passed": true,
+          "rms_error": 1.5158245029548803e-13,
+          "rtol": 1e-10,
+          "shape": [
+            36
+          ]
+        },
+        "scope": "fixed features"
+      },
+      "inputs_hash": "9d7e6b061f4e76f29c4039fd74d0b9d157e57702ef12be90d9d6015992380d5e",
+      "repeat": 2,
+      "seconds": 0.042757876915857196,
+      "selection": "candidate",
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "checksum_error": {
+          "atol": 1e-09,
+          "max_absolute_error": 9.094947017729282e-13,
+          "max_scaled_error": 1.7945507531245898e-06,
+          "passed": true,
+          "rms_error": 1.5158245029548803e-13,
+          "rtol": 1e-10,
+          "shape": [
+            36
+          ]
+        },
+        "scope": "fixed features"
+      },
+      "inputs_hash": "9d7e6b061f4e76f29c4039fd74d0b9d157e57702ef12be90d9d6015992380d5e",
+      "repeat": 3,
+      "seconds": 0.042643659049645066,
+      "selection": "candidate",
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "checksum_error": {
+          "atol": 1e-09,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-10,
+          "shape": [
+            36
+          ]
+        },
+        "scope": "fixed features"
+      },
+      "inputs_hash": "9d7e6b061f4e76f29c4039fd74d0b9d157e57702ef12be90d9d6015992380d5e",
+      "repeat": 3,
+      "seconds": 0.15528073883615434,
+      "selection": "baseline",
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "checksum_error": {
+          "atol": 1e-09,
+          "max_absolute_error": 0.0,
+          "max_scaled_error": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "rtol": 1e-10,
+          "shape": [
+            36
+          ]
+        },
+        "scope": "fixed features"
+      },
+      "inputs_hash": "9d7e6b061f4e76f29c4039fd74d0b9d157e57702ef12be90d9d6015992380d5e",
+      "repeat": 4,
+      "seconds": 0.15327404509298503,
+      "selection": "baseline",
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "checksum_error": {
+          "atol": 1e-09,
+          "max_absolute_error": 9.094947017729282e-13,
+          "max_scaled_error": 1.7945507531245898e-06,
+          "passed": true,
+          "rms_error": 1.5158245029548803e-13,
+          "rtol": 1e-10,
+          "shape": [
+            36
+          ]
+        },
+        "scope": "fixed features"
+      },
+      "inputs_hash": "9d7e6b061f4e76f29c4039fd74d0b9d157e57702ef12be90d9d6015992380d5e",
+      "repeat": 4,
+      "seconds": 0.04268495785072446,
+      "selection": "candidate",
+      "workload": "unchanged-geometry"
+    }
+  ],
+  "toolchain": {
+    "environment": {
+      "CPATH": "",
+      "LIBRARY_PATH": "",
+      "NVCC_APPEND_FLAGS": "",
+      "NVCC_CCBIN": "",
+      "NVCC_PREPEND_FLAGS": ""
+    },
+    "flags": [
+      "c++17",
+      "O3",
+      "shared",
+      "fPIC",
+      "--fmad=false",
+      "-I/home/jzzeng/codes/qc-xc-expressions/src/dft",
+      "-I/home/jzzeng/codes/qc-xc-expressions/src/tensor"
+    ],
+    "headers": {
+      "../../../../home/jzzeng/codes/qc-xc-expressions/src/dft/xc_runtime.cuh": "2df50a599bd0cdc33ae2aca48d29b06364283253f55d5d8fc338d3e5c04bcd55",
+      "../../../../home/jzzeng/codes/qc-xc-expressions/src/tensor/cuda_runtime.cuh": "363ea27949c7af9a817b9592c802d4b181914df4cff8139e477d082810beb220"
+    },
+    "host_compiler": "821af3c74506283c179ca413bb33e6b528805a4dd8a5c09df125e5ad560a9e89",
+    "host_version": "gcc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+    "libraries": [
+      "cublas"
+    ],
+    "schema": 1,
+    "source": "9550024208b74fcabe71721eb8b79fbba17942fdd2f9807069d9620f1e3bbd90",
+    "target": {
+      "architecture": "sm_120",
+      "compute_capability_major": 12,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minimum_cuda_toolkit": "12.8",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    },
+    "toolchain": {
+      "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0",
+      "ptxas": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+    }
+  }
+}

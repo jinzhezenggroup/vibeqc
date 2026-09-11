@@ -1,28 +1,20 @@
-"""Compatibility adapters for historical DPPP and resident-PPPS APIs.
+"""Compatibility forwarding only; see docs/compiler_architecture.md.
 
-Generic shell compilation lives in :mod:`vibeqc_codegen.cuda_lowering`. This
-module intentionally exposes only the original specialization and resident
-worker entry points retained by benchmarks and downstream imports.
+Remove after downstream callers have migrated for one release and the legacy
+import compatibility tests are the only repository users. No duplicate IR,
+class definitions or cache implementation belongs here.
 """
 
-from .cuda_lowering import (
-    DpppFusedPlan,
-    _specialize_dppp_identifiers,
-    build_dppp_fused_plan,
-    dppp_components,
-    emit_dppp_fused_cuda,
-    emit_ppps_1110_resident_bra_cuda,
-    emit_ppps_resident_bra_rys3_cuda,
-    evaluate_dppp_fused_component,
-)
+import sys
+from pathlib import Path
 
-__all__ = [
-    "DpppFusedPlan",
-    "_specialize_dppp_identifiers",
-    "build_dppp_fused_plan",
-    "dppp_components",
-    "emit_dppp_fused_cuda",
-    "emit_ppps_1110_resident_bra_cuda",
-    "emit_ppps_resident_bra_rys3_cuda",
-    "evaluate_dppp_fused_component",
-]
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "python"))
+from importlib import import_module
+
+_target = import_module("vibeqc_compiler.integral.dppp_dispatch")
+
+if __name__ == "__main__":
+    if hasattr(_target, "main"):
+        raise SystemExit(_target.main())
+else:
+    sys.modules[__name__] = _target

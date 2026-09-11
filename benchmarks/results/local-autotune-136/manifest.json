@@ -1,0 +1,79 @@
+{
+  "architectures": {
+    "portable_cuda": {
+      "cuda_toolkit": "12.9.1",
+      "generator_abi": 1,
+      "kernels": [],
+      "kind": "portable"
+    },
+    "sm_120": {
+      "generator_abi": 1,
+      "kernels": [
+        {
+          "capabilities": [],
+          "compile_seconds": 3.0116774530615658,
+          "consumers": [
+            "fock"
+          ],
+          "fock_schedule": {
+            "algebra_form": "binary",
+            "algebra_fusion": "separate",
+            "algebra_ordering": "topological",
+            "algebra_placement": "materialized_cse",
+            "block_threads": 128,
+            "component_tile": 27,
+            "kind": "subgroup_tasks",
+            "maximum_registers": 0,
+            "minimum_blocks_per_sm": 0,
+            "pair_orientation": "canonical",
+            "pair_storage": "materialized",
+            "shared_coulomb": true,
+            "tasks_per_warp": 8,
+            "unroll_pair_terms": true
+          },
+          "object_bytes": 255752,
+          "runtime_seconds": 0.000447564006,
+          "shell_class": "ppps",
+          "source_bytes": 81839
+        }
+      ],
+      "kind": "tuned",
+      "target": {
+        "architecture": "sm_120",
+        "compute_capability": "12.0",
+        "compute_capability_major": 12,
+        "compute_capability_minor": 0,
+        "cuda_toolkit_version": "",
+        "driver_version": 13000,
+        "generator_abi": 1,
+        "maximum_blocks_per_sm": 24,
+        "maximum_registers_per_thread": 255,
+        "maximum_threads_per_block": 1024,
+        "maximum_threads_per_sm": 1536,
+        "minimum_cuda_toolkit": "12.8",
+        "nvcc_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0",
+        "packed_register_caps": [
+          192,
+          208
+        ],
+        "ptxas_version": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0",
+        "registers_per_sm": 65536,
+        "required_cuda_features": [
+          "fp64",
+          "fp64_atomic_add"
+        ],
+        "shared_memory_per_block": 49152,
+        "shared_memory_per_block_optin": 101376,
+        "shared_memory_per_sm": 102400,
+        "sm_count": 170,
+        "tuning_maximum_packed_registers": 224,
+        "tuning_maximum_registers": 192,
+        "tuning_maximum_shared_bytes": 49152,
+        "tuning_maximum_stack_bytes": 128,
+        "warp_size": 32
+      }
+    }
+  },
+  "default_architecture": "sm_120",
+  "schema_version": 2
+}

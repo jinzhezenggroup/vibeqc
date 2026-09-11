@@ -3,12 +3,14 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
 #include <numbers>
 #include <stdexcept>
 #include <utility>
 #include <vector>
 
 #include "molecule/basis.hpp"
+#include "posthf/raw_source.hpp"
 
 namespace vibeqc::integrals {
 namespace {
@@ -560,13 +562,14 @@ void require_matching_density_fitting_geometry(const core::System& orbital_syste
 }  // namespace
 
 DensityFittingIntegralData build_density_fitting_integrals(const core::System& orbital_system,
-                                                           const core::System& auxiliary_system) {
+                                                           const core::System& auxiliary_system,
+                                                           bool include_derivatives) {
   require_matching_density_fitting_geometry(orbital_system, auxiliary_system);
 
   DensityFittingIntegralData cartesian;
   cartesian.nbf = molecule::cartesian_ao_count(orbital_system);
   cartesian.naux = molecule::cartesian_ao_count(auxiliary_system);
-  cartesian.ncoord = orbital_system.atoms.size() * 3;
+  cartesian.ncoord = include_derivatives ? orbital_system.atoms.size() * 3 : 0;
   const std::vector<AoView> orbital_aos = expand_cartesian_aos(orbital_system);
   const std::vector<AoView> auxiliary_aos = expand_cartesian_aos(auxiliary_system);
 
@@ -575,8 +578,10 @@ DensityFittingIntegralData build_density_fitting_integrals(const core::System& o
   for (std::size_t atom = 0; atom < orbital_system.atoms.size(); ++atom) {
     Vec3 position;
     for (std::size_t axis = 0; axis < 3; ++axis) {
-      position[axis] = Jet::variable(orbital_system.atoms[atom].position[axis], cartesian.ncoord,
-                                     atom * 3 + axis);
+      const double coordinate = orbital_system.atoms[atom].position[axis];
+      position[axis] = include_derivatives
+                           ? Jet::variable(coordinate, cartesian.ncoord, atom * 3 + axis)
+                           : Jet(coordinate, 0);
     }
     atom_coordinates.push_back(std::move(position));
   }
@@ -691,11 +696,15 @@ DensityFittingIntegralData transform_density_fitting_integrals(
   const std::size_t ncoord = orbital_system.atoms.size() * 3;
   const std::size_t metric_size = cartesian_naux * cartesian_naux;
   const std::size_t tensor_size = cartesian_nbf * cartesian_nbf * cartesian_naux;
+  // A fused consumer may omit both derivative tensors. Partial omission is
+  // invalid because the two arrays describe the same physical coordinate set.
+  const bool derivatives =
+      !cartesian.metric_derivative.empty() || !cartesian.three_center_derivative.empty();
   if (cartesian.nbf != cartesian_nbf || cartesian.naux != cartesian_naux ||
       cartesian.ncoord != ncoord || cartesian.metric.size() != metric_size ||
       cartesian.three_center.size() != tensor_size ||
-      cartesian.metric_derivative.size() != ncoord * metric_size ||
-      cartesian.three_center_derivative.size() != ncoord * tensor_size) {
+      (derivatives && (cartesian.metric_derivative.size() != ncoord * metric_size ||
+                       cartesian.three_center_derivative.size() != ncoord * tensor_size))) {
     throw std::invalid_argument("Cartesian density-fitting tensor dimensions are inconsistent");
   }
 
@@ -715,6 +724,7 @@ DensityFittingIntegralData transform_density_fitting_integrals(
   transformed.three_center =
       transform_three_center(cartesian.three_center.data(), cartesian_nbf, cartesian_naux,
                              target_orbital_aos, target_auxiliary_aos);
+  if (!derivatives) return transformed;
   transformed.metric_derivative.reserve(ncoord * transformed.naux * transformed.naux);
   transformed.three_center_derivative.reserve(ncoord * transformed.nbf * transformed.nbf *
                                               transformed.naux);
@@ -734,15 +744,67 @@ DensityFittingIntegralData transform_density_fitting_integrals(
   return transformed;
 }
 
+void cross_overlap(const core::System& target, const core::System& source,
+                   std::span<double> output) {
+  const auto nt = molecule::ao_count(target), ns = molecule::ao_count(source);
+  if (nt == 0 || ns == 0 || nt > std::numeric_limits<std::size_t>::max() / ns ||
+      output.size() != nt * ns) {
+    throw std::invalid_argument("cross-overlap output must match target/source AO dimensions");
+  }
+  const auto target_cartesian = expand_cartesian_aos(target);
+  const auto source_cartesian = expand_cartesian_aos(source);
+  const auto target_public = public_ao_expansions(target);
+  const auto source_public = public_ao_expansions(source);
+  auto centers = [](const core::System& system) {
+    std::vector<Vec3> result;
+    result.reserve(system.atoms.size());
+    for (const auto& atom : system.atoms) {
+      result.push_back(
+          {Jet(atom.position[0], 0), Jet(atom.position[1], 0), Jet(atom.position[2], 0)});
+    }
+    return result;
+  };
+  const auto target_centers = centers(target), source_centers = centers(source);
+  // Expand only the AO pair being written. The bounded sparse spherical terms
+  // avoid a second Cartesian rectangular matrix and preserve both AO orders.
+  for (std::size_t i = 0; i < nt; ++i) {
+    for (std::size_t j = 0; j < ns; ++j) {
+      double value = 0;
+      for (const auto& t : target_public[i]) {
+        const auto& a = target_cartesian[t.cartesian_ao];
+        for (const auto& s : source_public[j]) {
+          const auto& b = source_cartesian[s.cartesian_ao];
+          const double factor =
+              t.coefficient * s.coefficient * a.component_normalization * b.component_normalization;
+          for (const auto& p : a.shell->primitives) {
+            for (const auto& q : b.shell->primitives) {
+              value += factor * p.coefficient * q.coefficient *
+                       primitive_overlap_cartesian(p.exponent, target_centers[a.shell->atom_index],
+                                                   a.angular, q.exponent,
+                                                   source_centers[b.shell->atom_index], b.angular)
+                           .value;
+            }
+          }
+        }
+      }
+      output[i * ns + j] = value;
+    }
+  }
+}
+
 IntegralData transform_integrals(const IntegralData& cartesian, const core::System& system) {
   const std::size_t cartesian_nbf = molecule::cartesian_ao_count(system);
   const std::size_t ncoord = system.atoms.size() * 3;
   const std::size_t matrix_size = cartesian_nbf * cartesian_nbf;
   const std::size_t eri_size = matrix_size * matrix_size;
+  // A fused derivative consumer needs only transformed values. Both AO
+  // derivative arrays may be absent; a partial or malformed pair is invalid.
+  const bool one_electron_derivatives =
+      !cartesian.overlap_derivative.empty() || !cartesian.hcore_derivative.empty();
   if (cartesian.nbf != cartesian_nbf || cartesian.ncoord != ncoord ||
       cartesian.overlap.size() != matrix_size || cartesian.hcore.size() != matrix_size ||
-      cartesian.overlap_derivative.size() != ncoord * matrix_size ||
-      cartesian.hcore_derivative.size() != ncoord * matrix_size ||
+      (one_electron_derivatives && (cartesian.overlap_derivative.size() != ncoord * matrix_size ||
+                                    cartesian.hcore_derivative.size() != ncoord * matrix_size)) ||
       (!cartesian.eri.empty() && cartesian.eri.size() != eri_size) ||
       (!cartesian.eri_derivative.empty() && cartesian.eri_derivative.size() != ncoord * eri_size)) {
     throw std::invalid_argument("Cartesian one-electron tensor dimensions are inconsistent");
@@ -760,20 +822,25 @@ IntegralData transform_integrals(const IntegralData& cartesian, const core::Syst
   }
   const std::size_t transformed_matrix_size = transformed.nbf * transformed.nbf;
   const std::size_t transformed_eri_size = transformed_matrix_size * transformed_matrix_size;
-  transformed.overlap_derivative.reserve(ncoord * transformed_matrix_size);
-  transformed.hcore_derivative.reserve(ncoord * transformed_matrix_size);
+  if (one_electron_derivatives) {
+    transformed.overlap_derivative.reserve(ncoord * transformed_matrix_size);
+    transformed.hcore_derivative.reserve(ncoord * transformed_matrix_size);
+  }
   if (!cartesian.eri_derivative.empty()) {
     transformed.eri_derivative.reserve(ncoord * transformed_eri_size);
   }
   for (std::size_t coordinate = 0; coordinate < ncoord; ++coordinate) {
-    const std::vector<double> overlap_derivative = transform_matrix(
-        cartesian.overlap_derivative.data() + coordinate * matrix_size, cartesian_nbf, target_aos);
-    const std::vector<double> hcore_derivative = transform_matrix(
-        cartesian.hcore_derivative.data() + coordinate * matrix_size, cartesian_nbf, target_aos);
-    transformed.overlap_derivative.insert(transformed.overlap_derivative.end(),
-                                          overlap_derivative.begin(), overlap_derivative.end());
-    transformed.hcore_derivative.insert(transformed.hcore_derivative.end(),
-                                        hcore_derivative.begin(), hcore_derivative.end());
+    if (one_electron_derivatives) {
+      const std::vector<double> overlap_derivative =
+          transform_matrix(cartesian.overlap_derivative.data() + coordinate * matrix_size,
+                           cartesian_nbf, target_aos);
+      const std::vector<double> hcore_derivative = transform_matrix(
+          cartesian.hcore_derivative.data() + coordinate * matrix_size, cartesian_nbf, target_aos);
+      transformed.overlap_derivative.insert(transformed.overlap_derivative.end(),
+                                            overlap_derivative.begin(), overlap_derivative.end());
+      transformed.hcore_derivative.insert(transformed.hcore_derivative.end(),
+                                          hcore_derivative.begin(), hcore_derivative.end());
+    }
     if (!cartesian.eri_derivative.empty()) {
       const std::vector<double> eri_derivative = transform_eri(
           cartesian.eri_derivative.data() + coordinate * eri_size, cartesian_nbf, target_aos);
@@ -786,10 +853,10 @@ IntegralData transform_integrals(const IntegralData& cartesian, const core::Syst
   return transformed;
 }
 
-IntegralData build_integrals(const core::System& system) {
+IntegralData build_integrals(const core::System& system, bool include_derivatives) {
   IntegralData out;
   out.nbf = molecule::cartesian_ao_count(system);
-  out.ncoord = system.atoms.size() * 3;
+  out.ncoord = include_derivatives ? system.atoms.size() * 3 : 0;
   const std::size_t n = out.nbf;
   const std::vector<AoView> aos = expand_cartesian_aos(system);
 
@@ -798,8 +865,9 @@ IntegralData build_integrals(const core::System& system) {
   for (std::size_t atom = 0; atom < system.atoms.size(); ++atom) {
     Vec3 position;
     for (std::size_t axis = 0; axis < 3; ++axis) {
-      position[axis] =
-          Jet::variable(system.atoms[atom].position[axis], out.ncoord, atom * 3 + axis);
+      const double coordinate = system.atoms[atom].position[axis];
+      position[axis] = include_derivatives ? Jet::variable(coordinate, out.ncoord, atom * 3 + axis)
+                                           : Jet(coordinate, 0);
     }
     atom_coordinates.push_back(std::move(position));
   }
@@ -922,3 +990,161 @@ IntegralData build_integrals(const core::System& system) {
 }
 
 }  // namespace vibeqc::integrals
+
+// Keep this adapter in the evaluator translation unit so it reuses the exact
+// contracted primitive mathematics without exporting recurrence internals.
+namespace vibeqc::posthf {
+using namespace vibeqc::integrals;
+
+struct RawSource::Impl {
+  core::System orbital, auxiliary;
+  bool has_auxiliary = false;
+  std::vector<AoView> aos, aux;
+  std::vector<GlobalAoExpansion> public_aos, public_aux;
+  std::vector<Vec3> centers;
+
+  double cartesian(Operator op, const std::array<const AoView*, 4>& slots) const {
+    const bool one = op == Operator::overlap || op == Operator::hcore;
+    const unsigned rank = op == Operator::eri ? 4 : op == Operator::three_center ? 3 : 2;
+    std::array<core::Primitive, 4> primitive{};
+    double result = 0;
+    auto evaluate = [&](auto&& self, unsigned slot, double weight) -> void {
+      if (slot < rank) {
+        for (const auto& p : slots[slot]->shell->primitives) {
+          primitive[slot] = p;
+          self(self, slot + 1, weight * p.coefficient * slots[slot]->component_normalization);
+        }
+        return;
+      }
+      const auto& a = centers[slots[0]->shell->atom_index];
+      const auto& b = centers[slots[1]->shell->atom_index];
+      if (one) {
+        if (op == Operator::overlap) {
+          result +=
+              weight * primitive_overlap_cartesian(primitive[0].exponent, a, slots[0]->angular,
+                                                   primitive[1].exponent, b, slots[1]->angular)
+                           .value;
+        } else {
+          result +=
+              weight * (primitive_kinetic_cartesian(primitive[0].exponent, a, slots[0]->angular,
+                                                    primitive[1].exponent, b, slots[1]->angular) +
+                        primitive_nuclear_attraction_cartesian(
+                            primitive[0].exponent, a, slots[0]->angular, primitive[1].exponent, b,
+                            slots[1]->angular, centers, orbital))
+                           .value;
+        }
+        return;
+      }
+      const molecule::CartesianComponent zero{0, 0, 0};
+      if (op == Operator::metric) {
+        result += weight * primitive_eri_cartesian(primitive[0].exponent, a, slots[0]->angular, 0,
+                                                   a, zero, primitive[1].exponent, b,
+                                                   slots[1]->angular, 0, b, zero)
+                               .value;
+      } else {
+        const auto& c = centers[slots[2]->shell->atom_index];
+        const auto& d = rank == 4 ? centers[slots[3]->shell->atom_index] : c;
+        result += weight * primitive_eri_cartesian(primitive[0].exponent, a, slots[0]->angular,
+                                                   primitive[1].exponent, b, slots[1]->angular,
+                                                   primitive[2].exponent, c, slots[2]->angular,
+                                                   rank == 4 ? primitive[3].exponent : 0, d,
+                                                   rank == 4 ? slots[3]->angular : zero)
+                               .value;
+      }
+    };
+    evaluate(evaluate, 0, 1);
+    return result;
+  }
+
+  double value(Operator op, const std::array<std::size_t, 4>& indices) const {
+    const unsigned rank = op == Operator::eri ? 4 : op == Operator::three_center ? 3 : 2;
+    std::array<const AoView*, 4> slots{};
+    double result = 0;
+    auto expand = [&](auto&& self, unsigned slot, double weight) -> void {
+      if (slot == rank) {
+        result += weight * cartesian(op, slots);
+        return;
+      }
+      const bool auxiliary_slot =
+          op == Operator::metric || (op == Operator::three_center && slot == 2);
+      const auto& expansion = (auxiliary_slot ? public_aux : public_aos)[indices[slot]];
+      const auto& source = auxiliary_slot ? aux : aos;
+      for (const auto& term : expansion) {
+        slots[slot] = &source[term.cartesian_ao];
+        self(self, slot + 1, weight * term.coefficient);
+      }
+    };
+    expand(expand, 0, 1);
+    return result;
+  }
+};
+
+RawSource::RawSource(core::System orbital, const core::System* auxiliary)
+    : impl_(std::make_unique<Impl>()) {
+  impl_->orbital = std::move(orbital);
+  for (const auto& shell : impl_->orbital.shells)
+    if (shell.angular_momentum > 3)
+      throw std::invalid_argument("raw post-HF source supports through f");
+  impl_->aos = expand_cartesian_aos(impl_->orbital);
+  impl_->public_aos = public_ao_expansions(impl_->orbital);
+  for (const auto& atom : impl_->orbital.atoms) {
+    Vec3 position;
+    for (unsigned axis = 0; axis < 3; ++axis) position[axis] = Jet(atom.position[axis], 0);
+    impl_->centers.push_back(std::move(position));
+  }
+  if (auxiliary) {
+    require_matching_density_fitting_geometry(impl_->orbital, *auxiliary);
+    for (const auto& shell : auxiliary->shells)
+      if (shell.angular_momentum > 3)
+        throw std::invalid_argument("raw auxiliary source supports through f");
+    impl_->auxiliary = *auxiliary;
+    impl_->has_auxiliary = true;
+    impl_->aux = expand_cartesian_aos(impl_->auxiliary);
+    impl_->public_aux = public_ao_expansions(impl_->auxiliary);
+  }
+}
+RawSource::~RawSource() = default;
+const core::System& RawSource::orbital() const { return impl_->orbital; }
+const core::System& RawSource::auxiliary() const {
+  if (!impl_->has_auxiliary) throw std::invalid_argument("auxiliary basis required");
+  return impl_->auxiliary;
+}
+std::size_t RawSource::nbf() const { return impl_->public_aos.size(); }
+std::size_t RawSource::naux() const { return impl_->public_aux.size(); }
+void RawSource::read(Operator op, const std::array<std::size_t, 4>& begin,
+                     const std::array<std::size_t, 4>& count, double* out,
+                     std::size_t elements) const {
+  if (op < Operator::overlap || op > Operator::three_center)
+    throw std::invalid_argument("unknown raw operator");
+  const unsigned rank = op == Operator::eri ? 4 : op == Operator::three_center ? 3 : 2;
+  if ((op == Operator::metric || op == Operator::three_center) && !impl_->has_auxiliary)
+    throw std::invalid_argument("auxiliary basis required");
+  std::size_t size = 1;
+  for (unsigned slot = 0; slot < 4; ++slot) {
+    const std::size_t dimension =
+        slot >= rank
+            ? 1
+            : (op == Operator::metric || (op == Operator::three_center && slot == 2) ? naux()
+                                                                                     : nbf());
+    if (begin[slot] > dimension || count[slot] > dimension - begin[slot])
+      throw std::invalid_argument("raw tile exceeds source bounds");
+    if (count[slot] && size > SIZE_MAX / count[slot])
+      throw std::overflow_error("raw tile size overflow");
+    size *= count[slot];
+  }
+  if (size != elements || (size && !out)) throw std::invalid_argument("raw output size mismatch");
+  std::size_t cursor = 0;
+  std::array<std::size_t, 4> indices{};
+  auto traverse = [&](auto&& self, unsigned slot) -> void {
+    if (slot == 4) {
+      out[cursor++] = impl_->value(op, indices);
+      return;
+    }
+    for (std::size_t i = 0; i < count[slot]; ++i) {
+      indices[slot] = begin[slot] + i;
+      self(self, slot + 1);
+    }
+  };
+  traverse(traverse, 0);
+}
+}  // namespace vibeqc::posthf

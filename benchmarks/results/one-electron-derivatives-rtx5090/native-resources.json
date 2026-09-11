@@ -1,0 +1,26 @@
+{
+  "note": "Function local_bytes includes stack storage; LOCAL:0 does not mean no local-memory traffic.",
+  "object_bytes": 8074024,
+  "object_sha256": "7d4054c1b91fa729d46715b3fb838b55b5deab150017a7685a855eb3753b8f8d",
+  "resource_tool": "CUDA 12.9.1 cuobjdump --dump-resource-usage",
+  "resources": {
+    "_ZN6vibeqc3scf60_GLOBAL__N__c1273146_27_one_electron_derivatives_cu_e5dd7b9e15serial_gradientENS0_21OneElectronDeviceViewENS0_21OneElectronWeightViewEPKhdPd": {
+      "LOCAL": 0,
+      "REG": 255,
+      "SHARED": 0,
+      "STACK": 1152
+    },
+    "_ZN6vibeqc3scf60_GLOBAL__N__c1273146_27_one_electron_derivatives_cu_e5dd7b9e15thread_gradientENS0_21OneElectronDeviceViewEPKiS4_mNS0_21OneElectronWeightViewEPKhdPd": {
+      "LOCAL": 0,
+      "REG": 255,
+      "SHARED": 0,
+      "STACK": 1168
+    },
+    "_ZN6vibeqc3scf60_GLOBAL__N__c1273146_27_one_electron_derivatives_cu_e5dd7b9e19shell_warp_gradientENS0_21OneElectronDeviceViewENS0_21OneElectronWeightViewEPKhdPd": {
+      "LOCAL": 0,
+      "REG": 255,
+      "SHARED": 0,
+      "STACK": 1168
+    }
+  }
+}

@@ -1,0 +1,298 @@
+{
+  "2593a5e6b31a6c640cfaadee05a0d7130b1e69d094f76b63926d2ed418b460ca": {
+    "angular": [
+      3,
+      0,
+      0,
+      0
+    ],
+    "binary_sha256": "541004af56125c0d048db0a74f14d330a6f578e61716d0ca85b1affe43ee44bc",
+    "compile_seconds": 0.841141935903579,
+    "compiler_resources": [],
+    "component_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "native_key": "178371edf76e4dc5d85fc87fdba387ee0849cbe8e217845dea610a3a698b9f6e",
+    "operator": {
+      "family": "short_range",
+      "omega": 0.63,
+      "version": 1
+    },
+    "source_sha256": "244f2ad9b863886d1eddd8198bf662b607f26c927875fd69ba63465978cc2b03",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "50f5073a049141d2f26954692b5087e4175d9be81566d6e6cdacf62302bde0d5": {
+    "angular": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "binary_sha256": "4bbc7bcc56d25590f9be1b04e6a0ee4dbdb27e849c6059cfffb8e346e496a302",
+    "compile_seconds": 0.7107463229913265,
+    "compiler_resources": [],
+    "component_indices": [
+      0,
+      1,
+      2
+    ],
+    "native_key": "519c85738f80319de6aa9c7d70626a112e581999258aa5a0d33b60d73ba310de",
+    "operator": {
+      "family": "long_range",
+      "omega": 0.63,
+      "version": 1
+    },
+    "source_sha256": "1707ff4170c5e2f20c7e98b27a794066914b5c9555ba41580b05071b9f463a17",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "9867645fcfac6646c72fc84cc6340b70a1928a47cca8470b675314c3dcb6f8f0": {
+    "angular": [
+      2,
+      1,
+      0,
+      1
+    ],
+    "binary_sha256": "0cebdc02984b8f7b69200c6b515694a03d0cf09aa413b983a1c2f7c61c0ee516",
+    "compile_seconds": 3.0225712379906327,
+    "compiler_resources": [],
+    "component_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53
+    ],
+    "native_key": "96ee220038431b5733a48e8810255840a566d74e8163fc58d0915c4e84aa5924",
+    "operator": {
+      "family": "long_range",
+      "omega": 0.63,
+      "version": 1
+    },
+    "source_sha256": "507ec08206bd29baf1cb019a5c8647d8b1014a2820be142b9baf713efa146beb",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "a15a274b1a4c62d32020b74d5f575c77eebdc8394181abae4847ea2021db046c": {
+    "angular": [
+      3,
+      0,
+      0,
+      0
+    ],
+    "binary_sha256": "95aa9569fc151d039ade68d0b18dcf08abd4abb3a56ee7fb69bb430d2ab8b3c7",
+    "compile_seconds": 0.845885694026947,
+    "compiler_resources": [],
+    "component_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "native_key": "e176b89f769ebfd75f7b16008ddef8972108db4f3082fd49d17f453ef47b612f",
+    "operator": {
+      "family": "long_range",
+      "omega": 0.63,
+      "version": 1
+    },
+    "source_sha256": "06ef346586b4e4968108bee311d03076d6d4203a5251f026216ac8bea80b293d",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "a642a5a5575988174f3526b1a7e9687d5c063bda9e2c2fc87ac79eb3a8e0fcf5": {
+    "angular": [
+      2,
+      1,
+      0,
+      1
+    ],
+    "binary_sha256": "b7d45e3b49dc4b9ec88ca68ea010d2ec624867157431a01931d7a2f7c67214c6",
+    "compile_seconds": 3.0319691149052233,
+    "compiler_resources": [],
+    "component_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53
+    ],
+    "native_key": "bf451be5ef7022b15da8c9df0fe68a91c24043505e640e7da06675e7729646a7",
+    "operator": {
+      "family": "short_range",
+      "omega": 0.63,
+      "version": 1
+    },
+    "source_sha256": "d529e031a160f9a9e4c0af4c857f758aa67da76732656cb86592f24ba0392905",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "e63468705bca10c5bcad58b29c57aefd7cdcf9a3626cc669e5da88c03cb42197": {
+    "angular": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "binary_sha256": "4b9fd8d6f21639e4e955de748a632be06a9e055c9cb15be1e21ae893ed2bb4f9",
+    "compile_seconds": 0.7033382588997483,
+    "compiler_resources": [],
+    "component_indices": [
+      0,
+      1,
+      2
+    ],
+    "native_key": "0d2891d0786c0359a93fcb809d5769df603272ba34121acecb1ac47cfc65232c",
+    "operator": {
+      "family": "short_range",
+      "omega": 0.63,
+      "version": 1
+    },
+    "source_sha256": "2cf3ec3c26b8d81b811a31e6be1bb6ffcbe09463885488275ef8f7c024ea4ea9",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  }
+}

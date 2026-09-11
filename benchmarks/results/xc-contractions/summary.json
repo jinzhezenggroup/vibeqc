@@ -1,0 +1,1163 @@
+{
+  "schema": "vibeqc.xc-contraction-summary.v1",
+  "revision": "60dceca7561e6bd04d61d1bbb5ee092044733275",
+  "decision": "numerical acceptance; explicit experimental CPU candidate; no performance promotion",
+  "cases": [
+    {
+      "case": "h2/LDA_XC_PW/energy/dense/7",
+      "construction_median_seconds": 0.001361706992611289,
+      "execute_median_seconds": 0.0036071529611945152,
+      "numeric_plan_peak_bytes": 35904,
+      "traced_execute_peak_bytes": 1072754,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/LDA_XC_PW/energy/dense/19",
+      "construction_median_seconds": 0.0012652811128646135,
+      "execute_median_seconds": 0.0017741599585860968,
+      "numeric_plan_peak_bytes": 85056,
+      "traced_execute_peak_bytes": 1066426,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/LDA_XC_PW/energy/local/7",
+      "construction_median_seconds": 0.012903290102258325,
+      "execute_median_seconds": 0.0058205570094287395,
+      "numeric_plan_peak_bytes": 61792,
+      "traced_execute_peak_bytes": 1083255,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/LDA_XC_PW/energy/local/19",
+      "construction_median_seconds": 0.01279221591539681,
+      "execute_median_seconds": 0.005819325102493167,
+      "numeric_plan_peak_bytes": 131680,
+      "traced_execute_peak_bytes": 1080827,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/LDA_XC_PW/potential/dense/7",
+      "construction_median_seconds": 0.0013000089675188065,
+      "execute_median_seconds": 0.004239949164912105,
+      "numeric_plan_peak_bytes": 35904,
+      "traced_execute_peak_bytes": 1077107,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/LDA_XC_PW/potential/dense/19",
+      "construction_median_seconds": 0.0011760008055716753,
+      "execute_median_seconds": 0.00205485918559134,
+      "numeric_plan_peak_bytes": 85056,
+      "traced_execute_peak_bytes": 1067843,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/LDA_XC_PW/potential/local/7",
+      "construction_median_seconds": 0.012799510033801198,
+      "execute_median_seconds": 0.006644530920311809,
+      "numeric_plan_peak_bytes": 61792,
+      "traced_execute_peak_bytes": 1088364,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/LDA_XC_PW/potential/local/19",
+      "construction_median_seconds": 0.012854216154664755,
+      "execute_median_seconds": 0.006631045136600733,
+      "numeric_plan_peak_bytes": 131680,
+      "traced_execute_peak_bytes": 1087328,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/LDA_XC_PW/response/dense/7",
+      "construction_median_seconds": 0.0012889271602034569,
+      "execute_median_seconds": 0.005227066110819578,
+      "numeric_plan_peak_bytes": 35904,
+      "traced_execute_peak_bytes": 1078664,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/LDA_XC_PW/response/dense/19",
+      "construction_median_seconds": 0.0011943960562348366,
+      "execute_median_seconds": 0.0024959470611065626,
+      "numeric_plan_peak_bytes": 85056,
+      "traced_execute_peak_bytes": 1072309,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/LDA_XC_PW/response/local/7",
+      "construction_median_seconds": 0.012843836098909378,
+      "execute_median_seconds": 0.008562295930460095,
+      "numeric_plan_peak_bytes": 61792,
+      "traced_execute_peak_bytes": 1080937,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/LDA_XC_PW/response/local/19",
+      "construction_median_seconds": 0.01285753189586103,
+      "execute_median_seconds": 0.008535444969311357,
+      "numeric_plan_peak_bytes": 131680,
+      "traced_execute_peak_bytes": 1089881,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/LDA_XC_PW/geometry/dense/7",
+      "construction_median_seconds": 0.0012639891356229782,
+      "execute_median_seconds": 0.005398566136136651,
+      "numeric_plan_peak_bytes": 35904,
+      "traced_execute_peak_bytes": 1082793,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/LDA_XC_PW/geometry/dense/19",
+      "construction_median_seconds": 0.001225956017151475,
+      "execute_median_seconds": 0.0025447201915085316,
+      "numeric_plan_peak_bytes": 85056,
+      "traced_execute_peak_bytes": 1076073,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/LDA_XC_PW/geometry/local/7",
+      "construction_median_seconds": 0.01294061099179089,
+      "execute_median_seconds": 0.00860791397280991,
+      "numeric_plan_peak_bytes": 61792,
+      "traced_execute_peak_bytes": 1103922,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/LDA_XC_PW/geometry/local/19",
+      "construction_median_seconds": 0.012834047200158238,
+      "execute_median_seconds": 0.008661035913974047,
+      "numeric_plan_peak_bytes": 131680,
+      "traced_execute_peak_bytes": 1095086,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/PBE/energy/dense/7",
+      "construction_median_seconds": 0.001283376943320036,
+      "execute_median_seconds": 0.004218837944790721,
+      "numeric_plan_peak_bytes": 35904,
+      "traced_execute_peak_bytes": 1072446,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/PBE/energy/dense/19",
+      "construction_median_seconds": 0.00129907694645226,
+      "execute_median_seconds": 0.0020599900744855404,
+      "numeric_plan_peak_bytes": 85056,
+      "traced_execute_peak_bytes": 1066622,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/PBE/energy/local/7",
+      "construction_median_seconds": 0.012875056127086282,
+      "execute_median_seconds": 0.006867929827421904,
+      "numeric_plan_peak_bytes": 61792,
+      "traced_execute_peak_bytes": 1083675,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/PBE/energy/local/19",
+      "construction_median_seconds": 0.012862882111221552,
+      "execute_median_seconds": 0.006835157051682472,
+      "numeric_plan_peak_bytes": 131680,
+      "traced_execute_peak_bytes": 1082879,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/PBE/potential/dense/7",
+      "construction_median_seconds": 0.0013003689236938953,
+      "execute_median_seconds": 0.005463631125167012,
+      "numeric_plan_peak_bytes": 35904,
+      "traced_execute_peak_bytes": 1077655,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/PBE/potential/dense/19",
+      "construction_median_seconds": 0.0012506230268627405,
+      "execute_median_seconds": 0.0025895468425005674,
+      "numeric_plan_peak_bytes": 85056,
+      "traced_execute_peak_bytes": 1069055,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/PBE/potential/local/7",
+      "construction_median_seconds": 0.012866488890722394,
+      "execute_median_seconds": 0.008533851942047477,
+      "numeric_plan_peak_bytes": 61792,
+      "traced_execute_peak_bytes": 1090950,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/PBE/potential/local/19",
+      "construction_median_seconds": 0.01289141713641584,
+      "execute_median_seconds": 0.008522721007466316,
+      "numeric_plan_peak_bytes": 131680,
+      "traced_execute_peak_bytes": 1090422,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/PBE/response/dense/7",
+      "construction_median_seconds": 0.001346647972241044,
+      "execute_median_seconds": 0.00747031788341701,
+      "numeric_plan_peak_bytes": 35904,
+      "traced_execute_peak_bytes": 1080252,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/PBE/response/dense/19",
+      "construction_median_seconds": 0.001253979979082942,
+      "execute_median_seconds": 0.003445291891694069,
+      "numeric_plan_peak_bytes": 85056,
+      "traced_execute_peak_bytes": 1073301,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/PBE/response/local/7",
+      "construction_median_seconds": 0.012858934001997113,
+      "execute_median_seconds": 0.011947953142225742,
+      "numeric_plan_peak_bytes": 61792,
+      "traced_execute_peak_bytes": 1091602,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/PBE/response/local/19",
+      "construction_median_seconds": 0.013041945872828364,
+      "execute_median_seconds": 0.011955277062952518,
+      "numeric_plan_peak_bytes": 131680,
+      "traced_execute_peak_bytes": 1090294,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/PBE/geometry/dense/7",
+      "construction_median_seconds": 0.0013185751158744097,
+      "execute_median_seconds": 0.007419690955430269,
+      "numeric_plan_peak_bytes": 35904,
+      "traced_execute_peak_bytes": 1089666,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/PBE/geometry/dense/19",
+      "construction_median_seconds": 0.0012740681413561106,
+      "execute_median_seconds": 0.003424612106755376,
+      "numeric_plan_peak_bytes": 85056,
+      "traced_execute_peak_bytes": 1076625,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/PBE/geometry/local/7",
+      "construction_median_seconds": 0.012913208920508623,
+      "execute_median_seconds": 0.011874391930177808,
+      "numeric_plan_peak_bytes": 61792,
+      "traced_execute_peak_bytes": 1102319,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "h2/PBE/geometry/local/19",
+      "construction_median_seconds": 0.012843705015257001,
+      "execute_median_seconds": 0.011865995824337006,
+      "numeric_plan_peak_bytes": 131680,
+      "traced_execute_peak_bytes": 1095655,
+      "active_ao_min": 2,
+      "active_ao_max": 2
+    },
+    {
+      "case": "f_cartesian/LDA_XC_PW/energy/dense/7",
+      "construction_median_seconds": 0.0013435620348900557,
+      "execute_median_seconds": 0.003745828988030553,
+      "numeric_plan_peak_bytes": 232960,
+      "traced_execute_peak_bytes": 1081955,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/LDA_XC_PW/energy/dense/19",
+      "construction_median_seconds": 0.001229683170095086,
+      "execute_median_seconds": 0.0018597138114273548,
+      "numeric_plan_peak_bytes": 503296,
+      "traced_execute_peak_bytes": 1073510,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/LDA_XC_PW/energy/local/7",
+      "construction_median_seconds": 0.055346383014693856,
+      "execute_median_seconds": 0.006087730871513486,
+      "numeric_plan_peak_bytes": 380160,
+      "traced_execute_peak_bytes": 1093467,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/LDA_XC_PW/energy/local/19",
+      "construction_median_seconds": 0.055407019099220634,
+      "execute_median_seconds": 0.006112969014793634,
+      "numeric_plan_peak_bytes": 733440,
+      "traced_execute_peak_bytes": 1093955,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/LDA_XC_PW/potential/dense/7",
+      "construction_median_seconds": 0.001242178026586771,
+      "execute_median_seconds": 0.004433071007952094,
+      "numeric_plan_peak_bytes": 232960,
+      "traced_execute_peak_bytes": 1093932,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/LDA_XC_PW/potential/dense/19",
+      "construction_median_seconds": 0.0013160998933017254,
+      "execute_median_seconds": 0.0021541898604482412,
+      "numeric_plan_peak_bytes": 503296,
+      "traced_execute_peak_bytes": 1088759,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/LDA_XC_PW/potential/local/7",
+      "construction_median_seconds": 0.0553170561324805,
+      "execute_median_seconds": 0.007087280973792076,
+      "numeric_plan_peak_bytes": 380160,
+      "traced_execute_peak_bytes": 1126424,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/LDA_XC_PW/potential/local/19",
+      "construction_median_seconds": 0.05572087178006768,
+      "execute_median_seconds": 0.007072794018313289,
+      "numeric_plan_peak_bytes": 733440,
+      "traced_execute_peak_bytes": 1126140,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/LDA_XC_PW/response/dense/7",
+      "construction_median_seconds": 0.001335968030616641,
+      "execute_median_seconds": 0.005649298196658492,
+      "numeric_plan_peak_bytes": 232960,
+      "traced_execute_peak_bytes": 1108513,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/LDA_XC_PW/response/dense/19",
+      "construction_median_seconds": 0.0012816330417990685,
+      "execute_median_seconds": 0.0026608440093696117,
+      "numeric_plan_peak_bytes": 503296,
+      "traced_execute_peak_bytes": 1096648,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/LDA_XC_PW/response/local/7",
+      "construction_median_seconds": 0.05556048289872706,
+      "execute_median_seconds": 0.009241582127287984,
+      "numeric_plan_peak_bytes": 380160,
+      "traced_execute_peak_bytes": 1121685,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/LDA_XC_PW/response/local/19",
+      "construction_median_seconds": 0.05568804801441729,
+      "execute_median_seconds": 0.009183710906654596,
+      "numeric_plan_peak_bytes": 733440,
+      "traced_execute_peak_bytes": 1130597,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/LDA_XC_PW/geometry/dense/7",
+      "construction_median_seconds": 0.0012884160969406366,
+      "execute_median_seconds": 0.005671781022101641,
+      "numeric_plan_peak_bytes": 232960,
+      "traced_execute_peak_bytes": 1093645,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/LDA_XC_PW/geometry/dense/19",
+      "construction_median_seconds": 0.0012617958709597588,
+      "execute_median_seconds": 0.0027540731243789196,
+      "numeric_plan_peak_bytes": 503296,
+      "traced_execute_peak_bytes": 1089081,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/LDA_XC_PW/geometry/local/7",
+      "construction_median_seconds": 0.055346320848912,
+      "execute_median_seconds": 0.009055864997208118,
+      "numeric_plan_peak_bytes": 380160,
+      "traced_execute_peak_bytes": 1118890,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/LDA_XC_PW/geometry/local/19",
+      "construction_median_seconds": 0.055249004857614636,
+      "execute_median_seconds": 0.009064801968634129,
+      "numeric_plan_peak_bytes": 733440,
+      "traced_execute_peak_bytes": 1107766,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/PBE/energy/dense/7",
+      "construction_median_seconds": 0.0013118810020387173,
+      "execute_median_seconds": 0.004480741219595075,
+      "numeric_plan_peak_bytes": 232960,
+      "traced_execute_peak_bytes": 1081578,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/PBE/energy/dense/19",
+      "construction_median_seconds": 0.0012831659987568855,
+      "execute_median_seconds": 0.0022400650195777416,
+      "numeric_plan_peak_bytes": 503296,
+      "traced_execute_peak_bytes": 1080937,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/PBE/energy/local/7",
+      "construction_median_seconds": 0.05541832000017166,
+      "execute_median_seconds": 0.007192404009401798,
+      "numeric_plan_peak_bytes": 380160,
+      "traced_execute_peak_bytes": 1096059,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/PBE/energy/local/19",
+      "construction_median_seconds": 0.055278221145272255,
+      "execute_median_seconds": 0.007194797974079847,
+      "numeric_plan_peak_bytes": 733440,
+      "traced_execute_peak_bytes": 1096643,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/PBE/potential/dense/7",
+      "construction_median_seconds": 0.001345525961369276,
+      "execute_median_seconds": 0.005765430862084031,
+      "numeric_plan_peak_bytes": 232960,
+      "traced_execute_peak_bytes": 1098335,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/PBE/potential/dense/19",
+      "construction_median_seconds": 0.0012526181526482105,
+      "execute_median_seconds": 0.0027940399013459682,
+      "numeric_plan_peak_bytes": 503296,
+      "traced_execute_peak_bytes": 1094879,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/PBE/potential/local/7",
+      "construction_median_seconds": 0.055578046943992376,
+      "execute_median_seconds": 0.009077226044610143,
+      "numeric_plan_peak_bytes": 380160,
+      "traced_execute_peak_bytes": 1128886,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/PBE/potential/local/19",
+      "construction_median_seconds": 0.05551842204295099,
+      "execute_median_seconds": 0.009092135122045875,
+      "numeric_plan_peak_bytes": 733440,
+      "traced_execute_peak_bytes": 1128122,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/PBE/response/dense/7",
+      "construction_median_seconds": 0.0014090579934418201,
+      "execute_median_seconds": 0.00787333189509809,
+      "numeric_plan_peak_bytes": 232960,
+      "traced_execute_peak_bytes": 1107804,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/PBE/response/dense/19",
+      "construction_median_seconds": 0.0013374299742281437,
+      "execute_median_seconds": 0.003711323020979762,
+      "numeric_plan_peak_bytes": 503296,
+      "traced_execute_peak_bytes": 1103732,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/PBE/response/local/7",
+      "construction_median_seconds": 0.05590270017273724,
+      "execute_median_seconds": 0.012789741158485413,
+      "numeric_plan_peak_bytes": 380160,
+      "traced_execute_peak_bytes": 1135009,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/PBE/response/local/19",
+      "construction_median_seconds": 0.05605961102992296,
+      "execute_median_seconds": 0.012857289984822273,
+      "numeric_plan_peak_bytes": 733440,
+      "traced_execute_peak_bytes": 1135557,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/PBE/geometry/dense/7",
+      "construction_median_seconds": 0.0013299561105668545,
+      "execute_median_seconds": 0.008186714025214314,
+      "numeric_plan_peak_bytes": 232960,
+      "traced_execute_peak_bytes": 1099401,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/PBE/geometry/dense/19",
+      "construction_median_seconds": 0.0013110388536006212,
+      "execute_median_seconds": 0.0039509430062025785,
+      "numeric_plan_peak_bytes": 503296,
+      "traced_execute_peak_bytes": 1101617,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/PBE/geometry/local/7",
+      "construction_median_seconds": 0.05621604202315211,
+      "execute_median_seconds": 0.012842793017625809,
+      "numeric_plan_peak_bytes": 380160,
+      "traced_execute_peak_bytes": 1126663,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_cartesian/PBE/geometry/local/19",
+      "construction_median_seconds": 0.05643978202715516,
+      "execute_median_seconds": 0.012812405126169324,
+      "numeric_plan_peak_bytes": 733440,
+      "traced_execute_peak_bytes": 1123190,
+      "active_ao_min": 20,
+      "active_ao_max": 20
+    },
+    {
+      "case": "f_spherical/LDA_XC_PW/energy/dense/7",
+      "construction_median_seconds": 0.0013668469619005919,
+      "execute_median_seconds": 0.0037937210872769356,
+      "numeric_plan_peak_bytes": 180224,
+      "traced_execute_peak_bytes": 1076566,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/LDA_XC_PW/energy/dense/19",
+      "construction_median_seconds": 0.0013653738424181938,
+      "execute_median_seconds": 0.0018769169691950083,
+      "numeric_plan_peak_bytes": 401408,
+      "traced_execute_peak_bytes": 1071418,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/LDA_XC_PW/energy/local/7",
+      "construction_median_seconds": 0.07425588206388056,
+      "execute_median_seconds": 0.006152905989438295,
+      "numeric_plan_peak_bytes": 289728,
+      "traced_execute_peak_bytes": 1090911,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/LDA_XC_PW/energy/local/19",
+      "construction_median_seconds": 0.07416748208925128,
+      "execute_median_seconds": 0.006159227108582854,
+      "numeric_plan_peak_bytes": 580032,
+      "traced_execute_peak_bytes": 1088143,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/LDA_XC_PW/potential/dense/7",
+      "construction_median_seconds": 0.001353951869532466,
+      "execute_median_seconds": 0.00447911792434752,
+      "numeric_plan_peak_bytes": 180224,
+      "traced_execute_peak_bytes": 1088647,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/LDA_XC_PW/potential/dense/19",
+      "construction_median_seconds": 0.0012954389676451683,
+      "execute_median_seconds": 0.002182725118473172,
+      "numeric_plan_peak_bytes": 401408,
+      "traced_execute_peak_bytes": 1082011,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/LDA_XC_PW/potential/local/7",
+      "construction_median_seconds": 0.07384032290428877,
+      "execute_median_seconds": 0.007062714081257582,
+      "numeric_plan_peak_bytes": 289728,
+      "traced_execute_peak_bytes": 1115349,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/LDA_XC_PW/potential/local/19",
+      "construction_median_seconds": 0.07435125508345664,
+      "execute_median_seconds": 0.007078825030475855,
+      "numeric_plan_peak_bytes": 580032,
+      "traced_execute_peak_bytes": 1112520,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/LDA_XC_PW/response/dense/7",
+      "construction_median_seconds": 0.0013671170454472303,
+      "execute_median_seconds": 0.005581908160820603,
+      "numeric_plan_peak_bytes": 180224,
+      "traced_execute_peak_bytes": 1095380,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/LDA_XC_PW/response/dense/19",
+      "construction_median_seconds": 0.0013165101408958435,
+      "execute_median_seconds": 0.002664760919287801,
+      "numeric_plan_peak_bytes": 401408,
+      "traced_execute_peak_bytes": 1086964,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/LDA_XC_PW/response/local/7",
+      "construction_median_seconds": 0.07401460711844265,
+      "execute_median_seconds": 0.009181154891848564,
+      "numeric_plan_peak_bytes": 289728,
+      "traced_execute_peak_bytes": 1115558,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/LDA_XC_PW/response/local/19",
+      "construction_median_seconds": 0.07360145286656916,
+      "execute_median_seconds": 0.009136279113590717,
+      "numeric_plan_peak_bytes": 580032,
+      "traced_execute_peak_bytes": 1116521,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/LDA_XC_PW/geometry/dense/7",
+      "construction_median_seconds": 0.0013861937914043665,
+      "execute_median_seconds": 0.005734581034630537,
+      "numeric_plan_peak_bytes": 180224,
+      "traced_execute_peak_bytes": 1086802,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/LDA_XC_PW/geometry/dense/19",
+      "construction_median_seconds": 0.0013293051160871983,
+      "execute_median_seconds": 0.002769873011857271,
+      "numeric_plan_peak_bytes": 401408,
+      "traced_execute_peak_bytes": 1085501,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/LDA_XC_PW/geometry/local/7",
+      "construction_median_seconds": 0.07387523888610303,
+      "execute_median_seconds": 0.00905106496065855,
+      "numeric_plan_peak_bytes": 289728,
+      "traced_execute_peak_bytes": 1114662,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/LDA_XC_PW/geometry/local/19",
+      "construction_median_seconds": 0.07383240689523518,
+      "execute_median_seconds": 0.009322987869381905,
+      "numeric_plan_peak_bytes": 580032,
+      "traced_execute_peak_bytes": 1105211,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/PBE/energy/dense/7",
+      "construction_median_seconds": 0.0013357570860534906,
+      "execute_median_seconds": 0.004477755865082145,
+      "numeric_plan_peak_bytes": 180224,
+      "traced_execute_peak_bytes": 1078274,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/PBE/energy/dense/19",
+      "construction_median_seconds": 0.0013805930502712727,
+      "execute_median_seconds": 0.0022414179984480143,
+      "numeric_plan_peak_bytes": 401408,
+      "traced_execute_peak_bytes": 1076145,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/PBE/energy/local/7",
+      "construction_median_seconds": 0.07308161398395896,
+      "execute_median_seconds": 0.007199276005849242,
+      "numeric_plan_peak_bytes": 289728,
+      "traced_execute_peak_bytes": 1092744,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/PBE/energy/local/19",
+      "construction_median_seconds": 0.07314979401417077,
+      "execute_median_seconds": 0.007194718113169074,
+      "numeric_plan_peak_bytes": 580032,
+      "traced_execute_peak_bytes": 1089811,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/PBE/potential/dense/7",
+      "construction_median_seconds": 0.0015018261037766933,
+      "execute_median_seconds": 0.005867657018825412,
+      "numeric_plan_peak_bytes": 180224,
+      "traced_execute_peak_bytes": 1090815,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/PBE/potential/dense/19",
+      "construction_median_seconds": 0.0013046979438513517,
+      "execute_median_seconds": 0.002870056079700589,
+      "numeric_plan_peak_bytes": 401408,
+      "traced_execute_peak_bytes": 1086639,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/PBE/potential/local/7",
+      "construction_median_seconds": 0.07348639098927379,
+      "execute_median_seconds": 0.00900813308544457,
+      "numeric_plan_peak_bytes": 289728,
+      "traced_execute_peak_bytes": 1114534,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/PBE/potential/local/19",
+      "construction_median_seconds": 0.07307116314768791,
+      "execute_median_seconds": 0.008999686921015382,
+      "numeric_plan_peak_bytes": 580032,
+      "traced_execute_peak_bytes": 1113462,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/PBE/response/dense/7",
+      "construction_median_seconds": 0.001536722993478179,
+      "execute_median_seconds": 0.00789062399417162,
+      "numeric_plan_peak_bytes": 180224,
+      "traced_execute_peak_bytes": 1098392,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/PBE/response/dense/19",
+      "construction_median_seconds": 0.0014507579617202282,
+      "execute_median_seconds": 0.0036788200959563255,
+      "numeric_plan_peak_bytes": 401408,
+      "traced_execute_peak_bytes": 1092536,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/PBE/response/local/7",
+      "construction_median_seconds": 0.07387263304553926,
+      "execute_median_seconds": 0.012742017861455679,
+      "numeric_plan_peak_bytes": 289728,
+      "traced_execute_peak_bytes": 1121965,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/PBE/response/local/19",
+      "construction_median_seconds": 0.07349829305894673,
+      "execute_median_seconds": 0.012690139003098011,
+      "numeric_plan_peak_bytes": 580032,
+      "traced_execute_peak_bytes": 1120485,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/PBE/geometry/dense/7",
+      "construction_median_seconds": 0.0013682390563189983,
+      "execute_median_seconds": 0.008109604939818382,
+      "numeric_plan_peak_bytes": 180224,
+      "traced_execute_peak_bytes": 1098821,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/PBE/geometry/dense/19",
+      "construction_median_seconds": 0.0013480910565704107,
+      "execute_median_seconds": 0.004012532066553831,
+      "numeric_plan_peak_bytes": 401408,
+      "traced_execute_peak_bytes": 1095437,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/PBE/geometry/local/7",
+      "construction_median_seconds": 0.07357520097866654,
+      "execute_median_seconds": 0.012672704877331853,
+      "numeric_plan_peak_bytes": 289728,
+      "traced_execute_peak_bytes": 1104635,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "f_spherical/PBE/geometry/local/19",
+      "construction_median_seconds": 0.07325751008465886,
+      "execute_median_seconds": 0.012638529995456338,
+      "numeric_plan_peak_bytes": 580032,
+      "traced_execute_peak_bytes": 1119455,
+      "active_ao_min": 16,
+      "active_ao_max": 16
+    },
+    {
+      "case": "separated_f/LDA_XC_PW/energy/dense/7",
+      "construction_median_seconds": 0.0017330409027636051,
+      "execute_median_seconds": 0.007804719964042306,
+      "numeric_plan_peak_bytes": 944832,
+      "traced_execute_peak_bytes": 1132810,
+      "active_ao_min": 56,
+      "active_ao_max": 56
+    },
+    {
+      "case": "separated_f/LDA_XC_PW/energy/dense/19",
+      "construction_median_seconds": 0.0016915509477257729,
+      "execute_median_seconds": 0.0036105287726968527,
+      "numeric_plan_peak_bytes": 1657536,
+      "traced_execute_peak_bytes": 1125410,
+      "active_ao_min": 56,
+      "active_ao_max": 56
+    },
+    {
+      "case": "separated_f/LDA_XC_PW/energy/local/7",
+      "construction_median_seconds": 0.6969202340114862,
+      "execute_median_seconds": 0.011589372996240854,
+      "numeric_plan_peak_bytes": 1356192,
+      "traced_execute_peak_bytes": 1149923,
+      "active_ao_min": 14,
+      "active_ao_max": 14
+    },
+    {
+      "case": "separated_f/LDA_XC_PW/energy/local/19",
+      "construction_median_seconds": 0.6934052528813481,
+      "execute_median_seconds": 0.011478881118819118,
+      "numeric_plan_peak_bytes": 2132640,
+      "traced_execute_peak_bytes": 1151071,
+      "active_ao_min": 14,
+      "active_ao_max": 14
+    },
+    {
+      "case": "separated_f/LDA_XC_PW/potential/dense/7",
+      "construction_median_seconds": 0.0017545721493661404,
+      "execute_median_seconds": 0.009343547048047185,
+      "numeric_plan_peak_bytes": 944832,
+      "traced_execute_peak_bytes": 1240599,
+      "active_ao_min": 56,
+      "active_ao_max": 56
+    },
+    {
+      "case": "separated_f/LDA_XC_PW/potential/dense/19",
+      "construction_median_seconds": 0.001723090885207057,
+      "execute_median_seconds": 0.0042881108820438385,
+      "numeric_plan_peak_bytes": 1657536,
+      "traced_execute_peak_bytes": 1227559,
+      "active_ao_min": 56,
+      "active_ao_max": 56
+    },
+    {
+      "case": "separated_f/LDA_XC_PW/potential/local/7",
+      "construction_median_seconds": 0.6952712170314044,
+      "execute_median_seconds": 0.013378029922023416,
+      "numeric_plan_peak_bytes": 1356192,
+      "traced_execute_peak_bytes": 1268332,
+      "active_ao_min": 14,
+      "active_ao_max": 14
+    },
+    {
+      "case": "separated_f/LDA_XC_PW/potential/local/19",
+      "construction_median_seconds": 0.7008974701166153,
+      "execute_median_seconds": 0.013450449099764228,
+      "numeric_plan_peak_bytes": 2132640,
+      "traced_execute_peak_bytes": 1255068,
+      "active_ao_min": 14,
+      "active_ao_max": 14
+    },
+    {
+      "case": "separated_f/LDA_XC_PW/response/dense/7",
+      "construction_median_seconds": 0.0017819951754063368,
+      "execute_median_seconds": 0.012176610995084047,
+      "numeric_plan_peak_bytes": 944832,
+      "traced_execute_peak_bytes": 1293348,
+      "active_ao_min": 56,
+      "active_ao_max": 56
+    },
+    {
+      "case": "separated_f/LDA_XC_PW/response/dense/19",
+      "construction_median_seconds": 0.0017468270380049944,
+      "execute_median_seconds": 0.00551043008454144,
+      "numeric_plan_peak_bytes": 1657536,
+      "traced_execute_peak_bytes": 1279532,
+      "active_ao_min": 56,
+      "active_ao_max": 56
+    },
+    {
+      "case": "separated_f/LDA_XC_PW/response/local/7",
+      "construction_median_seconds": 0.6913653269875795,
+      "execute_median_seconds": 0.017543825088068843,
+      "numeric_plan_peak_bytes": 1356192,
+      "traced_execute_peak_bytes": 1272529,
+      "active_ao_min": 14,
+      "active_ao_max": 14
+    },
+    {
+      "case": "separated_f/LDA_XC_PW/response/local/19",
+      "construction_median_seconds": 0.6963530571665615,
+      "execute_median_seconds": 0.01756719988770783,
+      "numeric_plan_peak_bytes": 2132640,
+      "traced_execute_peak_bytes": 1256021,
+      "active_ao_min": 14,
+      "active_ao_max": 14
+    },
+    {
+      "case": "separated_f/LDA_XC_PW/geometry/dense/7",
+      "construction_median_seconds": 0.0017405040562152863,
+      "execute_median_seconds": 0.012200657045468688,
+      "numeric_plan_peak_bytes": 944832,
+      "traced_execute_peak_bytes": 1166950,
+      "active_ao_min": 56,
+      "active_ao_max": 56
+    },
+    {
+      "case": "separated_f/LDA_XC_PW/geometry/dense/19",
+      "construction_median_seconds": 0.0017136030364781618,
+      "execute_median_seconds": 0.0059026840608567,
+      "numeric_plan_peak_bytes": 1657536,
+      "traced_execute_peak_bytes": 1160989,
+      "active_ao_min": 56,
+      "active_ao_max": 56
+    },
+    {
+      "case": "separated_f/LDA_XC_PW/geometry/local/7",
+      "construction_median_seconds": 0.6952552569564432,
+      "execute_median_seconds": 0.01764143304899335,
+      "numeric_plan_peak_bytes": 1356192,
+      "traced_execute_peak_bytes": 1164319,
+      "active_ao_min": 14,
+      "active_ao_max": 14
+    },
+    {
+      "case": "separated_f/LDA_XC_PW/geometry/local/19",
+      "construction_median_seconds": 0.6949825931806117,
+      "execute_median_seconds": 0.017595794051885605,
+      "numeric_plan_peak_bytes": 2132640,
+      "traced_execute_peak_bytes": 1195886,
+      "active_ao_min": 14,
+      "active_ao_max": 14
+    },
+    {
+      "case": "separated_f/PBE/energy/dense/7",
+      "construction_median_seconds": 0.001742619089782238,
+      "execute_median_seconds": 0.00990648684091866,
+      "numeric_plan_peak_bytes": 944832,
+      "traced_execute_peak_bytes": 1140826,
+      "active_ao_min": 56,
+      "active_ao_max": 56
+    },
+    {
+      "case": "separated_f/PBE/energy/dense/19",
+      "construction_median_seconds": 0.0017028618603944778,
+      "execute_median_seconds": 0.0048608011566102505,
+      "numeric_plan_peak_bytes": 1657536,
+      "traced_execute_peak_bytes": 1150374,
+      "active_ao_min": 56,
+      "active_ao_max": 56
+    },
+    {
+      "case": "separated_f/PBE/energy/local/7",
+      "construction_median_seconds": 0.6951964090112597,
+      "execute_median_seconds": 0.013860615901648998,
+      "numeric_plan_peak_bytes": 1356192,
+      "traced_execute_peak_bytes": 1148547,
+      "active_ao_min": 14,
+      "active_ao_max": 14
+    },
+    {
+      "case": "separated_f/PBE/energy/local/19",
+      "construction_median_seconds": 0.6972960119601339,
+      "execute_median_seconds": 0.013817323138937354,
+      "numeric_plan_peak_bytes": 2132640,
+      "traced_execute_peak_bytes": 1149039,
+      "active_ao_min": 14,
+      "active_ao_max": 14
+    },
+    {
+      "case": "separated_f/PBE/potential/dense/7",
+      "construction_median_seconds": 0.0018378118984401226,
+      "execute_median_seconds": 0.012784067075699568,
+      "numeric_plan_peak_bytes": 944832,
+      "traced_execute_peak_bytes": 1249927,
+      "active_ao_min": 56,
+      "active_ao_max": 56
+    },
+    {
+      "case": "separated_f/PBE/potential/dense/19",
+      "construction_median_seconds": 0.0018182739149779081,
+      "execute_median_seconds": 0.006125140003859997,
+      "numeric_plan_peak_bytes": 1657536,
+      "traced_execute_peak_bytes": 1254219,
+      "active_ao_min": 56,
+      "active_ao_max": 56
+    },
+    {
+      "case": "separated_f/PBE/potential/local/7",
+      "construction_median_seconds": 0.7026616400107741,
+      "execute_median_seconds": 0.017447107005864382,
+      "numeric_plan_peak_bytes": 1356192,
+      "traced_execute_peak_bytes": 1272566,
+      "active_ao_min": 14,
+      "active_ao_max": 14
+    },
+    {
+      "case": "separated_f/PBE/potential/local/19",
+      "construction_median_seconds": 0.7009069290943444,
+      "execute_median_seconds": 0.017448239028453827,
+      "numeric_plan_peak_bytes": 2132640,
+      "traced_execute_peak_bytes": 1272502,
+      "active_ao_min": 14,
+      "active_ao_max": 14
+    },
+    {
+      "case": "separated_f/PBE/response/dense/7",
+      "construction_median_seconds": 0.0019771300721913576,
+      "execute_median_seconds": 0.017748415004462004,
+      "numeric_plan_peak_bytes": 944832,
+      "traced_execute_peak_bytes": 1304152,
+      "active_ao_min": 56,
+      "active_ao_max": 56
+    },
+    {
+      "case": "separated_f/PBE/response/dense/19",
+      "construction_median_seconds": 0.001872868975624442,
+      "execute_median_seconds": 0.008253759937360883,
+      "numeric_plan_peak_bytes": 1657536,
+      "traced_execute_peak_bytes": 1305980,
+      "active_ao_min": 56,
+      "active_ao_max": 56
+    },
+    {
+      "case": "separated_f/PBE/response/local/7",
+      "construction_median_seconds": 0.695383575046435,
+      "execute_median_seconds": 0.024748816853389144,
+      "numeric_plan_peak_bytes": 1356192,
+      "traced_execute_peak_bytes": 1281697,
+      "active_ao_min": 14,
+      "active_ao_max": 14
+    },
+    {
+      "case": "separated_f/PBE/response/local/19",
+      "construction_median_seconds": 0.696193695999682,
+      "execute_median_seconds": 0.024825494037941098,
+      "numeric_plan_peak_bytes": 2132640,
+      "traced_execute_peak_bytes": 1279989,
+      "active_ao_min": 14,
+      "active_ao_max": 14
+    },
+    {
+      "case": "separated_f/PBE/geometry/dense/7",
+      "construction_median_seconds": 0.0018063809257000685,
+      "execute_median_seconds": 0.018622745061293244,
+      "numeric_plan_peak_bytes": 944832,
+      "traced_execute_peak_bytes": 1187218,
+      "active_ao_min": 56,
+      "active_ao_max": 56
+    },
+    {
+      "case": "separated_f/PBE/geometry/dense/19",
+      "construction_median_seconds": 0.0017799499910324812,
+      "execute_median_seconds": 0.00971081992611289,
+      "numeric_plan_peak_bytes": 1657536,
+      "traced_execute_peak_bytes": 1214898,
+      "active_ao_min": 56,
+      "active_ao_max": 56
+    },
+    {
+      "case": "separated_f/PBE/geometry/local/7",
+      "construction_median_seconds": 0.6980567190330476,
+      "execute_median_seconds": 0.024674423038959503,
+      "numeric_plan_peak_bytes": 1356192,
+      "traced_execute_peak_bytes": 1166223,
+      "active_ao_min": 14,
+      "active_ao_max": 14
+    },
+    {
+      "case": "separated_f/PBE/geometry/local/19",
+      "construction_median_seconds": 0.6979094960261136,
+      "execute_median_seconds": 0.02474580006673932,
+      "numeric_plan_peak_bytes": 2132640,
+      "traced_execute_peak_bytes": 1198006,
+      "active_ao_min": 14,
+      "active_ao_max": 14
+    }
+  ],
+  "memory": {
+    "process_lifetime_rss_high_water_bytes": 124440576,
+    "scope": "Linux worker lifetime RSS includes Python, DAGs, loaded libraries, all previous cases and independent reference work; not per-endpoint delta. Tracemalloc peaks measure separate untimed calls and include traced Python/NumPy allocations, excluding untraced native/BLAS storage. Resource plans bound numeric capacities with explicit exclusions."
+  }
+}

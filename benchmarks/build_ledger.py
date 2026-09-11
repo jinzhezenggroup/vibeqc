@@ -372,7 +372,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build-dir", type=Path, default=Path("build"))
     parser.add_argument("--repository", type=Path, default=Path("."))
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--output", type=Path, default=Path(".artifacts/benchmarks/build_ledger.json")
+    )
     parser.add_argument(
         "--build", action="store_true", help="time one cmake --build invocation"
     )

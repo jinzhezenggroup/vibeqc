@@ -49,7 +49,9 @@ vibeqc_status vibeqc_calculation_execute(vibeqc_calculation* calculation,
   }
 
   try {
-    vibeqc::methods::Result native = calculation->plan->execute();
+    // NULL/zero is an execution request, not merely a copy-out choice: the
+    // backend must not launch or assemble analytic-force work in this mode.
+    vibeqc::methods::Result native = calculation->plan->execute(!omit_forces);
     output->energy = native.energy;
     output->iterations = native.convergence.iterations;
     output->energy_change = native.convergence.energy_change;

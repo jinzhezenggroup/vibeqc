@@ -53,6 +53,7 @@ def convergence_payload(result) -> list[dict[str, object]]:
         {
             "converged": item.converged,
             "iterations": item.iterations,
+            "basis_metadata": getattr(item, "basis_metadata", None),
             # Retain the schema-v1 flat fields for readers that have not yet
             # adopted the explicit residual/warm-start groups.
             "energy_change_hartree": item.energy_change,
@@ -460,7 +461,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--output",
-        help="optional JSON path for raw timings and reproducibility metadata",
+        default=".artifacts/benchmarks/compare_gpu4pyscf_batch.json",
+        help="JSON path (default: .artifacts/benchmarks) for raw timings and reproducibility metadata",
     )
     args = parser.parse_args()
     if args.batch < 1 or args.repeats < 1 or args.max_iterations < 1:

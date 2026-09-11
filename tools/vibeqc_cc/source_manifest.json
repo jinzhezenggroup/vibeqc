@@ -1,0 +1,16 @@
+{
+  "files": [
+    {
+      "sha256": "35391234363b6ae26893891e18c468e636458ac209bfdad9606c15112457a552",
+      "path": "pyscf/cc/rccsd.py",
+      "url": "https://raw.githubusercontent.com/pyscf/pyscf/v2.14.0/pyscf/cc/rccsd.py"
+    },
+    {
+      "sha256": "c7f3311b15c3482315bc5c8aaf570334dd71170c4b9a901ad6968bd97c903666",
+      "path": "pyscf/cc/rintermediates.py",
+      "url": "https://raw.githubusercontent.com/pyscf/pyscf/v2.14.0/pyscf/cc/rintermediates.py"
+    }
+  ],
+  "license": "Apache-2.0",
+  "version": "2.14.0"
+}

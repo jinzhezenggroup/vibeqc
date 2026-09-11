@@ -1,0 +1,37 @@
+{
+  "schema": "vibeqc.optional_backend_validation",
+  "version": 1,
+  "cpu": {
+    "passed": 353,
+    "skipped": 48,
+    "scope": "codegen, DF codegen, local profiles, runtime contracts and lowering",
+    "initial_run": "352 passed, 48 skipped, 1 missing-library failure while build was in progress",
+    "retry": "source identity test passed with explicit finished CPU library path"
+  },
+  "native_cpu": {
+    "passed": 13,
+    "failed": 0,
+    "cuda_enabled": false,
+    "aot_enabled": false
+  },
+  "gpu_runtime": {
+    "passed": 9,
+    "skipped": 0,
+    "slurm_job_id": "9074"
+  },
+  "expression_smoke": {
+    "passed": true,
+    "max_absolute_error": 3.4994229736184934e-13,
+    "workgroups": [
+      16,
+      32,
+      64
+    ],
+    "primitive_rows": 67,
+    "contracted_references": 3,
+    "cache_roundtrip": true
+  },
+  "cuda_emitter": "implementation AST unchanged except class/documentation/unsupported-operation diagnostic spelling; codegen regressions passed",
+  "production_hf_supported": false,
+  "domestic_gpu_validation": "not-run"
+}

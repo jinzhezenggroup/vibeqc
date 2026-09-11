@@ -130,17 +130,35 @@ vibeqc_status validate_and_normalize(core::System& system, std::string& detail) 
     detail = "a system requires at least one atom and one basis shell";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
-  int nuclear_charge = 0;
+  std::int64_t nuclear_charge = 0;
   for (const auto& atom : system.atoms) {
-    if (atom.atomic_number <= 0) {
-      detail = "atomic numbers must be positive";
+    if (atom.atomic_number <= 0 || atom.atomic_number > 118) {
+      detail =
+          "atomic numbers must lie in [1, 118]; element identity is independent of basis "
+          "availability";
       return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+    for (double coordinate : atom.position) {
+      if (!std::isfinite(coordinate)) {
+        detail = "atom coordinates must be finite Bohr values";
+        return VIBEQC_STATUS_INVALID_ARGUMENT;
+      }
     }
     nuclear_charge += atom.atomic_number;
   }
-  system.electron_count = nuclear_charge - system.charge;
-  if (system.electron_count <= 0 || system.multiplicity == 0) {
-    detail = "electron count must be positive and multiplicity nonzero";
+  // Widen before subtraction: an INT32_MIN ionic charge must not wrap the
+  // all-electron population. ECP Hamiltonians cannot enter this ABI.
+  const std::int64_t electrons = nuclear_charge - static_cast<std::int64_t>(system.charge);
+  if (electrons > std::numeric_limits<int>::max() || electrons <= 0) {
+    detail = "all-electron population is outside the positive native integer range";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  system.electron_count = static_cast<int>(electrons);
+  // Downstream HF occupation keys use signed int for N + (multiplicity - 1).
+  // Validate that intermediate here before any unsigned-to-signed narrowing.
+  if (system.multiplicity == 0 || electrons + static_cast<std::int64_t>(system.multiplicity) - 1 >
+                                      std::numeric_limits<int>::max()) {
+    detail = "electron count and multiplicity exceed the native spin integer range";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   if (system.basis_representation != VIBEQC_BASIS_CARTESIAN &&
@@ -155,7 +173,9 @@ vibeqc_status validate_and_normalize(core::System& system, std::string& detail) 
       return VIBEQC_STATUS_INVALID_ARGUMENT;
     }
     if (shell.angular_momentum > kMaximumPublicAngularMomentum) {
-      detail = "the executable Cartesian path currently supports s through f shells";
+      detail = "shell on atom " + std::to_string(shell.atom_index) +
+               " has l=" + std::to_string(shell.angular_momentum) +
+               "; native Cartesian/real-spherical execution supports s through f shells";
       return VIBEQC_STATUS_NOT_IMPLEMENTED;
     }
     if (shell.primitives.empty()) {
@@ -163,8 +183,9 @@ vibeqc_status validate_and_normalize(core::System& system, std::string& detail) 
       return VIBEQC_STATUS_INVALID_ARGUMENT;
     }
     for (auto& primitive : shell.primitives) {
-      if (!(primitive.exponent > 0.0) || !std::isfinite(primitive.coefficient)) {
-        detail = "primitive exponents must be positive and coefficients finite";
+      if (!(primitive.exponent > 0.0) || !std::isfinite(primitive.exponent) ||
+          !std::isfinite(primitive.coefficient)) {
+        detail = "primitive exponents must be positive finite and coefficients finite";
         return VIBEQC_STATUS_INVALID_ARGUMENT;
       }
     }
@@ -188,8 +209,15 @@ vibeqc_status validate_and_normalize(core::System& system, std::string& detail) 
     }
     const double scale = 1.0 / std::sqrt(norm2);
     for (auto& primitive : shell.primitives) {
+      const bool nonzero = primitive.coefficient != 0.0;
       primitive.coefficient *=
           scale * radial_primitive_normalization(primitive.exponent, shell.angular_momentum);
+      // Retain source zeros, but never silently erase a nonzero primitive
+      // through a normalization underflow or overflow.
+      if (!std::isfinite(primitive.coefficient) || (nonzero && primitive.coefficient == 0.0)) {
+        detail = "normalized primitive coefficient is outside nonzero FP64 range";
+        return VIBEQC_STATUS_NUMERICAL_FAILURE;
+      }
     }
   }
   return VIBEQC_STATUS_SUCCESS;

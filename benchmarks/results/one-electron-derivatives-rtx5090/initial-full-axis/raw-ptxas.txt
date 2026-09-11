@@ -1,0 +1,72 @@
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function 'fixture_values' for 'sm_120'
+ptxas info    : Function properties for fixture_values
+    1776 bytes stack frame, 832 bytes spill stores, 80 bytes spill loads
+ptxas info    : Used 255 registers, used 0 barriers, 1776 bytes cumulative stack size
+ptxas info    : Compile time = 107812.547 ms
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives22attraction_gradient_00ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives22attraction_gradient_01ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives22attraction_gradient_02ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives22attraction_gradient_03ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives22attraction_gradient_10ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives22attraction_gradient_11ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives22attraction_gradient_12ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives22attraction_gradient_13ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives22attraction_gradient_20ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives22attraction_gradient_21ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives22attraction_gradient_22ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives22attraction_gradient_23ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 4624 bytes spill stores, 4632 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives22attraction_gradient_30ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives22attraction_gradient_31ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives22attraction_gradient_32ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 4696 bytes spill stores, 4712 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives22attraction_gradient_33ERKNS1_12PairGeometryEjddd
+    0 bytes stack frame, 66688 bytes spill stores, 69528 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives27overlap_kinetic_gradient_00ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives27overlap_kinetic_gradient_01ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives27overlap_kinetic_gradient_02ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives27overlap_kinetic_gradient_03ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives27overlap_kinetic_gradient_10ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives27overlap_kinetic_gradient_11ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives27overlap_kinetic_gradient_12ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives27overlap_kinetic_gradient_13ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives27overlap_kinetic_gradient_20ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives27overlap_kinetic_gradient_21ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives27overlap_kinetic_gradient_22ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives27overlap_kinetic_gradient_23ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives27overlap_kinetic_gradient_30ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives27overlap_kinetic_gradient_31ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives27overlap_kinetic_gradient_32ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf34generated_one_electron_derivatives27overlap_kinetic_gradient_33ERKNS1_12PairGeometryEj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for __internal_accurate_pow
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads

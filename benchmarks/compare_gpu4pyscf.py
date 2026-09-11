@@ -41,7 +41,8 @@ def main() -> None:
     parser.add_argument("--case", choices=cases, default="sp8")
     parser.add_argument(
         "--output",
-        help="optional JSON path for raw timings and reproducibility metadata",
+        default=".artifacts/benchmarks/compare_gpu4pyscf.json",
+        help="JSON path (default: .artifacts/benchmarks) for raw timings and reproducibility metadata",
     )
     args = parser.parse_args()
     if args.repeats < 1:

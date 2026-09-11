@@ -8,14 +8,13 @@ import subprocess
 from pathlib import Path
 
 import pytest
-
-from tools.vibeqc_codegen.benchmark import (
+from vibeqc_compiler.integral.benchmark import (
     emit_ppps_resident_bra_benchmark_cuda,
     emit_shell_class_benchmark_cuda,
 )
-from tools.vibeqc_codegen.fused_schedule import build_fused_shell_plan
-from tools.vibeqc_codegen.production import load_production_kernel_selections
-from tools.vibeqc_codegen.shell_spec import FUSED_SHELL_SPEC_BY_NAME
+from vibeqc_compiler.integral.fused_schedule import build_fused_shell_plan
+from vibeqc_compiler.integral.production import load_production_kernel_selections
+from vibeqc_compiler.integral.shell_spec import FUSED_SHELL_SPEC_BY_NAME
 
 
 def test_ppps_resident_benchmark_groups_contiguous_ket_tasks():
@@ -101,8 +100,9 @@ def test_ppps_resident_benchmark_runs_when_nvcc_is_configured(tmp_path: Path):
         item
         for item in load_production_kernel_selections(
             repository_root
-            / "tools"
-            / "vibeqc_codegen"
+            / "python"
+            / "vibeqc_compiler"
+            / "integral"
             / "production_shell_classes.json",
             "sm_120",
         )

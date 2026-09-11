@@ -1,0 +1,88 @@
+{
+  "base_revision": "b37212cdc6186d2d3fe0d154c7c3417160f5b776",
+  "benchmark": {
+    "all_target_states_equivalent": true,
+    "conclusion": "No measured total-cost improvement on these small workloads. CPU RHF small-to-large saves 3 target Fock builds (11 to 8), but the complete source/projection/target workflow costs more.",
+    "paired_repeats_per_workload": 5,
+    "production_promoted": false,
+    "reports": 8,
+    "source_projection_target_included": true,
+    "workloads": [
+      "cold-start",
+      "unchanged-geometry"
+    ]
+  },
+  "binary_sha256": {
+    "cpu": "a2016a8ef73bd178f9597ce79e479aff1b1a4be083c394bcee2f9e6a6d7d5657",
+    "cuda": "d522aa697bed6e608cd2857e07f245127bc1ddcb36b1e2832e69597060526db7"
+  },
+  "build": {
+    "aot_shells": false,
+    "cuda_architectures": "120",
+    "cuda_fast_compile": false,
+    "type": "Release"
+  },
+  "cuda_visible_devices": "0",
+  "gpu_slurm_job_id": "9077",
+  "hardware": {
+    "cpu": "AMD EPYC 7K62 48-Core Processor",
+    "driver": "580.95.05",
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "gpu_memory_mib": 32607
+  },
+  "identity_boundary": "Source identity covers native/API/Python implementation and codegen; benchmark/test/docs files are retained separately. Measurements precede the implementation commit.",
+  "limitations": [
+    "Native CPU overlap and NumPy metric projection are explicit host setup, including CUDA targets.",
+    "RHF/UHF real all-electron state transport only; no DFT/ROHF/ECP or correlated amplitude transport.",
+    "CUDA physical Fock counts and per-iteration solver histories are unavailable.",
+    "Final target density/energy/force equivalence is tested; no global HF stability or ground-state proof is claimed.",
+    "Numeric workspace budget excludes caller-owned HF arenas and BLAS/Python allocator internals."
+  ],
+  "reference": {
+    "file": "tests/data/basis_projection_reference.json",
+    "independent_hf_cases": 4,
+    "provider": "PySCF 2.14.0/libcint",
+    "rectangular_cases": 8,
+    "sha256": "bef37d642f0f267c49426e07db67838160f289b24594f0df3f93bf1e3bba56d6"
+  },
+  "schema": "vibeqc.basis_projection_validation",
+  "source_identity": "460a6b09c3d470f7638fe6a3a8e92498d6ccaf29c3aac28d3f4fa03dbd0f5baa",
+  "tests": {
+    "cpu_python": {
+      "passed": 74,
+      "skip_boundary": "existing optional batch features, not projection cases",
+      "skipped": 8,
+      "suites": [
+        "test_basis_projection.py",
+        "test_cross_overlap.py",
+        "test_progressive_hf.py",
+        "test_checkpoint.py",
+        "test_batch.py"
+      ]
+    },
+    "cuda_checkpoint": {
+      "passed": 41,
+      "skipped": 0
+    },
+    "cuda_projection": {
+      "passed": 5,
+      "skipped": 0
+    },
+    "native_cpu": {
+      "passed": 13
+    },
+    "native_cuda": {
+      "excluded": "vibeqc_aot_profile_tests requires tuned AOT build; AOT disabled",
+      "passed": 13
+    }
+  },
+  "toolchain": {
+    "cmake": "4.2.1",
+    "cuda": "12.9.86",
+    "cxx": "GCC 11.4.0",
+    "numpy": "2.5.3",
+    "python": "3.13"
+  },
+  "version": 1,
+  "worktree_dirty": true
+}

@@ -1,0 +1,144 @@
+"""CUDA scalar lowering of shared S/T/V first-derivative DAG roots."""
+
+from itertools import product
+
+from .cuda import CudaEmitter
+from .expr import Graph
+from .ir_serialization import integral_to_payload
+from .one_electron_cuda import (
+    _emit_component_index,
+    _emit_pair_geometry,
+    _emit_support_cuda,
+    _geometry_boundary,
+)
+from .one_electron_derivatives import (
+    build_one_electron_derivative_ir,
+    build_one_electron_derivative_kernel,
+)
+from .shell_spec import cartesian_components
+
+
+def one_electron_derivative_inventory():
+    """Record mathematical center/sign/layout contracts before runtime scheduling."""
+    return {
+        "schema": "vibeqc.one_electron_derivatives",
+        "version": 1,
+        "precision": "fp64",
+        "programs": [
+            integral_to_payload(
+                build_one_electron_derivative_ir(family, angular, weighted=weighted)
+            )
+            for family in ("overlap", "kinetic", "nuclear_attraction")
+            for angular in product(range(4), repeat=2)
+            for weighted in (False, True)
+        ],
+    }
+
+
+def _emit_gradient_helpers(attraction):
+    """Emit six independent roots per component with one shared Boys evaluation.
+
+    S/T return their A derivatives; B follows from translation. V returns A/B
+    and its external nuclear C derivative is their negative sum. Helpers stay
+    separate by shell class to bound each compiler optimization unit.
+    """
+    name = "attraction_gradient" if attraction else "overlap_kinetic_gradient"
+    arguments = "const PairGeometry& pair, unsigned component"
+    if attraction:
+        arguments += ", double c_x, double c_y, double c_z"
+    lines = []
+    for angular in product(range(4), repeat=2):
+        lines += [
+            f"__device__ __noinline__ GradientPair {name}_{angular[0]}{angular[1]}({arguments}) {{",
+            "  switch (component) {",
+        ]
+        for index, components in enumerate(
+            product(*(cartesian_components(l) for l in angular))
+        ):
+            graph = Graph()
+            if attraction:
+                kernel = build_one_electron_derivative_kernel(
+                    build_one_electron_derivative_ir("nuclear_attraction", angular),
+                    components,
+                    graph=graph,
+                )
+                roots = (
+                    kernel.boys_argument,
+                    *kernel.gradients[0],
+                    *kernel.gradients[1],
+                )
+            else:
+                overlap = build_one_electron_derivative_kernel(
+                    build_one_electron_derivative_ir("overlap", angular),
+                    components,
+                    graph=graph,
+                )
+                kernel = build_one_electron_derivative_kernel(
+                    build_one_electron_derivative_ir("kinetic", angular),
+                    components,
+                    graph=graph,
+                )
+                roots = (*overlap.gradients[0], *kernel.gradients[0])
+            target, roots = _geometry_boundary(kernel, roots)
+            emitter = CudaEmitter(target, {})
+            lines.append(f"    case {index}U: {{")
+            if attraction:
+                emitter.emit(roots[:1])
+                lines += emitter.lines
+                emitter.lines.clear()
+                lines += [
+                    f"      double boys[{kernel.boys_count}];",
+                    f"      boys_values<{kernel.boys_count - 1}>({emitter.reference(roots[0])}, boys);",
+                ]
+                roots = roots[1:]
+            emitter.emit(roots)
+            first = ", ".join(emitter.reference(r) for r in roots[:3])
+            second = ", ".join(emitter.reference(r) for r in roots[3:])
+            lines += emitter.lines + [
+                f"      return {{{{{first}}}, {{{second}}}}};",
+                "    }",
+            ]
+        lines += ["  }", "  return invalid_gradient();", "}"]
+    lines += [
+        f"__device__ __forceinline__ GradientPair {name}(",
+        "    const PairGeometry& pair, unsigned first, unsigned second"
+        + (", double c_x, double c_y, double c_z) {" if attraction else ") {"),
+        "  if (first >= 20 || second >= 20) return invalid_gradient();",
+        "  const unsigned a = first < 1 ? 0 : first < 4 ? 1 : first < 10 ? 2 : 3;",
+        "  const unsigned b = second < 1 ? 0 : second < 4 ? 1 : second < 10 ? 2 : 3;",
+        "  const unsigned offsets[] = {0, 1, 4, 10}, counts[] = {1, 3, 6, 10};",
+        "  const unsigned component = (first-offsets[a])*counts[b] + second-offsets[b];",
+        "  switch (a * 4U + b) {",
+    ]
+    for a, b in product(range(4), repeat=2):
+        args = "pair, component" + (", c_x, c_y, c_z" if attraction else "")
+        lines.append(f"    case {a * 4 + b}U: return {name}_{a}{b}({args});")
+    return "\n".join(lines + ["  }", "  return invalid_gradient();", "}"])
+
+
+def emit_one_electron_derivatives_cuda():
+    """Emit primitive gradient roots; normalized AO weights belong to the caller."""
+    prefix = (
+        _emit_support_cuda()
+        .replace(
+            "VIBEQC_GENERATED_ONE_ELECTRON_VALUES_CUH",
+            "VIBEQC_GENERATED_ONE_ELECTRON_DERIVATIVES_CUH",
+        )
+        .replace("generated_one_electron {", "generated_one_electron_derivatives {")
+        .replace("Order <= 6", "Order <= 7")
+        .replace("through order six", "through order seven")
+    )
+    return "\n".join(
+        [
+            prefix,
+            "struct GradientPair { double first[3], second[3]; };",
+            '__device__ __forceinline__ GradientPair invalid_gradient() { const double n = nan(""); return {{n,n,n},{n,n,n}}; }',
+            _emit_pair_geometry(),
+            _emit_component_index(),
+            _emit_gradient_helpers(False),
+            _emit_gradient_helpers(True),
+            "}  // namespace vibeqc::scf::generated_one_electron_derivatives",
+            "#endif",
+            "",
+        ]
+    )

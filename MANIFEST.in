@@ -1,0 +1,9 @@
+include src/tensor/cuda_runtime.cuh
+include src/dft/cuda_grid.cu
+include src/dft/xc_runtime.cuh
+include src/integrals/range_moments.hpp
+include src/integrals/eri_geometry.hpp
+include src/scf/cuda_weighted_eri.hpp
+include src/scf/weighted_eri_runtime.hpp
+include include/vibeqc/vibeqc.h
+recursive-include external/libxc-7.0.0 *

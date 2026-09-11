@@ -1,0 +1,70 @@
+{
+  "additional_null_channel_regressions": {
+    "contract": "Null pointers denote zero operators while counts retain full tensor dimensions. Both null means an exact zero gradient without derivative tiles.",
+    "failed": 0,
+    "passed": 3,
+    "skipped": 0
+  },
+  "benchmark_smoke": {
+    "archive_rejection_job": 9105,
+    "fresh_memory_records": 8,
+    "inherited_selector_cleared": true,
+    "initial_harness_failure": "Slurm 9105 passed native/DF/resource tiers, then a runpy smoke harness omitted the benchmark import path. Only the smoke work was resumed in 9106 after fixing that temporary harness.",
+    "job": 9106,
+    "recreated_profile_summaries_match_exactly": true,
+    "simulated_rss_rejection_saved_record": true
+  },
+  "ci_fix": "Deep f/f/f DAG cloning uses an explicit stack. Regenerated XC arrays differ by <=1.8e-15 and carry verified helper/exporter hashes.",
+  "cpu_binary_sha256": "2b2339ef710de2165c52aa22cf8d2a44f203ffe798f87031a41e4e3ae2e075a6",
+  "cpu_resource_regressions": 14,
+  "cuda_binary_sha256": "df1d78c69fe404e1f14f43cc007494a56c5593bd2bd714c1b785b57d7b771972",
+  "deferred_optimizations": [
+    "Optional explicitly charged response caching/secondary blocking.",
+    "Metric eigendecomposition reuse in the coordinate-wise reference oracle."
+  ],
+  "generated_cuda_derivative_header_sha256": "ea5178bcd8ec8cc91e4566713561ed8246dc530445cf815877c0a6e3e071d30a",
+  "gpu_job": 9107,
+  "gpu_python_suites": {
+    "gpu-checkpoint.xml": {
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "tests": 41
+    },
+    "gpu-derivatives.xml": {
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "tests": 27
+    },
+    "gpu-one-electron.xml": {
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "tests": 29
+    },
+    "gpu-projection.xml": {
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "tests": 5
+    },
+    "gpu-resources.xml": {
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "tests": 16
+    }
+  },
+  "native_cuda_tests": 13,
+  "performance_provenance": "Historical performance records remain unchanged under ../provenance.json.",
+  "production_promoted": false,
+  "python311_regressions": {
+    "coverage_enabled": true,
+    "failed": 0,
+    "passed": 131,
+    "skipped": 0
+  },
+  "source_identity": "1a38709b081bc8138a4a503cfc6d815177519eca12e8da5b5dd16d6c44c2aaef",
+  "validated_scientific_commit": "00ce2e588f6a9dce3f1541a1f135ebae5db2a99a"
+}

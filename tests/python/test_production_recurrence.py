@@ -6,8 +6,7 @@ import json
 from pathlib import Path
 
 import pytest
-
-from tools.vibeqc_codegen import (
+from vibeqc_compiler.integral import (
     DPDS_SPEC,
     ContractionSpec,
     KernelConsumer,
@@ -17,7 +16,7 @@ from tools.vibeqc_codegen import (
     build_fused_shell_plan,
     build_integral_ir,
 )
-from tools.vibeqc_codegen.production import (
+from vibeqc_compiler.integral.production import (
     KernelSelection,
     emit_multi_registry_header,
     emit_multi_registry_source,
@@ -337,7 +336,11 @@ def test_existing_production_rows_default_to_subset_wick():
 
     repository_root = Path(__file__).resolve().parents[2]
     manifest = (
-        repository_root / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+        repository_root
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_shell_classes.json"
     )
     selections = load_production_kernel_selections(manifest, "sm_120")
     assert selections
@@ -446,7 +449,11 @@ def test_production_dsps_promotes_scalar_force_but_retains_component_fock():
 
     repository_root = Path(__file__).resolve().parents[2]
     manifest = (
-        repository_root / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+        repository_root
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_shell_classes.json"
     )
     resolved = resolve_production_profile(manifest, "sm_120")
     selection = next(item for item in resolved.selections if item.spec.name == "dsps")
@@ -463,7 +470,11 @@ def test_production_rys3_component_force_uses_subgroup_fock(shell_class: str):
 
     repository_root = Path(__file__).resolve().parents[2]
     manifest = (
-        repository_root / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+        repository_root
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_shell_classes.json"
     )
     resolved = resolve_production_profile(manifest, "sm_120")
     selection = next(
@@ -489,7 +500,11 @@ def test_production_rys3_uniform_force_keeps_independent_fock_schedule(
 
     repository_root = Path(__file__).resolve().parents[2]
     manifest = (
-        repository_root / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+        repository_root
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_shell_classes.json"
     )
     resolved = resolve_production_profile(manifest, "sm_120")
     selection = next(
@@ -535,7 +550,11 @@ def test_production_rys4_force_retains_explicit_fock_schedule(
 
     repository_root = Path(__file__).resolve().parents[2]
     manifest = (
-        repository_root / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+        repository_root
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_shell_classes.json"
     )
     resolved = resolve_production_profile(manifest, "sm_120")
     selection = next(
@@ -580,7 +599,11 @@ def test_production_dddp_rys5_retains_explicit_fock_schedule():
 
     repository_root = Path(__file__).resolve().parents[2]
     manifest = (
-        repository_root / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+        repository_root
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_shell_classes.json"
     )
     resolved = resolve_production_profile(manifest, "sm_120")
     selection = next(item for item in resolved.selections if item.spec.name == "dddp")
@@ -602,7 +625,11 @@ def test_production_dddd_rys5_retains_native_fock_schedule():
 
     repository_root = Path(__file__).resolve().parents[2]
     manifest = (
-        repository_root / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+        repository_root
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_shell_classes.json"
     )
     resolved = resolve_production_profile(manifest, "sm_120")
     selection = next(item for item in resolved.selections if item.spec.name == "dddd")
@@ -636,7 +663,11 @@ def test_production_packed_streaming_fock_uses_profiled_lane_local_state(
 
     repository_root = Path(__file__).resolve().parents[2]
     manifest = (
-        repository_root / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+        repository_root
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_shell_classes.json"
     )
     resolved = resolve_production_profile(manifest, "sm_120")
     selection = next(
@@ -666,7 +697,11 @@ def test_production_mixed_fock_uses_compact_fp32_geometry():
 
     repository_root = Path(__file__).resolve().parents[2]
     manifest = (
-        repository_root / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+        repository_root
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_shell_classes.json"
     )
     resolved = resolve_production_profile(manifest, "sm_120")
     selection = next(item for item in resolved.selections if item.spec.name == "dpps")

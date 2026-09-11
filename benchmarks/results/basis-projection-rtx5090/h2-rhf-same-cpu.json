@@ -1,0 +1,1749 @@
+{
+  "all_target_states_equivalent": true,
+  "binary_sha256": "a2016a8ef73bd178f9597ce79e479aff1b1a4be083c394bcee2f9e6a6d7d5657",
+  "case": "h2-rhf-same",
+  "comparison": {
+    "reason": "difference within 2%, measurement noise, or no improvement",
+    "status": "not-run",
+    "workloads": {
+      "cold-start": {
+        "baseline": {
+          "maximum_seconds": 0.010257904883474112,
+          "median_seconds": 0.010193492053076625,
+          "minimum_seconds": 0.01007917313836515,
+          "raw_seconds": [
+            0.010193492053076625,
+            0.010226484155282378,
+            0.010257904883474112,
+            0.010181128047406673,
+            0.01007917313836515
+          ],
+          "relative_mad": 0.003236584875326956,
+          "samples": 5
+        },
+        "candidate": {
+          "maximum_seconds": 0.023811197839677334,
+          "median_seconds": 0.021757017821073532,
+          "minimum_seconds": 0.02167761605232954,
+          "raw_seconds": [
+            0.021757017821073532,
+            0.023811197839677334,
+            0.021749052917584777,
+            0.02190398797392845,
+            0.02167761605232954
+          ],
+          "relative_mad": 0.0036494784991665747,
+          "samples": 5
+        },
+        "noise_floor": 0.02,
+        "relative_improvement": -1.1344027844223192,
+        "significant": false
+      },
+      "unchanged-geometry": {
+        "baseline": {
+          "maximum_seconds": 0.009987879078835249,
+          "median_seconds": 0.009945108089596033,
+          "minimum_seconds": 0.009811823023483157,
+          "raw_seconds": [
+            0.009811823023483157,
+            0.009945108089596033,
+            0.009987879078835249,
+            0.00995229184627533,
+            0.009887567954137921
+          ],
+          "relative_mad": 0.004300706322534619,
+          "samples": 5
+        },
+        "candidate": {
+          "maximum_seconds": 0.021771654952317476,
+          "median_seconds": 0.021636147052049637,
+          "minimum_seconds": 0.021593915997073054,
+          "raw_seconds": [
+            0.021771654952317476,
+            0.021636147052049637,
+            0.021632038988173008,
+            0.021593915997073054,
+            0.021696551935747266
+          ],
+          "relative_mad": 0.0019518750207690927,
+          "samples": 5
+        },
+        "noise_floor": 0.02,
+        "relative_improvement": -1.175556751835011,
+        "significant": false
+      }
+    }
+  },
+  "counter_boundary": "measured CPU physical Fock builds; CUDA and incomplete retries are unavailable",
+  "cuda_visible_devices": "",
+  "fock_builds": {
+    "cold-start": {
+      "baseline_target": [
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "projected_target": [
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "saved_target_fock_builds": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "unchanged-geometry": {
+      "baseline_target": [
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "projected_target": [
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "saved_target_fock_builds": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  },
+  "inputs": {
+    "atoms": [
+      [
+        "H",
+        [
+          0.0,
+          0.0,
+          -0.7
+        ]
+      ],
+      [
+        "H",
+        [
+          0.1,
+          0.0,
+          0.7
+        ]
+      ]
+    ],
+    "charge": 0,
+    "multiplicity": 1,
+    "settings": {
+      "density_tolerance": 1e-10,
+      "device": "cpu",
+      "energy_tolerance": 1e-12,
+      "method": "rhf",
+      "screening_tolerance": 1e-14
+    },
+    "source_basis": "sto-3g",
+    "target_basis": "sto-3g"
+  },
+  "iteration_history": "not exported by this public solver; final counts/residuals and physical Fock evaluations retained",
+  "production_promoted": false,
+  "revision": "b37212cdc6186d2d3fe0d154c7c3417160f5b776",
+  "samples": [
+    {
+      "diagnostics": {
+        "source_fock_builds": 0,
+        "target": {
+          "backend": "cpu_reference",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099724
+              ],
+              [
+                0.6031059747099724,
+                0.603105974709972
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066542,
+          "energy_change": 4.440892098500626e-16,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": 4,
+          "forces": [
+            [
+              0.0021490622894797633,
+              -0.0,
+              0.030086872052716596
+            ],
+            [
+              -0.00214906228947976,
+              -0.0,
+              -0.030086872052716596
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "cold"
+        }
+      },
+      "inputs_hash": "90adca50b2433b00bbd10b6cf1630237bbacb5d646b936c3be61cc2e0b2bec5f",
+      "seconds": 0.010193492053076625,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 4,
+        "source_iterations": 2,
+        "stages": {
+          "items": [
+            {
+              "accepted": true,
+              "index": 0,
+              "numeric_workspace_bound_bytes": 3264,
+              "reason": null,
+              "source_energy": -1.1166097783066542,
+              "source_iterations": 2,
+              "source_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d",
+              "spins": [
+                {
+                  "electron_trace": 2.0,
+                  "metric_idempotency_error": 3.1401849173675503e-16,
+                  "metric_orthogonality_error": 0.0,
+                  "minimum_projected_norm_squared": 1.0,
+                  "normal_equation_residual": 0.0,
+                  "occupied_rank": 1,
+                  "projection_residual": 0.0,
+                  "source_metric_rank": 2,
+                  "target_metric_rank": 2
+                }
+              ],
+              "target_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d"
+            }
+          ],
+          "placement": "native CPU cross-overlap and NumPy metric projection; native target seed import",
+          "policy": {
+            "maximum_ao": 4096,
+            "maximum_residual": 0.5,
+            "relative_threshold": 1e-10,
+            "validation_tolerance": 1e-07
+          },
+          "projection_seconds": 0.0013707748148590326,
+          "schema": "vibeqc.basis_projection",
+          "seconds": 0.0013707748148590326,
+          "source_seconds": 0.01017641881480813,
+          "target_results": [
+            {
+              "converged": true,
+              "density_rms": 0.0,
+              "energy": -1.1166097783066542,
+              "fock_builds": 4,
+              "index": 0,
+              "iterations": 2,
+              "restart_origin": "basis_projection",
+              "status": 0
+            }
+          ],
+          "target_seconds": 0.009845457971096039,
+          "target_setup_seconds": 0.00026847305707633495,
+          "target_verification": "executed",
+          "total_seconds": 0.021728953812271357,
+          "version": 1
+        },
+        "target": {
+          "backend": "cpu_reference",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099724
+              ],
+              [
+                0.6031059747099724,
+                0.603105974709972
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066542,
+          "energy_change": 2.220446049250313e-16,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": 4,
+          "forces": [
+            [
+              0.0021490622894797633,
+              -0.0,
+              0.030086872052716596
+            ],
+            [
+              -0.00214906228947976,
+              -0.0,
+              -0.030086872052716596
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "basis_projection"
+        }
+      },
+      "inputs_hash": "90adca50b2433b00bbd10b6cf1630237bbacb5d646b936c3be61cc2e0b2bec5f",
+      "seconds": 0.021757017821073532,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 4,
+        "source_iterations": 2,
+        "stages": {
+          "items": [
+            {
+              "accepted": true,
+              "index": 0,
+              "numeric_workspace_bound_bytes": 3264,
+              "reason": null,
+              "source_energy": -1.1166097783066542,
+              "source_iterations": 2,
+              "source_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d",
+              "spins": [
+                {
+                  "electron_trace": 2.0,
+                  "metric_idempotency_error": 3.1401849173675503e-16,
+                  "metric_orthogonality_error": 0.0,
+                  "minimum_projected_norm_squared": 1.0,
+                  "normal_equation_residual": 0.0,
+                  "occupied_rank": 1,
+                  "projection_residual": 0.0,
+                  "source_metric_rank": 2,
+                  "target_metric_rank": 2
+                }
+              ],
+              "target_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d"
+            }
+          ],
+          "placement": "native CPU cross-overlap and NumPy metric projection; native target seed import",
+          "policy": {
+            "maximum_ao": 4096,
+            "maximum_residual": 0.5,
+            "relative_threshold": 1e-10,
+            "validation_tolerance": 1e-07
+          },
+          "projection_seconds": 0.003399045905098319,
+          "schema": "vibeqc.basis_projection",
+          "seconds": 0.003399045905098319,
+          "source_seconds": 0.010129909962415695,
+          "target_results": [
+            {
+              "converged": true,
+              "density_rms": 0.0,
+              "energy": -1.1166097783066542,
+              "fock_builds": 4,
+              "index": 0,
+              "iterations": 2,
+              "restart_origin": "basis_projection",
+              "status": 0
+            }
+          ],
+          "target_seconds": 0.00992231396958232,
+          "target_setup_seconds": 0.0002668788656592369,
+          "target_verification": "executed",
+          "total_seconds": 0.02378342510201037,
+          "version": 1
+        },
+        "target": {
+          "backend": "cpu_reference",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099724
+              ],
+              [
+                0.6031059747099724,
+                0.603105974709972
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066542,
+          "energy_change": 2.220446049250313e-16,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": 4,
+          "forces": [
+            [
+              0.0021490622894797633,
+              -0.0,
+              0.030086872052716596
+            ],
+            [
+              -0.00214906228947976,
+              -0.0,
+              -0.030086872052716596
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "basis_projection"
+        }
+      },
+      "inputs_hash": "90adca50b2433b00bbd10b6cf1630237bbacb5d646b936c3be61cc2e0b2bec5f",
+      "seconds": 0.023811197839677334,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 0,
+        "target": {
+          "backend": "cpu_reference",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099724
+              ],
+              [
+                0.6031059747099724,
+                0.603105974709972
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066542,
+          "energy_change": 4.440892098500626e-16,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": 4,
+          "forces": [
+            [
+              0.0021490622894797633,
+              -0.0,
+              0.030086872052716596
+            ],
+            [
+              -0.00214906228947976,
+              -0.0,
+              -0.030086872052716596
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "cold"
+        }
+      },
+      "inputs_hash": "90adca50b2433b00bbd10b6cf1630237bbacb5d646b936c3be61cc2e0b2bec5f",
+      "seconds": 0.010226484155282378,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 0,
+        "target": {
+          "backend": "cpu_reference",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099724
+              ],
+              [
+                0.6031059747099724,
+                0.603105974709972
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066542,
+          "energy_change": 4.440892098500626e-16,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": 4,
+          "forces": [
+            [
+              0.0021490622894797633,
+              -0.0,
+              0.030086872052716596
+            ],
+            [
+              -0.00214906228947976,
+              -0.0,
+              -0.030086872052716596
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "cold"
+        }
+      },
+      "inputs_hash": "90adca50b2433b00bbd10b6cf1630237bbacb5d646b936c3be61cc2e0b2bec5f",
+      "seconds": 0.010257904883474112,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 4,
+        "source_iterations": 2,
+        "stages": {
+          "items": [
+            {
+              "accepted": true,
+              "index": 0,
+              "numeric_workspace_bound_bytes": 3264,
+              "reason": null,
+              "source_energy": -1.1166097783066542,
+              "source_iterations": 2,
+              "source_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d",
+              "spins": [
+                {
+                  "electron_trace": 2.0,
+                  "metric_idempotency_error": 3.1401849173675503e-16,
+                  "metric_orthogonality_error": 0.0,
+                  "minimum_projected_norm_squared": 1.0,
+                  "normal_equation_residual": 0.0,
+                  "occupied_rank": 1,
+                  "projection_residual": 0.0,
+                  "source_metric_rank": 2,
+                  "target_metric_rank": 2
+                }
+              ],
+              "target_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d"
+            }
+          ],
+          "placement": "native CPU cross-overlap and NumPy metric projection; native target seed import",
+          "policy": {
+            "maximum_ao": 4096,
+            "maximum_residual": 0.5,
+            "relative_threshold": 1e-10,
+            "validation_tolerance": 1e-07
+          },
+          "projection_seconds": 0.0013099599163979292,
+          "schema": "vibeqc.basis_projection",
+          "seconds": 0.0013099599163979292,
+          "source_seconds": 0.010030060075223446,
+          "target_results": [
+            {
+              "converged": true,
+              "density_rms": 0.0,
+              "energy": -1.1166097783066542,
+              "fock_builds": 4,
+              "index": 0,
+              "iterations": 2,
+              "restart_origin": "basis_projection",
+              "status": 0
+            }
+          ],
+          "target_seconds": 0.010054966900497675,
+          "target_setup_seconds": 0.0002626320347189903,
+          "target_verification": "executed",
+          "total_seconds": 0.021723774960264564,
+          "version": 1
+        },
+        "target": {
+          "backend": "cpu_reference",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099724
+              ],
+              [
+                0.6031059747099724,
+                0.603105974709972
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066542,
+          "energy_change": 2.220446049250313e-16,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": 4,
+          "forces": [
+            [
+              0.0021490622894797633,
+              -0.0,
+              0.030086872052716596
+            ],
+            [
+              -0.00214906228947976,
+              -0.0,
+              -0.030086872052716596
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "basis_projection"
+        }
+      },
+      "inputs_hash": "90adca50b2433b00bbd10b6cf1630237bbacb5d646b936c3be61cc2e0b2bec5f",
+      "seconds": 0.021749052917584777,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 4,
+        "source_iterations": 2,
+        "stages": {
+          "items": [
+            {
+              "accepted": true,
+              "index": 0,
+              "numeric_workspace_bound_bytes": 3264,
+              "reason": null,
+              "source_energy": -1.1166097783066542,
+              "source_iterations": 2,
+              "source_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d",
+              "spins": [
+                {
+                  "electron_trace": 2.0,
+                  "metric_idempotency_error": 3.1401849173675503e-16,
+                  "metric_orthogonality_error": 0.0,
+                  "minimum_projected_norm_squared": 1.0,
+                  "normal_equation_residual": 0.0,
+                  "occupied_rank": 1,
+                  "projection_residual": 0.0,
+                  "source_metric_rank": 2,
+                  "target_metric_rank": 2
+                }
+              ],
+              "target_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d"
+            }
+          ],
+          "placement": "native CPU cross-overlap and NumPy metric projection; native target seed import",
+          "policy": {
+            "maximum_ao": 4096,
+            "maximum_residual": 0.5,
+            "relative_threshold": 1e-10,
+            "validation_tolerance": 1e-07
+          },
+          "projection_seconds": 0.0013099000789225101,
+          "schema": "vibeqc.basis_projection",
+          "seconds": 0.0013099000789225101,
+          "source_seconds": 0.010329119861125946,
+          "target_results": [
+            {
+              "converged": true,
+              "density_rms": 0.0,
+              "energy": -1.1166097783066542,
+              "fock_builds": 4,
+              "index": 0,
+              "iterations": 2,
+              "restart_origin": "basis_projection",
+              "status": 0
+            }
+          ],
+          "target_seconds": 0.009895774070173502,
+          "target_setup_seconds": 0.0002767678815871477,
+          "target_verification": "executed",
+          "total_seconds": 0.02187743689864874,
+          "version": 1
+        },
+        "target": {
+          "backend": "cpu_reference",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099724
+              ],
+              [
+                0.6031059747099724,
+                0.603105974709972
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066542,
+          "energy_change": 2.220446049250313e-16,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": 4,
+          "forces": [
+            [
+              0.0021490622894797633,
+              -0.0,
+              0.030086872052716596
+            ],
+            [
+              -0.00214906228947976,
+              -0.0,
+              -0.030086872052716596
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "basis_projection"
+        }
+      },
+      "inputs_hash": "90adca50b2433b00bbd10b6cf1630237bbacb5d646b936c3be61cc2e0b2bec5f",
+      "seconds": 0.02190398797392845,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 0,
+        "target": {
+          "backend": "cpu_reference",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099724
+              ],
+              [
+                0.6031059747099724,
+                0.603105974709972
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066542,
+          "energy_change": 4.440892098500626e-16,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": 4,
+          "forces": [
+            [
+              0.0021490622894797633,
+              -0.0,
+              0.030086872052716596
+            ],
+            [
+              -0.00214906228947976,
+              -0.0,
+              -0.030086872052716596
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "cold"
+        }
+      },
+      "inputs_hash": "90adca50b2433b00bbd10b6cf1630237bbacb5d646b936c3be61cc2e0b2bec5f",
+      "seconds": 0.010181128047406673,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 0,
+        "target": {
+          "backend": "cpu_reference",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099724
+              ],
+              [
+                0.6031059747099724,
+                0.603105974709972
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066542,
+          "energy_change": 4.440892098500626e-16,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": 4,
+          "forces": [
+            [
+              0.0021490622894797633,
+              -0.0,
+              0.030086872052716596
+            ],
+            [
+              -0.00214906228947976,
+              -0.0,
+              -0.030086872052716596
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "cold"
+        }
+      },
+      "inputs_hash": "90adca50b2433b00bbd10b6cf1630237bbacb5d646b936c3be61cc2e0b2bec5f",
+      "seconds": 0.01007917313836515,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 4,
+        "source_iterations": 2,
+        "stages": {
+          "items": [
+            {
+              "accepted": true,
+              "index": 0,
+              "numeric_workspace_bound_bytes": 3264,
+              "reason": null,
+              "source_energy": -1.1166097783066542,
+              "source_iterations": 2,
+              "source_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d",
+              "spins": [
+                {
+                  "electron_trace": 2.0,
+                  "metric_idempotency_error": 3.1401849173675503e-16,
+                  "metric_orthogonality_error": 0.0,
+                  "minimum_projected_norm_squared": 1.0,
+                  "normal_equation_residual": 0.0,
+                  "occupied_rank": 1,
+                  "projection_residual": 0.0,
+                  "source_metric_rank": 2,
+                  "target_metric_rank": 2
+                }
+              ],
+              "target_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d"
+            }
+          ],
+          "placement": "native CPU cross-overlap and NumPy metric projection; native target seed import",
+          "policy": {
+            "maximum_ao": 4096,
+            "maximum_residual": 0.5,
+            "relative_threshold": 1e-10,
+            "validation_tolerance": 1e-07
+          },
+          "projection_seconds": 0.0013013039715588093,
+          "schema": "vibeqc.basis_projection",
+          "seconds": 0.0013013039715588093,
+          "source_seconds": 0.010068041970953345,
+          "target_results": [
+            {
+              "converged": true,
+              "density_rms": 0.0,
+              "energy": -1.1166097783066542,
+              "fock_builds": 4,
+              "index": 0,
+              "iterations": 2,
+              "restart_origin": "basis_projection",
+              "status": 0
+            }
+          ],
+          "target_seconds": 0.00995631911791861,
+          "target_setup_seconds": 0.00025335419923067093,
+          "target_verification": "executed",
+          "total_seconds": 0.021651837043464184,
+          "version": 1
+        },
+        "target": {
+          "backend": "cpu_reference",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099724
+              ],
+              [
+                0.6031059747099724,
+                0.603105974709972
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066542,
+          "energy_change": 2.220446049250313e-16,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": 4,
+          "forces": [
+            [
+              0.0021490622894797633,
+              -0.0,
+              0.030086872052716596
+            ],
+            [
+              -0.00214906228947976,
+              -0.0,
+              -0.030086872052716596
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "basis_projection"
+        }
+      },
+      "inputs_hash": "90adca50b2433b00bbd10b6cf1630237bbacb5d646b936c3be61cc2e0b2bec5f",
+      "seconds": 0.02167761605232954,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 0,
+        "target": {
+          "backend": "cpu_reference",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099724
+              ],
+              [
+                0.6031059747099724,
+                0.603105974709972
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066542,
+          "energy_change": 2.220446049250313e-16,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": 4,
+          "forces": [
+            [
+              0.0021490622894797633,
+              -0.0,
+              0.030086872052716596
+            ],
+            [
+              -0.00214906228947976,
+              -0.0,
+              -0.030086872052716596
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "in_process_warm"
+        }
+      },
+      "inputs_hash": "90adca50b2433b00bbd10b6cf1630237bbacb5d646b936c3be61cc2e0b2bec5f",
+      "seconds": 0.009811823023483157,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 4,
+        "source_iterations": 2,
+        "stages": {
+          "items": [
+            {
+              "accepted": true,
+              "index": 0,
+              "numeric_workspace_bound_bytes": 3264,
+              "reason": null,
+              "source_energy": -1.1166097783066542,
+              "source_iterations": 2,
+              "source_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d",
+              "spins": [
+                {
+                  "electron_trace": 2.0,
+                  "metric_idempotency_error": 3.1401849173675503e-16,
+                  "metric_orthogonality_error": 0.0,
+                  "minimum_projected_norm_squared": 1.0,
+                  "normal_equation_residual": 0.0,
+                  "occupied_rank": 1,
+                  "projection_residual": 0.0,
+                  "source_metric_rank": 2,
+                  "target_metric_rank": 2
+                }
+              ],
+              "target_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d"
+            }
+          ],
+          "placement": "native CPU cross-overlap and NumPy metric projection; native target seed import",
+          "policy": {
+            "maximum_ao": 4096,
+            "maximum_residual": 0.5,
+            "relative_threshold": 1e-10,
+            "validation_tolerance": 1e-07
+          },
+          "projection_seconds": 0.0013133659958839417,
+          "schema": "vibeqc.basis_projection",
+          "seconds": 0.0013133659958839417,
+          "source_seconds": 0.01012788712978363,
+          "target_results": [
+            {
+              "converged": true,
+              "density_rms": 0.0,
+              "energy": -1.1166097783066542,
+              "fock_builds": 4,
+              "index": 0,
+              "iterations": 2,
+              "restart_origin": "basis_projection",
+              "status": 0
+            }
+          ],
+          "target_seconds": 0.009983840864151716,
+          "target_setup_seconds": 0.0002545560710132122,
+          "target_verification": "executed",
+          "total_seconds": 0.021745546022430062,
+          "version": 1
+        },
+        "target": {
+          "backend": "cpu_reference",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099724
+              ],
+              [
+                0.6031059747099724,
+                0.603105974709972
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066542,
+          "energy_change": 2.220446049250313e-16,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": 4,
+          "forces": [
+            [
+              0.0021490622894797633,
+              -0.0,
+              0.030086872052716596
+            ],
+            [
+              -0.00214906228947976,
+              -0.0,
+              -0.030086872052716596
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "basis_projection"
+        }
+      },
+      "inputs_hash": "90adca50b2433b00bbd10b6cf1630237bbacb5d646b936c3be61cc2e0b2bec5f",
+      "seconds": 0.021771654952317476,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 4,
+        "source_iterations": 2,
+        "stages": {
+          "items": [
+            {
+              "accepted": true,
+              "index": 0,
+              "numeric_workspace_bound_bytes": 3264,
+              "reason": null,
+              "source_energy": -1.1166097783066542,
+              "source_iterations": 2,
+              "source_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d",
+              "spins": [
+                {
+                  "electron_trace": 2.0,
+                  "metric_idempotency_error": 3.1401849173675503e-16,
+                  "metric_orthogonality_error": 0.0,
+                  "minimum_projected_norm_squared": 1.0,
+                  "normal_equation_residual": 0.0,
+                  "occupied_rank": 1,
+                  "projection_residual": 0.0,
+                  "source_metric_rank": 2,
+                  "target_metric_rank": 2
+                }
+              ],
+              "target_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d"
+            }
+          ],
+          "placement": "native CPU cross-overlap and NumPy metric projection; native target seed import",
+          "policy": {
+            "maximum_ao": 4096,
+            "maximum_residual": 0.5,
+            "relative_threshold": 1e-10,
+            "validation_tolerance": 1e-07
+          },
+          "projection_seconds": 0.0012793310452252626,
+          "schema": "vibeqc.basis_projection",
+          "seconds": 0.0012793310452252626,
+          "source_seconds": 0.010156732052564621,
+          "target_results": [
+            {
+              "converged": true,
+              "density_rms": 0.0,
+              "energy": -1.1166097783066542,
+              "fock_builds": 4,
+              "index": 0,
+              "iterations": 2,
+              "restart_origin": "basis_projection",
+              "status": 0
+            }
+          ],
+          "target_seconds": 0.009844686137512326,
+          "target_setup_seconds": 0.00026542716659605503,
+          "target_verification": "executed",
+          "total_seconds": 0.02161036804318428,
+          "version": 1
+        },
+        "target": {
+          "backend": "cpu_reference",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099724
+              ],
+              [
+                0.6031059747099724,
+                0.603105974709972
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066542,
+          "energy_change": 2.220446049250313e-16,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": 4,
+          "forces": [
+            [
+              0.0021490622894797633,
+              -0.0,
+              0.030086872052716596
+            ],
+            [
+              -0.00214906228947976,
+              -0.0,
+              -0.030086872052716596
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "basis_projection"
+        }
+      },
+      "inputs_hash": "90adca50b2433b00bbd10b6cf1630237bbacb5d646b936c3be61cc2e0b2bec5f",
+      "seconds": 0.021636147052049637,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 0,
+        "target": {
+          "backend": "cpu_reference",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099724
+              ],
+              [
+                0.6031059747099724,
+                0.603105974709972
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066542,
+          "energy_change": 2.220446049250313e-16,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": 4,
+          "forces": [
+            [
+              0.0021490622894797633,
+              -0.0,
+              0.030086872052716596
+            ],
+            [
+              -0.00214906228947976,
+              -0.0,
+              -0.030086872052716596
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "in_process_warm"
+        }
+      },
+      "inputs_hash": "90adca50b2433b00bbd10b6cf1630237bbacb5d646b936c3be61cc2e0b2bec5f",
+      "seconds": 0.009945108089596033,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 0,
+        "target": {
+          "backend": "cpu_reference",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099724
+              ],
+              [
+                0.6031059747099724,
+                0.603105974709972
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066542,
+          "energy_change": 2.220446049250313e-16,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": 4,
+          "forces": [
+            [
+              0.0021490622894797633,
+              -0.0,
+              0.030086872052716596
+            ],
+            [
+              -0.00214906228947976,
+              -0.0,
+              -0.030086872052716596
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "in_process_warm"
+        }
+      },
+      "inputs_hash": "90adca50b2433b00bbd10b6cf1630237bbacb5d646b936c3be61cc2e0b2bec5f",
+      "seconds": 0.009987879078835249,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 4,
+        "source_iterations": 2,
+        "stages": {
+          "items": [
+            {
+              "accepted": true,
+              "index": 0,
+              "numeric_workspace_bound_bytes": 3264,
+              "reason": null,
+              "source_energy": -1.1166097783066542,
+              "source_iterations": 2,
+              "source_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d",
+              "spins": [
+                {
+                  "electron_trace": 2.0,
+                  "metric_idempotency_error": 3.1401849173675503e-16,
+                  "metric_orthogonality_error": 0.0,
+                  "minimum_projected_norm_squared": 1.0,
+                  "normal_equation_residual": 0.0,
+                  "occupied_rank": 1,
+                  "projection_residual": 0.0,
+                  "source_metric_rank": 2,
+                  "target_metric_rank": 2
+                }
+              ],
+              "target_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d"
+            }
+          ],
+          "placement": "native CPU cross-overlap and NumPy metric projection; native target seed import",
+          "policy": {
+            "maximum_ao": 4096,
+            "maximum_residual": 0.5,
+            "relative_threshold": 1e-10,
+            "validation_tolerance": 1e-07
+          },
+          "projection_seconds": 0.001292807050049305,
+          "schema": "vibeqc.basis_projection",
+          "seconds": 0.001292807050049305,
+          "source_seconds": 0.010102879023179412,
+          "target_results": [
+            {
+              "converged": true,
+              "density_rms": 0.0,
+              "energy": -1.1166097783066542,
+              "fock_builds": 4,
+              "index": 0,
+              "iterations": 2,
+              "restart_origin": "basis_projection",
+              "status": 0
+            }
+          ],
+          "target_seconds": 0.00987624702975154,
+          "target_setup_seconds": 0.0002590250223875046,
+          "target_verification": "executed",
+          "total_seconds": 0.02160645998083055,
+          "version": 1
+        },
+        "target": {
+          "backend": "cpu_reference",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099724
+              ],
+              [
+                0.6031059747099724,
+                0.603105974709972
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066542,
+          "energy_change": 2.220446049250313e-16,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": 4,
+          "forces": [
+            [
+              0.0021490622894797633,
+              -0.0,
+              0.030086872052716596
+            ],
+            [
+              -0.00214906228947976,
+              -0.0,
+              -0.030086872052716596
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "basis_projection"
+        }
+      },
+      "inputs_hash": "90adca50b2433b00bbd10b6cf1630237bbacb5d646b936c3be61cc2e0b2bec5f",
+      "seconds": 0.021632038988173008,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 4,
+        "source_iterations": 2,
+        "stages": {
+          "items": [
+            {
+              "accepted": true,
+              "index": 0,
+              "numeric_workspace_bound_bytes": 3264,
+              "reason": null,
+              "source_energy": -1.1166097783066542,
+              "source_iterations": 2,
+              "source_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d",
+              "spins": [
+                {
+                  "electron_trace": 2.0,
+                  "metric_idempotency_error": 3.1401849173675503e-16,
+                  "metric_orthogonality_error": 0.0,
+                  "minimum_projected_norm_squared": 1.0,
+                  "normal_equation_residual": 0.0,
+                  "occupied_rank": 1,
+                  "projection_residual": 0.0,
+                  "source_metric_rank": 2,
+                  "target_metric_rank": 2
+                }
+              ],
+              "target_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d"
+            }
+          ],
+          "placement": "native CPU cross-overlap and NumPy metric projection; native target seed import",
+          "policy": {
+            "maximum_ao": 4096,
+            "maximum_residual": 0.5,
+            "relative_threshold": 1e-10,
+            "validation_tolerance": 1e-07
+          },
+          "projection_seconds": 0.0012873271480202675,
+          "schema": "vibeqc.basis_projection",
+          "seconds": 0.0012873271480202675,
+          "source_seconds": 0.01006822194904089,
+          "target_results": [
+            {
+              "converged": true,
+              "density_rms": 0.0,
+              "energy": -1.1166097783066542,
+              "fock_builds": 4,
+              "index": 0,
+              "iterations": 2,
+              "restart_origin": "basis_projection",
+              "status": 0
+            }
+          ],
+          "target_seconds": 0.009887086926028132,
+          "target_setup_seconds": 0.0002603670582175255,
+          "target_verification": "executed",
+          "total_seconds": 0.02156821684911847,
+          "version": 1
+        },
+        "target": {
+          "backend": "cpu_reference",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099724
+              ],
+              [
+                0.6031059747099724,
+                0.603105974709972
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066542,
+          "energy_change": 2.220446049250313e-16,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": 4,
+          "forces": [
+            [
+              0.0021490622894797633,
+              -0.0,
+              0.030086872052716596
+            ],
+            [
+              -0.00214906228947976,
+              -0.0,
+              -0.030086872052716596
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "basis_projection"
+        }
+      },
+      "inputs_hash": "90adca50b2433b00bbd10b6cf1630237bbacb5d646b936c3be61cc2e0b2bec5f",
+      "seconds": 0.021593915997073054,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 0,
+        "target": {
+          "backend": "cpu_reference",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099724
+              ],
+              [
+                0.6031059747099724,
+                0.603105974709972
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066542,
+          "energy_change": 2.220446049250313e-16,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": 4,
+          "forces": [
+            [
+              0.0021490622894797633,
+              -0.0,
+              0.030086872052716596
+            ],
+            [
+              -0.00214906228947976,
+              -0.0,
+              -0.030086872052716596
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "in_process_warm"
+        }
+      },
+      "inputs_hash": "90adca50b2433b00bbd10b6cf1630237bbacb5d646b936c3be61cc2e0b2bec5f",
+      "seconds": 0.00995229184627533,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 0,
+        "target": {
+          "backend": "cpu_reference",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099724
+              ],
+              [
+                0.6031059747099724,
+                0.603105974709972
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066542,
+          "energy_change": 2.220446049250313e-16,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": 4,
+          "forces": [
+            [
+              0.0021490622894797633,
+              -0.0,
+              0.030086872052716596
+            ],
+            [
+              -0.00214906228947976,
+              -0.0,
+              -0.030086872052716596
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "in_process_warm"
+        }
+      },
+      "inputs_hash": "90adca50b2433b00bbd10b6cf1630237bbacb5d646b936c3be61cc2e0b2bec5f",
+      "seconds": 0.009887567954137921,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 4,
+        "source_iterations": 2,
+        "stages": {
+          "items": [
+            {
+              "accepted": true,
+              "index": 0,
+              "numeric_workspace_bound_bytes": 3264,
+              "reason": null,
+              "source_energy": -1.1166097783066542,
+              "source_iterations": 2,
+              "source_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d",
+              "spins": [
+                {
+                  "electron_trace": 2.0,
+                  "metric_idempotency_error": 3.1401849173675503e-16,
+                  "metric_orthogonality_error": 0.0,
+                  "minimum_projected_norm_squared": 1.0,
+                  "normal_equation_residual": 0.0,
+                  "occupied_rank": 1,
+                  "projection_residual": 0.0,
+                  "source_metric_rank": 2,
+                  "target_metric_rank": 2
+                }
+              ],
+              "target_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d"
+            }
+          ],
+          "placement": "native CPU cross-overlap and NumPy metric projection; native target seed import",
+          "policy": {
+            "maximum_ao": 4096,
+            "maximum_residual": 0.5,
+            "relative_threshold": 1e-10,
+            "validation_tolerance": 1e-07
+          },
+          "projection_seconds": 0.0012948508374392986,
+          "schema": "vibeqc.basis_projection",
+          "seconds": 0.0012948508374392986,
+          "source_seconds": 0.01012693508528173,
+          "target_results": [
+            {
+              "converged": true,
+              "density_rms": 0.0,
+              "energy": -1.1166097783066542,
+              "fock_builds": 4,
+              "index": 0,
+              "iterations": 2,
+              "restart_origin": "basis_projection",
+              "status": 0
+            }
+          ],
+          "target_seconds": 0.009923296049237251,
+          "target_setup_seconds": 0.0002607181668281555,
+          "target_verification": "executed",
+          "total_seconds": 0.021670933114364743,
+          "version": 1
+        },
+        "target": {
+          "backend": "cpu_reference",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099724
+              ],
+              [
+                0.6031059747099724,
+                0.603105974709972
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066542,
+          "energy_change": 2.220446049250313e-16,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": 4,
+          "forces": [
+            [
+              0.0021490622894797633,
+              -0.0,
+              0.030086872052716596
+            ],
+            [
+              -0.00214906228947976,
+              -0.0,
+              -0.030086872052716596
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "basis_projection"
+        }
+      },
+      "inputs_hash": "90adca50b2433b00bbd10b6cf1630237bbacb5d646b936c3be61cc2e0b2bec5f",
+      "seconds": 0.021696551935747266,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    }
+  ],
+  "schema": "vibeqc.basis_projection_endpoint",
+  "slurm_job_id": null,
+  "source_identity": "460a6b09c3d470f7638fe6a3a8e92498d6ccaf29c3aac28d3f4fa03dbd0f5baa",
+  "timing_scope": "full energy/force endpoints; candidate always includes fresh source solve, projection and target solve; warm baseline retains its target plan",
+  "version": 1,
+  "worktree_dirty": true
+}

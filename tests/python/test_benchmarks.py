@@ -75,6 +75,17 @@ def _aot_shell_gate_module():
     return module
 
 
+def _issue174_precision_module():
+    """Load the pure #174 parser without importing CuPy or a native library."""
+
+    path = REPOSITORY_ROOT / "benchmarks" / "issue174_precision_boundaries.py"
+    spec = importlib.util.spec_from_file_location("vibeqc_issue174_precision", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def test_batch_benchmark_writes_reproducible_json(tmp_path):
     """Keep benchmark artifacts tied to raw samples and exact source state."""
 
@@ -199,6 +210,98 @@ def test_cuda_metadata_records_scheduler_visible_power_state(monkeypatch):
         "temperature_celsius": 61.0,
         "sampling_point": "after benchmark measurements",
     }
+
+
+def test_issue174_fock_profile_parser_preserves_precision_work_counts():
+    """Keep CUDA-event class rows distinct from actual FP32/FP64 tile counts."""
+
+    benchmark = _issue174_precision_module()
+    parsed = benchmark._parse_fock_profile(
+        """bounded-direct-fock-class-profile total_gpu_ms=1.25 classes=1
+  ddss class=12 launches=3 gpu_ms=1.250000 share=100.00%
+bounded-direct-fock-precision-profile enabled=1 threshold=9.9999999999999995e-07
+  ddss class=12 fp64_quartets=7 fp32_quartets=11 mixed_capable=1
+"""
+    )
+
+    assert parsed["operator_evaluation_count"] == 1
+    evaluation = parsed["operator_evaluations"][0]
+    assert evaluation["class_gpu_milliseconds"] == pytest.approx(1.25)
+    assert evaluation["reported_class_count"] == 1
+    assert evaluation["classes"] == [
+        {
+            "name": "ddss",
+            "shell_class": 12,
+            "launches": 3,
+            "gpu_milliseconds": 1.25,
+            "timed_share_percent": 100.0,
+        }
+    ]
+    assert evaluation["precision"] == {
+        "enabled": True,
+        "threshold": pytest.approx(1.0e-6),
+        "shell_classes": [
+            {
+                "name": "ddss",
+                "shell_class": 12,
+                "fp64_quartets": 7,
+                "fp32_quartets": 11,
+                "mixed_capable": True,
+            }
+        ],
+    }
+
+
+def test_issue174_fixed_density_rejects_cold_retries_and_extra_evaluations():
+    """A parsed profile alone cannot certify the density or endpoint timed."""
+
+    benchmark = _issue174_precision_module()
+    diagnostic = """bounded-direct-fock-class-profile total_gpu_ms=1.0 classes=1
+  ppps class=4 launches=1 gpu_ms=1.0 share=100.0%
+bounded-direct-fock-precision-profile enabled=0 threshold=0
+  ppps class=4 fp64_quartets=10 fp32_quartets=0 mixed_capable=1
+"""
+    item = SimpleNamespace(
+        status_message="SCF did not converge",
+        warm_start_used=True,
+        warm_start_fallback=False,
+    )
+    assert (
+        benchmark._validate_fixed_density_sample(item, diagnostic)[
+            "operator_evaluation_count"
+        ]
+        == 1
+    )
+    with pytest.raises(RuntimeError, match="exactly one"):
+        benchmark._validate_fixed_density_sample(item, diagnostic + diagnostic)
+    item.warm_start_fallback = True
+    with pytest.raises(RuntimeError, match="frozen warm density"):
+        benchmark._validate_fixed_density_sample(item, diagnostic)
+    item.warm_start_fallback = False
+    item.warm_start_used = False
+    with pytest.raises(RuntimeError, match="frozen warm density"):
+        benchmark._validate_fixed_density_sample(item, diagnostic)
+
+
+def test_issue174_help_does_not_initialize_cuda():
+    """Allow benchmark discovery before requesting the mandatory Slurm job."""
+
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = str(REPOSITORY_ROOT / "python")
+    environment["CUDA_VISIBLE_DEVICES"] = ""
+    completed = subprocess.run(
+        (
+            sys.executable,
+            str(REPOSITORY_ROOT / "benchmarks" / "issue174_precision_boundaries.py"),
+            "--help",
+        ),
+        cwd=REPOSITORY_ROOT,
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert "--experimental-fp32-threshold" in completed.stdout
 
 
 def test_gpu_comparison_help_does_not_require_an_allocated_device():

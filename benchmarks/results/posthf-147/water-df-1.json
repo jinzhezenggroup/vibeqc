@@ -1,0 +1,93 @@
+{
+  "subject": "posthf/water/DF/cuda-generated-df-values-host-staged",
+  "same_hamiltonian_errors": {
+    "mo": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 2.806088694740083e-14,
+      "max_scaled_error": 0.0017218968200126798,
+      "rms_error": 6.001506167657448e-15,
+      "shape": [
+        5,
+        2,
+        5,
+        2
+      ]
+    },
+    "amplitudes": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 1.1799589083594242e-14,
+      "max_scaled_error": 0.0009340172715594314,
+      "rms_error": 2.279868063117116e-15,
+      "shape": [
+        5,
+        5,
+        2,
+        2
+      ]
+    },
+    "energy": {
+      "passed": true,
+      "atol": 1e-09,
+      "rtol": 0,
+      "max_absolute_error": 9.558326352632207e-15,
+      "max_scaled_error": 9.558326352632207e-06,
+      "rms_error": 9.558326352632207e-15,
+      "shape": [
+        1
+      ]
+    }
+  },
+  "diagnostics": {
+    "backend": "cpu-reference-df-staged-fp64",
+    "source_backend": "cuda-generated-df-values-host-staged",
+    "source_host_staging": true,
+    "cache_hit": true,
+    "endpoint_seconds": 0.8779131080955267,
+    "peak_bytes": 8414103,
+    "host_peak_bytes": 8411061,
+    "device_peak_bytes": 3042,
+    "output_placement": "host",
+    "metric_identity": "63d9839ed5a8ecd661543e181eafb7be46f5756d5aee5b3f9e6355027ed7dfce",
+    "metric_rank": 7,
+    "metric_threshold": 1e-10,
+    "inverse_convention": "square-symmetric-thresholded-inverse-square-root",
+    "metric_setup_seconds": 0.00012011011131107807,
+    "cumulative_source_seconds": 0.766327885678038,
+    "cumulative_transformation_seconds": 0.024583237478509545,
+    "cuda_source": {
+      "generation_ms": 669.3372469246387,
+      "transfer_ms": 14.075391999445856,
+      "host_setup_peak_bytes": 11709,
+      "device_bytes": 3042
+    },
+    "reuse_seconds": 1.5730038285255432e-06
+  },
+  "metric": {
+    "auxiliary_hash": "ad2615b8a4186063cb9299374116c552e2c9d11ae04734f75c635f24ca99c366",
+    "geometry_hash": "8fb8725213bad88cd958307e1a5145640abba0454e79326d876a3554a4d4cefa",
+    "relative_threshold": 1e-10,
+    "rank": 7,
+    "absolute_threshold": 9.24770660151649e-09,
+    "condition_number": 190.93837173603674,
+    "metric_hash": "f505b818893dc54d86180ddb4792aaaf75e336380375ce88d896f8fb96d48cb8",
+    "identity": "63d9839ed5a8ecd661543e181eafb7be46f5756d5aee5b3f9e6355027ed7dfce",
+    "setup_seconds": 0.00012011011131107807,
+    "host_peak_bytes": 8407869,
+    "device_bytes": 3042,
+    "convention": "square-symmetric-thresholded-inverse-square-root"
+  },
+  "cold_seconds": 0.8780370850581676,
+  "statistics": {
+    "transformations": 1,
+    "hits": 1,
+    "peak_bytes": 8414103,
+    "source_tiles": 1296,
+    "source_seconds": 0.766327885678038,
+    "transformation_seconds": 0.024583237478509545
+  },
+  "conventional_vs_df_ao_difference": 0.5330717803110816
+}

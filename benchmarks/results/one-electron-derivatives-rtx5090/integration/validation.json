@@ -1,0 +1,51 @@
+{
+  "base_revision": "5b6f3ecd0089066f89b6ac3502acd758fe6234b6",
+  "binary_sha256": "2984bea1c876ab872761291c2e8a8a74215de065c2dab78558029e516fb3369c",
+  "cache_regression": "RHF and UHF: reuse default cache, reject infeasible 32 KiB, recover at 1 MiB, refresh at 8 MiB; invalidate prepared state and owning plan together.",
+  "cpu_native_tests": 13,
+  "cpu_symbolic_emitted_and_projection_tests": 62,
+  "device_guard": "Restores caller device after stream cleanup; one physical GPU, no cross-device hardware coverage.",
+  "failed_attempts": [
+    {
+      "job": 9089,
+      "reason": "Initial regression incorrectly expected the infeasible 32 KiB preparation budget to succeed. Inspection also found that prepared-policy changes must invalidate the retained CUDA plan."
+    },
+    {
+      "job": 9090,
+      "reason": "32 KiB is infeasible for this sp batch; regression now checks explicit OOM, then valid 1/8 MiB recovery."
+    }
+  ],
+  "gpu_native_tests": 13,
+  "gpu_python": {
+    "checkpoint": {
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "tests": 41
+    },
+    "derivatives": {
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "tests": 29
+    },
+    "projection": {
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "tests": 5
+    },
+    "resources": {
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "tests": 14
+    }
+  },
+  "job": 9092,
+  "original_benchmark_provenance": "../validation-summary.json",
+  "performance_rerun": false,
+  "schema": "vibeqc.one_electron_derivative_integration",
+  "source_identity": "a1ca0a956d9ef598aef1e1a116d1e25877573f7c541ef709f91ace14c16b7ad2",
+  "version": 1
+}

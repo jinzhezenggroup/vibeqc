@@ -89,8 +89,8 @@ cudaError_t launch_shell_class_streaming_fock(
     const void* shell_pair_stream, const std::int64_t* primitive_pair_offsets,
     const void* primitive_pairs, const double* ao_coefficients, const void* atom_positions,
     double screening_tolerance, bool mixed_precision_enabled, double fp64_threshold,
-    const double* schwarz_bounds, const double* density, double* fock,
-    std::uint32_t* bra_head) noexcept;
+    const double* schwarz_bounds, const double* density, double* fock, std::uint32_t* bra_head,
+    unsigned long long* fp64_work_count, unsigned long long* fp32_work_count) noexcept;
 
 /**
  * Launch the optional canonical ppps resident-bra force worker.

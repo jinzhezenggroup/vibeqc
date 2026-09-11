@@ -1,0 +1,1737 @@
+{
+  "all_target_states_equivalent": true,
+  "binary_sha256": "d522aa697bed6e608cd2857e07f245127bc1ddcb36b1e2832e69597060526db7",
+  "case": "h2-rhf-same",
+  "comparison": {
+    "reason": "difference within 2%, measurement noise, or no improvement",
+    "status": "not-run",
+    "workloads": {
+      "cold-start": {
+        "baseline": {
+          "maximum_seconds": 0.004588044947013259,
+          "median_seconds": 0.004476733040064573,
+          "minimum_seconds": 0.0044600400142371655,
+          "raw_seconds": [
+            0.004588044947013259,
+            0.004499667091295123,
+            0.0044600400142371655,
+            0.004473816836252809,
+            0.004476733040064573
+          ],
+          "relative_mad": 0.0037288410271538223,
+          "samples": 5
+        },
+        "candidate": {
+          "maximum_seconds": 0.012324915966019034,
+          "median_seconds": 0.010092420969158411,
+          "minimum_seconds": 0.01008017803542316,
+          "raw_seconds": [
+            0.01014439994469285,
+            0.012324915966019034,
+            0.010081219021230936,
+            0.010092420969158411,
+            0.01008017803542316
+          ],
+          "relative_mad": 0.001213081952552792,
+          "samples": 5
+        },
+        "noise_floor": 0.02,
+        "relative_improvement": -1.2544165307236717,
+        "significant": false
+      },
+      "unchanged-geometry": {
+        "baseline": {
+          "maximum_seconds": 0.0017580690328031778,
+          "median_seconds": 0.0017537500243633986,
+          "minimum_seconds": 0.0017436409834772348,
+          "raw_seconds": [
+            0.0017529588658362627,
+            0.0017580690328031778,
+            0.0017537500243633986,
+            0.001757096964865923,
+            0.0017436409834772348
+          ],
+          "relative_mad": 0.001908447872289722,
+          "samples": 5
+        },
+        "candidate": {
+          "maximum_seconds": 0.009984544944018126,
+          "median_seconds": 0.009981618961319327,
+          "minimum_seconds": 0.009864105144515634,
+          "raw_seconds": [
+            0.009984544944018126,
+            0.009981618961319327,
+            0.009984304895624518,
+            0.009864105144515634,
+            0.00988465384580195
+          ],
+          "relative_mad": 0.0002931370862920053,
+          "samples": 5
+        },
+        "noise_floor": 0.02,
+        "relative_improvement": -4.691585928811376,
+        "significant": false
+      }
+    }
+  },
+  "counter_boundary": "measured CPU physical Fock builds; CUDA and incomplete retries are unavailable",
+  "cuda_visible_devices": "0",
+  "fock_builds": {
+    "cold-start": {
+      "baseline_target": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "projected_target": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "saved_target_fock_builds": null
+    },
+    "unchanged-geometry": {
+      "baseline_target": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "projected_target": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "saved_target_fock_builds": null
+    }
+  },
+  "inputs": {
+    "atoms": [
+      [
+        "H",
+        [
+          0.0,
+          0.0,
+          -0.7
+        ]
+      ],
+      [
+        "H",
+        [
+          0.1,
+          0.0,
+          0.7
+        ]
+      ]
+    ],
+    "charge": 0,
+    "multiplicity": 1,
+    "settings": {
+      "density_tolerance": 1e-10,
+      "device": "cuda",
+      "energy_tolerance": 1e-12,
+      "method": "rhf",
+      "screening_tolerance": 1e-14
+    },
+    "source_basis": "sto-3g",
+    "target_basis": "sto-3g"
+  },
+  "iteration_history": "not exported by this public solver; final counts/residuals and physical Fock evaluations retained",
+  "production_promoted": false,
+  "revision": "b37212cdc6186d2d3fe0d154c7c3417160f5b776",
+  "samples": [
+    {
+      "diagnostics": {
+        "source_fock_builds": 0,
+        "target": {
+          "backend": "cuda",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099725
+              ],
+              [
+                0.6031059747099725,
+                0.6031059747099723
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066546,
+          "energy_change": 0.0,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": null,
+          "forces": [
+            [
+              0.002149062289479786,
+              -0.0,
+              0.030086872052716717
+            ],
+            [
+              -0.002149062289479786,
+              -0.0,
+              -0.0300868720527166
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "cold"
+        }
+      },
+      "inputs_hash": "a3675ba328f422f3add6cb4f4c59a07b705777894060fc8240ca8565f8490cfb",
+      "seconds": 0.004588044947013259,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": null,
+        "source_iterations": 2,
+        "stages": {
+          "items": [
+            {
+              "accepted": true,
+              "index": 0,
+              "numeric_workspace_bound_bytes": 3264,
+              "reason": null,
+              "source_energy": -1.1166097783066546,
+              "source_iterations": 2,
+              "source_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d",
+              "spins": [
+                {
+                  "electron_trace": 2.0,
+                  "metric_idempotency_error": 0.0,
+                  "metric_orthogonality_error": 0.0,
+                  "minimum_projected_norm_squared": 0.9999999999999996,
+                  "normal_equation_residual": 1.927933489585395e-16,
+                  "occupied_rank": 1,
+                  "projection_residual": 2.1073424255447017e-08,
+                  "source_metric_rank": 2,
+                  "target_metric_rank": 2
+                }
+              ],
+              "target_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d"
+            }
+          ],
+          "placement": "native CPU cross-overlap and NumPy metric projection; native target seed import",
+          "policy": {
+            "maximum_ao": 4096,
+            "maximum_residual": 0.5,
+            "relative_threshold": 1e-10,
+            "validation_tolerance": 1e-07
+          },
+          "projection_seconds": 0.0013792549725621939,
+          "schema": "vibeqc.basis_projection",
+          "seconds": 0.0013792549725621939,
+          "source_seconds": 0.004294865066185594,
+          "target_results": [
+            {
+              "converged": true,
+              "density_rms": 0.0,
+              "energy": -1.1166097783066546,
+              "fock_builds": null,
+              "index": 0,
+              "iterations": 2,
+              "restart_origin": "basis_projection",
+              "status": 0
+            }
+          ],
+          "target_seconds": 0.00297144684009254,
+          "target_setup_seconds": 0.0012579241301864386,
+          "target_verification": "executed",
+          "total_seconds": 0.010108701884746552,
+          "version": 1
+        },
+        "target": {
+          "backend": "cuda",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099725
+              ],
+              [
+                0.6031059747099725,
+                0.6031059747099723
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066546,
+          "energy_change": 0.0,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": null,
+          "forces": [
+            [
+              0.002149062289479786,
+              -0.0,
+              0.030086872052716717
+            ],
+            [
+              -0.002149062289479786,
+              -0.0,
+              -0.0300868720527166
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "basis_projection"
+        }
+      },
+      "inputs_hash": "a3675ba328f422f3add6cb4f4c59a07b705777894060fc8240ca8565f8490cfb",
+      "seconds": 0.01014439994469285,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": null,
+        "source_iterations": 2,
+        "stages": {
+          "items": [
+            {
+              "accepted": true,
+              "index": 0,
+              "numeric_workspace_bound_bytes": 3264,
+              "reason": null,
+              "source_energy": -1.1166097783066546,
+              "source_iterations": 2,
+              "source_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d",
+              "spins": [
+                {
+                  "electron_trace": 2.0,
+                  "metric_idempotency_error": 0.0,
+                  "metric_orthogonality_error": 0.0,
+                  "minimum_projected_norm_squared": 0.9999999999999996,
+                  "normal_equation_residual": 1.927933489585395e-16,
+                  "occupied_rank": 1,
+                  "projection_residual": 2.1073424255447017e-08,
+                  "source_metric_rank": 2,
+                  "target_metric_rank": 2
+                }
+              ],
+              "target_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d"
+            }
+          ],
+          "placement": "native CPU cross-overlap and NumPy metric projection; native target seed import",
+          "policy": {
+            "maximum_ao": 4096,
+            "maximum_residual": 0.5,
+            "relative_threshold": 1e-10,
+            "validation_tolerance": 1e-07
+          },
+          "projection_seconds": 0.003461472922936082,
+          "schema": "vibeqc.basis_projection",
+          "seconds": 0.003461472922936082,
+          "source_seconds": 0.004292972153052688,
+          "target_results": [
+            {
+              "converged": true,
+              "density_rms": 0.0,
+              "energy": -1.1166097783066546,
+              "fock_builds": null,
+              "index": 0,
+              "iterations": 2,
+              "restart_origin": "basis_projection",
+              "status": 0
+            }
+          ],
+          "target_seconds": 0.0030442550778388977,
+          "target_setup_seconds": 0.0012554789427667856,
+          "target_verification": "executed",
+          "total_seconds": 0.012289709178730845,
+          "version": 1
+        },
+        "target": {
+          "backend": "cuda",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099725
+              ],
+              [
+                0.6031059747099725,
+                0.6031059747099723
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066546,
+          "energy_change": 0.0,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": null,
+          "forces": [
+            [
+              0.002149062289479786,
+              -0.0,
+              0.030086872052716717
+            ],
+            [
+              -0.002149062289479786,
+              -0.0,
+              -0.0300868720527166
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "basis_projection"
+        }
+      },
+      "inputs_hash": "a3675ba328f422f3add6cb4f4c59a07b705777894060fc8240ca8565f8490cfb",
+      "seconds": 0.012324915966019034,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 0,
+        "target": {
+          "backend": "cuda",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099725
+              ],
+              [
+                0.6031059747099725,
+                0.6031059747099723
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066546,
+          "energy_change": 0.0,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": null,
+          "forces": [
+            [
+              0.002149062289479786,
+              -0.0,
+              0.030086872052716717
+            ],
+            [
+              -0.002149062289479786,
+              -0.0,
+              -0.0300868720527166
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "cold"
+        }
+      },
+      "inputs_hash": "a3675ba328f422f3add6cb4f4c59a07b705777894060fc8240ca8565f8490cfb",
+      "seconds": 0.004499667091295123,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 0,
+        "target": {
+          "backend": "cuda",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099725
+              ],
+              [
+                0.6031059747099725,
+                0.6031059747099723
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066546,
+          "energy_change": 0.0,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": null,
+          "forces": [
+            [
+              0.002149062289479786,
+              -0.0,
+              0.030086872052716717
+            ],
+            [
+              -0.002149062289479786,
+              -0.0,
+              -0.0300868720527166
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "cold"
+        }
+      },
+      "inputs_hash": "a3675ba328f422f3add6cb4f4c59a07b705777894060fc8240ca8565f8490cfb",
+      "seconds": 0.0044600400142371655,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": null,
+        "source_iterations": 2,
+        "stages": {
+          "items": [
+            {
+              "accepted": true,
+              "index": 0,
+              "numeric_workspace_bound_bytes": 3264,
+              "reason": null,
+              "source_energy": -1.1166097783066546,
+              "source_iterations": 2,
+              "source_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d",
+              "spins": [
+                {
+                  "electron_trace": 2.0,
+                  "metric_idempotency_error": 0.0,
+                  "metric_orthogonality_error": 0.0,
+                  "minimum_projected_norm_squared": 0.9999999999999996,
+                  "normal_equation_residual": 1.927933489585395e-16,
+                  "occupied_rank": 1,
+                  "projection_residual": 2.1073424255447017e-08,
+                  "source_metric_rank": 2,
+                  "target_metric_rank": 2
+                }
+              ],
+              "target_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d"
+            }
+          ],
+          "placement": "native CPU cross-overlap and NumPy metric projection; native target seed import",
+          "policy": {
+            "maximum_ao": 4096,
+            "maximum_residual": 0.5,
+            "relative_threshold": 1e-10,
+            "validation_tolerance": 1e-07
+          },
+          "projection_seconds": 0.001339408103376627,
+          "schema": "vibeqc.basis_projection",
+          "seconds": 0.001339408103376627,
+          "source_seconds": 0.004285166040062904,
+          "target_results": [
+            {
+              "converged": true,
+              "density_rms": 0.0,
+              "energy": -1.1166097783066546,
+              "fock_builds": null,
+              "index": 0,
+              "iterations": 2,
+              "restart_origin": "basis_projection",
+              "status": 0
+            }
+          ],
+          "target_seconds": 0.002964724088087678,
+          "target_setup_seconds": 0.001256410963833332,
+          "target_verification": "executed",
+          "total_seconds": 0.01004825602285564,
+          "version": 1
+        },
+        "target": {
+          "backend": "cuda",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099725
+              ],
+              [
+                0.6031059747099725,
+                0.6031059747099723
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066546,
+          "energy_change": 0.0,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": null,
+          "forces": [
+            [
+              0.002149062289479786,
+              -0.0,
+              0.030086872052716717
+            ],
+            [
+              -0.002149062289479786,
+              -0.0,
+              -0.0300868720527166
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "basis_projection"
+        }
+      },
+      "inputs_hash": "a3675ba328f422f3add6cb4f4c59a07b705777894060fc8240ca8565f8490cfb",
+      "seconds": 0.010081219021230936,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": null,
+        "source_iterations": 2,
+        "stages": {
+          "items": [
+            {
+              "accepted": true,
+              "index": 0,
+              "numeric_workspace_bound_bytes": 3264,
+              "reason": null,
+              "source_energy": -1.1166097783066546,
+              "source_iterations": 2,
+              "source_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d",
+              "spins": [
+                {
+                  "electron_trace": 2.0,
+                  "metric_idempotency_error": 0.0,
+                  "metric_orthogonality_error": 0.0,
+                  "minimum_projected_norm_squared": 0.9999999999999996,
+                  "normal_equation_residual": 1.927933489585395e-16,
+                  "occupied_rank": 1,
+                  "projection_residual": 2.1073424255447017e-08,
+                  "source_metric_rank": 2,
+                  "target_metric_rank": 2
+                }
+              ],
+              "target_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d"
+            }
+          ],
+          "placement": "native CPU cross-overlap and NumPy metric projection; native target seed import",
+          "policy": {
+            "maximum_ao": 4096,
+            "maximum_residual": 0.5,
+            "relative_threshold": 1e-10,
+            "validation_tolerance": 1e-07
+          },
+          "projection_seconds": 0.0013366739731281996,
+          "schema": "vibeqc.basis_projection",
+          "seconds": 0.0013366739731281996,
+          "source_seconds": 0.004290847107768059,
+          "target_results": [
+            {
+              "converged": true,
+              "density_rms": 0.0,
+              "energy": -1.1166097783066546,
+              "fock_builds": null,
+              "index": 0,
+              "iterations": 2,
+              "restart_origin": "basis_projection",
+              "status": 0
+            }
+          ],
+          "target_seconds": 0.002959724050015211,
+          "target_setup_seconds": 0.0012562701012939215,
+          "target_verification": "executed",
+          "total_seconds": 0.010058186016976833,
+          "version": 1
+        },
+        "target": {
+          "backend": "cuda",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099725
+              ],
+              [
+                0.6031059747099725,
+                0.6031059747099723
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066546,
+          "energy_change": 0.0,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": null,
+          "forces": [
+            [
+              0.002149062289479786,
+              -0.0,
+              0.030086872052716717
+            ],
+            [
+              -0.002149062289479786,
+              -0.0,
+              -0.0300868720527166
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "basis_projection"
+        }
+      },
+      "inputs_hash": "a3675ba328f422f3add6cb4f4c59a07b705777894060fc8240ca8565f8490cfb",
+      "seconds": 0.010092420969158411,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 0,
+        "target": {
+          "backend": "cuda",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099725
+              ],
+              [
+                0.6031059747099725,
+                0.6031059747099723
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066546,
+          "energy_change": 0.0,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": null,
+          "forces": [
+            [
+              0.002149062289479786,
+              -0.0,
+              0.030086872052716717
+            ],
+            [
+              -0.002149062289479786,
+              -0.0,
+              -0.0300868720527166
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "cold"
+        }
+      },
+      "inputs_hash": "a3675ba328f422f3add6cb4f4c59a07b705777894060fc8240ca8565f8490cfb",
+      "seconds": 0.004473816836252809,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 0,
+        "target": {
+          "backend": "cuda",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099725
+              ],
+              [
+                0.6031059747099725,
+                0.6031059747099723
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066546,
+          "energy_change": 0.0,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": null,
+          "forces": [
+            [
+              0.002149062289479786,
+              -0.0,
+              0.030086872052716717
+            ],
+            [
+              -0.002149062289479786,
+              -0.0,
+              -0.0300868720527166
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "cold"
+        }
+      },
+      "inputs_hash": "a3675ba328f422f3add6cb4f4c59a07b705777894060fc8240ca8565f8490cfb",
+      "seconds": 0.004476733040064573,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": null,
+        "source_iterations": 2,
+        "stages": {
+          "items": [
+            {
+              "accepted": true,
+              "index": 0,
+              "numeric_workspace_bound_bytes": 3264,
+              "reason": null,
+              "source_energy": -1.1166097783066546,
+              "source_iterations": 2,
+              "source_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d",
+              "spins": [
+                {
+                  "electron_trace": 2.0,
+                  "metric_idempotency_error": 0.0,
+                  "metric_orthogonality_error": 0.0,
+                  "minimum_projected_norm_squared": 0.9999999999999996,
+                  "normal_equation_residual": 1.927933489585395e-16,
+                  "occupied_rank": 1,
+                  "projection_residual": 2.1073424255447017e-08,
+                  "source_metric_rank": 2,
+                  "target_metric_rank": 2
+                }
+              ],
+              "target_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d"
+            }
+          ],
+          "placement": "native CPU cross-overlap and NumPy metric projection; native target seed import",
+          "policy": {
+            "maximum_ao": 4096,
+            "maximum_residual": 0.5,
+            "relative_threshold": 1e-10,
+            "validation_tolerance": 1e-07
+          },
+          "projection_seconds": 0.0013322150334715843,
+          "schema": "vibeqc.basis_projection",
+          "seconds": 0.0013322150334715843,
+          "source_seconds": 0.004274656996130943,
+          "target_results": [
+            {
+              "converged": true,
+              "density_rms": 0.0,
+              "energy": -1.1166097783066546,
+              "fock_builds": null,
+              "index": 0,
+              "iterations": 2,
+              "restart_origin": "basis_projection",
+              "status": 0
+            }
+          ],
+          "target_seconds": 0.0029873268213123083,
+          "target_setup_seconds": 0.0012500581797212362,
+          "target_verification": "executed",
+          "total_seconds": 0.010046473937109113,
+          "version": 1
+        },
+        "target": {
+          "backend": "cuda",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099725
+              ],
+              [
+                0.6031059747099725,
+                0.6031059747099723
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066546,
+          "energy_change": 0.0,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": null,
+          "forces": [
+            [
+              0.002149062289479786,
+              -0.0,
+              0.030086872052716717
+            ],
+            [
+              -0.002149062289479786,
+              -0.0,
+              -0.0300868720527166
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "basis_projection"
+        }
+      },
+      "inputs_hash": "a3675ba328f422f3add6cb4f4c59a07b705777894060fc8240ca8565f8490cfb",
+      "seconds": 0.01008017803542316,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 0,
+        "target": {
+          "backend": "cuda",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099725
+              ],
+              [
+                0.6031059747099725,
+                0.6031059747099723
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066546,
+          "energy_change": 0.0,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": null,
+          "forces": [
+            [
+              0.002149062289479786,
+              -0.0,
+              0.030086872052716717
+            ],
+            [
+              -0.002149062289479786,
+              -0.0,
+              -0.0300868720527166
+            ]
+          ],
+          "iterations": 1,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "in_process_warm"
+        }
+      },
+      "inputs_hash": "a3675ba328f422f3add6cb4f4c59a07b705777894060fc8240ca8565f8490cfb",
+      "seconds": 0.0017529588658362627,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": null,
+        "source_iterations": 2,
+        "stages": {
+          "items": [
+            {
+              "accepted": true,
+              "index": 0,
+              "numeric_workspace_bound_bytes": 3264,
+              "reason": null,
+              "source_energy": -1.1166097783066546,
+              "source_iterations": 2,
+              "source_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d",
+              "spins": [
+                {
+                  "electron_trace": 2.0,
+                  "metric_idempotency_error": 0.0,
+                  "metric_orthogonality_error": 0.0,
+                  "minimum_projected_norm_squared": 0.9999999999999996,
+                  "normal_equation_residual": 1.927933489585395e-16,
+                  "occupied_rank": 1,
+                  "projection_residual": 2.1073424255447017e-08,
+                  "source_metric_rank": 2,
+                  "target_metric_rank": 2
+                }
+              ],
+              "target_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d"
+            }
+          ],
+          "placement": "native CPU cross-overlap and NumPy metric projection; native target seed import",
+          "policy": {
+            "maximum_ao": 4096,
+            "maximum_residual": 0.5,
+            "relative_threshold": 1e-10,
+            "validation_tolerance": 1e-07
+          },
+          "projection_seconds": 0.0013393990229815245,
+          "schema": "vibeqc.basis_projection",
+          "seconds": 0.0013393990229815245,
+          "source_seconds": 0.004216173896566033,
+          "target_results": [
+            {
+              "converged": true,
+              "density_rms": 0.0,
+              "energy": -1.1166097783066546,
+              "fock_builds": null,
+              "index": 0,
+              "iterations": 2,
+              "restart_origin": "basis_projection",
+              "status": 0
+            }
+          ],
+          "target_seconds": 0.0030182860791683197,
+          "target_setup_seconds": 0.001253454014658928,
+          "target_verification": "executed",
+          "total_seconds": 0.00995276402682066,
+          "version": 1
+        },
+        "target": {
+          "backend": "cuda",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099725
+              ],
+              [
+                0.6031059747099725,
+                0.6031059747099723
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066546,
+          "energy_change": 0.0,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": null,
+          "forces": [
+            [
+              0.002149062289479786,
+              -0.0,
+              0.030086872052716717
+            ],
+            [
+              -0.002149062289479786,
+              -0.0,
+              -0.0300868720527166
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "basis_projection"
+        }
+      },
+      "inputs_hash": "a3675ba328f422f3add6cb4f4c59a07b705777894060fc8240ca8565f8490cfb",
+      "seconds": 0.009984544944018126,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": null,
+        "source_iterations": 2,
+        "stages": {
+          "items": [
+            {
+              "accepted": true,
+              "index": 0,
+              "numeric_workspace_bound_bytes": 3264,
+              "reason": null,
+              "source_energy": -1.1166097783066546,
+              "source_iterations": 2,
+              "source_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d",
+              "spins": [
+                {
+                  "electron_trace": 2.0,
+                  "metric_idempotency_error": 0.0,
+                  "metric_orthogonality_error": 0.0,
+                  "minimum_projected_norm_squared": 0.9999999999999996,
+                  "normal_equation_residual": 1.927933489585395e-16,
+                  "occupied_rank": 1,
+                  "projection_residual": 2.1073424255447017e-08,
+                  "source_metric_rank": 2,
+                  "target_metric_rank": 2
+                }
+              ],
+              "target_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d"
+            }
+          ],
+          "placement": "native CPU cross-overlap and NumPy metric projection; native target seed import",
+          "policy": {
+            "maximum_ao": 4096,
+            "maximum_residual": 0.5,
+            "relative_threshold": 1e-10,
+            "validation_tolerance": 1e-07
+          },
+          "projection_seconds": 0.0013174370396882296,
+          "schema": "vibeqc.basis_projection",
+          "seconds": 0.0013174370396882296,
+          "source_seconds": 0.0041852949652820826,
+          "target_results": [
+            {
+              "converged": true,
+              "density_rms": 0.0,
+              "energy": -1.1166097783066546,
+              "fock_builds": null,
+              "index": 0,
+              "iterations": 2,
+              "restart_origin": "basis_projection",
+              "status": 0
+            }
+          ],
+          "target_seconds": 0.0029572700150310993,
+          "target_setup_seconds": 0.0013646469451487064,
+          "target_verification": "executed",
+          "total_seconds": 0.009949818020686507,
+          "version": 1
+        },
+        "target": {
+          "backend": "cuda",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099725
+              ],
+              [
+                0.6031059747099725,
+                0.6031059747099723
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066546,
+          "energy_change": 0.0,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": null,
+          "forces": [
+            [
+              0.002149062289479786,
+              -0.0,
+              0.030086872052716717
+            ],
+            [
+              -0.002149062289479786,
+              -0.0,
+              -0.0300868720527166
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "basis_projection"
+        }
+      },
+      "inputs_hash": "a3675ba328f422f3add6cb4f4c59a07b705777894060fc8240ca8565f8490cfb",
+      "seconds": 0.009981618961319327,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 0,
+        "target": {
+          "backend": "cuda",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099725
+              ],
+              [
+                0.6031059747099725,
+                0.6031059747099723
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066546,
+          "energy_change": 0.0,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": null,
+          "forces": [
+            [
+              0.002149062289479786,
+              -0.0,
+              0.030086872052716717
+            ],
+            [
+              -0.002149062289479786,
+              -0.0,
+              -0.0300868720527166
+            ]
+          ],
+          "iterations": 1,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "in_process_warm"
+        }
+      },
+      "inputs_hash": "a3675ba328f422f3add6cb4f4c59a07b705777894060fc8240ca8565f8490cfb",
+      "seconds": 0.0017580690328031778,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 0,
+        "target": {
+          "backend": "cuda",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099725
+              ],
+              [
+                0.6031059747099725,
+                0.6031059747099723
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066546,
+          "energy_change": 0.0,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": null,
+          "forces": [
+            [
+              0.002149062289479786,
+              -0.0,
+              0.030086872052716717
+            ],
+            [
+              -0.002149062289479786,
+              -0.0,
+              -0.0300868720527166
+            ]
+          ],
+          "iterations": 1,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "in_process_warm"
+        }
+      },
+      "inputs_hash": "a3675ba328f422f3add6cb4f4c59a07b705777894060fc8240ca8565f8490cfb",
+      "seconds": 0.0017537500243633986,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": null,
+        "source_iterations": 2,
+        "stages": {
+          "items": [
+            {
+              "accepted": true,
+              "index": 0,
+              "numeric_workspace_bound_bytes": 3264,
+              "reason": null,
+              "source_energy": -1.1166097783066546,
+              "source_iterations": 2,
+              "source_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d",
+              "spins": [
+                {
+                  "electron_trace": 2.0,
+                  "metric_idempotency_error": 0.0,
+                  "metric_orthogonality_error": 0.0,
+                  "minimum_projected_norm_squared": 0.9999999999999996,
+                  "normal_equation_residual": 1.927933489585395e-16,
+                  "occupied_rank": 1,
+                  "projection_residual": 2.1073424255447017e-08,
+                  "source_metric_rank": 2,
+                  "target_metric_rank": 2
+                }
+              ],
+              "target_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d"
+            }
+          ],
+          "placement": "native CPU cross-overlap and NumPy metric projection; native target seed import",
+          "policy": {
+            "maximum_ao": 4096,
+            "maximum_residual": 0.5,
+            "relative_threshold": 1e-10,
+            "validation_tolerance": 1e-07
+          },
+          "projection_seconds": 0.0013242301065474749,
+          "schema": "vibeqc.basis_projection",
+          "seconds": 0.0013242301065474749,
+          "source_seconds": 0.004273094004020095,
+          "target_results": [
+            {
+              "converged": true,
+              "density_rms": 0.0,
+              "energy": -1.1166097783066546,
+              "fock_builds": null,
+              "index": 0,
+              "iterations": 2,
+              "restart_origin": "basis_projection",
+              "status": 0
+            }
+          ],
+          "target_seconds": 0.002970605157315731,
+          "target_setup_seconds": 0.0012627120595425367,
+          "target_verification": "executed",
+          "total_seconds": 0.009953134926036,
+          "version": 1
+        },
+        "target": {
+          "backend": "cuda",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099725
+              ],
+              [
+                0.6031059747099725,
+                0.6031059747099723
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066546,
+          "energy_change": 0.0,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": null,
+          "forces": [
+            [
+              0.002149062289479786,
+              -0.0,
+              0.030086872052716717
+            ],
+            [
+              -0.002149062289479786,
+              -0.0,
+              -0.0300868720527166
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "basis_projection"
+        }
+      },
+      "inputs_hash": "a3675ba328f422f3add6cb4f4c59a07b705777894060fc8240ca8565f8490cfb",
+      "seconds": 0.009984304895624518,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": null,
+        "source_iterations": 2,
+        "stages": {
+          "items": [
+            {
+              "accepted": true,
+              "index": 0,
+              "numeric_workspace_bound_bytes": 3264,
+              "reason": null,
+              "source_energy": -1.1166097783066546,
+              "source_iterations": 2,
+              "source_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d",
+              "spins": [
+                {
+                  "electron_trace": 2.0,
+                  "metric_idempotency_error": 0.0,
+                  "metric_orthogonality_error": 0.0,
+                  "minimum_projected_norm_squared": 0.9999999999999996,
+                  "normal_equation_residual": 1.927933489585395e-16,
+                  "occupied_rank": 1,
+                  "projection_residual": 2.1073424255447017e-08,
+                  "source_metric_rank": 2,
+                  "target_metric_rank": 2
+                }
+              ],
+              "target_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d"
+            }
+          ],
+          "placement": "native CPU cross-overlap and NumPy metric projection; native target seed import",
+          "policy": {
+            "maximum_ao": 4096,
+            "maximum_residual": 0.5,
+            "relative_threshold": 1e-10,
+            "validation_tolerance": 1e-07
+          },
+          "projection_seconds": 0.0013252021744847298,
+          "schema": "vibeqc.basis_projection",
+          "seconds": 0.0013252021744847298,
+          "source_seconds": 0.004191347863525152,
+          "target_results": [
+            {
+              "converged": true,
+              "density_rms": 0.0,
+              "energy": -1.1166097783066546,
+              "fock_builds": null,
+              "index": 0,
+              "iterations": 2,
+              "restart_origin": "basis_projection",
+              "status": 0
+            }
+          ],
+          "target_seconds": 0.0029479919467121363,
+          "target_setup_seconds": 0.0012458798009902239,
+          "target_verification": "executed",
+          "total_seconds": 0.009832434821873903,
+          "version": 1
+        },
+        "target": {
+          "backend": "cuda",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099725
+              ],
+              [
+                0.6031059747099725,
+                0.6031059747099723
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066546,
+          "energy_change": 0.0,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": null,
+          "forces": [
+            [
+              0.002149062289479786,
+              -0.0,
+              0.030086872052716717
+            ],
+            [
+              -0.002149062289479786,
+              -0.0,
+              -0.0300868720527166
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "basis_projection"
+        }
+      },
+      "inputs_hash": "a3675ba328f422f3add6cb4f4c59a07b705777894060fc8240ca8565f8490cfb",
+      "seconds": 0.009864105144515634,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 0,
+        "target": {
+          "backend": "cuda",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099725
+              ],
+              [
+                0.6031059747099725,
+                0.6031059747099723
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066546,
+          "energy_change": 0.0,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": null,
+          "forces": [
+            [
+              0.002149062289479786,
+              -0.0,
+              0.030086872052716717
+            ],
+            [
+              -0.002149062289479786,
+              -0.0,
+              -0.0300868720527166
+            ]
+          ],
+          "iterations": 1,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "in_process_warm"
+        }
+      },
+      "inputs_hash": "a3675ba328f422f3add6cb4f4c59a07b705777894060fc8240ca8565f8490cfb",
+      "seconds": 0.001757096964865923,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": 0,
+        "target": {
+          "backend": "cuda",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099725
+              ],
+              [
+                0.6031059747099725,
+                0.6031059747099723
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066546,
+          "energy_change": 0.0,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": null,
+          "forces": [
+            [
+              0.002149062289479786,
+              -0.0,
+              0.030086872052716717
+            ],
+            [
+              -0.002149062289479786,
+              -0.0,
+              -0.0300868720527166
+            ]
+          ],
+          "iterations": 1,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "in_process_warm"
+        }
+      },
+      "inputs_hash": "a3675ba328f422f3add6cb4f4c59a07b705777894060fc8240ca8565f8490cfb",
+      "seconds": 0.0017436409834772348,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "source_fock_builds": null,
+        "source_iterations": 2,
+        "stages": {
+          "items": [
+            {
+              "accepted": true,
+              "index": 0,
+              "numeric_workspace_bound_bytes": 3264,
+              "reason": null,
+              "source_energy": -1.1166097783066546,
+              "source_iterations": 2,
+              "source_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d",
+              "spins": [
+                {
+                  "electron_trace": 2.0,
+                  "metric_idempotency_error": 0.0,
+                  "metric_orthogonality_error": 0.0,
+                  "minimum_projected_norm_squared": 0.9999999999999996,
+                  "normal_equation_residual": 1.927933489585395e-16,
+                  "occupied_rank": 1,
+                  "projection_residual": 2.1073424255447017e-08,
+                  "source_metric_rank": 2,
+                  "target_metric_rank": 2
+                }
+              ],
+              "target_model_identity": "89f0615b82d072d309d17c8ad526b6a5b819c3c37b89dc5d9fd6085792a6244d"
+            }
+          ],
+          "placement": "native CPU cross-overlap and NumPy metric projection; native target seed import",
+          "policy": {
+            "maximum_ao": 4096,
+            "maximum_residual": 0.5,
+            "relative_threshold": 1e-10,
+            "validation_tolerance": 1e-07
+          },
+          "projection_seconds": 0.0013193299528211355,
+          "schema": "vibeqc.basis_projection",
+          "seconds": 0.0013193299528211355,
+          "source_seconds": 0.0041867890395224094,
+          "target_results": [
+            {
+              "converged": true,
+              "density_rms": 0.0,
+              "energy": -1.1166097783066546,
+              "fock_builds": null,
+              "index": 0,
+              "iterations": 2,
+              "restart_origin": "basis_projection",
+              "status": 0
+            }
+          ],
+          "target_seconds": 0.0029715169221162796,
+          "target_setup_seconds": 0.001249035820364952,
+          "target_verification": "executed",
+          "total_seconds": 0.00984960701316595,
+          "version": 1
+        },
+        "target": {
+          "backend": "cuda",
+          "converged": true,
+          "density": [
+            [
+              [
+                0.6031059747099727,
+                0.6031059747099725
+              ],
+              [
+                0.6031059747099725,
+                0.6031059747099723
+              ]
+            ]
+          ],
+          "density_rms": 0.0,
+          "energy": -1.1166097783066546,
+          "energy_change": 0.0,
+          "energy_relative_to_cold": 0.0,
+          "equivalent_target_state": true,
+          "fock_builds": null,
+          "forces": [
+            [
+              0.002149062289479786,
+              -0.0,
+              0.030086872052716717
+            ],
+            [
+              -0.002149062289479786,
+              -0.0,
+              -0.0300868720527166
+            ]
+          ],
+          "iterations": 2,
+          "reference_errors": {
+            "density": 0.0,
+            "energy": 0.0,
+            "force": 0.0
+          },
+          "restart_origin": "basis_projection"
+        }
+      },
+      "inputs_hash": "a3675ba328f422f3add6cb4f4c59a07b705777894060fc8240ca8565f8490cfb",
+      "seconds": 0.00988465384580195,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    }
+  ],
+  "schema": "vibeqc.basis_projection_endpoint",
+  "slurm_job_id": "9077",
+  "source_identity": "460a6b09c3d470f7638fe6a3a8e92498d6ccaf29c3aac28d3f4fa03dbd0f5baa",
+  "timing_scope": "full energy/force endpoints; candidate always includes fresh source solve, projection and target solve; warm baseline retains its target plan",
+  "version": 1,
+  "worktree_dirty": true
+}

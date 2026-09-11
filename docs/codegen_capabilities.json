@@ -14,7 +14,7 @@
     "2": 0
   },
   "generic_fused_supported": 55,
-  "manifest": "tools/vibeqc_codegen/production_shell_classes.json",
+  "manifest": "python/vibeqc_compiler/integral/production_shell_classes.json",
   "production_selected": 22,
   "profile": "auto",
   "recurrence_supported": {

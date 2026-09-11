@@ -1,0 +1,153 @@
+{
+  "arrays_hash": "9de7ef81a3f173179899c98016cea8b2ae2e8ac861b8ee4c556161a422bb8d19",
+  "correlation_energy": -0.010995888755839522,
+  "fci_total_energy": -2.822339569536274,
+  "generator_sha256": "716a0f4698db060d29379df28313fc99593578386a69129fe1ca3cb20c169904",
+  "hf_energy": -2.8113436807801895,
+  "inputs": {
+    "atomic_numbers": [
+      2
+    ],
+    "auxiliary_centers": [],
+    "basis_name": "bundled STO-3G + explicit s(0.25)",
+    "basis_representation": "cartesian",
+    "cc_settings": {
+      "conv_tol": 1e-13,
+      "conv_tol_normt": 1e-11,
+      "frozen_core": 0,
+      "max_cycle": 150,
+      "method": "CCSD"
+    },
+    "charge": 0,
+    "conventions": {
+      "auxiliary_centers": "explicit independent identities and parent atom indices; [] means none",
+      "cartesian_normalization": "each contracted Cartesian component has unit self-overlap",
+      "cartesian_order": "descending lx, then descending ly; lz=l-lx-ly",
+      "derivative_order": "shell-center slot, xyz, i,j,k,l; nuclear-center derivative",
+      "energy_unit": "hartree",
+      "eri_order": "chemist (ij|kl); physicist <ij|kl> = chemist (ik|jl)",
+      "eri_storage": "C order, last AO index fastest",
+      "force_sign": "force=-dE/dR",
+      "frozen_core": 0,
+      "gradient_unit": "hartree/bohr",
+      "hamiltonian": "all-electron nonrelativistic Coulomb; no ECP",
+      "length_unit": "bohr",
+      "nuclear_charges": "explicit atomic_numbers, never inferred from basis labels",
+      "orbital_order": "ascending canonical orbital energy within each spin",
+      "orbital_phase": "largest-absolute AO coefficient positive; first index wins ties; no degenerate-subspace rotation",
+      "orbital_representation": "real spatial orbitals; alpha/beta separate for UHF",
+      "rhf_density": "P=2*C_occ*C_occ.T; F=h+J[P]-K[P]/2",
+      "spherical_normalization": "unit self-overlap; libcint phases",
+      "spherical_order": "libcint real harmonics; p=(x,y,z); l>=2 m=-l,...,+l",
+      "spin_orbital_order": "when expanded: all alpha spatial orbitals, then all beta",
+      "uhf_density": "P_alpha=C_alpha_occ*C_alpha_occ.T; P_beta likewise",
+      "version": 1
+    },
+    "coordinates": [
+      [
+        0.17,
+        -0.23,
+        0.31
+      ]
+    ],
+    "kind": "molecule",
+    "method": "rhf",
+    "multiplicity": 1,
+    "name": "he",
+    "scf_settings": {
+      "direct_scf_tol": 1e-14,
+      "energy_tolerance": 1e-13,
+      "gradient_tolerance": 1e-11,
+      "initial_guess": "minao",
+      "max_iterations": 200
+    },
+    "shells": [
+      {
+        "angular_momentum": 0,
+        "atom_index": 0,
+        "primitives": [
+          [
+            6.362421394,
+            0.1543289673
+          ],
+          [
+            1.158922999,
+            0.5353281423
+          ],
+          [
+            0.3136497915,
+            0.4446345422
+          ]
+        ]
+      },
+      {
+        "angular_momentum": 0,
+        "atom_index": 0,
+        "primitives": [
+          [
+            0.25,
+            1.0
+          ]
+        ]
+      }
+    ]
+  },
+  "inputs_hash": "badcbf5af8aeb48a3cc34fabf1eb6bf10621e77048739eddda5a37230c46d8d0",
+  "nuclear_repulsion": 0.0,
+  "numpy": "2.2.6",
+  "physical_cc_residual": 3.7726526597044006e-12,
+  "pyscf": "2.14.0",
+  "python": "3.11.16",
+  "scf_residual": 1.2212453270876722e-14,
+  "source_hashes": {
+    "ccsd.py": "1c3c386eb881b6c72ca6377002ebd4796964decac72c8f287a88af4c3196f03b",
+    "fci_direct_spin1.py": "df00b56a8a4f996bbe4bddbb697db08b64c6f3110d68765ad5ac6798dff87d2d",
+    "rccsd.py": "35391234363b6ae26893891e18c468e636458ac209bfdad9606c15112457a552"
+  },
+  "stability": {
+    "arrays_identical": true,
+    "energy_error": 0.0
+  },
+  "threads": [
+    {
+      "architecture": "SkylakeX",
+      "filepath": "/inspire/qb-ilm/project/chemicalreaction/czxs25220150/projects/vibeqc-148-a/.venv/lib/python3.11/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so",
+      "internal_api": "openblas",
+      "num_threads": 1,
+      "prefix": "libscipy_openblas",
+      "threading_layer": "pthreads",
+      "user_api": "blas",
+      "version": "0.3.29"
+    },
+    {
+      "architecture": "SkylakeX",
+      "filepath": "/inspire/qb-ilm/project/chemicalreaction/czxs25220150/projects/vibeqc-148-a/.venv/lib/python3.11/site-packages/scipy.libs/libscipy_openblas-68440149.so",
+      "internal_api": "openblas",
+      "num_threads": 1,
+      "prefix": "libscipy_openblas",
+      "threading_layer": "pthreads",
+      "user_api": "blas",
+      "version": "0.3.28"
+    },
+    {
+      "architecture": "Prescott",
+      "filepath": "/inspire/qb-ilm/project/chemicalreaction/czxs25220150/projects/vibeqc-148-a/.venv/lib/python3.11/site-packages/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+      "internal_api": "openblas",
+      "num_threads": 1,
+      "prefix": "libopenblas",
+      "threading_layer": "disabled",
+      "user_api": "blas",
+      "version": null
+    },
+    {
+      "filepath": "/inspire/qb-ilm/project/chemicalreaction/czxs25220150/projects/vibeqc-148-a/.venv/lib/python3.11/site-packages/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+      "internal_api": "openmp",
+      "num_threads": 1,
+      "prefix": "libgomp",
+      "user_api": "openmp",
+      "version": null
+    }
+  ],
+  "total_energy": -2.822339569536029,
+  "version": 1
+}

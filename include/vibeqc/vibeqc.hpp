@@ -94,7 +94,7 @@ struct BatchItemResult {
   bool warm_start_fallback{};
 };
 
-/** CUDA density-fitting metric conditioning and allocation evidence. */
+/** CUDA DF value/J/K plan evidence; peaks exclude generated-force staging. */
 struct DensityFittingMetricDiagnostic {
   std::uint32_t bucket_id{};
   std::uint32_t system_index{};

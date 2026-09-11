@@ -1,5 +1,7 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
+# Preserve the exact upstream bytes checked by the XC source-audit manifest.
+exclude: ^external/libxc-7\.0\.0/
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
@@ -8,13 +10,33 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-json
-      - id: check-added-large-files
-        args: ["--maxkb=1024", "--enforce-all"]
       - id: check-merge-conflict
       - id: check-symlinks
       - id: check-toml
+  - repo: local
+    hooks:
+      - id: evidence-retention
+        # Replaces the blind file-size ban with an all-file review guard and
+        # exact-content exceptions for scientifically necessary references.
+        name: Check tracked evidence retention and review size
+        entry: python3 tools/evidence.py check
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: compiler-structure
+        name: Check scientific compiler dependency directions
+        entry: python3 tools/check_compiler_structure.py
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: cuda-ownership
+        name: Check native CUDA ownership inventory and source anchors
+        entry: python3 tools/report_cuda_ownership.py --check
+        language: system
+        pass_filenames: false
+        always_run: true
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.2
+    rev: v0.16.6
     hooks:
       - id: ruff
         args: ["--fix"]
@@ -22,7 +44,7 @@ repos:
       - id: ruff-format
         types_or: [python, pyi, jupyter]
   - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: v22.1.8
+    rev: v23.1.0
     hooks:
       - id: clang-format
         types_or: [c++, c, cuda]

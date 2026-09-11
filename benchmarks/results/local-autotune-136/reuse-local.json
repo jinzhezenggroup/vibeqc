@@ -1,0 +1,74 @@
+{
+  "backend": [
+    "cuda"
+  ],
+  "cold_iterations": [
+    15
+  ],
+  "converged": true,
+  "energies": [
+    -75.96221113002994
+  ],
+  "forces": [
+    [
+      [
+        -0.0,
+        2.4651493652025702e-14,
+        0.018111149206127337
+      ],
+      [
+        -0.0,
+        0.011045558941278066,
+        -0.009055574603063514
+      ],
+      [
+        -0.0,
+        -0.011045558941303716,
+        -0.009055574603059582
+      ]
+    ]
+  ],
+  "iterations": [
+    1
+  ],
+  "profile": {
+    "directory": "/home/jzzeng/codes/qc-local-autotune/build/local-reuse136/cache/bundles/f189604fcf617b25479706b0bff74b5448bda4b7919062709a962459cae00549",
+    "identity": "f189604fcf617b25479706b0bff74b5448bda4b7919062709a962459cae00549",
+    "kernels": [
+      {
+        "consumer": "fock",
+        "gates": {
+          "endpoint": "pass",
+          "numerical": "pass",
+          "performance": "pass",
+          "resources": "pass",
+          "target": "pass"
+        },
+        "schedule": {
+          "algebra_form": "binary",
+          "algebra_fusion": "separate",
+          "algebra_ordering": "topological",
+          "algebra_placement": "materialized_cse",
+          "block_threads": 128,
+          "component_tile": 27,
+          "kind": "subgroup_tasks",
+          "maximum_registers": 0,
+          "minimum_blocks_per_sm": 0,
+          "pair_orientation": "canonical",
+          "pair_storage": "materialized",
+          "shared_coulomb": true,
+          "tasks_per_warp": 8,
+          "unroll_pair_terms": true
+        },
+        "schedule_hash": "75de86e17dc62043eecacc7f4c792ac7adba9420e05c56d4c170c0a61ff83e7d",
+        "shell_class": "ppps",
+        "source_hash": "c344aefd9707864e91d88bef9d32303b4c1c115002accd63ed69e0f680f507ab"
+      }
+    ],
+    "rejected": [],
+    "source": "local"
+  },
+  "profiling_reason": null,
+  "seconds": 0.06638754904270172,
+  "work": []
+}

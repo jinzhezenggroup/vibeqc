@@ -1,0 +1,79 @@
+{
+  "archives": [],
+  "decision": {
+    "reason": "All unchanged numerical and separate per-workload 2% nonregression gates passed. Accept ownership retirement without a significant-speedup claim.",
+    "scope": "numerical",
+    "status": "accepted"
+  },
+  "files": [
+    {
+      "bytes": 905438,
+      "path": "evidence.json",
+      "role": "evidence",
+      "sha256": "1a3ac7b04a7a337b1be1203fc528932c3adac4dc9d17f5b13443d17e8a122e26"
+    },
+    {
+      "bytes": 866324,
+      "path": "samples.json",
+      "role": "samples",
+      "sha256": "2936b59346c82f0c9805bbc143485b57c9c8298251ae6c190a9eed67501b086c"
+    },
+    {
+      "bytes": 67686,
+      "path": "summary.json",
+      "role": "summary",
+      "sha256": "afcf99c0a7b0654e457c2fdd71eda1249012ee79b8f8529f65cc4b15831266ec"
+    },
+    {
+      "bytes": 9998,
+      "path": "resources.json",
+      "role": "summary",
+      "sha256": "6ee7b3ac6ea42b6e653a68f261afbdb72d2115a9b777ed70a740ddd6a608b6c1"
+    }
+  ],
+  "reproduction": {
+    "baseline_source": {
+      "ref": "refs/heads/evidence/issue-231-df-baseline",
+      "repository": "https://github.com/njzjz-bot/vibeqc",
+      "revision": "4f36c6ecf99fd27a07b26da7a073313fcd3aa679"
+    },
+    "candidate_source": {
+      "ref": "refs/heads/evidence/issue-231-df-paired",
+      "repository": "https://github.com/njzjz-bot/vibeqc",
+      "revision": "3afbd95b2f33e49025d3fcad5d8d22e0fe4d2fac"
+    },
+    "command": [
+      "srun",
+      "--partition=main",
+      "--gres=gpu:5090:1",
+      "--nodes=1",
+      "--ntasks=1",
+      "--time=02:00:00",
+      "python",
+      "tools/benchmark_cuda_ownership.py",
+      "compare",
+      "--domain",
+      "df",
+      "--baseline-root",
+      "<baseline-checkout>",
+      "--baseline-build",
+      "<baseline-optimized-build>",
+      "--candidate-root",
+      "<candidate-checkout>",
+      "--candidate-build",
+      "<candidate-optimized-build>",
+      "--samples",
+      "5",
+      "--output",
+      ".artifacts/ownership-reproduction",
+      "--process-scope",
+      "case"
+    ],
+    "note": "Check out the exact recorded baseline/candidate revisions and use Release, CUDA 12.9.1, sm_120, FAST_COMPILE=OFF; set OMP_NUM_THREADS=1 and OPENBLAS_NUM_THREADS=1."
+  },
+  "schema": "vibeqc.benchmark-publication.v1",
+  "source": {
+    "dirty": false,
+    "revision": "3afbd95b2f33e49025d3fcad5d8d22e0fe4d2fac"
+  }
+}

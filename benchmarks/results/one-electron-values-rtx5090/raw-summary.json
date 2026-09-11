@@ -1,0 +1,75 @@
+{
+  "compile_seconds": 57.599338063038886,
+  "driver_hash": "d027f9c0a0847e213bab9b267bc55daf7982d35c199f047e2457c4012c4d1fdc",
+  "fixture_count": 83,
+  "maximum_absolute_error": 7.138734048339757e-14,
+  "object_bytes": 2837408,
+  "object_hash": "9125aeb4d106679bc0a0fbe3e04ae5f15fbf2741494530a70bf3be52f87404f1",
+  "passed": true,
+  "primitive_count": 11497,
+  "reference_versions": {
+    "numpy": "2.5.3",
+    "pyscf": "2.14.0",
+    "python": "3.13.9 | packaged by Anaconda, Inc. | (main, Oct 21 2025, 19:16:10) [GCC 11.2.0]"
+  },
+  "resources": {
+    "fixture_values": {
+      "LOCAL": 0,
+      "REG": 116,
+      "SHARED": 0,
+      "STACK": 176
+    }
+  },
+  "runtime": [
+    {
+      "active_blocks_per_sm": 8,
+      "count": 11497,
+      "device": "NVIDIA GeForce RTX 5090",
+      "driver": 13000,
+      "local_bytes": 176,
+      "major": 12,
+      "milliseconds": [
+        0.414496005,
+        0.407135993,
+        0.408383995,
+        0.407359987,
+        0.406399995,
+        0.40832001,
+        0.40860799
+      ],
+      "minor": 0,
+      "registers": 116,
+      "runtime": 12090,
+      "shared_bytes": 0,
+      "slurm_job_id": "9058",
+      "threads": 64
+    },
+    {
+      "active_blocks_per_sm": 4,
+      "count": 11497,
+      "device": "NVIDIA GeForce RTX 5090",
+      "driver": 13000,
+      "local_bytes": 176,
+      "major": 12,
+      "milliseconds": [
+        0.430016011,
+        0.429695994,
+        0.428160012,
+        0.429951996,
+        0.428831995,
+        0.429760009,
+        0.429823995
+      ],
+      "minor": 0,
+      "registers": 116,
+      "runtime": 12090,
+      "shared_bytes": 0,
+      "slurm_job_id": "9059",
+      "threads": 128
+    }
+  ],
+  "schema": "vibeqc.one_electron_value_validation",
+  "source_bytes": 3100551,
+  "source_hash": "8bf6520e91fe350a18728609a2235b4569284fb75d5491ff505a865c6752f84d",
+  "version": 1
+}

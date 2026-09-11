@@ -1,0 +1,19 @@
+{
+  "export": {
+    "energy": -1.1161349456102663,
+    "energy_change": 4.440892098500626e-16,
+    "density_rms": 0.0,
+    "iterations": 2,
+    "backend": "cuda",
+    "snapshot_id": "e4f040c79643a3bc9c984a798f45bbfb8710cf88bb888cbf522ca515f28e94eb",
+    "physical_residual": 5.551115123125783e-16,
+    "canonical_density_drift": 7.771561172376096e-16,
+    "physical_fock_drift": 4.440892098500626e-16,
+    "canonicalization_backend": "cpu-numpy",
+    "density_host_staging": true,
+    "export_seconds": 0.030783531954512,
+    "snapshot_numeric_bytes": 160
+  },
+  "mp2_energy": -0.013378767959627853,
+  "mp2_absolute_error": 1.6393136847980827e-15
+}

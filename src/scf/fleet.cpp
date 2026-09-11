@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <limits>
 #include <map>
 #include <new>
 #include <numeric>
@@ -12,6 +13,8 @@
 #include <utility>
 
 #include "molecule/basis.hpp"
+#include "runtime/resource_usage.hpp"
+#include "scf/fock_prepared.hpp"
 #include "scf/mean_field.hpp"
 
 namespace vibeqc::scf {
@@ -142,7 +145,30 @@ FleetPlan::FleetPlan(std::vector<core::System> systems, vibeqc_method method, Sc
       auxiliary_template_(std::move(auxiliary_template)),
       execution_order_(systems_.size()),
       bucket_ids_(systems_.size()),
-      warm_densities_(systems_.size()) {
+      warm_densities_(systems_.size()),
+      independent_fock_plans_(systems_.size()) {
+  const bool fitted = options_.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE;
+  const FockBackend backend =
+      cuda_fock_enabled_ || cuda_density_fitting_enabled_ ? FockBackend::Cuda : FockBackend::Cpu;
+  const ResolvedFockBuild expected = resolve_fock_build(
+      make_hf_fock_spec(
+          method_ == VIBEQC_METHOD_UHF ? FockSpin::Unrestricted : FockSpin::Restricted,
+          fitted ? FockApproximation::DensityFitted : FockApproximation::Exact),
+      backend, options_.screening_tolerance, options_.density_fitting_relative_threshold);
+  if (!options_.resolved_fock_build) options_.resolved_fock_build = expected;
+  const auto& strategy = *options_.resolved_fock_build;
+  validate_resolved_fock_build(strategy);
+  if (strategy.spec.spin != expected.spec.spin || strategy.backend != backend ||
+      strategy.screening_tolerance != options_.screening_tolerance ||
+      (options_.compute_forces && strategy.spec.derivative_order != 1) ||
+      (strategy.metric_relative_threshold != 0.0 &&
+       strategy.metric_relative_threshold != options_.density_fitting_relative_threshold) ||
+      (backend == FockBackend::Cuda && strategy.schedule != FockSchedule::CudaIndependent &&
+       strategy.legacy_density_fitting != cuda_density_fitting_enabled_))
+    throw std::invalid_argument("fleet options disagree with the resolved Fock strategy");
+  if (strategy.schedule == FockSchedule::CudaIndependent &&
+      (shell_class_profiling_enabled_ || inactive_eigensolver_profiling_enabled_))
+    throw std::invalid_argument("independent CUDA SCF does not expose fused-solver profiles");
   std::iota(execution_order_.begin(), execution_order_.end(), 0);
   std::stable_sort(execution_order_.begin(), execution_order_.end(),
                    [&](std::size_t a, std::size_t b) {
@@ -187,7 +213,9 @@ std::vector<FleetItemResult> FleetPlan::execute(
   const auto execute_one = [&](std::size_t system_index) {
     FleetItemResult& item = results[system_index];
     item.bucket_id = bucket_ids_[system_index];
-    item.executed_backend = VIBEQC_BACKEND_CPU_REFERENCE;
+    item.executed_backend = options_.resolved_fock_build->backend == FockBackend::Cuda
+                                ? VIBEQC_BACKEND_CUDA
+                                : VIBEQC_BACKEND_CPU_REFERENCE;
     core::System execution_system = systems_[system_index];
     if (!coordinates.empty() && coordinates[system_index].has_value()) {
       if (!valid_coordinates(*coordinates[system_index], execution_system.atoms.size())) {
@@ -199,38 +227,16 @@ std::vector<FleetItemResult> FleetPlan::execute(
 
     const bool has_warm_density = warm_starts_enabled_ && warm_densities_[system_index].has_value();
     item.warm_start_used = has_warm_density;
-    const bool use_cpu_density_fitting =
-        options_.density_fitting_mode == VIBEQC_DENSITY_FITTING_CPU_REFERENCE ||
-        (options_.density_fitting_mode == VIBEQC_DENSITY_FITTING_AUTO &&
-         !cuda_density_fitting_enabled_);
-    const bool use_cuda_density_fitting =
-        cuda_density_fitting_enabled_ &&
-        (options_.density_fitting_mode == VIBEQC_DENSITY_FITTING_CUDA ||
-         options_.density_fitting_mode == VIBEQC_DENSITY_FITTING_AUTO);
+    const auto evaluate = [&](const std::vector<double>* initial_density) {
+      const core::System auxiliary = auxiliary_for_geometry(auxiliary_template_, execution_system);
+      return run_fock_strategy_cached(independent_fock_plans_[system_index], execution_system,
+                                      &auxiliary, options_, device_id_, initial_density);
+    };
     try {
       const std::vector<double>* initial_density =
-          has_warm_density ? &*warm_densities_[system_index] : nullptr;
-      if (use_cpu_density_fitting || use_cuda_density_fitting) {
-        const core::System auxiliary =
-            auxiliary_for_geometry(auxiliary_template_, execution_system);
-        if (use_cuda_density_fitting) {
-          item.scf = method_ == VIBEQC_METHOD_UHF
-                         ? run_uhf_density_fitting_cuda(execution_system, auxiliary, options_,
-                                                        device_id_, initial_density)
-                         : run_rhf_density_fitting_cuda(execution_system, auxiliary, options_,
-                                                        device_id_, initial_density);
-        } else {
-          item.scf =
-              method_ == VIBEQC_METHOD_UHF
-                  ? run_uhf_density_fitting(execution_system, auxiliary, options_, initial_density)
-                  : run_rhf_density_fitting(execution_system, auxiliary, options_, initial_density);
-        }
-      } else {
-        item.scf = method_ == VIBEQC_METHOD_UHF
-                       ? run_uhf(execution_system, options_, initial_density)
-                       : run_rhf(execution_system, options_, initial_density);
-      }
-      if (use_cuda_density_fitting) {
+          has_warm_density ? &warm_densities_[system_index]->density : nullptr;
+      item.scf = evaluate(initial_density);
+      if (options_.resolved_fock_build->backend == FockBackend::Cuda) {
         item.executed_backend = VIBEQC_BACKEND_CUDA;
       }
       if (has_warm_density && !item.scf.converged) {
@@ -238,50 +244,14 @@ std::vector<FleetItemResult> FleetPlan::execute(
         // a poor numerical guess. Retry cold so warm starts never reduce the
         // robustness of independent fleet items.
         item.warm_start_fallback = true;
-        if (use_cpu_density_fitting || use_cuda_density_fitting) {
-          const core::System auxiliary =
-              auxiliary_for_geometry(auxiliary_template_, execution_system);
-          if (use_cuda_density_fitting) {
-            item.scf = method_ == VIBEQC_METHOD_UHF
-                           ? run_uhf_density_fitting_cuda(execution_system, auxiliary, options_,
-                                                          device_id_, nullptr)
-                           : run_rhf_density_fitting_cuda(execution_system, auxiliary, options_,
-                                                          device_id_, nullptr);
-          } else {
-            item.scf =
-                method_ == VIBEQC_METHOD_UHF
-                    ? run_uhf_density_fitting(execution_system, auxiliary, options_, nullptr)
-                    : run_rhf_density_fitting(execution_system, auxiliary, options_, nullptr);
-          }
-        } else {
-          item.scf = method_ == VIBEQC_METHOD_UHF ? run_uhf(execution_system, options_, nullptr)
-                                                  : run_rhf(execution_system, options_, nullptr);
-        }
+        item.scf = evaluate(nullptr);
       }
       item.status = item.scf.converged ? VIBEQC_STATUS_SUCCESS : VIBEQC_STATUS_SCF_NOT_CONVERGED;
     } catch (...) {
       if (has_warm_density) {
         try {
           item.warm_start_fallback = true;
-          if (use_cpu_density_fitting || use_cuda_density_fitting) {
-            const core::System auxiliary =
-                auxiliary_for_geometry(auxiliary_template_, execution_system);
-            if (use_cuda_density_fitting) {
-              item.scf = method_ == VIBEQC_METHOD_UHF
-                             ? run_uhf_density_fitting_cuda(execution_system, auxiliary, options_,
-                                                            device_id_, nullptr)
-                             : run_rhf_density_fitting_cuda(execution_system, auxiliary, options_,
-                                                            device_id_, nullptr);
-            } else {
-              item.scf =
-                  method_ == VIBEQC_METHOD_UHF
-                      ? run_uhf_density_fitting(execution_system, auxiliary, options_, nullptr)
-                      : run_rhf_density_fitting(execution_system, auxiliary, options_, nullptr);
-            }
-          } else {
-            item.scf = method_ == VIBEQC_METHOD_UHF ? run_uhf(execution_system, options_, nullptr)
-                                                    : run_rhf(execution_system, options_, nullptr);
-          }
+          item.scf = evaluate(nullptr);
           item.status =
               item.scf.converged ? VIBEQC_STATUS_SUCCESS : VIBEQC_STATUS_SCF_NOT_CONVERGED;
         } catch (...) {
@@ -294,7 +264,7 @@ std::vector<FleetItemResult> FleetPlan::execute(
 
     if (item.status == VIBEQC_STATUS_SUCCESS && warm_starts_enabled_ &&
         warm_start_updates_enabled_) {
-      warm_densities_[system_index] = item.scf.density;
+      retain_warm_state(system_index, execution_system, item.scf);
     }
   };
 
@@ -312,8 +282,22 @@ std::vector<FleetItemResult> FleetPlan::execute(
     }
     const std::size_t bucket_size = bucket_end - bucket_begin;
     const std::size_t hardware_threads = std::max<unsigned>(1, std::thread::hardware_concurrency());
-    const std::size_t worker_count = std::min(bucket_size, hardware_threads);
-    if (cuda_fock_enabled_) {
+    // An accepted global CPU resource plan may require serialized items.
+    // This explicit cap is independent of the hardware thread count; without
+    // it a largest-item workspace estimate would undercount concurrent solves.
+    const auto requested_workers = runtime::cpu_resource_observation.cpu_worker_limit;
+    const std::size_t worker_count = std::min(
+        bucket_size, requested_workers ? std::min<std::size_t>(hardware_threads, requested_workers)
+                                       : hardware_threads);
+    if (options_.resolved_fock_build->backend == FockBackend::Cuda &&
+        (options_.resolved_fock_build->schedule == FockSchedule::CudaIndependent ||
+         options_.resolved_fock_build->spec.derivative_order == 0)) {
+      // General strategies share the host iteration control and execute one
+      // CUDA item at a time. This preserves the outer resource ledger and
+      // prevents an incompatible request from reaching either fused HF loop.
+      for (std::size_t position = bucket_begin; position < bucket_end; ++position)
+        execute_one(execution_order_[position]);
+    } else if (cuda_fock_enabled_) {
       std::vector<core::System> cuda_systems;
       std::vector<std::size_t> original_indices;
       std::vector<const std::vector<double>*> initial_densities;
@@ -337,7 +321,8 @@ std::vector<FleetItemResult> FleetPlan::execute(
         item.warm_start_used = has_warm_density;
         cuda_systems.push_back(std::move(execution_system));
         original_indices.push_back(system_index);
-        initial_densities.push_back(has_warm_density ? &*warm_densities_[system_index] : nullptr);
+        initial_densities.push_back(has_warm_density ? &warm_densities_[system_index]->density
+                                                     : nullptr);
       }
 
       if (!cuda_systems.empty()) {
@@ -396,8 +381,8 @@ std::vector<FleetItemResult> FleetPlan::execute(
           item.scf = std::move(cuda_results[slot].scf);
           item.executed_backend = VIBEQC_BACKEND_CUDA;
 
-          if (item.warm_start_used && item.status != VIBEQC_STATUS_SUCCESS &&
-              item.status != VIBEQC_STATUS_CUDA_ERROR &&
+          if (item.warm_start_used && !cuda_results[slot].fock_only_diagnostic &&
+              item.status != VIBEQC_STATUS_SUCCESS && item.status != VIBEQC_STATUS_CUDA_ERROR &&
               item.status != VIBEQC_STATUS_OUT_OF_MEMORY) {
             item.warm_start_fallback = true;
             const std::vector<core::System> cold_system{cuda_systems[slot]};
@@ -411,7 +396,7 @@ std::vector<FleetItemResult> FleetPlan::execute(
           }
           if (item.status == VIBEQC_STATUS_SUCCESS && warm_starts_enabled_ &&
               warm_start_updates_enabled_) {
-            warm_densities_[system_index] = item.scf.density;
+            retain_warm_state(system_index, cuda_systems[slot], item.scf);
           }
         }
       }
@@ -442,7 +427,8 @@ std::vector<FleetItemResult> FleetPlan::execute(
         item.warm_start_used = has_warm_density;
         df_systems.push_back(std::move(execution_system));
         original_indices.push_back(system_index);
-        initial_densities.push_back(has_warm_density ? &*warm_densities_[system_index] : nullptr);
+        initial_densities.push_back(has_warm_density ? &warm_densities_[system_index]->density
+                                                     : nullptr);
         append_geometry_positions(df_systems.back(), bucket_positions);
       }
 
@@ -550,12 +536,15 @@ std::vector<FleetItemResult> FleetPlan::execute(
           }
           if (item.status == VIBEQC_STATUS_SUCCESS && warm_starts_enabled_ &&
               warm_start_updates_enabled_) {
-            warm_densities_[system_index] = item.scf.density;
+            retain_warm_state(system_index, df_systems[slot], item.scf);
           }
         }
       }
     } else if (worker_count == 1) {
-      execute_one(execution_order_[bucket_begin]);
+      // One worker can own a multi-item bucket under the resource policy.
+      for (std::size_t position = bucket_begin; position < bucket_end; ++position) {
+        execute_one(execution_order_[position]);
+      }
     } else {
       std::atomic<std::size_t> next{bucket_begin};
       std::vector<std::thread> workers;
@@ -571,9 +560,84 @@ std::vector<FleetItemResult> FleetPlan::execute(
       }
       for (auto& worker : workers) worker.join();
     }
+    if (runtime::cpu_resource_observation.active && cuda_fock_enabled_) {
+      // Every bucket cache remains live. Sampling only the most recent
+      // bucket would miss retained arenas from earlier ragged shapes.
+      std::size_t resident_bytes = 0;
+      for (const auto* plan : cuda_bucket_plans_)
+        resident_bytes = runtime::add_capacity(resident_bytes, hf_cuda_owned_device_bytes(plan));
+      for (const auto& plan : independent_fock_plans_)
+        if (plan)
+          resident_bytes = runtime::add_capacity(resident_bytes, plan->diagnostic().device_bytes);
+      runtime::sample_cuda_arena_capacity(resident_bytes);
+    }
     bucket_begin = bucket_end;
   }
   return results;
+}
+
+std::size_t FleetPlan::warm_density_size(std::size_t index) const {
+  const auto n = molecule::ao_count(systems_.at(index));
+  const std::size_t spins = method_ == VIBEQC_METHOD_UHF ? 2 : 1;
+  if (n == 0 || n > std::numeric_limits<std::size_t>::max() / n / spins / sizeof(double))
+    throw std::invalid_argument("warm density dimensions overflow");
+  return spins * n * n;
+}
+
+const std::optional<HfWarmState>& FleetPlan::warm_state(std::size_t index) const {
+  return warm_densities_.at(index);
+}
+
+void FleetPlan::retain_warm_state(std::size_t index, const core::System& system,
+                                  const ScfResult& result) {
+  auto& retained = warm_densities_[index];
+  if (retained && retained->density.size() == result.density.size() &&
+      retained->coordinates.size() == 3 * system.atoms.size()) {
+    // Fixed topology keeps the existing buffer capacity and pointer stable on
+    // warm replays. Nothing in this update can allocate or leave a density
+    // paired with the previous geometry after an allocation failure.
+    std::copy(result.density.begin(), result.density.end(), retained->density.begin());
+    for (std::size_t atom = 0; atom < system.atoms.size(); ++atom)
+      std::copy(system.atoms[atom].position.begin(), system.atoms[atom].position.end(),
+                retained->coordinates.begin() + 3 * atom);
+    retained->energy = result.energy;
+    retained->energy_change = result.energy_change;
+    retained->density_rms = result.density_rms;
+    retained->iterations = result.iterations;
+    return;
+  }
+  HfWarmState state;
+  state.density = result.density;
+  state.coordinates.reserve(3 * system.atoms.size());
+  for (const auto& atom : system.atoms)
+    state.coordinates.insert(state.coordinates.end(), atom.position.begin(), atom.position.end());
+  state.energy = result.energy;
+  state.energy_change = result.energy_change;
+  state.density_rms = result.density_rms;
+  state.iterations = result.iterations;
+  warm_densities_[index] = std::move(state);
+}
+
+void FleetPlan::restore_warm_states(std::vector<std::optional<HfWarmState>> states) {
+  if (!warm_starts_enabled_ || states.size() != size())
+    throw std::invalid_argument("checkpoint restore requires a matching warm-enabled fleet");
+  for (std::size_t i = 0; i < size(); ++i) {
+    if (!states[i]) continue;
+    const auto& state = *states[i];
+    if (state.density.size() != warm_density_size(i) ||
+        !valid_coordinates(state.coordinates, systems_[i].atoms.size()) || state.iterations < 0 ||
+        !std::isfinite(state.energy) || !std::isfinite(state.energy_change) ||
+        !std::isfinite(state.density_rms) || state.density_rms < 0)
+      throw std::invalid_argument("invalid checkpoint state dimensions or diagnostics");
+    auto source = systems_[i];
+    apply_coordinates(source, state.coordinates);
+    validate_hf_warm_density(source, method_, state.density);
+  }
+  // Every allocation/validation above completes before this no-throw commit.
+  // A pre-existing device seed/energy must never supersede an imported seed.
+  for (auto* plan : cuda_bucket_plans_) clear_rhf_cuda_bucket_warm_starts(plan);
+  for (std::size_t i = 0; i < size(); ++i)
+    if (states[i]) warm_densities_[i].swap(states[i]);
 }
 
 void FleetPlan::clear_warm_starts() {

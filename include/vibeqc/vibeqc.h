@@ -84,11 +84,11 @@ enum {
 };
 
 /**
- * Setup-time CUDA density-fitting metric and allocation evidence.
+ * Setup-time CUDA DF metric and value/J/K plan evidence; peaks are estimates.
  *
- * Records are returned in plan-slot order for the most recent CUDA DF batch
- * execution. `system_index` identifies the original prepared-batch input and
- * `bucket_id` identifies the fleet bucket that owns the plan.
+ * Plan-slot order: system_index is the original input, bucket_id its owning bucket.
+ * Peaks exclude generated-force staging and opaque provider allocations. Whole-HF
+ * resource observations separately account for tracked response allocations.
  */
 typedef struct vibeqc_density_fitting_metric_diagnostic {
   uint32_t bucket_id;
@@ -409,6 +409,32 @@ typedef struct vibeqc_batch_item_result_descriptor {
 /** Return the ABI version implemented by the loaded shared library. */
 VIBEQC_API uint32_t vibeqc_get_abi_version(void);
 
+/** Source/codegen identity, independent of checkout paths and selected kernels. */
+VIBEQC_API const char* vibeqc_get_source_identity(void);
+
+/** Hardware and runtime identity for safe user-local schedule reuse.
+ * Device ordinals use the CUDA runtime's scheduler-assigned visibility. No
+ * probe changes CUDA_VISIBLE_DEVICES. UUID/PCI address are intentionally absent
+ * because matching GPUs on different cluster nodes may share a tuned profile.
+ */
+typedef struct vibeqc_cuda_tuning_device_descriptor {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  char name[256];
+  char official_profile[128];
+  int32_t major, minor, warp_size;
+  int32_t maximum_threads_per_block, maximum_threads_per_sm, maximum_blocks_per_sm;
+  int32_t registers_per_sm, maximum_registers_per_thread, sm_count;
+  uint64_t shared_memory_per_block, shared_memory_per_block_optin, shared_memory_per_sm;
+  int32_t runtime_version, driver_version, toolkit_version;
+  int32_t release_build, fast_compile;
+  int32_t portable;
+} vibeqc_cuda_tuning_device_descriptor;
+
+/** Probe an allocated GPU; CPU builds return NOT_IMPLEMENTED without probing. */
+VIBEQC_API vibeqc_status vibeqc_cuda_tuning_device(int32_t device_id,
+                                                   vibeqc_cuda_tuning_device_descriptor* output);
+
 /** Return a stable, process-lifetime error string for a status code. */
 VIBEQC_API const char* vibeqc_status_message(vibeqc_status status);
 
@@ -423,10 +449,86 @@ VIBEQC_API vibeqc_status vibeqc_context_create(const vibeqc_context_descriptor* 
                                                vibeqc_context** context);
 VIBEQC_API void vibeqc_context_destroy(vibeqc_context* context);
 
+/** Borrow the last native failure detail, valid until the next failing call
+ * on this context or its destruction. Empty when no detail has been recorded. */
+VIBEQC_API const char* vibeqc_context_get_last_detail(const vibeqc_context* context);
+
 VIBEQC_API vibeqc_status vibeqc_system_create(vibeqc_context* context,
                                               const vibeqc_system_descriptor* descriptor,
                                               vibeqc_system** system);
 VIBEQC_API void vibeqc_system_destroy(vibeqc_system* system);
+
+/** Numeric staging and explicit transfer counters for the generic CUDA gradient.
+ * Caller-owned weights/system and pre-existing HF plans are outside this arena. */
+typedef struct vibeqc_one_electron_gradient_resources {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  uint64_t device_bytes;
+  uint64_t host_numeric_bytes;
+  uint64_t host_to_device_bytes;
+  uint64_t device_to_host_bytes;
+  uint64_t synchronous_uploads;
+  uint64_t stream_synchronizations;
+} vibeqc_one_electron_gradient_resources;
+
+/** Synchronously contract fixed, full row-major public-AO weights with dS/dT/dV.
+ * matrix_count must be NAO*NAO; each null weight pointer means a zero channel.
+ * Off-diagonal ownership combines W_ij+W_ji, including nonsymmetric weights.
+ * Output is a 3*Natom energy gradient in atom/xyz order; nuclear repulsion is
+ * excluded. schedule=0 selects AO threads, 1 shell-pair warps, 2 serial per-system
+ * diagnostics. maximum_bytes independently bounds numeric host/device staging.
+ * A CUDA context is required; failures do not silently fall back to CPU.
+ * Optional resources must carry the current struct_size/abi_version.
+ */
+VIBEQC_API vibeqc_status vibeqc_system_one_electron_gradient_cuda(
+    vibeqc_context* context, const vibeqc_system* system, const double* overlap_weights,
+    const double* kinetic_weights, const double* attraction_weights, size_t matrix_count,
+    unsigned schedule, size_t maximum_bytes, double* gradient, size_t gradient_count,
+    vibeqc_one_electron_gradient_resources* resources);
+
+/** Physical Fock builds in the last CPU batch execution, including final
+ * rebuilds. A joint UHF alpha/beta J/K evaluation counts once. Returns
+ * NOT_IMPLEMENTED for an unexecuted item, CUDA, or an incompletely counted
+ * warm-to-cold retry. The result is never inferred from iteration count. */
+VIBEQC_API vibeqc_status vibeqc_batch_get_last_fock_builds(const vibeqc_batch* batch,
+                                                           uint32_t index, uint64_t* builds);
+
+/**
+ * Synchronously write the normalized rectangular overlap <target AO|source AO>
+ * in row-major order. output_count must equal target_nbf * source_nbf. Both
+ * systems may independently select Cartesian/spherical AOs and geometries.
+ * This explicit CPU evaluator allocates no ERI or nuclear-derivative tensors.
+ * The context supplies error details; its accelerator selection is irrelevant.
+ */
+VIBEQC_API vibeqc_status vibeqc_system_cross_overlap_cpu(vibeqc_context* context,
+                                                         const vibeqc_system* target,
+                                                         const vibeqc_system* source,
+                                                         double* output, size_t output_count);
+
+/** Owned numeric staging and explicit transfers for a generic DF gradient.
+ * Caller-owned systems/weights and opaque CUDA allocations are excluded. */
+typedef struct vibeqc_df_gradient_resources {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  uint64_t host_bytes, device_bytes, host_to_device_bytes, device_to_host_bytes;
+  uint64_t weight_tile_elements, tiles, uploads, stream_synchronizations;
+} vibeqc_df_gradient_resources;
+
+/** Contract fixed external DF weights into an energy gradient on CUDA.
+ * bar_a is full row-major [mu,nu,P]; bar_m is full row-major [P,Q]. Every
+ * element is counted once; nonsymmetric inputs require no implicit factors.
+ * Counts equal NAO*NAO*NAUX and NAUX*NAUX even when a null channel means zero.
+ * Orbital/auxiliary systems share physical atom coordinates, with independently
+ * assigned shell owners. Output is [atom,xyz], excluding all non-DF terms.
+ * maximum_bytes bounds numeric host staging and device allocations separately;
+ * maximum_tile_elements=0 selects an automatic bound. schedule=0 uses threads,
+ * 1 uses deterministic serial traversal. Failures preserve caller output.
+ */
+VIBEQC_API vibeqc_status vibeqc_system_df_gradient_cuda(
+    vibeqc_context* context, const vibeqc_system* orbital, const vibeqc_system* auxiliary,
+    const double* bar_a, size_t count_a, const double* bar_m, size_t count_m, unsigned schedule,
+    size_t maximum_bytes, size_t maximum_tile_elements, double* gradient, size_t gradient_count,
+    vibeqc_df_gradient_resources* resources);
 
 VIBEQC_API vibeqc_status vibeqc_calculation_prepare(vibeqc_context* context,
                                                     const vibeqc_system* system,
@@ -504,6 +606,42 @@ VIBEQC_API vibeqc_status vibeqc_batch_get_last_density_fitting_metric_diagnostic
 VIBEQC_API vibeqc_status vibeqc_batch_get_last_inactive_eigensolver_profile(
     const vibeqc_batch* batch, vibeqc_inactive_eigensolver_profile_entry* entries,
     uint32_t entry_count, uint32_t* written_count);
+
+/** Portable scientific buffers for an HF seed. This is a live ABI descriptor,
+ * never an on-disk representation. Density is row-major RHF total or UHF alpha
+ * then beta. Coordinates are the source geometry, in Bohr and input atom order.
+ * Source diagnostics do not establish target convergence.
+ */
+typedef struct vibeqc_hf_warm_state {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  double* density;
+  uint64_t density_count;
+  double* coordinates;
+  uint64_t coordinate_count;
+  double energy;
+  double energy_change;
+  double density_rms;
+  int32_t iterations;
+  int32_t present;
+} vibeqc_hf_warm_state;
+
+/** Query with both buffers null to obtain counts, then copy into owned buffers.
+ * A missing retained seed returns present=0 and zero counts. */
+VIBEQC_API vibeqc_status vibeqc_batch_get_hf_warm_state(const vibeqc_batch* batch, uint32_t index,
+                                                        vibeqc_hf_warm_state* state);
+
+/** Atomically import input-ordered seeds; present=0 preserves a neighbor.
+ * The caller MUST verify source/target method, ordered nuclei, basis/AO, core,
+ * spin, and provider identities before calling this low-level buffer API.
+ * Native validation checks shape, finiteness, Hermiticity and source-metric
+ * electron/spin occupations before mutation. Target execution normalizes the
+ * warm guess in its current metric and recomputes SCF convergence normally.
+ * Requires warm starts enabled; no runtime objects or convergence flags load.
+ */
+VIBEQC_API vibeqc_status vibeqc_batch_restore_hf_warm_states(vibeqc_batch* batch,
+                                                             const vibeqc_hf_warm_state* states,
+                                                             uint32_t count);
 
 /** Discard all retained per-system converged-density warm starts. */
 VIBEQC_API vibeqc_status vibeqc_batch_clear_warm_starts(vibeqc_batch* batch);

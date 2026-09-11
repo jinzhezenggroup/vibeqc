@@ -1,0 +1,19 @@
+RCCSD contraction inventory
+
+The contraction expressions in inventory.py are adapted from PySCF 2.14.0:
+pyscf/cc/rccsd.py (energy and singles part of update_amps) and
+pyscf/cc/rintermediates.py (cc_Foo, cc_Fvv, cc_Fov).
+Copyright 2014-2021 The PySCF Developers. All Rights Reserved.
+Author credited by upstream rccsd.py: Timothy Berkelbach.
+Licensed under Apache License 2.0; see LICENSE.pyscf.
+Exact upstream file URLs and SHA-256 values are in source_manifest.json.
+
+VibeQC modifications: expand intermediate definitions into named contractions,
+retain full Fock diagonals, combine the two bare fov*T1*T1 contributions,
+use exact coefficients, and lower to the existing TensorIR. No PySCF solver
+code executes in the fixed-amplitude facade. The independent determinant
+oracle is separately written from the second-quantized Hamiltonian.
+
+Upstream cites Hirata et al., J. Chem. Phys. 120, 2581 (2004), Eqs. 35-39.
+The actually audited source here is the pinned PySCF implementation, not an
+assertion of a line-by-line audit of that article.

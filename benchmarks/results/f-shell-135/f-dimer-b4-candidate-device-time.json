@@ -1,0 +1,1168 @@
+{
+  "all_kernel_nanoseconds": 2230842103,
+  "consumers": {
+    "fock": {
+      "f": 97021637,
+      "f_fraction_lower": 0.20497942655659515,
+      "f_fraction_upper": 0.7790537378029052,
+      "mixed": 271723023,
+      "non_f": 104555408,
+      "overhead": 23712,
+      "total_nanoseconds": 473323780
+    },
+    "force": {
+      "f": 303682109,
+      "f_fraction_lower": 0.17337642363710576,
+      "f_fraction_upper": 0.914889166125705,
+      "mixed": 1298816464,
+      "non_f": 139950257,
+      "overhead": 9127899,
+      "total_nanoseconds": 1751576729
+    }
+  },
+  "exact_class_nanoseconds": {
+    "dddd/fock": 1472,
+    "dddd/force": 1096395,
+    "dddp/fock": 1590831,
+    "dddp/force": 2263991,
+    "ddds/fock": 5205332,
+    "ddds/force": 2427032,
+    "ddpp/fock": 1599536,
+    "ddpp/force": 3882470,
+    "ddps/fock": 2946173,
+    "ddps/force": 3118463,
+    "ddss/fock": 1766290,
+    "ddss/force": 2393848,
+    "dpdp/fock": 2787420,
+    "dpdp/force": 3823750,
+    "dpds/fock": 2985790,
+    "dpds/force": 4637582,
+    "dppp/fock": 7394121,
+    "dppp/force": 13577064,
+    "dpps/fock": 6478209,
+    "dpps/force": 8788279,
+    "dpss/fock": 4234570,
+    "dpss/force": 6339743,
+    "dsds/fock": 1464014,
+    "dsds/force": 2465401,
+    "dspp/fock": 4135593,
+    "dspp/force": 7377033,
+    "dsps/fock": 5578168,
+    "dsps/force": 7429642,
+    "dsss/fock": 6778723,
+    "dsss/force": 3732997,
+    "fpps/force": 17941554,
+    "pppp/fock": 6192766,
+    "pppp/force": 14518224,
+    "ppps/fock": 10144197,
+    "ppps/force": 18026996,
+    "ppss/fock": 7534827,
+    "ppss/force": 8458357,
+    "psps/fock": 9545439,
+    "psps/force": 7833997,
+    "psss/fock": 1696,
+    "ssss/fock": 2176
+  },
+  "kernels": [
+    {
+      "attribution": "mixed",
+      "consumer": "force",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::two_electron_force_quartet_persistent_kernel<(bool)0, (unsigned int)6>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned int *, double, const double *, const double *, const unsigned char *, double *, unsigned long)",
+      "nanoseconds": 437940804,
+      "shell_class": null
+    },
+    {
+      "attribution": "mixed",
+      "consumer": "force",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::two_electron_force_quartet_kernel<(bool)0, (unsigned int)7>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, double, const double *, const double *, const unsigned char *, double *, unsigned long)",
+      "nanoseconds": 428033641,
+      "shell_class": null
+    },
+    {
+      "attribution": "mixed",
+      "consumer": "force",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::two_electron_force_quartet_kernel<(bool)0, (unsigned int)8>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, double, const double *, const double *, const unsigned char *, double *, unsigned long)",
+      "nanoseconds": 326467841,
+      "shell_class": null
+    },
+    {
+      "attribution": "f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::two_electron_force_quartet_kernel<(bool)0, (unsigned int)9>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, double, const double *, const double *, const unsigned char *, double *, unsigned long)",
+      "nanoseconds": 171632789,
+      "shell_class": null
+    },
+    {
+      "attribution": "f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::two_electron_force_quartet_kernel<(bool)0, (unsigned int)10>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, double, const double *, const double *, const unsigned char *, double *, unsigned long)",
+      "nanoseconds": 89904675,
+      "shell_class": null
+    },
+    {
+      "attribution": "mixed",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::build_fock_direct_quartet_kernel<(bool)0, (unsigned int)7, double>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, double, const double *, const double *, const unsigned char *, double *, const unsigned long *)",
+      "nanoseconds": 75887731,
+      "shell_class": null
+    },
+    {
+      "attribution": "mixed",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::build_fock_direct_quartet_kernel<(bool)0, (unsigned int)8, double>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, double, const double *, const double *, const unsigned char *, double *, const unsigned long *)",
+      "nanoseconds": 69968600,
+      "shell_class": null
+    },
+    {
+      "attribution": "mixed",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::build_fock_direct_quartet_kernel<(bool)0, (unsigned int)6, double>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, double, const double *, const double *, const unsigned char *, double *, const unsigned long *)",
+      "nanoseconds": 68821164,
+      "shell_class": null
+    },
+    {
+      "attribution": "mixed",
+      "consumer": "force",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::two_electron_force_quartet_persistent_kernel<(bool)0, (unsigned int)5>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned int *, double, const double *, const double *, const unsigned char *, double *, unsigned long)",
+      "nanoseconds": 54007641,
+      "shell_class": null
+    },
+    {
+      "attribution": "f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::build_fock_direct_quartet_kernel<(bool)0, (unsigned int)9, double>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, double, const double *, const double *, const unsigned char *, double *, const unsigned long *)",
+      "nanoseconds": 52116774,
+      "shell_class": null
+    },
+    {
+      "attribution": "mixed",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::build_fock_direct_quartet_persistent_kernel<(bool)0, (unsigned int)5, double>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned int *, double, const double *, const double *, const unsigned char *, double *, const unsigned long *)",
+      "nanoseconds": 44482715,
+      "shell_class": null
+    },
+    {
+      "attribution": "mixed",
+      "consumer": "force",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::two_electron_force_quartet_persistent_kernel<(bool)0, (unsigned int)4>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned int *, double, const double *, const double *, const unsigned char *, double *, unsigned long)",
+      "nanoseconds": 39214438,
+      "shell_class": null
+    },
+    {
+      "attribution": "f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::build_fock_direct_quartet_kernel<(bool)0, (unsigned int)10, double>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, double, const double *, const double *, const unsigned char *, double *, const unsigned long *)",
+      "nanoseconds": 30314510,
+      "shell_class": null
+    },
+    {
+      "attribution": "f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::two_electron_force_quartet_kernel<(bool)0, (unsigned int)11>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, double, const double *, const double *, const unsigned char *, double *, unsigned long)",
+      "nanoseconds": 20131466,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "generated_sm120_ppps_resident_bra_force_rhf_kernel",
+      "nanoseconds": 18024788,
+      "shell_class": "ppps"
+    },
+    {
+      "attribution": "f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "generated_sm120_fpps_shell_class_force_rhf_persistent_kernel",
+      "nanoseconds": 17941554,
+      "shell_class": "fpps"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "generated_sm120_pppp_shell_class_force_rhf_persistent_kernel",
+      "nanoseconds": 14518224,
+      "shell_class": "pppp"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "generated_sm120_dppp_shell_class_force_rhf_persistent_kernel",
+      "nanoseconds": 13577064,
+      "shell_class": "dppp"
+    },
+    {
+      "attribution": "mixed",
+      "consumer": "force",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::two_electron_force_quartet_persistent_kernel<(bool)0, (unsigned int)3>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned int *, double, const double *, const double *, const unsigned char *, double *, unsigned long)",
+      "nanoseconds": 13141475,
+      "shell_class": null
+    },
+    {
+      "attribution": "f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::build_fock_direct_quartet_kernel<(bool)0, (unsigned int)11, double>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, double, const double *, const double *, const unsigned char *, double *, const unsigned long *)",
+      "nanoseconds": 10485160,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "generated_sm120_ppps_shell_class_fock_rhf_persistent_kernel",
+      "nanoseconds": 10144197,
+      "shell_class": "ppps"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::two_electron_force_psss_resident_bra_kernel<(bool)0>(vibeqc::scf::<unnamed>::DeviceBatch, const vibeqc::scf::<unnamed>::PsssResidentTask *, const unsigned int *, unsigned long, double, const double *, const vibeqc::scf::<unnamed>::ShellPairDensityBounds *, bool, const double *, const double *, const unsigned char *, double *, unsigned long)",
+      "nanoseconds": 9933795,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "generated_sm120_psps_shell_class_fock_rhf_persistent_kernel",
+      "nanoseconds": 9545439,
+      "shell_class": "psps"
+    },
+    {
+      "attribution": "overhead",
+      "consumer": "force",
+      "launches": 1,
+      "name": "vibeqc::scf::<unnamed>::one_electron_force_cooperative_kernel(vibeqc::scf::<unnamed>::DeviceBatch, const int *, const int *, unsigned long, const double *, const double *, const unsigned char *, double *)",
+      "nanoseconds": 9103450,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "generated_sm120_dpps_shell_class_force_rhf_persistent_kernel",
+      "nanoseconds": 8788279,
+      "shell_class": "dpps"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::build_fock_direct_quartet_packed_persistent_kernel<(bool)0, (unsigned int)0>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned int *, double, const double *, const double *, const unsigned char *, double *)",
+      "nanoseconds": 8627606,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "generated_sm120_ppss_shell_class_force_rhf_persistent_kernel",
+      "nanoseconds": 8458357,
+      "shell_class": "ppss"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "generated_sm120_psps_shell_class_force_rhf_persistent_kernel",
+      "nanoseconds": 7833997,
+      "shell_class": "psps"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::two_electron_force_quartet_packed_persistent_kernel<(bool)0, (unsigned int)0>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned int *, double, const double *, const double *, const unsigned char *, double *, unsigned long)",
+      "nanoseconds": 7704973,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::build_fock_direct_psss_persistent_kernel<(bool)0>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned int *, double, const double *, const double *, const unsigned char *, double *)",
+      "nanoseconds": 7548395,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "generated_sm120_ppss_shell_class_fock_rhf_persistent_kernel",
+      "nanoseconds": 7534827,
+      "shell_class": "ppss"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "generated_sm120_dsps_shell_class_force_rhf_persistent_kernel",
+      "nanoseconds": 7429642,
+      "shell_class": "dsps"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "generated_sm120_dppp_shell_class_fock_rhf_persistent_kernel",
+      "nanoseconds": 7394121,
+      "shell_class": "dppp"
+    },
+    {
+      "attribution": "mixed",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::build_fock_direct_quartet_persistent_kernel<(bool)0, (unsigned int)4, double>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned int *, double, const double *, const double *, const unsigned char *, double *, const unsigned long *)",
+      "nanoseconds": 7382601,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "generated_sm120_dspp_shell_class_force_rhf_persistent_kernel",
+      "nanoseconds": 7377033,
+      "shell_class": "dspp"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "generated_sm120_dsss_shell_class_fock_rhf_persistent_kernel",
+      "nanoseconds": 6778723,
+      "shell_class": "dsss"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "generated_sm120_dpps_shell_class_fock_rhf_persistent_kernel",
+      "nanoseconds": 6478209,
+      "shell_class": "dpps"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "generated_sm120_dpss_shell_class_force_rhf_persistent_kernel",
+      "nanoseconds": 6339743,
+      "shell_class": "dpss"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "generated_sm120_pppp_shell_class_fock_rhf_persistent_kernel",
+      "nanoseconds": 6192766,
+      "shell_class": "pppp"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "generated_sm120_dsps_shell_class_fock_rhf_persistent_kernel",
+      "nanoseconds": 5578168,
+      "shell_class": "dsps"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "generated_sm120_ddds_shell_class_fock_rhf_persistent_kernel",
+      "nanoseconds": 5205332,
+      "shell_class": "ddds"
+    },
+    {
+      "attribution": "mixed",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::build_fock_direct_quartet_persistent_kernel<(bool)0, (unsigned int)3, double>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned int *, double, const double *, const double *, const unsigned char *, double *, const unsigned long *)",
+      "nanoseconds": 5180212,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "generated_sm120_dpds_shell_class_force_rhf_persistent_kernel",
+      "nanoseconds": 4637582,
+      "shell_class": "dpds"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "generated_sm120_dpss_shell_class_fock_rhf_persistent_kernel",
+      "nanoseconds": 4234570,
+      "shell_class": "dpss"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "generated_sm120_dspp_shell_class_fock_rhf_persistent_kernel",
+      "nanoseconds": 4135593,
+      "shell_class": "dspp"
+    },
+    {
+      "attribution": "f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::build_fock_direct_quartet_kernel<(bool)0, (unsigned int)12, double>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, double, const double *, const double *, const unsigned char *, double *, const unsigned long *)",
+      "nanoseconds": 4105193,
+      "shell_class": null
+    },
+    {
+      "attribution": "f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::two_electron_force_quartet_kernel<(bool)0, (unsigned int)12>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, double, const double *, const double *, const unsigned char *, double *, unsigned long)",
+      "nanoseconds": 4071625,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "generated_sm120_ddpp_shell_class_force_rhf_persistent_kernel",
+      "nanoseconds": 3882470,
+      "shell_class": "ddpp"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "generated_sm120_dpdp_shell_class_force_rhf_persistent_kernel",
+      "nanoseconds": 3823750,
+      "shell_class": "dpdp"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "generated_sm120_dsss_shell_class_force_rhf_persistent_kernel",
+      "nanoseconds": 3732997,
+      "shell_class": "dsss"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "generated_sm120_ddps_shell_class_force_rhf_persistent_kernel",
+      "nanoseconds": 3118463,
+      "shell_class": "ddps"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "generated_sm120_dpds_shell_class_fock_rhf_persistent_kernel",
+      "nanoseconds": 2985790,
+      "shell_class": "dpds"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "generated_sm120_ddps_shell_class_fock_rhf_persistent_kernel",
+      "nanoseconds": 2946173,
+      "shell_class": "ddps"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "generated_sm120_dpdp_shell_class_fock_rhf_persistent_kernel",
+      "nanoseconds": 2787420,
+      "shell_class": "dpdp"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "generated_sm120_dsds_shell_class_force_rhf_persistent_kernel",
+      "nanoseconds": 2465401,
+      "shell_class": "dsds"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "generated_sm120_ddds_shell_class_force_rhf_persistent_kernel",
+      "nanoseconds": 2427032,
+      "shell_class": "ddds"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "generated_sm120_ddss_shell_class_force_rhf_persistent_kernel",
+      "nanoseconds": 2393848,
+      "shell_class": "ddss"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "generated_sm120_dddp_shell_class_force_rhf_persistent_kernel",
+      "nanoseconds": 2263991,
+      "shell_class": "dddp"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "generated_sm120_ddss_shell_class_fock_rhf_persistent_kernel",
+      "nanoseconds": 1766290,
+      "shell_class": "ddss"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "generated_sm120_ddpp_shell_class_fock_rhf_persistent_kernel",
+      "nanoseconds": 1599536,
+      "shell_class": "ddpp"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "generated_sm120_dddp_shell_class_fock_rhf_persistent_kernel",
+      "nanoseconds": 1590831,
+      "shell_class": "dddp"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "generated_sm120_dsds_shell_class_fock_rhf_persistent_kernel",
+      "nanoseconds": 1464014,
+      "shell_class": "dsds"
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void sytrd4_cta<sytrd_params<double, (int)16, (int)32, (int)128, (int)32, (int)0, (int)1, (int)2>, (int)1>(int, T1::data_type *, int, int, T1::pod_type *, int, T1::pod_type *, int, T1::data_type *, int, int)",
+      "nanoseconds": 1357006,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "vibeqc::scf::<unnamed>::profile_active_shell_quartet_tiles_kernel(vibeqc::scf::<unnamed>::DeviceBatch, unsigned long, const unsigned int *, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, vibeqc::scf::<unnamed>::DeviceShellClassProfileEntry *)",
+      "nanoseconds": 1287308,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "generated_sm120_dddd_shell_class_force_rhf_persistent_kernel",
+      "nanoseconds": 1096395,
+      "shell_class": "dddd"
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 2,
+      "name": "vibeqc::scf::<unnamed>::materialize_generated_shell_tasks_kernel(vibeqc::scf::<unnamed>::DeviceBatch, unsigned long, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, const unsigned char *, const unsigned int *, unsigned int *, vibeqc::scf::detail::GeneratedShellTask *, unsigned long, const unsigned int *, unsigned int *)",
+      "nanoseconds": 550693,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "vibeqc::scf::<unnamed>::prefix_low_order_signature_counts_kernel(const unsigned int *, unsigned long, unsigned int *, unsigned int *)",
+      "nanoseconds": 502117,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::compact_active_shell_quartet_tiles_kernel<(bool)0, (vibeqc::scf::<unnamed>::DirectScreeningPurpose)0>(vibeqc::scf::<unnamed>::DeviceBatch, double, const double *, const vibeqc::scf::<unnamed>::ShellPairDensityBounds *, const unsigned char *, const unsigned int *, unsigned int *, vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, bool, double, const unsigned int *, unsigned int *, vibeqc::scf::<unnamed>::ActiveShellQuartetTile *)",
+      "nanoseconds": 289475,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 2,
+      "name": "vibeqc::scf::<unnamed>::classify_generated_shell_tasks_kernel(vibeqc::scf::<unnamed>::DeviceBatch, unsigned long, const unsigned int *, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned long, const unsigned long *, bool, unsigned int *, unsigned char *, unsigned long, unsigned int *)",
+      "nanoseconds": 277954,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::compact_active_shell_quartet_tiles_kernel<(bool)0, (vibeqc::scf::<unnamed>::DirectScreeningPurpose)1>(vibeqc::scf::<unnamed>::DeviceBatch, double, const double *, const vibeqc::scf::<unnamed>::ShellPairDensityBounds *, const unsigned char *, const unsigned int *, unsigned int *, vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, bool, double, const unsigned int *, unsigned int *, vibeqc::scf::<unnamed>::ActiveShellQuartetTile *)",
+      "nanoseconds": 272642,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 4,
+      "name": "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_64x32_16x4_nn_align1>(T1::Params)",
+      "nanoseconds": 165539,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": null,
+      "launches": 1,
+      "name": "vibeqc::scf::<unnamed>::prefix_ppps_resident_bra_tasks_kernel(unsigned long, const unsigned int *, unsigned int *, unsigned int *, vibeqc::scf::detail::GeneratedPppsResidentTask *)",
+      "nanoseconds": 137186,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 3,
+      "name": "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_64x32_16x4_tn_align1>(T1::Params)",
+      "nanoseconds": 123648,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void steqr_ker<stedc_params_<double2, double, (int)8, (int)16, (int)128>, double, (int)0>(long, T1::data_type *, T1::data_type *, T2 *, long, int *, int *, long, long, T1::data_type, T1::data_type, int *, int)",
+      "nanoseconds": 113025,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void laed4_par<stedc_params_<double2, double, (int)8, (int)128, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int, int *, int)",
+      "nanoseconds": 108545,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::two_electron_force_quartet_persistent_kernel<(bool)0, (unsigned int)2>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned int *, double, const double *, const double *, const unsigned char *, double *, unsigned long)",
+      "nanoseconds": 102433,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "vibeqc::scf::<unnamed>::compute_energy_kernel(int, int, const double *, const double *, const double *, const double *, const unsigned char *, double *)",
+      "nanoseconds": 92705,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void laed2_par<stedc_params_<double2, double, (int)8, (int)128, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int *, int *, int *, int *, int *, T1::data_type *, int *, T1::data_type *, int, int)",
+      "nanoseconds": 84897,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void laed4_par<stedc_params_<double2, double, (int)8, (int)64, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int, int *, int)",
+      "nanoseconds": 76417,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void laed4_par<stedc_params_<double2, double, (int)8, (int)16, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int, int *, int)",
+      "nanoseconds": 70337,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void laed4_par<stedc_params_<double2, double, (int)8, (int)32, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int, int *, int)",
+      "nanoseconds": 67713,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void laed2_par<stedc_params_<double2, double, (int)8, (int)64, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int *, int *, int *, int *, int *, T1::data_type *, int *, T1::data_type *, int, int)",
+      "nanoseconds": 59009,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": null,
+      "launches": 1,
+      "name": "vibeqc::scf::<unnamed>::prefix_ppps_resident_signature_buckets_kernel(unsigned long, const unsigned int *, unsigned int *, unsigned int *)",
+      "nanoseconds": 42752,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void laed2_par<stedc_params_<double2, double, (int)8, (int)32, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int *, int *, int *, int *, int *, T1::data_type *, int *, T1::data_type *, int, int)",
+      "nanoseconds": 31264,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "vibeqc::scf::<unnamed>::apply_warm_density_kernel(int, int, const int *, const unsigned char *, const double *, const double *, double *, unsigned char *)",
+      "nanoseconds": 27392,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void larft_T_64_batch<double>(int, T1 *, int, long, const T1 *, long)",
+      "nanoseconds": 26433,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": "force",
+      "launches": 1,
+      "name": "vibeqc::scf::<unnamed>::nuclear_force_kernel(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned char *, double *)",
+      "nanoseconds": 24449,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 2,
+      "name": "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_32x32_16x5_nn_align1>(T1::Params)",
+      "nanoseconds": 23072,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": null,
+      "launches": 1,
+      "name": "vibeqc::scf::<unnamed>::materialize_ppps_resident_bra_tasks_kernel(vibeqc::scf::<unnamed>::DeviceBatch, unsigned long, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, const unsigned int *, unsigned int *, const unsigned int *, unsigned int *, vibeqc::scf::detail::GeneratedShellTask *, unsigned int *)",
+      "nanoseconds": 17632,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void laed2_par<stedc_params_<double2, double, (int)8, (int)16, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int *, int *, int *, int *, int *, T1::data_type *, int *, T1::data_type *, int, int)",
+      "nanoseconds": 16416,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "vibeqc::scf::<unnamed>::transform_direct_fock_left_kernel(int, int, int, int, const double *, const double *, const unsigned char *, double *)",
+      "nanoseconds": 13184,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::build_fock_direct_order2_persistent_kernel<(bool)0>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned int *, double, const double *, const double *, const unsigned char *, double *, const unsigned long *)",
+      "nanoseconds": 12064,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "vibeqc::scf::<unnamed>::transform_density_to_direct_left_kernel(int, int, int, int, const double *, const double *, const unsigned char *, double *)",
+      "nanoseconds": 11649,
+      "shell_class": null
+    },
+    {
+      "attribution": "mixed",
+      "consumer": "force",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::two_electron_force_psps_grid_stride_kernel<(bool)0>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, double, const double *, const double *, const unsigned char *, double *, unsigned long)",
+      "nanoseconds": 10624,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void laed3_epi1<stedc_params_<double2, double, (int)8, (int)128, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, int *, int *, T1::data_type *, T1::data_type *, T1::data_type *, int *, int, int)",
+      "nanoseconds": 9120,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "vibeqc::scf::<unnamed>::transform_direct_fock_right_kernel(int, int, int, int, const double *, const double *, const double *, const unsigned char *, double *)",
+      "nanoseconds": 9120,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::two_electron_force_pair_order2_grid_stride_kernel<(bool)0, (unsigned int)3>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, double, const double *, const double *, const unsigned char *, double *, unsigned long)",
+      "nanoseconds": 8928,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::two_electron_force_pair_order2_grid_stride_kernel<(bool)0, (unsigned int)6>(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, double, const double *, const double *, const unsigned char *, double *, unsigned long)",
+      "nanoseconds": 8864,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "vibeqc::scf::<unnamed>::transform_density_to_direct_right_kernel(int, int, int, int, const double *, const double *, const unsigned char *, double *)",
+      "nanoseconds": 8640,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void laed3_epi2<stedc_params_<double2, double, (int)8, (int)128, (int)256>>(int, int, int, int *, T1::data_type *, int, int *, T1::data_type *, int *, T1::data_type *, T1::data_type *, int, int)",
+      "nanoseconds": 7264,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void laed3_epi1<stedc_params_<double2, double, (int)8, (int)64, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, int *, int *, T1::data_type *, T1::data_type *, T1::data_type *, int *, int, int)",
+      "nanoseconds": 6976,
+      "shell_class": null
+    },
+    {
+      "attribution": "mixed",
+      "consumer": null,
+      "launches": 2,
+      "name": "vibeqc::scf::<unnamed>::compact_generic_order5_tiles_kernel(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned long, const unsigned long *, unsigned int *, vibeqc::scf::<unnamed>::ActiveShellQuartetTile *)",
+      "nanoseconds": 6816,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void vibeqc::scf::<unnamed>::reduce_shell_pair_density_bounds_kernel<(bool)0>(vibeqc::scf::<unnamed>::DeviceBatch, const double *, const unsigned char *, vibeqc::scf::<unnamed>::ShellPairDensityBounds *)",
+      "nanoseconds": 5888,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": null,
+      "launches": 1,
+      "name": "vibeqc::scf::<unnamed>::count_ppps_resident_bra_tasks_kernel(vibeqc::scf::<unnamed>::DeviceBatch, unsigned long, const unsigned int *, const vibeqc::scf::<unnamed>::ActiveShellQuartetTile *, unsigned long, unsigned int *, unsigned int *)",
+      "nanoseconds": 5504,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 2,
+      "name": "vibeqc::scf::<unnamed>::prefix_generated_shell_task_counts_kernel(const unsigned int *, unsigned int *, unsigned int *, unsigned int *)",
+      "nanoseconds": 5408,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 4,
+      "name": "void laed2_copy<double2, double, (int)128>(int, int, T2 *, int, int *, int *, T2 *, int, int)",
+      "nanoseconds": 4704,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void laed3_epi2<stedc_params_<double2, double, (int)8, (int)64, (int)256>>(int, int, int, int *, T1::data_type *, int, int *, T1::data_type *, int *, T1::data_type *, T1::data_type *, int, int)",
+      "nanoseconds": 4640,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void laed3_epi2<stedc_params_<double2, double, (int)8, (int)32, (int)256>>(int, int, int, int *, T1::data_type *, int, int *, T1::data_type *, int *, T1::data_type *, T1::data_type *, int, int)",
+      "nanoseconds": 3808,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void scale_max<double, (int)32, (int)32, (int)1>(long, long, T1 *, T1 *, T1 *, int *)",
+      "nanoseconds": 3168,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "vibeqc::scf::<unnamed>::build_weighted_density_kernel(int, int, const int *, const double *, const double *, const unsigned char *, double *)",
+      "nanoseconds": 3168,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void laed3_epi2<stedc_params_<double2, double, (int)8, (int)16, (int)256>>(int, int, int, int *, T1::data_type *, int, int *, T1::data_type *, int *, T1::data_type *, T1::data_type *, int, int)",
+      "nanoseconds": 2784,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 2,
+      "name": "vibeqc::scf::<unnamed>::copy_selected_matrices_kernel(int, int, int, const unsigned char *, const double *, double *)",
+      "nanoseconds": 2688,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void lansy_M_stage1<double, double, (int)8>(long, const T1 *, long, long, T2 *, long, int)",
+      "nanoseconds": 2496,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void lansy_M_stage2<double, (int)8>(T1, T1, long, T1 *, long, T1 *, T1 *)",
+      "nanoseconds": 2240,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "force",
+      "launches": 1,
+      "name": "generated_sm120_ppps_shell_class_force_rhf_persistent_kernel",
+      "nanoseconds": 2208,
+      "shell_class": "ppps"
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "generated_sm120_ssss_shell_class_fock_rhf_persistent_kernel",
+      "nanoseconds": 2176,
+      "shell_class": "ssss"
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void laed3_epi1<stedc_params_<double2, double, (int)8, (int)32, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, int *, int *, T1::data_type *, T1::data_type *, T1::data_type *, int *, int, int)",
+      "nanoseconds": 1984,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 3,
+      "name": "copy_info_kernel(int, int *)",
+      "nanoseconds": 1984,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void epilogue<sytrd_params<double, (int)32, (int)8, (int)512, (int)32, (int)16, (int)1, (int)2>, (int)128, (int)1, (int)1>(int, int, T1::data_type *, int, int, T1::pod_type *, int, T1::pod_type *, int, T1::data_type *, int, T1::data_type *, int, int)",
+      "nanoseconds": 1952,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void laed3_epi1<stedc_params_<double2, double, (int)8, (int)16, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, int *, int *, T1::data_type *, T1::data_type *, T1::data_type *, int *, int, int)",
+      "nanoseconds": 1920,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "generated_sm120_psss_shell_class_fock_rhf_persistent_kernel",
+      "nanoseconds": 1696,
+      "shell_class": "psss"
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 2,
+      "name": "void setup_vhat_l_kernel<double, (int)16>(long, long, const T1 *, long, long, T1 *, long, long)",
+      "nanoseconds": 1664,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 2,
+      "name": "vibeqc::scf::<unnamed>::clear_active_shell_quartet_tile_counts_kernel(unsigned int *, unsigned int *, unsigned int *, unsigned int *)",
+      "nanoseconds": 1504,
+      "shell_class": null
+    },
+    {
+      "attribution": "non_f",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "generated_sm120_dddd_shell_class_fock_rhf_persistent_kernel",
+      "nanoseconds": 1472,
+      "shell_class": "dddd"
+    },
+    {
+      "attribution": "overhead",
+      "consumer": "fock",
+      "launches": 1,
+      "name": "vibeqc::scf::<unnamed>::select_final_fock_rebuild_kernel(int, double, const double *, const unsigned char *, const unsigned char *, unsigned char *, unsigned char *, unsigned int *)",
+      "nanoseconds": 1408,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "vibeqc::scf::<unnamed>::clear_active_matrices_kernel(int, int, int, const unsigned char *, double *)",
+      "nanoseconds": 1344,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void merge_ker<double, double, (int)128, (int)0, (int)1>(long, long, T2 *, T2 *, long, int *, T2 *, T2 *, long, int, int)",
+      "nanoseconds": 1280,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "vibeqc::scf::<unnamed>::select_converged_kernel(int, const unsigned char *, const unsigned char *, unsigned char *)",
+      "nanoseconds": 1184,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "vibeqc::scf::<unnamed>::inspect_solver_kernel(int, const int *, unsigned char *, unsigned char *, unsigned char *)",
+      "nanoseconds": 1152,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void scale_max<double, (int)32, (int)128, (int)0>(long, long, T1 *, T1 *, T1 *, int *)",
+      "nanoseconds": 1088,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void lascl_kernel<double, double, (int)8>(long, long, T1 *, long, long, T2 *, int, int)",
+      "nanoseconds": 1088,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void merge_ker<double, double, (int)128, (int)1, (int)1>(long, long, T2 *, T2 *, long, int *, T2 *, T2 *, long, int, int)",
+      "nanoseconds": 992,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void lacpy_kernel<double, double, (int)5, (int)3>(long, long, const T1 *, long, long, T2 *, long, long, int, int, long)",
+      "nanoseconds": 960,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "vibeqc::scf::<unnamed>::initialize_state_kernel(int, bool, const double *, unsigned char *, unsigned char *, unsigned char *, unsigned int *, double *, double *, double *, unsigned int *, unsigned int *)",
+      "nanoseconds": 960,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "void cuds_scal_batch_kernel<double, (int)256>(int, const T1 *, T1 *, long long, int)",
+      "nanoseconds": 864,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "vibeqc::scf::<unnamed>::sanitize_inactive_solver_input_kernel(int, int, const unsigned char *, double *, int *, unsigned int, const unsigned int *, vibeqc::scf::<unnamed>::DeviceInactiveEigensolverProfileEntry *)",
+      "nanoseconds": 832,
+      "shell_class": null
+    },
+    {
+      "attribution": "overhead",
+      "consumer": null,
+      "launches": 1,
+      "name": "xx_set_info_ker(int, int *, int)",
+      "nanoseconds": 704,
+      "shell_class": null
+    }
+  ],
+  "method": "summed measured kernel durations; mixed generic angular groups remain unresolved",
+  "schema": "vibeqc.f_shell_device_time",
+  "schema_version": 1,
+  "sqlite_sha256": "ba7b29e7bd855034467f4389565c4a04e262cad651b9f5edbd4e4d9855b15872"
+}

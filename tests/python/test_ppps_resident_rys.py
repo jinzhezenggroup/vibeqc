@@ -8,8 +8,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
-
-from tools.vibeqc_codegen import emit_ppps_resident_bra_rys3_cuda
+from vibeqc_compiler.integral import emit_ppps_resident_bra_rys3_cuda
 
 
 def _cuda_source() -> str:

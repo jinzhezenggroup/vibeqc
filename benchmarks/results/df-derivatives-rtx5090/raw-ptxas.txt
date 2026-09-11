@@ -1,0 +1,10 @@
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function 'fixture_values' for 'sm_120'
+ptxas info    : Function properties for fixture_values
+    664 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 244 registers, used 0 barriers, 664 bytes cumulative stack size
+ptxas info    : Compile time = 1143.845 ms
+ptxas info    : Function properties for _ZN6vibeqc3scf24generated_df_derivatives15axis_polynomialEjjjdddddddPd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _ZN6vibeqc3scf24generated_df_derivatives8evaluateEbdNS1_4Vec3ENS1_7AngularEdS2_S3_dS2_S3_
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads

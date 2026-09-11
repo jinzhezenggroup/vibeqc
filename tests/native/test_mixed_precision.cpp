@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "molecule/basis.hpp"
+#include "scf/fleet.hpp"
 #include "scf/rhf.hpp"
 #include "vibeqc/vibeqc.h"
 
@@ -87,6 +88,18 @@ void verify_mode(bool unrestricted) {
           "FP64 direct-Fock reference did not converge");
   const std::vector<const std::vector<double>*> warm_density{&fp64[0].scf.density};
 
+  // Output selection belongs to the cached-plan identity. Reusing a topology
+  // after switching to energy-only must omit every force result while keeping
+  // the exact final energy; switching back below must restore force work.
+  options.compute_forces = false;
+  const std::vector<vibeqc::scf::RhfBucketItem> energy_only = run_cached(warm_density);
+  require(energy_only.size() == 1 && energy_only[0].status == VIBEQC_STATUS_SUCCESS &&
+              energy_only[0].scf.converged && energy_only[0].scf.forces.empty(),
+          "energy-only CUDA execution produced an analytic-force result");
+  require(std::abs(energy_only[0].scf.energy - fp64[0].scf.energy) < 2.0e-9,
+          "energy-only CUDA execution changed the FP64 energy");
+  options.compute_forces = true;
+
   setenv("VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD", "auto", 1);
   const std::vector<vibeqc::scf::RhfBucketItem> mixed = run_cached(warm_density);
   require(mixed.size() == 1 && mixed[0].status == VIBEQC_STATUS_SUCCESS && mixed[0].scf.converged &&
@@ -111,6 +124,62 @@ void verify_mode(bool unrestricted) {
               maximum_difference(invalid[0].scf.forces, fp64[0].scf.forces) < 2.0e-8 &&
               maximum_difference(invalid[0].scf.density, fp64[0].scf.density) < 2.0e-7,
           "invalid mixed threshold changed the FP64 result");
+
+  // The diagnostic switches alter the captured Graph. Enter and leave the
+  // mode on a live plan without changing arithmetic, then toggle only its
+  // Fock-only switch; neither transition may reuse an incompatible Graph.
+  unsetenv("VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD");
+  // The isolated streaming route requires complete shell-class coverage.
+  // The earlier direct test deliberately restricts its AOT registry to DPPS.
+  unsetenv("VIBEQC_AOT_FOCK_SHELL_CLASSES");
+  setenv("VIBEQC_BOUNDED_DIRECT_STREAMING", "force", 1);
+  setenv("VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE", "1", 1);
+  setenv("VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC", "1", 1);
+  const auto diagnostic = run_cached(warm_density);
+  require(diagnostic.size() == 1 && diagnostic[0].fock_only_diagnostic &&
+              diagnostic[0].status == VIBEQC_STATUS_NOT_CONVERGED,
+          (std::string("cached plan did not enter isolated Fock mode: ") +
+           (diagnostic.empty() ? "empty result" : vibeqc_status_message(diagnostic[0].status)))
+              .c_str());
+  unsetenv("VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC");
+  const auto restored = run_cached(warm_density);
+  require(restored.size() == 1 && !restored[0].fock_only_diagnostic &&
+              restored[0].status == VIBEQC_STATUS_SUCCESS && restored[0].scf.converged,
+          "cached plan retained its isolated Fock Graph");
+  unsetenv("VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE");
+  unsetenv("VIBEQC_BOUNDED_DIRECT_STREAMING");
+
+  // A diagnostic intentionally reports nonconvergence. The fleet must not
+  // interpret that completion as a failed warm SCF and measure a second,
+  // cold-density operation. Preserve the same snapshot across every mode.
+  vibeqc::scf::FleetPlan fleet(systems, unrestricted ? VIBEQC_METHOD_UHF : VIBEQC_METHOD_RHF,
+                               options, true, true, false, false, 0);
+  const auto cold = fleet.execute({});
+  require(cold[0].status == VIBEQC_STATUS_SUCCESS, "diagnostic fleet setup failed");
+  fleet.set_warm_start_updates(false);
+  const auto frozen_density = fleet.warm_state(0)->density;
+  setenv("VIBEQC_BOUNDED_DIRECT_STREAMING", "force", 1);
+  setenv("VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE", "1", 1);
+  setenv("VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC", "1", 1);
+  for (const char* threshold : {"invalid", "auto", "1e300"}) {
+    setenv("VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD", threshold, 1);
+    for (int replay = 0; replay < 2; ++replay) {
+      const auto measured = fleet.execute({});
+      require(measured.size() == 1 && measured[0].status == VIBEQC_STATUS_NOT_CONVERGED &&
+                  measured[0].warm_start_used && !measured[0].warm_start_fallback,
+              "fixed-density diagnostic retried a cold solve");
+      require(fleet.warm_state(0)->density == frozen_density,
+              "fixed-density diagnostic replaced the frozen snapshot");
+    }
+  }
+  unsetenv("VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD");
+  unsetenv("VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE");
+  unsetenv("VIBEQC_BOUNDED_DIRECT_STREAMING");
+  unsetenv("VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC");
+  const auto replayed = fleet.execute({});
+  require(replayed[0].status == VIBEQC_STATUS_SUCCESS &&
+              std::abs(replayed[0].scf.energy - cold[0].scf.energy) < 2.0e-9,
+          "diagnostic exit did not restore the full SCF Graph");
 
   vibeqc::scf::destroy_rhf_cuda_bucket_plan(plan);
 }

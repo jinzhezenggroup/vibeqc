@@ -1,0 +1,36 @@
+{
+  "domain": {
+    "atomic_numbers": [
+      1,
+      6,
+      7,
+      8,
+      9
+    ],
+    "backend": "cpu",
+    "basis_family_id": "d645c1f8a31737b913355098f053964b852396774f278c6733ed903230fad74c",
+    "max_electrons": 10,
+    "max_nao": 12,
+    "maximum_idempotency_error": 1e-08,
+    "maximum_overlap_condition": 30.0,
+    "maximum_residual": 0.01,
+    "maximum_trace_error": 1e-08,
+    "minimum_gap": 0.1,
+    "minimum_nuclear_distance": 0.5,
+    "schema_version": 1
+  },
+  "energy_floor": 1e-12,
+  "energy_slope": 0.002771849502779064,
+  "force_floor": 1e-10,
+  "force_slope": 2.743578803358141,
+  "identity": "7160df47a3f217386a67ab7dc0696f897513056acf4cfb00c324102e57da8607",
+  "kind": "empirical_envelope",
+  "residual_floor": 1e-12,
+  "safety_factor": 4.0,
+  "schema_version": 1,
+  "training_data_hash": "1976bfba56f8162c869cb62d440691fe14d86bcd0c6cec9390c707b22558f089",
+  "training_families": [
+    "methane",
+    "water"
+  ]
+}

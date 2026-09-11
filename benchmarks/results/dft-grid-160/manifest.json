@@ -1,0 +1,22 @@
+{
+  "scientific_revision": "2c4ecf01710a81e66b6c5fd0b9109b677071f767",
+  "slurm_job_id": "9006",
+  "sha256": {
+    "batch.json": "5897f50ec189e19557603b87958c2ed9540f6351825cbf2005e28c7a37d219b2",
+    "diffuse.json": "9c3bbdbc6371f3bdb004c7debee58a326b715b693452c551960b5749e2530bd4",
+    "endpoints.log": "be69c22034c0c52d2fed6c65560eaedb4ea355f4bec02734449b6ac66f4a5965",
+    "f_cartesian.json": "39fb6d0c1453eb2be5933b4d1eb01df82649a6977004198bd00ecfdaa1aeb468",
+    "f_spherical.json": "366659bfb1733f455e03a47240b376494f340353f18bfd7260aff646d04cbb4f",
+    "h2.json": "cf7059a09c87192ee66f5d4dbff7a6bbb45cb45587c0a5700aa3cc86493f3e5d",
+    "identity-recheck.log": "99a24796443a1d07f66a424f8116a06a2079063af758e7d3c87801c191ad2ecd",
+    "local-python-summary.log": "94b0098c3add26feeb2e56e5996c2ba278c6d932e4f647a526296768a88ca7b5",
+    "native-tests.log": "f2f82ac849e101104ae4049bcff0fb1a186ed1b5c43dd9b03769f30851563873",
+    "precommit.log": "32ee5f9e0a9433aaac9b8ba91c1937461bd2f0e5b6d069226ea49cebdbf787b8",
+    "sanitizer.log": "2669de8edc25cf57cd76b33d307e5d4fe333dc5f0c0cfd00dc517a33e4a1f5f7",
+    "tight.json": "f3aac8a72efcd94a674219d29adcd70aabb626f61858c93b7346bbb8557d4654",
+    "water.json": "280c4c06965be1e797e4271989eea778d99f111eade0d6515fb7290af9465381",
+    "reviewed-focused.log": "0d927a3b0a80bfa0c04d58a279c9f79f5fac7ea0409461d98cce8fae123e4a24",
+    "reviewed-sanitizer.log": "78b0953109cd10ba84375f541cb8295529c9d931b9d968e13821b1c354aff1ac",
+    "ci-python-summary.log": "8c20eca4698b66990b54b429b407d09e1d878b1bfbf4d6ef51e654f62e01ddea"
+  }
+}

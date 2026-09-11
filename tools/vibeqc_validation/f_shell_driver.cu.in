@@ -1,0 +1,204 @@
+// Host-only CUDA fixture driver. Numerical kernels come from the separately
+// compiled common generator object; this file contains no integral recurrence.
+#include <cuda_runtime.h>
+#include <cstdint>
+#include <cstddef>
+#include <cstring>
+#include <cmath>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+@TASK_TYPES@
+@KERNEL_DECLARATIONS@
+
+namespace {
+void check(cudaError_t status) {
+  if (status != cudaSuccess) throw std::runtime_error(cudaGetErrorString(status));
+}
+
+template <typename T> class Buffer {
+public:
+  T* pointer = nullptr;
+  std::size_t count;
+  explicit Buffer(std::size_t elements) : count(elements) {
+    check(cudaMalloc(&pointer, elements * sizeof(T)));
+  }
+  explicit Buffer(const std::vector<T>& values) : Buffer(values.size()) {
+    check(cudaMemcpy(pointer, values.data(), count * sizeof(T), cudaMemcpyHostToDevice));
+  }
+  Buffer(const Buffer&) = delete;
+  Buffer& operator=(const Buffer&) = delete;
+  ~Buffer() { cudaFree(pointer); }
+  void zero() { check(cudaMemset(pointer, 0, count * sizeof(T))); }
+  std::vector<T> read() const {
+    std::vector<T> values(count);
+    check(cudaMemcpy(values.data(), pointer, count * sizeof(T), cudaMemcpyDeviceToHost));
+    return values;
+  }
+};
+
+template <typename T> void read_exact(std::ifstream& stream, T* values, std::size_t count) {
+  stream.read(reinterpret_cast<char*>(values), static_cast<std::streamsize>(count * sizeof(T)));
+  if (!stream) throw std::runtime_error("truncated f-shell fixture");
+}
+
+std::vector<double> read_doubles(std::ifstream& stream, std::size_t count) {
+  std::vector<double> values(count);
+  read_exact(stream, values.data(), count);
+  for (double value : values) {
+    if (!std::isfinite(value)) throw std::runtime_error("non-finite f-shell fixture input");
+  }
+  return values;
+}
+
+struct Kernel {
+  const char* name;
+  const void* function;
+  unsigned threads;
+  bool unrestricted;
+  bool force;
+  bool persistent;
+};
+
+const Kernel kernels[] = {
+@KERNEL_TABLE@
+};
+
+void device_record() {
+  int device = 0, driver = 0, runtime = 0;
+  check(cudaGetDevice(&device));
+  cudaDeviceProp properties{};
+  check(cudaGetDeviceProperties(&properties, device));
+  if (properties.major * 10 + properties.minor != @ARCH_NUMBER@) {
+    throw std::runtime_error("allocated GPU does not match the compiled release target");
+  }
+  check(cudaDriverGetVersion(&driver));
+  check(cudaRuntimeGetVersion(&runtime));
+  std::cout << "{\"kind\":\"device\",\"name\":" << std::quoted(properties.name)
+            << ",\"major\":" << properties.major << ",\"minor\":" << properties.minor
+            << ",\"driver\":" << driver << ",\"runtime\":" << runtime
+            << ",\"kernels\":[";
+  bool first = true;
+  for (const auto& kernel : kernels) {
+    cudaFuncAttributes attributes{};
+    check(cudaFuncGetAttributes(&attributes, kernel.function));
+    int blocks = 0;
+    check(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&blocks, kernel.function, kernel.threads, 0));
+    if (blocks < 1 || kernel.threads > static_cast<unsigned>(attributes.maxThreadsPerBlock)) {
+      throw std::runtime_error("generated kernel has no legal active launch block");
+    }
+    if (!first) std::cout << ',';
+    first = false;
+    std::cout << "{\"name\":" << std::quoted(kernel.name)
+              << ",\"registers\":" << attributes.numRegs
+              << ",\"local_bytes\":" << attributes.localSizeBytes
+              << ",\"shared_bytes\":" << attributes.sharedSizeBytes
+              << ",\"threads\":" << kernel.threads
+              << ",\"active_blocks_per_sm\":" << blocks << '}';
+  }
+  std::cout << "]}\n";
+}
+
+void run_fixture(const char* path, int ordinal) {
+  std::ifstream stream(path, std::ios::binary);
+  char magic[8];
+  read_exact(stream, magic, 8);
+  if (std::string(magic, 8) != "VQF13501") throw std::runtime_error("unknown f-shell fixture schema");
+  std::uint32_t header[4];
+  read_exact(stream, header, 4);
+  const unsigned n = header[0], pair_count = header[1], pair_split = header[2], reverse = header[3];
+  if (n != @AO_COUNT@ || pair_count < 2 || pair_count > 64 || pair_split == 0 || pair_split >= pair_count || reverse > 3) {
+    throw std::runtime_error("invalid bounded fixture dimensions");
+  }
+  Generated@CLASS@ShellTask task{};
+  read_exact(stream, task.ao_begin, 4);
+  read_exact(stream, task.atom, 4);
+  std::uint32_t primitive_counts[4];
+  read_exact(stream, primitive_counts, 4);
+  const unsigned counts[4] = {@COMPONENT_COUNTS@};
+  for (unsigned slot = 0; slot < 4; ++slot) {
+    if (task.atom[slot] >= 4 || task.ao_begin[slot] + counts[slot] > n || primitive_counts[slot] < 1 || primitive_counts[slot] > 8) {
+      throw std::runtime_error("invalid fixture shell/atom range");
+    }
+    task.ao_coefficient_begin[slot] = task.ao_begin[slot];
+    task.shell[slot] = slot;
+    task.primitive_begin[slot] = slot == 0 ? 0 : task.primitive_end[slot - 1];
+    task.primitive_end[slot] = task.primitive_begin[slot] + primitive_counts[slot];
+  }
+  task.matrix_order = n;
+  task.shell_pair[0] = 0;
+  task.shell_pair[1] = 1;
+  task.reversed_shell_pair_mask = reverse;
+  auto xyz = read_doubles(stream, 12);
+  auto ao = read_doubles(stream, n);
+  auto pair_values = read_doubles(stream, pair_count * 8);
+  auto rhf_values = read_doubles(stream, n * n);
+  auto uhf_values = read_doubles(stream, 2 * n * n);
+  if (stream.peek() != std::ifstream::traits_type::eof()) throw std::runtime_error("unexpected fixture trailing bytes");
+
+  static_assert(sizeof(Generated@CLASS@Vec3) == 3 * sizeof(double));
+  static_assert(sizeof(Generated@CLASS@PrimitivePairData) == 8 * sizeof(double));
+  std::vector<Generated@CLASS@Vec3> positions(4);
+  std::vector<Generated@CLASS@PrimitivePairData> pair_rows(pair_count);
+  std::memcpy(positions.data(), xyz.data(), xyz.size() * sizeof(double));
+  std::memcpy(pair_rows.data(), pair_values.data(), pair_values.size() * sizeof(double));
+  Buffer<Generated@CLASS@ShellTask> tasks(std::vector<Generated@CLASS@ShellTask>{task});
+  Buffer<Generated@CLASS@Vec3> centers(positions);
+  Buffer<Generated@CLASS@PrimitivePairData> pairs(pair_rows);
+  Buffer<std::int64_t> offsets(std::vector<std::int64_t>{0, pair_split, pair_count});
+  Buffer<double> coefficients(ao), rhf(rhf_values), uhf(uhf_values);
+  Buffer<std::uint32_t> task_offset(std::vector<std::uint32_t>{0}), task_head(1), task_count(std::vector<std::uint32_t>{1});
+  double screening = 0;
+  const double* schwarz = nullptr;
+  std::size_t count = 1;
+  bool first = true;
+  std::cout << "{\"kind\":\"fixture\",\"ordinal\":" << ordinal << ",\"outputs\":{";
+  for (const auto& kernel : kernels) {
+    Buffer<double> result(kernel.force ? 12 : (kernel.unrestricted ? 2 : 1) * n * n);
+    result.zero();
+    task_head.zero();
+    double* density = kernel.unrestricted ? uhf.pointer : rhf.pointer;
+    void* direct_args[] = {&tasks.pointer, &pairs.pointer, &offsets.pointer,
+                          &coefficients.pointer, &centers.pointer, &screening,
+                          &schwarz, &density, &result.pointer, &count};
+    void* persistent_args[] = {&tasks.pointer, &pairs.pointer, &offsets.pointer,
+                              &coefficients.pointer, &centers.pointer, &screening,
+                              &schwarz, &density, &result.pointer, &task_offset.pointer,
+                              &task_count.pointer, &task_head.pointer};
+    check(cudaLaunchKernel(kernel.function, dim3(1), dim3(kernel.threads),
+                           kernel.persistent ? persistent_args : direct_args, 0, nullptr));
+    check(cudaGetLastError());
+    check(cudaDeviceSynchronize());
+    const auto output = result.read();
+    if (!first) std::cout << ',';
+    first = false;
+    std::cout << std::quoted(kernel.name) << ":[";
+    for (std::size_t i = 0; i < output.size(); ++i) {
+      if (!std::isfinite(output[i])) throw std::runtime_error("non-finite generated result");
+      if (i) std::cout << ',';
+      std::cout << output[i];
+    }
+    std::cout << ']';
+  }
+  std::cout << "}}\n";
+}
+} // namespace
+
+int main(int argc, char** argv) {
+  try {
+    if (argc < 2) throw std::runtime_error("expected at least one bounded fixture file");
+    std::uint32_t endian = 1;
+    if (*reinterpret_cast<unsigned char*>(&endian) != 1) throw std::runtime_error("fixture driver requires a little-endian host");
+    std::cout << std::setprecision(17);
+    device_record();
+    for (int i = 1; i < argc; ++i) run_fixture(argv[i], i - 1);
+    return 0;
+  } catch (const std::exception& error) {
+    std::cerr << error.what() << '\n';
+    return 2;
+  }
+}

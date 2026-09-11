@@ -1,0 +1,133 @@
+{
+  "schema": "vibeqc.posthf_reference",
+  "version": 1,
+  "inputs": {
+    "name": "f_heh",
+    "atomic_numbers": [
+      2,
+      1
+    ],
+    "coordinates": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.3,
+        -0.2,
+        1.7
+      ]
+    ],
+    "shells": [
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            1.3,
+            1
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 3,
+        "primitives": [
+          [
+            0.7,
+            1
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            0.6,
+            1
+          ]
+        ]
+      }
+    ],
+    "basis_representation": "real_spherical",
+    "charge": 1,
+    "multiplicity": 1
+  },
+  "auxiliary_shells": [
+    {
+      "atom_index": 0,
+      "angular_momentum": 0,
+      "primitives": [
+        [
+          1.3,
+          1
+        ]
+      ]
+    },
+    {
+      "atom_index": 0,
+      "angular_momentum": 3,
+      "primitives": [
+        [
+          0.7,
+          1
+        ]
+      ]
+    },
+    {
+      "atom_index": 1,
+      "angular_momentum": 0,
+      "primitives": [
+        [
+          0.6,
+          1
+        ]
+      ]
+    }
+  ],
+  "actual_angular_momenta": [
+    0,
+    3,
+    0
+  ],
+  "records": {
+    "conventional": {
+      "hf_energy": -2.422284177535021,
+      "correlation_energy": -0.01741486128265443,
+      "scf_residual": 2.353672812205332e-14,
+      "electron_count": 2
+    },
+    "df": {
+      "hf_energy": -2.4608678174883742,
+      "correlation_energy": -0.012906138489357299,
+      "scf_residual": 2.4868995751603507e-14,
+      "electron_count": 2
+    }
+  },
+  "array_hash": "e120b22195ddf4f0e6aa451961101f84d7a5843d6b8e9971e58a77f341ea5ff9",
+  "versions": {
+    "pyscf": "2.14.0",
+    "numpy": "2.4.6",
+    "numpy_blas_configuration": "{\n  \"Compilers\": {\n    \"c\": {\n      \"name\": \"gcc\",\n      \"linker\": \"ld.bfd\",\n      \"version\": \"14.2.1\",\n      \"commands\": \"cc\"\n    },\n    \"cython\": {\n      \"name\": \"cython\",\n      \"linker\": \"cython\",\n      \"version\": \"3.2.4\",\n      \"commands\": \"cython\"\n    },\n    \"c++\": {\n      \"name\": \"gcc\",\n      \"linker\": \"ld.bfd\",\n      \"version\": \"14.2.1\",\n      \"commands\": \"c++\"\n    }\n  },\n  \"Machine Information\": {\n    \"host\": {\n      \"cpu\": \"x86_64\",\n      \"family\": \"x86_64\",\n      \"endian\": \"little\",\n      \"system\": \"linux\"\n    },\n    \"build\": {\n      \"cpu\": \"x86_64\",\n      \"family\": \"x86_64\",\n      \"endian\": \"little\",\n      \"system\": \"linux\"\n    }\n  },\n  \"Build Dependencies\": {\n    \"blas\": {\n      \"name\": \"scipy-openblas\",\n      \"found\": true,\n      \"version\": \"0.3.31.188.0\",\n      \"detection method\": \"pkgconfig\",\n      \"include directory\": \"/opt/_internal/cpython-3.11.14/lib/python3.11/site-packages/scipy_openblas64/include\",\n      \"lib directory\": \"/opt/_internal/cpython-3.11.14/lib/python3.11/site-packages/scipy_openblas64/lib\",\n      \"openblas configuration\": \"OpenBLAS 0.3.31.188.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=64\",\n      \"pc file directory\": \"/project/.openblas\"\n    },\n    \"lapack\": {\n      \"name\": \"scipy-openblas\",\n      \"found\": true,\n      \"version\": \"0.3.31.188.0\",\n      \"detection method\": \"pkgconfig\",\n      \"include directory\": \"/opt/_internal/cpython-3.11.14/lib/python3.11/site-packages/scipy_openblas64/include\",\n      \"lib directory\": \"/opt/_internal/cpython-3.11.14/lib/python3.11/site-packages/scipy_openblas64/lib\",\n      \"openblas configuration\": \"OpenBLAS 0.3.31.188.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=64\",\n      \"pc file directory\": \"/project/.openblas\"\n    }\n  },\n  \"Python Information\": {\n    \"path\": \"/tmp/build-env-gjolnpt6/bin/python\",\n    \"version\": \"3.11\"\n  },\n  \"SIMD Extensions\": {\n    \"baseline\": [\n      \"X86_V2\"\n    ],\n    \"found\": [\n      \"X86_V3\"\n    ],\n    \"not found\": [\n      \"X86_V4\",\n      \"AVX512_ICL\",\n      \"AVX512_SPR\"\n    ]\n  }\n}\n",
+    "python": "3.11.14 (main, Feb 12 2026, 00:42:50) [Clang 21.1.4 ]"
+  },
+  "provenance": {
+    "pyscf": "Apache-2.0",
+    "libcint": "BSD-2-Clause",
+    "exporter": "original repository GPL-3.0-or-later"
+  },
+  "settings": {
+    "scf_energy_tolerance": 1e-13,
+    "scf_gradient_tolerance": 1e-11,
+    "screening": 0,
+    "df_relative_threshold": 1e-10,
+    "frozen_core": null,
+    "mo_phase": "largest unit-normalized AO coefficient positive",
+    "eri": "chemists (pq|rs)",
+    "t2": "restricted ijab = (ia|jb)/D",
+    "units": "Bohr, Hartree"
+  },
+  "conventional_df_ao_max_difference": 0.16117043572404732
+}

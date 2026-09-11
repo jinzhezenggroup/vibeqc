@@ -1,0 +1,5086 @@
+{
+  "benchmark": "issue174_precision_boundaries",
+  "case": "water-tetramer-def2-svp-spherical",
+  "case_description": "WATER27 water tetramer, 96 real spherical AOs, def2-SVP direct J/K",
+  "complete_endpoints": {
+    "auto": {
+      "energy_only": {
+        "properties": [
+          "energy"
+        ],
+        "samples": [
+          {
+            "converged": true,
+            "energy": -303.8896432633504,
+            "force_max_abs": null,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.9166573178954422
+          },
+          {
+            "converged": true,
+            "energy": -303.88964326335037,
+            "force_max_abs": null,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.9147843921091408
+          },
+          {
+            "converged": true,
+            "energy": -303.88964326335025,
+            "force_max_abs": null,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.9119474040344357
+          },
+          {
+            "converged": true,
+            "energy": -303.8896432633505,
+            "force_max_abs": null,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.913681437028572
+          },
+          {
+            "converged": true,
+            "energy": -303.88964326335037,
+            "force_max_abs": null,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.9095291569828987
+          }
+        ]
+      },
+      "energy_plus_forces": {
+        "properties": [
+          "energy",
+          "forces"
+        ],
+        "samples": [
+          {
+            "converged": true,
+            "energy": -303.8896432633506,
+            "force_max_abs": 0.021762763118041577,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.9875147109851241
+          },
+          {
+            "converged": true,
+            "energy": -303.8896432633506,
+            "force_max_abs": 0.021762763118088328,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.9860454758163542
+          },
+          {
+            "converged": true,
+            "energy": -303.8896432633505,
+            "force_max_abs": 0.021762763118002314,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.9851841940544546
+          },
+          {
+            "converged": true,
+            "energy": -303.8896432633506,
+            "force_max_abs": 0.021762763118338562,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.9862775038927794
+          },
+          {
+            "converged": true,
+            "energy": -303.8896432633505,
+            "force_max_abs": 0.021762763117912618,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.9870139919221401
+          }
+        ]
+      },
+      "requested_threshold": "auto"
+    },
+    "experimental_fp32": {
+      "energy_only": {
+        "properties": [
+          "energy"
+        ],
+        "samples": [
+          {
+            "converged": true,
+            "energy": -303.8896432633488,
+            "force_max_abs": null,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.6926733129657805
+          },
+          {
+            "converged": true,
+            "energy": -303.8896432633488,
+            "force_max_abs": null,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.695023343199864
+          },
+          {
+            "converged": true,
+            "energy": -303.8896432633486,
+            "force_max_abs": null,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.6936436989344656
+          },
+          {
+            "converged": true,
+            "energy": -303.88964326334883,
+            "force_max_abs": null,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.6938669960945845
+          },
+          {
+            "converged": true,
+            "energy": -303.8896432633488,
+            "force_max_abs": null,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.6948015219531953
+          }
+        ]
+      },
+      "energy_plus_forces": {
+        "properties": [
+          "energy",
+          "forces"
+        ],
+        "samples": [
+          {
+            "converged": true,
+            "energy": -303.8896432633487,
+            "force_max_abs": 0.02176282190341796,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.770123217953369
+          },
+          {
+            "converged": true,
+            "energy": -303.8896432633489,
+            "force_max_abs": 0.021762821904092504,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.7681138799525797
+          },
+          {
+            "converged": true,
+            "energy": -303.8896432633487,
+            "force_max_abs": 0.021762821903459136,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.7695451260078698
+          },
+          {
+            "converged": true,
+            "energy": -303.8896432633487,
+            "force_max_abs": 0.021762821903937198,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.7702480789739639
+          },
+          {
+            "converged": true,
+            "energy": -303.8896432633487,
+            "force_max_abs": 0.021762821903540692,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.7702511160168797
+          }
+        ]
+      },
+      "requested_threshold": "1.0000000000000001e+300"
+    },
+    "fp64": {
+      "energy_only": {
+        "properties": [
+          "energy"
+        ],
+        "samples": [
+          {
+            "converged": true,
+            "energy": -303.88964326335,
+            "force_max_abs": null,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.7813968239352107
+          },
+          {
+            "converged": true,
+            "energy": -303.88964326335,
+            "force_max_abs": null,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.7794968069065362
+          },
+          {
+            "converged": true,
+            "energy": -303.8896432633502,
+            "force_max_abs": null,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.7793796241749078
+          },
+          {
+            "converged": true,
+            "energy": -303.8896432633501,
+            "force_max_abs": null,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.7806478969287127
+          },
+          {
+            "converged": true,
+            "energy": -303.88964326335025,
+            "force_max_abs": null,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.7752931900322437
+          }
+        ]
+      },
+      "energy_plus_forces": {
+        "properties": [
+          "energy",
+          "forces"
+        ],
+        "samples": [
+          {
+            "converged": true,
+            "energy": -303.8896432633501,
+            "force_max_abs": 0.021762763117162805,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.8526706409174949
+          },
+          {
+            "converged": true,
+            "energy": -303.88964326335,
+            "force_max_abs": 0.02176276311697697,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.8559430830646306
+          },
+          {
+            "converged": true,
+            "energy": -303.88964326335014,
+            "force_max_abs": 0.021762763117002017,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.8561664409935474
+          },
+          {
+            "converged": true,
+            "energy": -303.88964326335014,
+            "force_max_abs": 0.02176276311700396,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.8558472630102187
+          },
+          {
+            "converged": true,
+            "energy": -303.8896432633502,
+            "force_max_abs": 0.021762763117181144,
+            "iterations": 13,
+            "synchronized_wall_seconds": 0.8550464641302824
+          }
+        ]
+      },
+      "requested_threshold": null
+    }
+  },
+  "controls": {
+    "density_tolerance": 1e-08,
+    "energy_tolerance": 1e-06,
+    "max_iterations": 100,
+    "repeats": 5,
+    "screening_tolerance": 1e-12
+  },
+  "environment": {
+    "accelerator": {
+      "backend": "cuda",
+      "clock_rate_khz": 2407000,
+      "compute_capability": [
+        12,
+        0
+      ],
+      "device_id": 0,
+      "driver_version": 13000,
+      "multiprocessor_count": 170,
+      "name": "NVIDIA GeForce RTX 5090",
+      "nvidia_smi": {
+        "memory_clock_mhz": 13801.0,
+        "performance_state": "P1",
+        "power_draw_watts": 200.65,
+        "power_limit_watts": 575.0,
+        "sampling_point": "after benchmark measurements",
+        "sm_clock_mhz": 2895.0,
+        "temperature_celsius": 53.0
+      },
+      "runtime_version": 12090,
+      "total_global_memory_bytes": 33666498560
+    },
+    "git": {
+      "commit": "ef5fe941d9d247038953ea7cf5b84e23e3f9b0b3",
+      "dirty": false,
+      "pending_generated_benchmark_artifacts": 0
+    },
+    "host": {
+      "machine": "x86_64",
+      "node": "node3",
+      "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+      "processor": "x86_64"
+    },
+    "packages": {
+      "cupy": "14.2.0",
+      "numpy": "2.5.3"
+    },
+    "python": {
+      "executable": "/home/jzzeng/codes/qc-review-233/.venv/bin/python",
+      "version": "3.13.9"
+    },
+    "runtime": {
+      "cuda_visible_devices": "0",
+      "vibeqc_library": "/home/jzzeng/codes/qc-review-233/build/cuda/libvibeqc.so"
+    },
+    "timestamp_utc": "2026-09-09T17:04:59.170157+00:00",
+    "toolchain": {
+      "cuobjdump": {
+        "path": "/group/software/cuda-12.9.1/bin/cuobjdump",
+        "version": "cuobjdump: NVIDIA (R) fat binary listing tool\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Mon_May_19_08:50:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.82\nBuild cuda_12.9.r12.9/compiler.36001619_0"
+      },
+      "host_cxx": {
+        "path": "/usr/bin/c++",
+        "version": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+      },
+      "nvcc": {
+        "path": "/group/software/cuda-12.9.1/bin/nvcc",
+        "version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+      },
+      "ptxas": {
+        "path": "/group/software/cuda-12.9.1/bin/ptxas",
+        "version": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+      }
+    }
+  },
+  "fixed_density_fock": {
+    "fixed_density_origin": {
+      "arithmetic": "fp64",
+      "energy": -303.88964326335025,
+      "iterations": 13,
+      "warm_start_updates_frozen": true
+    },
+    "variants": {
+      "auto": {
+        "requested_threshold": "auto",
+        "samples": [
+          {
+            "operator_evaluation_count": 1,
+            "operator_evaluations": [
+              {
+                "class_gpu_milliseconds": 206.424864,
+                "classes": [
+                  {
+                    "gpu_milliseconds": 19.646048,
+                    "launches": 1,
+                    "name": "psps",
+                    "shell_class": 2,
+                    "timed_share_percent": 9.52
+                  },
+                  {
+                    "gpu_milliseconds": 17.929824,
+                    "launches": 1,
+                    "name": "ppps",
+                    "shell_class": 4,
+                    "timed_share_percent": 8.69
+                  },
+                  {
+                    "gpu_milliseconds": 15.902816,
+                    "launches": 1,
+                    "name": "ssss",
+                    "shell_class": 0,
+                    "timed_share_percent": 7.7
+                  },
+                  {
+                    "gpu_milliseconds": 14.57888,
+                    "launches": 1,
+                    "name": "dpps",
+                    "shell_class": 11,
+                    "timed_share_percent": 7.06
+                  },
+                  {
+                    "gpu_milliseconds": 14.49216,
+                    "launches": 1,
+                    "name": "ppss",
+                    "shell_class": 3,
+                    "timed_share_percent": 7.02
+                  },
+                  {
+                    "gpu_milliseconds": 14.178944,
+                    "launches": 1,
+                    "name": "psss",
+                    "shell_class": 1,
+                    "timed_share_percent": 6.87
+                  },
+                  {
+                    "gpu_milliseconds": 12.901696,
+                    "launches": 1,
+                    "name": "ddds",
+                    "shell_class": 18,
+                    "timed_share_percent": 6.25
+                  },
+                  {
+                    "gpu_milliseconds": 11.499168,
+                    "launches": 1,
+                    "name": "dsss",
+                    "shell_class": 6,
+                    "timed_share_percent": 5.57
+                  },
+                  {
+                    "gpu_milliseconds": 11.324896,
+                    "launches": 1,
+                    "name": "dppp",
+                    "shell_class": 12,
+                    "timed_share_percent": 5.49
+                  },
+                  {
+                    "gpu_milliseconds": 10.561856,
+                    "launches": 1,
+                    "name": "pppp",
+                    "shell_class": 5,
+                    "timed_share_percent": 5.12
+                  },
+                  {
+                    "gpu_milliseconds": 9.105824,
+                    "launches": 1,
+                    "name": "dsps",
+                    "shell_class": 7,
+                    "timed_share_percent": 4.41
+                  },
+                  {
+                    "gpu_milliseconds": 8.931552,
+                    "launches": 1,
+                    "name": "ddss",
+                    "shell_class": 15,
+                    "timed_share_percent": 4.33
+                  },
+                  {
+                    "gpu_milliseconds": 8.551648,
+                    "launches": 1,
+                    "name": "ddps",
+                    "shell_class": 16,
+                    "timed_share_percent": 4.14
+                  },
+                  {
+                    "gpu_milliseconds": 8.414848,
+                    "launches": 1,
+                    "name": "dpss",
+                    "shell_class": 10,
+                    "timed_share_percent": 4.08
+                  },
+                  {
+                    "gpu_milliseconds": 5.974496,
+                    "launches": 1,
+                    "name": "dpdp",
+                    "shell_class": 14,
+                    "timed_share_percent": 2.89
+                  },
+                  {
+                    "gpu_milliseconds": 5.255392,
+                    "launches": 1,
+                    "name": "dddd",
+                    "shell_class": 20,
+                    "timed_share_percent": 2.55
+                  },
+                  {
+                    "gpu_milliseconds": 5.223296,
+                    "launches": 1,
+                    "name": "dspp",
+                    "shell_class": 8,
+                    "timed_share_percent": 2.53
+                  },
+                  {
+                    "gpu_milliseconds": 5.09728,
+                    "launches": 1,
+                    "name": "dddp",
+                    "shell_class": 19,
+                    "timed_share_percent": 2.47
+                  },
+                  {
+                    "gpu_milliseconds": 3.839808,
+                    "launches": 1,
+                    "name": "dpds",
+                    "shell_class": 13,
+                    "timed_share_percent": 1.86
+                  },
+                  {
+                    "gpu_milliseconds": 2.47024,
+                    "launches": 1,
+                    "name": "dsds",
+                    "shell_class": 9,
+                    "timed_share_percent": 1.2
+                  },
+                  {
+                    "gpu_milliseconds": 0.544192,
+                    "launches": 1,
+                    "name": "ddpp",
+                    "shell_class": 17,
+                    "timed_share_percent": 0.26
+                  }
+                ],
+                "precision": {
+                  "enabled": true,
+                  "shell_classes": [
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 71510,
+                      "mixed_capable": false,
+                      "name": "ssss",
+                      "shell_class": 0
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 150588,
+                      "mixed_capable": false,
+                      "name": "psss",
+                      "shell_class": 1
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 79416,
+                      "mixed_capable": false,
+                      "name": "psps",
+                      "shell_class": 2
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 45648,
+                      "mixed_capable": false,
+                      "name": "ppss",
+                      "shell_class": 3
+                    },
+                    {
+                      "fp32_quartets": 23460,
+                      "fp64_quartets": 24696,
+                      "mixed_capable": true,
+                      "name": "ppps",
+                      "shell_class": 4
+                    },
+                    {
+                      "fp32_quartets": 3659,
+                      "fp64_quartets": 3684,
+                      "mixed_capable": true,
+                      "name": "pppp",
+                      "shell_class": 5
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 35316,
+                      "mixed_capable": false,
+                      "name": "dsss",
+                      "shell_class": 6
+                    },
+                    {
+                      "fp32_quartets": 19836,
+                      "fp64_quartets": 17060,
+                      "mixed_capable": true,
+                      "name": "dsps",
+                      "shell_class": 7
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 11124,
+                      "mixed_capable": false,
+                      "name": "dspp",
+                      "shell_class": 8
+                    },
+                    {
+                      "fp32_quartets": 2672,
+                      "fp64_quartets": 1650,
+                      "mixed_capable": true,
+                      "name": "dsds",
+                      "shell_class": 9
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 20000,
+                      "mixed_capable": false,
+                      "name": "dpss",
+                      "shell_class": 10
+                    },
+                    {
+                      "fp32_quartets": 12172,
+                      "fp64_quartets": 8604,
+                      "mixed_capable": true,
+                      "name": "dpps",
+                      "shell_class": 11
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 6256,
+                      "mixed_capable": false,
+                      "name": "dppp",
+                      "shell_class": 12
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 4728,
+                      "mixed_capable": false,
+                      "name": "dpds",
+                      "shell_class": 13
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 1302,
+                      "mixed_capable": false,
+                      "name": "dpdp",
+                      "shell_class": 14
+                    },
+                    {
+                      "fp32_quartets": 1592,
+                      "fp64_quartets": 1372,
+                      "mixed_capable": true,
+                      "name": "ddss",
+                      "shell_class": 15
+                    },
+                    {
+                      "fp32_quartets": 1736,
+                      "fp64_quartets": 1304,
+                      "mixed_capable": true,
+                      "name": "ddps",
+                      "shell_class": 16
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 920,
+                      "mixed_capable": false,
+                      "name": "ddpp",
+                      "shell_class": 17
+                    },
+                    {
+                      "fp32_quartets": 460,
+                      "fp64_quartets": 240,
+                      "mixed_capable": true,
+                      "name": "ddds",
+                      "shell_class": 18
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 380,
+                      "mixed_capable": false,
+                      "name": "dddp",
+                      "shell_class": 19
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 26,
+                      "mixed_capable": false,
+                      "name": "dddd",
+                      "shell_class": 20
+                    }
+                  ],
+                  "threshold": 1e-06
+                },
+                "reported_class_count": 21
+              }
+            ],
+            "synchronized_wall_seconds": 0.21784520498476923,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "operator_evaluation_count": 1,
+            "operator_evaluations": [
+              {
+                "class_gpu_milliseconds": 205.959744,
+                "classes": [
+                  {
+                    "gpu_milliseconds": 18.860096,
+                    "launches": 1,
+                    "name": "psps",
+                    "shell_class": 2,
+                    "timed_share_percent": 9.16
+                  },
+                  {
+                    "gpu_milliseconds": 18.324288,
+                    "launches": 1,
+                    "name": "ppps",
+                    "shell_class": 4,
+                    "timed_share_percent": 8.9
+                  },
+                  {
+                    "gpu_milliseconds": 15.940064,
+                    "launches": 1,
+                    "name": "ssss",
+                    "shell_class": 0,
+                    "timed_share_percent": 7.74
+                  },
+                  {
+                    "gpu_milliseconds": 14.579424,
+                    "launches": 1,
+                    "name": "dpps",
+                    "shell_class": 11,
+                    "timed_share_percent": 7.08
+                  },
+                  {
+                    "gpu_milliseconds": 14.518912,
+                    "launches": 1,
+                    "name": "ppss",
+                    "shell_class": 3,
+                    "timed_share_percent": 7.05
+                  },
+                  {
+                    "gpu_milliseconds": 14.134816,
+                    "launches": 1,
+                    "name": "psss",
+                    "shell_class": 1,
+                    "timed_share_percent": 6.86
+                  },
+                  {
+                    "gpu_milliseconds": 12.910048,
+                    "launches": 1,
+                    "name": "ddds",
+                    "shell_class": 18,
+                    "timed_share_percent": 6.27
+                  },
+                  {
+                    "gpu_milliseconds": 11.47024,
+                    "launches": 1,
+                    "name": "dsss",
+                    "shell_class": 6,
+                    "timed_share_percent": 5.57
+                  },
+                  {
+                    "gpu_milliseconds": 11.289248,
+                    "launches": 1,
+                    "name": "dppp",
+                    "shell_class": 12,
+                    "timed_share_percent": 5.48
+                  },
+                  {
+                    "gpu_milliseconds": 10.235936,
+                    "launches": 1,
+                    "name": "pppp",
+                    "shell_class": 5,
+                    "timed_share_percent": 4.97
+                  },
+                  {
+                    "gpu_milliseconds": 9.099104,
+                    "launches": 1,
+                    "name": "dsps",
+                    "shell_class": 7,
+                    "timed_share_percent": 4.42
+                  },
+                  {
+                    "gpu_milliseconds": 8.885728,
+                    "launches": 1,
+                    "name": "ddss",
+                    "shell_class": 15,
+                    "timed_share_percent": 4.31
+                  },
+                  {
+                    "gpu_milliseconds": 8.553728,
+                    "launches": 1,
+                    "name": "ddps",
+                    "shell_class": 16,
+                    "timed_share_percent": 4.15
+                  },
+                  {
+                    "gpu_milliseconds": 8.419936,
+                    "launches": 1,
+                    "name": "dpss",
+                    "shell_class": 10,
+                    "timed_share_percent": 4.09
+                  },
+                  {
+                    "gpu_milliseconds": 5.980256,
+                    "launches": 1,
+                    "name": "dpdp",
+                    "shell_class": 14,
+                    "timed_share_percent": 2.9
+                  },
+                  {
+                    "gpu_milliseconds": 5.799232,
+                    "launches": 1,
+                    "name": "dspp",
+                    "shell_class": 8,
+                    "timed_share_percent": 2.82
+                  },
+                  {
+                    "gpu_milliseconds": 5.104544,
+                    "launches": 1,
+                    "name": "dddp",
+                    "shell_class": 19,
+                    "timed_share_percent": 2.48
+                  },
+                  {
+                    "gpu_milliseconds": 5.02336,
+                    "launches": 1,
+                    "name": "dddd",
+                    "shell_class": 20,
+                    "timed_share_percent": 2.44
+                  },
+                  {
+                    "gpu_milliseconds": 3.834208,
+                    "launches": 1,
+                    "name": "dpds",
+                    "shell_class": 13,
+                    "timed_share_percent": 1.86
+                  },
+                  {
+                    "gpu_milliseconds": 2.452352,
+                    "launches": 1,
+                    "name": "dsds",
+                    "shell_class": 9,
+                    "timed_share_percent": 1.19
+                  },
+                  {
+                    "gpu_milliseconds": 0.544224,
+                    "launches": 1,
+                    "name": "ddpp",
+                    "shell_class": 17,
+                    "timed_share_percent": 0.26
+                  }
+                ],
+                "precision": {
+                  "enabled": true,
+                  "shell_classes": [
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 71510,
+                      "mixed_capable": false,
+                      "name": "ssss",
+                      "shell_class": 0
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 150588,
+                      "mixed_capable": false,
+                      "name": "psss",
+                      "shell_class": 1
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 79416,
+                      "mixed_capable": false,
+                      "name": "psps",
+                      "shell_class": 2
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 45648,
+                      "mixed_capable": false,
+                      "name": "ppss",
+                      "shell_class": 3
+                    },
+                    {
+                      "fp32_quartets": 23460,
+                      "fp64_quartets": 24696,
+                      "mixed_capable": true,
+                      "name": "ppps",
+                      "shell_class": 4
+                    },
+                    {
+                      "fp32_quartets": 3659,
+                      "fp64_quartets": 3684,
+                      "mixed_capable": true,
+                      "name": "pppp",
+                      "shell_class": 5
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 35316,
+                      "mixed_capable": false,
+                      "name": "dsss",
+                      "shell_class": 6
+                    },
+                    {
+                      "fp32_quartets": 19836,
+                      "fp64_quartets": 17060,
+                      "mixed_capable": true,
+                      "name": "dsps",
+                      "shell_class": 7
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 11124,
+                      "mixed_capable": false,
+                      "name": "dspp",
+                      "shell_class": 8
+                    },
+                    {
+                      "fp32_quartets": 2672,
+                      "fp64_quartets": 1650,
+                      "mixed_capable": true,
+                      "name": "dsds",
+                      "shell_class": 9
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 20000,
+                      "mixed_capable": false,
+                      "name": "dpss",
+                      "shell_class": 10
+                    },
+                    {
+                      "fp32_quartets": 12172,
+                      "fp64_quartets": 8604,
+                      "mixed_capable": true,
+                      "name": "dpps",
+                      "shell_class": 11
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 6256,
+                      "mixed_capable": false,
+                      "name": "dppp",
+                      "shell_class": 12
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 4728,
+                      "mixed_capable": false,
+                      "name": "dpds",
+                      "shell_class": 13
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 1302,
+                      "mixed_capable": false,
+                      "name": "dpdp",
+                      "shell_class": 14
+                    },
+                    {
+                      "fp32_quartets": 1592,
+                      "fp64_quartets": 1372,
+                      "mixed_capable": true,
+                      "name": "ddss",
+                      "shell_class": 15
+                    },
+                    {
+                      "fp32_quartets": 1736,
+                      "fp64_quartets": 1304,
+                      "mixed_capable": true,
+                      "name": "ddps",
+                      "shell_class": 16
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 920,
+                      "mixed_capable": false,
+                      "name": "ddpp",
+                      "shell_class": 17
+                    },
+                    {
+                      "fp32_quartets": 460,
+                      "fp64_quartets": 240,
+                      "mixed_capable": true,
+                      "name": "ddds",
+                      "shell_class": 18
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 380,
+                      "mixed_capable": false,
+                      "name": "dddp",
+                      "shell_class": 19
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 26,
+                      "mixed_capable": false,
+                      "name": "dddd",
+                      "shell_class": 20
+                    }
+                  ],
+                  "threshold": 1e-06
+                },
+                "reported_class_count": 21
+              }
+            ],
+            "synchronized_wall_seconds": 0.21743417996913195,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "operator_evaluation_count": 1,
+            "operator_evaluations": [
+              {
+                "class_gpu_milliseconds": 206.75664,
+                "classes": [
+                  {
+                    "gpu_milliseconds": 18.335232,
+                    "launches": 1,
+                    "name": "ppps",
+                    "shell_class": 4,
+                    "timed_share_percent": 8.87
+                  },
+                  {
+                    "gpu_milliseconds": 18.322272,
+                    "launches": 1,
+                    "name": "psps",
+                    "shell_class": 2,
+                    "timed_share_percent": 8.86
+                  },
+                  {
+                    "gpu_milliseconds": 15.924096,
+                    "launches": 1,
+                    "name": "ssss",
+                    "shell_class": 0,
+                    "timed_share_percent": 7.7
+                  },
+                  {
+                    "gpu_milliseconds": 14.985088,
+                    "launches": 1,
+                    "name": "psss",
+                    "shell_class": 1,
+                    "timed_share_percent": 7.25
+                  },
+                  {
+                    "gpu_milliseconds": 14.579968,
+                    "launches": 1,
+                    "name": "dpps",
+                    "shell_class": 11,
+                    "timed_share_percent": 7.05
+                  },
+                  {
+                    "gpu_milliseconds": 14.521728,
+                    "launches": 1,
+                    "name": "ppss",
+                    "shell_class": 3,
+                    "timed_share_percent": 7.02
+                  },
+                  {
+                    "gpu_milliseconds": 12.90496,
+                    "launches": 1,
+                    "name": "ddds",
+                    "shell_class": 18,
+                    "timed_share_percent": 6.24
+                  },
+                  {
+                    "gpu_milliseconds": 11.51216,
+                    "launches": 1,
+                    "name": "dsss",
+                    "shell_class": 6,
+                    "timed_share_percent": 5.57
+                  },
+                  {
+                    "gpu_milliseconds": 11.298784,
+                    "launches": 1,
+                    "name": "dppp",
+                    "shell_class": 12,
+                    "timed_share_percent": 5.46
+                  },
+                  {
+                    "gpu_milliseconds": 10.940832,
+                    "launches": 1,
+                    "name": "pppp",
+                    "shell_class": 5,
+                    "timed_share_percent": 5.29
+                  },
+                  {
+                    "gpu_milliseconds": 9.081536,
+                    "launches": 1,
+                    "name": "dsps",
+                    "shell_class": 7,
+                    "timed_share_percent": 4.39
+                  },
+                  {
+                    "gpu_milliseconds": 8.886912,
+                    "launches": 1,
+                    "name": "ddss",
+                    "shell_class": 15,
+                    "timed_share_percent": 4.3
+                  },
+                  {
+                    "gpu_milliseconds": 8.555072,
+                    "launches": 1,
+                    "name": "ddps",
+                    "shell_class": 16,
+                    "timed_share_percent": 4.14
+                  },
+                  {
+                    "gpu_milliseconds": 8.421984,
+                    "launches": 1,
+                    "name": "dpss",
+                    "shell_class": 10,
+                    "timed_share_percent": 4.07
+                  },
+                  {
+                    "gpu_milliseconds": 5.972448,
+                    "launches": 1,
+                    "name": "dpdp",
+                    "shell_class": 14,
+                    "timed_share_percent": 2.89
+                  },
+                  {
+                    "gpu_milliseconds": 5.291136,
+                    "launches": 1,
+                    "name": "dddd",
+                    "shell_class": 20,
+                    "timed_share_percent": 2.56
+                  },
+                  {
+                    "gpu_milliseconds": 5.22464,
+                    "launches": 1,
+                    "name": "dspp",
+                    "shell_class": 8,
+                    "timed_share_percent": 2.53
+                  },
+                  {
+                    "gpu_milliseconds": 5.094016,
+                    "launches": 1,
+                    "name": "dddp",
+                    "shell_class": 19,
+                    "timed_share_percent": 2.46
+                  },
+                  {
+                    "gpu_milliseconds": 3.833504,
+                    "launches": 1,
+                    "name": "dpds",
+                    "shell_class": 13,
+                    "timed_share_percent": 1.85
+                  },
+                  {
+                    "gpu_milliseconds": 2.5256,
+                    "launches": 1,
+                    "name": "dsds",
+                    "shell_class": 9,
+                    "timed_share_percent": 1.22
+                  },
+                  {
+                    "gpu_milliseconds": 0.544672,
+                    "launches": 1,
+                    "name": "ddpp",
+                    "shell_class": 17,
+                    "timed_share_percent": 0.26
+                  }
+                ],
+                "precision": {
+                  "enabled": true,
+                  "shell_classes": [
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 71510,
+                      "mixed_capable": false,
+                      "name": "ssss",
+                      "shell_class": 0
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 150588,
+                      "mixed_capable": false,
+                      "name": "psss",
+                      "shell_class": 1
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 79416,
+                      "mixed_capable": false,
+                      "name": "psps",
+                      "shell_class": 2
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 45648,
+                      "mixed_capable": false,
+                      "name": "ppss",
+                      "shell_class": 3
+                    },
+                    {
+                      "fp32_quartets": 23460,
+                      "fp64_quartets": 24696,
+                      "mixed_capable": true,
+                      "name": "ppps",
+                      "shell_class": 4
+                    },
+                    {
+                      "fp32_quartets": 3659,
+                      "fp64_quartets": 3684,
+                      "mixed_capable": true,
+                      "name": "pppp",
+                      "shell_class": 5
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 35316,
+                      "mixed_capable": false,
+                      "name": "dsss",
+                      "shell_class": 6
+                    },
+                    {
+                      "fp32_quartets": 19836,
+                      "fp64_quartets": 17060,
+                      "mixed_capable": true,
+                      "name": "dsps",
+                      "shell_class": 7
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 11124,
+                      "mixed_capable": false,
+                      "name": "dspp",
+                      "shell_class": 8
+                    },
+                    {
+                      "fp32_quartets": 2672,
+                      "fp64_quartets": 1650,
+                      "mixed_capable": true,
+                      "name": "dsds",
+                      "shell_class": 9
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 20000,
+                      "mixed_capable": false,
+                      "name": "dpss",
+                      "shell_class": 10
+                    },
+                    {
+                      "fp32_quartets": 12172,
+                      "fp64_quartets": 8604,
+                      "mixed_capable": true,
+                      "name": "dpps",
+                      "shell_class": 11
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 6256,
+                      "mixed_capable": false,
+                      "name": "dppp",
+                      "shell_class": 12
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 4728,
+                      "mixed_capable": false,
+                      "name": "dpds",
+                      "shell_class": 13
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 1302,
+                      "mixed_capable": false,
+                      "name": "dpdp",
+                      "shell_class": 14
+                    },
+                    {
+                      "fp32_quartets": 1592,
+                      "fp64_quartets": 1372,
+                      "mixed_capable": true,
+                      "name": "ddss",
+                      "shell_class": 15
+                    },
+                    {
+                      "fp32_quartets": 1736,
+                      "fp64_quartets": 1304,
+                      "mixed_capable": true,
+                      "name": "ddps",
+                      "shell_class": 16
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 920,
+                      "mixed_capable": false,
+                      "name": "ddpp",
+                      "shell_class": 17
+                    },
+                    {
+                      "fp32_quartets": 460,
+                      "fp64_quartets": 240,
+                      "mixed_capable": true,
+                      "name": "ddds",
+                      "shell_class": 18
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 380,
+                      "mixed_capable": false,
+                      "name": "dddp",
+                      "shell_class": 19
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 26,
+                      "mixed_capable": false,
+                      "name": "dddd",
+                      "shell_class": 20
+                    }
+                  ],
+                  "threshold": 1e-06
+                },
+                "reported_class_count": 21
+              }
+            ],
+            "synchronized_wall_seconds": 0.21835358696989715,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "operator_evaluation_count": 1,
+            "operator_evaluations": [
+              {
+                "class_gpu_milliseconds": 205.84384,
+                "classes": [
+                  {
+                    "gpu_milliseconds": 18.976192,
+                    "launches": 1,
+                    "name": "psps",
+                    "shell_class": 2,
+                    "timed_share_percent": 9.22
+                  },
+                  {
+                    "gpu_milliseconds": 17.956768,
+                    "launches": 1,
+                    "name": "ppps",
+                    "shell_class": 4,
+                    "timed_share_percent": 8.72
+                  },
+                  {
+                    "gpu_milliseconds": 16.01376,
+                    "launches": 1,
+                    "name": "ssss",
+                    "shell_class": 0,
+                    "timed_share_percent": 7.78
+                  },
+                  {
+                    "gpu_milliseconds": 14.961952,
+                    "launches": 1,
+                    "name": "psss",
+                    "shell_class": 1,
+                    "timed_share_percent": 7.27
+                  },
+                  {
+                    "gpu_milliseconds": 14.575456,
+                    "launches": 1,
+                    "name": "dpps",
+                    "shell_class": 11,
+                    "timed_share_percent": 7.08
+                  },
+                  {
+                    "gpu_milliseconds": 13.65536,
+                    "launches": 1,
+                    "name": "ppss",
+                    "shell_class": 3,
+                    "timed_share_percent": 6.63
+                  },
+                  {
+                    "gpu_milliseconds": 12.903712,
+                    "launches": 1,
+                    "name": "ddds",
+                    "shell_class": 18,
+                    "timed_share_percent": 6.27
+                  },
+                  {
+                    "gpu_milliseconds": 11.290464,
+                    "launches": 1,
+                    "name": "dppp",
+                    "shell_class": 12,
+                    "timed_share_percent": 5.48
+                  },
+                  {
+                    "gpu_milliseconds": 11.269856,
+                    "launches": 1,
+                    "name": "dsss",
+                    "shell_class": 6,
+                    "timed_share_percent": 5.47
+                  },
+                  {
+                    "gpu_milliseconds": 10.30368,
+                    "launches": 1,
+                    "name": "pppp",
+                    "shell_class": 5,
+                    "timed_share_percent": 5.01
+                  },
+                  {
+                    "gpu_milliseconds": 9.535648,
+                    "launches": 1,
+                    "name": "dsps",
+                    "shell_class": 7,
+                    "timed_share_percent": 4.63
+                  },
+                  {
+                    "gpu_milliseconds": 8.930592,
+                    "launches": 1,
+                    "name": "ddss",
+                    "shell_class": 15,
+                    "timed_share_percent": 4.34
+                  },
+                  {
+                    "gpu_milliseconds": 8.563296,
+                    "launches": 1,
+                    "name": "ddps",
+                    "shell_class": 16,
+                    "timed_share_percent": 4.16
+                  },
+                  {
+                    "gpu_milliseconds": 8.414912,
+                    "launches": 1,
+                    "name": "dpss",
+                    "shell_class": 10,
+                    "timed_share_percent": 4.09
+                  },
+                  {
+                    "gpu_milliseconds": 5.979648,
+                    "launches": 1,
+                    "name": "dpdp",
+                    "shell_class": 14,
+                    "timed_share_percent": 2.9
+                  },
+                  {
+                    "gpu_milliseconds": 5.238944,
+                    "launches": 1,
+                    "name": "dspp",
+                    "shell_class": 8,
+                    "timed_share_percent": 2.55
+                  },
+                  {
+                    "gpu_milliseconds": 5.135968,
+                    "launches": 1,
+                    "name": "dddd",
+                    "shell_class": 20,
+                    "timed_share_percent": 2.5
+                  },
+                  {
+                    "gpu_milliseconds": 5.084064,
+                    "launches": 1,
+                    "name": "dddp",
+                    "shell_class": 19,
+                    "timed_share_percent": 2.47
+                  },
+                  {
+                    "gpu_milliseconds": 4.036288,
+                    "launches": 1,
+                    "name": "dpds",
+                    "shell_class": 13,
+                    "timed_share_percent": 1.96
+                  },
+                  {
+                    "gpu_milliseconds": 2.473984,
+                    "launches": 1,
+                    "name": "dsds",
+                    "shell_class": 9,
+                    "timed_share_percent": 1.2
+                  },
+                  {
+                    "gpu_milliseconds": 0.543296,
+                    "launches": 1,
+                    "name": "ddpp",
+                    "shell_class": 17,
+                    "timed_share_percent": 0.26
+                  }
+                ],
+                "precision": {
+                  "enabled": true,
+                  "shell_classes": [
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 71510,
+                      "mixed_capable": false,
+                      "name": "ssss",
+                      "shell_class": 0
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 150588,
+                      "mixed_capable": false,
+                      "name": "psss",
+                      "shell_class": 1
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 79416,
+                      "mixed_capable": false,
+                      "name": "psps",
+                      "shell_class": 2
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 45648,
+                      "mixed_capable": false,
+                      "name": "ppss",
+                      "shell_class": 3
+                    },
+                    {
+                      "fp32_quartets": 23460,
+                      "fp64_quartets": 24696,
+                      "mixed_capable": true,
+                      "name": "ppps",
+                      "shell_class": 4
+                    },
+                    {
+                      "fp32_quartets": 3659,
+                      "fp64_quartets": 3684,
+                      "mixed_capable": true,
+                      "name": "pppp",
+                      "shell_class": 5
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 35316,
+                      "mixed_capable": false,
+                      "name": "dsss",
+                      "shell_class": 6
+                    },
+                    {
+                      "fp32_quartets": 19836,
+                      "fp64_quartets": 17060,
+                      "mixed_capable": true,
+                      "name": "dsps",
+                      "shell_class": 7
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 11124,
+                      "mixed_capable": false,
+                      "name": "dspp",
+                      "shell_class": 8
+                    },
+                    {
+                      "fp32_quartets": 2672,
+                      "fp64_quartets": 1650,
+                      "mixed_capable": true,
+                      "name": "dsds",
+                      "shell_class": 9
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 20000,
+                      "mixed_capable": false,
+                      "name": "dpss",
+                      "shell_class": 10
+                    },
+                    {
+                      "fp32_quartets": 12172,
+                      "fp64_quartets": 8604,
+                      "mixed_capable": true,
+                      "name": "dpps",
+                      "shell_class": 11
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 6256,
+                      "mixed_capable": false,
+                      "name": "dppp",
+                      "shell_class": 12
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 4728,
+                      "mixed_capable": false,
+                      "name": "dpds",
+                      "shell_class": 13
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 1302,
+                      "mixed_capable": false,
+                      "name": "dpdp",
+                      "shell_class": 14
+                    },
+                    {
+                      "fp32_quartets": 1592,
+                      "fp64_quartets": 1372,
+                      "mixed_capable": true,
+                      "name": "ddss",
+                      "shell_class": 15
+                    },
+                    {
+                      "fp32_quartets": 1736,
+                      "fp64_quartets": 1304,
+                      "mixed_capable": true,
+                      "name": "ddps",
+                      "shell_class": 16
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 920,
+                      "mixed_capable": false,
+                      "name": "ddpp",
+                      "shell_class": 17
+                    },
+                    {
+                      "fp32_quartets": 460,
+                      "fp64_quartets": 240,
+                      "mixed_capable": true,
+                      "name": "ddds",
+                      "shell_class": 18
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 380,
+                      "mixed_capable": false,
+                      "name": "dddp",
+                      "shell_class": 19
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 26,
+                      "mixed_capable": false,
+                      "name": "dddd",
+                      "shell_class": 20
+                    }
+                  ],
+                  "threshold": 1e-06
+                },
+                "reported_class_count": 21
+              }
+            ],
+            "synchronized_wall_seconds": 0.21726354397833347,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "operator_evaluation_count": 1,
+            "operator_evaluations": [
+              {
+                "class_gpu_milliseconds": 205.428992,
+                "classes": [
+                  {
+                    "gpu_milliseconds": 18.827264,
+                    "launches": 1,
+                    "name": "psps",
+                    "shell_class": 2,
+                    "timed_share_percent": 9.16
+                  },
+                  {
+                    "gpu_milliseconds": 18.543552,
+                    "launches": 1,
+                    "name": "ppps",
+                    "shell_class": 4,
+                    "timed_share_percent": 9.03
+                  },
+                  {
+                    "gpu_milliseconds": 15.982592,
+                    "launches": 1,
+                    "name": "ssss",
+                    "shell_class": 0,
+                    "timed_share_percent": 7.78
+                  },
+                  {
+                    "gpu_milliseconds": 14.55296,
+                    "launches": 1,
+                    "name": "dpps",
+                    "shell_class": 11,
+                    "timed_share_percent": 7.08
+                  },
+                  {
+                    "gpu_milliseconds": 14.087968,
+                    "launches": 1,
+                    "name": "psss",
+                    "shell_class": 1,
+                    "timed_share_percent": 6.86
+                  },
+                  {
+                    "gpu_milliseconds": 13.796672,
+                    "launches": 1,
+                    "name": "ppss",
+                    "shell_class": 3,
+                    "timed_share_percent": 6.72
+                  },
+                  {
+                    "gpu_milliseconds": 12.902432,
+                    "launches": 1,
+                    "name": "ddds",
+                    "shell_class": 18,
+                    "timed_share_percent": 6.28
+                  },
+                  {
+                    "gpu_milliseconds": 11.501696,
+                    "launches": 1,
+                    "name": "dsss",
+                    "shell_class": 6,
+                    "timed_share_percent": 5.6
+                  },
+                  {
+                    "gpu_milliseconds": 11.315744,
+                    "launches": 1,
+                    "name": "dppp",
+                    "shell_class": 12,
+                    "timed_share_percent": 5.51
+                  },
+                  {
+                    "gpu_milliseconds": 10.693504,
+                    "launches": 1,
+                    "name": "pppp",
+                    "shell_class": 5,
+                    "timed_share_percent": 5.21
+                  },
+                  {
+                    "gpu_milliseconds": 9.090784,
+                    "launches": 1,
+                    "name": "dsps",
+                    "shell_class": 7,
+                    "timed_share_percent": 4.43
+                  },
+                  {
+                    "gpu_milliseconds": 8.938112,
+                    "launches": 1,
+                    "name": "ddss",
+                    "shell_class": 15,
+                    "timed_share_percent": 4.35
+                  },
+                  {
+                    "gpu_milliseconds": 8.568,
+                    "launches": 1,
+                    "name": "ddps",
+                    "shell_class": 16,
+                    "timed_share_percent": 4.17
+                  },
+                  {
+                    "gpu_milliseconds": 8.412384,
+                    "launches": 1,
+                    "name": "dpss",
+                    "shell_class": 10,
+                    "timed_share_percent": 4.1
+                  },
+                  {
+                    "gpu_milliseconds": 5.970432,
+                    "launches": 1,
+                    "name": "dpdp",
+                    "shell_class": 14,
+                    "timed_share_percent": 2.91
+                  },
+                  {
+                    "gpu_milliseconds": 5.396256,
+                    "launches": 1,
+                    "name": "dspp",
+                    "shell_class": 8,
+                    "timed_share_percent": 2.63
+                  },
+                  {
+                    "gpu_milliseconds": 5.083424,
+                    "launches": 1,
+                    "name": "dddp",
+                    "shell_class": 19,
+                    "timed_share_percent": 2.47
+                  },
+                  {
+                    "gpu_milliseconds": 4.901984,
+                    "launches": 1,
+                    "name": "dddd",
+                    "shell_class": 20,
+                    "timed_share_percent": 2.39
+                  },
+                  {
+                    "gpu_milliseconds": 3.830976,
+                    "launches": 1,
+                    "name": "dpds",
+                    "shell_class": 13,
+                    "timed_share_percent": 1.86
+                  },
+                  {
+                    "gpu_milliseconds": 2.488544,
+                    "launches": 1,
+                    "name": "dsds",
+                    "shell_class": 9,
+                    "timed_share_percent": 1.21
+                  },
+                  {
+                    "gpu_milliseconds": 0.543712,
+                    "launches": 1,
+                    "name": "ddpp",
+                    "shell_class": 17,
+                    "timed_share_percent": 0.26
+                  }
+                ],
+                "precision": {
+                  "enabled": true,
+                  "shell_classes": [
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 71510,
+                      "mixed_capable": false,
+                      "name": "ssss",
+                      "shell_class": 0
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 150588,
+                      "mixed_capable": false,
+                      "name": "psss",
+                      "shell_class": 1
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 79416,
+                      "mixed_capable": false,
+                      "name": "psps",
+                      "shell_class": 2
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 45648,
+                      "mixed_capable": false,
+                      "name": "ppss",
+                      "shell_class": 3
+                    },
+                    {
+                      "fp32_quartets": 23460,
+                      "fp64_quartets": 24696,
+                      "mixed_capable": true,
+                      "name": "ppps",
+                      "shell_class": 4
+                    },
+                    {
+                      "fp32_quartets": 3659,
+                      "fp64_quartets": 3684,
+                      "mixed_capable": true,
+                      "name": "pppp",
+                      "shell_class": 5
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 35316,
+                      "mixed_capable": false,
+                      "name": "dsss",
+                      "shell_class": 6
+                    },
+                    {
+                      "fp32_quartets": 19836,
+                      "fp64_quartets": 17060,
+                      "mixed_capable": true,
+                      "name": "dsps",
+                      "shell_class": 7
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 11124,
+                      "mixed_capable": false,
+                      "name": "dspp",
+                      "shell_class": 8
+                    },
+                    {
+                      "fp32_quartets": 2672,
+                      "fp64_quartets": 1650,
+                      "mixed_capable": true,
+                      "name": "dsds",
+                      "shell_class": 9
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 20000,
+                      "mixed_capable": false,
+                      "name": "dpss",
+                      "shell_class": 10
+                    },
+                    {
+                      "fp32_quartets": 12172,
+                      "fp64_quartets": 8604,
+                      "mixed_capable": true,
+                      "name": "dpps",
+                      "shell_class": 11
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 6256,
+                      "mixed_capable": false,
+                      "name": "dppp",
+                      "shell_class": 12
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 4728,
+                      "mixed_capable": false,
+                      "name": "dpds",
+                      "shell_class": 13
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 1302,
+                      "mixed_capable": false,
+                      "name": "dpdp",
+                      "shell_class": 14
+                    },
+                    {
+                      "fp32_quartets": 1592,
+                      "fp64_quartets": 1372,
+                      "mixed_capable": true,
+                      "name": "ddss",
+                      "shell_class": 15
+                    },
+                    {
+                      "fp32_quartets": 1736,
+                      "fp64_quartets": 1304,
+                      "mixed_capable": true,
+                      "name": "ddps",
+                      "shell_class": 16
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 920,
+                      "mixed_capable": false,
+                      "name": "ddpp",
+                      "shell_class": 17
+                    },
+                    {
+                      "fp32_quartets": 460,
+                      "fp64_quartets": 240,
+                      "mixed_capable": true,
+                      "name": "ddds",
+                      "shell_class": 18
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 380,
+                      "mixed_capable": false,
+                      "name": "dddp",
+                      "shell_class": 19
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 26,
+                      "mixed_capable": false,
+                      "name": "dddd",
+                      "shell_class": 20
+                    }
+                  ],
+                  "threshold": 1e-06
+                },
+                "reported_class_count": 21
+              }
+            ],
+            "synchronized_wall_seconds": 0.21685041510500014,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ]
+      },
+      "experimental_fp32": {
+        "requested_threshold": "1.0000000000000001e+300",
+        "samples": [
+          {
+            "operator_evaluation_count": 1,
+            "operator_evaluations": [
+              {
+                "class_gpu_milliseconds": 181.121312,
+                "classes": [
+                  {
+                    "gpu_milliseconds": 19.136064,
+                    "launches": 1,
+                    "name": "psps",
+                    "shell_class": 2,
+                    "timed_share_percent": 10.57
+                  },
+                  {
+                    "gpu_milliseconds": 16.170432,
+                    "launches": 1,
+                    "name": "ssss",
+                    "shell_class": 0,
+                    "timed_share_percent": 8.93
+                  },
+                  {
+                    "gpu_milliseconds": 15.260928,
+                    "launches": 1,
+                    "name": "psss",
+                    "shell_class": 1,
+                    "timed_share_percent": 8.43
+                  },
+                  {
+                    "gpu_milliseconds": 14.491168,
+                    "launches": 1,
+                    "name": "ppss",
+                    "shell_class": 3,
+                    "timed_share_percent": 8.0
+                  },
+                  {
+                    "gpu_milliseconds": 13.13728,
+                    "launches": 1,
+                    "name": "ppps",
+                    "shell_class": 4,
+                    "timed_share_percent": 7.25
+                  },
+                  {
+                    "gpu_milliseconds": 11.508192,
+                    "launches": 1,
+                    "name": "dsss",
+                    "shell_class": 6,
+                    "timed_share_percent": 6.35
+                  },
+                  {
+                    "gpu_milliseconds": 11.30432,
+                    "launches": 1,
+                    "name": "dppp",
+                    "shell_class": 12,
+                    "timed_share_percent": 6.24
+                  },
+                  {
+                    "gpu_milliseconds": 11.003072,
+                    "launches": 1,
+                    "name": "ddds",
+                    "shell_class": 18,
+                    "timed_share_percent": 6.07
+                  },
+                  {
+                    "gpu_milliseconds": 8.956608,
+                    "launches": 1,
+                    "name": "dpps",
+                    "shell_class": 11,
+                    "timed_share_percent": 4.95
+                  },
+                  {
+                    "gpu_milliseconds": 8.34848,
+                    "launches": 1,
+                    "name": "dpss",
+                    "shell_class": 10,
+                    "timed_share_percent": 4.61
+                  },
+                  {
+                    "gpu_milliseconds": 7.211552,
+                    "launches": 1,
+                    "name": "dsps",
+                    "shell_class": 7,
+                    "timed_share_percent": 3.98
+                  },
+                  {
+                    "gpu_milliseconds": 7.010784,
+                    "launches": 1,
+                    "name": "pppp",
+                    "shell_class": 5,
+                    "timed_share_percent": 3.87
+                  },
+                  {
+                    "gpu_milliseconds": 5.972608,
+                    "launches": 1,
+                    "name": "dpdp",
+                    "shell_class": 14,
+                    "timed_share_percent": 3.3
+                  },
+                  {
+                    "gpu_milliseconds": 5.742656,
+                    "launches": 1,
+                    "name": "ddss",
+                    "shell_class": 15,
+                    "timed_share_percent": 3.17
+                  },
+                  {
+                    "gpu_milliseconds": 5.203328,
+                    "launches": 1,
+                    "name": "dspp",
+                    "shell_class": 8,
+                    "timed_share_percent": 2.87
+                  },
+                  {
+                    "gpu_milliseconds": 5.076224,
+                    "launches": 1,
+                    "name": "dddp",
+                    "shell_class": 19,
+                    "timed_share_percent": 2.8
+                  },
+                  {
+                    "gpu_milliseconds": 5.020096,
+                    "launches": 1,
+                    "name": "dddd",
+                    "shell_class": 20,
+                    "timed_share_percent": 2.77
+                  },
+                  {
+                    "gpu_milliseconds": 4.371552,
+                    "launches": 1,
+                    "name": "ddps",
+                    "shell_class": 16,
+                    "timed_share_percent": 2.41
+                  },
+                  {
+                    "gpu_milliseconds": 3.829856,
+                    "launches": 1,
+                    "name": "dpds",
+                    "shell_class": 13,
+                    "timed_share_percent": 2.11
+                  },
+                  {
+                    "gpu_milliseconds": 1.821856,
+                    "launches": 1,
+                    "name": "dsds",
+                    "shell_class": 9,
+                    "timed_share_percent": 1.01
+                  },
+                  {
+                    "gpu_milliseconds": 0.544256,
+                    "launches": 1,
+                    "name": "ddpp",
+                    "shell_class": 17,
+                    "timed_share_percent": 0.3
+                  }
+                ],
+                "precision": {
+                  "enabled": true,
+                  "shell_classes": [
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 71510,
+                      "mixed_capable": false,
+                      "name": "ssss",
+                      "shell_class": 0
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 150588,
+                      "mixed_capable": false,
+                      "name": "psss",
+                      "shell_class": 1
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 79416,
+                      "mixed_capable": false,
+                      "name": "psps",
+                      "shell_class": 2
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 45648,
+                      "mixed_capable": false,
+                      "name": "ppss",
+                      "shell_class": 3
+                    },
+                    {
+                      "fp32_quartets": 48156,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "ppps",
+                      "shell_class": 4
+                    },
+                    {
+                      "fp32_quartets": 7343,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "pppp",
+                      "shell_class": 5
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 35316,
+                      "mixed_capable": false,
+                      "name": "dsss",
+                      "shell_class": 6
+                    },
+                    {
+                      "fp32_quartets": 36896,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "dsps",
+                      "shell_class": 7
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 11124,
+                      "mixed_capable": false,
+                      "name": "dspp",
+                      "shell_class": 8
+                    },
+                    {
+                      "fp32_quartets": 4322,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "dsds",
+                      "shell_class": 9
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 20000,
+                      "mixed_capable": false,
+                      "name": "dpss",
+                      "shell_class": 10
+                    },
+                    {
+                      "fp32_quartets": 20776,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "dpps",
+                      "shell_class": 11
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 6256,
+                      "mixed_capable": false,
+                      "name": "dppp",
+                      "shell_class": 12
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 4728,
+                      "mixed_capable": false,
+                      "name": "dpds",
+                      "shell_class": 13
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 1302,
+                      "mixed_capable": false,
+                      "name": "dpdp",
+                      "shell_class": 14
+                    },
+                    {
+                      "fp32_quartets": 2964,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "ddss",
+                      "shell_class": 15
+                    },
+                    {
+                      "fp32_quartets": 3040,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "ddps",
+                      "shell_class": 16
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 920,
+                      "mixed_capable": false,
+                      "name": "ddpp",
+                      "shell_class": 17
+                    },
+                    {
+                      "fp32_quartets": 700,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "ddds",
+                      "shell_class": 18
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 380,
+                      "mixed_capable": false,
+                      "name": "dddp",
+                      "shell_class": 19
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 26,
+                      "mixed_capable": false,
+                      "name": "dddd",
+                      "shell_class": 20
+                    }
+                  ],
+                  "threshold": 1e+300
+                },
+                "reported_class_count": 21
+              }
+            ],
+            "synchronized_wall_seconds": 0.1959098349325359,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "operator_evaluation_count": 1,
+            "operator_evaluations": [
+              {
+                "class_gpu_milliseconds": 179.853536,
+                "classes": [
+                  {
+                    "gpu_milliseconds": 19.413824,
+                    "launches": 1,
+                    "name": "psps",
+                    "shell_class": 2,
+                    "timed_share_percent": 10.79
+                  },
+                  {
+                    "gpu_milliseconds": 15.937504,
+                    "launches": 1,
+                    "name": "ssss",
+                    "shell_class": 0,
+                    "timed_share_percent": 8.86
+                  },
+                  {
+                    "gpu_milliseconds": 14.20592,
+                    "launches": 1,
+                    "name": "psss",
+                    "shell_class": 1,
+                    "timed_share_percent": 7.9
+                  },
+                  {
+                    "gpu_milliseconds": 13.7784,
+                    "launches": 1,
+                    "name": "ppss",
+                    "shell_class": 3,
+                    "timed_share_percent": 7.66
+                  },
+                  {
+                    "gpu_milliseconds": 13.309632,
+                    "launches": 1,
+                    "name": "ppps",
+                    "shell_class": 4,
+                    "timed_share_percent": 7.4
+                  },
+                  {
+                    "gpu_milliseconds": 11.5624,
+                    "launches": 1,
+                    "name": "dsss",
+                    "shell_class": 6,
+                    "timed_share_percent": 6.43
+                  },
+                  {
+                    "gpu_milliseconds": 11.284128,
+                    "launches": 1,
+                    "name": "dppp",
+                    "shell_class": 12,
+                    "timed_share_percent": 6.27
+                  },
+                  {
+                    "gpu_milliseconds": 11.003552,
+                    "launches": 1,
+                    "name": "ddds",
+                    "shell_class": 18,
+                    "timed_share_percent": 6.12
+                  },
+                  {
+                    "gpu_milliseconds": 9.001536,
+                    "launches": 1,
+                    "name": "dpps",
+                    "shell_class": 11,
+                    "timed_share_percent": 5.0
+                  },
+                  {
+                    "gpu_milliseconds": 8.42032,
+                    "launches": 1,
+                    "name": "dpss",
+                    "shell_class": 10,
+                    "timed_share_percent": 4.68
+                  },
+                  {
+                    "gpu_milliseconds": 7.186144,
+                    "launches": 1,
+                    "name": "dsps",
+                    "shell_class": 7,
+                    "timed_share_percent": 4.0
+                  },
+                  {
+                    "gpu_milliseconds": 7.073536,
+                    "launches": 1,
+                    "name": "pppp",
+                    "shell_class": 5,
+                    "timed_share_percent": 3.93
+                  },
+                  {
+                    "gpu_milliseconds": 5.977856,
+                    "launches": 1,
+                    "name": "dpdp",
+                    "shell_class": 14,
+                    "timed_share_percent": 3.32
+                  },
+                  {
+                    "gpu_milliseconds": 5.779648,
+                    "launches": 1,
+                    "name": "ddss",
+                    "shell_class": 15,
+                    "timed_share_percent": 3.21
+                  },
+                  {
+                    "gpu_milliseconds": 5.24688,
+                    "launches": 1,
+                    "name": "dspp",
+                    "shell_class": 8,
+                    "timed_share_percent": 2.92
+                  },
+                  {
+                    "gpu_milliseconds": 5.091744,
+                    "launches": 1,
+                    "name": "dddp",
+                    "shell_class": 19,
+                    "timed_share_percent": 2.83
+                  },
+                  {
+                    "gpu_milliseconds": 5.00128,
+                    "launches": 1,
+                    "name": "dddd",
+                    "shell_class": 20,
+                    "timed_share_percent": 2.78
+                  },
+                  {
+                    "gpu_milliseconds": 4.370368,
+                    "launches": 1,
+                    "name": "ddps",
+                    "shell_class": 16,
+                    "timed_share_percent": 2.43
+                  },
+                  {
+                    "gpu_milliseconds": 3.831712,
+                    "launches": 1,
+                    "name": "dpds",
+                    "shell_class": 13,
+                    "timed_share_percent": 2.13
+                  },
+                  {
+                    "gpu_milliseconds": 1.832448,
+                    "launches": 1,
+                    "name": "dsds",
+                    "shell_class": 9,
+                    "timed_share_percent": 1.02
+                  },
+                  {
+                    "gpu_milliseconds": 0.544704,
+                    "launches": 1,
+                    "name": "ddpp",
+                    "shell_class": 17,
+                    "timed_share_percent": 0.3
+                  }
+                ],
+                "precision": {
+                  "enabled": true,
+                  "shell_classes": [
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 71510,
+                      "mixed_capable": false,
+                      "name": "ssss",
+                      "shell_class": 0
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 150588,
+                      "mixed_capable": false,
+                      "name": "psss",
+                      "shell_class": 1
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 79416,
+                      "mixed_capable": false,
+                      "name": "psps",
+                      "shell_class": 2
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 45648,
+                      "mixed_capable": false,
+                      "name": "ppss",
+                      "shell_class": 3
+                    },
+                    {
+                      "fp32_quartets": 48156,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "ppps",
+                      "shell_class": 4
+                    },
+                    {
+                      "fp32_quartets": 7343,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "pppp",
+                      "shell_class": 5
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 35316,
+                      "mixed_capable": false,
+                      "name": "dsss",
+                      "shell_class": 6
+                    },
+                    {
+                      "fp32_quartets": 36896,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "dsps",
+                      "shell_class": 7
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 11124,
+                      "mixed_capable": false,
+                      "name": "dspp",
+                      "shell_class": 8
+                    },
+                    {
+                      "fp32_quartets": 4322,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "dsds",
+                      "shell_class": 9
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 20000,
+                      "mixed_capable": false,
+                      "name": "dpss",
+                      "shell_class": 10
+                    },
+                    {
+                      "fp32_quartets": 20776,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "dpps",
+                      "shell_class": 11
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 6256,
+                      "mixed_capable": false,
+                      "name": "dppp",
+                      "shell_class": 12
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 4728,
+                      "mixed_capable": false,
+                      "name": "dpds",
+                      "shell_class": 13
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 1302,
+                      "mixed_capable": false,
+                      "name": "dpdp",
+                      "shell_class": 14
+                    },
+                    {
+                      "fp32_quartets": 2964,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "ddss",
+                      "shell_class": 15
+                    },
+                    {
+                      "fp32_quartets": 3040,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "ddps",
+                      "shell_class": 16
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 920,
+                      "mixed_capable": false,
+                      "name": "ddpp",
+                      "shell_class": 17
+                    },
+                    {
+                      "fp32_quartets": 700,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "ddds",
+                      "shell_class": 18
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 380,
+                      "mixed_capable": false,
+                      "name": "dddp",
+                      "shell_class": 19
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 26,
+                      "mixed_capable": false,
+                      "name": "dddd",
+                      "shell_class": 20
+                    }
+                  ],
+                  "threshold": 1e+300
+                },
+                "reported_class_count": 21
+              }
+            ],
+            "synchronized_wall_seconds": 0.1912880560848862,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "operator_evaluation_count": 1,
+            "operator_evaluations": [
+              {
+                "class_gpu_milliseconds": 180.476384,
+                "classes": [
+                  {
+                    "gpu_milliseconds": 18.606304,
+                    "launches": 1,
+                    "name": "psps",
+                    "shell_class": 2,
+                    "timed_share_percent": 10.31
+                  },
+                  {
+                    "gpu_milliseconds": 15.979776,
+                    "launches": 1,
+                    "name": "ssss",
+                    "shell_class": 0,
+                    "timed_share_percent": 8.85
+                  },
+                  {
+                    "gpu_milliseconds": 14.50944,
+                    "launches": 1,
+                    "name": "ppss",
+                    "shell_class": 3,
+                    "timed_share_percent": 8.04
+                  },
+                  {
+                    "gpu_milliseconds": 14.284096,
+                    "launches": 1,
+                    "name": "psss",
+                    "shell_class": 1,
+                    "timed_share_percent": 7.91
+                  },
+                  {
+                    "gpu_milliseconds": 13.623264,
+                    "launches": 1,
+                    "name": "ppps",
+                    "shell_class": 4,
+                    "timed_share_percent": 7.55
+                  },
+                  {
+                    "gpu_milliseconds": 11.478336,
+                    "launches": 1,
+                    "name": "dsss",
+                    "shell_class": 6,
+                    "timed_share_percent": 6.36
+                  },
+                  {
+                    "gpu_milliseconds": 11.289984,
+                    "launches": 1,
+                    "name": "dppp",
+                    "shell_class": 12,
+                    "timed_share_percent": 6.26
+                  },
+                  {
+                    "gpu_milliseconds": 11.020512,
+                    "launches": 1,
+                    "name": "ddds",
+                    "shell_class": 18,
+                    "timed_share_percent": 6.11
+                  },
+                  {
+                    "gpu_milliseconds": 8.970688,
+                    "launches": 1,
+                    "name": "dpps",
+                    "shell_class": 11,
+                    "timed_share_percent": 4.97
+                  },
+                  {
+                    "gpu_milliseconds": 8.411776,
+                    "launches": 1,
+                    "name": "dpss",
+                    "shell_class": 10,
+                    "timed_share_percent": 4.66
+                  },
+                  {
+                    "gpu_milliseconds": 7.214368,
+                    "launches": 1,
+                    "name": "pppp",
+                    "shell_class": 5,
+                    "timed_share_percent": 4.0
+                  },
+                  {
+                    "gpu_milliseconds": 7.18832,
+                    "launches": 1,
+                    "name": "dsps",
+                    "shell_class": 7,
+                    "timed_share_percent": 3.98
+                  },
+                  {
+                    "gpu_milliseconds": 5.975808,
+                    "launches": 1,
+                    "name": "dpdp",
+                    "shell_class": 14,
+                    "timed_share_percent": 3.31
+                  },
+                  {
+                    "gpu_milliseconds": 5.846176,
+                    "launches": 1,
+                    "name": "ddss",
+                    "shell_class": 15,
+                    "timed_share_percent": 3.24
+                  },
+                  {
+                    "gpu_milliseconds": 5.362848,
+                    "launches": 1,
+                    "name": "dspp",
+                    "shell_class": 8,
+                    "timed_share_percent": 2.97
+                  },
+                  {
+                    "gpu_milliseconds": 5.090112,
+                    "launches": 1,
+                    "name": "dddp",
+                    "shell_class": 19,
+                    "timed_share_percent": 2.82
+                  },
+                  {
+                    "gpu_milliseconds": 5.061248,
+                    "launches": 1,
+                    "name": "dddd",
+                    "shell_class": 20,
+                    "timed_share_percent": 2.8
+                  },
+                  {
+                    "gpu_milliseconds": 4.37312,
+                    "launches": 1,
+                    "name": "ddps",
+                    "shell_class": 16,
+                    "timed_share_percent": 2.42
+                  },
+                  {
+                    "gpu_milliseconds": 3.831648,
+                    "launches": 1,
+                    "name": "dpds",
+                    "shell_class": 13,
+                    "timed_share_percent": 2.12
+                  },
+                  {
+                    "gpu_milliseconds": 1.814368,
+                    "launches": 1,
+                    "name": "dsds",
+                    "shell_class": 9,
+                    "timed_share_percent": 1.01
+                  },
+                  {
+                    "gpu_milliseconds": 0.544192,
+                    "launches": 1,
+                    "name": "ddpp",
+                    "shell_class": 17,
+                    "timed_share_percent": 0.3
+                  }
+                ],
+                "precision": {
+                  "enabled": true,
+                  "shell_classes": [
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 71510,
+                      "mixed_capable": false,
+                      "name": "ssss",
+                      "shell_class": 0
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 150588,
+                      "mixed_capable": false,
+                      "name": "psss",
+                      "shell_class": 1
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 79416,
+                      "mixed_capable": false,
+                      "name": "psps",
+                      "shell_class": 2
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 45648,
+                      "mixed_capable": false,
+                      "name": "ppss",
+                      "shell_class": 3
+                    },
+                    {
+                      "fp32_quartets": 48156,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "ppps",
+                      "shell_class": 4
+                    },
+                    {
+                      "fp32_quartets": 7343,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "pppp",
+                      "shell_class": 5
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 35316,
+                      "mixed_capable": false,
+                      "name": "dsss",
+                      "shell_class": 6
+                    },
+                    {
+                      "fp32_quartets": 36896,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "dsps",
+                      "shell_class": 7
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 11124,
+                      "mixed_capable": false,
+                      "name": "dspp",
+                      "shell_class": 8
+                    },
+                    {
+                      "fp32_quartets": 4322,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "dsds",
+                      "shell_class": 9
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 20000,
+                      "mixed_capable": false,
+                      "name": "dpss",
+                      "shell_class": 10
+                    },
+                    {
+                      "fp32_quartets": 20776,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "dpps",
+                      "shell_class": 11
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 6256,
+                      "mixed_capable": false,
+                      "name": "dppp",
+                      "shell_class": 12
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 4728,
+                      "mixed_capable": false,
+                      "name": "dpds",
+                      "shell_class": 13
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 1302,
+                      "mixed_capable": false,
+                      "name": "dpdp",
+                      "shell_class": 14
+                    },
+                    {
+                      "fp32_quartets": 2964,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "ddss",
+                      "shell_class": 15
+                    },
+                    {
+                      "fp32_quartets": 3040,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "ddps",
+                      "shell_class": 16
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 920,
+                      "mixed_capable": false,
+                      "name": "ddpp",
+                      "shell_class": 17
+                    },
+                    {
+                      "fp32_quartets": 700,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "ddds",
+                      "shell_class": 18
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 380,
+                      "mixed_capable": false,
+                      "name": "dddp",
+                      "shell_class": 19
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 26,
+                      "mixed_capable": false,
+                      "name": "dddd",
+                      "shell_class": 20
+                    }
+                  ],
+                  "threshold": 1e+300
+                },
+                "reported_class_count": 21
+              }
+            ],
+            "synchronized_wall_seconds": 0.19184877700172365,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "operator_evaluation_count": 1,
+            "operator_evaluations": [
+              {
+                "class_gpu_milliseconds": 179.182112,
+                "classes": [
+                  {
+                    "gpu_milliseconds": 18.754976,
+                    "launches": 1,
+                    "name": "psps",
+                    "shell_class": 2,
+                    "timed_share_percent": 10.47
+                  },
+                  {
+                    "gpu_milliseconds": 15.984352,
+                    "launches": 1,
+                    "name": "ssss",
+                    "shell_class": 0,
+                    "timed_share_percent": 8.92
+                  },
+                  {
+                    "gpu_milliseconds": 14.336608,
+                    "launches": 1,
+                    "name": "psss",
+                    "shell_class": 1,
+                    "timed_share_percent": 8.0
+                  },
+                  {
+                    "gpu_milliseconds": 13.792416,
+                    "launches": 1,
+                    "name": "ppss",
+                    "shell_class": 3,
+                    "timed_share_percent": 7.7
+                  },
+                  {
+                    "gpu_milliseconds": 13.144448,
+                    "launches": 1,
+                    "name": "ppps",
+                    "shell_class": 4,
+                    "timed_share_percent": 7.34
+                  },
+                  {
+                    "gpu_milliseconds": 11.515936,
+                    "launches": 1,
+                    "name": "dsss",
+                    "shell_class": 6,
+                    "timed_share_percent": 6.43
+                  },
+                  {
+                    "gpu_milliseconds": 11.28928,
+                    "launches": 1,
+                    "name": "dppp",
+                    "shell_class": 12,
+                    "timed_share_percent": 6.3
+                  },
+                  {
+                    "gpu_milliseconds": 11.029824,
+                    "launches": 1,
+                    "name": "ddds",
+                    "shell_class": 18,
+                    "timed_share_percent": 6.16
+                  },
+                  {
+                    "gpu_milliseconds": 9.241152,
+                    "launches": 1,
+                    "name": "dpps",
+                    "shell_class": 11,
+                    "timed_share_percent": 5.16
+                  },
+                  {
+                    "gpu_milliseconds": 8.351424,
+                    "launches": 1,
+                    "name": "dpss",
+                    "shell_class": 10,
+                    "timed_share_percent": 4.66
+                  },
+                  {
+                    "gpu_milliseconds": 7.1712,
+                    "launches": 1,
+                    "name": "dsps",
+                    "shell_class": 7,
+                    "timed_share_percent": 4.0
+                  },
+                  {
+                    "gpu_milliseconds": 7.094912,
+                    "launches": 1,
+                    "name": "pppp",
+                    "shell_class": 5,
+                    "timed_share_percent": 3.96
+                  },
+                  {
+                    "gpu_milliseconds": 5.97248,
+                    "launches": 1,
+                    "name": "dpdp",
+                    "shell_class": 14,
+                    "timed_share_percent": 3.33
+                  },
+                  {
+                    "gpu_milliseconds": 5.780224,
+                    "launches": 1,
+                    "name": "ddss",
+                    "shell_class": 15,
+                    "timed_share_percent": 3.23
+                  },
+                  {
+                    "gpu_milliseconds": 5.224192,
+                    "launches": 1,
+                    "name": "dspp",
+                    "shell_class": 8,
+                    "timed_share_percent": 2.92
+                  },
+                  {
+                    "gpu_milliseconds": 5.090528,
+                    "launches": 1,
+                    "name": "dddp",
+                    "shell_class": 19,
+                    "timed_share_percent": 2.84
+                  },
+                  {
+                    "gpu_milliseconds": 4.804128,
+                    "launches": 1,
+                    "name": "dddd",
+                    "shell_class": 20,
+                    "timed_share_percent": 2.68
+                  },
+                  {
+                    "gpu_milliseconds": 4.387072,
+                    "launches": 1,
+                    "name": "ddps",
+                    "shell_class": 16,
+                    "timed_share_percent": 2.45
+                  },
+                  {
+                    "gpu_milliseconds": 3.839424,
+                    "launches": 1,
+                    "name": "dpds",
+                    "shell_class": 13,
+                    "timed_share_percent": 2.14
+                  },
+                  {
+                    "gpu_milliseconds": 1.833888,
+                    "launches": 1,
+                    "name": "dsds",
+                    "shell_class": 9,
+                    "timed_share_percent": 1.02
+                  },
+                  {
+                    "gpu_milliseconds": 0.543648,
+                    "launches": 1,
+                    "name": "ddpp",
+                    "shell_class": 17,
+                    "timed_share_percent": 0.3
+                  }
+                ],
+                "precision": {
+                  "enabled": true,
+                  "shell_classes": [
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 71510,
+                      "mixed_capable": false,
+                      "name": "ssss",
+                      "shell_class": 0
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 150588,
+                      "mixed_capable": false,
+                      "name": "psss",
+                      "shell_class": 1
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 79416,
+                      "mixed_capable": false,
+                      "name": "psps",
+                      "shell_class": 2
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 45648,
+                      "mixed_capable": false,
+                      "name": "ppss",
+                      "shell_class": 3
+                    },
+                    {
+                      "fp32_quartets": 48156,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "ppps",
+                      "shell_class": 4
+                    },
+                    {
+                      "fp32_quartets": 7343,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "pppp",
+                      "shell_class": 5
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 35316,
+                      "mixed_capable": false,
+                      "name": "dsss",
+                      "shell_class": 6
+                    },
+                    {
+                      "fp32_quartets": 36896,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "dsps",
+                      "shell_class": 7
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 11124,
+                      "mixed_capable": false,
+                      "name": "dspp",
+                      "shell_class": 8
+                    },
+                    {
+                      "fp32_quartets": 4322,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "dsds",
+                      "shell_class": 9
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 20000,
+                      "mixed_capable": false,
+                      "name": "dpss",
+                      "shell_class": 10
+                    },
+                    {
+                      "fp32_quartets": 20776,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "dpps",
+                      "shell_class": 11
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 6256,
+                      "mixed_capable": false,
+                      "name": "dppp",
+                      "shell_class": 12
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 4728,
+                      "mixed_capable": false,
+                      "name": "dpds",
+                      "shell_class": 13
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 1302,
+                      "mixed_capable": false,
+                      "name": "dpdp",
+                      "shell_class": 14
+                    },
+                    {
+                      "fp32_quartets": 2964,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "ddss",
+                      "shell_class": 15
+                    },
+                    {
+                      "fp32_quartets": 3040,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "ddps",
+                      "shell_class": 16
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 920,
+                      "mixed_capable": false,
+                      "name": "ddpp",
+                      "shell_class": 17
+                    },
+                    {
+                      "fp32_quartets": 700,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "ddds",
+                      "shell_class": 18
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 380,
+                      "mixed_capable": false,
+                      "name": "dddp",
+                      "shell_class": 19
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 26,
+                      "mixed_capable": false,
+                      "name": "dddd",
+                      "shell_class": 20
+                    }
+                  ],
+                  "threshold": 1e+300
+                },
+                "reported_class_count": 21
+              }
+            ],
+            "synchronized_wall_seconds": 0.19063832401297987,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "operator_evaluation_count": 1,
+            "operator_evaluations": [
+              {
+                "class_gpu_milliseconds": 181.372192,
+                "classes": [
+                  {
+                    "gpu_milliseconds": 18.622432,
+                    "launches": 1,
+                    "name": "psps",
+                    "shell_class": 2,
+                    "timed_share_percent": 10.27
+                  },
+                  {
+                    "gpu_milliseconds": 15.94336,
+                    "launches": 1,
+                    "name": "ssss",
+                    "shell_class": 0,
+                    "timed_share_percent": 8.79
+                  },
+                  {
+                    "gpu_milliseconds": 15.389344,
+                    "launches": 1,
+                    "name": "ppps",
+                    "shell_class": 4,
+                    "timed_share_percent": 8.48
+                  },
+                  {
+                    "gpu_milliseconds": 14.244736,
+                    "launches": 1,
+                    "name": "psss",
+                    "shell_class": 1,
+                    "timed_share_percent": 7.85
+                  },
+                  {
+                    "gpu_milliseconds": 13.804704,
+                    "launches": 1,
+                    "name": "ppss",
+                    "shell_class": 3,
+                    "timed_share_percent": 7.61
+                  },
+                  {
+                    "gpu_milliseconds": 11.456768,
+                    "launches": 1,
+                    "name": "dsss",
+                    "shell_class": 6,
+                    "timed_share_percent": 6.32
+                  },
+                  {
+                    "gpu_milliseconds": 11.311552,
+                    "launches": 1,
+                    "name": "dppp",
+                    "shell_class": 12,
+                    "timed_share_percent": 6.24
+                  },
+                  {
+                    "gpu_milliseconds": 11.018208,
+                    "launches": 1,
+                    "name": "ddds",
+                    "shell_class": 18,
+                    "timed_share_percent": 6.07
+                  },
+                  {
+                    "gpu_milliseconds": 9.015264,
+                    "launches": 1,
+                    "name": "dpps",
+                    "shell_class": 11,
+                    "timed_share_percent": 4.97
+                  },
+                  {
+                    "gpu_milliseconds": 8.36688,
+                    "launches": 1,
+                    "name": "dpss",
+                    "shell_class": 10,
+                    "timed_share_percent": 4.61
+                  },
+                  {
+                    "gpu_milliseconds": 7.212864,
+                    "launches": 1,
+                    "name": "pppp",
+                    "shell_class": 5,
+                    "timed_share_percent": 3.98
+                  },
+                  {
+                    "gpu_milliseconds": 7.192192,
+                    "launches": 1,
+                    "name": "dsps",
+                    "shell_class": 7,
+                    "timed_share_percent": 3.97
+                  },
+                  {
+                    "gpu_milliseconds": 5.975872,
+                    "launches": 1,
+                    "name": "dpdp",
+                    "shell_class": 14,
+                    "timed_share_percent": 3.29
+                  },
+                  {
+                    "gpu_milliseconds": 5.840512,
+                    "launches": 1,
+                    "name": "ddss",
+                    "shell_class": 15,
+                    "timed_share_percent": 3.22
+                  },
+                  {
+                    "gpu_milliseconds": 5.230592,
+                    "launches": 1,
+                    "name": "dspp",
+                    "shell_class": 8,
+                    "timed_share_percent": 2.88
+                  },
+                  {
+                    "gpu_milliseconds": 5.132864,
+                    "launches": 1,
+                    "name": "dddd",
+                    "shell_class": 20,
+                    "timed_share_percent": 2.83
+                  },
+                  {
+                    "gpu_milliseconds": 5.08128,
+                    "launches": 1,
+                    "name": "dddp",
+                    "shell_class": 19,
+                    "timed_share_percent": 2.8
+                  },
+                  {
+                    "gpu_milliseconds": 4.368352,
+                    "launches": 1,
+                    "name": "ddps",
+                    "shell_class": 16,
+                    "timed_share_percent": 2.41
+                  },
+                  {
+                    "gpu_milliseconds": 3.829824,
+                    "launches": 1,
+                    "name": "dpds",
+                    "shell_class": 13,
+                    "timed_share_percent": 2.11
+                  },
+                  {
+                    "gpu_milliseconds": 1.79056,
+                    "launches": 1,
+                    "name": "dsds",
+                    "shell_class": 9,
+                    "timed_share_percent": 0.99
+                  },
+                  {
+                    "gpu_milliseconds": 0.544032,
+                    "launches": 1,
+                    "name": "ddpp",
+                    "shell_class": 17,
+                    "timed_share_percent": 0.3
+                  }
+                ],
+                "precision": {
+                  "enabled": true,
+                  "shell_classes": [
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 71510,
+                      "mixed_capable": false,
+                      "name": "ssss",
+                      "shell_class": 0
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 150588,
+                      "mixed_capable": false,
+                      "name": "psss",
+                      "shell_class": 1
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 79416,
+                      "mixed_capable": false,
+                      "name": "psps",
+                      "shell_class": 2
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 45648,
+                      "mixed_capable": false,
+                      "name": "ppss",
+                      "shell_class": 3
+                    },
+                    {
+                      "fp32_quartets": 48156,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "ppps",
+                      "shell_class": 4
+                    },
+                    {
+                      "fp32_quartets": 7343,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "pppp",
+                      "shell_class": 5
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 35316,
+                      "mixed_capable": false,
+                      "name": "dsss",
+                      "shell_class": 6
+                    },
+                    {
+                      "fp32_quartets": 36896,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "dsps",
+                      "shell_class": 7
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 11124,
+                      "mixed_capable": false,
+                      "name": "dspp",
+                      "shell_class": 8
+                    },
+                    {
+                      "fp32_quartets": 4322,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "dsds",
+                      "shell_class": 9
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 20000,
+                      "mixed_capable": false,
+                      "name": "dpss",
+                      "shell_class": 10
+                    },
+                    {
+                      "fp32_quartets": 20776,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "dpps",
+                      "shell_class": 11
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 6256,
+                      "mixed_capable": false,
+                      "name": "dppp",
+                      "shell_class": 12
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 4728,
+                      "mixed_capable": false,
+                      "name": "dpds",
+                      "shell_class": 13
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 1302,
+                      "mixed_capable": false,
+                      "name": "dpdp",
+                      "shell_class": 14
+                    },
+                    {
+                      "fp32_quartets": 2964,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "ddss",
+                      "shell_class": 15
+                    },
+                    {
+                      "fp32_quartets": 3040,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "ddps",
+                      "shell_class": 16
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 920,
+                      "mixed_capable": false,
+                      "name": "ddpp",
+                      "shell_class": 17
+                    },
+                    {
+                      "fp32_quartets": 700,
+                      "fp64_quartets": 0,
+                      "mixed_capable": true,
+                      "name": "ddds",
+                      "shell_class": 18
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 380,
+                      "mixed_capable": false,
+                      "name": "dddp",
+                      "shell_class": 19
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 26,
+                      "mixed_capable": false,
+                      "name": "dddd",
+                      "shell_class": 20
+                    }
+                  ],
+                  "threshold": 1e+300
+                },
+                "reported_class_count": 21
+              }
+            ],
+            "synchronized_wall_seconds": 0.19277987582609057,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ]
+      },
+      "fp64": {
+        "requested_threshold": null,
+        "samples": [
+          {
+            "operator_evaluation_count": 1,
+            "operator_evaluations": [
+              {
+                "class_gpu_milliseconds": 221.239136,
+                "classes": [
+                  {
+                    "gpu_milliseconds": 20.424032,
+                    "launches": 1,
+                    "name": "ppps",
+                    "shell_class": 4,
+                    "timed_share_percent": 9.23
+                  },
+                  {
+                    "gpu_milliseconds": 18.025792,
+                    "launches": 1,
+                    "name": "psps",
+                    "shell_class": 2,
+                    "timed_share_percent": 8.15
+                  },
+                  {
+                    "gpu_milliseconds": 17.64176,
+                    "launches": 1,
+                    "name": "dpps",
+                    "shell_class": 11,
+                    "timed_share_percent": 7.97
+                  },
+                  {
+                    "gpu_milliseconds": 17.603648,
+                    "launches": 1,
+                    "name": "ddds",
+                    "shell_class": 18,
+                    "timed_share_percent": 7.96
+                  },
+                  {
+                    "gpu_milliseconds": 16.324128,
+                    "launches": 1,
+                    "name": "ssss",
+                    "shell_class": 0,
+                    "timed_share_percent": 7.38
+                  },
+                  {
+                    "gpu_milliseconds": 14.552288,
+                    "launches": 1,
+                    "name": "psss",
+                    "shell_class": 1,
+                    "timed_share_percent": 6.58
+                  },
+                  {
+                    "gpu_milliseconds": 13.798912,
+                    "launches": 1,
+                    "name": "ppss",
+                    "shell_class": 3,
+                    "timed_share_percent": 6.24
+                  },
+                  {
+                    "gpu_milliseconds": 12.162912,
+                    "launches": 1,
+                    "name": "ddps",
+                    "shell_class": 16,
+                    "timed_share_percent": 5.5
+                  },
+                  {
+                    "gpu_milliseconds": 11.51328,
+                    "launches": 1,
+                    "name": "dsss",
+                    "shell_class": 6,
+                    "timed_share_percent": 5.2
+                  },
+                  {
+                    "gpu_milliseconds": 11.30848,
+                    "launches": 1,
+                    "name": "dppp",
+                    "shell_class": 12,
+                    "timed_share_percent": 5.11
+                  },
+                  {
+                    "gpu_milliseconds": 11.1496,
+                    "launches": 1,
+                    "name": "pppp",
+                    "shell_class": 5,
+                    "timed_share_percent": 5.04
+                  },
+                  {
+                    "gpu_milliseconds": 10.105088,
+                    "launches": 1,
+                    "name": "dsps",
+                    "shell_class": 7,
+                    "timed_share_percent": 4.57
+                  },
+                  {
+                    "gpu_milliseconds": 9.601984,
+                    "launches": 1,
+                    "name": "ddss",
+                    "shell_class": 15,
+                    "timed_share_percent": 4.34
+                  },
+                  {
+                    "gpu_milliseconds": 8.410944,
+                    "launches": 1,
+                    "name": "dpss",
+                    "shell_class": 10,
+                    "timed_share_percent": 3.8
+                  },
+                  {
+                    "gpu_milliseconds": 5.974016,
+                    "launches": 1,
+                    "name": "dpdp",
+                    "shell_class": 14,
+                    "timed_share_percent": 2.7
+                  },
+                  {
+                    "gpu_milliseconds": 5.370112,
+                    "launches": 1,
+                    "name": "dspp",
+                    "shell_class": 8,
+                    "timed_share_percent": 2.43
+                  },
+                  {
+                    "gpu_milliseconds": 5.135264,
+                    "launches": 1,
+                    "name": "dddp",
+                    "shell_class": 19,
+                    "timed_share_percent": 2.32
+                  },
+                  {
+                    "gpu_milliseconds": 4.911296,
+                    "launches": 1,
+                    "name": "dddd",
+                    "shell_class": 20,
+                    "timed_share_percent": 2.22
+                  },
+                  {
+                    "gpu_milliseconds": 3.831424,
+                    "launches": 1,
+                    "name": "dpds",
+                    "shell_class": 13,
+                    "timed_share_percent": 1.73
+                  },
+                  {
+                    "gpu_milliseconds": 2.850144,
+                    "launches": 1,
+                    "name": "dsds",
+                    "shell_class": 9,
+                    "timed_share_percent": 1.29
+                  },
+                  {
+                    "gpu_milliseconds": 0.544032,
+                    "launches": 1,
+                    "name": "ddpp",
+                    "shell_class": 17,
+                    "timed_share_percent": 0.25
+                  }
+                ],
+                "precision": {
+                  "enabled": false,
+                  "shell_classes": [
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 71510,
+                      "mixed_capable": false,
+                      "name": "ssss",
+                      "shell_class": 0
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 150588,
+                      "mixed_capable": false,
+                      "name": "psss",
+                      "shell_class": 1
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 79416,
+                      "mixed_capable": false,
+                      "name": "psps",
+                      "shell_class": 2
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 45648,
+                      "mixed_capable": false,
+                      "name": "ppss",
+                      "shell_class": 3
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 48156,
+                      "mixed_capable": false,
+                      "name": "ppps",
+                      "shell_class": 4
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 7343,
+                      "mixed_capable": false,
+                      "name": "pppp",
+                      "shell_class": 5
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 35316,
+                      "mixed_capable": false,
+                      "name": "dsss",
+                      "shell_class": 6
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 36896,
+                      "mixed_capable": false,
+                      "name": "dsps",
+                      "shell_class": 7
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 11124,
+                      "mixed_capable": false,
+                      "name": "dspp",
+                      "shell_class": 8
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 4322,
+                      "mixed_capable": false,
+                      "name": "dsds",
+                      "shell_class": 9
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 20000,
+                      "mixed_capable": false,
+                      "name": "dpss",
+                      "shell_class": 10
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 20776,
+                      "mixed_capable": false,
+                      "name": "dpps",
+                      "shell_class": 11
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 6256,
+                      "mixed_capable": false,
+                      "name": "dppp",
+                      "shell_class": 12
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 4728,
+                      "mixed_capable": false,
+                      "name": "dpds",
+                      "shell_class": 13
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 1302,
+                      "mixed_capable": false,
+                      "name": "dpdp",
+                      "shell_class": 14
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 2964,
+                      "mixed_capable": false,
+                      "name": "ddss",
+                      "shell_class": 15
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 3040,
+                      "mixed_capable": false,
+                      "name": "ddps",
+                      "shell_class": 16
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 920,
+                      "mixed_capable": false,
+                      "name": "ddpp",
+                      "shell_class": 17
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 700,
+                      "mixed_capable": false,
+                      "name": "ddds",
+                      "shell_class": 18
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 380,
+                      "mixed_capable": false,
+                      "name": "dddp",
+                      "shell_class": 19
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 26,
+                      "mixed_capable": false,
+                      "name": "dddd",
+                      "shell_class": 20
+                    }
+                  ],
+                  "threshold": 0.0
+                },
+                "reported_class_count": 21
+              }
+            ],
+            "synchronized_wall_seconds": 0.23295286390930414,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "operator_evaluation_count": 1,
+            "operator_evaluations": [
+              {
+                "class_gpu_milliseconds": 218.760224,
+                "classes": [
+                  {
+                    "gpu_milliseconds": 19.599232,
+                    "launches": 1,
+                    "name": "ppps",
+                    "shell_class": 4,
+                    "timed_share_percent": 8.96
+                  },
+                  {
+                    "gpu_milliseconds": 18.834528,
+                    "launches": 1,
+                    "name": "psps",
+                    "shell_class": 2,
+                    "timed_share_percent": 8.61
+                  },
+                  {
+                    "gpu_milliseconds": 17.607872,
+                    "launches": 1,
+                    "name": "ddds",
+                    "shell_class": 18,
+                    "timed_share_percent": 8.05
+                  },
+                  {
+                    "gpu_milliseconds": 16.039136,
+                    "launches": 1,
+                    "name": "ssss",
+                    "shell_class": 0,
+                    "timed_share_percent": 7.33
+                  },
+                  {
+                    "gpu_milliseconds": 15.686624,
+                    "launches": 1,
+                    "name": "dpps",
+                    "shell_class": 11,
+                    "timed_share_percent": 7.17
+                  },
+                  {
+                    "gpu_milliseconds": 14.301888,
+                    "launches": 1,
+                    "name": "psss",
+                    "shell_class": 1,
+                    "timed_share_percent": 6.54
+                  },
+                  {
+                    "gpu_milliseconds": 13.654944,
+                    "launches": 1,
+                    "name": "ppss",
+                    "shell_class": 3,
+                    "timed_share_percent": 6.24
+                  },
+                  {
+                    "gpu_milliseconds": 12.167968,
+                    "launches": 1,
+                    "name": "ddps",
+                    "shell_class": 16,
+                    "timed_share_percent": 5.56
+                  },
+                  {
+                    "gpu_milliseconds": 11.474528,
+                    "launches": 1,
+                    "name": "dsss",
+                    "shell_class": 6,
+                    "timed_share_percent": 5.25
+                  },
+                  {
+                    "gpu_milliseconds": 11.261632,
+                    "launches": 1,
+                    "name": "dppp",
+                    "shell_class": 12,
+                    "timed_share_percent": 5.15
+                  },
+                  {
+                    "gpu_milliseconds": 11.13312,
+                    "launches": 1,
+                    "name": "pppp",
+                    "shell_class": 5,
+                    "timed_share_percent": 5.09
+                  },
+                  {
+                    "gpu_milliseconds": 10.213056,
+                    "launches": 1,
+                    "name": "dsps",
+                    "shell_class": 7,
+                    "timed_share_percent": 4.67
+                  },
+                  {
+                    "gpu_milliseconds": 9.602624,
+                    "launches": 1,
+                    "name": "ddss",
+                    "shell_class": 15,
+                    "timed_share_percent": 4.39
+                  },
+                  {
+                    "gpu_milliseconds": 8.423584,
+                    "launches": 1,
+                    "name": "dpss",
+                    "shell_class": 10,
+                    "timed_share_percent": 3.85
+                  },
+                  {
+                    "gpu_milliseconds": 5.971424,
+                    "launches": 1,
+                    "name": "dpdp",
+                    "shell_class": 14,
+                    "timed_share_percent": 2.73
+                  },
+                  {
+                    "gpu_milliseconds": 5.24064,
+                    "launches": 1,
+                    "name": "dspp",
+                    "shell_class": 8,
+                    "timed_share_percent": 2.4
+                  },
+                  {
+                    "gpu_milliseconds": 5.125056,
+                    "launches": 1,
+                    "name": "dddd",
+                    "shell_class": 20,
+                    "timed_share_percent": 2.34
+                  },
+                  {
+                    "gpu_milliseconds": 5.100064,
+                    "launches": 1,
+                    "name": "dddp",
+                    "shell_class": 19,
+                    "timed_share_percent": 2.33
+                  },
+                  {
+                    "gpu_milliseconds": 3.83856,
+                    "launches": 1,
+                    "name": "dpds",
+                    "shell_class": 13,
+                    "timed_share_percent": 1.75
+                  },
+                  {
+                    "gpu_milliseconds": 2.939872,
+                    "launches": 1,
+                    "name": "dsds",
+                    "shell_class": 9,
+                    "timed_share_percent": 1.34
+                  },
+                  {
+                    "gpu_milliseconds": 0.543872,
+                    "launches": 1,
+                    "name": "ddpp",
+                    "shell_class": 17,
+                    "timed_share_percent": 0.25
+                  }
+                ],
+                "precision": {
+                  "enabled": false,
+                  "shell_classes": [
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 71510,
+                      "mixed_capable": false,
+                      "name": "ssss",
+                      "shell_class": 0
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 150588,
+                      "mixed_capable": false,
+                      "name": "psss",
+                      "shell_class": 1
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 79416,
+                      "mixed_capable": false,
+                      "name": "psps",
+                      "shell_class": 2
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 45648,
+                      "mixed_capable": false,
+                      "name": "ppss",
+                      "shell_class": 3
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 48156,
+                      "mixed_capable": false,
+                      "name": "ppps",
+                      "shell_class": 4
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 7343,
+                      "mixed_capable": false,
+                      "name": "pppp",
+                      "shell_class": 5
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 35316,
+                      "mixed_capable": false,
+                      "name": "dsss",
+                      "shell_class": 6
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 36896,
+                      "mixed_capable": false,
+                      "name": "dsps",
+                      "shell_class": 7
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 11124,
+                      "mixed_capable": false,
+                      "name": "dspp",
+                      "shell_class": 8
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 4322,
+                      "mixed_capable": false,
+                      "name": "dsds",
+                      "shell_class": 9
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 20000,
+                      "mixed_capable": false,
+                      "name": "dpss",
+                      "shell_class": 10
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 20776,
+                      "mixed_capable": false,
+                      "name": "dpps",
+                      "shell_class": 11
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 6256,
+                      "mixed_capable": false,
+                      "name": "dppp",
+                      "shell_class": 12
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 4728,
+                      "mixed_capable": false,
+                      "name": "dpds",
+                      "shell_class": 13
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 1302,
+                      "mixed_capable": false,
+                      "name": "dpdp",
+                      "shell_class": 14
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 2964,
+                      "mixed_capable": false,
+                      "name": "ddss",
+                      "shell_class": 15
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 3040,
+                      "mixed_capable": false,
+                      "name": "ddps",
+                      "shell_class": 16
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 920,
+                      "mixed_capable": false,
+                      "name": "ddpp",
+                      "shell_class": 17
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 700,
+                      "mixed_capable": false,
+                      "name": "ddds",
+                      "shell_class": 18
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 380,
+                      "mixed_capable": false,
+                      "name": "dddp",
+                      "shell_class": 19
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 26,
+                      "mixed_capable": false,
+                      "name": "dddd",
+                      "shell_class": 20
+                    }
+                  ],
+                  "threshold": 0.0
+                },
+                "reported_class_count": 21
+              }
+            ],
+            "synchronized_wall_seconds": 0.2301445489283651,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "operator_evaluation_count": 1,
+            "operator_evaluations": [
+              {
+                "class_gpu_milliseconds": 220.545952,
+                "classes": [
+                  {
+                    "gpu_milliseconds": 19.573952,
+                    "launches": 1,
+                    "name": "ppps",
+                    "shell_class": 4,
+                    "timed_share_percent": 8.88
+                  },
+                  {
+                    "gpu_milliseconds": 18.744768,
+                    "launches": 1,
+                    "name": "psps",
+                    "shell_class": 2,
+                    "timed_share_percent": 8.5
+                  },
+                  {
+                    "gpu_milliseconds": 17.614816,
+                    "launches": 1,
+                    "name": "ddds",
+                    "shell_class": 18,
+                    "timed_share_percent": 7.99
+                  },
+                  {
+                    "gpu_milliseconds": 16.64096,
+                    "launches": 1,
+                    "name": "dpps",
+                    "shell_class": 11,
+                    "timed_share_percent": 7.55
+                  },
+                  {
+                    "gpu_milliseconds": 15.96336,
+                    "launches": 1,
+                    "name": "ssss",
+                    "shell_class": 0,
+                    "timed_share_percent": 7.24
+                  },
+                  {
+                    "gpu_milliseconds": 14.47216,
+                    "launches": 1,
+                    "name": "ppss",
+                    "shell_class": 3,
+                    "timed_share_percent": 6.56
+                  },
+                  {
+                    "gpu_milliseconds": 14.395776,
+                    "launches": 1,
+                    "name": "psss",
+                    "shell_class": 1,
+                    "timed_share_percent": 6.53
+                  },
+                  {
+                    "gpu_milliseconds": 12.158912,
+                    "launches": 1,
+                    "name": "ddps",
+                    "shell_class": 16,
+                    "timed_share_percent": 5.51
+                  },
+                  {
+                    "gpu_milliseconds": 11.473248,
+                    "launches": 1,
+                    "name": "dsss",
+                    "shell_class": 6,
+                    "timed_share_percent": 5.2
+                  },
+                  {
+                    "gpu_milliseconds": 11.30832,
+                    "launches": 1,
+                    "name": "dppp",
+                    "shell_class": 12,
+                    "timed_share_percent": 5.13
+                  },
+                  {
+                    "gpu_milliseconds": 11.174656,
+                    "launches": 1,
+                    "name": "pppp",
+                    "shell_class": 5,
+                    "timed_share_percent": 5.07
+                  },
+                  {
+                    "gpu_milliseconds": 10.214112,
+                    "launches": 1,
+                    "name": "ddss",
+                    "shell_class": 15,
+                    "timed_share_percent": 4.63
+                  },
+                  {
+                    "gpu_milliseconds": 10.106784,
+                    "launches": 1,
+                    "name": "dsps",
+                    "shell_class": 7,
+                    "timed_share_percent": 4.58
+                  },
+                  {
+                    "gpu_milliseconds": 8.274944,
+                    "launches": 1,
+                    "name": "dpss",
+                    "shell_class": 10,
+                    "timed_share_percent": 3.75
+                  },
+                  {
+                    "gpu_milliseconds": 5.967872,
+                    "launches": 1,
+                    "name": "dpdp",
+                    "shell_class": 14,
+                    "timed_share_percent": 2.71
+                  },
+                  {
+                    "gpu_milliseconds": 5.252544,
+                    "launches": 1,
+                    "name": "dspp",
+                    "shell_class": 8,
+                    "timed_share_percent": 2.38
+                  },
+                  {
+                    "gpu_milliseconds": 5.090976,
+                    "launches": 1,
+                    "name": "dddp",
+                    "shell_class": 19,
+                    "timed_share_percent": 2.31
+                  },
+                  {
+                    "gpu_milliseconds": 4.940928,
+                    "launches": 1,
+                    "name": "dddd",
+                    "shell_class": 20,
+                    "timed_share_percent": 2.24
+                  },
+                  {
+                    "gpu_milliseconds": 3.833344,
+                    "launches": 1,
+                    "name": "dpds",
+                    "shell_class": 13,
+                    "timed_share_percent": 1.74
+                  },
+                  {
+                    "gpu_milliseconds": 2.799648,
+                    "launches": 1,
+                    "name": "dsds",
+                    "shell_class": 9,
+                    "timed_share_percent": 1.27
+                  },
+                  {
+                    "gpu_milliseconds": 0.543872,
+                    "launches": 1,
+                    "name": "ddpp",
+                    "shell_class": 17,
+                    "timed_share_percent": 0.25
+                  }
+                ],
+                "precision": {
+                  "enabled": false,
+                  "shell_classes": [
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 71510,
+                      "mixed_capable": false,
+                      "name": "ssss",
+                      "shell_class": 0
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 150588,
+                      "mixed_capable": false,
+                      "name": "psss",
+                      "shell_class": 1
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 79416,
+                      "mixed_capable": false,
+                      "name": "psps",
+                      "shell_class": 2
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 45648,
+                      "mixed_capable": false,
+                      "name": "ppss",
+                      "shell_class": 3
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 48156,
+                      "mixed_capable": false,
+                      "name": "ppps",
+                      "shell_class": 4
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 7343,
+                      "mixed_capable": false,
+                      "name": "pppp",
+                      "shell_class": 5
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 35316,
+                      "mixed_capable": false,
+                      "name": "dsss",
+                      "shell_class": 6
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 36896,
+                      "mixed_capable": false,
+                      "name": "dsps",
+                      "shell_class": 7
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 11124,
+                      "mixed_capable": false,
+                      "name": "dspp",
+                      "shell_class": 8
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 4322,
+                      "mixed_capable": false,
+                      "name": "dsds",
+                      "shell_class": 9
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 20000,
+                      "mixed_capable": false,
+                      "name": "dpss",
+                      "shell_class": 10
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 20776,
+                      "mixed_capable": false,
+                      "name": "dpps",
+                      "shell_class": 11
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 6256,
+                      "mixed_capable": false,
+                      "name": "dppp",
+                      "shell_class": 12
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 4728,
+                      "mixed_capable": false,
+                      "name": "dpds",
+                      "shell_class": 13
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 1302,
+                      "mixed_capable": false,
+                      "name": "dpdp",
+                      "shell_class": 14
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 2964,
+                      "mixed_capable": false,
+                      "name": "ddss",
+                      "shell_class": 15
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 3040,
+                      "mixed_capable": false,
+                      "name": "ddps",
+                      "shell_class": 16
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 920,
+                      "mixed_capable": false,
+                      "name": "ddpp",
+                      "shell_class": 17
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 700,
+                      "mixed_capable": false,
+                      "name": "ddds",
+                      "shell_class": 18
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 380,
+                      "mixed_capable": false,
+                      "name": "dddp",
+                      "shell_class": 19
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 26,
+                      "mixed_capable": false,
+                      "name": "dddd",
+                      "shell_class": 20
+                    }
+                  ],
+                  "threshold": 0.0
+                },
+                "reported_class_count": 21
+              }
+            ],
+            "synchronized_wall_seconds": 0.23199356207624078,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "operator_evaluation_count": 1,
+            "operator_evaluations": [
+              {
+                "class_gpu_milliseconds": 221.60384,
+                "classes": [
+                  {
+                    "gpu_milliseconds": 20.454752,
+                    "launches": 1,
+                    "name": "ppps",
+                    "shell_class": 4,
+                    "timed_share_percent": 9.23
+                  },
+                  {
+                    "gpu_milliseconds": 19.128896,
+                    "launches": 1,
+                    "name": "psps",
+                    "shell_class": 2,
+                    "timed_share_percent": 8.63
+                  },
+                  {
+                    "gpu_milliseconds": 17.615072,
+                    "launches": 1,
+                    "name": "ddds",
+                    "shell_class": 18,
+                    "timed_share_percent": 7.95
+                  },
+                  {
+                    "gpu_milliseconds": 16.176384,
+                    "launches": 1,
+                    "name": "dpps",
+                    "shell_class": 11,
+                    "timed_share_percent": 7.3
+                  },
+                  {
+                    "gpu_milliseconds": 15.979328,
+                    "launches": 1,
+                    "name": "ssss",
+                    "shell_class": 0,
+                    "timed_share_percent": 7.21
+                  },
+                  {
+                    "gpu_milliseconds": 14.407328,
+                    "launches": 1,
+                    "name": "psss",
+                    "shell_class": 1,
+                    "timed_share_percent": 6.5
+                  },
+                  {
+                    "gpu_milliseconds": 13.660544,
+                    "launches": 1,
+                    "name": "ppss",
+                    "shell_class": 3,
+                    "timed_share_percent": 6.16
+                  },
+                  {
+                    "gpu_milliseconds": 12.163424,
+                    "launches": 1,
+                    "name": "ddps",
+                    "shell_class": 16,
+                    "timed_share_percent": 5.49
+                  },
+                  {
+                    "gpu_milliseconds": 11.97168,
+                    "launches": 1,
+                    "name": "pppp",
+                    "shell_class": 5,
+                    "timed_share_percent": 5.4
+                  },
+                  {
+                    "gpu_milliseconds": 11.509216,
+                    "launches": 1,
+                    "name": "dsss",
+                    "shell_class": 6,
+                    "timed_share_percent": 5.19
+                  },
+                  {
+                    "gpu_milliseconds": 11.314912,
+                    "launches": 1,
+                    "name": "dppp",
+                    "shell_class": 12,
+                    "timed_share_percent": 5.11
+                  },
+                  {
+                    "gpu_milliseconds": 10.213984,
+                    "launches": 1,
+                    "name": "ddss",
+                    "shell_class": 15,
+                    "timed_share_percent": 4.61
+                  },
+                  {
+                    "gpu_milliseconds": 10.107392,
+                    "launches": 1,
+                    "name": "dsps",
+                    "shell_class": 7,
+                    "timed_share_percent": 4.56
+                  },
+                  {
+                    "gpu_milliseconds": 8.417024,
+                    "launches": 1,
+                    "name": "dpss",
+                    "shell_class": 10,
+                    "timed_share_percent": 3.8
+                  },
+                  {
+                    "gpu_milliseconds": 5.974048,
+                    "launches": 1,
+                    "name": "dpdp",
+                    "shell_class": 14,
+                    "timed_share_percent": 2.7
+                  },
+                  {
+                    "gpu_milliseconds": 5.224352,
+                    "launches": 1,
+                    "name": "dspp",
+                    "shell_class": 8,
+                    "timed_share_percent": 2.36
+                  },
+                  {
+                    "gpu_milliseconds": 5.083072,
+                    "launches": 1,
+                    "name": "dddp",
+                    "shell_class": 19,
+                    "timed_share_percent": 2.29
+                  },
+                  {
+                    "gpu_milliseconds": 4.994848,
+                    "launches": 1,
+                    "name": "dddd",
+                    "shell_class": 20,
+                    "timed_share_percent": 2.25
+                  },
+                  {
+                    "gpu_milliseconds": 3.833312,
+                    "launches": 1,
+                    "name": "dpds",
+                    "shell_class": 13,
+                    "timed_share_percent": 1.73
+                  },
+                  {
+                    "gpu_milliseconds": 2.829952,
+                    "launches": 1,
+                    "name": "dsds",
+                    "shell_class": 9,
+                    "timed_share_percent": 1.28
+                  },
+                  {
+                    "gpu_milliseconds": 0.54432,
+                    "launches": 1,
+                    "name": "ddpp",
+                    "shell_class": 17,
+                    "timed_share_percent": 0.25
+                  }
+                ],
+                "precision": {
+                  "enabled": false,
+                  "shell_classes": [
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 71510,
+                      "mixed_capable": false,
+                      "name": "ssss",
+                      "shell_class": 0
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 150588,
+                      "mixed_capable": false,
+                      "name": "psss",
+                      "shell_class": 1
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 79416,
+                      "mixed_capable": false,
+                      "name": "psps",
+                      "shell_class": 2
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 45648,
+                      "mixed_capable": false,
+                      "name": "ppss",
+                      "shell_class": 3
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 48156,
+                      "mixed_capable": false,
+                      "name": "ppps",
+                      "shell_class": 4
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 7343,
+                      "mixed_capable": false,
+                      "name": "pppp",
+                      "shell_class": 5
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 35316,
+                      "mixed_capable": false,
+                      "name": "dsss",
+                      "shell_class": 6
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 36896,
+                      "mixed_capable": false,
+                      "name": "dsps",
+                      "shell_class": 7
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 11124,
+                      "mixed_capable": false,
+                      "name": "dspp",
+                      "shell_class": 8
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 4322,
+                      "mixed_capable": false,
+                      "name": "dsds",
+                      "shell_class": 9
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 20000,
+                      "mixed_capable": false,
+                      "name": "dpss",
+                      "shell_class": 10
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 20776,
+                      "mixed_capable": false,
+                      "name": "dpps",
+                      "shell_class": 11
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 6256,
+                      "mixed_capable": false,
+                      "name": "dppp",
+                      "shell_class": 12
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 4728,
+                      "mixed_capable": false,
+                      "name": "dpds",
+                      "shell_class": 13
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 1302,
+                      "mixed_capable": false,
+                      "name": "dpdp",
+                      "shell_class": 14
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 2964,
+                      "mixed_capable": false,
+                      "name": "ddss",
+                      "shell_class": 15
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 3040,
+                      "mixed_capable": false,
+                      "name": "ddps",
+                      "shell_class": 16
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 920,
+                      "mixed_capable": false,
+                      "name": "ddpp",
+                      "shell_class": 17
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 700,
+                      "mixed_capable": false,
+                      "name": "ddds",
+                      "shell_class": 18
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 380,
+                      "mixed_capable": false,
+                      "name": "dddp",
+                      "shell_class": 19
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 26,
+                      "mixed_capable": false,
+                      "name": "dddd",
+                      "shell_class": 20
+                    }
+                  ],
+                  "threshold": 0.0
+                },
+                "reported_class_count": 21
+              }
+            ],
+            "synchronized_wall_seconds": 0.2329777718987316,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "operator_evaluation_count": 1,
+            "operator_evaluations": [
+              {
+                "class_gpu_milliseconds": 221.401984,
+                "classes": [
+                  {
+                    "gpu_milliseconds": 20.125152,
+                    "launches": 1,
+                    "name": "ppps",
+                    "shell_class": 4,
+                    "timed_share_percent": 9.09
+                  },
+                  {
+                    "gpu_milliseconds": 19.20976,
+                    "launches": 1,
+                    "name": "psps",
+                    "shell_class": 2,
+                    "timed_share_percent": 8.68
+                  },
+                  {
+                    "gpu_milliseconds": 17.601056,
+                    "launches": 1,
+                    "name": "ddds",
+                    "shell_class": 18,
+                    "timed_share_percent": 7.95
+                  },
+                  {
+                    "gpu_milliseconds": 15.999328,
+                    "launches": 1,
+                    "name": "ssss",
+                    "shell_class": 0,
+                    "timed_share_percent": 7.23
+                  },
+                  {
+                    "gpu_milliseconds": 15.672896,
+                    "launches": 1,
+                    "name": "dpps",
+                    "shell_class": 11,
+                    "timed_share_percent": 7.08
+                  },
+                  {
+                    "gpu_milliseconds": 14.407552,
+                    "launches": 1,
+                    "name": "psss",
+                    "shell_class": 1,
+                    "timed_share_percent": 6.51
+                  },
+                  {
+                    "gpu_milliseconds": 13.803616,
+                    "launches": 1,
+                    "name": "ppss",
+                    "shell_class": 3,
+                    "timed_share_percent": 6.23
+                  },
+                  {
+                    "gpu_milliseconds": 12.16048,
+                    "launches": 1,
+                    "name": "ddps",
+                    "shell_class": 16,
+                    "timed_share_percent": 5.49
+                  },
+                  {
+                    "gpu_milliseconds": 11.501056,
+                    "launches": 1,
+                    "name": "dsss",
+                    "shell_class": 6,
+                    "timed_share_percent": 5.19
+                  },
+                  {
+                    "gpu_milliseconds": 11.43072,
+                    "launches": 1,
+                    "name": "pppp",
+                    "shell_class": 5,
+                    "timed_share_percent": 5.16
+                  },
+                  {
+                    "gpu_milliseconds": 11.2936,
+                    "launches": 1,
+                    "name": "dppp",
+                    "shell_class": 12,
+                    "timed_share_percent": 5.1
+                  },
+                  {
+                    "gpu_milliseconds": 10.729696,
+                    "launches": 1,
+                    "name": "dsps",
+                    "shell_class": 7,
+                    "timed_share_percent": 4.85
+                  },
+                  {
+                    "gpu_milliseconds": 10.211424,
+                    "launches": 1,
+                    "name": "ddss",
+                    "shell_class": 15,
+                    "timed_share_percent": 4.61
+                  },
+                  {
+                    "gpu_milliseconds": 8.413984,
+                    "launches": 1,
+                    "name": "dpss",
+                    "shell_class": 10,
+                    "timed_share_percent": 3.8
+                  },
+                  {
+                    "gpu_milliseconds": 5.967392,
+                    "launches": 1,
+                    "name": "dpdp",
+                    "shell_class": 14,
+                    "timed_share_percent": 2.7
+                  },
+                  {
+                    "gpu_milliseconds": 5.24352,
+                    "launches": 1,
+                    "name": "dspp",
+                    "shell_class": 8,
+                    "timed_share_percent": 2.37
+                  },
+                  {
+                    "gpu_milliseconds": 5.09728,
+                    "launches": 1,
+                    "name": "dddd",
+                    "shell_class": 20,
+                    "timed_share_percent": 2.3
+                  },
+                  {
+                    "gpu_milliseconds": 5.081568,
+                    "launches": 1,
+                    "name": "dddp",
+                    "shell_class": 19,
+                    "timed_share_percent": 2.3
+                  },
+                  {
+                    "gpu_milliseconds": 3.843456,
+                    "launches": 1,
+                    "name": "dpds",
+                    "shell_class": 13,
+                    "timed_share_percent": 1.74
+                  },
+                  {
+                    "gpu_milliseconds": 3.064512,
+                    "launches": 1,
+                    "name": "dsds",
+                    "shell_class": 9,
+                    "timed_share_percent": 1.38
+                  },
+                  {
+                    "gpu_milliseconds": 0.543936,
+                    "launches": 1,
+                    "name": "ddpp",
+                    "shell_class": 17,
+                    "timed_share_percent": 0.25
+                  }
+                ],
+                "precision": {
+                  "enabled": false,
+                  "shell_classes": [
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 71510,
+                      "mixed_capable": false,
+                      "name": "ssss",
+                      "shell_class": 0
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 150588,
+                      "mixed_capable": false,
+                      "name": "psss",
+                      "shell_class": 1
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 79416,
+                      "mixed_capable": false,
+                      "name": "psps",
+                      "shell_class": 2
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 45648,
+                      "mixed_capable": false,
+                      "name": "ppss",
+                      "shell_class": 3
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 48156,
+                      "mixed_capable": false,
+                      "name": "ppps",
+                      "shell_class": 4
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 7343,
+                      "mixed_capable": false,
+                      "name": "pppp",
+                      "shell_class": 5
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 35316,
+                      "mixed_capable": false,
+                      "name": "dsss",
+                      "shell_class": 6
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 36896,
+                      "mixed_capable": false,
+                      "name": "dsps",
+                      "shell_class": 7
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 11124,
+                      "mixed_capable": false,
+                      "name": "dspp",
+                      "shell_class": 8
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 4322,
+                      "mixed_capable": false,
+                      "name": "dsds",
+                      "shell_class": 9
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 20000,
+                      "mixed_capable": false,
+                      "name": "dpss",
+                      "shell_class": 10
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 20776,
+                      "mixed_capable": false,
+                      "name": "dpps",
+                      "shell_class": 11
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 6256,
+                      "mixed_capable": false,
+                      "name": "dppp",
+                      "shell_class": 12
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 4728,
+                      "mixed_capable": false,
+                      "name": "dpds",
+                      "shell_class": 13
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 1302,
+                      "mixed_capable": false,
+                      "name": "dpdp",
+                      "shell_class": 14
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 2964,
+                      "mixed_capable": false,
+                      "name": "ddss",
+                      "shell_class": 15
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 3040,
+                      "mixed_capable": false,
+                      "name": "ddps",
+                      "shell_class": 16
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 920,
+                      "mixed_capable": false,
+                      "name": "ddpp",
+                      "shell_class": 17
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 700,
+                      "mixed_capable": false,
+                      "name": "ddds",
+                      "shell_class": 18
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 380,
+                      "mixed_capable": false,
+                      "name": "dddp",
+                      "shell_class": 19
+                    },
+                    {
+                      "fp32_quartets": 0,
+                      "fp64_quartets": 26,
+                      "mixed_capable": false,
+                      "name": "dddd",
+                      "shell_class": 20
+                    }
+                  ],
+                  "threshold": 0.0
+                },
+                "reported_class_count": 21
+              }
+            ],
+            "synchronized_wall_seconds": 0.2328543569892645,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ]
+      }
+    }
+  },
+  "limitations": [
+    "The experimental threshold is not a promoted automatic policy.",
+    "Class GPU global-timer rows cover instrumented generated Fock workers; synchronized wall time covers the complete isolated replay.",
+    "This A-slice records output boundaries and arithmetic work counts; controller/refinement evidence belongs to later #174 slices."
+  ],
+  "schema_version": 1
+}

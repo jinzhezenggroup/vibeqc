@@ -1,0 +1,300 @@
+{
+  "records": [
+    {
+      "kernels": [
+        {
+          "calls": 135,
+          "milliseconds": 2.299699,
+          "name": "vibeqc::scf::<unnamed>::derivative_tile(vibeqc::scf::DfDerivativeBasisView, vibeqc::scf::DfDerivativeBasisView, const double *, unsigned int, unsigned long, unsigned long, const double *, unsigned int, double *, unsigned long)"
+        },
+        {
+          "calls": 15,
+          "milliseconds": 1.651663,
+          "name": "vibeqc::scf::<unnamed>::thread_gradient(vibeqc::scf::OneElectronDeviceView, const int *, const int *, unsigned long, vibeqc::scf::OneElectronWeightView, const unsigned char *, double, double *)"
+        },
+        {
+          "calls": 180,
+          "milliseconds": 1.191851,
+          "name": "void gemmSN_TN_kernel<double, (int)128, (int)16, (int)2, (int)4, (int)8, (int)9, (bool)0, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>>(cublasGemmSmallNParams<T9, T10, T11, T1>)"
+        },
+        {
+          "calls": 90,
+          "milliseconds": 0.112545,
+          "name": "vibeqc::scf::<unnamed>::reduce_exchange_tile_kernel(unsigned long, unsigned long, unsigned long, const double *, double *)"
+        },
+        {
+          "calls": 90,
+          "milliseconds": 0.081952,
+          "name": "vibeqc::scf::<unnamed>::gather_auxiliary_tile_kernel(unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, const double *, double *)"
+        },
+        {
+          "calls": 90,
+          "milliseconds": 0.081408,
+          "name": "vibeqc::scf::<unnamed>::transpose_density_kernel(unsigned long, const double *, double *)"
+        },
+        {
+          "calls": 30,
+          "milliseconds": 0.078368,
+          "name": "void gemv2N_kernel<int, int, double, double, double, double, (int)128, (int)32, (int)4, (int)4, (int)1, (bool)0, cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>, double>>(T13)"
+        },
+        {
+          "calls": 30,
+          "milliseconds": 0.058816,
+          "name": "void gemv2T_kernel_val<int, int, double, double, double, double, (int)128, (int)16, (int)2, (int)2, (bool)0, (bool)0, cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>, double>>(T13, T6, T6)"
+        }
+      ],
+      "profile": "profile-generated-0",
+      "scope": "five captured warm replays; three systems per replay; includes complete HF, one-electron and DF response",
+      "synchronizations": {
+        "cudaDeviceSynchronize_v3020": 5,
+        "cudaStreamSynchronize_v3020": 210
+      },
+      "transfers": {
+        "Device-to-Host": {
+          "bytes": 40830,
+          "count": 155
+        },
+        "Host-to-Device": {
+          "bytes": 148980,
+          "count": 690
+        }
+      }
+    },
+    {
+      "kernels": [
+        {
+          "calls": 720,
+          "milliseconds": 116.803748,
+          "name": "void vibeqc::scf::<unnamed>::build_cuda_df_transformed_tile_kernel<(bool)0>(vibeqc::scf::<unnamed>::DeviceBatch, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, long, const double *, const double *, const double *, bool, double *, bool, unsigned int)"
+        },
+        {
+          "calls": 135,
+          "milliseconds": 4.176311,
+          "name": "vibeqc::scf::<unnamed>::derivative_tile(vibeqc::scf::DfDerivativeBasisView, vibeqc::scf::DfDerivativeBasisView, const double *, unsigned int, unsigned long, unsigned long, const double *, unsigned int, double *, unsigned long)"
+        },
+        {
+          "calls": 15,
+          "milliseconds": 1.651788,
+          "name": "vibeqc::scf::<unnamed>::thread_gradient(vibeqc::scf::OneElectronDeviceView, const int *, const int *, unsigned long, vibeqc::scf::OneElectronWeightView, const unsigned char *, double, double *)"
+        },
+        {
+          "calls": 180,
+          "milliseconds": 1.255624,
+          "name": "void gemmSN_TN_kernel<double, (int)128, (int)16, (int)2, (int)4, (int)8, (int)9, (bool)0, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>>(cublasGemmSmallNParams<T9, T10, T11, T1>)"
+        },
+        {
+          "calls": 5,
+          "milliseconds": 1.121418,
+          "name": "void vibeqc::scf::<unnamed>::build_cuda_one_electron_integrals_kernel<(bool)0>(vibeqc::scf::<unnamed>::DeviceBatch, const int *, const int *, unsigned long, long, double *, double *)"
+        },
+        {
+          "calls": 90,
+          "milliseconds": 0.34333,
+          "name": "vibeqc::scf::<unnamed>::accumulate_streamed_auxiliary_density_kernel(unsigned long, unsigned long, const double *, const double *, double *)"
+        },
+        {
+          "calls": 180,
+          "milliseconds": 0.165793,
+          "name": "vibeqc::scf::<unnamed>::transpose_streamed_df_tile_kernel(unsigned long, unsigned long, const double *, double *)"
+        },
+        {
+          "calls": 90,
+          "milliseconds": 0.125506,
+          "name": "vibeqc::scf::<unnamed>::reduce_exchange_row_tile_kernel(unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, const double *, double *)"
+        },
+        {
+          "calls": 90,
+          "milliseconds": 0.117376,
+          "name": "vibeqc::scf::<unnamed>::build_streamed_coulomb_tile_kernel(unsigned long, unsigned long, const double *, const double *, double *)"
+        },
+        {
+          "calls": 90,
+          "milliseconds": 0.0832,
+          "name": "vibeqc::scf::<unnamed>::transpose_density_kernel(unsigned long, const double *, double *)"
+        },
+        {
+          "calls": 30,
+          "milliseconds": 0.07661,
+          "name": "void vibeqc::scf::<unnamed>::build_cuda_nuclear_repulsion_kernel<(bool)1>(vibeqc::scf::<unnamed>::DeviceBatch, long, double *)"
+        },
+        {
+          "calls": 5,
+          "milliseconds": 0.009312,
+          "name": "void vibeqc::scf::<unnamed>::build_cuda_nuclear_repulsion_kernel<(bool)0>(vibeqc::scf::<unnamed>::DeviceBatch, long, double *)"
+        }
+      ],
+      "profile": "profile-generated-1048576",
+      "scope": "five captured warm replays; three systems per replay; includes complete HF, one-electron and DF response",
+      "synchronizations": {
+        "cudaDeviceSynchronize_v3020": 5,
+        "cudaStreamSynchronize_v3020": 605
+      },
+      "transfers": {
+        "Device-to-Host": {
+          "bytes": 241350,
+          "count": 560
+        },
+        "Host-to-Device": {
+          "bytes": 161920,
+          "count": 800
+        }
+      }
+    },
+    {
+      "kernels": [
+        {
+          "calls": 630,
+          "milliseconds": 4.420706,
+          "name": "void gemmSN_TN_kernel<double, (int)128, (int)16, (int)2, (int)4, (int)8, (int)9, (bool)0, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>>(cublasGemmSmallNParams<T9, T10, T11, T1>)"
+        },
+        {
+          "calls": 15,
+          "milliseconds": 1.652942,
+          "name": "vibeqc::scf::<unnamed>::thread_gradient(vibeqc::scf::OneElectronDeviceView, const int *, const int *, unsigned long, vibeqc::scf::OneElectronWeightView, const unsigned char *, double, double *)"
+        },
+        {
+          "calls": 210,
+          "milliseconds": 0.549409,
+          "name": "void gemv2N_kernel<int, int, double, double, double, double, (int)128, (int)32, (int)4, (int)4, (int)1, (bool)0, cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>, double>>(T13)"
+        },
+        {
+          "calls": 180,
+          "milliseconds": 0.479715,
+          "name": "void gemmSN_NN_kernel<double, (int)128, (int)2, (int)4, (int)8, (int)4, (int)4, (bool)0, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>>(cublasGemmSmallNParams<T9, T10, T11, T1>)"
+        },
+        {
+          "calls": 90,
+          "milliseconds": 0.239969,
+          "name": "vibeqc::scf::<unnamed>::reduce_force_response_kernel(unsigned long, const double *, const double *, const double *, const double *, const double *, const double *, double, double, double *)"
+        },
+        {
+          "calls": 180,
+          "milliseconds": 0.184834,
+          "name": "vibeqc::scf::<unnamed>::gather_force_auxiliary_matrices_kernel(unsigned long, unsigned long, const double *, double *)"
+        },
+        {
+          "calls": 180,
+          "milliseconds": 0.163329,
+          "name": "vibeqc::scf::<unnamed>::transpose_density_kernel(unsigned long, const double *, double *)"
+        },
+        {
+          "calls": 90,
+          "milliseconds": 0.112,
+          "name": "vibeqc::scf::<unnamed>::reduce_exchange_tile_kernel(unsigned long, unsigned long, unsigned long, const double *, double *)"
+        },
+        {
+          "calls": 90,
+          "milliseconds": 0.081889,
+          "name": "vibeqc::scf::<unnamed>::gather_auxiliary_tile_kernel(unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, const double *, double *)"
+        },
+        {
+          "calls": 30,
+          "milliseconds": 0.059232,
+          "name": "void gemv2T_kernel_val<int, int, double, double, double, double, (int)128, (int)16, (int)2, (int)2, (bool)0, (bool)0, cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>, double>>(T13, T6, T6)"
+        }
+      ],
+      "profile": "profile-reference-0",
+      "scope": "five captured warm replays; three systems per replay; includes complete HF, one-electron and DF response",
+      "synchronizations": {
+        "cudaDeviceSynchronize_v3020": 5,
+        "cudaStreamSynchronize_v3020": 75
+      },
+      "transfers": {
+        "Device-to-Host": {
+          "bytes": 40830,
+          "count": 230
+        },
+        "Host-to-Device": {
+          "bytes": 557940,
+          "count": 525
+        }
+      }
+    },
+    {
+      "kernels": [
+        {
+          "calls": 180,
+          "milliseconds": 302.610994,
+          "name": "void vibeqc::scf::<unnamed>::build_cuda_df_transformed_tile_kernel<(bool)1>(vibeqc::scf::<unnamed>::DeviceBatch, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, long, const double *, const double *, const double *, bool, double *, bool, unsigned int)"
+        },
+        {
+          "calls": 540,
+          "milliseconds": 105.913023,
+          "name": "void vibeqc::scf::<unnamed>::build_cuda_df_transformed_tile_kernel<(bool)0>(vibeqc::scf::<unnamed>::DeviceBatch, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, long, const double *, const double *, const double *, bool, double *, bool, unsigned int)"
+        },
+        {
+          "calls": 90,
+          "milliseconds": 98.430512,
+          "name": "void vibeqc::scf::<unnamed>::build_cuda_df_metric_source_kernel<(bool)1>(vibeqc::scf::<unnamed>::DeviceBatch, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, long, const double *, double *, bool, unsigned int)"
+        },
+        {
+          "calls": 15,
+          "milliseconds": 1.635693,
+          "name": "vibeqc::scf::<unnamed>::thread_gradient(vibeqc::scf::OneElectronDeviceView, const int *, const int *, unsigned long, vibeqc::scf::OneElectronWeightView, const unsigned char *, double, double *)"
+        },
+        {
+          "calls": 180,
+          "milliseconds": 1.243659,
+          "name": "void gemmSN_TN_kernel<double, (int)128, (int)16, (int)2, (int)4, (int)8, (int)9, (bool)0, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>>(cublasGemmSmallNParams<T9, T10, T11, T1>)"
+        },
+        {
+          "calls": 5,
+          "milliseconds": 1.105671,
+          "name": "void vibeqc::scf::<unnamed>::build_cuda_one_electron_integrals_kernel<(bool)0>(vibeqc::scf::<unnamed>::DeviceBatch, const int *, const int *, unsigned long, long, double *, double *)"
+        },
+        {
+          "calls": 90,
+          "milliseconds": 0.340674,
+          "name": "vibeqc::scf::<unnamed>::accumulate_streamed_auxiliary_density_kernel(unsigned long, unsigned long, const double *, const double *, double *)"
+        },
+        {
+          "calls": 180,
+          "milliseconds": 0.164672,
+          "name": "vibeqc::scf::<unnamed>::transpose_streamed_df_tile_kernel(unsigned long, unsigned long, const double *, double *)"
+        },
+        {
+          "calls": 90,
+          "milliseconds": 0.125028,
+          "name": "vibeqc::scf::<unnamed>::reduce_exchange_row_tile_kernel(unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, const double *, double *)"
+        },
+        {
+          "calls": 90,
+          "milliseconds": 0.116801,
+          "name": "vibeqc::scf::<unnamed>::build_streamed_coulomb_tile_kernel(unsigned long, unsigned long, const double *, const double *, double *)"
+        },
+        {
+          "calls": 90,
+          "milliseconds": 0.082817,
+          "name": "vibeqc::scf::<unnamed>::transpose_density_kernel(unsigned long, const double *, double *)"
+        },
+        {
+          "calls": 30,
+          "milliseconds": 0.075968,
+          "name": "void vibeqc::scf::<unnamed>::build_cuda_nuclear_repulsion_kernel<(bool)1>(vibeqc::scf::<unnamed>::DeviceBatch, long, double *)"
+        },
+        {
+          "calls": 5,
+          "milliseconds": 0.009248,
+          "name": "void vibeqc::scf::<unnamed>::build_cuda_nuclear_repulsion_kernel<(bool)0>(vibeqc::scf::<unnamed>::DeviceBatch, long, double *)"
+        }
+      ],
+      "profile": "profile-reference-1048576",
+      "scope": "five captured warm replays; three systems per replay; includes complete HF, one-electron and DF response",
+      "synchronizations": {
+        "cudaDeviceSynchronize_v3020": 5,
+        "cudaStreamSynchronize_v3020": 545
+      },
+      "transfers": {
+        "Device-to-Host": {
+          "bytes": 1576950,
+          "count": 635
+        },
+        "Host-to-Device": {
+          "bytes": 79360,
+          "count": 410
+        }
+      }
+    }
+  ],
+  "scope": "Immutable initial performance build; see provenance.json for hashes"
+}

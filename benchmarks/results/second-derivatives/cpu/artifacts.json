@@ -1,0 +1,1057 @@
+{
+  "0f8a3f5ed7d2eaadc7ef8ee55b00b9000d5f13628448f4634ed99a236ea54889": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "30e2dcfe672772ea41849e06e8250a4da12ac073640531728cfe5ad2207e88e4",
+    "compile_seconds": 0.6460127318277955,
+    "compiler_resources": [],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "8b7f3c94df6ea185579e8d7a4fda8503e32d554ea6934d8a0b2d39b7229d28de",
+    "output": "weighted_hessian",
+    "output_indices": [
+      1,
+      6,
+      17,
+      22,
+      27,
+      32
+    ],
+    "source_sha256": "fd28c2f510680cb230427314992f06fd4d146699e20a89ba2752cb384eb13956",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "18b0a19508ba5ee5052274a2ed8d424a83ef82d1ed2389545f3c59c93fe5854e": {
+    "angular": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "binary_sha256": "fa3b220d15a60942f5db574bb5a044ffe70b0610303e2643160235022bf1df1b",
+    "compile_seconds": 0.7349653542041779,
+    "compiler_resources": [],
+    "component_indices": [
+      0,
+      2
+    ],
+    "native_key": "eea3bb1a5eba9b383cfa463a4b42a671002a48e783e4339ab340b3869daa47f2",
+    "output": "weighted_hessian",
+    "output_indices": [
+      1,
+      18,
+      35,
+      40,
+      57,
+      62,
+      79,
+      84,
+      101,
+      118,
+      123,
+      140
+    ],
+    "source_sha256": "4591a83a9d497ac98fd861c6e60b953fc99915860ce730e1a06dba72389539af",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "1b7a74e3ca6496a110ffeb02dd55af407ff141cc7adf189b8ed2b020e4111b4e": {
+    "angular": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "binary_sha256": "a0c460088d60e5e266ef07f69d54ce56ee19950f3ecf561cd489e6e4b4871688",
+    "compile_seconds": 0.7285016430541873,
+    "compiler_resources": [],
+    "component_indices": [
+      0
+    ],
+    "native_key": "5c2075569dc7a0e8b5ea2b2f40ee3fef0137111740f97c9b838d5ebde6da85ed",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      18,
+      35,
+      40,
+      57,
+      62,
+      79,
+      84,
+      101,
+      118,
+      123,
+      140
+    ],
+    "source_sha256": "8b601b228c76e3d3982e27a6978c5165605b818a23951526bf957f53d71c23df",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "273dc073310ebceebef1ddc0021c1246226a8436502c4e913598e2a9487a2500": {
+    "angular": [
+      3,
+      3,
+      3,
+      3
+    ],
+    "binary_sha256": "50c2b3e1d725635dcb669e5d7b001cd3edcebfa09892a5794eb57741403bf7bd",
+    "compile_seconds": 3.545832288917154,
+    "compiler_resources": [],
+    "component_indices": [
+      0
+    ],
+    "native_key": "55b09b66d8bdce84f96fabe50b01b64dc519302c4ac949ba5b58989a2f72db1c",
+    "output": "weighted_hvp",
+    "output_indices": [
+      0
+    ],
+    "source_sha256": "7e8a4d24fd12ec02cca2e07497a6722fee106e814a78738b5adca24caf908960",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "2d04ca53005616d34e3c2cd12a20a7ff8211effafcf4d6020406d6344d307e15": {
+    "angular": [
+      3,
+      0
+    ],
+    "binary_sha256": "1d8b203ddc3ed471fd2240b14be5d17b05eab65aeb92cd283e6e241328ca2571",
+    "compile_seconds": 0.7784727700054646,
+    "compiler_resources": [],
+    "component_indices": [
+      4
+    ],
+    "native_key": "17c6a4f5c324d686bd3a7de65dff26d5e10024c51bc94c01d4cf7bc3cf7cf266",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      15,
+      20,
+      34,
+      39,
+      53,
+      58,
+      63,
+      77
+    ],
+    "source_sha256": "301da29f1bf108ce1cff98c7edc3b1210d0eee10574ebb31368e1425082f892b",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "3275af7a6b9c35dc60b81955b10f3d10c30f64d7322d4acae2cb0261e7152577": {
+    "angular": [
+      3,
+      0
+    ],
+    "binary_sha256": "9e11236b4fae5cafcc79f299c633fdc9a93922858c91a436d6f058af42d4602b",
+    "compile_seconds": 0.8414440280757844,
+    "compiler_resources": [],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "27e5581acab0be40077356c52a81376fdfe6597d4a3bcc2d801b4ac450b083ac",
+    "output": "weighted_hessian",
+    "output_indices": [
+      1,
+      15,
+      20,
+      34,
+      39,
+      53,
+      58,
+      63,
+      77
+    ],
+    "source_sha256": "5fe6395d962d785b72aefdfe3e661dac47f421213250e3e442e934d6e02b90d6",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "3c4a65aa94c28aee45e3c3f98db5a3e74771e0776372c3bc0a1793497939ebe9": {
+    "angular": [
+      3,
+      0
+    ],
+    "binary_sha256": "c409777aa7a07a4d6b239821023ed5c046110398f9d375009befe1c386c6d40b",
+    "compile_seconds": 0.7189258311409503,
+    "compiler_resources": [],
+    "component_indices": [
+      0
+    ],
+    "native_key": "8d7674f7af91085894177d8658d2ad432ac901c0efae7b82fb2731e4651dc235",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      15,
+      20,
+      34,
+      39,
+      53,
+      58,
+      63,
+      77
+    ],
+    "source_sha256": "d955dd2bc3da105b589ca874e89c8e1b50f6378542f29c3b9779287ad2ec1851",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "3f3f4a86cf6151d5b8c56ada80c3fc768ea3af484cf3297d5e7e4e1df695c99a": {
+    "angular": [
+      2,
+      1,
+      0,
+      1
+    ],
+    "binary_sha256": "70e61cbcc4982c06cda5ec407044e250273b8d83fd7403576928c446eee59e53",
+    "compile_seconds": 0.9953770670108497,
+    "compiler_resources": [],
+    "component_indices": [
+      4
+    ],
+    "native_key": "86f03ca41cdaf319d47f80b58769977a0a461512d8c556566ed4d7bdb44ff6e7",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      18,
+      35,
+      40,
+      57,
+      62,
+      79,
+      84,
+      101,
+      118,
+      123,
+      140
+    ],
+    "source_sha256": "fc18969892fc1d7ac866f6453cbec7e9a5fcf8c520b6f9e07ab4ed642609a5c3",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "4a144510d0934233be71cd0bd9c274218a88d3e618fef00df6a00d79bc6b9cae": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "931daa4411bacd68fa8464fcb19a3b0dab3970928124bee8bd2d6dea7722191c",
+    "compile_seconds": 1.3386655170470476,
+    "compiler_resources": [],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "7405b1d2210db6095197b1d688bbd778634adfbe17658eeb82328fc654929c86",
+    "output": "weighted_hvp",
+    "output_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "source_sha256": "8c367007d14949adfa9a1d530f3771062f8ee431a1dd04968f1da9fb9fc66e25",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "4a474f1059d66086537e7f95015e350f14f1bdcb4d1c1fb839c0a415dc289f1d": {
+    "angular": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "binary_sha256": "0ddbf65a108470548a1f27d3a78ffb459bb59268f42aaa6dc48fbaf8ac717a1f",
+    "compile_seconds": 0.9608113989233971,
+    "compiler_resources": [],
+    "component_indices": [
+      0,
+      2
+    ],
+    "native_key": "2c4185a499a12cfc8a2392af517904a68e87695267d2dfec3f9840d289eea9f1",
+    "output": "weighted_hvp",
+    "output_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "source_sha256": "5448d5d4824735fad2c7d158f7aca28a40e2784f6ab4236f121e29229a8103d1",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "5830669bf603e6ca6c61b2a1d5875c4df87eb6752bb2eaf496fcbfeb0a49b878": {
+    "angular": [
+      2,
+      1,
+      0,
+      1
+    ],
+    "binary_sha256": "99a345a55b77a765303589c8923391e35b1f02038314009f91c8a53c1cf27e9c",
+    "compile_seconds": 1.1661348161287606,
+    "compiler_resources": [],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "4c2a41db8b19f353522350a5275f9abdec53bb1a90197d79aaeaab766c23c586",
+    "output": "weighted_hessian",
+    "output_indices": [
+      1,
+      18,
+      35,
+      40,
+      57,
+      62,
+      79,
+      84,
+      101,
+      118,
+      123,
+      140
+    ],
+    "source_sha256": "5116b4535a08312d80d1a69c3cdf40294f4fa436409d75931d6c7e54f6555905",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "71ff3f5df36d14a8f3f36b4856a258ff5da985155ca895b652a748985018a85e": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "1fe52986c1ee4b7441caeb552c76d649c08dc487747cb5748aad505ae107547c",
+    "compile_seconds": 0.6437080940231681,
+    "compiler_resources": [],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "82c5eb92d5d2b54fb60b450d03d75c8b94c04307fe93c1b018d4aca06849b2da",
+    "output": "weighted_hvp",
+    "output_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "source_sha256": "8f2d698c40a64d955553f5b1f1e1c1c2398e4dea2446e93add41c1d8b3180581",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "7628d1a3ce4b24db3066daf513de63c1620c803987430609091b100f4d24d924": {
+    "angular": [
+      3,
+      0,
+      0,
+      0
+    ],
+    "binary_sha256": "dc3a122b9d5e4ab9a5a8e5304a7336fcf4c6e6848c33a08c65dd1cab7c220265",
+    "compile_seconds": 1.7606076498050243,
+    "compiler_resources": [],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "6611718feb0d0846fdeb9615225c44c174266b6cd8ed39aeee4d892e410b82cd",
+    "output": "weighted_hvp",
+    "output_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "source_sha256": "8e412f462b6af295728686729803c9010803b0c72db2b874509195c7e5116f3a",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "7d0e93a668239d8b9e39bfa113f6965b7c4cd07132ace6ac855689634615f90f": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "1c669c3e0e0426947a81ebfdbc8a9e299d05d85745184e980575277c0eb0ba7b",
+    "compile_seconds": 0.6272922940552235,
+    "compiler_resources": [],
+    "component_indices": [
+      4
+    ],
+    "native_key": "5b986b1508c21f3cf9712d175e5146670e6f1e9497e3adc394dc637d087cec46",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      6,
+      17,
+      22,
+      27,
+      32
+    ],
+    "source_sha256": "cfe557c27d02fd42158bbafe6d7b6c9c63ddfd2d88b06515882f839420b7bb0e",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "7eb158f71c2adc656e0c1188c3e8ee8e222061534e19efc1dceadc706490b174": {
+    "angular": [
+      3,
+      0,
+      0,
+      0
+    ],
+    "binary_sha256": "28cc587da875e6f2ec2a1f5a481637602d87e8c61608327ad92c7dd7c2b4ad2e",
+    "compile_seconds": 0.8873704529833049,
+    "compiler_resources": [],
+    "component_indices": [
+      4
+    ],
+    "native_key": "98a98ee9576df5da87a522fd1e93e4ada5f10fe9f3c37261649a1f07bedad414",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      18,
+      35,
+      40,
+      57,
+      62,
+      79,
+      84,
+      101,
+      118,
+      123,
+      140
+    ],
+    "source_sha256": "c47b28229207037b965238c6b4ec907caa22ea088013439414c8a428c1b67556",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "8a09f28e21b0335fce82ccc22289bb2d02d679b18c283fe7878839f47409ad5d": {
+    "angular": [
+      3,
+      0,
+      0,
+      0
+    ],
+    "binary_sha256": "1d5d5e2c28191f34e19082c73f80dd2c6a1b70ed5ba508a9bfdf886df9c27f9b",
+    "compile_seconds": 0.994936116039753,
+    "compiler_resources": [],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "19f4b7ffe4774985cc6d1940f26522df941071c6b884f0bf9470d086ac1d0c55",
+    "output": "weighted_hessian",
+    "output_indices": [
+      1,
+      18,
+      35,
+      40,
+      57,
+      62,
+      79,
+      84,
+      101,
+      118,
+      123,
+      140
+    ],
+    "source_sha256": "30338ba6511cd9f7c2bd109f7e9cd2c559b347a2637811c1e92ef445068364e7",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "912f0008524970c9d963055d4fb11bf511352cdbb45eb8fc88612f9b42b62205": {
+    "angular": [
+      3,
+      3,
+      3,
+      3
+    ],
+    "binary_sha256": "75f60ef787bd57f0af13e56de3234107fef677d38b5056d97ba7003253cdd0ce",
+    "compile_seconds": 1.5187641431111842,
+    "compiler_resources": [],
+    "component_indices": [
+      0
+    ],
+    "native_key": "9cbd984821cdc0d03381fb6377a465d472b2f674ee81c910fe7e6f9d5d17a2d1",
+    "output": "weighted_hessian",
+    "output_indices": [
+      0
+    ],
+    "source_sha256": "adee7c0a7791ccb5bbbce2dc48c2285184c5de6b471bc2552451784528ec4ada",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "94b1e9ded2be0774ef4a2711fb480c4ac65715837aab8d344acba98e60421a63": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "ed1e6b6243fdbb0acb34117fe1464094e1ec2d2ff3ea161a9691fab98747a68a",
+    "compile_seconds": 0.6680206072051078,
+    "compiler_resources": [],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "03ee73d4ac2cf72d007b8a61dedda94e9434b2afab8a870dfc15e92656f3cc9f",
+    "output": "weighted_hvp",
+    "output_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "source_sha256": "e339cd7c0ad257b6c7507414ff98ee5cab8e62da029d0ff48a506e1b62495b97",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "94fb753fd5f18e10fa885604bf8d557473346924c8f0fee174ce01912cca40f9": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "9479c9cb1cab968ba3a0a2dc9f2c835b714ba71c5702493b424b503527cb9f4f",
+    "compile_seconds": 0.7913181928452104,
+    "compiler_resources": [],
+    "component_indices": [
+      4
+    ],
+    "native_key": "deafdbd1aa512894f5501ed5db2cf286f2a8984a84dfe93fa276cfc35cd7dbbd",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      15,
+      20,
+      34,
+      39,
+      53,
+      58,
+      63,
+      77
+    ],
+    "source_sha256": "063555b468fdb9539b20c60187a19f3c9c85def05482973f818ae96db3b2318f",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "9645066aff7f404fd56c3835d6e0453b8f737c186e4faebf9e4a3c1a5cf4809b": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "9646a92ce6827272d3f4dc9bb5f6e83205a9e980f161fb70cc112a0b621594e4",
+    "compile_seconds": 0.6325792029965669,
+    "compiler_resources": [],
+    "component_indices": [
+      4
+    ],
+    "native_key": "ec6b9731ab090514650b7c9a71a2d31206b25b8a057c298c895b0c36b07f02bf",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      6,
+      17,
+      22,
+      27,
+      32
+    ],
+    "source_sha256": "8db52ea4979236a4011c0e98e0b7cde445531bdd9353cb2b358d950feeb0dec0",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "96d4b0c8280cf6d906276a169f7e720a5faaf451372997a7a6175379986b7111": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "b275fb8865975dd5685d028e2e9cbae83ab9ff934b35f1503953273b7b295df4",
+    "compile_seconds": 0.6327991439029574,
+    "compiler_resources": [],
+    "component_indices": [
+      0
+    ],
+    "native_key": "3f9dbf94d9e37784c808f91d11d9d1a35b5e46ee96a59e5e78d76c46ad7e3ee3",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      6,
+      17,
+      22,
+      27,
+      32
+    ],
+    "source_sha256": "35e2b5c31a280c78483448db6e4e9f94e395784ffbe9321d4597324f3f35c943",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "9d9b177f6bd4350ab3d58e432cd937275f39605337ecf114f9b9ac2cc8df74e4": {
+    "angular": [
+      3,
+      0,
+      0,
+      0
+    ],
+    "binary_sha256": "716b0433fe9f000ea75f9400470a3f0f7bbf96bbed8a66caed759573574e982f",
+    "compile_seconds": 0.7778844661079347,
+    "compiler_resources": [],
+    "component_indices": [
+      0
+    ],
+    "native_key": "7bb4b0daf31e17d10010f3b31546d8b26e7da327b86309d1fd035631cee78935",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      18,
+      35,
+      40,
+      57,
+      62,
+      79,
+      84,
+      101,
+      118,
+      123,
+      140
+    ],
+    "source_sha256": "054cb15a9f05c3371c0be9fbaaf1b9c5d2cb7be18445031ac32a05e4044931c8",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "a103cc1f1c08fb6ee08d475af09389664fd47b8795c2f69f7c51f725d98d47f9": {
+    "angular": [
+      2,
+      1,
+      0,
+      1
+    ],
+    "binary_sha256": "a810cae2cc97d8161284d6a3ae79799bb8df09256c8c64012d1f42e9fd5736a4",
+    "compile_seconds": 0.8324933191761374,
+    "compiler_resources": [],
+    "component_indices": [
+      0
+    ],
+    "native_key": "36d9ca72b2b4e64db955ad2a655c1323e59b988af25c265f2a40552f3f1fc9af",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      18,
+      35,
+      40,
+      57,
+      62,
+      79,
+      84,
+      101,
+      118,
+      123,
+      140
+    ],
+    "source_sha256": "22dbc704fdd243b3fa7b986f8d237315bf3e096dbd7720c1a1d4d732b83b1efb",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "a12c654d167a3b54fbd2e0d4222803afae6ec2d5e11c64530e359b59f53dcca2": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "e58e74a43c8a286b19a799083ce06c56a5d5277edea5dbd01e80d8e828720e94",
+    "compile_seconds": 0.6307955519296229,
+    "compiler_resources": [],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "c1e25d25261cf318ef475437dbfc6ab68addfcb98f5691d1390a69a4239a751a",
+    "output": "weighted_hessian",
+    "output_indices": [
+      1,
+      6,
+      17,
+      22,
+      27,
+      32
+    ],
+    "source_sha256": "015e69e507b5b12f04cd0b822dacbea149b3a2bd8606054e5208395d14577abe",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "a882e04ac64a28ddb040e0b913d283823a390a2435331870fd8b2a014f0a1d1f": {
+    "angular": [
+      3,
+      0
+    ],
+    "binary_sha256": "0081e0139a3c9bb309d3eb38ac8740b082fc9d9a2853e4287737597ce06d33c2",
+    "compile_seconds": 1.2829824730288237,
+    "compiler_resources": [],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "1def534320330e264f4158e00f53738c307c3ed848438fbdde70b73b5e36379b",
+    "output": "weighted_hvp",
+    "output_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "source_sha256": "6fae8a5e207650993cf0b49319e650a0c860e056a677ec79d36aafef02ac371d",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "b02c4ffc43195e2e0516cdf0b3c722279a4b6cd2dad1fcd6a24595b33e6c0a49": {
+    "angular": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "binary_sha256": "587fed149bb3c577270013ca116b171e962175d3e486e9ad5ccd6490703e8bea",
+    "compile_seconds": 0.7314962591044605,
+    "compiler_resources": [],
+    "component_indices": [
+      2
+    ],
+    "native_key": "c8bcffd1de3adb7cbe549a09caddb7e89e53a2fcddacea9d5fc0a98e2f7dfb44",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      18,
+      35,
+      40,
+      57,
+      62,
+      79,
+      84,
+      101,
+      118,
+      123,
+      140
+    ],
+    "source_sha256": "dca1dec7a09ed3a113d75a4162f837a5586fca997a7a4457638af2ee374980dc",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "c2fe064a052f4d85e917937c22e4ee76a5bceced7e8f1d6f44fffe3769e4b5bf": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "0cf9b131f87cca5efe7a88fe901afdf3e79a941bf2c0dba68dd2bae92cfba713",
+    "compile_seconds": 0.7252895589917898,
+    "compiler_resources": [],
+    "component_indices": [
+      0
+    ],
+    "native_key": "9ffd77282f8873f8275356c5af033c5c9974d3a123812ee4c3b49bf050f60b33",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      15,
+      20,
+      34,
+      39,
+      53,
+      58,
+      63,
+      77
+    ],
+    "source_sha256": "8a2efc000cf2cf5c72d706781635ff5037c31fb4e5d852abc23c7441621e28a7",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "da943d431b172a04c227e5fa551cfa20e1b3fe5456f04a15768e587ca4a938f2": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "5978989901afd47d9eb7918677b466245fc1a460047941fb0b739964546f4785",
+    "compile_seconds": 0.8727553519420326,
+    "compiler_resources": [],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "f1ac2c4489ee6042f1d4de66fddbd8bf90b48915f1d6c20a271437f433b46292",
+    "output": "weighted_hessian",
+    "output_indices": [
+      1,
+      15,
+      20,
+      34,
+      39,
+      53,
+      58,
+      63,
+      77
+    ],
+    "source_sha256": "b8960ab21c50c452d03a84cc03d4842af4cd4c2eeb18c2bac7c579f6e11db6ae",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "ece0dc3064f604657e26482ce4b5ae0d1ae0eda21c8bbfc2049aa37e706ad149": {
+    "angular": [
+      3,
+      3,
+      3,
+      3
+    ],
+    "binary_sha256": "238896fa5ed7e4af67b467d40e0d722d864e897e639f8057ed2d5430eff8565d",
+    "compile_seconds": 1.502831604797393,
+    "compiler_resources": [],
+    "component_indices": [
+      0
+    ],
+    "native_key": "7f9271acb5c5f944f305b738632815db64bc98e30712ad551e275fadfe1d7d5b",
+    "output": "raw_hessian",
+    "output_indices": [
+      0
+    ],
+    "source_sha256": "5b4abcf9139b8aa469ec276e7e381740d2e1266373eede4c43ac8648042f4e61",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "f31780e5a37d9eceebfafe6314376895d4703f36c575a8b06dcbc4d38f0d0f17": {
+    "angular": [
+      1,
+      2
+    ],
+    "binary_sha256": "acadf47439f33b2b2ae9589fa61889297bb4ac21b1b1e1f5f7da74ea5b8f6b96",
+    "compile_seconds": 0.6281874550040811,
+    "compiler_resources": [],
+    "component_indices": [
+      0
+    ],
+    "native_key": "bf4c284b2aea9c7382ba53fe54185f5e7843efadc418e6fee0865399e0d72aa5",
+    "output": "raw_hessian",
+    "output_indices": [
+      1,
+      6,
+      17,
+      22,
+      27,
+      32
+    ],
+    "source_sha256": "09b91c4f22551c108caff321f7b6eb2e911c2c1f7357bc94976c245430cb739b",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  },
+  "f987c5f12bc4f4aee9b5da1b59b4ea8e52baeb770737567c9e2ebaace5310de2": {
+    "angular": [
+      2,
+      1,
+      0,
+      1
+    ],
+    "binary_sha256": "ff1ee488dab71e2f02f7bc87c4c52b5817fd6827f4ac4b34fa3a30ff0e6b8ef9",
+    "compile_seconds": 2.6125899478793144,
+    "compiler_resources": [],
+    "component_indices": [
+      0,
+      4
+    ],
+    "native_key": "de9be8dd01033b97dc414cdb7fa72d50ae87070eead2233a7c1341e4af832248",
+    "output": "weighted_hvp",
+    "output_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "source_sha256": "5cc3a07a6c6b0703cd35e32c554dc22e62e47e24e5e0b84f7e8f2d3e94733d0f",
+    "target": {
+      "architecture": "x86_64-linux-gnu",
+      "backend": "cpu",
+      "maximum_resident_workgroups": null,
+      "maximum_workgroup_threads": 1,
+      "subgroup_size": null
+    }
+  }
+}

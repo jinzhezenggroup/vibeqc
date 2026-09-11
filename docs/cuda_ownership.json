@@ -1,0 +1,631 @@
+{
+  "classification_status": "Reviewed source regions; operator-specific scientific glue is counted conservatively with its owning function.",
+  "files": [
+    {
+      "path": "src/cc/cuda_state.cuh",
+      "reason": "Persistent tensor-state buffers and generic copy/validation; CC equations live in TensorIR.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/dft/cuda_grid.cu",
+      "reason": "Native plan/arena ownership around the bounded AO/feature kernels.",
+      "regions": [
+        {
+          "reason": "Normalized primitive traversal and AO/feature layout adapters remain counted conservatively as scientific glue. Axis derivative polynomials and per-AO ingredient arithmetic are compiler-owned.",
+          "role": "scientific",
+          "start": "__global__ void ao_kernel",
+          "stop": "// Gather every local matrix element"
+        }
+      ],
+      "role": "runtime",
+      "subsystem": "ao_grid"
+    },
+    {
+      "path": "src/dft/grid_task_view.cuh",
+      "reason": "Versioned borrowed device buffer, stream and generation ABI; no scientific arithmetic.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "ao_grid"
+    },
+    {
+      "path": "src/dft/xc_runtime.cuh",
+      "reason": "Generic scalar XC plan allocation, transport, launch, metrics and failure ABI; functional/ingredient kernels are generated before inclusion.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "xc"
+    },
+    {
+      "path": "src/integrals/eri_geometry.hpp",
+      "reason": "Shared stable pair geometry numerical primitives for CPU/CUDA; no shell recurrence duplicate.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/integrals/range_moments.hpp",
+      "reason": "Shared bounded stable moment numerical library called by generated operators; not a second shell/operator lowering.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/posthf/cuda_low_rank.cu",
+      "reason": "Retained numerical factorization prefix, normalized packing, transport and owned cuBLAS workspace.",
+      "regions": [
+        {
+          "reason": "Factorized Coulomb output composition.",
+          "role": "scientific",
+          "start": "__global__ void add_coulomb",
+          "stop": "__global__ void symmetric_output"
+        },
+        {
+          "reason": "Explicit J/K equation composition and its native calls; counted conservatively including local ABI checks.",
+          "role": "scientific",
+          "start": "int posthf_cholesky_jk_v1",
+          "stop": "int posthf_cholesky_metrics_v1"
+        }
+      ],
+      "role": "runtime",
+      "subsystem": "low_rank"
+    },
+    {
+      "path": "src/posthf/cuda_transform.cu",
+      "reason": "Generic bounded multi-index basis transforms and library/arena ownership.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/posthf/df_bridge.cu",
+      "reason": "Existing raw-source/metric-factor and bounded public-layout bridge; shared RI semantics are owned upstream.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/runtime/cuda_ao_pairs.cuh",
+      "reason": "Typed normalized AO/primitive traversal, pair schedules and symmetric channel stores; all operator semantics supplied by generated policy.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/runtime/cuda_gaussian_products.cuh",
+      "reason": "Rank-generic normalized primitive/AO tensor products, cyclic lane ownership and physical-center projection/scatter; generated policies own all operator formulas.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/runtime/cuda_runtime.cu",
+      "reason": "Device availability, discovery and stable runtime ABI.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/runtime/cuda_subgroup.cuh",
+      "reason": "Power-of-two subgroup reduction of fixed channel arrays; masks and arithmetic are independent of integral family.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/runtime/resource_cuda.cuh",
+      "reason": "Allocation accounting and lifetime guards.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/runtime/strided_range.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Generic two-dimensional strided tile indexing shared by bounded host producers and CUDA consumers; no scientific expressions."
+    },
+    {
+      "path": "src/scf/aot_shell_registry.hpp",
+      "reason": "Typed registry and task interfaces; generated entries own class mathematics.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/df_derivatives.cu",
+      "reason": "Full dense weight indexing and bounded launch adapter to the shared generated response policy and generic normalized-basis traversal.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "df_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/df_derivatives.cuh",
+      "reason": "Stable derivative view and launch ABI declarations.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/df_gradient_bridge.cu",
+      "reason": "External-weight staging and ABI around native HF density/spectral-inverse response; conservatively counted as scientific method glue. Integral and center arithmetic is compiler-owned.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "df_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/direct_jk.cuh",
+      "reason": "Direct J/K consumer contractions and bounded bridge; counted conservatively with local runtime checks.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "scf_tensor"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_derivatives.cu",
+      "reason": "Operator-specific derivative contraction/scheduling glue around generated primitives.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "one_electron_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_derivatives.cuh",
+      "reason": "First-derivative views and launch declarations.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_force_reference.cuh",
+      "reason": "Retained independently gated scalar/cooperative force schedules; values retirement does not supersede force policy.",
+      "regions": [],
+      "role": "performance_exception",
+      "subsystem": "one_electron_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_gradient_bridge.cu",
+      "reason": "Density/energy-weighted-density and gradient task bridge around generated derivatives.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "one_electron_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_integrals.cuh",
+      "reason": "One-electron source setup, metadata staging, launch choice and host publication.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_reference.cuh",
+      "reason": "Only the separately gated Dual first-coordinate response kernel remains; the double value kernel and dispatch were removed.",
+      "regions": [],
+      "role": "performance_exception",
+      "subsystem": "one_electron_derivatives"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_values.cu",
+      "reason": "Launch adapter instantiating generated value policy on shared pair schedules; no operator arithmetic.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "one_electron_values"
+    },
+    {
+      "path": "src/scf/cuda/one_electron_values.cuh",
+      "reason": "Immutable public normalized AO view and value launch ABI.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/weighted_eri.cuh",
+      "reason": "Weighted reference/candidate contractions with explicit retained low-order exception selection.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/cuda_density_fitting.cu",
+      "reason": "RI planning, ownership, generic eigensolver/DIIS and library runtime.",
+      "regions": [
+        {
+          "reason": "Streamed RI J/K, density and energy equations.",
+          "role": "scientific",
+          "start": "__global__ void accumulate_streamed_auxiliary_density_kernel",
+          "stop": "__global__ void update_device_convergence_kernel"
+        },
+        {
+          "reason": "Explicit RI J/K equation composition using cuBLAS; conservative region includes staging.",
+          "role": "scientific",
+          "start": "vibeqc_status build_coulomb(",
+          "stop": "vibeqc_status prepare_outputs("
+        },
+        {
+          "reason": "Generated response bridge and shared spectral-factor composition; counted conservatively with its native adapter.",
+          "role": "scientific",
+          "start": "vibeqc_status execute_cuda_density_fitting_generated_force_response(",
+          "stop": "vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl("
+        }
+      ],
+      "role": "runtime",
+      "subsystem": "scf_tensor"
+    },
+    {
+      "path": "src/scf/cuda_eigensolver_probe.cu",
+      "reason": "Diagnostic generic dense eigensolver experiments, synchronization and library comparisons.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda_fock.cu",
+      "reason": "Dense bucket owner and stable execution interface.",
+      "regions": [
+        {
+          "reason": "Concrete cached-tensor RHF J/K contraction equation.",
+          "role": "scientific",
+          "start": "__global__ void rhf_fock_bucket_kernel",
+          "stop": "struct CudaFockBucketHandle"
+        }
+      ],
+      "role": "runtime",
+      "subsystem": "scf_tensor"
+    },
+    {
+      "path": "src/scf/cuda_rhf.cu",
+      "reason": "Remaining device recurrences, physical screening bounds and method contractions are conservatively scientific; explicit regions separate generic runtime.",
+      "regions": [
+        {
+          "reason": "Includes, task metadata, scalar arithmetic/AD, stable special functions and generic geometry/packing helpers.",
+          "role": "runtime",
+          "start": "#include <cublas_v2.h>",
+          "stop": "__device__ Scalar primitive_overlap("
+        },
+        {
+          "reason": "Angular/task indexing and public-layout helpers.",
+          "role": "runtime",
+          "start": "__device__ unsigned angular_axis(",
+          "stop": "__device__ void boys_values("
+        },
+        {
+          "reason": "State, instrumentation, generic dense eigensolvers and matrix products.",
+          "role": "runtime",
+          "start": "__global__ void initialize_state_kernel",
+          "stop": "__global__ void build_density_kernel"
+        },
+        {
+          "reason": "Validated warm-density copy/normalization and state handling.",
+          "role": "runtime",
+          "start": "__device__ double warm_density_block_sum",
+          "stop": "__global__ void build_fock_kernel"
+        },
+        {
+          "reason": "Generic atomic maximum implementation.",
+          "role": "runtime",
+          "start": "__device__ void atomic_max_double",
+          "stop": "__global__ void build_schwarz_and_shell_pair_bounds_packed_kernel"
+        },
+        {
+          "reason": "Task compaction, signature/class indexing, prefix scans, materialization and queue profiling.",
+          "role": "runtime",
+          "start": "__global__ void compact_active_shell_quartet_tiles_kernel",
+          "stop": "__global__ void build_fock_direct_packed_kernel"
+        },
+        {
+          "reason": "Generic tuple permutations and duplicate suppression.",
+          "role": "runtime",
+          "start": "__device__ void eri_symmetry_permutation",
+          "stop": "__device__ __forceinline__ void accumulate_direct_fock_integral"
+        },
+        {
+          "reason": "Matrix initialization and public/direct basis transforms.",
+          "role": "runtime",
+          "start": "__global__ void initialize_direct_fock_kernel",
+          "stop": "__device__ __forceinline__ void contract_fock_direct_quartet_subtile"
+        },
+        {
+          "reason": "Component-index mapping.",
+          "role": "runtime",
+          "start": "__device__ __forceinline__ unsigned order2_component_index",
+          "stop": "__device__ __noinline__ void contract_fock_direct_order2_task"
+        },
+        {
+          "reason": "Queue/launch wrappers around separately owned scientific contractions.",
+          "role": "runtime",
+          "start": "__global__ void build_fock_direct_quartet_kernel",
+          "stop": "__global__ void subtract_matrix_batches_kernel"
+        },
+        {
+          "reason": "Generic matrix residual and DIIS operations.",
+          "role": "runtime",
+          "start": "__global__ void subtract_matrix_batches_kernel",
+          "stop": "__global__ void compute_energy_kernel"
+        },
+        {
+          "reason": "Convergence controls and iteration-state routing.",
+          "role": "runtime",
+          "start": "__device__ __forceinline__ double direct_fock_energy_roundoff_guard",
+          "stop": "__global__ void build_weighted_density_kernel"
+        },
+        {
+          "reason": "Generic spin-matrix addition.",
+          "role": "runtime",
+          "start": "__global__ void sum_uhf_spin_matrices_kernel",
+          "stop": "__global__ void nuclear_force_kernel"
+        },
+        {
+          "reason": "Generic prefix scans for force signatures.",
+          "role": "runtime",
+          "start": "__global__ void scan_bounded_force_signature_counts_kernel",
+          "stop": "__device__ __forceinline__ bool bounded_generated_class_enabled"
+        },
+        {
+          "reason": "Persistent force task wrappers; primitive/equation contractions are separate above.",
+          "role": "runtime",
+          "start": "__global__ void two_electron_force_quartet_kernel",
+          "stop": "cudaError_t prepare_generated_shell_tasks("
+        },
+        {
+          "reason": "Host resource planning, library/state/graph execution and ABI dispatch; numerical device equations are classified above.",
+          "role": "runtime",
+          "start": "cudaError_t prepare_generated_shell_tasks(",
+          "stop": null
+        },
+        {
+          "reason": "Packed basis ABI adapter and generated-policy instantiation; no DF recurrence or operator-specific primitive contraction.",
+          "role": "runtime",
+          "start": "/** Borrow the packed integral metadata through the common normalized-basis ABI. */",
+          "stop": "#include \"scf/cuda/weighted_eri.cuh\""
+        }
+      ],
+      "role": "scientific",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "path": "src/scf/direct_task_layout.hpp",
+      "reason": "Backend-shared task coordinates, capacities and tuple/shell indexing.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/weighted_eri_runtime.hpp",
+      "reason": "Typed weighted-provider task protocol, execution layout and stable numerical helper boundary.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
+      "path": "src/tensor/cuda_runtime.cuh",
+      "reason": "Shared arena, streams/events, cuBLAS workspace and error/metrics handling.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    }
+  ],
+  "generated_families": [
+    {
+      "name": "one_electron_value_policy",
+      "outputs": [
+        "generated/generated_one_electron_policy.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/one_electron_policy_cuda.py"
+    },
+    {
+      "name": "one_electron_values",
+      "outputs": [
+        "generated/generated_one_electron_values.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/one_electron_cuda.py"
+    },
+    {
+      "name": "one_electron_derivatives",
+      "outputs": [
+        "generated/generated_one_electron_derivatives.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/one_electron_derivatives_cuda.py"
+    },
+    {
+      "name": "df_values",
+      "outputs": [
+        "generated/df_values.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_cuda.py"
+    },
+    {
+      "name": "df_derivatives",
+      "outputs": [
+        "generated/generated_df_derivatives.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_derivatives_cuda.py"
+    },
+    {
+      "name": "weighted_eri",
+      "outputs": [
+        "generated/weighted_eri.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/weighted_eri_cuda.py"
+    },
+    {
+      "name": "aot_integrals",
+      "outputs": [
+        "generated/production_shell_kernels/**/*.cu",
+        "generated/production_shell_kernels/**/*.cuh",
+        "generated/production_shell_kernels/**/*.hpp"
+      ],
+      "owner": "python/vibeqc_compiler/integral/cuda_lowering.py"
+    },
+    {
+      "name": "jit_tensor",
+      "outputs": [],
+      "owner": "python/vibeqc_compiler/tensor",
+      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
+    },
+    {
+      "name": "jit_xc",
+      "outputs": [],
+      "owner": "python/vibeqc_compiler/xc",
+      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
+    },
+    {
+      "name": "jit_dft",
+      "outputs": [],
+      "owner": "python/vibeqc_compiler/dft",
+      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
+    },
+    {
+      "name": "jit_integral",
+      "outputs": [],
+      "owner": "python/vibeqc_compiler/integral",
+      "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
+    },
+    {
+      "name": "ao_grid_policy",
+      "outputs": [
+        "generated/generated_grid_policy.cu"
+      ],
+      "owner": "python/vibeqc_compiler/dft/ao_cuda.py",
+      "scope": "Shared CMake/JIT through-f/order-three AO polynomials and spin-density ingredient arithmetic; generated policy included before the same dense/local native runtime."
+    },
+    {
+      "name": "df_policies",
+      "outputs": [
+        "generated/generated_df_policy.cuh",
+        "generated/generated_df_derivative_policy.cuh",
+        "generated/generated_df_derivative_schedule.cuh"
+      ],
+      "owner": "python/vibeqc_compiler/integral/df_policy.py"
+    }
+  ],
+  "schema": "vibeqc.cuda-ownership.v1",
+  "subsystems": {
+    "ao_grid": {
+      "current_default": "Dense bounded schedules; explicit local-dense candidate with shared compiler-owned AO/feature policy",
+      "evidence": [
+        "docs/dft_grid.md",
+        "docs/spatial_tasks.md",
+        "benchmarks/results/spatial-tasks/cpu/summary.json",
+        "benchmarks/results/spatial-tasks/cuda/summary.json"
+      ],
+      "generated_capability": "Through-f/order-three AO axis derivatives and spin ingredient arithmetic, shared by dense and selected-column schedules",
+      "missing_capability": "Whole AO traversal remains counted as scientific glue; broader execution promotion remains evidence-based",
+      "owner": "ao_grid",
+      "retirement_condition": "Do not duplicate the removed native axis and feature formulas; retain independent CPU/Libcint numerical fixtures and dense scheduling fallback",
+      "status": "partial"
+    },
+    "df_derivatives": {
+      "current_default": "Generated two-/three-center center derivatives on shared normalized primitive/AO traversal; bounded cooperative weighted response is the sole CUDA HF force route.",
+      "evidence": [
+        "benchmarks/results/cuda-ownership/df/publication.json",
+        "benchmarks/results/cuda-ownership/df/validation.json",
+        "benchmarks/results/cuda-ownership/df/raw-source.json",
+        "benchmarks/results/cuda-ownership/df/README.md"
+      ],
+      "generated_capability": "Bulk and bounded raw coordinate derivatives and externally weighted responses share generated center channels. The compiler directs four-lane primitive partitions; generic runtime owns traversal, subgroup reduction, range mapping and physical-atom scatter.",
+      "missing_capability": "None for the retired DF integral/coordinate-response duplicate. Host HF density-weight construction and the spectral inverse reverse map remain native method adapters; a complete equivalent TensorIR method consumer is not yet integrated.",
+      "owner": "df_derivatives",
+      "retirement_condition": "Completed: removed coordinate-wise RHF/UHF production responses, their CUDA allocations and estimates, and the DF derivative selector after final numerical/resource/complete endpoint gates. Retain generated raw APIs and independent CPU/libcint oracles.",
+      "status": "retired"
+    },
+    "df_values": {
+      "current_default": "Generated Rys values only; bounded transformed outputs use compiler-directed four-lane primitive groups across eight source terms per warp.",
+      "evidence": [
+        "benchmarks/results/generated-df-values-142/promotion.json",
+        "benchmarks/results/generated-df-values-142/README.md",
+        "benchmarks/results/cuda-ownership/df/publication.json"
+      ],
+      "generated_capability": "All two-/three-center values through f and public spherical transforms instantiate the same rank-generic normalized traversal as derivatives.",
+      "missing_capability": "None for promoted DF values; shared ERI/Dual recurrences remain for Direct and separately gated one-electron derivatives.",
+      "owner": "df_values",
+      "retirement_condition": "Completed: legacy Hermite value selection/dispatch and parallel DF derivative recurrence/contraction are removed; retain metric factors, planning and cuBLAS/cuSOLVER runtime.",
+      "status": "retired"
+    },
+    "direct_integrals": {
+      "current_default": "AOT class registry where promoted; bounded native fallback and explicit schedule exceptions",
+      "evidence": [
+        "docs/shell_codegen.md",
+        "docs/weighted_eri.md",
+        "docs/second_integral_derivatives.md",
+        "python/vibeqc_compiler/integral/production_shell_classes.json",
+        "benchmarks/results/weighted-eri-144/README.md"
+      ],
+      "generated_capability": "IntegralIR values/first derivatives, weighted ERI and second-order providers through f",
+      "missing_capability": "Class/consumer-specific lowering and complete endpoint promotion remain necessary. The archived 72-run weighted-ERI comparison has ratios crossing one, so psss remains a measured production exception. Unpromoted registry classes retain their bounded fallback; generated source existence alone does not authorize class retirement.",
+      "owner": "direct_integrals",
+      "retirement_condition": "remove each old scientific class when numerical/resource/full endpoint gates pass and no independent role remains",
+      "status": "partial"
+    },
+    "low_rank": {
+      "current_default": "experimental native matrix-prefix projection and cuBLAS J/K; CPU source and pivot policy",
+      "evidence": [
+        "docs/incremental_low_rank.md"
+      ],
+      "generated_capability": "no new shell/operator formula; existing raw source and shared native runtime",
+      "missing_capability": "generic retained-factor J/K has no integrated TensorIR method adapter yet",
+      "owner": "low_rank",
+      "retirement_condition": "retain generic factorization/packing runtime; migrate J/K equation composition when bounded TensorIR adapter is validated",
+      "status": "experimental"
+    },
+    "one_electron_derivatives": {
+      "current_default": "native scalar/cooperative force and Dual response paths; generated derivative opt-in",
+      "evidence": [
+        "benchmarks/results/one-electron-derivatives-rtx5090/validation-summary.json",
+        "docs/one_electron_derivatives.md",
+        "benchmarks/results/one-electron-derivatives-rtx5090/sp8-df-b3-thread.json",
+        "benchmarks/results/one-electron-derivatives-rtx5090/sdf18-thread.json"
+      ],
+      "generated_capability": "generated fixed-density S/T/V first derivatives and public spherical weights",
+      "missing_capability": "Generated response needs schedules that remove measured complete-endpoint regressions: resident DF warm replay 4.586/5.429 ms and Direct sdf18 changed geometry 36.667/39.352 ms (native/generated, archived revisions). These measurements justify retention, not a completed derivative migration.",
+      "owner": "one_electron_derivatives",
+      "retirement_condition": "retire only after derivative/force gates, independently of values promotion",
+      "status": "performance_exception"
+    },
+    "one_electron_values": {
+      "current_default": "Generated S/T/V values on shared shell-warp AO-pair schedule; thread schedule remains diagnostic",
+      "evidence": [
+        "benchmarks/results/cuda-ownership/one-electron/publication.json",
+        "benchmarks/results/one-electron-values-rtx5090/raw-summary.json",
+        "benchmarks/results/one-electron-values-rtx5090/sp8-b3-shell_warp.json"
+      ],
+      "generated_capability": "IntegralIR S/T/V all Cartesian s/p/d/f pairs with public spherical contraction",
+      "missing_capability": "None for value replacement; independent derivative/force exceptions remain separately owned",
+      "owner": "one_electron_values",
+      "retirement_condition": "Completed: handwritten double-value kernel, selection flag and three dispatch branches removed; preserve external/CPU oracles",
+      "status": "retired"
+    },
+    "runtime": {
+      "current_default": "native shared allocation, stream, graph, ABI and library adapters",
+      "evidence": [
+        "docs/compiler_architecture.md"
+      ],
+      "generated_capability": "not applicable: generic runtime infrastructure",
+      "missing_capability": "none; infrastructure remains native",
+      "owner": "runtime",
+      "retirement_condition": "retain generic runtime; review new embedded scientific formulas separately",
+      "status": "retained"
+    },
+    "scf_tensor": {
+      "current_default": "native RHF/UHF/DF density, J/K, energy and force contractions",
+      "evidence": [
+        "docs/architecture.md"
+      ],
+      "generated_capability": "TensorIR owns general contractions/AD; current native SCF bridges remain concrete",
+      "missing_capability": "integration of method equations into shared generated tensor execution",
+      "owner": "scf_tensor",
+      "retirement_condition": "retain native scientific adapters until generated method endpoint passes; preserve generic solver/BLAS runtime",
+      "status": "native_baseline"
+    },
+    "xc": {
+      "current_default": "generated scalar expressions and shared compact CPU potential/response contractions; explicit bounded native CPU candidate",
+      "evidence": [
+        "docs/xc_expressions.md",
+        "docs/xc_contractions.md",
+        "benchmarks/results/xc-contractions/README.md"
+      ],
+      "generated_capability": "audited scalar XC derivatives and compact native CPU LDA/GGA E/V, spin response and fixed-D geometric partials",
+      "missing_capability": "native GPU XC contractions and complete stationary method integration/promotion remain with #162/#163/#168",
+      "owner": "xc",
+      "retirement_condition": "duplicated CPU coefficient/response formulas retired after independent E/V and derivative gates; retain external/formula oracles; GPU promotion requires its own complete endpoint evidence",
+      "status": "partial"
+    }
+  }
+}

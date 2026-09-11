@@ -1,0 +1,45 @@
+{
+  "archives": [],
+  "decision": {
+    "reason": "Numerical experimental acceptance only; small-system timings establish no speedup.",
+    "scope": "numerical",
+    "status": "accepted"
+  },
+  "files": [
+    {
+      "bytes": 34003,
+      "path": "evidence.json",
+      "role": "evidence",
+      "sha256": "77da9e40091b0eadff6da04b65f5e3019b5694b91b1a75a9cf545c101df2182b"
+    },
+    {
+      "bytes": 571420,
+      "path": "samples.json",
+      "role": "samples",
+      "sha256": "f0f02f2b3ac0f15c2562609571ee60dfa658e650a91779f98a6771245ce38303"
+    },
+    {
+      "bytes": 1628,
+      "path": "summary.json",
+      "role": "summary",
+      "sha256": "60100a9f62524be47a9f2e9209e8583a30c13611403feb18b6795f66ac928cba"
+    }
+  ],
+  "reproduction": {
+    "command": [
+      "python",
+      "tools/validate_low_rank.py",
+      "--backend",
+      "cpu",
+      "--samples",
+      "3",
+      "--output",
+      ".artifacts/low-rank-cpu-reproduction"
+    ]
+  },
+  "schema": "vibeqc.benchmark-publication.v1",
+  "source": {
+    "dirty": false,
+    "revision": "dfc9e55f13bc55b4961d7ab5255064a66e38df7b"
+  }
+}

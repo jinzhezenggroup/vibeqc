@@ -1,0 +1,1658 @@
+{
+  "accuracy_passed": true,
+  "batch": 1,
+  "binary_hash": "0612146abf06d58806dba8c245f30f73c2446a214650fc0ac6bcd9b34b73708d",
+  "case": "sp8",
+  "comparison": {
+    "reason": "difference within 2%, measurement noise, or no improvement",
+    "status": "not-run",
+    "workloads": {
+      "changed-geometry": {
+        "baseline": {
+          "maximum_seconds": 10.037612540880218,
+          "median_seconds": 10.01536097493954,
+          "minimum_seconds": 10.00540665187873,
+          "raw_seconds": [
+            10.013487837975845,
+            10.037612540880218,
+            10.019767983118072,
+            10.00540665187873,
+            10.01536097493954
+          ],
+          "relative_mad": 0.00044002489671209554,
+          "samples": 5
+        },
+        "candidate": {
+          "maximum_seconds": 10.055804125964642,
+          "median_seconds": 10.036743781063706,
+          "minimum_seconds": 10.02830986189656,
+          "raw_seconds": [
+            10.046833007130772,
+            10.055804125964642,
+            10.030908458866179,
+            10.02830986189656,
+            10.036743781063706
+          ],
+          "relative_mad": 0.0008403043209151494,
+          "samples": 5
+        },
+        "noise_floor": 0.02,
+        "relative_improvement": -0.0021350010426652855,
+        "significant": false
+      },
+      "cold-start": {
+        "baseline": {
+          "maximum_seconds": 2.045870756963268,
+          "median_seconds": 2.014792083064094,
+          "minimum_seconds": 1.9781344179064035,
+          "raw_seconds": [
+            2.029060914879665,
+            1.9781344179064035,
+            2.045870756963268,
+            2.014792083064094,
+            2.011899274075404
+          ],
+          "relative_mad": 0.007082036868970899,
+          "samples": 5
+        },
+        "candidate": {
+          "maximum_seconds": 2.025249473983422,
+          "median_seconds": 2.0057489711325616,
+          "minimum_seconds": 1.971063019009307,
+          "raw_seconds": [
+            1.971063019009307,
+            2.025249473983422,
+            2.0057489711325616,
+            2.0189149260986596,
+            1.984447309980169
+          ],
+          "relative_mad": 0.009722304800609843,
+          "samples": 5
+        },
+        "noise_floor": 0.033608683339161484,
+        "relative_improvement": 0.004488359869758818,
+        "significant": false
+      },
+      "unchanged-geometry": {
+        "baseline": {
+          "maximum_seconds": 1.5079193459823728,
+          "median_seconds": 1.472444789018482,
+          "minimum_seconds": 1.4517132369801402,
+          "raw_seconds": [
+            1.470522188115865,
+            1.472444789018482,
+            1.4739993610419333,
+            1.4517132369801402,
+            1.5079193459823728
+          ],
+          "relative_mad": 0.001305720198784883,
+          "samples": 5
+        },
+        "candidate": {
+          "maximum_seconds": 1.5190617199987173,
+          "median_seconds": 1.4821186119224876,
+          "minimum_seconds": 1.4580349831376225,
+          "raw_seconds": [
+            1.5190617199987173,
+            1.4580349831376225,
+            1.486796231009066,
+            1.4714027082081884,
+            1.4821186119224876
+          ],
+          "relative_mad": 0.007230125597302482,
+          "samples": 5
+        },
+        "noise_floor": 0.02,
+        "relative_improvement": -0.006569905354790295,
+        "significant": false
+      }
+    }
+  },
+  "contraction_length_override": 8,
+  "cuda_visible_devices": "0",
+  "df_budget": 0,
+  "fitted": false,
+  "mapping": "thread",
+  "memory": {
+    "baseline": {
+      "observation": {
+        "complete_plan_peak": false,
+        "cpu_worker_limit": 1,
+        "cuda_arena_samples": 1,
+        "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+        "device_ledger": {
+          "allocations": 0,
+          "device": 0,
+          "limit_bytes": 99344,
+          "live_bytes": 49672,
+          "peak_bytes": 49672,
+          "rejected_allocations": 0,
+          "scope": "owned HF CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+        },
+        "excludes": [
+          "recurrence/eigensolver temporaries",
+          "other fleet items",
+          "runtime overhead"
+        ],
+        "sampled_cuda_arena_peak_bytes": 49672,
+        "sampled_item_peak_host_bytes": null,
+        "samples": null,
+        "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+        "status": "observed"
+      },
+      "plan": {
+        "budget": {
+          "device_bytes": 17179869184,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "host_bytes": 2147483648,
+          "host_reserve_bytes": 0,
+          "per_device_bytes": [],
+          "pinned_host_bytes": null,
+          "schema_version": 1
+        },
+        "diagnostic": null,
+        "identity": "03fdae7fc4e4ca05ae71db730c881c7ead716c19fb3f72a8218e689d76a92e3d",
+        "limits": {
+          "device": 17179869184,
+          "host": 2147483648
+        },
+        "peak_bytes": {
+          "device": 99344,
+          "device:0": 99344,
+          "host": 403904,
+          "pageable": 403904,
+          "pinned": 0
+        },
+        "peak_phases": {
+          "device": 0,
+          "device:0": 0,
+          "host": 0,
+          "pageable": 0
+        },
+        "requests": [
+          {
+            "candidates": [
+              {
+                "decisions": [
+                  [
+                    "batch_execution",
+                    "serialized buckets; every retained arena summed"
+                  ],
+                  [
+                    "eigensolver",
+                    "small native; no external library workspace"
+                  ],
+                  [
+                    "item_inventory",
+                    "[{\"arena\": 49672, \"host\": 403904}]"
+                  ]
+                ],
+                "estimates": [
+                  {
+                    "accounting": "capacity_bound",
+                    "bytes": 49672,
+                    "cacheable": false,
+                    "first_phase": 0,
+                    "kind": "persistent",
+                    "last_phase": 0,
+                    "name": "all retained direct-HF bucket arenas",
+                    "recomputable": false,
+                    "space": "device:0",
+                    "streamed_bytes": 0
+                  },
+                  {
+                    "accounting": "capacity_bound",
+                    "bytes": 49672,
+                    "cacheable": false,
+                    "first_phase": 0,
+                    "kind": "workspace",
+                    "last_phase": 0,
+                    "name": "one cold numerical retry alongside warm bucket",
+                    "recomputable": false,
+                    "space": "device:0",
+                    "streamed_bytes": 0
+                  },
+                  {
+                    "accounting": "capacity_bound",
+                    "bytes": 403904,
+                    "cacheable": false,
+                    "first_phase": 0,
+                    "kind": "persistent",
+                    "last_phase": 0,
+                    "name": "fleet host state, packed topology and staging capacity",
+                    "recomputable": false,
+                    "space": "pageable",
+                    "streamed_bytes": 0
+                  }
+                ],
+                "mode": "resident",
+                "name": "cuda-small-resident",
+                "relative_cost": 0
+              }
+            ],
+            "identity": {
+              "backend": "cuda",
+              "method": "rhf",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "precision": "fp64",
+              "provider": "native-hf-direct-v1",
+              "schedule": "{\"density_fitting\": \"none\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-10, \"device_id\": 0, \"diis_history\": 8, \"energy_tolerance\": 1e-12, \"max_iterations\": 100, \"native_binary_sha256\": \"0612146abf06d58806dba8c245f30f73c2446a214650fc0ac6bcd9b34b73708d\", \"profile_identity\": \"generic_cuda\", \"runtime_policy\": {\"VIBEQC_BOUNDED_DIRECT_AOT_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_COUNT_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_STREAMING\": null, \"VIBEQC_DF_VALUES\": null, \"VIBEQC_DF_VALUE_MAPPING\": null, \"VIBEQC_DIRECT_TILE_VALIDATION\": null, \"VIBEQC_FINAL_FOCK_REBUILD\": null, \"VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING\": null, \"VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE\": null, \"VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD\": null, \"VIBEQC_ONE_ELECTRON_DERIVATIVES\": \"reference\", \"VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING\": \"thread\", \"VIBEQC_ONE_ELECTRON_FORCE_SCALAR\": null, \"VIBEQC_ONE_ELECTRON_VALUES\": null, \"VIBEQC_ONE_ELECTRON_VALUE_MAPPING\": null, \"VIBEQC_PPPS_BLOCK_THREADS\": null, \"VIBEQC_PPPS_RESIDENT_BRA\": null, \"VIBEQC_PPPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PPSS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSSS_RESIDENT_BRA\": null, \"VIBEQC_PSSS_WEIGHTED\": null, \"VIBEQC_XSYEV_PROBE_SKIP_DIAGNOSTIC\": null}, \"screening_tolerance\": 1e-14}",
+              "schema_version": 1,
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"f08ebe032da585161ba8367e46b2be855b876e2043e727de6dd07861c5575adb\", \"cartesian_nbf\": 8, \"maximum_angular\": 1, \"nbf\": 8, \"primitives\": 32, \"representation\": \"cartesian\", \"shells\": 4}, \"spins\": 1}]}"
+            },
+            "infeasible_reason": null,
+            "name": "hf",
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding",
+              "CUDA context, modules, graphs, stacks and allocator pool/page retention"
+            ],
+            "unsupported_reason": null
+          }
+        ],
+        "resident_bytes": {
+          "device": 49672,
+          "device:0": 49672,
+          "host": 403904,
+          "pageable": 403904,
+          "pinned": 0
+        },
+        "schema_version": 1,
+        "selections": [
+          [
+            "hf",
+            "cuda-small-resident"
+          ]
+        ],
+        "status": "feasible"
+      }
+    },
+    "candidate": {
+      "observation": {
+        "complete_plan_peak": false,
+        "cpu_worker_limit": 1,
+        "cuda_arena_samples": 1,
+        "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+        "device_ledger": {
+          "allocations": 0,
+          "device": 0,
+          "limit_bytes": 99344,
+          "live_bytes": 49672,
+          "peak_bytes": 49672,
+          "rejected_allocations": 0,
+          "scope": "owned HF CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+        },
+        "excludes": [
+          "recurrence/eigensolver temporaries",
+          "other fleet items",
+          "runtime overhead"
+        ],
+        "sampled_cuda_arena_peak_bytes": 49672,
+        "sampled_item_peak_host_bytes": null,
+        "samples": null,
+        "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+        "status": "observed"
+      },
+      "plan": {
+        "budget": {
+          "device_bytes": 17179869184,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "host_bytes": 2147483648,
+          "host_reserve_bytes": 0,
+          "per_device_bytes": [],
+          "pinned_host_bytes": null,
+          "schema_version": 1
+        },
+        "diagnostic": null,
+        "identity": "09b4158703964b26769413516525ddef6d0f491b686f586a23137fae52162e13",
+        "limits": {
+          "device": 17179869184,
+          "host": 2147483648
+        },
+        "peak_bytes": {
+          "device": 99344,
+          "device:0": 99344,
+          "host": 403904,
+          "pageable": 403904,
+          "pinned": 0
+        },
+        "peak_phases": {
+          "device": 0,
+          "device:0": 0,
+          "host": 0,
+          "pageable": 0
+        },
+        "requests": [
+          {
+            "candidates": [
+              {
+                "decisions": [
+                  [
+                    "batch_execution",
+                    "serialized buckets; every retained arena summed"
+                  ],
+                  [
+                    "eigensolver",
+                    "small native; no external library workspace"
+                  ],
+                  [
+                    "item_inventory",
+                    "[{\"arena\": 49672, \"host\": 403904}]"
+                  ]
+                ],
+                "estimates": [
+                  {
+                    "accounting": "capacity_bound",
+                    "bytes": 49672,
+                    "cacheable": false,
+                    "first_phase": 0,
+                    "kind": "persistent",
+                    "last_phase": 0,
+                    "name": "all retained direct-HF bucket arenas",
+                    "recomputable": false,
+                    "space": "device:0",
+                    "streamed_bytes": 0
+                  },
+                  {
+                    "accounting": "capacity_bound",
+                    "bytes": 49672,
+                    "cacheable": false,
+                    "first_phase": 0,
+                    "kind": "workspace",
+                    "last_phase": 0,
+                    "name": "one cold numerical retry alongside warm bucket",
+                    "recomputable": false,
+                    "space": "device:0",
+                    "streamed_bytes": 0
+                  },
+                  {
+                    "accounting": "capacity_bound",
+                    "bytes": 403904,
+                    "cacheable": false,
+                    "first_phase": 0,
+                    "kind": "persistent",
+                    "last_phase": 0,
+                    "name": "fleet host state, packed topology and staging capacity",
+                    "recomputable": false,
+                    "space": "pageable",
+                    "streamed_bytes": 0
+                  }
+                ],
+                "mode": "resident",
+                "name": "cuda-small-resident",
+                "relative_cost": 0
+              }
+            ],
+            "identity": {
+              "backend": "cuda",
+              "method": "rhf",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "precision": "fp64",
+              "provider": "native-hf-direct-v1",
+              "schedule": "{\"density_fitting\": \"none\", \"density_fitting_memory_budget_bytes\": 0, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-10, \"device_id\": 0, \"diis_history\": 8, \"energy_tolerance\": 1e-12, \"max_iterations\": 100, \"native_binary_sha256\": \"0612146abf06d58806dba8c245f30f73c2446a214650fc0ac6bcd9b34b73708d\", \"profile_identity\": \"generic_cuda\", \"runtime_policy\": {\"VIBEQC_BOUNDED_DIRECT_AOT_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_COUNT_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_STREAMING\": null, \"VIBEQC_DF_VALUES\": null, \"VIBEQC_DF_VALUE_MAPPING\": null, \"VIBEQC_DIRECT_TILE_VALIDATION\": null, \"VIBEQC_FINAL_FOCK_REBUILD\": null, \"VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING\": null, \"VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE\": null, \"VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD\": null, \"VIBEQC_ONE_ELECTRON_DERIVATIVES\": \"generated\", \"VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING\": \"thread\", \"VIBEQC_ONE_ELECTRON_FORCE_SCALAR\": null, \"VIBEQC_ONE_ELECTRON_VALUES\": null, \"VIBEQC_ONE_ELECTRON_VALUE_MAPPING\": null, \"VIBEQC_PPPS_BLOCK_THREADS\": null, \"VIBEQC_PPPS_RESIDENT_BRA\": null, \"VIBEQC_PPPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PPSS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSSS_RESIDENT_BRA\": null, \"VIBEQC_PSSS_WEIGHTED\": null, \"VIBEQC_XSYEV_PROBE_SKIP_DIAGNOSTIC\": null}, \"screening_tolerance\": 1e-14}",
+              "schema_version": 1,
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": null, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"f08ebe032da585161ba8367e46b2be855b876e2043e727de6dd07861c5575adb\", \"cartesian_nbf\": 8, \"maximum_angular\": 1, \"nbf\": 8, \"primitives\": 32, \"representation\": \"cartesian\", \"shells\": 4}, \"spins\": 1}]}"
+            },
+            "infeasible_reason": null,
+            "name": "hf",
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding",
+              "CUDA context, modules, graphs, stacks and allocator pool/page retention"
+            ],
+            "unsupported_reason": null
+          }
+        ],
+        "resident_bytes": {
+          "device": 49672,
+          "device:0": 49672,
+          "host": 403904,
+          "pageable": 403904,
+          "pinned": 0
+        },
+        "schema_version": 1,
+        "selections": [
+          [
+            "hf",
+            "cuda-small-resident"
+          ]
+        ],
+        "status": "feasible"
+      }
+    }
+  },
+  "operator": "derivatives",
+  "paired_errors": {
+    "changed-geometry": {
+      "energy": 0.0,
+      "force": 4.496403249731884e-15
+    },
+    "cold-start": {
+      "energy": 0.0,
+      "force": 8.326672684688674e-16
+    },
+    "unchanged-geometry": {
+      "energy": 0.0,
+      "force": 1.4988010832439613e-15
+    }
+  },
+  "production_promoted": false,
+  "resource_observation_enabled": true,
+  "revision": "5e299dd30db76986ac1cc016056f9689586c0976",
+  "samples": [
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          4.7393785574686966e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.024951852191591684
+        ],
+        "energy_change": [
+          2.220446049250313e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0,
+              0.0,
+              0.46545601589921753
+            ],
+            [
+              0.0,
+              0.0,
+              -0.4654560158992173
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          11
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 2.029060914879665,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          4.7393785574686966e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.024951852191591684
+        ],
+        "energy_change": [
+          2.220446049250313e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0,
+              0.0,
+              0.465456015899217
+            ],
+            [
+              0.0,
+              0.0,
+              -0.46545601589921776
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          11
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 1.971063019009307,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          4.7393785574686966e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.024951852191591684
+        ],
+        "energy_change": [
+          2.220446049250313e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0,
+              0.0,
+              0.4654560158992169
+            ],
+            [
+              0.0,
+              0.0,
+              -0.46545601589921753
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          11
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 2.025249473983422,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          4.7393785574686966e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.024951852191591684
+        ],
+        "energy_change": [
+          2.220446049250313e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0,
+              0.0,
+              0.46545601589921776
+            ],
+            [
+              0.0,
+              0.0,
+              -0.4654560158992174
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          11
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 1.9781344179064035,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          4.7393785574686966e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.024951852191591684
+        ],
+        "energy_change": [
+          2.220446049250313e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0,
+              0.0,
+              0.46545601589921737
+            ],
+            [
+              0.0,
+              0.0,
+              -0.46545601589921753
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          11
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 2.045870756963268,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          4.7393785574686966e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.024951852191591684
+        ],
+        "energy_change": [
+          2.220446049250313e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0,
+              0.0,
+              0.465456015899217
+            ],
+            [
+              0.0,
+              0.0,
+              -0.46545601589921765
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          11
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 2.0057489711325616,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          4.7393785574686966e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.024951852191591684
+        ],
+        "energy_change": [
+          2.220446049250313e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0,
+              0.0,
+              0.46545601589921715
+            ],
+            [
+              0.0,
+              0.0,
+              -0.4654560158992174
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          11
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 2.0189149260986596,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          4.7393785574686966e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.024951852191591684
+        ],
+        "energy_change": [
+          2.220446049250313e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0,
+              0.0,
+              0.46545601589921776
+            ],
+            [
+              0.0,
+              0.0,
+              -0.4654560158992173
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          11
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 2.014792083064094,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          4.7393785574686966e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.024951852191591684
+        ],
+        "energy_change": [
+          2.220446049250313e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0,
+              0.0,
+              0.4654560158992176
+            ],
+            [
+              0.0,
+              0.0,
+              -0.4654560158992173
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          11
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 2.011899274075404,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          4.7393785574686966e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.024951852191591684
+        ],
+        "energy_change": [
+          2.220446049250313e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0,
+              0.0,
+              0.4654560158992172
+            ],
+            [
+              0.0,
+              0.0,
+              -0.4654560158992172
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          11
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 1.984447309980169,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          1.0299841873023673e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.02495185219159135
+        ],
+        "energy_change": [
+          0.0
+        ],
+        "forces": [
+          [
+            [
+              0.0,
+              0.0,
+              0.46545601584501145
+            ],
+            [
+              0.0,
+              0.0,
+              -0.46545601584501134
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          1
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 1.470522188115865,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          1.0299841873023673e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.02495185219159135
+        ],
+        "energy_change": [
+          0.0
+        ],
+        "forces": [
+          [
+            [
+              0.0,
+              0.0,
+              0.4654560158450122
+            ],
+            [
+              0.0,
+              0.0,
+              -0.4654560158450117
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          1
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 1.5190617199987173,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          1.0299791032257315e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.02495185219159124
+        ],
+        "energy_change": [
+          1.1102230246251565e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0,
+              0.0,
+              0.46545601584501145
+            ],
+            [
+              0.0,
+              0.0,
+              -0.46545601584501173
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          1
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 1.4580349831376225,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          1.0299791032257315e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.02495185219159124
+        ],
+        "energy_change": [
+          1.1102230246251565e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0,
+              0.0,
+              0.4654560158450129
+            ],
+            [
+              0.0,
+              0.0,
+              -0.46545601584501245
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          1
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 1.472444789018482,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          1.0299791032257315e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.02495185219159124
+        ],
+        "energy_change": [
+          1.1102230246251565e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0,
+              0.0,
+              0.4654560158450128
+            ],
+            [
+              0.0,
+              0.0,
+              -0.46545601584501256
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          1
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 1.4739993610419333,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          1.0299791032257315e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.02495185219159124
+        ],
+        "energy_change": [
+          1.1102230246251565e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0,
+              0.0,
+              0.46545601584501145
+            ],
+            [
+              0.0,
+              0.0,
+              -0.465456015845012
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          1
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 1.486796231009066,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          1.0299791032257315e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.02495185219159124
+        ],
+        "energy_change": [
+          1.1102230246251565e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0,
+              0.0,
+              0.4654560158450117
+            ],
+            [
+              0.0,
+              0.0,
+              -0.46545601584501267
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          1
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 1.4714027082081884,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          1.0299791032257315e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.02495185219159124
+        ],
+        "energy_change": [
+          1.1102230246251565e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0,
+              0.0,
+              0.4654560158450131
+            ],
+            [
+              0.0,
+              0.0,
+              -0.4654560158450122
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          1
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 1.4517132369801402,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          1.0299791032257315e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.02495185219159124
+        ],
+        "energy_change": [
+          1.1102230246251565e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0,
+              0.0,
+              0.46545601584501334
+            ],
+            [
+              0.0,
+              0.0,
+              -0.46545601584501256
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          1
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 1.5079193459823728,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          1.0299791032257315e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.02495185219159124
+        ],
+        "energy_change": [
+          1.1102230246251565e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0,
+              0.0,
+              0.46545601584501184
+            ],
+            [
+              0.0,
+              0.0,
+              -0.4654560158450122
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          1
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 1.4821186119224876,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          7.71634274279044e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.020718163782416532
+        ],
+        "energy_change": [
+          2.220446049250313e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0029980375274050596,
+              0.0029980375274050834,
+              0.46935943068027525
+            ],
+            [
+              -0.0029980375274050834,
+              -0.0029980375274050912,
+              -0.4693594306802908
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          7
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 10.013487837975845,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          7.71634274279044e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.020718163782416532
+        ],
+        "energy_change": [
+          2.220446049250313e-16
+        ],
+        "forces": [
+          [
+            [
+              0.002998037527405068,
+              0.0029980375274050973,
+              0.4693594306802729
+            ],
+            [
+              -0.0029980375274050856,
+              -0.0029980375274050895,
+              -0.46935943068028846
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          7
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 10.046833007130772,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          7.374514159588875e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.029096232753081375
+        ],
+        "energy_change": [
+          1.4432899320127035e-15
+        ],
+        "forces": [
+          [
+            [
+              -0.0029858636834449535,
+              -0.0029858636834450693,
+              0.4614818204272749
+            ],
+            [
+              0.0029858636834449452,
+              0.0029858636834450667,
+              -0.46148182042727476
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          7
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 10.055804125964642,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          7.374514159588875e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.029096232753081375
+        ],
+        "energy_change": [
+          1.4432899320127035e-15
+        ],
+        "forces": [
+          [
+            [
+              -0.002985863683444936,
+              -0.002985863683445057,
+              0.46148182042727287
+            ],
+            [
+              0.002985863683444935,
+              0.0029858636834450615,
+              -0.4614818204272744
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          7
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 10.037612540880218,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          7.71634274279044e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.020718163782416532
+        ],
+        "energy_change": [
+          2.220446049250313e-16
+        ],
+        "forces": [
+          [
+            [
+              0.002998037527405061,
+              0.002998037527405083,
+              0.46935943068027547
+            ],
+            [
+              -0.0029980375274050834,
+              -0.002998037527405089,
+              -0.46935943068029323
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          7
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 10.019767983118072,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          7.71634274279044e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.020718163782416532
+        ],
+        "energy_change": [
+          2.220446049250313e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0029980375274050617,
+              0.002998037527405097,
+              0.46935943068027325
+            ],
+            [
+              -0.0029980375274050856,
+              -0.00299803752740509,
+              -0.46935943068028874
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          7
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 10.030908458866179,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          7.374514159588875e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.029096232753081375
+        ],
+        "energy_change": [
+          1.4432899320127035e-15
+        ],
+        "forces": [
+          [
+            [
+              -0.0029858636834449535,
+              -0.0029858636834450693,
+              0.4614818204272753
+            ],
+            [
+              0.002985863683444952,
+              0.002985863683445067,
+              -0.4614818204272746
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          7
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 10.02830986189656,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          7.374514159588875e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.029096232753081375
+        ],
+        "energy_change": [
+          1.4432899320127035e-15
+        ],
+        "forces": [
+          [
+            [
+              -0.002985863683444936,
+              -0.002985863683445052,
+              0.46148182042727276
+            ],
+            [
+              0.0029858636834449383,
+              0.00298586368344506,
+              -0.461481820427275
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          7
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 10.00540665187873,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          7.71634274279044e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.020718163782416532
+        ],
+        "energy_change": [
+          2.220446049250313e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0029980375274050626,
+              0.002998037527405084,
+              0.4693594306802753
+            ],
+            [
+              -0.0029980375274050743,
+              -0.0029980375274050895,
+              -0.46935943068029073
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          7
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 10.01536097493954,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          7.71634274279044e-11
+        ],
+        "df_diagnostics": [],
+        "energies": [
+          -0.020718163782416532
+        ],
+        "energy_change": [
+          2.220446049250313e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0029980375274050635,
+              0.0029980375274050973,
+              0.46935943068027314
+            ],
+            [
+              -0.0029980375274050856,
+              -0.002998037527405089,
+              -0.46935943068028835
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          7
+        ]
+      },
+      "inputs_hash": "7e51fedc9ffd99e63127fa9837b4a93e0efe5fd3a84e2bdb8a72ed9ebcc209bd",
+      "seconds": 10.036743781063706,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    }
+  ],
+  "schema": "vibeqc.one_electron_endpoint",
+  "slurm_job_id": "9084",
+  "source_identity": "88f81d35d2769bd8cb211bb7dfbdf4e379e413d928c2a8561933ffb0955badb7",
+  "timing_scope": "whole HF energy-plus-force endpoint, not integral kernels",
+  "version": 1,
+  "worktree_dirty": true
+}

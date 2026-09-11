@@ -1,0 +1,67 @@
+{
+  "archives": [],
+  "decision": {
+    "reason": "Independent LR/SR, all center derivatives, raw/weighted, translation and multi-step finite-difference gates are retained. No schedule promotion.",
+    "scope": "numerical",
+    "status": "accepted"
+  },
+  "files": [
+    {
+      "bytes": 24636,
+      "path": "evidence.json",
+      "role": "evidence",
+      "sha256": "5d6ef3e95da3fffaa622c2cfd64eb9c1b02c287403a8b6c282278e471abf4b70"
+    },
+    {
+      "bytes": 299,
+      "path": "summary.json",
+      "role": "summary",
+      "sha256": "8abe1938558574ea47df6402871d36ff7e533e69665a9584d76c52ac217c1ee8"
+    },
+    {
+      "bytes": 112936,
+      "path": "samples.json",
+      "role": "samples",
+      "sha256": "004e76d1090fa1f01208852fc4f64ef37b85b3fd7f198ae40efcd9ca38350267"
+    },
+    {
+      "bytes": 92689,
+      "path": "resources.json",
+      "role": "input",
+      "sha256": "eda0698ac5df595d629b675f2e7469c7997429bd4d55db2983adc1fa58e8c614"
+    },
+    {
+      "bytes": 14518,
+      "path": "artifacts.json",
+      "role": "input",
+      "sha256": "46fbd93e3b4cec45dab3533d1ce36addbb1f066963dc6cd46dd8c931c9b2493c"
+    }
+  ],
+  "reproduction": {
+    "command": [
+      "srun",
+      "--partition=main",
+      "--gres=gpu:5090:1",
+      "--nodes=1",
+      "--ntasks=1",
+      "--time=00:10:00",
+      "python",
+      "tools/validate_range_eri.py",
+      "--backend",
+      "cuda",
+      "--omega",
+      "0.63",
+      "--samples",
+      "5",
+      "--architecture",
+      "sm_120",
+      "--output",
+      ".artifacts/range-reproduction"
+    ]
+  },
+  "schema": "vibeqc.benchmark-publication.v1",
+  "source": {
+    "dirty": false,
+    "revision": "3ac4bbe6c9e8263b8537290ebd58d94431d94380"
+  }
+}

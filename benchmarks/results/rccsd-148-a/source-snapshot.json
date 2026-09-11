@@ -1,0 +1,43 @@
+{
+  "baseline": "1e93c3cfa10afdf99ee26c70312bcfe533114331",
+  "files": {
+    "docs/rccsd.md": "d5a81125faee4e8c8d72c33a031ada50995b205ecb86c631991f6997b357b496",
+    "tests/python/test_cc_equations.py": "5bfb32b98d1134da48e807d625f9d9636848fc9c5889be221d02b1296ed4de06",
+    "tests/python/test_cc_provenance.py": "2b72a3f9a48378eb5cf1158cbe9e0041d93ddf8188ec8a4e8c60f2d2bca8b88b",
+    "tests/python/test_cc_references.py": "a6260e8666f6e8ce809e1d86ec5f36a50f622c14147861be4ce3cfd9e35c6584",
+    "tests/reference_data/cc/equations-2o2v.json": "eaec0dc7edad5eb1599614ee67a80839e7a136ecaa2c62c15e90e68677e537a3",
+    "tests/reference_data/cc/rccsd-a.json": "4487858606fabe17cc0edfe814c667630bb4d4c7f74d1d6a7b7f24d6e0589449",
+    "tools/generate_cc_references.py": "7d15fa530d7ebac2e1a28e9f83ff64fc03ca98752f4a37c46a3a2c5b85bf70c3",
+    "tools/validate_cc.py": "cbc4616c4a7197e127836e556ca0dc250d0162ad59a069d68702d307e9312ada",
+    "tools/vibeqc_cc/LICENSE.pyscf": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "tools/vibeqc_cc/NOTICE": "3d5d9740c27b3edbe4e6b265240ca5eb3b58da75b55927f621271d08bc49996c",
+    "tools/vibeqc_cc/__init__.py": "c609edfe53329869923d26542a75e1802a1a1d759035638d271848cb41172ca3",
+    "tools/vibeqc_cc/equations.py": "e33c3bd6264990cdd4b5dc28b5300231bc0020e7cde4c257bdfdacdf6eeffa22",
+    "tools/vibeqc_cc/evaluate.py": "4923ca7e49e87e8b5987d546ee281500e0c26c3693e701a714b7150ebabb54b9",
+    "tools/vibeqc_cc/inventory.py": "24310a7ff7270d7a7b07febc794c560fc382fa4b0cdc223612a8e6cbc1faa820",
+    "tools/vibeqc_cc/oracle.py": "fafc44841b6012d86718aab2e0ec090bf5e7547dd4330208e0cb70f1e9bdfbf7",
+    "tools/vibeqc_cc/source_manifest.json": "2085318e1fdc810dd89d80427bde4113990517ff81f70082750febb477514f65"
+  },
+  "git_blob_sha256": {
+    "docs/rccsd.md": "d5a81125faee4e8c8d72c33a031ada50995b205ecb86c631991f6997b357b496",
+    "tests/python/test_cc_equations.py": "5bfb32b98d1134da48e807d625f9d9636848fc9c5889be221d02b1296ed4de06",
+    "tests/python/test_cc_provenance.py": "2b72a3f9a48378eb5cf1158cbe9e0041d93ddf8188ec8a4e8c60f2d2bca8b88b",
+    "tests/python/test_cc_references.py": "a6260e8666f6e8ce809e1d86ec5f36a50f622c14147861be4ce3cfd9e35c6584",
+    "tests/reference_data/cc/equations-2o2v.json": "a990cc72b39fa47e1c2d2f76367794cb4034d784a7ddd9fc0320a4ed7cda7fb9",
+    "tests/reference_data/cc/rccsd-a.json": "4487858606fabe17cc0edfe814c667630bb4d4c7f74d1d6a7b7f24d6e0589449",
+    "tools/generate_cc_references.py": "7d15fa530d7ebac2e1a28e9f83ff64fc03ca98752f4a37c46a3a2c5b85bf70c3",
+    "tools/validate_cc.py": "cbc4616c4a7197e127836e556ca0dc250d0162ad59a069d68702d307e9312ada",
+    "tools/vibeqc_cc/LICENSE.pyscf": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "tools/vibeqc_cc/NOTICE": "3d5d9740c27b3edbe4e6b265240ca5eb3b58da75b55927f621271d08bc49996c",
+    "tools/vibeqc_cc/__init__.py": "c609edfe53329869923d26542a75e1802a1a1d759035638d271848cb41172ca3",
+    "tools/vibeqc_cc/equations.py": "e33c3bd6264990cdd4b5dc28b5300231bc0020e7cde4c257bdfdacdf6eeffa22",
+    "tools/vibeqc_cc/evaluate.py": "4923ca7e49e87e8b5987d546ee281500e0c26c3693e701a714b7150ebabb54b9",
+    "tools/vibeqc_cc/inventory.py": "24310a7ff7270d7a7b07febc794c560fc382fa4b0cdc223612a8e6cbc1faa820",
+    "tools/vibeqc_cc/oracle.py": "fafc44841b6012d86718aab2e0ec090bf5e7547dd4330208e0cb70f1e9bdfbf7",
+    "tools/vibeqc_cc/source_manifest.json": "ac8c87c66110340a1214006cdc5136e74639e15a7293e0d14f44267bb06a2abd"
+  },
+  "line_ending_only_normalization": [
+    "tests/reference_data/cc/equations-2o2v.json",
+    "tools/vibeqc_cc/source_manifest.json"
+  ]
+}

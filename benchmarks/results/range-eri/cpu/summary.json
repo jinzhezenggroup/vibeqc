@@ -1,0 +1,8 @@
+{
+  "dirty": false,
+  "endpoint_count": 16,
+  "maximum_raw_or_weighted_error": 1.980360320175123e-14,
+  "passed": true,
+  "revision": "3ac4bbe6c9e8263b8537290ebd58d94431d94380",
+  "scope": "Numerical acceptance of explicit range shell providers only; no RSH functional or performance promotion."
+}

@@ -25,7 +25,20 @@ bool psps_signature_bucketing_requested() noexcept;
 bool ppss_signature_bucketing_requested() noexcept;
 unsigned ppps_resident_block_threads_requested() noexcept;
 bool one_electron_force_scalar_requested() noexcept;
+/** 0: one AO pair per thread; 1: one shell pair per warp. */
+unsigned one_electron_value_mapping_requested() noexcept;
+/** Generated derivative candidates are opt-in and read at each force execution. */
+bool generated_one_electron_derivatives_requested() noexcept;
+/** 0: AO threads; 1: shell-pair warp lanes; 2: deterministic serial diagnostics. */
+unsigned one_electron_derivative_mapping_requested() noexcept;
 bool resident_psss_bra_requested() noexcept;
+/** Generated weighted primitive candidate; frozen into a prepared bucket. */
+bool generated_psss_weighted_requested() noexcept;
+
+/** 0: cooperative dense elements; 1: deterministic serial traversal. */
+unsigned df_derivative_mapping_requested() noexcept;
+/** 0: contiguous auxiliary outputs; 1: AO components; 2: primitive lanes. */
+unsigned df_value_mapping_requested() noexcept;
 
 }  // namespace vibeqc::scf::cuda_policy
 

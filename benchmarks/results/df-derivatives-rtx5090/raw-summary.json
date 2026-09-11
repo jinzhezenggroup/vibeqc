@@ -1,0 +1,85 @@
+{
+  "compile_seconds": 5.276852926006541,
+  "driver_hash": "5b240705e0eb4ab4c4e13d50a5c0a296c2ab1eceb024f28dac2cb9b7ced7a8f6",
+  "fixture_count": 162,
+  "maximum_absolute_error": 3.6259883984257613e-13,
+  "object_bytes": 1663096,
+  "object_hash": "1dbf3b3c68e27b4eae01ae05b48908297bd5e313611b49005e06c670b85d9c7b",
+  "passed": true,
+  "primitive_count": 67679,
+  "production_promoted": false,
+  "programs": 160,
+  "projection_location": "host, independent PySCF transform",
+  "reference_versions": {
+    "numpy": "2.5.3",
+    "pyscf": "2.14.0",
+    "python": "3.13.9 | packaged by Anaconda, Inc. | (main, Oct 21 2025, 19:16:10) [GCC 11.2.0]"
+  },
+  "resources": {
+    "fixture_values": {
+      "LOCAL": 0,
+      "REG": 244,
+      "SHARED": 0,
+      "STACK": 664
+    }
+  },
+  "runs": [
+    {
+      "passed": true,
+      "runtime": {
+        "active_blocks_per_sm": 4,
+        "count": 67679,
+        "device": "NVIDIA GeForce RTX 5090",
+        "driver": 13000,
+        "local_bytes": 664,
+        "major": 12,
+        "milliseconds": [
+          0.512960017,
+          0.537952006,
+          0.530048013,
+          0.543615997,
+          0.531231999,
+          0.525247991,
+          0.585536003
+        ],
+        "minor": 0,
+        "registers": 244,
+        "runtime": 12090,
+        "shared_bytes": 0,
+        "slurm_job_id": "9087",
+        "threads": 64
+      }
+    },
+    {
+      "passed": true,
+      "runtime": {
+        "active_blocks_per_sm": 2,
+        "count": 67679,
+        "device": "NVIDIA GeForce RTX 5090",
+        "driver": 13000,
+        "local_bytes": 664,
+        "major": 12,
+        "milliseconds": [
+          0.555935979,
+          0.652512014,
+          0.563552022,
+          0.552896023,
+          0.570976019,
+          0.539551973,
+          0.559072018
+        ],
+        "minor": 0,
+        "registers": 244,
+        "runtime": 12090,
+        "shared_bytes": 0,
+        "slurm_job_id": "9088",
+        "threads": 128
+      }
+    }
+  ],
+  "schema": "vibeqc.df_derivative_validation",
+  "source_bytes": 715626,
+  "source_hash": "ea5178bcd8ec8cc91e4566713561ed8246dc530445cf815877c0a6e3e071d30a",
+  "tier": "isolated_native_derivatives",
+  "version": 1
+}

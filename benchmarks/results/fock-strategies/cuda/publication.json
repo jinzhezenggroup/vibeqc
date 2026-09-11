@@ -1,0 +1,59 @@
+{
+  "archives": [],
+  "decision": {
+    "reason": "All same-approximation energies, complete forces and raw J/K entries meet the declared gates. Architecture timing review is separate in summary.json; this does not promote a faster scientific schedule.",
+    "scope": "numerical",
+    "status": "accepted"
+  },
+  "files": [
+    {
+      "bytes": 26519,
+      "path": "evidence.json",
+      "role": "evidence",
+      "sha256": "070f6dfbec988ef76a62d6d70aae62453ded7f69ce4ffb63e9916a0f5d04b1c1"
+    },
+    {
+      "bytes": 15236,
+      "path": "summary.json",
+      "role": "summary",
+      "sha256": "48f193c0351566b5133bfefd2bf81584e949b2e35113cf3e1eaa456b6b0a584c"
+    },
+    {
+      "bytes": 403808,
+      "path": "samples.json",
+      "role": "samples",
+      "sha256": "7ea10df0b8c9616ede66380bcb010af55b4bc40f30152561ab15142cccfc8d56"
+    },
+    {
+      "bytes": 81254,
+      "path": "provenance.json",
+      "role": "input",
+      "sha256": "b9a1ba03095f036b472fc5627b52d36def3623aca17a5223e171af413f2e6aa9"
+    }
+  ],
+  "reproduction": {
+    "command": [
+      "srun",
+      "--partition=main",
+      "--gres=gpu:5090:1",
+      "--nodes=1",
+      "--ntasks=1",
+      "--time=00:35:00",
+      "python",
+      "tools/benchmark_fock_strategies.py",
+      "--baseline",
+      "/path/to/3da58410bb02a903ea6341a7caac0afc9314355b",
+      "--head",
+      "/path/to/913fb20a25aab87363b19e9d788580230493b688",
+      "--build-relative",
+      ".artifacts/overhead-cuda-build",
+      "--samples",
+      "7"
+    ]
+  },
+  "schema": "vibeqc.benchmark-publication.v1",
+  "source": {
+    "dirty": false,
+    "revision": "913fb20a25aab87363b19e9d788580230493b688"
+  }
+}

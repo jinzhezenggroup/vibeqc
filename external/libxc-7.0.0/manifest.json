@@ -1,0 +1,38 @@
+{
+  "version": "7.0.0",
+  "license": "MPL-2.0",
+  "files": {
+    "COPYING": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/COPYING",
+      "sha256": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85"
+    },
+    "gga_c_pbe.c": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_pbe.c",
+      "sha256": "d449da1e327e5c5c17dc50174c25793aeea1876c4d1250d53ae12ded3e6395da"
+    },
+    "gga_c_pbe.mpl": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_pbe.mpl",
+      "sha256": "17984d42413bea2eb3eed038a3df1cd4497f8b98e14e86cdc8d457dce8894f53"
+    },
+    "gga_x_pbe.c": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_pbe.c",
+      "sha256": "7ecca3522393cdaad1d5764a19577fb051bc3ed5d27ceb4b72b787f07d283fb3"
+    },
+    "gga_x_pbe.mpl": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_pbe.mpl",
+      "sha256": "7b4bbdf7a57aae3d3de10892f90a6b06c0454ce437569c58f8610313556e4b3b"
+    },
+    "lda_c_pw.mpl": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_pw.mpl",
+      "sha256": "b32237332b2fec7a6cdc26a0006e5f6aff99d7ca9c8bc2369d3b155e7d3d0cdd"
+    },
+    "lda_x.mpl": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_x.mpl",
+      "sha256": "34d3ff595018a13b258019f5c4e56da1fc6b65933ba739c746ac06a3a41a7170"
+    },
+    "util.mpl": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/util.mpl",
+      "sha256": "c9790afb37c7eece47d39d0998196335a1adb857bdba814fac4b8937801a04fe"
+    }
+  }
+}

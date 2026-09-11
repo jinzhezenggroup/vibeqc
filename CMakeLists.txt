@@ -4,6 +4,11 @@ project(VibeQC VERSION 0.1.0 LANGUAGES CXX)
 
 find_package(Python3 COMPONENTS Interpreter QUIET)
 
+# Leaf lowering/tuning modules are scientific generator inputs too. Track
+# nested files for regeneration; facade timestamps alone cannot invalidate them.
+file(GLOB_RECURSE VIBEQC_SCIENTIFIC_COMPILER_INPUTS CONFIGURE_DEPENDS
+     "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/*.py")
+
 option(VIBEQC_ENABLE_CUDA "Build the CUDA runtime backend" ON)
 option(VIBEQC_ENABLE_AOT_SHELLS
        "Build generated shell kernels in addition to the generic CUDA path" ON)
@@ -129,18 +134,59 @@ endif()
 add_library(vibeqc SHARED
   src/api/c_api_batch.cpp
   src/api/c_api_calculation.cpp
+  src/api/c_api_fock.cpp
+  src/api/c_api_one_electron_gradient.cpp
+  src/api/c_api_projection.cpp
+  src/api/c_api_df_gradient.cpp
   src/api/c_api_common.cpp
   src/api/c_api_context.cpp
+  src/api/c_api_resources.cpp
+  src/api/c_api_tuning.cpp
   src/api/error.cpp
+  src/dft/ao_grid.cpp
+  src/dft/bridge.cpp
   src/integrals/s_integrals.cpp
   src/methods/hf_method.cpp
   src/methods/registry.cpp
   src/molecule/basis.cpp
+  src/posthf/bridge.cpp
   src/runtime/context.cpp
   src/scf/density_fitting.cpp
+  src/scf/df_response_weights.cpp
   src/scf/fleet.cpp
+  src/scf/fock_build.cpp
+  src/scf/fock_provider.cpp
+  src/scf/cuda_fock_provider.cpp
+  src/scf/fock_prepared.cpp
+  src/scf/fock_execution.cpp
   src/scf/rhf.cpp
 )
+
+# A local tuned library may replace this build only when its scientific source
+# and generator are identical. Paths and Git metadata are deliberately excluded
+# so the same installed build can be reused across homogeneous cluster nodes.
+file(GLOB_RECURSE _vibeqc_identity_inputs CONFIGURE_DEPENDS
+     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+     "src/*" "include/*" "python/vibeqc_compiler/*.py"
+     "python/vibeqc_compiler/*.json" "python/vibeqc/*.py")
+list(APPEND _vibeqc_identity_inputs "CMakeLists.txt" "tools/generate_shell_kernels.py"
+     "tools/generate_df_kernels.py" "tools/generate_weighted_eri_kernels.py"
+     "tools/generate_one_electron_kernels.py" "tools/generate_grid_kernels.py")
+list(SORT _vibeqc_identity_inputs)
+set(_vibeqc_identity_text "")
+foreach(_vibeqc_identity_path IN LISTS _vibeqc_identity_inputs)
+  file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/${_vibeqc_identity_path}" _vibeqc_file_hash)
+  string(APPEND _vibeqc_identity_text "${_vibeqc_identity_path}:${_vibeqc_file_hash}\n")
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+               "${CMAKE_CURRENT_SOURCE_DIR}/${_vibeqc_identity_path}")
+endforeach()
+string(SHA256 VIBEQC_SOURCE_IDENTITY "${_vibeqc_identity_text}")
+set(VIBEQC_TUNING_RELEASE_BUILD OFF)
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+  set(VIBEQC_TUNING_RELEASE_BUILD ON)
+endif()
+configure_file(src/api/build_identity.hpp.in generated/build_identity.hpp @ONLY)
+target_include_directories(vibeqc PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
 
 target_include_directories(vibeqc
   PUBLIC
@@ -154,12 +200,97 @@ target_compile_definitions(vibeqc PRIVATE VIBEQC_BUILDING_LIBRARY=1)
 target_compile_options(vibeqc PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Wpedantic>)
 
 if(VIBEQC_ENABLE_CUDA)
+  # DF values share the mathematical generator even in generic four-center
+  # builds. Keep the emitted header out of version control and regenerate it
+  # whenever one of its mathematical or lowering dependencies changes.
+  if(NOT Python3_Interpreter_FOUND)
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  endif()
+  file(GLOB_RECURSE VIBEQC_DF_GENERATOR_INPUTS CONFIGURE_DEPENDS
+       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/*.py")
+  set(VIBEQC_DF_GENERATED_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/df_values.cuh")
+  set(VIBEQC_DF_POLICY_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_policy.cuh")
+  add_custom_command(
+    OUTPUT "${VIBEQC_DF_GENERATED_HEADER}" "${VIBEQC_DF_POLICY_HEADER}"
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
+            --output "${VIBEQC_DF_GENERATED_HEADER}"
+            --policy-output "${VIBEQC_DF_POLICY_HEADER}"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
+            ${VIBEQC_DF_GENERATOR_INPUTS}
+    VERBATIM)
+  target_sources(vibeqc PRIVATE "${VIBEQC_DF_GENERATED_HEADER}" "${VIBEQC_DF_POLICY_HEADER}")
+  set(VIBEQC_DF_DERIVATIVE_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_derivatives.cuh")
+  set(VIBEQC_DF_DERIVATIVE_POLICY_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_derivative_policy.cuh")
+  set(VIBEQC_DF_DERIVATIVE_SCHEDULE_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_derivative_schedule.cuh")
+  add_custom_command(
+    OUTPUT "${VIBEQC_DF_DERIVATIVE_HEADER}" "${VIBEQC_DF_DERIVATIVE_POLICY_HEADER}" "${VIBEQC_DF_DERIVATIVE_SCHEDULE_HEADER}"
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
+            --derivatives --output "${VIBEQC_DF_DERIVATIVE_HEADER}"
+            --policy-output "${VIBEQC_DF_DERIVATIVE_POLICY_HEADER}"
+            --schedule-output "${VIBEQC_DF_DERIVATIVE_SCHEDULE_HEADER}"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py" ${VIBEQC_DF_GENERATOR_INPUTS}
+    VERBATIM)
+  target_sources(vibeqc PRIVATE "${VIBEQC_DF_DERIVATIVE_HEADER}" "${VIBEQC_DF_DERIVATIVE_POLICY_HEADER}" "${VIBEQC_DF_DERIVATIVE_SCHEDULE_HEADER}"
+                 src/scf/cuda/df_derivatives.cu src/scf/cuda/df_gradient_bridge.cu)
+
+  # One-electron lowering is compiled in its own TU, keeping the generic HF
+  # fallback independent of generated scalar-family source size.
+  set(VIBEQC_ONE_ELECTRON_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_one_electron_values.cuh")
+  set(VIBEQC_ONE_ELECTRON_POLICY_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_one_electron_policy.cuh")
+  add_custom_command(
+    OUTPUT "${VIBEQC_ONE_ELECTRON_HEADER}" "${VIBEQC_ONE_ELECTRON_POLICY_HEADER}"
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_one_electron_kernels.py"
+            --output "${VIBEQC_ONE_ELECTRON_HEADER}"
+            --policy-output "${VIBEQC_ONE_ELECTRON_POLICY_HEADER}"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_one_electron_kernels.py"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
+            ${VIBEQC_DF_GENERATOR_INPUTS}
+    VERBATIM)
+  target_sources(vibeqc PRIVATE "${VIBEQC_ONE_ELECTRON_HEADER}" "${VIBEQC_ONE_ELECTRON_POLICY_HEADER}"
+                 src/scf/cuda/one_electron_values.cu)
+  set(VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_one_electron_derivatives.cuh")
+  add_custom_command(
+    OUTPUT "${VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER}"
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_one_electron_kernels.py"
+            --derivatives --output "${VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER}"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_one_electron_kernels.py"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
+            ${VIBEQC_DF_GENERATOR_INPUTS}
+    VERBATIM)
+  target_sources(vibeqc PRIVATE "${VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER}"
+                 src/scf/cuda/one_electron_derivatives.cu
+                 src/scf/cuda/one_electron_gradient_bridge.cu)
+  # The first weighted-ERI migration reuses native primitive loops and queue
+  # policies, replacing only their scalar expression with a shared DAG helper.
+  set(VIBEQC_WEIGHTED_ERI_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/weighted_eri.cuh")
+  add_custom_command(
+    OUTPUT "${VIBEQC_WEIGHTED_ERI_HEADER}"
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_weighted_eri_kernels.py"
+            --output "${VIBEQC_WEIGHTED_ERI_HEADER}"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_weighted_eri_kernels.py"
+            ${VIBEQC_DF_GENERATOR_INPUTS}
+    VERBATIM)
+  target_sources(vibeqc PRIVATE "${VIBEQC_WEIGHTED_ERI_HEADER}")
+  # Compile the same generated policy/runtime composition used by the JIT
+  # grid owner. The native runtime no longer defines scientific AO formulas.
+  set(VIBEQC_GRID_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_grid_policy.cu")
+  add_custom_command(
+    OUTPUT "${VIBEQC_GRID_SOURCE}"
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_grid_kernels.py"
+            --output "${VIBEQC_GRID_SOURCE}"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_grid_kernels.py"
+            ${VIBEQC_DF_GENERATOR_INPUTS}
+    VERBATIM)
+  target_include_directories(vibeqc PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/dft")
   target_sources(vibeqc PRIVATE
+    "${VIBEQC_GRID_SOURCE}"
+    src/posthf/df_bridge.cu
     src/scf/cuda/rhf_policy.cpp
     src/runtime/cuda_runtime.cu
     src/scf/cuda_density_fitting.cu
     src/scf/cuda_eigensolver_probe.cu
     src/scf/cuda_rhf.cu
+    src/scf/cuda_hf_entry.cpp
   )
   set_property(TARGET vibeqc PROPERTY JOB_POOL_COMPILE vibeqc_cuda_compile)
   if(VIBEQC_CUDA_FAST_COMPILE)
@@ -180,7 +311,7 @@ if(VIBEQC_ENABLE_CUDA)
       find_package(Python3 COMPONENTS Interpreter REQUIRED)
     endif()
     set(VIBEQC_AOT_SHELL_MANIFEST
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/production_shell_classes.json"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/production_shell_classes.json"
         CACHE FILEPATH "Accepted generated shell classes for production CUDA")
     set(VIBEQC_AOT_GENERATED_DIRECTORY
         "${CMAKE_CURRENT_BINARY_DIR}/generated/production_shell_kernels")
@@ -285,27 +416,32 @@ if(VIBEQC_ENABLE_CUDA)
       DEPENDS
         "${VIBEQC_AOT_SHELL_MANIFEST}"
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_shell_kernels.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/__init__.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/backend.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/capabilities.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/cuda.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/cuda_adapter.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/cuda_emitter.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/cuda_lowering.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/cuda_schedule.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/cuda_target.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/dppp_specialization.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/expr.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/fused_schedule.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/ir.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/production.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/rys.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/rys2_data.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/rys3_data.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/rys4_data.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/rys5_data.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/shell_class.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/shell_spec.py"
+        ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/__init__.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/backend.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/blocks.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/cache.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/capabilities.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/cuda.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/cuda_adapter.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/cuda_emitter.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/cuda_lowering.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/cuda_schedule.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/cuda_target.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/dppp_specialization.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/expr.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/fused_schedule.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/ir.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/ir_serialization.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/production.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/rys.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/rys2_data.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/rys3_data.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/rys4_data.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/rys5_data.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/shell_class.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/shell_signature.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/shell_spec.py"
       COMMENT "Generating target-specific fused shell-class CUDA bundles"
       VERBATIM)
     set_source_files_properties(
@@ -391,7 +527,9 @@ if(VIBEQC_ENABLE_CUDA)
 else()
   target_sources(vibeqc PRIVATE
     src/scf/cuda_density_fitting_stub.cpp
-    src/scf/cuda_density_fitting_integrals_stub.cpp)
+    src/scf/cuda_direct_jk_stub.cpp
+    src/scf/cuda_density_fitting_integrals_stub.cpp
+    src/scf/cuda_weighted_eri_stub.cpp)
   target_compile_definitions(vibeqc PUBLIC VIBEQC_HAS_CUDA=0)
 endif()
 
@@ -403,10 +541,38 @@ set_target_properties(vibeqc PROPERTIES
 
 if(VIBEQC_BUILD_TESTS)
   enable_testing()
+  if(VIBEQC_ENABLE_CUDA)
+    # Manual numerical/performance tier: invoked through the Slurm validator,
+    # never registered as an unallocated login-node GPU test.
+    add_executable(vibeqc_weighted_eri_probe tests/native/weighted_eri_probe.cpp)
+    target_link_libraries(vibeqc_weighted_eri_probe PRIVATE vibeqc CUDA::cudart)
+    target_include_directories(vibeqc_weighted_eri_probe PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    add_executable(vibeqc_df_value_probe tests/native/df_value_probe.cpp)
+    target_link_libraries(vibeqc_df_value_probe PRIVATE vibeqc CUDA::cudart)
+    target_include_directories(vibeqc_df_value_probe PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+  endif()
+  add_executable(vibeqc_fock_build_tests tests/native/test_fock_build.cpp)
+  target_link_libraries(vibeqc_fock_build_tests PRIVATE vibeqc)
+  target_include_directories(vibeqc_fock_build_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  add_test(NAME vibeqc_fock_build_tests COMMAND vibeqc_fock_build_tests)
+  add_executable(vibeqc_fock_provider_tests tests/native/test_fock_provider.cpp)
+  target_link_libraries(vibeqc_fock_provider_tests PRIVATE vibeqc)
+  target_include_directories(vibeqc_fock_provider_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  add_test(NAME vibeqc_fock_provider_tests COMMAND vibeqc_fock_provider_tests)
+  add_executable(vibeqc_fock_api_tests tests/native/test_fock_api.cpp)
+  target_link_libraries(vibeqc_fock_api_tests PRIVATE vibeqc)
+  # CPU by default; invoke the explicit CUDA argument only inside a GPU job.
+  add_test(NAME vibeqc_fock_api_tests COMMAND vibeqc_fock_api_tests)
+
   add_executable(vibeqc_native_tests tests/native/test_rhf.cpp)
   target_link_libraries(vibeqc_native_tests PRIVATE vibeqc)
   target_include_directories(vibeqc_native_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
   add_test(NAME vibeqc_native_tests COMMAND vibeqc_native_tests)
+
+  add_executable(vibeqc_scf_proposal_tests tests/native/test_scf_proposals.cpp)
+  target_link_libraries(vibeqc_scf_proposal_tests PRIVATE vibeqc)
+  target_include_directories(vibeqc_scf_proposal_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  add_test(NAME vibeqc_scf_proposal_tests COMMAND vibeqc_scf_proposal_tests)
 
   add_executable(vibeqc_batch_tests tests/native/test_batch.cpp)
   target_link_libraries(vibeqc_batch_tests PRIVATE vibeqc)
@@ -451,6 +617,16 @@ if(VIBEQC_BUILD_TESTS)
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
   add_test(NAME vibeqc_spherical_tests COMMAND vibeqc_spherical_tests)
 
+  add_executable(vibeqc_basis_contract_tests tests/native/test_basis_contract.cpp)
+  target_include_directories(vibeqc_basis_contract_tests PRIVATE src)
+  target_link_libraries(vibeqc_basis_contract_tests PRIVATE vibeqc)
+  add_test(NAME vibeqc_basis_contract_tests COMMAND vibeqc_basis_contract_tests)
+
+  add_executable(vibeqc_grid_tests tests/native/test_grid.cpp)
+  target_link_libraries(vibeqc_grid_tests PRIVATE vibeqc)
+  target_include_directories(vibeqc_grid_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  add_test(NAME vibeqc_grid_tests COMMAND vibeqc_grid_tests)
+
   add_executable(vibeqc_mixed_precision_tests
     tests/native/test_mixed_precision.cpp)
   target_link_libraries(vibeqc_mixed_precision_tests PRIVATE vibeqc)
@@ -459,6 +635,8 @@ if(VIBEQC_BUILD_TESTS)
   add_test(NAME vibeqc_mixed_precision_tests
     COMMAND vibeqc_mixed_precision_tests)
 
+  # This test requires a tuned registry and deliberately rejects the portable
+  # stub used when AOT shells are disabled. Other CUDA tests use either build.
   if(VIBEQC_ENABLE_CUDA)
     add_executable(vibeqc_cuda_runtime_tests tests/native/test_cuda_runtime.cu)
     target_link_libraries(vibeqc_cuda_runtime_tests PRIVATE vibeqc CUDA::cudart CUDA::cublas)
@@ -466,6 +644,17 @@ if(VIBEQC_BUILD_TESTS)
       PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     add_test(NAME vibeqc_cuda_runtime_tests COMMAND vibeqc_cuda_runtime_tests)
 
+    add_executable(vibeqc_cuda_fock_provider_tests tests/native/test_cuda_fock_provider.cpp)
+    target_link_libraries(vibeqc_cuda_fock_provider_tests PRIVATE vibeqc CUDA::cudart)
+    target_include_directories(vibeqc_cuda_fock_provider_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    add_test(NAME vibeqc_cuda_fock_provider_tests COMMAND vibeqc_cuda_fock_provider_tests)
+    add_executable(vibeqc_cuda_fock_composition_tests tests/native/test_cuda_fock_composition.cpp)
+    target_link_libraries(vibeqc_cuda_fock_composition_tests PRIVATE vibeqc)
+    target_include_directories(vibeqc_cuda_fock_composition_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    add_test(NAME vibeqc_cuda_fock_composition_tests COMMAND vibeqc_cuda_fock_composition_tests)
+  endif()
+
+  if(VIBEQC_ENABLE_CUDA AND VIBEQC_ENABLE_AOT_SHELLS)
     add_executable(vibeqc_aot_profile_tests tests/native/test_aot_profile.cpp)
     target_link_libraries(vibeqc_aot_profile_tests PRIVATE vibeqc CUDA::cudart)
     target_include_directories(vibeqc_aot_profile_tests
@@ -488,9 +677,14 @@ if(Python3_Interpreter_FOUND)
               --shell-class psss --axis "${axis}" --output "${output}"
       DEPENDS
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_shell_kernels.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/cuda.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/expr.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/shell_class.py"
+        ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/blocks.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/ir.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/ir_serialization.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/shell_signature.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/cuda.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/expr.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/shell_class.py"
       COMMENT "Generating symbolic/CSE psss ${axis}-gradient CUDA pilot"
       VERBATIM)
     list(APPEND VIBEQC_CODEGEN_PILOT_OUTPUTS "${output}")
@@ -505,9 +699,14 @@ if(Python3_Interpreter_FOUND)
             --lowering factored --output "${output}"
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_shell_kernels.py"
-      "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/cuda.py"
-      "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/expr.py"
-      "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_codegen/shell_class.py"
+      ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/blocks.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/ir.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/ir_serialization.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/shell_signature.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/cuda.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/expr.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/shell_class.py"
     COMMENT "Generating factored symbolic/CSE dppp xy/xyz CUDA candidate"
     VERBATIM)
   list(APPEND VIBEQC_CODEGEN_PILOT_OUTPUTS "${output}")

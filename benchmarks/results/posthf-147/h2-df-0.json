@@ -1,0 +1,88 @@
+{
+  "subject": "posthf/h2/DF/cpu-reference-native-shell-tiles",
+  "same_hamiltonian_errors": {
+    "mo": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 8.881784197001252e-16,
+      "max_scaled_error": 3.7229865995317684e-05,
+      "rms_error": 8.881784197001252e-16,
+      "shape": [
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "amplitudes": {
+      "passed": true,
+      "atol": 1e-11,
+      "rtol": 1e-10,
+      "max_absolute_error": 3.3306690738754696e-16,
+      "max_scaled_error": 2.1189250096416107e-05,
+      "rms_error": 3.3306690738754696e-16,
+      "shape": [
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "energy": {
+      "passed": true,
+      "atol": 1e-09,
+      "rtol": 0,
+      "max_absolute_error": 9.194034422677078e-17,
+      "max_scaled_error": 9.194034422677078e-08,
+      "rms_error": 9.194034422677078e-17,
+      "shape": [
+        1
+      ]
+    }
+  },
+  "diagnostics": {
+    "backend": "cpu-reference-df-staged-fp64",
+    "source_backend": "cpu-reference-native-shell-tiles",
+    "source_host_staging": false,
+    "cache_hit": true,
+    "endpoint_seconds": 0.0032842298969626427,
+    "peak_bytes": 8390152,
+    "host_peak_bytes": 8390152,
+    "device_peak_bytes": 0,
+    "output_placement": "host",
+    "metric_identity": "85f14369277b69a38c6fc16d5d5eec03d6b0c329939bef691d39bde6b19de3dc",
+    "metric_rank": 2,
+    "metric_threshold": 1e-10,
+    "inverse_convention": "square-symmetric-thresholded-inverse-square-root",
+    "metric_setup_seconds": 0.0002312520518898964,
+    "cumulative_source_seconds": 0.001462449785321951,
+    "cumulative_transformation_seconds": 0.00030658626928925514,
+    "cuda_source": null,
+    "reuse_seconds": 1.8540304154157639e-06
+  },
+  "metric": {
+    "auxiliary_hash": "df0acb257a572bf434ec3913f30d97677e89016d15e686b87ed497f0a0ede31b",
+    "geometry_hash": "e29480369e182a799dd0cb19aad9e741a17a679e0354e3453f13033f71fd4e58",
+    "relative_threshold": 1e-10,
+    "rank": 2,
+    "absolute_threshold": 7.618082619939907e-09,
+    "condition_number": 20.67707057292205,
+    "metric_hash": "ebcd274128a74d795eb2970f2f3b420a4ebd84a543a4451063d3bd84b266ff8c",
+    "identity": "85f14369277b69a38c6fc16d5d5eec03d6b0c329939bef691d39bde6b19de3dc",
+    "setup_seconds": 0.0002312520518898964,
+    "host_peak_bytes": 8390080,
+    "device_bytes": 0,
+    "convention": "square-symmetric-thresholded-inverse-square-root"
+  },
+  "cold_seconds": 0.0033761460799723864,
+  "statistics": {
+    "transformations": 1,
+    "hits": 1,
+    "peak_bytes": 8390152,
+    "source_tiles": 16,
+    "source_seconds": 0.001462449785321951,
+    "transformation_seconds": 0.00030658626928925514
+  },
+  "conventional_vs_df_ao_difference": 0.10059818980817922
+}

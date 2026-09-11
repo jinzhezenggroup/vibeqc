@@ -1,0 +1,182 @@
+{
+  "schema": "vibeqc.grid-reference",
+  "version": 1,
+  "inputs": {
+    "name": "h2",
+    "atomic_numbers": [
+      1,
+      1
+    ],
+    "coordinates": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.1,
+        0.2,
+        1.4
+      ]
+    ],
+    "shells": [
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            3.425250914,
+            0.1543289673
+          ],
+          [
+            0.6239137298,
+            0.5353281423
+          ],
+          [
+            0.168855404,
+            0.4446345422
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            3.425250914,
+            0.1543289673
+          ],
+          [
+            0.6239137298,
+            0.5353281423
+          ],
+          [
+            0.168855404,
+            0.4446345422
+          ]
+        ]
+      }
+    ],
+    "basis_representation": "cartesian",
+    "charge": 0,
+    "multiplicity": 1
+  },
+  "inputs_hash": "98d590044af1e7a71d9f00c65aaaaf689fb821457e73a420c4b8f202c9247c40",
+  "grid_hash": "df771338666d8b19412919ff17c083d8238686cfef0aa322ee072fdb7089173d",
+  "reference": {
+    "PySCF": "2.14.0",
+    "NumPy": "2.4.6",
+    "licenses": {
+      "PySCF": "Apache-2.0",
+      "libcint": "BSD-2-Clause"
+    },
+    "exporter": "original tools/generate_grid_references.py",
+    "actual_basis": [
+      0,
+      0
+    ]
+  },
+  "conventions": {
+    "jets": "ordinary spatial derivatives; libcint order; no factorials",
+    "density": "separate alpha/beta; arbitrary PSD, not SCF",
+    "tau": "one-half gradient square",
+    "sigma": "aa,ab,bb; no cross factor",
+    "grid": "identical explicit points, not a quadrature-convergence comparison"
+  },
+  "arrays": {
+    "points": {
+      "shape": [
+        58,
+        3
+      ],
+      "sha256": "05fb4b0c1a2608118d2f48483a101d9ca5af3e13bd230cae4a642eae330635d7"
+    },
+    "ao_jets": {
+      "shape": [
+        20,
+        58,
+        2
+      ],
+      "sha256": "c0938f47c120f62517ba897aeeee68a29473e0969198bd4c6f324603a5d0db50"
+    },
+    "density": {
+      "shape": [
+        2,
+        2,
+        2
+      ],
+      "sha256": "11f3c8f886cea66a76ddad641ef15b3d7fbf722e421954834effc190ab083dad"
+    },
+    "coefficients": {
+      "shape": [
+        2,
+        2,
+        2
+      ],
+      "sha256": "5b352e064e70953f8d4ce5622bc84dff8099ea782c6e33dbf53791ac9213dc2d"
+    },
+    "partitioned_grid_points": {
+      "shape": [
+        32,
+        3
+      ],
+      "sha256": "0b08137a49998ac49d082c4eb729c0f081ff82f8dd04de0aef573b2c9eba381f"
+    },
+    "partitioned_grid_weights": {
+      "shape": [
+        32
+      ],
+      "sha256": "8f45e12c39585668aec77cbbd5bf766e99cfde768231b9789bedc019e3a5ee99"
+    },
+    "occupations": {
+      "shape": [
+        2,
+        2
+      ],
+      "sha256": "b22cb869af95f6e3d023368ad2ef644612a443daf7d4fe8983a37b700e3dd8d2"
+    },
+    "rho": {
+      "shape": [
+        2,
+        58
+      ],
+      "sha256": "4dda32940769ba82cf7a5a551f3f1ca79b7871b9b0ce7aac361d1ffadc5431dd"
+    },
+    "gradient": {
+      "shape": [
+        2,
+        58,
+        3
+      ],
+      "sha256": "235df1bbff501fa3ab68de59afb1c8524ecbbc8f2f0756c0809698f046085086"
+    },
+    "tau": {
+      "shape": [
+        2,
+        58
+      ],
+      "sha256": "4affd429f4c48994b13f92ec3dc1a570f369018a55c22542b3315b94d0789316"
+    },
+    "laplacian": {
+      "shape": [
+        2,
+        58
+      ],
+      "sha256": "d5aa191c666452d7cbaf410143bd35c2da8fedfbf3e0b86f222106b5bc8ec8a7"
+    },
+    "sigma": {
+      "shape": [
+        3,
+        58
+      ],
+      "sha256": "94465ce4afba3a8246080984c10b2ce92bf2453d838bd17bb5f56d9c885e038c"
+    },
+    "overlap": {
+      "shape": [
+        2,
+        2
+      ],
+      "sha256": "29f52ec53a5c07615f454438bf095ca8ff48c8369ed2b34173d14ddb70e1bf65"
+    }
+  }
+}

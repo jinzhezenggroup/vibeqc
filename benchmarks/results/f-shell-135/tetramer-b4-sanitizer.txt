@@ -1,0 +1,23 @@
+srun: job 8939 queued and waiting for resources
+srun: job 8939 has been allocated resources
+========= COMPUTE-SANITIZER
+Traceback (most recent call last):
+  File "/home/jzzeng/codes/qc-f-shell-gates/benchmarks/f_shell_endpoints.py", line 319, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/home/jzzeng/codes/qc-f-shell-gates/benchmarks/f_shell_endpoints.py", line 298, in main
+    result = run_endpoint(
+             ^^^^^^^^^^^^^
+  File "/home/jzzeng/codes/qc-f-shell-gates/benchmarks/f_shell_endpoints.py", line 188, in run_endpoint
+    _execute_once(prepared, cp, candidate, fock_classes=fock)
+  File "/home/jzzeng/codes/qc-f-shell-gates/benchmarks/aot_shell_batch_gate.py", line 265, in _execute_once
+    result = batch.execute(strict=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jzzeng/codes/qc-f-shell-gates/python/vibeqc/batch.py", line 556, in execute
+    result.raise_for_failures()
+  File "/home/jzzeng/codes/qc-f-shell-gates/python/vibeqc/batch.py", line 66, in raise_for_failures
+    raise RuntimeError("batched HF item failures: " + "; ".join(failures))
+RuntimeError: batched HF item failures: 0: CUDA runtime error; 1: CUDA runtime error; 2: CUDA runtime error; 3: CUDA runtime error
+========= Target application returned an error
+========= ERROR SUMMARY: 0 errors
+srun: error: node3: task 0: Exited with exit code 1

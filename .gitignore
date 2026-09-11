@@ -9,3 +9,14 @@ __pycache__/
 *.egg-info/
 /.venv/
 /_references/
+/.artifacts/
+# Benchmark runs are staged outside the reviewed result tree. A deliberate
+# scientific exception can still be force-added with a hash-pinned reason.
+/benchmarks/results/**/attempts/
+/benchmarks/results/**/*.log
+/benchmarks/results/**/*.xml
+/benchmarks/results/**/*.chk
+/benchmarks/results/**/*.checkpoint
+/benchmarks/results/**/*.nsys-rep
+/benchmarks/results/**/*.ncu-rep
+/benchmarks/results/**/*.sqlite*

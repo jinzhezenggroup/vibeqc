@@ -1,0 +1,102 @@
+{
+  "elements": {
+    "1": {
+      "electron_shells": [
+        {
+          "angular_momentum": [
+            0
+          ],
+          "coefficients": [
+            [
+              "0.1543289673E+00",
+              "0.5353281423E+00",
+              "0.4446345422E+00"
+            ]
+          ],
+          "exponents": [
+            "0.3425250914E+01",
+            "0.6239137298E+00",
+            "0.1688554040E+00"
+          ],
+          "function_type": "gto",
+          "region": ""
+        }
+      ],
+      "references": [
+        {
+          "reference_description": "STO-3G Minimal Basis (3 functions/AO)",
+          "reference_keys": [
+            "hehre1969a"
+          ]
+        }
+      ]
+    },
+    "26": {
+      "electron_shells": [
+        {
+          "angular_momentum": [
+            0
+          ],
+          "coefficients": [
+            [
+              "0.7",
+              "0.3",
+              "0"
+            ],
+            [
+              "0",
+              "-0.2",
+              "1"
+            ]
+          ],
+          "exponents": [
+            "500",
+            "80",
+            "15"
+          ],
+          "function_type": "gto"
+        },
+        {
+          "angular_momentum": [
+            1
+          ],
+          "coefficients": [
+            [
+              "0.8",
+              "0.2"
+            ]
+          ],
+          "exponents": [
+            "8",
+            "2"
+          ],
+          "function_type": "gto"
+        },
+        {
+          "angular_momentum": [
+            2
+          ],
+          "coefficients": [
+            [
+              "1"
+            ]
+          ],
+          "exponents": [
+            "4"
+          ],
+          "function_type": "gto_spherical"
+        }
+      ]
+    }
+  },
+  "function_types": [
+    "gto",
+    "gto_spherical"
+  ],
+  "molssi_bse_schema": {
+    "schema_type": "complete",
+    "schema_version": "0.1"
+  },
+  "name": "vibeqc-synthetic-fe-h",
+  "version": "1"
+}

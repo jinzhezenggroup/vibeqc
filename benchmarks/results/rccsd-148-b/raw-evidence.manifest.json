@@ -1,0 +1,37 @@
+{
+  "schema": "vibeqc.evidence-archive.v1",
+  "source_commit": "83dc2effec30e051afd8063bb405155b4e877d2b",
+  "archive_sha256": "c6fd591623424312bb80a880eb3a70c34021b4a6ac38f0451622fa525f5f74b5",
+  "files": [
+    {
+      "path": "determinant.json",
+      "bytes": 8465,
+      "sha256": "56ea2aaf8b914f20c09af9e34e4bdfc758de0f5114b2198f52633370b939cb25"
+    },
+    {
+      "path": "equations-2o3v.json",
+      "bytes": 144901,
+      "sha256": "02a5e0ed647d2cb6c025ba1d5b621eaf11c34ce99d0fbe8fc9f2e4326dc3d02b"
+    },
+    {
+      "path": "pyscf-h2.json",
+      "bytes": 14891,
+      "sha256": "1dd08e3024278e7e9a81e10a6219ee7ad30200f8d5e0760ef3ff986b3c339b69"
+    },
+    {
+      "path": "pyscf-lih.json",
+      "bytes": 15520,
+      "sha256": "76ea6328eb7386c710781c7c1c81c3adfbadc3875412c0b4620e558543be7ffe"
+    },
+    {
+      "path": "pyscf-random.json",
+      "bytes": 14846,
+      "sha256": "fa69e5f1f77414b42b6e1527bc02808ec161bd6442754b7b9e39a6e69c2d3f72"
+    },
+    {
+      "path": "pyscf-water.json",
+      "bytes": 15526,
+      "sha256": "78cb8ecbc02e0281dff8b7be0713fcdfbad559592be0dd1a718d320ddf196243"
+    }
+  ]
+}

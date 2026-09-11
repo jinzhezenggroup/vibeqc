@@ -1,0 +1,75 @@
+{
+  "archives": [],
+  "decision": {
+    "reason": "All unchanged numerical and separate per-workload 2% nonregression gates passed. Accept ownership retirement without a significant-speedup claim.",
+    "scope": "numerical",
+    "status": "accepted"
+  },
+  "files": [
+    {
+      "bytes": 857058,
+      "path": "evidence.json",
+      "role": "evidence",
+      "sha256": "b00ae5c560de2f80a9ce6bf0c883d99386475eec37e15a92b65d6b0f586c6a7c"
+    },
+    {
+      "bytes": 989114,
+      "path": "samples.json",
+      "role": "samples",
+      "sha256": "b272c454b4c2caa2d435497292ae92213502ee0659d1d0142409d7a0c736bdb4"
+    },
+    {
+      "bytes": 61496,
+      "path": "summary.json",
+      "role": "summary",
+      "sha256": "08a7ea3b27b18d3cda86054abef266a8bdb490e405f6406fc7b0c6c8063295c1"
+    },
+    {
+      "bytes": 4991,
+      "path": "resources.json",
+      "role": "summary",
+      "sha256": "5dce2baab5bbb41b4ee544875c8e4b3362ff23047532514282fda135b7f588a3"
+    }
+  ],
+  "reproduction": {
+    "baseline_source": {
+      "ref": "refs/heads/evidence/issue-231-baseline",
+      "repository": "https://github.com/njzjz-bot/vibeqc",
+      "revision": "1ba6f175caed656729e0863880251cc315232b1c"
+    },
+    "candidate_source": {
+      "ref": "refs/heads/codex/issue-231-cuda-ownership",
+      "repository": "https://github.com/njzjz-bot/vibeqc",
+      "revision": "fdc7f40737fae85e9a25d771158ffdd1cace2b00"
+    },
+    "command": [
+      "srun",
+      "--partition=main",
+      "--gres=gpu:5090:1",
+      "--nodes=1",
+      "--ntasks=1",
+      "--time=01:00:00",
+      "python",
+      "tools/benchmark_cuda_ownership.py",
+      "compare",
+      "--baseline-root",
+      "<baseline-checkout>",
+      "--baseline-build",
+      "<baseline-optimized-build>",
+      "--candidate-root",
+      "<candidate-checkout>",
+      "--candidate-build",
+      "<candidate-optimized-build>",
+      "--samples",
+      "5",
+      "--output",
+      ".artifacts/ownership-reproduction"
+    ],
+    "note": "Check out the exact recorded baseline/candidate revisions and use Release, CUDA 12.9.1, sm_120, FAST_COMPILE=OFF; set OMP_NUM_THREADS=1 and OPENBLAS_NUM_THREADS=1."
+  },
+  "schema": "vibeqc.benchmark-publication.v1",
+  "source": {
+    "dirty": false,
+    "revision": "fdc7f40737fae85e9a25d771158ffdd1cace2b00"
+  }
+}

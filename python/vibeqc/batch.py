@@ -5,12 +5,14 @@ from __future__ import annotations
 import ctypes
 from collections.abc import Iterable, Sequence
 from contextlib import suppress
-from dataclasses import dataclass
+from copy import deepcopy
+from dataclasses import dataclass, field
 from typing import Self
 
 import numpy as np
 
 from . import _native
+from .accuracy import AccuracyAssessment
 from .calculator import Atom, Calculator
 
 
@@ -29,6 +31,10 @@ class BatchItemResult:
     bucket_id: int
     warm_start_used: bool
     warm_start_fallback: bool
+    basis_metadata: dict = field(default_factory=dict)
+    accuracy: AccuracyAssessment | None = None
+    restart_origin: str = "cold"
+    fock_builds: int | None = None
 
     @property
     def succeeded(self) -> bool:
@@ -96,7 +102,7 @@ class ShellClassProfileEntry:
 
 @dataclass(frozen=True)
 class DensityFittingMetricDiagnostic:
-    """CUDA DF metric conditioning and allocation evidence for one plan slot."""
+    """CUDA DF value/J/K plan evidence; peaks exclude generated-force staging."""
 
     bucket_id: int
     system_index: int
@@ -333,9 +339,15 @@ class PreparedBatch:
         warm_start: bool = True,
         shell_class_profiling: bool = False,
         inactive_eigensolver_profiling: bool = False,
+        resource_plan=None,
     ) -> None:
         if not systems:
             raise ValueError("a batch requires at least one system")
+        self._last_statuses = None
+        self._restart_indices = set()
+        self._projection_indices = set()
+        self.projection_diagnostics = None
+        self.checkpoint_diagnostics = None
         self._calculator = calculator
         self._library = calculator._library
         self._systems = tuple(
@@ -344,6 +356,9 @@ class PreparedBatch:
         if any(not system for system in self._systems):
             raise ValueError("every batch item requires at least one atom")
         count = len(self._systems)
+        self._warm_enabled = warm_start
+        self._warm_updates = True
+        self._warm_metadata = [None] * count
         self._charges = (
             tuple(0 for _ in range(count)) if charges is None else tuple(charges)
         )
@@ -354,6 +369,56 @@ class PreparedBatch:
         )
         if len(self._charges) != count or len(self._multiplicities) != count:
             raise ValueError("charges and multiplicities must match the batch size")
+        for atoms in self._systems:
+            calculator._preflight_hf_basis(atoms)
+        self.resource_plan = resource_plan
+        self.resource_diagnostics = None
+        self._resource_ledger = None
+        if resource_plan is not None or calculator._resource_budget is not None:
+            request = calculator._resource_request(
+                self._systems,
+                charges=self._charges,
+                multiplicities=self._multiplicities,
+            )
+            if resource_plan is None:
+                from .resources import plan_resources
+
+                self.resource_plan = plan_resources(
+                    (request,), calculator._resource_budget
+                )
+            else:
+                owned = {r.name: r for r in resource_plan.requests}
+                if owned.get(request.name) != request:
+                    raise ValueError(
+                        "prepared HF inputs differ from the global resource plan"
+                    )
+                if (
+                    calculator._resource_budget is not None
+                    and resource_plan.budget != calculator._resource_budget
+                ):
+                    raise ValueError(
+                        "global resource plan differs from the calculator budget"
+                    )
+            self.resource_plan.require_feasible()
+            if request.identity.backend == "cuda":
+                from .resources_native import NativeDeviceLedger
+
+                self._resource_ledger = NativeDeviceLedger(
+                    self._library, self.resource_plan
+                )
+            if request.identity.backend == "cuda" and (
+                shell_class_profiling or inactive_eigensolver_profiling
+            ):
+                raise NotImplementedError(
+                    "CUDA resource plans exclude optional profiling allocations"
+                )
+        self._model_signature = calculator._model_signature()
+        self._basis_metadata = tuple(
+            calculator.basis_metadata(atoms, charge=charge, multiplicity=multiplicity)
+            for atoms, charge, multiplicity in zip(
+                self._systems, self._charges, self._multiplicities, strict=True
+            )
+        )
         self._atom_counts = tuple(len(system) for system in self._systems)
         self._atomic_numbers = tuple(
             tuple(atom.atomic_number for atom in system) for system in self._systems
@@ -393,7 +458,8 @@ class PreparedBatch:
                     calculator._auxiliary_basis,
                 )
             method = calculator._method_descriptor(
-                auxiliary_handle if auxiliary_handle.value else None
+                auxiliary_handle if auxiliary_handle.value else None,
+                resource_plan=self.resource_plan,
             )
             flags = _native.BATCH_ENABLE_WARM_STARTS if warm_start else 0
             if shell_class_profiling:
@@ -441,6 +507,11 @@ class PreparedBatch:
 
         return self._multiplicities
 
+    @property
+    def basis_metadata(self):
+        """Detached resolved provenance/identities for benchmark and result records."""
+        return deepcopy(self._basis_metadata)
+
     def _ensure_open(self) -> None:
         if not self._batch.value:
             raise RuntimeError("prepared batch is closed")
@@ -453,6 +524,13 @@ class PreparedBatch:
         strict: bool = False,
     ) -> BatchResult:
         self._ensure_open()
+        if self._calculator._model_signature() != self._model_signature:
+            raise RuntimeError(
+                "prepared basis/model identity changed; prepare a new batch before reusing densities or Fock/DIIS state"
+            )
+        from .checkpoint import _controls
+
+        controls = _controls(self._calculator)
         count = len(self._systems)
         coordinate_storage: list[np.ndarray] = []
         inputs_pointer = None
@@ -510,19 +588,57 @@ class PreparedBatch:
                 for index in range(count)
             )
         )
-        _native.check(
-            self._library,
-            self._library.vibeqc_batch_execute(
+        if self.resource_plan is None:
+            status = self._library.vibeqc_batch_execute(
                 self._batch,
                 inputs_pointer,
                 input_count,
                 output_array,
                 count,
-            ),
-        )
+            )
+        else:
+            from .resources import CpuResourceObservation
+
+            current = self._calculator._resource_request(
+                self._systems,
+                charges=self._charges,
+                multiplicities=self._multiplicities,
+            )
+            if current != next(
+                r for r in self.resource_plan.requests if r.name == current.name
+            ):
+                raise ValueError(
+                    "HF resource inputs or execution schedule changed after preparation"
+                )
+            with CpuResourceObservation(
+                self._library, cpu_workers=1, ledger=self._resource_ledger
+            ) as observed:
+                status = self._library.vibeqc_batch_execute(
+                    self._batch, inputs_pointer, input_count, output_array, count
+                )
+            self.resource_diagnostics = {
+                "plan": self.resource_plan.to_dict(),
+                "observation": observed.to_dict(),
+            }
+            observed.verify(self.resource_plan)
+        if self.resource_diagnostics is None:
+            _native.check(self._library, status)
+        else:
+            from .resources_native import check_resource_status
+
+            check_resource_status(self._library, status, self.resource_diagnostics)
 
         items: list[BatchItemResult] = []
         for index, output in enumerate(output_array):
+            builds = ctypes.c_uint64()
+            count_status = self._library.vibeqc_batch_get_last_fock_builds(
+                self._batch, index, ctypes.byref(builds)
+            )
+            if count_status not in (
+                _native.STATUS_SUCCESS,
+                _native.STATUS_NOT_IMPLEMENTED,
+            ):
+                _native.check(self._library, count_status)
             succeeded = output.status == _native.STATUS_SUCCESS
             forces = (
                 np.ctypeslib.as_array(force_storage[index]).copy().reshape(-1, 3)
@@ -530,10 +646,30 @@ class PreparedBatch:
                 else None
             )
             message = self._library.vibeqc_status_message(output.status).decode("utf-8")
+            accuracy = None
+            if succeeded and self._calculator._target_accuracy is not None:
+                atoms = self._systems[index]
+                if coordinates is not None and coordinates[index] is not None:
+                    xyz = np.asarray(coordinates[index], dtype=np.float64).reshape(
+                        -1, 3
+                    )
+                    atoms = tuple(
+                        Atom(atom.atomic_number, tuple(position))
+                        for atom, position in zip(atoms, xyz, strict=True)
+                    )
+                accuracy = self._calculator._accuracy_assessment(
+                    atoms,
+                    self._charges[index],
+                    self._multiplicities[index],
+                    bool(output.converged),
+                )
             items.append(
                 BatchItemResult(
                     index=index,
                     status=output.status,
+                    fock_builds=builds.value
+                    if count_status == _native.STATUS_SUCCESS
+                    else None,
                     status_message=message,
                     energy=output.energy,
                     forces=forces,
@@ -549,18 +685,124 @@ class PreparedBatch:
                     bucket_id=output.bucket_id,
                     warm_start_used=bool(output.warm_start_used),
                     warm_start_fallback=bool(output.warm_start_fallback),
+                    basis_metadata=deepcopy(self._basis_metadata[index]),
+                    accuracy=accuracy,
+                    restart_origin=(
+                        "cold_fallback"
+                        if output.warm_start_fallback
+                        else "basis_projection"
+                        if output.warm_start_used and index in self._projection_indices
+                        else "persistent_restart"
+                        if output.warm_start_used and index in self._restart_indices
+                        else "in_process_warm"
+                        if output.warm_start_used
+                        else "cold"
+                    ),
                 )
             )
         result = BatchResult(tuple(items))
+        self._last_statuses = tuple(item.status for item in result.items)
+        for index, item in enumerate(result.items):
+            if item.succeeded and self._warm_enabled and self._warm_updates:
+                self._warm_metadata[index] = {
+                    "controls": deepcopy(controls),
+                    "backend": "cuda" if item.executed_backend == "cuda" else "cpu",
+                }
+                self._restart_indices.discard(index)
+                self._projection_indices.discard(index)
+        if self.projection_diagnostics:
+            self.projection_diagnostics["target_verification"] = "executed"
+            self.projection_diagnostics["target_results"] = [
+                {
+                    "index": i.index,
+                    "converged": i.converged,
+                    "status": i.status,
+                    "energy": i.energy if i.succeeded else None,
+                    "density_rms": i.density_rms if i.succeeded else None,
+                    "iterations": i.iterations,
+                    "fock_builds": i.fock_builds,
+                    "restart_origin": i.restart_origin,
+                }
+                for i in result.items
+            ]
+        if (
+            self.checkpoint_diagnostics
+            and "target_verification" in self.checkpoint_diagnostics
+        ):
+            self.checkpoint_diagnostics["target_verification"] = "executed"
+            self.checkpoint_diagnostics["target_results"] = [
+                {
+                    "index": i.index,
+                    "converged": i.converged,
+                    "status": i.status,
+                    "energy": i.energy if i.succeeded else None,
+                    "density_rms": i.density_rms if i.succeeded else None,
+                    "restart_origin": i.restart_origin,
+                }
+                for i in result.items
+            ]
         if strict:
-            result.raise_for_failures()
+            try:
+                result.raise_for_failures()
+            except RuntimeError as error:
+                if self.resource_diagnostics is not None:
+                    error.resource_diagnostics = self.resource_diagnostics
+                raise
         return result
+
+    def save_checkpoint(self, path, *, max_bytes=256 << 20):
+        """Atomically persist retained HF seeds, identities and source diagnostics.
+
+        Failed/no-state items keep their input slots. A one-item prepared batch
+        provides single-system checkpoint/restart with the same contract.
+        """
+        from .checkpoint import save_checkpoint
+
+        return save_checkpoint(self, path, max_bytes=max_bytes)
+
+    def load_checkpoint(
+        self, path, *, allow_warm=False, strict=True, max_bytes=256 << 20
+    ):
+        """Restore compatible seeds as proposals for the next normal execution.
+
+        Exact restart is the default. ``allow_warm`` permits changed geometry or
+        numerical controls with the same scientific model. ``strict=False``
+        preserves incompatible neighbors; corruption always rejects the file
+        before any seed is applied. Runtime resources follow this target plan.
+        """
+        from .checkpoint import load_checkpoint
+
+        return load_checkpoint(
+            self, path, allow_warm=allow_warm, strict=strict, max_bytes=max_bytes
+        )
 
     def clear_warm_starts(self) -> None:
         self._ensure_open()
         _native.check(
             self._library,
             self._library.vibeqc_batch_clear_warm_starts(self._batch),
+        )
+        self._restart_indices.clear()
+        self._projection_indices.clear()
+        self.projection_diagnostics = None
+        self._warm_metadata = [None] * len(self._systems)
+
+    def initialize_from(
+        self, source, *, policy=None, strict=True, maximum_host_bytes=256 << 20
+    ):
+        """Project a converged source batch into this fresh target's AO metric.
+
+        The next execute rebuilds and converges the target equations. See
+        ``vibeqc.progressive.initialize_from`` for compatibility and fallback.
+        """
+        from .progressive import initialize_from
+
+        return initialize_from(
+            self,
+            source,
+            policy=policy,
+            strict=strict,
+            maximum_host_bytes=maximum_host_bytes,
         )
 
     def set_warm_start_updates(self, enabled: bool) -> None:
@@ -578,6 +820,7 @@ class PreparedBatch:
                 self._batch, int(bool(enabled))
             ),
         )
+        self._warm_updates = bool(enabled)
 
     def last_shell_class_profile(self) -> tuple[ShellClassProfileEntry, ...]:
         """Return work surviving the most recent final-density CUDA screening.
@@ -864,6 +1107,8 @@ class PreparedBatch:
         if self._context.value:
             self._library.vibeqc_context_destroy(self._context)
             self._context = ctypes.c_void_p()
+        if self._resource_ledger is not None:
+            self._resource_ledger.close()
 
     def __enter__(self) -> Self:
         self._ensure_open()

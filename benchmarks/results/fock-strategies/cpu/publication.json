@@ -1,0 +1,83 @@
+{
+  "archives": [],
+  "decision": {
+    "reason": "All same-approximation energies, complete forces and raw J/K entries meet the declared gates. Architecture timing review is separate in summary.json; this does not promote a faster scientific schedule.",
+    "scope": "numerical",
+    "status": "accepted"
+  },
+  "files": [
+    {
+      "bytes": 27713,
+      "path": "evidence.json",
+      "role": "evidence",
+      "sha256": "67c36bc0eb8fffdae6649072aa6b564193eb1b4e42b7abdbd1f73dfb755457e2"
+    },
+    {
+      "bytes": 17090,
+      "path": "summary.json",
+      "role": "summary",
+      "sha256": "48eb286902a35aa7020d580a185ea5d7e66efd311880754b832b5c065886a704"
+    },
+    {
+      "bytes": 442955,
+      "path": "samples.json",
+      "role": "samples",
+      "sha256": "0c5f67870e3ce6bece9b5d72e168630f223ad0dad65b158ec5b154471778e311"
+    },
+    {
+      "bytes": 36294,
+      "path": "provenance.json",
+      "role": "input",
+      "sha256": "33bd815e7eabdcbb137ce8465a387dc5f6cc81998c4704ea19775ebaa58a5b72"
+    },
+    {
+      "bytes": 3837,
+      "path": "reproduce_layout.py",
+      "role": "reproduction",
+      "sha256": "4b3d5ea392af805b0fb1041727d72a5404012b0825388afa978202273e5fac8d"
+    },
+    {
+      "bytes": 3130,
+      "path": "reproduce_focused.py",
+      "role": "reproduction",
+      "sha256": "d65910baec70c712f003ab487dbfc4df1eff5a4d586cd3f8b153f4198215dfdd"
+    },
+    {
+      "bytes": 85335,
+      "path": "layout-diagnosis.json",
+      "role": "summary",
+      "sha256": "7dbbf9e2e53f81a0211ab2bbc1583e92e115c18acc565c6b2806e9c92d27a4c9"
+    },
+    {
+      "bytes": 27995,
+      "path": "focused-repeats.json",
+      "role": "samples",
+      "sha256": "591c12931cc44e443249b76907cdb8a53ea72251e417e2609a5eecbd52826d69"
+    }
+  ],
+  "reproduction": {
+    "command": [
+      "srun",
+      "--partition=main",
+      "--gres=gpu:5090:1",
+      "--nodes=1",
+      "--ntasks=1",
+      "--time=00:35:00",
+      "python",
+      "tools/benchmark_fock_strategies.py",
+      "--baseline",
+      "/path/to/3da58410bb02a903ea6341a7caac0afc9314355b",
+      "--head",
+      "/path/to/913fb20a25aab87363b19e9d788580230493b688",
+      "--build-relative",
+      ".artifacts/overhead-cuda-build",
+      "--samples",
+      "7"
+    ]
+  },
+  "schema": "vibeqc.benchmark-publication.v1",
+  "source": {
+    "dirty": false,
+    "revision": "913fb20a25aab87363b19e9d788580230493b688"
+  }
+}

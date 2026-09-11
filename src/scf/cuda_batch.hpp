@@ -16,9 +16,24 @@ namespace vibeqc::scf {
 struct RhfBucketItem {
   vibeqc_status status{VIBEQC_STATUS_INTERNAL_ERROR};
   ScfResult scf;
+  /** A completed isolated Fock measurement deliberately has no converged SCF
+   * result. Fleet must preserve its input instead of retrying a cold solve. */
+  bool fock_only_diagnostic{};
 };
 
 struct CudaRhfBucketPlan;
+
+/** Scalar-only resource query for the small native eigensolver route (<=16
+ * public AOs). Reuses the production arena layout without packing tensors,
+ * constructing a plan, selecting a device or querying a CUDA provider.
+ */
+bool small_hf_cuda_resource_layout(std::size_t nbf, std::size_t direct_nbf, std::size_t atoms,
+                                   std::size_t shells, std::size_t primitives,
+                                   std::size_t diis_history, std::size_t spins,
+                                   std::size_t& arena_bytes, std::size_t& plan_object_bytes);
+
+/** Currently allocated numeric arenas/workspaces of an opaque direct plan. */
+std::size_t hf_cuda_owned_device_bytes(const CudaRhfBucketPlan* plan) noexcept;
 
 /** Final-density work retained by CUDA direct screening for one shell class. */
 struct CudaRhfShellClassProfileEntry {

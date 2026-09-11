@@ -1,21 +1,20 @@
-"""Generic CUDA shell lowering surface.
+"""Compatibility forwarding only; see docs/compiler_architecture.md.
 
-Production and tuning code depend on this backend-named interface rather than
-on historical shell-specific compatibility adapters.
+Remove after downstream callers have migrated for one release and the legacy
+import compatibility tests are the only repository users. No duplicate IR,
+class definitions or cache implementation belongs here.
 """
 
-from . import cuda_lowering as _implementation
+import sys
+from pathlib import Path
 
-_emitted_component_names = _implementation._emitted_component_names
-_generic_task_component_setup = _implementation._generic_task_component_setup
-emit_shell_class_fused_cuda = _implementation.emit_shell_class_fused_cuda
-emit_uncached_primitive_geometry_cuda = (
-    _implementation.emit_uncached_primitive_geometry_cuda
-)
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "python"))
+from importlib import import_module
 
-__all__ = [
-    "_emitted_component_names",
-    "_generic_task_component_setup",
-    "emit_shell_class_fused_cuda",
-    "emit_uncached_primitive_geometry_cuda",
-]
+_target = import_module("vibeqc_compiler.integral.cuda_emitter")
+
+if __name__ == "__main__":
+    if hasattr(_target, "main"):
+        raise SystemExit(_target.main())
+else:
+    sys.modules[__name__] = _target

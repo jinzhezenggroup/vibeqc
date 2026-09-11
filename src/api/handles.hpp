@@ -27,6 +27,7 @@ struct vibeqc_batch {
   vibeqc_context* context{};
   std::unique_ptr<vibeqc::methods::PreparedBatch> plan;
   std::vector<std::uint32_t> atom_counts;
+  std::vector<std::uint64_t> last_fock_builds;
 };
 
 #endif

@@ -31,7 +31,8 @@ def main() -> None:
     parser.add_argument("--device", choices=("cpu", "cuda"), default="cpu")
     parser.add_argument(
         "--output",
-        help="optional JSON path for raw timings and reproducibility metadata",
+        default=".artifacts/benchmarks/batch_throughput.json",
+        help="JSON path (default: .artifacts/benchmarks) for raw timings and reproducibility metadata",
     )
     args = parser.parse_args()
     if args.batch < 1 or args.repeats < 1:

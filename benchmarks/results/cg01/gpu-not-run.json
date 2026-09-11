@@ -1,0 +1,135 @@
+{
+  "attachments": [],
+  "backend_selected": null,
+  "block_errors": {},
+  "build": null,
+  "compilation": {
+    "reason": "not measured",
+    "seconds": null
+  },
+  "device": null,
+  "environment": {
+    "accelerator": null,
+    "git": {
+      "commit": "54b7a892357ff9a23d94c877e2c6a07094c217e7",
+      "dirty": true,
+      "pending_generated_benchmark_artifacts": 4
+    },
+    "host": {
+      "machine": "x86_64",
+      "node": "node3",
+      "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+      "processor": "x86_64"
+    },
+    "packages": {
+      "numpy": "2.5.1"
+    },
+    "python": {
+      "executable": "/home/jzzeng/miniconda3/bin/python",
+      "version": "3.13.9"
+    },
+    "runtime": {
+      "cuda_visible_devices": "",
+      "vibeqc_library": null
+    },
+    "timestamp_utc": "2026-09-07T18:04:08.287767+00:00",
+    "toolchain": {
+      "cuobjdump": {
+        "path": null,
+        "version": null
+      },
+      "host_cxx": {
+        "path": "/usr/bin/c++",
+        "version": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+      },
+      "nvcc": {
+        "path": null,
+        "version": null
+      },
+      "ptxas": {
+        "path": null,
+        "version": null
+      }
+    }
+  },
+  "hardware": {
+    "reason": "The full class-isolated issue-135 matrix was not scheduled by this small protocol control.",
+    "status": "not-run"
+  },
+  "hash_reasons": {},
+  "hashes": {
+    "equation": null,
+    "ir": null,
+    "schedule": null,
+    "source": "c922da549e1a1329c3d55dbd28ae677758bcc68fe05901d2c042855290914b09"
+  },
+  "inputs_hash": "283ff5d51b05c651ffca1f263909146ac4b4d46b8d2df456a8a4d3c0da1cd16e",
+  "library_sha256": null,
+  "memory": {
+    "allocated_bytes": null,
+    "peak_bytes": null,
+    "reason": "not measured"
+  },
+  "performance": {
+    "reason": "no comparison registered",
+    "status": "not-run"
+  },
+  "residuals": {},
+  "revision": "54b7a892357ff9a23d94c877e2c6a07094c217e7",
+  "schema": "vibeqc.validation",
+  "schema_version": 1,
+  "settings": {
+    "command": [],
+    "device": "cuda",
+    "timeout_seconds": 600
+  },
+  "solver_iterations": [],
+  "solver_trace_reason": "not exposed by executor",
+  "stages": {
+    "compilation": {
+      "reason": "no evidence registered",
+      "status": "not-run"
+    },
+    "endpoint": {
+      "reason": "no evidence registered",
+      "status": "not-run"
+    },
+    "numerical": {
+      "reason": "no evidence registered",
+      "status": "not-run"
+    },
+    "production": {
+      "reason": "no evidence registered",
+      "status": "not-run"
+    },
+    "representation": {
+      "reason": "no evidence registered",
+      "status": "not-run"
+    },
+    "source": {
+      "reason": "no evidence registered",
+      "status": "not-run"
+    }
+  },
+  "subject": "class-isolated-f-matrix",
+  "tier": "gpu-numerical",
+  "timings": [],
+  "toolchain": {
+    "cuobjdump": {
+      "path": null,
+      "version": null
+    },
+    "host_cxx": {
+      "path": "/usr/bin/c++",
+      "version": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+    },
+    "nvcc": {
+      "path": null,
+      "version": null
+    },
+    "ptxas": {
+      "path": null,
+      "version": null
+    }
+  }
+}

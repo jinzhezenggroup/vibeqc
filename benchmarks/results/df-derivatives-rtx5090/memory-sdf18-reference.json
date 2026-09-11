@@ -1,0 +1,29 @@
+{
+  "batch": 1,
+  "binary_sha256": "f3f0789911a6218b12a9fa609617b0378d1ed5681970a2f672b6d192f8cc23e1",
+  "case": "sdf18-direct",
+  "cuda_visible_devices": "0",
+  "df_budget": 4194304,
+  "energies": {
+    "changed": [
+      -2.6482815102135175
+    ],
+    "cold": [
+      -2.648280083829089
+    ],
+    "warm": [
+      -2.6482800838290936
+    ]
+  },
+  "host_peak_scope": "Linux process resident high-water including interpreter, driver, library startup, and the complete energy-plus-force workflow; no CPU integral oracle is constructed",
+  "maximum_force": 0.023615392987302863,
+  "owned_device_scope": "unavailable: CUDA HF inventory v1 supports at most 16 public AOs",
+  "process_peak_before_execution_bytes": 334802944,
+  "process_peak_host_bytes": 1123987456,
+  "resource_diagnostics": null,
+  "schema": "vibeqc.df_endpoint_memory",
+  "selection": "reference",
+  "slurm_job_id": "9102",
+  "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+  "version": 1
+}

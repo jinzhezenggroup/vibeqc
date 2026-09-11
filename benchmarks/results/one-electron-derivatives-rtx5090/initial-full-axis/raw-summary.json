@@ -1,0 +1,80 @@
+{
+  "candidate_disposition": "Numerically valid, rejected before promotion because full-axis CSE spills excessively; replaced by bounded axis-permutation helpers.",
+  "compile_seconds": 171.1173945988994,
+  "driver_hash": "f843a744fe579837a584988837a1ad07ac240eb80d31e3330c83712ebd685819",
+  "fixture_count": 83,
+  "input_hash": "6fde168248d905b8d218c5da175e8fc1665c42e73208d14e34502177119b88a3",
+  "maximum_absolute_error": 6.587785872369523e-14,
+  "maximum_spill_load_bytes": 69528,
+  "maximum_spill_store_bytes": 66688,
+  "object_bytes": 11138560,
+  "object_hash": "05e3e185ff533e6efe3f04478fd1d646d61f62af555cb1dbccb428c178b2247d",
+  "passed": true,
+  "primitive_count": 11497,
+  "production_promoted": false,
+  "reference_versions": {
+    "numpy": "2.5.3",
+    "pyscf": "2.14.0",
+    "python": "3.13.9 | packaged by Anaconda, Inc. | (main, Oct 21 2025, 19:16:10) [GCC 11.2.0]"
+  },
+  "resources": {
+    "fixture_values": {
+      "LOCAL": 0,
+      "REG": 255,
+      "SHARED": 0,
+      "STACK": 1776
+    }
+  },
+  "runs": [
+    {
+      "active_blocks_per_sm": 4,
+      "count": 11497,
+      "device": "NVIDIA GeForce RTX 5090",
+      "driver": 13000,
+      "local_bytes": 1776,
+      "major": 12,
+      "milliseconds": [
+        1.00553596,
+        1.01356804,
+        1.00544,
+        1.00630403,
+        1.00659204,
+        1.00518405,
+        1.00726402
+      ],
+      "minor": 0,
+      "registers": 255,
+      "runtime": 12090,
+      "shared_bytes": 0,
+      "slurm_job_id": "9078",
+      "threads": 64
+    },
+    {
+      "active_blocks_per_sm": 2,
+      "count": 11497,
+      "device": "NVIDIA GeForce RTX 5090",
+      "driver": 13000,
+      "local_bytes": 1776,
+      "major": 12,
+      "milliseconds": [
+        1.066944,
+        1.06687999,
+        1.06508803,
+        1.06457603,
+        1.06486404,
+        1.06476796,
+        1.06470394
+      ],
+      "minor": 0,
+      "registers": 255,
+      "runtime": 12090,
+      "shared_bytes": 0,
+      "slurm_job_id": "9079",
+      "threads": 128
+    }
+  ],
+  "schema": "vibeqc.one_electron_derivative_validation",
+  "source_bytes": 16693241,
+  "source_hash": "2330c05e8d9445ae4e8519ffc7617717b7e16aadd21cd4dea72a20d55a9a115b",
+  "version": 1
+}

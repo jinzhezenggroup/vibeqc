@@ -1,0 +1,617 @@
+{
+  "records": {
+    "component-sdf18-rhf-generated_resident-131072.json": {
+      "budget": 131072,
+      "case": "sdf18",
+      "maximum_error": 5.839773109528323e-14,
+      "milliseconds": [
+        6.868373,
+        6.853334,
+        6.853485,
+        6.846351,
+        6.838857
+      ],
+      "mode": "generated_resident",
+      "plan_device_resident_bytes": 902518,
+      "process_peak_host_bytes_including_oracle": 509431808,
+      "raw_derivative_bytes": 295488,
+      "response_resources": {
+        "auxiliary_weight_tile": 11,
+        "d2h_bytes": 48,
+        "derivative_tiles": 19,
+        "device_bytes": 4296,
+        "h2d_bytes": 50904,
+        "host_bytes": 74976,
+        "synchronizations": 20,
+        "uploads": 36,
+        "value_slices": 72,
+        "weight_tile_elements": 324
+      },
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "rhf"
+    },
+    "component-sdf18-rhf-generated_resident-65536.json": {
+      "budget": 65536,
+      "case": "sdf18",
+      "maximum_error": 5.823119764158946e-14,
+      "milliseconds": [
+        7.093985,
+        7.073906,
+        7.072744,
+        7.074157,
+        7.063486
+      ],
+      "mode": "generated_resident",
+      "plan_device_resident_bytes": 902518,
+      "process_peak_host_bytes_including_oracle": 509435904,
+      "raw_derivative_bytes": 295488,
+      "response_resources": {
+        "auxiliary_weight_tile": 5,
+        "d2h_bytes": 48,
+        "derivative_tiles": 19,
+        "device_bytes": 4296,
+        "h2d_bytes": 50904,
+        "host_bytes": 43872,
+        "synchronizations": 20,
+        "uploads": 36,
+        "value_slices": 108,
+        "weight_tile_elements": 324
+      },
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "rhf"
+    },
+    "component-sdf18-rhf-generated_source-131072.json": {
+      "budget": 131072,
+      "case": "sdf18",
+      "maximum_error": 3.405054016525355e-13,
+      "milliseconds": [
+        9.754466,
+        9.741291,
+        9.743826,
+        9.742052,
+        9.733777
+      ],
+      "mode": "generated_source",
+      "plan_device_resident_bytes": 728300,
+      "process_peak_host_bytes_including_oracle": 903839744,
+      "raw_derivative_bytes": 295488,
+      "response_resources": {
+        "auxiliary_weight_tile": 11,
+        "d2h_bytes": 186672,
+        "derivative_tiles": 19,
+        "device_bytes": 6888,
+        "h2d_bytes": 50904,
+        "host_bytes": 74976,
+        "synchronizations": 92,
+        "uploads": 36,
+        "value_slices": 72,
+        "weight_tile_elements": 324
+      },
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "rhf"
+    },
+    "component-sdf18-rhf-generated_source-65536.json": {
+      "budget": 65536,
+      "case": "sdf18",
+      "maximum_error": 3.405054016525355e-13,
+      "milliseconds": [
+        11.454138,
+        11.432357,
+        11.433289,
+        11.435423,
+        11.427949
+      ],
+      "mode": "generated_source",
+      "plan_device_resident_bytes": 728300,
+      "process_peak_host_bytes_including_oracle": 903839744,
+      "raw_derivative_bytes": 295488,
+      "response_resources": {
+        "auxiliary_weight_tile": 5,
+        "d2h_bytes": 279984,
+        "derivative_tiles": 19,
+        "device_bytes": 6888,
+        "h2d_bytes": 50904,
+        "host_bytes": 43872,
+        "synchronizations": 128,
+        "uploads": 36,
+        "value_slices": 108,
+        "weight_tile_elements": 324
+      },
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "rhf"
+    },
+    "component-sdf18-rhf-reference_resident-131072.json": {
+      "budget": 131072,
+      "case": "sdf18",
+      "maximum_error": 4.4853010194856324e-14,
+      "milliseconds": [
+        2.099046,
+        2.088868,
+        2.078528,
+        2.081503,
+        2.092865
+      ],
+      "mode": "reference_resident",
+      "plan_device_resident_bytes": 902518,
+      "process_peak_host_bytes_including_oracle": 512188416,
+      "raw_derivative_bytes": 295488,
+      "response_resources": null,
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "rhf"
+    },
+    "component-sdf18-rhf-reference_resident-65536.json": {
+      "budget": 65536,
+      "case": "sdf18",
+      "maximum_error": 4.4853010194856324e-14,
+      "milliseconds": [
+        2.114166,
+        2.091492,
+        2.086193,
+        2.07988,
+        2.076344
+      ],
+      "mode": "reference_resident",
+      "plan_device_resident_bytes": 902518,
+      "process_peak_host_bytes_including_oracle": 512176128,
+      "raw_derivative_bytes": 295488,
+      "response_resources": null,
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "rhf"
+    },
+    "component-sdf18-rhf-reference_source-131072.json": {
+      "budget": 131072,
+      "case": "sdf18",
+      "maximum_error": 3.708144902248023e-13,
+      "milliseconds": [
+        19894.640752,
+        19894.460177,
+        19893.168617,
+        19894.107636,
+        19896.06826
+      ],
+      "mode": "reference_source",
+      "plan_device_resident_bytes": 728300,
+      "process_peak_host_bytes_including_oracle": 904232960,
+      "raw_derivative_bytes": 295488,
+      "response_resources": null,
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "rhf"
+    },
+    "component-sdf18-rhf-reference_source-65536.json": {
+      "budget": 65536,
+      "case": "sdf18",
+      "maximum_error": 3.708144902248023e-13,
+      "milliseconds": [
+        19891.237682,
+        19892.265167,
+        19892.649462,
+        19891.133571,
+        19891.689975
+      ],
+      "mode": "reference_source",
+      "plan_device_resident_bytes": 728300,
+      "process_peak_host_bytes_including_oracle": 904237056,
+      "raw_derivative_bytes": 295488,
+      "response_resources": null,
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "rhf"
+    },
+    "component-sp8-rhf-generated_resident-16384.json": {
+      "budget": 16384,
+      "case": "sp8",
+      "maximum_error": 4.5102810375396984e-17,
+      "milliseconds": [
+        0.737441,
+        0.72657,
+        0.723725,
+        0.729375,
+        0.720669
+      ],
+      "mode": "generated_resident",
+      "plan_device_resident_bytes": 606438,
+      "process_peak_host_bytes_including_oracle": 507990016,
+      "raw_derivative_bytes": 27648,
+      "response_resources": {
+        "auxiliary_weight_tile": 3,
+        "d2h_bytes": 48,
+        "derivative_tiles": 9,
+        "device_bytes": 1456,
+        "h2d_bytes": 5504,
+        "host_bytes": 7568,
+        "synchronizations": 10,
+        "uploads": 26,
+        "value_slices": 40,
+        "weight_tile_elements": 64
+      },
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "rhf"
+    },
+    "component-sp8-rhf-generated_resident-65536.json": {
+      "budget": 65536,
+      "case": "sp8",
+      "maximum_error": 4.5102810375396984e-17,
+      "milliseconds": [
+        0.737001,
+        0.724697,
+        0.717684,
+        0.724096,
+        0.716901
+      ],
+      "mode": "generated_resident",
+      "plan_device_resident_bytes": 606438,
+      "process_peak_host_bytes_including_oracle": 507985920,
+      "raw_derivative_bytes": 27648,
+      "response_resources": {
+        "auxiliary_weight_tile": 7,
+        "d2h_bytes": 48,
+        "derivative_tiles": 9,
+        "device_bytes": 1456,
+        "h2d_bytes": 5504,
+        "host_bytes": 11536,
+        "synchronizations": 10,
+        "uploads": 26,
+        "value_slices": 32,
+        "weight_tile_elements": 64
+      },
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "rhf"
+    },
+    "component-sp8-rhf-generated_source-16384.json": {
+      "budget": 16384,
+      "case": "sp8",
+      "maximum_error": 7.068998164605489e-16,
+      "milliseconds": [
+        3.459611,
+        3.488786,
+        3.479939,
+        3.47475,
+        3.497162
+      ],
+      "mode": "generated_source",
+      "plan_device_resident_bytes": 593960,
+      "process_peak_host_bytes_including_oracle": 902381568,
+      "raw_derivative_bytes": 27648,
+      "response_resources": {
+        "auxiliary_weight_tile": 3,
+        "d2h_bytes": 20528,
+        "derivative_tiles": 9,
+        "device_bytes": 1968,
+        "h2d_bytes": 5504,
+        "host_bytes": 7568,
+        "synchronizations": 50,
+        "uploads": 26,
+        "value_slices": 40,
+        "weight_tile_elements": 64
+      },
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "rhf"
+    },
+    "component-sp8-rhf-generated_source-65536.json": {
+      "budget": 65536,
+      "case": "sp8",
+      "maximum_error": 7.068998164605489e-16,
+      "milliseconds": [
+        2.937812,
+        2.920308,
+        2.961978,
+        2.903677,
+        2.907714
+      ],
+      "mode": "generated_source",
+      "plan_device_resident_bytes": 593960,
+      "process_peak_host_bytes_including_oracle": 902381568,
+      "raw_derivative_bytes": 27648,
+      "response_resources": {
+        "auxiliary_weight_tile": 7,
+        "d2h_bytes": 16432,
+        "derivative_tiles": 9,
+        "device_bytes": 1968,
+        "h2d_bytes": 5504,
+        "host_bytes": 11536,
+        "synchronizations": 42,
+        "uploads": 26,
+        "value_slices": 32,
+        "weight_tile_elements": 64
+      },
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "rhf"
+    },
+    "component-sp8-rhf-reference_resident-16384.json": {
+      "budget": 16384,
+      "case": "sp8",
+      "maximum_error": 6.418476861114186e-17,
+      "milliseconds": [
+        0.649963,
+        0.645245,
+        0.635356,
+        0.638201,
+        0.636819
+      ],
+      "mode": "reference_resident",
+      "plan_device_resident_bytes": 606438,
+      "process_peak_host_bytes_including_oracle": 518995968,
+      "raw_derivative_bytes": 27648,
+      "response_resources": null,
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "rhf"
+    },
+    "component-sp8-rhf-reference_resident-65536.json": {
+      "budget": 65536,
+      "case": "sp8",
+      "maximum_error": 6.418476861114186e-17,
+      "milliseconds": [
+        0.660814,
+        0.640616,
+        0.639123,
+        0.642901,
+        0.629264
+      ],
+      "mode": "reference_resident",
+      "plan_device_resident_bytes": 606438,
+      "process_peak_host_bytes_including_oracle": 518995968,
+      "raw_derivative_bytes": 27648,
+      "response_resources": null,
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "rhf"
+    },
+    "component-sp8-rhf-reference_source-16384.json": {
+      "budget": 16384,
+      "case": "sp8",
+      "maximum_error": 6.349087922075114e-16,
+      "milliseconds": [
+        508.462524,
+        489.305626,
+        488.484084,
+        488.595357,
+        488.629252
+      ],
+      "mode": "reference_source",
+      "plan_device_resident_bytes": 593960,
+      "process_peak_host_bytes_including_oracle": 902385664,
+      "raw_derivative_bytes": 27648,
+      "response_resources": null,
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "rhf"
+    },
+    "component-sp8-rhf-reference_source-65536.json": {
+      "budget": 65536,
+      "case": "sp8",
+      "maximum_error": 6.349087922075114e-16,
+      "milliseconds": [
+        506.319714,
+        488.809135,
+        488.442955,
+        488.421244,
+        488.352372
+      ],
+      "mode": "reference_source",
+      "plan_device_resident_bytes": 593960,
+      "process_peak_host_bytes_including_oracle": 902385664,
+      "raw_derivative_bytes": 27648,
+      "response_resources": null,
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "rhf"
+    },
+    "component-sp8-uhf-generated_resident-16384.json": {
+      "budget": 16384,
+      "case": "sp8",
+      "maximum_error": 2.710505431213761e-17,
+      "milliseconds": [
+        0.756578,
+        0.744395,
+        0.738924,
+        0.743432,
+        0.750827
+      ],
+      "mode": "generated_resident",
+      "plan_device_resident_bytes": 606438,
+      "process_peak_host_bytes_including_oracle": 507985920,
+      "raw_derivative_bytes": 27648,
+      "response_resources": {
+        "auxiliary_weight_tile": 3,
+        "d2h_bytes": 48,
+        "derivative_tiles": 9,
+        "device_bytes": 1456,
+        "h2d_bytes": 5504,
+        "host_bytes": 7696,
+        "synchronizations": 10,
+        "uploads": 26,
+        "value_slices": 40,
+        "weight_tile_elements": 64
+      },
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "uhf"
+    },
+    "component-sp8-uhf-generated_resident-65536.json": {
+      "budget": 65536,
+      "case": "sp8",
+      "maximum_error": 2.710505431213761e-17,
+      "milliseconds": [
+        0.750726,
+        0.73712,
+        0.735778,
+        0.743293,
+        0.744274
+      ],
+      "mode": "generated_resident",
+      "plan_device_resident_bytes": 606438,
+      "process_peak_host_bytes_including_oracle": 507985920,
+      "raw_derivative_bytes": 27648,
+      "response_resources": {
+        "auxiliary_weight_tile": 7,
+        "d2h_bytes": 48,
+        "derivative_tiles": 9,
+        "device_bytes": 1456,
+        "h2d_bytes": 5504,
+        "host_bytes": 11792,
+        "synchronizations": 10,
+        "uploads": 26,
+        "value_slices": 32,
+        "weight_tile_elements": 64
+      },
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "uhf"
+    },
+    "component-sp8-uhf-generated_source-16384.json": {
+      "budget": 16384,
+      "case": "sp8",
+      "maximum_error": 5.355958732078392e-17,
+      "milliseconds": [
+        3.582034,
+        3.535245,
+        3.55843,
+        3.555784,
+        3.534925
+      ],
+      "mode": "generated_source",
+      "plan_device_resident_bytes": 593960,
+      "process_peak_host_bytes_including_oracle": 902373376,
+      "raw_derivative_bytes": 27648,
+      "response_resources": {
+        "auxiliary_weight_tile": 3,
+        "d2h_bytes": 20528,
+        "derivative_tiles": 9,
+        "device_bytes": 1968,
+        "h2d_bytes": 5504,
+        "host_bytes": 7696,
+        "synchronizations": 50,
+        "uploads": 26,
+        "value_slices": 40,
+        "weight_tile_elements": 64
+      },
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "uhf"
+    },
+    "component-sp8-uhf-generated_source-65536.json": {
+      "budget": 65536,
+      "case": "sp8",
+      "maximum_error": 5.355958732078392e-17,
+      "milliseconds": [
+        3.017655,
+        2.990533,
+        3.003337,
+        2.98903,
+        3.012425
+      ],
+      "mode": "generated_source",
+      "plan_device_resident_bytes": 593960,
+      "process_peak_host_bytes_including_oracle": 902381568,
+      "raw_derivative_bytes": 27648,
+      "response_resources": {
+        "auxiliary_weight_tile": 7,
+        "d2h_bytes": 16432,
+        "derivative_tiles": 9,
+        "device_bytes": 1968,
+        "h2d_bytes": 5504,
+        "host_bytes": 11792,
+        "synchronizations": 42,
+        "uploads": 26,
+        "value_slices": 32,
+        "weight_tile_elements": 64
+      },
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "uhf"
+    },
+    "component-sp8-uhf-reference_resident-16384.json": {
+      "budget": 16384,
+      "case": "sp8",
+      "maximum_error": 6.028164079019405e-17,
+      "milliseconds": [
+        1.917349,
+        1.915025,
+        1.907681,
+        1.908472,
+        1.90246
+      ],
+      "mode": "reference_resident",
+      "plan_device_resident_bytes": 606438,
+      "process_peak_host_bytes_including_oracle": 518995968,
+      "raw_derivative_bytes": 27648,
+      "response_resources": null,
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "uhf"
+    },
+    "component-sp8-uhf-reference_resident-65536.json": {
+      "budget": 65536,
+      "case": "sp8",
+      "maximum_error": 6.028164079019405e-17,
+      "milliseconds": [
+        1.919944,
+        1.911908,
+        1.910366,
+        1.9021,
+        1.899695
+      ],
+      "mode": "reference_resident",
+      "plan_device_resident_bytes": 606438,
+      "process_peak_host_bytes_including_oracle": 518987776,
+      "raw_derivative_bytes": 27648,
+      "response_resources": null,
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "uhf"
+    },
+    "component-sp8-uhf-reference_source-16384.json": {
+      "budget": 16384,
+      "case": "sp8",
+      "maximum_error": 4.0766001685454967e-17,
+      "milliseconds": [
+        1465.765009,
+        1468.454346,
+        1470.122568,
+        1470.756761,
+        1470.472287
+      ],
+      "mode": "reference_source",
+      "plan_device_resident_bytes": 593960,
+      "process_peak_host_bytes_including_oracle": 902381568,
+      "raw_derivative_bytes": 27648,
+      "response_resources": null,
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "uhf"
+    },
+    "component-sp8-uhf-reference_source-65536.json": {
+      "budget": 65536,
+      "case": "sp8",
+      "maximum_error": 4.0766001685454967e-17,
+      "milliseconds": [
+        1470.22293,
+        1470.208042,
+        1470.33796,
+        1470.633385,
+        1470.554454
+      ],
+      "mode": "reference_source",
+      "plan_device_resident_bytes": 593960,
+      "process_peak_host_bytes_including_oracle": 902381568,
+      "raw_derivative_bytes": 27648,
+      "response_resources": null,
+      "slurm_job_id": "9098",
+      "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+      "spin": "uhf"
+    }
+  },
+  "schema": "vibeqc.df_response_components"
+}

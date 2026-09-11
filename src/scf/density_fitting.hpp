@@ -2,9 +2,11 @@
 #define VIBEQC_SCF_DENSITY_FITTING_HPP
 
 #include <cstddef>
+#include <optional>
 #include <vector>
 
 #include "integrals/s_integrals.hpp"
+#include "scf/fock_build.hpp"
 
 namespace vibeqc::scf {
 
@@ -43,6 +45,21 @@ struct DensityFittingScfData {
   integrals::IntegralData one_electron;
   integrals::DensityFittingIntegralData raw;
   DensityFittingThreeCenter three_center;
+  // The metric cutoff selects the retained Hamiltonian as well as its response.
+  // Cached plans must be rebuilt when callers change this numerical control.
+  double metric_relative_threshold{};
+  // Geometry and execution policy replace complete dA/dM tensors when the
+  // generated two-electron response is selected. Both bases keep real owners.
+  std::optional<core::System> df_gradient_orbital, df_gradient_auxiliary;
+  unsigned df_gradient_mapping{};
+  std::size_t df_gradient_budget{};
+
+  /** A fused response retains topology instead of AO derivative tensors.
+   * Geometry and mapping belong to this immutable per-geometry SCF data. */
+  std::optional<core::System> one_electron_gradient_system;
+  int one_electron_gradient_device{-1};
+  unsigned one_electron_gradient_mapping{};
+  std::size_t one_electron_gradient_budget{};
 };
 
 /**
@@ -67,10 +84,12 @@ struct DensityFittingRhfJk {
  *
  * `density` uses VibeQC's existing closed-shell convention and includes the
  * factor of two for doubly occupied orbitals. The caller therefore assembles
- * the two-electron Fock contribution as J - 0.5 K.
+ * the standard HF contribution as J - 0.5 K. Unselected raw outputs are empty
+ * and their contractions are skipped, including exchange scratch allocation.
  */
 [[nodiscard]] DensityFittingRhfJk build_density_fitting_rhf_jk(
-    const DensityFittingThreeCenter& three_center, const std::vector<double>& density);
+    const DensityFittingThreeCenter& three_center, const std::vector<double>& density,
+    JkTermSelection terms = {});
 
 /** Shared Coulomb and matching-spin exchange matrices for UHF. */
 struct DensityFittingUhfJk {
@@ -110,10 +129,11 @@ struct DensityFittingUhfGradient {
  * The density uses the same closed-shell, doubly occupied convention as
  * `build_density_fitting_rhf_jk`.  `relative_threshold` is applied to every
  * metric before forming its pseudoinverse, matching the value contraction.
+ * Coefficients are signed Fock weights; zero skips that response contraction.
  */
 [[nodiscard]] DensityFittingRhfGradient build_density_fitting_rhf_gradient(
     const integrals::DensityFittingIntegralData& integrals, const std::vector<double>& density,
-    double relative_threshold = 1.0e-10);
+    double relative_threshold = 1.0e-10, JkCoefficients coefficients = {});
 
 /**
  * Build the UHF DF two-electron analytic gradient from raw integral data.
@@ -124,7 +144,7 @@ struct DensityFittingUhfGradient {
 [[nodiscard]] DensityFittingUhfGradient build_density_fitting_uhf_gradient(
     const integrals::DensityFittingIntegralData& integrals,
     const std::vector<double>& alpha_density, const std::vector<double>& beta_density,
-    double relative_threshold = 1.0e-10);
+    double relative_threshold = 1.0e-10, JkCoefficients coefficients = {1.0, -1.0});
 
 /**
  * Construct the thresholded Moore--Penrose inverse of a Coulomb metric.
@@ -136,10 +156,25 @@ struct DensityFittingUhfGradient {
 [[nodiscard]] std::vector<double> density_fitting_metric_pseudoinverse(
     const integrals::DensityFittingIntegralData& integrals, double relative_threshold = 1.0e-10);
 
-/** Construct d(M+) for one coordinate of a density-fitting metric. */
+/** Apply the self-adjoint Frechet derivative of the spectrally truncated inverse.
+ * For a forward response, response is dM and the result is d(M+). In reverse,
+ * response is an external bar_(M+) and the result is bar_M. Matrices are full
+ * row-major; the symmetric metric uses the symmetric part of response.
+ * Retained/discarded mixing uses (f(lambda_i)-f(lambda_j))/(lambda_i-lambda_j),
+ * including nonzero discarded eigenvalues. No eigenvector gauge is differentiated.
+ * A positive relative_threshold verifies the supplied inverse's active subspace
+ * and rejects numerically unresolved rank crossings at its scaled cutoff.
+ * Zero preserves legacy callers' inferred active mask; it cannot diagnose the
+ * distance to an unknown threshold. Neither mode changes the value-side rank.
+ */
+[[nodiscard]] std::vector<double> density_fitting_metric_inverse_response(
+    const std::vector<double>& metric, const std::vector<double>& inverse,
+    const std::vector<double>& response, std::size_t dimension, double relative_threshold = 0.0);
+
+/** Construct d(M+) for one coordinate, with optional explicit rank-crossing checks. */
 [[nodiscard]] std::vector<double> density_fitting_metric_pseudoinverse_derivative(
     const integrals::DensityFittingIntegralData& integrals, const std::vector<double>& inverse,
-    std::size_t coordinate);
+    std::size_t coordinate, double relative_threshold = 0.0);
 
 /**
  * Assemble a complete RHF analytic force vector for a DF two-electron
@@ -168,7 +203,7 @@ struct DensityFittingUhfGradient {
  */
 [[nodiscard]] DensityFittingUhfJk build_density_fitting_uhf_jk(
     const DensityFittingThreeCenter& three_center, const std::vector<double>& alpha_density,
-    const std::vector<double>& beta_density);
+    const std::vector<double>& beta_density, JkTermSelection terms = {});
 
 /** Deterministic memory-bounded tile policy for future RI-J/K contractions. */
 struct DensityFittingTilePlan {
@@ -196,6 +231,14 @@ struct DensityFittingTilePlan {
                                                                 std::size_t occupied,
                                                                 std::size_t memory_budget_bytes,
                                                                 std::size_t fixed_device_bytes = 0);
+
+/** Shape-only capacity of the current bounded DF source's owned uploads.
+ * Counts include the combined orbital/auxiliary/dummy basis across the batch;
+ * transform_elements counts both public-to-Cartesian transform matrices.
+ */
+[[nodiscard]] std::size_t density_fitting_source_metadata_bytes(
+    std::size_t batch, std::size_t atoms, std::size_t shells, std::size_t cartesian_aos,
+    std::size_t primitives, std::size_t transform_elements);
 
 }  // namespace vibeqc::scf
 

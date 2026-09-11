@@ -1,0 +1,85 @@
+{
+  "archive": {
+    "bytes": 270744,
+    "path": "rejected-inventory-run.json.gz",
+    "sha256": "579d1edae2916632ca67eeba09be97003abea88e0cf13a922f0e993ac7b0f91c",
+    "uncompressed_bytes": 3795930,
+    "uncompressed_sha256": "1a16bcff14eb926db9936c9df80925f2fad70ffb9a780014bfef1e5b30fe40a2"
+  },
+  "cases": 18,
+  "decision": "rejected",
+  "endpoint_ceiling": 1.02,
+  "energy_atol": 3e-10,
+  "failed_gates": [
+    {
+      "case": "oh-def2-svp-uhf/uhf/spherical/df/batch1",
+      "median_ratio": 1.033615423091389,
+      "phase": "energy-only-singlepoints"
+    }
+  ],
+  "force_atol": 3e-09,
+  "later_validation_stages": "not-run: the set -e driver stopped after the failed endpoint gate",
+  "numerical_passed": true,
+  "original_files": {
+    "baseline-0.json": {
+      "bytes": 336988,
+      "sha256": "c532a18904e7bc7c6c8972daa9c8f958cbad75c2c9325bb11b513254579f4b30"
+    },
+    "baseline-1.json": {
+      "bytes": 336980,
+      "sha256": "a2e91125df234996f4676b5dd2435bb7eb5724771510539ac6759d146b963f6a"
+    },
+    "baseline-2.json": {
+      "bytes": 336980,
+      "sha256": "ae083585a0b56356c9349b7a6aa9238298bce7c4e1219dd3cf9b659a21836733"
+    },
+    "baseline-3.json": {
+      "bytes": 336976,
+      "sha256": "f4f74e298891a49d0d3ec23ca99551d21f2197170c91b401e6c031c0410ea187"
+    },
+    "baseline-4.json": {
+      "bytes": 336987,
+      "sha256": "ab9e31c6e25489463307223fe61f274797e33d10792702024819d18061ff9f33"
+    },
+    "candidate-0.json": {
+      "bytes": 336289,
+      "sha256": "07c0d745cbd335444ace8b858226a1264aad26da90d9c66713ea790a3a94b63c"
+    },
+    "candidate-1.json": {
+      "bytes": 336265,
+      "sha256": "c137df6d0919638811ac6f8a9916bf6df90102bfd4a4dc5a5b2c9720bbd23b4b"
+    },
+    "candidate-2.json": {
+      "bytes": 336299,
+      "sha256": "fb053cf70344d6598c17475fc8a1feb2a7b68518263dedb231746b8f6f9df7d2"
+    },
+    "candidate-3.json": {
+      "bytes": 336290,
+      "sha256": "25e049eeb0bd243c4f3208c105b05cabbe29a5ab246ab6a886a1e28a4cab7afe"
+    },
+    "candidate-4.json": {
+      "bytes": 336286,
+      "sha256": "fa1318502f48c4e5387824fb285a957e09dbccc874c2005666a879d45af38e96"
+    },
+    "comparison.json": {
+      "bytes": 120662,
+      "sha256": "a8432726c99ec4439761d14c81cd518c5c0db4ca16864113d9259d73862b0b9c"
+    }
+  },
+  "performance_gates_passed": 89,
+  "performance_gates_total": 90,
+  "process_scope": "inventory",
+  "promotion_evidence": false,
+  "reproduction": {
+    "baseline_ref": "refs/heads/evidence/issue-231-df-baseline",
+    "baseline_revision": "4f36c6ecf99fd27a07b26da7a073313fcd3aa679",
+    "candidate_ref": "refs/heads/evidence/issue-231-df-retirement",
+    "candidate_repository": "https://github.com/njzjz-bot/vibeqc",
+    "candidate_revision": "635dc2c6e0314dd45656e5503754159dd8bd1794",
+    "native_equivalence": "The later 3afbd95 benchmark-only child retains exactly the same native compilation inputs, timing library and original objects.",
+    "ordering": "Use this exact revision\u2019s original inventory-wide compare driver with the same baseline and --domain df --samples 5. Its default inventory process ordering has no --process-scope option."
+  },
+  "samples_per_selection": 5,
+  "schema": "vibeqc.rejected-ownership-run.v1",
+  "slurm_job_id": "9229"
+}

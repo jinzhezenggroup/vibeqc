@@ -4,39 +4,23 @@ from __future__ import annotations
 
 import ctypes
 import json
+import math
+import os
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import cache, lru_cache
 from importlib import resources
+from pathlib import Path
 
 import numpy as np
 
 from . import _native
-
-_ELEMENT_SYMBOLS = (
-    "H",
-    "He",
-    "Li",
-    "Be",
-    "B",
-    "C",
-    "N",
-    "O",
-    "F",
-    "Ne",
-    "Na",
-    "Mg",
-    "Al",
-    "Si",
-    "P",
-    "S",
-    "Cl",
-    "Ar",
-)
-_ATOMIC_NUMBERS = {
-    symbol: atomic_number
-    for atomic_number, symbol in enumerate(_ELEMENT_SYMBOLS, start=1)
-}
+from .accuracy import AccuracyAssessment, ResolvedModel, TargetAccuracy
+from .basis import BasisProvenance, BasisSet, BasisShell, ElementBasis, load_basis
+from .basis_capabilities import require_basis, resolved_basis_metadata
+from .elements import atomic_number as element_number
+from .elements import checked_integer
+from .profiles import canonical_hash
 
 _METHODS = {
     "rhf": _native.METHOD_RHF,
@@ -51,20 +35,21 @@ class Atom:
     atomic_number: int
     position: tuple[float, float, float]
 
+    def __post_init__(self):
+        """Own finite coordinates and validate nuclei independently of basis data."""
+        z = element_number(self.atomic_number)
+        xyz = tuple(float(v) for v in self.position)
+        if len(xyz) != 3 or not all(math.isfinite(v) for v in xyz):
+            raise ValueError("atom coordinates must be three finite Bohr values")
+        object.__setattr__(self, "atomic_number", z)
+        object.__setattr__(self, "position", xyz)
+
     @classmethod
     def from_value(cls, value: Atom | tuple[str | int, Sequence[float]]) -> Atom:
         if isinstance(value, cls):
             return value
         element, position = value
-        if isinstance(element, str):
-            try:
-                atomic_number = _ATOMIC_NUMBERS[element.capitalize()]
-            except KeyError as error:
-                raise ValueError(
-                    f"element symbol {element!r} is outside the bundled H-Ar scope"
-                ) from error
-        else:
-            atomic_number = int(element)
+        atomic_number = element_number(element)
         xyz = tuple(float(component) for component in position)
         if len(xyz) != 3:
             raise ValueError("atom coordinates must have three components")
@@ -87,12 +72,15 @@ class Shell:
 @dataclass(frozen=True)
 class Result:
     energy: float
-    forces: np.ndarray
+    forces: np.ndarray | None
     converged: bool
     iterations: int
     energy_change: float
     density_rms: float
     executed_backend: str
+    basis_metadata: dict = field(default_factory=dict)
+    accuracy: AccuracyAssessment | None = None
+    resource_diagnostics: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -197,25 +185,87 @@ def _named_basis_shells(name: str, atoms: Sequence[Atom]) -> tuple[Shell, ...]:
     return tuple(shells)
 
 
+@lru_cache(maxsize=8)
+def _named_basis_record(name, representation):
+    """Wrap the unchanged bundled decimal tables in the public record schema."""
+    canonical = name.lower().replace("_", "-")
+    pack = _basis_pack()
+    if canonical not in pack["bases"]:
+        raise NotImplementedError(f"bundled basis {name!r} is unavailable")
+    elements = []
+    for z, shells in pack["bases"][canonical]["elements"].items():
+        elements.append(
+            ElementBasis(
+                int(z),
+                tuple(
+                    BasisShell(
+                        s["angular_momentum"], s["exponents"], (s["coefficients"],), i
+                    )
+                    for i, s in enumerate(shells)
+                ),
+            )
+        )
+    return BasisSet(
+        canonical,
+        tuple(elements),
+        BasisProvenance(
+            "vibeqc/data/basis_pack.json; Basis Set Exchange",
+            str(pack["source"]),
+            "BSD-3-Clause",
+            canonical_hash(pack),
+        ),
+        representation,
+    )
+
+
+def _snapshot_basis(basis, representation=None):
+    """Load local records once and detach all caller-owned primitive storage."""
+    if isinstance(basis, os.PathLike) or (
+        isinstance(basis, str) and basis.endswith(".json")
+    ):
+        basis = load_basis(Path(basis))
+    if isinstance(basis, BasisSet):
+        if representation is not None and basis.representation != representation:
+            raise ValueError(
+                "basis representation conflicts with the loaded record; create an explicitly reinterpreted record"
+            )
+        return basis
+    if isinstance(basis, str):
+        return _named_basis_record(basis, representation or "cartesian")
+    return tuple(
+        Shell(
+            checked_integer(s.atom_index, "shell atom index", high=2**32 - 1),
+            checked_integer(
+                s.angular_momentum, "shell angular momentum", high=2**32 - 1
+            ),
+            tuple(
+                Primitive(float(p.exponent), float(p.coefficient)) for p in s.primitives
+            ),
+        )
+        for s in basis
+    )
+
+
 class Calculator:
     """Prepare and execute a native single-system electronic-structure calculation.
 
     Coordinates are in Bohr. The current implementation accepts RHF or UHF and
-    a bundled Cartesian STO-3G/def2-SVP/def2-TZVP basis for H-Ar, or explicit
-    `Shell` objects. Both the CPU reference and CUDA backend support Cartesian
+    a bundled STO-3G/def2-SVP/def2-TZVP basis for H-Ar, local canonical JSON,
+    immutable `BasisSet` records, or explicit `Shell` objects. Element symbols
+    cover H-Og; execution depends on every actual shell and Hamiltonian. Both the CPU reference and CUDA backend support Cartesian
     or PySCF/libcint-ordered real spherical AOs through `f` shells.
     """
 
     def __init__(
         self,
         method: str = "rhf",
-        basis: str | Sequence[Shell] = "sto-3g",
+        basis: str | Path | BasisSet | Sequence[Shell] = "sto-3g",
         device: str = "cpu",
         device_id: int = 0,
-        basis_representation: str = "cartesian",
+        basis_representation: str | None = None,
         *,
         density_fitting: str | bool = "none",
-        auxiliary_basis: str | Sequence[Shell] | None = None,
+        auxiliary_basis: str | Path | BasisSet | Sequence[Shell] | None = None,
         density_fitting_relative_threshold: float = 1.0e-10,
         density_fitting_memory_budget_bytes: int = 0,
         max_iterations: int = 100,
@@ -223,6 +273,8 @@ class Calculator:
         density_tolerance: float = 1.0e-8,
         diis_history: int = 8,
         screening_tolerance: float = 1.0e-12,
+        target_accuracy: TargetAccuracy | None = None,
+        resource_budget=None,
     ) -> None:
         """Create a calculator, optionally selecting CPU or CUDA DF.
 
@@ -230,7 +282,23 @@ class Calculator:
         CUDA DF.  Positive values select smaller auxiliary tiles (and stream
         transformed three-center values when needed); zero uses the backend's
         default policy.
+
+        ``target_accuracy`` requests observable diagnostics independently of
+        iteration convergence. Until an explicit audit/estimator is attached,
+        successful results report ``unverified`` and numerical defaults remain
+        unchanged. It never certifies an error from ``energy_tolerance``.
         """
+        if target_accuracy is not None and not isinstance(
+            target_accuracy, TargetAccuracy
+        ):
+            raise TypeError("target_accuracy must be a TargetAccuracy contract")
+        self._target_accuracy = target_accuracy
+        if resource_budget is not None:
+            from .resources import ResourceBudget
+
+            if not isinstance(resource_budget, ResourceBudget):
+                raise TypeError("resource_budget must be a ResourceBudget")
+        self._resource_budget = resource_budget
         if method.lower() not in _METHODS:
             raise ValueError(f"unknown method {method!r}")
         if device not in {"cpu", "cuda"}:
@@ -239,8 +307,24 @@ class Calculator:
             "cartesian": _native.BASIS_CARTESIAN,
             "spherical": _native.BASIS_SPHERICAL,
         }
+        basis = _snapshot_basis(basis, basis_representation)
+        if basis_representation is None:
+            basis_representation = (
+                basis.representation if isinstance(basis, BasisSet) else "cartesian"
+            )
         if basis_representation not in representations:
             raise ValueError("basis_representation must be 'cartesian' or 'spherical'")
+        if auxiliary_basis is not None:
+            auxiliary_basis = _snapshot_basis(
+                auxiliary_basis,
+                None
+                if isinstance(auxiliary_basis, (BasisSet, os.PathLike))
+                or (
+                    isinstance(auxiliary_basis, str)
+                    and auxiliary_basis.endswith(".json")
+                )
+                else basis_representation,
+            )
         if isinstance(density_fitting, bool):
             density_fitting = "cpu" if density_fitting else "none"
         density_fitting_modes = {
@@ -281,6 +365,8 @@ class Calculator:
         self._backend = (
             _native.BACKEND_CUDA if device == "cuda" else _native.BACKEND_CPU_REFERENCE
         )
+        self._device_name = device
+        self._representation_name = basis_representation
         self._device_id = int(device_id)
         self._max_iterations = int(max_iterations)
         self._energy_tolerance = float(energy_tolerance)
@@ -289,7 +375,7 @@ class Calculator:
         self._screening_tolerance = float(screening_tolerance)
         if self._screening_tolerance <= 0.0:
             raise ValueError("screening_tolerance must be positive")
-        self._library = _native.load_library()
+        self._library = _native.load_library(device=device, device_id=self._device_id)
 
         available = ctypes.c_int32()
         _native.check(
@@ -303,6 +389,24 @@ class Calculator:
                 f"method {method!r} is reserved but not implemented"
             )
 
+    @property
+    def profile_diagnostics(self) -> dict:
+        """Report official/local/portable selection and incompatible-cache reasons."""
+        import copy
+
+        return copy.deepcopy(
+            getattr(
+                self._library,
+                "_vibeqc_profile_diagnostics",
+                {
+                    "source": "cpu",
+                    "identity": None,
+                    "kernels": [],
+                    "rejected": [],
+                },
+            )
+        )
+
     def _context_descriptor(self) -> _native.ContextDescriptor:
         return _native.ContextDescriptor(
             ctypes.sizeof(_native.ContextDescriptor),
@@ -312,8 +416,18 @@ class Calculator:
         )
 
     def _method_descriptor(
-        self, auxiliary_basis: ctypes.c_void_p | None = None
+        self, auxiliary_basis: ctypes.c_void_p | None = None, *, resource_plan=None
     ) -> _native.MethodDescriptor:
+        df_budget = self._density_fitting_memory_budget_bytes
+        if resource_plan is not None:
+            request = next(r for r in resource_plan.requests if r.name == "hf")
+            chosen = dict(resource_plan.selections)["hf"]
+            candidate = next(c for c in request.candidates if c.name == chosen)
+            df_budget = int(
+                dict(candidate.decisions).get(
+                    "density_fitting_memory_budget_bytes", df_budget
+                )
+            )
         return _native.MethodDescriptor(
             ctypes.sizeof(_native.MethodDescriptor),
             _native.ABI_VERSION,
@@ -326,18 +440,200 @@ class Calculator:
             self._density_fitting_mode,
             auxiliary_basis,
             self._density_fitting_relative_threshold,
-            self._density_fitting_memory_budget_bytes,
+            df_budget,
         )
 
     def _shells_for_atoms(
         self,
         atoms: Sequence[Atom],
         basis: str | Sequence[Shell] | None = None,
+        *,
+        operator: str = "eri",
+        derivative_order: int = 0,
     ) -> tuple[Shell, ...]:
         selected_basis = self._basis if basis is None else basis
-        if isinstance(selected_basis, str):
-            return _named_basis_shells(selected_basis, atoms)
-        return tuple(selected_basis)
+        if not isinstance(selected_basis, BasisSet):
+            selected_basis = _snapshot_basis(selected_basis, self._representation_name)
+        require_basis(
+            selected_basis,
+            atoms,
+            backend=self._device_name,
+            operator=operator,
+            derivative_order=derivative_order,
+            role="orbital" if basis is None else "auxiliary",
+            representation=selected_basis.representation
+            if isinstance(selected_basis, BasisSet)
+            else self._representation_name,
+        )
+        return (
+            selected_basis.shells_for(atoms)
+            if isinstance(selected_basis, BasisSet)
+            else tuple(selected_basis)
+        )
+
+    def _model_signature(self):
+        """Detect replacement of scientific input snapshots before prepared reuse."""
+
+        def identity(basis):
+            if basis is None:
+                return None
+            if isinstance(basis, BasisSet):
+                return basis.identity
+            return canonical_hash(
+                [
+                    (
+                        s.atom_index,
+                        s.angular_momentum,
+                        [
+                            (float(p.exponent).hex(), float(p.coefficient).hex())
+                            for p in s.primitives
+                        ],
+                    )
+                    for s in basis
+                ]
+            )
+
+        return canonical_hash(
+            {
+                "orbital": identity(self._basis),
+                "auxiliary": identity(self._auxiliary_basis),
+                "representation": self._basis_representation,
+                "method": self._method,
+                "density_fitting": self._density_fitting_mode,
+                "df_threshold": self._density_fitting_relative_threshold,
+                "screening": self._screening_tolerance,
+                "energy_tolerance": self._energy_tolerance,
+                "density_tolerance": self._density_tolerance,
+                "max_iterations": self._max_iterations,
+                "diis_history": self._diis_history,
+                "target_accuracy": self._target_accuracy.to_dict()
+                if self._target_accuracy
+                else None,
+            }
+        )
+
+    def basis_metadata(self, atoms, *, charge=0, multiplicity=1):
+        """Resolve complete orbital/auxiliary scientific identities for this model."""
+        atoms = tuple(Atom.from_value(a) for a in atoms)
+        checked_integer(charge, "ionic charge", low=-(2**31), high=2**31 - 1)
+        checked_integer(multiplicity, "multiplicity", low=1, high=2**31 - 1)
+        result = {}
+        for role, basis in (
+            ("orbital", self._basis),
+            ("auxiliary", self._auxiliary_basis),
+        ):
+            if basis is None:
+                continue
+            shells = self._shells_for_atoms(atoms, None if role == "orbital" else basis)
+            mode = (
+                basis.representation
+                if isinstance(basis, BasisSet)
+                else self._representation_name
+            )
+            result[role] = resolved_basis_metadata(
+                basis,
+                shells,
+                atoms,
+                representation=mode,
+                charge=charge,
+                multiplicity=multiplicity,
+                role=role,
+            )
+        result["model_identity"] = canonical_hash(
+            {
+                "calculator": self._model_signature(),
+                "basis": result,
+                "charge": int(charge),
+                "multiplicity": int(multiplicity),
+            }
+        )
+        return result
+
+    def resolved_model(self, atoms, *, charge=0, multiplicity=1) -> ResolvedModel:
+        """Resolve the scientific HF identity for accuracy comparisons.
+
+        Unlike a prepared-plan signature, this identity excludes execution
+        backend, iteration tolerances, screening and schedules. Fitting and its
+        actual auxiliary basis remain mathematical choices. This method only
+        resolves compact basis metadata; it performs no integral/SCF work.
+        """
+        atoms = tuple(Atom.from_value(atom) for atom in atoms)
+        self._preflight_hf_basis(atoms)
+        metadata = self.basis_metadata(atoms, charge=charge, multiplicity=multiplicity)
+        orbital = metadata["orbital"]
+        fitted = self._density_fitting_mode != _native.DENSITY_FITTING_NONE
+        # HF's native default uses the orbital system as the auxiliary system.
+        # An AUTO provider may choose a backend, but never changes this model.
+        auxiliary = metadata.get("auxiliary", orbital) if fitted else None
+        return ResolvedModel(
+            method={_native.METHOD_RHF: "rhf", _native.METHOD_UHF: "uhf"}[self._method],
+            geometry_hash=canonical_hash(
+                [
+                    (
+                        a.atomic_number,
+                        tuple(float(x).hex() if x else "0x0.0p+0" for x in a.position),
+                    )
+                    for a in atoms
+                ]
+            ),
+            basis_hash=orbital["mathematical_identity"],
+            electron_count=orbital["electrons"]["electron_count"],
+            charge=charge,
+            multiplicity=multiplicity,
+            representation="real_spherical"
+            if self._representation_name == "spherical"
+            else "cartesian",
+            approximation="density_fitting" if fitted else "conventional",
+            auxiliary_basis_hash=auxiliary["mathematical_identity"]
+            if auxiliary
+            else None,
+            metric_relative_threshold=self._density_fitting_relative_threshold
+            if fitted
+            else None,
+        )
+
+    def _accuracy_assessment(self, atoms, charge, multiplicity, converged):
+        """Attach a request without inventing operator audits or certificates."""
+        if self._target_accuracy is None:
+            return None
+        return AccuracyAssessment(
+            self.resolved_model(atoms, charge=charge, multiplicity=multiplicity),
+            self._target_accuracy,
+            converged=converged,
+        )
+
+    def _preflight_hf_basis(self, atoms, *, compute_forces=True):
+        """Check only the operators needed by the selected HF outputs.
+
+        Runtime shape/resource and occupation checks remain native. This data
+        preflight never turns an ECP or an unsupported auxiliary shell into an
+        all-electron through-f approximation. Energy-only calls deliberately
+        avoid requiring derivative capability that their backend will not use.
+        """
+        derivative_orders = (0, 1) if compute_forces else (0,)
+        for role, basis, operators in (
+            (
+                "orbital",
+                self._basis,
+                ("overlap", "kinetic", "nuclear_attraction", "eri"),
+            ),
+            ("auxiliary", self._auxiliary_basis, ("df_metric", "df_three_center")),
+        ):
+            if basis is None:
+                continue
+            for operator in operators:
+                for order in derivative_orders:
+                    require_basis(
+                        basis,
+                        atoms,
+                        backend=self._device_name,
+                        operator=operator,
+                        derivative_order=order,
+                        role=role,
+                        representation=basis.representation
+                        if isinstance(basis, BasisSet)
+                        else self._representation_name,
+                    )
 
     def _create_native_system(
         self,
@@ -347,7 +643,20 @@ class Calculator:
         multiplicity: int,
         basis: str | Sequence[Shell] | None = None,
     ) -> ctypes.c_void_p:
+        selected_basis = self._basis if basis is None else basis
+        if not isinstance(selected_basis, BasisSet):
+            selected_basis = _snapshot_basis(selected_basis, self._representation_name)
         shells = self._shells_for_atoms(atoms, basis)
+        checked_integer(charge, "ionic charge", low=-(2**31), high=2**31 - 1)
+        checked_integer(multiplicity, "multiplicity", low=1, high=2**31 - 1)
+        checked_integer(len(atoms), "atom count", low=1, high=2**32 - 1)
+        checked_integer(len(shells), "shell count", low=1, high=2**32 - 1)
+        checked_integer(
+            sum(len(s.primitives) for s in shells),
+            "primitive count",
+            low=1,
+            high=2**32 - 1,
+        )
         atom_array = (_native.AtomDescriptor * len(atoms))(
             *(
                 _native.AtomDescriptor(atom.atomic_number, *atom.position)
@@ -387,7 +696,13 @@ class Calculator:
             len(primitive_array),
             int(charge),
             int(multiplicity),
-            self._basis_representation,
+            (
+                _native.BASIS_SPHERICAL
+                if selected_basis.representation == "spherical"
+                else _native.BASIS_CARTESIAN
+            )
+            if isinstance(selected_basis, BasisSet)
+            else self._basis_representation,
         )
         system = ctypes.c_void_p()
         _native.check(
@@ -398,6 +713,67 @@ class Calculator:
         )
         return system
 
+    def _resource_request(self, systems, *, charges=None, multiplicities=None):
+        """Resolve this calculator's exact active HF controls without executing."""
+        from .resources_hf import hf_resource_request
+
+        request = hf_resource_request(
+            systems,
+            charges=charges,
+            multiplicities=multiplicities,
+            method={_native.METHOD_RHF: "rhf", _native.METHOD_UHF: "uhf"}[self._method],
+            basis=self._basis,
+            auxiliary_basis=self._auxiliary_basis,
+            backend=self._device_name,
+            basis_representation=self._representation_name,
+            density_fitting={
+                _native.DENSITY_FITTING_NONE: "none",
+                _native.DENSITY_FITTING_CPU_REFERENCE: "cpu",
+                _native.DENSITY_FITTING_CUDA: "cuda",
+                _native.DENSITY_FITTING_AUTO: "auto",
+            }[self._density_fitting_mode],
+            diis_history=self._diis_history,
+            max_iterations=self._max_iterations,
+            energy_tolerance=self._energy_tolerance,
+            density_tolerance=self._density_tolerance,
+            screening_tolerance=self._screening_tolerance,
+            density_fitting_relative_threshold=self._density_fitting_relative_threshold,
+            density_fitting_memory_budget_bytes=self._density_fitting_memory_budget_bytes,
+            device_id=self._device_id,
+            library=self._library,
+        )
+        if request.identity.backend == "cpu":
+            from dataclasses import replace
+
+            query = getattr(
+                self._library, "vibeqc_cpu_resource_inventory_version_v1", None
+            )
+            if query is not None:
+                query.argtypes = []
+                query.restype = ctypes.c_int
+            if query is None or query() != 1:
+                return replace(
+                    request,
+                    unsupported_reason="native library does not implement CPU allocation inventory v1",
+                )
+        return request
+
+    def estimate_resources(
+        self, systems, *, charges=None, multiplicities=None, budget=None
+    ):
+        """Dry-run the active scientific inputs; no solve or warm-state mutation."""
+        from .resources import ResourceBudget, plan_resources
+
+        budget = self._resource_budget if budget is None else budget
+        return plan_resources(
+            (
+                self._resource_request(
+                    systems, charges=charges, multiplicities=multiplicities
+                ),
+            ),
+            ResourceBudget() if budget is None else budget,
+        )
+
     def prepare_batch(
         self,
         systems: Sequence[Iterable[Atom | tuple[str | int, Sequence[float]]]],
@@ -407,6 +783,7 @@ class Calculator:
         warm_start: bool = True,
         shell_class_profiling: bool = False,
         inactive_eigensolver_profiling: bool = False,
+        resource_plan=None,
     ):  # Return annotation is deferred to avoid an import cycle.
         """Prepare a persistent native ragged batch for repeated execution.
 
@@ -424,6 +801,7 @@ class Calculator:
             warm_start=warm_start,
             shell_class_profiling=shell_class_profiling,
             inactive_eigensolver_profiling=inactive_eigensolver_profiling,
+            resource_plan=resource_plan,
         )
 
     def batch_singlepoint(
@@ -450,10 +828,40 @@ class Calculator:
         *,
         charge: int = 0,
         multiplicity: int = 1,
+        properties: Iterable[str] = ("energy", "forces"),
     ) -> Result:
+        """Run one SCF calculation for explicitly selected observables.
+
+        Energy and convergence diagnostics are always returned. Select
+        ``properties=("energy",)`` to omit analytic-force evaluation; the
+        returned ``Result.forces`` is then ``None``. The default preserves the
+        historical energy-plus-forces endpoint.
+        """
+        if isinstance(properties, (str, bytes)):
+            raise TypeError("properties must be an iterable of property names")
+        try:
+            requested_properties = frozenset(properties)
+        except TypeError as error:
+            raise TypeError(
+                "properties must contain hashable property names"
+            ) from error
+        supported_properties = frozenset(("energy", "forces"))
+        if not requested_properties or "energy" not in requested_properties:
+            raise ValueError("properties must include 'energy'")
+        unknown_properties = requested_properties - supported_properties
+        if unknown_properties:
+            names = ", ".join(sorted(repr(name) for name in unknown_properties))
+            raise ValueError(f"unsupported properties: {names}")
+        compute_forces = "forces" in requested_properties
         native_atoms = tuple(Atom.from_value(atom) for atom in atoms)
         if not native_atoms:
             raise ValueError("at least one atom is required")
+        self._preflight_hf_basis(native_atoms, compute_forces=compute_forces)
+        resource_plan = None
+        if self._resource_budget is not None:
+            resource_plan = self.estimate_resources(
+                [native_atoms], charges=[charge], multiplicities=[multiplicity]
+            ).require_feasible()
         context = ctypes.c_void_p()
         _native.check(
             self._library,
@@ -464,7 +872,15 @@ class Calculator:
         system = ctypes.c_void_p()
         auxiliary_system = ctypes.c_void_p()
         calculation = ctypes.c_void_p()
+        ledger = None
         try:
+            if (
+                resource_plan is not None
+                and resource_plan.requests[0].identity.backend == "cuda"
+            ):
+                from .resources_native import NativeDeviceLedger
+
+                ledger = NativeDeviceLedger(self._library, resource_plan)
             system = self._create_native_system(
                 context, native_atoms, charge, multiplicity
             )
@@ -477,7 +893,8 @@ class Calculator:
                     self._auxiliary_basis,
                 )
             method_descriptor = self._method_descriptor(
-                auxiliary_system if auxiliary_system.value else None
+                auxiliary_system if auxiliary_system.value else None,
+                resource_plan=resource_plan,
             )
             _native.check(
                 self._library,
@@ -488,26 +905,63 @@ class Calculator:
                     ctypes.byref(calculation),
                 ),
             )
-            force_storage = (ctypes.c_double * (3 * len(native_atoms)))()
+            force_storage = (
+                (ctypes.c_double * (3 * len(native_atoms)))()
+                if compute_forces
+                else None
+            )
             result_descriptor = _native.ResultDescriptor(
                 ctypes.sizeof(_native.ResultDescriptor),
                 _native.ABI_VERSION,
                 0.0,
                 force_storage,
-                len(force_storage),
+                len(force_storage) if force_storage is not None else 0,
                 0,
                 0.0,
                 0.0,
                 0,
                 _native.BACKEND_CPU_REFERENCE,
             )
-            _native.check(
-                self._library,
-                self._library.vibeqc_calculation_execute(
+            resource_diagnostics = None
+            if resource_plan is None:
+                status = self._library.vibeqc_calculation_execute(
                     calculation, ctypes.byref(result_descriptor)
-                ),
+                )
+            else:
+                from .resources import CpuResourceObservation
+
+                with CpuResourceObservation(
+                    self._library, cpu_workers=1, ledger=ledger
+                ) as observed:
+                    status = self._library.vibeqc_calculation_execute(
+                        calculation, ctypes.byref(result_descriptor)
+                    )
+                resource_diagnostics = {
+                    "plan": resource_plan.to_dict(),
+                    "observation": observed.to_dict(),
+                }
+                observed.verify(resource_plan)
+            try:
+                if resource_diagnostics is None:
+                    _native.check(self._library, status)
+                else:
+                    from .resources_native import check_resource_status
+
+                    check_resource_status(self._library, status, resource_diagnostics)
+            except (RuntimeError, MemoryError) as error:
+                # Preserve scientific diagnostics (for example a DF rank
+                # crossing) before this calculation's context is destroyed.
+                detail = self._library.vibeqc_context_get_last_detail(context)
+                if detail:
+                    # Keep structured resource evidence and allocation-space
+                    # classification on the same exception instance.
+                    error.args = (f"{error}: {detail.decode('utf-8')}",)
+                raise
+            forces = (
+                np.ctypeslib.as_array(force_storage).copy().reshape(-1, 3)
+                if force_storage is not None
+                else None
             )
-            forces = np.ctypeslib.as_array(force_storage).copy().reshape(-1, 3)
             backend = (
                 "cuda"
                 if result_descriptor.executed_backend == _native.BACKEND_CUDA
@@ -521,6 +975,16 @@ class Calculator:
                 energy_change=result_descriptor.energy_change,
                 density_rms=result_descriptor.density_rms,
                 executed_backend=backend,
+                resource_diagnostics=resource_diagnostics,
+                basis_metadata=self.basis_metadata(
+                    native_atoms, charge=charge, multiplicity=multiplicity
+                ),
+                accuracy=self._accuracy_assessment(
+                    native_atoms,
+                    charge,
+                    multiplicity,
+                    bool(result_descriptor.converged),
+                ),
             )
         finally:
             if calculation.value:
@@ -530,3 +994,5 @@ class Calculator:
             if auxiliary_system.value:
                 self._library.vibeqc_system_destroy(auxiliary_system)
             self._library.vibeqc_context_destroy(context)
+            if ledger is not None:
+                ledger.close()

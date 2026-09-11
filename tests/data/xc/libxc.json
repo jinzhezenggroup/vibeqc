@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "pyscf": "2.14.0",
+  "libxc": "7.0.0",
+  "numpy": "2.4.6",
+  "codes": {
+    "LDA_X": "LDA_X",
+    "LDA_C_PW": "LDA_C_PW",
+    "LDA_C_PW_MOD": "LDA_C_PW_MOD",
+    "GGA_X_PBE": "GGA_X_PBE",
+    "GGA_C_PBE": "GGA_C_PBE",
+    "LDA_XC_PW": "LDA_X,LDA_C_PW",
+    "PBE": "GGA_X_PBE,GGA_C_PBE"
+  },
+  "script_sha256": "887adec4b3f5210949c6793c91f66cd0f75307ec1395085ea8796c490cee26ee",
+  "arrays_sha256": "2a0381cfb858bd1305631db42bfd6d566c8969eb6fa0280a2f710327d38e0ca9",
+  "conventions": "energy per volume; spin sigma_ab without factor two; tau=one-half gradient square; packed upper Hessian",
+  "typical_tolerance": {
+    "atol": 1e-11,
+    "rtol": 1e-10
+  },
+  "boundary_tolerance": {
+    "atol": 1e-08,
+    "rtol": 2e-06
+  },
+  "boundary_rationale": "Nearly polarized spin interpolation loses relative accuracy in Libxc's 1-z subtraction; large density and gradient ratios amplify high derivatives. Scale-aware gate applies only to named boundary fixtures; no clipping is applied by VibeQC."
+}

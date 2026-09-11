@@ -1,0 +1,69 @@
+{
+  "fixes": [
+    "Automatic resource candidates reserve both J/K and generated response budgets.",
+    "UHF response subtracts the total-density temporary before entering the bridge.",
+    "Metric cutoff invalidates retained CUDA plans and prepared response data together.",
+    "Singlepoint exceptions preserve native detail, resource evidence and allocation-space identity.",
+    "Standalone generic response checks actual retained numeric host capacities."
+  ],
+  "gpu_allocation": "SLURM_JOB_ID=9104 CUDA_VISIBLE_DEVICES=0",
+  "native_cpu": {
+    "failed": 0,
+    "passed": 13
+  },
+  "native_cuda": {
+    "failed": 0,
+    "passed": 13
+  },
+  "performance_scope": "Final integration validation only. Original timings retain separate source/binary identity in ../provenance.json.",
+  "production_promoted": false,
+  "python_suites": {
+    "cpu.xml": {
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "tests": 156
+    },
+    "gpu-checkpoint.xml": {
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "tests": 41
+    },
+    "gpu-derivatives.xml": {
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "tests": 27
+    },
+    "gpu-one-electron.xml": {
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "tests": 29
+    },
+    "gpu-projection.xml": {
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "tests": 5
+    },
+    "gpu-resources.xml": {
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "tests": 14
+    }
+  },
+  "source_and_binaries": {
+    "build": {
+      "binary_sha256": "adfd1a7e5aa8cd451c092b9be15dba015e0c9fb95f1aba9f8000d53cf3e04a2b",
+      "source_identity": "8a7f7e2399b71cf61b107c758935d9c2cde3e27eb01810e347865aad7958fad7"
+    },
+    "build-cuda": {
+      "binary_sha256": "779a310862ce13b641adaff8a7b00afc53f129885af2190bcd028344d23d9ccf",
+      "source_identity": "8a7f7e2399b71cf61b107c758935d9c2cde3e27eb01810e347865aad7958fad7"
+    }
+  },
+  "tested_commit": "48c345c743ecccd5b3637b424e866393ac08356f"
+}

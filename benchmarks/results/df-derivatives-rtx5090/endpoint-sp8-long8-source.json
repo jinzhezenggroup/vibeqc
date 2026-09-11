@@ -1,0 +1,2197 @@
+{
+  "accuracy_passed": true,
+  "batch": 1,
+  "binary_hash": "f3f0789911a6218b12a9fa609617b0378d1ed5681970a2f672b6d192f8cc23e1",
+  "case": "sp8",
+  "comparison": {
+    "reason": null,
+    "status": "pass",
+    "workloads": {
+      "changed-geometry": {
+        "baseline": {
+          "maximum_seconds": 15.807121311081573,
+          "median_seconds": 15.783557323971763,
+          "minimum_seconds": 15.712421266827732,
+          "raw_seconds": [
+            15.712421266827732,
+            15.783557323971763,
+            15.771546136122197,
+            15.795115220127627,
+            15.807121311081573
+          ],
+          "relative_mad": 0.0007609937102914043,
+          "samples": 5
+        },
+        "candidate": {
+          "maximum_seconds": 7.144934496143833,
+          "median_seconds": 7.144788224017248,
+          "minimum_seconds": 7.144398441072553,
+          "raw_seconds": [
+            7.144805309129879,
+            7.144398441072553,
+            7.144600355997682,
+            7.144934496143833,
+            7.144788224017248
+          ],
+          "relative_mad": 2.0472562936652276e-05,
+          "samples": 5
+        },
+        "noise_floor": 0.02,
+        "relative_improvement": 0.5473271280127782,
+        "significant": true
+      },
+      "cold-start": {
+        "baseline": {
+          "maximum_seconds": 16.95811802893877,
+          "median_seconds": 16.948300229152665,
+          "minimum_seconds": 16.93709467095323,
+          "raw_seconds": [
+            16.948300229152665,
+            16.93709467095323,
+            16.95811802893877,
+            16.95225009485148,
+            16.938043624162674
+          ],
+          "relative_mad": 0.0005792793172980389,
+          "samples": 5
+        },
+        "candidate": {
+          "maximum_seconds": 8.005456874147058,
+          "median_seconds": 8.004180087940767,
+          "minimum_seconds": 8.002156834118068,
+          "raw_seconds": [
+            8.004399879835546,
+            8.004180087940767,
+            8.002156834118068,
+            8.002450384898111,
+            8.005456874147058
+          ],
+          "relative_mad": 0.00015951492748317262,
+          "samples": 5
+        },
+        "noise_floor": 0.02,
+        "relative_improvement": 0.5277296259967812,
+        "significant": true
+      },
+      "unchanged-geometry": {
+        "baseline": {
+          "maximum_seconds": 11.321472035022452,
+          "median_seconds": 11.31356036500074,
+          "minimum_seconds": 11.309486018959433,
+          "raw_seconds": [
+            11.321472035022452,
+            11.316293402109295,
+            11.309486018959433,
+            11.312588651897386,
+            11.31356036500074
+          ],
+          "relative_mad": 0.00024157179706313058,
+          "samples": 5
+        },
+        "candidate": {
+          "maximum_seconds": 2.367044295882806,
+          "median_seconds": 2.3668524471577257,
+          "minimum_seconds": 2.3666534500662237,
+          "raw_seconds": [
+            2.366854900959879,
+            2.3668524471577257,
+            2.367044295882806,
+            2.3667846999596804,
+            2.3666534500662237
+          ],
+          "relative_mad": 2.862332974183038e-05,
+          "samples": 5
+        },
+        "noise_floor": 0.02,
+        "relative_improvement": 0.7907950838818394,
+        "significant": true
+      }
+    }
+  },
+  "contraction_length_override": 8,
+  "cuda_visible_devices": "0",
+  "df_budget": 1048576,
+  "df_derivatives": true,
+  "fitted": true,
+  "mapping": "thread",
+  "memory": {
+    "baseline": {
+      "observation": {
+        "complete_plan_peak": false,
+        "cpu_worker_limit": 1,
+        "cuda_arena_samples": null,
+        "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+        "device_ledger": {
+          "allocations": 102,
+          "device": 0,
+          "limit_bytes": 268579208,
+          "live_bytes": 44640,
+          "peak_bytes": 601566,
+          "rejected_allocations": 0,
+          "scope": "owned HF CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+        },
+        "excludes": [
+          "recurrence/eigensolver temporaries",
+          "other fleet items",
+          "runtime overhead"
+        ],
+        "sampled_cuda_arena_peak_bytes": null,
+        "sampled_item_peak_host_bytes": null,
+        "samples": null,
+        "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+        "status": "observed"
+      },
+      "plan": {
+        "budget": {
+          "device_bytes": 17179869184,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "host_bytes": 2147483648,
+          "host_reserve_bytes": 0,
+          "per_device_bytes": [],
+          "pinned_host_bytes": null,
+          "schema_version": 1
+        },
+        "diagnostic": null,
+        "identity": "cfb718910f8a77cc5de5d3bd3fded88f67dcf538edea7d6f8f87ee0fd8737e2d",
+        "limits": {
+          "device": 17179869184,
+          "host": 2147483648
+        },
+        "peak_bytes": {
+          "device": 805450120,
+          "device:0": 805450120,
+          "host": 80577872,
+          "pageable": 80577872,
+          "pinned": 0
+        },
+        "peak_phases": {
+          "device": 0,
+          "device:0": 0,
+          "host": 0,
+          "pageable": 0
+        },
+        "requests": [
+          {
+            "candidates": [
+              {
+                "decisions": [
+                  [
+                    "density_fitting_memory_budget_bytes",
+                    "1048576"
+                  ],
+                  [
+                    "batch_execution",
+                    "serialized buckets; all retained caches summed"
+                  ],
+                  [
+                    "scf_driver",
+                    "CPU DIIS/eigensolvers; CUDA integral regeneration and J/K"
+                  ],
+                  [
+                    "bucket_inventory",
+                    "[{\"batch\": 1, \"cartesian_naux\": 8, \"cartesian_nbf\": 8, \"coordinates\": 6, \"host_metadata\": 4427776, \"naux\": 8, \"nbf\": 8, \"occupied\": 1, \"preparation_minimum\": 70712, \"resident_device_bytes\": 67163522, \"resident_host_bytes\": 4445952, \"source_bytes\": 3330, \"tiles\": {\"ao_pair_tile\": 64, \"auxiliary_tile\": 8, \"batch_tile\": 1, \"budget_bytes\": 1048576, \"fixed_device_bytes\": 3330, \"occupied_tile\": 1, \"peak_workspace_bytes\": 48642, \"stores_full_three_center\": true}}]"
+                  ]
+                ],
+                "estimates": [
+                  {
+                    "accounting": "capacity_bound",
+                    "bytes": 67163522,
+                    "cacheable": false,
+                    "first_phase": 0,
+                    "kind": "persistent",
+                    "last_phase": 0,
+                    "name": "all DF bucket caches and native solver workspaces",
+                    "recomputable": true,
+                    "space": "device:0",
+                    "streamed_bytes": 0
+                  },
+                  {
+                    "accounting": "capacity_bound",
+                    "bytes": 201415686,
+                    "cacheable": false,
+                    "first_phase": 0,
+                    "kind": "workspace",
+                    "last_phase": 0,
+                    "name": "largest serialized DF setup/force/retry workspace",
+                    "recomputable": false,
+                    "space": "device:0",
+                    "streamed_bytes": 0
+                  },
+                  {
+                    "accounting": "capacity_bound",
+                    "bytes": 4445952,
+                    "cacheable": false,
+                    "first_phase": 0,
+                    "kind": "persistent",
+                    "last_phase": 0,
+                    "name": "all retained DF host state",
+                    "recomputable": false,
+                    "space": "pageable",
+                    "streamed_bytes": 0
+                  },
+                  {
+                    "accounting": "capacity_bound",
+                    "bytes": 76131920,
+                    "cacheable": false,
+                    "first_phase": 0,
+                    "kind": "workspace",
+                    "last_phase": 0,
+                    "name": "largest serialized DF host workspace",
+                    "recomputable": false,
+                    "space": "pageable",
+                    "streamed_bytes": 0
+                  },
+                  {
+                    "accounting": "runtime_allowance",
+                    "bytes": 536870912,
+                    "cacheable": false,
+                    "first_phase": 0,
+                    "kind": "library",
+                    "last_phase": 0,
+                    "name": "opaque CUDA library retention allowance",
+                    "recomputable": false,
+                    "space": "device:0",
+                    "streamed_bytes": 0
+                  }
+                ],
+                "mode": "recomputed",
+                "name": "cuda-df-source",
+                "relative_cost": 1
+              }
+            ],
+            "identity": {
+              "backend": "cuda",
+              "method": "rhf",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "precision": "fp64",
+              "provider": "native-hf-df-v1",
+              "schedule": "{\"density_fitting\": \"cuda\", \"density_fitting_memory_budget_bytes\": 1048576, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-10, \"device_id\": 0, \"diis_history\": 8, \"energy_tolerance\": 1e-12, \"max_iterations\": 100, \"native_binary_sha256\": \"f3f0789911a6218b12a9fa609617b0378d1ed5681970a2f672b6d192f8cc23e1\", \"profile_identity\": \"generic_cuda\", \"runtime_policy\": {\"VIBEQC_BOUNDED_DIRECT_AOT_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_COUNT_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_STREAMING\": null, \"VIBEQC_DF_DERIVATIVES\": \"reference\", \"VIBEQC_DF_DERIVATIVE_MAPPING\": \"thread\", \"VIBEQC_DF_VALUES\": null, \"VIBEQC_DF_VALUE_MAPPING\": null, \"VIBEQC_DIRECT_TILE_VALIDATION\": null, \"VIBEQC_FINAL_FOCK_REBUILD\": null, \"VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING\": null, \"VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE\": null, \"VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD\": null, \"VIBEQC_ONE_ELECTRON_DERIVATIVES\": \"generated\", \"VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING\": null, \"VIBEQC_ONE_ELECTRON_FORCE_SCALAR\": null, \"VIBEQC_ONE_ELECTRON_VALUES\": null, \"VIBEQC_ONE_ELECTRON_VALUE_MAPPING\": null, \"VIBEQC_PPPS_BLOCK_THREADS\": null, \"VIBEQC_PPPS_RESIDENT_BRA\": null, \"VIBEQC_PPPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PPSS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSSS_RESIDENT_BRA\": null, \"VIBEQC_PSSS_WEIGHTED\": null, \"VIBEQC_XSYEV_PROBE_SKIP_DIAGNOSTIC\": null}, \"screening_tolerance\": 1e-14}",
+              "schema_version": 1,
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": {\"basis_hash\": \"f08ebe032da585161ba8367e46b2be855b876e2043e727de6dd07861c5575adb\", \"cartesian_nbf\": 8, \"maximum_angular\": 1, \"nbf\": 8, \"primitives\": 32, \"representation\": \"cartesian\", \"shells\": 4}, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"f08ebe032da585161ba8367e46b2be855b876e2043e727de6dd07861c5575adb\", \"cartesian_nbf\": 8, \"maximum_angular\": 1, \"nbf\": 8, \"primitives\": 32, \"representation\": \"cartesian\", \"shells\": 4}, \"spins\": 1}]}"
+            },
+            "infeasible_reason": null,
+            "name": "hf",
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding",
+              "CUDA context, modules, graphs, stacks and allocator pool/page retention",
+              "opaque CUDA library retention above the reported allowance is untracked"
+            ],
+            "unsupported_reason": null
+          }
+        ],
+        "resident_bytes": {
+          "device": 604034434,
+          "device:0": 604034434,
+          "host": 4445952,
+          "pageable": 4445952,
+          "pinned": 0
+        },
+        "schema_version": 1,
+        "selections": [
+          [
+            "hf",
+            "cuda-df-source"
+          ]
+        ],
+        "status": "feasible"
+      }
+    },
+    "candidate": {
+      "observation": {
+        "complete_plan_peak": false,
+        "cpu_worker_limit": 1,
+        "cuda_arena_samples": null,
+        "cuda_scope": "direct-HF owned arenas at allocation and retained fleet-cache boundaries; excludes transient warm-retry overlap, runtime and library internals",
+        "device_ledger": {
+          "allocations": 122,
+          "device": 0,
+          "limit_bytes": 268579208,
+          "live_bytes": 44640,
+          "peak_bytes": 601566,
+          "rejected_allocations": 0,
+          "scope": "owned HF CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations"
+        },
+        "excludes": [
+          "recurrence/eigensolver temporaries",
+          "other fleet items",
+          "runtime overhead"
+        ],
+        "sampled_cuda_arena_peak_bytes": null,
+        "sampled_item_peak_host_bytes": null,
+        "samples": null,
+        "scope": "per-item integral and SCF/DIIS buffers at CPU iteration boundaries",
+        "status": "observed"
+      },
+      "plan": {
+        "budget": {
+          "device_bytes": 17179869184,
+          "device_reserve_bytes": 0,
+          "headroom_fraction": 0.0,
+          "host_bytes": 2147483648,
+          "host_reserve_bytes": 0,
+          "per_device_bytes": [],
+          "pinned_host_bytes": null,
+          "schema_version": 1
+        },
+        "diagnostic": null,
+        "identity": "032ed70c04edadf45bdf5c84e167955637e3e8cd6e9cae0c30605b65be620021",
+        "limits": {
+          "device": 17179869184,
+          "host": 2147483648
+        },
+        "peak_bytes": {
+          "device": 805450120,
+          "device:0": 805450120,
+          "host": 80577872,
+          "pageable": 80577872,
+          "pinned": 0
+        },
+        "peak_phases": {
+          "device": 0,
+          "device:0": 0,
+          "host": 0,
+          "pageable": 0
+        },
+        "requests": [
+          {
+            "candidates": [
+              {
+                "decisions": [
+                  [
+                    "density_fitting_memory_budget_bytes",
+                    "1048576"
+                  ],
+                  [
+                    "batch_execution",
+                    "serialized buckets; all retained caches summed"
+                  ],
+                  [
+                    "scf_driver",
+                    "CPU DIIS/eigensolvers; CUDA integral regeneration and J/K"
+                  ],
+                  [
+                    "bucket_inventory",
+                    "[{\"batch\": 1, \"cartesian_naux\": 8, \"cartesian_nbf\": 8, \"coordinates\": 6, \"host_metadata\": 4427776, \"naux\": 8, \"nbf\": 8, \"occupied\": 1, \"preparation_minimum\": 70712, \"resident_device_bytes\": 67163522, \"resident_host_bytes\": 4445952, \"source_bytes\": 3330, \"tiles\": {\"ao_pair_tile\": 64, \"auxiliary_tile\": 8, \"batch_tile\": 1, \"budget_bytes\": 1048576, \"fixed_device_bytes\": 3330, \"occupied_tile\": 1, \"peak_workspace_bytes\": 48642, \"stores_full_three_center\": true}}]"
+                  ]
+                ],
+                "estimates": [
+                  {
+                    "accounting": "capacity_bound",
+                    "bytes": 67163522,
+                    "cacheable": false,
+                    "first_phase": 0,
+                    "kind": "persistent",
+                    "last_phase": 0,
+                    "name": "all DF bucket caches and native solver workspaces",
+                    "recomputable": true,
+                    "space": "device:0",
+                    "streamed_bytes": 0
+                  },
+                  {
+                    "accounting": "capacity_bound",
+                    "bytes": 201415686,
+                    "cacheable": false,
+                    "first_phase": 0,
+                    "kind": "workspace",
+                    "last_phase": 0,
+                    "name": "largest serialized DF setup/force/retry workspace",
+                    "recomputable": false,
+                    "space": "device:0",
+                    "streamed_bytes": 0
+                  },
+                  {
+                    "accounting": "capacity_bound",
+                    "bytes": 4445952,
+                    "cacheable": false,
+                    "first_phase": 0,
+                    "kind": "persistent",
+                    "last_phase": 0,
+                    "name": "all retained DF host state",
+                    "recomputable": false,
+                    "space": "pageable",
+                    "streamed_bytes": 0
+                  },
+                  {
+                    "accounting": "capacity_bound",
+                    "bytes": 76131920,
+                    "cacheable": false,
+                    "first_phase": 0,
+                    "kind": "workspace",
+                    "last_phase": 0,
+                    "name": "largest serialized DF host workspace",
+                    "recomputable": false,
+                    "space": "pageable",
+                    "streamed_bytes": 0
+                  },
+                  {
+                    "accounting": "runtime_allowance",
+                    "bytes": 536870912,
+                    "cacheable": false,
+                    "first_phase": 0,
+                    "kind": "library",
+                    "last_phase": 0,
+                    "name": "opaque CUDA library retention allowance",
+                    "recomputable": false,
+                    "space": "device:0",
+                    "streamed_bytes": 0
+                  }
+                ],
+                "mode": "recomputed",
+                "name": "cuda-df-source",
+                "relative_cost": 1
+              }
+            ],
+            "identity": {
+              "backend": "cuda",
+              "method": "rhf",
+              "observables": [
+                "energy",
+                "forces"
+              ],
+              "precision": "fp64",
+              "provider": "native-hf-df-v1",
+              "schedule": "{\"density_fitting\": \"cuda\", \"density_fitting_memory_budget_bytes\": 1048576, \"density_fitting_relative_threshold\": 1e-10, \"density_tolerance\": 1e-10, \"device_id\": 0, \"diis_history\": 8, \"energy_tolerance\": 1e-12, \"max_iterations\": 100, \"native_binary_sha256\": \"f3f0789911a6218b12a9fa609617b0378d1ed5681970a2f672b6d192f8cc23e1\", \"profile_identity\": \"generic_cuda\", \"runtime_policy\": {\"VIBEQC_BOUNDED_DIRECT_AOT_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_COUNT_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE\": null, \"VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC\": null, \"VIBEQC_BOUNDED_DIRECT_STREAMING\": null, \"VIBEQC_DF_DERIVATIVES\": \"generated\", \"VIBEQC_DF_DERIVATIVE_MAPPING\": \"thread\", \"VIBEQC_DF_VALUES\": null, \"VIBEQC_DF_VALUE_MAPPING\": null, \"VIBEQC_DIRECT_TILE_VALIDATION\": null, \"VIBEQC_FINAL_FOCK_REBUILD\": null, \"VIBEQC_FORCE_DENSITY_PRODUCT_SCREENING\": null, \"VIBEQC_GRAPH_EIGENSOLVER_OVERRIDE\": null, \"VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD\": null, \"VIBEQC_ONE_ELECTRON_DERIVATIVES\": \"generated\", \"VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING\": null, \"VIBEQC_ONE_ELECTRON_FORCE_SCALAR\": null, \"VIBEQC_ONE_ELECTRON_VALUES\": null, \"VIBEQC_ONE_ELECTRON_VALUE_MAPPING\": null, \"VIBEQC_PPPS_BLOCK_THREADS\": null, \"VIBEQC_PPPS_RESIDENT_BRA\": null, \"VIBEQC_PPPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PPSS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSPS_SIGNATURE_BUCKETING\": null, \"VIBEQC_PSSS_RESIDENT_BRA\": null, \"VIBEQC_PSSS_WEIGHTED\": null, \"VIBEQC_XSYEV_PROBE_SKIP_DIAGNOSTIC\": null}, \"screening_tolerance\": 1e-14}",
+              "schema_version": 1,
+              "topology": "{\"items\": [{\"atoms\": 2, \"auxiliary\": {\"basis_hash\": \"f08ebe032da585161ba8367e46b2be855b876e2043e727de6dd07861c5575adb\", \"cartesian_nbf\": 8, \"maximum_angular\": 1, \"nbf\": 8, \"primitives\": 32, \"representation\": \"cartesian\", \"shells\": 4}, \"electrons\": {\"atomic_numbers\": [1, 1], \"ecp_core_electrons\": [0, 0], \"electron_count\": 2, \"ionic_charge\": 0, \"multiplicity\": 1, \"nalpha\": 1, \"nbeta\": 1, \"nuclear_charges\": [1, 1]}, \"orbital\": {\"basis_hash\": \"f08ebe032da585161ba8367e46b2be855b876e2043e727de6dd07861c5575adb\", \"cartesian_nbf\": 8, \"maximum_angular\": 1, \"nbf\": 8, \"primitives\": 32, \"representation\": \"cartesian\", \"shells\": 4}, \"spins\": 1}]}"
+            },
+            "infeasible_reason": null,
+            "name": "hf",
+            "scope_exclusions": [
+              "caller-owned inputs and previously retained output objects",
+              "Python/runtime objects, allocator bookkeeping, arenas and page rounding",
+              "CUDA context, modules, graphs, stacks and allocator pool/page retention",
+              "opaque CUDA library retention above the reported allowance is untracked"
+            ],
+            "unsupported_reason": null
+          }
+        ],
+        "resident_bytes": {
+          "device": 604034434,
+          "device:0": 604034434,
+          "host": 4445952,
+          "pageable": 4445952,
+          "pinned": 0
+        },
+        "schema_version": 1,
+        "selections": [
+          [
+            "hf",
+            "cuda-df-source"
+          ]
+        ],
+        "status": "feasible"
+      }
+    }
+  },
+  "operator": "df_derivatives",
+  "paired_errors": {
+    "changed-geometry": {
+      "energy": 0.0,
+      "force": 1.7985612998927536e-13
+    },
+    "cold-start": {
+      "energy": 0.0,
+      "force": 2.3092638912203256e-14
+    },
+    "unchanged-geometry": {
+      "energy": 0.0,
+      "force": 6.217248937900877e-15
+    }
+  },
+  "production_promoted": false,
+  "resource_observation_enabled": true,
+  "revision": "3033c8435ddca1fbdfc16120d52a51c291a003a7",
+  "samples": [
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          6.121266185313739e-11
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6343892689976966e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.574544884040485,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06465389158948076
+        ],
+        "energy_change": [
+          5.551115123125783e-16
+        ],
+        "forces": [
+          [
+            [
+              1.2642285221771458e-16,
+              -3.707643039898164e-17,
+              0.4809618928456876
+            ],
+            [
+              -1.2642285221771458e-16,
+              3.707643039898164e-17,
+              -0.48096189284568536
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          15
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 16.948300229152665,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          6.121266185313739e-11
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6343892689976966e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.574544884040485,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06465389158948076
+        ],
+        "energy_change": [
+          5.551115123125783e-16
+        ],
+        "forces": [
+          [
+            [
+              1.26422852217715e-16,
+              -3.7076430398981655e-17,
+              0.48096189284567137
+            ],
+            [
+              -1.2642285221771507e-16,
+              3.707643039898182e-17,
+              -0.4809618928456627
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          15
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 8.004399879835546,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          6.121266185313739e-11
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6343892689976966e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.574544884040485,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06465389158948076
+        ],
+        "energy_change": [
+          5.551115123125783e-16
+        ],
+        "forces": [
+          [
+            [
+              1.26422852217715e-16,
+              -3.7076430398981655e-17,
+              0.48096189284567137
+            ],
+            [
+              -1.2642285221771507e-16,
+              3.707643039898182e-17,
+              -0.4809618928456627
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          15
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 8.004180087940767,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          6.121266185313739e-11
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6343892689976966e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.574544884040485,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06465389158948076
+        ],
+        "energy_change": [
+          5.551115123125783e-16
+        ],
+        "forces": [
+          [
+            [
+              1.2642285221771458e-16,
+              -3.707643039898164e-17,
+              0.4809618928456876
+            ],
+            [
+              -1.2642285221771458e-16,
+              3.707643039898164e-17,
+              -0.48096189284568536
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          15
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 16.93709467095323,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          6.121266185313739e-11
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6343892689976966e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.574544884040485,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06465389158948076
+        ],
+        "energy_change": [
+          5.551115123125783e-16
+        ],
+        "forces": [
+          [
+            [
+              1.2642285221771458e-16,
+              -3.707643039898164e-17,
+              0.4809618928456876
+            ],
+            [
+              -1.2642285221771458e-16,
+              3.707643039898164e-17,
+              -0.48096189284568536
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          15
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 16.95811802893877,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          6.121266185313739e-11
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6343892689976966e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.574544884040485,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06465389158948076
+        ],
+        "energy_change": [
+          5.551115123125783e-16
+        ],
+        "forces": [
+          [
+            [
+              1.26422852217715e-16,
+              -3.7076430398981655e-17,
+              0.48096189284567137
+            ],
+            [
+              -1.2642285221771507e-16,
+              3.707643039898182e-17,
+              -0.4809618928456627
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          15
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 8.002156834118068,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          6.121266185313739e-11
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6343892689976966e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.574544884040485,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06465389158948076
+        ],
+        "energy_change": [
+          5.551115123125783e-16
+        ],
+        "forces": [
+          [
+            [
+              1.26422852217715e-16,
+              -3.7076430398981655e-17,
+              0.48096189284567137
+            ],
+            [
+              -1.2642285221771507e-16,
+              3.707643039898182e-17,
+              -0.4809618928456627
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          15
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 8.002450384898111,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          6.121266185313739e-11
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6343892689976966e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.574544884040485,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06465389158948076
+        ],
+        "energy_change": [
+          5.551115123125783e-16
+        ],
+        "forces": [
+          [
+            [
+              1.2642285221771458e-16,
+              -3.707643039898164e-17,
+              0.4809618928456876
+            ],
+            [
+              -1.2642285221771458e-16,
+              3.707643039898164e-17,
+              -0.48096189284568536
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          15
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 16.95225009485148,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          6.121266185313739e-11
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6343892689976966e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.574544884040485,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06465389158948076
+        ],
+        "energy_change": [
+          5.551115123125783e-16
+        ],
+        "forces": [
+          [
+            [
+              1.2642285221771458e-16,
+              -3.707643039898164e-17,
+              0.4809618928456876
+            ],
+            [
+              -1.2642285221771458e-16,
+              3.707643039898164e-17,
+              -0.48096189284568536
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          15
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 16.938043624162674,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          6.121266185313739e-11
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6343892689976966e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.574544884040485,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06465389158948076
+        ],
+        "energy_change": [
+          5.551115123125783e-16
+        ],
+        "forces": [
+          [
+            [
+              1.26422852217715e-16,
+              -3.7076430398981655e-17,
+              0.48096189284567137
+            ],
+            [
+              -1.2642285221771507e-16,
+              3.707643039898182e-17,
+              -0.48096189284566226
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          15
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 8.005456874147058,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "cold-start"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          1.0158119029827044e-12
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6343892689976966e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.574544884040485,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06465389158948065
+        ],
+        "energy_change": [
+          0.0
+        ],
+        "forces": [
+          [
+            [
+              1.2642285221656811e-16,
+              -3.707643040259549e-17,
+              0.48096189286555324
+            ],
+            [
+              -1.2642285221656814e-16,
+              3.707643040259549e-17,
+              -0.4809618928655526
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          2
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 11.321472035022452,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          1.0158119029827044e-12
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6343892689976966e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.574544884040485,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06465389158948065
+        ],
+        "energy_change": [
+          0.0
+        ],
+        "forces": [
+          [
+            [
+              1.2642285221656858e-16,
+              -3.7076430402595464e-17,
+              0.48096189286555946
+            ],
+            [
+              -1.2642285221656733e-16,
+              3.7076430402595334e-17,
+              -0.480961892865547
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          2
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 2.366854900959879,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          1.0158119029827044e-12
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6343892689976966e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.574544884040485,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06465389158948065
+        ],
+        "energy_change": [
+          0.0
+        ],
+        "forces": [
+          [
+            [
+              1.2642285221656858e-16,
+              -3.7076430402595464e-17,
+              0.48096189286555946
+            ],
+            [
+              -1.2642285221656733e-16,
+              3.7076430402595334e-17,
+              -0.480961892865547
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          2
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 2.3668524471577257,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          1.0158119029827044e-12
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6343892689976966e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.574544884040485,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06465389158948065
+        ],
+        "energy_change": [
+          0.0
+        ],
+        "forces": [
+          [
+            [
+              1.2642285221656811e-16,
+              -3.707643040259549e-17,
+              0.48096189286555324
+            ],
+            [
+              -1.2642285221656814e-16,
+              3.707643040259549e-17,
+              -0.4809618928655526
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          2
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 11.316293402109295,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          1.0158119029827044e-12
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6343892689976966e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.574544884040485,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06465389158948065
+        ],
+        "energy_change": [
+          0.0
+        ],
+        "forces": [
+          [
+            [
+              1.2642285221656811e-16,
+              -3.707643040259549e-17,
+              0.48096189286555324
+            ],
+            [
+              -1.2642285221656814e-16,
+              3.707643040259549e-17,
+              -0.4809618928655526
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          2
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 11.309486018959433,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          1.0158119029827044e-12
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6343892689976966e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.574544884040485,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06465389158948065
+        ],
+        "energy_change": [
+          0.0
+        ],
+        "forces": [
+          [
+            [
+              1.2642285221656858e-16,
+              -3.7076430402595464e-17,
+              0.48096189286555946
+            ],
+            [
+              -1.2642285221656733e-16,
+              3.7076430402595334e-17,
+              -0.480961892865547
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          2
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 2.367044295882806,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          1.0158119029827044e-12
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6343892689976966e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.574544884040485,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06465389158948065
+        ],
+        "energy_change": [
+          0.0
+        ],
+        "forces": [
+          [
+            [
+              1.2642285221656858e-16,
+              -3.7076430402595464e-17,
+              0.48096189286555946
+            ],
+            [
+              -1.2642285221656733e-16,
+              3.7076430402595334e-17,
+              -0.480961892865547
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          2
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 2.3667846999596804,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          1.0158119029827044e-12
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6343892689976966e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.574544884040485,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06465389158948065
+        ],
+        "energy_change": [
+          0.0
+        ],
+        "forces": [
+          [
+            [
+              1.2642285221656811e-16,
+              -3.707643040259549e-17,
+              0.48096189286555324
+            ],
+            [
+              -1.2642285221656814e-16,
+              3.707643040259549e-17,
+              -0.4809618928655526
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          2
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 11.312588651897386,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          1.0158119029827044e-12
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6343892689976966e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.574544884040485,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06465389158948065
+        ],
+        "energy_change": [
+          0.0
+        ],
+        "forces": [
+          [
+            [
+              1.2642285221656811e-16,
+              -3.707643040259549e-17,
+              0.48096189286555324
+            ],
+            [
+              -1.2642285221656814e-16,
+              3.707643040259549e-17,
+              -0.4809618928655526
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          2
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 11.31356036500074,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          1.0158119029827044e-12
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6343892689976966e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.574544884040485,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06465389158948065
+        ],
+        "energy_change": [
+          0.0
+        ],
+        "forces": [
+          [
+            [
+              1.2642285221656858e-16,
+              -3.7076430402595464e-17,
+              0.48096189286555946
+            ],
+            [
+              -1.2642285221656733e-16,
+              3.7076430402595334e-17,
+              -0.480961892865547
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          2
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 2.3666534500662237,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          5.000311606450038e-11
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.632337505720727e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.03373331563518,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06028061980228372
+        ],
+        "energy_change": [
+          5.551115123125783e-16
+        ],
+        "forces": [
+          [
+            [
+              0.003095863923527895,
+              0.003095863923526314,
+              0.48467469634772853
+            ],
+            [
+              -0.003095863923527936,
+              -0.0030958639235263243,
+              -0.48467469634773386
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          13
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 15.712421266827732,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          5.000311606450038e-11
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.632337505720727e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.03373331563518,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06028061980228372
+        ],
+        "energy_change": [
+          5.551115123125783e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0030958639235278665,
+              0.003095863923526314,
+              0.4846746963476375
+            ],
+            [
+              -0.003095863923527797,
+              -0.0030958639235255914,
+              -0.48467469634785976
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          13
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 7.144805309129879,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          4.6485057478504683e-11
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6364081356665473e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 34.11930216229068,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06893776304285626
+        ],
+        "energy_change": [
+          6.661338147750939e-16
+        ],
+        "forces": [
+          [
+            [
+              -0.0030874026308517865,
+              -0.00308740263085202,
+              0.47717522872428486
+            ],
+            [
+              0.003087402630852099,
+              0.003087402630851868,
+              -0.47717522872443097
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          13
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 7.144398441072553,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          4.6485057478504683e-11
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6364081356665473e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 34.11930216229068,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06893776304285626
+        ],
+        "energy_change": [
+          6.661338147750939e-16
+        ],
+        "forces": [
+          [
+            [
+              -0.0030874026308521482,
+              -0.00308740263085221,
+              0.4771752287244647
+            ],
+            [
+              0.003087402630852109,
+              0.003087402630852266,
+              -0.4771752287244585
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          13
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 15.783557323971763,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          5.000311606450038e-11
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.632337505720727e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.03373331563518,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06028061980228372
+        ],
+        "energy_change": [
+          5.551115123125783e-16
+        ],
+        "forces": [
+          [
+            [
+              0.003095863923527895,
+              0.003095863923526314,
+              0.48467469634772853
+            ],
+            [
+              -0.003095863923527936,
+              -0.0030958639235263243,
+              -0.48467469634773386
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          13
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 15.771546136122197,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          5.000311606450038e-11
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.632337505720727e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.03373331563518,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06028061980228372
+        ],
+        "energy_change": [
+          5.551115123125783e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0030958639235278665,
+              0.003095863923526315,
+              0.4846746963476375
+            ],
+            [
+              -0.003095863923527799,
+              -0.0030958639235255906,
+              -0.48467469634785976
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          13
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 7.144600355997682,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          4.6485057478504683e-11
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6364081356665473e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 34.11930216229068,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06893776304285626
+        ],
+        "energy_change": [
+          6.661338147750939e-16
+        ],
+        "forces": [
+          [
+            [
+              -0.0030874026308517874,
+              -0.0030874026308520233,
+              0.47717522872428486
+            ],
+            [
+              0.003087402630852096,
+              0.0030874026308518637,
+              -0.47717522872443097
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          13
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 7.144934496143833,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          4.6485057478504683e-11
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.6364081356665473e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 34.11930216229068,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06893776304285626
+        ],
+        "energy_change": [
+          6.661338147750939e-16
+        ],
+        "forces": [
+          [
+            [
+              -0.0030874026308521482,
+              -0.00308740263085221,
+              0.4771752287244647
+            ],
+            [
+              0.003087402630852109,
+              0.003087402630852266,
+              -0.4771752287244585
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          13
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 15.795115220127627,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          5.000311606450038e-11
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.632337505720727e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.03373331563518,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06028061980228372
+        ],
+        "energy_change": [
+          5.551115123125783e-16
+        ],
+        "forces": [
+          [
+            [
+              0.003095863923527895,
+              0.003095863923526314,
+              0.48467469634772853
+            ],
+            [
+              -0.003095863923527936,
+              -0.0030958639235263243,
+              -0.48467469634773386
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          13
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 15.807121311081573,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    },
+    {
+      "diagnostics": {
+        "backends": [
+          "cuda"
+        ],
+        "density_rms": [
+          5.000311606450038e-11
+        ],
+        "df_diagnostics": [
+          {
+            "absolute_threshold": 1.632337505720727e-09,
+            "auxiliary_tile": 8,
+            "bucket_id": 0,
+            "condition_number": 33.03373331563518,
+            "device_resident_bytes": 610792,
+            "effective_rank": 8,
+            "host_resident_bytes": 2120,
+            "peak_device_bytes": 1196676,
+            "peak_host_bytes": 52089,
+            "solver_device_workspace_bytes": 575512,
+            "solver_host_workspace_bytes": 0,
+            "streamed": true,
+            "system_index": 0
+          }
+        ],
+        "energies": [
+          -0.06028061980228372
+        ],
+        "energy_change": [
+          5.551115123125783e-16
+        ],
+        "forces": [
+          [
+            [
+              0.0030958639235278665,
+              0.003095863923526314,
+              0.4846746963476375
+            ],
+            [
+              -0.003095863923527799,
+              -0.003095863923525595,
+              -0.48467469634785976
+            ]
+          ]
+        ],
+        "iteration_history": "iteration history unavailable for DF or resource-budgeted execution",
+        "iterations": [
+          13
+        ]
+      },
+      "inputs_hash": "6395aa58f36272f70f1683eabc292c1c6df21f111d80c757883c26efae450a2b",
+      "seconds": 7.144788224017248,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "changed-geometry"
+    }
+  ],
+  "schema": "vibeqc.df_derivative_endpoint",
+  "slurm_job_id": "9102",
+  "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+  "timing_scope": "whole HF energy-plus-force endpoint, not integral kernels",
+  "version": 1,
+  "worktree_dirty": true
+}

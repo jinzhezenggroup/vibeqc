@@ -1,0 +1,81 @@
+{
+  "candidate_disposition": "Axis-permutation lowering passes raw accuracy and reduces compile/storage pressure; endpoint promotion remains subject to complete HF measurements.",
+  "compile_seconds": 51.61818122002296,
+  "driver_hash": "f843a744fe579837a584988837a1ad07ac240eb80d31e3330c83712ebd685819",
+  "fixture_count": 83,
+  "input_hash": "6fde168248d905b8d218c5da175e8fc1665c42e73208d14e34502177119b88a3",
+  "maximum_absolute_error": 6.668277041654846e-14,
+  "maximum_spill_load_bytes": 6516,
+  "maximum_spill_store_bytes": 6488,
+  "object_bytes": 4289824,
+  "object_hash": "3a8748681feb7ac3c5c810e8352d5b450fa3d5b30d4c1b2b67cf2985ad540f2a",
+  "operator_block_count": 249,
+  "passed": true,
+  "primitive_count": 11497,
+  "production_promoted": false,
+  "reference_versions": {
+    "numpy": "2.5.3",
+    "pyscf": "2.14.0",
+    "python": "3.13.9 | packaged by Anaconda, Inc. | (main, Oct 21 2025, 19:16:10) [GCC 11.2.0]"
+  },
+  "resources": {
+    "fixture_values": {
+      "LOCAL": 0,
+      "REG": 255,
+      "SHARED": 0,
+      "STACK": 992
+    }
+  },
+  "runs": [
+    {
+      "active_blocks_per_sm": 4,
+      "count": 11497,
+      "device": "NVIDIA GeForce RTX 5090",
+      "driver": 13000,
+      "local_bytes": 992,
+      "major": 12,
+      "milliseconds": [
+        1.02857602,
+        1.02790403,
+        1.02886403,
+        1.02854395,
+        1.02649605,
+        1.02758396,
+        1.02457595
+      ],
+      "minor": 0,
+      "registers": 255,
+      "runtime": 12090,
+      "shared_bytes": 0,
+      "slurm_job_id": "9080",
+      "threads": 64
+    },
+    {
+      "active_blocks_per_sm": 2,
+      "count": 11497,
+      "device": "NVIDIA GeForce RTX 5090",
+      "driver": 13000,
+      "local_bytes": 992,
+      "major": 12,
+      "milliseconds": [
+        1.11152005,
+        1.11161602,
+        1.11686397,
+        1.11647999,
+        1.11251199,
+        1.11238396,
+        1.11264002
+      ],
+      "minor": 0,
+      "registers": 255,
+      "runtime": 12090,
+      "shared_bytes": 0,
+      "slurm_job_id": "9081",
+      "threads": 128
+    }
+  ],
+  "schema": "vibeqc.one_electron_derivative_validation",
+  "source_bytes": 7647656,
+  "source_hash": "ca1986d56310dfb90fa21c2824da3ff722715372f6a103d8801cadc2661022af",
+  "version": 1
+}

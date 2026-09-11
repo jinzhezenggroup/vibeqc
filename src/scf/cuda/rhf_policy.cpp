@@ -126,6 +126,41 @@ bool one_electron_force_scalar_requested() noexcept {
   return selection == nullptr || std::strcmp(selection, "0") == 0;
 }
 
+unsigned one_electron_value_mapping_requested() noexcept {
+  // The shared shell-warp policy passed the complete ownership-migration
+  // endpoint gate. Keep the thread layout as an explicit diagnostic schedule.
+  if (std::getenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING") == nullptr) return 1U;
+  return selected("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", "shell_warp") ? 1U : 0U;
+}
+
+bool generated_one_electron_derivatives_requested() noexcept {
+  return selected("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated");
+}
+
+unsigned one_electron_derivative_mapping_requested() noexcept {
+  if (selected("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", "serial")) return 2U;
+  return selected("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", "shell_warp") ? 1U : 0U;
+}
+
 bool resident_psss_bra_requested() noexcept { return enabled("VIBEQC_PSSS_RESIDENT_BRA"); }
+
+bool generated_psss_weighted_requested() noexcept {
+  // Keep the handwritten implementation selected until native resource and
+  // complete RHF/UHF endpoint comparisons justify promoting this candidate.
+  return selected("VIBEQC_PSSS_WEIGHTED", "generated");
+}
+
+unsigned df_derivative_mapping_requested() noexcept {
+  return selected("VIBEQC_DF_DERIVATIVE_MAPPING", "serial") ? 1U : 0U;
+}
+
+unsigned df_value_mapping_requested() noexcept {
+  // Primitive-oriented warps won the endpoint comparisons at both budgets
+  // and batch sizes. Other mappings remain explicit diagnostic candidates.
+  if (std::getenv("VIBEQC_DF_VALUE_MAPPING") == nullptr) return 2U;
+  if (selected("VIBEQC_DF_VALUE_MAPPING", "component")) return 1U;
+  if (selected("VIBEQC_DF_VALUE_MAPPING", "primitive")) return 2U;
+  return 0U;
+}
 
 }  // namespace vibeqc::scf::cuda_policy

@@ -1,0 +1,1165 @@
+{
+  "angular_momenta_loaded": [
+    3,
+    0,
+    0,
+    0
+  ],
+  "data": {
+    "ao_labels": [
+      "0 H0 4fxxx ",
+      "0 H0 4fxxy ",
+      "0 H0 4fxxz ",
+      "0 H0 4fxyy ",
+      "0 H0 4fxyz ",
+      "0 H0 4fxzz ",
+      "0 H0 4fyyy ",
+      "0 H0 4fyyz ",
+      "0 H0 4fyzz ",
+      "0 H0 4fzzz ",
+      "1 H1 1s    ",
+      "2 H2 1s    ",
+      "3 H3 1s    "
+    ],
+    "eri": [
+      [
+        [
+          [
+            -0.20625911942502823
+          ]
+        ]
+      ],
+      [
+        [
+          [
+            -0.1729378558334508
+          ]
+        ]
+      ],
+      [
+        [
+          [
+            0.1705304094105612
+          ]
+        ]
+      ],
+      [
+        [
+          [
+            -0.18151171813642492
+          ]
+        ]
+      ],
+      [
+        [
+          [
+            0.09581578982974333
+          ]
+        ]
+      ],
+      [
+        [
+          [
+            -0.1878334396532678
+          ]
+        ]
+      ],
+      [
+        [
+          [
+            -0.1627894387730116
+          ]
+        ]
+      ],
+      [
+        [
+          [
+            0.14532078618824312
+          ]
+        ]
+      ],
+      [
+        [
+          [
+            -0.15354429489987856
+          ]
+        ]
+      ],
+      [
+        [
+          [
+            0.16045714059521318
+          ]
+        ]
+      ]
+    ],
+    "gradient": [
+      [
+        [
+          [
+            [
+              [
+                -0.3671682102699388
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.11761228443310298
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.12622765396751667
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.20085392615082562
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.10345758690325936
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.2048548597398924
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.12679889026579105
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.11605053885584381
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.12170904573529598
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.12913888510504937
+              ]
+            ]
+          ]
+        ],
+        [
+          [
+            [
+              [
+                0.13450241545364366
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.28176054953168117
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.11017438669155985
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.13483789041952318
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.16641132052898483
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.12170904573529598
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.35411248316344884
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.11478918352848863
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.2552010332482576
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.10367612212448055
+              ]
+            ]
+          ]
+        ],
+        [
+          [
+            [
+              [
+                -0.133282470904407
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.11017438669155985
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.2758328069974355
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.11605053885584381
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.1515117827002479
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.13549299348548322
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.10063295186707447
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.2452723571249451
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.10798444796582313
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.365045729041343
+              ]
+            ]
+          ]
+        ]
+      ],
+      [
+        [
+          [
+            [
+              [
+                0.3050636035465151
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.09545584025596286
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.09591879081295503
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.17185163436945194
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.08321234044696868
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.1689429784318795
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.10650513684504813
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.09149584291392278
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.09781640149712803
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.09972741917924648
+              ]
+            ]
+          ]
+        ],
+        [
+          [
+            [
+              [
+                -0.1454845533516915
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.20452448868807438
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.12159270023746767
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.07946663113948081
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.10633407693858775
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.13347012709244868
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.27370368992147825
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.061126885930711916
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.17828364125322024
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.11434560039423461
+              ]
+            ]
+          ]
+        ],
+        [
+          [
+            [
+              [
+                0.04432358201706784
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.039156503034310175
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.3005822406663182
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.04057488243517116
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.16646084741534642
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.16988071907781319
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.04070580536246488
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.26323888082154806
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.13359213231483
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.36007265900867863
+              ]
+            ]
+          ]
+        ]
+      ],
+      [
+        [
+          [
+            [
+              [
+                0.007006404405812383
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.002786088365077697
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.0002906720924495418
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.0013301280653849087
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.000753053423291498
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.00032023036940052207
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.014761578872617741
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.015078821372655175
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.01536956811880912
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.017251523029134325
+              ]
+            ]
+          ]
+        ],
+        [
+          [
+            [
+              [
+                -0.12293012770032266
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.08368317689278422
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.10127857970632538
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.09496383361276099
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.04165453557762507
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.11172516272320132
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.07632872778392755
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.0734308190852397
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.07198114008211037
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.09521045871133779
+              ]
+            ]
+          ]
+        ],
+        [
+          [
+            [
+              [
+                -0.00509059990086786
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.005217933428718888
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.018420408110421973
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.0052405776089852795
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.010088147795488958
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.018313294406268967
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.00694908687718189
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.016625019501107834
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.015725116787831932
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.02562694555194221
+              ]
+            ]
+          ]
+        ]
+      ],
+      [
+        [
+          [
+            [
+              [
+                0.05509820231761126
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.02494253254221779
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.030599535247011218
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.03033241984675864
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.019492193032999167
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.035591650938612406
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.005532174548125179
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.009475874569265873
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.008523076119358805
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.012159942896668566
+              ]
+            ]
+          ]
+        ],
+        [
+          [
+            [
+              [
+                0.1339122655983705
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.16091923773639105
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.11269689325223317
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.1503350928928033
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.10173177916802217
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.12348624408035401
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.15673752102589822
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.1270931166830164
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.1488985320771477
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.10587993698109184
+              ]
+            ]
+          ]
+        ],
+        [
+          [
+            [
+              [
+                0.09404948878820704
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.07623581708596859
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.04316984177930466
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.08071623402965794
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.025037212510587496
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.052701019998599004
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.06687623338179148
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.03459154319771079
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                0.04133280113683885
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -0.0206538755192778
+              ]
+            ]
+          ]
+        ]
+      ]
+    ],
+    "libcint_to_unit_cartesian": [
+      0.7463526651802309,
+      1.6688952945311366,
+      1.6688952945311366,
+      1.6688952945311366,
+      2.8906114426405543,
+      1.6688952945311366,
+      0.7463526651802309,
+      1.6688952945311366,
+      1.6688952945311366,
+      0.7463526651802309,
+      1.0,
+      0.9999999999999998,
+      1.0000000000000002
+    ]
+  },
+  "data_hash": "98464005660a7657cc855ec6ad5871cf20c662aef4afdd5ed30f07289de307e9",
+  "inputs": {
+    "atomic_numbers": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "auxiliary_centers": [],
+    "basis_representation": "cartesian",
+    "center_case": "distinct",
+    "charge": 0,
+    "conventions": {
+      "auxiliary_centers": "explicit independent identities and parent atom indices; [] means none",
+      "cartesian_normalization": "each contracted Cartesian component has unit self-overlap",
+      "cartesian_order": "descending lx, then descending ly; lz=l-lx-ly",
+      "derivative_order": "shell-center slot, xyz, i,j,k,l; nuclear-center derivative",
+      "energy_unit": "hartree",
+      "eri_order": "chemist (ij|kl); physicist <ij|kl> = chemist (ik|jl)",
+      "eri_storage": "C order, last AO index fastest",
+      "force_sign": "force=-dE/dR",
+      "frozen_core": 0,
+      "gradient_unit": "hartree/bohr",
+      "hamiltonian": "all-electron nonrelativistic Coulomb; no ECP",
+      "length_unit": "bohr",
+      "nuclear_charges": "explicit atomic_numbers, never inferred from basis labels",
+      "orbital_order": "ascending canonical orbital energy within each spin",
+      "orbital_phase": "largest-absolute AO coefficient positive; first index wins ties; no degenerate-subspace rotation",
+      "orbital_representation": "real spatial orbitals; alpha/beta separate for UHF",
+      "rhf_density": "P=2*C_occ*C_occ.T; F=h+J[P]-K[P]/2",
+      "spherical_normalization": "unit self-overlap; libcint phases",
+      "spherical_order": "libcint real harmonics; p=(x,y,z); l>=2 m=-l,...,+l",
+      "spin_orbital_order": "when expanded: all alpha spatial orbitals, then all beta",
+      "uhf_density": "P_alpha=C_alpha_occ*C_alpha_occ.T; P_beta likewise",
+      "version": 1
+    },
+    "coordinates": [
+      [
+        0.7479271242923073,
+        0.16696485583562826,
+        -0.3830109068842612
+      ],
+      [
+        0.2215464288749116,
+        -0.3245568974041511,
+        -0.05205991164216339
+      ],
+      [
+        0.15372872386289482,
+        -0.6471504295566745,
+        0.3727860930519591
+      ],
+      [
+        0.23205031255061082,
+        0.24268148678974777,
+        0.5917909138503745
+      ]
+    ],
+    "kind": "quartet",
+    "multiplicity": 1,
+    "name": "fsss-asymmetric",
+    "rng": "numpy.PCG64",
+    "seed": 138,
+    "shells": [
+      {
+        "angular_momentum": 3,
+        "atom_index": 0,
+        "primitives": [
+          [
+            1.2349419135708175,
+            0.9410609103236616
+          ]
+        ]
+      },
+      {
+        "angular_momentum": 0,
+        "atom_index": 1,
+        "primitives": [
+          [
+            1.6284624998380322,
+            0.4725938798846926
+          ],
+          [
+            1.509004413756914,
+            0.8553899858505896
+          ]
+        ]
+      },
+      {
+        "angular_momentum": 0,
+        "atom_index": 2,
+        "primitives": [
+          [
+            0.8246596445554621,
+            0.3612117221213315
+          ],
+          [
+            0.4074403094047563,
+            0.49733218195715473
+          ],
+          [
+            0.4080245666699373,
+            0.9840346880084927
+          ]
+        ]
+      },
+      {
+        "angular_momentum": 0,
+        "atom_index": 3,
+        "primitives": [
+          [
+            1.1885332877209076,
+            0.6923763883735099
+          ]
+        ]
+      }
+    ]
+  },
+  "inputs_hash": "e92b0e0bbad62ebeee22cafcfcc0d97542977b57a1c121ed5cd90217eb6333a4",
+  "provenance": {
+    "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+    "blas": "Build Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.12/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.33.112.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.33.112.0\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.2.8\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-wt4cby95/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - X86_V2\n  found:\n  - X86_V3\n  not found:\n  - X86_V4\n  - AVX512_ICL\n  - AVX512_SPR\n\n",
+    "fixture_definition_sha256": "6913fa446b4438c8fcd75040aa21f1e522fed5e66232d7764c33e59306b0bab7",
+    "generated_at": "2026-09-07T17:55:35.529434+00:00",
+    "generator_sha256": "874b306375aa0c6c263aa57bb4c36de13ba0842cdd20332b5ecc8e71ae9a1604",
+    "h5py": "3.14.0",
+    "libcint_sha256": "493513dea3123ccad1175e1217f01c7b277041909c0123d428e1fb6e0d8c8b5e",
+    "loaded_threadpools": [
+      {
+        "architecture": "Haswell",
+        "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-017048f4.so",
+        "internal_api": "openblas",
+        "num_threads": 1,
+        "prefix": "libscipy_openblas",
+        "threading_layer": "pthreads",
+        "user_api": "blas",
+        "version": "0.3.33.112.0"
+      },
+      {
+        "architecture": "Zen",
+        "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libopenblas-r0-f650aae0.3.3.so",
+        "internal_api": "openblas",
+        "num_threads": 1,
+        "prefix": "libopenblas",
+        "threading_layer": "disabled",
+        "user_api": "blas",
+        "version": null
+      },
+      {
+        "filepath": "/tmp/deepatb-pyscf.jGJnPd/pyscf/lib/libgomp-a34b3233.so.1.0.0",
+        "internal_api": "openmp",
+        "num_threads": 1,
+        "prefix": "libgomp",
+        "user_api": "openmp",
+        "version": null
+      },
+      {
+        "architecture": "Haswell",
+        "filepath": "/home/jzzeng/miniconda3/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+        "internal_api": "openblas",
+        "num_threads": 1,
+        "prefix": "libscipy_openblas",
+        "threading_layer": "pthreads",
+        "user_api": "blas",
+        "version": "0.3.31.dev"
+      }
+    ],
+    "numpy": "2.5.1",
+    "purpose": "independent test/reference generation only",
+    "pyscf": "2.6.2",
+    "python": "3.13.9",
+    "schema_version": 1,
+    "scipy": "1.18.0",
+    "threadpoolctl": "3.6.0",
+    "threads": 1
+  },
+  "provenance_hash": "4eabd24ae3b8b1b40eff8d8c9f3fde4f89287224c04972355454fe417e9152ed",
+  "schema": "vibeqc.reference",
+  "schema_version": 1
+}

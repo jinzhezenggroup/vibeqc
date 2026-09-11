@@ -1,3 +1,4 @@
+# ruff: noqa: PLC0414
 """Run a fixed-dm0 A/B endpoint benchmark for generated shell classes.
 
 The baseline and candidate are executed in one prepared VibeQC batch.  A
@@ -14,10 +15,17 @@ pure control-flow tests can therefore run on scheduler login nodes.
 
 from __future__ import annotations
 
+# Source-tree CLI bootstrap; importing the compiler needs no native runtime.
+import sys as _compiler_sys
+from pathlib import Path as _CompilerPath
+
+_compiler_sys.path.insert(
+    0, str(_CompilerPath(__file__).resolve().parents[1] / "python")
+)
+
 import argparse
 import json
 import os
-import statistics
 import time
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
@@ -25,6 +33,10 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from vibeqc_compiler.common.timing import (
+    interleaved_selection_order as interleaved_selection_order,
+)
+from vibeqc_compiler.common.timing import timing_summary as timing_summary
 
 _SHELL_ENVIRONMENT = "VIBEQC_AOT_SHELL_CLASSES"
 _FOCK_SHELL_ENVIRONMENT = "VIBEQC_AOT_FOCK_SHELL_CLASSES"
@@ -139,33 +151,6 @@ def _argument_environment_overrides(
         value = getattr(arguments, attribute)
         return {} if value is None else dict(value)
     return _parse_environment_overrides(getattr(arguments, f"{side}_env", ()))
-
-
-def interleaved_selection_order(repeats: int, style: str = "abba") -> tuple[str, ...]:
-    """Return exactly ``repeats`` baseline and candidate labels.
-
-    ``abba`` uses balanced four-sample blocks and is the default because it
-    places each selection on both sides of its counterpart.  ``ab`` is useful
-    when a profiler needs a strictly alternating stream.  A short final block
-    is truncated without ever changing the requested sample count.
-    """
-
-    if repeats < 1:
-        raise ValueError("repeats must be positive")
-    if style not in {"abba", "ab"}:
-        raise ValueError("selection order must be 'abba' or 'ab'")
-    block = (BASELINE, CANDIDATE, CANDIDATE, BASELINE)
-    if style == "ab":
-        block = (BASELINE, CANDIDATE)
-    counts = {BASELINE: 0, CANDIDATE: 0}
-    order: list[str] = []
-    while counts[BASELINE] < repeats or counts[CANDIDATE] < repeats:
-        for label in block:
-            if counts[label] >= repeats:
-                continue
-            order.append(label)
-            counts[label] += 1
-    return tuple(order)
 
 
 @contextmanager
@@ -371,21 +356,6 @@ def pairwise_accuracy(
             }
         )
     return pairs
-
-
-def timing_summary(samples: Sequence[dict[str, Any]]) -> dict[str, Any]:
-    """Summarize raw synchronized samples without discarding any sample."""
-
-    seconds = [float(sample["seconds"]) for sample in samples]
-    if not seconds:
-        raise ValueError("at least one timing sample is required")
-    return {
-        "samples": len(seconds),
-        "median_seconds": float(statistics.median(seconds)),
-        "minimum_seconds": float(min(seconds)),
-        "maximum_seconds": float(max(seconds)),
-        "raw_seconds": seconds,
-    }
 
 
 def _sample(

@@ -17,12 +17,15 @@ architecture manifest; generated production CUDA remains a build artifact.
 
 ## Current pipeline
 
-`tools/vibeqc_codegen/ir.py` is now strictly mathematical, while
+`python/vibeqc_compiler/integral/ir.py` is now strictly mathematical, while
 `cuda_target.py` and `cuda_schedule.py` own NVIDIA execution policy:
 
-- `IntegralIR` describes a canonical shell class and its consumers (`fock`,
-  `force`). Force differentiates centers 0, 1, and 2 and restores center 3 by
-  exact translation invariance.
+- `IntegralIR` describes two-, three-, or four-shell operators, explicit
+  centers, and direct-HF, raw-block, or external-weight consumers. The existing
+  four-center force adapter differentiates centers 0, 1, and 2 and restores
+  center 3 by exact translation invariance. The new
+  [integral contracts](integral_ir.md) distinguish representable requests from
+  executable CUDA support.
 - `CudaScheduleIR` describes task/component ownership, block size, component tile,
   Coulomb-state placement, pair orientation/storage, and loop unrolling.
 - `CudaKernelIR` combines the two with a `CudaTargetInfo` and validates target
@@ -61,7 +64,7 @@ axis tables widen automatically for these classes.
 
 ### Automation boundary
 
-The mathematical IR now represents four-center ERI operators, nuclear-coordinate
+The mathematical IR represents one-electron and Coulomb operators, nuclear-coordinate
 derivatives, exact translation invariants, and consumer-directed RHF/UHF
 contractions separately. `KernelConsumer.FORCE` remains a compatibility input
 at generator and manifest boundaries; it is normalized to an order-one
@@ -100,9 +103,12 @@ share the backend path without being added to a promoted-name list.
 
 The current CUDA backend still accepts only first nuclear derivatives of
 four-center ERIs and preserves the existing force-vector ABI. Higher derivative
-orders, one-electron operator lowering, and density-fitting operators need their
-own tensor layout, invariant application, correctness oracles, and resource and
-timing gates, but no longer require another redesign of derivative intent.
+orders need a separate higher-order tensor layout and recovery implementation.
+One-electron and density-fitting operators have explicit shell, center, and
+bounded-block contracts. [One-electron S/T/V values](one_electron_codegen.md)
+now have a separate Hermite DAG lowering and native candidate schedules;
+the DF value provider has its own generated Rys lowering. Their derivative
+and production-selection boundaries remain independent of the quartet ABI.
 
 For large-AO direct-J/K failures, set `VIBEQC_DIRECT_TILE_VALIDATION=validate`
 to run an opt-in device validator immediately after shell-quartet compaction.
@@ -521,7 +527,7 @@ schedule.
 
 ## Architecture autotuning
 
-`tools/vibeqc_codegen/autotune.py` emits every CUDA-supported schedule variant
+`python/vibeqc_compiler/integral/autotune.py` emits every CUDA-supported schedule variant
 with unique symbols, compiles the translation units in parallel, links them
 into one executable, and runs all variants in one GPU allocation. A candidate
 is rejected for:
@@ -535,7 +541,7 @@ Passing variants are ranked by measured kernel time. The winner can be written
 to a schema-v2, architecture-specific production manifest:
 
 ```bash
-python -m tools.vibeqc_codegen.autotune \
+python -m vibeqc_compiler.integral.autotune \
   --nvcc /group/software/cuda-12.9.1/bin/nvcc \
   --architecture sm_120 \
   --shell-class dpds \
@@ -549,7 +555,7 @@ repeating `--shell-class`, or by supplying a list file. The list-file form
 accepts one class per line, comma-separated names, and `#` comments:
 
 ```bash
-python -m tools.vibeqc_codegen.autotune \
+python -m vibeqc_compiler.integral.autotune \
   --nvcc /group/software/cuda-12.9.1/bin/nvcc \
   --architecture sm_120 \
   --shell-class-file benchmarks/issue52-hotspots.txt \
@@ -576,7 +582,7 @@ this searches the component-lane variants for three Fock classes and
 atomically promotes all three winners together:
 
 ```bash
-python -m tools.vibeqc_codegen.autotune \
+python -m vibeqc_compiler.integral.autotune \
   --nvcc /group/software/cuda-12.9.1/bin/nvcc \
   --architecture sm_120 \
   --shell-class dpps --shell-class ddds --shell-class dppp \
@@ -746,6 +752,12 @@ not sufficient evidence for promotion over a tuned handwritten kernel.
 
 ## Production AOT policy
 
+The separate [arbitrary-weight ERI consumer](weighted_eri.md) now precontracts
+Hermite coefficients before differentiation. It supplies an opt-in native psss
+expression inside the existing primitive loops and resident/paged queues.
+The older component-cloning candidate above remains recorded as rejected;
+the production manifest and handwritten psss default are unchanged.
+
 `production_shell_classes.json` carries explicit tuned and portable profiles.
 The current `sm_120` profile is measured; `portable_cuda` is intentionally
 empty so unsupported targets retain generic correctness. The `sm_120` force
@@ -859,7 +871,7 @@ To screen a bounded set of classes
 that is automatically discovered from the consumer-specific manifest gap:
 
 ```bash
-python -m tools.vibeqc_codegen.batch_benchmark \
+python -m vibeqc_compiler.integral.batch_benchmark \
   --discover --consumer force --limit 12 \
   --partition main --gres gpu:5090:1
 ```
@@ -933,7 +945,7 @@ Run Python gates:
 
 ```bash
 python -m pytest tests/python/test_codegen.py -q
-python -m ruff check tools/vibeqc_codegen tests/python/test_codegen.py
+python -m ruff check python/vibeqc_compiler/integral tests/python/test_codegen.py
 ```
 
 Run the explicit CUDA gate:

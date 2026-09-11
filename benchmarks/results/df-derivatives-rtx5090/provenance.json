@@ -1,0 +1,30 @@
+{
+  "binary_sha256": "f3f0789911a6218b12a9fa609617b0378d1ed5681970a2f672b6d192f8cc23e1",
+  "failed_attempts": [
+    "9097 completed three sp8 endpoint reports, then sdf18 exceeded the <=16-AO resource inventory before execution. 9102 resumed only missing endpoints without that unsupported ledger.",
+    "9100 completed six sp8 memory reports, then sdf18 hit the same inventory limit. 9102 measured both sdf18 process peaks with resource_diagnostics=null.",
+    "9101 passed 41 checkpoints and 13 resource tests, then UHF recomputed planning failed: generated response halved an unadjusted automatic J/K budget. Later integration fixes correct inventory and revalidate."
+  ],
+  "jobs": {
+    "components": 9098,
+    "endpoints_and_memory_resumed": 9102,
+    "endpoints_initial": 9097,
+    "generic": [
+      9094,
+      9095
+    ],
+    "integration": 9096,
+    "memory_initial": 9100,
+    "profiles": 9099,
+    "raw": [
+      9087,
+      9088
+    ],
+    "regressions_initial": 9101,
+    "resource_failure_reproducer": 9103
+  },
+  "performance_base_commit": "3033c8435ddca1fbdfc16120d52a51c291a003a7",
+  "production_promoted": false,
+  "source_identity": "0001b2ed7447394b7aa8b8cac2f61e4aead50e74b841c1d9f073bad10e289ee2",
+  "source_reconstruction": "Apply performance-source.patch.gz to performance_base_commit for the measured scientific source. Benchmark runners are archived in this PR. Later integration fixes have separate validation provenance."
+}

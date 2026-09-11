@@ -2,18 +2,26 @@
 
 from __future__ import annotations
 
+# Source-tree CLI bootstrap; importing the compiler needs no native runtime.
+import sys as _compiler_sys
+from pathlib import Path as _CompilerPath
+
+_compiler_sys.path.insert(
+    0, str(_CompilerPath(__file__).resolve().parents[1] / "python")
+)
+
 import argparse
 import json
 from pathlib import Path
 
-from vibeqc_codegen.cuda_emitter import emit_shell_class_fused_cuda
-from vibeqc_codegen.fused_schedule import build_fused_shell_plan
-from vibeqc_codegen.ir import KernelConsumer
-from vibeqc_codegen.production import (
+from vibeqc_compiler.integral.cuda_emitter import emit_shell_class_fused_cuda
+from vibeqc_compiler.integral.fused_schedule import build_fused_shell_plan
+from vibeqc_compiler.integral.ir import KernelConsumer
+from vibeqc_compiler.integral.production import (
     write_production_bundle,
     write_production_bundles,
 )
-from vibeqc_codegen.shell_class import (
+from vibeqc_compiler.integral.shell_class import (
     build_dppp_component_kernel,
     build_dppp_contraction_kernel,
     build_psss_kernel,
@@ -21,7 +29,7 @@ from vibeqc_codegen.shell_class import (
     emit_dppp_contraction_cuda,
     emit_psss_cuda,
 )
-from vibeqc_codegen.shell_spec import DPPP_SPEC, FUSED_SHELL_SPEC_BY_NAME
+from vibeqc_compiler.integral.shell_spec import DPPP_SPEC, FUSED_SHELL_SPEC_BY_NAME
 
 FUSED_SPECS = FUSED_SHELL_SPEC_BY_NAME
 

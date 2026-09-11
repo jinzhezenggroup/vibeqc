@@ -37,6 +37,7 @@ vibeqc_status vibeqc_batch_prepare(vibeqc_context* context, const vibeqc_system*
     auto candidate = std::make_unique<vibeqc_batch>();
     candidate->context = context;
     candidate->atom_counts = std::move(atom_counts);
+    candidate->last_fock_builds.resize(system_count);
     candidate->plan = vibeqc::methods::prepare_batch(context->state, std::move(native_systems),
                                                      *descriptor, flags);
     *batch = candidate.release();
@@ -279,6 +280,75 @@ vibeqc_status vibeqc_batch_set_warm_start_updates(vibeqc_batch* batch, int32_t e
   }
 }
 
+vibeqc_status vibeqc_batch_get_hf_warm_state(const vibeqc_batch* batch, uint32_t index,
+                                             vibeqc_hf_warm_state* state) {
+  if (!batch || !state || index >= batch->plan->size()) return VIBEQC_STATUS_INVALID_ARGUMENT;
+  if (!vibeqc::api::valid_descriptor(state)) return VIBEQC_STATUS_ABI_MISMATCH;
+  try {
+    const auto& source = batch->plan->warm_state(index);
+    if (!source) {
+      state->present = 0;
+      state->density_count = state->coordinate_count = 0;
+      return VIBEQC_STATUS_SUCCESS;
+    }
+    const bool query = !state->density && !state->coordinates;
+    if (!query &&
+        (!state->density || !state->coordinates || state->density_count < source->density.size() ||
+         state->coordinate_count < source->coordinates.size()))
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    state->present = 1;
+    state->density_count = source->density.size();
+    state->coordinate_count = source->coordinates.size();
+    state->energy = source->energy;
+    state->energy_change = source->energy_change;
+    state->density_rms = source->density_rms;
+    state->iterations = source->iterations;
+    if (!query) {
+      std::copy(source->density.begin(), source->density.end(), state->density);
+      std::copy(source->coordinates.begin(), source->coordinates.end(), state->coordinates);
+    }
+    return VIBEQC_STATUS_SUCCESS;
+  } catch (...) {
+    return vibeqc::api::map_exception(&batch->context->last_detail);
+  }
+}
+
+vibeqc_status vibeqc_batch_restore_hf_warm_states(vibeqc_batch* batch,
+                                                  const vibeqc_hf_warm_state* states,
+                                                  uint32_t count) {
+  if (!batch || !states || count != batch->plan->size()) return VIBEQC_STATUS_INVALID_ARGUMENT;
+  try {
+    // Validate dimensions against the trusted prepared topology before any
+    // caller-controlled allocation or pointer arithmetic.
+    for (uint32_t i = 0; i < count; ++i) {
+      const auto& state = states[i];
+      if (!vibeqc::api::valid_descriptor(&state)) return VIBEQC_STATUS_ABI_MISMATCH;
+      if (state.present != 0 && state.present != 1) return VIBEQC_STATUS_INVALID_ARGUMENT;
+      if (!state.present) continue;
+      if (!state.density || !state.coordinates ||
+          state.density_count != batch->plan->warm_density_size(i) ||
+          state.coordinate_count != std::size_t(batch->atom_counts[i]) * 3)
+        return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+    std::vector<std::optional<vibeqc::scf::HfWarmState>> candidates(count);
+    for (uint32_t i = 0; i < count; ++i) {
+      const auto& state = states[i];
+      if (!state.present) continue;
+      candidates[i] =
+          vibeqc::scf::HfWarmState{{state.density, state.density + state.density_count},
+                                   {state.coordinates, state.coordinates + state.coordinate_count},
+                                   state.energy,
+                                   state.energy_change,
+                                   state.density_rms,
+                                   state.iterations};
+    }
+    batch->plan->restore_warm_states(std::move(candidates));
+    return VIBEQC_STATUS_SUCCESS;
+  } catch (...) {
+    return vibeqc::api::map_exception(&batch->context->last_detail);
+  }
+}
+
 vibeqc_status vibeqc_batch_execute(vibeqc_batch* batch, const vibeqc_batch_input_descriptor* inputs,
                                    uint32_t input_count,
                                    vibeqc_batch_item_result_descriptor* results,
@@ -286,6 +356,7 @@ vibeqc_status vibeqc_batch_execute(vibeqc_batch* batch, const vibeqc_batch_input
   if (batch == nullptr || results == nullptr) {
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
+  std::fill(batch->last_fock_builds.begin(), batch->last_fock_builds.end(), 0);
   const std::uint32_t system_count = vibeqc_batch_get_system_count(batch);
   if (result_count != system_count || ((inputs == nullptr) != (input_count == 0)) ||
       (inputs != nullptr && input_count != system_count)) {
@@ -330,6 +401,12 @@ vibeqc_status vibeqc_batch_execute(vibeqc_batch* batch, const vibeqc_batch_input
     for (std::uint32_t i = 0; i < system_count; ++i) {
       vibeqc_batch_item_result_descriptor& output = results[i];
       const vibeqc::methods::BatchItemResult& item = native[i];
+      // A retry may have spent additional builds before throwing, and CUDA
+      // does not yet export this counter. Never report a partial count as total.
+      if (!item.warm_start_fallback &&
+          item.calculation.executed_backend == VIBEQC_BACKEND_CPU_REFERENCE) {
+        batch->last_fock_builds[i] = item.calculation.fock_builds;
+      }
       const std::uint32_t required_forces = batch->atom_counts[i] * 3;
       const bool omit_forces = output.forces == nullptr && output.force_count == 0;
       const bool valid_force_buffer =
@@ -352,6 +429,14 @@ vibeqc_status vibeqc_batch_execute(vibeqc_batch* batch, const vibeqc_batch_input
   } catch (...) {
     return vibeqc::api::map_exception(&batch->context->last_detail);
   }
+}
+
+vibeqc_status vibeqc_batch_get_last_fock_builds(const vibeqc_batch* batch, uint32_t index,
+                                                uint64_t* builds) {
+  if (!batch || !builds || index >= batch->last_fock_builds.size())
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  *builds = batch->last_fock_builds[index];
+  return *builds ? VIBEQC_STATUS_SUCCESS : VIBEQC_STATUS_NOT_IMPLEMENTED;
 }
 
 }  // extern "C"

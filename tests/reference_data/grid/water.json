@@ -1,0 +1,245 @@
+{
+  "schema": "vibeqc.grid-reference",
+  "version": 1,
+  "inputs": {
+    "name": "water",
+    "atomic_numbers": [
+      8,
+      1,
+      1
+    ],
+    "coordinates": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        1.4,
+        0.1,
+        1.1
+      ],
+      [
+        -1.2,
+        0.2,
+        1.3
+      ]
+    ],
+    "shells": [
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            130.7093214,
+            0.1543289673
+          ],
+          [
+            23.80886605,
+            0.5353281423
+          ],
+          [
+            6.443608313,
+            0.4446345422
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            5.033151319,
+            -0.09996722919
+          ],
+          [
+            1.169596125,
+            0.3995128261
+          ],
+          [
+            0.38038896,
+            0.7001154689
+          ]
+        ]
+      },
+      {
+        "atom_index": 0,
+        "angular_momentum": 1,
+        "primitives": [
+          [
+            5.033151319,
+            0.155916275
+          ],
+          [
+            1.169596125,
+            0.6076837186
+          ],
+          [
+            0.38038896,
+            0.3919573931
+          ]
+        ]
+      },
+      {
+        "atom_index": 1,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            3.425250914,
+            0.1543289673
+          ],
+          [
+            0.6239137298,
+            0.5353281423
+          ],
+          [
+            0.168855404,
+            0.4446345422
+          ]
+        ]
+      },
+      {
+        "atom_index": 2,
+        "angular_momentum": 0,
+        "primitives": [
+          [
+            3.425250914,
+            0.1543289673
+          ],
+          [
+            0.6239137298,
+            0.5353281423
+          ],
+          [
+            0.168855404,
+            0.4446345422
+          ]
+        ]
+      }
+    ],
+    "basis_representation": "cartesian",
+    "charge": 0,
+    "multiplicity": 1
+  },
+  "inputs_hash": "3341d9d744abb2deaf2e13f1fb24ba931c83bf7d778e15c28669a7c04d71a30d",
+  "grid_hash": "8fec6d6860e298b766a08a3458397939065e43479b8dbafd0b3486b61dfab78e",
+  "reference": {
+    "PySCF": "2.14.0",
+    "NumPy": "2.4.6",
+    "licenses": {
+      "PySCF": "Apache-2.0",
+      "libcint": "BSD-2-Clause"
+    },
+    "exporter": "original tools/generate_grid_references.py",
+    "actual_basis": [
+      0,
+      0,
+      1,
+      0,
+      0
+    ]
+  },
+  "conventions": {
+    "jets": "ordinary spatial derivatives; libcint order; no factorials",
+    "density": "separate alpha/beta; arbitrary PSD, not SCF",
+    "tau": "one-half gradient square",
+    "sigma": "aa,ab,bb; no cross factor",
+    "grid": "identical explicit points, not a quadrature-convergence comparison"
+  },
+  "arrays": {
+    "points": {
+      "shape": [
+        77,
+        3
+      ],
+      "sha256": "6ca6c702eee84d531f150956b2f239bd22f4e62420a791ec0104ace4e6414cb1"
+    },
+    "ao_jets": {
+      "shape": [
+        20,
+        77,
+        7
+      ],
+      "sha256": "712dedaf4140bf6264b9c84a305b292d71e00f8258a0278926007dc7946625c9"
+    },
+    "density": {
+      "shape": [
+        2,
+        7,
+        7
+      ],
+      "sha256": "2e4a2cc0e84c723156032340f34a2165a50fd88dd9dc8303c6a0f9da10792847"
+    },
+    "coefficients": {
+      "shape": [
+        2,
+        7,
+        4
+      ],
+      "sha256": "189a560321911c7364477a15c860342894678138281cc39fc9a9909cb23425ca"
+    },
+    "partitioned_grid_points": {
+      "shape": [
+        48,
+        3
+      ],
+      "sha256": "9ef26f7e77bd057dc8d596076e8b002462eee6e58cc69cee68eff69e3433a167"
+    },
+    "partitioned_grid_weights": {
+      "shape": [
+        48
+      ],
+      "sha256": "7ba4a0539116f2a1e20ae34e90210f02cd5911782772761713f395b5e5b9a13a"
+    },
+    "occupations": {
+      "shape": [
+        2,
+        4
+      ],
+      "sha256": "b5d7ce1fbb41810b38ba0d0d2a7963ab707f5daeb718c61a6f2a85fc3eba4465"
+    },
+    "rho": {
+      "shape": [
+        2,
+        77
+      ],
+      "sha256": "cc8f341ba61f2bc0a2596aedddd3d61c702b9051c8c90e36e9b9f1db1af8a28c"
+    },
+    "gradient": {
+      "shape": [
+        2,
+        77,
+        3
+      ],
+      "sha256": "ba1f256007adbc50c0848303609e2211c58b45136e0071daf9bdfff24358a7d0"
+    },
+    "tau": {
+      "shape": [
+        2,
+        77
+      ],
+      "sha256": "22d3510f91060b263c48136c78a12fcaba24f42091c7ce5955cd260e95b6e301"
+    },
+    "laplacian": {
+      "shape": [
+        2,
+        77
+      ],
+      "sha256": "5453fa2ecd40b19160521da1456a8ad3284d3957747a4c3fa712b4fca5419986"
+    },
+    "sigma": {
+      "shape": [
+        3,
+        77
+      ],
+      "sha256": "36d0c311ef4b93c12b619532d2f97103fed00b7160b7e7ccc0f2c85ee62fc74b"
+    },
+    "overlap": {
+      "shape": [
+        7,
+        7
+      ],
+      "sha256": "95b1cfd958fe3ff2b55dbcb7471e7889111e5fde7976c16bd66ad74dbc4e2c78"
+    }
+  }
+}

@@ -1,0 +1,450 @@
+{
+  "archive": {
+    "bytes": 31605,
+    "path": "checkpoint-validation-diagnostics.json.gz",
+    "sha256": "78dd5b80af4ff1f9c2210c8655755b992cde8c76b135e048f901e4cd3044fe5c",
+    "uncompressed_bytes": 246121,
+    "uncompressed_sha256": "739347bb785c6df2b2896be6a1e8874d5a91f2a5659bc53ee2587ed1a876f284"
+  },
+  "diagnostic_modes": {
+    "9236": "default response; original bitwise assertion and H2 input",
+    "9237": "same test with VIBEQC_ONE_ELECTRON_DERIVATIVES=generated and VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING=serial"
+  },
+  "diagnostic_trials": {
+    "default": {
+      "baseline": {
+        "failures": 9,
+        "max_abs_errors": [
+          5.55111512e-17
+        ],
+        "trials": 20
+      },
+      "candidate": {
+        "failures": 10,
+        "max_abs_errors": [
+          5.55111512e-17
+        ],
+        "trials": 20
+      }
+    },
+    "serial": {
+      "baseline": {
+        "failures": 0,
+        "max_abs_errors": [],
+        "trials": 20
+      },
+      "candidate": {
+        "failures": 0,
+        "max_abs_errors": [],
+        "trials": 20
+      }
+    }
+  },
+  "original_combined_run": {
+    "endpoint_matrix": "all 18 cases and 90 gates passed separately; its result is not rejected by this test-harness failure",
+    "later_stages": "raw/source and sanitizers not run",
+    "python_failed": 1,
+    "python_passed": 97,
+    "reason": "checkpoint subprocess out of device memory after the preceding CUDA suites",
+    "slurm_job_id": "9234"
+  },
+  "original_files": {
+    "check-checkpoint-roundoff.sh": {
+      "bytes": 1836,
+      "sha256": "aa08044729a7d0ce5efa13aa05e09236d30d82018e4543f8df3ab60a43e2cea5"
+    },
+    "check-checkpoint-serial.sh": {
+      "bytes": 234,
+      "sha256": "111ad1a025b687a7fd5204d8a2b6f488da6f31c7a4358bb4af5f24ac845326f3"
+    },
+    "checkpoint-oom-9235/checkpoint-isolated-exit.json": {
+      "bytes": 17,
+      "sha256": "5cc319f54b05a38799195a491c303aa686eab7caccfdbbf1e8b8c07405cb7392"
+    },
+    "checkpoint-oom-9235/checkpoint-isolated-memory.jsonl": {
+      "bytes": 867,
+      "sha256": "007bd5382a1bad96c9ca1a5bc2219c3cad30e761c4ddd701260b4cfc775d0d62"
+    },
+    "checkpoint-oom-9235/checkpoint-isolated.log": {
+      "bytes": 1777,
+      "sha256": "786985f2d44587d559c012ef0a8563607ca16c582752b05ff937771ca78cb04a"
+    },
+    "checkpoint-oom-9235/checkpoint-isolated.xml": {
+      "bytes": 6722,
+      "sha256": "bc552437c8d7d96004af7bf52b8a6c3cf22e4fa0211e7696f72ab4404c939ac7"
+    },
+    "checkpoint-oom-9235/combined-reproducer-exit.json": {
+      "bytes": 17,
+      "sha256": "5cc319f54b05a38799195a491c303aa686eab7caccfdbbf1e8b8c07405cb7392"
+    },
+    "checkpoint-oom-9235/combined-reproducer-memory.jsonl": {
+      "bytes": 33906,
+      "sha256": "4b4745e6e14de303c885035fd0339dbc6de82ffef1d5878f0002248e6f12871a"
+    },
+    "checkpoint-oom-9235/combined-reproducer.log": {
+      "bytes": 8278,
+      "sha256": "35f457ca3b0fbb412e29489c5f23b614ef67c590a9476448487d2cf7c9845dd5"
+    },
+    "checkpoint-oom-9235/combined-reproducer.xml": {
+      "bytes": 24210,
+      "sha256": "adbf7ec10b74f529e04068451d084f87b42d02004fbb6a23b22790b235c588d8"
+    },
+    "checkpoint-roundoff-9236/baseline-0.txt": {
+      "bytes": 98,
+      "sha256": "06254aecdf245cc6f8784e134e36703bcc595ac0578b8c5f7f3591bcb399781b"
+    },
+    "checkpoint-roundoff-9236/baseline-1.txt": {
+      "bytes": 98,
+      "sha256": "b336bfbb42d8a55315e2f7350d4a6528e0fd95453f81c1e21f96f9ae7c5d2932"
+    },
+    "checkpoint-roundoff-9236/baseline-10.txt": {
+      "bytes": 98,
+      "sha256": "b336bfbb42d8a55315e2f7350d4a6528e0fd95453f81c1e21f96f9ae7c5d2932"
+    },
+    "checkpoint-roundoff-9236/baseline-11.txt": {
+      "bytes": 1731,
+      "sha256": "006e4f2e7b5a095dd22531284680d8b80ba7a261912b85bd0052e0eefdefd79e"
+    },
+    "checkpoint-roundoff-9236/baseline-12.txt": {
+      "bytes": 1731,
+      "sha256": "913d6d79bde0d4b4001c002d284c59fabef327174b741639e244087a0858d6aa"
+    },
+    "checkpoint-roundoff-9236/baseline-13.txt": {
+      "bytes": 1731,
+      "sha256": "79c5b18ac1da6490e2c0b9651424516402d18c3b92ae78c61658f293e43fe326"
+    },
+    "checkpoint-roundoff-9236/baseline-14.txt": {
+      "bytes": 98,
+      "sha256": "b336bfbb42d8a55315e2f7350d4a6528e0fd95453f81c1e21f96f9ae7c5d2932"
+    },
+    "checkpoint-roundoff-9236/baseline-15.txt": {
+      "bytes": 1731,
+      "sha256": "e045e36f1aab7f0845b308c769ae866c1d0023adbda6cefa5be5dcce97018097"
+    },
+    "checkpoint-roundoff-9236/baseline-16.txt": {
+      "bytes": 1731,
+      "sha256": "5b5423d79e7fa60b10e160e40810e6c7bb38ef4021d96a567ae81ecb2369baaf"
+    },
+    "checkpoint-roundoff-9236/baseline-17.txt": {
+      "bytes": 1731,
+      "sha256": "cb114c03ea2d9f6631ab119f87a81b575450bfc6735d47d8313dd97ffa60c9a3"
+    },
+    "checkpoint-roundoff-9236/baseline-18.txt": {
+      "bytes": 1731,
+      "sha256": "ef3fce8a2caa35b1b4e58d0a2305fb4a5768cc25d15708311efbc3ccfafbabae"
+    },
+    "checkpoint-roundoff-9236/baseline-19.txt": {
+      "bytes": 98,
+      "sha256": "b336bfbb42d8a55315e2f7350d4a6528e0fd95453f81c1e21f96f9ae7c5d2932"
+    },
+    "checkpoint-roundoff-9236/baseline-2.txt": {
+      "bytes": 98,
+      "sha256": "b336bfbb42d8a55315e2f7350d4a6528e0fd95453f81c1e21f96f9ae7c5d2932"
+    },
+    "checkpoint-roundoff-9236/baseline-3.txt": {
+      "bytes": 98,
+      "sha256": "b336bfbb42d8a55315e2f7350d4a6528e0fd95453f81c1e21f96f9ae7c5d2932"
+    },
+    "checkpoint-roundoff-9236/baseline-4.txt": {
+      "bytes": 98,
+      "sha256": "b336bfbb42d8a55315e2f7350d4a6528e0fd95453f81c1e21f96f9ae7c5d2932"
+    },
+    "checkpoint-roundoff-9236/baseline-5.txt": {
+      "bytes": 98,
+      "sha256": "b336bfbb42d8a55315e2f7350d4a6528e0fd95453f81c1e21f96f9ae7c5d2932"
+    },
+    "checkpoint-roundoff-9236/baseline-6.txt": {
+      "bytes": 98,
+      "sha256": "7f20721722339faad833bedbd918bbce72ec5ee8917b82cf8b1a09bf4e47f2f3"
+    },
+    "checkpoint-roundoff-9236/baseline-7.txt": {
+      "bytes": 98,
+      "sha256": "b336bfbb42d8a55315e2f7350d4a6528e0fd95453f81c1e21f96f9ae7c5d2932"
+    },
+    "checkpoint-roundoff-9236/baseline-8.txt": {
+      "bytes": 1731,
+      "sha256": "b195dec98aa0cf02ba1e195c38d317f2184cdda7578bbb77a5d5c7b4a383edb2"
+    },
+    "checkpoint-roundoff-9236/baseline-9.txt": {
+      "bytes": 1731,
+      "sha256": "807dfd3ff7e64fb2e571ca3a28d09ed6c8bd16ff3824d28df57d1ea7333fe30c"
+    },
+    "checkpoint-roundoff-9236/candidate-0.txt": {
+      "bytes": 98,
+      "sha256": "0c33791aa03cbc8826ba04efd1b062adb3baa875c47625e4de7090bd753d7635"
+    },
+    "checkpoint-roundoff-9236/candidate-1.txt": {
+      "bytes": 98,
+      "sha256": "0c33791aa03cbc8826ba04efd1b062adb3baa875c47625e4de7090bd753d7635"
+    },
+    "checkpoint-roundoff-9236/candidate-10.txt": {
+      "bytes": 98,
+      "sha256": "0c33791aa03cbc8826ba04efd1b062adb3baa875c47625e4de7090bd753d7635"
+    },
+    "checkpoint-roundoff-9236/candidate-11.txt": {
+      "bytes": 1731,
+      "sha256": "974528aede837adad6570e84bc44e1a119a64953fbfb2323c1dfdaa73d5fdf42"
+    },
+    "checkpoint-roundoff-9236/candidate-12.txt": {
+      "bytes": 98,
+      "sha256": "b336bfbb42d8a55315e2f7350d4a6528e0fd95453f81c1e21f96f9ae7c5d2932"
+    },
+    "checkpoint-roundoff-9236/candidate-13.txt": {
+      "bytes": 98,
+      "sha256": "0c33791aa03cbc8826ba04efd1b062adb3baa875c47625e4de7090bd753d7635"
+    },
+    "checkpoint-roundoff-9236/candidate-14.txt": {
+      "bytes": 98,
+      "sha256": "0c33791aa03cbc8826ba04efd1b062adb3baa875c47625e4de7090bd753d7635"
+    },
+    "checkpoint-roundoff-9236/candidate-15.txt": {
+      "bytes": 98,
+      "sha256": "0c33791aa03cbc8826ba04efd1b062adb3baa875c47625e4de7090bd753d7635"
+    },
+    "checkpoint-roundoff-9236/candidate-16.txt": {
+      "bytes": 1731,
+      "sha256": "72d20b1d2cef92a49a6f14ac0a987c88a6a71cba508e8fd7618e0fd1082f7da9"
+    },
+    "checkpoint-roundoff-9236/candidate-17.txt": {
+      "bytes": 98,
+      "sha256": "b336bfbb42d8a55315e2f7350d4a6528e0fd95453f81c1e21f96f9ae7c5d2932"
+    },
+    "checkpoint-roundoff-9236/candidate-18.txt": {
+      "bytes": 98,
+      "sha256": "0c33791aa03cbc8826ba04efd1b062adb3baa875c47625e4de7090bd753d7635"
+    },
+    "checkpoint-roundoff-9236/candidate-19.txt": {
+      "bytes": 1731,
+      "sha256": "6367dabf66ad673d6c9f1209d21840666f51b457b92488e6f351c27194da8466"
+    },
+    "checkpoint-roundoff-9236/candidate-2.txt": {
+      "bytes": 1731,
+      "sha256": "af636fb58c7328a6b7134200570ee218bdaf1305e73dbefdc928d35f764f6070"
+    },
+    "checkpoint-roundoff-9236/candidate-3.txt": {
+      "bytes": 1731,
+      "sha256": "8c9109078f1fa31fad14306fabfdac115984ece883af92ca423bdee3b3a9f504"
+    },
+    "checkpoint-roundoff-9236/candidate-4.txt": {
+      "bytes": 1731,
+      "sha256": "65db4cd59cf7f07163ba1b4aab7e52698a5762698443d57ff9a25358f5dd1257"
+    },
+    "checkpoint-roundoff-9236/candidate-5.txt": {
+      "bytes": 1731,
+      "sha256": "0a9e9d05f0b6fa64727959804cbac44674501f6c66bcc3c8c10fad02db37505b"
+    },
+    "checkpoint-roundoff-9236/candidate-6.txt": {
+      "bytes": 1731,
+      "sha256": "8461fc10df3bc58bf5d81d7cf79424d906f519f03edbfd91cb14b25e76f4d9d2"
+    },
+    "checkpoint-roundoff-9236/candidate-7.txt": {
+      "bytes": 98,
+      "sha256": "0c33791aa03cbc8826ba04efd1b062adb3baa875c47625e4de7090bd753d7635"
+    },
+    "checkpoint-roundoff-9236/candidate-8.txt": {
+      "bytes": 1731,
+      "sha256": "a48a6550203a4dfa07513454185817108f930625781ae9ee7128094b73570b47"
+    },
+    "checkpoint-roundoff-9236/candidate-9.txt": {
+      "bytes": 1731,
+      "sha256": "caf493e7d2e513434fd1902dfc91b3a2d75ba17872d3923f8ff41c709d514979"
+    },
+    "checkpoint-roundoff-9236/results.json": {
+      "bytes": 11977,
+      "sha256": "215c0805c9d945e025e5a8aa874d5a23010baec5418ceb4068d111b111271a3e"
+    },
+    "checkpoint-roundoff-9237/baseline-0.txt": {
+      "bytes": 98,
+      "sha256": "06254aecdf245cc6f8784e134e36703bcc595ac0578b8c5f7f3591bcb399781b"
+    },
+    "checkpoint-roundoff-9237/baseline-1.txt": {
+      "bytes": 98,
+      "sha256": "82c201bb904df7561785e93b567cf9f67336470fb20ba42c9846547bf1029aea"
+    },
+    "checkpoint-roundoff-9237/baseline-10.txt": {
+      "bytes": 98,
+      "sha256": "91ac28e87543203edb8fac4612b815f59bf36ac9a72ab315b86b2e36637fba30"
+    },
+    "checkpoint-roundoff-9237/baseline-11.txt": {
+      "bytes": 98,
+      "sha256": "91ac28e87543203edb8fac4612b815f59bf36ac9a72ab315b86b2e36637fba30"
+    },
+    "checkpoint-roundoff-9237/baseline-12.txt": {
+      "bytes": 98,
+      "sha256": "91ac28e87543203edb8fac4612b815f59bf36ac9a72ab315b86b2e36637fba30"
+    },
+    "checkpoint-roundoff-9237/baseline-13.txt": {
+      "bytes": 98,
+      "sha256": "06254aecdf245cc6f8784e134e36703bcc595ac0578b8c5f7f3591bcb399781b"
+    },
+    "checkpoint-roundoff-9237/baseline-14.txt": {
+      "bytes": 98,
+      "sha256": "91ac28e87543203edb8fac4612b815f59bf36ac9a72ab315b86b2e36637fba30"
+    },
+    "checkpoint-roundoff-9237/baseline-15.txt": {
+      "bytes": 98,
+      "sha256": "91ac28e87543203edb8fac4612b815f59bf36ac9a72ab315b86b2e36637fba30"
+    },
+    "checkpoint-roundoff-9237/baseline-16.txt": {
+      "bytes": 98,
+      "sha256": "91ac28e87543203edb8fac4612b815f59bf36ac9a72ab315b86b2e36637fba30"
+    },
+    "checkpoint-roundoff-9237/baseline-17.txt": {
+      "bytes": 98,
+      "sha256": "91ac28e87543203edb8fac4612b815f59bf36ac9a72ab315b86b2e36637fba30"
+    },
+    "checkpoint-roundoff-9237/baseline-18.txt": {
+      "bytes": 98,
+      "sha256": "06254aecdf245cc6f8784e134e36703bcc595ac0578b8c5f7f3591bcb399781b"
+    },
+    "checkpoint-roundoff-9237/baseline-19.txt": {
+      "bytes": 98,
+      "sha256": "91ac28e87543203edb8fac4612b815f59bf36ac9a72ab315b86b2e36637fba30"
+    },
+    "checkpoint-roundoff-9237/baseline-2.txt": {
+      "bytes": 98,
+      "sha256": "06254aecdf245cc6f8784e134e36703bcc595ac0578b8c5f7f3591bcb399781b"
+    },
+    "checkpoint-roundoff-9237/baseline-3.txt": {
+      "bytes": 98,
+      "sha256": "06254aecdf245cc6f8784e134e36703bcc595ac0578b8c5f7f3591bcb399781b"
+    },
+    "checkpoint-roundoff-9237/baseline-4.txt": {
+      "bytes": 98,
+      "sha256": "91ac28e87543203edb8fac4612b815f59bf36ac9a72ab315b86b2e36637fba30"
+    },
+    "checkpoint-roundoff-9237/baseline-5.txt": {
+      "bytes": 98,
+      "sha256": "91ac28e87543203edb8fac4612b815f59bf36ac9a72ab315b86b2e36637fba30"
+    },
+    "checkpoint-roundoff-9237/baseline-6.txt": {
+      "bytes": 98,
+      "sha256": "91ac28e87543203edb8fac4612b815f59bf36ac9a72ab315b86b2e36637fba30"
+    },
+    "checkpoint-roundoff-9237/baseline-7.txt": {
+      "bytes": 98,
+      "sha256": "91ac28e87543203edb8fac4612b815f59bf36ac9a72ab315b86b2e36637fba30"
+    },
+    "checkpoint-roundoff-9237/baseline-8.txt": {
+      "bytes": 98,
+      "sha256": "91ac28e87543203edb8fac4612b815f59bf36ac9a72ab315b86b2e36637fba30"
+    },
+    "checkpoint-roundoff-9237/baseline-9.txt": {
+      "bytes": 98,
+      "sha256": "91ac28e87543203edb8fac4612b815f59bf36ac9a72ab315b86b2e36637fba30"
+    },
+    "checkpoint-roundoff-9237/candidate-0.txt": {
+      "bytes": 98,
+      "sha256": "06254aecdf245cc6f8784e134e36703bcc595ac0578b8c5f7f3591bcb399781b"
+    },
+    "checkpoint-roundoff-9237/candidate-1.txt": {
+      "bytes": 98,
+      "sha256": "06254aecdf245cc6f8784e134e36703bcc595ac0578b8c5f7f3591bcb399781b"
+    },
+    "checkpoint-roundoff-9237/candidate-10.txt": {
+      "bytes": 98,
+      "sha256": "06254aecdf245cc6f8784e134e36703bcc595ac0578b8c5f7f3591bcb399781b"
+    },
+    "checkpoint-roundoff-9237/candidate-11.txt": {
+      "bytes": 98,
+      "sha256": "06254aecdf245cc6f8784e134e36703bcc595ac0578b8c5f7f3591bcb399781b"
+    },
+    "checkpoint-roundoff-9237/candidate-12.txt": {
+      "bytes": 98,
+      "sha256": "06254aecdf245cc6f8784e134e36703bcc595ac0578b8c5f7f3591bcb399781b"
+    },
+    "checkpoint-roundoff-9237/candidate-13.txt": {
+      "bytes": 98,
+      "sha256": "06254aecdf245cc6f8784e134e36703bcc595ac0578b8c5f7f3591bcb399781b"
+    },
+    "checkpoint-roundoff-9237/candidate-14.txt": {
+      "bytes": 98,
+      "sha256": "06254aecdf245cc6f8784e134e36703bcc595ac0578b8c5f7f3591bcb399781b"
+    },
+    "checkpoint-roundoff-9237/candidate-15.txt": {
+      "bytes": 98,
+      "sha256": "91ac28e87543203edb8fac4612b815f59bf36ac9a72ab315b86b2e36637fba30"
+    },
+    "checkpoint-roundoff-9237/candidate-16.txt": {
+      "bytes": 98,
+      "sha256": "91ac28e87543203edb8fac4612b815f59bf36ac9a72ab315b86b2e36637fba30"
+    },
+    "checkpoint-roundoff-9237/candidate-17.txt": {
+      "bytes": 98,
+      "sha256": "91ac28e87543203edb8fac4612b815f59bf36ac9a72ab315b86b2e36637fba30"
+    },
+    "checkpoint-roundoff-9237/candidate-18.txt": {
+      "bytes": 98,
+      "sha256": "06254aecdf245cc6f8784e134e36703bcc595ac0578b8c5f7f3591bcb399781b"
+    },
+    "checkpoint-roundoff-9237/candidate-19.txt": {
+      "bytes": 98,
+      "sha256": "91ac28e87543203edb8fac4612b815f59bf36ac9a72ab315b86b2e36637fba30"
+    },
+    "checkpoint-roundoff-9237/candidate-2.txt": {
+      "bytes": 98,
+      "sha256": "91ac28e87543203edb8fac4612b815f59bf36ac9a72ab315b86b2e36637fba30"
+    },
+    "checkpoint-roundoff-9237/candidate-3.txt": {
+      "bytes": 98,
+      "sha256": "06254aecdf245cc6f8784e134e36703bcc595ac0578b8c5f7f3591bcb399781b"
+    },
+    "checkpoint-roundoff-9237/candidate-4.txt": {
+      "bytes": 98,
+      "sha256": "06254aecdf245cc6f8784e134e36703bcc595ac0578b8c5f7f3591bcb399781b"
+    },
+    "checkpoint-roundoff-9237/candidate-5.txt": {
+      "bytes": 98,
+      "sha256": "06254aecdf245cc6f8784e134e36703bcc595ac0578b8c5f7f3591bcb399781b"
+    },
+    "checkpoint-roundoff-9237/candidate-6.txt": {
+      "bytes": 98,
+      "sha256": "06254aecdf245cc6f8784e134e36703bcc595ac0578b8c5f7f3591bcb399781b"
+    },
+    "checkpoint-roundoff-9237/candidate-7.txt": {
+      "bytes": 98,
+      "sha256": "06254aecdf245cc6f8784e134e36703bcc595ac0578b8c5f7f3591bcb399781b"
+    },
+    "checkpoint-roundoff-9237/candidate-8.txt": {
+      "bytes": 98,
+      "sha256": "06254aecdf245cc6f8784e134e36703bcc595ac0578b8c5f7f3591bcb399781b"
+    },
+    "checkpoint-roundoff-9237/candidate-9.txt": {
+      "bytes": 98,
+      "sha256": "06254aecdf245cc6f8784e134e36703bcc595ac0578b8c5f7f3591bcb399781b"
+    },
+    "checkpoint-roundoff-9237/results.json": {
+      "bytes": 11483,
+      "sha256": "566be75819e3a5f62c61cbf68946854fa270a4d3573cbc8bdfc5ce8923acace3"
+    },
+    "diagnose-checkpoint-oom.sh": {
+      "bytes": 2151,
+      "sha256": "1010a86ee869da4e8866b0396a71fb9d8091544835c2636d57ab5b40de0af838"
+    },
+    "original-checkpoint-test.py": {
+      "bytes": 22088,
+      "sha256": "67c3591e38a3e04fc13613213292a74f326b914d3353e8a6d281f9c8247e733c"
+    },
+    "retirement-paired-validation-9234/gpu.log": {
+      "bytes": 8278,
+      "sha256": "34ce82cbe233ac9e49964a0fe758b98d71f95122d1557b38ec780c010e434db6"
+    },
+    "retirement-paired-validation-9234/gpu.xml": {
+      "bytes": 24210,
+      "sha256": "35da49198908647c082f442c9fc95769ed34d25488332443820bd33cfc8386bf"
+    },
+    "retirement-paired-validation-9234/provenance.json": {
+      "bytes": 516,
+      "sha256": "8cd4d15896b9712d53d858ec09b1ed0b4c6ab48f6ec9952ee876d981a2d04f6b"
+    },
+    "validated-checkpoint-test.py": {
+      "bytes": 22666,
+      "sha256": "a2f647fc42c5ab5ec7c2e1116eebaa658ed8f5a5bfbe8a1146f9528220b34257"
+    }
+  },
+  "reproducer_job": "9235",
+  "resolution": "Run every complete test module in a separate process. Only the single bitwise checkpoint assertion selects the existing serial one-electron response. All original assertions, inputs and tolerances remain; production inputs and the endpoint timing library are unchanged.",
+  "schema": "vibeqc.checkpoint-validation-diagnostics-manifest.v1",
+  "scope": "diagnostic-only; rejected integration runs and baseline-controlled scheduling diagnosis, not acceptance evidence",
+  "validation_revision": "ab3092d8686fa31ee7880d0ae09ff4231d86506d"
+}

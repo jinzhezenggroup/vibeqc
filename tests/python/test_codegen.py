@@ -15,8 +15,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-
-from tools.vibeqc_codegen import (
+from vibeqc_compiler.integral import (
     DDDD_SPEC,
     DDPS_SPEC,
     DPDS_SPEC,
@@ -96,7 +95,7 @@ from tools.vibeqc_codegen import (
     schedule_candidates,
     supports_component_lane_rys,
 )
-from tools.vibeqc_codegen.autotune import (
+from vibeqc_compiler.integral.autotune import (
     StaticAlgebraModel,
     _analysis_roots,
     _compile_trial,
@@ -119,8 +118,8 @@ from tools.vibeqc_codegen.autotune import (
     update_manifest_payload,
     write_tuned_manifest,
 )
-from tools.vibeqc_codegen.backend import TargetInfo, TargetScheduleShape
-from tools.vibeqc_codegen.batch_benchmark import (
+from vibeqc_compiler.integral.backend import TargetInfo, TargetScheduleShape
+from vibeqc_compiler.integral.batch_benchmark import (
     DEFAULT_CANDIDATES,
     KernelResources,
     benchmark_command,
@@ -131,23 +130,23 @@ from tools.vibeqc_codegen.batch_benchmark import (
     parse_ptxas_resources,
     rank_profiled_candidates,
 )
-from tools.vibeqc_codegen.batch_benchmark import (
+from vibeqc_compiler.integral.batch_benchmark import (
     _compile_candidate as _compile_batch_candidate,
 )
-from tools.vibeqc_codegen.benchmark import (
+from vibeqc_compiler.integral.benchmark import (
     benchmark_command as standalone_benchmark_command,
 )
-from tools.vibeqc_codegen.benchmark import (
+from vibeqc_compiler.integral.benchmark import (
     emit_dppp_benchmark_cuda,
     emit_shell_class_benchmark_cuda,
     emit_shell_class_oracle_cuda,
 )
-from tools.vibeqc_codegen.capabilities import (
+from vibeqc_compiler.integral.capabilities import (
     CAPABILITY_MIXED_FOCK,
     CAPABILITY_STREAMING_FOCK,
     build_capability_report,
 )
-from tools.vibeqc_codegen.production import (
+from vibeqc_compiler.integral.production import (
     _PRODUCTION_PRELUDE,
     _partition_production_selections,
     _schedule_from_payload,
@@ -160,7 +159,7 @@ from tools.vibeqc_codegen.production import (
     write_production_bundle,
     write_production_bundles,
 )
-from tools.vibeqc_codegen.shell_class import (
+from vibeqc_compiler.integral.shell_class import (
     AXES,
     CENTERS,
     emit_dppp_component_cuda,
@@ -281,16 +280,16 @@ def test_generic_cuda_emitter_uses_backend_lowering_not_dppp_compatibility():
     """Keep generic compilation independent of historical shell adapters."""
 
     emitter = (
-        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "cuda_emitter.py"
+        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "cuda_emitter.py"
     ).read_text(encoding="utf-8")
     compatibility = (
-        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "dppp_dispatch.py"
+        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "dppp_dispatch.py"
     ).read_text(encoding="utf-8")
     production = (
-        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "production.py"
+        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "production.py"
     ).read_text(encoding="utf-8")
     benchmark = (
-        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "benchmark.py"
+        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "benchmark.py"
     ).read_text(encoding="utf-8")
     assert "from . import cuda_lowering as _implementation" in emitter
     assert "dppp_dispatch" not in emitter
@@ -1622,8 +1621,9 @@ def test_packed_schedule_models_low_order_fock_workers(spec):
         selection
         for selection in load_production_kernel_selections(
             REPOSITORY_ROOT
-            / "tools"
-            / "vibeqc_codegen"
+            / "python"
+            / "vibeqc_compiler"
+            / "integral"
             / "production_shell_classes.json"
         )
         if selection.spec == spec
@@ -2677,8 +2677,9 @@ def test_low_order_production_force_is_generated_by_common_rys2_pipeline(name: s
         item
         for item in load_production_kernel_selections(
             REPOSITORY_ROOT
-            / "tools"
-            / "vibeqc_codegen"
+            / "python"
+            / "vibeqc_compiler"
+            / "integral"
             / "production_shell_classes.json",
             "sm_120",
         )
@@ -2963,7 +2964,11 @@ def test_simple_registry_dispatches_profiled_mixed_fock_classes():
     """Expose a selectable capability mask for the profiled mixed workers."""
 
     manifest = (
-        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+        REPOSITORY_ROOT
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_shell_classes.json"
     )
     selections = load_production_kernel_selections(manifest, "sm_120")
     header = emit_registry_header(selections)
@@ -3070,7 +3075,7 @@ def test_bounded_force_registry_gaps_use_exact_runtime_fallback():
     fallback = source.index("const auto launch_bounded_generic_force")
     dispatch = source.index("const auto launch_bounded_force")
     dispatch_boundary = re.search(
-        r"if \(quartet_direct &&\s+plan\.shell_quartet_tile_capacities",
+        r"if \((?:options\.compute_forces &&\s+)?quartet_direct &&\s+plan\.shell_quartet_tile_capacities",
         source[dispatch:],
     )
     assert dispatch_boundary is not None
@@ -3087,7 +3092,11 @@ def test_production_manifest_drives_generated_registry_and_shards(tmp_path: Path
     """Keep machine CUDA out of Git while retaining deterministic builds."""
 
     manifest = (
-        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+        REPOSITORY_ROOT
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_shell_classes.json"
     )
     specifications = load_production_manifest(manifest)
     fock_specifications = load_production_fock_manifest(manifest)
@@ -3237,7 +3246,11 @@ def test_unmeasured_cuda_targets_resolve_to_empty_portable_profile(
     """Never reuse the measured RTX 5090 schedule on another compute target."""
 
     manifest = (
-        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+        REPOSITORY_ROOT
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_shell_classes.json"
     )
     resolved = resolve_production_profile(manifest, architecture)
     assert resolved.profile == "portable_cuda"
@@ -3499,7 +3512,11 @@ def test_bounded_force_signature_mask_tracks_warp_uniform_schedules():
     """Keep page sorting aligned with every production lockstep task worker."""
 
     manifest = (
-        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+        REPOSITORY_ROOT
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_shell_classes.json"
     )
     selections = load_production_kernel_selections(manifest, "sm_120")
     lockstep_kinds = {
@@ -3728,7 +3745,7 @@ def test_bounded_streaming_uses_monotonic_system_density_tail():
         encoding="utf-8"
     )
     generator = (
-        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "production.py"
+        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "production.py"
     ).read_text(encoding="utf-8")
     assert "const double* system_density_bounds" in topology
     assert "const double* system_pair_density_bounds" in topology
@@ -3736,6 +3753,22 @@ def test_bounded_streaming_uses_monotonic_system_density_tail():
     assert "topology.system_pair_density_bounds[" in generator
     assert "system_density_bound < screening_tolerance" in generator
     assert "topology.generated_overflow[{shell_class}U]" in generator
+
+
+def test_bounded_streaming_profiles_executed_precision_per_shell_class():
+    """Count actual retained quartets without changing normal kernel work."""
+
+    generator = (
+        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "production.py"
+    ).read_text(encoding="utf-8")
+    source = (REPOSITORY_ROOT / "src" / "scf" / "cuda_rhf.cu").read_text(
+        encoding="utf-8"
+    )
+    assert "record_fock_precision" in generator
+    assert "fp64_work_count, fp32_work_count" in generator
+    assert "bounded_fock_fp64_work_counts + shell_class" in source
+    assert "bounded_fock_fp32_work_counts + shell_class" in source
+    assert "fp64_quartets=%llu fp32_quartets=%llu" in source
 
 
 def test_generated_order2_fock_masks_handwritten_fallback():
@@ -3768,22 +3801,26 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs():
 
     source = (REPOSITORY_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
     for dependency in (
-        "tools/vibeqc_codegen/cuda.py",
-        "tools/vibeqc_codegen/capabilities.py",
-        "tools/vibeqc_codegen/cuda_lowering.py",
-        "tools/vibeqc_codegen/expr.py",
-        "tools/vibeqc_codegen/fused_schedule.py",
-        "tools/vibeqc_codegen/ir.py",
-        "tools/vibeqc_codegen/production.py",
-        "tools/vibeqc_codegen/rys.py",
-        "tools/vibeqc_codegen/rys3_data.py",
-        "tools/vibeqc_codegen/rys5_data.py",
-        "tools/vibeqc_codegen/shell_class.py",
-        "tools/vibeqc_codegen/shell_spec.py",
+        "python/vibeqc_compiler/integral/blocks.py",
+        "python/vibeqc_compiler/integral/cache.py",
+        "python/vibeqc_compiler/integral/cuda.py",
+        "python/vibeqc_compiler/integral/capabilities.py",
+        "python/vibeqc_compiler/integral/cuda_lowering.py",
+        "python/vibeqc_compiler/integral/expr.py",
+        "python/vibeqc_compiler/integral/fused_schedule.py",
+        "python/vibeqc_compiler/integral/ir.py",
+        "python/vibeqc_compiler/integral/ir_serialization.py",
+        "python/vibeqc_compiler/integral/production.py",
+        "python/vibeqc_compiler/integral/rys.py",
+        "python/vibeqc_compiler/integral/rys3_data.py",
+        "python/vibeqc_compiler/integral/rys5_data.py",
+        "python/vibeqc_compiler/integral/shell_class.py",
+        "python/vibeqc_compiler/integral/shell_signature.py",
+        "python/vibeqc_compiler/integral/shell_spec.py",
     ):
         assert dependency in source
-    assert "tools/vibeqc_codegen/dppp_dispatch.py" not in source
-    assert "tools/vibeqc_codegen/low_order_force.py" not in source
+    assert "python/vibeqc_compiler/integral/dppp_dispatch.py" not in source
+    assert "python/vibeqc_compiler/integral/low_order_force.py" not in source
 
 
 def test_batch_screening_ranks_real_profile_and_emits_one_process_driver():
@@ -3831,7 +3868,11 @@ def test_codegen_capability_report_covers_catalog_and_manifest():
     """Report structural backend reasons for all 55 canonical shell classes."""
 
     manifest = (
-        REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "production_shell_classes.json"
+        REPOSITORY_ROOT
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_shell_classes.json"
     )
     report = build_capability_report(
         architecture="sm_120",
@@ -4608,8 +4649,9 @@ def test_ppps_rys3_benchmark_runs_against_component_lanes_when_nvcc_is_configure
         )
         for selection in load_production_kernel_selections(
             REPOSITORY_ROOT
-            / "tools"
-            / "vibeqc_codegen"
+            / "python"
+            / "vibeqc_compiler"
+            / "integral"
             / "production_shell_classes.json",
             "sm_120",
         )
@@ -4921,8 +4963,9 @@ def test_cooperative_rys3_benchmark_runs_against_component_lanes_when_nvcc_is_co
         selection
         for selection in load_production_kernel_selections(
             REPOSITORY_ROOT
-            / "tools"
-            / "vibeqc_codegen"
+            / "python"
+            / "vibeqc_compiler"
+            / "integral"
             / "production_shell_classes.json",
             "sm_120",
         )
@@ -5209,8 +5252,9 @@ def test_ppps_scalar_thread_benchmark_runs_when_nvcc_is_configured(
         selection.schedule
         for selection in load_production_kernel_selections(
             REPOSITORY_ROOT
-            / "tools"
-            / "vibeqc_codegen"
+            / "python"
+            / "vibeqc_compiler"
+            / "integral"
             / "production_shell_classes.json",
             "sm_120",
         )
@@ -5657,8 +5701,9 @@ def test_low_order_production_rys2_cuda_compiles_when_nvcc_is_configured(
         item
         for item in load_production_kernel_selections(
             REPOSITORY_ROOT
-            / "tools"
-            / "vibeqc_codegen"
+            / "python"
+            / "vibeqc_compiler"
+            / "integral"
             / "production_shell_classes.json",
             "sm_120",
         )
@@ -6008,9 +6053,14 @@ def test_autotune_driver_probes_and_rejects_target_before_trials():
 def test_autotune_keeps_benchmark_executor_distinct_from_compile_pool():
     """Prevent parallel compilation from shadowing the GPU run adapter."""
 
-    source = (REPOSITORY_ROOT / "tools" / "vibeqc_codegen" / "autotune.py").read_text(
-        encoding="utf-8"
-    )
+    source = (
+        REPOSITORY_ROOT
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "tuning"
+        / "driver.py"
+    ).read_text(encoding="utf-8")
     assert "benchmark_executor = CudaBenchmarkExecutor(" in source
     assert "as compile_pool:" in source
     assert "run = benchmark_executor.run(" in source
@@ -6275,7 +6325,9 @@ def test_autotune_manifest_replacement_is_atomic(
         assert Path(output_path) == output
         raise OSError("synthetic atomic-replace failure")
 
-    monkeypatch.setattr("tools.vibeqc_codegen.autotune.os.replace", fail_replace)
+    monkeypatch.setattr(
+        "vibeqc_compiler.integral.tuning.manifest.os.replace", fail_replace
+    )
     with pytest.raises(OSError, match="synthetic atomic-replace failure"):
         write_tuned_manifest(
             source,
@@ -6461,6 +6513,49 @@ def test_autotune_static_model_records_operations_and_live_values():
     fock_model = fock_trial.static_model
     assert fock_model.root_count == 1
     assert fock_model.recurrence_state_count == 56
+
+
+@pytest.mark.parametrize("name", ["ppps", "dpps", "dddd"])
+def test_value_only_native_helpers_use_the_pruned_coulomb_table_stride(name):
+    """A Fock-only manifest must index each emitted state through its IR table."""
+    import re
+
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
+    integral = build_integral_ir(spec, consumers=(KernelConsumer.FOCK,))
+    plan = build_fused_shell_plan(spec, integral=integral)
+    source = emit_shell_class_fused_cuda(spec, plan)
+    side = integral.maximum_coulomb_order + 1
+    table = re.search(
+        rf"generated_{spec.name}_coulomb_indices\[(\d+)\] = \{{(.*?)\}};",
+        source,
+        re.DOTALL,
+    )
+    assert table is not None
+    values = [int(value) for value in re.findall(r"-?\d+", table.group(2))]
+    assert int(table.group(1)) == len(values) == side**3
+    assert f"(x_order * {side}U + y_order) * {side}U + z_order" in source
+    # The common geometry helper still evaluates the derivative Boys order;
+    # shrinking its scratch arrays with the lookup stride would overwrite it.
+    geometry_side = spec.maximum_force_coulomb_order + 1
+    assert f"double boys[{geometry_side}];" in source
+    assert f"double coordinate_powers[3][{geometry_side}];" in source
+    for index, (x, y, z) in enumerate(plan.coulomb_states):
+        assert values[(x * side + y) * side + z] == index
+
+
+def test_fock_static_model_handles_transformed_component_graphs():
+    """Nonbinary Fock candidates must retain a usable model after normalization."""
+    trials = supported_schedule_trials(PSPS_SPEC, KernelConsumer.FOCK)
+    transformed = [
+        trial for trial in trials if trial.schedule.algebra_form != AlgebraForm.BINARY
+    ]
+    assert transformed
+    for trial in transformed:
+        model = trial.static_model
+        assert model.scope == "balanced_component_sample_envelope"
+        assert model.root_count == 1
+        assert model.arithmetic_operation_count > 0
+        assert model.algebra_form == trial.schedule.algebra_form
 
 
 def test_packed_autotune_searches_real_algebra_placement_variants():
@@ -6727,11 +6822,11 @@ def test_autotune_candidate_artifact_includes_static_model(
         }
 
     monkeypatch.setattr(
-        "tools.vibeqc_codegen.autotune.supported_schedule_trials",
+        "vibeqc_compiler.integral.tuning.driver.supported_schedule_trials",
         lambda *args, **kwargs: (trial,),
     )
     monkeypatch.setattr(
-        "tools.vibeqc_codegen.autotune._compile_trial",
+        "vibeqc_compiler.integral.tuning.driver._compile_trial",
         failed_compile,
     )
     arguments = SimpleNamespace(
@@ -6766,8 +6861,9 @@ def test_autotune_candidate_artifact_includes_static_model(
         manifest_output=tmp_path / "manifest.json",
         require_all_winners=True,
         manifest=REPOSITORY_ROOT
-        / "tools"
-        / "vibeqc_codegen"
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
         / "production_shell_classes.json",
     )
 
@@ -6797,37 +6893,37 @@ def test_fock_autotune_rejects_candidates_without_baseline_runtime(
     baseline, candidate = trials[:2]
 
     monkeypatch.setattr(
-        "tools.vibeqc_codegen.autotune._production_fock_schedule_index",
+        "vibeqc_compiler.integral.tuning.driver._production_fock_schedule_index",
         lambda architecture: ((PSPS_SPEC.name, baseline.schedule),),
     )
     monkeypatch.setattr(
-        "tools.vibeqc_codegen.autotune.supported_schedule_trials",
+        "vibeqc_compiler.integral.tuning.driver.supported_schedule_trials",
         lambda *args, **kwargs: (baseline, candidate),
     )
     monkeypatch.setattr(
-        "tools.vibeqc_codegen.autotune.emit_schedule_oracle_translation_unit",
+        "vibeqc_compiler.integral.tuning.driver.emit_schedule_oracle_translation_unit",
         lambda *args, **kwargs: "// oracle\n",
     )
     monkeypatch.setattr(
-        "tools.vibeqc_codegen.autotune.emit_schedule_translation_unit",
+        "vibeqc_compiler.integral.tuning.driver.emit_schedule_translation_unit",
         lambda *args, **kwargs: "// candidate\n",
     )
     monkeypatch.setattr(
-        "tools.vibeqc_codegen.autotune.emit_schedule_driver",
+        "vibeqc_compiler.integral.tuning.driver.emit_schedule_driver",
         lambda *args, **kwargs: "// driver\n",
     )
     monkeypatch.setattr(
-        "tools.vibeqc_codegen.autotune.emit_schedule_resource_translation_unit",
+        "vibeqc_compiler.integral.tuning.driver.emit_schedule_resource_translation_unit",
         lambda *args, **kwargs: "// resource\n",
     )
     monkeypatch.setattr(
-        "tools.vibeqc_codegen.autotune._resource_rejections",
+        "vibeqc_compiler.integral.tuning.driver._resource_rejections",
         lambda *args, **kwargs: [],
     )
     # The gate is independent of symbolic envelope construction; keep this
     # focused test from spending time building the large Fock component graph.
     monkeypatch.setattr(
-        "tools.vibeqc_codegen.autotune.static_algebra_model",
+        "vibeqc_compiler.integral.tuning.policy.static_algebra_model",
         lambda trial: SimpleNamespace(to_payload=dict),
     )
 
@@ -6844,10 +6940,10 @@ def test_fock_autotune_rejects_candidates_without_baseline_runtime(
         }
 
     monkeypatch.setattr(
-        "tools.vibeqc_codegen.autotune._compile_trial", successful_compile
+        "vibeqc_compiler.integral.tuning.driver._compile_trial", successful_compile
     )
     monkeypatch.setattr(
-        "tools.vibeqc_codegen.autotune.CudaCompilerAdapter.link",
+        "vibeqc_compiler.integral.cuda_adapter.CudaCompilerAdapter.link",
         lambda *args, **kwargs: subprocess.CompletedProcess(
             args=[], returncode=0, stdout="", stderr=""
         ),
@@ -6863,7 +6959,7 @@ def test_fock_autotune_rejects_candidates_without_baseline_runtime(
         "fused_ms": 1.0,
     }
     monkeypatch.setattr(
-        "tools.vibeqc_codegen.autotune.CudaBenchmarkExecutor.run",
+        "vibeqc_compiler.integral.cuda_adapter.CudaBenchmarkExecutor.run",
         lambda *args, **kwargs: subprocess.CompletedProcess(
             args=[],
             returncode=0,
@@ -6903,8 +6999,9 @@ def test_fock_autotune_rejects_candidates_without_baseline_runtime(
         manifest_output=None,
         require_all_winners=False,
         manifest=REPOSITORY_ROOT
-        / "tools"
-        / "vibeqc_codegen"
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
         / "production_shell_classes.json",
     )
 

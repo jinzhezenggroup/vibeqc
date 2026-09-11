@@ -9,21 +9,65 @@ cover all quantum-chemistry methods through a coherent batched interface.
 - [README](../README.md): build, install, supported features, and minimal use.
 - [Batched HF](batched_hf.md): batch semantics, warm starts, backend labels,
   and verification.
+- [Portable HF checkpoints](checkpoint.md): restart across processes and backends,
+  strict scientific compatibility, corruption handling and per-item restore.
+- [Cross-basis HF initialization](basis_projection.md): rectangular overlaps,
+  occupied-space projection and complete source-plus-target cost accounting.
+- [External basis data](external_basis.md): offline input, provenance, element/ECP
+  bookkeeping, per-operator limits and prepared-state identities.
 - [Methods](methods.md): implemented methods, planned method families, and the
   acceptance standard for enabling new capabilities.
+- [Local autotuning](local_autotuning.md): optional workload-first CUDA tuning,
+  compatible profile reuse, diagnostics, and homogeneous cluster export/import.
 - [Density fitting](density_fitting.md): milestone-1 correctness and planning
   foundation, plus the production features that remain in issue #5.
+- [Accuracy evidence](accuracy.md): resolved HF models, observable targets and
+  explicit reference comparisons, independent of iteration convergence.
 
 ## Developers
 
 - [Architecture](architecture.md): scientific and runtime design decisions.
+- [Scientific compiler ownership](compiler_architecture.md): package boundaries,
+  source generation, compatibility and dependency checks.
+- [Experimental OpenCL contracts](opencl_backend.md): optional compiler/runtime
+  execution, queried capabilities and the boundary before native HF integration.
+- [Shared Fock construction](fock_build.md): method-neutral J/K requests, exact
+  HF consumers, capability limits, and prepared strategy identity.
 - [Implementation roadmap](roadmap.md): detailed milestones and measured
   implementation history.
 - [Shell code generation](shell_codegen.md): generated CUDA policy and
   correctness model.
+- [One-electron value generation](one_electron_codegen.md): S/T/V DAGs, native
+  contraction schedules, same-binary selectors and independent validation.
+- [One-electron derivatives](one_electron_derivatives.md): generic weighted
+  gradients, bounded CUDA contractions and Direct/DF HF adapters.
+- [Density-fitting derivatives](df_derivatives.md): generic A/M responses,
+  bounded HF weights, metric subspace response, and fused CUDA contractions.
+- [Integral IR contracts](integral_ir.md): operator centers, bounded raw blocks,
+  external weights, serialization, and backend capability boundaries.
+- [TensorIR](tensor_ir.md): typed tensor equations, exact factors, symmetry-packed
+  amplitudes, CPU interpretation, conservative rewrites, and replay.
+- [TensorIR CUDA execution](tensor_cuda.md): prepared FP64 contractions, memory
+  budgets, shape buckets, bounded tuning, and complete tensor endpoint evidence.
+- [Validation gates](validation.md): pinned conventions and references,
+  independent oracles, tiered execution, and shared evidence registration.
+- [F-shell validation](f_shell_validation.md): all-34 source/numerical gates,
+  release resource tiers, actual f-containing endpoints, and promotion policy.
 - [Benchmark evidence](../benchmarks/results/README.md): comparison boundary,
   reproducibility rules, gates, and archived results.
 
 The README intentionally omits kernel history and internal scheduling details.
 Those belong in the developer documents so the first page remains an accurate,
 compact user entry point.
+
+- [HF reference snapshots and bounded MO integral providers](posthf.md)
+- [Conventional CPU RCCSD equations and solver](rccsd_bc.md)
+- [Localized occupied and pair-natural-orbital spaces](local_spaces.md)
+- [Safe SCF proposals, local traces and replay](scf_proposals.md)
+- [Shared orbital response and bounded Krylov solves](response.md)
+- [Atom-centered grids and spatial AO/density jets](dft_grid.md)
+- [Fixed-density LDA/PBE XC integration and AO potentials](xc_integration.md)
+
+- [Fixed-amplitude GPU RCCSD validation](rccsd_gpu.md)
+
+- [Scientific evidence retention and publication](evidence_retention.md)

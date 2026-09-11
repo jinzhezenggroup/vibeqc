@@ -1,0 +1,19 @@
+{
+  "export": {
+    "energy": -7.8621173741033745,
+    "energy_change": 1.7763568394002505e-15,
+    "density_rms": 8.94195785238361e-12,
+    "iterations": 18,
+    "backend": "cpu",
+    "snapshot_id": "1a17933e39feec402a3cb5361d236354f2ab6c2cceafb3bc21b3fab7014385a7",
+    "physical_residual": 3.957056904368983e-12,
+    "canonical_density_drift": 7.845335492362437e-12,
+    "physical_fock_drift": 1.1162806790032676e-12,
+    "canonicalization_backend": "cpu-numpy",
+    "density_host_staging": false,
+    "export_seconds": 2.817948539974168,
+    "snapshot_numeric_bytes": 1248
+  },
+  "mp2_energy": -0.012840670427562186,
+  "mp2_absolute_error": 9.76007469288831e-14
+}

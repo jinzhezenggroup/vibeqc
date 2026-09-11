@@ -12,6 +12,7 @@
 
 #include "core/types.hpp"
 #include "scf/cuda_density_fitting.hpp"
+#include "scf/warm_state.hpp"
 #include "vibeqc/vibeqc.h"
 
 namespace vibeqc::methods {
@@ -39,6 +40,8 @@ struct Result {
   std::vector<double> forces;
   Convergence convergence;
   vibeqc_backend executed_backend{VIBEQC_BACKEND_CPU_REFERENCE};
+  /** Existing CPU physical Fock evaluation counter; zero means unavailable. */
+  std::size_t fock_builds{};
 };
 
 struct BatchItemResult {
@@ -139,22 +142,35 @@ struct InactiveEigensolverProfileEntry {
 
 using Coordinates = std::vector<std::optional<std::vector<double>>>;
 
-/** Prepared single-system method execution, independent of the public C ABI. */
+/** Prepared single-system method execution, independent of the public C ABI.
+ * Instances own mutable execution/cache state and are not concurrently
+ * reentrant. The caller must serialize execution and destruction per instance.
+ * Immutable scientific controls do not make the execution workspace shared.
+ */
 class PreparedCalculation {
  public:
   virtual ~PreparedCalculation() = default;
   [[nodiscard]] virtual std::size_t atom_count() const noexcept = 0;
   [[nodiscard]] virtual const Capabilities& capabilities() const noexcept = 0;
-  virtual Result execute() = 0;
+  /** Execute only the requested output work. Energy and convergence
+   * diagnostics are always produced; forces are opt-in per execution. */
+  virtual Result execute(bool compute_forces) = 0;
 };
 
-/** Prepared ragged execution. Method families choose their own batching policy. */
+/** Prepared ragged execution. Method families choose their own batching policy.
+ * As for PreparedCalculation, serialize all calls and destruction per instance;
+ * diagnostics and warm-state access must not race execution or replacement.
+ */
 class PreparedBatch {
  public:
   virtual ~PreparedBatch() = default;
   [[nodiscard]] virtual std::size_t size() const noexcept = 0;
   virtual std::vector<BatchItemResult> execute(const Coordinates& coordinates) = 0;
   virtual void clear_warm_starts() = 0;
+  [[nodiscard]] virtual std::size_t warm_density_size(std::size_t index) const = 0;
+  [[nodiscard]] virtual const std::optional<scf::HfWarmState>& warm_state(
+      std::size_t index) const = 0;
+  virtual void restore_warm_states(std::vector<std::optional<scf::HfWarmState>> states) = 0;
   virtual void set_warm_start_updates(bool enabled) = 0;
   [[nodiscard]] virtual std::optional<std::vector<DirectShellClassProfileEntry>>
   last_direct_shell_class_profile() const = 0;

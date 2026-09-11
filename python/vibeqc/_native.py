@@ -16,6 +16,7 @@ STATUS_INVALID_ARGUMENT = 1
 STATUS_NOT_IMPLEMENTED = 3
 STATUS_NOT_CONVERGED = 4
 STATUS_SCF_NOT_CONVERGED = 4
+STATUS_OUT_OF_MEMORY = 7
 METHOD_RHF = 1
 METHOD_UHF = 2
 METHOD_WB97M_V = 3
@@ -89,6 +90,24 @@ XSYEV_GRAPH_PROBE_STAGE_NAMES = (
     "device_tail_replay",
     "device_tail_validation",
 )
+
+
+class HfWarmState(ctypes.Structure):
+    """Live buffer descriptor; checkpoint files never serialize this struct."""
+
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("density", ctypes.POINTER(ctypes.c_double)),
+        ("density_count", ctypes.c_uint64),
+        ("coordinates", ctypes.POINTER(ctypes.c_double)),
+        ("coordinate_count", ctypes.c_uint64),
+        ("energy", ctypes.c_double),
+        ("energy_change", ctypes.c_double),
+        ("density_rms", ctypes.c_double),
+        ("iterations", ctypes.c_int32),
+        ("present", ctypes.c_int32),
+    ]
 
 
 class ContextDescriptor(ctypes.Structure):
@@ -355,7 +374,12 @@ def _candidate_paths() -> list[Path]:
     return candidates
 
 
-def load_library() -> ctypes.CDLL:
+def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDLL:
+    """Load the native ABI, optionally resolving a validated local CUDA build.
+
+    Capability queries and CPU calculators never probe a GPU or consult a
+    local CUDA profile. VIBEQC_PROFILE=off keeps the baseline for tuning A/Bs.
+    """
     for candidate in _candidate_paths():
         if candidate.exists():
             library = ctypes.CDLL(str(candidate))
@@ -364,6 +388,12 @@ def load_library() -> ctypes.CDLL:
         raise RuntimeError(
             "VIBEQC native library was not found; set VIBEQC_LIBRARY or build in ./build"
         )
+
+    if device == "cuda":
+        from .profiles import select_library
+
+        library, diagnostics = select_library(library, device_id)
+        library._vibeqc_profile_diagnostics = diagnostics
 
     void_pp = ctypes.POINTER(ctypes.c_void_p)
     library.vibeqc_get_abi_version.restype = ctypes.c_uint32
@@ -392,6 +422,20 @@ def load_library() -> ctypes.CDLL:
     ]
     library.vibeqc_system_create.restype = ctypes.c_int
     library.vibeqc_system_destroy.argtypes = [ctypes.c_void_p]
+    library.vibeqc_system_cross_overlap_cpu.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.c_size_t,
+    ]
+    library.vibeqc_system_cross_overlap_cpu.restype = ctypes.c_int
+    library.vibeqc_batch_get_last_fock_builds.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.POINTER(ctypes.c_uint64),
+    ]
+    library.vibeqc_batch_get_last_fock_builds.restype = ctypes.c_int
     library.vibeqc_calculation_prepare.argtypes = [
         ctypes.c_void_p,
         ctypes.c_void_p,
@@ -451,6 +495,20 @@ def load_library() -> ctypes.CDLL:
         ctypes.POINTER(ctypes.c_uint32),
     ]
     library.vibeqc_batch_get_last_inactive_eigensolver_profile.restype = ctypes.c_int
+    library.vibeqc_context_get_last_detail.argtypes = [ctypes.c_void_p]
+    library.vibeqc_context_get_last_detail.restype = ctypes.c_char_p
+    library.vibeqc_batch_get_hf_warm_state.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.POINTER(HfWarmState),
+    ]
+    library.vibeqc_batch_get_hf_warm_state.restype = ctypes.c_int
+    library.vibeqc_batch_restore_hf_warm_states.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(HfWarmState),
+        ctypes.c_uint32,
+    ]
+    library.vibeqc_batch_restore_hf_warm_states.restype = ctypes.c_int
     library.vibeqc_batch_clear_warm_starts.argtypes = [ctypes.c_void_p]
     library.vibeqc_batch_clear_warm_starts.restype = ctypes.c_int
     library.vibeqc_batch_set_warm_start_updates.argtypes = [

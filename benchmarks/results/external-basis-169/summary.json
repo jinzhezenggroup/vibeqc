@@ -1,0 +1,17 @@
+{
+  "revision": "4a6ae98afa5ac209578b10263bc4c1e504925979",
+  "cases": 6,
+  "individual_endpoints": 300,
+  "interleaved_phase_timings": 240,
+  "batch_items": 80,
+  "isolated_failure_checks": 4,
+  "max_absolute_error": {
+    "energy": 2.5011104298755527e-12,
+    "forces": 6.678767911980077e-11
+  },
+  "promotion": false,
+  "metadata_fix_commit": "969c3c8e94d03d546a5f78d9ab7488c70a012ca9",
+  "final_focused_cpu_passed": 47,
+  "final_gpu_and_identity_passed": 10,
+  "final_sanitizer_tests_passed": 9
+}

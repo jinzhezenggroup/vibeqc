@@ -1,0 +1,62 @@
+{
+  "archives": [],
+  "decision": {
+    "reason": "Independent raw/weighted Hessian blocks and HVPs, three-step Libcint first-gradient differences, diagnostic timings and bounded native resources. No schedule promotion.",
+    "scope": "numerical",
+    "status": "accepted"
+  },
+  "files": [
+    {
+      "bytes": 23218,
+      "path": "evidence.json",
+      "role": "evidence",
+      "sha256": "463225b158fc5bf352939c17e02e7b12444b571eccbac83f9de8bc8c5593c3b2"
+    },
+    {
+      "bytes": 273,
+      "path": "summary.json",
+      "role": "summary",
+      "sha256": "6fd0ee7edb69a4aee91142b40ed1055328a6bc378b173ce4e43e691067e967aa"
+    },
+    {
+      "bytes": 72720,
+      "path": "samples.json",
+      "role": "samples",
+      "sha256": "d07647888d023e2b687edd178500e132684378369d8f1d8f04f82b5413e91d22"
+    },
+    {
+      "bytes": 127322,
+      "path": "resources.json",
+      "role": "input",
+      "sha256": "1454833db7e44a593692c6c03ce72e93511a292b34c7de9f3255e5e5b7d7d880"
+    },
+    {
+      "bytes": 26403,
+      "path": "artifacts.json",
+      "role": "input",
+      "sha256": "72f47670f4a2bf567115ea96e6312bd0623b5eff509f481f2da821f922320336"
+    }
+  ],
+  "reproduction": {
+    "command": [
+      "env",
+      "OMP_NUM_THREADS=1",
+      "OPENBLAS_NUM_THREADS=1",
+      "python",
+      "tools/validate_second_derivatives.py",
+      "--backend",
+      "cpu",
+      "--samples",
+      "5",
+      "--architecture",
+      "sm_120",
+      "--output",
+      ".artifacts/second-reproduction-cpu"
+    ]
+  },
+  "schema": "vibeqc.benchmark-publication.v1",
+  "source": {
+    "dirty": false,
+    "revision": "9f120deb8825a8272d3fbdb5c79fae4980fbd064"
+  }
+}

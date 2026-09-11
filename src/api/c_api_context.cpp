@@ -35,6 +35,10 @@ vibeqc_status vibeqc_context_create(const vibeqc_context_descriptor* descriptor,
 
 void vibeqc_context_destroy(vibeqc_context* context) { delete context; }
 
+const char* vibeqc_context_get_last_detail(const vibeqc_context* context) {
+  return context ? context->last_detail.c_str() : "invalid context";
+}
+
 vibeqc_status vibeqc_system_create(vibeqc_context* context,
                                    const vibeqc_system_descriptor* descriptor,
                                    vibeqc_system** system) {

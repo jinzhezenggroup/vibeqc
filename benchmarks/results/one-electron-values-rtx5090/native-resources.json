@@ -1,0 +1,21 @@
+{
+  "compile_seconds": 112.382,
+  "maximum_spill_load_bytes": 0,
+  "maximum_spill_store_bytes": 0,
+  "object_bytes": 4100328,
+  "resource_log": "native-ptxas.txt",
+  "resources": {
+    "_ZN6vibeqc3scf55_GLOBAL__N__696201d7_22_one_electron_values_cu_d166286e13thread_valuesENS0_21OneElectronDeviceViewEPKiS4_mPdS5_S5_S5_": {
+      "LOCAL": 0,
+      "REG": 180,
+      "SHARED": 0,
+      "STACK": 176
+    },
+    "_ZN6vibeqc3scf55_GLOBAL__N__696201d7_22_one_electron_values_cu_d166286e17shell_warp_valuesENS0_21OneElectronDeviceViewEPdS3_S3_S3_": {
+      "LOCAL": 0,
+      "REG": 200,
+      "SHARED": 0,
+      "STACK": 176
+    }
+  }
+}

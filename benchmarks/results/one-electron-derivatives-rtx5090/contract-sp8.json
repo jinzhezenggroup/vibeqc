@@ -1,0 +1,177 @@
+{
+  "accuracy_passed": true,
+  "binary_hash": "0612146abf06d58806dba8c245f30f73c2446a214650fc0ac6bcd9b34b73708d",
+  "caller_weight_bytes": 1536,
+  "cuda_visible_devices": "0",
+  "host_scope": "numeric bridge capacities; excludes caller weights/system and opaque CUDA allocations",
+  "input_hash": "5c82cac5ea000c4cbf53561562ec6028f959ea55925149ec6b33671371d14f4f",
+  "inputs": {
+    "atomic_numbers": [
+      1,
+      1
+    ],
+    "basis_representation": "cartesian",
+    "charge": 0,
+    "coordinates": [
+      [
+        0.0,
+        0.0,
+        -0.7
+      ],
+      [
+        0.0,
+        0.0,
+        0.7
+      ]
+    ],
+    "multiplicity": 1,
+    "shells": [
+      {
+        "angular_momentum": 0,
+        "atom_index": 0,
+        "primitives": [
+          [
+            1.2,
+            1.0
+          ]
+        ]
+      },
+      {
+        "angular_momentum": 1,
+        "atom_index": 0,
+        "primitives": [
+          [
+            0.7,
+            1.0
+          ]
+        ]
+      },
+      {
+        "angular_momentum": 0,
+        "atom_index": 1,
+        "primitives": [
+          [
+            1.2,
+            1.0
+          ]
+        ]
+      },
+      {
+        "angular_momentum": 1,
+        "atom_index": 1,
+        "primitives": [
+          [
+            0.7,
+            1.0
+          ]
+        ]
+      }
+    ]
+  },
+  "maximum_bytes": 131072,
+  "production_promoted": false,
+  "raw_oracle": "host libcint full dS/dT/dV",
+  "raw_tensor_bytes": 9216,
+  "records": [
+    {
+      "gradient": [
+        [
+          2.8534787448650993,
+          1.0230020755833518,
+          4.174432319633615
+        ],
+        [
+          -2.8534787448650993,
+          -1.0230020755833518,
+          -4.174432319633615
+        ]
+      ],
+      "maximum_absolute_error": 1.709743457922741e-14,
+      "resources": {
+        "device_bytes": 2408,
+        "device_to_host_bytes": 48,
+        "host_numeric_bytes": 1232,
+        "host_to_device_bytes": 2360,
+        "stream_synchronizations": 1,
+        "synchronous_uploads": 17
+      },
+      "schedule": 0,
+      "seconds": [
+        0.0020408041309565306,
+        0.0018459521234035492,
+        0.0018240890931338072,
+        0.001801114995032549,
+        0.0019303930457681417
+      ]
+    },
+    {
+      "gradient": [
+        [
+          2.8534787448650993,
+          1.0230020755833522,
+          4.174432319633616
+        ],
+        [
+          -2.853478744865099,
+          -1.023002075583352,
+          -4.174432319633614
+        ]
+      ],
+      "maximum_absolute_error": 1.7541523789077473e-14,
+      "resources": {
+        "device_bytes": 2200,
+        "device_to_host_bytes": 48,
+        "host_numeric_bytes": 848,
+        "host_to_device_bytes": 2152,
+        "stream_synchronizations": 1,
+        "synchronous_uploads": 17
+      },
+      "schedule": 1,
+      "seconds": [
+        0.0018264439422637224,
+        0.001665035029873252,
+        0.001661899033933878,
+        0.0016763471066951752,
+        0.0016685621812939644
+      ]
+    },
+    {
+      "gradient": [
+        [
+          2.853478744865099,
+          1.0230020755833515,
+          4.174432319633615
+        ],
+        [
+          -2.8534787448651002,
+          -1.0230020755833524,
+          -4.174432319633617
+        ]
+      ],
+      "maximum_absolute_error": 1.709743457922741e-14,
+      "resources": {
+        "device_bytes": 2120,
+        "device_to_host_bytes": 48,
+        "host_numeric_bytes": 720,
+        "host_to_device_bytes": 2072,
+        "stream_synchronizations": 1,
+        "synchronous_uploads": 15
+      },
+      "schedule": 2,
+      "seconds": [
+        0.0032720190938562155,
+        0.0035619731061160564,
+        0.003129676915705204,
+        0.0031272119376808405,
+        0.003120910143479705
+      ]
+    }
+  ],
+  "reference_df_SH_derivative_bytes": 6144,
+  "schema": "vibeqc.one_electron_gradient_contract",
+  "slurm_job_id": "9086",
+  "source_identity": "88f81d35d2769bd8cb211bb7dfbdf4e379e413d928c2a8561933ffb0955badb7",
+  "timing_scope": "standalone synchronous CUDA bridge including metadata/weight uploads and gradient download",
+  "version": 1,
+  "weight_hash": "91eb758476d6224d24bc3366c46c28c7d462a45aa2a1853690e029d5d832d1d4"
+}

@@ -85,6 +85,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       CUDACXX: /usr/local/cuda-12.9/bin/nvcc
+      LD_LIBRARY_PATH: /usr/local/cuda-12.9/lib64
       # Generated AOT objects are much larger than ordinary CPU objects, so
       # give the CUDA cache enough room while staying within the repo quota.
       CCACHE_MAXSIZE: 3G
@@ -104,9 +105,12 @@ jobs:
           sudo apt-get install --yes \
             ccache \
             cuda-nvcc-12-9 \
+            cuda-cuobjdump-12-9 \
             cuda-cudart-dev-12-9 \
             libcublas-dev-12-9 \
             libcusolver-dev-12-9 \
+            libcusparse-12-9 \
+            libnvjitlink-12-9 \
             python3-numpy
           "$CUDACXX" --version
           ccache --version
@@ -130,8 +134,46 @@ jobs:
         run: >-
           cmake --build --preset cuda-release-sm120
           --target vibeqc_cuda_runtime_tests --parallel 2
+      - name: Check Fock and proposal preflight without a GPU
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+        run: |
+          cmake --build --preset cuda-release-sm120 --target vibeqc_fock_build_tests vibeqc_scf_proposal_tests --parallel 2
+          ctest --test-dir build/cuda-release-sm120 \
+            -R '^vibeqc_(fock_build|scf_proposal)_tests$' --output-on-failure
       - name: Show CUDA ccache statistics
         run: ccache --show-stats
+      # This is release resource evidence. The production compile-only step
+      # above uses fast compilation and cannot supply acceptance resources.
+      - name: Restore f-shell release objects
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/f-shell-cache
+          key: f-shell-cuda-12.9-sm120-${{ hashFiles('tools/**') }}
+          restore-keys: |
+            f-shell-cuda-12.9-sm120-
+      - name: Compile five representative f classes with release resources
+        run: >-
+          python3 tools/validate_f_shells.py --tier compile --smoke
+          --nvcc "$CUDACXX" --compile-jobs 2 --compile-timeout 900
+          --output build/f-shell-smoke.json
+      - name: Compile generated XC derivative consumers
+        run: >-
+          python3 tools/validate_xc.py --tier cuda-compile
+          --functionals PBE --nvcc "$CUDACXX"
+          --cache build/xc-cache --output build/xc-compile
+      - name: Preserve generated XC resource reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: xc-release-compile
+          path: build/xc-compile
+      - name: Preserve f-shell release resource report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: f-shell-release-smoke
+          path: build/f-shell-smoke.json
 
   python:
     runs-on: ubuntu-24.04
@@ -167,7 +209,7 @@ jobs:
       - name: Install the Python package and test dependencies
         run: |
           uv venv --python 3.11
-          uv pip install --python .venv/bin/python --editable '.[test]'
+          uv pip install --python .venv/bin/python --editable '.[test,reference-test]'
       - name: Show ccache statistics
         run: ccache --show-stats
       - name: Run Python tests with coverage
@@ -176,6 +218,15 @@ jobs:
         run: >-
           .venv/bin/python -m pytest tests/python -q --cov
           --cov-report=xml:coverage-python.xml
+      - name: Preserve transient benchmark/debug artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: benchmark-debug-${{ github.run_id }}
+          path: .artifacts/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Preserve Python coverage for the upload-only job
         continue-on-error: true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

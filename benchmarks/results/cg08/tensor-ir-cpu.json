@@ -1,0 +1,785 @@
+[
+  {
+    "attachments": [],
+    "backend_selected": "numpy-cpu-interpreter",
+    "block_errors": {
+      "after_dead_nodes": {
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": [
+          3,
+          3
+        ]
+      },
+      "after_exact_cse": {
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": [
+          3,
+          3
+        ]
+      },
+      "after_identity_transposes": {
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": [
+          3,
+          3
+        ]
+      },
+      "after_scalar_constants": {
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": [
+          3,
+          3
+        ]
+      },
+      "optimized_replay": {
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": [
+          3,
+          3
+        ]
+      },
+      "original": {
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": [
+          3,
+          3
+        ]
+      },
+      "replay": {
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": [
+          3,
+          3
+        ]
+      }
+    },
+    "compilation": {
+      "reason": "not measured",
+      "seconds": null
+    },
+    "device": {
+      "kind": "cpu",
+      "machine": "x86_64",
+      "system": "Linux"
+    },
+    "hardware": {
+      "reason": null,
+      "status": "pass"
+    },
+    "hash_reasons": {
+      "schedule": "CPU reference interpreter has no lowered execution schedule"
+    },
+    "hashes": {
+      "equation": "b4b41288ebce11c3834511e60bc9db351d98eabee8d8f847007dd0b236657247",
+      "ir": "1157763d1eac00d3812248fda13327b2ea404559916672fa3f1b65191efd9340",
+      "schedule": null,
+      "source": "691cefa9734311bb64f90727109d991802cede57a9d6d1f352d71d08e02c1dcf"
+    },
+    "inputs_hash": "3b494f63d8cdf5a14f4b7f416167563a9e028fd3b337137552f519f37375e7a2",
+    "memory": {
+      "allocated_bytes": null,
+      "peak_bytes": null,
+      "reason": "not measured"
+    },
+    "performance": {
+      "reason": "no comparison registered",
+      "status": "not-run"
+    },
+    "residuals": {},
+    "revision": "b983e482f995140423eb44359d919e4994bf622f",
+    "schema": "vibeqc.validation",
+    "schema_version": 1,
+    "settings": {
+      "dirty": false,
+      "dtype": "float64",
+      "gates": {
+        "atol": 1e-11,
+        "rtol": 1e-10
+      },
+      "logical_retained_bytes": {
+        "after_dead_nodes": 336,
+        "after_exact_cse": 336,
+        "after_identity_transposes": 336,
+        "after_scalar_constants": 336,
+        "optimized_replay": 336,
+        "original": 336,
+        "replay": 336
+      },
+      "reference": "explicit coordinate loops",
+      "reference_hash": "e5cdb85075e675a3d3e981243c07fb8236991c76d7a735352ad68a4e4e62178a",
+      "scope": "tensor fragments; no complete CCSD/MP2 method",
+      "seed": 145,
+      "source_files": {
+        "tools/tensor_ir_examples.py": "a3df349ff5d18d95274c4ddd1c75a673b78c951f370bdc5bd5eb03ef371e4b28",
+        "tools/vibeqc_tensor/__init__.py": "8f642a5d2887a29f02c98adf3ab6a214627c68139c1fe48dadcfb0b4a00af303",
+        "tools/vibeqc_tensor/examples.py": "ac4661e8a0df976cac8960fb02c7387ff7dbe675f61925321a89717580b80915",
+        "tools/vibeqc_tensor/interpreter.py": "19511ba9ed4e399bdc63dee93bccaf0abb4d848c1fa42a2c1ef04f9e02ac5a85",
+        "tools/vibeqc_tensor/ir.py": "5c16550617c5251de68b039d21e0db9a77d2dd8c5203966e029ea33b051633f4",
+        "tools/vibeqc_tensor/optimize.py": "fc829cbca0cd743c48b9e2aa55e89e0aa55490063cf0d29f6b1da80ef8aecda4",
+        "tools/vibeqc_tensor/oracles.py": "7935eeab7bff5e7174c37e93195552301f58d5ce69bff3018d6e7fbeb649f601",
+        "tools/vibeqc_tensor/packing.py": "73c6f46678bfb1f4e14fd71798ee2e2e53c76ae34c1299f28899bc563f56d852",
+        "tools/vibeqc_tensor/program.py": "03643c38e6f7c6e0b74040e4bdd40df450e3b5c5498a9cb7e6947e19acf7e956",
+        "tools/vibeqc_tensor/types.py": "e173219652cb3f4ef63352b1355654b410ca495d0901c9d94b189e65964520ac"
+      }
+    },
+    "solver_iterations": [],
+    "solver_trace_reason": "not exposed by executor",
+    "stages": {
+      "compilation": {
+        "reason": "CPU equation interpreter; this stage is outside CG08",
+        "status": "not-run"
+      },
+      "endpoint": {
+        "reason": "CPU equation interpreter; this stage is outside CG08",
+        "status": "not-run"
+      },
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "production": {
+        "reason": "CPU equation interpreter; this stage is outside CG08",
+        "status": "not-run"
+      },
+      "representation": {
+        "reason": null,
+        "status": "pass"
+      },
+      "source": {
+        "reason": "CPU equation interpreter; this stage is outside CG08",
+        "status": "not-run"
+      }
+    },
+    "subject": "TensorIR/matrix_product",
+    "tier": "cpu",
+    "timings": [],
+    "toolchain": {
+      "numpy": "2.5.1",
+      "python": "3.13.9"
+    }
+  },
+  {
+    "attachments": [],
+    "backend_selected": "numpy-cpu-interpreter",
+    "block_errors": {
+      "after_dead_nodes": {
+        "atol": 1e-11,
+        "max_absolute_error": 3.469446951953614e-18,
+        "max_scaled_error": 2.6578159928969254e-07,
+        "passed": true,
+        "rms_error": 3.469446951953614e-18,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "after_exact_cse": {
+        "atol": 1e-11,
+        "max_absolute_error": 3.469446951953614e-18,
+        "max_scaled_error": 2.6578159928969254e-07,
+        "passed": true,
+        "rms_error": 3.469446951953614e-18,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "after_identity_transposes": {
+        "atol": 1e-11,
+        "max_absolute_error": 3.469446951953614e-18,
+        "max_scaled_error": 2.6578159928969254e-07,
+        "passed": true,
+        "rms_error": 3.469446951953614e-18,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "after_scalar_constants": {
+        "atol": 1e-11,
+        "max_absolute_error": 3.469446951953614e-18,
+        "max_scaled_error": 2.6578159928969254e-07,
+        "passed": true,
+        "rms_error": 3.469446951953614e-18,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "optimized_replay": {
+        "atol": 1e-11,
+        "max_absolute_error": 3.469446951953614e-18,
+        "max_scaled_error": 2.6578159928969254e-07,
+        "passed": true,
+        "rms_error": 3.469446951953614e-18,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "original": {
+        "atol": 1e-11,
+        "max_absolute_error": 3.469446951953614e-18,
+        "max_scaled_error": 2.6578159928969254e-07,
+        "passed": true,
+        "rms_error": 3.469446951953614e-18,
+        "rtol": 1e-10,
+        "shape": []
+      },
+      "replay": {
+        "atol": 1e-11,
+        "max_absolute_error": 3.469446951953614e-18,
+        "max_scaled_error": 2.6578159928969254e-07,
+        "passed": true,
+        "rms_error": 3.469446951953614e-18,
+        "rtol": 1e-10,
+        "shape": []
+      }
+    },
+    "compilation": {
+      "reason": "not measured",
+      "seconds": null
+    },
+    "device": {
+      "kind": "cpu",
+      "machine": "x86_64",
+      "system": "Linux"
+    },
+    "hardware": {
+      "reason": null,
+      "status": "pass"
+    },
+    "hash_reasons": {
+      "schedule": "CPU reference interpreter has no lowered execution schedule"
+    },
+    "hashes": {
+      "equation": "47e74eeeca3a304f2b4e6c9c99070a08e05dd549ff26740a745f534e25754fb8",
+      "ir": "84e38c654a0c87ea111628abe6cbd08408fadeab3f889ebe794fc2aff3460587",
+      "schedule": null,
+      "source": "691cefa9734311bb64f90727109d991802cede57a9d6d1f352d71d08e02c1dcf"
+    },
+    "inputs_hash": "a9e8e4ce3a17ae7bbf81b493616621100b712cda9176f5d8bfd5506c06a5d286",
+    "memory": {
+      "allocated_bytes": null,
+      "peak_bytes": null,
+      "reason": "not measured"
+    },
+    "performance": {
+      "reason": "no comparison registered",
+      "status": "not-run"
+    },
+    "residuals": {},
+    "revision": "b983e482f995140423eb44359d919e4994bf622f",
+    "schema": "vibeqc.validation",
+    "schema_version": 1,
+    "settings": {
+      "dirty": false,
+      "dtype": "float64",
+      "gates": {
+        "atol": 1e-11,
+        "rtol": 1e-10
+      },
+      "logical_retained_bytes": {
+        "after_dead_nodes": 2072,
+        "after_exact_cse": 2072,
+        "after_identity_transposes": 2072,
+        "after_scalar_constants": 2072,
+        "optimized_replay": 2072,
+        "original": 2072,
+        "replay": 2072
+      },
+      "reference": "explicit coordinate loops",
+      "reference_hash": "7ca6d4cfbda8a66a926a62d388fe851f817a23122106b8e554bf87833579900d",
+      "scope": "tensor fragments; no complete CCSD/MP2 method",
+      "seed": 145,
+      "source_files": {
+        "tools/tensor_ir_examples.py": "a3df349ff5d18d95274c4ddd1c75a673b78c951f370bdc5bd5eb03ef371e4b28",
+        "tools/vibeqc_tensor/__init__.py": "8f642a5d2887a29f02c98adf3ab6a214627c68139c1fe48dadcfb0b4a00af303",
+        "tools/vibeqc_tensor/examples.py": "ac4661e8a0df976cac8960fb02c7387ff7dbe675f61925321a89717580b80915",
+        "tools/vibeqc_tensor/interpreter.py": "19511ba9ed4e399bdc63dee93bccaf0abb4d848c1fa42a2c1ef04f9e02ac5a85",
+        "tools/vibeqc_tensor/ir.py": "5c16550617c5251de68b039d21e0db9a77d2dd8c5203966e029ea33b051633f4",
+        "tools/vibeqc_tensor/optimize.py": "fc829cbca0cd743c48b9e2aa55e89e0aa55490063cf0d29f6b1da80ef8aecda4",
+        "tools/vibeqc_tensor/oracles.py": "7935eeab7bff5e7174c37e93195552301f58d5ce69bff3018d6e7fbeb649f601",
+        "tools/vibeqc_tensor/packing.py": "73c6f46678bfb1f4e14fd71798ee2e2e53c76ae34c1299f28899bc563f56d852",
+        "tools/vibeqc_tensor/program.py": "03643c38e6f7c6e0b74040e4bdd40df450e3b5c5498a9cb7e6947e19acf7e956",
+        "tools/vibeqc_tensor/types.py": "e173219652cb3f4ef63352b1355654b410ca495d0901c9d94b189e65964520ac"
+      }
+    },
+    "solver_iterations": [],
+    "solver_trace_reason": "not exposed by executor",
+    "stages": {
+      "compilation": {
+        "reason": "CPU equation interpreter; this stage is outside CG08",
+        "status": "not-run"
+      },
+      "endpoint": {
+        "reason": "CPU equation interpreter; this stage is outside CG08",
+        "status": "not-run"
+      },
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "production": {
+        "reason": "CPU equation interpreter; this stage is outside CG08",
+        "status": "not-run"
+      },
+      "representation": {
+        "reason": null,
+        "status": "pass"
+      },
+      "source": {
+        "reason": "CPU equation interpreter; this stage is outside CG08",
+        "status": "not-run"
+      }
+    },
+    "subject": "TensorIR/mp2_energy_fragment",
+    "tier": "cpu",
+    "timings": [],
+    "toolchain": {
+      "numpy": "2.5.1",
+      "python": "3.13.9"
+    }
+  },
+  {
+    "attachments": [],
+    "backend_selected": "numpy-cpu-interpreter",
+    "block_errors": {
+      "after_dead_nodes": {
+        "atol": 1e-11,
+        "max_absolute_error": 1.734723475976807e-18,
+        "max_scaled_error": 1.561890391663062e-07,
+        "passed": true,
+        "rms_error": 7.081978934950616e-19,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2,
+          3,
+          3
+        ]
+      },
+      "after_exact_cse": {
+        "atol": 1e-11,
+        "max_absolute_error": 1.734723475976807e-18,
+        "max_scaled_error": 1.561890391663062e-07,
+        "passed": true,
+        "rms_error": 7.081978934950616e-19,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2,
+          3,
+          3
+        ]
+      },
+      "after_identity_transposes": {
+        "atol": 1e-11,
+        "max_absolute_error": 1.734723475976807e-18,
+        "max_scaled_error": 1.561890391663062e-07,
+        "passed": true,
+        "rms_error": 7.081978934950616e-19,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2,
+          3,
+          3
+        ]
+      },
+      "after_scalar_constants": {
+        "atol": 1e-11,
+        "max_absolute_error": 1.734723475976807e-18,
+        "max_scaled_error": 1.561890391663062e-07,
+        "passed": true,
+        "rms_error": 7.081978934950616e-19,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2,
+          3,
+          3
+        ]
+      },
+      "optimized_replay": {
+        "atol": 1e-11,
+        "max_absolute_error": 1.734723475976807e-18,
+        "max_scaled_error": 1.561890391663062e-07,
+        "passed": true,
+        "rms_error": 7.081978934950616e-19,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2,
+          3,
+          3
+        ]
+      },
+      "original": {
+        "atol": 1e-11,
+        "max_absolute_error": 1.734723475976807e-18,
+        "max_scaled_error": 1.561890391663062e-07,
+        "passed": true,
+        "rms_error": 7.081978934950616e-19,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2,
+          3,
+          3
+        ]
+      },
+      "replay": {
+        "atol": 1e-11,
+        "max_absolute_error": 1.734723475976807e-18,
+        "max_scaled_error": 1.561890391663062e-07,
+        "passed": true,
+        "rms_error": 7.081978934950616e-19,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2,
+          3,
+          3
+        ]
+      }
+    },
+    "compilation": {
+      "reason": "not measured",
+      "seconds": null
+    },
+    "device": {
+      "kind": "cpu",
+      "machine": "x86_64",
+      "system": "Linux"
+    },
+    "hardware": {
+      "reason": null,
+      "status": "pass"
+    },
+    "hash_reasons": {
+      "schedule": "CPU reference interpreter has no lowered execution schedule"
+    },
+    "hashes": {
+      "equation": "0002a9033f3d46f275833a0806d59c19504df85f01fea824ff67cf97eaa6d3c9",
+      "ir": "b8f641d5167bfe2eed93d1810969c5ec0ad009f3257559e6cfd8d6a0dcc63dd7",
+      "schedule": null,
+      "source": "691cefa9734311bb64f90727109d991802cede57a9d6d1f352d71d08e02c1dcf"
+    },
+    "inputs_hash": "70e1301f9dd7b4e774fb05c03a59bb46e4670a30a8c5daef7296d3cd1152564a",
+    "memory": {
+      "allocated_bytes": null,
+      "peak_bytes": null,
+      "reason": "not measured"
+    },
+    "performance": {
+      "reason": "no comparison registered",
+      "status": "not-run"
+    },
+    "residuals": {},
+    "revision": "b983e482f995140423eb44359d919e4994bf622f",
+    "schema": "vibeqc.validation",
+    "schema_version": 1,
+    "settings": {
+      "dirty": false,
+      "dtype": "float64",
+      "gates": {
+        "atol": 1e-11,
+        "rtol": 1e-10
+      },
+      "logical_retained_bytes": {
+        "after_dead_nodes": 1512,
+        "after_exact_cse": 1512,
+        "after_identity_transposes": 1512,
+        "after_scalar_constants": 1512,
+        "optimized_replay": 1512,
+        "original": 1512,
+        "replay": 1512
+      },
+      "reference": "explicit coordinate loops",
+      "reference_hash": "b82580990bb4131afc40df3f0478a71639ce983ccc646a88fa70dffe8d039246",
+      "scope": "tensor fragments; no complete CCSD/MP2 method",
+      "seed": 145,
+      "source_files": {
+        "tools/tensor_ir_examples.py": "a3df349ff5d18d95274c4ddd1c75a673b78c951f370bdc5bd5eb03ef371e4b28",
+        "tools/vibeqc_tensor/__init__.py": "8f642a5d2887a29f02c98adf3ab6a214627c68139c1fe48dadcfb0b4a00af303",
+        "tools/vibeqc_tensor/examples.py": "ac4661e8a0df976cac8960fb02c7387ff7dbe675f61925321a89717580b80915",
+        "tools/vibeqc_tensor/interpreter.py": "19511ba9ed4e399bdc63dee93bccaf0abb4d848c1fa42a2c1ef04f9e02ac5a85",
+        "tools/vibeqc_tensor/ir.py": "5c16550617c5251de68b039d21e0db9a77d2dd8c5203966e029ea33b051633f4",
+        "tools/vibeqc_tensor/optimize.py": "fc829cbca0cd743c48b9e2aa55e89e0aa55490063cf0d29f6b1da80ef8aecda4",
+        "tools/vibeqc_tensor/oracles.py": "7935eeab7bff5e7174c37e93195552301f58d5ce69bff3018d6e7fbeb649f601",
+        "tools/vibeqc_tensor/packing.py": "73c6f46678bfb1f4e14fd71798ee2e2e53c76ae34c1299f28899bc563f56d852",
+        "tools/vibeqc_tensor/program.py": "03643c38e6f7c6e0b74040e4bdd40df450e3b5c5498a9cb7e6947e19acf7e956",
+        "tools/vibeqc_tensor/types.py": "e173219652cb3f4ef63352b1355654b410ca495d0901c9d94b189e65964520ac"
+      }
+    },
+    "solver_iterations": [],
+    "solver_trace_reason": "not exposed by executor",
+    "stages": {
+      "compilation": {
+        "reason": "CPU equation interpreter; this stage is outside CG08",
+        "status": "not-run"
+      },
+      "endpoint": {
+        "reason": "CPU equation interpreter; this stage is outside CG08",
+        "status": "not-run"
+      },
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "production": {
+        "reason": "CPU equation interpreter; this stage is outside CG08",
+        "status": "not-run"
+      },
+      "representation": {
+        "reason": null,
+        "status": "pass"
+      },
+      "source": {
+        "reason": "CPU equation interpreter; this stage is outside CG08",
+        "status": "not-run"
+      }
+    },
+    "subject": "TensorIR/cc_virtual_residual_fragment",
+    "tier": "cpu",
+    "timings": [],
+    "toolchain": {
+      "numpy": "2.5.1",
+      "python": "3.13.9"
+    }
+  },
+  {
+    "attachments": [],
+    "backend_selected": "numpy-cpu-interpreter",
+    "block_errors": {
+      "after_dead_nodes": {
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2,
+          3,
+          3
+        ]
+      },
+      "after_exact_cse": {
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2,
+          3,
+          3
+        ]
+      },
+      "after_identity_transposes": {
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2,
+          3,
+          3
+        ]
+      },
+      "after_scalar_constants": {
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2,
+          3,
+          3
+        ]
+      },
+      "optimized_replay": {
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2,
+          3,
+          3
+        ]
+      },
+      "original": {
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2,
+          3,
+          3
+        ]
+      },
+      "replay": {
+        "atol": 1e-11,
+        "max_absolute_error": 0.0,
+        "max_scaled_error": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "rtol": 1e-10,
+        "shape": [
+          2,
+          2,
+          3,
+          3
+        ]
+      }
+    },
+    "compilation": {
+      "reason": "not measured",
+      "seconds": null
+    },
+    "device": {
+      "kind": "cpu",
+      "machine": "x86_64",
+      "system": "Linux"
+    },
+    "hardware": {
+      "reason": null,
+      "status": "pass"
+    },
+    "hash_reasons": {
+      "schedule": "CPU reference interpreter has no lowered execution schedule"
+    },
+    "hashes": {
+      "equation": "e4232d27906fd5a14b3fb68703012632537a83c8690c1268c8fc2a6d3224bb06",
+      "ir": "568383e89e3323f297ef4b63ea280ca44446561f0ad1687f2a6ffc647231f052",
+      "schedule": null,
+      "source": "691cefa9734311bb64f90727109d991802cede57a9d6d1f352d71d08e02c1dcf"
+    },
+    "inputs_hash": "d7b1d63112f7dc592ab23cd075f94997d0c784f05e55bb3532c421be398495fa",
+    "memory": {
+      "allocated_bytes": null,
+      "peak_bytes": null,
+      "reason": "not measured"
+    },
+    "performance": {
+      "reason": "no comparison registered",
+      "status": "not-run"
+    },
+    "residuals": {},
+    "revision": "b983e482f995140423eb44359d919e4994bf622f",
+    "schema": "vibeqc.validation",
+    "schema_version": 1,
+    "settings": {
+      "dirty": false,
+      "dtype": "float64",
+      "gates": {
+        "atol": 1e-11,
+        "rtol": 1e-10
+      },
+      "logical_retained_bytes": {
+        "after_dead_nodes": 1152,
+        "after_exact_cse": 1152,
+        "after_identity_transposes": 1152,
+        "after_scalar_constants": 1152,
+        "optimized_replay": 1152,
+        "original": 1152,
+        "replay": 1152
+      },
+      "reference": "explicit coordinate loops",
+      "reference_hash": "55b9578a37ea1b5305eb63c81d2c24e5ac273f70e54940caca6fd21719ef3297",
+      "scope": "tensor fragments; no complete CCSD/MP2 method",
+      "seed": 145,
+      "source_files": {
+        "tools/tensor_ir_examples.py": "a3df349ff5d18d95274c4ddd1c75a673b78c951f370bdc5bd5eb03ef371e4b28",
+        "tools/vibeqc_tensor/__init__.py": "8f642a5d2887a29f02c98adf3ab6a214627c68139c1fe48dadcfb0b4a00af303",
+        "tools/vibeqc_tensor/examples.py": "ac4661e8a0df976cac8960fb02c7387ff7dbe675f61925321a89717580b80915",
+        "tools/vibeqc_tensor/interpreter.py": "19511ba9ed4e399bdc63dee93bccaf0abb4d848c1fa42a2c1ef04f9e02ac5a85",
+        "tools/vibeqc_tensor/ir.py": "5c16550617c5251de68b039d21e0db9a77d2dd8c5203966e029ea33b051633f4",
+        "tools/vibeqc_tensor/optimize.py": "fc829cbca0cd743c48b9e2aa55e89e0aa55490063cf0d29f6b1da80ef8aecda4",
+        "tools/vibeqc_tensor/oracles.py": "7935eeab7bff5e7174c37e93195552301f58d5ce69bff3018d6e7fbeb649f601",
+        "tools/vibeqc_tensor/packing.py": "73c6f46678bfb1f4e14fd71798ee2e2e53c76ae34c1299f28899bc563f56d852",
+        "tools/vibeqc_tensor/program.py": "03643c38e6f7c6e0b74040e4bdd40df450e3b5c5498a9cb7e6947e19acf7e956",
+        "tools/vibeqc_tensor/types.py": "e173219652cb3f4ef63352b1355654b410ca495d0901c9d94b189e65964520ac"
+      }
+    },
+    "solver_iterations": [],
+    "solver_trace_reason": "not exposed by executor",
+    "stages": {
+      "compilation": {
+        "reason": "CPU equation interpreter; this stage is outside CG08",
+        "status": "not-run"
+      },
+      "endpoint": {
+        "reason": "CPU equation interpreter; this stage is outside CG08",
+        "status": "not-run"
+      },
+      "numerical": {
+        "reason": null,
+        "status": "pass"
+      },
+      "production": {
+        "reason": "CPU equation interpreter; this stage is outside CG08",
+        "status": "not-run"
+      },
+      "representation": {
+        "reason": null,
+        "status": "pass"
+      },
+      "source": {
+        "reason": "CPU equation interpreter; this stage is outside CG08",
+        "status": "not-run"
+      }
+    },
+    "subject": "TensorIR/restricted_pair_update",
+    "tier": "cpu",
+    "timings": [],
+    "toolchain": {
+      "numpy": "2.5.1",
+      "python": "3.13.9"
+    }
+  }
+]

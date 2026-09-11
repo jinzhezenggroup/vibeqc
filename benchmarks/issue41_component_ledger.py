@@ -317,7 +317,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--nvtx-kernel-summary", type=Path, required=True)
     parser.add_argument("--nvtx-summary", type=Path, required=True)
     parser.add_argument("--shell-profile", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path(".artifacts/benchmarks/issue41_component_ledger.json"),
+    )
     return parser
 
 

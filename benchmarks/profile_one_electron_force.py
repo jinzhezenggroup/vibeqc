@@ -8,36 +8,47 @@ capture starts, so the trace contains only comparable production replays.
 from __future__ import annotations
 
 import argparse
+import ctypes
 import json
 import os
 import statistics
 import time
 from pathlib import Path
 
-import cupy as cp
 import numpy as np
 from _cases import benchmark_cases
-from compare_gpu4pyscf_batch import nvtx_range, scaled_geometries
+from compare_gpu4pyscf_batch import scaled_geometries
 from vibeqc import Calculator
 
 _SCALAR_ENVIRONMENT = "VIBEQC_ONE_ELECTRON_FORCE_SCALAR"
 
 
 def main() -> None:
+    """Capture the owning CUDA stream with explicit derivative implementations."""
     cases = benchmark_cases()
-    supported_cases = tuple(
-        name for name, case in cases.items() if case.expected_ao_count is not None
-    )
     parser = argparse.ArgumentParser()
-    parser.add_argument("--case", choices=supported_cases, required=True)
+    parser.add_argument("--case", choices=tuple(cases), required=True)
     parser.add_argument("--batch", type=int, default=1)
-    parser.add_argument("--mode", choices=("scalar", "cooperative"), required=True)
+    parser.add_argument(
+        "--mode",
+        choices=("scalar", "cooperative", "generated_thread", "generated_shell_warp"),
+        required=True,
+    )
+    parser.add_argument("--fitted", action="store_true")
+    parser.add_argument("--df-budget", type=int, default=0)
+    parser.add_argument(
+        "--df-response",
+        choices=("reference", "generated"),
+        help="DF two-electron response selector, independent of one-electron mode",
+    )
     parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--energy-tolerance", type=float, default=1.0e-12)
     parser.add_argument("--density-tolerance", type=float, default=1.0e-10)
     parser.add_argument("--screening-tolerance", type=float, default=1.0e-14)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
+    if not os.environ.get("SLURM_JOB_ID"):
+        parser.error("run real-GPU profiling inside a finite Slurm allocation")
     if args.batch < 1 or args.repeats < 1:
         raise ValueError("--batch and --repeats must be positive")
     if (
@@ -47,10 +58,37 @@ def main() -> None:
     ):
         raise ValueError("SCF and screening tolerances must be positive")
 
+    if args.df_response is not None:
+        if not args.fitted:
+            parser.error("--df-response requires --fitted")
+        if args.df_response == "reference":
+            parser.error(
+                "coordinate-wise DF response was retired; use an archived source checkout"
+            )
+
     if args.mode == "scalar":
         os.environ[_SCALAR_ENVIRONMENT] = "1"
     else:
         os.environ.pop(_SCALAR_ENVIRONMENT, None)
+    generated = args.mode.startswith("generated_")
+    os.environ["VIBEQC_ONE_ELECTRON_DERIVATIVES"] = (
+        "generated" if generated else "reference"
+    )
+    os.environ["VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING"] = (
+        args.mode.removeprefix("generated_") if generated else "thread"
+    )
+
+    # The profiler needs only the runtime API, avoiding a second array runtime
+    # and allocator in the measured process. Synchronize all owning streams.
+    runtime = ctypes.CDLL("libcudart.so.12")
+
+    def cuda_call(name):
+        function = getattr(runtime, name)
+        function.restype = ctypes.c_int
+        function.argtypes = []
+        status = function()
+        if status:
+            raise RuntimeError(f"{name} failed with CUDA status {status}")
 
     case = cases[args.case]
     systems = scaled_geometries(case.atoms, args.batch)
@@ -63,6 +101,8 @@ def main() -> None:
         energy_tolerance=args.energy_tolerance,
         density_tolerance=args.density_tolerance,
         screening_tolerance=args.screening_tolerance,
+        density_fitting="cuda" if args.fitted else "none",
+        density_fitting_memory_budget_bytes=args.df_budget,
     )
     with calculator.prepare_batch(
         systems,
@@ -71,15 +111,15 @@ def main() -> None:
         warm_start=True,
     ) as batch:
         batch.execute(strict=True)
-        cp.cuda.Stream.null.synchronize()
-        cp.cuda.profiler.start()
+        batch.set_warm_start_updates(False)
+        cuda_call("cudaDeviceSynchronize")
+        cuda_call("cudaProfilerStart")
         samples = []
         for repeat in range(args.repeats):
-            with nvtx_range(cp, "vibeqc/warm/energy-plus-force"):
-                started = time.perf_counter()
-                result = batch.execute(strict=True)
-                cp.cuda.Stream.null.synchronize()
-                elapsed = time.perf_counter() - started
+            started = time.perf_counter()
+            result = batch.execute(strict=True)
+            cuda_call("cudaDeviceSynchronize")
+            elapsed = time.perf_counter() - started
             samples.append(
                 {
                     "repeat": repeat,
@@ -87,7 +127,7 @@ def main() -> None:
                     "iterations": [item.iterations for item in result.items],
                 }
             )
-        cp.cuda.profiler.stop()
+        cuda_call("cudaProfilerStop")
 
     warm_seconds = [sample["seconds"] for sample in samples]
     payload = {
@@ -97,6 +137,11 @@ def main() -> None:
         "ao_count": case.expected_ao_count,
         "batch_size": args.batch,
         "mode": args.mode,
+        "fitted": args.fitted,
+        "df_budget": args.df_budget,
+        "df_response": args.df_response,
+        "slurm_job_id": os.environ["SLURM_JOB_ID"],
+        "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
         "energy_tolerance": args.energy_tolerance,
         "density_tolerance": args.density_tolerance,
         "screening_tolerance": args.screening_tolerance,

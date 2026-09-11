@@ -1,0 +1,100 @@
+{
+  "artifacts": {
+    "evidence.json": "e4c284f632a4752830ec490acb02d20d063f6a1b96d0e52cfffa6dc943291fa7",
+    "libvibeqc.so": "bb2f1001c6d7c2e0e880b233e28f08ee578a457587ec63129d175d6a756a99c7",
+    "manifest.json": "f53ea11630e952ac05b9fa0773a6d1f0050d8b998eebff68b3b7fd97b020b168"
+  },
+  "generator_abi": 1,
+  "identity": {
+    "device": {
+      "driver_version": 13000,
+      "fast_compile": 0,
+      "major": 12,
+      "maximum_blocks_per_sm": 24,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 1536,
+      "minor": 0,
+      "name": "NVIDIA GeForce RTX 5090",
+      "registers_per_sm": 65536,
+      "release_build": 1,
+      "runtime_version": 12090,
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 101376,
+      "shared_memory_per_sm": 102400,
+      "sm_count": 170,
+      "toolkit_version": 12090,
+      "warp_size": 32
+    },
+    "host": {
+      "libc": [
+        "glibc",
+        "2.35"
+      ],
+      "machine": "x86_64",
+      "system": "Linux"
+    },
+    "native_abi": 0,
+    "policy": {
+      "consumers": [
+        "fock",
+        "force"
+      ],
+      "precision": "fp64",
+      "spin": [
+        "rhf",
+        "uhf"
+      ]
+    },
+    "schema": 1,
+    "source_identity": "03529578134d49658d31a6dd3b0e572181bc6e4f15c0cef9496531a70b67075f"
+  },
+  "kernels": [
+    {
+      "consumer": "fock",
+      "gates": {
+        "endpoint": "pass",
+        "numerical": "pass",
+        "performance": "pass",
+        "resources": "pass",
+        "target": "pass"
+      },
+      "schedule": {
+        "algebra_form": "binary",
+        "algebra_fusion": "separate",
+        "algebra_ordering": "topological",
+        "algebra_placement": "materialized_cse",
+        "block_threads": 128,
+        "component_tile": 27,
+        "kind": "subgroup_tasks",
+        "maximum_registers": 0,
+        "minimum_blocks_per_sm": 0,
+        "pair_orientation": "canonical",
+        "pair_storage": "materialized",
+        "shared_coulomb": true,
+        "tasks_per_warp": 8,
+        "unroll_pair_terms": true
+      },
+      "schedule_hash": "75de86e17dc62043eecacc7f4c792ac7adba9420e05c56d4c170c0a61ff83e7d",
+      "shell_class": "ppps",
+      "source_hash": "c344aefd9707864e91d88bef9d32303b4c1c115002accd63ed69e0f680f507ab"
+    }
+  ],
+  "policy": {
+    "consumers": [
+      "fock",
+      "force"
+    ],
+    "precision": "fp64",
+    "spin": [
+      "rhf",
+      "uhf"
+    ]
+  },
+  "schema": "vibeqc.local_profile",
+  "schema_version": 1,
+  "toolchain": {
+    "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0",
+    "ptxas": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+  }
+}
