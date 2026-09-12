@@ -8,16 +8,22 @@
 #include <utility>
 #include <vector>
 
+#include "runtime/cuda_component_trace.hpp"
 #include "scf/cuda/df_jk_internal.hpp"
 #include "scf/cuda/df_jk_kernels.hpp"
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
 
 namespace vibeqc::scf::cuda_df {
+using runtime::cuda_trace::trace_call;
+using runtime::cuda_trace::TraceOperation;
 
 // Coulomb contraction preserves both passes over bounded source tiles.
 vibeqc_status build_coulomb(CudaDensityFittingJkPlan& plan, const double* density,
                             std::string& detail) {
+  TraceOperation trace(
+      "ri_j", plan.stream,
+      {plan.batch_size, plan.nbf, plan.naux, plan.integral_source != nullptr, plan.streamed});
   if (plan.streamed) {
     cudaError_t cuda_error = cudaMemsetAsync(
         plan.auxiliary_density, 0, plan.batch_size * plan.naux * sizeof(double), plan.stream);
@@ -178,17 +184,21 @@ vibeqc_status build_coulomb(CudaDensityFittingJkPlan& plan, const double* densit
   const long long auxiliary_stride = static_cast<long long>(plan.naux);
   const double one = 1.0;
   const double zero = 0.0;
-  cublasStatus_t blas_status = cublasDgemmStridedBatched(
-      plan.blas, CUBLAS_OP_N, CUBLAS_OP_N, naux, 1, matrix_elements, &one, plan.three_center, naux,
-      tensor_stride, density, matrix_elements, matrix_stride, &zero, plan.auxiliary_density, naux,
-      auxiliary_stride, batch_size);
+  cublasStatus_t blas_status = trace_call("ri_j_gemm", plan.stream, [&] {
+    return cublasDgemmStridedBatched(plan.blas, CUBLAS_OP_N, CUBLAS_OP_N, naux, 1, matrix_elements,
+                                     &one, plan.three_center, naux, tensor_stride, density,
+                                     matrix_elements, matrix_stride, &zero, plan.auxiliary_density,
+                                     naux, auxiliary_stride, batch_size);
+  });
   if (blas_status != CUBLAS_STATUS_SUCCESS) {
     return blas_failure(blas_status, "DF auxiliary-density contraction", detail);
   }
-  blas_status = cublasDgemmStridedBatched(plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, matrix_elements, 1,
-                                          naux, &one, plan.three_center, naux, tensor_stride,
-                                          plan.auxiliary_density, naux, auxiliary_stride, &zero,
-                                          plan.coulomb, matrix_elements, matrix_stride, batch_size);
+  blas_status = trace_call("ri_j_gemm", plan.stream, [&] {
+    return cublasDgemmStridedBatched(plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, matrix_elements, 1, naux,
+                                     &one, plan.three_center, naux, tensor_stride,
+                                     plan.auxiliary_density, naux, auxiliary_stride, &zero,
+                                     plan.coulomb, matrix_elements, matrix_stride, batch_size);
+  });
   return blas_status == CUBLAS_STATUS_SUCCESS
              ? VIBEQC_STATUS_SUCCESS
              : blas_failure(blas_status, "DF Coulomb contraction", detail);

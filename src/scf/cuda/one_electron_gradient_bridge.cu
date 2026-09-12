@@ -6,6 +6,7 @@
 #include <type_traits>
 
 #include "molecule/basis.hpp"
+#include "runtime/cuda_component_trace.hpp"
 #include "runtime/resource_cuda.cuh"
 #include "scf/cuda/one_electron_derivatives.cuh"
 #include "scf/cuda_one_electron_gradient.hpp"
@@ -182,6 +183,13 @@ vibeqc_status execute_cuda_one_electron_gradient(
     check(cudaSetDevice(device_id));
     Arena arena(maximum_bytes);
     check(cudaStreamCreateWithFlags(&arena.stream, cudaStreamNonBlocking));
+    // The trace must finish before the arena destroys its owned stream. This
+    // component includes electronic attraction and overlap/Pulay, while the
+    // nuclear repulsion derivative is assembled separately by the HF driver.
+    runtime::cuda_trace::TraceOperation trace("one_electron_response", arena.stream,
+                                              {1, n, 0, false, false});
+    runtime::cuda_trace::TraceRegion preparation("one_electron_allocation_and_uploads",
+                                                 arena.stream);
     OneElectronDeviceView view{1,
                                static_cast<std::int32_t>(n),
                                host.shell_first.size(),
@@ -207,8 +215,17 @@ vibeqc_status execute_cuda_one_electron_gradient(
         wv.data() == wt.data() && wv.size() == wt.size() ? weights.kinetic : arena.upload(wv);
     auto* output = static_cast<double*>(arena.allocate(3 * atoms * sizeof(double)));
     check(cudaMemsetAsync(output, 0, 3 * atoms * sizeof(double), arena.stream));
+    runtime::cuda_trace::trace_counter("response_scratch_bytes", arena.stats.device_bytes);
+    runtime::cuda_trace::trace_counter("host_to_device_bytes", arena.stats.host_to_device_bytes);
+    runtime::cuda_trace::trace_counter("synchronous_uploads", arena.stats.synchronous_uploads);
+    runtime::cuda_trace::trace_counter("atom_coordinates", 3 * atoms);
+    preparation.finish();
+    runtime::cuda_trace::TraceRegion derivatives("one_electron_and_overlap_pulay", arena.stream);
     check(launch_generated_one_electron_gradient(view, first, second, n * (n + 1) / 2, weights,
                                                  nullptr, schedule, 1.0, output, arena.stream));
+    derivatives.finish();
+    runtime::cuda_trace::TraceRegion output_transfer("one_electron_output_and_synchronization",
+                                                     arena.stream);
     arena.stats.host_numeric_bytes += result.capacity() * sizeof(double);
     check(cudaMemcpyAsync(result.data(), output, 3 * atoms * sizeof(double), cudaMemcpyDeviceToHost,
                           arena.stream));
@@ -216,6 +233,9 @@ vibeqc_status execute_cuda_one_electron_gradient(
     check(cudaStreamSynchronize(arena.stream));
     arena.completed = true;
     arena.stats.stream_synchronizations = 1;
+    runtime::cuda_trace::trace_counter("device_to_host_bytes", arena.stats.device_to_host_bytes);
+    runtime::cuda_trace::trace_counter("stream_synchronizations",
+                                       arena.stats.stream_synchronizations);
     if (!std::all_of(result.begin(), result.end(), [](double x) { return std::isfinite(x); })) {
       detail = "nonfinite generated one-electron gradient";
       return VIBEQC_STATUS_NUMERICAL_FAILURE;

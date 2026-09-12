@@ -354,6 +354,7 @@ if(VIBEQC_ENABLE_CUDA)
     src/runtime/cuda_runtime.cu
     src/scf/cuda/df_coulomb.cpp
     src/scf/cuda/df_exchange.cpp
+    src/runtime/cuda_component_trace.cpp
     src/scf/cuda/df_force_response.cpp
     src/scf/cuda/df_jk.cpp
     src/scf/cuda/df_jk_kernels.cu
