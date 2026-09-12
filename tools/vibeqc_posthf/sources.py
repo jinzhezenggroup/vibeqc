@@ -27,6 +27,8 @@ from vibeqc_compiler.integral.shell_signature import (
     checked_index,
 )
 
+from .reference import immutable
+
 # Through-g Hermite/Coulomb recurrences have bounded dimensions. This separate
 # conservative allowance includes their numeric scratch, not Python/C++ object
 # headers or allocator rounding. It is independent of molecular/tile size.
@@ -197,6 +199,14 @@ class NativeSource:
             ct.c_char_p,
             ct.c_size_t,
         ]
+        lib.vibeqc_posthf_integral_derivatives_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
         lib.vibeqc_posthf_uhf_density_v1.argtypes = [
             ct.c_void_p,
             ct.c_int,
@@ -320,6 +330,53 @@ class NativeSource:
                 out.size,
             )
         return out
+
+    def integral_derivatives(self, *, output_budget_bytes=256 << 20):
+        """Dense small-system derivative oracle with an output-size guard.
+
+        The guard covers the returned NumPy buffer only.  The independent CPU
+        evaluator is intentionally dense and does not provide a bounded-memory
+        production execution path.
+        """
+
+        if type(output_budget_bytes) is not int or output_budget_bytes < 1:
+            raise ValueError(
+                "derivative oracle output budget must be a positive integer"
+            )
+        if self.nbf > 12:
+            raise ValueError("derivative oracle supports at most 12 AOs")
+        ncoord = 3 * len(self.atoms)
+        n2 = self.nbf**2
+        n4 = n2**2
+        output_elements = ncoord * (2 * n2 + n4 + 1)
+        output_bytes = output_elements * np.dtype(np.float64).itemsize
+        if output_bytes > output_budget_bytes:
+            raise ValueError("derivative oracle output exceeds its output budget")
+        output = np.empty(output_elements, dtype=np.float64)
+        with self._lock:
+            self._check_open()
+            self._call(
+                "vibeqc_posthf_integral_derivatives_v1",
+                self._handle,
+                output_budget_bytes,
+                pointer(output),
+                output.size,
+            )
+        offset = 0
+
+        def take(shape):
+            nonlocal offset
+            size = prod(shape)
+            value = output[offset : offset + size].reshape(shape)
+            offset += size
+            return immutable(value)
+
+        return {
+            "overlap": take((ncoord, self.nbf, self.nbf)),
+            "hcore": take((ncoord, self.nbf, self.nbf)),
+            "eri": take((ncoord, self.nbf, self.nbf, self.nbf, self.nbf)),
+            "nuclear": take((ncoord,)),
+        }
 
     def requests(self, kind, *, axis_tile=2, budget_bytes=1 << 20):
         """Yield bounded CG02 requests, including partial shell-component tiles."""

@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
+from vibeqc import Calculator
 from vibeqc_compiler.tensor import execute
 
 from tools.vibeqc_mp2.equations import energy_program
@@ -11,15 +12,34 @@ from tools.vibeqc_mp2.gradient import (
     canonical_energy_adjoint,
     canonical_lagrangian_weights,
     canonical_orbital_rhs,
+    dense_molecular_gradient_oracle,
     solve_canonical_orbital_response,
     tile_energy_adjoint,
 )
-from tools.vibeqc_posthf.fixtures import fixture_snapshot, load_fixture
+from tools.vibeqc_posthf.fixtures import (
+    fixture_snapshot,
+    load_fixture,
+    source_arguments,
+)
+from tools.vibeqc_posthf.sources import NativeSource
 from tools.vibeqc_response import (
     DenseAOResponseBackend,
     GMRESOptions,
     ResponseSolveError,
 )
+
+
+def test_dense_derivative_oracle_rejects_output_budget_before_allocation(monkeypatch):
+    meta, _ = load_fixture("h2")
+    arguments = source_arguments(meta)
+    with NativeSource(**arguments) as source:
+        monkeypatch.setattr(
+            np,
+            "empty",
+            lambda *args, **kwargs: pytest.fail("output allocated before budget check"),
+        )
+        with pytest.raises(ValueError, match="output exceeds"):
+            source.integral_derivatives(output_budget_bytes=1)
 
 
 def _energy(feeds):
@@ -173,7 +193,7 @@ def test_canonical_orbital_rhs_matches_rebuilt_fock_rotation():
     )
     orbital = canonical_orbital_rhs(hcore, eri, adjoint, occupied)
     direction = rng.normal(size=(occupied, size - occupied))
-    reverse_dot = np.vdot(orbital.response_rhs, direction)
+    reverse_dot = np.vdot(orbital.energy_gradient, direction)
     generator = np.zeros((size, size))
     generator[:occupied, occupied:] = direction
     generator[occupied:, :occupied] = -direction.T
@@ -204,7 +224,7 @@ def test_canonical_orbital_rhs_matches_rebuilt_fock_rotation():
     errors = []
     for step in (1e-3, 1e-4, 1e-5):
         finite_difference = (rotated_energy(step) - rotated_energy(-step)) / (2 * step)
-        errors.append(abs(finite_difference + reverse_dot))
+        errors.append(abs(finite_difference - reverse_dot))
     assert errors[-1] < 1e-8
     assert errors[-1] < errors[0]
 
@@ -313,3 +333,65 @@ def test_mp2_orbital_response_reuses_shared_solver_and_explicit_matrix():
             replace(result, reference_identity=stale.identity),
             occupied,
         )
+
+
+@pytest.mark.parametrize("name", ["h2", "water"])
+def test_dense_complete_gradient_matches_fully_resolved_finite_differences(name):
+    meta, arrays = load_fixture(name)
+    arguments = source_arguments(meta)
+    reference = fixture_snapshot(meta, arrays)
+    occupied = reference.nocc
+    eri = arrays["conventional_mo"]
+    g = eri[:occupied, occupied:, :occupied, occupied:].transpose(0, 2, 1, 3)
+    adjoint = canonical_energy_adjoint(
+        g,
+        reference.orbital_energies,
+        occupied,
+        reference_identity=reference.identity,
+        hamiltonian_id=reference.hamiltonian_id,
+    )
+    hcore_mo = (
+        reference.coefficients.T @ arrays["conventional_h"] @ reference.coefficients
+    )
+    orbital = canonical_orbital_rhs(hcore_mo, eri, adjoint, occupied)
+    backend = DenseAOResponseBackend(arrays["ao"])
+    response = solve_canonical_orbital_response(
+        reference,
+        backend,
+        orbital,
+        options=GMRESOptions(rtol=1e-12, atol=1e-13, max_iterations=100),
+    )
+    weights = canonical_lagrangian_weights(hcore_mo, eri, adjoint, response, occupied)
+    with NativeSource(**arguments) as source:
+        analytic = dense_molecular_gradient_oracle(reference, source, weights)
+
+    calculator = Calculator(
+        method="mp2",
+        basis=arguments["basis"],
+        basis_representation=arguments["representation"],
+    )
+    base_atoms = arguments["atoms"]
+    finite = []
+    for step in (3e-3, 1e-3, 3e-4):
+        gradient = np.empty_like(analytic)
+        for atom in range(len(base_atoms)):
+            for axis in range(3):
+                displaced = []
+                for index, value in enumerate(base_atoms):
+                    position = list(value.position)
+                    if index == atom:
+                        position[axis] += step
+                    displaced.append((value.atomic_number, position))
+                plus = calculator.singlepoint(
+                    displaced, charge=arguments["charge"]
+                ).energy
+                displaced[atom][1][axis] -= 2 * step
+                minus = calculator.singlepoint(
+                    displaced, charge=arguments["charge"]
+                ).energy
+                gradient[atom, axis] = (plus - minus) / (2 * step)
+        finite.append(gradient)
+    errors = [float(np.max(np.abs(value - analytic))) for value in finite]
+    assert errors[-1] < 1e-6
+    assert min(errors) < 1e-7
+    assert errors[-1] < errors[0]

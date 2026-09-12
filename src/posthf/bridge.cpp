@@ -516,6 +516,36 @@ VIBEQC_API int vibeqc_posthf_mp2_energy_v1(void* source, int backend, int device
     out[4] = result.tiles;
   });
 }
+// Dense derivative oracle for small complete-gradient validation only.
+// Returns coordinate-major dS, dh, dg, and nuclear-repulsion derivatives.
+// The output-size guard does not bound dense evaluator scratch. Production
+// method execution must use the bounded derivative consumers.
+VIBEQC_API int vibeqc_posthf_integral_derivatives_v1(void* source, std::size_t output_budget,
+                                                     double* output, std::size_t elements,
+                                                     char* error, std::size_t size) {
+  return guarded(error, size, [&] {
+    if (!source || !output) throw std::invalid_argument("invalid derivative oracle request");
+    const auto& raw = *static_cast<RawSource*>(source);
+    const auto n = raw.nbf();
+    const auto nc = raw.orbital().atoms.size() * 3;
+    if (!n || n > 12) throw std::invalid_argument("derivative oracle supports at most 12 AOs");
+    const auto n2 = vibeqc::posthf::checked_mul(n, n);
+    const auto n4 = vibeqc::posthf::checked_mul(n2, n2);
+    const auto per_coordinate = vibeqc::posthf::checked_add(
+        vibeqc::posthf::checked_add(vibeqc::posthf::checked_mul(2, n2), n4), 1);
+    const auto expected = vibeqc::posthf::checked_mul(nc, per_coordinate);
+    if (elements != expected ||
+        vibeqc::posthf::checked_mul(expected, sizeof(double)) > output_budget)
+      throw std::length_error("derivative oracle output exceeds its output budget");
+    const auto integrals = vibeqc::integrals::build_integrals(raw.orbital(), true, true);
+    auto* cursor = output;
+    for (const auto* values : {&integrals.overlap_derivative, &integrals.hcore_derivative,
+                               &integrals.eri_derivative, &integrals.nuclear_repulsion_derivative})
+      cursor = std::copy(values->begin(), values->end(), cursor);
+    if (cursor != output + expected)
+      throw std::runtime_error("derivative oracle returned inconsistent dimensions");
+  });
+}
 /** Explicit CG10 slot order for direct native CUDA/CPU layout verification. */
 VIBEQC_API int vibeqc_posthf_mo_block_v1(void* source, int backend, int device,
                                          const double* arrays, std::size_t elements,

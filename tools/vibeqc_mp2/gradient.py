@@ -41,6 +41,7 @@ class MP2EnergyAdjoint:
 class MP2OrbitalRHS:
     """Canonical response RHS ``-dE/dkappa`` and its MO weights."""
 
+    energy_gradient: np.ndarray
     response_rhs: np.ndarray
     one_electron: np.ndarray
     two_electron: np.ndarray
@@ -81,6 +82,18 @@ class MP2ResponseResult:
     @property
     def residual_norm(self):
         return self.solve_result.residual_norm
+
+
+@dataclass(frozen=True)
+class MP2AOLagrangianWeights:
+    """Relaxed AO weights for dS, dh and conventional four-center dg."""
+
+    overlap: np.ndarray
+    one_electron: np.ndarray
+    two_electron: np.ndarray
+    reference_identity: str
+    hamiltonian_id: str
+    operator_identity: str
 
 
 def tile_energy_adjoint(feeds, *, max_bytes=None):
@@ -227,11 +240,40 @@ def canonical_orbital_rhs(hcore_mo, eri_mo, adjoint, occupied):
     ] += adjoint.integrals_iajb.transpose(0, 2, 1, 3)
 
     rotation_gradient = _rotation_gradient(one, two, h, eri)
+    energy_gradient = (
+        rotation_gradient[:occupied, occupied:]
+        - rotation_gradient[occupied:, :occupied].T
+    )
+    fock = h.copy()
+    for i in range(occupied):
+        fock += 2 * eri[:, :, i, i] - eri[:, i, i, :]
+    if np.max(np.abs(fock - np.diag(np.diag(fock)))) > 1e-8:
+        raise ValueError("MP2 orbital RHS requires a canonical RHF Fock matrix")
+    energies = np.diag(fock)
+
+    def add_negative_fock_multiplier(row, column, value):
+        one[row, column] -= value
+        for j in range(occupied):
+            two[row, column, j, j] -= 2 * value
+            two[row, j, j, column] += value
+
+    for block in (tuple(range(occupied)), tuple(range(occupied, n))):
+        for offset, p in enumerate(block):
+            for q in block[offset + 1 :]:
+                denominator = energies[p] - energies[q]
+                if abs(denominator) <= 1e-10:
+                    raise ValueError(
+                        "same-space canonical MP2 response is near-degenerate"
+                    )
+                derivative = rotation_gradient[p, q] - rotation_gradient[q, p]
+                add_negative_fock_multiplier(q, p, derivative / denominator)
+    rotation_gradient = _rotation_gradient(one, two, h, eri)
     rhs = (
         rotation_gradient[occupied:, :occupied].T
         - rotation_gradient[:occupied, occupied:]
     )
     return MP2OrbitalRHS(
+        immutable(energy_gradient),
         immutable(rhs),
         immutable(one),
         immutable(two),
@@ -296,6 +338,13 @@ def canonical_lagrangian_weights(hcore_mo, eri_mo, adjoint, response, occupied):
     z = z.reshape(occupied, n - occupied)
     one = np.array(orbital.one_electron, copy=True)
     two = np.array(orbital.two_electron, copy=True)
+
+    def add_negative_fock_multiplier(row, column, value):
+        one[row, column] -= value
+        for j in range(occupied):
+            two[row, column, j, j] -= 2 * value
+            two[row, j, j, column] += value
+
     for i in range(occupied):
         one[i, i] += 2.0
         for j in range(occupied):
@@ -303,13 +352,9 @@ def canonical_lagrangian_weights(hcore_mo, eri_mo, adjoint, response, occupied):
             two[i, j, j, i] -= 1.0
     for i in range(occupied):
         for a in range(occupied, n):
-            value = z[i, a - occupied]
-            one[a, i] -= value
-            for j in range(occupied):
-                two[a, i, j, j] -= 2 * value
-                two[a, j, j, i] += value
+            add_negative_fock_multiplier(a, i, z[i, a - occupied])
     gradient = _rotation_gradient(one, two, h, eri)
-    stationarity = gradient[:occupied, occupied:] - gradient[occupied:, :occupied].T
+    stationarity = gradient - gradient.T
     overlap = -0.25 * (gradient + gradient.T)
     return MP2LagrangianWeights(
         immutable(one),
@@ -320,3 +365,56 @@ def canonical_lagrangian_weights(hcore_mo, eri_mo, adjoint, response, occupied):
         adjoint.hamiltonian_id,
         response.operator_identity,
     )
+
+
+def ao_lagrangian_weights(reference, weights):
+    """Back-transform relaxed MO weights without changing derivative factors."""
+
+    if not isinstance(weights, MP2LagrangianWeights):
+        raise TypeError("AO transformation requires MP2LagrangianWeights")
+    if weights.reference_identity != reference.identity:
+        raise ValueError("MP2 Lagrangian weights belong to a different reference")
+    if weights.hamiltonian_id != reference.hamiltonian_id:
+        raise ValueError("MP2 Lagrangian Hamiltonian differs from the reference")
+    c = reference.coefficients
+    one = c @ weights.one_electron @ c.T
+    overlap = c @ weights.overlap @ c.T
+    two = np.einsum(
+        "pqrs,up,vq,wr,xs->uvwx",
+        weights.two_electron,
+        c,
+        c,
+        c,
+        c,
+        optimize=True,
+    )
+    return MP2AOLagrangianWeights(
+        immutable(overlap),
+        immutable(one),
+        immutable(two),
+        weights.reference_identity,
+        weights.hamiltonian_id,
+        weights.operator_identity,
+    )
+
+
+def dense_molecular_gradient_oracle(
+    reference, source, weights, *, output_budget_bytes=256 << 20
+):
+    """Contract the private <=12-AO derivative oracle for validation only."""
+
+    ao = ao_lagrangian_weights(reference, weights)
+    if (
+        source.geometry_hash != reference.geometry_hash
+        or source.basis_hash != reference.basis_hash
+        or source.representation != reference.representation
+    ):
+        raise ValueError("MP2 derivative source differs from the reference")
+    derivatives = source.integral_derivatives(output_budget_bytes=output_budget_bytes)
+    gradient = derivatives["nuclear"].copy()
+    gradient += np.einsum("xpq,pq->x", derivatives["overlap"], ao.overlap)
+    gradient += np.einsum("xpq,pq->x", derivatives["hcore"], ao.one_electron)
+    gradient += np.einsum("xpqrs,pqrs->x", derivatives["eri"], ao.two_electron)
+    if not np.isfinite(gradient).all():
+        raise ValueError("MP2 molecular gradient is nonfinite")
+    return immutable(gradient.reshape(len(source.atoms), 3))
