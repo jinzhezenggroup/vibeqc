@@ -5,6 +5,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 
 #include "vibeqc/vibeqc.h"
 
@@ -50,6 +51,13 @@ void verify_context_detail_storage() {
   require(first_detail != nullptr &&
               std::string(first_detail).find("positive finite") != std::string::npos,
           "first context detail was not recorded");
+
+  const char* worker_detail = nullptr;
+  std::thread worker([&] { worker_detail = vibeqc_context_get_last_detail(first); });
+  worker.join();
+  require(worker_detail != nullptr &&
+              std::string(worker_detail).find("positive finite") != std::string::npos,
+          "context detail pointer did not survive worker thread exit");
 
   primitive.exponent = 1.0;
   shell.angular_momentum = 5;
