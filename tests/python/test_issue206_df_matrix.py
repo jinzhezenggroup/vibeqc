@@ -28,6 +28,7 @@ def test_matrix_retains_failures_and_finishes_remaining_cases(
         python=sys.executable,
         library=tmp_path / "lib.so",
         output_dir=output,
+        memory_budget_bytes=32 << 20,
     )
     calls = []
 
@@ -35,6 +36,9 @@ def test_matrix_retains_failures_and_finishes_remaining_cases(
         calls.append(command)
         active = json.loads(manifest.read_text())["matrix"][len(calls) - 1]
         assert active["status"] == "running" and active["command"] == command
+        assert command[
+            command.index("--density-fitting-memory-budget-bytes") + 1
+        ] == str(32 << 20)
         assert kwargs["env"].get("CUDA_VISIBLE_DEVICES") == os.environ.get(
             "CUDA_VISIBLE_DEVICES"
         )
