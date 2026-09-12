@@ -159,6 +159,7 @@ add_library(vibeqc SHARED
   src/posthf/native_provider.cpp
   src/runtime/context.cpp
   src/scf/density_fitting.cpp
+  src/scf/density_factor.cpp
   src/scf/df_response_weights.cpp
   src/scf/fleet.cpp
   src/scf/fock_build.cpp
@@ -799,6 +800,11 @@ if(VIBEQC_BUILD_TESTS)
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
   add_test(NAME vibeqc_density_fitting_tests
     COMMAND vibeqc_density_fitting_tests)
+
+  add_executable(vibeqc_density_factor_tests tests/native/test_density_factor.cpp)
+  target_link_libraries(vibeqc_density_factor_tests PRIVATE vibeqc)
+  target_include_directories(vibeqc_density_factor_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  add_test(NAME vibeqc_density_factor_tests COMMAND vibeqc_density_factor_tests)
 
   add_executable(vibeqc_cuda_eigensolver_policy_tests
     tests/native/test_cuda_eigensolver_policy.cpp)
