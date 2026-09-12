@@ -803,7 +803,7 @@ def test_complete_conventional_gradient_matches_pyscf_analytic(name):
     with NativeSource(**arguments) as source:
         actual = dense_molecular_gradient_oracle(reference, source, weights)
 
-    molecule, _, _ = pyscf_molecule(meta["inputs"])
+    molecule, scale, _ = pyscf_molecule(meta["inputs"])
     mean_field = scf.RHF(molecule)
     mean_field.conv_tol = 1e-13
     mean_field.conv_tol_grad = 1e-11
@@ -812,6 +812,13 @@ def test_complete_conventional_gradient_matches_pyscf_analytic(name):
     mean_field._eri = ao2mo.restore(8, molecule.intor("int2e"), molecule.nao_nr())
     mean_field.kernel()
     assert mean_field.converged
+    # Bind the independent derivative engine to the exact committed canonical
+    # reference rather than to a BLAS-dependent re-diagonalization of the same
+    # Hamiltonian on the CI runner.
+    mean_field.mo_coeff = arrays["conventional_C"] * scale[:, None]
+    mean_field.mo_energy = arrays["conventional_eps"].copy()
+    mean_field.mo_occ = arrays["conventional_occ"].copy()
+    mean_field.e_tot = meta["records"]["conventional"]["hf_energy"]
     calculation = mp.MP2(mean_field, frozen=None).run()
     expected = calculation.nuc_grad_method().kernel()
     np.testing.assert_allclose(actual, expected, atol=1e-7, rtol=1e-7)
