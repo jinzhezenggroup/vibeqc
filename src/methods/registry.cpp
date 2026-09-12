@@ -3,6 +3,7 @@
 #include <string>
 #include <utility>
 
+#include "methods/dft_method.hpp"
 #include "methods/hf_method.hpp"
 #include "methods/method.hpp"
 #include "methods/mp2_method.hpp"
@@ -27,7 +28,7 @@ struct MethodDefinition {
 
 constexpr vibeqc_property_flags kEnergyAndForces = VIBEQC_PROPERTY_ENERGY | VIBEQC_PROPERTY_FORCES;
 
-const std::array<MethodDefinition, 5> kMethods{{
+const std::array<MethodDefinition, 9> kMethods{{
     {{VIBEQC_METHOD_MP2, VIBEQC_METHOD_FAMILY_PERTURBATION, VIBEQC_PROPERTY_ENERGY, true, false},
      detail::validate_mp2_system,
      detail::prepare_mp2_calculation,
@@ -45,6 +46,24 @@ const std::array<MethodDefinition, 5> kMethods{{
      nullptr,
      nullptr},
     {{VIBEQC_METHOD_RCCSD_T, VIBEQC_METHOD_FAMILY_COUPLED_CLUSTER, 0, false, false},
+     nullptr,
+     nullptr,
+     nullptr},
+    {{VIBEQC_METHOD_LDA_RKS, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL,
+      VIBEQC_PROPERTY_ENERGY, true, false},
+     detail::validate_dft_system,
+     detail::prepare_dft_calculation,
+     nullptr},
+    {{VIBEQC_METHOD_PBE_RKS, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL,
+      VIBEQC_PROPERTY_ENERGY, true, false},
+     detail::validate_dft_system,
+     detail::prepare_dft_calculation,
+     nullptr},
+    {{VIBEQC_METHOD_LDA_UKS, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL, 0, false, false},
+     nullptr,
+     nullptr,
+     nullptr},
+    {{VIBEQC_METHOD_PBE_UKS, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL, 0, false, false},
      nullptr,
      nullptr,
      nullptr},

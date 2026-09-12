@@ -26,8 +26,9 @@ using vibeqc::dft::AoBasis;
 }  // namespace
 
 extern "C" {
-int vibeqc_grid_basis_create_v1(const vibeqc_system* system, void** output, std::size_t* dimensions,
-                                char* error, std::size_t size) {
+VIBEQC_API int vibeqc_grid_basis_create_v1(const vibeqc_system* system, void** output,
+                                           std::size_t* dimensions, char* error,
+                                           std::size_t size) {
   return guarded(error, size, [&] {
     if (!output) throw std::invalid_argument("null AO basis output");
     *output = nullptr;
@@ -39,9 +40,11 @@ int vibeqc_grid_basis_create_v1(const vibeqc_system* system, void** output, std:
     *output = basis.release();
   });
 }
-void vibeqc_grid_basis_destroy_v1(void* basis) { delete static_cast<AoBasis*>(basis); }
-int vibeqc_grid_basis_pack_v1(const void* handle, double* output, std::size_t elements, char* error,
-                              std::size_t size) {
+VIBEQC_API void vibeqc_grid_basis_destroy_v1(void* basis) {
+  delete static_cast<AoBasis*>(basis);
+}
+VIBEQC_API int vibeqc_grid_basis_pack_v1(const void* handle, double* output,
+                                         std::size_t elements, char* error, std::size_t size) {
   return guarded(error, size, [&] {
     if (!handle || !output) throw std::invalid_argument("null AO packing input");
     const auto& basis = *static_cast<const AoBasis*>(handle);
@@ -49,9 +52,10 @@ int vibeqc_grid_basis_pack_v1(const void* handle, double* output, std::size_t el
     std::copy(basis.packed.begin(), basis.packed.end(), output);
   });
 }
-int vibeqc_grid_ao_v1(const void* handle, const double* points, std::size_t npoint, unsigned order,
-                      std::size_t begin, std::size_t count, double* output, std::size_t elements,
-                      char* error, std::size_t size) {
+VIBEQC_API int vibeqc_grid_ao_v1(const void* handle, const double* points, std::size_t npoint,
+                                 unsigned order, std::size_t begin, std::size_t count,
+                                 double* output, std::size_t elements, char* error,
+                                 std::size_t size) {
   return guarded(error, size, [&] {
     if (!handle) throw std::invalid_argument("null AO basis");
     static_cast<const AoBasis*>(handle)->evaluate(points, npoint, order, begin, count, output,

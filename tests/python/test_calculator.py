@@ -148,6 +148,63 @@ def test_method_capabilities_report_families_and_properties():
     assert not ccsd_t.available
     assert not ccsd_t.supports_batch
 
+    lda = method_capabilities("lda-rks")
+    assert lda.family == "density_functional"
+    assert lda.available
+    assert not lda.supports_batch
+    assert lda.supported_properties == frozenset(("energy",))
+
+    pbe = method_capabilities("pbe-rks")
+    assert pbe.family == "density_functional"
+    assert pbe.available
+    assert not pbe.supports_batch
+    assert pbe.supported_properties == frozenset(("energy",))
+
+
+def test_lda_rks_public_contract_is_cpu_energy_only():
+    calculator = Calculator(method="lda-rks", basis="sto-3g", device="cpu")
+    result = calculator.singlepoint([("He", (0.0, 0.0, 0.0))])
+
+    assert result.converged
+    assert result.forces is None
+    assert result.executed_backend == "cpu_reference"
+    with pytest.raises(ValueError, match="does not support properties.*forces"):
+        calculator.singlepoint(
+            [("He", (0.0, 0.0, 0.0))], properties=("energy", "forces")
+        )
+    with pytest.raises(NotImplementedError, match="prepared batches"):
+        calculator.prepare_batch([[("He", (0.0, 0.0, 0.0))]])
+    with pytest.raises(NotImplementedError, match="Hartree-Fock methods only"):
+        calculator.estimate_resources([[("He", (0.0, 0.0, 0.0))]])
+
+
+
+def test_pbe_rks_public_contract_is_cpu_energy_only():
+    calculator = Calculator(method="pbe-rks", basis="sto-3g", device="cpu")
+    result = calculator.singlepoint([("He", (0.0, 0.0, 0.0))])
+
+    assert result.converged
+    assert result.forces is None
+    assert result.executed_backend == "cpu_reference"
+    with pytest.raises(ValueError, match="does not support properties.*forces"):
+        calculator.singlepoint(
+            [("He", (0.0, 0.0, 0.0))], properties=("energy", "forces")
+        )
+    with pytest.raises(NotImplementedError, match="prepared batches"):
+        calculator.prepare_batch([["He", (0.0, 0.0, 0.0)]])
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    (
+        {"device": "cuda"},
+        {"density_fitting": "cpu"},
+    ),
+)
+def test_lda_rks_rejects_unimplemented_execution_modes(kwargs):
+    with pytest.raises(NotImplementedError):
+        Calculator(method="lda-rks", basis="sto-3g", **kwargs)
+
 
 def test_helium_sto3g_reference():
     """Match PySCF when it consumes the exact bundled BSE coefficients.

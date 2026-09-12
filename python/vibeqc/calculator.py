@@ -1,4 +1,4 @@
-"""Method-oriented Python API for native RHF/UHF calculations."""
+"""Method-oriented Python API for native mean-field calculations."""
 
 from __future__ import annotations
 
@@ -28,7 +28,13 @@ _METHODS = {
     "wb97m-v": _native.METHOD_WB97M_V,
     "ccsd(t)": _native.METHOD_RCCSD_T,
     "mp2": _native.METHOD_MP2,
+    "lda-rks": _native.METHOD_LDA_RKS,
+    "pbe-rks": _native.METHOD_PBE_RKS,
+    "lda-uks": _native.METHOD_LDA_UKS,
+    "pbe-uks": _native.METHOD_PBE_UKS,
 }
+
+_HF_METHODS = frozenset((_native.METHOD_RHF, _native.METHOD_UHF))
 
 
 @dataclass(frozen=True)
@@ -280,7 +286,8 @@ def _snapshot_basis(basis, representation=None):
 class Calculator:
     """Prepare and execute a native single-system electronic-structure calculation.
 
-    Coordinates are in Bohr. The current implementation accepts RHF or UHF and
+    Coordinates are in Bohr. The current implementation accepts RHF, UHF, or
+    CPU energy-only LDA RKS and
     a bundled STO-3G/def2-SVP/def2-TZVP basis for H-Ar, local canonical JSON,
     immutable `BasisSet` records, or explicit `Shell` objects. Element symbols
     cover H-Og; execution depends on every actual shell and Hamiltonian. Both the CPU reference and CUDA backend support Cartesian
@@ -385,7 +392,8 @@ class Calculator:
             )
         if int(density_fitting_memory_budget_bytes) < 0:
             raise ValueError("density_fitting_memory_budget_bytes must be non-negative")
-        self._method = _METHODS[method.lower()]
+        self._method_name = method.lower()
+        self._method = _METHODS[self._method_name]
         if self._method == _native.METHOD_MP2:
             if target_accuracy is not None:
                 raise NotImplementedError(
@@ -467,6 +475,26 @@ class Calculator:
             raise NotImplementedError(
                 f"method {method!r} is reserved but not implemented"
             )
+        self._capabilities = method_capabilities(self._method_name)
+        if self._capabilities.family == "density_functional":
+            if device != "cpu":
+                raise NotImplementedError(
+                    "the first LDA RKS slice is available on the CPU backend only"
+                )
+            if density_fitting_mode != _native.DENSITY_FITTING_NONE:
+                raise NotImplementedError(
+                    "the first LDA RKS slice supports conventional Coulomb only"
+                )
+            if auxiliary_basis is not None:
+                raise ValueError("LDA RKS does not accept an unused auxiliary basis")
+            if target_accuracy is not None:
+                raise NotImplementedError(
+                    "DFT accuracy-model identities are not implemented yet"
+                )
+            if resource_budget is not None:
+                raise NotImplementedError(
+                    "DFT resource planning is not implemented yet"
+                )
 
     @property
     def profile_diagnostics(self) -> dict:
@@ -697,6 +725,10 @@ class Calculator:
             # An identity must not advertise an RI-MP2 model that execution
             # cannot supply, including when AUTO would select a DF backend.
             raise NotImplementedError("RI/DF MP2 model resolution is not implemented")
+        if self._method not in (*_HF_METHODS, _native.METHOD_MP2):
+            raise NotImplementedError(
+                "accuracy model is unavailable for this method"
+            )
         atoms = tuple(Atom.from_value(atom) for atom in atoms)
         self._preflight_hf_basis(atoms)
         metadata = self.basis_metadata(atoms, charge=charge, multiplicity=multiplicity)
@@ -770,11 +802,14 @@ class Calculator:
         avoid requiring derivative capability that their backend will not use.
         """
         derivative_orders = (0, 1) if compute_forces else (0,)
+        orbital_operators = ["overlap", "kinetic", "nuclear_attraction", "eri"]
+        if self._capabilities.family == "density_functional":
+            orbital_operators.append("ao")
         for role, basis, operators in (
             (
                 "orbital",
                 self._basis,
-                ("overlap", "kinetic", "nuclear_attraction", "eri"),
+                tuple(orbital_operators),
             ),
             ("auxiliary", self._auxiliary_basis, ("df_metric", "df_three_center")),
         ):
@@ -903,6 +938,10 @@ class Calculator:
             raise NotImplementedError(
                 "resource planning is not implemented for canonical MP2"
             )
+        if self._method not in _HF_METHODS:
+            raise NotImplementedError(
+                "resource estimation currently supports Hartree-Fock methods only"
+            )
         from .resources_hf import hf_resource_request
 
         request = hf_resource_request(
@@ -983,6 +1022,11 @@ class Calculator:
         remain disabled during normal endpoint timing.
         """
 
+        if not self._capabilities.supports_batch:
+            raise NotImplementedError(
+                f"method {self._method_name!r} does not support prepared batches"
+            )
+
         from .batch import PreparedBatch
 
         return PreparedBatch(
@@ -1024,16 +1068,13 @@ class Calculator:
     ) -> Result:
         """Compute energy and optional analytic forces for one system.
 
-        HF defaults to energy and forces; energy-only MP2 defaults to energy.
-        Explicit ``properties=("energy",)`` omits force evaluation and returns
-        ``Result.forces=None``. MP2 rejects any force request before execution.
+        Energy and convergence diagnostics are always returned. Select
+        ``properties=("energy",)`` to omit analytic-force evaluation; the
+        returned ``Result.forces`` is then ``None``. By default each method
+        requests all properties reported by its native capability record.
         """
         if properties is None:
-            properties = (
-                ("energy",)
-                if self._method == _native.METHOD_MP2
-                else ("energy", "forces")
-            )
+            properties = self._capabilities.supported_properties
         if isinstance(properties, (str, bytes)):
             raise TypeError("properties must be an iterable of property names")
         try:
@@ -1042,14 +1083,23 @@ class Calculator:
             raise TypeError(
                 "properties must contain hashable property names"
             ) from error
+        supported_properties = self._capabilities.supported_properties
         if not requested_properties or "energy" not in requested_properties:
             raise ValueError("properties must include 'energy'")
         unknown_properties = requested_properties - {"energy", "forces"}
         if unknown_properties:
             names = ", ".join(sorted(repr(name) for name in unknown_properties))
-            raise ValueError(f"unsupported properties: {names}")
-        if self._method == _native.METHOD_MP2 and "forces" in requested_properties:
-            raise NotImplementedError("MP2 analytic forces are unavailable")
+            raise ValueError(
+                f"method {self._method_name!r} does not support properties: {names}"
+            )
+        unsupported_properties = requested_properties - supported_properties
+        if unsupported_properties:
+            if self._method == _native.METHOD_MP2 and unsupported_properties == {"forces"}:
+                raise NotImplementedError("MP2 analytic forces are unavailable")
+            names = ", ".join(sorted(unsupported_properties))
+            raise ValueError(
+                f"method {self._method_name!r} does not support properties: {names}"
+            )
         compute_forces = "forces" in requested_properties
         native_atoms = tuple(Atom.from_value(atom) for atom in atoms)
         if not native_atoms:

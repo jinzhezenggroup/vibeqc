@@ -15,6 +15,73 @@ from fractions import Fraction as F
 from vibeqc_compiler.integral.expr import Graph
 
 
+_PW_PARAMETERS = {
+    False: {
+        "a": ("0.031091", "0.015545", "0.016887"),
+        "alpha": ("0.21370", "0.20548", "0.11125"),
+        "b1": ("7.5957", "14.1189", "10.357"),
+        "b2": ("3.5876", "6.1977", "3.6231"),
+        "b3": ("1.6382", "3.3662", "0.88026"),
+        "b4": ("0.49294", "0.62517", "0.49671"),
+    },
+    True: {
+        "a": ("0.0310907", "0.01554535", "0.0168869"),
+        "alpha": ("0.21370", "0.20548", "0.11125"),
+        "b1": ("7.5957", "14.1189", "10.357"),
+        "b2": ("3.5876", "6.1977", "3.6231"),
+        "b3": ("1.6382", "3.3662", "0.88026"),
+        "b4": ("0.49294", "0.62517", "0.49671"),
+    },
+}
+
+
+def lda_xc_pw_unpolarized_tail_expression():
+    """Return a positive-density LDA DAG without inverse-density overflow.
+
+    With ``x=rho^(1/6)``, the PW92 low-density intermediates become bounded
+    polynomials in ``x``. The returned derivative is still exactly dE/d(rho);
+    zero density remains a caller-owned analytic limit rather than a branch in
+    the expression graph.
+    """
+
+    graph = Graph()
+    x = graph.variable("rho_sixth_root")
+    parameters = _PW_PARAMETERS[False]
+    a = F(parameters["a"][0])
+    alpha = F(parameters["alpha"][0])
+    b1 = F(parameters["b1"][0])
+    b2 = F(parameters["b2"][0])
+    b3 = F(parameters["b3"][0])
+    b4 = F(parameters["b4"][0])
+    c = (3 / (4 * math.pi)) ** (1 / 3)
+    sqrt_c = math.sqrt(c)
+    d = alpha * c
+    q = (
+        b1 * sqrt_c * x.pow(3)
+        + b2 * c * x.pow(2)
+        + b3 * c**1.5 * x
+        + b4 * c**2
+    )
+    u = x.pow(4) / (2 * a * q)
+    log_term = graph.stable_unary("log1p", u)
+    correlation = -2 * a * x.pow(4) * (x.pow(2) + d) * log_term
+
+    cx = F(3, 8) * (3 / math.pi) ** (1 / 3) * 4 ** (2 / 3)
+    exchange_coefficient = -2 * cx / 2 ** (4 / 3)
+    exchange = exchange_coefficient * x.pow(8)
+
+    q_derivative = 3 * b1 * sqrt_c * x.pow(2) + 2 * b2 * c * x + b3 * c**1.5
+    correlation_derivative = -2 * a * (
+        (1 + 2 * d / (3 * x.pow(2))) * log_term
+        + (x + d / x)
+        / 6
+        * (u / (1 + u))
+        * (4 / x - q_derivative / q)
+    )
+    exchange_derivative = F(4, 3) * exchange_coefficient * x.pow(2)
+    return graph, exchange + correlation, exchange_derivative + correlation_derivative, x
+
+
 def energy_expression(spec):
     """Return the uninterpreted energy DAG and its ordered feature variables."""
     graph = Graph()
@@ -26,9 +93,16 @@ def energy_expression(spec):
         ra = rb = rho / 2
         saa = sab = sbb = sigma / 4
     n = ra + rb
-    # Ratios avoid cancellation in 1 +/- z near complete spin polarization.
-    up, down = 2 * ra / n, 2 * rb / n
-    z = (ra - rb) / n
+    if spec.spin == "polarized":
+        # Ratios avoid cancellation in 1 +/- z near complete spin polarization.
+        up, down = 2 * ra / n, 2 * rb / n
+        z = (ra - rb) / n
+    else:
+        # The declared unpolarized contract has ra=rb=n/2 identically. Keep
+        # those exact constants out of the generated graph so the rho->0+
+        # limit never evaluates a numerically meaningless rho/rho quotient.
+        up = down = graph.constant(1)
+        z = graph.constant(0)
     rs = (3 / (4 * math.pi)) ** (1 / 3) * n.pow(-1 / 3)
     beta = F("0.06672455060314922")
     gamma = (1 - math.log(2)) / math.pi**2
@@ -38,16 +112,13 @@ def energy_expression(spec):
     x2s2 = 1 / (4 * (6 * math.pi**2) ** (2 / 3))
 
     def pw(modified):
-        a = (
-            ("0.0310907", "0.01554535", "0.0168869")
-            if modified
-            else ("0.031091", "0.015545", "0.016887")
-        )
-        alpha = ("0.21370", "0.20548", "0.11125")
-        b1 = ("7.5957", "14.1189", "10.357")
-        b2 = ("3.5876", "6.1977", "3.6231")
-        b3 = ("1.6382", "3.3662", "0.88026")
-        b4 = ("0.49294", "0.62517", "0.49671")
+        parameters = _PW_PARAMETERS[modified]
+        a = parameters["a"]
+        alpha = parameters["alpha"]
+        b1 = parameters["b1"]
+        b2 = parameters["b2"]
+        b3 = parameters["b3"]
+        b4 = parameters["b4"]
         values = []
         for i in range(3):
             aux = (
