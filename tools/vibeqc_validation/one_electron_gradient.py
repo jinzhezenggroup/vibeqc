@@ -32,10 +32,13 @@ def execute_gradient(
     *,
     schedule=0,
     maximum_bytes=128 << 20,
+    device_id=0,
     charge=0,
     multiplicity=1,
 ):
     """Measure the synchronous host bridge; each supplied weight is held fixed."""
+    if type(device_id) is not int or device_id < 0:
+        raise ValueError("device_id must be a nonnegative integer")
     library = calculator._library
     pointer = ctypes.POINTER(ctypes.c_double)
     function = library.vibeqc_system_one_electron_gradient_cuda
@@ -62,7 +65,7 @@ def execute_gradient(
     descriptor = _native.ContextDescriptor(
         ctypes.sizeof(_native.ContextDescriptor),
         _native.ABI_VERSION,
-        0,
+        device_id,
         _native.BACKEND_CUDA,
     )
     _native.check(

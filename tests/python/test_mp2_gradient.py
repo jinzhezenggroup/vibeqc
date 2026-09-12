@@ -1,13 +1,16 @@
 """Analytic MP2 energy-adjoint contracts for the complete-gradient chain."""
 
+import ctypes as ct
 import os
 from dataclasses import replace
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
-from vibeqc import Calculator
+from vibeqc import Calculator, _native
 from vibeqc_compiler.tensor import execute
 
+from tools.vibeqc_mp2.complete_gradient import complete_gradient_validation
 from tools.vibeqc_mp2.equations import energy_program
 from tools.vibeqc_mp2.gradient import (
     ao_lagrangian_weights,
@@ -83,6 +86,45 @@ def test_nuclear_repulsion_gradient_matches_independent_oracle_block():
     )
 
 
+def test_gradient_validation_helpers_route_explicit_device():
+    from tools.vibeqc_validation.df_gradient import execute_df_gradient
+    from tools.vibeqc_validation.one_electron_gradient import execute_gradient
+
+    captured = []
+
+    class Function:
+        def __init__(self, implementation=lambda *_: 0):
+            self.implementation = implementation
+
+        def __call__(self, *arguments):
+            return self.implementation(*arguments)
+
+    def capture(descriptor, _):
+        value = ct.cast(descriptor, ct.POINTER(_native.ContextDescriptor)).contents
+        captured.append(value.device_id)
+        raise RuntimeError("captured device")
+
+    library = SimpleNamespace(
+        vibeqc_system_one_electron_gradient_cuda=Function(),
+        vibeqc_system_df_gradient_cuda=Function(),
+        vibeqc_context_create=Function(capture),
+    )
+    calculator = SimpleNamespace(_library=library)
+    atoms = [("H", (0.0, 0.0, 0.0))]
+    with pytest.raises(RuntimeError, match="captured device"):
+        execute_gradient(calculator, atoms, np.zeros((3, 1, 1)), device_id=7)
+    with pytest.raises(RuntimeError, match="captured device"):
+        execute_df_gradient(
+            calculator,
+            calculator,
+            atoms,
+            np.zeros((1, 1, 1)),
+            np.zeros((1, 1)),
+            device_id=9,
+        )
+    assert captured == [7, 9]
+
+
 @pytest.mark.skipif(
     os.environ.get("VIBEQC_MP2_CUDA_TEST") != "1",
     reason="requires explicitly allocated CUDA device and native library",
@@ -103,6 +145,80 @@ def test_weighted_eri_cuda_spherical_pullback_matches_dense_oracle(monkeypatch):
         )
         actual = source.weighted_eri_gradient_cuda(weights)
     np.testing.assert_allclose(actual, expected, atol=2e-9, rtol=2e-9)
+
+
+@pytest.mark.skipif(
+    os.environ.get("VIBEQC_MP2_CUDA_TEST") != "1",
+    reason="requires explicitly allocated CUDA device and native library",
+)
+@pytest.mark.parametrize("density_fitted", [False, True])
+def test_complete_gradient_validation_facade_matches_public_finite_difference(
+    density_fitted, monkeypatch
+):
+    meta, _ = load_fixture("h2")
+    arguments = source_arguments(meta)
+    with NativeSource(**arguments) as source:
+        orbital = Calculator(
+            basis=arguments["basis"],
+            basis_representation=arguments["representation"],
+            device="cuda",
+        )
+        auxiliary = (
+            Calculator(
+                basis=arguments["auxiliary_basis"],
+                basis_representation=arguments["representation"],
+                device="cuda",
+            )
+            if density_fitted
+            else None
+        )
+        monkeypatch.setattr(
+            source,
+            "integral_derivatives",
+            lambda **_: pytest.fail("facade called dense conventional derivatives"),
+        )
+        monkeypatch.setattr(
+            source,
+            "df_integral_derivatives",
+            lambda **_: pytest.fail("facade called dense DF derivatives"),
+        )
+        result = complete_gradient_validation(
+            source,
+            orbital,
+            auxiliary,
+            density_fitted=density_fitted,
+        )
+    label = "df" if density_fitted else "conventional"
+    record = meta["records"][label]
+    assert (
+        abs(result.total_energy - record["hf_energy"] - record["correlation_energy"])
+        < 1e-9
+    )
+    calculator = Calculator(
+        method="mp2",
+        basis=arguments["basis"],
+        auxiliary_basis=arguments["auxiliary_basis"] if density_fitted else None,
+        basis_representation=arguments["representation"],
+        density_fitting="cuda" if density_fitted else "none",
+        device="cuda",
+    )
+    step = 3e-4
+    finite = np.empty_like(result.gradient)
+    for atom in range(len(arguments["atoms"])):
+        for axis in range(3):
+            displaced = [
+                (value.atomic_number, list(value.position))
+                for value in arguments["atoms"]
+            ]
+            displaced[atom][1][axis] += step
+            plus = calculator.singlepoint(displaced).energy
+            displaced[atom][1][axis] -= 2 * step
+            minus = calculator.singlepoint(displaced).energy
+            finite[atom, axis] = (plus - minus) / (2 * step)
+    np.testing.assert_allclose(result.gradient, finite, atol=1e-6, rtol=1e-6)
+    assert result.response_residual < 1e-9
+    assert result.stationarity_residual < 1e-8
+    assert result.diagnostics["global_derivative_tensors"] is False
 
 
 def _energy(feeds):

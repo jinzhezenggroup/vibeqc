@@ -483,6 +483,7 @@ def fused_cuda_conventional_molecular_gradient(
         source.atoms,
         np.stack((ao.overlap, ao.one_electron, ao.one_electron)),
         maximum_bytes=consumer_maximum_bytes,
+        device_id=device_id,
         charge=source.charge,
         multiplicity=source.multiplicity,
     )
@@ -687,6 +688,7 @@ def fused_cuda_ri_molecular_gradient(
     weight_output_budget_bytes=128 << 20,
     consumer_maximum_bytes=128 << 20,
     maximum_tile_elements=0,
+    device_id=0,
 ):
     """Contract relaxed RI weights through the #141/#143 CUDA consumers.
 
@@ -709,6 +711,8 @@ def fused_cuda_ri_molecular_gradient(
         or consumer_maximum_bytes < 1
         or type(maximum_tile_elements) is not int
         or maximum_tile_elements < 0
+        or type(device_id) is not int
+        or device_id < 0
     ):
         raise ValueError("fused CUDA RI gradient requires valid stage budgets")
     if source.electron_count != reference.electron_count or source.multiplicity != 1:
@@ -716,6 +720,8 @@ def fused_cuda_ri_molecular_gradient(
     if (
         getattr(orbital_calculator, "_device_name", None) != "cuda"
         or getattr(auxiliary_calculator, "_device_name", None) != "cuda"
+        or getattr(orbital_calculator, "_device_id", None) != device_id
+        or getattr(auxiliary_calculator, "_device_id", None) != device_id
         or getattr(orbital_calculator, "_representation_name", None)
         != ("spherical" if source.representation == "real_spherical" else "cartesian")
         or getattr(auxiliary_calculator, "_representation_name", None)
@@ -737,6 +743,7 @@ def fused_cuda_ri_molecular_gradient(
         source.atoms,
         np.stack((ao.overlap, ao.one_electron, ao.one_electron)),
         maximum_bytes=consumer_maximum_bytes,
+        device_id=device_id,
         charge=source.charge,
         multiplicity=source.multiplicity,
     )
@@ -748,6 +755,7 @@ def fused_cuda_ri_molecular_gradient(
         ao.metric,
         maximum_bytes=consumer_maximum_bytes,
         maximum_tile_elements=maximum_tile_elements,
+        device_id=device_id,
         charge=source.charge,
         multiplicity=source.multiplicity,
     )
