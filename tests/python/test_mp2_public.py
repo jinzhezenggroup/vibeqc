@@ -87,9 +87,10 @@ def test_public_mp2_rejects_unimplemented_controls():
     calculator = Calculator(method="mp2")
     with pytest.raises(NotImplementedError, match=r"resource planning"):
         calculator.estimate_resources([[("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]])
-    assert calculator.resolved_model(
-        [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
-    ).method == "mp2"
+    assert (
+        calculator.resolved_model([("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]).method
+        == "mp2"
+    )
 
 
 def test_hf_identity_ignores_mp2_only_controls():
