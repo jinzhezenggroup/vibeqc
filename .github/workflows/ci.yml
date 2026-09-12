@@ -210,6 +210,9 @@ jobs:
         run: |
           uv venv --python 3.11
           uv pip install --python .venv/bin/python --editable '.[test,reference-test]'
+          # Exercise the public autograd contracts on every PR without pulling
+          # CUDA wheels into this CPU job.
+          uv pip install --python .venv/bin/python torch --index-url https://download.pytorch.org/whl/cpu
       - name: Show ccache statistics
         run: ccache --show-stats
       - name: Run Python tests with coverage
