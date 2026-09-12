@@ -353,10 +353,17 @@ class DFProvider:
             self.statistics["transformations"] += 1
             return result
 
+    def clear(self):
+        """Release retained transformed MO blocks while keeping the source usable."""
+
+        with self._lock:
+            self._cache.clear()
+            self._retained = 0
+
     def close(self):
-        self._cache.clear()
-        self._retained = 0
-        self._closed = True
+        with self._lock:
+            self.clear()
+            self._closed = True
 
     def __enter__(self):
         return self

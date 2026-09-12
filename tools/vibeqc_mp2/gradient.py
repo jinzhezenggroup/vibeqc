@@ -204,6 +204,116 @@ def _rotation_gradient(one, two, h, eri):
     return result
 
 
+def _rotation_gradient_streamed(one, two, h, provider):
+    """Contract the generalized-Fock rotation gradient without a full MO ERI."""
+
+    from tools.vibeqc_posthf.conventions import MOBlock
+
+    one = np.asarray(one, dtype=np.float64)
+    two = np.asarray(two, dtype=np.float64)
+    h = np.asarray(h, dtype=np.float64)
+    n = h.shape[0]
+    if one.shape != (n, n) or two.shape != (n, n, n, n):
+        raise ValueError("streamed rotation weights have inconsistent dimensions")
+    result = np.einsum("pq,tq->tp", one, h, optimize=True)
+    result += np.einsum("pq,pt->tq", one, h, optimize=True)
+    orbitals = tuple(range(n))
+
+    def read(slots):
+        block = provider.get(MOBlock(slots)).to_host()
+        value = np.asarray(block, dtype=np.float64)
+        provider.clear()
+        return value
+
+    for t in range(n):
+        first = read(((t,), orbitals, orbitals, orbitals))[0]
+        result[t, :] += np.einsum("pqrs,qrs->p", two, first, optimize=True)
+        del first
+        second = read((orbitals, (t,), orbitals, orbitals))[:, 0]
+        result[t, :] += np.einsum("pqrs,prs->q", two, second, optimize=True)
+        del second
+        third = read((orbitals, orbitals, (t,), orbitals))[:, :, 0]
+        result[t, :] += np.einsum("pqrs,pqs->r", two, third, optimize=True)
+        del third
+        fourth = read((orbitals, orbitals, orbitals, (t,)))[:, :, :, 0]
+        result[t, :] += np.einsum("pqrs,pqr->s", two, fourth, optimize=True)
+        del fourth
+    if not np.isfinite(result).all():
+        raise ValueError("streamed MP2 rotation gradient is nonfinite")
+    return result
+
+
+def canonical_orbital_rhs_streamed(reference, hcore_mo, provider, adjoint, occupied):
+    """Build the canonical MP2 response RHS from bounded provider blocks."""
+
+    h = np.asarray(hcore_mo, dtype=np.float64)
+    n = h.shape[0]
+    if (
+        h.shape != (n, n)
+        or type(occupied) is not int
+        or not 0 < occupied < n
+        or provider.snapshot.identity != reference.identity
+        or provider.snapshot.hamiltonian_id != reference.hamiltonian_id
+        or adjoint.reference_identity != reference.identity
+        or adjoint.hamiltonian_id != reference.hamiltonian_id
+    ):
+        raise ValueError("streamed MP2 orbital RHS reference/provider mismatch")
+    if adjoint.orbital_energies.shape != (n,) or adjoint.integrals_iajb.shape != (
+        occupied,
+        occupied,
+        n - occupied,
+        n - occupied,
+    ):
+        raise ValueError("streamed MP2 adjoint dimensions are inconsistent")
+    one = np.zeros_like(h)
+    two = np.zeros((n,) * 4)
+    diagonal = np.arange(n)
+    one[diagonal, diagonal] = adjoint.orbital_energies
+    for p, weight in enumerate(adjoint.orbital_energies):
+        for i in range(occupied):
+            two[p, p, i, i] += 2 * weight
+            two[p, i, i, p] -= weight
+    two[:occupied, occupied:, :occupied, occupied:] += adjoint.integrals_iajb.transpose(
+        0, 2, 1, 3
+    )
+    rotation_gradient = _rotation_gradient_streamed(one, two, h, provider)
+    energy_gradient = (
+        rotation_gradient[:occupied, occupied:]
+        - rotation_gradient[occupied:, :occupied].T
+    )
+    energies = reference.orbital_energies
+
+    def add_negative_fock_multiplier(row, column, value):
+        one[row, column] -= value
+        for j in range(occupied):
+            two[row, column, j, j] -= 2 * value
+            two[row, j, j, column] += value
+
+    for block in (tuple(range(occupied)), tuple(range(occupied, n))):
+        for offset, p in enumerate(block):
+            for q in block[offset + 1 :]:
+                denominator = energies[p] - energies[q]
+                if abs(denominator) <= 1e-10:
+                    raise ValueError(
+                        "same-space canonical MP2 response is near-degenerate"
+                    )
+                derivative = rotation_gradient[p, q] - rotation_gradient[q, p]
+                add_negative_fock_multiplier(q, p, derivative / denominator)
+    rotation_gradient = _rotation_gradient_streamed(one, two, h, provider)
+    rhs = (
+        rotation_gradient[occupied:, :occupied].T
+        - rotation_gradient[:occupied, occupied:]
+    )
+    return MP2OrbitalRHS(
+        immutable(energy_gradient),
+        immutable(rhs),
+        immutable(one),
+        immutable(two),
+        adjoint.reference_identity,
+        adjoint.hamiltonian_id,
+    )
+
+
 def canonical_orbital_rhs(hcore_mo, eri_mo, adjoint, occupied):
     """Differentiate the MP2 correlation Lagrangian under MO rotations.
 
@@ -380,6 +490,59 @@ def canonical_lagrangian_weights(hcore_mo, eri_mo, adjoint, response, occupied):
     )
 
 
+def canonical_lagrangian_weights_streamed(
+    reference, hcore_mo, provider, adjoint, response, occupied
+):
+    """Assemble relaxed weights while streaming every MO-ERI contraction."""
+
+    orbital = canonical_orbital_rhs_streamed(
+        reference, hcore_mo, provider, adjoint, occupied
+    )
+    h = np.asarray(hcore_mo, dtype=np.float64)
+    if not isinstance(response, MP2ResponseResult):
+        raise TypeError("streamed MP2 Lagrangian requires a bound response result")
+    if (
+        response.reference_identity != adjoint.reference_identity
+        or response.hamiltonian_id != adjoint.hamiltonian_id
+        or response.reference_identity != reference.identity
+    ):
+        raise ValueError("streamed MP2 Z-vector belongs to a different problem")
+    z = np.asarray(response.solution, dtype=np.float64)
+    n = h.shape[0]
+    if z.shape != (occupied * (n - occupied),) or not np.isfinite(z).all():
+        raise ValueError("streamed MP2 Z-vector has the wrong layout")
+    z = z.reshape(occupied, n - occupied)
+    one = np.array(orbital.one_electron, copy=True)
+    two = np.array(orbital.two_electron, copy=True)
+
+    def add_negative_fock_multiplier(row, column, value):
+        one[row, column] -= value
+        for j in range(occupied):
+            two[row, column, j, j] -= 2 * value
+            two[row, j, j, column] += value
+
+    for i in range(occupied):
+        one[i, i] += 2.0
+        for j in range(occupied):
+            two[i, i, j, j] += 2.0
+            two[i, j, j, i] -= 1.0
+    for i in range(occupied):
+        for a in range(occupied, n):
+            add_negative_fock_multiplier(a, i, z[i, a - occupied])
+    gradient = _rotation_gradient_streamed(one, two, h, provider)
+    stationarity = gradient - gradient.T
+    overlap = -0.25 * (gradient + gradient.T)
+    return MP2LagrangianWeights(
+        immutable(one),
+        immutable(two),
+        immutable(overlap),
+        float(np.linalg.norm(stationarity)),
+        adjoint.reference_identity,
+        adjoint.hamiltonian_id,
+        response.operator_identity,
+    )
+
+
 def ao_lagrangian_weights(reference, weights, *, output_budget_bytes=None):
     """Back-transform relaxed MO weights without changing derivative factors."""
 
@@ -451,12 +614,18 @@ def fused_cuda_conventional_molecular_gradient(
         raise ValueError(
             "fused CUDA conventional gradient requires valid stage controls"
         )
+    if not isinstance(weights, MP2LagrangianWeights):
+        raise TypeError("conventional gradient requires MP2LagrangianWeights")
     if (
         reference.hamiltonian_id != "conventional-unscreened"
         or weights.hamiltonian_id != "conventional-unscreened"
     ):
         raise ValueError(
             "conventional gradient requires the unscreened exact Hamiltonian"
+        )
+    if weights.reference_identity != reference.identity:
+        raise ValueError(
+            "conventional gradient weights belong to a different reference"
         )
     if (
         source.electron_count != reference.electron_count
@@ -527,6 +696,7 @@ def fused_cuda_conventional_molecular_gradient(
         for slot, shell in enumerate(shell_indices):
             two[source.shells[shell].atom_index] += center_gradient[slot]
         tiles += 1
+        del center_gradient, local, panels
     gradient = _nuclear_repulsion_gradient(source.atoms) + one + two
     if not np.isfinite(gradient).all():
         raise ValueError("fused CUDA conventional MP2 molecular gradient is nonfinite")

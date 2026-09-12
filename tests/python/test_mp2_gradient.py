@@ -11,13 +11,18 @@ import pytest
 from vibeqc import Calculator, _native
 from vibeqc_compiler.tensor import execute
 
-from tools.vibeqc_mp2.complete_gradient import complete_gradient_validation
+from tools.vibeqc_mp2.complete_gradient import (
+    _tiled_correlation_energy,
+    complete_gradient_validation,
+)
 from tools.vibeqc_mp2.equations import energy_program
 from tools.vibeqc_mp2.gradient import (
     ao_lagrangian_weights,
     canonical_energy_adjoint,
     canonical_lagrangian_weights,
+    canonical_lagrangian_weights_streamed,
     canonical_orbital_rhs,
+    canonical_orbital_rhs_streamed,
     dense_molecular_gradient_oracle,
     dense_ri_lagrangian_weights_oracle,
     dense_ri_molecular_gradient_oracle,
@@ -26,12 +31,13 @@ from tools.vibeqc_mp2.gradient import (
     solve_canonical_orbital_response,
     tile_energy_adjoint,
 )
-from tools.vibeqc_posthf.df import MetricFactor
+from tools.vibeqc_posthf.df import DFProvider, MetricFactor
 from tools.vibeqc_posthf.fixtures import (
     fixture_snapshot,
     load_fixture,
     source_arguments,
 )
+from tools.vibeqc_posthf.providers import ConventionalProvider
 from tools.vibeqc_posthf.sources import NativeSource
 from tools.vibeqc_response import (
     DenseAOResponseBackend,
@@ -124,6 +130,107 @@ def test_gradient_validation_helpers_route_explicit_device():
             device_id=9,
         )
     assert captured == [7, 9]
+
+
+def test_tiled_validation_energy_avoids_full_denominator_and_t2():
+    rng = np.random.default_rng(1938)
+    g = rng.normal(scale=0.03, size=(2, 2, 10, 10))
+    energies = np.concatenate(([-1.1, -0.7], np.linspace(0.1, 1.0, 10)))
+    value, minimum, tiles = _tiled_correlation_energy(g, energies, 2, tile=8)
+    denominator = (
+        energies[:2, None, None, None]
+        + energies[None, :2, None, None]
+        - energies[None, None, 2:, None]
+        - energies[None, None, None, 2:]
+    )
+    expected = np.sum(g * (2 * g - g.swapaxes(2, 3)) / denominator)
+    np.testing.assert_allclose(value, expected, atol=2e-15, rtol=2e-15)
+    assert minimum == float(np.min(np.abs(denominator)))
+    assert tiles == 16
+
+
+@pytest.mark.parametrize("label", ["conventional", "df"])
+def test_streamed_orbital_and_lagrangian_weights_match_dense(label):
+    meta, arrays = load_fixture("h2")
+    arguments = source_arguments(meta)
+    with NativeSource(**arguments) as source:
+        metric = MetricFactor.from_source(source) if label == "df" else None
+        reference = fixture_snapshot(meta, arrays, label=label, metric=metric)
+        provider = (
+            DFProvider(reference, source, metric)
+            if label == "df"
+            else ConventionalProvider(reference, source)
+        )
+        eri = arrays[f"{label}_mo"]
+        occupied = reference.nocc
+        g = eri[:occupied, occupied:, :occupied, occupied:].transpose(0, 2, 1, 3)
+        adjoint = canonical_energy_adjoint(
+            g,
+            reference.orbital_energies,
+            occupied,
+            reference_identity=reference.identity,
+            hamiltonian_id=reference.hamiltonian_id,
+        )
+        hcore_mo = (
+            reference.coefficients.T @ arrays[f"{label}_h"] @ reference.coefficients
+        )
+        dense_orbital = canonical_orbital_rhs(hcore_mo, eri, adjoint, occupied)
+        streamed_orbital = canonical_orbital_rhs_streamed(
+            reference, hcore_mo, provider, adjoint, occupied
+        )
+        np.testing.assert_allclose(
+            streamed_orbital.response_rhs,
+            dense_orbital.response_rhs,
+            atol=2e-11,
+            rtol=2e-11,
+        )
+        np.testing.assert_allclose(
+            streamed_orbital.two_electron,
+            dense_orbital.two_electron,
+            atol=0,
+            rtol=0,
+        )
+        response = solve_canonical_orbital_response(
+            reference,
+            DenseAOResponseBackend(arrays["df_ao" if label == "df" else "ao"]),
+            dense_orbital,
+            options=GMRESOptions(rtol=1e-12, atol=1e-13, max_iterations=100),
+        )
+        dense = canonical_lagrangian_weights(hcore_mo, eri, adjoint, response, occupied)
+        streamed = canonical_lagrangian_weights_streamed(
+            reference, hcore_mo, provider, adjoint, response, occupied
+        )
+        for name in ("one_electron", "two_electron", "overlap"):
+            np.testing.assert_allclose(
+                getattr(streamed, name), getattr(dense, name), atol=3e-11, rtol=3e-11
+            )
+        assert abs(streamed.stationarity_residual - dense.stationarity_residual) < 1e-10
+        assert not provider._cache
+        provider.close()
+
+
+def test_df_provider_close_serializes_cache_clear():
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+
+    meta, arrays = load_fixture("h2")
+    arguments = source_arguments(meta)
+    with NativeSource(**arguments) as source:
+        metric = MetricFactor.from_source(source)
+        reference = fixture_snapshot(meta, arrays, label="df", metric=metric)
+        provider = DFProvider(reference, source, metric)
+        started = Event()
+
+        def close():
+            started.set()
+            provider.close()
+
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            with provider._lock:
+                future = pool.submit(close)
+                assert started.wait(1) and not future.done()
+            future.result(timeout=1)
+        assert provider._closed and not provider._cache and provider._retained == 0
 
 
 @pytest.mark.skipif(
@@ -566,6 +673,15 @@ def test_dense_complete_gradient_matches_fully_resolved_finite_differences(
     with NativeSource(**arguments) as source:
         analytic = dense_molecular_gradient_oracle(reference, source, weights)
         if name == "h2":
+            stale_reference = replace(reference, generation_id="stale-conventional")
+            stale_calculator = Calculator(
+                basis=arguments["basis"],
+                basis_representation=arguments["representation"],
+            )
+            with pytest.raises(ValueError, match="different reference"):
+                fused_cuda_conventional_molecular_gradient(
+                    stale_reference, source, weights, stale_calculator
+                )
             fitted_reference = replace(
                 reference, hamiltonian_id="density-fitting:stale-test"
             )

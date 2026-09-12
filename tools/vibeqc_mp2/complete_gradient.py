@@ -1,8 +1,9 @@
 """End-to-end complete MP2 gradient validation facade.
 
 This module composes the delivered reference, provider, response and fused
-derivative consumers for small systems. Dense full-MO integrals and relaxed AO
-cotangents remain explicit validation boundaries; this is not the final public
+derivative consumers for small systems. Dense relaxed MO cotangents and RI
+weights remain explicit validation boundaries; full MO ERIs, T2 amplitudes and
+global derivative tensors are not retained. This is not the final public
 bounded method implementation.
 """
 
@@ -15,7 +16,6 @@ import numpy as np
 from tools.vibeqc_posthf.conventions import MOBlock, ovov_to_ijab
 from tools.vibeqc_posthf.df import DFProvider, MetricFactor
 from tools.vibeqc_posthf.export import export_rhf
-from tools.vibeqc_posthf.mp2 import restricted_mp2
 from tools.vibeqc_posthf.providers import ConventionalProvider
 from tools.vibeqc_posthf.reference import immutable
 from tools.vibeqc_response import (
@@ -26,8 +26,8 @@ from tools.vibeqc_response import (
 
 from .gradient import (
     canonical_energy_adjoint,
-    canonical_lagrangian_weights,
-    canonical_orbital_rhs,
+    canonical_lagrangian_weights_streamed,
+    canonical_orbital_rhs_streamed,
     fused_cuda_conventional_molecular_gradient,
     fused_cuda_ri_molecular_gradient,
     solve_canonical_orbital_response,
@@ -46,6 +46,45 @@ class CompleteGradientValidation:
     reference_identity: str
     hamiltonian_id: str
     diagnostics: dict
+
+
+def _tiled_correlation_energy(g, orbital_energies, occupied, *, tile=8):
+    """Accumulate restricted MP2 energy without a molecular T2/denominator."""
+
+    eps = np.asarray(orbital_energies, dtype=np.float64)
+    nv = len(eps) - occupied
+    if g.shape != (occupied, occupied, nv, nv) or not 0 < tile <= 8:
+        raise ValueError("tiled MP2 energy dimensions are inconsistent")
+    total = correction = 0.0
+    minimum = float("inf")
+    tiles = 0
+    for i in range(occupied):
+        for j in range(occupied):
+            for a0 in range(0, nv, tile):
+                for b0 in range(0, nv, tile):
+                    a1, b1 = min(a0 + tile, nv), min(b0 + tile, nv)
+                    ea = eps[occupied + a0 : occupied + a1]
+                    eb = eps[occupied + b0 : occupied + b1]
+                    denominator = eps[i] + eps[j] - ea[:, None] - eb[None, :]
+                    local_minimum = float(np.min(np.abs(denominator)))
+                    if np.any(denominator >= 0) or local_minimum <= 1e-10:
+                        raise ValueError(
+                            "complete gradient validation has an invalid MP2 denominator"
+                        )
+                    minimum = min(minimum, local_minimum)
+                    direct = g[i, j, a0:a1, b0:b1]
+                    exchange = g[i, j, b0:b1, a0:a1].T
+                    value = float(
+                        np.sum(direct * (2 * direct - exchange) / denominator)
+                    )
+                    adjusted = value - correction
+                    next_total = total + adjusted
+                    correction = (next_total - total) - adjusted
+                    total = next_total
+                    tiles += 1
+    if not np.isfinite(total):
+        raise ValueError("tiled MP2 correlation energy is nonfinite")
+    return total, minimum, tiles
 
 
 def complete_gradient_validation(
@@ -132,9 +171,12 @@ def complete_gradient_validation(
         )
     )
     try:
-        mp2 = restricted_mp2(reference, provider)
         ovov = provider.get(MOBlock.from_spaces(reference, "ovov")).to_host()
         g = ovov_to_ijab(ovov)
+        correlation_energy, minimum_denominator, energy_tiles = (
+            _tiled_correlation_energy(g, reference.orbital_energies, reference.nocc)
+        )
+        provider.clear()
         adjoint = canonical_energy_adjoint(
             g,
             reference.orbital_energies,
@@ -142,10 +184,11 @@ def complete_gradient_validation(
             reference_identity=reference.identity,
             hamiltonian_id=reference.hamiltonian_id,
         )
-        all_orbitals = tuple(range(reference.nmo))
-        eri_mo = provider.get(MOBlock((all_orbitals,) * 4)).to_host()
+        del ovov, g
         hcore_mo = reference.coefficients.T @ reference.hcore @ reference.coefficients
-        orbital_rhs = canonical_orbital_rhs(hcore_mo, eri_mo, adjoint, reference.nocc)
+        orbital_rhs = canonical_orbital_rhs_streamed(
+            reference, hcore_mo, provider, adjoint, reference.nocc
+        )
         response_backend = (
             CudaDFJKBackend(
                 source,
@@ -169,8 +212,8 @@ def complete_gradient_validation(
                 max_workspace_bytes=min(provider_budget_bytes, 64 << 20),
             ),
         )
-        weights = canonical_lagrangian_weights(
-            hcore_mo, eri_mo, adjoint, response, reference.nocc
+        weights = canonical_lagrangian_weights_streamed(
+            reference, hcore_mo, provider, adjoint, response, reference.nocc
         )
         if density_fitted:
             gradient, contraction = fused_cuda_ri_molecular_gradient(
@@ -195,8 +238,8 @@ def complete_gradient_validation(
                 device_id=device_id,
             )
         return CompleteGradientValidation(
-            float(reference.energy + mp2.correlation_energy),
-            mp2.correlation_energy,
+            float(reference.energy + correlation_energy),
+            correlation_energy,
             immutable(gradient),
             response.residual_norm,
             weights.stationarity_residual,
@@ -207,8 +250,13 @@ def complete_gradient_validation(
                 "provider": dict(provider.statistics),
                 "response": dict(response_backend.statistics),
                 "contraction": contraction,
-                "dense_full_mo_integrals": True,
-                "dense_relaxed_ao_weights": True,
+                "dense_full_mo_integrals": False,
+                "dense_t2_amplitudes": False,
+                "dense_denominator": False,
+                "minimum_absolute_denominator": minimum_denominator,
+                "energy_tiles": energy_tiles,
+                "dense_relaxed_mo_cotangent": True,
+                "dense_relaxed_ao_weights": bool(density_fitted),
                 "global_derivative_tensors": False,
             },
         )
