@@ -124,9 +124,11 @@ CUDA_MODULES["cuda_df_runtime"] = (
     "df_generated_tiles",
     "df_coulomb",
     "df_exchange",
+    "df_occupied_exchange",
     "df_force_response",
     "df_scf_state",
     "df_scf_library",
+    "df_scf_factor",
     "df_rhf_scf",
     "df_uhf_scf",
 )

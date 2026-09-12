@@ -218,7 +218,9 @@ def cuda_df_candidates(
             # the ledger. These explicit conservative allowances are shared
             # with neither caller inputs nor opaque provider allocations.
             solver = (64 << 20) + 16 * matrix + 128 * aux * aux
-            persistent_device = 32 * matrix + 16 * b * aux + solver + 1024 * b
+            # Reserve both generation-linked spin factors at full rank; actual
+            # owned factors use nbf*max_occupied per spin, never full tensors.
+            persistent_device = 34 * matrix + 16 * b * aux + solver + 1024 * b
             persistent_device += (
                 (
                     tensor + 3 * tile_bytes

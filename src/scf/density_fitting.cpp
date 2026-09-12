@@ -422,16 +422,16 @@ std::size_t workspace_bytes(std::size_t ao_pair_tile, std::size_t auxiliary_tile
   // Generated response staging has its own budget in the finalizer; this
   // planner covers value/SCF storage and reserves no retired coordinate scratch.
   // One-electron/Pulay assembly and the lazy device SCF driver retain up to
-  // twenty AO matrices plus one graph reservation per active batch item,
-  // matching the native plan's conservative RHF/UHF lazy-state allowance.
-  // Include the small convergence/occupation vectors and metric status too;
-  // a positive budget cannot be spent entirely before SCF state is allocated.
+  // twenty AO matrices, two occupied-factor matrices and one graph reservation per active batch
+  // item, matching the native plan's conservative RHF/UHF lazy-state allowance. Include the small
+  // convergence/occupation vectors and metric status too; a positive budget cannot be spent
+  // entirely before SCF state is allocated.
   const long double one_electron_doubles =
-      21.0L * static_cast<long double>(batch_size) * static_cast<long double>(nbf) * nbf;
+      23.0L * static_cast<long double>(batch_size) * static_cast<long double>(nbf) * nbf;
   const long double control_bytes =
       static_cast<long double>(batch_size) *
       (16 * sizeof(double) + 2 * sizeof(std::int32_t) + 2 * sizeof(std::uint8_t) +
-       sizeof(std::uint32_t) + sizeof(int));
+       3 * sizeof(std::uint32_t) + 2 * sizeof(int));
   const long double bytes =
       static_cast<long double>(fixed_device_bytes) + control_bytes +
       static_cast<long double>(metric_bytes) * batch_size +

@@ -187,4 +187,17 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
 
 void destroy_cuda_density_fitting_jk_plan(CudaDensityFittingJkPlan*) noexcept {}
 
+DensityFactorIdentity cuda_density_fitting_factor_identity(const CudaDensityFittingJkPlan*,
+                                                           std::size_t, std::uint64_t,
+                                                           std::uint64_t) noexcept {
+  return {};
+}
+
+vibeqc_status execute_cuda_density_fitting_occupied_exchange(
+    CudaDensityFittingJkPlan*, const std::vector<double>&, DensityFactorSpin,
+    std::span<const CudaOccupiedDensityInput>, std::vector<double>&, std::vector<std::uint8_t>&,
+    std::string& detail) {
+  return unavailable(nullptr, detail);
+}
+
 }  // namespace vibeqc::scf

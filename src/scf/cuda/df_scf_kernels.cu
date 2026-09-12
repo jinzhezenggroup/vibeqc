@@ -14,6 +14,51 @@
 
 namespace vibeqc::scf::cuda_df {
 
+__global__ void store_device_occupied_kernel(std::size_t nbf, std::size_t maximum_rank,
+                                             const std::int32_t* occupied,
+                                             const double* coefficients, const std::uint8_t* active,
+                                             const std::uint32_t* iterations, double* factors,
+                                             std::uint32_t* generations) {
+  const auto system = static_cast<std::size_t>(blockIdx.x);
+  if (!active[system]) return;
+  const auto stride = nbf * maximum_rank;
+  for (std::size_t element = threadIdx.x; element < stride; element += blockDim.x)
+    factors[system * stride + element] = element / nbf < static_cast<std::size_t>(occupied[system])
+                                             ? coefficients[system * nbf * nbf + element]
+                                             : 0.0;
+  if (threadIdx.x == 0) generations[system] = iterations[system] + 1;
+}
+
+__global__ void validate_device_occupied_kernel(std::size_t batch_size,
+                                                const std::uint32_t* iterations,
+                                                const std::uint32_t* alpha_generations,
+                                                const std::uint32_t* beta_generations, int* error) {
+  const auto system = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (system >= batch_size) return;
+  if (!iterations[system] || alpha_generations[system] != iterations[system] ||
+      (beta_generations && beta_generations[system] != iterations[system]))
+    atomicExch(error, 1);
+}
+
+void launch_store_device_occupied_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
+                                         cudaStream_t stream, std::size_t nbf,
+                                         std::size_t maximum_rank, const std::int32_t* occupied,
+                                         const double* coefficients, const std::uint8_t* active,
+                                         const std::uint32_t* iterations, double* factors,
+                                         std::uint32_t* generations) {
+  store_device_occupied_kernel<<<grid, block, shared_bytes, stream>>>(
+      nbf, maximum_rank, occupied, coefficients, active, iterations, factors, generations);
+}
+
+void launch_validate_device_occupied_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
+                                            cudaStream_t stream, std::size_t batch_size,
+                                            const std::uint32_t* iterations,
+                                            const std::uint32_t* alpha_generations,
+                                            const std::uint32_t* beta_generations, int* error) {
+  validate_device_occupied_kernel<<<grid, block, shared_bytes, stream>>>(
+      batch_size, iterations, alpha_generations, beta_generations, error);
+}
+
 // Existing DF arithmetic and reduction order; host orchestration compiles separately.
 __global__ void assemble_rhf_fock_kernel(std::size_t elements, const double* hcore,
                                          const double* coulomb, const double* exchange,

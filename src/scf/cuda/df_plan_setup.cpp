@@ -504,9 +504,10 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
   // conservative upper bound here so diagnostics remain valid before and
   // after that allocation (RHF/UHF share this plan type).
   const long double persistent_scf_estimate =
-      20.0L * static_cast<long double>(matrix_bytes) +
-      static_cast<long double>(batch_size) * (16.0L * sizeof(double) + 2.0L * sizeof(std::int32_t) +
-                                              2.0L * sizeof(std::uint8_t) + sizeof(std::uint32_t)) +
+      22.0L * static_cast<long double>(matrix_bytes) +
+      static_cast<long double>(batch_size) *
+          (16.0L * sizeof(double) + 2.0L * sizeof(std::int32_t) + 2.0L * sizeof(std::uint8_t) +
+           3.0L * sizeof(std::uint32_t) + sizeof(int)) +
       solver_device_workspace_bytes + matrix_bytes;  // graph bookkeeping
   const std::size_t persistent_scf_bytes =
       persistent_scf_estimate >= static_cast<long double>(std::numeric_limits<std::size_t>::max())

@@ -48,6 +48,71 @@ bool validate_execution_input(const CudaDensityFittingJkPlan* plan,
 
 }  // namespace
 
+DensityFactorIdentity cuda_density_fitting_factor_identity(
+    const CudaDensityFittingJkPlan* plan, std::size_t system, std::uint64_t orbital_generation,
+    std::uint64_t density_generation) noexcept {
+  if (!plan || system >= plan->batch_size || !orbital_generation || !density_generation) return {};
+  return {plan->factor_basis_identity, system + 1, orbital_generation, density_generation};
+}
+
+vibeqc_status execute_cuda_density_fitting_occupied_exchange(
+    CudaDensityFittingJkPlan* plan, const std::vector<double>& density, DensityFactorSpin spin,
+    std::span<const CudaOccupiedDensityInput> factors, std::vector<double>& exchange,
+    std::vector<std::uint8_t>& selected, std::string& detail) {
+  detail.clear();
+  if (!validate_execution_input(plan, density, detail)) return VIBEQC_STATUS_INVALID_ARGUMENT;
+  if (!factors.empty() && factors.size() != plan->batch_size) {
+    detail = "occupied DF factor list must cover the batch or be empty";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  try {
+    exchange.assign(density.size(), 0);
+    selected.assign(plan->batch_size, 0);
+  } catch (const std::bad_alloc&) {
+    detail = "host allocation for occupied DF K outputs failed";
+    return VIBEQC_STATUS_OUT_OF_MEMORY;
+  }
+  auto error = cudaSetDevice(plan->device_id);
+  if (error == cudaSuccess)
+    error = cudaMemcpyAsync(plan->primary_density, density.data(), density.size() * sizeof(double),
+                            cudaMemcpyHostToDevice, plan->stream);
+  if (error != cudaSuccess)
+    return cuda_failure(error, "upload occupied DF density witness", detail);
+  for (std::size_t system = 0; system < plan->batch_size; ++system) {
+    const auto input = factors.empty() ? CudaOccupiedDensityInput{} : factors[system];
+    const auto expected = cuda_density_fitting_factor_identity(
+        plan, system, input.expected.orbital_generation, input.expected.density_generation);
+    const auto* factor = input.factor;
+    const bool compatible =
+        factor && factor->nbf() == plan->nbf && expected == input.expected &&
+        factor->matches(
+            expected, spin,
+            std::span(density).subspan(system * plan->matrix_elements, plan->matrix_elements));
+    vibeqc_status status;
+    if (compatible) {
+      // K owns the transpose staging after density upload. A bounded B fits
+      // because rank<=nbf; no extra persistent/device factor allocation here.
+      auto* staged = plan->exchange_density_column_major + system * plan->matrix_elements;
+      if (factor->rank())
+        error = cudaMemcpyAsync(staged, factor->values().data(), factor->values().size_bytes(),
+                                cudaMemcpyHostToDevice, plan->stream);
+      if (error != cudaSuccess) return cuda_failure(error, "upload occupied DF factor", detail);
+      status = build_occupied_exchange(*plan, system, staged, factor->rank(), false, 1,
+                                       plan->alpha_exchange, detail);
+      selected[system] = status == VIBEQC_STATUS_SUCCESS;
+    } else {
+      status = build_exchange(*plan, plan->primary_density, plan->alpha_exchange, detail, false,
+                              system, system + 1);
+    }
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
+  }
+  error = cudaMemcpyAsync(exchange.data(), plan->alpha_exchange, exchange.size() * sizeof(double),
+                          cudaMemcpyDeviceToHost, plan->stream);
+  if (error == cudaSuccess) error = cudaStreamSynchronize(plan->stream);
+  return error == cudaSuccess ? VIBEQC_STATUS_SUCCESS
+                              : cuda_failure(error, "finish occupied DF exchange", detail);
+}
+
 vibeqc_status execute_cuda_density_fitting_rhf_jk(CudaDensityFittingJkPlan* plan,
                                                   const std::vector<double>& density,
                                                   std::vector<double>& coulomb,
