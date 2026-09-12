@@ -133,8 +133,22 @@ __global__ void consume(const double* output, int size, int ncoord, double* hcor
     forces[i] -= sum;
   }
 }
+struct CudaFailure {
+  cudaError_t status;
+};
 void check(cudaError_t status) {
-  if (status != cudaSuccess) throw std::runtime_error(cudaGetErrorString(status));
+  if (status != cudaSuccess) throw CudaFailure{status};
+}
+vibeqc_status map_ecp_exception(std::string& detail) {
+  try {
+    throw;
+  } catch (const CudaFailure& error) {
+    detail = cudaGetErrorString(error.status);
+    return error.status == cudaErrorMemoryAllocation ? VIBEQC_STATUS_OUT_OF_MEMORY
+                                                     : VIBEQC_STATUS_CUDA_ERROR;
+  } catch (...) {
+    return api::map_exception(&detail);
+  }
 }
 __global__ void check_grid(const double* coarse, const double* fine, int size, int stride,
                            int* failed) {
@@ -288,7 +302,7 @@ vibeqc_status ecp_integrals_cuda(int device, const core::System& system, unsigne
         convergence);
     return VIBEQC_STATUS_SUCCESS;
   } catch (...) {
-    return api::map_exception(&detail);
+    return map_ecp_exception(detail);
   }
 }
 vibeqc_status add_ecp_cuda(int device, const core::System& system, void* stream, double* hcore,
@@ -301,7 +315,7 @@ vibeqc_status add_ecp_cuda(int device, const core::System& system, void* stream,
         density, forces, true);
     return VIBEQC_STATUS_SUCCESS;
   } catch (...) {
-    return api::map_exception(&detail);
+    return map_ecp_exception(detail);
   }
 }
 }  // namespace vibeqc::integrals

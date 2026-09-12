@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .basis import BasisSet
+from .basis import BasisSet, validate_ecp_data
 from .elements import checked_integer
 
 
@@ -31,6 +31,7 @@ def resolve_ecp(basis, atoms):
         if core >= atom.atomic_number:
             raise ValueError("ECP core count must leave a positive ionic charge")
         potentials = json.loads(element.ecp_data)
+        validate_ecp_data(potentials)
         channels = [p["angular_momentum"][0] for p in potentials]
         if len(set(channels)) != len(channels):
             raise ValueError("duplicate ECP angular channel")
