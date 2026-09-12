@@ -106,6 +106,8 @@ def manifest_payload(
             "direct_scf_tolerance": 1.0e-14,
             "warm_policy": "fixed post-cold engine-local density snapshot",
             "comparison": "VibeQC DF versus GPU4PySCF DF; no mixed direct/DF claim",
+            "maximum_energy_error_hartree": 1.0e-9,
+            "maximum_force_error_hartree_per_bohr": 1.0e-8,
         },
         "component_ledger": {
             "status": "pending_measurement",
@@ -204,6 +206,10 @@ def run_matrix(
             "cuda",
             "--density-fitting-memory-budget-bytes",
             str(payload["execution"].get("density_fitting_memory_budget_bytes", 0)),
+            "--maximum-energy-error",
+            "1e-9",
+            "--maximum-force-error",
+            "1e-8",
             "--output",
             str(result_path),
         ]
