@@ -139,6 +139,13 @@ struct CudaFailure {
 void check(cudaError_t status) {
   if (status != cudaSuccess) throw CudaFailure{status};
 }
+// ECP callers may own resources on another device. Keep the thread's prior
+// selection alive through cleanup, including failures after partial staging.
+struct DeviceGuard {
+  int previous{};
+  DeviceGuard() { check(cudaGetDevice(&previous)); }
+  ~DeviceGuard() { (void)cudaSetDevice(previous); }
+};
 vibeqc_status map_ecp_exception(std::string& detail) {
   try {
     throw;
@@ -297,6 +304,7 @@ vibeqc_status ecp_integrals_cuda(int device, const core::System& system, unsigne
                                  unsigned polar, bool derivatives, EcpData& output,
                                  std::string& detail, bool convergence) {
   try {
+    DeviceGuard device_guard;
     check(cudaSetDevice(device));
     run(system, radial, polar, derivatives, nullptr, &output, nullptr, nullptr, nullptr,
         convergence);
@@ -310,6 +318,7 @@ vibeqc_status add_ecp_cuda(int device, const core::System& system, void* stream,
   if (system.ecp_terms.empty()) return VIBEQC_STATUS_SUCCESS;
   try {
     if (forces && !density) throw std::invalid_argument("ECP force requires density weights");
+    DeviceGuard device_guard;
     check(cudaSetDevice(device));
     run(system, 160, 32, forces != nullptr, static_cast<cudaStream_t>(stream), nullptr, hcore,
         density, forces, true);

@@ -20,7 +20,7 @@ def build_ecp_ir(angular, terms, *, derivatives=False, weighted=False):
     if len(angular) != 2:
         raise ValueError("ECP requires two orbital shell slots")
     signature = ShellSignature(
-        tuple(BasisShell(i, i, l) for i, l in enumerate(angular)),
+        tuple(BasisShell(i, i, momentum) for i, momentum in enumerate(angular)),
         tuple(CenterBinding(i) for i in range(3)),
     )
     operator = OperatorSpec(
@@ -78,8 +78,8 @@ def emit_ecp_ao_cuda():
         "    double x,double y,double z,double alpha,double* out) {",
         "  switch (16*lx+4*ly+lz) {",
     ]
-    for l in range(3):
-        for component in cartesian_components(l):
+    for angular in range(3):
+        for component in cartesian_components(angular):
             graph, roots = gaussian_roots(component)
             emitter = ScalarCEmitter(graph, {})
             emitter.emit(roots)

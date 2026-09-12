@@ -14,8 +14,8 @@ not a clean-revision performance promotion or broad heavy-element claim.
 | RHF force maximum error / Eh/bohr | 2.46e-12 | 5.54e-13 |
 | UHF energy error / Eh | 4.44e-16 | 4.44e-16 |
 | UHF force maximum error / Eh/bohr | 9.79e-16 | 8.40e-16 |
-| Complete cold RHF API median / ms | 1665.4 | 1049.4 |
-| Complete cold UHF API median / ms | 1774.9 | 1042.7 |
+| Complete warm RHF API median / ms | 1665.4 | 1049.4 |
+| Complete warm UHF API median / ms | 1774.9 | 1042.7 |
 
 The local-matrix coarse/refined difference is 3.47e-12 Eh; the local-derivative
 difference is 2.03e-11 Eh/bohr. Maximum CPU/GPU differences are below 1.4e-17
