@@ -9,8 +9,10 @@ Both binaries use Release, CUDA 12.9.1, architecture 120, production optimizatio
 and stable AOT shards. `unprofiled.json` identifies pristine source `640a81e` and
 its library. `components.json` identifies diagnostic source `cf1a284` and its
 different library. The trace adds event/synchronization overhead; these two
-files do not establish a speedup. Full hashes, native-test results, raw traces,
-and build settings are in `manifest.json` and `trace-library.json`.
+files do not establish a speedup. Full raw records, traces, build identities,
+and the Nsight capture are preserved byte for byte in `raw-evidence.zip`.
+`raw-evidence.manifest.json` inventories member sizes/hashes and source commits;
+`manifest.json` retains build settings and native-test results.
 
 | AO | unprofiled energy median, 3 samples | energy + force median | iterations |
 |---:|---:|---:|---:|
@@ -47,9 +49,19 @@ gate.
 
 J/K capture records describe graph construction only. They are kept separate
 from executed stream calls and are not multiplied by SCF iteration counts.
-The raw Nsight graph-node capture is retained under an exact-content evidence
-policy exception so reviewers can inspect actual replay.
+The archived raw Nsight graph-node capture lets reviewers inspect actual replay.
 
 Validation: 151 host protocol/structure tests and four Slurm native suites
 passed (DF numerical/reference checks, direct HF, CUDA Fock provider and Fock
 composition). No priority issue is complete on the strength of these counters.
+
+Restore all 11 original files (including the paths cited above) from the repository root:
+
+```bash
+python -m tools.unpack_evidence benchmarks/results/issue283-component-baseline \
+  --output build/issue283-component-baseline-restored
+```
+
+The output directory must be new. Restoration and direct byte comparisons
+passed before removing the expanded files. The archive contains 592248 original bytes
+in 249473 compressed bytes; no measurement was rerun or altered.
