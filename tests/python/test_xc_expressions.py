@@ -21,6 +21,7 @@ from vibeqc_compiler.xc import (
 from vibeqc_compiler.xc.capabilities import query_capability
 from vibeqc_compiler.xc.cuda import plan_tiles
 from vibeqc_compiler.xc.cuda_emit import XCSchedule, emit_cuda
+from vibeqc_compiler.xc.expressions import lda_xc_pw_unpolarized_tail_expression
 from vibeqc_compiler.xc.fixtures import load_fixture
 from vibeqc_compiler.xc.potential import potential_coefficients
 from vibeqc_compiler.xc.reference import exchange_reference
@@ -32,6 +33,29 @@ from tools.vibeqc_validation.schema import block_error
 def check(actual, expected, *, atol=1e-11, rtol=1e-10):
     result = block_error(actual, expected, atol=atol, rtol=rtol)
     assert result["passed"], result
+
+
+def test_unpolarized_lda_tail_algebra_matches_interior_and_stays_finite():
+    program = build_program(
+        functional("LDA_XC_PW", spin="unpolarized"),
+        order=1,
+        outputs=((), (0,)),
+    )
+    graph, energy, derivative, _x = lda_xc_pw_unpolarized_tail_expression()
+    for rho in np.logspace(-12, 12, 49):
+        expected = program.evaluate(np.array([[rho], [0.0], [0.0]])).ravel()
+        actual = np.array(
+            [
+                graph.evaluate(energy, {"rho_sixth_root": rho ** (1 / 6)}),
+                graph.evaluate(derivative, {"rho_sixth_root": rho ** (1 / 6)}),
+            ]
+        )
+        np.testing.assert_allclose(actual, expected, rtol=3e-15, atol=1e-300)
+    for rho in (1e-100, 1e-200, np.nextafter(0.0, 1.0)):
+        root = rho ** (1 / 6)
+        assert root > 0
+        assert np.isfinite(graph.evaluate(energy, {"rho_sixth_root": root}))
+        assert np.isfinite(graph.evaluate(derivative, {"rho_sixth_root": root}))
 
 
 @pytest.mark.parametrize("name", CATALOG)

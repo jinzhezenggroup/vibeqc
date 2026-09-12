@@ -2,8 +2,9 @@
 
 VibeQC's long-term mission is to cover **all quantum-chemistry methods** in one
 accelerator-native system. This is a roadmap commitment, not a statement of
-current availability. Today, only RHF and UHF energies and analytic nuclear
-forces are executable.
+current availability. Today, RHF/UHF energies and analytic nuclear forces are
+executable, together with provisional CPU energy-only LDA and PBE RKS vertical
+slices.
 
 ## Current method status
 
@@ -13,7 +14,9 @@ forces are executable.
 | Hartree-Fock | UHF | Implemented: energy and analytic forces |
 | Hartree-Fock | ROHF, GHF, spinor HF | Planned |
 | Density fitting | Two-/three-center integral oracle, first nuclear derivatives, metric conditioning, memory planner | CPU oracle plus CUDA-native batched integral generation, RI-J/K, raw two-electron force-response contractions, and device-resident SCF integration implemented; streamed host tiles and provider-dependent Graph replay are documented acceptance-boundary modes |
-| Density functional theory | LDA, GGA, meta-GGA, hybrid, range-separated, nonlocal correlation | Planned |
+| Density functional theory | LDA RKS | Implemented vertical slice: CPU energy only, closed shell, conventional J; independent matched-grid SCF endpoint accepted for H2 and He |
+| Density functional theory | PBE RKS | Limited CPU energy-only slice: closed shell, conventional J, exact interior PBE and versioned LDA fallback tail; independent matched-grid SCF endpoint accepted for H2 |
+| Density functional theory | LDA/PBE UKS, meta-GGA, hybrid, range-separated, nonlocal correlation | Planned |
 | Perturbation theory | MP2 and higher-order variants | Planned |
 | Coupled cluster | CCSD, perturbative triples, higher-rank variants | Planned |
 | Configuration interaction | CIS, selected CI, truncated and full CI | Planned |
@@ -53,8 +56,13 @@ force-response kernels and broader HF robustness.
 Method capability discovery and prepared execution are now registry-driven:
 the public API is independent of RHF/UHF dispatch, while each method family
 owns its validation, options, retained state, and batch policy.
-DFT grids and exchange-correlation response, followed by AO-to-MO transforms
-and correlated tensor contractions, open the main DFT and post-HF families.
+The native LDA and PBE RKS paths compose versioned atom-centered grids,
+generated XC, the common Coulomb provider and host SCF. Their H2 matched-grid
+endpoints pass the independent PySCF/Libxc gate recorded in the issue-162-a
+validation records. The PBE record covers the closed-shell CPU energy-only
+slice; broader DFT still requires representative systems, UKS semantics,
+prepared CUDA, resource planning and gradients. AO-to-MO transforms and
+correlated tensor contractions open the post-HF families.
 Multireference, excited-state, periodic, embedding, and relativistic methods
 then build on those validated primitives rather than on reserved names alone.
 

@@ -1,12 +1,14 @@
 # Fixed-density LDA/PBE XC integration (DFT03 first step)
 
-This internal CPU tooling slice integrates an explicit fixed density and
-assembles its AO potential. It reuses DFT01's native AO jets, grid tiles and
-density features, and DFT02's audited expressions. The common [contraction
-generator](xc_contractions.md) now owns minimal point coefficients and assembly;
-LDA skips gradient/tau reductions and GGA skips tau.
-It does not register RKS/UKS, iterate SCF, implement nuclear gradients, or run
-GPU prepared XC. It completes only this step of [#162](https://github.com/jinzhezenggroup/vibeqc/issues/162).
+DFT03 introduced internal CPU tooling that integrates an explicit fixed
+density and assembles its AO potential. It reuses DFT01's native AO jets, grid
+tiles and density features, and DFT02's audited expressions. The common
+[contraction generator](xc_contractions.md) owns minimal point coefficients and
+assembly; LDA skips gradient/tau reductions and GGA skips tau. Issue
+[#162](https://github.com/jinzhezenggroup/vibeqc/issues/162) now also contains
+separate native `LDA_RKS` and `PBE_RKS` vertical slices. The fixed-density
+Python interface below remains the independent, more general LDA/PBE contract;
+it does not itself run SCF, gradients or prepared GPU XC.
 
 ## Density, spin and energy conventions
 
@@ -40,7 +42,7 @@ multiplies by total rho. VibeQC must **not** multiply its `e_xc` by rho again.
 Every grid weight already contains the full Bohr^3 measure, including radial,
 angular and partition factors. Energy is `sum_p w_p e_xc(p)`.
 
-For future RKS integration, let `D=Da+Db` and `J[D]` denote the total-density
+For RKS integration, let `D=Da+Db` and `J[D]` denote the total-density
 Coulomb matrix. The all-electron semilocal energy/Fock convention is
 
 ```text
@@ -123,24 +125,68 @@ J/K scheduler is introduced. #203 must account for XC graph intermediates,
 matrix outputs, copies and allocator/BLAS overhead before a prepared method
 claims a composed memory bound.
 
-## Domain boundary and remaining RKS dependencies
+## Native LDA RKS vertical slice
 
-All points, including zero-weight points, must satisfy DFT02's `interior-v1`
-first-derivative domain. Vacuum, extremely small density, complete polarization
+The public method registry now advertises `LDA_RKS` with energy as its only
+property. Its prepared CPU plan composes the existing conventional Coulomb
+provider with a native materialized atom-centered grid and generated FP64
+`LDA_XC_PW` evaluator. The default `GridSpec v1` is deterministic
+`48 radial x 16 polar x 32 azimuth` per atom, using a rational Legendre radial
+map, Legendre/trapezoid angular quadrature and equal-radius Becke partition.
+
+Native SCF uses closed-shell occupations, `F=h+J+V_xc`, and the energy equation
+above. Convergence requires energy change, density RMS and the physical
+commutator residual to pass the requested thresholds; a depleted iteration
+budget returns `VIBEQC_STATUS_NOT_CONVERGED` with diagnostics. The adapter
+rejects odd-electron or non-singlet systems, forces, density fitting, auxiliary
+bases, prepared batches and non-CPU contexts instead of falling back.
+
+The native `lda-tail-v1` contract evaluates the exact positive-density formula,
+uses the analytic zero-density energy/potential limit, and rejects negative or
+nonfinite density. Its generated DAG uses the algebraically equivalent
+`sixth-root-v1` parameterization so the smallest positive FP64 densities remain
+finite without clipping or a density floor.
+
+Current He/H2 endpoint numbers are also covered by an independent PySCF/Libxc
+SCF consumer using the identical materialized `GridSpec v1` points and weights.
+Both cases pass the initial absolute energy target of `1e-8 Eh`; this endpoint
+acceptance is distinct from the already accepted fixed-density DFT03 fixtures.
+The run is summarized in `build/issue-162-a/validation-summary.md` with remote
+result SHA-256 `f4f85324ef505576e7231c4ead2056f775a4fefc464e7765a0dcc5d92cc93cf9`.
+
+The native fixed-density layer now also contains an unpolarized PBE integrator
+and AO potential. It uses the same spatial grid and conventional AO density,
+including the GGA `sigma` contribution through first AO derivatives. Its
+strict versioned `pbe-tail-v1` policy defines the exact vacuum zero and accepts
+only the audited `interior-v1` density/reduced-gradient domain; it rejects
+out-of-domain points rather than clipping them. The production
+`pbe-tail-v2-lda-fallback` policy keeps exact PBE in that interior and uses the
+stable positive-density `LDA_XC_PW` expression with zero sigma derivative in
+the low-density/high-gradient tail. Native tests cover both contracts and the
+tail-v2 finite-difference variational response.
+
+The public `PBE_RKS` slice now reuses the existing CPU RKS SCF/J/DIIS path with
+tail-v2, but remains provisional until an independent PySCF/Libxc matched-grid
+endpoint is recorded. It is energy-only, closed-shell, conventional-J, CPU-only,
+and has no prepared batch, forces, density fitting, UKS or CUDA support.
+
+## Fixed-density domain and remaining dependencies
+
+The original fixed-density Python consumer retains DFT02's `interior-v1`
+first-derivative domain: vacuum, extremely small density, complete polarization
 or other unsupported features raise `UnsupportedXC` with the failing tile
-offset. No clipping, weight-based skipping or tail regularization is added.
-An empty explicit grid returns the zero integral, not a converged quadrature.
-The small reference grids are intentionally fixed controlled inputs; agreement
-does not establish quadrature convergence or full molecular-grid tail support.
+offset. This is intentionally distinct from native `lda-tail-v1`; neither path
+clips density or skips zero-weight points. An empty explicit grid returns the
+zero integral, not a converged quadrature. The small reference grids are fixed
+controlled inputs, so agreement does not establish quadrature convergence.
 
-The next CPU RKS step can consume this tested density-to-E/V contract but still
-requires a versioned, differentiated XC tail/limit policy, a native DFT method
-adapter and native XC execution integration, common #202 Coulomb selection
-(no exact exchange for semilocal XC), occupations/DIIS/residual evaluation,
-convergence reporting, and method-level invalidation. Reuse existing HF
-orthogonalization and iteration infrastructure; do not wrap full SCF in this
-Python tooling loop. #203 owns composed resource planning. Public UKS, nuclear
-gradients and GPU/prepared execution remain separate later work.
+Remaining #162 work includes LDA/PBE UKS, state invalidation and prepared CUDA.
+The independent closed-shell PBE H2 endpoint is recorded in
+`experiments/vibeqc/issue-162-a/pbe-rks-endpoint-20260912.md`; this does not
+establish broader PBE coverage. #203 owns composed resource planning, and #163
+owns nuclear gradients. Broader methods should
+reuse the existing orthogonalization, provider and SCF infrastructure rather
+than wrap full SCF in the Python fixed-density tooling loop.
 
 ## Independent reproduction
 

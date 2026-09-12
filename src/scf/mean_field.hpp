@@ -20,11 +20,31 @@ struct CudaDensityFittingMetricDiagnostic;
 struct CudaDensityFittingJkPlan;
 class PreparedFockPlan;
 
+}  // namespace vibeqc::scf
+
+namespace vibeqc::dft {
+class AoBasis;
+class MolecularGrid;
+}  // namespace vibeqc::dft
+
+namespace vibeqc::scf {
+
 /** Validate controls and derive the requested value/force capability for this
  * execution without changing the immutable prepared method request. */
 ResolvedFockBuild fock_strategy_for_execution(const ScfOptions& options);
 ScfResult run_prepared_fock_strategy(const PreparedFockPlan& plan, const ScfOptions& options,
                                      const std::vector<double>* initial_density = nullptr);
+
+/** CPU energy-only LDA RKS using a Coulomb-only prepared Fock source and the
+ * matching prepared AO/grid/XC state. */
+ScfResult run_lda_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                      const dft::MolecularGrid& grid, const ScfOptions& options,
+                      const std::vector<double>* initial_density = nullptr);
+
+/** CPU energy-only PBE RKS using the versioned production tail-v2 policy. */
+ScfResult run_pbe_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                      const dft::MolecularGrid& grid, const ScfOptions& options,
+                      const std::vector<double>* initial_density = nullptr);
 
 /** Reuse independent CUDA sources when immutable inputs match. Build a new
  * candidate completely before replacing cached sources; fused standard HF

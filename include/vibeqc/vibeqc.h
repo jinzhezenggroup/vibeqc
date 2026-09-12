@@ -48,7 +48,11 @@ enum {
   VIBEQC_METHOD_UHF = 2,
   VIBEQC_METHOD_WB97M_V = 3,
   VIBEQC_METHOD_RCCSD_T = 4,
-  VIBEQC_METHOD_MP2 = 5
+  VIBEQC_METHOD_MP2 = 5,
+  VIBEQC_METHOD_LDA_RKS = 6,
+  VIBEQC_METHOD_PBE_RKS = 7,
+  VIBEQC_METHOD_LDA_UKS = 8,
+  VIBEQC_METHOD_PBE_UKS = 9
 };
 
 /** Broad algorithm family used for capability discovery and dispatch. */

@@ -50,6 +50,7 @@ def source_identity(source: Path) -> str:
         source / "tools/generate_one_electron_kernels.py",
         source / "tools/generate_grid_kernels.py",
         source / "tools/generate_mp2_native.py",
+        source / "tools/generate_xc_cpu.py",
     }
     for directory in ("src", "include"):
         paths.update(p for p in (source / directory).rglob("*") if p.is_file())

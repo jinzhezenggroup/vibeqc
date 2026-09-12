@@ -73,6 +73,19 @@ if(_vibeqc_compiler_cache)
   message(STATUS "VibeQC compiler cache: ${_vibeqc_compiler_cache}")
 endif()
 
+if(NOT Python3_Interpreter_FOUND)
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+endif()
+set(VIBEQC_XC_CPU_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/xc_cpu_generated.hpp")
+add_custom_command(
+  OUTPUT "${VIBEQC_XC_CPU_HEADER}"
+  COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_cpu.py"
+          --output "${VIBEQC_XC_CPU_HEADER}"
+  DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_cpu.py"
+          ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+  VERBATIM)
+add_custom_target(vibeqc_xc_cpu_codegen DEPENDS "${VIBEQC_XC_CPU_HEADER}")
+
 if(NOT VIBEQC_CUDA_SPLIT_COMPILE_THREADS MATCHES "^[0-9]+$")
   message(FATAL_ERROR
           "VIBEQC_CUDA_SPLIT_COMPILE_THREADS must be a non-negative integer")
@@ -147,9 +160,13 @@ add_library(vibeqc SHARED
   src/api/error.cpp
   src/dft/ao_grid.cpp
   src/dft/bridge.cpp
+  src/dft/grid.cpp
+  src/dft/rks.cpp
+  src/dft/xc.cpp
   src/integrals/s_integrals.cpp
   src/integrals/ecp.cpp
   src/api/c_api_ecp.cpp
+  src/methods/dft_method.cpp
   src/methods/hf_method.cpp
   src/methods/mp2_method.cpp
   src/methods/registry.cpp
@@ -176,6 +193,7 @@ add_library(vibeqc SHARED
   src/scf/initial_guess/density.cpp
   src/scf/cuda/rhf_policy.cpp
 )
+add_dependencies(vibeqc vibeqc_xc_cpu_codegen)
 
 # A local tuned library may replace this build only when its scientific source
 # and generator are identical. Paths and Git metadata are deliberately excluded
@@ -189,7 +207,7 @@ file(GLOB_RECURSE _vibeqc_identity_inputs CONFIGURE_DEPENDS
 list(APPEND _vibeqc_identity_inputs "CMakeLists.txt" "tools/generate_shell_kernels.py"
      "tools/generate_df_kernels.py" "tools/generate_weighted_eri_kernels.py"
      "tools/generate_one_electron_kernels.py" "tools/generate_grid_kernels.py"
-     "tools/generate_mp2_native.py")
+     "tools/generate_mp2_native.py" "tools/generate_xc_cpu.py")
 list(SORT _vibeqc_identity_inputs)
 set(_vibeqc_identity_text "")
 foreach(_vibeqc_identity_path IN LISTS _vibeqc_identity_inputs)
@@ -828,6 +846,23 @@ if(VIBEQC_BUILD_TESTS)
   target_link_libraries(vibeqc_grid_tests PRIVATE vibeqc)
   target_include_directories(vibeqc_grid_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
   add_test(NAME vibeqc_grid_tests COMMAND vibeqc_grid_tests)
+
+  add_executable(vibeqc_dft_tests
+    tests/native/test_dft.cpp
+    src/dft/ao_grid.cpp
+    src/dft/grid.cpp
+    src/dft/xc.cpp
+    src/molecule/basis.cpp)
+  add_dependencies(vibeqc_dft_tests vibeqc_xc_cpu_codegen)
+  target_include_directories(vibeqc_dft_tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_BINARY_DIR}/generated)
+  add_test(NAME vibeqc_dft_tests COMMAND vibeqc_dft_tests)
+
+  add_executable(vibeqc_dft_api_tests tests/native/test_dft_api.cpp)
+  target_link_libraries(vibeqc_dft_api_tests PRIVATE vibeqc)
+  add_test(NAME vibeqc_dft_api_tests COMMAND vibeqc_dft_api_tests)
 
   add_executable(vibeqc_mixed_precision_tests
     tests/native/test_mixed_precision.cpp)
