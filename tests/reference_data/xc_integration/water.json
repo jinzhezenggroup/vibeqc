@@ -136,8 +136,8 @@
       0
     ],
     "pyscf_numint_sha256": "ff7384551c7a6b80ff8a5ffcd915eb8bfbf6ca4b8f987f912aa82a1d6edda7e8",
-    "exporter_sha256": "fc83ad88b16fd7269686315be2f4fb42626eacabf82034e3a3a35fd432f90c50",
-    "basis_adapter_sha256": "88b59d85e891edf86405990179723802682f479fc265a91773b088b1ce1b162e",
+    "exporter_sha256": "104633c2731f980599357d8ebb63fa4157acfea0c3fd3476d1fe001d59434337",
+    "basis_adapter_sha256": "d195f3e45c3cf4a248b35dd3e44de4b310325d3e01b4eb3a481c4fd9f50cfa3f",
     "functionals": {
       "LDA_XC_PW": "LDA_X,LDA_C_PW",
       "PBE": "GGA_X_PBE,GGA_C_PBE"
@@ -270,5 +270,5 @@
       "sha256": "0b85f1dd9e547afdaf0654dffaaca0e45e12b930df0a4e1c4d1ea7a35786fb88"
     }
   },
-  "identity": "5b63db08026694a5cf64c31b09011355dad8b71a0541751b882d0787b4c3e47d"
+  "identity": "7784f5c236fcd6ebeae76f368523e897ced46b0d83783c2ec12021d70554b905"
 }

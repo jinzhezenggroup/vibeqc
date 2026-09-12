@@ -2,7 +2,9 @@
 
 Audit baseline: `3da58410bb02a903ea6341a7caac0afc9314355b` (after #239).
 The implementation progress below supersedes the baseline audit. Mixed
-provider SCF is executable; a complete DFT SCF method is not registered.
+provider SCF is executable, and `LDA_RKS` now consumes its CPU Coulomb-only
+path as an energy-only vertical slice. Broader RKS/UKS, gradients, batching and
+prepared CUDA remain outside that slice.
 
 ## Implementation progress after the audit
 
@@ -140,8 +142,8 @@ be substituted for an independently validated raw consumer.
 3. Expose requested/resolved semantics and backend/schedule diagnostics while
    preserving existing public defaults and approximation authorization.
 4. Connect the available fixed-density XC consumer to the common J/K boundary.
-   Complete RKS/UKS and hybrid methods remain owned by #162/#165, which are
-   currently open; this refactor must not imply those methods are complete.
+   The first CPU LDA RKS energy-only consumer is now connected; PBE, UKS,
+   hybrids, gradients, batching and prepared CUDA remain owned by #162/#165.
 5. Validate identical-approximation raw matrices before exact-versus-fitted
    comparisons, then complete CPU/CUDA energy/force, replay, changed-geometry,
    ragged-batch and dispatch-overhead checks under matched final accuracy.
