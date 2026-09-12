@@ -1,6 +1,7 @@
 #include <cstddef>
 #include <memory>
 #include <utility>
+#include <unordered_map>
 
 #include "api/error.hpp"
 #include "api/handles.hpp"
@@ -37,8 +38,13 @@ void vibeqc_context_destroy(vibeqc_context* context) { delete context; }
 
 const char* vibeqc_context_get_last_detail(const vibeqc_context* context) {
   if (context == nullptr) return "invalid context";
+  // Keep one stable snapshot per context on this thread. Querying another
+  // context must not invalidate a pointer previously returned for this one.
+  thread_local std::unordered_map<const vibeqc_context*, std::string> snapshots;
   std::lock_guard<std::recursive_mutex> lock(context->mutex);
-  return context->last_detail.c_str();
+  auto& snapshot = snapshots[context];
+  if (snapshot != context->last_detail) snapshot = context->last_detail;
+  return snapshot.c_str();
 }
 
 const char* vibeqc_context_last_error(const vibeqc_context* context) {

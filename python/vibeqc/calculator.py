@@ -639,6 +639,8 @@ class Calculator:
                 "max_iterations": self._max_iterations,
                 "diis_history": self._diis_history,
                 "precision": self._precision_mode,
+                "correlation_memory_budget_bytes": self._correlation_memory_budget_bytes,
+                "mp2_denominator_threshold": self._mp2_denominator_threshold,
                 "target_accuracy": self._target_accuracy.to_dict()
                 if self._target_accuracy
                 else None,
@@ -702,8 +704,17 @@ class Calculator:
         # HF's native default uses the orbital system as the auxiliary system.
         # An AUTO provider may choose a backend, but never changes this model.
         auxiliary = metadata.get("auxiliary", orbital) if fitted else None
+        method_names = {
+            _native.METHOD_RHF: "rhf",
+            _native.METHOD_UHF: "uhf",
+            _native.METHOD_MP2: "mp2",
+        }
+        try:
+            resolved_method = method_names[self._method]
+        except KeyError as error:
+            raise NotImplementedError("accuracy model is unavailable for this method") from error
         return ResolvedModel(
-            method={_native.METHOD_RHF: "rhf", _native.METHOD_UHF: "uhf"}[self._method],
+            method=resolved_method,
             geometry_hash=canonical_hash(
                 [
                     (

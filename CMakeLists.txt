@@ -670,10 +670,14 @@ if(VIBEQC_BUILD_TESTS)
   target_include_directories(vibeqc_native_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
   add_test(NAME vibeqc_native_tests COMMAND vibeqc_native_tests)
 
-  add_executable(vibeqc_mp2_contract_tests tests/native/test_mp2_contract.cpp)
-  target_link_libraries(vibeqc_mp2_contract_tests PRIVATE vibeqc)
-  target_include_directories(vibeqc_mp2_contract_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-  add_test(NAME vibeqc_mp2_contract_tests COMMAND vibeqc_mp2_contract_tests)
+  # The Windows shared-library ABI intentionally exports only the public C
+  # surface; this internal contract target requires private C++ symbols.
+  if(NOT WIN32)
+    add_executable(vibeqc_mp2_contract_tests tests/native/test_mp2_contract.cpp)
+    target_link_libraries(vibeqc_mp2_contract_tests PRIVATE vibeqc)
+    target_include_directories(vibeqc_mp2_contract_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    add_test(NAME vibeqc_mp2_contract_tests COMMAND vibeqc_mp2_contract_tests)
+  endif()
 
   if(VIBEQC_ENABLE_CUDA)
     add_executable(vibeqc_mp2_cuda_status_tests tests/native/test_mp2_cuda_status.cu)

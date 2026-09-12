@@ -53,10 +53,14 @@ def record_public_result(
         }
     )
     reference = metadata["records"]["conventional"]
-    record.update(
-        revision=subprocess.check_output(
+    try:
+        revision = subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=root, text=True
-        ).strip(),
+        ).strip()
+    except (OSError, subprocess.SubprocessError):
+        revision = "unknown"
+    record.update(
+        revision=revision,
         backend_selected=backend,
         device=probe_device(calc._library, calc._device_id)["device"]
         if backend == "cuda"

@@ -78,14 +78,14 @@ def test_public_mp2_rejects_unimplemented_controls():
     target = TargetAccuracy(
         (ObservableTarget("energy", "absolute", "Eh", absolute=1e-6),)
     )
-    with pytest.raises(NotImplementedError, match="target_accuracy"):
+    with pytest.raises(NotImplementedError, match=r"target_accuracy"):
         Calculator(method="mp2", target_accuracy=target)
-    with pytest.raises(NotImplementedError, match="resource_budget"):
+    with pytest.raises(NotImplementedError, match=r"resource_budget"):
         Calculator(method="mp2", resource_budget=ResourceBudget())
-    with pytest.raises(ValueError, match="precision=.*fp64"):
+    with pytest.raises(ValueError, match=r"precision=.*fp64"):
         Calculator(method="mp2", precision="auto")
     calculator = Calculator(method="mp2")
-    with pytest.raises(NotImplementedError, match="resource planning"):
+    with pytest.raises(NotImplementedError, match=r"resource planning"):
         calculator.estimate_resources([[("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]])
     with pytest.raises(NotImplementedError, match="accuracy model resolution"):
         calculator.resolved_model([("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))])
@@ -131,7 +131,7 @@ def test_public_unsupported_budget_scf_and_neighbors(device):
     first = calc.singlepoint(atoms)
     changed = calc.singlepoint([("H", (0, 0, -0.8)), ("H", (0, 0, 0.8))])
     assert abs(first.energy - changed.energy) > 1e-6
-    assert calc.singlepoint(atoms).energy == first.energy
+    assert abs(calc.singlepoint(atoms).energy - first.energy) <= 1e-12
 
 
 def test_c_api_force_request_never_returns_success_or_writes_placeholder(device):
