@@ -21,6 +21,7 @@
 #include <utility>
 #include <vector>
 
+#include "integrals/ecp_cuda.hpp"
 #include "molecule/basis.hpp"
 #include "posthf/capacity.hpp"
 #include "runtime/allocation_measurement.hpp"
@@ -2528,6 +2529,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       fill_global_failure(outputs, cuda_status(cuda_error));
       return outputs;
     }
+    for (std::size_t e = 0; e < host.ecp_systems.size(); ++e) {
+      std::string ecp_detail;
+      const auto ecp_status =
+          integrals::add_ecp_cuda(device_id, host.ecp_systems[e], resources.stream_,
+                                  hcore + e * matrix_size, nullptr, nullptr, ecp_detail);
+      if (ecp_status != VIBEQC_STATUS_SUCCESS) {
+        fill_global_failure(outputs, ecp_status);
+        return outputs;
+      }
+    }
     if (persistent_eri) {
       launch_build_eri_kernel(blocks_for(eri_elements), threads, 0, resources.stream_, device_batch,
                               eri);
@@ -3456,6 +3467,17 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     }
     launch_nuclear_force_kernel(blocks_for(force_coordinate_count), threads, 0, resources.stream_,
                                 device_batch, active, forces);
+    for (std::size_t e = 0; e < host.ecp_systems.size(); ++e) {
+      std::string ecp_detail;
+      const auto ecp_status =
+          integrals::add_ecp_cuda(device_id, host.ecp_systems[e], resources.stream_, nullptr,
+                                  (unrestricted ? total_density : density) + e * matrix_size,
+                                  forces + 3 * host.atom_offsets[e], ecp_detail);
+      if (ecp_status != VIBEQC_STATUS_SUCCESS) {
+        fill_global_failure(outputs, ecp_status);
+        return outputs;
+      }
+    }
     // Derivative selection is read on every force execution; it retains no
     // candidate-specific geometry or plan buffers that could become stale.
     if (cuda_policy::generated_one_electron_derivatives_requested()) {

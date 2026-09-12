@@ -5,6 +5,8 @@ silently acquire today's defaults and then alias an existing compiled cache.
 Legacy production profiles continue to use their existing schema and loader.
 """
 
+from dataclasses import asdict
+
 from .blocks import (
     RawBlock,
     SecondDerivative,
@@ -15,6 +17,8 @@ from .blocks import (
 from .ir import (
     ContractionSpec,
     DerivativeSpec,
+    EcpCenter,
+    EcpRadialTerm,
     IntegralIR,
     NuclearCenter,
     NuclearCoordinates,
@@ -28,6 +32,7 @@ from .shell_spec import ShellClassSpec
 INTEGRAL_SCHEMA_VERSION = 1
 RANGE_INTEGRAL_SCHEMA_VERSION = 2
 SECOND_INTEGRAL_SCHEMA_VERSION = 3
+ECP_INTEGRAL_SCHEMA_VERSION = 4
 INTEGRAL_SCHEMA = "vibeqc.integral_ir"
 
 
@@ -219,7 +224,9 @@ def integral_to_payload(integral: IntegralIR) -> dict[str, object]:
     derivative = integral.derivative
     return {
         "schema": INTEGRAL_SCHEMA,
-        "schema_version": SECOND_INTEGRAL_SCHEMA_VERSION
+        "schema_version": ECP_INTEGRAL_SCHEMA_VERSION
+        if operator.family == OperatorFamily.SCALAR_ECP
+        else SECOND_INTEGRAL_SCHEMA_VERSION
         if any(isinstance(c, SecondDerivative) for c in integral.contractions)
         else RANGE_INTEGRAL_SCHEMA_VERSION
         if operator.range_separated
@@ -230,7 +237,9 @@ def integral_to_payload(integral: IntegralIR) -> dict[str, object]:
             "centers": list(operator.centers),
             "invariants": [_invariant_payload(i) for i in operator.invariants],
             "external_centers": [
-                {"center": c.center, "charge": c.charge}
+                {"center": c.center, "terms": [asdict(t) for t in c.terms]}
+                if isinstance(c, EcpCenter)
+                else {"center": c.center, "charge": c.charge}
                 for c in operator.external_centers
             ],
             "permutations": [list(p) for p in operator.permutations],
@@ -272,6 +281,7 @@ def integral_from_payload(payload: dict[str, object]) -> IntegralIR:
             INTEGRAL_SCHEMA_VERSION,
             RANGE_INTEGRAL_SCHEMA_VERSION,
             SECOND_INTEGRAL_SCHEMA_VERSION,
+            ECP_INTEGRAL_SCHEMA_VERSION,
         )
     ):
         raise ValueError("unsupported integral IR schema")
@@ -315,14 +325,33 @@ def integral_from_payload(payload: dict[str, object]) -> IntegralIR:
         raise ValueError(
             "range-separated operators require integral IR schema version 2"
         )
+    ecp = payload["schema_version"] == ECP_INTEGRAL_SCHEMA_VERSION
+    if ecp != (o["family"] == OperatorFamily.SCALAR_ECP):
+        raise ValueError("scalar ECP requires integral IR schema version 4")
+    external = []
+    for c in o["external_centers"]:
+        if ecp:
+            _record(c, ("center", "terms"))
+            external.append(
+                EcpCenter(
+                    c["center"],
+                    tuple(
+                        EcpRadialTerm(
+                            **_record(
+                                t, ("channel", "power", "exponent", "coefficient")
+                            )
+                        )
+                        for t in c["terms"]
+                    ),
+                )
+            )
+        else:
+            external.append(NuclearCenter(**_record(c, ("center", "charge"))))
     operator = OperatorSpec(
         o["family"],
         tuple(o["centers"]),
         tuple(_invariant(i) for i in o["invariants"]),
-        tuple(
-            NuclearCenter(**_record(c, ("center", "charge")))
-            for c in o["external_centers"]
-        ),
+        tuple(external),
         tuple(tuple(p) for p in o["permutations"]),
         omega=o["omega"] if ranged else 0.0,
     )

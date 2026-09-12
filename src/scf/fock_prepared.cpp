@@ -65,13 +65,14 @@ FockExecutionVariant execution_variant(const ResolvedFockBuild& strategy) noexce
  * reuse must never validate a stale geometry/basis. Unused auxiliary inputs
  * are excluded by the caller, just like absent terms in FockBuildSpec. */
 bool same_system(const core::System& a, const core::System& b) noexcept {
+  if (a.ecp_terms != b.ecp_terms) return false;
   if (a.charge != b.charge || a.multiplicity != b.multiplicity ||
       a.electron_count != b.electron_count || a.basis_representation != b.basis_representation ||
       a.atoms.size() != b.atoms.size() || a.shells.size() != b.shells.size())
     return false;
   for (std::size_t i = 0; i < a.atoms.size(); ++i)
     if (a.atoms[i].atomic_number != b.atoms[i].atomic_number ||
-        a.atoms[i].position != b.atoms[i].position)
+        a.atoms[i].ecp_core != b.atoms[i].ecp_core || a.atoms[i].position != b.atoms[i].position)
       return false;
   for (std::size_t i = 0; i < a.shells.size(); ++i) {
     const auto& x = a.shells[i];

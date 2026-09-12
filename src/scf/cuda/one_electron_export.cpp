@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include "integrals/ecp_cuda.hpp"
 #include "molecule/basis.hpp"
 #include "runtime/resource_cuda.cuh"
 #include "scf/cuda/one_electron_export_kernels.hpp"
@@ -251,6 +252,13 @@ vibeqc_status build_cuda_one_electron_integrals_impl(int device_id, const core::
     return cuda_status(cuda_error);
   }
   release();
+  if (!system.ecp_terms.empty()) {
+    integrals::EcpData ecp;
+    const auto status = integrals::ecp_integrals_cuda(device_id, cartesian_system, 160, 32,
+                                                      include_derivatives, ecp, detail, true);
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
+    integrals::add_ecp(ecp, output.hcore, output.hcore_derivative);
+  }
   return VIBEQC_STATUS_SUCCESS;
 }
 

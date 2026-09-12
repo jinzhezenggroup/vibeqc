@@ -50,6 +50,15 @@ from vibeqc_compiler.integral.shell_spec import FUSED_SHELL_SPECS, PSPS_SPEC
 def request_ir(family, *, derivative=False, atoms=None, angular=None):
     """Use separate shell positions even when every slot belongs to one atom."""
     family = OperatorFamily(family)
+    if family == OperatorFamily.SCALAR_ECP:
+        from vibeqc_compiler.integral.ecp import build_ecp_ir
+        from vibeqc_compiler.integral.ir import EcpRadialTerm
+
+        return build_ecp_ir(
+            (1, 0) if angular is None else angular,
+            (EcpRadialTerm(-1, 2, 0.7, -2.0),),
+            derivatives=derivative,
+        )
     roles = {
         OperatorFamily.OVERLAP: ("orbital", "orbital"),
         OperatorFamily.KINETIC: ("orbital", "orbital"),

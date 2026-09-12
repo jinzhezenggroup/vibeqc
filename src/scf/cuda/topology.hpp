@@ -10,6 +10,9 @@ namespace vibeqc::scf::cuda_execution {
 /** Owned host topology used to prepare a borrowed device basis view. Packing preserves
  * Cartesian/public AO ordering. */
 struct HostBatch {
+  // Only populated for an ECP batch; owns normalized scientific inputs used by
+  // device ECP integration. Coordinates remain part of the geometry key.
+  std::vector<core::System> ecp_systems;
   std::size_t nbf{};
   std::size_t direct_nbf{};
   std::size_t spin_count{1};

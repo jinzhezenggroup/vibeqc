@@ -13,6 +13,16 @@ namespace vibeqc::core {
 struct Atom {
   int atomic_number{};
   std::array<double, 3> position{};
+  int ecp_core{};
+  [[nodiscard]] int ionic_charge() const noexcept { return atomic_number - ecp_core; }
+};
+
+struct EcpTerm {
+  unsigned atom_index{};
+  int channel{-1};
+  unsigned power{};
+  double exponent{}, coefficient{};
+  bool operator==(const EcpTerm&) const = default;
 };
 
 struct Primitive {
@@ -33,6 +43,7 @@ struct System {
   unsigned multiplicity{1};
   int electron_count{};
   vibeqc_basis_representation basis_representation{VIBEQC_BASIS_CARTESIAN};
+  std::vector<EcpTerm> ecp_terms;
 };
 
 struct ContextState {
