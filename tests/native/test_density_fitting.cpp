@@ -1209,14 +1209,17 @@ int main() {
                       {generated_rhf_density, 1.0, 0.25}};
         for (auto* response_plan :
              {resident_plan.get(), source_plan.get(), generated_resident.get()}) {
-          for (std::size_t budget : {16384U, 65536U}) {
+          for (std::size_t budget : {16384U, 65536U, 1048576U}) {
             std::vector<double> generated_gradient{123.0};
             std::string generated_detail;
             vibeqc::scf::DfGradientResources resources;
             const auto status = vibeqc::scf::execute_cuda_density_fitting_generated_force_response(
                 response_plan, 0, orbital, auxiliary, integrals.three_center, integrals.metric,
-                terms, 0, budget, budget == 16384U ? 3U : 7U, generated_gradient, generated_detail,
-                &resources);
+                terms, 0, budget,
+                budget == 16384U   ? 3U
+                : budget == 65536U ? 7U
+                                   : 0U,
+                generated_gradient, generated_detail, &resources);
             require(status == VIBEQC_STATUS_SUCCESS, generated_detail.c_str());
             require_matrix_close(generated_gradient,
                                  unrestricted ? source_host_uhf_gradient.derivative
@@ -1224,12 +1227,26 @@ int main() {
                                  8e-10, "generated CUDA DF-HF response differs from raw oracle");
             require(resources.host_bytes <= budget && resources.device_bytes <= budget,
                     "generated DF-HF response exceeds its numeric staging budget");
-            require(resources.auxiliary_weight_tile < integrals.naux &&
-                        integrals.naux % resources.auxiliary_weight_tile != 0,
-                    "generated DF-HF response must exercise a final partial weight block");
+            if (budget != 1048576U) {
+              require(resources.auxiliary_weight_tile < integrals.naux &&
+                          integrals.naux % resources.auxiliary_weight_tile != 0,
+                      "generated DF-HF response must exercise a final partial weight block");
+            } else {
+              require(resources.auxiliary_weight_tile == integrals.naux,
+                      "full response panel fixture did not fit its declared budget");
+            }
             require(resources.device_to_host_bytes == integrals.ncoord * sizeof(double),
                     "generated DF-HF replay downloaded more than its final gradient");
             if (response_plan != resident_plan.get()) {
+              const auto width = resources.auxiliary_weight_tile;
+              const auto panels = (integrals.naux + width - 1) / width;
+              // Charges populate the first raw panel; exchange reuses each
+              // panel's own auxiliary slices. A full panel reads A only once.
+              const auto expected_slices = (panels + 1) * integrals.naux - width;
+              require(resources.value_slices == expected_slices &&
+                          resources.recomputed_value_bytes ==
+                              expected_slices * integrals.nbf * integrals.nbf * sizeof(double),
+                      "response cache regenerated an already retained raw slice");
               require(resources.device_response && resources.tensor_host_to_device_bytes == 0 &&
                           resources.tensor_device_to_host_bytes == 0 &&
                           resources.response_host_to_device_bytes == 0 &&
