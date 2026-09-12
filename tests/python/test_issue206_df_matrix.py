@@ -12,8 +12,9 @@ from benchmarks import issue206_df_matrix as matrix
 
 
 @pytest.mark.parametrize("failure", ["exit", "launch", "missing_result", "gate"])
+@pytest.mark.parametrize("energy_only", [False, True])
 def test_matrix_retains_failures_and_finishes_remaining_cases(
-    tmp_path, monkeypatch, failure
+    tmp_path, monkeypatch, failure, energy_only
 ):
     # subprocess.run is replaced throughout: these tests never execute CUDA.
     monkeypatch.setenv("SLURM_JOB_ID", "protocol-test")
@@ -28,6 +29,8 @@ def test_matrix_retains_failures_and_finishes_remaining_cases(
         python=sys.executable,
         library=tmp_path / "lib.so",
         output_dir=output,
+        memory_budget_bytes=32 << 20,
+        energy_only=energy_only,
     )
     calls = []
 
@@ -35,10 +38,16 @@ def test_matrix_retains_failures_and_finishes_remaining_cases(
         calls.append(command)
         active = json.loads(manifest.read_text())["matrix"][len(calls) - 1]
         assert active["status"] == "running" and active["command"] == command
+        assert command[
+            command.index("--density-fitting-memory-budget-bytes") + 1
+        ] == str(32 << 20)
         assert kwargs["env"].get("CUDA_VISIBLE_DEVICES") == os.environ.get(
             "CUDA_VISIBLE_DEVICES"
         )
-        path = Path(command[-1])
+        assert ("--energy-only" in command) == energy_only
+        assert ("--maximum-force-error" in command) != energy_only
+        assert command[command.index("--maximum-energy-error") + 1] == "1e-9"
+        path = Path(command[command.index("--output") + 1])
         if len(calls) == 1:
             if failure == "launch":
                 raise FileNotFoundError("missing interpreter")

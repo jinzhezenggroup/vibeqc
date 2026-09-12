@@ -51,7 +51,7 @@ struct HostBatch {
   std::vector<double> warm_density;
 };
 
-/** Pack topology and warm densities. Matrix-direct export omits quartet-only
+/** Pack topology and warm densities. Matrix-only exporters omit quartet-only
  * transforms and resident task tables; public AO expansion remains intact. */
 bool pack_host_batch(const std::vector<core::System>& systems,
                      const std::vector<const std::vector<double>*>& initial_densities,

@@ -193,7 +193,7 @@ struct PreparedFockPlan::Impl {
       // Reuse the existing tile planner before and after source metadata is
       // known. Half the available allowance is reserved for response staging.
       (void)plan_density_fitting_tiles(1, data.raw.nbf, data.raw.naux, data.raw.nbf, plan_budget,
-                                       df_source_bytes(system, *auxiliary));
+                                       df_source_bytes(system, *auxiliary), true);
       CudaDensityFittingIntegralSource* raw_source{};
       std::vector<double> metrics;
       std::size_t nbf{}, naux{};
@@ -206,7 +206,7 @@ struct PreparedFockPlan::Impl {
       diagnostic.fitted_source = cuda_density_fitting_integral_source_diagnostic(source.get());
       const auto tiles = plan_density_fitting_tiles(
           1, nbf, naux, nbf, plan_budget,
-          cuda_density_fitting_integral_source_device_bytes(source.get()));
+          cuda_density_fitting_integral_source_device_bytes(source.get()), true);
       CudaDensityFittingJkPlan* raw_plan{};
       // from_source owns the transferred handle on both success and failure.
       raw_source = source.release();

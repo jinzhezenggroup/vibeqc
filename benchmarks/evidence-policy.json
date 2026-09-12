@@ -20,6 +20,11 @@
       "reason": "Exact measured dirty-source reconstruction patch tied to the benchmark provenance; required to reproduce historical scientific code.",
       "sha256": "ac5300c5d51f89e3ca850e4b1f03fecb3c9fbb6c878aa925c0bd5d9021b6725f"
     },
+    "benchmarks/results/issue282-streamed-panels/raw-evidence.zip": {
+      "owner": "issue282-streamed-panels",
+      "reason": "Compressed exact fixed-density J/K and E2-gradient arrays, successful endpoint matrix, failed experiments and reconstruction patches. Every raw member is hash-verified and byte-restored; the fixed numerical arrays are needed to reproduce bounded/resident parity.",
+      "sha256": "3bd9b6b21a03ba846c87fa9c947815abbcf01265539b7367a5c2b7a382dd7055"
+    },
     "benchmarks/results/local-spaces-182/states.npz": {
       "owner": "local-spaces-182",
       "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",

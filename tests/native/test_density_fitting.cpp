@@ -1150,6 +1150,40 @@ int main() {
                            "source-backed CUDA RHF RI-J differs from oracle");
       require_matrix_close(source_k, rhf_jk.exchange, 3.0e-11,
                            "source-backed CUDA RHF RI-K differs from oracle");
+      // A full-tile generated plan retains its own device tensor while the
+      // independent host-tensor plan and constrained source remain references.
+      vibeqc::scf::CudaDensityFittingIntegralSource* resident_source = nullptr;
+      require(vibeqc::scf::create_cuda_density_fitting_integral_source(
+                  0, {orbital}, {auxiliary}, &resident_source, source_metrics, source_nbf,
+                  source_naux, source_detail) == VIBEQC_STATUS_SUCCESS,
+              source_detail.c_str());
+      vibeqc::scf::CudaDensityFittingJkPlan* generated_resident_raw = nullptr;
+      require(vibeqc::scf::create_cuda_density_fitting_jk_plan_from_source(
+                  0, &resident_source, 1, source_nbf, source_naux, source_metrics, 1e-12,
+                  source_naux, source_nbf * source_nbf, &generated_resident_raw, source_diagnostics,
+                  source_detail) == VIBEQC_STATUS_SUCCESS,
+              source_detail.c_str());
+      CudaPlan generated_resident(generated_resident_raw,
+                                  &vibeqc::scf::destroy_cuda_density_fitting_jk_plan);
+      require(!resident_source && !source_diagnostics[0].streamed,
+              "full generated plan must own a resident transformed tensor");
+      for (unsigned replay = 0; replay < 2; ++replay) {
+        require(vibeqc::scf::execute_cuda_density_fitting_rhf_jk(
+                    generated_resident.get(), rhf_density, source_j, source_k, source_detail) ==
+                    VIBEQC_STATUS_SUCCESS,
+                source_detail.c_str());
+        require_matrix_close(source_j, rhf_jk.coulomb, 3e-11, "resident generated RI-J parity");
+        require_matrix_close(source_k, rhf_jk.exchange, 3e-11, "resident generated RI-K parity");
+      }
+      require(vibeqc::scf::execute_cuda_density_fitting_uhf_jk(
+                  generated_resident.get(), alpha_density, beta_density, source_j, cuda_alpha_k,
+                  cuda_beta_k, source_detail) == VIBEQC_STATUS_SUCCESS,
+              source_detail.c_str());
+      require_matrix_close(source_j, uhf_jk.coulomb, 3e-11, "resident generated UHF RI-J parity");
+      require_matrix_close(cuda_alpha_k, uhf_jk.alpha_exchange, 3e-11,
+                           "resident generated alpha RI-K parity");
+      require_matrix_close(cuda_beta_k, uhf_jk.beta_exchange, 3e-11,
+                           "resident generated beta RI-K parity");
       const auto source_host_uhf_gradient = vibeqc::scf::build_density_fitting_uhf_gradient(
           integrals, alpha_density, beta_density, 1.0e-12);
 
@@ -1173,7 +1207,8 @@ int main() {
                                                                           {beta_density, 0.0, 0.5}}
                 : std::vector<vibeqc::scf::DensityFittingDensityResponse>{
                       {generated_rhf_density, 1.0, 0.25}};
-        for (auto* response_plan : {resident_plan.get(), source_plan.get()}) {
+        for (auto* response_plan :
+             {resident_plan.get(), source_plan.get(), generated_resident.get()}) {
           for (std::size_t budget : {16384U, 65536U}) {
             std::vector<double> generated_gradient{123.0};
             std::string generated_detail;
@@ -1194,7 +1229,7 @@ int main() {
                     "generated DF-HF response must exercise a final partial weight block");
             require(resources.device_to_host_bytes == integrals.ncoord * sizeof(double),
                     "generated DF-HF replay downloaded more than its final gradient");
-            if (response_plan == source_plan.get()) {
+            if (response_plan != resident_plan.get()) {
               require(resources.device_response && resources.tensor_host_to_device_bytes == 0 &&
                           resources.tensor_device_to_host_bytes == 0 &&
                           resources.response_host_to_device_bytes == 0 &&
@@ -1234,7 +1269,9 @@ int main() {
       // A finite discarded eigenspace has a nonzero response when the metric
       // rotates. Compare its GPU Frechet map to the independent raw derivative
       // oracle, rather than testing only the full-rank -M+ E M+ shortcut.
-      {
+      // Cover tight rows, a five-auxiliary GEMM panel with a partial final tile,
+      // and full residency against the same independently factored metric.
+      for (unsigned storage : {0U, 1U, 2U}) {
         vibeqc::scf::CudaDensityFittingIntegralSource* truncated_source = nullptr;
         std::vector<double> metrics;
         std::size_t n = 0, a = 0;
@@ -1246,12 +1283,31 @@ int main() {
         std::vector<vibeqc::scf::CudaDensityFittingMetricDiagnostic> diagnostics;
         constexpr double cutoff = 0.1;
         require(vibeqc::scf::create_cuda_density_fitting_jk_plan_from_source(
-                    0, &truncated_source, 1, n, a, metrics, cutoff, 3, 3, &raw_plan, diagnostics,
+                    0, &truncated_source, 1, n, a, metrics, cutoff,
+                    storage == 2   ? a
+                    : storage == 1 ? 5
+                                   : 3,
+                    storage ? n * n : 3, &raw_plan, diagnostics,
                     source_detail) == VIBEQC_STATUS_SUCCESS,
                 source_detail.c_str());
         CudaPlan truncated_plan(raw_plan, &vibeqc::scf::destroy_cuda_density_fitting_jk_plan);
         require(diagnostics[0].effective_rank > 0 && diagnostics[0].effective_rank < a,
                 "device response fixture did not discard a positive metric eigenspace");
+        const auto truncated_tensor = vibeqc::scf::orthonormalize_density_fitting_three_center(
+            integrals.three_center, n,
+            vibeqc::scf::factor_density_fitting_metric(integrals.metric, a, cutoff));
+        const auto expected_jk =
+            vibeqc::scf::build_density_fitting_rhf_jk(truncated_tensor, rhf_density);
+        std::vector<double> actual_j, actual_k;
+        require(vibeqc::scf::execute_cuda_density_fitting_rhf_jk(
+                    truncated_plan.get(), rhf_density, actual_j, actual_k, source_detail) ==
+                    VIBEQC_STATUS_SUCCESS,
+                source_detail.c_str());
+        require_matrix_close(actual_j, expected_jk.coulomb, 3e-11,
+                             "raw-vector RI-J lost metric-rank semantics");
+        require_matrix_close(
+            actual_k, expected_jk.exchange, 3e-11,
+            "rebalanced RI-K panel changed dense nonsymmetric-density contraction");
         for (bool unrestricted : {false, true}) {
           const std::vector<vibeqc::scf::DensityFittingDensityResponse> terms =
               unrestricted

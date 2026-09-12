@@ -225,12 +225,16 @@ struct DensityFittingTilePlan {
  * The permanent metric inverse square root is included in the budget. The
  * planner never requires the full `(mu nu|P)` tensor when one minimal tile
  * fits, and throws when even the metric plus a one-element tile cannot fit.
+ * Positive budgets first consider full residency. generated_source permits
+ * reusing the resident contraction staging for raw materialization; explicit
+ * host-tensor plans additionally need their raw upload during setup.
  */
 [[nodiscard]] DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch_size,
                                                                 std::size_t nbf, std::size_t naux,
                                                                 std::size_t occupied,
                                                                 std::size_t memory_budget_bytes,
-                                                                std::size_t fixed_device_bytes = 0);
+                                                                std::size_t fixed_device_bytes = 0,
+                                                                bool generated_source = false);
 
 /** Shape-only capacity of the current bounded DF source's owned uploads.
  * Counts include the combined orbital/auxiliary/dummy basis across the batch;

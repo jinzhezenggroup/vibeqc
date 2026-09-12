@@ -40,12 +40,15 @@ vibeqc_status build_cuda_density_fitting_integrals_batch(
 
 /** Batched Cartesian overlap/Hcore and nuclear-repulsion generation.
  * include_derivatives=false omits only AO derivative matrices, retaining the
- * independent O(Natom) nuclear-repulsion response for a fused consumer. */
+ * independent O(Natom) nuclear-repulsion response for a fused consumer.
+ * Energy-only callers also disable include_nuclear_derivatives, matching the
+ * single-system exporter and avoiding derivative launches and downloads. */
 vibeqc_status build_cuda_one_electron_integrals_batch(int device_id,
                                                       const std::vector<core::System>& systems,
                                                       std::vector<integrals::IntegralData>& outputs,
                                                       std::string& detail,
-                                                      bool include_derivatives = true);
+                                                      bool include_derivatives = true,
+                                                      bool include_nuclear_derivatives = true);
 
 /** Generate Cartesian one-electron values and optional first nuclear derivatives.
  * include_derivatives controls AO response matrices. Nuclear response remains

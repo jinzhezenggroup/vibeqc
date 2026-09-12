@@ -392,7 +392,8 @@ double exchange_quadratic_derivative(const integrals::DensityFittingIntegralData
 
 std::size_t workspace_bytes(std::size_t ao_pair_tile, std::size_t auxiliary_tile,
                             std::size_t batch_size, std::size_t nbf, std::size_t naux,
-                            std::size_t metric_bytes, std::size_t fixed_device_bytes) {
+                            std::size_t metric_bytes, std::size_t fixed_device_bytes,
+                            bool generated_source) {
   // The CUDA plan keeps seven AO matrices and one auxiliary vector for the
   // complete batch.  Its streamed tile rounds the logical AO-pair budget up
   // to a whole row, so account for that physical capacity rather than the
@@ -406,6 +407,7 @@ std::size_t workspace_bytes(std::size_t ao_pair_tile, std::size_t auxiliary_tile
       nbf, std::max<std::size_t>(1, ao_pair_tile / std::max<std::size_t>(1, nbf)));
   const long double staged_pairs = staged_rows * nbf;
   const long double tile_elements = staged_pairs * auxiliary_tile;
+  const bool resident = auxiliary_tile == naux && ao_pair_tile == nbf * nbf;
   const long double setup_doubles =
       static_cast<long double>(batch_size) * (3.0L * naux * naux + 2.0L * naux);
   // cuSOLVER's Xsyevd metric factorization uses a device workspace whose
@@ -415,18 +417,23 @@ std::size_t workspace_bytes(std::size_t ao_pair_tile, std::size_t auxiliary_tile
   const long double solver_workspace_doubles = 16.0L * static_cast<long double>(naux) * naux;
   const long double contraction_doubles =
       7.0L * matrix_elements + static_cast<long double>(batch_size) * naux + 3.0L * tile_elements +
-      ((auxiliary_tile < naux || ao_pair_tile < nbf * nbf) ? tile_elements : 0.0L) +
-      ((auxiliary_tile < naux || ao_pair_tile < nbf * nbf) ? 0.0L : tensor_elements);
+      (resident ? 0.0L : tile_elements) +
+      (resident ? tensor_elements * (generated_source ? 1.0L : 2.0L) : 0.0L);
   // Generated response staging has its own budget in the finalizer; this
   // planner covers value/SCF storage and reserves no retired coordinate scratch.
   // One-electron/Pulay assembly and the lazy device SCF driver retain up to
-  // nine AO matrices per active batch item (the unrestricted state is the
-  // upper bound).  Charge the full upper bound here so a positive budget
-  // cannot be consumed entirely by J/K before the SCF state is allocated.
+  // twenty AO matrices plus one graph reservation per active batch item,
+  // matching the native plan's conservative RHF/UHF lazy-state allowance.
+  // Include the small convergence/occupation vectors and metric status too;
+  // a positive budget cannot be spent entirely before SCF state is allocated.
   const long double one_electron_doubles =
-      9.0L * static_cast<long double>(batch_size) * static_cast<long double>(nbf) * nbf;
+      21.0L * static_cast<long double>(batch_size) * static_cast<long double>(nbf) * nbf;
+  const long double control_bytes =
+      static_cast<long double>(batch_size) *
+      (16 * sizeof(double) + 2 * sizeof(std::int32_t) + 2 * sizeof(std::uint8_t) +
+       sizeof(std::uint32_t) + sizeof(int));
   const long double bytes =
-      static_cast<long double>(fixed_device_bytes) +
+      static_cast<long double>(fixed_device_bytes) + control_bytes +
       static_cast<long double>(metric_bytes) * batch_size +
       (setup_doubles + solver_workspace_doubles + contraction_doubles + one_electron_doubles) *
           sizeof(double);
@@ -853,7 +860,8 @@ std::vector<double> build_density_fitting_uhf_forces(
 DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch_size, std::size_t nbf,
                                                   std::size_t naux, std::size_t occupied,
                                                   std::size_t memory_budget_bytes,
-                                                  std::size_t fixed_device_bytes) {
+                                                  std::size_t fixed_device_bytes,
+                                                  bool generated_source) {
   if (batch_size == 0 || nbf == 0 || naux == 0 || occupied == 0) {
     throw std::invalid_argument("DF planner dimensions must all be positive");
   }
@@ -882,9 +890,24 @@ DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch_size, std::s
       false,
   };
   auto update_bytes = [&]() {
-    plan.peak_workspace_bytes = workspace_bytes(plan.ao_pair_tile, plan.auxiliary_tile, batch_size,
-                                                nbf, naux, metric_bytes, fixed_device_bytes);
+    plan.peak_workspace_bytes =
+        workspace_bytes(plan.ao_pair_tile, plan.auxiliary_tile, batch_size, nbf, naux, metric_bytes,
+                        fixed_device_bytes, generated_source);
   };
+  // Full transformed storage is a latency policy only when its entire
+  // contraction/setup/SCF allowance fits. Keep the deterministic zero-budget
+  // compatibility policy and fall back to the same bounded shrink traversal.
+  if (memory_budget_bytes != 0) {
+    plan.ao_pair_tile = ao_pair_count;
+    plan.auxiliary_tile = naux;
+    update_bytes();
+    if (plan.peak_workspace_bytes <= memory_budget_bytes) {
+      plan.stores_full_three_center = true;
+      return plan;
+    }
+    plan.ao_pair_tile = std::min<std::size_t>(ao_pair_count, 8192);
+    plan.auxiliary_tile = std::min<std::size_t>(naux, 128);
+  }
   update_bytes();
   // A zero budget is the documented sentinel for the implementation's
   // default tile policy; only a positive budget requests shrinking.

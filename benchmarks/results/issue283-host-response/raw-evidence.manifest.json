@@ -1,0 +1,138 @@
+{
+  "archive_sha256": "d088e049eb6761a5f92bc441f12533ad6b3cf0d90841f3eda0223c7f41c58ca9",
+  "baseline_evidence": "../issue283-component-baseline/raw-evidence.manifest.json",
+  "files": [
+    {
+      "bytes": 19459,
+      "path": "df-host-response-unprofiled.json",
+      "sha256": "c2164b9f05f65e86c01c61d2d1add1c9e30a45e9ce2a5b5c534bfab9c3ef0415"
+    },
+    {
+      "bytes": 83401,
+      "path": "df-host-response-components.json",
+      "sha256": "12f64eff432e65f09dc155e8e5b815e0d595c21bb28c276b58383ad515236940"
+    },
+    {
+      "bytes": 614,
+      "path": "df-host-response-native-gates.log",
+      "sha256": "e65c83ba207f8be84ef4b8b3cbfeea85236207060df1f829bd240e9f61a629e4"
+    },
+    {
+      "bytes": 3542,
+      "path": "df-host-response-components/water-octamer-s4-def2-svp-spherical-0-energy.jsonl",
+      "sha256": "3efa8bc497b3696595161258c550885182a84e26823dc4c88136a32c9525e5bd"
+    },
+    {
+      "bytes": 84343,
+      "path": "df-host-response-components/water-octamer-s4-def2-svp-spherical-0-force.jsonl",
+      "sha256": "431babcf1b606f676691af28d40e894deba559455407fdc703c3005adbe9a299"
+    },
+    {
+      "bytes": 3542,
+      "path": "df-host-response-components/water-octamer-s4-def2-svp-spherical-1-energy.jsonl",
+      "sha256": "d32ce54faf8c7be1a5e02caa8ec2dc129e85ab23afb98e2abd9b227e61b479b9"
+    },
+    {
+      "bytes": 84366,
+      "path": "df-host-response-components/water-octamer-s4-def2-svp-spherical-1-force.jsonl",
+      "sha256": "16ff4520e7a483ca0a19b1b770bd8b315b4e0daa420a46582890e7d354a741ac"
+    },
+    {
+      "bytes": 3541,
+      "path": "df-host-response-components/water-octamer-s4-def2-svp-spherical-2-energy.jsonl",
+      "sha256": "900b18f6fcd354569eb7108b3a4a2d0430c6e4dd495ffac06b6d703cceb17d2d"
+    },
+    {
+      "bytes": 84345,
+      "path": "df-host-response-components/water-octamer-s4-def2-svp-spherical-2-force.jsonl",
+      "sha256": "d247b2d066dc3baddc43c682caf289e5ceb2da9459d4aa621b8718a72145205e"
+    },
+    {
+      "bytes": 3537,
+      "path": "df-host-response-components/water-tetramer-def2-svp-spherical-0-energy.jsonl",
+      "sha256": "e34c0de5d4b8a002b88784c1b9a3fdc50b303830de1dfb8362edd9899d8ac624"
+    },
+    {
+      "bytes": 41119,
+      "path": "df-host-response-components/water-tetramer-def2-svp-spherical-0-force.jsonl",
+      "sha256": "ec698a3f5a5ac7ab3d4975b231ea2073d1e9684fe67463c5195697782d3a57fd"
+    },
+    {
+      "bytes": 3541,
+      "path": "df-host-response-components/water-tetramer-def2-svp-spherical-1-energy.jsonl",
+      "sha256": "d9c37a5b298bc9b8d916e9e4bc937b5ea91ba0d3deb62a13854b35b01cd2ec5d"
+    },
+    {
+      "bytes": 41155,
+      "path": "df-host-response-components/water-tetramer-def2-svp-spherical-1-force.jsonl",
+      "sha256": "415aa190378ef0ba78ce9b02c01524f8b5c050c3d4072327606e71466b467983"
+    },
+    {
+      "bytes": 3538,
+      "path": "df-host-response-components/water-tetramer-def2-svp-spherical-2-energy.jsonl",
+      "sha256": "12471b6d1e1c05427927a76ae663a25188f0fd1cda6c1354478ce374b0dc4b20"
+    },
+    {
+      "bytes": 41158,
+      "path": "df-host-response-components/water-tetramer-def2-svp-spherical-2-force.jsonl",
+      "sha256": "4218d9ba5f0a14696ff23ac059dc4f6ac97fa634211e6ac103029ba794956b8b"
+    },
+    {
+      "bytes": 104401,
+      "path": "df-host-response-matrix/192ao-b1.json",
+      "sha256": "b43b9c0edd207de5f467e3ee97964eb1598295a1ad4f7dcbaf64c6cd8cf558b5"
+    },
+    {
+      "bytes": 1206,
+      "path": "df-host-response-matrix/192ao-b1.log",
+      "sha256": "696b217f95123f3da0353a675d5192756a6e4ad0ff97dbb2f19e5ca448993cf1"
+    },
+    {
+      "bytes": 383704,
+      "path": "df-host-response-matrix/192ao-b4.json",
+      "sha256": "981cd779613152c8dbff9c9d8fa23d29788e8e35000558005c365ce57b06e341"
+    },
+    {
+      "bytes": 1271,
+      "path": "df-host-response-matrix/192ao-b4.log",
+      "sha256": "02cbf26be5df727052a4dc91cda5e1b243900203aec6c0adefb3668c085c16a1"
+    },
+    {
+      "bytes": 70363,
+      "path": "df-host-response-matrix/96ao-b1.json",
+      "sha256": "8cce3121d596264adc797c37e658520795c932dd8701ac4c9d0c20391323fad1"
+    },
+    {
+      "bytes": 1200,
+      "path": "df-host-response-matrix/96ao-b1.log",
+      "sha256": "42d907a382a58294985c4783e4c65a7a0a1c0d01a73167698e876b76e58e7f46"
+    },
+    {
+      "bytes": 247020,
+      "path": "df-host-response-matrix/96ao-b4.json",
+      "sha256": "620eb5a0c02d8dbac112b3eee1c614a691fc1aa6ce6687a6100a031f0b600266"
+    },
+    {
+      "bytes": 1261,
+      "path": "df-host-response-matrix/96ao-b4.log",
+      "sha256": "7da9d007af8bef37fcfe3c08b9589481e83a925ed7871194d7bb2884351efe32"
+    },
+    {
+      "bytes": 5096,
+      "path": "df-host-response-matrix/manifest.json",
+      "sha256": "c8a79b710dbcd83af1bbdd622ac02527d5a31444aa3aeb3dd7674863f05471a1"
+    },
+    {
+      "bytes": 335,
+      "path": "df-host-response-runtime/provenance.json",
+      "sha256": "8450c53bc6905ac513ff3ddb764c5ad8e646f41f213022612ac2fdcc41545dd3"
+    },
+    {
+      "bytes": 1549,
+      "path": "df-host-response-runtime/optimization.patch",
+      "sha256": "463eae9280bfdd6eeaea2307ebc1477dcb9c5f337edea5652f25947d9a8e42e9"
+    }
+  ],
+  "schema": "vibeqc.evidence-archive.v1",
+  "source_commit": "8697318c8176e09fad6705c4e13f6ab54fb7186b"
+}

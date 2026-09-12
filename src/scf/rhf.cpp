@@ -903,7 +903,7 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_plan(
     try {
       source_tile_plan = plan_density_fitting_tiles(
           1, source_nbf, source_naux, std::max<std::size_t>(occupied, 1), planning_budget,
-          cuda_density_fitting_integral_source_device_bytes(source));
+          cuda_density_fitting_integral_source_device_bytes(source), true);
     } catch (...) {
       destroy_cuda_density_fitting_integral_source(source);
       throw;
@@ -996,7 +996,7 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_batch_plan(
     try {
       tile_plan = plan_density_fitting_tiles(
           data.size(), nbf, naux, std::max<std::size_t>(occupied, 1), planning_budget,
-          cuda_density_fitting_integral_source_device_bytes(source));
+          cuda_density_fitting_integral_source_device_bytes(source), true);
     } catch (...) {
       destroy_cuda_density_fitting_integral_source(source);
       throw;
@@ -1084,7 +1084,7 @@ core::System density_fitting_auxiliary_for_geometry(
 std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_batch(
     const std::vector<core::System>& systems, const std::optional<core::System>& auxiliary_template,
     double relative_threshold, std::size_t output_budget_bytes, int device_id,
-    std::vector<vibeqc_status>& statuses) {
+    std::vector<vibeqc_status>& statuses, bool include_derivatives) {
   const std::size_t count = systems.size();
   statuses.assign(count, VIBEQC_STATUS_INTERNAL_ERROR);
   std::vector<std::optional<DensityFittingScfData>> prepared(count);
@@ -1157,10 +1157,10 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
     // and nuclear vectors alive while copying each item into IntegralData.
     const long double one_electron_staging = 2.0L * matrix_elements + 1.0L;
     // pack_host_batch also retains basis/atom metadata, shell-pair indices,
-    // queue descriptors, and Cartesian system copies while the CUDA bridge is
-    // active.  Those vectors are irregular (and private to the CUDA TU), so
-    // use a deliberately conservative descriptor-count bound rather than
-    // pretending the numeric output estimate covers them.
+    // and Cartesian system copies while the CUDA bridge is active. Matrix-only
+    // packing explicitly skips direct-ERI resident task tables. Retain a
+    // conservative per-pair bound for vector capacity/metadata, without charging
+    // a shell-quartet array that the one-electron exporter never allocates.
     const long double atoms = static_cast<long double>(systems[representative].atoms.size());
     const long double shells = static_cast<long double>(systems[representative].shells.size());
     long double primitives = 0.0L;
@@ -1168,11 +1168,10 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
       primitives += static_cast<long double>(shell.primitives.size());
     }
     const long double shell_pairs = shells * (shells + 1.0L) / 2.0L;
-    const long double shell_quartets = shell_pairs * (shell_pairs + 1.0L) / 2.0L;
     const long double metadata_doubles_per_system =
-        64.0L * (1.0L + atoms + shells + primitives + static_cast<long double>(nbf_cart) +
-                 static_cast<long double>(molecule::ao_count(systems[representative])) +
-                 shell_pairs + shell_quartets);
+        64.0L *
+        (1.0L + atoms + shells + primitives + static_cast<long double>(nbf_cart) +
+         static_cast<long double>(molecule::ao_count(systems[representative])) + shell_pairs);
     // The one-electron bridge also keeps a Cartesian warm-density matrix and
     // packed pair-index vectors even when no warm density is supplied.
     const long double quadratic_staging_doubles = 2.0L * matrix_elements;
@@ -1226,7 +1225,9 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
           batch_status == VIBEQC_STATUS_SUCCESS
               ? build_cuda_one_electron_integrals_batch(
                     device_id, orbital_chunk, one_electron_batch, detail,
-                    !cuda_policy::generated_one_electron_derivatives_requested())
+                    include_derivatives &&
+                        !cuda_policy::generated_one_electron_derivatives_requested(),
+                    include_derivatives)
               : batch_status;
       if (batch_status == VIBEQC_STATUS_SUCCESS &&
           one_electron_batch_status == VIBEQC_STATUS_SUCCESS &&
@@ -1289,7 +1290,9 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
                 retry_raw_status == VIBEQC_STATUS_SUCCESS
                     ? build_cuda_one_electron_integrals_batch(
                           device_id, single_orbital, single_one_electron, retry_detail,
-                          !cuda_policy::generated_one_electron_derivatives_requested())
+                          include_derivatives &&
+                              !cuda_policy::generated_one_electron_derivatives_requested(),
+                          include_derivatives)
                     : retry_raw_status;
             if (retry_raw_status == VIBEQC_STATUS_SUCCESS &&
                 retry_one_electron_status == VIBEQC_STATUS_SUCCESS &&
@@ -1338,7 +1341,8 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
           integrals::IntegralData cartesian_one_electron;
           const vibeqc_status one_electron_status = build_cuda_one_electron_integrals(
               device_id, systems[source], cartesian_one_electron, item_detail,
-              !cuda_policy::generated_one_electron_derivatives_requested());
+              include_derivatives && !cuda_policy::generated_one_electron_derivatives_requested(),
+              include_derivatives);
           if (one_electron_status != VIBEQC_STATUS_SUCCESS) {
             statuses[source] = one_electron_status;
             continue;
@@ -1364,7 +1368,7 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
     }
   }
   for (std::size_t source = 0; source < count; ++source) {
-    if (!prepared[source]) continue;
+    if (!prepared[source] || !include_derivatives) continue;
     try {
       bind_generated_one_electron(*prepared[source], systems[source], device_id,
                                   output_budget_bytes);
@@ -1670,7 +1674,8 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
   if (device_id >= 0 && !cached_data_complete) {
     batched_prepared = prepare_cuda_density_fitting_batch(
         systems, auxiliary_template, options.density_fitting_relative_threshold,
-        options.density_fitting_memory_budget_bytes, device_id, preparation_status);
+        options.density_fitting_memory_budget_bytes, device_id, preparation_status,
+        options.compute_forces);
   }
 
   std::size_t nbf = 0;
@@ -1691,7 +1696,8 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
         const core::System auxiliary =
             density_fitting_auxiliary_for_geometry(auxiliary_template, systems[source]);
         prepared = prepare_density_fitting_data(
-            systems[source], auxiliary, options.density_fitting_relative_threshold, device_id);
+            systems[source], auxiliary, options.density_fitting_relative_threshold, device_id,
+            options.density_fitting_memory_budget_bytes, options.compute_forces);
       }
       if (source_indices.empty()) {
         nbf = prepared.raw.nbf;
@@ -2039,7 +2045,8 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
   if (device_id >= 0 && !cached_data_complete) {
     batched_prepared = prepare_cuda_density_fitting_batch(
         systems, auxiliary_template, options.density_fitting_relative_threshold,
-        options.density_fitting_memory_budget_bytes, device_id, preparation_status);
+        options.density_fitting_memory_budget_bytes, device_id, preparation_status,
+        options.compute_forces);
   }
   std::size_t nbf = 0;
   std::size_t naux = 0;
@@ -2059,7 +2066,8 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
         const core::System auxiliary =
             density_fitting_auxiliary_for_geometry(auxiliary_template, systems[source]);
         prepared = prepare_density_fitting_data(
-            systems[source], auxiliary, options.density_fitting_relative_threshold, device_id);
+            systems[source], auxiliary, options.density_fitting_relative_threshold, device_id,
+            options.density_fitting_memory_budget_bytes, options.compute_forces);
       }
       if (source_indices.empty()) {
         nbf = prepared.raw.nbf;

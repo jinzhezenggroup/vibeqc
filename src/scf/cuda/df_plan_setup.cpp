@@ -10,12 +10,50 @@
 #include <utility>
 #include <vector>
 
+#include "runtime/cuda_component_trace.hpp"
 #include "scf/cuda/df_metric_kernels.hpp"
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
 #include "scf/cuda/df_setup_internal.hpp"
 
 namespace vibeqc::scf::cuda_df {
+namespace {
+/** Materialize a fixed-geometry source once, reusing the resident K staging.
+ * Raw public-AO values are generated once per system and transformed by GEMM.
+ * The scratch already belongs to the resolved full-tile plan; neither a host
+ * full tensor nor an additional raw device allocation is introduced. The
+ * caller handles failure only after this trace has drained its borrowed stream.
+ */
+vibeqc_status materialize_generated_tensor(CudaDensityFittingJkPlan& plan, const double* inverse,
+                                           std::string& detail) {
+  runtime::cuda_trace::TraceOperation trace("resident_three_center_materialization", plan.stream,
+                                            {plan.batch_size, plan.nbf, plan.naux, true, false});
+  const double one = 1.0, zero = 0.0;
+  for (std::size_t system = 0; system < plan.batch_size; ++system) {
+    const auto status = generate_cuda_density_fitting_raw_tile(
+        plan.integral_source, system, 0, plan.matrix_elements, 0, plan.naux, -1,
+        reinterpret_cast<void*>(plan.stream), plan.auxiliary_tile_values, detail);
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
+    runtime::cuda_trace::trace_tile(system, 0, plan.matrix_elements, 0, plan.naux, -1, true);
+    const auto blas_status =
+        runtime::cuda_trace::trace_call("resident_metric_transform", plan.stream, [&] {
+          return cublasDgemm(plan.blas, CUBLAS_OP_N, CUBLAS_OP_N, static_cast<int>(plan.naux),
+                             static_cast<int>(plan.matrix_elements), static_cast<int>(plan.naux),
+                             &one, inverse + system * plan.naux * plan.naux,
+                             static_cast<int>(plan.naux), plan.auxiliary_tile_values,
+                             static_cast<int>(plan.naux), &zero,
+                             plan.three_center + system * plan.tensor_elements_per_system,
+                             static_cast<int>(plan.naux));
+        });
+    if (blas_status != CUBLAS_STATUS_SUCCESS)
+      return blas_failure(blas_status, "materialize generated CUDA DF tensor", detail);
+  }
+  runtime::cuda_trace::trace_counter(
+      "resident_transformed_bytes",
+      plan.batch_size * plan.tensor_elements_per_system * sizeof(double));
+  return VIBEQC_STATUS_SUCCESS;
+}
+}  // namespace
 
 // Keep setup as one transaction: validate, allocate, factor, account, then
 // publish. Error exits and final stream drain preserve the original lifetime.
@@ -70,18 +108,18 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
       ((integral_source == nullptr) &&
        (three_center.size() != all_tensor_elements || !finite_values(three_center)))) {
     detail = "CUDA DF plan buffers have invalid dimensions or values";
-    return VIBEQC_STATUS_INVALID_ARGUMENT;
+    return fail_before_plan(VIBEQC_STATUS_INVALID_ARGUMENT);
   }
   auxiliary_tile = auxiliary_tile == 0 ? std::min<std::size_t>(naux, 32) : auxiliary_tile;
   if (auxiliary_tile > naux ||
       auxiliary_tile > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
     detail = "CUDA DF auxiliary tile is invalid";
-    return VIBEQC_STATUS_INVALID_ARGUMENT;
+    return fail_before_plan(VIBEQC_STATUS_INVALID_ARGUMENT);
   }
   ao_pair_tile = ao_pair_tile == 0 ? matrix_elements : ao_pair_tile;
   if (ao_pair_tile > matrix_elements || ao_pair_tile == 0) {
     detail = "CUDA DF AO-pair tile is invalid";
-    return VIBEQC_STATUS_INVALID_ARGUMENT;
+    return fail_before_plan(VIBEQC_STATUS_INVALID_ARGUMENT);
   }
 
   std::size_t matrix_bytes = 0;
@@ -93,8 +131,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
   // Stream whenever either planner dimension is smaller than the full
   // transformed tensor.  This matters for small auxiliary bases where all
   // Q directions fit but the AO-pair budget still requires row staging.
-  const bool streamed =
-      integral_source != nullptr || auxiliary_tile < naux || ao_pair_tile < matrix_elements;
+  const bool streamed = auxiliary_tile < naux || ao_pair_tile < matrix_elements;
   const std::size_t staged_row_tile =
       streamed ? std::min<std::size_t>(nbf, std::max<std::size_t>(1, ao_pair_tile / nbf)) : nbf;
   std::size_t staged_pair_capacity = 0;
@@ -252,7 +289,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
     status = allocate_setup(reinterpret_cast<void**>(&setup.inverse_square_roots), metric_bytes,
                             "allocate CUDA DF metric inverse square roots");
   }
-  if (status == VIBEQC_STATUS_SUCCESS && !candidate->streamed) {
+  if (status == VIBEQC_STATUS_SUCCESS && !candidate->streamed && !candidate->integral_source) {
     status = allocate_setup(reinterpret_cast<void**>(&setup.raw_three_center), tensor_bytes,
                             "allocate raw CUDA DF three-center tensor");
   }
@@ -264,7 +301,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
 
   cuda_error = cudaMemcpyAsync(setup.metrics, metrics.data(), metric_bytes, cudaMemcpyHostToDevice,
                                candidate->stream);
-  if (cuda_error == cudaSuccess && !candidate->streamed) {
+  if (cuda_error == cudaSuccess && !candidate->streamed && !candidate->integral_source) {
     cuda_error = cudaMemcpyAsync(setup.raw_three_center, three_center.data(), tensor_bytes,
                                  cudaMemcpyHostToDevice, candidate->stream);
   }
@@ -415,16 +452,20 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
         candidate,
         blas_failure(blas_status, "construct CUDA DF metric inverse square root", detail));
   }
-  if (candidate->streamed) {
-    if (candidate->integral_source != nullptr) {
-      cuda_error = cudaMemcpyAsync(candidate->inverse_square_roots, setup.inverse_square_roots,
-                                   metric_bytes, cudaMemcpyDeviceToDevice, candidate->stream);
-      if (cuda_error != cudaSuccess) {
-        return fail_plan(
-            candidate,
-            cuda_failure(cuda_error, "retain source-backed CUDA DF metric inverse", detail));
-      }
-    } else {
+  if (candidate->integral_source != nullptr) {
+    cuda_error = cudaMemcpyAsync(candidate->inverse_square_roots, setup.inverse_square_roots,
+                                 metric_bytes, cudaMemcpyDeviceToDevice, candidate->stream);
+    if (cuda_error != cudaSuccess) {
+      return fail_plan(
+          candidate,
+          cuda_failure(cuda_error, "retain source-backed CUDA DF metric inverse", detail));
+    }
+  }
+  if (!candidate->streamed && candidate->integral_source) {
+    status = materialize_generated_tensor(*candidate, setup.inverse_square_roots, detail);
+    if (status != VIBEQC_STATUS_SUCCESS) return fail_plan(candidate, status);
+  } else if (candidate->streamed) {
+    if (!candidate->integral_source) {
       try {
         candidate->streamed_inverse_square_roots.resize(batch_size * metric_elements);
       } catch (const std::bad_alloc&) {
@@ -482,7 +523,8 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
   const std::size_t setup_device_bytes =
       (candidate->integral_source ? 2 * metric_bytes + auxiliary_vector_bytes
                                   : 3 * metric_bytes + 2 * auxiliary_vector_bytes) +
-      (candidate->streamed ? 0 : tensor_bytes) + solver_device_workspace_bytes + solver_info_bytes;
+      (candidate->streamed || candidate->integral_source ? 0 : tensor_bytes) +
+      solver_device_workspace_bytes + solver_info_bytes;
   // This record covers the value/SCF plan and its setup. Generated force
   // staging is owned by the separately budgeted bridge and reported through
   // DfGradientResources and the whole-HF allocation ledger.
@@ -494,14 +536,13 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
           : static_cast<std::size_t>(peak_estimate);
   const long double host_resident_estimate =
       static_cast<long double>(sizeof(*candidate)) +
-      (candidate->streamed
-           ? (candidate->integral_source != nullptr
-                  ? static_cast<long double>(cuda_density_fitting_integral_source_host_bytes(
-                        candidate->integral_source)) +
-                        vector_capacity_bytes(candidate->metric_response_valid)
-                  : static_cast<long double>(
-                        vector_capacity_bytes(candidate->streamed_raw_three_center)) +
-                        vector_capacity_bytes(candidate->streamed_inverse_square_roots))
+      (candidate->integral_source
+           ? static_cast<long double>(
+                 cuda_density_fitting_integral_source_host_bytes(candidate->integral_source)) +
+                 vector_capacity_bytes(candidate->metric_response_valid)
+       : candidate->streamed
+           ? static_cast<long double>(vector_capacity_bytes(candidate->streamed_raw_three_center)) +
+                 vector_capacity_bytes(candidate->streamed_inverse_square_roots)
            : 0.0L);
   const std::size_t host_resident_bytes = saturating_bytes(host_resident_estimate);
 

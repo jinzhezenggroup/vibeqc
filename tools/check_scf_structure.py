@@ -92,6 +92,7 @@ CUDA_ALLOWED = {
     ),
 }
 CUDA_ALLOWED["cuda_df_source"] = (
+    "runtime/cuda_component_trace.hpp",
     "scf/cuda/df_source.",
     "scf/cuda/df_source_setup.",
     "scf/cuda/df_source_internal.",
@@ -120,6 +121,7 @@ CUDA_MODULES["cuda_df_runtime"] = (
     "df_runtime",
     "df_jk",
     "df_jk_internal",
+    "df_generated_tiles",
     "df_coulomb",
     "df_exchange",
     "df_force_response",
@@ -131,15 +133,19 @@ CUDA_MODULES["cuda_df_runtime"] = (
 CUDA_ALLOWED["cuda_df_runtime"] = tuple(
     "scf/cuda/" + stem + "." for stem in CUDA_MODULES["cuda_df_runtime"]
 ) + (
+    "runtime/cuda_component_trace.hpp",
     "scf/cuda/df_metric_kernels.",
     "scf/cuda/df_jk_kernels.",
     "scf/cuda/df_scf_kernels.",
     "scf/cuda_density_fitting.hpp",
     "scf/cuda_df_gradient.hpp",
+    "scf/cuda_density_fitting_integrals.hpp",
     "scf/density_fitting.hpp",
     "molecule/basis.hpp",
     "runtime/",
 )
+CUDA_MODULES["cuda_component_trace"] = ("runtime/cuda_component_trace",)
+CUDA_ALLOWED["cuda_component_trace"] = ("runtime/cuda_component_trace.hpp",)
 CUDA_MODULES["cuda_df_kernels"] = (
     "df_metric_kernels",
     "df_jk_kernels",
@@ -492,7 +498,9 @@ def audit_scf_structure(root: Path = ROOT) -> dict:
             # A full source-relative path selects a legacy root owner; an
             # explicit suffix separates implementation and interface rules.
             base = (
-                source / stem if stem.startswith("scf/") else source / "scf/cuda" / stem
+                source / stem
+                if stem.startswith(("scf/", "runtime/"))
+                else source / "scf/cuda" / stem
             )
             paths.extend(
                 [base]

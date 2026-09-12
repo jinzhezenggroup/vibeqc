@@ -1,0 +1,65 @@
+{
+  "schema": "vibeqc.evidence-archive.v1",
+  "archive_sha256": "af4be07c779eea5a51685fd94f5310af5839ad2f2c8e304b314c5632c0147629",
+  "source_commits": [
+    "640a81e224c9930d14657cd20f53f7310fa443dd",
+    "cf1a284d4582d0371f94b44d37c30568b8fee13f"
+  ],
+  "files": [
+    {
+      "bytes": 406974,
+      "path": "baseline.nsys-rep",
+      "sha256": "a772e9619925fcb80c0a0c4b115e2c9d4ff4842dd5dc36749af600c43b52a773"
+    },
+    {
+      "bytes": 2405,
+      "path": "baseline_cuda_api_sum.csv",
+      "sha256": "9e35259b9c68b617f0735a57d71df1ea83e39e5aa65c33a3e161f41c40ef4c6d"
+    },
+    {
+      "bytes": 14893,
+      "path": "baseline_cuda_gpu_kern_sum.csv",
+      "sha256": "f7f7858989687d2984ad726a390235cd7b297047d50f28f6fc7eb86feacb0d67"
+    },
+    {
+      "bytes": 28454,
+      "path": "components.json",
+      "sha256": "1169c8d77a4e7fce89abd21653a42cf6b47a5d8d36149c76777889d38f34425c"
+    },
+    {
+      "bytes": 1605,
+      "path": "nsys-endpoints.json",
+      "sha256": "a9873fbcef7fe7bc7b87278168adb3090c6a499b3da83609e32fff3c6c5f50c5"
+    },
+    {
+      "bytes": 396,
+      "path": "trace-library.json",
+      "sha256": "b1f4c97f5e49d907cd56f3620096956035fe97668a83bb9ae8bb951b6c2cd3e5"
+    },
+    {
+      "bytes": 3539,
+      "path": "traces/water-octamer-s4-def2-svp-spherical-0-energy.jsonl",
+      "sha256": "9cb5218ab0c4c7ffbd1562ee17ef9ebec26bf7d6ecbd099688107b8e635d48ee"
+    },
+    {
+      "bytes": 84311,
+      "path": "traces/water-octamer-s4-def2-svp-spherical-0-force.jsonl",
+      "sha256": "9aab5849f8bb81408e17c8af1ff35ce697b2c826f22f1577c6188c589dfb6431"
+    },
+    {
+      "bytes": 3541,
+      "path": "traces/water-tetramer-def2-svp-spherical-0-energy.jsonl",
+      "sha256": "e8f03741d48d9beced5c7f8384a688f580a237604fa8cdf8d679c7c9e08e023c"
+    },
+    {
+      "bytes": 41152,
+      "path": "traces/water-tetramer-def2-svp-spherical-0-force.jsonl",
+      "sha256": "d5c09557d1ea4ceefd32cb9f9ee6ebb620c7316dfc845bd5a226dc02072e1e18"
+    },
+    {
+      "bytes": 4978,
+      "path": "unprofiled.json",
+      "sha256": "d01b29c19377a404fc1e63464698733e5ff9a5035d8eba642a39cc2adde4eb1b"
+    }
+  ]
+}

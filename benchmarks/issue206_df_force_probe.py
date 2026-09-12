@@ -24,8 +24,24 @@ import numpy as np
 
 try:
     from _cases import benchmark_cases
+    from df_component_ledger import (
+        FORCE_OPERATIONS,
+        ONE_ELECTRON_OPERATIONS,
+        aggregate,
+        force_attribution,
+        read_trace,
+        trace_identity,
+    )
 except ModuleNotFoundError:  # imported as ``benchmarks.issue206_df_force_probe``
     from benchmarks._cases import benchmark_cases
+    from benchmarks.df_component_ledger import (
+        FORCE_OPERATIONS,
+        ONE_ELECTRON_OPERATIONS,
+        aggregate,
+        force_attribution,
+        read_trace,
+        trace_identity,
+    )
 from vibeqc import Calculator
 
 CASES = (
@@ -60,11 +76,21 @@ def _source_metadata(library: Path) -> dict:
     patch = subprocess.check_output(
         ["git", "diff", "--binary", "HEAD"], cwd=_git_root()
     )
+    untracked = subprocess.check_output(
+        ["git", "ls-files", "--others", "--exclude-standard", "-z"], cwd=_git_root()
+    )
     return {
         "git_head": _git_revision(),
         "git_dirty": bool(status),
         "git_status": status.splitlines(),
         "git_diff_sha256": hashlib.sha256(patch).hexdigest(),
+        "untracked_sha256": {
+            os.fsdecode(name): hashlib.sha256(
+                (_git_root() / os.fsdecode(name)).read_bytes()
+            ).hexdigest()
+            for name in untracked.split(b"\0")
+            if name
+        },
         "repository": str(_git_root()),
         "native_library": str(library),
         "native_library_sha256": hashlib.sha256(library.read_bytes()).hexdigest(),
@@ -94,7 +120,13 @@ def _validate_pair(energy: dict, energy_force: dict) -> dict:
     }
 
 
-def _sample(case_name: str, properties: tuple[str, ...], library: Path) -> dict:
+def _sample(
+    case_name: str,
+    properties: tuple[str, ...],
+    library: Path,
+    *,
+    memory_budget_bytes: int = 0,
+) -> dict:
     """Time one fresh solve using the explicitly selected native library."""
     case = benchmark_cases()[case_name]
     calculator = Calculator(
@@ -108,6 +140,7 @@ def _sample(case_name: str, properties: tuple[str, ...], library: Path) -> dict:
         screening_tolerance=1.0e-12,
         density_fitting="cuda",
         auxiliary_basis=case.vibeqc_basis,
+        density_fitting_memory_budget_bytes=memory_budget_bytes,
     )
     if Path(calculator._library._name).resolve() != library:
         raise RuntimeError("Calculator loaded a different native library")
@@ -130,7 +163,57 @@ def _sample(case_name: str, properties: tuple[str, ...], library: Path) -> dict:
         "converged": result.converged,
         "energy_hartree": result.energy,
         "has_forces": result.forces is not None,
+        "forces_hartree_per_bohr": None
+        if result.forces is None
+        else result.forces.tolist(),
     }
+
+
+def _traced_sample(
+    case_name: str,
+    properties: tuple[str, ...],
+    library: Path,
+    path: Path,
+    *,
+    memory_budget_bytes: int = 0,
+) -> dict:
+    """Keep per-solve traces separate and reject missing force instrumentation.
+
+    These endpoints contain event/synchronization overhead. They diagnose
+    components and must be paired with separate unprofiled performance runs.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # Never append to evidence from an earlier calculation or process.
+    with path.open("x"):
+        pass
+    previous = os.environ.get("VIBEQC_DF_TRACE")
+    os.environ["VIBEQC_DF_TRACE"] = str(path.resolve())
+    try:
+        options = (
+            {"memory_budget_bytes": memory_budget_bytes} if memory_budget_bytes else {}
+        )
+        sample = _sample(case_name, properties, library, **options)
+    finally:
+        if previous is None:
+            os.environ.pop("VIBEQC_DF_TRACE", None)
+        else:
+            os.environ["VIBEQC_DF_TRACE"] = previous
+    records = read_trace(path)
+    operations = {r["operation"] for r in records}
+    if not {"ri_j", "ri_k"} <= operations:
+        raise ValueError("missing J/K component traces")
+    force_roots = [r for r in records if r["operation"] in FORCE_OPERATIONS]
+    if "forces" in properties:
+        if (
+            sum(r["operation"] == "force_response" for r in force_roots) != 1
+            or sum(r["operation"] in ONE_ELECTRON_OPERATIONS for r in force_roots) != 1
+            or any(r["execution"] != "stream" for r in force_roots)
+        ):
+            raise ValueError("missing executed DF/one-electron force components")
+    elif force_roots:
+        raise ValueError("unexpected force trace in energy-only sample")
+    sample["components"] = {**aggregate(records), "raw_trace": trace_identity(path)}
+    return sample
 
 
 def main() -> None:
@@ -139,15 +222,32 @@ def main() -> None:
     parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--library", type=Path, required=True)
     parser.add_argument(
+        "--memory-budget-bytes",
+        type=int,
+        default=0,
+        help="DF device sub-budget: zero retains the legacy probe route; positive selects bounded generated execution",
+    )
+    parser.add_argument(
+        "--component-trace-dir",
+        type=Path,
+        help="diagnostic traces with added event/synchronization overhead; use a fresh directory",
+    )
+    parser.add_argument(
         "--output", type=Path, default=Path(".artifacts/issue206-force-ledger.json")
     )
     args = parser.parse_args()
     if args.repeats < 1:
         parser.error("--repeats must be positive")
+    if args.memory_budget_bytes < 0:
+        parser.error("--memory-budget-bytes must be nonnegative")
     if not os.environ.get("SLURM_JOB_ID"):
         parser.error("run requires a finite Slurm allocation (SLURM_JOB_ID)")
     if not os.environ.get("CUDA_VISIBLE_DEVICES"):
         parser.error("run requires Slurm-provided CUDA_VISIBLE_DEVICES")
+    if os.environ.get("VIBEQC_DF_TRACE"):
+        parser.error(
+            "use --component-trace-dir so traces cannot silently contaminate timing runs"
+        )
     library = args.library.resolve(strict=True)
     if not library.is_file():
         parser.error("--library must select a native shared library file")
@@ -156,10 +256,33 @@ def main() -> None:
 
     cases = args.cases or list(CASES)
     records = []
+    sample_options = (
+        {"memory_budget_bytes": args.memory_budget_bytes}
+        if args.memory_budget_bytes
+        else {}
+    )
     for case_name in cases:
         for repeat in range(args.repeats):
-            energy = _sample(case_name, ("energy",), library)
-            energy_force = _sample(case_name, ("energy", "forces"), library)
+            if args.component_trace_dir is None:
+                energy = _sample(case_name, ("energy",), library, **sample_options)
+                energy_force = _sample(
+                    case_name, ("energy", "forces"), library, **sample_options
+                )
+            else:
+                energy = _traced_sample(
+                    case_name,
+                    ("energy",),
+                    library,
+                    args.component_trace_dir / f"{case_name}-{repeat}-energy.jsonl",
+                    **sample_options,
+                )
+                energy_force = _traced_sample(
+                    case_name,
+                    ("energy", "forces"),
+                    library,
+                    args.component_trace_dir / f"{case_name}-{repeat}-force.jsonl",
+                    **sample_options,
+                )
             validation = _validate_pair(energy, energy_force)
             records.append(
                 {
@@ -172,6 +295,10 @@ def main() -> None:
                     - energy["seconds"],
                 }
             )
+            if args.component_trace_dir is not None:
+                records[-1]["force_attribution"] = force_attribution(
+                    energy, energy_force
+                )
 
     if _source_metadata(library) != source:
         raise RuntimeError("source or native library changed during the benchmark")
@@ -185,6 +312,8 @@ def main() -> None:
             "python": sys.executable,
             "platform": platform.platform(),
             "repeats": args.repeats,
+            "profiled": args.component_trace_dir is not None,
+            "density_fitting_memory_budget_bytes": args.memory_budget_bytes,
             "warning": (
                 "fresh single-system calculations; the difference diagnoses "
                 "force cost and is not a warm-solve speed claim"

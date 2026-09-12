@@ -11,6 +11,19 @@ def test_current_shared_scf_dependencies_are_valid():
     assert report["modules"]
 
 
+def test_component_trace_cannot_depend_on_scf_provider(tmp_path):
+    source = tmp_path / "src"
+    (source / "runtime").mkdir(parents=True)
+    (source / "scf/cuda").mkdir(parents=True)
+    (source / "scf/cuda/df_plan_internal.hpp").write_text("// Private provider state\n")
+    (source / "runtime/cuda_component_trace.cpp").write_text(
+        '#include "scf/cuda/df_plan_internal.hpp"\n'
+    )
+    report = audit_scf_structure(tmp_path)
+    assert len(report["errors"]) == 1
+    assert "forbidden cuda_component_trace dependency" in report["errors"][0]
+
+
 @pytest.mark.parametrize("include", ['"scf/rhf.hpp"', '"../rhf.hpp"', "<scf/rhf.hpp>"])
 @pytest.mark.parametrize("owner", ["reference", "solver", "gradient"])
 def test_method_dependency_cannot_hide_behind_include_spelling(

@@ -71,6 +71,8 @@ def manifest_payload(
     python: str,
     library: Path,
     output_dir: Path,
+    memory_budget_bytes: int = 0,
+    energy_only: bool = False,
 ) -> dict[str, Any]:
     """Build a reviewable protocol record before any GPU work starts."""
 
@@ -90,6 +92,8 @@ def manifest_payload(
             "python": python,
             "library": str(library),
             "repeats_per_engine": repeats,
+            "density_fitting_memory_budget_bytes": memory_budget_bytes,
+            "properties": ["energy"] if energy_only else ["energy", "forces"],
             "output_dir": str(output_dir),
             "benchmark": str(BENCHMARK),
         },
@@ -104,6 +108,8 @@ def manifest_payload(
             "direct_scf_tolerance": 1.0e-14,
             "warm_policy": "fixed post-cold engine-local density snapshot",
             "comparison": "VibeQC DF versus GPU4PySCF DF; no mixed direct/DF claim",
+            "maximum_energy_error_hartree": 1.0e-9,
+            "maximum_force_error_hartree_per_bohr": None if energy_only else 1.0e-8,
         },
         "component_ledger": {
             "status": "pending_measurement",
@@ -200,9 +206,16 @@ def run_matrix(
             str(payload["execution"]["repeats_per_engine"]),
             "--density-fitting",
             "cuda",
+            "--density-fitting-memory-budget-bytes",
+            str(payload["execution"].get("density_fitting_memory_budget_bytes", 0)),
             "--output",
             str(result_path),
         ]
+        command.extend(["--maximum-energy-error", "1e-9"])
+        if payload["execution"].get("properties") == ["energy"]:
+            command.append("--energy-only")
+        else:
+            command.extend(["--maximum-force-error", "1e-8"])
         entry.update({"status": "running", "command": command, "result": None})
         _write(manifest_path, payload)
         try:
@@ -249,6 +262,13 @@ def main() -> None:
     parser.add_argument("--run", action="store_true", help="execute cases in Slurm")
     parser.add_argument("--case", choices=sorted({item.name for item in MATRIX}))
     parser.add_argument("--repeats", type=int, default=5)
+    parser.add_argument("--energy-only", action="store_true")
+    parser.add_argument(
+        "--memory-budget-bytes",
+        type=int,
+        default=0,
+        help="DF sub-budget; positive selects generated source execution",
+    )
     parser.add_argument("--python", default=sys.executable)
     parser.add_argument(
         "--library",
@@ -262,6 +282,8 @@ def main() -> None:
     args = parser.parse_args()
     if args.repeats < 1:
         parser.error("--repeats must be positive")
+    if args.memory_budget_bytes < 0:
+        parser.error("--memory-budget-bytes must be nonnegative")
 
     cases = _matrix(args.case)
     # Children run from ROOT; resolve caller-relative paths before changing cwd.
@@ -276,6 +298,8 @@ def main() -> None:
         python=args.python,
         library=library,
         output_dir=output_dir,
+        memory_budget_bytes=args.memory_budget_bytes,
+        energy_only=args.energy_only,
     )
     _write(manifest_path, payload)
     if args.run:

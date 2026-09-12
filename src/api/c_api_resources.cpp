@@ -124,14 +124,17 @@ int vibeqc_resource_small_hf_cuda_v1(std::size_t nbf, std::size_t direct_nbf, st
  * workspace is allocated. Fixed source/other-provider bytes are supplied by
  * the composing planner, not independently spent again inside this budget.
  */
-int vibeqc_resource_df_tiles_v1(std::size_t batch, std::size_t nbf, std::size_t naux,
+int vibeqc_resource_df_tiles_v2(std::size_t batch, std::size_t nbf, std::size_t naux,
                                 std::size_t occupied, std::size_t budget,
-                                std::size_t fixed_device_bytes, std::uint64_t* output,
-                                std::size_t count, char* error, std::size_t error_size) {
-  if (output == nullptr || count != 6 || error == nullptr || error_size == 0) return 1;
+                                std::size_t fixed_device_bytes, unsigned generated_source,
+                                std::uint64_t* output, std::size_t count, char* error,
+                                std::size_t error_size) {
+  if (output == nullptr || count != 6 || error == nullptr || error_size == 0 ||
+      generated_source > 1)
+    return 1;
   try {
-    const auto plan = vibeqc::scf::plan_density_fitting_tiles(batch, nbf, naux, occupied, budget,
-                                                              fixed_device_bytes);
+    const auto plan = vibeqc::scf::plan_density_fitting_tiles(
+        batch, nbf, naux, occupied, budget, fixed_device_bytes, generated_source != 0);
     output[0] = plan.batch_tile;
     output[1] = plan.ao_pair_tile;
     output[2] = plan.auxiliary_tile;
@@ -144,6 +147,15 @@ int vibeqc_resource_df_tiles_v1(std::size_t batch, std::size_t nbf, std::size_t 
     std::snprintf(error, error_size, "%s", exception.what());
     return 1;
   }
+}
+
+/** Preserve the original host-tensor capacity query ABI. */
+int vibeqc_resource_df_tiles_v1(std::size_t batch, std::size_t nbf, std::size_t naux,
+                                std::size_t occupied, std::size_t budget,
+                                std::size_t fixed_device_bytes, std::uint64_t* output,
+                                std::size_t count, char* error, std::size_t error_size) {
+  return vibeqc_resource_df_tiles_v2(batch, nbf, naux, occupied, budget, fixed_device_bytes, 0,
+                                     output, count, error, error_size);
 }
 
 int vibeqc_resource_df_source_bytes_v1(std::size_t batch, std::size_t atoms, std::size_t shells,

@@ -8,6 +8,7 @@
 
 #include "integrals/ecp_cuda.hpp"
 #include "molecule/basis.hpp"
+#include "runtime/cuda_component_trace.hpp"
 #include "runtime/resource_cuda.cuh"
 #include "scf/cuda/one_electron_export_kernels.hpp"
 #include "scf/cuda/one_electron_view.hpp"
@@ -23,7 +24,8 @@ using namespace cuda_execution;
 /** Stage explicit host tensors while retaining coordinate/spin and failure semantics. */
 vibeqc_status build_cuda_one_electron_integrals_batch_impl(
     int device_id, const std::vector<core::System>& systems,
-    std::vector<integrals::IntegralData>& outputs, std::string& detail, bool include_derivatives) {
+    std::vector<integrals::IntegralData>& outputs, std::string& detail, bool include_derivatives,
+    bool include_nuclear_derivatives) {
   outputs.clear();
   if (device_id < 0 || systems.empty()) {
     detail = "CUDA one-electron integral batch dimensions are invalid";
@@ -49,8 +51,10 @@ vibeqc_status build_cuda_one_electron_integrals_batch_impl(
 
   HostBatch host;
   std::vector<const std::vector<double>*> no_warm(batch_size, nullptr);
-  // Match the spin-independent single-system evaluator for open-shell fleets.
-  if (!pack_host_batch(cartesian_systems, no_warm, host, true) || host.nbf == 0U) {
+  // One-electron exports need AO/pair metadata, not direct-ERI resident tasks.
+  // The matrix-only packing policy keeps preparation quadratic in shell count
+  // and also matches the spin-independent evaluator for open-shell fleets.
+  if (!pack_host_batch(cartesian_systems, no_warm, host, true, true) || host.nbf == 0U) {
     detail = "Cartesian one-electron batch cannot be represented by CUDA";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
@@ -233,7 +237,7 @@ vibeqc_status build_cuda_one_electron_integrals_batch_impl(
       output.hcore.resize(matrix_elements);
       if (include_derivatives) output.overlap_derivative.resize(output.ncoord * matrix_elements);
       if (include_derivatives) output.hcore_derivative.resize(output.ncoord * matrix_elements);
-      output.nuclear_repulsion_derivative.resize(output.ncoord);
+      if (include_nuclear_derivatives) output.nuclear_repulsion_derivative.resize(output.ncoord);
     }
   } catch (const std::bad_alloc&) {
     detail = "host allocation failed for one-electron batch output";
@@ -296,15 +300,29 @@ vibeqc_status build_cuda_one_electron_integrals_batch_impl(
       }
     }
   }
-  if (cuda_error == cudaSuccess) {
+  if (cuda_error == cudaSuccess && (include_derivatives || include_nuclear_derivatives)) {
+    runtime::cuda_trace::TraceOperation trace(
+        include_derivatives ? "one_electron_derivative_export" : "nuclear_derivative_export",
+        stream, {batch_size, nbf, 0, false, false});
     for (std::size_t coordinate = 0; coordinate < systems.front().atoms.size() * 3U; ++coordinate) {
+      runtime::cuda_trace::TraceRegion generation("one_electron_and_nuclear_derivative_generation",
+                                                  stream);
       if (include_derivatives)
         launch_build_cuda_one_electron_derivatives_kernel(
             blocks, threads, 0, stream, device_batch, device_pair_first, device_pair_second,
             pair_count, static_cast<std::int64_t>(coordinate), device_overlap, device_hcore);
-      launch_build_cuda_nuclear_repulsion_kernel(
-          true, static_cast<unsigned>((batch_size + threads - 1U) / threads), threads, 0, stream,
-          device_batch, static_cast<std::int64_t>(coordinate), device_nuclear);
+      if (include_nuclear_derivatives)
+        launch_build_cuda_nuclear_repulsion_kernel(
+            true, static_cast<unsigned>((batch_size + threads - 1U) / threads), threads, 0, stream,
+            device_batch, static_cast<std::int64_t>(coordinate), device_nuclear);
+      generation.finish();
+      runtime::cuda_trace::trace_counter("atom_coordinates", batch_size);
+      runtime::cuda_trace::trace_counter("device_to_host_bytes",
+                                         ((include_derivatives ? 2 * matrix_batch_elements : 0) +
+                                          (include_nuclear_derivatives ? batch_size : 0)) *
+                                             sizeof(double));
+      runtime::cuda_trace::TraceRegion transfer(
+          "one_electron_derivative_output_and_synchronization", stream);
       cuda_error = cudaGetLastError();
       if (cuda_error == cudaSuccess) cuda_error = cudaStreamSynchronize(stream);
       if (cuda_error != cudaSuccess) break;
@@ -316,7 +334,7 @@ vibeqc_status build_cuda_one_electron_integrals_batch_impl(
                                   matrix_batch_elements * sizeof(double), cudaMemcpyDeviceToHost);
         }
       }
-      if (cuda_error == cudaSuccess) {
+      if (cuda_error == cudaSuccess && include_nuclear_derivatives) {
         cuda_error = cudaMemcpy(packed_nuclear.data(), device_nuclear, batch_size * sizeof(double),
                                 cudaMemcpyDeviceToHost);
       }
@@ -330,7 +348,8 @@ vibeqc_status build_cuda_one_electron_integrals_batch_impl(
                     packed_hcore.begin() + (system + 1U) * matrix_elements,
                     outputs[system].hcore_derivative.begin() + coordinate * matrix_elements);
         }
-        outputs[system].nuclear_repulsion_derivative[coordinate] = packed_nuclear[system];
+        if (include_nuclear_derivatives)
+          outputs[system].nuclear_repulsion_derivative[coordinate] = packed_nuclear[system];
       }
     }
   }
@@ -356,10 +375,10 @@ vibeqc_status build_cuda_one_electron_integrals_batch_impl(
 vibeqc_status build_cuda_one_electron_integrals_batch(int device_id,
                                                       const std::vector<core::System>& systems,
                                                       std::vector<integrals::IntegralData>& outputs,
-                                                      std::string& detail,
-                                                      bool include_derivatives) {
-  return build_cuda_one_electron_integrals_batch_impl(device_id, systems, outputs, detail,
-                                                      include_derivatives);
+                                                      std::string& detail, bool include_derivatives,
+                                                      bool include_nuclear_derivatives) {
+  return build_cuda_one_electron_integrals_batch_impl(
+      device_id, systems, outputs, detail, include_derivatives, include_nuclear_derivatives);
 }
 
 }  // namespace vibeqc::scf
