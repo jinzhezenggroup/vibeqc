@@ -160,6 +160,9 @@ add_library(vibeqc SHARED
   src/scf/fock_prepared.cpp
   src/scf/fock_execution.cpp
   src/scf/rhf.cpp
+  src/scf/reference/linalg.cpp
+  src/scf/reference/mean_field.cpp
+  src/scf/initial_guess/density.cpp
   src/scf/cuda/rhf_policy.cpp
 )
 

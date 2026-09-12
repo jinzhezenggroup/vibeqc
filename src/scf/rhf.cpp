@@ -30,292 +30,35 @@
 #include "scf/fock_build.hpp"
 #include "scf/fock_prepared.hpp"
 #include "scf/fock_provider.hpp"
+#include "scf/initial_guess/density.hpp"
 #include "scf/proposals.hpp"
+#include "scf/reference/mean_field.hpp"
 
 namespace vibeqc::scf {
 namespace {
 
-using Matrix = std::vector<double>;
-
-std::size_t index(std::size_t row, std::size_t column, std::size_t n) { return row * n + column; }
-
-Matrix identity(std::size_t n) {
-  Matrix result(n * n, 0.0);
-  for (std::size_t i = 0; i < n; ++i) result[index(i, i, n)] = 1.0;
-  return result;
-}
-
-Matrix multiply(const Matrix& a, const Matrix& b, std::size_t n) {
-  Matrix out(n * n, 0.0);
-  for (std::size_t i = 0; i < n; ++i) {
-    for (std::size_t k = 0; k < n; ++k) {
-      const double aik = a[index(i, k, n)];
-      for (std::size_t j = 0; j < n; ++j) {
-        out[index(i, j, n)] += aik * b[index(k, j, n)];
-      }
-    }
-  }
-  return out;
-}
-
-Matrix transpose(const Matrix& a, std::size_t n) {
-  Matrix out(n * n);
-  for (std::size_t i = 0; i < n; ++i) {
-    for (std::size_t j = 0; j < n; ++j) {
-      out[index(j, i, n)] = a[index(i, j, n)];
-    }
-  }
-  return out;
-}
-
-struct EigenResult {
-  std::vector<double> values;
-  Matrix vectors;  // eigenvectors are columns
-};
-
-EigenResult symmetric_eigen(Matrix matrix, std::size_t n) {
-  Matrix vectors = identity(n);
-  const std::size_t max_sweeps = std::max<std::size_t>(50, 20 * n * n);
-  for (std::size_t sweep = 0; sweep < max_sweeps; ++sweep) {
-    std::size_t p = 0;
-    std::size_t q = 0;
-    double largest = 0.0;
-    for (std::size_t i = 0; i < n; ++i) {
-      for (std::size_t j = i + 1; j < n; ++j) {
-        const double candidate = std::abs(matrix[index(i, j, n)]);
-        if (candidate > largest) {
-          largest = candidate;
-          p = i;
-          q = j;
-        }
-      }
-    }
-    if (largest < 1.0e-14) break;
-
-    const double app = matrix[index(p, p, n)];
-    const double aqq = matrix[index(q, q, n)];
-    const double apq = matrix[index(p, q, n)];
-    const double angle = 0.5 * std::atan2(2.0 * apq, aqq - app);
-    const double c = std::cos(angle);
-    const double s = std::sin(angle);
-
-    for (std::size_t k = 0; k < n; ++k) {
-      if (k == p || k == q) continue;
-      const double mkp = matrix[index(k, p, n)];
-      const double mkq = matrix[index(k, q, n)];
-      matrix[index(k, p, n)] = matrix[index(p, k, n)] = c * mkp - s * mkq;
-      matrix[index(k, q, n)] = matrix[index(q, k, n)] = s * mkp + c * mkq;
-    }
-    matrix[index(p, p, n)] = c * c * app - 2.0 * s * c * apq + s * s * aqq;
-    matrix[index(q, q, n)] = s * s * app + 2.0 * s * c * apq + c * c * aqq;
-    matrix[index(p, q, n)] = matrix[index(q, p, n)] = 0.0;
-
-    for (std::size_t k = 0; k < n; ++k) {
-      const double vkp = vectors[index(k, p, n)];
-      const double vkq = vectors[index(k, q, n)];
-      vectors[index(k, p, n)] = c * vkp - s * vkq;
-      vectors[index(k, q, n)] = s * vkp + c * vkq;
-    }
-  }
-
-  std::vector<std::size_t> order(n);
-  std::iota(order.begin(), order.end(), 0);
-  std::sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) {
-    return matrix[index(a, a, n)] < matrix[index(b, b, n)];
-  });
-  EigenResult result;
-  result.values.resize(n);
-  result.vectors.resize(n * n);
-  for (std::size_t column = 0; column < n; ++column) {
-    const std::size_t source = order[column];
-    result.values[column] = matrix[index(source, source, n)];
-    for (std::size_t row = 0; row < n; ++row) {
-      result.vectors[index(row, column, n)] = vectors[index(row, source, n)];
-    }
-  }
-  return result;
-}
-
-Matrix symmetric_orthogonalizer(const Matrix& overlap, std::size_t n) {
-  const EigenResult eigen = symmetric_eigen(overlap, n);
-  Matrix scaled = eigen.vectors;
-  for (std::size_t column = 0; column < n; ++column) {
-    if (eigen.values[column] < 1.0e-10) {
-      throw std::runtime_error("overlap matrix is singular or severely linearly dependent");
-    }
-    const double factor = 1.0 / std::sqrt(eigen.values[column]);
-    for (std::size_t row = 0; row < n; ++row) {
-      scaled[index(row, column, n)] *= factor;
-    }
-  }
-  return multiply(scaled, transpose(eigen.vectors, n), n);
-}
-
-EigenResult generalized_eigen(const Matrix& fock, const Matrix& orthogonalizer, std::size_t n) {
-  const Matrix transformed =
-      multiply(transpose(orthogonalizer, n), multiply(fock, orthogonalizer, n), n);
-  EigenResult result = symmetric_eigen(transformed, n);
-  result.vectors = multiply(orthogonalizer, result.vectors, n);
-  return result;
-}
-
-Matrix density_from_orbitals(const Matrix& coefficients, std::size_t n, std::size_t occupied,
-                             double occupation_weight = 2.0) {
-  Matrix density(n * n, 0.0);
-  for (std::size_t mu = 0; mu < n; ++mu) {
-    for (std::size_t nu = 0; nu < n; ++nu) {
-      for (std::size_t orbital = 0; orbital < occupied; ++orbital) {
-        density[index(mu, nu, n)] += occupation_weight * coefficients[index(mu, orbital, n)] *
-                                     coefficients[index(nu, orbital, n)];
-      }
-    }
-  }
-  return density;
-}
-
-void mix_open_shell_frontier_orbitals(Matrix& beta_coefficients, std::size_t n,
-                                      std::size_t alpha_occupied, std::size_t beta_occupied) {
-  if (alpha_occupied == beta_occupied || beta_occupied == 0 || beta_occupied >= n) {
-    return;
-  }
-  // Exact molecular symmetry can make a core-Hamiltonian UHF guess an
-  // excited-state fixed point (for example, the sigma-hole state of linear
-  // OH). A 45-degree orthogonal HOMO/LUMO rotation preserves electron count
-  // and S-orthonormality while moving the seed outside that excited state's
-  // basin. The converged orbitals, not this seed angle, define the result.
-  constexpr double cosine = 0.7071067811865476;
-  constexpr double sine = 0.7071067811865476;
-  const std::size_t occupied_orbital = beta_occupied - 1;
-  const std::size_t virtual_orbital = beta_occupied;
-  for (std::size_t row = 0; row < n; ++row) {
-    const double occupied_value = beta_coefficients[index(row, occupied_orbital, n)];
-    const double virtual_value = beta_coefficients[index(row, virtual_orbital, n)];
-    beta_coefficients[index(row, occupied_orbital, n)] =
-        cosine * occupied_value + sine * virtual_value;
-    beta_coefficients[index(row, virtual_orbital, n)] =
-        -sine * occupied_value + cosine * virtual_value;
-  }
-}
-
-std::pair<std::size_t, std::size_t> spin_occupations(const core::System& system) {
-  const std::size_t electrons = static_cast<std::size_t>(system.electron_count);
-  const std::size_t spin_excess = static_cast<std::size_t>(system.multiplicity - 1);
-  if (spin_excess > electrons || ((electrons + spin_excess) & 1U) != 0U) {
-    throw std::invalid_argument(
-        "electron count and multiplicity do not define integral UHF occupations");
-  }
-  const std::size_t alpha = (electrons + spin_excess) / 2;
-  return {alpha, electrons - alpha};
-}
-
-void normalize_spin_density(Matrix& density, const Matrix& overlap, std::size_t n,
-                            std::size_t target_electrons) {
-  for (std::size_t i = 0; i < n; ++i) {
-    for (std::size_t j = i + 1; j < n; ++j) {
-      const double symmetric = 0.5 * (density[index(i, j, n)] + density[index(j, i, n)]);
-      density[index(i, j, n)] = symmetric;
-      density[index(j, i, n)] = symmetric;
-    }
-  }
-  if (target_electrons == 0) {
-    std::fill(density.begin(), density.end(), 0.0);
-    return;
-  }
-  double electron_trace = 0.0;
-  for (std::size_t i = 0; i < n; ++i) {
-    for (std::size_t j = 0; j < n; ++j) {
-      electron_trace += density[index(i, j, n)] * overlap[index(j, i, n)];
-    }
-  }
-  if (!(electron_trace > 0.0) || !std::isfinite(electron_trace)) {
-    throw std::invalid_argument("initial spin density has an invalid electron trace");
-  }
-  const double scale = static_cast<double>(target_electrons) / electron_trace;
-  for (double& value : density) value *= scale;
-}
-
-std::pair<Matrix, Matrix> prepare_initial_uhf_density(
-    const integrals::IntegralData& ints, const Matrix& orthogonalizer, std::size_t alpha_occupied,
-    std::size_t beta_occupied, const std::vector<double>* initial_density,
-    EigenResult& alpha_orbitals, EigenResult& beta_orbitals) {
-  const std::size_t n = ints.nbf;
-  const std::size_t matrix_size = n * n;
-  alpha_orbitals = generalized_eigen(ints.hcore, orthogonalizer, n);
-  beta_orbitals = alpha_orbitals;
-  if (initial_density == nullptr) {
-    mix_open_shell_frontier_orbitals(beta_orbitals.vectors, n, alpha_occupied, beta_occupied);
-    return {
-        density_from_orbitals(alpha_orbitals.vectors, n, alpha_occupied, 1.0),
-        density_from_orbitals(beta_orbitals.vectors, n, beta_occupied, 1.0),
-    };
-  }
-  if (initial_density->size() != 2 * matrix_size ||
-      !std::all_of(initial_density->begin(), initial_density->end(),
-                   [](double value) { return std::isfinite(value); })) {
-    throw std::invalid_argument(
-        "initial UHF density must contain finite alpha and beta AO matrices");
-  }
-  Matrix alpha(initial_density->begin(), initial_density->begin() + matrix_size);
-  Matrix beta(initial_density->begin() + matrix_size, initial_density->end());
-  normalize_spin_density(alpha, ints.overlap, n, alpha_occupied);
-  normalize_spin_density(beta, ints.overlap, n, beta_occupied);
-  return {std::move(alpha), std::move(beta)};
-}
-
-Matrix prepare_initial_density(const core::System& system, const integrals::IntegralData& ints,
-                               const Matrix& orthogonalizer, std::size_t occupied,
-                               const std::vector<double>* initial_density, EigenResult& orbitals) {
-  const std::size_t n = ints.nbf;
-  orbitals = generalized_eigen(ints.hcore, orthogonalizer, n);
-  if (initial_density == nullptr) {
-    return density_from_orbitals(orbitals.vectors, n, occupied);
-  }
-  if (initial_density->size() != n * n ||
-      !std::all_of(initial_density->begin(), initial_density->end(),
-                   [](double value) { return std::isfinite(value); })) {
-    throw std::invalid_argument("initial density does not match the finite AO matrix topology");
-  }
-  Matrix density = *initial_density;
-  // A density from the same AO topology but a different geometry is a useful
-  // guess, although its electron trace changes with the new overlap. Restore
-  // symmetry and electron count before entering SCF so warm starts do not
-  // introduce a geometry-dependent charge error.
-  for (std::size_t i = 0; i < n; ++i) {
-    for (std::size_t j = i + 1; j < n; ++j) {
-      const double symmetric = 0.5 * (density[index(i, j, n)] + density[index(j, i, n)]);
-      density[index(i, j, n)] = symmetric;
-      density[index(j, i, n)] = symmetric;
-    }
-  }
-  double electron_trace = 0.0;
-  for (std::size_t i = 0; i < n; ++i) {
-    for (std::size_t j = 0; j < n; ++j) {
-      electron_trace += density[index(i, j, n)] * ints.overlap[index(j, i, n)];
-    }
-  }
-  if (!(electron_trace > 0.0) || !std::isfinite(electron_trace)) {
-    throw std::invalid_argument("initial density has an invalid electron trace");
-  }
-  const double trace_scale = static_cast<double>(system.electron_count) / electron_trace;
-  for (double& value : density) value *= trace_scale;
-  return density;
-}
-
-Matrix energy_weighted_density(const Matrix& coefficients, const std::vector<double>& energies,
-                               std::size_t n, std::size_t occupied,
-                               double occupation_weight = 2.0) {
-  Matrix weighted(n * n, 0.0);
-  for (std::size_t mu = 0; mu < n; ++mu) {
-    for (std::size_t nu = 0; nu < n; ++nu) {
-      for (std::size_t orbital = 0; orbital < occupied; ++orbital) {
-        weighted[index(mu, nu, n)] += occupation_weight * energies[orbital] *
-                                      coefficients[index(mu, orbital, n)] *
-                                      coefficients[index(nu, orbital, n)];
-      }
-    }
-  }
-  return weighted;
-}
+using initial_guess::prepare_initial_density;
+using initial_guess::prepare_initial_uhf_density;
+using initial_guess::spin_occupations;
+using reference::commutator_residual;
+using reference::concatenate;
+using reference::density_from_orbitals;
+using reference::density_rms;
+using reference::dot;
+using reference::EigenResult;
+using reference::electronic_energy;
+using reference::energy_weighted_density;
+using reference::generalized_eigen;
+using reference::index;
+using reference::Matrix;
+using reference::multiply;
+using reference::residual_rms;
+using reference::solve_linear;
+using reference::split_spin_matrices;
+using reference::symmetric_eigen;
+using reference::symmetric_orthogonalizer;
+using reference::transpose;
+using reference::uhf_electronic_energy;
 
 template <class Plan>
 std::pair<Matrix, Matrix> build_uhf_focks(const Plan& plan, const Matrix& hcore,
@@ -324,92 +67,9 @@ std::pair<Matrix, Matrix> build_uhf_focks(const Plan& plan, const Matrix& hcore,
   return {std::move(fock.alpha), std::move(fock.beta)};
 }
 
-double uhf_electronic_energy(const Matrix& alpha_density, const Matrix& beta_density,
-                             const Matrix& hcore, const Matrix& alpha_fock,
-                             const Matrix& beta_fock) {
-  double energy = 0.0;
-  for (std::size_t element = 0; element < hcore.size(); ++element) {
-    energy += 0.5 * alpha_density[element] * (hcore[element] + alpha_fock[element]);
-    energy += 0.5 * beta_density[element] * (hcore[element] + beta_fock[element]);
-  }
-  return energy;
-}
-
-Matrix concatenate(const Matrix& first, const Matrix& second) {
-  Matrix joined;
-  joined.reserve(first.size() + second.size());
-  joined.insert(joined.end(), first.begin(), first.end());
-  joined.insert(joined.end(), second.begin(), second.end());
-  return joined;
-}
-
-std::pair<Matrix, Matrix> split_spin_matrices(const Matrix& joined, std::size_t matrix_size) {
-  if (joined.size() != 2 * matrix_size) {
-    throw std::invalid_argument("joined UHF matrix has an invalid size");
-  }
-  return {
-      Matrix(joined.begin(), joined.begin() + matrix_size),
-      Matrix(joined.begin() + matrix_size, joined.end()),
-  };
-}
-
 template <class Plan>
 Matrix build_fock(const Plan& plan, const Matrix& hcore, const Matrix& density) {
   return assemble_fock(plan.strategy(), hcore, plan.build(density)).alpha;
-}
-
-double electronic_energy(const Matrix& density, const Matrix& hcore, const Matrix& fock) {
-  double energy = 0.0;
-  for (std::size_t i = 0; i < density.size(); ++i) {
-    energy += 0.5 * density[i] * (hcore[i] + fock[i]);
-  }
-  return energy;
-}
-
-Matrix commutator_residual(const Matrix& fock, const Matrix& density, const Matrix& overlap,
-                           std::size_t n) {
-  const Matrix fps = multiply(multiply(fock, density, n), overlap, n);
-  const Matrix spf = multiply(multiply(overlap, density, n), fock, n);
-  Matrix residual(n * n);
-  for (std::size_t i = 0; i < residual.size(); ++i) residual[i] = fps[i] - spf[i];
-  return residual;
-}
-
-double dot(const Matrix& a, const Matrix& b) {
-  double result = 0.0;
-  for (std::size_t i = 0; i < a.size(); ++i) result += a[i] * b[i];
-  return result;
-}
-
-bool solve_linear(Matrix a, std::vector<double> b, std::vector<double>& x, std::size_t n) {
-  for (std::size_t column = 0; column < n; ++column) {
-    std::size_t pivot = column;
-    for (std::size_t row = column + 1; row < n; ++row) {
-      if (std::abs(a[index(row, column, n)]) > std::abs(a[index(pivot, column, n)])) {
-        pivot = row;
-      }
-    }
-    if (std::abs(a[index(pivot, column, n)]) < 1.0e-14) return false;
-    if (pivot != column) {
-      for (std::size_t j = 0; j < n; ++j) {
-        std::swap(a[index(column, j, n)], a[index(pivot, j, n)]);
-      }
-      std::swap(b[column], b[pivot]);
-    }
-    const double diagonal = a[index(column, column, n)];
-    for (std::size_t j = column; j < n; ++j) a[index(column, j, n)] /= diagonal;
-    b[column] /= diagonal;
-    for (std::size_t row = 0; row < n; ++row) {
-      if (row == column) continue;
-      const double factor = a[index(row, column, n)];
-      for (std::size_t j = column; j < n; ++j) {
-        a[index(row, j, n)] -= factor * a[index(column, j, n)];
-      }
-      b[row] -= factor * b[column];
-    }
-  }
-  x = std::move(b);
-  return true;
 }
 
 class Diis {
@@ -502,15 +162,6 @@ void sample_scf_buffers(const Data& data, const Diis& diis, const Vectors&... ve
       runtime::add_capacity(diis.numeric_capacity(), runtime::vector_capacities(vectors...))));
 }
 
-double density_rms(const Matrix& a, const Matrix& b) {
-  double square = 0.0;
-  for (std::size_t i = 0; i < a.size(); ++i) {
-    const double delta = a[i] - b[i];
-    square += delta * delta;
-  }
-  return std::sqrt(square / static_cast<double>(a.size()));
-}
-
 using ScfClock = std::chrono::steady_clock;
 double seconds_since(ScfClock::time_point started) {
   return std::chrono::duration<double>(ScfClock::now() - started).count();
@@ -519,10 +170,6 @@ double seconds_since(ScfClock::time_point started) {
 std::uint64_t new_scf_generation(const ScfOptions& options) {
   static std::atomic<std::uint64_t> next{1};
   return options.hooks ? next.fetch_add(1) : 0;
-}
-
-double residual_rms(const Matrix& residual) {
-  return std::sqrt(dot(residual, residual) / static_cast<double>(residual.size()));
 }
 
 /** Check physical ensemble representability in the actual AO metric. Trace

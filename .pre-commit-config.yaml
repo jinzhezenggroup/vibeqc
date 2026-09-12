@@ -35,6 +35,12 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: scf-structure
+        name: Check shared SCF dependency directions
+        entry: python3 tools/check_scf_structure.py
+        language: system
+        pass_filenames: false
+        always_run: true
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.16.6
     hooks:
