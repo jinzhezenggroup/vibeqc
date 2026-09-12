@@ -414,11 +414,13 @@ def test_bundled_def2_svp_water_matches_pyscf_cartesian_reference():
         ("H", (0.0, 1.43233673, 1.10715266)),
     ]
     try:
+        # Resolve the density tightly enough for the sub-nanohartree/Bohr
+        # force gate below; a 1e-9 density stop leaves about 9e-10 force error.
         result = Calculator(
             basis="def2-svp",
             device="cuda",
-            energy_tolerance=1.0e-11,
-            density_tolerance=1.0e-9,
+            energy_tolerance=1.0e-12,
+            density_tolerance=1.0e-10,
         ).singlepoint(atoms)
     except RuntimeError as error:
         pytest.skip(f"CUDA device unavailable: {error}")
