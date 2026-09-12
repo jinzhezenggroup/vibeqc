@@ -61,5 +61,52 @@ inline std::size_t rhf_reference_capacity(const core::System& system, unsigned d
   }
   return bytes;
 }
+
+/** Conservative peak for one energy-only RI-MP2 phase.
+ *
+ * Count the Cartesian generator output
+ * and device/export staging, the public
+ * transformed raw tensors, the Jacobi metric
+ * factorization, whitened
+ * three-center values, occupied-virtual coefficients, both normalized
+ * source
+ * owners and the detached physical reference. Object headers and allocator
+ * rounding
+ * follow the same numeric-buffer convention as the other capacity
+ * helpers.
+ */
+inline std::size_t ri_mp2_capacity(const core::System& orbital, const core::System& auxiliary,
+                                   std::size_t occupied, std::size_t kernel_bytes = 0) {
+  const auto n = molecule::ao_count(orbital);
+  const auto na = molecule::ao_count(auxiliary);
+  const auto cart = molecule::cartesian_ao_count(orbital);
+  const auto cart_aux = molecule::cartesian_ao_count(auxiliary);
+  if (!occupied || occupied >= n || !na) throw std::invalid_argument("invalid RI-MP2 dimensions");
+  const auto matrix = checked_mul(n, n);
+  const auto cart_matrix = checked_mul(cart, cart);
+  const auto metric = checked_mul(na, na);
+  const auto cart_metric = checked_mul(cart_aux, cart_aux);
+  const auto three_center = checked_mul(matrix, na);
+  const auto cart_three_center = checked_mul(cart_matrix, cart_aux);
+  const auto bia = checked_mul(checked_mul(occupied, n - occupied), na);
+  const auto reference = checked_add(checked_mul(5, matrix), n);
+  auto elements = reference;
+  // The CUDA batch exporter simultaneously owns packed device output, host
+  // chunk staging and the returned per-system arrays. Three copies also
+  // conservatively cover CPU Jet evaluation and unpacked values.
+  elements = checked_add(elements, checked_mul(3, checked_add(cart_metric, cart_three_center)));
+  elements = checked_add(elements, checked_mul(4, metric));
+  elements = checked_add(elements, checked_mul(2, three_center));
+  elements = checked_add(elements, bia);
+  auto bytes = checked_mul(elements, sizeof(double));
+  bytes = checked_add(bytes, source_capacity(orbital));
+  bytes = checked_add(bytes, source_capacity(auxiliary));
+  // CUDA's combined orbital/auxiliary HostBatch and device topology mirror
+  // the normalized source metadata while the RawSource owners remain live.
+  bytes = checked_add(bytes, source_capacity(orbital));
+  bytes = checked_add(bytes, source_capacity(auxiliary));
+  bytes = checked_add(bytes, checked_mul(2, source_scratch_bytes));
+  return checked_add(bytes, kernel_bytes);
+}
 }  // namespace vibeqc::posthf
 #endif

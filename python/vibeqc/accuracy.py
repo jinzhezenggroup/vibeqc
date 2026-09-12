@@ -72,10 +72,6 @@ class ResolvedModel:
             raise ValueError("unsupported resolved-model schema")
         if self.method not in ("rhf", "uhf", "mp2"):
             raise ValueError("accuracy models currently support RHF/UHF and MP2")
-        if self.method == "mp2" and self.approximation != "conventional":
-            # Enforce the same domain on restored/directly constructed models
-            # as on Calculator.resolved_model(). RI-MP2 is not implemented.
-            raise ValueError("canonical MP2 requires a conventional model")
         if self.hamiltonian != "all-electron-nonrelativistic-coulomb":
             raise ValueError("unsupported Hamiltonian/core treatment")
         if self.representation not in ("cartesian", "real_spherical"):
@@ -100,7 +96,7 @@ class ResolvedModel:
                 self.auxiliary_basis_hash is not None
                 or self.metric_relative_threshold is not None
             ):
-                raise ValueError("conventional HF cannot carry a fitted operator")
+                raise ValueError("a conventional model cannot carry a fitted operator")
         elif self.approximation == "density_fitting":
             _identity(self.auxiliary_basis_hash, "auxiliary_basis_hash")
             threshold = _number(

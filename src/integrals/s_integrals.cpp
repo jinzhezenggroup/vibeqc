@@ -855,15 +855,18 @@ IntegralData transform_integrals(const IntegralData& cartesian, const core::Syst
   return transformed;
 }
 
-IntegralData build_integrals(const core::System& system, bool include_derivatives) {
+IntegralData build_integrals(const core::System& system, bool include_derivatives,
+                             bool include_eri) {
   IntegralData out;
   out.nbf = molecule::cartesian_ao_count(system);
   out.ncoord = include_derivatives ? system.atoms.size() * 3 : 0;
   const std::size_t n = out.nbf;
   const std::size_t n2 = checked_product(n, n);
-  const std::size_t n4 = checked_product(n2, n2);
-  checked_product(n4, sizeof(Jet));
-  checked_product(checked_product(n4, out.ncoord), sizeof(double));
+  const std::size_t n4 = include_eri ? checked_product(n2, n2) : 0;
+  if (include_eri) {
+    checked_product(n4, sizeof(Jet));
+    checked_product(checked_product(n4, out.ncoord), sizeof(double));
+  }
   const std::vector<AoView> aos = expand_cartesian_aos(system);
 
   std::vector<Vec3> atom_coordinates;
@@ -880,7 +883,8 @@ IntegralData build_integrals(const core::System& system, bool include_derivative
 
   std::vector<Jet> overlap(n * n, Jet(0.0, out.ncoord));
   std::vector<Jet> hcore(n * n, Jet(0.0, out.ncoord));
-  std::vector<Jet> eri(n * n * n * n, Jet(0.0, out.ncoord));
+  std::vector<Jet> eri;
+  if (include_eri) eri.assign(n4, Jet(0.0, out.ncoord));
 
   for (std::size_t i = 0; i < n; ++i) {
     const AoView& ao_i = aos[i];
@@ -908,48 +912,50 @@ IntegralData build_integrals(const core::System& system, bool include_derivative
     }
   }
 
-  for (std::size_t i = 0; i < n; ++i) {
-    const AoView& ao_i = aos[i];
-    const Vec3& a = atom_coordinates[ao_i.shell->atom_index];
-    for (std::size_t j = 0; j <= i; ++j) {
-      const AoView& ao_j = aos[j];
-      const Vec3& b = atom_coordinates[ao_j.shell->atom_index];
-      for (std::size_t k = 0; k < n; ++k) {
-        const AoView& ao_k = aos[k];
-        const Vec3& c = atom_coordinates[ao_k.shell->atom_index];
-        for (std::size_t l = 0; l <= k; ++l) {
-          if (i * (i + 1) / 2 + j < k * (k + 1) / 2 + l) continue;
-          const AoView& ao_l = aos[l];
-          const Vec3& d = atom_coordinates[ao_l.shell->atom_index];
-          Jet value(0.0, out.ncoord);
-          const double component_factor =
-              ao_i.component_normalization * ao_j.component_normalization *
-              ao_k.component_normalization * ao_l.component_normalization;
-          for (const core::Primitive& pi : ao_i.shell->primitives) {
-            for (const core::Primitive& pj : ao_j.shell->primitives) {
-              for (const core::Primitive& pk : ao_k.shell->primitives) {
-                for (const core::Primitive& pl : ao_l.shell->primitives) {
-                  const double weight = component_factor * pi.coefficient * pj.coefficient *
-                                        pk.coefficient * pl.coefficient;
-                  value = value + weight * primitive_eri_cartesian(pi.exponent, a, ao_i.angular,
-                                                                   pj.exponent, b, ao_j.angular,
-                                                                   pk.exponent, c, ao_k.angular,
-                                                                   pl.exponent, d, ao_l.angular);
+  if (include_eri) {
+    for (std::size_t i = 0; i < n; ++i) {
+      const AoView& ao_i = aos[i];
+      const Vec3& a = atom_coordinates[ao_i.shell->atom_index];
+      for (std::size_t j = 0; j <= i; ++j) {
+        const AoView& ao_j = aos[j];
+        const Vec3& b = atom_coordinates[ao_j.shell->atom_index];
+        for (std::size_t k = 0; k < n; ++k) {
+          const AoView& ao_k = aos[k];
+          const Vec3& c = atom_coordinates[ao_k.shell->atom_index];
+          for (std::size_t l = 0; l <= k; ++l) {
+            if (i * (i + 1) / 2 + j < k * (k + 1) / 2 + l) continue;
+            const AoView& ao_l = aos[l];
+            const Vec3& d = atom_coordinates[ao_l.shell->atom_index];
+            Jet value(0.0, out.ncoord);
+            const double component_factor =
+                ao_i.component_normalization * ao_j.component_normalization *
+                ao_k.component_normalization * ao_l.component_normalization;
+            for (const core::Primitive& pi : ao_i.shell->primitives) {
+              for (const core::Primitive& pj : ao_j.shell->primitives) {
+                for (const core::Primitive& pk : ao_k.shell->primitives) {
+                  for (const core::Primitive& pl : ao_l.shell->primitives) {
+                    const double weight = component_factor * pi.coefficient * pj.coefficient *
+                                          pk.coefficient * pl.coefficient;
+                    value = value + weight * primitive_eri_cartesian(pi.exponent, a, ao_i.angular,
+                                                                     pj.exponent, b, ao_j.angular,
+                                                                     pk.exponent, c, ao_k.angular,
+                                                                     pl.exponent, d, ao_l.angular);
+                  }
                 }
               }
             }
+            // Eightfold ERI symmetry also holds for derivatives with respect
+            // to physical atoms. Compute each expensive high-l recurrence once.
+            for (const auto& indices : std::array<std::array<std::size_t, 4>, 8>{{{i, j, k, l},
+                                                                                  {j, i, k, l},
+                                                                                  {i, j, l, k},
+                                                                                  {j, i, l, k},
+                                                                                  {k, l, i, j},
+                                                                                  {l, k, i, j},
+                                                                                  {k, l, j, i},
+                                                                                  {l, k, j, i}}})
+              eri[eri_index(indices[0], indices[1], indices[2], indices[3], n)] = value;
           }
-          // Eightfold ERI symmetry also holds for derivatives with respect
-          // to physical atoms. Compute each expensive high-l recurrence once.
-          for (const auto& indices : std::array<std::array<std::size_t, 4>, 8>{{{i, j, k, l},
-                                                                                {j, i, k, l},
-                                                                                {i, j, l, k},
-                                                                                {j, i, l, k},
-                                                                                {k, l, i, j},
-                                                                                {l, k, i, j},
-                                                                                {k, l, j, i},
-                                                                                {l, k, j, i}}})
-            eri[eri_index(indices[0], indices[1], indices[2], indices[3], n)] = value;
         }
       }
     }
@@ -967,7 +973,7 @@ IntegralData build_integrals(const core::System& system, bool include_derivative
 
   unpack_jets(overlap, out.overlap, out.overlap_derivative, out.ncoord);
   unpack_jets(hcore, out.hcore, out.hcore_derivative, out.ncoord);
-  unpack_jets(eri, out.eri, out.eri_derivative, out.ncoord);
+  if (include_eri) unpack_jets(eri, out.eri, out.eri_derivative, out.ncoord);
   out.nuclear_repulsion = nuclear_repulsion.value;
   out.nuclear_repulsion_derivative = std::move(nuclear_repulsion.derivative);
   if (!system.ecp_terms.empty()) {
@@ -982,27 +988,32 @@ IntegralData build_integrals(const core::System& system, bool include_derivative
     spherical.ncoord = out.ncoord;
     spherical.overlap = transform_matrix(out.overlap.data(), out.nbf, target_aos);
     spherical.hcore = transform_matrix(out.hcore.data(), out.nbf, target_aos);
-    spherical.eri = transform_eri(out.eri.data(), out.nbf, target_aos);
+    if (include_eri) spherical.eri = transform_eri(out.eri.data(), out.nbf, target_aos);
     const std::size_t cartesian_matrix_size = out.nbf * out.nbf;
-    const std::size_t cartesian_eri_size = cartesian_matrix_size * cartesian_matrix_size;
+    const std::size_t cartesian_eri_size =
+        include_eri ? cartesian_matrix_size * cartesian_matrix_size : 0;
     const std::size_t spherical_matrix_size = spherical.nbf * spherical.nbf;
-    const std::size_t spherical_eri_size = spherical_matrix_size * spherical_matrix_size;
+    const std::size_t spherical_eri_size =
+        include_eri ? spherical_matrix_size * spherical_matrix_size : 0;
     spherical.overlap_derivative.reserve(spherical.ncoord * spherical_matrix_size);
     spherical.hcore_derivative.reserve(spherical.ncoord * spherical_matrix_size);
-    spherical.eri_derivative.reserve(spherical.ncoord * spherical_eri_size);
+    if (include_eri) spherical.eri_derivative.reserve(spherical.ncoord * spherical_eri_size);
     for (std::size_t coordinate = 0; coordinate < spherical.ncoord; ++coordinate) {
       std::vector<double> overlap_derivative = transform_matrix(
           out.overlap_derivative.data() + coordinate * cartesian_matrix_size, out.nbf, target_aos);
       std::vector<double> hcore_derivative = transform_matrix(
           out.hcore_derivative.data() + coordinate * cartesian_matrix_size, out.nbf, target_aos);
-      std::vector<double> eri_derivative = transform_eri(
-          out.eri_derivative.data() + coordinate * cartesian_eri_size, out.nbf, target_aos);
+      std::vector<double> eri_derivative;
+      if (include_eri)
+        eri_derivative = transform_eri(out.eri_derivative.data() + coordinate * cartesian_eri_size,
+                                       out.nbf, target_aos);
       spherical.overlap_derivative.insert(spherical.overlap_derivative.end(),
                                           overlap_derivative.begin(), overlap_derivative.end());
       spherical.hcore_derivative.insert(spherical.hcore_derivative.end(), hcore_derivative.begin(),
                                         hcore_derivative.end());
-      spherical.eri_derivative.insert(spherical.eri_derivative.end(), eri_derivative.begin(),
-                                      eri_derivative.end());
+      if (include_eri)
+        spherical.eri_derivative.insert(spherical.eri_derivative.end(), eri_derivative.begin(),
+                                        eri_derivative.end());
     }
     spherical.nuclear_repulsion = out.nuclear_repulsion;
     spherical.nuclear_repulsion_derivative = std::move(out.nuclear_repulsion_derivative);

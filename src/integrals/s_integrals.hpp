@@ -43,7 +43,8 @@ struct DensityFittingIntegralData {
  * execution evaluates the same formulas on device and does not call this
  * routine or copy these integral tensors to the GPU.
  */
-IntegralData build_integrals(const core::System& system, bool include_derivatives = true);
+IntegralData build_integrals(const core::System& system, bool include_derivatives = true,
+                             bool include_eri = true);
 
 /**
  * Write a row-major rectangular <target AO | source AO> overlap on the CPU.

@@ -683,20 +683,13 @@ class Calculator:
         return result
 
     def resolved_model(self, atoms, *, charge=0, multiplicity=1) -> ResolvedModel:
-        """Resolve the scientific HF or conventional MP2 identity for comparisons.
+        """Resolve the scientific HF or MP2 identity for comparisons.
 
         Unlike a prepared-plan signature, this identity excludes execution
         backend, iteration tolerances, screening and schedules. Fitting and its
         actual auxiliary basis remain mathematical choices. This method only
         resolves compact basis metadata; it performs no integral/SCF work.
         """
-        if (
-            self._method == _native.METHOD_MP2
-            and self._density_fitting_mode != _native.DENSITY_FITTING_NONE
-        ):
-            # An identity must not advertise an RI-MP2 model that execution
-            # cannot supply, including when AUTO would select a DF backend.
-            raise NotImplementedError("RI/DF MP2 model resolution is not implemented")
         atoms = tuple(Atom.from_value(atom) for atom in atoms)
         self._preflight_hf_basis(atoms)
         metadata = self.basis_metadata(atoms, charge=charge, multiplicity=multiplicity)
