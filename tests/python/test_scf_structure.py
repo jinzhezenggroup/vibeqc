@@ -136,7 +136,7 @@ def test_direct_queue_owners_cannot_acquire_plan_or_integral_state(
 )
 @pytest.mark.parametrize(
     "dependency",
-    ["direct_jk_kernels.cuh", "one_electron_native_force.cuh", "resources.hpp"],
+    ["direct_jk_kernels.cu", "one_electron_native_force.cuh", "resources.hpp"],
 )
 def test_provider_host_owners_cannot_import_recurrences_or_scf_lifetime(
     tmp_path, owner, dependency
@@ -150,7 +150,12 @@ def test_provider_host_owners_cannot_import_recurrences_or_scf_lifetime(
 
 
 @pytest.mark.parametrize(
-    "owner", ["direct_jk_kernels.cuh", "one_electron_export_kernels.hpp"]
+    "owner",
+    [
+        "direct_jk_kernels.hpp",
+        "direct_jk_kernels.cu",
+        "one_electron_export_kernels.hpp",
+    ],
 )
 def test_provider_kernel_interfaces_cannot_acquire_plan_state(tmp_path, owner):
     """A consumer interface must remain usable without host plan allocations."""
@@ -194,4 +199,76 @@ def test_shared_numerics_cannot_import_operator_contractions(tmp_path):
     (source / "coulomb_auxiliary.cuh").write_text(
         '#include "one_electron_native_force.cuh"\n'
     )
+    assert len(audit_scf_structure(tmp_path)["errors"]) == 1
+
+
+@pytest.mark.parametrize(
+    "owner", ["direct_native_cartesian.cuh", "direct_native_order3_gradient.cuh"]
+)
+@pytest.mark.parametrize(
+    "dependency", ["direct_constants.hpp", "direct_angular_fock.hpp", "resources.hpp"]
+)
+def test_direct_numerical_families_cannot_acquire_policy_or_consumers(
+    tmp_path, owner, dependency
+):
+    """Native formulas borrow class indexing without acquiring launch policy."""
+    source = tmp_path / "src/scf/cuda"
+    source.mkdir(parents=True)
+    (source / dependency).write_text("// Policy, consumer, or lifetime owner\n")
+    (source / owner).write_text(f'#include "{dependency}"\n')
+    assert len(audit_scf_structure(tmp_path)["errors"]) == 1
+
+
+@pytest.mark.parametrize(
+    "owner",
+    [
+        "direct_fock_order2.cuh",
+        "direct_force_low_order.cuh",
+        "direct_bounded_fallback.cu",
+    ],
+)
+def test_direct_contractions_cannot_acquire_host_resources(tmp_path, owner):
+    """Fused native consumers stay independent of graph and allocation lifetime."""
+    source = tmp_path / "src/scf/cuda"
+    source.mkdir(parents=True)
+    (source / "resources.hpp").write_text("// Host-owned allocations\n")
+    (source / owner).write_text('#include "resources.hpp"\n')
+    assert len(audit_scf_structure(tmp_path)["errors"]) == 1
+
+
+def test_direct_launch_interface_cannot_import_its_implementation(tmp_path):
+    """Sharing a basename must not weaken the host/device interface boundary."""
+    source = tmp_path / "src/scf/cuda"
+    source.mkdir(parents=True)
+    (source / "direct_angular_fock.cu").write_text("// Separately compiled kernels\n")
+    (source / "direct_angular_fock.hpp").write_text(
+        '#include "direct_angular_fock.cu"\n'
+    )
+    assert len(audit_scf_structure(tmp_path)["errors"]) == 1
+
+
+@pytest.mark.parametrize(
+    "dependency", ["direct_native_cartesian.cuh", "direct_bounded_fallback.cu"]
+)
+def test_cpp_hf_driver_cannot_import_device_implementations(tmp_path, dependency):
+    """C++ orchestration must keep borrowing launches after numerical extraction."""
+    source = tmp_path / "src/scf"
+    (source / "cuda").mkdir(parents=True)
+    (source / "cuda" / dependency).write_text("// Separately compiled arithmetic\n")
+    (source / "cuda_rhf.cpp").write_text(f'#include "cuda/{dependency}"\n')
+    assert len(audit_scf_structure(tmp_path)["errors"]) == 1
+
+
+@pytest.mark.parametrize(
+    "dependency", ["tensor/cuda_runtime.cuh", "scf/cuda/direct_native_cartesian.cuh"]
+)
+def test_reference_export_uses_only_host_cuda_interfaces(tmp_path, dependency):
+    """Exporting a physical reference must not pull device syntax into C++."""
+    source = tmp_path / "src"
+    target = source / dependency
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("// Contains device kernels\n")
+    bridge = source / "scf/cuda/reference_export.cuh"
+    bridge.parent.mkdir(parents=True, exist_ok=True)
+    bridge.write_text(f'#include "{dependency}"\n')
     assert len(audit_scf_structure(tmp_path)["errors"]) == 1

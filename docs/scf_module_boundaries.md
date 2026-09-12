@@ -6,8 +6,9 @@ control and stationary force assembly now have explicit interfaces in
 `src/scf/gradient/`.
 They retain the original loop order, occupation factors, Jacobi thresholds,
 overlap rejection threshold, and UHF frontier-rotation policy. Issue #240
-remains open for direct scientific/force kernels, fused bounded consumers,
-host graph/bucket control and the final production build/runtime gates below.
+remains open for host graph/bucket control and the final production
+build/runtime gates below. The retained scientific kernels now have bounded
+CUDA owners; the remaining direct host driver compiles as ordinary C++.
 
 ## Responsibility inventory
 
@@ -25,10 +26,10 @@ and `cuda_ownership_current.json`, under #231.
 | `rhf.cpp`: provider semantics and accounting | `CpuScfIntegralDataView`, integral capacity sampling, `build_fock`, `build_uhf_focks`, prepared strategy entry points, CUDA DF plan preparation | The common CPU driver consumes #202's `PreparedFockPlan` with no direct/DF storage branches. `PreparedFockPlan::cpu_observation_capacity()` now owns the prior capacity accounting, counting shared AO data once. Legacy CUDA/DF provider orchestration remains in the compatibility driver. |
 | `rhf.cpp`: stationary forces | `analytic_forces`, `analytic_uhf_forces`, DF/CUDA gradient adapters and final force assembly | Provider-based stationary assembly is extracted to `gradient/hf_gradient.*`, taking the provider's explicit positive derivative rather than owning a plan. Legacy CUDA/DF gradient adapters and finalization remain; their provider, overlap/Pulay, one-electron and nuclear terms must remain distinct. |
 | `rhf.cpp`: compatibility entry points | Public RHF/UHF CPU/CUDA wrappers and CPU-build CUDA stubs | Keep existing method/ABI signatures, failure behavior and per-item ordering. |
-| `cuda_rhf.cu`: scientific reference/fallback/specializations | `Dual`, `Dual3`, `MixedPrecisionFloat`, angular/Hermite/Coulomb workspaces, primitive/contracted one-/two-electron values and gradients, order-specific Fock/force kernels | Move by the existing #231 scientific ownership regions; do not copy formulas or turn the independent oracle into generated production arithmetic. |
-| `cuda_rhf.cu`: queues, work descriptors and compaction | `ActiveShellQuartetTile`, `DirectTileValidationRecord`, `PsssResidentTask`, pair bounds, descriptor validation, bounded page ranges and queue kernels | Host partitioning and page ranges use `cuda/queue_plan.*`. Device validation, density bounds, compaction, generated/resident tasks, bounded pages, scans and diagnostics now have separate `cuda/direct_*` owners. Fused native bounded consumers and host launch sequencing remain pending. |
-| `cuda_rhf.cu`: generic SCF kernels and libraries | Density/Fock/update/convergence kernels, inactive-eigensolver profiles and launch selection | Generic eigensolver execution lives in `cuda/eigensolver.cpp` / `eigensolver_kernels.cu`. Shared matrix, density, DIIS, convergence and state kernels now have separate `cuda/scf_*_kernels.*` owners; public/direct basis transforms use `basis_transform_kernels.*`. Scientific integral/Fock kernels and host bucket control remain pending. |
-| `cuda_rhf.cu`: host planning and replay | `DeviceBatch`, `HostBatch`, `ArenaLayout`, `CudaResources`, `CudaRhfBucketPlan`, integral source implementation, graph construction and bucket dispatch | Packed/POD contracts and host topology/arena planning already have separate owners. DF source/export uses `cuda/df_source*` / `df_integral_export*`. Stream/graph/arena lifetime uses `cuda/resources.*`; matrix-library execution borrows `matrix_library.*`. Direct J/K host ownership uses `direct_jk.cpp` / `direct_jk_plan.hpp`; one-electron host exports use `one_electron_export*.cpp`. Graph construction and bucket dispatch remain pending. |
+| `cuda_rhf.cu`: scientific reference/fallback/specializations | `Dual`, `Dual3`, `MixedPrecisionFloat`, angular/Hermite/Coulomb workspaces, primitive/contracted one-/two-electron values and gradients, order-specific Fock/force kernels | Retained one-electron and direct numerical families now have bounded shared headers and CUDA launch owners. The #231 classifications and arithmetic are preserved; no scientific formulas are retired by the move. |
+| `cuda_rhf.cu`: queues, work descriptors and compaction | `ActiveShellQuartetTile`, `DirectTileValidationRecord`, `PsssResidentTask`, pair bounds, descriptor validation, bounded page ranges and queue kernels | Host partitioning and page ranges use `cuda/queue_plan.*`. Device validation, density bounds, compaction, generated/resident tasks, bounded pages, scans and diagnostics now have separate `cuda/direct_*` owners. Fused native consumers use `direct_bounded_dddd.cu`, `direct_bounded_exact_force.cu` and `direct_bounded_fallback.cu`; host launch sequencing remains in the C++ driver. |
+| `cuda_rhf.cu`: generic SCF kernels and libraries | Density/Fock/update/convergence kernels, inactive-eigensolver profiles and launch selection | Generic eigensolver execution lives in `cuda/eigensolver.cpp` / `eigensolver_kernels.cu`. Shared matrix, density, DIIS, convergence and state kernels now have separate `cuda/scf_*_kernels.*` owners; public/direct basis transforms use `basis_transform_kernels.*`. Scientific integral/Fock kernels now have separate CUDA owners; host bucket control remains in `cuda_rhf.cpp`. |
+| `cuda_rhf.cu`: host planning and replay | `DeviceBatch`, `HostBatch`, `ArenaLayout`, `CudaResources`, `CudaRhfBucketPlan`, integral source implementation, graph construction and bucket dispatch | Packed/POD contracts and host topology/arena planning already have separate owners. DF source/export uses `cuda/df_source*` / `df_integral_export*`. Stream/graph/arena lifetime uses `cuda/resources.*`; matrix-library execution borrows `matrix_library.*`. Direct J/K host ownership uses `direct_jk.cpp` / `direct_jk_plan.hpp`; one-electron host exports use `one_electron_export*.cpp`. Graph construction and bucket dispatch now compile as `cuda_rhf.cpp`; their finer responsibility split remains pending. |
 | Former `cuda_density_fitting.cu`: metric and storage planning | `SetupBuffers`, `CudaDensityFittingJkPlan`, checked sizes, cuSOLVER setup, plan creation/release and diagnostics | Extracted to `cuda/df_plan*`, `df_setup_internal.hpp`, `df_runtime.*` and `df_metric_kernels.*`. The public handle remains opaque; source transfer and retained metric factors keep their single owner. |
 | Former `cuda_density_fitting.cu`: J/K execution | `build_coulomb`, `build_exchange`, tile gather/transpose/reduction kernels, RHF/UHF host/device/item entry points | Extracted to `cuda/df_coulomb.cpp`, `df_exchange.cpp`, `df_jk*`. Resident, host-backed and source-backed execution retain the same provider semantics and memory sub-budget. |
 | Former `cuda_density_fitting.cu`: force integration | `execute_cuda_density_fitting_generated_force_response` | The adapter now lives in `cuda/df_force_response.cpp`. The #205 source-backed response borrows device factors through `df_response_weights.*` / `df_gradient_bridge.*`; the host-value compatibility adapter retains its CPU metric path. |
@@ -52,9 +53,37 @@ structural-size gate. At the baseline, `rhf.cpp` contains 3,413 lines / 165,000
 bytes, `cuda_rhf.cu` 19,754 lines / 1,048,372 bytes, and
 `cuda_density_fitting.cu` 3,098 lines / 160,928 bytes. The original DF unit is now
 removed; its largest replacement is the 549-line setup transaction. The large
-direct CUDA unit still exceeds the target and remains unfinished work under
-#240. Its kernel/template and runtime coupling explains the staged extraction,
+direct host unit (`cuda_rhf.cpp`, 4,865 lines after MP2 integration) still exceeds the target and
+remains unfinished work under #240. Its graph/bucket coupling explains the staged extraction,
 not an exemption from the issue's final acceptance criteria.
+
+## Direct-native integration with MP2
+
+The merge with upstream `b69ec53` preserves every physical-reference export,
+capacity, provider-accounting and cleanup change from the original CUDA driver.
+Its added and deleted host tokens match the upstream patch, and the layered
+audit still verifies the preceding numerical and consumer extractions. The
+shared `tensor/cuda_error.hpp` keeps `DeviceAllocationError` and `cuda_check`
+unchanged while allowing the reference-export bridge to compile as ordinary
+C++ without importing device kernels from `tensor/cuda_runtime.cuh`.
+
+At integration source `c5301f3`, development and optimized Release builds each
+pass 22 native suites and 214 Python cases without skips. These cover HF/DF
+energies and forces, warm/failure semantics, mixed precision, final-Fock reuse,
+physical-reference export, public CPU/CUDA MP2, identical-orbital components and
+permutations, allocation status/rollback, CUDA tile replay, and an independent
+14-AO reference with a partial final virtual block. Each library also passes
+weighted-integral validation with 3,349 records, 141 tiles and four runs.
+Slurm allocations 9302 and 9303 preserve scheduler-assigned device visibility.
+
+The current source selection passes 545 checks with 50 optional skips; its six
+deselected fixed-native fixtures pass against both rebuilt libraries. Five
+actual CMake graph checks verify architecture intent and the ten-owner device
+link with standalone angular force, including global RDC mode. All hooks pass.
+`benchmarks/results/scf-direct-native-rtx5090/integration.json` retains this
+integration evidence separately from the historical pre-MP2 cold-build,
+incremental-build, binary-size and matched-runtime measurements below. The
+integration reused existing build trees and supplies no new cold-build claim.
 
 ## Validation and remaining acceptance
 
@@ -659,3 +688,167 @@ Twelve exact-parent scalar/cooperative, fixed/resident/paged RHF/UHF scenarios
 pass 192 energy/force comparisons, with maximum absolute difference
 `2.9976021664879227e-14`. The formatted build, hooks and 420 source/structure/
 ownership/publication checks pass; 48 optional compiler probes are skipped.
+
+## Retained direct kernels and C++ host control
+
+The remaining direct arithmetic now lives in 24 bounded `direct_native_*.cuh`
+headers: Cartesian/Hermite/Coulomb recurrences, sparse pair families, psss/psps/
+ppss/dsss gradients, order-specific gradients and contractions. Their largest
+header is 438 lines. Eleven consumer helper headers separate contraction,
+density and symmetry handling from nine CUDA launch owners: cached tensors,
+Schwarz bounds, packed Fock, angular Fock, reference force, bounded dddd,
+bounded exact force, bounded fallback and angular force. The largest new CUDA
+owner is 386 lines. Existing J/K and weighted-ERI fragments now compile as
+`direct_jk_kernels.cu` and `weighted_eri_kernels.cu`.
+
+`cuda_rhf.cu` becomes the ordinary C++ file `cuda_rhf.cpp`, decreasing from
+11,384 to 4,792 lines. It contains no device/kernel declarations or CUDA launch
+syntax. Its graph/bucket responsibilities still exceed the structural target
+and remain separate follow-up work. Numerical headers reject host plans and
+queue policy; consumer owners reject host resource lifetime; the C++ driver
+has an explicit launch-interface include allowlist. The ownership census
+excludes this ordinary C++ driver. That classification change retires no
+scientific formulas; all retained numerical owners remain in the #231 ledger.
+
+An exact-parent, three-stage source audit checks 77 numerical definitions,
+46 consumer definitions, 17 consumer launch adapters, both complete former
+fragments, two weighted launch adapters and three existing J/K wrappers. It
+also checks data layouts, launch bounds, forwarding and the complete remaining
+host body. Recursive angular dispatch and mixed-precision instantiations are
+preserved. The bounded dddd path retains six instantiations; the bounded
+fallback retains only its four existing force instantiations. Allocation,
+launch/error order, screening, spin factors and final-Fock reuse are unchanged.
+
+NVIDIA builds share ten direct owners through the resolved
+`vibeqc_direct_native` archive. `direct_angular_force.cu` compiles separately
+with relocatable device code disabled: NVCC 12.9 needs whole-program
+compilation to propagate the resident kernels' launch-bound register ceilings
+into their retained callees. A dedicated object target preserves this rule
+even when whole-library separable compilation is requested. Kernel launch
+bounds and no-inline annotations are unchanged. The default-enabled
+`VIBEQC_CUDA_DIRECT_DEVICE_LINK` option can disable the ten-owner archive for
+comparison; CuMetal and other compilers keep standalone modules. Real,
+virtual-only and combined architecture requests retain their requested flags.
+Split-compile experiments now apply to the direct owners instead of the
+removed monolithic CUDA source.
+
+The source/ownership/publication suite passed 433 checks with 48 optional
+compiler skips. Five additional tests inspect actual CMake/Ninja build graphs:
+real, virtual and combined architecture requests, explicit standalone mode,
+and the angular-force exclusion under whole-library separable compilation.
+The three-stage source audit and repository hooks pass.
+
+The standalone extraction passed four native GPU suites and 139 Python cases
+(Slurm 9280). Another 37 response cases and the weighted primitive validator
+passed in Slurm 9281; the latter covers 3,349 records, 141 output tiles and four
+budget/route runs, with libcint values and finite differences. An experimental
+device-linked build passed the same native/Python and weighted gates in Slurm
+9286. Its preceding run used incomplete opt-ins (121 passes and 18 skips) and
+is not used as the complete GPU gate. The final ten-owner CMake development build passes four native suites, all
+139 Python cases and the weighted validator in Slurm 9292. Slurm 9293 also
+passes 96 endpoint comparisons with PTX-only images for every moved direct
+owner; unchanged owners in that probe retain development images.
+
+Exact-parent prepared endpoints compare six fixed/resident/paged RHF/UHF
+scenarios, each containing a ragged three-system batch, cold execution, changed
+geometry and repeated warm execution. Standalone and experimental linked
+builds each pass 144 energy/force comparisons against the parent; maximum
+absolute differences are `3.3084646133829665e-14` and
+`4.618527782440651e-14`. Two per-item mixed-precision cases pass on each of
+those three libraries, asserting actual FP32 work and strict FP64 refinement.
+These are development-build numerical gates, not production speed claims.
+
+### Optimized compiler samples
+
+NVCC 12.9 targets `compute_120` plus `sm_120` with `-O3`, fast-compile mode
+disabled and the compiler cache disabled. The parent is the exact `a6311fe`
+implementation (also present at `671baef`). At most two compiler invocations
+run concurrently on this shared host with a warm filesystem cache; aggregate
+figures sum invocation wall times. The host driver uses GCC 11.4 Release.
+
+| Scope | Aggregate compiler seconds | Object bytes |
+| --- | ---: | ---: |
+| Parent monolithic CUDA owner | 1,087.030 | 40,964,624 |
+| Eleven standalone direct owners | 1,170.006 | 63,982,360 |
+| Ten relocatable direct owners | 501.965 | 28,110,992 |
+| Standalone angular force (required with either mode) | 205.726 | 8,973,568 |
+| Extracted ordinary C++ host driver | 5.343 | 245,456 |
+
+The standalone angular-force row is already included in the eleven-owner row;
+it is added to the ten-owner row for the shared-code arrangement. That bounded
+device link takes 12.475 seconds and produces a 9,952,280-byte link object.
+Standalone compilation adds aggregate work and binary storage. Bounded linking
+reduces duplication while retaining per-owner source compilation. These
+samples do not establish complete cold-build or runtime acceptance. Fresh
+whole-library Release builds, incremental object probes and endpoint runtime
+checks are recorded separately when completed. Full #240 also requires the
+remaining host graph/bucket decomposition.
+
+The optimized changed objects were also linked against the identical untouched
+development components to isolate this extraction's compiler effects. These
+hybrid libraries pass six prepared-endpoint scenarios and 144 comparisons per
+variant against the parent (maximum absolute differences `3.241851231905457e-14`
+for standalone owners and `3.3306690738754696e-14` for the ten-owner link).
+Four additional cases per library pass: per-item RHF/UHF mixed precision,
+independent d/f PySCF comparisons and final-Fock reuse. Slurm 9289 records this
+check. The hybrid library sizes are 111,937,968 bytes for the parent,
+135,211,096 bytes for standalone extraction and 118,255,072 bytes for the
+bounded link. Complete Release acceptance remains separate from these
+partially optimized library measurements.
+
+### Complete Release validation
+
+Fresh parent (`671baef`) and extracted (`59c3e9f`) builds use GCC 11.4,
+NVCC 12.9.1, `-O3`, `compute_120` plus `sm_120`, fast-compile mode disabled,
+compiler cache disabled, two CUDA jobs and four total Ninja jobs. Both build
+trees start empty. The builds run concurrently on a shared host with a warm
+filesystem cache. The parent finishes in 2,143.872 seconds; extraction finishes
+in 1,509.839 seconds. These single samples describe this build configuration.
+The extraction was uncommitted when configure began and was committed unchanged
+during the build; the evidence records source commit `59c3e9f` separately from
+the configure-time HEAD. The subsequent `<cstdlib>` portability fix (`e7d8414`)
+rebuilds the host/identity objects before runtime checks.
+
+Complete Release library sizes are 116,304,304 bytes for the parent and
+122,613,128 bytes for extraction, an increase of 5.4%. Slurm 9296 passes four
+native suites, 139 Python GPU cases and the weighted validator (3,349 records,
+141 tiles, four budget/route runs). Slurm 9298 compares six fixed/resident/paged
+RHF/UHF scenarios: each has a ragged three-system batch, cold execution,
+changed geometry and five warm repeats per geometry. All 288 energy/force
+comparisons pass; maximum absolute error is `5.3512749786932545e-14`. Four
+additional cases pass per library: actual RHF/UHF mixed precision and strict
+FP64 refinement, independent d/f PySCF references, and final-Fock reuse.
+Both libraries also pass 37 response cases with the required explicit opt-in
+in Slurm 9299; those cases were skipped in the preceding 9298 run.
+
+| Endpoint | Parent warm median (ms) | Extracted warm median (ms) |
+| --- | ---: | ---: |
+| RHF fixed | 19.241 | 19.161 |
+| RHF resident | 19.167 | 18.897 |
+| RHF paged | 19.771 | 19.419 |
+| UHF fixed | 18.073 | 18.594 |
+| UHF resident | 18.191 | 18.150 |
+| UHF paged | 18.175 | 18.036 |
+
+Changed-geometry warm medians also differ by less than one millisecond. These
+short endpoint samples show no material runtime overhead in the exercised
+scenarios; they do not establish a general performance improvement. Input
+geometries, all comparison records, individual timing samples, library hashes,
+build commands and scope limits are retained in
+[`validation.json`](../benchmarks/results/scf-direct-native-rtx5090/validation.json).
+
+Actual implementation comment edits were rebuilt in the same Release tree with
+compiler cache disabled. Each edit was then restored byte-for-byte and rebuilt:
+
+| Edited implementation | Rebuild seconds | Compiled objects and device link |
+| --- | ---: | --- |
+| `cuda_rhf.cpp` | 6.975 | C++ driver and source identity; no CUDA compile or device link |
+| `direct_schwarz_kernels.cu` | 90.759 | Its CUDA object and source identity; direct archive device link |
+| `direct_angular_force.cu` | 206.855 | Its CUDA object and source identity; no device link |
+
+All timings include the shared library and dependent executable relinks.
+[`incremental.json`](../benchmarks/results/scf-direct-native-rtx5090/incremental.json)
+retains the complete touched-object and relink lists. No unrelated CUDA source
+is recompiled. The angular-force exclusion therefore preserves its standalone
+compiler contract during both cold and incremental builds. Full #240 remains
+open for the host graph/bucket decomposition and its final combined inventory.

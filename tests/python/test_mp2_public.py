@@ -107,6 +107,28 @@ def test_hf_identity_ignores_mp2_only_controls():
         assert len(identities) == 1
 
 
+@pytest.mark.parametrize("mode", ["cpu", "cpu_reference", "cuda", "auto", True])
+def test_mp2_model_rejects_density_fitting(mode):
+    """Unsupported correlated variants cannot enter model/evidence consumers."""
+    atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
+    with pytest.raises(NotImplementedError, match="RI/DF MP2"):
+        Calculator(method="mp2", density_fitting=mode).resolved_model(atoms)
+
+
+def test_mp2_model_cannot_be_reconstructed_as_density_fitting():
+    from dataclasses import replace
+
+    atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
+    model = Calculator(method="mp2").resolved_model(atoms)
+    with pytest.raises(ValueError, match="MP2 requires a conventional"):
+        replace(
+            model,
+            approximation="density_fitting",
+            auxiliary_basis_hash=model.basis_hash,
+            metric_relative_threshold=1e-10,
+        )
+
+
 def test_public_mp2_identity_includes_correlation_controls():
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     # Metadata must distinguish changed execution controls even before native

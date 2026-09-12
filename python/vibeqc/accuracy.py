@@ -40,7 +40,7 @@ def _identity(value, name):
 
 @dataclass(frozen=True)
 class ResolvedModel:
-    """Backend-independent all-electron HF model at a specified geometry.
+    """Backend-independent all-electron HF or canonical MP2 model at a geometry.
 
     Hashes identify actual ordered nuclei, coordinates, normalized basis data and
     AO conventions, not basis aliases or array dimensions. The metric threshold
@@ -72,6 +72,10 @@ class ResolvedModel:
             raise ValueError("unsupported resolved-model schema")
         if self.method not in ("rhf", "uhf", "mp2"):
             raise ValueError("accuracy models currently support RHF/UHF and MP2")
+        if self.method == "mp2" and self.approximation != "conventional":
+            # Enforce the same domain on restored/directly constructed models
+            # as on Calculator.resolved_model(). RI-MP2 is not implemented.
+            raise ValueError("canonical MP2 requires a conventional model")
         if self.hamiltonian != "all-electron-nonrelativistic-coulomb":
             raise ValueError("unsupported Hamiltonian/core treatment")
         if self.representation not in ("cartesian", "real_spherical"):

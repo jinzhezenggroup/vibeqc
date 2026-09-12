@@ -1,13 +1,17 @@
 #pragma once
 
 #include <array>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <memory>
+#include <stdexcept>
 #include <type_traits>
 #include <vector>
 
 #include "posthf/capacity.hpp"
 #include "scf/mean_field.hpp"
-#include "tensor/cuda_runtime.cuh"
+#include "tensor/cuda_error.hpp"
 
 namespace vibeqc::scf::reference_detail {
 inline std::size_t free_bytes(cudaStream_t stream) {
@@ -96,6 +100,11 @@ inline vibeqc_status download(cudaStream_t stream, std::size_t n, std::size_t oc
                               const std::uint32_t* iterations, ScfResult& result) {
   std::uint8_t ok = 0, bad = 0;
   std::uint32_t count = 0;
+  // Declare staging owners before Drain so exceptional copy exits synchronize
+  // before their buffers are destroyed. Allocate only after convergence.
+  std::shared_ptr<PhysicalReference> ref;
+  std::array<std::vector<double>, 5> matrices;
+  double scalars[3]{};
   struct Drain {
     cudaStream_t stream;
     bool done = false;
@@ -114,14 +123,12 @@ inline vibeqc_status download(cudaStream_t stream, std::size_t n, std::size_t oc
   vibeqc_tensor::cuda_check(cudaStreamSynchronize(stream));
   if (bad || !ok) return bad ? VIBEQC_STATUS_NUMERICAL_FAILURE : VIBEQC_STATUS_NOT_CONVERGED;
 
-  auto ref = std::make_shared<PhysicalReference>();
+  ref = std::make_shared<PhysicalReference>();
   ref->nbf = n;
   ref->nocc = occupied;
   const auto matrix_size = posthf::checked_mul(n, n);
-  std::array<std::vector<double>, 5> matrices;
   for (auto& v : matrices) v.resize(matrix_size);
   ref->orbital_energies.resize(n);
-  double scalars[3]{};
   for (unsigned k = 0; k < 5; ++k)
     copy(matrices[k].data(), matrix_sources[k], matrix_size * sizeof(double));
   copy(ref->orbital_energies.data(), epsilon, n * sizeof(double));
