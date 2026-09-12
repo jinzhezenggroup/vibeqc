@@ -733,6 +733,125 @@ VIBEQC_API int vibeqc_posthf_weighted_eri_gradient_cuda_v1(
     std::copy(candidate.begin(), candidate.end(), gradient);
   });
 }
+// One shell-quartet version used by blockwise MO->AO cotangent transforms.
+// It returns four independent center derivatives; physical-atom scatter stays
+// with the caller so coincident centers are never identified prematurely. Its
+// stage budget/exclusions match the molecular adapter above.
+VIBEQC_API int vibeqc_posthf_weighted_eri_shell_gradient_cuda_v1(
+    void* source, int device, const std::size_t* shell_indices, const double* weights,
+    std::size_t weight_elements, std::size_t stage_budget, double* center_gradient,
+    std::size_t gradient_elements, char* error, std::size_t error_size) {
+  return guarded(error, error_size, [&] {
+    if (!source || !shell_indices || !weights || !center_gradient || device < 0 ||
+        gradient_elements != 12)
+      throw std::invalid_argument("invalid weighted ERI shell-gradient request");
+    const auto& system = static_cast<RawSource*>(source)->orbital();
+    std::array<const vibeqc::core::Shell*, 4> selected{};
+    for (unsigned slot = 0; slot < 4; ++slot) {
+      if (shell_indices[slot] >= system.shells.size())
+        throw std::invalid_argument("weighted ERI shell index is out of range");
+      selected[slot] = &system.shells[shell_indices[slot]];
+    }
+    std::size_t expected = 1, expansion_terms = 0;
+    for (const auto* shell : selected) {
+      const auto cartesian = vibeqc::molecule::cartesian_count(shell->angular_momentum);
+      const auto public_count = system.basis_representation == VIBEQC_BASIS_SPHERICAL
+                                    ? 2 * shell->angular_momentum + 1
+                                    : cartesian;
+      expected = vibeqc::posthf::checked_mul(expected, public_count);
+      expansion_terms = vibeqc::posthf::checked_add(
+          expansion_terms, vibeqc::posthf::checked_mul(public_count, cartesian));
+    }
+    if (weight_elements != expected)
+      throw std::invalid_argument("weighted ERI shell weights have the wrong shape");
+    constexpr std::size_t record_bytes = sizeof(vibeqc::scf::CudaWeightedEriPrimitive);
+    constexpr std::size_t result_bytes = 2 * sizeof(vibeqc::scf::CudaWeightedEriResult);
+    auto fixed_bytes = vibeqc::posthf::checked_mul(12, sizeof(double));
+    fixed_bytes = vibeqc::posthf::checked_add(
+        fixed_bytes, vibeqc::posthf::checked_mul(expansion_terms,
+                                                 sizeof(vibeqc::molecule::CartesianExpansionTerm)));
+    if (stage_budget <= vibeqc::posthf::checked_add(fixed_bytes, result_bytes))
+      throw std::length_error("weighted ERI shell-gradient stage budget is too small");
+    const auto capacity = std::min<std::size_t>(
+        4096, (stage_budget - fixed_bytes - result_bytes) / (2 * record_bytes));
+    if (!capacity) throw std::length_error("weighted ERI shell-gradient cannot hold one record");
+    const auto record_storage = vibeqc::posthf::checked_mul(capacity, record_bytes);
+    const auto consumer_budget = stage_budget - fixed_bytes - record_storage;
+    const std::array<std::vector<vibeqc::molecule::AoExpansion>, 4> expansions{
+        vibeqc::molecule::ao_expansions(selected[0]->angular_momentum, system.basis_representation),
+        vibeqc::molecule::ao_expansions(selected[1]->angular_momentum, system.basis_representation),
+        vibeqc::molecule::ao_expansions(selected[2]->angular_momentum, system.basis_representation),
+        vibeqc::molecule::ao_expansions(selected[3]->angular_momentum,
+                                        system.basis_representation)};
+    std::vector<vibeqc::scf::CudaWeightedEriPrimitive> records;
+    records.reserve(capacity);
+    std::vector<vibeqc::scf::CudaWeightedEriResult> output;
+    std::array<double, 12> candidate{};
+    auto flush = [&] {
+      if (records.empty()) return;
+      vibeqc::scf::CudaWeightedEriDiagnostic diagnostic;
+      std::string detail;
+      const auto status = vibeqc::scf::contract_cuda_weighted_eri_primitives(
+          device, records.data(), records.size(), 1, consumer_budget, false, output, diagnostic,
+          detail);
+      if (status != VIBEQC_STATUS_SUCCESS)
+        throw std::runtime_error(detail.empty() ? "weighted ERI shell contraction failed" : detail);
+      if (output.size() != 1)
+        throw std::runtime_error("weighted ERI shell contraction returned no result");
+      for (unsigned slot = 0; slot < 4; ++slot)
+        for (unsigned axis = 0; axis < 3; ++axis)
+          candidate[3 * slot + axis] += output[0].center[slot][axis];
+      records.clear();
+    };
+    for (std::size_t i = 0; i < expansions[0].size(); ++i)
+      for (std::size_t j = 0; j < expansions[1].size(); ++j)
+        for (std::size_t k = 0; k < expansions[2].size(); ++k)
+          for (std::size_t l = 0; l < expansions[3].size(); ++l) {
+            const auto weight =
+                weights[((i * expansions[1].size() + j) * expansions[2].size() + k) *
+                            expansions[3].size() +
+                        l];
+            if (weight == 0.0) continue;
+            for (const auto& ei : expansions[0][i])
+              for (const auto& ej : expansions[1][j])
+                for (const auto& ek : expansions[2][k])
+                  for (const auto& el : expansions[3][l]) {
+                    const std::array<const vibeqc::molecule::CartesianExpansionTerm*, 4> terms{
+                        &ei, &ej, &ek, &el};
+                    double component_weight = weight;
+                    for (const auto* term : terms)
+                      component_weight *=
+                          term->coefficient *
+                          vibeqc::molecule::cartesian_component_normalization(term->component);
+                    for (const auto& pi : selected[0]->primitives)
+                      for (const auto& pj : selected[1]->primitives)
+                        for (const auto& pk : selected[2]->primitives)
+                          for (const auto& pl : selected[3]->primitives) {
+                            if (records.size() == capacity) flush();
+                            auto& record = records.emplace_back();
+                            record.kind = 0;
+                            const std::array<const vibeqc::core::Primitive*, 4> primitives{
+                                &pi, &pj, &pk, &pl};
+                            for (unsigned slot = 0; slot < 4; ++slot) {
+                              for (unsigned axis = 0; axis < 3; ++axis) {
+                                record.angular[slot][axis] = terms[slot]->component[axis];
+                                record.centers[slot][axis] =
+                                    system.atoms[selected[slot]->atom_index].position[axis];
+                              }
+                              record.exponents[slot] = primitives[slot]->exponent;
+                            }
+                            record.weights[0] = component_weight * pi.coefficient * pj.coefficient *
+                                                pk.coefficient * pl.coefficient;
+                          }
+                  }
+          }
+    flush();
+    if (!std::all_of(candidate.begin(), candidate.end(),
+                     [](double value) { return std::isfinite(value); }))
+      throw std::runtime_error("weighted ERI shell gradient is nonfinite");
+    std::copy(candidate.begin(), candidate.end(), center_gradient);
+  });
+}
 /** Explicit CG10 slot order for direct native CUDA/CPU layout verification. */
 VIBEQC_API int vibeqc_posthf_mo_block_v1(void* source, int backend, int device,
                                          const double* arrays, std::size_t elements,

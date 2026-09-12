@@ -3,6 +3,7 @@
 import ctypes as ct
 import os
 from dataclasses import replace
+from itertools import product
 from types import SimpleNamespace
 
 import numpy as np
@@ -144,7 +145,19 @@ def test_weighted_eri_cuda_spherical_pullback_matches_dense_oracle(monkeypatch):
             lambda **_: pytest.fail("weighted bridge called dense derivatives"),
         )
         actual = source.weighted_eri_gradient_cuda(weights)
+        offsets = np.cumsum((0, *source.shell_sizes))
+        tiled = np.zeros_like(actual)
+        for shell_indices in product(range(len(source.shells)), repeat=4):
+            slices = tuple(
+                slice(offsets[index], offsets[index + 1]) for index in shell_indices
+            )
+            centers = source.weighted_eri_shell_gradient_cuda(
+                shell_indices, weights[slices]
+            )
+            for slot, shell in enumerate(shell_indices):
+                tiled[source.shells[shell].atom_index] += centers[slot]
     np.testing.assert_allclose(actual, expected, atol=2e-9, rtol=2e-9)
+    np.testing.assert_allclose(tiled, expected, atol=2e-9, rtol=2e-9)
 
 
 @pytest.mark.skipif(

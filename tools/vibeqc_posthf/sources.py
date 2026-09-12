@@ -226,6 +226,18 @@ class NativeSource:
             ct.c_char_p,
             ct.c_size_t,
         ]
+        lib.vibeqc_posthf_weighted_eri_shell_gradient_cuda_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_int,
+            _SIZE,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
         lib.vibeqc_posthf_uhf_density_v1.argtypes = [
             ct.c_void_p,
             ct.c_int,
@@ -466,6 +478,53 @@ class NativeSource:
                 "vibeqc_posthf_weighted_eri_gradient_cuda_v1",
                 self._handle,
                 device_id,
+                pointer(value),
+                value.size,
+                stage_budget_bytes,
+                pointer(gradient),
+                gradient.size,
+            )
+        return immutable(gradient)
+
+    def weighted_eri_shell_gradient_cuda(
+        self,
+        shell_indices,
+        weights,
+        *,
+        device_id=0,
+        stage_budget_bytes=16 << 20,
+    ):
+        """Contract one public shell-quartet weight block through #144.
+
+        Stage accounting includes numeric expansion/record/result storage and
+        excludes caller weights/output, system ownership, object headers, CUDA
+        context and allocator overhead.
+        """
+
+        indices = np.ascontiguousarray(shell_indices, dtype=np.uintp)
+        if indices.shape != (4,) or np.any(indices >= len(self.shells)):
+            raise ValueError("weighted ERI shell gradient requires four shell indices")
+        shape = tuple(self.shell_sizes[int(index)] for index in indices)
+        value = np.ascontiguousarray(weights, dtype=np.float64)
+        if value.shape != shape or not np.isfinite(value).all():
+            raise ValueError(
+                "weighted ERI shell weights have the wrong shape or values"
+            )
+        if (
+            type(device_id) is not int
+            or device_id < 0
+            or type(stage_budget_bytes) is not int
+            or stage_budget_bytes < 1
+        ):
+            raise ValueError("weighted ERI shell gradient requires valid device/budget")
+        gradient = np.empty((4, 3), dtype=np.float64)
+        with self._lock:
+            self._check_open()
+            self._call(
+                "vibeqc_posthf_weighted_eri_shell_gradient_cuda_v1",
+                self._handle,
+                device_id,
+                indices.ctypes.data_as(_SIZE),
                 pointer(value),
                 value.size,
                 stage_budget_bytes,

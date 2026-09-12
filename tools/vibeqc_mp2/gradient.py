@@ -430,10 +430,12 @@ def fused_cuda_conventional_molecular_gradient(
 ):
     """Contract conventional weights through the #141/#144 CUDA consumers.
 
-    Dense AO cotangents are an explicit intermediate migration boundary. Their
-    published output has its own guard; transform scratch and caller-owned
-    weights are excluded. Each derivative consumer has a separate stage limit,
-    and no global nuclear-coordinate derivative tensor is formed.
+    The dense MO two-electron cotangent remains an explicit migration boundary.
+    It is back-transformed one public AO shell quartet at a time and consumed
+    immediately, so no molecular AO rank-four weight or nuclear-coordinate
+    derivative tensor is formed. Published one-electron weights plus the
+    largest local quartet have one output guard; transform scratch and caller
+    MO weights are excluded. Each derivative consumer has a separate limit.
     """
 
     from tools.vibeqc_validation.one_electron_gradient import execute_gradient
@@ -475,38 +477,71 @@ def fused_cuda_conventional_molecular_gradient(
         or tuple(orbital_calculator._shells_for_atoms(source.atoms)) != source.shells
     ):
         raise ValueError("conventional gradient calculator differs from the source")
-    ao = ao_lagrangian_weights(
-        reference, weights, output_budget_bytes=weight_output_budget_bytes
+    from itertools import product
+
+    c = reference.coefficients
+    maximum_shell = max(source.shell_sizes)
+    maximum_local_bytes = maximum_shell**4 * 8
+    # The one-electron phase temporarily holds the two transformed weights and
+    # their three-block S/T/V publication. The later shell phase holds one
+    # local quartet and the molecular two-electron gradient candidate.
+    molecular_gradient_bytes = len(source.atoms) * 3 * 8
+    weight_output_bytes = max(
+        5 * reference.nmo**2 * 8 + molecular_gradient_bytes,
+        maximum_local_bytes + 2 * molecular_gradient_bytes + 12 * 8,
     )
+    if weight_output_bytes > weight_output_budget_bytes:
+        raise MemoryError("tiled AO Lagrangian weights exceed their output budget")
+    one_weight = c @ weights.one_electron @ c.T
+    overlap_weight = c @ weights.overlap @ c.T
+    one_blocks = np.stack((overlap_weight, one_weight, one_weight))
     one, one_resources = execute_gradient(
         orbital_calculator,
         source.atoms,
-        np.stack((ao.overlap, ao.one_electron, ao.one_electron)),
+        one_blocks,
         maximum_bytes=consumer_maximum_bytes,
         device_id=device_id,
         charge=source.charge,
         multiplicity=source.multiplicity,
     )
-    two = source.weighted_eri_gradient_cuda(
-        ao.two_electron,
-        device_id=device_id,
-        stage_budget_bytes=consumer_maximum_bytes,
-    )
+    del one_blocks, one_weight, overlap_weight
+    offsets = np.cumsum((0, *source.shell_sizes))
+    two = np.zeros((len(source.atoms), 3))
+    tiles = 0
+    for shell_indices in product(range(len(source.shells)), repeat=4):
+        panels = tuple(
+            c[offsets[index] : offsets[index + 1], :] for index in shell_indices
+        )
+        local = np.einsum(
+            "pqrs,up,vq,wr,xs->uvwx",
+            weights.two_electron,
+            *panels,
+            optimize=True,
+        )
+        center_gradient = source.weighted_eri_shell_gradient_cuda(
+            shell_indices,
+            local,
+            device_id=device_id,
+            stage_budget_bytes=consumer_maximum_bytes,
+        )
+        for slot, shell in enumerate(shell_indices):
+            two[source.shells[shell].atom_index] += center_gradient[slot]
+        tiles += 1
     gradient = _nuclear_repulsion_gradient(source.atoms) + one + two
     if not np.isfinite(gradient).all():
         raise ValueError("fused CUDA conventional MP2 molecular gradient is nonfinite")
     return immutable(gradient), {
         "one_electron": one_resources,
         "weighted_eri_stage_bytes": consumer_maximum_bytes,
+        "weighted_eri_shell_tiles": tiles,
         "global_derivative_tensors": False,
         "dense_response_weights": True,
-        "weight_output_bytes": int(
-            ao.overlap.nbytes + ao.one_electron.nbytes + ao.two_electron.nbytes
-        ),
+        "dense_ao_two_electron_weights": False,
+        "weight_output_bytes": int(weight_output_bytes),
         "weight_output_budget_bytes": weight_output_budget_bytes,
         "excluded_from_bridge_budget": (
-            "dense AO cotangent transformation scratch",
-            "caller-owned response weights",
+            "shell-local AO cotangent transformation scratch",
+            "caller-owned dense MO response weights",
             "Python/native object metadata",
             "CUDA context and allocator overhead",
         ),
