@@ -208,6 +208,24 @@ def test_ri_mp2_composes_df_reference_capacity_before_allocation():
     assert 19_000 << 10 < accepted.correlation.numeric_capacity_bytes <= 19_240 << 10
 
 
+def test_cpu_ri_mp2_accepts_supported_g_auxiliary_capacity():
+    atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
+    sto3g = (
+        Primitive(3.42525091, 0.1543289673),
+        Primitive(0.62391373, 0.5353281423),
+        Primitive(0.1688554, 0.4446345422),
+    )
+    auxiliary = (
+        Shell(0, 0, sto3g),
+        Shell(1, 0, sto3g),
+        Shell(0, 4, (Primitive(0.5, 1.0),)),
+    )
+    result = Calculator(
+        method="mp2", density_fitting="cpu", auxiliary_basis=auxiliary
+    ).singlepoint(atoms)
+    assert np.isfinite(result.energy) and result.correlation is not None
+
+
 def test_public_unsupported_budget_scf_and_neighbors(device):
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     calc = Calculator(method="mp2", device=device)

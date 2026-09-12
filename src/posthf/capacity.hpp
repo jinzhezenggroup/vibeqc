@@ -26,8 +26,8 @@ inline std::size_t checked_mul(std::size_t a, std::size_t b) {
 inline std::size_t source_capacity(const core::System& system) {
   auto bytes = checked_mul(128, system.atoms.size());
   for (const auto& shell : system.shells) {
-    if (shell.angular_momentum > 3)
-      throw std::invalid_argument("post-HF source supports through f");
+    if (shell.angular_momentum > 4)
+      throw std::invalid_argument("post-HF source capacity supports through g");
     const auto l = static_cast<std::size_t>(shell.angular_momentum);
     const auto cart = (l + 1) * (l + 2) / 2;
     const auto pub = system.basis_representation == VIBEQC_BASIS_SPHERICAL ? 2 * l + 1 : cart;
