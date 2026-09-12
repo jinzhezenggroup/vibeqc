@@ -8,6 +8,7 @@ import numpy as np
 from vibeqc_compiler.tensor import vjp
 
 from tools.vibeqc_posthf.reference import immutable
+from tools.vibeqc_response import RHFResponseOperator, solve
 
 from .equations import cpu_capacity, energy_program
 
@@ -32,6 +33,8 @@ class MP2EnergyAdjoint:
     integrals_iajb: np.ndarray
     orbital_energies: np.ndarray
     equation_hash: str
+    reference_identity: str
+    hamiltonian_id: str
 
 
 @dataclass(frozen=True)
@@ -41,6 +44,43 @@ class MP2OrbitalRHS:
     response_rhs: np.ndarray
     one_electron: np.ndarray
     two_electron: np.ndarray
+    reference_identity: str
+    hamiltonian_id: str
+
+
+@dataclass(frozen=True)
+class MP2LagrangianWeights:
+    """Relaxed MO derivative weights after the shared RHF Z-vector solve."""
+
+    one_electron: np.ndarray
+    two_electron: np.ndarray
+    overlap: np.ndarray
+    stationarity_residual: float
+    reference_identity: str
+    hamiltonian_id: str
+    operator_identity: str
+
+
+@dataclass(frozen=True)
+class MP2ResponseResult:
+    """Converged shared response result bound to its exact MP2 problem."""
+
+    solve_result: object
+    reference_identity: str
+    hamiltonian_id: str
+    operator_identity: str
+
+    @property
+    def solution(self):
+        return self.solve_result.solution
+
+    @property
+    def converged(self):
+        return self.solve_result.converged
+
+    @property
+    def residual_norm(self):
+        return self.solve_result.residual_norm
 
 
 def tile_energy_adjoint(feeds, *, max_bytes=None):
@@ -82,7 +122,9 @@ def tile_energy_adjoint(feeds, *, max_bytes=None):
     )
 
 
-def canonical_energy_adjoint(integrals_iajb, orbital_energies, occupied):
+def canonical_energy_adjoint(
+    integrals_iajb, orbital_energies, occupied, *, reference_identity, hamiltonian_id
+):
     """Return full canonical MP2 VJP weights with repeated feeds accumulated.
 
     The exchange feed is a transposed read of the same physical ``(ia|jb)``
@@ -93,6 +135,12 @@ def canonical_energy_adjoint(integrals_iajb, orbital_energies, occupied):
 
     g = np.asarray(integrals_iajb, dtype=np.float64)
     eps = np.asarray(orbital_energies, dtype=np.float64)
+    for name, value in (
+        ("reference_identity", reference_identity),
+        ("hamiltonian_id", hamiltonian_id),
+    ):
+        if not isinstance(value, str) or not value:
+            raise ValueError(f"{name} must be a nonempty identity")
     if g.ndim != 4 or g.shape[0] != g.shape[1] or g.shape[2] != g.shape[3]:
         raise ValueError("canonical MP2 integrals require [nocc,nocc,nvirt,nvirt]")
     no, nv = g.shape[0], g.shape[2]
@@ -115,7 +163,19 @@ def canonical_energy_adjoint(integrals_iajb, orbital_energies, occupied):
         immutable(tile.direct + tile.exchange.swapaxes(2, 3)),
         immutable(energy_weight),
         tile.equation_hash,
+        reference_identity,
+        hamiltonian_id,
     )
+
+
+def _rotation_gradient(one, two, h, eri):
+    result = np.einsum("pq,tq->tp", one, h, optimize=True)
+    result += np.einsum("pq,pt->tq", one, h, optimize=True)
+    result += np.einsum("pqrs,tqrs->tp", two, eri, optimize=True)
+    result += np.einsum("pqrs,ptrs->tq", two, eri, optimize=True)
+    result += np.einsum("pqrs,pqts->tr", two, eri, optimize=True)
+    result += np.einsum("pqrs,pqrt->ts", two, eri, optimize=True)
+    return result
 
 
 def canonical_orbital_rhs(hcore_mo, eri_mo, adjoint, occupied):
@@ -166,14 +226,97 @@ def canonical_orbital_rhs(hcore_mo, eri_mo, adjoint, occupied):
         occupied:,
     ] += adjoint.integrals_iajb.transpose(0, 2, 1, 3)
 
-    rotation_gradient = np.einsum("pq,tq->tp", one, h, optimize=True)
-    rotation_gradient += np.einsum("pq,pt->tq", one, h, optimize=True)
-    rotation_gradient += np.einsum("pqrs,tqrs->tp", two, eri, optimize=True)
-    rotation_gradient += np.einsum("pqrs,ptrs->tq", two, eri, optimize=True)
-    rotation_gradient += np.einsum("pqrs,pqts->tr", two, eri, optimize=True)
-    rotation_gradient += np.einsum("pqrs,pqrt->ts", two, eri, optimize=True)
+    rotation_gradient = _rotation_gradient(one, two, h, eri)
     rhs = (
         rotation_gradient[occupied:, :occupied].T
         - rotation_gradient[:occupied, occupied:]
     )
-    return MP2OrbitalRHS(immutable(rhs), immutable(one), immutable(two))
+    return MP2OrbitalRHS(
+        immutable(rhs),
+        immutable(one),
+        immutable(two),
+        adjoint.reference_identity,
+        adjoint.hamiltonian_id,
+    )
+
+
+def solve_canonical_orbital_response(reference, backend, orbital_rhs, *, options=None):
+    """Solve the MP2 Z-vector with the shared bounded RHF response layer."""
+
+    if not isinstance(orbital_rhs, MP2OrbitalRHS):
+        raise TypeError("MP2 response requires an MP2OrbitalRHS")
+    problem = RHFResponseOperator.build_problem(
+        reference, backend, perturbation_labels=("mp2-orbital-lagrangian",)
+    )
+    if orbital_rhs.reference_identity != reference.identity:
+        raise ValueError("MP2 response RHS belongs to a different reference")
+    if orbital_rhs.hamiltonian_id != reference.hamiltonian_id:
+        raise ValueError("MP2 response RHS Hamiltonian differs from the reference")
+    if (
+        hasattr(backend, "hamiltonian_id")
+        and backend.hamiltonian_id != orbital_rhs.hamiltonian_id
+    ):
+        raise ValueError("MP2 response backend Hamiltonian differs from the RHS")
+    expected = (problem.layout.nocc, problem.layout.nvirt)
+    if orbital_rhs.response_rhs.shape != expected:
+        raise ValueError(
+            "MP2 response RHS does not match the reference rotation layout"
+        )
+    operator = RHFResponseOperator(problem, backend)
+    result = solve(
+        operator,
+        orbital_rhs.response_rhs.reshape(-1),
+        options=options,
+        raise_on_failure=True,
+    )
+    return MP2ResponseResult(
+        result,
+        reference.identity,
+        reference.hamiltonian_id,
+        problem.operator_identity,
+    )
+
+
+def canonical_lagrangian_weights(hcore_mo, eri_mo, adjoint, response, occupied):
+    """Combine HF, MP2 and Z-vector terms into relaxed MO derivative weights."""
+
+    orbital = canonical_orbital_rhs(hcore_mo, eri_mo, adjoint, occupied)
+    h = np.asarray(hcore_mo, dtype=np.float64)
+    eri = np.asarray(eri_mo, dtype=np.float64)
+    if not isinstance(response, MP2ResponseResult):
+        raise TypeError("MP2 Lagrangian weights require a bound response result")
+    if response.reference_identity != adjoint.reference_identity:
+        raise ValueError("MP2 Z-vector belongs to a different reference")
+    if response.hamiltonian_id != adjoint.hamiltonian_id:
+        raise ValueError("MP2 Z-vector Hamiltonian differs from the energy adjoint")
+    z = np.asarray(response.solution, dtype=np.float64)
+    n = h.shape[0]
+    if z.shape != (occupied * (n - occupied),) or not np.isfinite(z).all():
+        raise ValueError("MP2 Z-vector does not match the occupied-virtual layout")
+    z = z.reshape(occupied, n - occupied)
+    one = np.array(orbital.one_electron, copy=True)
+    two = np.array(orbital.two_electron, copy=True)
+    for i in range(occupied):
+        one[i, i] += 2.0
+        for j in range(occupied):
+            two[i, i, j, j] += 2.0
+            two[i, j, j, i] -= 1.0
+    for i in range(occupied):
+        for a in range(occupied, n):
+            value = z[i, a - occupied]
+            one[a, i] -= value
+            for j in range(occupied):
+                two[a, i, j, j] -= 2 * value
+                two[a, j, j, i] += value
+    gradient = _rotation_gradient(one, two, h, eri)
+    stationarity = gradient[:occupied, occupied:] - gradient[occupied:, :occupied].T
+    overlap = -0.25 * (gradient + gradient.T)
+    return MP2LagrangianWeights(
+        immutable(one),
+        immutable(two),
+        immutable(overlap),
+        float(np.linalg.norm(stationarity)),
+        adjoint.reference_identity,
+        adjoint.hamiltonian_id,
+        response.operator_identity,
+    )

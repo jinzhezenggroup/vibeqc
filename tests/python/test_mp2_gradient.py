@@ -1,13 +1,24 @@
 """Analytic MP2 energy-adjoint contracts for the complete-gradient chain."""
 
+from dataclasses import replace
+
 import numpy as np
+import pytest
 from vibeqc_compiler.tensor import execute
 
 from tools.vibeqc_mp2.equations import energy_program
 from tools.vibeqc_mp2.gradient import (
     canonical_energy_adjoint,
+    canonical_lagrangian_weights,
     canonical_orbital_rhs,
+    solve_canonical_orbital_response,
     tile_energy_adjoint,
+)
+from tools.vibeqc_posthf.fixtures import fixture_snapshot, load_fixture
+from tools.vibeqc_response import (
+    DenseAOResponseBackend,
+    GMRESOptions,
+    ResponseSolveError,
 )
 
 
@@ -81,7 +92,13 @@ def test_canonical_adjoint_accumulates_exchange_and_repeated_energy_feeds():
     no, nv = 2, 3
     g = rng.normal(scale=0.1, size=(no, no, nv, nv))
     eps = np.array([-0.9, -0.6, 0.1, 0.3, 0.8])
-    adjoint = canonical_energy_adjoint(g, eps, no)
+    adjoint = canonical_energy_adjoint(
+        g,
+        eps,
+        no,
+        reference_identity="synthetic-canonical-194",
+        hamiltonian_id="conventional-unscreened",
+    )
     dg = rng.normal(size=g.shape)
     de = rng.normal(size=eps.shape)
     reverse_dot = np.vdot(adjoint.integrals_iajb, dg) + np.vdot(
@@ -147,7 +164,13 @@ def test_canonical_orbital_rhs_matches_rebuilt_fock_rotation():
         _fock(hcore, eri, occupied), np.diag(target_energies), atol=1e-15
     )
     g = eri[:occupied, occupied:, :occupied, occupied:].transpose(0, 2, 1, 3)
-    adjoint = canonical_energy_adjoint(g, target_energies, occupied)
+    adjoint = canonical_energy_adjoint(
+        g,
+        target_energies,
+        occupied,
+        reference_identity="synthetic-canonical-195",
+        hamiltonian_id="conventional-unscreened",
+    )
     orbital = canonical_orbital_rhs(hcore, eri, adjoint, occupied)
     direction = rng.normal(size=(occupied, size - occupied))
     reverse_dot = np.vdot(orbital.response_rhs, direction)
@@ -189,8 +212,104 @@ def test_canonical_orbital_rhs_matches_rebuilt_fock_rotation():
 def test_orbital_rhs_rejects_nonfinite_hamiltonian_data():
     energies = np.array([-0.8, 0.3])
     eri = np.zeros((2, 2, 2, 2))
-    adjoint = canonical_energy_adjoint(np.ones((1, 1, 1, 1)), energies, 1)
+    adjoint = canonical_energy_adjoint(
+        np.ones((1, 1, 1, 1)),
+        energies,
+        1,
+        reference_identity="synthetic-nonfinite",
+        hamiltonian_id="conventional-unscreened",
+    )
     hcore = np.diag(energies)
     hcore[0, 1] = np.nan
     with np.testing.assert_raises_regex(ValueError, "must be finite"):
         canonical_orbital_rhs(hcore, eri, adjoint, 1)
+
+
+def _explicit_rhf_matrix(energies, eri, occupied):
+    rotations = [
+        (i, a) for i in range(occupied) for a in range(occupied, len(energies))
+    ]
+    matrix = np.empty((len(rotations), len(rotations)))
+    for row, (i, a) in enumerate(rotations):
+        for column, (j, b) in enumerate(rotations):
+            matrix[row, column] = (
+                (energies[a] - energies[i]) * (i == j and a == b)
+                + 4 * eri[a, i, b, j]
+                - eri[a, b, i, j]
+                - eri[a, j, i, b]
+            )
+    return matrix
+
+
+def test_mp2_orbital_response_reuses_shared_solver_and_explicit_matrix():
+    meta, arrays = load_fixture("water")
+    reference = fixture_snapshot(meta, arrays)
+    occupied = reference.nocc
+    eri = arrays["conventional_mo"]
+    g = eri[:occupied, occupied:, :occupied, occupied:].transpose(0, 2, 1, 3)
+    adjoint = canonical_energy_adjoint(
+        g,
+        reference.orbital_energies,
+        occupied,
+        reference_identity=reference.identity,
+        hamiltonian_id=reference.hamiltonian_id,
+    )
+    hcore_mo = (
+        reference.coefficients.T @ arrays["conventional_h"] @ reference.coefficients
+    )
+    orbital = canonical_orbital_rhs(hcore_mo, eri, adjoint, occupied)
+    backend = DenseAOResponseBackend(arrays["ao"])
+    options = GMRESOptions(rtol=1e-12, atol=1e-13, restart=20, max_iterations=100)
+    result = solve_canonical_orbital_response(
+        reference, backend, orbital, options=options
+    )
+    explicit = _explicit_rhf_matrix(reference.orbital_energies, eri, occupied)
+    expected = np.linalg.solve(explicit, orbital.response_rhs.reshape(-1))
+    np.testing.assert_allclose(result.solution, expected, atol=2e-9, rtol=2e-9)
+    assert result.converged and result.residual_norm < 1e-10
+    weights = canonical_lagrangian_weights(
+        hcore_mo,
+        eri,
+        adjoint,
+        result,
+        occupied,
+    )
+    assert weights.stationarity_residual < 1e-9
+    np.testing.assert_allclose(weights.overlap, weights.overlap.T, atol=1e-14)
+    assert weights.reference_identity == reference.identity
+    assert weights.hamiltonian_id == reference.hamiltonian_id
+    assert weights.operator_identity
+    rng = np.random.default_rng(196)
+    metric_direction = rng.normal(size=(len(reference.orbital_energies),) * 2)
+    metric_direction = 0.5 * (metric_direction + metric_direction.T)
+
+    def weighted_hamiltonian(step):
+        connection = np.eye(len(metric_direction)) - 0.5 * step * metric_direction
+        transformed_h = connection.T @ hcore_mo @ connection
+        transformed_eri = _transform_eri(eri, connection)
+        return np.vdot(weights.one_electron, transformed_h) + np.vdot(
+            weights.two_electron, transformed_eri
+        )
+
+    metric_fd = (weighted_hamiltonian(1e-5) - weighted_hamiltonian(-1e-5)) / 2e-5
+    np.testing.assert_allclose(
+        metric_fd, np.vdot(weights.overlap, metric_direction), atol=2e-8, rtol=2e-8
+    )
+    with pytest.raises(ResponseSolveError, match="workspace_limit"):
+        solve_canonical_orbital_response(
+            reference,
+            backend,
+            orbital,
+            options=GMRESOptions(max_workspace_bytes=1),
+        )
+    stale = replace(reference, generation_id="another-generation")
+    with pytest.raises(ValueError, match="different reference"):
+        solve_canonical_orbital_response(stale, backend, orbital, options=options)
+    with pytest.raises(ValueError, match="Z-vector belongs to a different reference"):
+        canonical_lagrangian_weights(
+            hcore_mo,
+            eri,
+            adjoint,
+            replace(result, reference_identity=stale.identity),
+            occupied,
+        )
