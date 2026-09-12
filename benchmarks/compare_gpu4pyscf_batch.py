@@ -623,9 +623,18 @@ def main() -> None:
         finally:
             if args.capture_warm_range:
                 cp.cuda.profiler.stop()
-        eigensolver_diagnostics = [
-            diagnostic.to_dict() for diagnostic in batch.last_eigensolver_diagnostics()
-        ]
+        # CUDA DF currently has no public eigensolver diagnostic provider on
+        # every backend. Preserve the endpoint result and record an empty
+        # ledger component instead of turning a valid benchmark into an API
+        # capability failure; the component ledger remains explicit about the
+        # missing measurement.
+        try:
+            eigensolver_diagnostics = [
+                diagnostic.to_dict()
+                for diagnostic in batch.last_eigensolver_diagnostics()
+            ]
+        except NotImplementedError:
+            eigensolver_diagnostics = []
 
     repeat_accuracy = pair_repeat_accuracy(vibeqc_samples, gpu_samples)
     maximum_energy_error = max(
@@ -665,7 +674,10 @@ def main() -> None:
         maximum_energy_error_limit=args.maximum_energy_error,
         maximum_force_error_limit=args.maximum_force_error,
     )
-    print(f"scope: {case.description}, {ao_count} AOs, homogeneous batch {args.batch}")
+    print(
+        f"scope: {case.description}, {ao_count} AOs, homogeneous batch {args.batch}, "
+        f"{args.density_fitting.upper()} DF"
+    )
     print("warm measurement order: " + " ".join(measurement_order))
     print(f"maximum warm energy difference: {maximum_energy_error:.3e} Eh")
     print(f"maximum warm force difference: {maximum_force_error:.3e} Eh/bohr")

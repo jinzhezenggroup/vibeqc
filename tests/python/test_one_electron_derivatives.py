@@ -131,7 +131,7 @@ def test_derivative_contract_keeps_external_center_and_rejects_unsupported_shell
     assert ir.contractions[0].weights.source == "external_weight"
     assert kernel("nuclear_attraction", (3, 3), ("xxx", "zzz")).boys_count == 8
     with pytest.raises(ValueError, match="s/p/d/f"):
-        build_one_electron_derivative_ir("kinetic", (4, 0))
+        build_one_electron_derivative_ir("kinetic", (5, 0))
 
 
 def test_emitted_derivatives_normalized_raw_and_spherical_blocks(tmp_path):

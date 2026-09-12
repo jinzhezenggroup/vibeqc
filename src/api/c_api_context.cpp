@@ -72,6 +72,10 @@ vibeqc_status vibeqc_system_create(vibeqc_context* context,
     candidate->data.shells.reserve(descriptor->shell_count);
     for (std::uint32_t i = 0; i < descriptor->shell_count; ++i) {
       const vibeqc_shell& shell = descriptor->shells[i];
+      if (context->state.executed_backend == VIBEQC_BACKEND_CUDA && shell.angular_momentum > 3) {
+        context->last_detail = "CUDA basis execution supports l<=3; g shells require CPU reference";
+        return VIBEQC_STATUS_NOT_IMPLEMENTED;
+      }
       if (shell.primitive_count == 0 || shell.primitive_offset > descriptor->primitive_count ||
           shell.primitive_count > descriptor->primitive_count - shell.primitive_offset) {
         return VIBEQC_STATUS_INVALID_ARGUMENT;

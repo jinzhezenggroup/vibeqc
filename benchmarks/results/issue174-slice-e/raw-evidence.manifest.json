@@ -1,0 +1,17 @@
+{
+  "archive_sha256": "5965ee285b48bfd618bc94cc0c170d2ce069145b538c5e0d6b7a7a3ee318f5fc",
+  "files": [
+    {
+      "bytes": 193042,
+      "path": "rtx5090-67212f2-issue174-slice-e-matrix-384.json",
+      "sha256": "e1e1025315253cbfd79000b64e4c32c459bbd1be09f0a801cdf756d80edcb5b0"
+    },
+    {
+      "bytes": 1717043,
+      "path": "rtx5090-67212f2-issue174-slice-e-matrix.json",
+      "sha256": "45553fdd8d9039d15212c7ce9e8cc883604b8b6940fe5b30adc0a864b9cd3b71"
+    }
+  ],
+  "schema": "vibeqc.evidence-archive.v1",
+  "source_commit": "67212f2c0d0ad1079b8dd046ad518ba2420c2b91"
+}

@@ -40,7 +40,7 @@ def test_raw_df_operator_roles_domain_and_permutations():
                 == integral.signature.component_shape
             )
     with pytest.raises(ValueError, match="s/p/d/f"):
-        build_df_value_ir("coulomb_metric", (3, 4))
+        build_df_value_ir("coulomb_metric", (3, 5))
     with pytest.raises(ValueError, match="basis roles"):
         build_df_value_ir("three_center_eri", (1, 2))
     with pytest.raises(ValueError, match="DF values"):

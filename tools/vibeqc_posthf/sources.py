@@ -27,7 +27,7 @@ from vibeqc_compiler.integral.shell_signature import (
     checked_index,
 )
 
-# Through-f Hermite/Coulomb recurrences have bounded dimensions. This separate
+# Through-g Hermite/Coulomb recurrences have bounded dimensions. This separate
 # conservative allowance includes their numeric scratch, not Python/C++ object
 # headers or allocator rounding. It is independent of molecular/tile size.
 CPU_SOURCE_SCRATCH = 8 << 20
@@ -108,8 +108,8 @@ class NativeSource:
             if auxiliary_basis is None
             else calculator._shells_for_atoms(self.atoms, auxiliary_basis)
         )
-        if any(s.angular_momentum > 3 for s in (*self.shells, *self.auxiliary_shells)):
-            raise ValueError("post-HF sources support through f")
+        if any(s.angular_momentum > 4 for s in (*self.shells, *self.auxiliary_shells)):
+            raise ValueError("post-HF sources support through g")
         self.representation = (
             "real_spherical" if representation == "spherical" else representation
         )

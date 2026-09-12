@@ -99,6 +99,36 @@ def query_integral_capability(
     a weighted request and silently apply an HF contraction.
     """
     reasons = []
+    if backend in ("cpu_bounded_component", "cuda_bounded_component"):
+        from .bounded_component import emit_bounded_component
+        from .shell_spec import cartesian_components
+
+        try:
+            if any(l > 4 for l in integral.signature.angular):
+                raise ValueError("bounded components support shells through g (l<=4)")
+            if output_indices is not None or component_indices is None:
+                raise ValueError("select exactly one Cartesian component explicitly")
+            indices = tuple(component_indices)
+            if (
+                len(indices) != 1
+                or type(indices[0]) is not int
+                or not 0 <= indices[0] < integral.signature.component_count
+            ):
+                raise ValueError(
+                    "select exactly one Cartesian component within the shell"
+                )
+            index = indices[0]
+            components = []
+            for angular in reversed(integral.signature.angular):
+                choices = cartesian_components(angular)
+                index, selected = divmod(index, len(choices))
+                components.append(choices[selected])
+            emit_bounded_component(
+                integral, tuple(reversed(components)), backend=backend.split("_")[0]
+            )
+        except (TypeError, ValueError) as error:
+            return CapabilityCheck(False, reasons=(str(error),))
+        return CapabilityCheck(True, schedules=("explicit_scalar_component_v1",))
     if backend in ("cpu_second_derivatives", "cuda_second_derivatives"):
         from .blocks import SecondDerivative
         from .second_derivatives import build_second_derivative_kernel
@@ -169,6 +199,15 @@ def query_integral_capability(
             False,
             reasons=(
                 "this backend does not accept an explicit weighted component subset",
+            ),
+        )
+    if backend in ("cuda_one_electron_values", "cuda_one_electron_derivatives") and any(
+        l > 3 for l in integral.signature.angular
+    ):
+        return CapabilityCheck(
+            False,
+            reasons=(
+                "production one-electron CUDA tables support l<=3; use the bounded component emitter for g",
             ),
         )
     if backend == "cuda_one_electron_values":

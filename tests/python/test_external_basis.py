@@ -187,7 +187,6 @@ def test_auxiliary_high_l_and_representation_capability_checks():
     basis = imported("synthetic-fe-h")
     atoms = [("Fe", (0, 0, 0))]
     for auxiliary in (
-        imported("cc-pvtz-fe"),
         replace(
             basis,
             elements=(
@@ -195,7 +194,7 @@ def test_auxiliary_high_l_and_representation_capability_checks():
             ),
         ),
     ):
-        with pytest.raises(NotImplementedError, match="auxiliary.*l=[45]"):
+        with pytest.raises(NotImplementedError, match="auxiliary.*l=5"):
             Calculator(
                 basis=basis, auxiliary_basis=auxiliary, density_fitting="cpu"
             ).singlepoint(atoms, charge=24)
@@ -272,7 +271,12 @@ def test_realistic_high_l_and_ecp_are_loadable_but_have_precise_missing_routes(
             derivative_order=1,
             role=role,
         )
-        assert report["data_loadable"] and not report["eligible"]
+        assert report["data_loadable"]
+        if backend == "cpu":
+            assert report["eligible"]
+            assert report["shells_checked"] == 20
+            continue
+        assert not report["eligible"]
         assert any(
             "Z=26 shell 4" in reason and "l=4" in reason and operator in reason
             for reason in report["reasons"]
@@ -300,7 +304,7 @@ def test_public_rejections_happen_without_truncating_or_changing_charge():
         ("def2-tzvp-au", [("Au", (0, 0, 0))], "ECP"),
     ):
         with pytest.raises(NotImplementedError, match=text):
-            Calculator(basis=imported(name)).singlepoint(atoms)
+            Calculator(basis=imported(name), device="cuda").singlepoint(atoms)
     with pytest.raises(NotImplementedError, match="ECP"):
         imported("def2-tzvp-au").shells_for([Atom.from_value(("Au", (0, 0, 0)))])
     with pytest.raises(NotImplementedError, match="Z=26"):

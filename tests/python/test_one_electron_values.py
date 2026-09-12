@@ -112,7 +112,7 @@ def test_kinetic_raised_states_do_not_widen_public_shells():
     assert program.integral.signature.component_shape == (10, 10)
     assert max(state[2] for state in program.hermite_states) == 5
     assert program.boys_argument is None and program.boys_count == 0
-    for invalid in ((4, 0), (-1, 0), (True, 0), (0, 0, 0)):
+    for invalid in ((5, 0), (-1, 0), (True, 0), (0, 0, 0)):
         with pytest.raises(ValueError):
             build_one_electron_value_ir("overlap", invalid)
     with pytest.raises(ValueError):

@@ -108,13 +108,13 @@ every expanded contraction on every actual atom, separately for orbital and
 auxiliary roles. Diagnostics name atom, Z, shell, contraction, l, backend,
 operator and derivative order where applicable.
 
-| Requested operator | Derivative meaning/order | Generic CPU/CUDA shell boundary |
-| --- | --- | --- |
-| `overlap`, `kinetic`, `nuclear_attraction`, `eri` | Nuclear 0 or 1 | s through f |
-| `df_metric`, `df_three_center` | Nuclear 0 or 1 | s through f in both spaces |
-| `ao` | Spatial 0 through 3 | s through f |
-| Scalar Gaussian ECP direct RHF/UHF | Nuclear 0 or 1 | s/p/d orbitals; see [ECP contract](ecp.md) |
-| Modified nuclear charge, other derivatives/operators/backends | — | Rejected |
+| Requested operator | Derivative meaning/order | CPU boundary | CUDA boundary |
+| --- | --- | --- | --- |
+| `overlap`, `kinetic`, `nuclear_attraction`, `eri` | Nuclear 0 or 1 | s through g | s through f |
+| `df_metric`, `df_three_center` | Nuclear 0 or 1 | s through g in both spaces | s through f in both spaces |
+| `ao` | Spatial 0 through 3 | s through f | s through f |
+| Scalar Gaussian ECP direct RHF/UHF | Nuclear 0 or 1 | s/p/d orbitals; see [ECP contract](ecp.md) | s/p/d orbitals; see [ECP contract](ecp.md) |
+| Modified nuclear charge, other derivatives/operators/backends | — | Rejected | Rejected |
 
 Public HF energy-plus-force endpoints preflight both values and first nuclear
 derivatives. `eligible` states that a generic mathematical route exists. Native
@@ -125,7 +125,10 @@ promotion. It does not advertise DFT, relativity or broad transition-metal
 production support.
 
 The realistic Fe cc-pVTZ fixture contains 20 expanded shells including g and
-fails intact; no orbital or auxiliary shell is cut to f. Supported Fe tests use
+is eligible on CPU and rejected intact on CUDA; no shell is cut to f. This
+is an execution capability, not a neutral-Fe molecular validation claim.
+See the [g-shell validation and explicit limitations](high_angular_momentum.md).
+Supported Fe tests use
 an original small diagnostic basis for Fe24+ and FeH25+, each with two active
 all-electron electrons. These are implementation/convention checks, not an
 assessment of neutral Fe chemistry or basis completeness.

@@ -30,7 +30,8 @@ independent references, and performance claims require reproducible gates.
 
 - CPU reference and CUDA backends.
 - Ragged batches, per-system failure isolation, and density warm starts.
-- Contracted Cartesian and real-spherical `s` through `f` Gaussian bases.
+- Contracted Cartesian and real-spherical Gaussian bases: `s` through `g` on
+  CPU, `s` through `f` on CUDA. See [higher angular momentum](docs/high_angular_momentum.md).
 - Bundled STO-3G, def2-SVP, and def2-TZVP basis data for H-Ar.
 - [Offline local/custom basis input](docs/external_basis.md) with provenance,
   H–Og element identities, and explicit rejection of unsupported high-l execution.

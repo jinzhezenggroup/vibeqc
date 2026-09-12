@@ -80,9 +80,9 @@ def make_df_value_fixture(
     """Generate a full Cartesian/spherical M or A shell block with signed contractions."""
     count = len(angular)
     if count not in (2, 3) or any(
-        type(l) is not int or not 0 <= l <= 3 for l in angular
+        type(l) is not int or not 0 <= l <= 4 for l in angular
     ):
-        raise ValueError("DF fixtures require two/three s/p/d/f shells")
+        raise ValueError("DF fixtures require two/three s/p/d/f/g shells")
     if variant not in ("asymmetric", "coincident"):
         raise ValueError("unknown DF geometry variant")
     coordinates = [[0.13, -0.31, 0.24], [-0.43, 0.27, 0.51], [0.68, -0.14, -0.22]][
@@ -106,7 +106,7 @@ def make_df_value_fixture(
             }
         )
     family = "metric" if count == 2 else "three_center"
-    name = f"{family}/{'spdf'[angular[0]]}{''.join('spdf'[l] for l in angular[1:])}/{variant}"
+    name = f"{family}/{'spdfg'[angular[0]]}{''.join('spdfg'[l] for l in angular[1:])}/{variant}"
     inputs = {
         "name": name,
         "atomic_numbers": [1] * count,

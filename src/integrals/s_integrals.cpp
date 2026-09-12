@@ -16,6 +16,12 @@
 namespace vibeqc::integrals {
 namespace {
 
+std::size_t checked_product(std::size_t a, std::size_t b) {
+  if (b != 0 && a > std::numeric_limits<std::size_t>::max() / b)
+    throw std::overflow_error("CPU integral tensor extent overflows size_t");
+  return a * b;
+}
+
 // Dynamic forward derivatives make the CPU implementation a compact and
 // independent oracle for both integral values and every nuclear coordinate.
 // The optimized CUDA backend uses a one-coordinate dual scalar instead.
@@ -89,15 +95,6 @@ Jet sqrt(const Jet& x) {
   return out;
 }
 
-Jet erf(const Jet& x) {
-  Jet out(std::erf(x.value), x.derivative.size());
-  const double factor = 2.0 / std::sqrt(std::numbers::pi) * std::exp(-x.value * x.value);
-  for (std::size_t i = 0; i < out.derivative.size(); ++i) {
-    out.derivative[i] = factor * x.derivative[i];
-  }
-  return out;
-}
-
 using Vec3 = std::array<Jet, 3>;
 
 Jet distance_squared(const Vec3& a, const Vec3& b) {
@@ -116,29 +113,33 @@ Vec3 product_center(double alpha, const Vec3& a, double beta, const Vec3& b) {
 }
 
 std::vector<Jet> boys_values(unsigned maximum_order, const Jet& argument) {
-  std::vector<Jet> values(maximum_order + 1, Jet(0.0, argument.derivative.size()));
-  if (argument.value < 6.0) {
-    // Differentiate the entire Taylor series as algebra, avoiding an explicit
-    // derivative branch and the F0 erf singularity at T=0.
-    for (unsigned order = 0; order <= maximum_order; ++order) {
-      Jet term(1.0, argument.derivative.size());
-      Jet sum(0.0, argument.derivative.size());
-      for (unsigned k = 0; k < 80; ++k) {
-        sum = sum + term / static_cast<double>(2 * order + 2 * k + 1);
-        term = term * (-1.0 * argument) / static_cast<double>(k + 1);
-        if (std::abs(term.value) < 1.0e-18) break;
+  // A positive series avoids cancellation near T=0 and unstable upward
+  // recurrence when the requested order exceeds T. Include F_(n+1) so
+  // nuclear derivatives use the exact identity even at coincident centers.
+  const double t = argument.value;
+  std::vector<double> scalar(maximum_order + 2);
+  const double exponential = std::exp(-t);
+  if (t < static_cast<double>(maximum_order) + 16.0) {
+    for (unsigned n = 0; n < scalar.size(); ++n) {
+      double term = 1.0 / (2.0 * n + 1.0);
+      double sum = term;
+      for (unsigned k = 1; k < 512; ++k) {
+        term *= 2.0 * t / (2.0 * n + 2.0 * k + 1.0);
+        sum += term;
+        if (term <= sum * 2.0e-16) break;
       }
-      values[order] = std::move(sum);
+      scalar[n] = exponential * sum;
     }
-    return values;
+  } else {
+    scalar[0] = 0.5 * std::sqrt(std::numbers::pi / t) * std::erf(std::sqrt(t));
+    for (unsigned n = 1; n < scalar.size(); ++n)
+      scalar[n] = ((2.0 * n - 1.0) * scalar[n - 1] - exponential) / (2.0 * t);
   }
-
-  values[0] = 0.5 * sqrt(Jet(std::numbers::pi, argument.derivative.size()) / argument) *
-              erf(sqrt(argument));
-  const Jet exponential = exp(-1.0 * argument);
-  for (unsigned order = 1; order <= maximum_order; ++order) {
-    values[order] = ((2.0 * static_cast<double>(order) - 1.0) * values[order - 1] - exponential) /
-                    (2.0 * argument);
+  std::vector<Jet> values(maximum_order + 1, Jet(0.0, argument.derivative.size()));
+  for (unsigned n = 0; n <= maximum_order; ++n) {
+    values[n].value = scalar[n];
+    for (std::size_t coordinate = 0; coordinate < argument.derivative.size(); ++coordinate)
+      values[n].derivative[coordinate] = -scalar[n + 1] * argument.derivative[coordinate];
   }
   return values;
 }
@@ -859,6 +860,10 @@ IntegralData build_integrals(const core::System& system, bool include_derivative
   out.nbf = molecule::cartesian_ao_count(system);
   out.ncoord = include_derivatives ? system.atoms.size() * 3 : 0;
   const std::size_t n = out.nbf;
+  const std::size_t n2 = checked_product(n, n);
+  const std::size_t n4 = checked_product(n2, n2);
+  checked_product(n4, sizeof(Jet));
+  checked_product(checked_product(n4, out.ncoord), sizeof(double));
   const std::vector<AoView> aos = expand_cartesian_aos(system);
 
   std::vector<Vec3> atom_coordinates;
@@ -906,13 +911,14 @@ IntegralData build_integrals(const core::System& system, bool include_derivative
   for (std::size_t i = 0; i < n; ++i) {
     const AoView& ao_i = aos[i];
     const Vec3& a = atom_coordinates[ao_i.shell->atom_index];
-    for (std::size_t j = 0; j < n; ++j) {
+    for (std::size_t j = 0; j <= i; ++j) {
       const AoView& ao_j = aos[j];
       const Vec3& b = atom_coordinates[ao_j.shell->atom_index];
       for (std::size_t k = 0; k < n; ++k) {
         const AoView& ao_k = aos[k];
         const Vec3& c = atom_coordinates[ao_k.shell->atom_index];
-        for (std::size_t l = 0; l < n; ++l) {
+        for (std::size_t l = 0; l <= k; ++l) {
+          if (i * (i + 1) / 2 + j < k * (k + 1) / 2 + l) continue;
           const AoView& ao_l = aos[l];
           const Vec3& d = atom_coordinates[ao_l.shell->atom_index];
           Jet value(0.0, out.ncoord);
@@ -933,7 +939,17 @@ IntegralData build_integrals(const core::System& system, bool include_derivative
               }
             }
           }
-          eri[eri_index(i, j, k, l, n)] = std::move(value);
+          // Eightfold ERI symmetry also holds for derivatives with respect
+          // to physical atoms. Compute each expensive high-l recurrence once.
+          for (const auto& indices : std::array<std::array<std::size_t, 4>, 8>{{{i, j, k, l},
+                                                                                {j, i, k, l},
+                                                                                {i, j, l, k},
+                                                                                {j, i, l, k},
+                                                                                {k, l, i, j},
+                                                                                {l, k, i, j},
+                                                                                {k, l, j, i},
+                                                                                {l, k, j, i}}})
+            eri[eri_index(indices[0], indices[1], indices[2], indices[3], n)] = value;
         }
       }
     }
@@ -1092,8 +1108,8 @@ RawSource::RawSource(core::System orbital, const core::System* auxiliary)
     : impl_(std::make_unique<Impl>()) {
   impl_->orbital = std::move(orbital);
   for (const auto& shell : impl_->orbital.shells)
-    if (shell.angular_momentum > 3)
-      throw std::invalid_argument("raw post-HF source supports through f");
+    if (shell.angular_momentum > 4)
+      throw std::invalid_argument("raw post-HF source supports through g");
   impl_->aos = expand_cartesian_aos(impl_->orbital);
   impl_->public_aos = public_ao_expansions(impl_->orbital);
   if (!impl_->orbital.ecp_terms.empty()) {
@@ -1110,8 +1126,8 @@ RawSource::RawSource(core::System orbital, const core::System* auxiliary)
   if (auxiliary) {
     require_matching_density_fitting_geometry(impl_->orbital, *auxiliary);
     for (const auto& shell : auxiliary->shells)
-      if (shell.angular_momentum > 3)
-        throw std::invalid_argument("raw auxiliary source supports through f");
+      if (shell.angular_momentum > 4)
+        throw std::invalid_argument("raw auxiliary source supports through g");
     impl_->auxiliary = *auxiliary;
     impl_->has_auxiliary = true;
     impl_->aux = expand_cartesian_aos(impl_->auxiliary);

@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cstddef>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -21,12 +22,14 @@ struct CartesianExpansionTerm {
 
 using AoExpansion = std::vector<CartesianExpansionTerm>;
 
-/** Maximum sparse Cartesian terms needed by any supported s-p-d-f AO. */
+/** Maximum terms in the legacy through-f CUDA topology (CPU uses vectors). */
 inline constexpr std::size_t kMaximumAoExpansionTerms = 3;
 
 /** Number of Cartesian functions in a shell of angular momentum `l`. */
 [[nodiscard]] constexpr std::size_t cartesian_count(unsigned l) noexcept {
-  return static_cast<std::size_t>((l + 1) * (l + 2) / 2);
+  const std::uint64_t n = l;
+  const std::uint64_t count = n % 2 == 0 ? (n + 1) * ((n + 2) / 2) : ((n + 1) / 2) * (n + 2);
+  return count > std::numeric_limits<std::size_t>::max() ? 0 : static_cast<std::size_t>(count);
 }
 
 /** Generate Cartesian functions in the CCA ordering used by libcint/PySCF. */

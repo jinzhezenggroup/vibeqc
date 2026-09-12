@@ -28,6 +28,18 @@ LIMITS = {
 for _operators in LIMITS.values():
     _operators["ao"] = {0: 3, 1: 3, 2: 3, 3: 3}
 
+# The dynamic Hermite CPU route covers g values and first nuclear derivatives.
+# CUDA schedules, AO jets and higher derivatives retain independent boundaries.
+for _operator in (
+    "overlap",
+    "kinetic",
+    "nuclear_attraction",
+    "eri",
+    "df_metric",
+    "df_three_center",
+):
+    LIMITS["cpu"][_operator] = {0: 4, 1: 4}
+
 
 def basis_capability(
     basis,

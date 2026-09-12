@@ -37,7 +37,7 @@ _FAMILIES = (
 
 
 def build_one_electron_value_ir(family, angular, *, charge=1.0):
-    """Declare one Cartesian s/p/d/f pair and its raw two-index value block.
+    """Declare one Cartesian s/p/d/f/g pair and its raw two-index value block.
 
     Attraction has a third, independent mathematical center with positive
     nuclear charge. Its physical minus sign is part of V. Basis-center
@@ -47,8 +47,8 @@ def build_one_electron_value_ir(family, angular, *, charge=1.0):
     angular = tuple(angular)
     if family not in _FAMILIES:
         raise ValueError("one-electron values require overlap, kinetic or attraction")
-    if len(angular) != 2 or any(type(l) is not int or not 0 <= l <= 3 for l in angular):
-        raise ValueError("one-electron values require two public s/p/d/f shells")
+    if len(angular) != 2 or any(type(l) is not int or not 0 <= l <= 4 for l in angular):
+        raise ValueError("one-electron values require two public s/p/d/f/g shells")
     attraction = family == OperatorFamily.NUCLEAR_ATTRACTION
     centers = (0, 1, 2) if attraction else (0, 1)
     signature = ShellSignature(
@@ -94,7 +94,7 @@ class OneElectronComponentKernel:
 def build_one_electron_component_kernel(integral, components, *, graph=None):
     """Generate only recurrence ancestors needed by one S/T/V component.
 
-    Kinetic raising may need an internal ket power of five for a public f
+    Kinetic raising may need an internal ket power of six for a public g
     shell. This does not widen the public basis contract or output dimensions.
     Recurrence memoization and Graph interning share T's overlap subexpressions;
     the scalar emitter later prunes constants and nodes unreachable from roots.
@@ -110,10 +110,10 @@ def build_one_electron_component_kernel(integral, components, *, graph=None):
     ):
         raise ValueError("one-electron component lowering requires raw value outputs")
     if len(integral.signature.shells) != 2 or any(
-        s.angular > 3 or s.convention != BasisConvention.CARTESIAN
+        s.angular > 4 or s.convention != BasisConvention.CARTESIAN
         for s in integral.signature.shells
     ):
-        raise ValueError("one-electron lowering requires Cartesian s/p/d/f shells")
+        raise ValueError("one-electron lowering requires Cartesian s/p/d/f/g shells")
     expected_centers = (
         (0, 1, 2) if family == OperatorFamily.NUCLEAR_ATTRACTION else (0, 1)
     )

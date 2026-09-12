@@ -86,6 +86,8 @@ def build_one_electron_second_ir(
     memory_budget_bytes=4 * 1024**2,
 ):
     """Declare S/T/V partial second derivatives for public s/p/d/f shell pairs."""
+    if any(l > 3 for l in angular):
+        raise ValueError("second derivatives support s/p/d/f shells")
     return _second_ir(
         build_one_electron_value_ir(family, angular, charge=charge),
         output,
@@ -257,6 +259,8 @@ def build_second_derivative_kernel(
     or HVP rows before AD, so a backend can bound liveness by output tiling.
     Algebra choices expose valid optimize-before/after-AD validation schedules.
     """
+    if any(l > 3 for l in integral.signature.angular):
+        raise ValueError("second derivatives support s/p/d/f shells")
     consumer = require_second_consumer(integral)
     count = integral.signature.component_count
     indices = (

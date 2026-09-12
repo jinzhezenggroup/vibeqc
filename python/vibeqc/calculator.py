@@ -254,7 +254,7 @@ class Calculator:
     a bundled STO-3G/def2-SVP/def2-TZVP basis for H-Ar, local canonical JSON,
     immutable `BasisSet` records, or explicit `Shell` objects. Element symbols
     cover H-Og; execution depends on every actual shell and Hamiltonian. Both the CPU reference and CUDA backend support Cartesian
-    or PySCF/libcint-ordered real spherical AOs through `f` shells.
+    or PySCF/libcint-ordered real spherical AOs through `g` on CPU (`f` on CUDA).
     """
 
     def __init__(

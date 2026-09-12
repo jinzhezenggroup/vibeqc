@@ -37,11 +37,11 @@ from .shell_spec import AXES, cartesian_components
 def build_df_value_ir(
     family: OperatorFamily | str, angular: tuple[int, ...], *, recurrence="subset_wick"
 ) -> IntegralIR:
-    """Declare a Cartesian s/p/d/f raw metric or three-center shell block.
+    """Declare a Cartesian s/p/d/f/g raw metric or three-center shell block.
 
     Auxiliary basis roles and two-/three-center permutation groups are explicit.
-    A default auxiliary basis containing g or higher shells is rejected, never
-    silently truncated to the public f limit.
+    The pruned Hermite component route supports g without enlarging production
+    Rys tables. Higher shells are rejected, never silently truncated.
     """
     family = OperatorFamily(family)
     if family == OperatorFamily.COULOMB_METRIC:
@@ -54,10 +54,12 @@ def build_df_value_ir(
     if len(angular) != len(roles):
         raise ValueError("DF angular signature does not match its basis roles")
     for l in angular:
-        if type(l) is not int or not 0 <= l <= 3:
+        if type(l) is not int or not 0 <= l <= 4:
             raise ValueError(
-                "generated DF values support orbital/auxiliary s/p/d/f shells only"
+                "generated DF values support orbital/auxiliary s/p/d/f/g shells only"
             )
+    if any(l > 3 for l in angular) and recurrence != "subset_wick":
+        raise ValueError("g DF components require the subset_wick recurrence")
     centers = tuple(range(len(roles)))
     signature = ShellSignature(
         tuple(
@@ -119,10 +121,10 @@ def build_df_component_kernel(
             "DF value lowering requires raw values without derivative weights"
         )
     if any(
-        s.convention != BasisConvention.CARTESIAN or s.angular > 3
+        s.convention != BasisConvention.CARTESIAN or s.angular > 4
         for s in signature.shells
     ):
-        raise ValueError("DF component lowering requires Cartesian s/p/d/f shells")
+        raise ValueError("DF component lowering requires Cartesian s/p/d/f/g shells")
     components = tuple(components)
     if len(components) != len(signature.shells) or any(
         c not in cartesian_components(l) for c, l in zip(components, signature.angular)

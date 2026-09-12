@@ -89,7 +89,7 @@ def test_derivative_domain_layout_and_internal_moments():
                 range(len(angular) - 1)
             )
     with pytest.raises(ValueError, match="s/p/d/f"):
-        build_df_derivative_ir("three_center_eri", (3, 4, 0))
+        build_df_derivative_ir("three_center_eri", (3, 5, 0))
     for powers in ((4, 3, 3), (3, 4, 3)):
         _, coefficients = axis_polynomial(*powers)
         assert len(coefficients) == 11

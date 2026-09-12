@@ -3,11 +3,12 @@
 #include <cmath>
 #include <limits>
 #include <numbers>
+#include <stdexcept>
 
 namespace vibeqc::molecule {
 namespace {
 
-constexpr unsigned kMaximumPublicAngularMomentum = 3;
+constexpr unsigned kMaximumPublicAngularMomentum = 4;
 
 double radial_primitive_normalization(double exponent, unsigned angular_momentum) {
   return std::pow(2.0 * exponent / std::numbers::pi, 0.75) *
@@ -30,10 +31,12 @@ double odd_double_factorial(unsigned angular_power) noexcept {
 }  // namespace
 
 std::vector<CartesianComponent> cartesian_components(unsigned l) {
+  if (l > kMaximumPublicAngularMomentum)
+    throw std::invalid_argument("Cartesian components support l<=4");
   std::vector<CartesianComponent> components;
   components.reserve(cartesian_count(l));
   // CCA/libcint order: x power decreases first; for a fixed x power, y
-  // increases and z is the remaining power.  Examples are p=(x,y,z) and
+  // decreases and z is the remaining power.  Examples are p=(x,y,z) and
   // d=(xx,xy,xz,yy,yz,zz).
   for (int lx = static_cast<int>(l); lx >= 0; --lx) {
     for (unsigned lz = 0; lz <= l - static_cast<unsigned>(lx); ++lz) {
@@ -93,7 +96,61 @@ std::vector<AoExpansion> ao_expansions(unsigned l, vibeqc_basis_representation r
         {{{3, 0, 0}, root_five_over_eight}, {{1, 2, 0}, -three_over_root_eight}},
     };
   }
-  return {};
+  // Generate real regular solid harmonics from the differentiated Legendre
+  // polynomial. Remove the Condon-Shortley phase, use Im for m<0 and Re
+  // for m>=0 (libcint order), then normalize in the Cartesian Gaussian metric.
+  // Keeping the established d/f tables above preserves their exact rounding.
+  auto factorial = [](unsigned n) {
+    double result = 1.0;
+    for (unsigned i = 2; i <= n; ++i) result *= i;
+    return result;
+  };
+  std::vector<AoExpansion> expansions;
+  for (int signed_m = -static_cast<int>(l); signed_m <= static_cast<int>(l); ++signed_m) {
+    const unsigned m = static_cast<unsigned>(std::abs(signed_m));
+    std::vector<double> polynomial(cartesian.size(), 0.0);
+    for (unsigned k = 0; 2 * k + m <= l; ++k) {
+      const double legendre =
+          (k % 2 ? -1.0 : 1.0) * factorial(2 * l - 2 * k) /
+          (std::pow(2.0, l) * factorial(k) * factorial(l - k) * factorial(l - m - 2 * k));
+      for (unsigned y = 0; y <= m; ++y) {
+        if (y % 2 != static_cast<unsigned>(signed_m < 0)) continue;
+        const double phase = (y / 2) % 2 ? -1.0 : 1.0;
+        const double complex_term = phase * factorial(m) / (factorial(y) * factorial(m - y));
+        for (unsigned rx = 0; rx <= k; ++rx) {
+          for (unsigned ry = 0; ry <= k - rx; ++ry) {
+            const unsigned rz = k - rx - ry;
+            const CartesianComponent component{m - y + 2 * rx, y + 2 * ry, l - m - 2 * k + 2 * rz};
+            for (std::size_t i = 0; i < cartesian.size(); ++i) {
+              if (cartesian[i] == component)
+                polynomial[i] += legendre * complex_term * factorial(k) /
+                                 (factorial(rx) * factorial(ry) * factorial(rz));
+            }
+          }
+        }
+      }
+    }
+    double norm = 0.0;
+    for (std::size_t i = 0; i < cartesian.size(); ++i) {
+      for (std::size_t j = 0; j < cartesian.size(); ++j) {
+        double moment = 1.0;
+        for (unsigned axis = 0; axis < 3; ++axis) {
+          const unsigned power = cartesian[i][axis] + cartesian[j][axis];
+          moment *= power % 2 ? 0.0 : odd_double_factorial(power / 2);
+        }
+        norm += polynomial[i] * polynomial[j] * moment;
+      }
+    }
+    AoExpansion expansion;
+    for (std::size_t i = 0; i < cartesian.size(); ++i) {
+      if (polynomial[i] != 0.0)
+        expansion.push_back(
+            {cartesian[i],
+             polynomial[i] / (std::sqrt(norm) * cartesian_component_normalization(cartesian[i]))});
+    }
+    expansions.push_back(std::move(expansion));
+  }
+  return expansions;
 }
 
 std::size_t ao_count(const core::System& system) noexcept {
@@ -179,7 +236,7 @@ vibeqc_status validate_and_normalize(core::System& system, std::string& detail) 
     if (shell.angular_momentum > kMaximumPublicAngularMomentum) {
       detail = "shell on atom " + std::to_string(shell.atom_index) +
                " has l=" + std::to_string(shell.angular_momentum) +
-               "; native Cartesian/real-spherical execution supports s through f shells";
+               "; native CPU Cartesian/real-spherical execution supports s through g shells";
       return VIBEQC_STATUS_NOT_IMPLEMENTED;
     }
     if (shell.primitives.empty()) {
