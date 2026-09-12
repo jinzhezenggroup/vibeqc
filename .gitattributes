@@ -13,3 +13,5 @@ benchmarks/results/dft-grid-160/*.json linguist-generated=true
 # These files are hashed byte-for-byte as third-party/reference provenance.
 external/libxc-7.0.0/* text eol=lf
 tools/generate_xc_references.py text eol=lf
+tools/generate_xc_integration_references.py text eol=lf
+tools/generate_validation_references.py text eol=lf
