@@ -94,13 +94,16 @@ DensityFittingResponseWeightResources contract_density_fitting_response_weights(
           // symmetric, so both appearances of A give the factor two below.
           std::fill(temporary.begin(), temporary.end(), 0.0);
           std::fill(response.begin(), response.end(), 0.0);
+          // Sweep contiguous output rows so the inner loop can vectorize and
+          // reuse the right-hand matrix's cache lines. Each output still sums
+          // k in ascending order; densities, prefactors and scratch are unchanged.
           for (std::size_t i = 0; i < n; ++i)
-            for (std::size_t j = 0; j < n; ++j)
-              for (std::size_t k = 0; k < n; ++k)
+            for (std::size_t k = 0; k < n; ++k)
+              for (std::size_t j = 0; j < n; ++j)
                 temporary[i * n + j] += values[i * n + k] * term.density[k * n + j];
           for (std::size_t i = 0; i < n; ++i)
-            for (std::size_t j = 0; j < n; ++j)
-              for (std::size_t k = 0; k < n; ++k)
+            for (std::size_t k = 0; k < n; ++k)
+              for (std::size_t j = 0; j < n; ++j)
                 response[i * n + j] += term.density[k * n + i] * temporary[k * n + j];
           for (std::size_t p = 0; p < count; ++p) {
             const double scale = -2 * term.exchange_coefficient * inverse[(begin + p) * a + q];
