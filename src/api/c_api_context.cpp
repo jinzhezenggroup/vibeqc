@@ -1,9 +1,5 @@
 #include <cstddef>
 #include <memory>
-<<<<<<< HEAD
-#include <unordered_map>
-=======
->>>>>>> ba156c7 (fix(mp2): address follow-up review findings)
 #include <utility>
 
 #include "api/error.hpp"
