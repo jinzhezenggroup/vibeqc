@@ -46,9 +46,9 @@ struct CudaDensityFittingJkPlan {
   double* metric_eigenvectors{};
   double* metric_eigenvalues{};
   std::vector<std::uint8_t> metric_response_valid;
-  // Partial auxiliary tiles normally use host-backed raw values.  A source-
-  // backed plan instead regenerates the requested transformed tile directly
-  // on the device; X is shared by J/K and the spectral force response.
+  // Partial tiles stream values; full tiles permit source-backed residency.
+  // The source and its metric policy are immutable for this plan's lifetime.
+  // X is shared by materialization/J/K and the spectral force response.
   bool streamed{};
   CudaDensityFittingIntegralSource* integral_source{};
   double* inverse_square_roots{};

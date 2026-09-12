@@ -51,3 +51,43 @@ def test_df_shape_query_needs_no_integrals_or_context(monkeypatch):
         density_fitting_tile_plan(
             library, 1, 2**40, 20, 1, budget_bytes=0, fixed_device_bytes=0
         )
+
+
+def test_generated_residency_uses_complete_source_specific_budget():
+    library = Calculator()._library
+    generated = density_fitting_tile_plan(
+        library,
+        1,
+        192,
+        192,
+        40,
+        budget_bytes=256 << 20,
+        fixed_device_bytes=1 << 20,
+        generated_source=True,
+    )
+    compatibility = density_fitting_tile_plan(
+        library,
+        1,
+        192,
+        192,
+        40,
+        budget_bytes=256 << 20,
+        fixed_device_bytes=1 << 20,
+    )
+    assert generated.stores_full_three_center
+    assert generated.peak_workspace_bytes <= 256 << 20
+    # The independent host route also needs its raw upload during setup.
+    assert not compatibility.stores_full_three_center
+    constrained = density_fitting_tile_plan(
+        library,
+        1,
+        192,
+        192,
+        40,
+        budget_bytes=32 << 20,
+        fixed_device_bytes=1 << 20,
+        generated_source=True,
+    )
+    assert 8 * 192**3 > constrained.budget_bytes
+    assert not constrained.stores_full_three_center
+    assert constrained.peak_workspace_bytes <= constrained.budget_bytes

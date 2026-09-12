@@ -881,7 +881,7 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_plan(
     try {
       source_tile_plan = plan_density_fitting_tiles(
           1, source_nbf, source_naux, std::max<std::size_t>(occupied, 1), planning_budget,
-          cuda_density_fitting_integral_source_device_bytes(source));
+          cuda_density_fitting_integral_source_device_bytes(source), true);
     } catch (...) {
       destroy_cuda_density_fitting_integral_source(source);
       throw;
@@ -974,7 +974,7 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_batch_plan(
     try {
       tile_plan = plan_density_fitting_tiles(
           data.size(), nbf, naux, std::max<std::size_t>(occupied, 1), planning_budget,
-          cuda_density_fitting_integral_source_device_bytes(source));
+          cuda_density_fitting_integral_source_device_bytes(source), true);
     } catch (...) {
       destroy_cuda_density_fitting_integral_source(source);
       throw;
