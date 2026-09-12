@@ -11,9 +11,11 @@
 #include <stdexcept>
 
 #include "api/handles.hpp"
+#include "molecule/basis.hpp"
 #include "posthf/capacity.hpp"
 #include "posthf/mp2_energy.hpp"
 #include "posthf/raw_source.hpp"
+#include "scf/cuda_weighted_eri.hpp"
 #include "scf/density_fitting.hpp"
 #include "scf/mean_field.hpp"
 #include "scf/proposal_bridge.hpp"
@@ -581,6 +583,154 @@ VIBEQC_API int vibeqc_posthf_df_integral_derivatives_v1(void* source, std::size_
       cursor = std::copy(values->begin(), values->end(), cursor);
     if (cursor != output + expected)
       throw std::runtime_error("DF derivative oracle returned inconsistent dimensions");
+  });
+}
+// Stream a dense public-AO cotangent through the #144 CUDA derivative
+// consumer. Caller weights/final output, system ownership, container headers,
+// CUDA context and allocator overhead are excluded; numeric candidate/offset/
+// expansion/record/result storage is included. No coordinate-by-AO derivative
+// tensor is formed.
+VIBEQC_API int vibeqc_posthf_weighted_eri_gradient_cuda_v1(
+    void* source, int device, const double* weights, std::size_t weight_elements,
+    std::size_t stage_budget, double* gradient, std::size_t gradient_elements, char* error,
+    std::size_t error_size) {
+  return guarded(error, error_size, [&] {
+    if (!source || !weights || !gradient || device < 0)
+      throw std::invalid_argument("invalid weighted ERI gradient request");
+    const auto& raw = *static_cast<RawSource*>(source);
+    const auto& system = raw.orbital();
+    const auto n = raw.nbf();
+    const auto n2 = vibeqc::posthf::checked_mul(n, n);
+    const auto n4 = vibeqc::posthf::checked_mul(n2, n2);
+    if (weight_elements != n4 || gradient_elements != system.atoms.size() * 3)
+      throw std::invalid_argument("weighted ERI gradient dimensions are inconsistent");
+    std::size_t maximum_expansion_terms = 0;
+    for (const auto& shell : system.shells) {
+      const auto cartesian = vibeqc::molecule::cartesian_count(shell.angular_momentum);
+      const auto public_count = system.basis_representation == VIBEQC_BASIS_SPHERICAL
+                                    ? 2 * shell.angular_momentum + 1
+                                    : cartesian;
+      maximum_expansion_terms =
+          std::max(maximum_expansion_terms, vibeqc::posthf::checked_mul(public_count, cartesian));
+    }
+    constexpr std::size_t record_bytes = sizeof(vibeqc::scf::CudaWeightedEriPrimitive);
+    constexpr std::size_t result_bytes = 2 * sizeof(vibeqc::scf::CudaWeightedEriResult);
+    auto fixed_bytes = vibeqc::posthf::checked_mul(gradient_elements, sizeof(double));
+    fixed_bytes = vibeqc::posthf::checked_add(
+        fixed_bytes, vibeqc::posthf::checked_mul(system.shells.size() + 1, sizeof(std::size_t)));
+    fixed_bytes = vibeqc::posthf::checked_add(
+        fixed_bytes,
+        vibeqc::posthf::checked_mul(vibeqc::posthf::checked_mul(4, maximum_expansion_terms),
+                                    sizeof(vibeqc::molecule::CartesianExpansionTerm)));
+    if (stage_budget <= vibeqc::posthf::checked_add(fixed_bytes, result_bytes))
+      throw std::length_error("weighted ERI gradient stage budget is too small");
+    const auto capacity = std::min<std::size_t>(
+        4096, (stage_budget - fixed_bytes - result_bytes) / (2 * record_bytes));
+    if (!capacity) throw std::length_error("weighted ERI gradient cannot hold one record");
+    const auto owned_record_bytes = vibeqc::posthf::checked_mul(capacity, record_bytes);
+    const auto consumer_budget = stage_budget - fixed_bytes - owned_record_bytes;
+    std::vector<vibeqc::scf::CudaWeightedEriPrimitive> records;
+    records.reserve(capacity);
+    std::vector<vibeqc::scf::CudaWeightedEriResult> output;
+    std::vector<double> candidate(gradient_elements, 0.0);
+
+    std::vector<std::size_t> shell_offsets(system.shells.size() + 1, 0);
+    for (std::size_t shell = 0; shell < system.shells.size(); ++shell) {
+      const auto count =
+          system.basis_representation == VIBEQC_BASIS_SPHERICAL
+              ? 2 * system.shells[shell].angular_momentum + 1
+              : vibeqc::molecule::cartesian_count(system.shells[shell].angular_momentum);
+      shell_offsets[shell + 1] = vibeqc::posthf::checked_add(shell_offsets[shell], count);
+    }
+    if (shell_offsets.back() != n)
+      throw std::runtime_error("weighted ERI shell offsets disagree with the source");
+
+    for (std::size_t si = 0; si < system.shells.size(); ++si)
+      for (std::size_t sj = 0; sj < system.shells.size(); ++sj)
+        for (std::size_t sk = 0; sk < system.shells.size(); ++sk)
+          for (std::size_t sl = 0; sl < system.shells.size(); ++sl) {
+            const std::array<const vibeqc::core::Shell*, 4> selected{
+                &system.shells[si], &system.shells[sj], &system.shells[sk], &system.shells[sl]};
+            const std::array<std::vector<vibeqc::molecule::AoExpansion>, 4> expansions{
+                vibeqc::molecule::ao_expansions(selected[0]->angular_momentum,
+                                                system.basis_representation),
+                vibeqc::molecule::ao_expansions(selected[1]->angular_momentum,
+                                                system.basis_representation),
+                vibeqc::molecule::ao_expansions(selected[2]->angular_momentum,
+                                                system.basis_representation),
+                vibeqc::molecule::ao_expansions(selected[3]->angular_momentum,
+                                                system.basis_representation)};
+            auto flush = [&] {
+              if (records.empty()) return;
+              vibeqc::scf::CudaWeightedEriDiagnostic diagnostic;
+              std::string detail;
+              const auto status = vibeqc::scf::contract_cuda_weighted_eri_primitives(
+                  device, records.data(), records.size(), 1, consumer_budget, false, output,
+                  diagnostic, detail);
+              if (status != VIBEQC_STATUS_SUCCESS)
+                throw std::runtime_error(detail.empty() ? "weighted ERI CUDA contraction failed"
+                                                        : detail);
+              if (output.size() != 1)
+                throw std::runtime_error("weighted ERI CUDA contraction returned no result");
+              for (unsigned slot = 0; slot < 4; ++slot) {
+                const auto atom = selected[slot]->atom_index;
+                for (unsigned axis = 0; axis < 3; ++axis)
+                  candidate[3 * atom + axis] += output[0].center[slot][axis];
+              }
+              records.clear();
+            };
+            for (std::size_t i = 0; i < expansions[0].size(); ++i)
+              for (std::size_t j = 0; j < expansions[1].size(); ++j)
+                for (std::size_t k = 0; k < expansions[2].size(); ++k)
+                  for (std::size_t l = 0; l < expansions[3].size(); ++l) {
+                    const auto global_i = shell_offsets[si] + i;
+                    const auto global_j = shell_offsets[sj] + j;
+                    const auto global_k = shell_offsets[sk] + k;
+                    const auto global_l = shell_offsets[sl] + l;
+                    const auto weight =
+                        weights[((global_i * n + global_j) * n + global_k) * n + global_l];
+                    if (weight == 0.0) continue;
+                    for (const auto& ei : expansions[0][i])
+                      for (const auto& ej : expansions[1][j])
+                        for (const auto& ek : expansions[2][k])
+                          for (const auto& el : expansions[3][l]) {
+                            const std::array<const vibeqc::molecule::CartesianExpansionTerm*, 4>
+                                terms{&ei, &ej, &ek, &el};
+                            double component_weight = weight;
+                            for (const auto* term : terms)
+                              component_weight *=
+                                  term->coefficient *
+                                  vibeqc::molecule::cartesian_component_normalization(
+                                      term->component);
+                            for (const auto& pi : selected[0]->primitives)
+                              for (const auto& pj : selected[1]->primitives)
+                                for (const auto& pk : selected[2]->primitives)
+                                  for (const auto& pl : selected[3]->primitives) {
+                                    if (records.size() == capacity) flush();
+                                    auto& record = records.emplace_back();
+                                    record.kind = 0;
+                                    const std::array<const vibeqc::core::Primitive*, 4> primitives{
+                                        &pi, &pj, &pk, &pl};
+                                    for (unsigned slot = 0; slot < 4; ++slot) {
+                                      for (unsigned axis = 0; axis < 3; ++axis) {
+                                        record.angular[slot][axis] = terms[slot]->component[axis];
+                                        record.centers[slot][axis] =
+                                            system.atoms[selected[slot]->atom_index].position[axis];
+                                      }
+                                      record.exponents[slot] = primitives[slot]->exponent;
+                                    }
+                                    record.weights[0] = component_weight * pi.coefficient *
+                                                        pj.coefficient * pk.coefficient *
+                                                        pl.coefficient;
+                                  }
+                          }
+                  }
+            flush();
+          }
+    if (!std::all_of(candidate.begin(), candidate.end(),
+                     [](double value) { return std::isfinite(value); }))
+      throw std::runtime_error("weighted ERI gradient is nonfinite");
+    std::copy(candidate.begin(), candidate.end(), gradient);
   });
 }
 /** Explicit CG10 slot order for direct native CUDA/CPU layout verification. */

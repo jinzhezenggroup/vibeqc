@@ -380,7 +380,7 @@ def canonical_lagrangian_weights(hcore_mo, eri_mo, adjoint, response, occupied):
     )
 
 
-def ao_lagrangian_weights(reference, weights):
+def ao_lagrangian_weights(reference, weights, *, output_budget_bytes=None):
     """Back-transform relaxed MO weights without changing derivative factors."""
 
     if not isinstance(weights, MP2LagrangianWeights):
@@ -390,6 +390,13 @@ def ao_lagrangian_weights(reference, weights):
     if weights.hamiltonian_id != reference.hamiltonian_id:
         raise ValueError("MP2 Lagrangian Hamiltonian differs from the reference")
     c = reference.coefficients
+    n = reference.nmo
+    output_bytes = (2 * n * n + n**4) * 8
+    if output_budget_bytes is not None:
+        if type(output_budget_bytes) is not int or output_budget_bytes < 1:
+            raise ValueError("AO Lagrangian output budget must be positive")
+        if output_bytes > output_budget_bytes:
+            raise MemoryError("AO Lagrangian weights exceed their output budget")
     one = c @ weights.one_electron @ c.T
     overlap = c @ weights.overlap @ c.T
     two = np.einsum(
@@ -409,6 +416,100 @@ def ao_lagrangian_weights(reference, weights):
         weights.hamiltonian_id,
         weights.operator_identity,
     )
+
+
+def fused_cuda_conventional_molecular_gradient(
+    reference,
+    source,
+    weights,
+    orbital_calculator,
+    *,
+    weight_output_budget_bytes=256 << 20,
+    consumer_maximum_bytes=128 << 20,
+    device_id=0,
+):
+    """Contract conventional weights through the #141/#144 CUDA consumers.
+
+    Dense AO cotangents are an explicit intermediate migration boundary. Their
+    published output has its own guard; transform scratch and caller-owned
+    weights are excluded. Each derivative consumer has a separate stage limit,
+    and no global nuclear-coordinate derivative tensor is formed.
+    """
+
+    from tools.vibeqc_validation.one_electron_gradient import execute_gradient
+
+    if (
+        type(weight_output_budget_bytes) is not int
+        or weight_output_budget_bytes < 1
+        or type(consumer_maximum_bytes) is not int
+        or consumer_maximum_bytes < 1
+        or type(device_id) is not int
+        or device_id < 0
+    ):
+        raise ValueError(
+            "fused CUDA conventional gradient requires valid stage controls"
+        )
+    if (
+        reference.hamiltonian_id != "conventional-unscreened"
+        or weights.hamiltonian_id != "conventional-unscreened"
+    ):
+        raise ValueError(
+            "conventional gradient requires the unscreened exact Hamiltonian"
+        )
+    if (
+        source.electron_count != reference.electron_count
+        or source.multiplicity != 1
+        or reference.geometry_hash != source.geometry_hash
+        or reference.basis_hash != source.basis_hash
+        or reference.representation != source.representation
+        or reference.nmo != source.nbf
+    ):
+        raise ValueError("conventional gradient source/reference identity mismatch")
+    representation = (
+        "spherical" if source.representation == "real_spherical" else "cartesian"
+    )
+    if (
+        getattr(orbital_calculator, "_device_name", None) != "cuda"
+        or getattr(orbital_calculator, "_device_id", None) != device_id
+        or getattr(orbital_calculator, "_representation_name", None) != representation
+        or tuple(orbital_calculator._shells_for_atoms(source.atoms)) != source.shells
+    ):
+        raise ValueError("conventional gradient calculator differs from the source")
+    ao = ao_lagrangian_weights(
+        reference, weights, output_budget_bytes=weight_output_budget_bytes
+    )
+    one, one_resources = execute_gradient(
+        orbital_calculator,
+        source.atoms,
+        np.stack((ao.overlap, ao.one_electron, ao.one_electron)),
+        maximum_bytes=consumer_maximum_bytes,
+        charge=source.charge,
+        multiplicity=source.multiplicity,
+    )
+    two = source.weighted_eri_gradient_cuda(
+        ao.two_electron,
+        device_id=device_id,
+        stage_budget_bytes=consumer_maximum_bytes,
+    )
+    gradient = _nuclear_repulsion_gradient(source.atoms) + one + two
+    if not np.isfinite(gradient).all():
+        raise ValueError("fused CUDA conventional MP2 molecular gradient is nonfinite")
+    return immutable(gradient), {
+        "one_electron": one_resources,
+        "weighted_eri_stage_bytes": consumer_maximum_bytes,
+        "global_derivative_tensors": False,
+        "dense_response_weights": True,
+        "weight_output_bytes": int(
+            ao.overlap.nbytes + ao.one_electron.nbytes + ao.two_electron.nbytes
+        ),
+        "weight_output_budget_bytes": weight_output_budget_bytes,
+        "excluded_from_bridge_budget": (
+            "dense AO cotangent transformation scratch",
+            "caller-owned response weights",
+            "Python/native object metadata",
+            "CUDA context and allocator overhead",
+        ),
+    }
 
 
 def dense_molecular_gradient_oracle(

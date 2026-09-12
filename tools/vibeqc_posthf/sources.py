@@ -215,6 +215,17 @@ class NativeSource:
             ct.c_char_p,
             ct.c_size_t,
         ]
+        lib.vibeqc_posthf_weighted_eri_gradient_cuda_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_int,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
         lib.vibeqc_posthf_uhf_density_v1.argtypes = [
             ct.c_void_p,
             ct.c_int,
@@ -427,6 +438,41 @@ class NativeSource:
             "metric": take((ncoord, self.naux, self.naux)),
             "nuclear": take((ncoord,)),
         }
+
+    def weighted_eri_gradient_cuda(
+        self, weights, *, device_id=0, stage_budget_bytes=128 << 20
+    ):
+        """Stream fixed public-AO weights through the #144 CUDA consumer.
+
+        The stage budget includes numeric candidate, offset, expansion, record,
+        upload and result storage. Caller weights/output, owned system state,
+        object headers, CUDA context and allocator overhead are excluded.
+        """
+
+        value = np.ascontiguousarray(weights, dtype=np.float64)
+        if value.shape != (self.nbf,) * 4 or not np.isfinite(value).all():
+            raise ValueError("weighted ERI gradient requires finite [AO]*4 weights")
+        if (
+            type(device_id) is not int
+            or device_id < 0
+            or type(stage_budget_bytes) is not int
+            or stage_budget_bytes < 1
+        ):
+            raise ValueError("weighted ERI gradient requires valid device/budget")
+        gradient = np.empty((len(self.atoms), 3), dtype=np.float64)
+        with self._lock:
+            self._check_open()
+            self._call(
+                "vibeqc_posthf_weighted_eri_gradient_cuda_v1",
+                self._handle,
+                device_id,
+                pointer(value),
+                value.size,
+                stage_budget_bytes,
+                pointer(gradient),
+                gradient.size,
+            )
+        return immutable(gradient)
 
     def requests(self, kind, *, axis_tile=2, budget_bytes=1 << 20):
         """Yield bounded CG02 requests, including partial shell-component tiles."""

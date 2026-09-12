@@ -10,12 +10,14 @@ from vibeqc_compiler.tensor import execute
 
 from tools.vibeqc_mp2.equations import energy_program
 from tools.vibeqc_mp2.gradient import (
+    ao_lagrangian_weights,
     canonical_energy_adjoint,
     canonical_lagrangian_weights,
     canonical_orbital_rhs,
     dense_molecular_gradient_oracle,
     dense_ri_lagrangian_weights_oracle,
     dense_ri_molecular_gradient_oracle,
+    fused_cuda_conventional_molecular_gradient,
     fused_cuda_ri_molecular_gradient,
     solve_canonical_orbital_response,
     tile_energy_adjoint,
@@ -79,6 +81,28 @@ def test_nuclear_repulsion_gradient_matches_independent_oracle_block():
     np.testing.assert_allclose(
         _nuclear_repulsion_gradient(arguments["atoms"]), expected, atol=1e-13, rtol=0
     )
+
+
+@pytest.mark.skipif(
+    os.environ.get("VIBEQC_MP2_CUDA_TEST") != "1",
+    reason="requires explicitly allocated CUDA device and native library",
+)
+def test_weighted_eri_cuda_spherical_pullback_matches_dense_oracle(monkeypatch):
+    meta, _ = load_fixture("f_heh")
+    arguments = source_arguments(meta)
+    assert arguments["representation"] == "spherical"
+    with NativeSource(**arguments) as source:
+        rng = np.random.default_rng(144193)
+        weights = rng.normal(scale=0.02, size=(source.nbf,) * 4)
+        derivatives = source.integral_derivatives()["eri"]
+        expected = np.einsum("xpqrs,pqrs->x", derivatives, weights).reshape(-1, 3)
+        monkeypatch.setattr(
+            source,
+            "integral_derivatives",
+            lambda **_: pytest.fail("weighted bridge called dense derivatives"),
+        )
+        actual = source.weighted_eri_gradient_cuda(weights)
+    np.testing.assert_allclose(actual, expected, atol=2e-9, rtol=2e-9)
 
 
 def _energy(feeds):
@@ -375,7 +399,9 @@ def test_mp2_orbital_response_reuses_shared_solver_and_explicit_matrix():
 
 
 @pytest.mark.parametrize("name", ["h2", "water"])
-def test_dense_complete_gradient_matches_fully_resolved_finite_differences(name):
+def test_dense_complete_gradient_matches_fully_resolved_finite_differences(
+    name, monkeypatch
+):
     meta, arrays = load_fixture(name)
     arguments = source_arguments(meta)
     reference = fixture_snapshot(meta, arrays)
@@ -401,8 +427,55 @@ def test_dense_complete_gradient_matches_fully_resolved_finite_differences(name)
         options=GMRESOptions(rtol=1e-12, atol=1e-13, max_iterations=100),
     )
     weights = canonical_lagrangian_weights(hcore_mo, eri, adjoint, response, occupied)
+    if name == "h2":
+        with pytest.raises(MemoryError, match="output budget"):
+            ao_lagrangian_weights(
+                reference,
+                weights,
+                output_budget_bytes=reference.nmo**4 * 8,
+            )
     with NativeSource(**arguments) as source:
         analytic = dense_molecular_gradient_oracle(reference, source, weights)
+        if name == "h2":
+            fitted_reference = replace(
+                reference, hamiltonian_id="density-fitting:stale-test"
+            )
+            fitted_weights = replace(
+                weights,
+                reference_identity=fitted_reference.identity,
+                hamiltonian_id=fitted_reference.hamiltonian_id,
+            )
+            cpu_calculator = Calculator(
+                basis=arguments["basis"],
+                basis_representation=arguments["representation"],
+            )
+            with pytest.raises(ValueError, match="unscreened exact Hamiltonian"):
+                fused_cuda_conventional_molecular_gradient(
+                    fitted_reference,
+                    source,
+                    fitted_weights,
+                    cpu_calculator,
+                )
+        if os.environ.get("VIBEQC_MP2_CUDA_TEST") == "1":
+            calculator_cuda = Calculator(
+                basis=arguments["basis"],
+                basis_representation=arguments["representation"],
+                device="cuda",
+            )
+            monkeypatch.setattr(
+                source,
+                "integral_derivatives",
+                lambda **_: pytest.fail("fused path called dense derivatives"),
+            )
+            fused, diagnostics = fused_cuda_conventional_molecular_gradient(
+                reference, source, weights, calculator_cuda
+            )
+            np.testing.assert_allclose(fused, analytic, atol=2e-9, rtol=2e-9)
+            assert diagnostics["global_derivative_tensors"] is False
+            assert (
+                diagnostics["weight_output_bytes"]
+                <= diagnostics["weight_output_budget_bytes"]
+            )
 
     calculator = Calculator(
         method="mp2",
