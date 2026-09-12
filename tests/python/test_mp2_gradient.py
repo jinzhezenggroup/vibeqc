@@ -769,9 +769,10 @@ def test_dense_complete_gradient_matches_fully_resolved_finite_differences(
 
 
 @pytest.mark.parametrize("name", ["h2", "water"])
-def test_complete_conventional_gradient_matches_pyscf_analytic(name):
+def test_complete_conventional_gradient_matches_pyscf_analytic(name, monkeypatch):
     pyscf = pytest.importorskip("pyscf")
     from pyscf import ao2mo, mp, scf
+    from pyscf.scf import cphf
 
     from tools.generate_validation_references import pyscf_molecule
 
@@ -820,6 +821,28 @@ def test_complete_conventional_gradient_matches_pyscf_analytic(name):
     mean_field.mo_occ = arrays["conventional_occ"].copy()
     mean_field.e_tot = meta["records"]["conventional"]["hf_energy"]
     calculation = mp.MP2(mean_field, frozen=None).run()
+
+    def exact_tiny_cphf_solve(fvind, mo_energy, mo_occ, h1, s1=None, **kwargs):
+        del kwargs
+        if s1 is not None or h1.ndim != 2:
+            raise AssertionError("tiny MP2 reference expects one field-independent RHS")
+        occupied_mask = mo_occ > 0
+        gap = mo_energy[~occupied_mask, None] - mo_energy[occupied_mask]
+        dimension = h1.size
+        matrix = np.empty((dimension, dimension))
+        for column in range(dimension):
+            basis = np.zeros_like(h1)
+            basis.flat[column] = 1.0
+            matrix[:, column] = (gap * basis + fvind(basis)).reshape(-1)
+        solution = np.linalg.solve(matrix, -h1.reshape(-1)).reshape(h1.shape)
+        residual = gap * solution + fvind(solution) + h1
+        if np.max(np.abs(residual)) > 1e-12:
+            raise AssertionError(
+                "independent tiny CPHF solve has a large true residual"
+            )
+        return solution, None
+
+    monkeypatch.setattr(cphf, "solve", exact_tiny_cphf_solve)
     expected = calculation.nuc_grad_method().kernel()
     np.testing.assert_allclose(actual, expected, atol=1e-7, rtol=1e-7)
 
