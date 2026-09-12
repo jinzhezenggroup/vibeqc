@@ -108,5 +108,26 @@ inline std::size_t ri_mp2_capacity(const core::System& orbital, const core::Syst
   bytes = checked_add(bytes, checked_mul(2, source_scratch_bytes));
   return checked_add(bytes, kernel_bytes);
 }
+
+/** CPU DF-SCF peak while its prepared metric/three-center tensors coexist
+ * with the
+ * iterative/reference matrices. The orbital source and one-electron
+ * matrices are already
+ * included by rhf_reference_capacity; add only the
+ * auxiliary owner plus raw metric, raw
+ * three-center and whitened three-center.
+ */
+inline std::size_t ri_mp2_reference_capacity(const core::System& orbital,
+                                             const core::System& auxiliary, unsigned diis_history) {
+  const auto n = molecule::ao_count(orbital);
+  const auto na = molecule::ao_count(auxiliary);
+  const auto metric = checked_mul(na, na);
+  const auto three_center = checked_mul(checked_mul(n, n), na);
+  auto bytes = rhf_reference_capacity(orbital, diis_history, false);
+  bytes = checked_add(bytes, source_capacity(auxiliary));
+  bytes = checked_add(bytes, checked_mul(sizeof(double), metric));
+  bytes = checked_add(bytes, checked_mul(sizeof(double), checked_mul(2, three_center)));
+  return bytes;
+}
 }  // namespace vibeqc::posthf
 #endif

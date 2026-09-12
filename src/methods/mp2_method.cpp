@@ -278,6 +278,10 @@ std::unique_ptr<PreparedCalculation> prepare_mp2_calculation(const Capabilities&
                               static_cast<std::size_t>(system.electron_count / 2)) > budget)
     throw MethodError(VIBEQC_STATUS_OUT_OF_MEMORY,
                       "RI-MP2 reference and correlation exceed numeric memory budget");
+  if (density_fitted && !fitted_cuda &&
+      posthf::ri_mp2_reference_capacity(system, *auxiliary, options.diis_history) > budget)
+    throw MethodError(VIBEQC_STATUS_OUT_OF_MEMORY,
+                      "RI-MP2 DF reference state exceeds numeric memory budget");
   return std::make_unique<Mp2Prepared>(caps, context, system, std::move(auxiliary), options, budget,
                                        threshold, density_fitted, fitted_cuda);
 }

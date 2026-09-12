@@ -10,7 +10,9 @@ import pytest
 from vibeqc import (
     Calculator,
     ObservableTarget,
+    Primitive,
     ResourceBudget,
+    Shell,
     TargetAccuracy,
     _native,
     method_capabilities,
@@ -176,6 +178,25 @@ def test_public_mp2_identity_includes_correlation_controls():
         )
     }
     assert len(identities) == 3
+
+
+def test_ri_mp2_composes_df_reference_capacity_before_allocation():
+    atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
+    auxiliary = tuple(
+        Shell(index % 2, 0, (Primitive(0.05 + 0.01 * index, 1.0),))
+        for index in range(200)
+    )
+    # Each standalone reference/correlation estimate fits in this window, but
+    # the CPU DF plan remains live alongside the large DIIS/reference state.
+    with pytest.raises(RuntimeError, match="RI-MP2 DF reference state"):
+        Calculator(
+            method="mp2",
+            basis="sto-3g",
+            auxiliary_basis=auxiliary,
+            density_fitting="cpu",
+            diis_history=170_000,
+            correlation_memory_budget_bytes=19_000 << 10,
+        ).singlepoint(atoms)
 
 
 def test_public_unsupported_budget_scf_and_neighbors(device):
