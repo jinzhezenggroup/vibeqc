@@ -712,7 +712,9 @@ class Calculator:
         try:
             resolved_method = method_names[self._method]
         except KeyError as error:
-            raise NotImplementedError("accuracy model is unavailable for this method") from error
+            raise NotImplementedError(
+                "accuracy model is unavailable for this method"
+            ) from error
         return ResolvedModel(
             method=resolved_method,
             geometry_hash=canonical_hash(

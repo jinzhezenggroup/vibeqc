@@ -560,7 +560,7 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
         # Keep the canonical Python call site compatible with ABI-0 libraries
         # that exported only the pre-#193 alias.
         if not hasattr(library, "vibeqc_context_get_last_detail"):
-            setattr(library, "vibeqc_context_get_last_detail", detail_getter)
+            library.vibeqc_context_get_last_detail = detail_getter
     correlation_diagnostic = getattr(
         library, "vibeqc_calculation_get_correlation_diagnostic", None
     )

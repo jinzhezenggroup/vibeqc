@@ -1,7 +1,7 @@
 #include <cstddef>
 #include <memory>
-#include <utility>
 #include <unordered_map>
+#include <utility>
 
 #include "api/error.hpp"
 #include "api/handles.hpp"
