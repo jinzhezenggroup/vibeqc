@@ -572,19 +572,20 @@ class Calculator:
         atoms: Sequence[Atom],
         basis: str | Sequence[Shell] | None = None,
         *,
-        operator: str = "eri",
+        operator: str | None = None,
         derivative_order: int = 0,
     ) -> tuple[Shell, ...]:
         selected_basis = self._basis if basis is None else basis
         if not isinstance(selected_basis, BasisSet):
             selected_basis = _snapshot_basis(selected_basis, self._representation_name)
+        auxiliary = basis is not None
         require_basis(
             selected_basis,
             atoms,
-            backend=self._device_name,
-            operator=operator,
+            backend=self._density_fitting_backend() if auxiliary else self._device_name,
+            operator=operator or ("df_metric" if auxiliary else "eri"),
             derivative_order=derivative_order,
-            role="orbital" if basis is None else "auxiliary",
+            role="auxiliary" if auxiliary else "orbital",
             representation=selected_basis.representation
             if isinstance(selected_basis, BasisSet)
             else self._representation_name,
@@ -594,6 +595,13 @@ class Calculator:
             if isinstance(selected_basis, BasisSet)
             else tuple(selected_basis)
         )
+
+    def _density_fitting_backend(self):
+        if self._density_fitting_mode == _native.DENSITY_FITTING_CPU_REFERENCE:
+            return "cpu"
+        if self._density_fitting_mode == _native.DENSITY_FITTING_CUDA:
+            return "cuda"
+        return self._device_name
 
     def _model_signature(self):
         """Detect replacement of scientific input snapshots before prepared reuse."""
@@ -683,20 +691,13 @@ class Calculator:
         return result
 
     def resolved_model(self, atoms, *, charge=0, multiplicity=1) -> ResolvedModel:
-        """Resolve the scientific HF or conventional MP2 identity for comparisons.
+        """Resolve the scientific HF or MP2 identity for comparisons.
 
         Unlike a prepared-plan signature, this identity excludes execution
         backend, iteration tolerances, screening and schedules. Fitting and its
         actual auxiliary basis remain mathematical choices. This method only
         resolves compact basis metadata; it performs no integral/SCF work.
         """
-        if (
-            self._method == _native.METHOD_MP2
-            and self._density_fitting_mode != _native.DENSITY_FITTING_NONE
-        ):
-            # An identity must not advertise an RI-MP2 model that execution
-            # cannot supply, including when AUTO would select a DF backend.
-            raise NotImplementedError("RI/DF MP2 model resolution is not implemented")
         atoms = tuple(Atom.from_value(atom) for atom in atoms)
         self._preflight_hf_basis(atoms)
         metadata = self.basis_metadata(atoms, charge=charge, multiplicity=multiplicity)
@@ -770,6 +771,7 @@ class Calculator:
         avoid requiring derivative capability that their backend will not use.
         """
         derivative_orders = (0, 1) if compute_forces else (0,)
+        auxiliary_backend = self._density_fitting_backend()
         for role, basis, operators in (
             (
                 "orbital",
@@ -785,7 +787,9 @@ class Calculator:
                     require_basis(
                         basis,
                         atoms,
-                        backend=self._device_name,
+                        backend=auxiliary_backend
+                        if role == "auxiliary"
+                        else self._device_name,
                         operator=operator,
                         derivative_order=order,
                         role=role,
