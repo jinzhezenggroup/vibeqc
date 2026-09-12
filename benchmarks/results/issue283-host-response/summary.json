@@ -1,0 +1,323 @@
+{
+  "endpoint_comparison": [
+    {
+      "case": "water-octamer-s4-def2-svp-spherical",
+      "diagnostic_host_response_ms": {
+        "after": 2385.912358,
+        "before": 5123.100273999999
+      },
+      "diagnostic_named_increment_fractions": [
+        0.954416476243264,
+        0.9520231471778476,
+        0.9547829667844348
+      ],
+      "endpoint_speedup": 1.2817301265411474,
+      "energy_only": {
+        "after_median_seconds": 5.55858561117202,
+        "before_median_seconds": 5.555643012048677
+      },
+      "energy_plus_force": {
+        "after_median_seconds": 9.700111055048183,
+        "before_median_seconds": 12.43292457005009
+      },
+      "force_increment_median_seconds": {
+        "after": 4.141358623048291,
+        "before": 6.886455294908956
+      },
+      "iterations": [
+        39
+      ],
+      "maximum_energy_difference_hartree": 0.0,
+      "maximum_force_difference_hartree_per_bohr": 6.750155989720952e-14,
+      "unprofiled_repeats": 3
+    },
+    {
+      "case": "water-tetramer-def2-svp-spherical",
+      "diagnostic_host_response_ms": {
+        "after": 144.198999,
+        "before": 249.460286
+      },
+      "diagnostic_named_increment_fractions": [
+        1.4071890316849085,
+        0.9657935615090689,
+        0.9632138091981121
+      ],
+      "endpoint_speedup": 1.1038711050877321,
+      "energy_only": {
+        "after_median_seconds": 0.4614335969090462,
+        "before_median_seconds": 0.45468322606757283
+      },
+      "energy_plus_force": {
+        "after_median_seconds": 0.9560399679467082,
+        "before_median_seconds": 1.0553448959253728
+      },
+      "force_increment_median_seconds": {
+        "after": 0.4912012470886111,
+        "before": 0.5983352959156036
+      },
+      "iterations": [
+        34
+      ],
+      "maximum_energy_difference_hartree": 0.0,
+      "maximum_force_difference_hartree_per_bohr": 5.684341886080802e-14,
+      "unprofiled_repeats": 3
+    }
+  ],
+  "limitations": [
+    "The matrix has no matched warm-iteration branch; cross-engine medians are descriptive only.",
+    "The first 96-AO diagnostic pair contains startup variation; only subsequent warmed 96-AO pairs establish >90% attribution.",
+    "Value-plan peak diagnostics exclude force-response staging; no whole-endpoint peak-memory claim.",
+    "This changes CPU response loop traversal only; generated-device response and occupied RI-K remain separate work."
+  ],
+  "matrix": [
+    {
+      "case": "192ao-b1",
+      "gate": {
+        "failures": [],
+        "passed": true
+      },
+      "gpu4pyscf_final_iterations": [
+        1
+      ],
+      "gpu4pyscf_warm_median_seconds": 0.3311160949524492,
+      "iteration_branches_match": false,
+      "maximum_energy_error_hartree": 1.750777300912887e-11,
+      "maximum_force_error_hartree_per_bohr": 8.71709492783479e-11,
+      "repeats": 5,
+      "value_plan_memory": [
+        {
+          "absolute_threshold": 1.2895078155068913e-07,
+          "auxiliary_tile": 192,
+          "bucket_id": 0,
+          "condition_number": 13567.151376633747,
+          "device_resident_bytes": 237340966,
+          "effective_rank": 192,
+          "host_resident_bytes": 336,
+          "peak_device_bytes": 297441218,
+          "peak_host_bytes": 56921428,
+          "solver_device_workspace_bytes": 2589336,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 0
+        }
+      ],
+      "vibeqc_final_iterations": [
+        3
+      ],
+      "vibeqc_warm_median_seconds": 6.456374414963648
+    },
+    {
+      "case": "192ao-b4",
+      "gate": {
+        "failures": [],
+        "passed": true
+      },
+      "gpu4pyscf_final_iterations": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "gpu4pyscf_warm_median_seconds": 1.3270735330879688,
+      "iteration_branches_match": false,
+      "maximum_energy_error_hartree": 1.4210854715202004e-11,
+      "maximum_force_error_hartree_per_bohr": 1.1478322806124375e-10,
+      "repeats": 5,
+      "value_plan_memory": [
+        {
+          "absolute_threshold": 1.2922322989355576e-07,
+          "auxiliary_tile": 192,
+          "bucket_id": 0,
+          "condition_number": 13749.382149124898,
+          "device_resident_bytes": 431987920,
+          "effective_rank": 192,
+          "host_resident_bytes": 336,
+          "peak_device_bytes": 664620920,
+          "peak_host_bytes": 227684704,
+          "solver_device_workspace_bytes": 2589336,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 0
+        },
+        {
+          "absolute_threshold": 1.29041482552702e-07,
+          "auxiliary_tile": 192,
+          "bucket_id": 0,
+          "condition_number": 13627.44459015987,
+          "device_resident_bytes": 431987920,
+          "effective_rank": 192,
+          "host_resident_bytes": 336,
+          "peak_device_bytes": 664620920,
+          "peak_host_bytes": 227684704,
+          "solver_device_workspace_bytes": 2589336,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 1
+        },
+        {
+          "absolute_threshold": 1.2886019546929278e-07,
+          "auxiliary_tile": 192,
+          "bucket_id": 0,
+          "condition_number": 13507.301786201599,
+          "device_resident_bytes": 431987920,
+          "effective_rank": 192,
+          "host_resident_bytes": 336,
+          "peak_device_bytes": 664620920,
+          "peak_host_bytes": 227684704,
+          "solver_device_workspace_bytes": 2589336,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 2
+        },
+        {
+          "absolute_threshold": 1.2867936749275122e-07,
+          "auxiliary_tile": 192,
+          "bucket_id": 0,
+          "condition_number": 13388.913771550524,
+          "device_resident_bytes": 431987920,
+          "effective_rank": 192,
+          "host_resident_bytes": 336,
+          "peak_device_bytes": 664620920,
+          "peak_host_bytes": 227684704,
+          "solver_device_workspace_bytes": 2589336,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 3
+        }
+      ],
+      "vibeqc_final_iterations": [
+        3,
+        2,
+        3,
+        2
+      ],
+      "vibeqc_warm_median_seconds": 25.771654225885868
+    },
+    {
+      "case": "96ao-b1",
+      "gate": {
+        "failures": [],
+        "passed": true
+      },
+      "gpu4pyscf_final_iterations": [
+        1
+      ],
+      "gpu4pyscf_warm_median_seconds": 0.24545651697553694,
+      "iteration_branches_match": false,
+      "maximum_energy_error_hartree": 1.4210854715202004e-12,
+      "maximum_force_error_hartree_per_bohr": 4.4534440371557515e-11,
+      "repeats": 5,
+      "value_plan_memory": [
+        {
+          "absolute_threshold": 7.527269023992967e-08,
+          "auxiliary_tile": 96,
+          "bucket_id": 0,
+          "condition_number": 7451.239126400055,
+          "device_resident_bytes": 31712806,
+          "effective_rank": 96,
+          "host_resident_bytes": 336,
+          "peak_device_bytes": 40349378,
+          "peak_host_bytes": 7153492,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 0
+        }
+      ],
+      "vibeqc_final_iterations": [
+        2
+      ],
+      "vibeqc_warm_median_seconds": 0.4782276169862598
+    },
+    {
+      "case": "96ao-b4",
+      "gate": {
+        "failures": [],
+        "passed": true
+      },
+      "gpu4pyscf_final_iterations": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "gpu4pyscf_warm_median_seconds": 0.9801469829399139,
+      "iteration_branches_match": false,
+      "maximum_energy_error_hartree": 5.4569682106375694e-12,
+      "maximum_force_error_hartree_per_bohr": 5.4812879929366787e-11,
+      "repeats": 5,
+      "value_plan_memory": [
+        {
+          "absolute_threshold": 7.540076600202623e-08,
+          "auxiliary_tile": 96,
+          "bucket_id": 0,
+          "condition_number": 7542.035276549874,
+          "device_resident_bytes": 59142352,
+          "effective_rank": 96,
+          "host_resident_bytes": 336,
+          "peak_device_bytes": 89680760,
+          "peak_host_bytes": 28612960,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 0
+        },
+        {
+          "absolute_threshold": 7.531533839563702e-08,
+          "auxiliary_tile": 96,
+          "bucket_id": 0,
+          "condition_number": 7481.327522684383,
+          "device_resident_bytes": 59142352,
+          "effective_rank": 96,
+          "host_resident_bytes": 336,
+          "peak_device_bytes": 89680760,
+          "peak_host_bytes": 28612960,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 1
+        },
+        {
+          "absolute_threshold": 7.52300858036533e-08,
+          "auxiliary_tile": 96,
+          "bucket_id": 0,
+          "condition_number": 7421.326223585345,
+          "device_resident_bytes": 59142352,
+          "effective_rank": 96,
+          "host_resident_bytes": 336,
+          "peak_device_bytes": 89680760,
+          "peak_host_bytes": 28612960,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 2
+        },
+        {
+          "absolute_threshold": 7.514500795191912e-08,
+          "auxiliary_tile": 96,
+          "bucket_id": 0,
+          "condition_number": 7362.02249163829,
+          "device_resident_bytes": 59142352,
+          "effective_rank": 96,
+          "host_resident_bytes": 336,
+          "peak_device_bytes": 89680760,
+          "peak_host_bytes": 28612960,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 3
+        }
+      ],
+      "vibeqc_final_iterations": [
+        2,
+        3,
+        2,
+        2
+      ],
+      "vibeqc_warm_median_seconds": 1.90393593092449
+    }
+  ],
+  "route": "zero-budget host-resident compatibility",
+  "schema": "vibeqc.df_host_response_evidence.v1",
+  "source_commit": "8697318c8176e09fad6705c4e13f6ab54fb7186b"
+}
