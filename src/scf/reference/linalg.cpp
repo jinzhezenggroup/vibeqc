@@ -37,6 +37,13 @@ Matrix transpose(const Matrix& a, std::size_t n) {
   return out;
 }
 
+// Keep the pivot-search loop's layout stable across unrelated link changes.
+// On GCC/Zen 2 a 16-byte shift of this unchanged function slowed complete
+// 192-AO DF endpoints by about 33%; 32-byte function alignment preserves the
+// previous layout without changing pivot selection or floating-point order.
+#if __has_cpp_attribute(gnu::aligned)
+[[gnu::aligned(32)]]
+#endif
 EigenResult symmetric_eigen(Matrix matrix, std::size_t n) {
   Matrix vectors = identity(n);
   const std::size_t max_sweeps = std::max<std::size_t>(50, 20 * n * n);
