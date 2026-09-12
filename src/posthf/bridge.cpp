@@ -546,6 +546,43 @@ VIBEQC_API int vibeqc_posthf_integral_derivatives_v1(void* source, std::size_t o
       throw std::runtime_error("derivative oracle returned inconsistent dimensions");
   });
 }
+// Dense DF derivative oracle for small complete-gradient validation only.
+// Returns coordinate-major dS, dh, dA, dM, and nuclear derivatives.
+// The output-size guard does not bound dense evaluator scratch.
+VIBEQC_API int vibeqc_posthf_df_integral_derivatives_v1(void* source, std::size_t output_budget,
+                                                        double* output, std::size_t elements,
+                                                        char* error, std::size_t size) {
+  return guarded(error, size, [&] {
+    if (!source || !output) throw std::invalid_argument("invalid DF derivative oracle request");
+    const auto& raw = *static_cast<RawSource*>(source);
+    const auto n = raw.nbf();
+    const auto na = raw.naux();
+    const auto nc = raw.orbital().atoms.size() * 3;
+    if (!n || n > 12 || !na || na > 32)
+      throw std::invalid_argument(
+          "DF derivative oracle supports at most 12 AOs and 32 auxiliaries");
+    const auto n2 = vibeqc::posthf::checked_mul(n, n);
+    const auto na2 = vibeqc::posthf::checked_mul(na, na);
+    const auto n2na = vibeqc::posthf::checked_mul(n2, na);
+    const auto per_coordinate = vibeqc::posthf::checked_add(
+        vibeqc::posthf::checked_add(vibeqc::posthf::checked_mul(2, n2), n2na),
+        vibeqc::posthf::checked_add(na2, 1));
+    const auto expected = vibeqc::posthf::checked_mul(nc, per_coordinate);
+    if (elements != expected ||
+        vibeqc::posthf::checked_mul(expected, sizeof(double)) > output_budget)
+      throw std::length_error("DF derivative oracle output exceeds its output budget");
+    const auto one = vibeqc::integrals::build_integrals(raw.orbital(), true, false);
+    const auto df =
+        vibeqc::integrals::build_density_fitting_integrals(raw.orbital(), raw.auxiliary(), true);
+    auto* cursor = output;
+    for (const auto* values :
+         {&one.overlap_derivative, &one.hcore_derivative, &df.three_center_derivative,
+          &df.metric_derivative, &one.nuclear_repulsion_derivative})
+      cursor = std::copy(values->begin(), values->end(), cursor);
+    if (cursor != output + expected)
+      throw std::runtime_error("DF derivative oracle returned inconsistent dimensions");
+  });
+}
 /** Explicit CG10 slot order for direct native CUDA/CPU layout verification. */
 VIBEQC_API int vibeqc_posthf_mo_block_v1(void* source, int backend, int device,
                                          const double* arrays, std::size_t elements,

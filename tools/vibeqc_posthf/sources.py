@@ -207,6 +207,14 @@ class NativeSource:
             ct.c_char_p,
             ct.c_size_t,
         ]
+        lib.vibeqc_posthf_df_integral_derivatives_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
         lib.vibeqc_posthf_uhf_density_v1.argtypes = [
             ct.c_void_p,
             ct.c_int,
@@ -375,6 +383,48 @@ class NativeSource:
             "overlap": take((ncoord, self.nbf, self.nbf)),
             "hcore": take((ncoord, self.nbf, self.nbf)),
             "eri": take((ncoord, self.nbf, self.nbf, self.nbf, self.nbf)),
+            "nuclear": take((ncoord,)),
+        }
+
+    def df_integral_derivatives(self, *, output_budget_bytes=256 << 20):
+        """Dense small-system DF derivative oracle with an output-size guard."""
+
+        if type(output_budget_bytes) is not int or output_budget_bytes < 1:
+            raise ValueError("DF derivative oracle output budget must be positive")
+        if self.nbf > 12 or not self.naux or self.naux > 32:
+            raise ValueError(
+                "DF derivative oracle supports at most 12 AOs and 32 auxiliaries"
+            )
+        ncoord = 3 * len(self.atoms)
+        n2 = self.nbf**2
+        na2 = self.naux**2
+        elements = ncoord * (2 * n2 + n2 * self.naux + na2 + 1)
+        if elements * np.dtype(np.float64).itemsize > output_budget_bytes:
+            raise ValueError("DF derivative oracle output exceeds its output budget")
+        output = np.empty(elements, dtype=np.float64)
+        with self._lock:
+            self._check_open()
+            self._call(
+                "vibeqc_posthf_df_integral_derivatives_v1",
+                self._handle,
+                output_budget_bytes,
+                pointer(output),
+                output.size,
+            )
+        offset = 0
+
+        def take(shape):
+            nonlocal offset
+            size = prod(shape)
+            value = output[offset : offset + size].reshape(shape)
+            offset += size
+            return immutable(value)
+
+        return {
+            "overlap": take((ncoord, self.nbf, self.nbf)),
+            "hcore": take((ncoord, self.nbf, self.nbf)),
+            "three_center": take((ncoord, self.nbf, self.nbf, self.naux)),
+            "metric": take((ncoord, self.naux, self.naux)),
             "nuclear": take((ncoord,)),
         }
 

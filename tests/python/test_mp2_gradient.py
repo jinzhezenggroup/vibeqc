@@ -13,9 +13,11 @@ from tools.vibeqc_mp2.gradient import (
     canonical_lagrangian_weights,
     canonical_orbital_rhs,
     dense_molecular_gradient_oracle,
+    dense_ri_molecular_gradient_oracle,
     solve_canonical_orbital_response,
     tile_energy_adjoint,
 )
+from tools.vibeqc_posthf.df import MetricFactor
 from tools.vibeqc_posthf.fixtures import (
     fixture_snapshot,
     load_fixture,
@@ -40,6 +42,28 @@ def test_dense_derivative_oracle_rejects_output_budget_before_allocation(monkeyp
         )
         with pytest.raises(ValueError, match="output exceeds"):
             source.integral_derivatives(output_budget_bytes=1)
+        with pytest.raises(ValueError, match="output exceeds"):
+            source.df_integral_derivatives(output_budget_bytes=1)
+
+
+def test_inverse_sqrt_metric_response_is_included_in_ri_gradient():
+    from tools.vibeqc_mp2.gradient import _inverse_sqrt_metric_response
+
+    metric = np.array([[2.0, 0.2], [0.2, 1.1]])
+    bar = np.array([[0.3, -0.4], [0.2, 0.7]])
+    direction = np.array([[0.1, 0.3], [0.3, -0.2]])
+    reverse = np.vdot(_inverse_sqrt_metric_response(metric, bar, 1e-10), direction)
+
+    def scalar(step):
+        values, vectors = np.linalg.eigh(metric + step * direction)
+        root = vectors @ np.diag(values**-0.5) @ vectors.T
+        return np.vdot(bar, root)
+
+    errors = []
+    for step in (1e-3, 1e-4, 1e-5):
+        finite = (scalar(step) - scalar(-step)) / (2 * step)
+        errors.append(abs(finite - reverse))
+    assert errors[-1] < 1e-9 and errors[-1] < errors[0]
 
 
 def _energy(feeds):
@@ -394,4 +418,90 @@ def test_dense_complete_gradient_matches_fully_resolved_finite_differences(name)
     errors = [float(np.max(np.abs(value - analytic))) for value in finite]
     assert errors[-1] < 1e-6
     assert min(errors) < 1e-7
+    assert errors[-1] < errors[0]
+
+
+@pytest.mark.parametrize("name", ["h2", "water"])
+def test_dense_complete_ri_gradient_matches_fully_resolved_finite_differences(name):
+    meta, arrays = load_fixture(name)
+    arguments = source_arguments(meta)
+    with NativeSource(**arguments) as source:
+        metric = MetricFactor.from_source(source)
+        reference = fixture_snapshot(meta, arrays, label="df", metric=metric)
+        occupied = reference.nocc
+        eri = arrays["df_mo"]
+        g = eri[:occupied, occupied:, :occupied, occupied:].transpose(0, 2, 1, 3)
+        adjoint = canonical_energy_adjoint(
+            g,
+            reference.orbital_energies,
+            occupied,
+            reference_identity=reference.identity,
+            hamiltonian_id=reference.hamiltonian_id,
+        )
+        hcore_mo = reference.coefficients.T @ arrays["df_h"] @ reference.coefficients
+        orbital = canonical_orbital_rhs(hcore_mo, eri, adjoint, occupied)
+        response = solve_canonical_orbital_response(
+            reference,
+            DenseAOResponseBackend(arrays["df_ao"]),
+            orbital,
+            options=GMRESOptions(rtol=1e-12, atol=1e-13, max_iterations=100),
+        )
+        weights = canonical_lagrangian_weights(
+            hcore_mo, eri, adjoint, response, occupied
+        )
+        analytic = dense_ri_molecular_gradient_oracle(
+            reference, source, metric, weights
+        )
+    if name == "h2":
+        first = arguments["basis"][0]
+        changed_primitive = replace(
+            first.primitives[0], exponent=first.primitives[0].exponent * 1.01
+        )
+        changed_basis = (
+            replace(first, primitives=(changed_primitive, *first.primitives[1:])),
+            *arguments["basis"][1:],
+        )
+        with NativeSource(**{**arguments, "basis": changed_basis}) as changed_source:
+            changed_metric = MetricFactor.from_source(changed_source)
+            changed_reference = replace(
+                reference, hamiltonian_id=changed_metric.hamiltonian_id
+            )
+            changed_weights = replace(
+                weights,
+                reference_identity=changed_reference.identity,
+                hamiltonian_id=changed_reference.hamiltonian_id,
+            )
+            with pytest.raises(ValueError, match="identity mismatch"):
+                dense_ri_molecular_gradient_oracle(
+                    changed_reference,
+                    changed_source,
+                    changed_metric,
+                    changed_weights,
+                )
+
+    calculator = Calculator(
+        method="mp2",
+        basis=arguments["basis"],
+        auxiliary_basis=arguments["auxiliary_basis"],
+        basis_representation=arguments["representation"],
+        density_fitting="cpu",
+    )
+    finite = []
+    for step in (1e-3, 3e-4):
+        gradient = np.empty_like(analytic)
+        for atom in range(len(arguments["atoms"])):
+            for axis in range(3):
+                displaced = []
+                for index, value in enumerate(arguments["atoms"]):
+                    position = list(value.position)
+                    if index == atom:
+                        position[axis] += step
+                    displaced.append((value.atomic_number, position))
+                plus = calculator.singlepoint(displaced).energy
+                displaced[atom][1][axis] -= 2 * step
+                minus = calculator.singlepoint(displaced).energy
+                gradient[atom, axis] = (plus - minus) / (2 * step)
+        finite.append(gradient)
+    errors = [float(np.max(np.abs(value - analytic))) for value in finite]
+    assert errors[-1] < 1e-6
     assert errors[-1] < errors[0]

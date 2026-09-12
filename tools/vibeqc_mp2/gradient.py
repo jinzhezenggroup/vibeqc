@@ -96,6 +96,19 @@ class MP2AOLagrangianWeights:
     operator_identity: str
 
 
+@dataclass(frozen=True)
+class MP2RILagrangianWeights:
+    """Relaxed AO/DF weights for dS, dh, raw dA and metric dM."""
+
+    overlap: np.ndarray
+    one_electron: np.ndarray
+    three_center: np.ndarray
+    metric: np.ndarray
+    reference_identity: str
+    hamiltonian_id: str
+    operator_identity: str
+
+
 def tile_energy_adjoint(feeds, *, max_bytes=None):
     """Differentiate total OS+SS energy without differentiating solver history.
 
@@ -417,4 +430,125 @@ def dense_molecular_gradient_oracle(
     gradient += np.einsum("xpqrs,pqrs->x", derivatives["eri"], ao.two_electron)
     if not np.isfinite(gradient).all():
         raise ValueError("MP2 molecular gradient is nonfinite")
+    return immutable(gradient.reshape(len(source.atoms), 3))
+
+
+def _inverse_sqrt_metric_response(metric, response, relative_threshold):
+    """Apply the self-adjoint fixed-rank Frechet derivative of M**(-1/2)."""
+
+    matrix = np.asarray(metric, dtype=np.float64)
+    bar = np.asarray(response, dtype=np.float64)
+    if (
+        matrix.ndim != 2
+        or matrix.shape[0] != matrix.shape[1]
+        or bar.shape != matrix.shape
+        or not np.isfinite(matrix).all()
+        or not np.isfinite(bar).all()
+        or not 0 < relative_threshold < 1
+    ):
+        raise ValueError("RI metric response dimensions or threshold are invalid")
+    matrix = 0.5 * (matrix + matrix.T)
+    values, vectors = np.linalg.eigh(matrix)
+    largest = values[-1]
+    if not largest > 0:
+        raise ValueError("RI metric has no positive response subspace")
+    cutoff = relative_threshold * largest
+    scale = max(1.0, abs(largest))
+    if np.min(np.abs(values - cutoff)) <= 1e-12 * scale:
+        raise ValueError("RI metric rank is unresolved at the response cutoff")
+    retained = values > cutoff
+    function = np.zeros_like(values)
+    function[retained] = values[retained] ** -0.5
+    divided = np.empty((len(values), len(values)))
+    for p, left in enumerate(values):
+        for q, right in enumerate(values):
+            if abs(left - right) <= 1e-12 * max(1.0, abs(left), abs(right)):
+                divided[p, q] = -0.5 * left**-1.5 if retained[p] else 0.0
+            else:
+                divided[p, q] = (function[p] - function[q]) / (left - right)
+    eigen_response = vectors.T @ (0.5 * (bar + bar.T)) @ vectors
+    result = vectors @ (divided * eigen_response) @ vectors.T
+    if not np.isfinite(result).all():
+        raise ValueError("RI metric inverse-square-root response is nonfinite")
+    return immutable(0.5 * (result + result.T))
+
+
+def dense_ri_lagrangian_weights_oracle(
+    reference, source, metric_factor, weights, *, output_budget_bytes=256 << 20
+):
+    """Reverse the relaxed RI Lagrangian to raw A/M weights for validation."""
+
+    if not isinstance(weights, MP2LagrangianWeights):
+        raise TypeError("RI transformation requires MP2LagrangianWeights")
+    if (
+        weights.reference_identity != reference.identity
+        or weights.hamiltonian_id != reference.hamiltonian_id
+        or metric_factor.hamiltonian_id != reference.hamiltonian_id
+        or metric_factor.geometry_hash != source.geometry_hash
+        or metric_factor.auxiliary_hash != source.auxiliary_hash
+        or reference.geometry_hash != source.geometry_hash
+        or reference.basis_hash != source.basis_hash
+        or reference.representation != source.representation
+        or reference.nmo != source.nbf
+    ):
+        raise ValueError("RI Lagrangian/reference/source/metric identity mismatch")
+    n = reference.nmo
+    na = source.naux
+    elements = n * n * na + na * na
+    if elements * 8 > output_budget_bytes:
+        raise MemoryError("RI Lagrangian oracle exceeds its output budget")
+    raw_a = source._read("three_center_eri", (0, 0, 0), (n, n, na))
+    raw_m = source._read("coulomb_metric", (0, 0), (na, na))
+    c = reference.coefficients
+    transformed = np.einsum("mp,nq,mnP->Ppq", c, c, raw_a, optimize=True)
+    inverse_root = metric_factor.inverse_square_root
+    whitened = np.einsum("Ppq,PQ->Qpq", transformed, inverse_root, optimize=True)
+    two = weights.two_electron
+    bar_whitened = np.einsum("pqrs,Qrs->Qpq", two, whitened, optimize=True)
+    bar_whitened += np.einsum("rspq,Qrs->Qpq", two, whitened, optimize=True)
+    bar_transformed = np.einsum(
+        "PQ,Qpq->Ppq", inverse_root, bar_whitened, optimize=True
+    )
+    bar_a = np.einsum("mp,nq,Ppq->mnP", c, c, bar_transformed, optimize=True)
+    bar_inverse_root = np.einsum(
+        "Ppq,Qpq->PQ", transformed, bar_whitened, optimize=True
+    )
+    bar_m = _inverse_sqrt_metric_response(
+        raw_m, bar_inverse_root, metric_factor.relative_threshold
+    )
+    one = c @ weights.one_electron @ c.T
+    overlap = c @ weights.overlap @ c.T
+    return MP2RILagrangianWeights(
+        immutable(overlap),
+        immutable(one),
+        immutable(bar_a),
+        bar_m,
+        weights.reference_identity,
+        weights.hamiltonian_id,
+        weights.operator_identity,
+    )
+
+
+def dense_ri_molecular_gradient_oracle(
+    reference, source, metric_factor, weights, *, output_budget_bytes=256 << 20
+):
+    """Contract the private dense RI derivative oracle for validation only."""
+
+    ao = dense_ri_lagrangian_weights_oracle(
+        reference,
+        source,
+        metric_factor,
+        weights,
+        output_budget_bytes=output_budget_bytes,
+    )
+    derivatives = source.df_integral_derivatives(
+        output_budget_bytes=output_budget_bytes
+    )
+    gradient = derivatives["nuclear"].copy()
+    gradient += np.einsum("xpq,pq->x", derivatives["overlap"], ao.overlap)
+    gradient += np.einsum("xpq,pq->x", derivatives["hcore"], ao.one_electron)
+    gradient += np.einsum("xpqP,pqP->x", derivatives["three_center"], ao.three_center)
+    gradient += np.einsum("xPQ,PQ->x", derivatives["metric"], ao.metric)
+    if not np.isfinite(gradient).all():
+        raise ValueError("RI-MP2 molecular gradient is nonfinite")
     return immutable(gradient.reshape(len(source.atoms), 3))
