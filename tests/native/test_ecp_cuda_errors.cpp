@@ -74,17 +74,26 @@ void errors_and_recovery() {
   std::unique_ptr<vibeqc_system, decltype(&vibeqc_system_destroy)> system(raw_system,
                                                                           vibeqc_system_destroy);
 
+  int device_count = 0;
+  require(cudaGetDeviceCount(&device_count) == cudaSuccess, "device inventory failed");
+  // A multi-device allocation exercises restoration to a distinct caller
+  // device. A single-device allocation still checks every success/error exit.
+  const int caller_device = device_count > 1 ? 1 : 0;
   for (bool device_consumer : {false, true}) {
     std::array<double, 8> output;
     output.fill(123.0);
     std::string detail;
     const auto execute = [&] {
-      if (device_consumer)
-        return vibeqc::integrals::add_ecp_cuda(0, system->data, nullptr, nullptr, nullptr, nullptr,
-                                               detail);
-      const auto status = vibeqc_system_ecp_integrals(context.get(), system.get(), 160, 32, 1,
-                                                      output.data(), output.size());
-      detail = vibeqc_context_get_last_detail(context.get());
+      require(cudaSetDevice(caller_device) == cudaSuccess, "caller device selection failed");
+      const auto status = device_consumer
+                              ? vibeqc::integrals::add_ecp_cuda(0, system->data, nullptr, nullptr,
+                                                                nullptr, nullptr, detail)
+                              : vibeqc_system_ecp_integrals(context.get(), system.get(), 160, 32, 1,
+                                                            output.data(), output.size());
+      int after = -1;
+      require(cudaGetDevice(&after) == cudaSuccess && after == caller_device,
+              "ECP entry point changed the caller's current CUDA device");
+      if (!device_consumer) detail = vibeqc_context_get_last_detail(context.get());
       return status;
     };
     {

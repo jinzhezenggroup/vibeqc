@@ -211,7 +211,7 @@ vibeqc_status validate_and_normalize(core::System& system, std::string& detail) 
   // active-electron population.
   const std::int64_t electrons = nuclear_charge - static_cast<std::int64_t>(system.charge);
   if (electrons > std::numeric_limits<int>::max() || electrons <= 0) {
-    detail = "all-electron population is outside the positive native integer range";
+    detail = "active-electron population is outside the positive native integer range";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   system.electron_count = static_cast<int>(electrons);

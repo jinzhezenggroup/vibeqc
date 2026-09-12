@@ -34,10 +34,10 @@ def fixture(*, representation="spherical", d_shell=False, spin=0):
     for symbol, z in (("Na", 11), ("H", 1)):
         shells = []
         for shell in basis[symbol]:
-            l, rows = shell[0], shell[1:]
+            angular, rows = shell[0], shell[1:]
             shells.append(
                 BasisShell(
-                    l,
+                    angular,
                     tuple(str(r[0]) for r in rows),
                     tuple(
                         tuple(str(r[c]) for r in rows) for c in range(1, len(rows[0]))

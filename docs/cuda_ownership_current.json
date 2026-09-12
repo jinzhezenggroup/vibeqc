@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 10129,
+  "all_handwritten_scientific_lines": 10136,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "files": [
     {
@@ -81,20 +81,20 @@
       "subsystem": "xc"
     },
     {
-      "bytes": 13674,
+      "bytes": 14035,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 317
+        "scientific": 324
       },
       "path": "src/integrals/ecp_cuda.cu",
-      "physical_lines": 321,
+      "physical_lines": 330,
       "reason": "Semilocal quadrature, projector products and ECP center scatter; Gaussian value/derivative arithmetic is generated. Count glue conservatively as scientific.",
       "regions": [],
       "role": "scientific",
-      "sha256": "6bd0ad82820efe15c98627140423abfd742ccae338caec5e65463b08fe302082",
+      "sha256": "3167503f3b68a5956c8eab277a0d1e217cdad8f72a4a50ad5395af47f11a7f0c",
       "subsystem": "ecp"
     },
     {
@@ -3155,7 +3155,7 @@
     "oracle": 0,
     "performance_exception": 156,
     "runtime": 8617,
-    "scientific": 9973
+    "scientific": 9980
   },
   "migration_ledger": {
     "ao_grid": {
@@ -3335,7 +3335,7 @@
       "oracle": 0,
       "performance_exception": 0,
       "runtime": 0,
-      "scientific": 317
+      "scientific": 324
     },
     "low_rank": {
       "fallback": 0,
