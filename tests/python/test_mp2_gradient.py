@@ -626,6 +626,53 @@ def test_dense_complete_gradient_matches_fully_resolved_finite_differences(
 
 
 @pytest.mark.parametrize("name", ["h2", "water"])
+def test_complete_conventional_gradient_matches_pyscf_analytic(name):
+    pyscf = pytest.importorskip("pyscf")
+    from pyscf import mp, scf
+
+    from tools.generate_validation_references import pyscf_molecule
+
+    assert pyscf.__version__ == "2.14.0"
+    meta, arrays = load_fixture(name)
+    arguments = source_arguments(meta)
+    reference = fixture_snapshot(meta, arrays)
+    occupied = reference.nocc
+    eri = arrays["conventional_mo"]
+    g = eri[:occupied, occupied:, :occupied, occupied:].transpose(0, 2, 1, 3)
+    adjoint = canonical_energy_adjoint(
+        g,
+        reference.orbital_energies,
+        occupied,
+        reference_identity=reference.identity,
+        hamiltonian_id=reference.hamiltonian_id,
+    )
+    hcore_mo = (
+        reference.coefficients.T @ arrays["conventional_h"] @ reference.coefficients
+    )
+    orbital = canonical_orbital_rhs(hcore_mo, eri, adjoint, occupied)
+    response = solve_canonical_orbital_response(
+        reference,
+        DenseAOResponseBackend(arrays["ao"]),
+        orbital,
+        options=GMRESOptions(rtol=1e-12, atol=1e-13, max_iterations=100),
+    )
+    weights = canonical_lagrangian_weights(hcore_mo, eri, adjoint, response, occupied)
+    with NativeSource(**arguments) as source:
+        actual = dense_molecular_gradient_oracle(reference, source, weights)
+
+    molecule, _, _ = pyscf_molecule(meta["inputs"])
+    mean_field = scf.RHF(molecule)
+    mean_field.conv_tol = 1e-13
+    mean_field.conv_tol_grad = 1e-10
+    mean_field.max_cycle = 200
+    mean_field.kernel()
+    assert mean_field.converged
+    calculation = mp.MP2(mean_field).run()
+    expected = calculation.nuc_grad_method().kernel()
+    np.testing.assert_allclose(actual, expected, atol=1e-7, rtol=1e-7)
+
+
+@pytest.mark.parametrize("name", ["h2", "water"])
 def test_dense_complete_ri_gradient_matches_fully_resolved_finite_differences(
     name, monkeypatch
 ):
@@ -791,3 +838,55 @@ def test_dense_complete_ri_gradient_matches_fully_resolved_finite_differences(
     errors = [float(np.max(np.abs(value - analytic))) for value in finite]
     assert errors[-1] < 1e-6
     assert errors[-1] < errors[0]
+
+
+def test_complete_ri_gradient_matches_independent_libcint_derivative_contraction():
+    pytest.importorskip("pyscf")
+    from pyscf import scf
+
+    from tools.generate_validation_references import pyscf_molecule
+    from tools.vibeqc_validation.df_gradient import reference_df_matrices
+    from tools.vibeqc_validation.one_electron_gradient import reference_matrices
+
+    meta, arrays = load_fixture("water")
+    arguments = source_arguments(meta)
+    with NativeSource(**arguments) as source:
+        metric = MetricFactor.from_source(source)
+        reference = fixture_snapshot(meta, arrays, label="df", metric=metric)
+        occupied = reference.nocc
+        eri = arrays["df_mo"]
+        g = eri[:occupied, occupied:, :occupied, occupied:].transpose(0, 2, 1, 3)
+        adjoint = canonical_energy_adjoint(
+            g,
+            reference.orbital_energies,
+            occupied,
+            reference_identity=reference.identity,
+            hamiltonian_id=reference.hamiltonian_id,
+        )
+        hcore_mo = reference.coefficients.T @ arrays["df_h"] @ reference.coefficients
+        orbital = canonical_orbital_rhs(hcore_mo, eri, adjoint, occupied)
+        response = solve_canonical_orbital_response(
+            reference,
+            DenseAOResponseBackend(arrays["df_ao"]),
+            orbital,
+            options=GMRESOptions(rtol=1e-12, atol=1e-13, max_iterations=100),
+        )
+        weights = canonical_lagrangian_weights(
+            hcore_mo, eri, adjoint, response, occupied
+        )
+        ao = dense_ri_lagrangian_weights_oracle(reference, source, metric, weights)
+        native = dense_ri_molecular_gradient_oracle(reference, source, metric, weights)
+
+    _, one_derivatives = reference_matrices(meta["inputs"])
+    auxiliary_inputs = {**meta["inputs"], "shells": meta["auxiliary_shells"]}
+    _, _, three_center_derivatives, metric_derivatives = reference_df_matrices(
+        meta["inputs"], auxiliary_inputs
+    )
+    molecule, _, _ = pyscf_molecule(meta["inputs"])
+    independent = scf.RHF(molecule).nuc_grad_method().grad_nuc()
+    independent += np.einsum("axpq,pq->ax", one_derivatives[:, :, 0], ao.overlap)
+    independent += np.einsum("axpq,pq->ax", one_derivatives[:, :, 1], ao.one_electron)
+    independent += np.einsum("axpq,pq->ax", one_derivatives[:, :, 2], ao.one_electron)
+    independent += np.einsum("axpqP,pqP->ax", three_center_derivatives, ao.three_center)
+    independent += np.einsum("axPQ,PQ->ax", metric_derivatives, ao.metric)
+    np.testing.assert_allclose(native, independent, atol=2e-8, rtol=2e-8)
