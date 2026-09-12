@@ -477,6 +477,10 @@ class Calculator:
             )
         self._capabilities = method_capabilities(self._method_name)
         if self._capabilities.family == "density_functional":
+            if self._precision_mode != _native.PRECISION_FP64:
+                raise NotImplementedError(
+                    "the first DFT RKS slice supports explicit FP64 precision only"
+                )
             if device != "cpu":
                 raise NotImplementedError(
                     "the first LDA RKS slice is available on the CPU backend only"

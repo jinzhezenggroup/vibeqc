@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -155,6 +156,34 @@ int main() {
     require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
                 VIBEQC_STATUS_NOT_IMPLEMENTED,
             "LDA RKS accepted density fitting");
+
+    method = lda_method();
+    method.density_fitting_mode = static_cast<vibeqc_density_fitting_mode>(99);
+    require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
+                VIBEQC_STATUS_INVALID_ARGUMENT,
+            "LDA RKS misclassified an unknown density-fitting mode");
+
+    for (double vibeqc_method_descriptor::* field : {
+             &vibeqc_method_descriptor::energy_tolerance,
+             &vibeqc_method_descriptor::density_tolerance,
+             &vibeqc_method_descriptor::screening_tolerance,
+         }) {
+      method = lda_method();
+      method.*field = std::numeric_limits<double>::quiet_NaN();
+      require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
+                  VIBEQC_STATUS_INVALID_ARGUMENT,
+              "LDA RKS accepted a NaN tolerance");
+    }
+
+    method = lda_method();
+    method.precision_mode = VIBEQC_PRECISION_AUTO;
+    require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
+                VIBEQC_STATUS_NOT_IMPLEMENTED,
+            "LDA RKS silently accepted automatic precision");
+    method.precision_mode = static_cast<vibeqc_precision_mode>(99);
+    require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
+                VIBEQC_STATUS_INVALID_ARGUMENT,
+            "LDA RKS misclassified an unknown precision mode");
 
     for (const auto [charge, multiplicity] :
          {std::pair{1, std::uint32_t{2}}, std::pair{0, std::uint32_t{3}}}) {

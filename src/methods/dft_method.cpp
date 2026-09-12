@@ -20,6 +20,9 @@ bool field_present(const vibeqc_method_descriptor& descriptor, std::size_t offse
 }
 
 scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor) {
+  if (!std::isfinite(descriptor.energy_tolerance) || !std::isfinite(descriptor.density_tolerance) ||
+      !std::isfinite(descriptor.screening_tolerance))
+    throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "DFT tolerances must be finite");
   scf::ScfOptions options;
   options.max_iterations = descriptor.max_iterations == 0 ? 100 : descriptor.max_iterations;
   options.diis_history = descriptor.diis_history == 0 ? 8 : descriptor.diis_history;
@@ -29,18 +32,30 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor) {
       descriptor.density_tolerance > 0.0 ? descriptor.density_tolerance : 1.0e-8;
   options.screening_tolerance =
       descriptor.screening_tolerance > 0.0 ? descriptor.screening_tolerance : 1.0e-12;
-  if (!std::isfinite(options.energy_tolerance) || !std::isfinite(options.density_tolerance) ||
-      !std::isfinite(options.screening_tolerance))
-    throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "DFT tolerances must be finite");
   if (field_present(descriptor, offsetof(vibeqc_method_descriptor, density_fitting_mode),
-                    sizeof(descriptor.density_fitting_mode)) &&
-      descriptor.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE)
-    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "DFT RKS supports conventional Coulomb only");
+                    sizeof(descriptor.density_fitting_mode))) {
+    const auto mode = descriptor.density_fitting_mode;
+    if (mode != VIBEQC_DENSITY_FITTING_NONE && mode != VIBEQC_DENSITY_FITTING_CPU_REFERENCE &&
+        mode != VIBEQC_DENSITY_FITTING_CUDA && mode != VIBEQC_DENSITY_FITTING_AUTO)
+      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unknown density-fitting execution mode");
+    if (mode != VIBEQC_DENSITY_FITTING_NONE)
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                        "DFT RKS supports conventional Coulomb only");
+  }
   if (field_present(descriptor, offsetof(vibeqc_method_descriptor, density_fitting_auxiliary_basis),
                     sizeof(descriptor.density_fitting_auxiliary_basis)) &&
       descriptor.density_fitting_auxiliary_basis != nullptr)
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
                       "DFT RKS does not accept an unused auxiliary basis");
+  if (field_present(descriptor, offsetof(vibeqc_method_descriptor, precision_mode),
+                    sizeof(descriptor.precision_mode))) {
+    if (descriptor.precision_mode != VIBEQC_PRECISION_FP64 &&
+        descriptor.precision_mode != VIBEQC_PRECISION_AUTO)
+      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unknown floating-point precision mode");
+    if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO)
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                        "DFT RKS supports explicit FP64 precision only");
+  }
 
   scf::FockBuildSpec fock;
   fock.spin = scf::FockSpin::Restricted;

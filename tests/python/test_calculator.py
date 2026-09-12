@@ -198,6 +198,7 @@ def test_pbe_rks_public_contract_is_cpu_energy_only():
     (
         {"device": "cuda"},
         {"density_fitting": "cpu"},
+        {"precision": "auto"},
     ),
 )
 def test_lda_rks_rejects_unimplemented_execution_modes(kwargs):

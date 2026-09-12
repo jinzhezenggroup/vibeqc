@@ -84,6 +84,7 @@ add_custom_command(
   DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_cpu.py"
           ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
   VERBATIM)
+add_custom_target(vibeqc_xc_cpu_codegen DEPENDS "${VIBEQC_XC_CPU_HEADER}")
 
 if(NOT VIBEQC_CUDA_SPLIT_COMPILE_THREADS MATCHES "^[0-9]+$")
   message(FATAL_ERROR
@@ -162,7 +163,6 @@ add_library(vibeqc SHARED
   src/dft/grid.cpp
   src/dft/rks.cpp
   src/dft/xc.cpp
-  ${VIBEQC_XC_CPU_HEADER}
   src/integrals/s_integrals.cpp
   src/integrals/ecp.cpp
   src/api/c_api_ecp.cpp
@@ -193,6 +193,7 @@ add_library(vibeqc SHARED
   src/scf/initial_guess/density.cpp
   src/scf/cuda/rhf_policy.cpp
 )
+add_dependencies(vibeqc vibeqc_xc_cpu_codegen)
 
 # A local tuned library may replace this build only when its scientific source
 # and generator are identical. Paths and Git metadata are deliberately excluded
@@ -206,7 +207,7 @@ file(GLOB_RECURSE _vibeqc_identity_inputs CONFIGURE_DEPENDS
 list(APPEND _vibeqc_identity_inputs "CMakeLists.txt" "tools/generate_shell_kernels.py"
      "tools/generate_df_kernels.py" "tools/generate_weighted_eri_kernels.py"
      "tools/generate_one_electron_kernels.py" "tools/generate_grid_kernels.py"
-     "tools/generate_mp2_native.py")
+     "tools/generate_mp2_native.py" "tools/generate_xc_cpu.py")
 list(SORT _vibeqc_identity_inputs)
 set(_vibeqc_identity_text "")
 foreach(_vibeqc_identity_path IN LISTS _vibeqc_identity_inputs)
@@ -851,8 +852,8 @@ if(VIBEQC_BUILD_TESTS)
     src/dft/ao_grid.cpp
     src/dft/grid.cpp
     src/dft/xc.cpp
-    src/molecule/basis.cpp
-    ${VIBEQC_XC_CPU_HEADER})
+    src/molecule/basis.cpp)
+  add_dependencies(vibeqc_dft_tests vibeqc_xc_cpu_codegen)
   target_include_directories(vibeqc_dft_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
