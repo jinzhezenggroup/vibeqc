@@ -1,0 +1,101 @@
+{
+  "archive_sha256": "cb62da8baab48e670c47b740e34dfd7c221fc45c6aa383ff228fac8947680559",
+  "files": [
+    {
+      "bytes": 6499,
+      "path": "df-batch-properties-build-v2.log",
+      "sha256": "6b82a144b22e10d39e63d9bfb9dec2cf1e07b0dba9823b3fe2db377c0e6b9489"
+    },
+    {
+      "bytes": 1807,
+      "path": "df-batch-properties-cpu-build-v2.log",
+      "sha256": "6372e3b5abc66d04a76fa20ddcd29a5ea8ef08159bfd93cfe8833ce5b2e66cab"
+    },
+    {
+      "bytes": 810,
+      "path": "df-batch-properties-gpu-tests-v2.log",
+      "sha256": "b4fae2158be9e9370c64b0af14291996ff0fae9d221171c4b822e69b29dba2c3"
+    },
+    {
+      "bytes": 12885,
+      "path": "df-batch-properties-gpu-tests.log",
+      "sha256": "2979a7c538e48b52dcc89a10a5c37db679d7e2bf6aa74ed5066f98eb6c877331"
+    },
+    {
+      "bytes": 1204,
+      "path": "df-batch-properties-hooks-v2.log",
+      "sha256": "bf0fc521e8879da374746ff14edaf306299c1e2514c71deb0516de5621a2b7af"
+    },
+    {
+      "bytes": 2368,
+      "path": "df-batch-properties-host-tests-v2.log",
+      "sha256": "72089c6506f7666497fa9b7b53825a775301ac0a9489a7dcdd204893a4f604cb"
+    },
+    {
+      "bytes": 37780,
+      "path": "df-batch-properties-runtime/CMakeCache.txt",
+      "sha256": "ccb05166d567b31bf2b3f3c7cc3b0ff52ea3b7d78686b2dd1da4be59c53042d1"
+    },
+    {
+      "bytes": 145,
+      "path": "df-batch-properties-runtime/identity.json",
+      "sha256": "c6868cd5b37df889119f8e641fa932da91fc3e604fc01bb267239794c44d9278"
+    },
+    {
+      "bytes": 56573,
+      "path": "df-batch-properties-runtime/implementation.patch",
+      "sha256": "59ed10256415b810533ec3dc00211b9fe9c64509f0f31c117c578e783c6a4a10"
+    },
+    {
+      "bytes": 76,
+      "path": "df-energy-only-matrix.log",
+      "sha256": "01afea26514b6adc89a4359b4cde25bed3cb330b7890edab52a7562f4d778bdd"
+    },
+    {
+      "bytes": 61351,
+      "path": "df-energy-only-matrix/192ao-b1.json",
+      "sha256": "81d410b17935f18e0f45b0455f7a04f88925652382c5cb4a1878fde1b4e72adf"
+    },
+    {
+      "bytes": 1134,
+      "path": "df-energy-only-matrix/192ao-b1.log",
+      "sha256": "f0b3b0ae62636bc67a1709da8d9c8aa0361576d81a35e429b791dd0e34e0acfe"
+    },
+    {
+      "bytes": 214708,
+      "path": "df-energy-only-matrix/192ao-b4.json",
+      "sha256": "e50d969ea556b60057cfb27b627a142961ad1b91bd8b66eae3b81c3a28e432fb"
+    },
+    {
+      "bytes": 1199,
+      "path": "df-energy-only-matrix/192ao-b4.log",
+      "sha256": "f52d96bd9f90ed6a11089c324fc58ecef8c13301120ae587b1d1356247f5aa84"
+    },
+    {
+      "bytes": 48331,
+      "path": "df-energy-only-matrix/96ao-b1.json",
+      "sha256": "6ccb2965de0b02d1d64e406db18d2d162722b93b632afa4209a87dfb6e972b91"
+    },
+    {
+      "bytes": 1125,
+      "path": "df-energy-only-matrix/96ao-b1.log",
+      "sha256": "31faa09596cbec765e8c6d658edf053b0e17bad9d6985a22bc40d305efc6ddaa"
+    },
+    {
+      "bytes": 161755,
+      "path": "df-energy-only-matrix/96ao-b4.json",
+      "sha256": "613b4647d7ced422709b5681415c3ed7c364dc84ff229b7e89aa26b527f90c36"
+    },
+    {
+      "bytes": 1189,
+      "path": "df-energy-only-matrix/96ao-b4.log",
+      "sha256": "280b68edef384d7529453bbb0765cef289cf9bdee3b4602c5d0dba3530b0dfae"
+    },
+    {
+      "bytes": 5865,
+      "path": "df-energy-only-matrix/manifest.json",
+      "sha256": "0183485fa182df1f8935e14c14fdc889aca4b151b54f9d272dde556cc6f89472"
+    }
+  ],
+  "schema": "vibeqc.evidence-archive.v1"
+}

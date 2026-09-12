@@ -200,7 +200,11 @@ FleetPlan::~FleetPlan() {
 }
 
 std::vector<FleetItemResult> FleetPlan::execute(
-    const std::vector<std::optional<std::vector<double>>>& coordinates) {
+    const std::vector<std::optional<std::vector<double>>>& coordinates, bool compute_forces) {
+  // A replay can omit forces without mutating the prepared plan's controls.
+  // Existing energy-only strategies remain energy-only even with default output.
+  ScfOptions execution_options = options_;
+  execution_options.compute_forces = options_.compute_forces && compute_forces;
   if (!coordinates.empty() && coordinates.size() != systems_.size()) {
     throw std::invalid_argument("fleet coordinate list does not match system count");
   }
@@ -213,7 +217,7 @@ std::vector<FleetItemResult> FleetPlan::execute(
   const auto execute_one = [&](std::size_t system_index) {
     FleetItemResult& item = results[system_index];
     item.bucket_id = bucket_ids_[system_index];
-    item.executed_backend = options_.resolved_fock_build->backend == FockBackend::Cuda
+    item.executed_backend = execution_options.resolved_fock_build->backend == FockBackend::Cuda
                                 ? VIBEQC_BACKEND_CUDA
                                 : VIBEQC_BACKEND_CPU_REFERENCE;
     core::System execution_system = systems_[system_index];
@@ -230,13 +234,13 @@ std::vector<FleetItemResult> FleetPlan::execute(
     const auto evaluate = [&](const std::vector<double>* initial_density) {
       const core::System auxiliary = auxiliary_for_geometry(auxiliary_template_, execution_system);
       return run_fock_strategy_cached(independent_fock_plans_[system_index], execution_system,
-                                      &auxiliary, options_, device_id_, initial_density);
+                                      &auxiliary, execution_options, device_id_, initial_density);
     };
     try {
       const std::vector<double>* initial_density =
           has_warm_density ? &warm_densities_[system_index]->density : nullptr;
       item.scf = evaluate(initial_density);
-      if (options_.resolved_fock_build->backend == FockBackend::Cuda) {
+      if (execution_options.resolved_fock_build->backend == FockBackend::Cuda) {
         item.executed_backend = VIBEQC_BACKEND_CUDA;
       }
       if (has_warm_density && !item.scf.converged) {
@@ -289,9 +293,9 @@ std::vector<FleetItemResult> FleetPlan::execute(
     const std::size_t worker_count = std::min(
         bucket_size, requested_workers ? std::min<std::size_t>(hardware_threads, requested_workers)
                                        : hardware_threads);
-    if (options_.resolved_fock_build->backend == FockBackend::Cuda &&
-        (options_.resolved_fock_build->schedule == FockSchedule::CudaIndependent ||
-         options_.resolved_fock_build->spec.derivative_order == 0)) {
+    if (execution_options.resolved_fock_build->backend == FockBackend::Cuda &&
+        (execution_options.resolved_fock_build->schedule == FockSchedule::CudaIndependent ||
+         execution_options.resolved_fock_build->spec.derivative_order == 0)) {
       // General strategies share the host iteration control and execute one
       // CUDA item at a time. This preserves the outer resource ledger and
       // prevents an incompatible request from reaching either fused HF loop.
@@ -328,12 +332,12 @@ std::vector<FleetItemResult> FleetPlan::execute(
       if (!cuda_systems.empty()) {
         std::vector<RhfBucketItem> cuda_results =
             method_ == VIBEQC_METHOD_UHF
-                ? run_uhf_cuda_bucket_cached(&cuda_bucket_plans_[bucket], cuda_systems, options_,
-                                             initial_densities, device_id_,
+                ? run_uhf_cuda_bucket_cached(&cuda_bucket_plans_[bucket], cuda_systems,
+                                             execution_options, initial_densities, device_id_,
                                              shell_class_profiling_enabled_,
                                              inactive_eigensolver_profiling_enabled_)
-                : run_rhf_cuda_bucket_cached(&cuda_bucket_plans_[bucket], cuda_systems, options_,
-                                             initial_densities, device_id_,
+                : run_rhf_cuda_bucket_cached(&cuda_bucket_plans_[bucket], cuda_systems,
+                                             execution_options, initial_densities, device_id_,
                                              shell_class_profiling_enabled_,
                                              inactive_eigensolver_profiling_enabled_);
         CudaEigensolverDiagnostic eigensolver_diagnostic;
@@ -388,9 +392,10 @@ std::vector<FleetItemResult> FleetPlan::execute(
             const std::vector<core::System> cold_system{cuda_systems[slot]};
             const std::vector<const std::vector<double>*> cold_density{nullptr};
             std::vector<RhfBucketItem> cold =
-                method_ == VIBEQC_METHOD_UHF
-                    ? run_uhf_cuda_bucket(cold_system, options_, cold_density, device_id_, false)
-                    : run_rhf_cuda_bucket(cold_system, options_, cold_density, device_id_, false);
+                method_ == VIBEQC_METHOD_UHF ? run_uhf_cuda_bucket(cold_system, execution_options,
+                                                                   cold_density, device_id_, false)
+                                             : run_rhf_cuda_bucket(cold_system, execution_options,
+                                                                   cold_density, device_id_, false);
             item.status = cold.front().status;
             item.scf = std::move(cold.front().scf);
           }
@@ -451,7 +456,7 @@ std::vector<FleetItemResult> FleetPlan::execute(
         // into an unbounded Fleet-level host reservation. The default path
         // keeps prepared records for warm replay, while budgeted calls rebuild
         // only their bounded chunks.
-        auto* prepared_cache = options_.density_fitting_memory_budget_bytes == 0
+        auto* prepared_cache = execution_options.density_fitting_memory_budget_bytes == 0
                                    ? &cuda_density_fitting_data_[bucket]
                                    : nullptr;
         if (prepared_cache == nullptr) {
@@ -461,11 +466,11 @@ std::vector<FleetItemResult> FleetPlan::execute(
             method_ == VIBEQC_METHOD_UHF
                 ? run_uhf_density_fitting_cuda_bucket_cached(
                       &cuda_density_fitting_plans_[bucket], df_systems, auxiliary_template_,
-                      options_, initial_densities, device_id_, &bucket_metric_diagnostics,
+                      execution_options, initial_densities, device_id_, &bucket_metric_diagnostics,
                       prepared_cache)
                 : run_rhf_density_fitting_cuda_bucket_cached(
                       &cuda_density_fitting_plans_[bucket], df_systems, auxiliary_template_,
-                      options_, initial_densities, device_id_, &bucket_metric_diagnostics,
+                      execution_options, initial_densities, device_id_, &bucket_metric_diagnostics,
                       prepared_cache);
         if (!malformed_coordinate &&
             std::all_of(df_results.begin(), df_results.end(), [](const RhfBucketItem& result) {
@@ -524,10 +529,10 @@ std::vector<FleetItemResult> FleetPlan::execute(
               const core::System auxiliary =
                   auxiliary_for_geometry(auxiliary_template_, df_systems[slot]);
               item.scf = method_ == VIBEQC_METHOD_UHF
-                             ? run_uhf_density_fitting_cuda(df_systems[slot], auxiliary, options_,
-                                                            device_id_, nullptr)
-                             : run_rhf_density_fitting_cuda(df_systems[slot], auxiliary, options_,
-                                                            device_id_, nullptr);
+                             ? run_uhf_density_fitting_cuda(df_systems[slot], auxiliary,
+                                                            execution_options, device_id_, nullptr)
+                             : run_rhf_density_fitting_cuda(df_systems[slot], auxiliary,
+                                                            execution_options, device_id_, nullptr);
               item.status =
                   item.scf.converged ? VIBEQC_STATUS_SUCCESS : VIBEQC_STATUS_SCF_NOT_CONVERGED;
             } catch (...) {
