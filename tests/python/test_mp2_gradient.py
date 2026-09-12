@@ -757,7 +757,7 @@ def test_dense_complete_gradient_matches_fully_resolved_finite_differences(
 @pytest.mark.parametrize("name", ["h2", "water"])
 def test_complete_conventional_gradient_matches_pyscf_analytic(name):
     pyscf = pytest.importorskip("pyscf")
-    from pyscf import mp, scf
+    from pyscf import ao2mo, mp, scf
 
     from tools.generate_validation_references import pyscf_molecule
 
@@ -792,11 +792,13 @@ def test_complete_conventional_gradient_matches_pyscf_analytic(name):
     molecule, _, _ = pyscf_molecule(meta["inputs"])
     mean_field = scf.RHF(molecule)
     mean_field.conv_tol = 1e-13
-    mean_field.conv_tol_grad = 1e-10
+    mean_field.conv_tol_grad = 1e-11
     mean_field.max_cycle = 200
+    mean_field.direct_scf_tol = 0
+    mean_field._eri = ao2mo.restore(8, molecule.intor("int2e"), molecule.nao_nr())
     mean_field.kernel()
     assert mean_field.converged
-    calculation = mp.MP2(mean_field).run()
+    calculation = mp.MP2(mean_field, frozen=None).run()
     expected = calculation.nuc_grad_method().kernel()
     np.testing.assert_allclose(actual, expected, atol=1e-7, rtol=1e-7)
 
