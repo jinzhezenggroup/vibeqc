@@ -1,0 +1,8 @@
+{
+  "source": "/home/jzzeng/codes/vibeqc-df-performance",
+  "git_head": "cf1a284d4582d0371f94b44d37c30568b8fee13f",
+  "git_dirty": false,
+  "library_sha256": "fe8d12544d6306be44feac843ebd77c6c68aa9d9b937cfbcd7398b21c2252160",
+  "frozen_library_sha256": "fe8d12544d6306be44feac843ebd77c6c68aa9d9b937cfbcd7398b21c2252160",
+  "benchmark_checkout": "/home/jzzeng/codes/vibeqc-df-performance-trace"
+}
