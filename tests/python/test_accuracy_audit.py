@@ -44,6 +44,16 @@ def test_probe_and_physical_operator_against_pinned_pyscf(name):
                 replace(probe, density=damaged)
 
 
+def test_hf_consumers_reject_mp2_model():
+    atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
+    model = Calculator(method="mp2").resolved_model(atoms)
+    with NativeSource(atoms) as source:
+        with pytest.raises(ValueError, match="RHF/UHF"):
+            probe_hf(source, model)
+        with pytest.raises(ValueError, match="RHF/UHF"):
+            StrictHFAudit(source, model)
+
+
 def test_failed_probe_preserves_failure_without_publishing_reference_state():
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     model = Calculator().resolved_model(atoms)
