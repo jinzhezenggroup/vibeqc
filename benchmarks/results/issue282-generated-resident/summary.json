@@ -1,0 +1,330 @@
+{
+  "benchmark_driver_commit": "dd95752",
+  "endpoint_samples": [
+    {
+      "budget_bytes": 536870912,
+      "case": "water-octamer-s4-def2-svp-spherical",
+      "energy_force_median_s": 9.100057362113148,
+      "energy_median_s": 4.347015762003139,
+      "iterations": [
+        39
+      ],
+      "maximum_energy_error_hartree": 8.640199666842818e-12,
+      "maximum_force_error_hartree_per_bohr": 7.309609276369422e-11,
+      "paired_force_increment_median_s": 4.752520511159673
+    },
+    {
+      "budget_bytes": 536870912,
+      "case": "water-tetramer-def2-svp-spherical",
+      "energy_force_median_s": 1.3296040480490774,
+      "energy_median_s": 0.44407742796465755,
+      "iterations": [
+        34
+      ],
+      "maximum_energy_error_hartree": 6.0254023992456496e-12,
+      "maximum_force_error_hartree_per_bohr": 2.4187778516204794e-11,
+      "paired_force_increment_median_s": 0.8698543680366129
+    }
+  ],
+  "matrix": [
+    {
+      "case": "192ao-b1",
+      "gate": {
+        "failures": [],
+        "passed": true
+      },
+      "gpu4pyscf_final_iterations": [
+        1
+      ],
+      "maximum_energy_error_hartree": 9.322320693172514e-12,
+      "maximum_force_error_hartree_per_bohr": 7.83221109496024e-11,
+      "timing": {
+        "integral_contraction_breakdown": {
+          "cold_setup_and_integral_generation_seconds": 9.26795595488511,
+          "note": "CUDA DF integral setup is included in cold timing; warm timings contain resident-plan contractions",
+          "warm_contraction_and_force_seconds": 7.999114048900083
+        },
+        "iteration_matched": null,
+        "ordinary": {
+          "gpu4pyscf_median_seconds": 0.3311000750400126,
+          "iteration_branches_match_for_every_pair": false,
+          "speedup": 0.0413920933013251,
+          "vibeqc_median_seconds": 7.999114048900083
+        },
+        "speed_claim_uses": "unmatched_labeled"
+      },
+      "value_plan_memory": [
+        {
+          "absolute_threshold": 1.2895078155068907e-07,
+          "auxiliary_tile": 192,
+          "bucket_id": 0,
+          "condition_number": 13567.151376633754,
+          "device_resident_bytes": 238580032,
+          "effective_rank": 192,
+          "host_resident_bytes": 1073,
+          "peak_device_bytes": 241760732,
+          "peak_host_bytes": 10158602,
+          "solver_device_workspace_bytes": 2589336,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 0
+        }
+      ],
+      "vibeqc_final_iterations": [
+        3
+      ]
+    },
+    {
+      "case": "192ao-b4",
+      "gate": {
+        "failures": [],
+        "passed": true
+      },
+      "gpu4pyscf_final_iterations": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "maximum_energy_error_hartree": 2.808064891723916e-11,
+      "maximum_force_error_hartree_per_bohr": 7.179551744784796e-11,
+      "timing": {
+        "integral_contraction_breakdown": {
+          "cold_setup_and_integral_generation_seconds": 35.93571989494376,
+          "note": "CUDA DF integral setup is included in cold timing; warm timings contain resident-plan contractions",
+          "warm_contraction_and_force_seconds": 31.97264242521487
+        },
+        "iteration_matched": null,
+        "ordinary": {
+          "gpu4pyscf_median_seconds": 1.3268007969018072,
+          "iteration_branches_match_for_every_pair": false,
+          "speedup": 0.041498002550312836,
+          "vibeqc_median_seconds": 31.97264242521487
+        },
+        "speed_claim_uses": "unmatched_labeled"
+      },
+      "value_plan_memory": [
+        {
+          "absolute_threshold": 1.2922322989355592e-07,
+          "auxiliary_tile": 192,
+          "bucket_id": 0,
+          "condition_number": 13749.382149125255,
+          "device_resident_bytes": 436944088,
+          "effective_rank": 192,
+          "host_resident_bytes": 1100,
+          "peak_device_bytes": 441898880,
+          "peak_host_bytes": 38785832,
+          "solver_device_workspace_bytes": 2589336,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 0
+        },
+        {
+          "absolute_threshold": 1.2904148255270197e-07,
+          "auxiliary_tile": 192,
+          "bucket_id": 0,
+          "condition_number": 13627.444590156401,
+          "device_resident_bytes": 436944088,
+          "effective_rank": 192,
+          "host_resident_bytes": 1100,
+          "peak_device_bytes": 441898880,
+          "peak_host_bytes": 38785832,
+          "solver_device_workspace_bytes": 2589336,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 1
+        },
+        {
+          "absolute_threshold": 1.2886019546929272e-07,
+          "auxiliary_tile": 192,
+          "bucket_id": 0,
+          "condition_number": 13507.301786202672,
+          "device_resident_bytes": 436944088,
+          "effective_rank": 192,
+          "host_resident_bytes": 1100,
+          "peak_device_bytes": 441898880,
+          "peak_host_bytes": 38785832,
+          "solver_device_workspace_bytes": 2589336,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 2
+        },
+        {
+          "absolute_threshold": 1.2867936749275122e-07,
+          "auxiliary_tile": 192,
+          "bucket_id": 0,
+          "condition_number": 13388.913771548034,
+          "device_resident_bytes": 436944088,
+          "effective_rank": 192,
+          "host_resident_bytes": 1100,
+          "peak_device_bytes": 441898880,
+          "peak_host_bytes": 38785832,
+          "solver_device_workspace_bytes": 2589336,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 3
+        }
+      ],
+      "vibeqc_final_iterations": [
+        3,
+        3,
+        2,
+        2
+      ]
+    },
+    {
+      "case": "96ao-b1",
+      "gate": {
+        "failures": [],
+        "passed": true
+      },
+      "gpu4pyscf_final_iterations": [
+        1
+      ],
+      "maximum_energy_error_hartree": 6.650680006714538e-12,
+      "maximum_force_error_hartree_per_bohr": 3.523948667594201e-11,
+      "timing": {
+        "integral_contraction_breakdown": {
+          "cold_setup_and_integral_generation_seconds": 1.4888484489638358,
+          "note": "CUDA DF integral setup is included in cold timing; warm timings contain resident-plan contractions",
+          "warm_contraction_and_force_seconds": 1.109108221018687
+        },
+        "iteration_matched": null,
+        "ordinary": {
+          "gpu4pyscf_median_seconds": 0.24480452318675816,
+          "iteration_branches_match_for_every_pair": false,
+          "speedup": 0.22072194448429172,
+          "vibeqc_median_seconds": 1.109108221018687
+        },
+        "speed_claim_uses": "unmatched_labeled"
+      },
+      "value_plan_memory": [
+        {
+          "absolute_threshold": 7.527269023992962e-08,
+          "auxiliary_tile": 96,
+          "bucket_id": 0,
+          "condition_number": 7451.239126399652,
+          "device_resident_bytes": 32031352,
+          "effective_rank": 96,
+          "host_resident_bytes": 1073,
+          "peak_device_bytes": 33515540,
+          "peak_host_bytes": 1381162,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 0
+        }
+      ],
+      "vibeqc_final_iterations": [
+        2
+      ]
+    },
+    {
+      "case": "96ao-b4",
+      "gate": {
+        "failures": [],
+        "passed": true
+      },
+      "gpu4pyscf_final_iterations": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "maximum_energy_error_hartree": 5.9685589803848416e-12,
+      "maximum_force_error_hartree_per_bohr": 3.807590180648912e-11,
+      "timing": {
+        "integral_contraction_breakdown": {
+          "cold_setup_and_integral_generation_seconds": 4.4192432491108775,
+          "note": "CUDA DF integral setup is included in cold timing; warm timings contain resident-plan contractions",
+          "warm_contraction_and_force_seconds": 3.772756927879527
+        },
+        "iteration_matched": null,
+        "ordinary": {
+          "gpu4pyscf_median_seconds": 0.973100476898253,
+          "iteration_branches_match_for_every_pair": false,
+          "speedup": 0.2579282194692524,
+          "vibeqc_median_seconds": 3.772756927879527
+        },
+        "speed_claim_uses": "unmatched_labeled"
+      },
+      "value_plan_memory": [
+        {
+          "absolute_threshold": 7.540076600202625e-08,
+          "auxiliary_tile": 96,
+          "bucket_id": 0,
+          "condition_number": 7542.035276549225,
+          "device_resident_bytes": 60416440,
+          "effective_rank": 96,
+          "host_resident_bytes": 1100,
+          "peak_device_bytes": 62345312,
+          "peak_host_bytes": 5058472,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 0
+        },
+        {
+          "absolute_threshold": 7.531533839563701e-08,
+          "auxiliary_tile": 96,
+          "bucket_id": 0,
+          "condition_number": 7481.327522684928,
+          "device_resident_bytes": 60416440,
+          "effective_rank": 96,
+          "host_resident_bytes": 1100,
+          "peak_device_bytes": 62345312,
+          "peak_host_bytes": 5058472,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 1
+        },
+        {
+          "absolute_threshold": 7.523008580365328e-08,
+          "auxiliary_tile": 96,
+          "bucket_id": 0,
+          "condition_number": 7421.326223585626,
+          "device_resident_bytes": 60416440,
+          "effective_rank": 96,
+          "host_resident_bytes": 1100,
+          "peak_device_bytes": 62345312,
+          "peak_host_bytes": 5058472,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 2
+        },
+        {
+          "absolute_threshold": 7.514500795191915e-08,
+          "auxiliary_tile": 96,
+          "bucket_id": 0,
+          "condition_number": 7362.022491638592,
+          "device_resident_bytes": 60416440,
+          "effective_rank": 96,
+          "host_resident_bytes": 1100,
+          "peak_device_bytes": 62345312,
+          "peak_host_bytes": 5058472,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 3
+        }
+      ],
+      "vibeqc_final_iterations": [
+        2,
+        2,
+        2,
+        3
+      ]
+    }
+  ],
+  "native_code_commit": "787304d",
+  "native_library_sha256": "da3b262c3ebfd2e42b0cb77f8bf8af66cfc7253c84d65e37ff415d41c3ee043b",
+  "schema": "vibeqc.df_generated_resident_evidence.v1",
+  "validation": {
+    "gpu_derivative_tests": 37,
+    "gpu_global_resource_tests": 14,
+    "gpu_native_suites": 4,
+    "host_tests": 71
+  }
+}
