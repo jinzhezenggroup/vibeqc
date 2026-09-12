@@ -1269,7 +1269,9 @@ int main() {
       // A finite discarded eigenspace has a nonzero response when the metric
       // rotates. Compare its GPU Frechet map to the independent raw derivative
       // oracle, rather than testing only the full-rank -M+ E M+ shortcut.
-      {
+      // Cover tight rows, a five-auxiliary GEMM panel with a partial final tile,
+      // and full residency against the same independently factored metric.
+      for (unsigned storage : {0U, 1U, 2U}) {
         vibeqc::scf::CudaDensityFittingIntegralSource* truncated_source = nullptr;
         std::vector<double> metrics;
         std::size_t n = 0, a = 0;
@@ -1281,12 +1283,31 @@ int main() {
         std::vector<vibeqc::scf::CudaDensityFittingMetricDiagnostic> diagnostics;
         constexpr double cutoff = 0.1;
         require(vibeqc::scf::create_cuda_density_fitting_jk_plan_from_source(
-                    0, &truncated_source, 1, n, a, metrics, cutoff, 3, 3, &raw_plan, diagnostics,
+                    0, &truncated_source, 1, n, a, metrics, cutoff,
+                    storage == 2   ? a
+                    : storage == 1 ? 5
+                                   : 3,
+                    storage ? n * n : 3, &raw_plan, diagnostics,
                     source_detail) == VIBEQC_STATUS_SUCCESS,
                 source_detail.c_str());
         CudaPlan truncated_plan(raw_plan, &vibeqc::scf::destroy_cuda_density_fitting_jk_plan);
         require(diagnostics[0].effective_rank > 0 && diagnostics[0].effective_rank < a,
                 "device response fixture did not discard a positive metric eigenspace");
+        const auto truncated_tensor = vibeqc::scf::orthonormalize_density_fitting_three_center(
+            integrals.three_center, n,
+            vibeqc::scf::factor_density_fitting_metric(integrals.metric, a, cutoff));
+        const auto expected_jk =
+            vibeqc::scf::build_density_fitting_rhf_jk(truncated_tensor, rhf_density);
+        std::vector<double> actual_j, actual_k;
+        require(vibeqc::scf::execute_cuda_density_fitting_rhf_jk(
+                    truncated_plan.get(), rhf_density, actual_j, actual_k, source_detail) ==
+                    VIBEQC_STATUS_SUCCESS,
+                source_detail.c_str());
+        require_matrix_close(actual_j, expected_jk.coulomb, 3e-11,
+                             "raw-vector RI-J lost metric-rank semantics");
+        require_matrix_close(
+            actual_k, expected_jk.exchange, 3e-11,
+            "rebalanced RI-K panel changed dense nonsymmetric-density contraction");
         for (bool unrestricted : {false, true}) {
           const std::vector<vibeqc::scf::DensityFittingDensityResponse> terms =
               unrestricted

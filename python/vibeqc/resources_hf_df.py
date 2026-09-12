@@ -19,10 +19,10 @@ def cuda_df_candidates(
 
     Buckets retain all their device plans. Temporary setup/force storage is
     shared across serialized buckets; the existing one-item cold retry can
-    coexist with a warm bucket and has a separate reservation. Source mode
-    explicitly uses CPU SCF/DIIS/eigensolvers with CUDA J/K and integral tiles,
-    as required by the existing generated provider's capability contract.
-    Its forward tensor may be resident when the native tile allowance fits;
+    coexist with a warm bucket and has a separate reservation. Both provider
+    modes first use CUDA SCF, including graph capture for generated tiles,
+    with the existing CPU numerical recovery when the device solve fails.
+    The source's forward tensor may be resident when the native allowance fits;
     response derivatives still use bounded regeneration. The source candidate's
     ``recomputed`` mode describes that complete policy, not every forward tile.
     """
@@ -82,14 +82,13 @@ def cuda_df_candidates(
             fixed_device_bytes=source_bytes,
             generated_source=True,
         )
-        # Match the existing native one-electron chunk preflight, whose
-        # conservative packed-topology allowance includes possible PSSS queues.
+        # Match the native matrix-only one-electron chunk preflight. Direct-ERI
+        # task tables are omitted by this exporter, leaving quadratic metadata.
         preparation_minimum = 0
         metadata = 0
         for item in group:
             orbital, auxiliary = item["orbital"], item["auxiliary"]
             pairs = orbital["shells"] * (orbital["shells"] + 1) // 2
-            quartets = pairs * (pairs + 1) // 2
             packed = 512 * (
                 1
                 + item["atoms"]
@@ -98,7 +97,6 @@ def cuda_df_candidates(
                 + c
                 + n
                 + pairs
-                + quartets
             )
             preparation_minimum = max(
                 preparation_minimum,
@@ -356,7 +354,7 @@ def cuda_df_candidates(
                     ),
                     (
                         "scf_driver",
-                        "CPU DIIS/eigensolvers; budget-selected CUDA forward storage, generated response and J/K"
+                        "CUDA SCF with existing CPU numerical recovery; budget-selected CUDA forward storage, generated response and J/K"
                         if source
                         else "CUDA SCF with existing CPU numerical recovery; CUDA J/K",
                     ),

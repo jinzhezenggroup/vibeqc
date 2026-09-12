@@ -172,7 +172,10 @@ def test_cuda_df_global_candidates_bind_execution_and_respect_host_device_caps(
     assert dict(plan.selections)["hf"] == candidate.name
     if mode == "recomputed":
         assert selected.peak_bytes["host"] < request_plan.peak_bytes["host"]
-        assert "CPU DIIS/eigensolvers" in dict(candidate.decisions)["scf_driver"]
+        assert (
+            "CUDA SCF with existing CPU numerical recovery"
+            in dict(candidate.decisions)["scf_driver"]
+        )
     native_budget = int(
         dict(candidate.decisions)["density_fitting_memory_budget_bytes"]
     )

@@ -25,6 +25,10 @@ with resident forward data, so a global resource candidate's `recomputed` mode
 does not imply every forward tile is regenerated. Per-bucket tile decisions
 and executed metric diagnostics expose actual forward storage.
 
+Both generated storage modes first execute CUDA SCF, including graph capture
+for streamed integral generation. The drivers retain the existing CPU numerical
+recovery if the device solve fails; source ownership does not select CPU DIIS.
+
 Prepared plans compare geometry, basis and metric policy before reuse, and
 sources have no mutation API. Physical source changes create a new plan and
 tensor; changing a density alone reuses the same fixed-geometry tensor. Metric

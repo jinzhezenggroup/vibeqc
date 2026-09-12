@@ -1135,10 +1135,10 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
     // and nuclear vectors alive while copying each item into IntegralData.
     const long double one_electron_staging = 2.0L * matrix_elements + 1.0L;
     // pack_host_batch also retains basis/atom metadata, shell-pair indices,
-    // queue descriptors, and Cartesian system copies while the CUDA bridge is
-    // active.  Those vectors are irregular (and private to the CUDA TU), so
-    // use a deliberately conservative descriptor-count bound rather than
-    // pretending the numeric output estimate covers them.
+    // and Cartesian system copies while the CUDA bridge is active. Matrix-only
+    // packing explicitly skips direct-ERI resident task tables. Retain a
+    // conservative per-pair bound for vector capacity/metadata, without charging
+    // a shell-quartet array that the one-electron exporter never allocates.
     const long double atoms = static_cast<long double>(systems[representative].atoms.size());
     const long double shells = static_cast<long double>(systems[representative].shells.size());
     long double primitives = 0.0L;
@@ -1146,11 +1146,10 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
       primitives += static_cast<long double>(shell.primitives.size());
     }
     const long double shell_pairs = shells * (shells + 1.0L) / 2.0L;
-    const long double shell_quartets = shell_pairs * (shell_pairs + 1.0L) / 2.0L;
     const long double metadata_doubles_per_system =
-        64.0L * (1.0L + atoms + shells + primitives + static_cast<long double>(nbf_cart) +
-                 static_cast<long double>(molecule::ao_count(systems[representative])) +
-                 shell_pairs + shell_quartets);
+        64.0L *
+        (1.0L + atoms + shells + primitives + static_cast<long double>(nbf_cart) +
+         static_cast<long double>(molecule::ao_count(systems[representative])) + shell_pairs);
     // The one-electron bridge also keeps a Cartesian warm-density matrix and
     // packed pair-index vectors even when no warm density is supplied.
     const long double quadratic_staging_doubles = 2.0L * matrix_elements;
