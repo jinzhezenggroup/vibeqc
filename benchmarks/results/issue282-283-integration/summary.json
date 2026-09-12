@@ -1,0 +1,271 @@
+{
+  "archive": {
+    "bytes": 127907,
+    "files": 18,
+    "original_bytes": 1005315,
+    "sha256": "13b7bb6182bf5f74496db58b900ff294d6f5ad15125860fd0779a0914a96efa0"
+  },
+  "limitations": [
+    "Cross-engine iteration branches differ; endpoint ratios are not iteration-matched speed claims.",
+    "The declared 1-GiB DF sub-budget and value-plan diagnostics do not measure global peak memory or opaque library retention.",
+    "Component captures and energy-only matrix are linked prior evidence; this final matrix is an uninstrumented integrated force endpoint.",
+    "Low-memory 192-AO evidence is fixed-density J/K plus the complete E2 gradient, not full-SCF force timing.",
+    "Occupied-factor CUDA exchange belongs to the subsequent #284 implementation and does not execute in this checkpoint."
+  ],
+  "matrix": [
+    {
+      "all_pairs_pass": true,
+      "file": "192ao-b1.json",
+      "gpu4pyscf_iteration_branches": [
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ]
+      ],
+      "gpu4pyscf_warm_median_seconds": 0.3308813418261707,
+      "maximum_errors": {
+        "energies_hartree": 9.322320693172514e-12,
+        "forces_hartree_per_bohr": 7.83754016547844e-11
+      },
+      "value_plan_memory": null,
+      "vibeqc_iteration_branches": [
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ]
+      ],
+      "vibeqc_warm_median_seconds": 6.356073189061135
+    },
+    {
+      "all_pairs_pass": true,
+      "file": "192ao-b4.json",
+      "gpu4pyscf_iteration_branches": [
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "gpu4pyscf_warm_median_seconds": 1.3237901739776134,
+      "maximum_errors": {
+        "energies_hartree": 2.808064891723916e-11,
+        "forces_hartree_per_bohr": 7.182571551411776e-11
+      },
+      "value_plan_memory": null,
+      "vibeqc_iteration_branches": [
+        [
+          3,
+          3,
+          2,
+          2
+        ],
+        [
+          3,
+          3,
+          2,
+          2
+        ],
+        [
+          3,
+          3,
+          2,
+          2
+        ],
+        [
+          3,
+          3,
+          2,
+          2
+        ],
+        [
+          3,
+          3,
+          2,
+          2
+        ]
+      ],
+      "vibeqc_warm_median_seconds": 24.96696798200719
+    },
+    {
+      "all_pairs_pass": true,
+      "file": "96ao-b1.json",
+      "gpu4pyscf_iteration_branches": [
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ]
+      ],
+      "gpu4pyscf_warm_median_seconds": 0.24590797792188823,
+      "maximum_errors": {
+        "energies_hartree": 6.423306331271306e-12,
+        "forces_hartree_per_bohr": 3.524703619250946e-11
+      },
+      "value_plan_memory": null,
+      "vibeqc_iteration_branches": [
+        [
+          2
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ]
+      ],
+      "vibeqc_warm_median_seconds": 0.794956344878301
+    },
+    {
+      "all_pairs_pass": true,
+      "file": "96ao-b4.json",
+      "gpu4pyscf_iteration_branches": [
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "gpu4pyscf_warm_median_seconds": 0.9816860370337963,
+      "maximum_errors": {
+        "energies_hartree": 5.9117155615240335e-12,
+        "forces_hartree_per_bohr": 3.805414143520647e-11
+      },
+      "value_plan_memory": null,
+      "vibeqc_iteration_branches": [
+        [
+          2,
+          2,
+          2,
+          3
+        ],
+        [
+          2,
+          2,
+          2,
+          3
+        ],
+        [
+          2,
+          2,
+          2,
+          3
+        ],
+        [
+          2,
+          2,
+          2,
+          3
+        ],
+        [
+          2,
+          2,
+          2,
+          3
+        ]
+      ],
+      "vibeqc_warm_median_seconds": 2.528601289028302
+    }
+  ],
+  "measurement": "Five warm repeats per engine/case; frozen post-cold engine-local density; no concurrent compilation.",
+  "runtime": {
+    "head": "fba86bb4eb9dafcd3cf03f82c37191fd64609e48",
+    "library_sha256": "08404f960886da3842d24feff3a417ddb5065846d0ff72fda44ee4c922426605"
+  },
+  "schema": "vibeqc.issue282-283.integration.v1",
+  "slurm_job_id": 9359,
+  "validation": {
+    "cuda_native_suites": 4,
+    "gpu_python_cases": 66,
+    "hooks": "passed",
+    "host_python_cases": 76,
+    "optional_gpu_skips": 6
+  }
+}
