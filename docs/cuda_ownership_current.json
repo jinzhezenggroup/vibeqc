@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 8963,
+  "all_handwritten_scientific_lines": 9812,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "files": [
     {
@@ -727,6 +727,193 @@
       "subsystem": "df_values"
     },
     {
+      "bytes": 16003,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 251,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/direct_angular_fock.cu",
+      "physical_lines": 277,
+      "reason": "Existing angular queue consumers and recursive launch policy, previously classified as runtime around separately owned scientific contractions. Original template instantiations and launch bounds are retained.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "f4f928cfec5cbc9b36a39ab474f9372ee651ef8a7ac81e194e597c7b5083f2b1",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 1104,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 19,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/direct_angular_fock.hpp",
+      "physical_lines": 26,
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "89347c93b1e26dc9318c3262e0804f0b0b8757cc25395f4bafd6b2e3ebd25394",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 23138,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 337,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/direct_angular_force.cu",
+      "physical_lines": 386,
+      "reason": "Existing angular queue consumers and recursive launch policy, previously classified as runtime around separately owned scientific contractions. Original template instantiations and launch bounds are retained.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "095dee8e6e93e45c4cd896467f38b42d32dfc6087cc117f6983b33661080cd73",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 2080,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 30,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/direct_angular_force.hpp",
+      "physical_lines": 39,
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "712ddceefac3207bd2599774f8eac6798be6e6802ed02e1f27c7967f2d90f5ad",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 3470,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 76
+      },
+      "path": "src/scf/cuda/direct_bounded_contraction.cuh",
+      "physical_lines": 87,
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "9062201e9291cd1d25cb9a0b1f97ef3ac08142ade5b6ce13288cf221a6ef3863",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 8803,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 163
+      },
+      "path": "src/scf/cuda/direct_bounded_dddd.cu",
+      "physical_lines": 183,
+      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "69bfbfc09f6a51ea97539470727ea4b3d82ff9d55e1558cab9f9f2ce6dffe663",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 851,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 16,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/direct_bounded_dddd.hpp",
+      "physical_lines": 23,
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "2f8aeb9c231665f5428c43fe399a00c647bcd1162532856334f61385bc574758",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 9395,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 159
+      },
+      "path": "src/scf/cuda/direct_bounded_exact_force.cu",
+      "physical_lines": 176,
+      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "2dac17d02f3cd9a791b667d9867cb1fde6b323924c678762d77c6021e5d69a34",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 967,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 17,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/direct_bounded_exact_force.hpp",
+      "physical_lines": 24,
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "b98715b4805998826c1adbbbdb96ea8bb06d949127a0d2f10a1a9a9696d85975",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 14758,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 239
+      },
+      "path": "src/scf/cuda/direct_bounded_fallback.cu",
+      "physical_lines": 265,
+      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "00324da7c3dc4b9e1dadb84135d2b81008bd1287adc114fa38738dff0edeed0c",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 1094,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 18,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/direct_bounded_fallback.hpp",
+      "physical_lines": 25,
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "2665471ea7973963329f63dcc02232ea3315a4ec1aaa42a5496e93ef2f39fbf3",
+      "subsystem": "runtime"
+    },
+    {
       "bytes": 10698,
       "code_lines": {
         "fallback": 0,
@@ -815,6 +1002,40 @@
       "subsystem": "direct_integrals"
     },
     {
+      "bytes": 5696,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 105
+      },
+      "path": "src/scf/cuda/direct_cached_tensor_kernels.cu",
+      "physical_lines": 115,
+      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "880a9d480e3fb1f1206c8727b811002fbd205cc27d82785851c7540783a2896c",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 1379,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 19,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/direct_cached_tensor_kernels.hpp",
+      "physical_lines": 30,
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "e6dc4e48ab337eb167b6c6593ca7f55495b21576de115c463695ae7e286fda6a",
+      "subsystem": "runtime"
+    },
+    {
       "bytes": 11098,
       "code_lines": {
         "fallback": 0,
@@ -859,6 +1080,169 @@
       "subsystem": "direct_integrals"
     },
     {
+      "bytes": 2000,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 74,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/direct_eri_symmetry.cuh",
+      "physical_lines": 84,
+      "reason": "Generic tensor indexing or symmetry permutation/duplicate handling, preserving its original runtime classification.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "51a1af2837a6a5809f4565192832be786b12e1c8a11e5fbbf22949914bcc2b3c",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 2504,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 58
+      },
+      "path": "src/scf/cuda/direct_fock_accumulation.cuh",
+      "physical_lines": 68,
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "824bbe65ec6bd4a8aa047f65964b52e6cb56754148ceefac9d3c9e2eb85480fd",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 7874,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 18,
+        "scientific": 136
+      },
+      "path": "src/scf/cuda/direct_fock_order2.cuh",
+      "physical_lines": 177,
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": [
+        {
+          "code_lines": 18,
+          "first_line": 31,
+          "last_line": 50,
+          "reason": "Unchanged component-index mapping, retaining the original runtime classification.",
+          "role": "runtime",
+          "start": "__device__ __forceinline__ unsigned order2_component_index",
+          "stop": "__device__ inline __noinline__ void contract_fock_direct_order2_task"
+        }
+      ],
+      "role": "scientific",
+      "sha256": "41c04a7b18968a44fa161c0d4f716413eac1d1c1c736848dd3e1ff0d84de63d0",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 4978,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 101
+      },
+      "path": "src/scf/cuda/direct_fock_psss.cuh",
+      "physical_lines": 123,
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "b79ecccc198bad769bf5b26e18849802c189bd432751cf8b30645c43e625694f",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 4953,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 90
+      },
+      "path": "src/scf/cuda/direct_fock_quartet.cuh",
+      "physical_lines": 100,
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "60c29f72dab2f9992d1f7896b0e494665e5dccd716b6a68dd35b6408a7d832be",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 2086,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 45
+      },
+      "path": "src/scf/cuda/direct_force_density.cuh",
+      "physical_lines": 55,
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "8fb04df7df81fb50ee5c22021838f712b7109ef76ee2a0b67e5eca0d3737bc48",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 11522,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 249
+      },
+      "path": "src/scf/cuda/direct_force_low_order.cuh",
+      "physical_lines": 272,
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "1588ec6d68004796f19cb7497b3ef38f1345d3f740a8edefbdd03124926636be",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 16298,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 326
+      },
+      "path": "src/scf/cuda/direct_force_order2.cuh",
+      "physical_lines": 353,
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "8ea2e267e3318befb7058bb175aa95336da837ad090730f537d5d24f1aa4fab1",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 10476,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 190
+      },
+      "path": "src/scf/cuda/direct_force_quartet.cuh",
+      "physical_lines": 213,
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "6549d29796b98c373b00bbe372230ccc32b4b002f1983aba839d944d6f1a2fe6",
+      "subsystem": "direct_integrals"
+    },
+    {
       "bytes": 10963,
       "code_lines": {
         "fallback": 0,
@@ -893,22 +1277,22 @@
       "subsystem": "direct_integrals"
     },
     {
-      "bytes": 8076,
+      "bytes": 8004,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 27,
-        "scientific": 98
+        "runtime": 28,
+        "scientific": 104
       },
-      "path": "src/scf/cuda/direct_jk_kernels.cuh",
-      "physical_lines": 151,
-      "reason": "Retained direct public-AO J/K and fixed-density derivative contractions; recurrence definitions retain their existing owner.",
+      "path": "src/scf/cuda/direct_jk_kernels.cu",
+      "physical_lines": 157,
+      "reason": "Retained direct public-AO J/K and fixed-density derivative contractions, now separately compiled against the same shared native contraction definitions.",
       "regions": [
         {
-          "code_lines": 27,
-          "first_line": 121,
-          "last_line": 151,
+          "code_lines": 28,
+          "first_line": 125,
+          "last_line": 157,
           "reason": "Host launch forwarding; no scientific arithmetic.",
           "role": "runtime",
           "start": "namespace cuda_execution {",
@@ -916,7 +1300,7 @@
         }
       ],
       "role": "scientific",
-      "sha256": "34178e5110cb2cc417f1751baaca87920ecb44d5e726d7d634ab0fd2de75cd78",
+      "sha256": "76d217c64fa74a6077f0aa98c5cf39884fdad2e16c3446b0b3617b83b9db6111",
       "subsystem": "scf_tensor"
     },
     {
@@ -951,6 +1335,448 @@
       "regions": [],
       "role": "runtime",
       "sha256": "8346534e250e26f40180e9080c34e1c2861bb4c5e8ea4e6ac24401cc3d1ecbe0",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 7057,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 118
+      },
+      "path": "src/scf/cuda/direct_native_cartesian.cuh",
+      "physical_lines": 138,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "089e994d83a5abdb59d0f805881514d058763ef550a34f01f35a8a8859e366a3",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 9621,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 166
+      },
+      "path": "src/scf/cuda/direct_native_contraction.cuh",
+      "physical_lines": 181,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "e7a22a076b761eba660e009862b4868f52bdb801b1467bb190d04913ca071b0c",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 7696,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 128
+      },
+      "path": "src/scf/cuda/direct_native_dsss_gradient.cuh",
+      "physical_lines": 143,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "0b052b18999ad895a74baa27223e736b3a9f6140d3ad323c32ea3b85ea614b15",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 7465,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 153
+      },
+      "path": "src/scf/cuda/direct_native_eri_order2.cuh",
+      "physical_lines": 182,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "fd79dd5b5ade265beca99030de3cb2100a248687dcab01f841e5ebd417cdb510",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 6928,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 118
+      },
+      "path": "src/scf/cuda/direct_native_eri_order3.cuh",
+      "physical_lines": 144,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "6c830f4d06c223bee5728e13c051c0aa67f5e49807b240af10277502d775bcee",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 13953,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 251
+      },
+      "path": "src/scf/cuda/direct_native_eri_order4.cuh",
+      "physical_lines": 295,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "2bf4c126e096d0337a4c1bc8ad54d925adf96dfc3bed9e504512b52816373854",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 951,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 21
+      },
+      "path": "src/scf/cuda/direct_native_gradient_types.cuh",
+      "physical_lines": 36,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "877d5e99e952c2f5c5a5c7f363ada275cbd4240392adadee3d9ff4e03f98c1d3",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 3793,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 75
+      },
+      "path": "src/scf/cuda/direct_native_high_order_coulomb.cuh",
+      "physical_lines": 91,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "c750270722ace11b603fcd59e7c81f9b624c2c60d8407ace9c42bdaa8ca1bdfc",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 13274,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 243
+      },
+      "path": "src/scf/cuda/direct_native_order01_gradient.cuh",
+      "physical_lines": 288,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "f25fc06f160e7e1214b0df009e32e3e95889405f17a636fa64814716a68722d0",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 9745,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 179
+      },
+      "path": "src/scf/cuda/direct_native_order2_gradient.cuh",
+      "physical_lines": 200,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "0ebf04326e51892287b9ee0e3b9e233c5101bb8269daace8692139ee7586a046",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 14011,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 225
+      },
+      "path": "src/scf/cuda/direct_native_order2_shell.cuh",
+      "physical_lines": 250,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "f19d058a7e7f79fc1eef2950a594df58987be6d5ef87ac08586a4b5585b19b55",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 10810,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 196
+      },
+      "path": "src/scf/cuda/direct_native_order3_gradient.cuh",
+      "physical_lines": 216,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "407f1b0243fc1222f5dc16cd299efb50e7c58618f83ca3fef2a32701fbd5c61d",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 21991,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 414
+      },
+      "path": "src/scf/cuda/direct_native_order456_gradient.cuh",
+      "physical_lines": 438,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "1eb67ff734adbf277262ae151bd92f5c9beb61412af1ae591921748bcc47ff3a",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 7713,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 139
+      },
+      "path": "src/scf/cuda/direct_native_pair_high_order_gradient.cuh",
+      "physical_lines": 175,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "6c9dec9bc6125f3e495786be006bc79bd19f33990fba440b7bba57f3325925dd",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 3966,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 67
+      },
+      "path": "src/scf/cuda/direct_native_pair_order2.cuh",
+      "physical_lines": 97,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "f866f85d0a4ba565115b4d66bc00ddb48704a875dcb91b365a51cae277a4087b",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 4165,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 83
+      },
+      "path": "src/scf/cuda/direct_native_pair_order2_gradient.cuh",
+      "physical_lines": 104,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "7019a8ab7d3176a47c2f9af10b52de56d68d38ac930b720f1c7a10a7bfac5db0",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 6328,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 118
+      },
+      "path": "src/scf/cuda/direct_native_pair_order3.cuh",
+      "physical_lines": 146,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "438067cedf40db48b3ba1a1e9da27d23144938c66225162040a0acfc18527aea",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 6320,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 129
+      },
+      "path": "src/scf/cuda/direct_native_pair_order3_gradient.cuh",
+      "physical_lines": 153,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "6ccb867032bdca53984f776c8c3c9bae1e922914da563b787303924b070e453e",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 9339,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 153
+      },
+      "path": "src/scf/cuda/direct_native_ppss_gradient.cuh",
+      "physical_lines": 169,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "48463412ae4869147dc9ca7667bdcdbb56add104624069052490eda28b3994a5",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 9283,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 151
+      },
+      "path": "src/scf/cuda/direct_native_psps_gradient.cuh",
+      "physical_lines": 176,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "6ab33838229ac6618dc4c8f720845daf2a83bb83db3a601989569374070683af",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 13135,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 207
+      },
+      "path": "src/scf/cuda/direct_native_psss.cuh",
+      "physical_lines": 246,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "b66d0b52094f25bdb0d6c07dbab87487bdf7cfc63c993f44b0c27dae43e20133",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 5002,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 78
+      },
+      "path": "src/scf/cuda/direct_native_shell_class.cuh",
+      "physical_lines": 94,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "95ee0bdc582136fd8f720a29d725a3cc14a2087259a8367461c68b2d3ad3be67",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 3407,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 67
+      },
+      "path": "src/scf/cuda/direct_native_shell_pair_hermite.cuh",
+      "physical_lines": 81,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "89ebbc871106f6fab37691947a4e517136cac1792f3a92b25de943c3bef9d621",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 16311,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 292
+      },
+      "path": "src/scf/cuda/direct_native_source_contraction.cuh",
+      "physical_lines": 324,
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "efd35a0f574a0a9f15e9509436f92129f58bc76df9a83477d5a78288f9fab9f6",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 9081,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 164
+      },
+      "path": "src/scf/cuda/direct_packed_fock_kernels.cu",
+      "physical_lines": 178,
+      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "8996ea9b13596594f7d71e25690f8ec8997de9fcb3533eedc550c103787d9ea3",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 1220,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 19,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/direct_packed_fock_kernels.hpp",
+      "physical_lines": 28,
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "2679e3d17b2216384efe0c38d210a3ff67e343bbf318594653c49c468c52cbfb",
       "subsystem": "runtime"
     },
     {
@@ -1107,6 +1933,40 @@
       "subsystem": "direct_integrals"
     },
     {
+      "bytes": 13912,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 236
+      },
+      "path": "src/scf/cuda/direct_reference_force.cu",
+      "physical_lines": 255,
+      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "441c573f2b64756fb3113bc2994c045734224b510eff5dcebd69119714e20bee",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 1954,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 26,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/direct_reference_force.hpp",
+      "physical_lines": 39,
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "86864f2b919488f4bd9c8476765b0fff16c23746814acdd3370e125b94056aea",
+      "subsystem": "runtime"
+    },
+    {
       "bytes": 9772,
       "code_lines": {
         "fallback": 0,
@@ -1139,6 +1999,50 @@
       "role": "runtime",
       "sha256": "f382293b0c058253030deb24eb3f07934643d69cbb9d3e1aa921fc2581312ae2",
       "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 6298,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 9,
+        "scientific": 90
+      },
+      "path": "src/scf/cuda/direct_schwarz_kernels.cu",
+      "physical_lines": 128,
+      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+      "regions": [
+        {
+          "code_lines": 9,
+          "first_line": 44,
+          "last_line": 63,
+          "reason": "Generic atomic maximum helper, retaining its original runtime classification.",
+          "role": "runtime",
+          "start": "__device__ void atomic_max_double",
+          "stop": "__global__ void build_schwarz_and_shell_pair_bounds_packed_kernel"
+        }
+      ],
+      "role": "scientific",
+      "sha256": "7828470ba1b6ee8db555819f8ce9158379ca9c13a55369bbc3789aa5df37f7a6",
+      "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 951,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 15,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/direct_schwarz_kernels.hpp",
+      "physical_lines": 24,
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "c988730ad10f8da435a9df9121cd41b3e4119065364adfbd3932684f9a26c163",
+      "subsystem": "runtime"
     },
     {
       "bytes": 5233,
@@ -1301,6 +2205,23 @@
       "regions": [],
       "role": "runtime",
       "sha256": "4ed275be10ac532685b61d1103c59bda3b26d0499424bdb07acf81bcc5696a95",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 574,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 14,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/eri_tensor_index.cuh",
+      "physical_lines": 22,
+      "reason": "Generic tensor indexing or symmetry permutation/duplicate handling, preserving its original runtime classification.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "07bb09e3f0624ee44170d687f8c3b8c75838df102136c27404a8833c823a7ab2",
       "subsystem": "runtime"
     },
     {
@@ -1678,20 +2599,20 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 5933,
+      "bytes": 6007,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 135,
+        "runtime": 139,
         "scientific": 0
       },
       "path": "src/scf/cuda/reference_export.cuh",
-      "physical_lines": 146,
+      "physical_lines": 150,
       "reason": "Bounded CUDA-to-host physical-reference staging and numeric-capacity accounting; no integral or method equations.",
       "regions": [],
       "role": "runtime",
-      "sha256": "f1339462eb2199bef38483223f41e604a6b3675e51761dc1677a7207b30cf7ac",
+      "sha256": "97ef2d2415c0b3c0bd0c90ba668242346ce11ba356344b11ec5b97ec2775f7cb",
       "subsystem": "runtime"
     },
     {
@@ -1945,21 +2866,38 @@
       "subsystem": "scf_tensor"
     },
     {
-      "bytes": 5998,
+      "bytes": 7001,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 100
+        "scientific": 119
       },
-      "path": "src/scf/cuda/weighted_eri.cuh",
-      "physical_lines": 114,
-      "reason": "Weighted reference/candidate contractions with explicit retained low-order exception selection.",
+      "path": "src/scf/cuda/weighted_eri_kernels.cu",
+      "physical_lines": 134,
+      "reason": "Weighted reference/candidate contractions with explicit retained low-order exception selection. Separately compiled against unchanged Cartesian/AD primitives; no scientific path is retired.",
       "regions": [],
       "role": "scientific",
-      "sha256": "d391200ee45bf5f37a68b70c6024e7b3faa903642809ee59c4683cea4abe038d",
+      "sha256": "a6ec7e77d2b0bdcfb35850689651d507b063398021213dba8ed536068abd77c3",
       "subsystem": "direct_integrals"
+    },
+    {
+      "bytes": 1074,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 15,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/weighted_eri_kernels.hpp",
+      "physical_lines": 24,
+      "reason": "Borrowed weighted-primitive launch ABI; public weight semantics and output layout are unchanged.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "8ee8db83629e2e65fce8b44feba5ab56ba41f6253dccf8e5d7d6616c36569bdd",
+      "subsystem": "runtime"
     },
     {
       "bytes": 19897,
@@ -2006,96 +2944,6 @@
       "subsystem": "scf_tensor"
     },
     {
-      "bytes": 615308,
-      "code_lines": {
-        "fallback": 0,
-        "oracle": 0,
-        "performance_exception": 0,
-        "runtime": 5022,
-        "scientific": 5374
-      },
-      "path": "src/scf/cuda_rhf.cu",
-      "physical_lines": 11457,
-      "reason": "Remaining device recurrences, physical screening bounds and method contractions are conservatively scientific; explicit regions separate generic runtime.",
-      "regions": [
-        {
-          "code_lines": 119,
-          "first_line": 1,
-          "last_line": 144,
-          "reason": "Includes, host policy imports and generic ERI tensor indexing; scalar/AD and geometry now have narrow shared owners.",
-          "role": "runtime",
-          "start": "#include <cublas_v2.h>",
-          "stop": "__device__ Scalar primitive_eri("
-        },
-        {
-          "code_lines": 9,
-          "first_line": 4059,
-          "last_line": 4078,
-          "reason": "Generic atomic maximum implementation.",
-          "role": "runtime",
-          "start": "__device__ void atomic_max_double",
-          "stop": "__global__ void build_schwarz_and_shell_pair_bounds_packed_kernel"
-        },
-        {
-          "code_lines": 64,
-          "first_line": 4323,
-          "last_line": 4390,
-          "reason": "Generic tuple permutations and duplicate suppression.",
-          "role": "runtime",
-          "start": "__device__ void eri_symmetry_permutation",
-          "stop": "__device__ __forceinline__ void accumulate_direct_fock_integral"
-        },
-        {
-          "code_lines": 51,
-          "first_line": 4130,
-          "last_line": 4181,
-          "reason": "Host sequencing of resident-bra grouping, scans and materialization; device kernels have separate owners.",
-          "role": "runtime",
-          "start": "cudaError_t prepare_ppps_resident_tasks(",
-          "stop": "__global__ void build_fock_direct_packed_kernel"
-        },
-        {
-          "code_lines": 18,
-          "first_line": 4620,
-          "last_line": 4639,
-          "reason": "Component-index mapping.",
-          "role": "runtime",
-          "start": "__device__ __forceinline__ unsigned order2_component_index",
-          "stop": "__device__ __noinline__ void contract_fock_direct_order2_task"
-        },
-        {
-          "code_lines": 104,
-          "first_line": 4768,
-          "last_line": 4884,
-          "reason": "Queue/launch wrappers around separately owned scientific contractions.",
-          "role": "runtime",
-          "start": "__global__ void build_fock_direct_quartet_kernel",
-          "stop": "__global__ void two_electron_force_kernel"
-        },
-        {
-          "code_lines": 164,
-          "first_line": 6370,
-          "last_line": 6569,
-          "reason": "Persistent force task wrappers; primitive/equation contractions are separate above.",
-          "role": "runtime",
-          "start": "__global__ void two_electron_force_quartet_kernel",
-          "stop": "cudaError_t prepare_generated_shell_tasks("
-        },
-        {
-          "code_lines": 4493,
-          "first_line": 6570,
-          "last_line": 11457,
-          "reason": "Host resource planning, library/state/graph execution and ABI dispatch; numerical device equations are classified above.",
-          "role": "runtime",
-          "start": "cudaError_t prepare_generated_shell_tasks(",
-          "stop": null
-        }
-      ],
-      "role": "scientific",
-      "sha256": "65fc6c8812b17b962b324bb527d6e04c7f11ac218437920cdec12fe70be8eae0",
-      "subsystem": "direct_integrals"
-    },
-    {
       "bytes": 16764,
       "code_lines": {
         "fallback": 0,
@@ -2130,20 +2978,37 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 8435,
+      "bytes": 753,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 166,
+        "runtime": 12,
+        "scientific": 0
+      },
+      "path": "src/tensor/cuda_error.hpp",
+      "physical_lines": 21,
+      "reason": "Shared host CUDA error and typed allocation-failure boundary, extracted unchanged so ordinary C++ reference export does not import device kernels.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "f0f4d6ee90c4eb5ef7258547c578bffc540553c7d937d88be6efc05ca3f44795",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 7980,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 160,
         "scientific": 0
       },
       "path": "src/tensor/cuda_runtime.cuh",
-      "physical_lines": 199,
+      "physical_lines": 190,
       "reason": "Shared arena, streams/events, cuBLAS workspace and error/metrics handling.",
       "regions": [],
       "role": "runtime",
-      "sha256": "ca2fee35b4fcb052f8f02ef12c915ecb9eaa4ab1791515a1f78d0ea1fdc70c91",
+      "sha256": "ed9bf66b47522441777f910f774d8f2718a74e086aea1e9215c7d5e5bf1dfbbe",
       "subsystem": "runtime"
     }
   ],
@@ -2272,8 +3137,8 @@
     "fallback": 0,
     "oracle": 0,
     "performance_exception": 156,
-    "runtime": 12729,
-    "scientific": 8807
+    "runtime": 8615,
+    "scientific": 9656
   },
   "migration_ledger": {
     "ao_grid": {
@@ -2327,7 +3192,7 @@
         "benchmarks/results/weighted-eri-144/README.md"
       ],
       "generated_capability": "IntegralIR values/first derivatives, weighted ERI and second-order providers through f",
-      "missing_capability": "Class/consumer-specific lowering and complete endpoint promotion remain necessary. The archived 72-run weighted-ERI comparison has ratios crossing one, so psss remains a measured production exception. Unpromoted registry classes retain their bounded fallback; generated source existence alone does not authorize class retirement.",
+      "missing_capability": "Class/consumer-specific lowering and complete endpoint promotion remain necessary. The archived 72-run weighted-ERI comparison has ratios crossing one, so psss remains a measured production exception. Unpromoted registry classes retain their bounded fallback; generated source existence alone does not authorize class retirement. Native numerical families and fused consumers now have separate bounded owners. The remaining HF driver compiles as C++ and is outside the CUDA-only census; neither this structural conversion nor the source-count reduction retires formulas.",
       "owner": "direct_integrals",
       "retirement_condition": "remove each old scientific class when numerical/resource/full endpoint gates pass and no independent role remains",
       "status": "partial"
@@ -2373,7 +3238,8 @@
     "runtime": {
       "current_default": "native shared allocation, stream, graph, ABI and library adapters",
       "evidence": [
-        "docs/compiler_architecture.md"
+        "docs/compiler_architecture.md",
+        "docs/scf_module_boundaries.md"
       ],
       "generated_capability": "not applicable: generic runtime infrastructure",
       "missing_capability": "none; infrastructure remains native",
@@ -2432,8 +3298,8 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 6639,
-      "scientific": 6247
+      "runtime": 1644,
+      "scientific": 7090
     },
     "low_rank": {
       "fallback": 0,
@@ -2460,15 +3326,15 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 3270,
+      "runtime": 4150,
       "scientific": 5
     },
     "scf_tensor": {
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 1911,
-      "scientific": 412
+      "runtime": 1912,
+      "scientific": 418
     },
     "xc": {
       "fallback": 0,

@@ -15,6 +15,8 @@ option(VIBEQC_ENABLE_AOT_SHELLS
 option(VIBEQC_BUILD_TESTS "Build native tests" ON)
 option(VIBEQC_CUDA_SEPARABLE_COMPILATION
        "Enable CUDA relocatable device code and the device-link stage" OFF)
+option(VIBEQC_CUDA_DIRECT_DEVICE_LINK
+       "Share native direct numerical code through a bounded NVIDIA device link" ON)
 option(VIBEQC_CUDA_FAST_COMPILE
        "Use compiler-oriented CUDA options (never for release measurements)" OFF)
 set(VIBEQC_COMPILER_CACHE "auto" CACHE STRING
@@ -26,7 +28,7 @@ set(VIBEQC_CUDA_COMPILE_ARCHITECTURES "" CACHE STRING
 set(VIBEQC_CUDA_COMPILE_JOBS "2" CACHE STRING
     "Maximum concurrent CUDA compiler jobs in the Ninja job pool")
 set(VIBEQC_CUDA_SPLIT_COMPILE_THREADS "1" CACHE STRING
-    "NVCC split-compile threads for cuda_rhf.cu; 1 preserves production code generation")
+    "NVCC split-compile threads for native direct kernels; 1 preserves production code generation")
 set(VIBEQC_AOT_PROFILE "auto" CACHE STRING
     "AOT profile for every target: auto, portable, sm_XX, or a named profile")
 set(VIBEQC_AOT_PROFILES "" CACHE STRING
@@ -353,7 +355,7 @@ if(VIBEQC_ENABLE_CUDA)
     src/scf/cuda/df_scf_library.cpp
     src/scf/cuda/df_uhf_scf.cpp
     src/scf/cuda_eigensolver_probe.cu
-    src/scf/cuda_rhf.cu
+    src/scf/cuda_rhf.cpp
     src/scf/cuda/one_electron_reference.cu
     src/scf/cuda/one_electron_force_reference.cu
     src/scf/cuda/nuclear_kernels.cu
@@ -393,6 +395,68 @@ if(VIBEQC_ENABLE_CUDA)
     src/scf/cuda/eigensolver_kernels.cu
     src/scf/cuda_hf_entry.cpp
   )
+  # These consumers share substantial retained numerical functions. Resolve
+  # only this archive's device symbols so NVCC can coalesce those definitions
+  # without coupling generated kernels or unrelated SCF/DF owners to its link.
+  set(VIBEQC_DIRECT_NATIVE_SOURCES
+    src/scf/cuda/direct_jk_kernels.cu
+    src/scf/cuda/weighted_eri_kernels.cu
+    src/scf/cuda/direct_cached_tensor_kernels.cu
+    src/scf/cuda/direct_schwarz_kernels.cu
+    src/scf/cuda/direct_packed_fock_kernels.cu
+    src/scf/cuda/direct_angular_fock.cu
+    src/scf/cuda/direct_reference_force.cu
+    src/scf/cuda/direct_bounded_dddd.cu
+    src/scf/cuda/direct_bounded_exact_force.cu
+    src/scf/cuda/direct_bounded_fallback.cu
+  )
+  # The resident angular-force kernels have launch-bound register ceilings.
+  # NVCC 12.9 needs whole-program compilation to propagate those ceilings into
+  # retained callees, including for PTX JIT. Keep this owner outside device
+  # linking even when the caller enables whole-library separable compilation.
+  add_library(vibeqc_direct_angular_force OBJECT
+    src/scf/cuda/direct_angular_force.cu "${VIBEQC_WEIGHTED_ERI_HEADER}")
+  target_include_directories(vibeqc_direct_angular_force PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "${CMAKE_CURRENT_BINARY_DIR}/generated")
+  target_compile_definitions(vibeqc_direct_angular_force PRIVATE
+    VIBEQC_BUILDING_LIBRARY=1 VIBEQC_HAS_CUDA=1)
+  target_link_libraries(vibeqc_direct_angular_force PRIVATE CUDA::cudart)
+  set_target_properties(vibeqc_direct_angular_force PROPERTIES
+    CUDA_SEPARABLE_COMPILATION OFF
+    CUDA_ARCHITECTURES "${_vibeqc_cuda_compile_architectures}"
+    JOB_POOL_COMPILE vibeqc_cuda_compile)
+  if(VIBEQC_CUDA_FAST_COMPILE)
+    target_compile_options(vibeqc_direct_angular_force PRIVATE --Ofast-compile=max)
+  endif()
+  target_sources(vibeqc PRIVATE $<TARGET_OBJECTS:vibeqc_direct_angular_force>)
+  # The CuMetal toolkit shim on Apple hosts does not provide NVIDIA's device
+  # linker. Keep independently compiled launch owners for that backend and for
+  # other CUDA compilers; callers can also select this path explicitly.
+  if(VIBEQC_CUDA_DIRECT_DEVICE_LINK AND
+     CMAKE_CUDA_COMPILER_ID STREQUAL "NVIDIA" AND NOT APPLE)
+    add_library(vibeqc_direct_native STATIC ${VIBEQC_DIRECT_NATIVE_SOURCES}
+                "${VIBEQC_WEIGHTED_ERI_HEADER}")
+    target_include_directories(vibeqc_direct_native PRIVATE
+      "${CMAKE_CURRENT_SOURCE_DIR}/include"
+      "${CMAKE_CURRENT_SOURCE_DIR}/src"
+      "${CMAKE_CURRENT_BINARY_DIR}/generated")
+    target_compile_definitions(vibeqc_direct_native PRIVATE
+      VIBEQC_BUILDING_LIBRARY=1 VIBEQC_HAS_CUDA=1)
+    target_link_libraries(vibeqc_direct_native PRIVATE CUDA::cudart)
+    set_target_properties(vibeqc_direct_native PROPERTIES
+      CUDA_SEPARABLE_COMPILATION ON
+      CUDA_RESOLVE_DEVICE_SYMBOLS ON
+      CUDA_ARCHITECTURES "${_vibeqc_cuda_compile_architectures}"
+      JOB_POOL_COMPILE vibeqc_cuda_compile)
+    if(VIBEQC_CUDA_FAST_COMPILE)
+      target_compile_options(vibeqc_direct_native PRIVATE --Ofast-compile=max)
+    endif()
+    target_link_libraries(vibeqc PRIVATE vibeqc_direct_native)
+  else()
+    target_sources(vibeqc PRIVATE ${VIBEQC_DIRECT_NATIVE_SOURCES})
+  endif()
   set_property(TARGET vibeqc PROPERTY JOB_POOL_COMPILE vibeqc_cuda_compile)
   if(VIBEQC_CUDA_FAST_COMPILE)
     # Explicitly opt-in: this mode is for iteration speed and must not be used
@@ -401,10 +465,11 @@ if(VIBEQC_ENABLE_CUDA)
       $<$<COMPILE_LANGUAGE:CUDA>:--Ofast-compile=max>)
   endif()
   if(NOT VIBEQC_CUDA_SPLIT_COMPILE_THREADS STREQUAL "1")
-    # Split compilation is useful for syntax/resource experiments on the
-    # monolithic fallback TU, but NVCC may make different optimization choices.
+    # Split compilation is useful for syntax/resource experiments on native
+    # direct kernels, but NVCC may make different optimization choices.
     # Keep it opt-in so production benchmark binaries remain comparable.
-    set_property(SOURCE src/scf/cuda_rhf.cu APPEND PROPERTY COMPILE_OPTIONS
+    set_property(SOURCE ${VIBEQC_DIRECT_NATIVE_SOURCES} src/scf/cuda/direct_angular_force.cu
+                 APPEND PROPERTY COMPILE_OPTIONS
                  "--split-compile=${VIBEQC_CUDA_SPLIT_COMPILE_THREADS}")
   endif()
   if(VIBEQC_ENABLE_AOT_SHELLS)

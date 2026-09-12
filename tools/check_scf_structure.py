@@ -235,8 +235,8 @@ CUDA_ALLOWED["cuda_one_electron_export"] = tuple(
     "runtime/",
 )
 CUDA_MODULES["cuda_provider_kernel_interfaces"] = (
-    "direct_jk_kernels",
-    "one_electron_export_kernels",
+    "direct_jk_kernels.hpp",
+    "one_electron_export_kernels.hpp",
 )
 CUDA_ALLOWED["cuda_provider_kernel_interfaces"] = ("scf/cuda/packed_basis.",)
 # Retained numerical primitives have no queue policy or host plan dependency.
@@ -285,6 +285,187 @@ CUDA_ALLOWED["cuda_direct_pair_cache"] = (
     "scf/cuda/gaussian_geometry.",
     "scf/cuda/packed_basis.",
 )
+# Retained direct numerics and fused consumers have separate dependency/rebuild
+# boundaries. Exact .hpp entries keep host launch contracts independent of the
+# device implementations that share their basename.
+CUDA_MODULES["cuda_direct_numerics"] = (
+    "direct_native_cartesian",
+    "direct_native_contraction",
+    "direct_native_dsss_gradient",
+    "direct_native_eri_order2",
+    "direct_native_eri_order3",
+    "direct_native_eri_order4",
+    "direct_native_gradient_types",
+    "direct_native_high_order_coulomb",
+    "direct_native_order01_gradient",
+    "direct_native_order2_gradient",
+    "direct_native_order2_shell",
+    "direct_native_order3_gradient",
+    "direct_native_order456_gradient",
+    "direct_native_pair_high_order_gradient",
+    "direct_native_pair_order2",
+    "direct_native_pair_order2_gradient",
+    "direct_native_pair_order3",
+    "direct_native_pair_order3_gradient",
+    "direct_native_ppss_gradient",
+    "direct_native_psps_gradient",
+    "direct_native_psss",
+    "direct_native_shell_class",
+    "direct_native_shell_pair_hermite",
+    "direct_native_source_contraction",
+)
+CUDA_ALLOWED["cuda_direct_numerics"] = (
+    tuple("scf/cuda/" + stem + ".cuh" for stem in CUDA_MODULES["cuda_direct_numerics"])
+    + tuple("scf/cuda/" + stem + "." for stem in CUDA_MODULES["cuda_integral_numerics"])
+    + ("scf/cuda/packed_basis.hpp", "scf/cuda/direct_queue_index.cuh")
+)
+CUDA_MODULES["cuda_direct_contractions"] = (
+    "eri_tensor_index",
+    "direct_eri_symmetry",
+    "direct_fock_accumulation",
+    "direct_fock_quartet",
+    "direct_fock_psss",
+    "direct_fock_order2",
+    "direct_force_density",
+    "direct_force_low_order",
+    "direct_force_order2",
+    "direct_force_quartet",
+    "direct_bounded_contraction",
+)
+CUDA_ALLOWED["cuda_direct_contractions"] = (
+    CUDA_ALLOWED["cuda_direct_numerics"]
+    + tuple(
+        "scf/cuda/" + stem + ".cuh" for stem in CUDA_MODULES["cuda_direct_contractions"]
+    )
+    + (
+        "scf/cuda/direct_constants.hpp",
+        "scf/cuda/direct_metadata.hpp",
+        "scf/cuda/packed_basis.hpp",
+        "scf/cuda/direct_queue_index.cuh",
+        "scf/cuda/direct_screening.cuh",
+        "scf/cuda/direct_task_encoding.cuh",
+        "scf/cuda/direct_page_screening.cuh",
+        "scf/cuda/direct_queue_profile.cuh",
+        "scf/cuda/matrix_index.cuh",
+        "scf/cuda/device_timer.cuh",
+    )
+)
+CUDA_MODULES["cuda_direct_consumers"] = (
+    "direct_cached_tensor_kernels.cu",
+    "direct_schwarz_kernels.cu",
+    "direct_packed_fock_kernels.cu",
+    "direct_angular_fock.cu",
+    "direct_reference_force.cu",
+    "direct_bounded_dddd.cu",
+    "direct_bounded_exact_force.cu",
+    "direct_bounded_fallback.cu",
+    "direct_angular_force.cu",
+    "direct_jk_kernels.cu",
+    "weighted_eri_kernels.cu",
+)
+CUDA_ALLOWED["cuda_direct_consumers"] = (
+    CUDA_ALLOWED["cuda_direct_contractions"]
+    + tuple(
+        "scf/cuda/" + Path(name).stem + ".hpp"
+        for name in CUDA_MODULES["cuda_direct_consumers"]
+    )
+    + ("scf/cuda_weighted_eri.hpp",)
+)
+CUDA_MODULES["cuda_direct_kernel_interfaces"] = (
+    "direct_cached_tensor_kernels.hpp",
+    "direct_schwarz_kernels.hpp",
+    "direct_packed_fock_kernels.hpp",
+    "direct_angular_fock.hpp",
+    "direct_reference_force.hpp",
+    "direct_bounded_dddd.hpp",
+    "direct_bounded_exact_force.hpp",
+    "direct_bounded_fallback.hpp",
+    "direct_angular_force.hpp",
+    "weighted_eri_kernels.hpp",
+)
+CUDA_ALLOWED["cuda_direct_kernel_interfaces"] = (
+    "scf/cuda/direct_metadata.hpp",
+    "scf/cuda/packed_basis.hpp",
+    "scf/cuda_weighted_eri.hpp",
+)
+# The legacy host driver coordinates policy and lifetime through explicit
+# interfaces. Keep recurrence and kernel implementation includes out of C++.
+CUDA_MODULES["cuda_hf_driver"] = ("scf/cuda_rhf.cpp",)
+CUDA_ALLOWED["cuda_hf_driver"] = (
+    "molecule/basis.hpp",
+    "runtime/resource_cuda.cuh",
+    "runtime/resource_usage.hpp",
+    "scf/aot_shell_registry.hpp",
+    "scf/cuda/arena.hpp",
+    "scf/cuda/basis_transform_kernels.hpp",
+    "scf/cuda/checked_layout.hpp",
+    "scf/cuda/direct_bounded_pages.hpp",
+    "scf/cuda/direct_bounded_tasks.hpp",
+    "scf/cuda/direct_constants.hpp",
+    "scf/cuda/direct_angular_fock.hpp",
+    "scf/cuda/direct_angular_force.hpp",
+    "scf/cuda/direct_bounded_dddd.hpp",
+    "scf/cuda/direct_bounded_exact_force.hpp",
+    "scf/cuda/direct_bounded_fallback.hpp",
+    "scf/cuda/direct_cached_tensor_kernels.hpp",
+    "scf/cuda/direct_packed_fock_kernels.hpp",
+    "scf/cuda/direct_reference_force.hpp",
+    "scf/cuda/direct_schwarz_kernels.hpp",
+    "scf/cuda/direct_density_bounds.hpp",
+    "scf/cuda/direct_generated_tasks.hpp",
+    "scf/cuda/direct_jk_kernels.hpp",
+    "scf/cuda/weighted_eri_kernels.hpp",
+    "scf/cuda/direct_metadata.hpp",
+    "scf/cuda/direct_pair_cache.hpp",
+    "scf/cuda/direct_queue_diagnostics.hpp",
+    "scf/cuda/direct_queue_scan.hpp",
+    "scf/cuda/direct_resident_tasks.hpp",
+    "scf/cuda/direct_tile_compaction.hpp",
+    "scf/cuda/direct_tile_validation.hpp",
+    "scf/cuda/eigensolver.hpp",
+    "scf/cuda/matrix_library.hpp",
+    "scf/cuda/metadata_upload.hpp",
+    "scf/cuda/nuclear_kernels.hpp",
+    "scf/cuda/one_electron_derivatives.cuh",
+    "scf/cuda/one_electron_export_kernels.hpp",
+    "scf/cuda/one_electron_force_reference.hpp",
+    "scf/cuda/one_electron_force_workspace.hpp",
+    "scf/cuda/one_electron_values.cuh",
+    "scf/cuda/one_electron_view.hpp",
+    "scf/cuda/packed_basis.hpp",
+    "scf/cuda/queue_plan.hpp",
+    "scf/cuda/resources.hpp",
+    "scf/cuda/rhf_policy.hpp",
+    "scf/cuda/runtime_support.hpp",
+    "scf/cuda/scf_convergence_kernels.hpp",
+    "scf/cuda/scf_density_kernels.hpp",
+    "scf/cuda/scf_diis_kernels.hpp",
+    "scf/cuda/scf_matrix_kernels.hpp",
+    "scf/cuda/scf_state_kernels.hpp",
+    "scf/cuda/topology.hpp",
+    "scf/cuda_density_fitting.hpp",
+    "scf/cuda_density_fitting_integrals.hpp",
+    "scf/cuda_direct_jk.hpp",
+    "scf/cuda_eigensolver_policy.hpp",
+    "scf/cuda_weighted_eri.hpp",
+    "scf/direct_task_layout.hpp",
+    "scf/generated_shell_task.hpp",
+    "scf/rhf.hpp",
+)
+# Upstream physical-reference export is a host bridge for post-HF clients.
+CUDA_ALLOWED["cuda_hf_driver"] += (
+    "posthf/capacity.hpp",
+    "runtime/allocation_measurement.hpp",
+    "scf/cuda/reference_export.cuh",
+    "scf/mean_field.hpp",
+    "tensor/metrics.hpp",
+)
+CUDA_MODULES["cuda_reference_export"] = ("reference_export",)
+CUDA_ALLOWED["cuda_reference_export"] = (
+    "posthf/capacity.hpp",
+    "scf/mean_field.hpp",
+    "tensor/cuda_error.hpp",
+)
 SUFFIXES = {".cpp", ".hpp", ".cu", ".cuh"}
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -303,11 +484,18 @@ def audit_scf_structure(root: Path = ROOT) -> dict:
         for owner, allowed in ALLOWED.items()
     ]
     for owner, stems in CUDA_MODULES.items():
-        paths = [
-            source / "scf/cuda" / (stem + suffix)
-            for stem in stems
-            for suffix in sorted(SUFFIXES)
-        ]
+        paths = []
+        for stem in stems:
+            # A full source-relative path selects a legacy root owner; an
+            # explicit suffix separates implementation and interface rules.
+            base = (
+                source / stem if stem.startswith("scf/") else source / "scf/cuda" / stem
+            )
+            paths.extend(
+                [base]
+                if base.suffix in SUFFIXES
+                else [Path(str(base) + suffix) for suffix in sorted(SUFFIXES)]
+            )
         groups.append((owner, CUDA_ALLOWED[owner], paths))
     for owner, allowed, paths in groups:
         for path in paths:

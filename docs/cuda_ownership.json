@@ -217,8 +217,8 @@
       "subsystem": "runtime"
     },
     {
-      "path": "src/scf/cuda/weighted_eri.cuh",
-      "reason": "Weighted reference/candidate contractions with explicit retained low-order exception selection.",
+      "path": "src/scf/cuda/weighted_eri_kernels.cu",
+      "reason": "Weighted reference/candidate contractions with explicit retained low-order exception selection. Separately compiled against unchanged Cartesian/AD primitives; no scientific path is retired.",
       "regions": [],
       "role": "scientific",
       "subsystem": "direct_integrals"
@@ -243,62 +243,6 @@
       ],
       "role": "runtime",
       "subsystem": "scf_tensor"
-    },
-    {
-      "path": "src/scf/cuda_rhf.cu",
-      "reason": "Remaining device recurrences, physical screening bounds and method contractions are conservatively scientific; explicit regions separate generic runtime.",
-      "regions": [
-        {
-          "reason": "Includes, host policy imports and generic ERI tensor indexing; scalar/AD and geometry now have narrow shared owners.",
-          "role": "runtime",
-          "start": "#include <cublas_v2.h>",
-          "stop": "__device__ Scalar primitive_eri("
-        },
-        {
-          "reason": "Generic atomic maximum implementation.",
-          "role": "runtime",
-          "start": "__device__ void atomic_max_double",
-          "stop": "__global__ void build_schwarz_and_shell_pair_bounds_packed_kernel"
-        },
-        {
-          "reason": "Generic tuple permutations and duplicate suppression.",
-          "role": "runtime",
-          "start": "__device__ void eri_symmetry_permutation",
-          "stop": "__device__ __forceinline__ void accumulate_direct_fock_integral"
-        },
-        {
-          "reason": "Host sequencing of resident-bra grouping, scans and materialization; device kernels have separate owners.",
-          "role": "runtime",
-          "start": "cudaError_t prepare_ppps_resident_tasks(",
-          "stop": "__global__ void build_fock_direct_packed_kernel"
-        },
-        {
-          "reason": "Component-index mapping.",
-          "role": "runtime",
-          "start": "__device__ __forceinline__ unsigned order2_component_index",
-          "stop": "__device__ __noinline__ void contract_fock_direct_order2_task"
-        },
-        {
-          "reason": "Queue/launch wrappers around separately owned scientific contractions.",
-          "role": "runtime",
-          "start": "__global__ void build_fock_direct_quartet_kernel",
-          "stop": "__global__ void two_electron_force_kernel"
-        },
-        {
-          "reason": "Persistent force task wrappers; primitive/equation contractions are separate above.",
-          "role": "runtime",
-          "start": "__global__ void two_electron_force_quartet_kernel",
-          "stop": "cudaError_t prepare_generated_shell_tasks("
-        },
-        {
-          "reason": "Host resource planning, library/state/graph execution and ABI dispatch; numerical device equations are classified above.",
-          "role": "runtime",
-          "start": "cudaError_t prepare_generated_shell_tasks(",
-          "stop": null
-        }
-      ],
-      "role": "scientific",
-      "subsystem": "direct_integrals"
     },
     {
       "path": "src/scf/direct_task_layout.hpp",
@@ -796,10 +740,10 @@
       "regions": []
     },
     {
-      "path": "src/scf/cuda/direct_jk_kernels.cuh",
+      "path": "src/scf/cuda/direct_jk_kernels.cu",
       "role": "scientific",
       "subsystem": "scf_tensor",
-      "reason": "Retained direct public-AO J/K and fixed-density derivative contractions; recurrence definitions retain their existing owner.",
+      "reason": "Retained direct public-AO J/K and fixed-density derivative contractions, now separately compiled against the same shared native contraction definitions.",
       "regions": [
         {
           "start": "namespace cuda_execution {",
@@ -948,6 +892,405 @@
       "regions": [],
       "role": "runtime",
       "subsystem": "runtime"
+    },
+    {
+      "path": "src/scf/cuda/direct_native_cartesian.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_contraction.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_dsss_gradient.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_eri_order2.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_eri_order3.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_eri_order4.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_gradient_types.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_high_order_coulomb.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_order01_gradient.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_order2_gradient.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_order2_shell.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_order3_gradient.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_order456_gradient.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_pair_high_order_gradient.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_pair_order2.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_pair_order2_gradient.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_pair_order3.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_pair_order3_gradient.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_ppss_gradient.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_psps_gradient.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_psss.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_shell_class.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_shell_pair_hermite.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_native_source_contraction.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/eri_tensor_index.cuh",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Generic tensor indexing or symmetry permutation/duplicate handling, preserving its original runtime classification.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_eri_symmetry.cuh",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Generic tensor indexing or symmetry permutation/duplicate handling, preserving its original runtime classification.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_fock_accumulation.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_fock_quartet.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_fock_psss.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_fock_order2.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": [
+        {
+          "start": "__device__ __forceinline__ unsigned order2_component_index",
+          "stop": "__device__ inline __noinline__ void contract_fock_direct_order2_task",
+          "role": "runtime",
+          "reason": "Unchanged component-index mapping, retaining the original runtime classification."
+        }
+      ]
+    },
+    {
+      "path": "src/scf/cuda/direct_force_density.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_force_low_order.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_force_order2.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_force_quartet.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_bounded_contraction.cuh",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_cached_tensor_kernels.cu",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_cached_tensor_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_schwarz_kernels.cu",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+      "regions": [
+        {
+          "start": "__device__ void atomic_max_double",
+          "stop": "__global__ void build_schwarz_and_shell_pair_bounds_packed_kernel",
+          "role": "runtime",
+          "reason": "Generic atomic maximum helper, retaining its original runtime classification."
+        }
+      ]
+    },
+    {
+      "path": "src/scf/cuda/direct_schwarz_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_packed_fock_kernels.cu",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_packed_fock_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_angular_fock.cu",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Existing angular queue consumers and recursive launch policy, previously classified as runtime around separately owned scientific contractions. Original template instantiations and launch bounds are retained.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_angular_fock.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_reference_force.cu",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_reference_force.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_bounded_dddd.cu",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_bounded_dddd.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_bounded_exact_force.cu",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_bounded_exact_force.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_bounded_fallback.cu",
+      "role": "scientific",
+      "subsystem": "direct_integrals",
+      "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_bounded_fallback.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_angular_force.cu",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Existing angular queue consumers and recursive launch policy, previously classified as runtime around separately owned scientific contractions. Original template instantiations and launch bounds are retained.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/direct_angular_force.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
+      "regions": []
+    },
+    {
+      "path": "src/scf/cuda/weighted_eri_kernels.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Borrowed weighted-primitive launch ABI; public weight semantics and output layout are unchanged.",
+      "regions": []
+    },
+    {
+      "path": "src/tensor/cuda_error.hpp",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Shared host CUDA error and typed allocation-failure boundary, extracted unchanged so ordinary C++ reference export does not import device kernels.",
+      "regions": []
     }
   ],
   "generated_families": [
@@ -1097,7 +1440,7 @@
         "benchmarks/results/weighted-eri-144/README.md"
       ],
       "generated_capability": "IntegralIR values/first derivatives, weighted ERI and second-order providers through f",
-      "missing_capability": "Class/consumer-specific lowering and complete endpoint promotion remain necessary. The archived 72-run weighted-ERI comparison has ratios crossing one, so psss remains a measured production exception. Unpromoted registry classes retain their bounded fallback; generated source existence alone does not authorize class retirement.",
+      "missing_capability": "Class/consumer-specific lowering and complete endpoint promotion remain necessary. The archived 72-run weighted-ERI comparison has ratios crossing one, so psss remains a measured production exception. Unpromoted registry classes retain their bounded fallback; generated source existence alone does not authorize class retirement. Native numerical families and fused consumers now have separate bounded owners. The remaining HF driver compiles as C++ and is outside the CUDA-only census; neither this structural conversion nor the source-count reduction retires formulas.",
       "owner": "direct_integrals",
       "retirement_condition": "remove each old scientific class when numerical/resource/full endpoint gates pass and no independent role remains",
       "status": "partial"
@@ -1143,7 +1486,8 @@
     "runtime": {
       "current_default": "native shared allocation, stream, graph, ABI and library adapters",
       "evidence": [
-        "docs/compiler_architecture.md"
+        "docs/compiler_architecture.md",
+        "docs/scf_module_boundaries.md"
       ],
       "generated_capability": "not applicable: generic runtime infrastructure",
       "missing_capability": "none; infrastructure remains native",

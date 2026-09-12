@@ -1,13 +1,17 @@
 #pragma once
 
 #include <array>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <memory>
+#include <stdexcept>
 #include <type_traits>
 #include <vector>
 
 #include "posthf/capacity.hpp"
 #include "scf/mean_field.hpp"
-#include "tensor/cuda_runtime.cuh"
+#include "tensor/cuda_error.hpp"
 
 namespace vibeqc::scf::reference_detail {
 inline std::size_t free_bytes(cudaStream_t stream) {
