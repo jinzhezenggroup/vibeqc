@@ -23,6 +23,7 @@ class DensityFittingResourceTile:
     stores_full_three_center: bool
     budget_bytes: int
     fixed_device_bytes: int
+    generated_source: bool = False
 
 
 def density_fitting_source_bytes(
@@ -51,7 +52,15 @@ def density_fitting_source_bytes(
 
 
 def density_fitting_tile_plan(
-    library, batch, nbf, naux, occupied, *, budget_bytes, fixed_device_bytes
+    library,
+    batch,
+    nbf,
+    naux,
+    occupied,
+    *,
+    budget_bytes,
+    fixed_device_bytes,
+    generated_source=False,
 ):
     """Compose a fixed reservation with the provider's own tiling decisions.
 
@@ -72,15 +81,29 @@ def density_fitting_tile_plan(
             raise ValueError(f"{name} exceeds this host's size_t ABI")
     if not all((batch, nbf, naux, occupied)):
         raise ValueError("DF planner dimensions must be positive")
-    query = getattr(library, "vibeqc_resource_df_tiles_v1", None)
+    if type(generated_source) is not bool:
+        raise TypeError("generated_source must be boolean")
+    # Residency must use the same source-specific setup accounting as native
+    # execution, rather than inferring the provider from reserved byte counts.
+    query = getattr(
+        library,
+        "vibeqc_resource_df_tiles_v2"
+        if generated_source
+        else "vibeqc_resource_df_tiles_v1",
+        None,
+    )
     if query is None:
         raise NotImplementedError("native library has no shape-only DF resource query")
-    query.argtypes = [ctypes.c_size_t] * 6 + [
-        ctypes.POINTER(ctypes.c_uint64),
-        ctypes.c_size_t,
-        ctypes.c_char_p,
-        ctypes.c_size_t,
-    ]
+    query.argtypes = (
+        [ctypes.c_size_t] * 6
+        + ([ctypes.c_uint] if generated_source else [])
+        + [
+            ctypes.POINTER(ctypes.c_uint64),
+            ctypes.c_size_t,
+            ctypes.c_char_p,
+            ctypes.c_size_t,
+        ]
+    )
     query.restype = ctypes.c_int
     values = (ctypes.c_uint64 * 6)()
     error = ctypes.create_string_buffer(2048)
@@ -91,6 +114,7 @@ def density_fitting_tile_plan(
         occupied,
         budget_bytes,
         fixed_device_bytes,
+        *([1] if generated_source else []),
         values,
         len(values),
         error,
@@ -98,5 +122,5 @@ def density_fitting_tile_plan(
     ):
         raise ValueError(error.value.decode())
     return DensityFittingResourceTile(
-        *values[:5], bool(values[5]), budget_bytes, fixed_device_bytes
+        *values[:5], bool(values[5]), budget_bytes, fixed_device_bytes, generated_source
     )

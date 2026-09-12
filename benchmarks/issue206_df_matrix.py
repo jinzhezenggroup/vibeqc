@@ -71,6 +71,7 @@ def manifest_payload(
     python: str,
     library: Path,
     output_dir: Path,
+    memory_budget_bytes: int = 0,
 ) -> dict[str, Any]:
     """Build a reviewable protocol record before any GPU work starts."""
 
@@ -90,6 +91,7 @@ def manifest_payload(
             "python": python,
             "library": str(library),
             "repeats_per_engine": repeats,
+            "density_fitting_memory_budget_bytes": memory_budget_bytes,
             "output_dir": str(output_dir),
             "benchmark": str(BENCHMARK),
         },
@@ -200,6 +202,8 @@ def run_matrix(
             str(payload["execution"]["repeats_per_engine"]),
             "--density-fitting",
             "cuda",
+            "--density-fitting-memory-budget-bytes",
+            str(payload["execution"].get("density_fitting_memory_budget_bytes", 0)),
             "--output",
             str(result_path),
         ]
@@ -249,6 +253,12 @@ def main() -> None:
     parser.add_argument("--run", action="store_true", help="execute cases in Slurm")
     parser.add_argument("--case", choices=sorted({item.name for item in MATRIX}))
     parser.add_argument("--repeats", type=int, default=5)
+    parser.add_argument(
+        "--memory-budget-bytes",
+        type=int,
+        default=0,
+        help="DF sub-budget; positive selects generated source execution",
+    )
     parser.add_argument("--python", default=sys.executable)
     parser.add_argument(
         "--library",
@@ -262,6 +272,8 @@ def main() -> None:
     args = parser.parse_args()
     if args.repeats < 1:
         parser.error("--repeats must be positive")
+    if args.memory_budget_bytes < 0:
+        parser.error("--memory-budget-bytes must be nonnegative")
 
     cases = _matrix(args.case)
     # Children run from ROOT; resolve caller-relative paths before changing cwd.
@@ -276,6 +288,7 @@ def main() -> None:
         python=args.python,
         library=library,
         output_dir=output_dir,
+        memory_budget_bytes=args.memory_budget_bytes,
     )
     _write(manifest_path, payload)
     if args.run:

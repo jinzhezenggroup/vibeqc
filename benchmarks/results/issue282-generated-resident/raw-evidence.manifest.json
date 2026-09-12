@@ -1,0 +1,204 @@
+{
+  "archive_sha256": "d595839631abb696affd1a45739d91dcb2c90f5afd6d77edba336bf228f458f2",
+  "benchmark_driver_commit": "dd95752",
+  "files": [
+    {
+      "bytes": 19447,
+      "path": "df-resident-unprofiled.json",
+      "sha256": "52a7c409777a5f7c82ba5c7ff3cfd2ba4734265931719a80e617a0c9a82c8c9e"
+    },
+    {
+      "bytes": 52481,
+      "path": "df-resident-96-components.json",
+      "sha256": "6556afe645ac237540f57a38f13a2ae2db84442f08b4be34036c3fcd5cb0b47a"
+    },
+    {
+      "bytes": 57216,
+      "path": "df-resident-192-components.json",
+      "sha256": "f75d0e8fe673695a341b0dc7e022119f409d8374c85f202e2811e18ac7c0af92"
+    },
+    {
+      "bytes": 614,
+      "path": "df-resident-native-gates.log",
+      "sha256": "946074c1278fd9ba97589395a31d7300e9b5342d4ea559122b9aae531650a912"
+    },
+    {
+      "bytes": 99,
+      "path": "df-resident-resource-gpu-v2.log",
+      "sha256": "50a7ff3de6f959adea70c438d212e218cfdbb6af1e63a3f4dfb679c344a4ba2d"
+    },
+    {
+      "bytes": 100,
+      "path": "df-resident-derivative-gates.log",
+      "sha256": "dbd1496b7cc014094050a197319e43fda68fb9f3bf05800e0c181a006f3be6f3"
+    },
+    {
+      "bytes": 99,
+      "path": "df-resident-host-gates.log",
+      "sha256": "68700273bb22ebba416b832fc18f7799fb1c9c91dbaf410961fe197354ca65fa"
+    },
+    {
+      "bytes": 249,
+      "path": "df-trace-generated-96.log",
+      "sha256": "0b32ce1402dc2438af90ef36e46df2e444b81e713b19f6486969bf830ea65019"
+    },
+    {
+      "bytes": 4679,
+      "path": "df-resident-96-components/water-tetramer-def2-svp-spherical-0-energy.jsonl",
+      "sha256": "3ba804d7508ffb87495e8428526f1eeb63e08ab4f2eeff29905c1be8614532cb"
+    },
+    {
+      "bytes": 73747,
+      "path": "df-resident-96-components/water-tetramer-def2-svp-spherical-0-force.jsonl",
+      "sha256": "6f770f940c52d2547cbda4c51c6a2bece0afbe22245dc5673f16c98baa4754ce"
+    },
+    {
+      "bytes": 4681,
+      "path": "df-resident-96-components/water-tetramer-def2-svp-spherical-1-energy.jsonl",
+      "sha256": "f4af1998ef418ca884823de885f69e2e650364a1b306a0441c063a52a5603b69"
+    },
+    {
+      "bytes": 73801,
+      "path": "df-resident-96-components/water-tetramer-def2-svp-spherical-1-force.jsonl",
+      "sha256": "c31d957231b469f203bad72f377bce7c12e03732171a0fd6c5c1d4f2ea7a102d"
+    },
+    {
+      "bytes": 4678,
+      "path": "df-resident-96-components/water-tetramer-def2-svp-spherical-2-energy.jsonl",
+      "sha256": "dfb25ca7ec1584bbb77f8843bd02e1f1c56aa8d7407506163afbb0306f02b52b"
+    },
+    {
+      "bytes": 73810,
+      "path": "df-resident-96-components/water-tetramer-def2-svp-spherical-2-force.jsonl",
+      "sha256": "ece16234f66f25935ee809c01f08a27a2f6ff72e9cc4546f7a31f56e9d12ac4d"
+    },
+    {
+      "bytes": 4687,
+      "path": "df-resident-192-components/water-octamer-s4-def2-svp-spherical-0-energy.jsonl",
+      "sha256": "57b7749ea6fd1f0564b6ad3d04cf048d5994319267b5a32a30fe7d42068389ae"
+    },
+    {
+      "bytes": 140530,
+      "path": "df-resident-192-components/water-octamer-s4-def2-svp-spherical-0-force.jsonl",
+      "sha256": "67ea9c8ef2be5c5dbf73207c7beb1b739bda48f1b20835473dbbc400d8c9d156"
+    },
+    {
+      "bytes": 4694,
+      "path": "df-resident-192-components/water-octamer-s4-def2-svp-spherical-1-energy.jsonl",
+      "sha256": "72d013a2935166acf4e703c534b74a1b1ba38c4f51ede42b8ca624a1db25d94b"
+    },
+    {
+      "bytes": 140568,
+      "path": "df-resident-192-components/water-octamer-s4-def2-svp-spherical-1-force.jsonl",
+      "sha256": "e907000a4bcb3c26f75e64a19d9b18a7518d752bb134db73562be0b25a6ecdea"
+    },
+    {
+      "bytes": 4693,
+      "path": "df-resident-192-components/water-octamer-s4-def2-svp-spherical-2-energy.jsonl",
+      "sha256": "834755f76011b4bd0c86832f49603312b1631ddf6d698783f624309d84bb9b39"
+    },
+    {
+      "bytes": 140568,
+      "path": "df-resident-192-components/water-octamer-s4-def2-svp-spherical-2-force.jsonl",
+      "sha256": "8761a365c69186fca3e77603fcf54e80a0a02d99b22b4d77ede580d9a36cff18"
+    },
+    {
+      "bytes": 1029,
+      "path": "df-resident-matrix/192ao-b1.log",
+      "sha256": "a9d878f6bb51cd1ccc3a3013daf1cf5e474bbeefc87fa6cf3a4dda4f1b09b8f7"
+    },
+    {
+      "bytes": 1083,
+      "path": "df-resident-matrix/192ao-b4.log",
+      "sha256": "beb6183fd0e16c4eda724f9c4b62997d76493deb9a7c73d6c2edcfb58b0c75e7"
+    },
+    {
+      "bytes": 70373,
+      "path": "df-resident-matrix/96ao-b1.json",
+      "sha256": "00aac605a24baf126d54871b9a5c4c0728301a4374a0e0a7fd0dc6354393d708"
+    },
+    {
+      "bytes": 1196,
+      "path": "df-resident-matrix/96ao-b1.log",
+      "sha256": "be17e860be0615e861e1a87a4b7bd5c8efdf403696b56f7f492374de82724c17"
+    },
+    {
+      "bytes": 247040,
+      "path": "df-resident-matrix/96ao-b4.json",
+      "sha256": "198329e5f044ed4bf6e6f6a323297fae3b35e74e81a68628cc51b17b52c0571a"
+    },
+    {
+      "bytes": 1256,
+      "path": "df-resident-matrix/96ao-b4.log",
+      "sha256": "4227407d599d5520e728dcea02ad07ae81282c97abfeeaa7c5ba1643ba0e8b7d"
+    },
+    {
+      "bytes": 5263,
+      "path": "df-resident-matrix/manifest.json",
+      "sha256": "98c5a0ee1ad71e5e20a221e941f18772aad29c96ba3f8b30447f02e157516ad8"
+    },
+    {
+      "bytes": 104188,
+      "path": "df-resident-matrix-8g/192ao-b1.json",
+      "sha256": "7486c4619c066de9c9a550c15b5039eef11349ac6859bd1014ce412c8df2efd6"
+    },
+    {
+      "bytes": 1204,
+      "path": "df-resident-matrix-8g/192ao-b1.log",
+      "sha256": "dcd28778a785e82cfe6a5b62782b9f5cd089d17116d367cfa4db4ba94d52801d"
+    },
+    {
+      "bytes": 383452,
+      "path": "df-resident-matrix-8g/192ao-b4.json",
+      "sha256": "a53f69ef47f56800df839e38fd61e167face83c5246305107f0d187449a59155"
+    },
+    {
+      "bytes": 1269,
+      "path": "df-resident-matrix-8g/192ao-b4.log",
+      "sha256": "e5f6acb76ef05aafecc9a18f6102bbdcac4a86b7959f355c5831a18964d4e120"
+    },
+    {
+      "bytes": 70340,
+      "path": "df-resident-matrix-8g/96ao-b1.json",
+      "sha256": "bf70b2a3ab253691741f64bea339dabe4c709d940374154a2c9c7a90f7318447"
+    },
+    {
+      "bytes": 1199,
+      "path": "df-resident-matrix-8g/96ao-b1.log",
+      "sha256": "aaa9740e51e255b14f85b2ddc3f5237d180c265feba881b368c91951d12c5095"
+    },
+    {
+      "bytes": 247039,
+      "path": "df-resident-matrix-8g/96ao-b4.json",
+      "sha256": "b75d32dffd281e7c9207ff17eb5b7f4f5297bcb790b5813bdf893f58f5f4dac6"
+    },
+    {
+      "bytes": 1259,
+      "path": "df-resident-matrix-8g/96ao-b4.log",
+      "sha256": "5b5fcf9b954dc593455f634143fe31825d3d04cb9d10f96b2bac98642af4315b"
+    },
+    {
+      "bytes": 5442,
+      "path": "df-resident-matrix-8g/manifest.json",
+      "sha256": "3fddd34a96d68dc6c3893f15dee742a4f34952d7520f406a1b07ab0a81bee63c"
+    },
+    {
+      "bytes": 2924,
+      "path": "df-trace-generated-96/water-tetramer-def2-svp-spherical-0-energy.jsonl",
+      "sha256": "3f0a0cbb4d3be33f75c1d7d202d221c28450a93f2ee1e1470711d2f128f0848f"
+    },
+    {
+      "bytes": 33142,
+      "path": "df-resident-preview-runtime/optimization.patch",
+      "sha256": "97f3e532ef4d0d9098fe2d78208058edd75ca11d7e0fe2d91ea76ad3a1a1d1b8"
+    },
+    {
+      "bytes": 38011,
+      "path": "df-resident-preview-runtime/CMakeCache.txt",
+      "sha256": "14120dd393564e81859bcfeb8dd04cad3bdd17b3e47beab060b0df7fa6df5fa5"
+    }
+  ],
+  "native_code_commit": "787304d",
+  "schema": "vibeqc.evidence-archive.v1",
+  "source_reconstruction": "native library built from 8697318 plus archived df-resident-preview-runtime/optimization.patch; subsequent checkpoint changes only tests/documentation/Python resource wording"
+}

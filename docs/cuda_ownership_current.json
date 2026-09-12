@@ -579,7 +579,7 @@
       "subsystem": "scf_tensor"
     },
     {
-      "bytes": 2281,
+      "bytes": 2283,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
@@ -592,7 +592,7 @@
       "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
       "regions": [],
       "role": "runtime",
-      "sha256": "d8cf4633cac0a1ad7a235ab94c3cba6c119c1e472448e39b361bba33824a82e2",
+      "sha256": "4c38e2cad0aced70aca0907bed2481ca612bd5f12b5d699ee2813320ccf71540",
       "subsystem": "scf_tensor"
     },
     {

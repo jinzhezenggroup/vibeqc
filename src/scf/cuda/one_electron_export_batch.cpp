@@ -50,8 +50,10 @@ vibeqc_status build_cuda_one_electron_integrals_batch_impl(
 
   HostBatch host;
   std::vector<const std::vector<double>*> no_warm(batch_size, nullptr);
-  // Match the spin-independent single-system evaluator for open-shell fleets.
-  if (!pack_host_batch(cartesian_systems, no_warm, host, true) || host.nbf == 0U) {
+  // One-electron exports need AO/pair metadata, not direct-ERI resident tasks.
+  // The matrix-only packing policy keeps preparation quadratic in shell count
+  // and also matches the spin-independent evaluator for open-shell fleets.
+  if (!pack_host_batch(cartesian_systems, no_warm, host, true, true) || host.nbf == 0U) {
     detail = "Cartesian one-electron batch cannot be represented by CUDA";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }

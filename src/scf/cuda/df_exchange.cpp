@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "runtime/cuda_component_trace.hpp"
+#include "scf/cuda/df_generated_tiles.hpp"
 #include "scf/cuda/df_jk_internal.hpp"
 #include "scf/cuda/df_jk_kernels.hpp"
 #include "scf/cuda/df_plan_internal.hpp"
@@ -39,7 +40,17 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan, const double* densi
   // at most row_tile * nbf rather than auxiliary_tile * nbf^2.
   if (plan.streamed) {
     if (plan.integral_source != nullptr) {
-      const std::size_t pair_capacity = plan.row_tile * plan.nbf;
+      // Spend the same four tile buffers on full AO panels when one matrix
+      // fits. Smaller auxiliary panels remove all repeated column generation;
+      // exceptionally tight budgets retain the bounded row traversal below.
+      const auto capacity = plan.row_tile * plan.nbf * plan.auxiliary_tile;
+      const bool full_pairs = capacity >= plan.matrix_elements;
+      const auto row_tile = full_pairs ? plan.nbf : plan.row_tile;
+      const auto auxiliary_tile =
+          full_pairs ? std::min(plan.auxiliary_tile, capacity / plan.matrix_elements)
+                     : plan.auxiliary_tile;
+      const auto pair_capacity = row_tile * plan.nbf;
+      const auto row_tiles = (plan.nbf + row_tile - 1) / row_tile;
       for (std::size_t system = 0; system < plan.batch_size; ++system) {
         const double* system_density = density + system * plan.matrix_elements;
         const double* density_column_major = system_density;
@@ -56,19 +67,17 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan, const double* densi
           }
         }
         for (std::size_t auxiliary_begin = 0; auxiliary_begin < plan.naux;
-             auxiliary_begin += plan.auxiliary_tile) {
-          const std::size_t auxiliary_count =
-              std::min(plan.auxiliary_tile, plan.naux - auxiliary_begin);
-          for (std::size_t row_begin = 0; row_begin < plan.nbf; row_begin += plan.row_tile) {
-            const std::size_t row_count = std::min(plan.row_tile, plan.nbf - row_begin);
+             auxiliary_begin += auxiliary_tile) {
+          const std::size_t auxiliary_count = std::min(auxiliary_tile, plan.naux - auxiliary_begin);
+          for (std::size_t row_begin = 0; row_begin < plan.nbf; row_begin += row_tile) {
+            const std::size_t row_count = std::min(row_tile, plan.nbf - row_begin);
             const std::size_t pair_count = row_count * plan.nbf;
             if (pair_count > pair_capacity) {
               return VIBEQC_STATUS_INTERNAL_ERROR;
             }
-            vibeqc_status source_status = generate_cuda_density_fitting_transformed_tile(
-                plan.integral_source, system, row_begin * plan.nbf, pair_count, auxiliary_begin,
-                auxiliary_count, -1, plan.inverse_square_roots + system * plan.naux * plan.naux,
-                reinterpret_cast<void*>(plan.stream), plan.auxiliary_tile_values, detail);
+            vibeqc_status source_status = generate_metric_panel(
+                plan, system, row_begin * plan.nbf, pair_count, auxiliary_begin, auxiliary_count,
+                plan.auxiliary_tile_values, plan.exchange_tile_output, detail);
             if (source_status != VIBEQC_STATUS_SUCCESS) return source_status;
             launch_transpose_streamed_df_tile_kernel(
                 blocks_for(pair_count * auxiliary_count), kThreads, 0, plan.stream, pair_count,
@@ -90,24 +99,29 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan, const double* densi
             if (blas_status != CUBLAS_STATUS_SUCCESS) {
               return blas_failure(blas_status, "source-backed DF exchange row GEMM", detail);
             }
-            for (std::size_t column_begin = 0; column_begin < plan.nbf;
-                 column_begin += plan.row_tile) {
-              const std::size_t column_count = std::min(plan.row_tile, plan.nbf - column_begin);
-              const std::size_t column_pair_count = column_count * plan.nbf;
-              source_status = generate_cuda_density_fitting_transformed_tile(
-                  plan.integral_source, system, column_begin * plan.nbf, column_pair_count,
-                  auxiliary_begin, auxiliary_count, -1,
-                  plan.inverse_square_roots + system * plan.naux * plan.naux,
-                  reinterpret_cast<void*>(plan.stream), plan.auxiliary_tile_values, detail);
-              if (source_status != VIBEQC_STATUS_SUCCESS) return source_status;
-              launch_transpose_streamed_df_tile_kernel(
-                  blocks_for(column_pair_count * auxiliary_count), kThreads, 0, plan.stream,
-                  column_pair_count, auxiliary_count, plan.auxiliary_tile_values,
-                  plan.exchange_intermediate);
-              cuda_error = cudaPeekAtLastError();
-              if (cuda_error != cudaSuccess) {
-                return cuda_failure(cuda_error, "transpose source-backed DF exchange column tile",
-                                    detail);
+            // Consume the row's own transposed values before another column
+            // overwrites them. Output blocks are disjoint, so this visitation
+            // order preserves each element's auxiliary accumulation order.
+            for (std::size_t column_tile = 0; column_tile < row_tiles; ++column_tile) {
+              const auto column_begin =
+                  ((row_begin / row_tile + column_tile) % row_tiles) * row_tile;
+              const auto column_count = std::min(row_tile, plan.nbf - column_begin);
+              const auto column_pair_count = column_count * plan.nbf;
+              if (column_tile != 0) {
+                source_status = generate_metric_panel(
+                    plan, system, column_begin * plan.nbf, column_pair_count, auxiliary_begin,
+                    auxiliary_count, plan.auxiliary_tile_values, plan.exchange_tile_output, detail);
+                if (source_status != VIBEQC_STATUS_SUCCESS) return source_status;
+                launch_transpose_streamed_df_tile_kernel(
+                    blocks_for(column_pair_count * auxiliary_count), kThreads, 0, plan.stream,
+                    column_pair_count, auxiliary_count, plan.auxiliary_tile_values,
+                    plan.exchange_intermediate);
+                cuda_error = cudaPeekAtLastError();
+                if (cuda_error != cudaSuccess)
+                  return cuda_failure(cuda_error, "transpose source-backed DF exchange column tile",
+                                      detail);
+              } else {
+                runtime::cuda_trace::trace_counter("transformed_tile_cache_hits", 1);
               }
               const std::size_t output_stride = row_count * column_count;
               blas_status = trace_call("ri_k_gemm", plan.stream, [&] {

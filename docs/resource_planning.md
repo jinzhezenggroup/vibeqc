@@ -95,9 +95,9 @@ execution adapters in this inventory.
 
 CUDA DF offers resident and source-regeneration choices. A positive explicit
 DF sub-budget retains the native source mode; otherwise the planner may choose
-either mode. The source candidate regenerates integral tiles on CUDA and
-uses the existing **CPU SCF/DIIS/eigensolvers with CUDA J/K** route. The resident
-candidate uses CUDA SCF and preserves existing CPU numerical recovery. These
+either mode. The source candidate regenerates response derivatives on CUDA;
+its forward tensor is retained when the native tile allowance fits. Both
+candidates use **CUDA SCF with existing CPU numerical recovery**. These
 decisions appear in the plan. Allocation failures cannot trigger that host
 recovery. The default source sub-budget includes the native one-electron
 preparation minimum; v1 does not enumerate arbitrarily small DF tiles.

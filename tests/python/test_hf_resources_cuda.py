@@ -1,5 +1,6 @@
 """Direct-HF budget evidence; run only in a scheduler-assigned GPU job."""
 
+import json
 import os
 
 import numpy as np
@@ -171,7 +172,10 @@ def test_cuda_df_global_candidates_bind_execution_and_respect_host_device_caps(
     assert dict(plan.selections)["hf"] == candidate.name
     if mode == "recomputed":
         assert selected.peak_bytes["host"] < request_plan.peak_bytes["host"]
-        assert "CPU DIIS/eigensolvers" in dict(candidate.decisions)["scf_driver"]
+        assert (
+            "CUDA SCF with existing CPU numerical recovery"
+            in dict(candidate.decisions)["scf_driver"]
+        )
     native_budget = int(
         dict(candidate.decisions)["density_fitting_memory_budget_bytes"]
     )
@@ -207,9 +211,23 @@ def test_cuda_df_global_candidates_bind_execution_and_respect_host_device_caps(
                 np.testing.assert_allclose(
                     actual.forces, oracle.forces, atol=2e-8, rtol=1e-7
                 )
-            assert all(
-                d.streamed == (mode == "recomputed")
-                for d in batch.last_density_fitting_metric_diagnostics()
+            # Generated response does not force forward J/K streaming. Compare
+            # execution with the actual source-specific tile capacity decision.
+            inventory = json.loads(dict(candidate.decisions)["bucket_inventory"])
+            expected_tiles = sorted(
+                (
+                    not row["tiles"]["stores_full_three_center"],
+                    row["tiles"]["auxiliary_tile"],
+                )
+                for row in inventory
+                for _ in range(row["batch"])
+            )
+            assert (
+                sorted(
+                    (d.streamed, d.auxiliary_tile)
+                    for d in batch.last_density_fitting_metric_diagnostics()
+                )
+                == expected_tiles
             )
     infeasible = plan_resources(
         [request],

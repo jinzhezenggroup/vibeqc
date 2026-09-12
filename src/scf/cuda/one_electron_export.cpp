@@ -37,7 +37,8 @@ vibeqc_status build_cuda_one_electron_integrals_impl(int device_id, const core::
   // One-electron integrals are spin independent. General spin packing accepts
   // both RHF and UHF systems; closed-shell packing incorrectly rejects the
   // odd-electron orbital metadata needed by an open-shell DF endpoint.
-  if (!pack_host_batch({cartesian_system}, no_warm, host, true) || host.nbf == 0U) {
+  // Matrix-only packing omits direct-ERI task tables that this exporter never consumes.
+  if (!pack_host_batch({cartesian_system}, no_warm, host, true, true) || host.nbf == 0U) {
     detail = "Cartesian one-electron basis cannot be represented by CUDA";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
