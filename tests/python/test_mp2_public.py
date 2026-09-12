@@ -197,6 +197,15 @@ def test_ri_mp2_composes_df_reference_capacity_before_allocation():
             diis_history=170_000,
             correlation_memory_budget_bytes=19_000 << 10,
         ).singlepoint(atoms)
+    accepted = Calculator(
+        method="mp2",
+        basis="sto-3g",
+        auxiliary_basis=auxiliary,
+        density_fitting="cpu",
+        diis_history=170_000,
+        correlation_memory_budget_bytes=19_240 << 10,
+    ).singlepoint(atoms)
+    assert 19_000 << 10 < accepted.correlation.numeric_capacity_bytes <= 19_240 << 10
 
 
 def test_public_unsupported_budget_scf_and_neighbors(device):
