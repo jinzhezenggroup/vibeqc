@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include "integrals/ecp_cuda.hpp"
 #include "molecule/basis.hpp"
 #include "runtime/resource_cuda.cuh"
 #include "scf/cuda/one_electron_export_kernels.hpp"
@@ -338,6 +339,14 @@ vibeqc_status build_cuda_one_electron_integrals_batch_impl(
     outputs.clear();
     detail = "CUDA kernel failed while generating one-electron batch";
     return cuda_status(cuda_error);
+  }
+  for (std::size_t i = 0; i < systems.size(); ++i) {
+    if (systems[i].ecp_terms.empty()) continue;
+    integrals::EcpData ecp;
+    const auto status = integrals::ecp_integrals_cuda(device_id, cartesian_systems[i], 160, 32,
+                                                      include_derivatives, ecp, detail, true);
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
+    integrals::add_ecp(ecp, outputs[i].hcore, outputs[i].hcore_derivative);
   }
   return VIBEQC_STATUS_SUCCESS;
 }

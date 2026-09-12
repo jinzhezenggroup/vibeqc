@@ -20,7 +20,8 @@ forces are executable.
 | Multireference | CASCI, CASSCF, internally contracted and selected-space methods | Planned |
 | Excited states and response | TDHF, TDDFT, EOM-CC, linear response | Planned |
 | Nuclear derivatives and properties | Gradients, Hessians, response properties, spectra | RHF/UHF gradients implemented; broader coverage planned |
-| Environments and Hamiltonians | Periodic, embedding, relativistic, ECP, and finite-temperature methods | Planned |
+| Scalar Gaussian ECP | Local/nonlocal residuals and complete direct RHF/UHF gradients | Bounded CPU/CUDA s/p/d baseline; [contract](ecp.md) |
+| Environments and Hamiltonians | Periodic, embedding, relativistic, and finite-temperature methods | Planned |
 
 “Planned” records intended architectural coverage, not a release promise or a
 fixed implementation order. Method families will be split into independently

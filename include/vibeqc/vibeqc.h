@@ -525,6 +525,30 @@ VIBEQC_API vibeqc_status vibeqc_system_create(vibeqc_context* context,
                                               vibeqc_system** system);
 VIBEQC_API void vibeqc_system_destroy(vibeqc_system* system);
 
+/** Scalar Gaussian residual ECP: c r^(power-2) exp(-exponent r^2).
+ * channel=-1 is local, 0..2 is a nonlocal projector difference.
+ * Core counts are atom-major and must leave positive effective ionic charges.
+ * All buffers are copied; existing all-electron system_create ABI is unchanged. */
+typedef struct vibeqc_ecp_term {
+  uint32_t atom_index;
+  int32_t channel;
+  uint32_t power;
+  double exponent;
+  double coefficient;
+} vibeqc_ecp_term;
+VIBEQC_API vibeqc_status vibeqc_system_create_ecp(vibeqc_context* context,
+                                                  const vibeqc_system_descriptor* descriptor,
+                                                  const int32_t* core_electrons,
+                                                  const vibeqc_ecp_term* terms, size_t term_count,
+                                                  vibeqc_system** system);
+/** Part-major [local, nonlocal], each containing value then atom/xyz derivatives.
+ * Derivatives are positive energy derivatives, not forces. Output is owned by caller. */
+VIBEQC_API vibeqc_status vibeqc_system_ecp_integrals(vibeqc_context* context,
+                                                     const vibeqc_system* system,
+                                                     uint32_t radial_points, uint32_t polar_points,
+                                                     int32_t derivatives, double* output,
+                                                     size_t output_count);
+
 /** Numeric staging and explicit transfer counters for the generic CUDA gradient.
  * Caller-owned weights/system and pre-existing HF plans are outside this arena. */
 typedef struct vibeqc_one_electron_gradient_resources {

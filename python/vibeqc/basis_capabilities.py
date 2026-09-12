@@ -1,5 +1,6 @@
 """Per-shell/operator execution boundaries, separate from basis-data availability."""
 
+import json
 import math
 from dataclasses import asdict
 
@@ -70,9 +71,22 @@ def basis_capability(
                 )
                 continue
             if element.ecp_core_electrons or element.ecp_data:
-                reasons.append(
-                    f"{role} atom {atom_index} Z={atom.atomic_number}: ECP with {element.ecp_core_electrons} core electrons has no implemented {backend} Hamiltonian"
-                )
+                from .ecp import resolve_ecp
+
+                try:
+                    resolve_ecp(basis, atoms)
+                    if (
+                        backend not in ("cpu", "cuda")
+                        or operator == "ao"
+                        or derivative_order > 1
+                    ):
+                        raise NotImplementedError(
+                            f"ECP has no implemented {backend}/{operator} route"
+                        )
+                except (ValueError, NotImplementedError) as error:
+                    reasons.append(
+                        f"{role} atom {atom_index}: ECP with {element.ecp_core_electrons} core electrons: {error}"
+                    )
             if element.nuclear_charge != atom.atomic_number:
                 reasons.append(
                     f"{role} atom {atom_index} Z={atom.atomic_number}: nuclear charge {element.nuclear_charge} requires an unsupported alchemical Hamiltonian"
@@ -195,6 +209,21 @@ def resolved_basis_metadata(
         ],
         "normalization": "normalized-primitives; native-normalized-contractions",
     }
+    if any(cores):
+        # Metadata remains inspectable even for not-yet-executable ECP families.
+        potentials = []
+        for z in numbers:
+            data = metadata[z].ecp_data if z in metadata else None
+            records = json.loads(data) if data else []
+            for record in records:
+                record["gaussian_exponents"] = [
+                    float(x).hex() for x in record["gaussian_exponents"]
+                ]
+                record["coefficients"] = [
+                    [float(x).hex() for x in row] for row in record["coefficients"]
+                ]
+            potentials.append(records)
+        payload["ecp_potentials"] = potentials
     return {
         "name": basis.name if isinstance(basis, BasisSet) else "explicit-shells",
         "role": role,

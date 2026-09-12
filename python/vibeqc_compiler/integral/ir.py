@@ -31,6 +31,7 @@ class OperatorFamily(str, Enum):
     OVERLAP = "overlap"
     KINETIC = "kinetic"
     NUCLEAR_ATTRACTION = "nuclear_attraction"
+    SCALAR_ECP = "scalar_ecp"
     COULOMB_METRIC = "coulomb_metric"
     THREE_CENTER_ERI = "three_center_eri"
     FOUR_CENTER_ERI = "four_center_eri"
@@ -169,6 +170,47 @@ class NuclearCenter:
 
 
 @dataclass(frozen=True, slots=True)
+class EcpRadialTerm:
+    """Residual c*r**(power-2)*exp(-exponent*r*r), in atomic units.
+
+    channel=-1 is local; l>=0 multiplies sum_m |lm><lm| and is a
+    difference from the local potential. No Coulomb tail is encoded here.
+    """
+
+    channel: int
+    power: int
+    exponent: float
+    coefficient: float
+
+    def __post_init__(self):
+        if type(self.channel) is not int or not -1 <= self.channel <= 2:
+            raise ValueError("ECP channel must be local (-1) or s/p/d")
+        if type(self.power) is not int or not 0 <= self.power <= 4:
+            raise ValueError("ECP radial power must be 0..4")
+        for name in ("exponent", "coefficient"):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isfinite(value):
+                raise ValueError(f"ECP {name} must be finite and real")
+            object.__setattr__(self, name, float(value))
+        if self.exponent <= 0:
+            raise ValueError("ECP exponent must be positive")
+
+
+@dataclass(frozen=True, slots=True)
+class EcpCenter:
+    """A physical ECP operator center, distinct from both Gaussian shell slots."""
+
+    center: int
+    terms: tuple[EcpRadialTerm, ...]
+
+    def __post_init__(self):
+        checked_index(self.center, "ECP center")
+        object.__setattr__(self, "terms", tuple(self.terms))
+        if not self.terms or any(not isinstance(t, EcpRadialTerm) for t in self.terms):
+            raise ValueError("ECP center requires explicit scalar Gaussian terms")
+
+
+@dataclass(frozen=True, slots=True)
 class OperatorSpec:
     """Operator family, mathematical centers, invariants and fixed range parameter.
 
@@ -180,7 +222,7 @@ class OperatorSpec:
     family: OperatorFamily | str
     centers: tuple[int, ...]
     invariants: tuple[TranslationInvariant, ...] = ()
-    external_centers: tuple[NuclearCenter, ...] = ()
+    external_centers: tuple[NuclearCenter | EcpCenter, ...] = ()
     permutations: tuple[tuple[int, ...], ...] = ()
     omega: float = 0.0
 
@@ -201,12 +243,16 @@ class OperatorSpec:
         for center in self.centers:
             checked_index(center, "operator center")
         attraction = self.family == OperatorFamily.NUCLEAR_ATTRACTION
-        if len(self.centers) != len(self.basis_roles) + int(attraction):
+        ecp = self.family == OperatorFamily.SCALAR_ECP
+        if len(self.centers) != len(self.basis_roles) + int(attraction or ecp):
             raise ValueError("operator center inventory has the wrong center count")
-        if attraction:
+        if attraction or ecp:
             if (
                 len(self.external_centers) != 1
                 or self.external_centers[0].center not in self.centers
+                or not isinstance(
+                    self.external_centers[0], EcpCenter if ecp else NuclearCenter
+                )
             ):
                 raise ValueError(
                     "attraction requires one external nuclear center in its inventory"
@@ -481,6 +527,7 @@ class IntegralIR:
         if direct and self.operator.family != OperatorFamily.FOUR_CENTER_ERI:
             raise ValueError("direct HF consumers require four-center ERIs")
         if self.recurrence not in (
+            "ecp_quadrature",
             "hermite",
             "subset_wick",
             "rys1",
@@ -490,6 +537,15 @@ class IntegralIR:
             "rys5",
         ):
             raise ValueError(f"unsupported integral recurrence {self.recurrence!r}")
+        if (self.recurrence == "ecp_quadrature") != (
+            self.operator.family == OperatorFamily.SCALAR_ECP
+        ):
+            raise ValueError("scalar ECP requires its explicit quadrature lowering")
+        if self.operator.family == OperatorFamily.SCALAR_ECP and (
+            any(s.angular > 2 for s in signature.shells)
+            or (self.derivative is not None and self.derivative.order != 1)
+        ):
+            raise ValueError("ECP lowering supports s/p/d values and first derivatives")
         if self.recurrence == "hermite" and self.operator.family not in (
             OperatorFamily.OVERLAP,
             OperatorFamily.KINETIC,

@@ -223,6 +223,7 @@ CUDA_MODULES["cuda_one_electron_export"] = (
 CUDA_ALLOWED["cuda_one_electron_export"] = tuple(
     "scf/cuda/" + stem + "." for stem in CUDA_MODULES["cuda_one_electron_export"]
 ) + (
+    "integrals/ecp_cuda.hpp",
     "scf/cuda/one_electron_export_kernels.hpp",
     "scf/cuda/one_electron_values.cuh",
     "scf/cuda/packed_basis.",

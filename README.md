@@ -33,7 +33,9 @@ independent references, and performance claims require reproducible gates.
 - Contracted Cartesian and real-spherical `s` through `f` Gaussian bases.
 - Bundled STO-3G, def2-SVP, and def2-TZVP basis data for H-Ar.
 - [Offline local/custom basis input](docs/external_basis.md) with provenance,
-  H–Og element identities, and explicit rejection of unsupported high-l/ECP execution.
+  H–Og element identities, and explicit rejection of unsupported high-l execution.
+  [Scalar Gaussian ECPs](docs/ecp.md) support bounded CPU/CUDA direct RHF/UHF
+  values and complete first nuclear derivatives for orbital s/p/d.
 - Python, C, and C++ interfaces; optional PyTorch analytic backward.
 
 ## Build and install

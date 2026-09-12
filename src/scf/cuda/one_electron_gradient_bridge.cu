@@ -41,7 +41,7 @@ HostView pack(const core::System& system, unsigned schedule) {
   HostView host;
   host.atom_offsets = {0, static_cast<std::int64_t>(system.atoms.size())};
   for (const auto& atom : system.atoms) {
-    host.atomic_numbers.push_back(atom.atomic_number);
+    host.atomic_numbers.push_back(atom.ionic_charge());
     host.positions.insert(host.positions.end(), atom.position.begin(), atom.position.end());
   }
   host.ao_offsets.push_back(0);

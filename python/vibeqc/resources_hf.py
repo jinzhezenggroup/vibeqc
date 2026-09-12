@@ -107,7 +107,7 @@ def _basis_record(atoms, basis, representation, backend, charge, multiplicity, r
         if mode == "cartesian"
         else sum(2 * s.angular_momentum + 1 for s in shells)
     )
-    return {
+    record = {
         "nbf": checked_bytes(nbf, "AO dimension"),
         "cartesian_nbf": checked_bytes(cartesian),
         "shells": len(shells),
@@ -116,6 +116,29 @@ def _basis_record(atoms, basis, representation, backend, charge, multiplicity, r
         "representation": mode,
         "basis_hash": metadata["mathematical_identity"],
     }
+    from .ecp import resolve_ecp
+
+    cores, terms = resolve_ecp(selected, atoms)
+    if terms:
+        record["ecp_terms"] = len(terms)
+        record["ecp_core_electrons"] = cores
+    return record
+
+
+def _ecp_workspace(item):
+    """Conservative two-grid peak; radial shells are serialized on CPU/CUDA."""
+    orbital = item["orbital"]
+    if not orbital.get("ecp_terms"):
+        return 0
+    n, d = orbital["cartesian_nbf"], 3 * item["atoms"]
+    points = 2 * 44 * 44
+    return checked_bytes(
+        32 * n * n * (1 + d)
+        + 32 * n * (points + 9)
+        + 256 * (points + 224 + n + orbital["primitives"] + orbital["ecp_terms"])
+        + 4096,
+        "ECP two-grid workspace",
+    )
 
 
 def _cpu_item_inventory(item, diis_history):
@@ -152,6 +175,7 @@ def _cpu_item_inventory(item, diis_history):
     preparation = jet_arrays + max(
         recurrence, cartesian + conventional + 8 * (2 * n2 + n2 * n2)
     )
+    preparation += _ecp_workspace(item)
     resident = conventional
     matrix_work = byte_product(8, spin, n2, 64 + 2 * (diis_history + 1))
     matrix_work += byte_product(16, diis_history + 1, diis_history + 1)
@@ -237,7 +261,11 @@ def _small_cuda_item_inventory(library, item, diis_history):
         + 8 * item["spins"] * orbital["nbf"] ** 2 * 64
         + 8 * 3 * item["atoms"] * 16
     )
-    return {"arena": checked_bytes(int(output[0])), "host": checked_bytes(host)}
+    return {
+        "arena": checked_bytes(int(output[0])),
+        "host": checked_bytes(host + _ecp_workspace(item)),
+        "ecp_workspace": _ecp_workspace(item),
+    }
 
 
 def hf_resource_request(
@@ -315,7 +343,15 @@ def hf_resource_request(
     for atoms, charge, multiplicity in zip(
         systems, charges, multiplicities, strict=True
     ):
-        electrons = electron_state(atoms, charge=charge, multiplicity=multiplicity)
+        selected_basis = _snapshot_basis(basis, basis_representation)
+        electrons = electron_state(
+            atoms,
+            charge=charge,
+            multiplicity=multiplicity,
+            element_metadata=selected_basis.by_element
+            if isinstance(selected_basis, BasisSet)
+            else {},
+        )
         if method == "rhf" and multiplicity != 1:
             raise ValueError("RHF requires a closed-shell singlet")
         orbital = _basis_record(
@@ -333,6 +369,10 @@ def hf_resource_request(
             )
         auxiliary = None
         if fitted:
+            if orbital.get("ecp_terms"):
+                raise NotImplementedError(
+                    "ECP density-fitting execution is not yet validated"
+                )
             auxiliary = (
                 orbital
                 if auxiliary_basis is None
@@ -468,7 +508,9 @@ def hf_resource_request(
                 name, identity, (), cuda_exclusions, unsupported_reason=str(error)
             )
         resident = checked_bytes(sum(row["arena"] for row in inventories))
-        retry = max(row["arena"] for row in inventories)
+        retry = max(row["arena"] for row in inventories) + max(
+            row["ecp_workspace"] for row in inventories
+        )
         host = checked_bytes(sum(row["host"] for row in inventories))
         candidate = ResourceCandidate(
             "cuda-small-resident",

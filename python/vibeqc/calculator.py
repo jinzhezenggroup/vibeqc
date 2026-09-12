@@ -759,6 +759,30 @@ class Calculator:
             else self._basis_representation,
         )
         system = ctypes.c_void_p()
+        from .ecp import resolve_ecp
+
+        cores, ecp_terms = resolve_ecp(selected_basis, atoms)
+        if ecp_terms:
+            if self._density_fitting_mode != _native.DENSITY_FITTING_NONE:
+                raise NotImplementedError(
+                    "ECP density-fitting execution is not yet validated"
+                )
+            core_array = (ctypes.c_int32 * len(cores))(*cores)
+            term_array = (_native.EcpTermDescriptor * len(ecp_terms))(
+                *(_native.EcpTermDescriptor(*t) for t in ecp_terms)
+            )
+            _native.check(
+                self._library,
+                self._library.vibeqc_system_create_ecp(
+                    context,
+                    ctypes.byref(descriptor),
+                    core_array,
+                    term_array,
+                    len(term_array),
+                    ctypes.byref(system),
+                ),
+            )
+            return system
         _native.check(
             self._library,
             self._library.vibeqc_system_create(

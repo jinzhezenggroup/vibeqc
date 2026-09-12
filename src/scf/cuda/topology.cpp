@@ -17,6 +17,9 @@ bool pack_host_batch(const std::vector<core::System>& systems,
                      const std::vector<const std::vector<double>*>& initial_densities,
                      HostBatch& host, bool unrestricted) {
   if (systems.empty() || systems.size() != initial_densities.size()) return false;
+  if (std::any_of(systems.begin(), systems.end(),
+                  [](const auto& s) { return !s.ecp_terms.empty(); }))
+    host.ecp_systems = systems;
   host.nbf = molecule::ao_count(systems.front());
   host.direct_nbf = molecule::cartesian_ao_count(systems.front());
   host.spin_count = unrestricted ? 2 : 1;
@@ -55,7 +58,7 @@ bool pack_host_batch(const std::vector<core::System>& systems,
     const std::int64_t atom_base = static_cast<std::int64_t>(host.atomic_numbers.size());
     for (const core::Atom& atom : system.atoms) {
       host.atom_systems.push_back(static_cast<std::int32_t>(system_index));
-      host.atomic_numbers.push_back(atom.atomic_number);
+      host.atomic_numbers.push_back(atom.ionic_charge());
       host.positions.insert(host.positions.end(), atom.position.begin(), atom.position.end());
     }
     host.atom_offsets.push_back(static_cast<std::int64_t>(host.atomic_numbers.size()));
@@ -262,6 +265,9 @@ bool pack_host_batch(const std::vector<core::System>& systems,
 }
 
 bool same_topology(const HostBatch& first, const HostBatch& second) {
+  if (first.ecp_systems.size() != second.ecp_systems.size()) return false;
+  for (std::size_t i = 0; i < first.ecp_systems.size(); ++i)
+    if (first.ecp_systems[i].ecp_terms != second.ecp_systems[i].ecp_terms) return false;
   return first.nbf == second.nbf && first.direct_nbf == second.direct_nbf &&
          first.spin_count == second.spin_count && first.atom_offsets == second.atom_offsets &&
          first.atom_systems == second.atom_systems &&

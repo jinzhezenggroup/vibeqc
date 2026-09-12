@@ -15,6 +15,8 @@ cover all quantum-chemistry methods through a coherent batched interface.
   occupied-space projection and complete source-plus-target cost accounting.
 - [External basis data](external_basis.md): offline input, provenance, element/ECP
   bookkeeping, per-operator limits and prepared-state identities.
+- [Scalar Gaussian ECPs](ecp.md): local/nonlocal integrals, complete direct HF
+  gradients, supported domains and empirical quadrature convergence checks.
 - [Methods](methods.md): implemented methods, planned method families, and the
   acceptance standard for enabling new capabilities.
 - [Local autotuning](local_autotuning.md): optional workload-first CUDA tuning,
