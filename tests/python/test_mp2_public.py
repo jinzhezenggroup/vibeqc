@@ -226,6 +226,30 @@ def test_cpu_ri_mp2_accepts_supported_g_auxiliary_capacity():
     assert np.isfinite(result.energy) and result.correlation is not None
 
 
+def test_cuda_calculator_uses_selected_cpu_df_basis_capability():
+    atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
+    auxiliary = (
+        Shell(0, 0, (Primitive(1.0, 1.0),)),
+        Shell(1, 0, (Primitive(1.0, 1.0),)),
+        Shell(0, 4, (Primitive(0.5, 1.0),)),
+    )
+    model = Calculator(
+        method="mp2",
+        device="cuda",
+        density_fitting="cpu",
+        auxiliary_basis=auxiliary,
+    ).resolved_model(atoms)
+    assert model.method == "mp2" and model.approximation == "density_fitting"
+    for mode in ("cuda", "auto"):
+        with pytest.raises(NotImplementedError, match=r"cuda/df_metric.*l<=3"):
+            Calculator(
+                method="mp2",
+                device="cuda",
+                density_fitting=mode,
+                auxiliary_basis=auxiliary,
+            ).resolved_model(atoms)
+
+
 def test_public_unsupported_budget_scf_and_neighbors(device):
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     calc = Calculator(method="mp2", device=device)
