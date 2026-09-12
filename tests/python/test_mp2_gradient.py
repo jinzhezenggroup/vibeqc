@@ -824,6 +824,68 @@ def test_complete_conventional_gradient_matches_pyscf_analytic(name):
     np.testing.assert_allclose(actual, expected, atol=1e-7, rtol=1e-7)
 
 
+def test_complete_conventional_gradient_matches_libcint_derivative_contraction():
+    pytest.importorskip("pyscf")
+    from pyscf import scf
+
+    from tools.generate_validation_references import pyscf_molecule
+    from tools.vibeqc_validation.one_electron_gradient import reference_matrices
+
+    meta, arrays = load_fixture("water")
+    arguments = source_arguments(meta)
+    reference = fixture_snapshot(meta, arrays)
+    occupied = reference.nocc
+    eri = arrays["conventional_mo"]
+    g = eri[:occupied, occupied:, :occupied, occupied:].transpose(0, 2, 1, 3)
+    adjoint = canonical_energy_adjoint(
+        g,
+        reference.orbital_energies,
+        occupied,
+        reference_identity=reference.identity,
+        hamiltonian_id=reference.hamiltonian_id,
+    )
+    hcore_mo = (
+        reference.coefficients.T @ arrays["conventional_h"] @ reference.coefficients
+    )
+    orbital = canonical_orbital_rhs(hcore_mo, eri, adjoint, occupied)
+    response = solve_canonical_orbital_response(
+        reference,
+        DenseAOResponseBackend(arrays["ao"]),
+        orbital,
+        options=GMRESOptions(rtol=1e-12, atol=1e-13, max_iterations=100),
+    )
+    weights = canonical_lagrangian_weights(hcore_mo, eri, adjoint, response, occupied)
+    ao = ao_lagrangian_weights(reference, weights)
+    with NativeSource(**arguments) as source:
+        native = dense_molecular_gradient_oracle(reference, source, weights)
+
+    _, one_derivatives = reference_matrices(meta["inputs"])
+    molecule, scale, _ = pyscf_molecule(meta["inputs"])
+    independent = scf.RHF(molecule).nuc_grad_method().grad_nuc()
+    independent += np.einsum("axpq,pq->ax", one_derivatives[:, :, 0], ao.overlap)
+    independent += np.einsum("axpq,pq->ax", one_derivatives[:, :, 1], ao.one_electron)
+    independent += np.einsum("axpq,pq->ax", one_derivatives[:, :, 2], ao.one_electron)
+
+    normalization = np.einsum("p,q,r,s->pqrs", scale, scale, scale, scale)
+    first_center = -molecule.intor("int2e_ip1", comp=3) * normalization
+    ao_atoms = np.asarray([label[0] for label in molecule.ao_labels(fmt=False)])
+    permutations = (
+        ao.two_electron,
+        ao.two_electron.transpose(1, 0, 2, 3),
+        ao.two_electron.transpose(2, 3, 0, 1),
+        ao.two_electron.transpose(3, 2, 0, 1),
+    )
+    for atom in range(len(arguments["atoms"])):
+        indices = np.flatnonzero(ao_atoms == atom)
+        for transformed_weights in permutations:
+            independent[atom] += np.einsum(
+                "xpqrs,pqrs->x",
+                first_center[:, indices],
+                transformed_weights[indices],
+            )
+    np.testing.assert_allclose(native, independent, atol=2e-8, rtol=2e-8)
+
+
 @pytest.mark.parametrize("name", ["h2", "water"])
 def test_dense_complete_ri_gradient_matches_fully_resolved_finite_differences(
     name, monkeypatch
