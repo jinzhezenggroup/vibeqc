@@ -37,6 +37,8 @@ def safeguard_policy():
 
 def spin_counts(model):
     """Return electrons per matrix block and the maximum metric occupation."""
+    if model.method not in ("rhf", "uhf"):
+        raise ValueError("SCF state requires an RHF or UHF model")
     if model.method == "rhf":
         return (model.electron_count,), 2.0
     unpaired = model.multiplicity - 1

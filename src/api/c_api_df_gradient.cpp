@@ -23,7 +23,7 @@ extern "C" vibeqc_status vibeqc_system_df_gradient_cuda(
       count_a != n * n * a || count_m != a * a || gradient_count != 3 * orbital->data.atoms.size())
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   if (resources) *resources = {sizeof(*resources), VIBEQC_ABI_VERSION, 0, 0, 0, 0, 0, 0, 0, 0};
-  context->last_detail.clear();
+  std::lock_guard<std::recursive_mutex> context_lock(context->mutex);
 #if VIBEQC_HAS_CUDA
   if (context->state.executed_backend != VIBEQC_BACKEND_CUDA) {
     context->last_detail = "generic DF gradients require a CUDA context";
@@ -31,15 +31,21 @@ extern "C" vibeqc_status vibeqc_system_df_gradient_cuda(
   }
   try {
     std::vector<double> result;
+    // Backend diagnostics are scratch state; publish them only on failure so
+    // a successful gradient does not invalidate a borrowed context detail.
+    std::string detail;
     vibeqc::scf::DfGradientResources measured;
     auto span = [](const double* p, std::size_t n) {
       return p ? std::span<const double>(p, n) : std::span<const double>();
     };
     const auto status = vibeqc::scf::execute_cuda_df_gradient(
         context->state.device_id, orbital->data, auxiliary->data, span(bar_a, count_a),
-        span(bar_m, count_m), schedule, maximum_bytes, maximum_tile_elements, result,
-        context->last_detail, &measured);
-    if (status != VIBEQC_STATUS_SUCCESS) return status;
+        span(bar_m, count_m), schedule, maximum_bytes, maximum_tile_elements, result, detail,
+        &measured);
+    if (status != VIBEQC_STATUS_SUCCESS) {
+      context->last_detail = std::move(detail);
+      return status;
+    }
     std::copy(result.begin(), result.end(), gradient);
     if (resources)
       *resources = {sizeof(*resources),

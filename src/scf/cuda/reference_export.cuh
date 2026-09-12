@@ -98,16 +98,13 @@ inline vibeqc_status download(cudaStream_t stream, std::size_t n, std::size_t oc
                               const std::array<const double*, 3>& scalar_sources,
                               const std::uint8_t* converged, const std::uint8_t* failed,
                               const std::uint32_t* iterations, ScfResult& result) {
-  auto ref = std::make_shared<PhysicalReference>();
-  ref->nbf = n;
-  ref->nocc = occupied;
-  const auto matrix_size = posthf::checked_mul(n, n);
-  std::array<std::vector<double>, 5> matrices;
-  for (auto& v : matrices) v.resize(matrix_size);
-  ref->orbital_energies.resize(n);
-  double scalars[3]{};
   std::uint8_t ok = 0, bad = 0;
   std::uint32_t count = 0;
+  // Declare staging owners before Drain so exceptional copy exits synchronize
+  // before their buffers are destroyed. Allocate only after convergence.
+  std::shared_ptr<PhysicalReference> ref;
+  std::array<std::vector<double>, 5> matrices;
+  double scalars[3]{};
   struct Drain {
     cudaStream_t stream;
     bool done = false;
@@ -118,16 +115,26 @@ inline vibeqc_status download(cudaStream_t stream, std::size_t n, std::size_t oc
   auto copy = [&](void* to, const void* from, std::size_t bytes) {
     vibeqc_tensor::cuda_check(cudaMemcpyAsync(to, from, bytes, cudaMemcpyDeviceToHost, stream));
   };
-  for (unsigned k = 0; k < 5; ++k)
-    copy(matrices[k].data(), matrix_sources[k], matrix_size * sizeof(double));
-  copy(ref->orbital_energies.data(), epsilon, n * sizeof(double));
-  for (unsigned k = 0; k < 3; ++k) copy(scalars + k, scalar_sources[k], sizeof(double));
+  // Read convergence status before reserving any n-by-n reference matrices so
+  // failed or unconverged solves preserve their status under tight memory.
   copy(&ok, converged, sizeof(ok));
   copy(&bad, failed, sizeof(bad));
   copy(&count, iterations, sizeof(count));
   vibeqc_tensor::cuda_check(cudaStreamSynchronize(stream));
-  drain.done = true;
   if (bad || !ok) return bad ? VIBEQC_STATUS_NUMERICAL_FAILURE : VIBEQC_STATUS_NOT_CONVERGED;
+
+  ref = std::make_shared<PhysicalReference>();
+  ref->nbf = n;
+  ref->nocc = occupied;
+  const auto matrix_size = posthf::checked_mul(n, n);
+  for (auto& v : matrices) v.resize(matrix_size);
+  ref->orbital_energies.resize(n);
+  for (unsigned k = 0; k < 5; ++k)
+    copy(matrices[k].data(), matrix_sources[k], matrix_size * sizeof(double));
+  copy(ref->orbital_energies.data(), epsilon, n * sizeof(double));
+  for (unsigned k = 0; k < 3; ++k) copy(scalars + k, scalar_sources[k], sizeof(double));
+  vibeqc_tensor::cuda_check(cudaStreamSynchronize(stream));
+  drain.done = true;
   std::array<std::vector<double>*, 5> targets{&ref->overlap, &ref->hcore, &ref->fock,
                                               &ref->coefficients, &ref->density};
   for (unsigned k = 0; k < 5; ++k) {

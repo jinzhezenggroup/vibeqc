@@ -640,7 +640,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   bool requested_bounded_direct_streaming =
       requested_quartet_direct &&
       (detail::direct_topology_requires_bounded_streaming(total_shell_quartets) ||
-       bounded_direct_streaming_override_requested() || options.export_physical_reference);
+       bounded_direct_streaming_override_requested());
   const bool cooperative_one_electron_force = one_electron_force_scalar_requested();
   const bool requested_graph_native_eigensolver_override =
       !options.export_physical_reference && graph_native_eigensolver_override_requested();
@@ -4724,11 +4724,16 @@ std::vector<RhfBucketItem> run_uhf_cuda_bucket(
     const std::vector<const std::vector<double>*>& initial_densities, int device_id,
     bool shell_class_profiling, bool inactive_eigensolver_profiling) {
   CudaRhfBucketPlan* plan = nullptr;
-  std::vector<RhfBucketItem> outputs =
-      run_uhf_cuda_bucket_cached(&plan, systems, options, initial_densities, device_id,
-                                 shell_class_profiling, inactive_eigensolver_profiling);
-  destroy_rhf_cuda_bucket_plan(plan);
-  return outputs;
+  try {
+    auto outputs =
+        run_uhf_cuda_bucket_cached(&plan, systems, options, initial_densities, device_id,
+                                   shell_class_profiling, inactive_eigensolver_profiling);
+    destroy_rhf_cuda_bucket_plan(plan);
+    return outputs;
+  } catch (...) {
+    destroy_rhf_cuda_bucket_plan(plan);
+    throw;
+  }
 }
 
 vibeqc_status contract_cuda_weighted_eri_primitives(

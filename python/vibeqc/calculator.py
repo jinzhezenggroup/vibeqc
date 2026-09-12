@@ -683,17 +683,20 @@ class Calculator:
         return result
 
     def resolved_model(self, atoms, *, charge=0, multiplicity=1) -> ResolvedModel:
-        """Resolve the scientific HF identity for accuracy comparisons.
+        """Resolve the scientific HF or conventional MP2 identity for comparisons.
 
         Unlike a prepared-plan signature, this identity excludes execution
         backend, iteration tolerances, screening and schedules. Fitting and its
         actual auxiliary basis remain mathematical choices. This method only
         resolves compact basis metadata; it performs no integral/SCF work.
         """
-        if self._method == _native.METHOD_MP2:
-            raise NotImplementedError(
-                "MP2 accuracy model resolution is not implemented"
-            )
+        if (
+            self._method == _native.METHOD_MP2
+            and self._density_fitting_mode != _native.DENSITY_FITTING_NONE
+        ):
+            # An identity must not advertise an RI-MP2 model that execution
+            # cannot supply, including when AUTO would select a DF backend.
+            raise NotImplementedError("RI/DF MP2 model resolution is not implemented")
         atoms = tuple(Atom.from_value(atom) for atom in atoms)
         self._preflight_hf_basis(atoms)
         metadata = self.basis_metadata(atoms, charge=charge, multiplicity=multiplicity)
@@ -710,8 +713,19 @@ class Calculator:
         # HF's native default uses the orbital system as the auxiliary system.
         # An AUTO provider may choose a backend, but never changes this model.
         auxiliary = metadata.get("auxiliary", orbital) if fitted else None
+        method_names = {
+            _native.METHOD_RHF: "rhf",
+            _native.METHOD_UHF: "uhf",
+            _native.METHOD_MP2: "mp2",
+        }
+        try:
+            resolved_method = method_names[self._method]
+        except KeyError as error:
+            raise NotImplementedError(
+                "accuracy model is unavailable for this method"
+            ) from error
         return ResolvedModel(
-            method={_native.METHOD_RHF: "rhf", _native.METHOD_UHF: "uhf"}[self._method],
+            method=resolved_method,
             geometry_hash=canonical_hash(
                 [
                     (

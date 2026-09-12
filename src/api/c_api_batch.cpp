@@ -455,6 +455,7 @@ vibeqc_status vibeqc_batch_get_precision_provenance(const vibeqc_batch* batch, u
   if (batch == nullptr || index >= batch->precision.size()) {
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
+  std::lock_guard<std::recursive_mutex> context_lock(batch->context->mutex);
   if (!batch->precision[index].has_value()) return VIBEQC_STATUS_PRECISION_UNAVAILABLE;
   return vibeqc::api::copy_precision_provenance(*batch->precision[index], out);
 }
@@ -463,6 +464,7 @@ vibeqc_status vibeqc_batch_get_last_fock_builds(const vibeqc_batch* batch, uint3
                                                 uint64_t* builds) {
   if (!batch || !builds || index >= batch->last_fock_builds.size())
     return VIBEQC_STATUS_INVALID_ARGUMENT;
+  std::lock_guard<std::recursive_mutex> context_lock(batch->context->mutex);
   *builds = batch->last_fock_builds[index];
   return *builds ? VIBEQC_STATUS_SUCCESS : VIBEQC_STATUS_NOT_IMPLEMENTED;
 }

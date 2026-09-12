@@ -23,7 +23,7 @@ extern "C" vibeqc_status vibeqc_system_one_electron_gradient_cuda(
   if (resources) {
     *resources = {sizeof(*resources), VIBEQC_ABI_VERSION, 0, 0, 0, 0, 0, 0};
   }
-  context->last_detail.clear();
+  std::lock_guard<std::recursive_mutex> context_lock(context->mutex);
 #if VIBEQC_HAS_CUDA
   if (context->state.executed_backend != VIBEQC_BACKEND_CUDA) {
     context->last_detail = "generic generated gradients require a CUDA context";
@@ -34,12 +34,16 @@ extern "C" vibeqc_status vibeqc_system_one_electron_gradient_cuda(
       return p ? std::span<const double>(p, matrix_count) : std::span<const double>();
     };
     std::vector<double> result;
+    // Keep backend scratch diagnostics separate from the last public failure.
+    std::string detail;
     vibeqc::scf::OneElectronGradientResources measured;
     auto status = vibeqc::scf::execute_cuda_one_electron_gradient(
         context->state.device_id, system->data, weights(overlap_weights), weights(kinetic_weights),
-        weights(attraction_weights), schedule, maximum_bytes, result, context->last_detail,
-        &measured);
-    if (status != VIBEQC_STATUS_SUCCESS) return status;
+        weights(attraction_weights), schedule, maximum_bytes, result, detail, &measured);
+    if (status != VIBEQC_STATUS_SUCCESS) {
+      context->last_detail = std::move(detail);
+      return status;
+    }
     std::copy(result.begin(), result.end(), gradient);
     if (resources) {
       resources->device_bytes = measured.device_bytes;

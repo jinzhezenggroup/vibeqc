@@ -2616,20 +2616,20 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 6007,
+      "bytes": 6413,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 139,
+        "runtime": 141,
         "scientific": 0
       },
       "path": "src/scf/cuda/reference_export.cuh",
-      "physical_lines": 150,
+      "physical_lines": 157,
       "reason": "Bounded CUDA-to-host physical-reference staging and numeric-capacity accounting; no integral or method equations.",
       "regions": [],
       "role": "runtime",
-      "sha256": "97ef2d2415c0b3c0bd0c90ba668242346ce11ba356344b11ec5b97ec2775f7cb",
+      "sha256": "910c3bad9c931ee5915a6ccd5ff457dc4824b1ff9a1abffc6837942cfb409043",
       "subsystem": "runtime"
     },
     {
@@ -3154,7 +3154,7 @@
     "fallback": 0,
     "oracle": 0,
     "performance_exception": 156,
-    "runtime": 8615,
+    "runtime": 8617,
     "scientific": 9980
   },
   "migration_ledger": {
@@ -3362,7 +3362,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 4150,
+      "runtime": 4152,
       "scientific": 5
     },
     "scf_tensor": {

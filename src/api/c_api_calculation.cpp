@@ -94,6 +94,7 @@ vibeqc_status vibeqc_calculation_get_precision_provenance(const vibeqc_calculati
   // failed or not-yet-run execution never exposes a stale record. Gate both the
   // availability query (a NULL \p out) and the copy-out on it so callers see
   // an honest non-success result until a run has actually resolved.
+  std::lock_guard<std::recursive_mutex> lock(calculation->context->mutex);
   if (!calculation->precision_available) {
     return VIBEQC_STATUS_PRECISION_UNAVAILABLE;
   }

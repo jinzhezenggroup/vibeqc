@@ -80,6 +80,8 @@ class HFProbe:
             self.controls, ProbeControls
         ):
             raise TypeError("HF probes require typed identities and controls")
+        if self.model.method not in ("rhf", "uhf"):
+            raise ValueError("HF probes support RHF/UHF models only")
         if (
             type(self.converged) is not bool
             or type(self.iterations) is not int
@@ -157,6 +159,8 @@ def _validate_source_model(source, model):
 
     if not isinstance(model, ResolvedModel):
         raise TypeError("audit requires a typed model")
+    if model.method not in ("rhf", "uhf"):
+        raise ValueError("HF audits support RHF/UHF models only")
     if not 0 < source.nbf <= 12 or source.naux > 24:
         raise ValueError("audit domain is at most 12 orbital/24 auxiliary AOs")
     fitted = model.approximation == "density_fitting"

@@ -5,7 +5,9 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 
+#include "vibeqc/fock.h"
 #include "vibeqc/vibeqc.h"
 
 namespace {
@@ -51,6 +53,13 @@ void verify_context_detail_storage() {
               std::string(first_detail).find("positive finite") != std::string::npos,
           "first context detail was not recorded");
 
+  const char* worker_detail = nullptr;
+  std::thread worker([&] { worker_detail = vibeqc_context_get_last_detail(first); });
+  worker.join();
+  require(worker_detail != nullptr &&
+              std::string(worker_detail).find("positive finite") != std::string::npos,
+          "context detail pointer did not survive worker thread exit");
+
   primitive.exponent = 1.0;
   shell.angular_momentum = 5;
   require(vibeqc_system_create(second, &descriptor, &system) == VIBEQC_STATUS_NOT_IMPLEMENTED,
@@ -61,6 +70,30 @@ void verify_context_detail_storage() {
           "second context detail was not recorded");
   require(std::string(first_detail).find("positive finite") != std::string::npos,
           "first context detail was overwritten by another context query");
+
+  // Successful calls must preserve the last failure, including when a caller
+  // queries it again after an operation that uses scratch diagnostics.
+  shell.angular_momentum = 0;
+  descriptor.multiplicity = 2;
+  require(vibeqc_system_create(first, &descriptor, &system) == VIBEQC_STATUS_SUCCESS,
+          "valid system did not recover after failure");
+  const vibeqc_fock_spec spec{sizeof(spec),
+                              VIBEQC_ABI_VERSION,
+                              1,
+                              VIBEQC_FOCK_RESTRICTED,
+                              0,
+                              {1, 1.0, VIBEQC_FOCK_FULL_RANGE, 0.0, VIBEQC_FOCK_EXACT},
+                              {1, -0.5, VIBEQC_FOCK_FULL_RANGE, 0.0, VIBEQC_FOCK_EXACT}};
+  vibeqc_fock_plan* plan = nullptr;
+  require(vibeqc_fock_plan_create(first, system, nullptr, &spec, nullptr, &plan) ==
+              VIBEQC_STATUS_SUCCESS,
+          "valid Fock plan did not preserve successful recovery");
+  const char* after_success = vibeqc_context_get_last_detail(first);
+  require(after_success == first_detail &&
+              std::string(first_detail).find("positive finite") != std::string::npos,
+          "successful API call or later getter invalidated the last failure detail");
+  vibeqc_fock_plan_destroy(plan);
+  vibeqc_system_destroy(system);
 
   vibeqc_context_destroy(first);
   vibeqc_context_destroy(second);

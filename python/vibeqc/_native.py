@@ -580,8 +580,16 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
         ctypes.POINTER(ctypes.c_uint32),
     ]
     library.vibeqc_batch_get_last_inactive_eigensolver_profile.restype = ctypes.c_int
-    library.vibeqc_context_get_last_detail.argtypes = [ctypes.c_void_p]
-    library.vibeqc_context_get_last_detail.restype = ctypes.c_char_p
+    detail_getter = getattr(library, "vibeqc_context_get_last_detail", None)
+    if detail_getter is None:
+        detail_getter = getattr(library, "vibeqc_context_last_error", None)
+    if detail_getter is not None:
+        detail_getter.argtypes = [ctypes.c_void_p]
+        detail_getter.restype = ctypes.c_char_p
+        # Keep the canonical Python call site compatible with ABI-0 libraries
+        # that exported only the pre-#193 alias.
+        if not hasattr(library, "vibeqc_context_get_last_detail"):
+            library.vibeqc_context_get_last_detail = detail_getter
     correlation_diagnostic = getattr(
         library, "vibeqc_calculation_get_correlation_diagnostic", None
     )

@@ -38,6 +38,8 @@ void vibeqc_context_destroy(vibeqc_context* context) { delete context; }
 const char* vibeqc_context_get_last_detail(const vibeqc_context* context) {
   if (context == nullptr) return "invalid context";
   std::lock_guard<std::recursive_mutex> lock(context->mutex);
+  // Failure storage belongs to the context and is only replaced on failure.
+  // Successful operations and queries must preserve every borrowed pointer.
   return context->last_detail.c_str();
 }
 

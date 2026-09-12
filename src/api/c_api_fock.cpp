@@ -74,7 +74,7 @@ extern "C" vibeqc_status vibeqc_fock_plan_create(
   if (!vibeqc::api::valid_descriptor(spec) ||
       (controls && !vibeqc::api::valid_descriptor(controls)))
     return VIBEQC_STATUS_ABI_MISMATCH;
-  context->last_detail.clear();
+  std::lock_guard<std::recursive_mutex> context_lock(context->mutex);
   try {
     require(context->state.executed_backend == VIBEQC_BACKEND_CPU_REFERENCE ||
                 context->state.executed_backend == VIBEQC_BACKEND_CUDA,
