@@ -41,7 +41,7 @@ def test_unpolarized_lda_tail_algebra_matches_interior_and_stays_finite():
         order=1,
         outputs=((), (0,)),
     )
-    graph, energy, derivative, x = lda_xc_pw_unpolarized_tail_expression()
+    graph, energy, derivative, _x = lda_xc_pw_unpolarized_tail_expression()
     for rho in np.logspace(-12, 12, 49):
         expected = program.evaluate(np.array([[rho], [0.0], [0.0]])).ravel()
         actual = np.array(

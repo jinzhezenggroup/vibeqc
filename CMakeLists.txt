@@ -160,6 +160,7 @@ add_library(vibeqc SHARED
   src/dft/ao_grid.cpp
   src/dft/bridge.cpp
   src/dft/grid.cpp
+  src/dft/rks.cpp
   src/dft/xc.cpp
   ${VIBEQC_XC_CPU_HEADER}
   src/integrals/s_integrals.cpp
@@ -186,7 +187,6 @@ add_library(vibeqc SHARED
   src/scf/solver/diis.cpp
   src/scf/solver/proposal_control.cpp
   src/scf/solver/mean_field_driver.cpp
-  src/scf/solver/rks_driver.cpp
   src/scf/gradient/hf_gradient.cpp
   src/scf/reference/linalg.cpp
   src/scf/reference/mean_field.cpp
