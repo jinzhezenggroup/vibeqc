@@ -1,5 +1,6 @@
 """Analytic MP2 energy-adjoint contracts for the complete-gradient chain."""
 
+import os
 from dataclasses import replace
 
 import numpy as np
@@ -13,7 +14,9 @@ from tools.vibeqc_mp2.gradient import (
     canonical_lagrangian_weights,
     canonical_orbital_rhs,
     dense_molecular_gradient_oracle,
+    dense_ri_lagrangian_weights_oracle,
     dense_ri_molecular_gradient_oracle,
+    fused_cuda_ri_molecular_gradient,
     solve_canonical_orbital_response,
     tile_energy_adjoint,
 )
@@ -64,6 +67,18 @@ def test_inverse_sqrt_metric_response_is_included_in_ri_gradient():
         finite = (scalar(step) - scalar(-step)) / (2 * step)
         errors.append(abs(finite - reverse))
     assert errors[-1] < 1e-9 and errors[-1] < errors[0]
+
+
+def test_nuclear_repulsion_gradient_matches_independent_oracle_block():
+    from tools.vibeqc_mp2.gradient import _nuclear_repulsion_gradient
+
+    meta, _ = load_fixture("water")
+    arguments = source_arguments(meta)
+    with NativeSource(**arguments) as source:
+        expected = source.integral_derivatives()["nuclear"].reshape(-1, 3)
+    np.testing.assert_allclose(
+        _nuclear_repulsion_gradient(arguments["atoms"]), expected, atol=1e-13, rtol=0
+    )
 
 
 def _energy(feeds):
@@ -422,7 +437,9 @@ def test_dense_complete_gradient_matches_fully_resolved_finite_differences(name)
 
 
 @pytest.mark.parametrize("name", ["h2", "water"])
-def test_dense_complete_ri_gradient_matches_fully_resolved_finite_differences(name):
+def test_dense_complete_ri_gradient_matches_fully_resolved_finite_differences(
+    name, monkeypatch
+):
     meta, arrays = load_fixture(name)
     arguments = source_arguments(meta)
     with NativeSource(**arguments) as source:
@@ -449,9 +466,89 @@ def test_dense_complete_ri_gradient_matches_fully_resolved_finite_differences(na
         weights = canonical_lagrangian_weights(
             hcore_mo, eri, adjoint, response, occupied
         )
+        if name == "h2":
+            incomplete_output_budget = (
+                reference.nmo**2 * source.naux + source.naux**2
+            ) * 8
+            with pytest.raises(MemoryError, match="output budget"):
+                dense_ri_lagrangian_weights_oracle(
+                    reference,
+                    source,
+                    metric,
+                    weights,
+                    output_budget_bytes=incomplete_output_budget,
+                )
         analytic = dense_ri_molecular_gradient_oracle(
             reference, source, metric, weights
         )
+        if os.environ.get("VIBEQC_MP2_CUDA_TEST") == "1":
+            orbital_calculator = Calculator(
+                basis=arguments["basis"],
+                basis_representation=arguments["representation"],
+                device="cuda",
+            )
+            auxiliary_calculator = Calculator(
+                basis=arguments["auxiliary_basis"],
+                basis_representation=arguments["representation"],
+                device="cuda",
+            )
+            monkeypatch.setattr(
+                source,
+                "integral_derivatives",
+                lambda **_: pytest.fail(
+                    "fused path called conventional dense derivatives"
+                ),
+            )
+            monkeypatch.setattr(
+                source,
+                "df_integral_derivatives",
+                lambda **_: pytest.fail("fused path called dense DF derivatives"),
+            )
+            fused, diagnostics = fused_cuda_ri_molecular_gradient(
+                reference,
+                source,
+                metric,
+                weights,
+                orbital_calculator,
+                auxiliary_calculator,
+            )
+            np.testing.assert_allclose(fused, analytic, atol=2e-9, rtol=2e-9)
+            assert diagnostics["global_derivative_tensors"] is False
+            assert diagnostics["excluded_from_bridge_budget"]
+            assert (
+                diagnostics["weight_output_bytes"]
+                <= diagnostics["weight_output_budget_bytes"]
+            )
+        elif name == "h2":
+            cpu_calculator = Calculator(
+                basis=arguments["basis"],
+                basis_representation=arguments["representation"],
+            )
+            with pytest.raises(ValueError, match="calculators differ"):
+                fused_cuda_ri_molecular_gradient(
+                    reference,
+                    source,
+                    metric,
+                    weights,
+                    cpu_calculator,
+                    cpu_calculator,
+                )
+            for stale in (
+                {"charge": 1, "multiplicity": 2},
+                {"charge": 0, "multiplicity": 3},
+            ):
+                with (
+                    NativeSource(**{**arguments, **stale}) as stale_source,
+                    pytest.raises(ValueError, match="electron state mismatch"),
+                ):
+                    fused_cuda_ri_molecular_gradient(
+                        reference,
+                        stale_source,
+                        metric,
+                        weights,
+                        cpu_calculator,
+                        cpu_calculator,
+                    )
     if name == "h2":
         first = arguments["basis"][0]
         changed_primitive = replace(

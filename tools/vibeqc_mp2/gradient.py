@@ -494,7 +494,10 @@ def dense_ri_lagrangian_weights_oracle(
         raise ValueError("RI Lagrangian/reference/source/metric identity mismatch")
     n = reference.nmo
     na = source.naux
-    elements = n * n * na + na * na
+    # Published overlap/one/A/M cotangents coexist on return. Python integer
+    # arithmetic is unbounded; the byte product is checked against the caller's
+    # explicit output guard before any source read or NumPy allocation.
+    elements = 2 * n * n + n * n * na + na * na
     if elements * 8 > output_budget_bytes:
         raise MemoryError("RI Lagrangian oracle exceeds its output budget")
     raw_a = source._read("three_center_eri", (0, 0, 0), (n, n, na))
@@ -552,3 +555,121 @@ def dense_ri_molecular_gradient_oracle(
     if not np.isfinite(gradient).all():
         raise ValueError("RI-MP2 molecular gradient is nonfinite")
     return immutable(gradient.reshape(len(source.atoms), 3))
+
+
+def _nuclear_repulsion_gradient(atoms):
+    """Analytic nuclear-repulsion gradient in Hartree/Bohr."""
+
+    numbers = np.asarray([atom.atomic_number for atom in atoms], dtype=np.float64)
+    positions = np.asarray([atom.position for atom in atoms], dtype=np.float64)
+    gradient = np.zeros_like(positions)
+    for first in range(len(atoms)):
+        for second in range(first):
+            difference = positions[first] - positions[second]
+            distance = float(np.linalg.norm(difference))
+            if not distance > 0 or not np.isfinite(distance):
+                raise ValueError("nuclear repulsion requires distinct finite centers")
+            contribution = -numbers[first] * numbers[second] * difference / distance**3
+            gradient[first] += contribution
+            gradient[second] -= contribution
+    return immutable(gradient)
+
+
+def fused_cuda_ri_molecular_gradient(
+    reference,
+    source,
+    metric_factor,
+    weights,
+    orbital_calculator,
+    auxiliary_calculator,
+    *,
+    weight_output_budget_bytes=128 << 20,
+    consumer_maximum_bytes=128 << 20,
+    maximum_tile_elements=0,
+):
+    """Contract relaxed RI weights through the #141/#143 CUDA consumers.
+
+    This path forms dense A/M cotangents but never forms nuclear-coordinate
+    derivative tensors. ``weight_output_budget_bytes`` guards the published
+    dense cotangents only; their transformation scratch is excluded.
+    ``consumer_maximum_bytes`` independently bounds each sequential #141/#143
+    consumer, whose descriptors exclude caller-owned weights. This is a
+    migration bridge to a fully tiled method adjoint, not one whole-path peak
+    bound; the private dense derivative oracle is not called.
+    """
+
+    from tools.vibeqc_validation.df_gradient import execute_df_gradient
+    from tools.vibeqc_validation.one_electron_gradient import execute_gradient
+
+    if (
+        type(weight_output_budget_bytes) is not int
+        or weight_output_budget_bytes < 1
+        or type(consumer_maximum_bytes) is not int
+        or consumer_maximum_bytes < 1
+        or type(maximum_tile_elements) is not int
+        or maximum_tile_elements < 0
+    ):
+        raise ValueError("fused CUDA RI gradient requires valid stage budgets")
+    if source.electron_count != reference.electron_count or source.multiplicity != 1:
+        raise ValueError("fused RI gradient source/reference electron state mismatch")
+    if (
+        getattr(orbital_calculator, "_device_name", None) != "cuda"
+        or getattr(auxiliary_calculator, "_device_name", None) != "cuda"
+        or getattr(orbital_calculator, "_representation_name", None)
+        != ("spherical" if source.representation == "real_spherical" else "cartesian")
+        or getattr(auxiliary_calculator, "_representation_name", None)
+        != ("spherical" if source.representation == "real_spherical" else "cartesian")
+        or tuple(orbital_calculator._shells_for_atoms(source.atoms)) != source.shells
+        or tuple(auxiliary_calculator._shells_for_atoms(source.atoms))
+        != source.auxiliary_shells
+    ):
+        raise ValueError("fused CUDA RI gradient calculators differ from the source")
+    ao = dense_ri_lagrangian_weights_oracle(
+        reference,
+        source,
+        metric_factor,
+        weights,
+        output_budget_bytes=weight_output_budget_bytes,
+    )
+    one, one_resources = execute_gradient(
+        orbital_calculator,
+        source.atoms,
+        np.stack((ao.overlap, ao.one_electron, ao.one_electron)),
+        maximum_bytes=consumer_maximum_bytes,
+        charge=source.charge,
+        multiplicity=source.multiplicity,
+    )
+    fitted, df_resources = execute_df_gradient(
+        orbital_calculator,
+        auxiliary_calculator,
+        source.atoms,
+        ao.three_center,
+        ao.metric,
+        maximum_bytes=consumer_maximum_bytes,
+        maximum_tile_elements=maximum_tile_elements,
+        charge=source.charge,
+        multiplicity=source.multiplicity,
+    )
+    gradient = _nuclear_repulsion_gradient(source.atoms) + one + fitted
+    if not np.isfinite(gradient).all():
+        raise ValueError("fused CUDA RI-MP2 molecular gradient is nonfinite")
+    return immutable(gradient), {
+        "one_electron": one_resources,
+        "density_fitting": df_resources,
+        "global_derivative_tensors": False,
+        "dense_response_weights": True,
+        "weight_output_bytes": int(
+            ao.overlap.nbytes
+            + ao.one_electron.nbytes
+            + ao.three_center.nbytes
+            + ao.metric.nbytes
+        ),
+        "weight_output_budget_bytes": weight_output_budget_bytes,
+        "consumer_maximum_bytes": consumer_maximum_bytes,
+        "excluded_from_bridge_budget": (
+            "dense cotangent transformation scratch",
+            "caller-owned response weights",
+            "Python/native object metadata",
+            "CUDA context and allocator overhead",
+        ),
+    }

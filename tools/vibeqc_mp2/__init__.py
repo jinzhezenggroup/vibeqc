@@ -16,6 +16,7 @@ from .gradient import (
     dense_molecular_gradient_oracle,
     dense_ri_lagrangian_weights_oracle,
     dense_ri_molecular_gradient_oracle,
+    fused_cuda_ri_molecular_gradient,
     solve_canonical_orbital_response,
     tile_energy_adjoint,
 )
@@ -36,6 +37,7 @@ __all__ = [
     "dense_molecular_gradient_oracle",
     "dense_ri_lagrangian_weights_oracle",
     "dense_ri_molecular_gradient_oracle",
+    "fused_cuda_ri_molecular_gradient",
     "solve_canonical_orbital_response",
     "tile_energy_adjoint",
 ]
