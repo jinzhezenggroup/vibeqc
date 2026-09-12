@@ -17,6 +17,7 @@ from tools.vibeqc_mp2.complete_gradient import (
 )
 from tools.vibeqc_mp2.equations import energy_program
 from tools.vibeqc_mp2.gradient import (
+    _ri_gradient_tile_ranges,
     ao_lagrangian_weights,
     canonical_energy_adjoint,
     canonical_lagrangian_weights,
@@ -59,6 +60,10 @@ def test_dense_derivative_oracle_rejects_output_budget_before_allocation(monkeyp
             source.integral_derivatives(output_budget_bytes=1)
         with pytest.raises(ValueError, match="output exceeds"):
             source.df_integral_derivatives(output_budget_bytes=1)
+        with pytest.raises(ValueError, match="range is invalid"):
+            source.df_gradient_tile_cuda(0, (-1, 1, 1, 1), np.ones(1))
+        with pytest.raises(ValueError, match="weights must be real"):
+            source.df_gradient_tile_cuda(0, (0, 1, 1, 1), np.ones(1, dtype=complex))
 
 
 def test_inverse_sqrt_metric_response_is_included_in_ri_gradient():
@@ -147,6 +152,15 @@ def test_tiled_validation_energy_avoids_full_denominator_and_t2():
     np.testing.assert_allclose(value, expected, atol=2e-15, rtol=2e-15)
     assert minimum == float(np.min(np.abs(denominator)))
     assert tiles == 16
+
+
+def test_ri_tile_plan_allows_auxiliary_dimension_above_ao_square():
+    a_ranges, metric_ranges = _ri_gradient_tile_ranges(2, 10, 4, 13)
+    assert len(a_ranges) == 10 and a_ranges[-1] == (9, 1, (9, 1, 10, 1))
+    assert metric_ranges[0] == (0, 13, (0, 1, 1, 1))
+    assert metric_ranges[-1] == (91, 9, (91, 1, 1, 1))
+    assert sum(4 * count for _, count, _ in a_ranges) == 40
+    assert sum(count for _, count, _ in metric_ranges) == 100
 
 
 @pytest.mark.parametrize("label", ["conventional", "df"])
@@ -878,10 +892,17 @@ def test_dense_complete_ri_gradient_matches_fully_resolved_finite_differences(
                 weights,
                 orbital_calculator,
                 auxiliary_calculator,
+                maximum_tile_elements=2 * source.nbf**2,
+                maximum_metric_tile_elements=source.naux + 1,
             )
             np.testing.assert_allclose(fused, analytic, atol=2e-9, rtol=2e-9)
             assert diagnostics["global_derivative_tensors"] is False
             assert diagnostics["excluded_from_bridge_budget"]
+            assert diagnostics["density_fitting"]["tiles"] > 2
+            assert (
+                diagnostics["density_fitting"]["response_host_to_device_bytes"]
+                == (source.nbf**2 * source.naux + source.naux**2) * 8
+            )
             assert (
                 diagnostics["weight_output_bytes"]
                 <= diagnostics["weight_output_budget_bytes"]

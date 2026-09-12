@@ -215,6 +215,19 @@ class NativeSource:
             ct.c_char_p,
             ct.c_size_t,
         ]
+        lib.vibeqc_posthf_df_gradient_tile_cuda_v1.argtypes = [
+            ct.c_void_p,
+            ct.c_int,
+            ct.c_uint,
+            _SIZE,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_size_t,
+            _DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
         lib.vibeqc_posthf_weighted_eri_gradient_cuda_v1.argtypes = [
             ct.c_void_p,
             ct.c_int,
@@ -450,6 +463,64 @@ class NativeSource:
             "metric": take((ncoord, self.naux, self.naux)),
             "nuclear": take((ncoord,)),
         }
+
+    def df_gradient_tile_cuda(
+        self,
+        kind,
+        range_descriptor,
+        weights,
+        *,
+        device_id=0,
+        stage_budget_bytes=128 << 20,
+    ):
+        """Contract one strided raw-A or metric weight tile through #143."""
+
+        if type(kind) is not int or kind not in (0, 1):
+            raise ValueError("DF gradient tile kind must be raw A or metric M")
+        descriptor_values = tuple(range_descriptor)
+        maximum_size = 2 ** (8 * ct.sizeof(ct.c_size_t)) - 1
+        if len(descriptor_values) != 4 or any(
+            type(item) is not int or item < 0 or item > maximum_size
+            for item in descriptor_values
+        ):
+            raise ValueError("DF gradient tile range is invalid")
+        descriptor = np.ascontiguousarray(descriptor_values, dtype=np.uintp)
+        raw_weights = np.asarray(weights)
+        if np.iscomplexobj(raw_weights):
+            raise ValueError("DF gradient tile weights must be real")
+        value = np.ascontiguousarray(raw_weights, dtype=np.float64).reshape(-1)
+        if (
+            descriptor.shape != (4,)
+            or descriptor[1] < 1
+            or descriptor[2] < 1
+            or descriptor[3] < 1
+            or not len(value)
+            or not np.isfinite(value).all()
+        ):
+            raise ValueError("DF gradient tile range/weights are invalid")
+        if (
+            type(device_id) is not int
+            or device_id < 0
+            or type(stage_budget_bytes) is not int
+            or stage_budget_bytes < 1
+        ):
+            raise ValueError("DF gradient tile requires valid device/budget")
+        gradient = np.empty((len(self.atoms), 3), dtype=np.float64)
+        with self._lock:
+            self._check_open()
+            self._call(
+                "vibeqc_posthf_df_gradient_tile_cuda_v1",
+                self._handle,
+                device_id,
+                kind,
+                descriptor.ctypes.data_as(_SIZE),
+                pointer(value),
+                value.size,
+                stage_budget_bytes,
+                pointer(gradient),
+                gradient.size,
+            )
+        return immutable(gradient)
 
     def weighted_eri_gradient_cuda(
         self, weights, *, device_id=0, stage_budget_bytes=128 << 20

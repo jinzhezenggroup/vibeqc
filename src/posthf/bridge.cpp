@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <limits>
 #include <memory>
+#include <span>
 #include <stdexcept>
 
 #include "api/handles.hpp"
@@ -583,6 +584,38 @@ VIBEQC_API int vibeqc_posthf_df_integral_derivatives_v1(void* source, std::size_
       cursor = std::copy(values->begin(), values->end(), cursor);
     if (cursor != output + expected)
       throw std::runtime_error("DF derivative oracle returned inconsistent dimensions");
+  });
+}
+// One strided A/M cotangent tile through the generic #143 CUDA consumer.
+VIBEQC_API int vibeqc_posthf_df_gradient_tile_cuda_v1(
+    void* source, int device, unsigned kind, const std::size_t* range, const double* weights,
+    std::size_t weight_elements, std::size_t stage_budget, double* gradient,
+    std::size_t gradient_elements, char* error, std::size_t error_size) {
+  return guarded(error, error_size, [&] {
+    if (!source || !range || !weights || !gradient || device < 0)
+      throw std::invalid_argument("invalid DF gradient tile request");
+    const auto& raw = *static_cast<RawSource*>(source);
+    if (!raw.naux() || gradient_elements != raw.orbital().atoms.size() * 3)
+      throw std::invalid_argument("DF gradient tile dimensions are inconsistent");
+#if VIBEQC_HAS_CUDA
+    std::vector<double> result;
+    std::string detail;
+    vibeqc::scf::DfGradientResources resources;
+    const auto status = vibeqc::scf::execute_cuda_df_gradient_tile(
+        device, raw.orbital(), raw.auxiliary(), kind, {range[0], range[1], range[2], range[3]},
+        std::span<const double>(weights, weight_elements), 0, stage_budget, result, detail,
+        &resources);
+    if (status != VIBEQC_STATUS_SUCCESS)
+      throw std::runtime_error(detail.empty() ? "DF gradient tile contraction failed" : detail);
+    if (result.size() != gradient_elements)
+      throw std::runtime_error("DF gradient tile returned inconsistent dimensions");
+    std::copy(result.begin(), result.end(), gradient);
+#else
+    (void)kind;
+    (void)weight_elements;
+    (void)stage_budget;
+    throw std::runtime_error("CUDA DF gradient tiles are unavailable in this build");
+#endif
   });
 }
 // Stream a dense public-AO cotangent through the #144 CUDA derivative

@@ -882,6 +882,37 @@ def _nuclear_repulsion_gradient(atoms):
     return immutable(gradient)
 
 
+def _ri_gradient_tile_ranges(nbf, naux, a_tile_elements, metric_tile_elements):
+    """Plan complete nonoverlapping A P-slabs and flat metric chunks."""
+
+    if (
+        type(nbf) is not int
+        or nbf < 1
+        or type(naux) is not int
+        or naux < 1
+        or type(a_tile_elements) is not int
+        or a_tile_elements < nbf**2
+        or type(metric_tile_elements) is not int
+        or metric_tile_elements < 1
+    ):
+        raise ValueError("RI gradient tile limits cannot cover their minimal domains")
+    n2 = nbf**2
+    auxiliary_slab = max(1, a_tile_elements // n2)
+    a_ranges = tuple(
+        (
+            begin,
+            min(auxiliary_slab, naux - begin),
+            (begin, min(auxiliary_slab, naux - begin), naux, 1),
+        )
+        for begin in range(0, naux, auxiliary_slab)
+    )
+    metric_ranges = tuple(
+        (begin, min(metric_tile_elements, naux**2 - begin), (begin, 1, 1, 1))
+        for begin in range(0, naux**2, metric_tile_elements)
+    )
+    return a_ranges, metric_ranges
+
+
 def fused_cuda_ri_molecular_gradient(
     reference,
     source,
@@ -893,6 +924,7 @@ def fused_cuda_ri_molecular_gradient(
     weight_output_budget_bytes=128 << 20,
     consumer_maximum_bytes=128 << 20,
     maximum_tile_elements=0,
+    maximum_metric_tile_elements=0,
     device_id=0,
 ):
     """Contract relaxed RI weights through the #141/#143 CUDA consumers.
@@ -906,7 +938,6 @@ def fused_cuda_ri_molecular_gradient(
     bound; the private dense derivative oracle is not called.
     """
 
-    from tools.vibeqc_validation.df_gradient import execute_df_gradient
     from tools.vibeqc_validation.one_electron_gradient import execute_gradient
 
     if (
@@ -916,6 +947,8 @@ def fused_cuda_ri_molecular_gradient(
         or consumer_maximum_bytes < 1
         or type(maximum_tile_elements) is not int
         or maximum_tile_elements < 0
+        or type(maximum_metric_tile_elements) is not int
+        or maximum_metric_tile_elements < 0
         or type(device_id) is not int
         or device_id < 0
     ):
@@ -952,18 +985,42 @@ def fused_cuda_ri_molecular_gradient(
         charge=source.charge,
         multiplicity=source.multiplicity,
     )
-    fitted, df_resources = execute_df_gradient(
-        orbital_calculator,
-        auxiliary_calculator,
-        source.atoms,
-        ao.three_center,
-        ao.metric,
-        maximum_bytes=consumer_maximum_bytes,
-        maximum_tile_elements=maximum_tile_elements,
-        device_id=device_id,
-        charge=source.charge,
-        multiplicity=source.multiplicity,
+    tile_limit = maximum_tile_elements or 65536
+    metric_tile_limit = maximum_metric_tile_elements or tile_limit
+    n2, na = source.nbf**2, source.naux
+    if tile_limit < n2:
+        raise MemoryError("RI gradient tile limit cannot hold one auxiliary slab")
+    a_ranges, metric_ranges = _ri_gradient_tile_ranges(
+        source.nbf, na, tile_limit, metric_tile_limit
     )
+    fitted = np.zeros((len(source.atoms), 3))
+    df_tiles = 0
+    for begin, count, descriptor in a_ranges:
+        fitted += source.df_gradient_tile_cuda(
+            0,
+            descriptor,
+            ao.three_center[:, :, begin : begin + count],
+            device_id=device_id,
+            stage_budget_bytes=consumer_maximum_bytes,
+        )
+        df_tiles += 1
+    metric_weights = ao.metric.reshape(-1)
+    for begin, count, descriptor in metric_ranges:
+        fitted += source.df_gradient_tile_cuda(
+            1,
+            descriptor,
+            metric_weights[begin : begin + count],
+            device_id=device_id,
+            stage_budget_bytes=consumer_maximum_bytes,
+        )
+        df_tiles += 1
+    df_resources = {
+        "tiles": df_tiles,
+        "maximum_a_tile_elements": tile_limit,
+        "maximum_metric_tile_elements": metric_tile_limit,
+        "response_host_to_device_bytes": int(ao.three_center.nbytes + ao.metric.nbytes),
+        "full_weight_upload": False,
+    }
     gradient = _nuclear_repulsion_gradient(source.atoms) + one + fitted
     if not np.isfinite(gradient).all():
         raise ValueError("fused CUDA RI-MP2 molecular gradient is nonfinite")
