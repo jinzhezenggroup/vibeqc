@@ -410,7 +410,14 @@ vibeqc_status vibeqc_batch_execute(vibeqc_batch* batch, const vibeqc_batch_input
       }
     }
 
-    std::vector<vibeqc::methods::BatchItemResult> native = batch->plan->execute(coordinates);
+    // All omitted force buffers request a true energy-only replay. Mixed
+    // outputs keep the existing whole-fleet force schedule and per-item buffer
+    // validation below; no requested force can be silently dropped.
+    const bool compute_forces = std::any_of(results, results + result_count, [](const auto& item) {
+      return item.forces != nullptr || item.force_count != 0;
+    });
+    std::vector<vibeqc::methods::BatchItemResult> native =
+        batch->plan->execute(coordinates, compute_forces);
     if (native.size() != system_count) {
       return VIBEQC_STATUS_INTERNAL_ERROR;
     }

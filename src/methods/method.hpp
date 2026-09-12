@@ -173,7 +173,10 @@ class PreparedBatch {
  public:
   virtual ~PreparedBatch() = default;
   [[nodiscard]] virtual std::size_t size() const noexcept = 0;
-  virtual std::vector<BatchItemResult> execute(const Coordinates& coordinates) = 0;
+  /** Output selection is per replay; retained scientific controls stay immutable.
+   * A false force request skips response evaluation for the complete fleet. */
+  virtual std::vector<BatchItemResult> execute(const Coordinates& coordinates,
+                                               bool compute_forces = true) = 0;
   virtual void clear_warm_starts() = 0;
   [[nodiscard]] virtual std::size_t warm_density_size(std::size_t index) const = 0;
   [[nodiscard]] virtual const std::optional<scf::HfWarmState>& warm_state(

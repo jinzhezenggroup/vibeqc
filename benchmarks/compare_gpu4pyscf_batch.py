@@ -228,8 +228,26 @@ def pair_repeat_accuracy(
     ):
         vibeqc_energies = np.asarray(vibeqc["energies_hartree"])
         gpu_energies = np.asarray(gpu["energies_hartree"])
-        vibeqc_forces = np.asarray(vibeqc["forces_hartree_per_bohr"])
-        gpu_forces = np.asarray(gpu["forces_hartree_per_bohr"])
+        vibeqc_forces = vibeqc["forces_hartree_per_bohr"]
+        gpu_forces = gpu["forces_hartree_per_bohr"]
+        if (vibeqc_forces is None) != (gpu_forces is None):
+            raise ValueError("both engines must measure the same requested properties")
+        if (
+            vibeqc_energies.shape != gpu_energies.shape
+            or not vibeqc_energies.size
+            or not np.isfinite(vibeqc_energies).all()
+            or not np.isfinite(gpu_energies).all()
+        ):
+            raise ValueError("benchmark energies must be finite and match batch shape")
+        force_error = None
+        if vibeqc_forces is not None:
+            first, second = np.asarray(vibeqc_forces), np.asarray(gpu_forces)
+            if first.shape != second.shape:
+                raise ValueError("benchmark force shapes must match")
+            difference = first - second
+            if not np.isfinite(difference).all():
+                raise ValueError("benchmark forces must be finite")
+            force_error = float(np.max(np.abs(difference)))
         pairs.append(
             {
                 "repeat": repeat,
@@ -239,9 +257,7 @@ def pair_repeat_accuracy(
                 "maximum_energy_error_hartree": float(
                     np.max(np.abs(vibeqc_energies - gpu_energies))
                 ),
-                "maximum_force_error_hartree_per_bohr": float(
-                    np.max(np.abs(vibeqc_forces - gpu_forces))
-                ),
+                "maximum_force_error_hartree_per_bohr": force_error,
             }
         )
     return pairs
@@ -278,6 +294,16 @@ def warm_start_priming_metadata(
     }
 
 
+def _maximum_force_error(pairs: Sequence[dict[str, Any]]) -> float | None:
+    """An energy-only measurement has no force error, rather than zero error."""
+    values = [item["maximum_force_error_hartree_per_bohr"] for item in pairs]
+    if all(value is None for value in values):
+        return None
+    if any(value is None for value in values):
+        raise ValueError("warm repeats must retain the same requested properties")
+    return max(values)
+
+
 def accuracy_gate_summary(pairs: Sequence[dict[str, Any]]) -> dict[str, Any]:
     """Select branch-matched accuracy rows when the engines share them.
 
@@ -299,9 +325,7 @@ def accuracy_gate_summary(pairs: Sequence[dict[str, Any]]) -> dict[str, Any]:
         "maximum_energy_error_hartree": max(
             item["maximum_energy_error_hartree"] for item in selected
         ),
-        "maximum_force_error_hartree_per_bohr": max(
-            item["maximum_force_error_hartree_per_bohr"] for item in selected
-        ),
+        "maximum_force_error_hartree_per_bohr": _maximum_force_error(selected),
     }
 
 
@@ -342,24 +366,29 @@ def scaled_geometries(atoms, batch_size: int):
     return systems
 
 
-def _vibeqc_sample(batch: Any, cupy_module: Any, sequence_index: int) -> dict[str, Any]:
+def _vibeqc_sample(
+    batch: Any, cupy_module: Any, sequence_index: int, compute_forces: bool = True
+) -> dict[str, Any]:
     """Execute and serialize one synchronized VibeQC warm sample."""
 
     cupy_module.cuda.Stream.null.synchronize()
-    with nvtx_range(cupy_module, "vibeqc/warm/energy-plus-force"):
+    endpoint = "energy_plus_force" if compute_forces else "energy"
+    with nvtx_range(cupy_module, f"vibeqc/warm/{endpoint.replace('_', '-')}"):
         start = time.perf_counter()
-        result = batch.execute(strict=True)
+        result = batch.execute(
+            strict=True, **({} if compute_forces else {"properties": ("energy",)})
+        )
         cupy_module.cuda.Stream.null.synchronize()
         elapsed = time.perf_counter() - start
     return {
         "sequence_index": sequence_index,
         "seconds": elapsed,
-        "component_seconds": {"energy_plus_force": elapsed},
+        "component_seconds": {endpoint: elapsed},
         "convergence": convergence_payload(result),
         "energies_hartree": result.energies.tolist(),
-        "forces_hartree_per_bohr": np.stack(
-            [item.forces for item in result.items]
-        ).tolist(),
+        "forces_hartree_per_bohr": None
+        if not compute_forces
+        else np.stack([item.forces for item in result.items]).tolist(),
     }
 
 
@@ -368,8 +397,9 @@ def _gpu_sample(
     warm_densities: Sequence[Any],
     cupy_module: Any,
     sequence_index: int,
+    compute_forces: bool = True,
 ) -> dict[str, Any]:
-    """Execute one synchronized GPU4PySCF warm energy-plus-force sample."""
+    """Execute one synchronized GPU4PySCF sample for the requested endpoint."""
 
     # Reuse the same post-cold converged density for every repeat. Advancing
     # dm0 from the previous warm result makes one nondeterministic SCF branch
@@ -390,11 +420,13 @@ def _gpu_sample(
         ]
         cupy_module.cuda.Stream.null.synchronize()
         scf_seconds = time.perf_counter() - scf_start
-    with nvtx_range(cupy_module, "gpu4pyscf/warm/force"):
-        force_start = time.perf_counter()
-        gradients = [engine.nuc_grad_method().kernel() for engine in engines]
-        cupy_module.cuda.Stream.null.synchronize()
-        force_seconds = time.perf_counter() - force_start
+    gradients, force_seconds = None, None
+    if compute_forces:
+        with nvtx_range(cupy_module, "gpu4pyscf/warm/force"):
+            force_start = time.perf_counter()
+            gradients = [engine.nuc_grad_method().kernel() for engine in engines]
+            cupy_module.cuda.Stream.null.synchronize()
+            force_seconds = time.perf_counter() - force_start
     elapsed = time.perf_counter() - total_start
 
     return {
@@ -406,7 +438,9 @@ def _gpu_sample(
         },
         "convergence": gpu_convergence_payload(engines, trackers),
         "energies_hartree": [float(energy) for energy in energies],
-        "forces_hartree_per_bohr": np.stack(
+        "forces_hartree_per_bohr": None
+        if gradients is None
+        else np.stack(
             [cupy_module.asnumpy(-gradient) for gradient in gradients]
         ).tolist(),
     }
@@ -418,6 +452,11 @@ def main() -> None:
     parser.add_argument("--case", choices=cases, default="sp8")
     parser.add_argument("--batch", type=int, default=16)
     parser.add_argument("--repeats", type=int, default=5)
+    parser.add_argument(
+        "--energy-only",
+        action="store_true",
+        help="measure SCF energy without evaluating either engine's forces",
+    )
     parser.add_argument("--max-iterations", type=int, default=100)
     parser.add_argument("--energy-tolerance", type=float, default=1.0e-12)
     parser.add_argument("--density-tolerance", type=float, default=1.0e-10)
@@ -465,6 +504,10 @@ def main() -> None:
         help="JSON path (default: .artifacts/benchmarks) for raw timings and reproducibility metadata",
     )
     args = parser.parse_args()
+    compute_forces = not args.energy_only
+    properties = ("energy", "forces") if compute_forces else ("energy",)
+    if args.energy_only and args.maximum_force_error is not None:
+        raise ValueError("--maximum-force-error requires a force endpoint")
     if args.batch < 1 or args.repeats < 1 or args.max_iterations < 1:
         raise ValueError("--batch, --repeats, and --max-iterations must be positive")
     if args.density_fitting_memory_budget_bytes < 0:
@@ -567,7 +610,7 @@ def main() -> None:
     ) as batch:
         cp.cuda.Stream.null.synchronize()
         start = time.perf_counter()
-        vibeqc_cold_result = batch.execute(strict=True)
+        vibeqc_cold_result = batch.execute(strict=True, properties=properties)
         cp.cuda.Stream.null.synchronize()
         vibeqc_cold = time.perf_counter() - start
         density_fitting_diagnostics = (
@@ -591,9 +634,11 @@ def main() -> None:
         for engine, tracker in zip(gpu_objects, gpu_cold_trackers, strict=True):
             engine.callback = tracker
         gpu_cold_energies = [engine.kernel() for engine in gpu_objects]
-        gpu_cold_gradients = [
-            engine.nuc_grad_method().kernel() for engine in gpu_objects
-        ]
+        gpu_cold_gradients = (
+            None
+            if not compute_forces
+            else [engine.nuc_grad_method().kernel() for engine in gpu_objects]
+        )
         cp.cuda.Stream.null.synchronize()
         gpu_cold = time.perf_counter() - start
         gpu_cold_convergence = gpu_convergence_payload(gpu_objects, gpu_cold_trackers)
@@ -606,8 +651,8 @@ def main() -> None:
         # fresh copy of the same snapshot on every replay.  The priming calls
         # are intentionally outside the profiler range and are recorded below
         # as unmeasured setup, never mixed into warm timing medians.
-        vibeqc_prime = _vibeqc_sample(batch, cp, -1)
-        gpu_prime = _gpu_sample(gpu_objects, gpu_warm_densities, cp, -1)
+        vibeqc_prime = _vibeqc_sample(batch, cp, -1, compute_forces)
+        gpu_prime = _gpu_sample(gpu_objects, gpu_warm_densities, cp, -1, compute_forces)
         warm_start_priming = warm_start_priming_metadata(vibeqc_prime, gpu_prime)
 
         if args.capture_warm_range:
@@ -615,10 +660,18 @@ def main() -> None:
         try:
             for sequence_index, engine in enumerate(measurement_order):
                 if engine == VIBEQC_ENGINE:
-                    vibeqc_samples.append(_vibeqc_sample(batch, cp, sequence_index))
+                    vibeqc_samples.append(
+                        _vibeqc_sample(batch, cp, sequence_index, compute_forces)
+                    )
                 else:
                     gpu_samples.append(
-                        _gpu_sample(gpu_objects, gpu_warm_densities, cp, sequence_index)
+                        _gpu_sample(
+                            gpu_objects,
+                            gpu_warm_densities,
+                            cp,
+                            sequence_index,
+                            compute_forces,
+                        )
                     )
         finally:
             if args.capture_warm_range:
@@ -640,9 +693,7 @@ def main() -> None:
     maximum_energy_error = max(
         item["maximum_energy_error_hartree"] for item in repeat_accuracy
     )
-    maximum_force_error = max(
-        item["maximum_force_error_hartree_per_bohr"] for item in repeat_accuracy
-    )
+    maximum_force_error = _maximum_force_error(repeat_accuracy)
     gate_accuracy = accuracy_gate_summary(repeat_accuracy)
     vibeqc_warm = [float(sample["seconds"]) for sample in vibeqc_samples]
     gpu_warm = [float(sample["seconds"]) for sample in gpu_samples]
@@ -666,7 +717,11 @@ def main() -> None:
     gate_failures = benchmark_gate_failures(
         speedup=speedup_for_gate,
         maximum_energy_error=gate_accuracy["maximum_energy_error_hartree"],
-        maximum_force_error=gate_accuracy["maximum_force_error_hartree_per_bohr"],
+        maximum_force_error=(
+            gate_accuracy["maximum_force_error_hartree_per_bohr"]
+            if compute_forces
+            else 0.0
+        ),
         vibeqc_converged=vibeqc_converged,
         reference_converged=reference_converged,
         minimum_speedup=args.minimum_speedup,
@@ -680,11 +735,11 @@ def main() -> None:
     )
     print("warm measurement order: " + " ".join(measurement_order))
     print(f"maximum warm energy difference: {maximum_energy_error:.3e} Eh")
-    print(f"maximum warm force difference: {maximum_force_error:.3e} Eh/bohr")
+    if compute_forces:
+        print(f"maximum warm force difference: {maximum_force_error:.3e} Eh/bohr")
     print(
         f"accuracy gate ({gate_accuracy['selection']}): "
-        f"{gate_accuracy['maximum_energy_error_hartree']:.3e} Eh, "
-        f"{gate_accuracy['maximum_force_error_hartree_per_bohr']:.3e} Eh/bohr"
+        f"{gate_accuracy['maximum_energy_error_hartree']:.3e} Eh"
     )
     print(f"VibeQC/reference converged: {vibeqc_converged}/{reference_converged}")
     print(f"VibeQC cold batch: {vibeqc_cold * 1e3:.3f} ms")
@@ -735,6 +790,7 @@ def main() -> None:
                 accelerator=cuda_accelerator_metadata(cp),
             ),
             "workload": {
+                "properties": list(properties),
                 "case": args.case,
                 "description": case.description,
                 "method": case.method,
@@ -796,7 +852,10 @@ def main() -> None:
             "timing_summary": {
                 "integral_contraction_breakdown": {
                     "cold_setup_and_integral_generation_seconds": vibeqc_cold,
-                    "warm_contraction_and_force_seconds": vibeqc_warm_median,
+                    "warm_endpoint_seconds": vibeqc_warm_median,
+                    "warm_contraction_and_force_seconds": vibeqc_warm_median
+                    if compute_forces
+                    else None,
                     "note": (
                         "CUDA DF integral setup is included in cold timing; "
                         "warm timings contain resident-plan contractions"
@@ -835,7 +894,9 @@ def main() -> None:
                 "cold_energies_hartree": [
                     float(energy) for energy in gpu_cold_energies
                 ],
-                "cold_forces_hartree_per_bohr": np.stack(
+                "cold_forces_hartree_per_bohr": None
+                if gpu_cold_gradients is None
+                else np.stack(
                     [cp.asnumpy(-gradient) for gradient in gpu_cold_gradients]
                 ).tolist(),
                 "cold_convergence": gpu_cold_convergence,

@@ -72,6 +72,7 @@ def manifest_payload(
     library: Path,
     output_dir: Path,
     memory_budget_bytes: int = 0,
+    energy_only: bool = False,
 ) -> dict[str, Any]:
     """Build a reviewable protocol record before any GPU work starts."""
 
@@ -92,6 +93,7 @@ def manifest_payload(
             "library": str(library),
             "repeats_per_engine": repeats,
             "density_fitting_memory_budget_bytes": memory_budget_bytes,
+            "properties": ["energy"] if energy_only else ["energy", "forces"],
             "output_dir": str(output_dir),
             "benchmark": str(BENCHMARK),
         },
@@ -107,7 +109,7 @@ def manifest_payload(
             "warm_policy": "fixed post-cold engine-local density snapshot",
             "comparison": "VibeQC DF versus GPU4PySCF DF; no mixed direct/DF claim",
             "maximum_energy_error_hartree": 1.0e-9,
-            "maximum_force_error_hartree_per_bohr": 1.0e-8,
+            "maximum_force_error_hartree_per_bohr": None if energy_only else 1.0e-8,
         },
         "component_ledger": {
             "status": "pending_measurement",
@@ -206,13 +208,14 @@ def run_matrix(
             "cuda",
             "--density-fitting-memory-budget-bytes",
             str(payload["execution"].get("density_fitting_memory_budget_bytes", 0)),
-            "--maximum-energy-error",
-            "1e-9",
-            "--maximum-force-error",
-            "1e-8",
             "--output",
             str(result_path),
         ]
+        command.extend(["--maximum-energy-error", "1e-9"])
+        if payload["execution"].get("properties") == ["energy"]:
+            command.append("--energy-only")
+        else:
+            command.extend(["--maximum-force-error", "1e-8"])
         entry.update({"status": "running", "command": command, "result": None})
         _write(manifest_path, payload)
         try:
@@ -259,6 +262,7 @@ def main() -> None:
     parser.add_argument("--run", action="store_true", help="execute cases in Slurm")
     parser.add_argument("--case", choices=sorted({item.name for item in MATRIX}))
     parser.add_argument("--repeats", type=int, default=5)
+    parser.add_argument("--energy-only", action="store_true")
     parser.add_argument(
         "--memory-budget-bytes",
         type=int,
@@ -295,6 +299,7 @@ def main() -> None:
         library=library,
         output_dir=output_dir,
         memory_budget_bytes=args.memory_budget_bytes,
+        energy_only=args.energy_only,
     )
     _write(manifest_path, payload)
     if args.run:
