@@ -11,6 +11,10 @@
 #include "scf/types.hpp"
 
 namespace vibeqc::scf {
+/** Shared physical reference validation, including canonical and SCF residuals.
+ * Arrays use
+ * detached row-major spatial AO/MO conventions on every backend. */
+void validate_physical_reference(PhysicalReference& reference);
 
 struct CudaDensityFittingMetricDiagnostic;
 struct CudaDensityFittingJkPlan;

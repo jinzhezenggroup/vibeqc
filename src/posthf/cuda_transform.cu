@@ -28,6 +28,15 @@ int guarded(char* error, size_t size, F fn) noexcept {
   try {
     fn();
     return 0;
+  } catch (const DeviceAllocationError& e) {
+    error_text(error, size, e.what());
+    return 2;
+  } catch (const std::bad_alloc& e) {
+    error_text(error, size, e.what());
+    return 2;
+  } catch (const std::length_error& e) {
+    error_text(error, size, e.what());
+    return 2;
   } catch (const std::exception& e) {
     error_text(error, size, e.what());
     return 1;

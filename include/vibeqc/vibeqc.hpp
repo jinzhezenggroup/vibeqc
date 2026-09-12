@@ -80,6 +80,73 @@ class System {
   std::uint32_t atom_count_{};
 };
 
+struct CalculationResult {
+  double energy{};
+  std::optional<std::vector<double>> forces;
+  std::uint32_t iterations{};
+  double reference_residual{};
+  vibeqc_backend executed_backend{};
+  std::optional<vibeqc_correlation_diagnostic> correlation;
+};
+
+/** Native single-system plan; context must outlive it. Unsupported properties
+ * fail before
+ * execution, and absent forces are represented explicitly. */
+class Calculation {
+ public:
+  Calculation(Context& context, const System& system, const vibeqc_method_descriptor& method)
+      : context_(context.get()),
+        atom_count_(system.atom_count()),
+        capabilities_(method_capabilities(method.method)) {
+    check(vibeqc_calculation_prepare(context_, system.get(), &method, &handle_));
+  }
+  ~Calculation() { vibeqc_calculation_destroy(handle_); }
+  Calculation(const Calculation&) = delete;
+  Calculation& operator=(const Calculation&) = delete;
+  Calculation(Calculation&& other) noexcept
+      : context_(other.context_),
+        handle_(std::exchange(other.handle_, nullptr)),
+        atom_count_(other.atom_count_),
+        capabilities_(other.capabilities_) {}
+  CalculationResult execute(vibeqc_property_flags properties = VIBEQC_PROPERTY_ENERGY) {
+    CalculationResult result;
+    if (!properties || (properties & ~capabilities_.supported_properties))
+      throw Error(VIBEQC_STATUS_NOT_IMPLEMENTED, "requested method property is unsupported");
+    if (properties & VIBEQC_PROPERTY_FORCES) result.forces.emplace(atom_count_ * 3);
+    vibeqc_result_descriptor output{
+        sizeof(vibeqc_result_descriptor),
+        VIBEQC_ABI_VERSION,
+        0,
+        result.forces ? result.forces->data() : nullptr,
+        result.forces ? static_cast<std::uint32_t>(result.forces->size()) : 0,
+        0,
+        0,
+        0,
+        0,
+        VIBEQC_BACKEND_CPU_REFERENCE};
+    const auto status = vibeqc_calculation_execute(handle_, &output);
+    if (status != VIBEQC_STATUS_SUCCESS)
+      throw Error(status, vibeqc_context_get_last_detail(context_));
+    result.energy = output.energy;
+    result.iterations = output.iterations;
+    result.reference_residual = output.density_rms;
+    result.executed_backend = output.executed_backend;
+    vibeqc_correlation_diagnostic diagnostic{};
+    diagnostic.struct_size = sizeof(diagnostic);
+    diagnostic.abi_version = VIBEQC_ABI_VERSION;
+    if (vibeqc_calculation_get_correlation_diagnostic(handle_, &diagnostic) ==
+        VIBEQC_STATUS_SUCCESS)
+      result.correlation = diagnostic;
+    return result;
+  }
+
+ private:
+  vibeqc_context* context_{};
+  vibeqc_calculation* handle_{};
+  std::uint32_t atom_count_{};
+  MethodCapabilities capabilities_;
+};
+
 struct BatchItemResult {
   vibeqc_status status{VIBEQC_STATUS_INTERNAL_ERROR};
   double energy{};

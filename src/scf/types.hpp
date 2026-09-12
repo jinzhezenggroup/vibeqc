@@ -1,6 +1,7 @@
 #ifndef VIBEQC_SCF_TYPES_HPP
 #define VIBEQC_SCF_TYPES_HPP
 
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -41,6 +42,9 @@ struct ScfOptions {
   double density_fitting_relative_threshold{1.0e-10};
   /** Byte budget for bounded DF plan/integral work; zero means implementation default. */
   std::size_t density_fitting_memory_budget_bytes{};
+  /** Correlated energy consumers require values-only, bounded direct RHF. */
+  bool export_physical_reference{false};
+  std::size_t reference_memory_budget_bytes{};
   /**
    * Requested floating-point execution policy. \p std::nullopt (absent) preserves
    * the legacy VIBEQC_MIXED_PRECISION_FOCK_THRESHOLD diagnostic switch; an
@@ -61,6 +65,18 @@ struct ScfOptions {
 };
 
 /** Internal mean-field result, including state retained for warm starts. */
+/** Owned physical canonical RHF state used by bounded post-HF consumers. */
+struct PhysicalReference {
+  std::size_t nbf{};
+  std::size_t nocc{};
+  std::vector<double> overlap, hcore, fock, coefficients, orbital_energies, density;
+  double energy{};
+  double commutator_residual{};
+  double canonical_density_drift{};
+  double eigen_residual{};
+  std::size_t numeric_capacity_bytes{};
+};
+
 struct ScfResult {
   double energy{};
   std::vector<double> forces;
@@ -80,6 +96,7 @@ struct ScfResult {
    * leaves the FP64 defaults in place.
    */
   PrecisionProvenance precision{};
+  std::shared_ptr<const PhysicalReference> reference;
 };
 
 }  // namespace vibeqc::scf

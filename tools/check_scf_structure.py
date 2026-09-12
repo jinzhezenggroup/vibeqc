@@ -166,6 +166,7 @@ CUDA_ALLOWED["cuda_resources"] = (
     "scf/cuda/eigensolver.",
     "scf/cuda/matrix_library.",
     "runtime/resource_cuda.cuh",
+    "runtime/allocation_measurement.hpp",
 )
 CUDA_MODULES["cuda_matrix_library"] = ("matrix_library", "runtime_support")
 CUDA_ALLOWED["cuda_matrix_library"] = (

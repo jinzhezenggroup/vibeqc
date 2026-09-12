@@ -15,6 +15,7 @@
 
 #include "integrals/s_integrals.hpp"
 #include "molecule/basis.hpp"
+#include "posthf/capacity.hpp"
 #include "posthf/raw_source.hpp"
 #include "runtime/resource_ledger.hpp"
 #include "runtime/resource_usage.hpp"
@@ -648,6 +649,49 @@ Matrix generated_df_hf_gradient(const DensityFittingScfData& data, CudaDensityFi
 
 }  // namespace
 
+void validate_physical_reference(PhysicalReference& ref) {
+  const auto n = ref.nbf;
+  if (!n || !ref.nocc || ref.nocc >= n || n > SIZE_MAX / n || ref.orbital_energies.size() != n)
+    throw std::invalid_argument("invalid physical reference dimensions/occupations");
+  for (const auto* a : {&ref.overlap, &ref.hcore, &ref.fock, &ref.coefficients, &ref.density})
+    if (a->size() != n * n) throw std::invalid_argument("invalid physical reference matrix shape");
+  for (const auto* a : {&ref.overlap, &ref.hcore, &ref.fock, &ref.coefficients, &ref.density,
+                        &ref.orbital_energies})
+    if (!std::all_of(a->begin(), a->end(), [](double x) { return std::isfinite(x); }))
+      throw std::runtime_error("nonfinite physical RHF reference");
+  const auto canonical_density = density_from_orbitals(ref.coefficients, n, ref.nocc);
+  const auto residual = commutator_residual(ref.fock, ref.density, ref.overlap, n);
+  const auto fc = multiply(ref.fock, ref.coefficients, n);
+  const auto sc = multiply(ref.overlap, ref.coefficients, n);
+  const auto ct = transpose(ref.coefficients, n);
+  const auto csc = multiply(ct, sc, n);
+  const auto cfc = multiply(ct, fc, n);
+  // Finite inputs can still overflow during validation. NaN comparisons below
+  // must never allow an invalid reference to reach the correlation consumer.
+  for (const auto* a : {&canonical_density, &residual, &fc, &sc, &csc, &cfc})
+    if (!std::all_of(a->begin(), a->end(), [](double x) { return std::isfinite(x); }))
+      throw std::runtime_error("nonfinite physical reference validation");
+  if (!std::isfinite(ref.energy)) throw std::runtime_error("nonfinite physical reference energy");
+  ref.commutator_residual = ref.canonical_density_drift = ref.eigen_residual = 0.0;
+  double orthogonality = 0.0;
+  double canonical = 0.0;
+  for (std::size_t mu = 0; mu < n; ++mu) {
+    for (std::size_t p = 0; p < n; ++p) {
+      const auto k = index(mu, p, n);
+      ref.commutator_residual = std::max(ref.commutator_residual, std::abs(residual[k]));
+      ref.canonical_density_drift =
+          std::max(ref.canonical_density_drift, std::abs(canonical_density[k] - ref.density[k]));
+      ref.eigen_residual =
+          std::max(ref.eigen_residual, std::abs(fc[k] - sc[k] * ref.orbital_energies[p]));
+      orthogonality = std::max(orthogonality, std::abs(csc[k] - (mu == p ? 1.0 : 0.0)));
+      canonical = std::max(canonical, std::abs(cfc[k] - (mu == p ? ref.orbital_energies[p] : 0.0)));
+    }
+  }
+  if (std::max({ref.commutator_residual, ref.canonical_density_drift, ref.eigen_residual,
+                orthogonality, canonical}) > 1e-8)
+    throw std::runtime_error("invalid physical RHF reference: residual/canonicality drift");
+}
+
 void validate_hf_warm_density(const core::System& source, vibeqc_method method,
                               const std::vector<double>& density) {
   posthf::RawSource raw(source);
@@ -690,6 +734,41 @@ ScfResult run_prepared_fock_strategy(const PreparedFockPlan& plan, const ScfOpti
   // The host (value) Fock build is always FP64; report the requested policy so
   // provenance distinguishes "asked fp64" from "asked auto, collapsed to FP64".
   result.precision.requested_mode = options.precision_mode.value_or(VIBEQC_PRECISION_FP64);
+  if (options.export_physical_reference && strategy.spec.spin == FockSpin::Restricted) {
+    if (!result.converged) return result;
+    if (strategy.spec.coulomb.approximation != FockApproximation::Exact ||
+        strategy.spec.exchange.approximation != FockApproximation::Exact ||
+        options.screening_tolerance != 0.0)
+      throw std::invalid_argument("physical reference requires unscreened conventional integrals");
+    const auto n = molecule::ao_count(system);
+    const auto occupied = static_cast<std::size_t>(system.electron_count / 2);
+    if (occupied == 0 || occupied >= n)
+      throw std::invalid_argument("physical RHF reference requires a nonempty virtual space");
+    const auto capacity = posthf::rhf_reference_capacity(system, options.diis_history,
+                                                         strategy.backend == FockBackend::Cpu);
+    if (options.reference_memory_budget_bytes != 0 &&
+        capacity > options.reference_memory_budget_bytes)
+      throw std::length_error("bounded RHF reference exceeds numeric memory budget");
+    const auto jk = plan.build(result.density);
+    const auto matrices = assemble_fock(strategy, plan.one_electron().hcore, jk);
+    auto ref = std::make_shared<PhysicalReference>();
+    ref->nbf = n;
+    ref->nocc = occupied;
+    ref->overlap = plan.one_electron().overlap;
+    ref->hcore = plan.one_electron().hcore;
+    ref->fock = matrices.alpha;
+    ref->density = result.density;
+    const auto orthogonalizer = symmetric_orthogonalizer(ref->overlap, n);
+    auto canonical = generalized_eigen(ref->fock, orthogonalizer, n);
+    ref->coefficients = std::move(canonical.vectors);
+    ref->orbital_energies = std::move(canonical.values);
+    ref->energy = electronic_energy(ref->density, ref->hcore, ref->fock) +
+                  plan.one_electron().nuclear_repulsion;
+    ref->numeric_capacity_bytes = capacity;
+    validate_physical_reference(*ref);
+    result.energy = ref->energy;
+    result.reference = std::move(ref);
+  }
   return result;
 }
 
@@ -699,6 +778,12 @@ ScfResult run_cpu_fock_strategy(const core::System& system, const core::System* 
   const auto strategy = fock_strategy_for_execution(options);
   if (strategy.backend != FockBackend::Cpu)
     throw std::invalid_argument("CPU Fock entry requires a CPU strategy");
+  if (options.export_physical_reference && strategy.spec.spin == FockSpin::Restricted &&
+      options.reference_memory_budget_bytes != 0) {
+    const auto capacity = posthf::rhf_reference_capacity(system, options.diis_history, true);
+    if (capacity > options.reference_memory_budget_bytes)
+      throw std::length_error("bounded RHF reference exceeds numeric memory budget");
+  }
   const PreparedFockPlan plan(system, auxiliary, strategy);
   return run_prepared_fock_strategy(plan, options, initial_density);
 }
@@ -706,6 +791,9 @@ ScfResult run_cpu_fock_strategy(const core::System& system, const core::System* 
 ScfResult run_rhf(const core::System& system, const ScfOptions& options,
                   const std::vector<double>* initial_density) {
   ScfOptions execution = options;
+  // Export is an internal energy-only consumer; suppress derivative preparation
+  // as well as the final force calculation even with default ScfOptions.
+  if (execution.export_physical_reference) execution.compute_forces = false;
   if (!execution.resolved_fock_build)
     execution.resolved_fock_build = resolve_fock_build(
         make_hf_fock_spec(FockSpin::Restricted), FockBackend::Cpu, options.screening_tolerance);

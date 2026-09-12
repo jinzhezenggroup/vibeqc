@@ -47,7 +47,8 @@ enum {
   VIBEQC_METHOD_RHF = 1,
   VIBEQC_METHOD_UHF = 2,
   VIBEQC_METHOD_WB97M_V = 3,
-  VIBEQC_METHOD_RCCSD_T = 4
+  VIBEQC_METHOD_RCCSD_T = 4,
+  VIBEQC_METHOD_MP2 = 5
 };
 
 /** Broad algorithm family used for capability discovery and dispatch. */
@@ -55,7 +56,8 @@ typedef int32_t vibeqc_method_family;
 enum {
   VIBEQC_METHOD_FAMILY_HARTREE_FOCK = 1,
   VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL = 2,
-  VIBEQC_METHOD_FAMILY_COUPLED_CLUSTER = 3
+  VIBEQC_METHOD_FAMILY_COUPLED_CLUSTER = 3,
+  VIBEQC_METHOD_FAMILY_PERTURBATION = 4
 };
 
 typedef uint32_t vibeqc_property_flags;
@@ -387,6 +389,11 @@ typedef struct vibeqc_method_descriptor {
    * double-precision default; \p auto enables the safe lower-precision route.
    */
   vibeqc_precision_mode precision_mode;
+  /** Optional combined numeric capacity for correlated reference/energy phases.
+   * Zero selects 256 MiB; this is not a process-RSS or CUDA-context bound. */
+  uint64_t correlation_memory_budget_bytes;
+  /** Positive MP2 absolute denominator threshold in Hartree; zero uses 1e-10. */
+  double mp2_denominator_threshold;
 } vibeqc_method_descriptor;
 
 /**
@@ -421,6 +428,28 @@ typedef struct vibeqc_precision_provenance {
    */
   int32_t refinement_iterations;
 } vibeqc_precision_provenance;
+
+typedef struct vibeqc_correlation_diagnostic {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  double reference_energy;
+  double opposite_spin_energy;
+  double same_spin_energy;
+  double minimum_absolute_denominator;
+  double reference_residual;
+  uint64_t numeric_capacity_bytes;
+  uint64_t energy_tile_count;
+  /** Actual MO transfer staging; not an assertion that the whole method is resident. */
+  int32_t mo_host_staging;
+  uint64_t correlation_owned_device_bytes;
+  uint64_t correlation_provider_retained_bytes;
+  uint64_t mo_transfer_bytes;
+  double host_to_device_ms;
+  double device_to_host_ms;
+  double transform_library_ms;
+  double tensor_kernel_ms;
+  char equation_hash[65];
+} vibeqc_correlation_diagnostic;
 
 /** Executable capabilities for one method identifier. */
 typedef struct vibeqc_method_capabilities_descriptor {
@@ -519,6 +548,9 @@ VIBEQC_API void vibeqc_context_destroy(vibeqc_context* context);
 /** Borrow the last native failure detail, valid until the next failing call
  * on this context or its destruction. Empty when no detail has been recorded. */
 VIBEQC_API const char* vibeqc_context_get_last_detail(const vibeqc_context* context);
+
+/** Backward-compatible alias for vibeqc_context_get_last_detail. */
+VIBEQC_API const char* vibeqc_context_last_error(const vibeqc_context* context);
 
 VIBEQC_API vibeqc_status vibeqc_system_create(vibeqc_context* context,
                                               const vibeqc_system_descriptor* descriptor,
@@ -652,6 +684,9 @@ VIBEQC_API vibeqc_status vibeqc_calculation_execute(vibeqc_calculation* calculat
  */
 VIBEQC_API vibeqc_status vibeqc_calculation_get_precision_provenance(
     const vibeqc_calculation* calculation, vibeqc_precision_provenance* out);
+/** Most recent successful correlated execution; failure/absence is explicit. */
+VIBEQC_API vibeqc_status vibeqc_calculation_get_correlation_diagnostic(
+    const vibeqc_calculation* calculation, vibeqc_correlation_diagnostic* diagnostic);
 
 /**
  * Read one batch item's precision record by its original input index.

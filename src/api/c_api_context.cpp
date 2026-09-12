@@ -36,7 +36,13 @@ vibeqc_status vibeqc_context_create(const vibeqc_context_descriptor* descriptor,
 void vibeqc_context_destroy(vibeqc_context* context) { delete context; }
 
 const char* vibeqc_context_get_last_detail(const vibeqc_context* context) {
-  return context ? context->last_detail.c_str() : "invalid context";
+  if (context == nullptr) return "invalid context";
+  std::lock_guard<std::recursive_mutex> lock(context->mutex);
+  return context->last_detail.c_str();
+}
+
+const char* vibeqc_context_last_error(const vibeqc_context* context) {
+  return vibeqc_context_get_last_detail(context);
 }
 
 vibeqc_status vibeqc_system_create(vibeqc_context* context,
@@ -56,6 +62,7 @@ vibeqc_status vibeqc_system_create(vibeqc_context* context,
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
 
+  std::lock_guard<std::recursive_mutex> context_lock(context->mutex);
   try {
     auto candidate = std::make_unique<vibeqc_system>();
     candidate->data.charge = descriptor->charge;

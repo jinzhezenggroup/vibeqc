@@ -2,11 +2,13 @@
 
 #include <cstdlib>
 
+#include "runtime/allocation_measurement.hpp"
 #include "runtime/resource_cuda.cuh"
 
 namespace vibeqc::scf::cuda_execution {
 
 CudaResources::~CudaResources() {
+  std::lock_guard<std::mutex> allocation_lock(runtime::allocation_measurement_mutex);
   if (device_id_ >= 0) (void)cudaSetDevice(device_id_);
   if (post_eigensolver_graph_exec_ != nullptr) {
     (void)cudaGraphExecDestroy(post_eigensolver_graph_exec_);

@@ -51,7 +51,12 @@ class _EnergyFunction(torch.autograd.Function):
             (atomic_numbers[index], coordinate_values[index].tolist())
             for index in range(coordinates.shape[0])
         ]
-        result = calculator.singlepoint(atoms, charge=charge, multiplicity=multiplicity)
+        result = calculator.singlepoint(
+            atoms,
+            charge=charge,
+            multiplicity=multiplicity,
+            properties=("energy", "forces"),
+        )
         force_tensor = torch.as_tensor(
             result.forces, dtype=coordinates.dtype, device=coordinates.device
         )

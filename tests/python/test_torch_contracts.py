@@ -16,7 +16,12 @@ class QuadraticCalculator:
     def __init__(self):
         self.calls = []
 
-    def singlepoint(self, atoms, *, charge, multiplicity):
+    def singlepoint(
+        self, atoms, *, charge, multiplicity, properties=("energy", "forces")
+    ):
+        # The autograd binding explicitly requests analytic forces, including
+        # when the public calculator's method would default to energy only.
+        assert properties == ("energy", "forces")
         self.calls.append((tuple(a[0] for a in atoms), charge, multiplicity))
         xyz = np.asarray([a[1] for a in atoms], dtype=float)
         return SimpleNamespace(energy=float((xyz**2).sum()), forces=-2 * xyz)

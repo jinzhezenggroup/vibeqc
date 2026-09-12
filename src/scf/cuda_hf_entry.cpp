@@ -21,6 +21,7 @@ ScfResult run_rhf_cuda(const core::System& system, const ScfOptions& options, in
       run_rhf_cuda_bucket(systems, options, initial_densities, device_id);
   if (result.empty()) throw std::runtime_error("CUDA RHF returned no result");
   const vibeqc_status status = result.front().status;
+  if (status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
   if (status == VIBEQC_STATUS_INVALID_ARGUMENT) {
     throw std::invalid_argument("CUDA RHF received invalid arguments");
   }

@@ -68,7 +68,11 @@ def tensor_source_identity() -> str:
                 "tensor",
                 "integral",
                 "common",
-                assets=("src/tensor/cuda_runtime.cuh",),
+                assets=(
+                    "src/tensor/cuda_runtime.cuh",
+                    "src/tensor/metrics.hpp",
+                    "src/runtime/allocation_measurement.hpp",
+                ),
             ),
         }
     )

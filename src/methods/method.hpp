@@ -158,6 +158,11 @@ class PreparedCalculation {
   /** Execute only the requested output work. Energy and convergence
    * diagnostics are always produced; forces are opt-in per execution. */
   virtual Result execute(bool compute_forces) = 0;
+  virtual void invalidate_result() {}
+  [[nodiscard]] virtual std::optional<vibeqc_correlation_diagnostic> correlation_diagnostic()
+      const {
+    return std::nullopt;
+  }
 };
 
 /** Prepared ragged execution. Method families choose their own batching policy.

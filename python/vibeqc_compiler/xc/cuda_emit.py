@@ -44,7 +44,12 @@ def emit_cuda(program, schedule=None):
             "integral",
             "xc",
             "dft",
-            assets=("src/tensor/cuda_runtime.cuh", "src/dft/xc_runtime.cuh"),
+            assets=(
+                "src/tensor/cuda_runtime.cuh",
+                "src/tensor/metrics.hpp",
+                "src/runtime/allocation_measurement.hpp",
+                "src/dft/xc_runtime.cuh",
+            ),
         ),
         "expression_hash": program.expression_hash,
         "functional": program.spec.to_payload(),
@@ -119,6 +124,8 @@ def emit_cuda(program, schedule=None):
         {**contract, "identity": identity, "static_models": models},
         (
             asset_path("src/tensor/cuda_runtime.cuh"),
+            asset_path("src/tensor/metrics.hpp"),
+            asset_path("src/runtime/allocation_measurement.hpp"),
             asset_path("src/dft/xc_runtime.cuh"),
         ),
     )

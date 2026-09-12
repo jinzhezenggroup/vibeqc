@@ -24,9 +24,11 @@ METHOD_RHF = 1
 METHOD_UHF = 2
 METHOD_WB97M_V = 3
 METHOD_RCCSD_T = 4
+METHOD_MP2 = 5
 METHOD_FAMILY_HARTREE_FOCK = 1
 METHOD_FAMILY_DENSITY_FUNCTIONAL = 2
 METHOD_FAMILY_COUPLED_CLUSTER = 3
+METHOD_FAMILY_PERTURBATION = 4
 PROPERTY_ENERGY = 1 << 0
 PROPERTY_FORCES = 1 << 1
 BACKEND_CPU_REFERENCE = 0
@@ -187,6 +189,8 @@ class MethodDescriptor(ctypes.Structure):
         ("density_fitting_relative_threshold", ctypes.c_double),
         ("density_fitting_memory_budget_bytes", ctypes.c_uint64),
         ("precision_mode", ctypes.c_int32),
+        ("correlation_memory_budget_bytes", ctypes.c_uint64),
+        ("mp2_denominator_threshold", ctypes.c_double),
     ]
 
 
@@ -199,6 +203,29 @@ class MethodCapabilitiesDescriptor(ctypes.Structure):
         ("supported_properties", ctypes.c_uint32),
         ("available", ctypes.c_int32),
         ("supports_batch", ctypes.c_int32),
+    ]
+
+
+class CorrelationDiagnostic(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("reference_energy", ctypes.c_double),
+        ("opposite_spin_energy", ctypes.c_double),
+        ("same_spin_energy", ctypes.c_double),
+        ("minimum_absolute_denominator", ctypes.c_double),
+        ("reference_residual", ctypes.c_double),
+        ("numeric_capacity_bytes", ctypes.c_uint64),
+        ("energy_tile_count", ctypes.c_uint64),
+        ("mo_host_staging", ctypes.c_int32),
+        ("correlation_owned_device_bytes", ctypes.c_uint64),
+        ("correlation_provider_retained_bytes", ctypes.c_uint64),
+        ("mo_transfer_bytes", ctypes.c_uint64),
+        ("host_to_device_ms", ctypes.c_double),
+        ("device_to_host_ms", ctypes.c_double),
+        ("transform_library_ms", ctypes.c_double),
+        ("tensor_kernel_ms", ctypes.c_double),
+        ("equation_hash", ctypes.c_char * 65),
     ]
 
 
@@ -555,6 +582,20 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
     library.vibeqc_batch_get_last_inactive_eigensolver_profile.restype = ctypes.c_int
     library.vibeqc_context_get_last_detail.argtypes = [ctypes.c_void_p]
     library.vibeqc_context_get_last_detail.restype = ctypes.c_char_p
+    correlation_diagnostic = getattr(
+        library, "vibeqc_calculation_get_correlation_diagnostic", None
+    )
+    if correlation_diagnostic is not None:
+        correlation_diagnostic.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(CorrelationDiagnostic),
+        ]
+        correlation_diagnostic.restype = ctypes.c_int
+    # Keep the pre-#193 name available when an older native library exports it.
+    legacy_last_error = getattr(library, "vibeqc_context_last_error", None)
+    if legacy_last_error is not None:
+        legacy_last_error.argtypes = [ctypes.c_void_p]
+        legacy_last_error.restype = ctypes.c_char_p
     library.vibeqc_batch_get_hf_warm_state.argtypes = [
         ctypes.c_void_p,
         ctypes.c_uint32,
@@ -587,9 +628,16 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
     return library
 
 
-def check(library: ctypes.CDLL, status: int) -> None:
+def check(library: ctypes.CDLL, status: int, *, context=None) -> None:
     if status != STATUS_SUCCESS:
         message = library.vibeqc_status_message(status).decode("utf-8")
+        getter = getattr(library, "vibeqc_context_get_last_detail", None)
+        if context is not None and getter is not None:
+            getter.argtypes = [ctypes.c_void_p]
+            getter.restype = ctypes.c_char_p
+            detail = getter(context)
+            if detail:
+                message = detail.decode("utf-8")
         if status == STATUS_NOT_IMPLEMENTED:
             raise NotImplementedError(f"VIBEQC error {status}: {message}")
         raise RuntimeError(f"VIBEQC error {status}: {message}")

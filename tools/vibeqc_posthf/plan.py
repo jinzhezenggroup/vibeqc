@@ -1,11 +1,8 @@
 """Checked numeric capacities for resident MO blocks and bounded AO tiles."""
 
 from dataclasses import dataclass
-from math import prod
 
-from vibeqc_compiler.integral.shell_signature import checked_index
-
-from .sources import CPU_SOURCE_SCRATCH
+from .plan_spec import numeric_capacity
 
 PROVIDER_ALLOWANCE = 96 << 20
 WORKSPACE_BYTES = 4 << 20
@@ -57,27 +54,24 @@ def plan_block(snapshot, source, block, *, axis_tile, backend):
         )
     tile = (min(axis_tile, max(source.shell_sizes)),) * 4
     m = block.shape
-    output = checked_index(prod(m), "MO output elements")
-    stages = [prod(tile)] + [prod(tile[k:]) * prod(m[:k]) for k in range(1, 5)]
-    stage = checked_index(max(stages), "transformation workspace")
-    if backend == "cuda" and stage > (1 << 31) - 1:
-        raise ValueError("MO stage exceeds cuBLAS int32 indexing")
-    coefficients = checked_index(source.nbf * sum(m), "MO coefficient panels")
-    # CPU: tile CG02 response assembly, immutable result publication and two
-    # rotating stages coexist conservatively. CUDA also reserves a detached
-    # download plus publication copy; arbitrary caller-retained exports are
-    # outside provider ownership once returned.
-    common = snapshot.numeric_bytes + source.numeric_bytes + CPU_SOURCE_SCRATCH
-    host = checked_index(
-        common + 8 * (4 * prod(tile) + 2 * stage + 3 * output + 2 * coefficients),
-        "host numeric capacity",
+    capacity = numeric_capacity(
+        nbf=source.nbf,
+        reference_bytes=snapshot.numeric_bytes,
+        source_bytes=source.numeric_bytes,
+        shape=m,
+        tile=tile,
+        cuda=backend == "cuda",
     )
-    allocation = 0
-    if backend == "cuda" and output:
-        allocation = (
-            aligned(8 * (coefficients + 2 * stage + output)) + 256 + WORKSPACE_BYTES
-        )
-    device = allocation + PROVIDER_ALLOWANCE if allocation else 0
+    if backend == "cuda" and capacity["stage_elements"] > (1 << 31) - 1:
+        raise ValueError("MO stage exceeds cuBLAS int32 indexing")
     return BlockPlan(
-        m, tile, coefficients, stage, output, host, device, allocation, backend
+        m,
+        tile,
+        capacity["coefficient_elements"],
+        capacity["stage_elements"],
+        capacity["output_elements"],
+        capacity["host_bytes"],
+        capacity["device_bytes"],
+        capacity["allocation_bytes"],
+        backend,
     )

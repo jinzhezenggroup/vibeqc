@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <vector>
@@ -12,6 +13,7 @@
 #include "scf/types.hpp"
 
 struct vibeqc_context {
+  mutable std::recursive_mutex mutex;
   vibeqc::core::ContextState state;
   std::string last_detail;
 };

@@ -14,6 +14,9 @@
 #include <stdexcept>
 #include <string>
 
+#include "../runtime/allocation_measurement.hpp"
+#include "metrics.hpp"
+
 namespace vibeqc_tensor {
 using I = int64_t;
 
@@ -28,6 +31,7 @@ inline void cuda_check(cudaError_t status) {
   if (status != cudaSuccess) throw std::runtime_error(cudaGetErrorString(status));
 }
 inline void blas_check(cublasStatus_t status) {
+  if (status == CUBLAS_STATUS_ALLOC_FAILED) throw DeviceAllocationError("cuBLAS allocation failed");
   if (status != CUBLAS_STATUS_SUCCESS)
     throw std::runtime_error("cuBLAS status " + std::to_string(status));
 }
@@ -46,19 +50,6 @@ struct DeviceGuard {
   ~DeviceGuard() { cudaSetDevice(previous); }
 };
 
-struct Metrics {
-  uint64_t owned_device_bytes = 0;
-  uint64_t provider_retained_bytes = 0;
-  uint64_t prepare_device_delta = 0;
-  uint64_t observed_device_delta = 0;
-  double device_ms = 0;
-  double input_ms = 0;
-  double output_ms = 0;
-  double packing_ms = 0;
-  double library_ms = 0;
-  double kernel_ms = 0;
-};
-
 struct Context {
   int device = 0;
   unsigned char* arena = nullptr;
@@ -75,6 +66,7 @@ struct Context {
   void prepare(int ordinal, int major, int minor, size_t bytes, size_t error_offset,
                size_t library_offset, size_t library_bytes, size_t provider_bytes,
                bool needs_blas) {
+    std::lock_guard<std::mutex> allocation_lock(vibeqc::runtime::allocation_measurement_mutex);
     device = ordinal;
     DeviceGuard guard(device);
     cudaDeviceProp property{};
@@ -148,6 +140,7 @@ struct Context {
     }
   }
   ~Context() {
+    std::lock_guard<std::mutex> allocation_lock(vibeqc::runtime::allocation_measurement_mutex);
     // Cleanup remains nonthrowing, including partial preparation failures.
     int previous = 0;
     cudaGetDevice(&previous);
@@ -179,7 +172,7 @@ inline unsigned blocks(I count, int threads) {
   // A grid-stride loop bounds the grid, including on older CUDA devices.
   return static_cast<unsigned>(std::min<I>((count + threads - 1) / threads, 65535));
 }
-__global__ void check_scale(double* values, I count, double scale, int* error, int node) {
+static __global__ void check_scale(double* values, I count, double scale, int* error, int node) {
   for (I i = I(blockIdx.x) * blockDim.x + threadIdx.x; i < count; i += I(blockDim.x) * gridDim.x) {
     double value = finite(values[i], error, node);
     values[i] = finite(__dmul_rn(value, scale), error, node);

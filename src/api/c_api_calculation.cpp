@@ -19,6 +19,7 @@ vibeqc_status vibeqc_calculation_prepare(vibeqc_context* context, const vibeqc_s
   if (!vibeqc::api::valid_method_descriptor(descriptor)) {
     return VIBEQC_STATUS_ABI_MISMATCH;
   }
+  std::lock_guard<std::recursive_mutex> context_lock(context->mutex);
   try {
     auto candidate = std::make_unique<vibeqc_calculation>();
     candidate->context = context;
@@ -49,6 +50,7 @@ vibeqc_status vibeqc_calculation_execute(vibeqc_calculation* calculation,
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
 
+  std::lock_guard<std::recursive_mutex> context_lock(calculation->context->mutex);
   // Reset to the conservative FP64 record before the run so a failed or
   // fallback execution can never expose the previous successful mixed run.
   calculation->precision = {};
@@ -77,6 +79,7 @@ vibeqc_status vibeqc_calculation_execute(vibeqc_calculation* calculation,
     }
     return VIBEQC_STATUS_SUCCESS;
   } catch (...) {
+    calculation->plan->invalidate_result();
     return vibeqc::api::map_exception(&calculation->context->last_detail);
   }
 }
@@ -95,6 +98,17 @@ vibeqc_status vibeqc_calculation_get_precision_provenance(const vibeqc_calculati
     return VIBEQC_STATUS_PRECISION_UNAVAILABLE;
   }
   return vibeqc::api::copy_precision_provenance(calculation->precision, out);
+}
+
+vibeqc_status vibeqc_calculation_get_correlation_diagnostic(
+    const vibeqc_calculation* calculation, vibeqc_correlation_diagnostic* diagnostic) {
+  if (!calculation || !diagnostic) return VIBEQC_STATUS_INVALID_ARGUMENT;
+  std::lock_guard<std::recursive_mutex> lock(calculation->context->mutex);
+  if (!vibeqc::api::valid_descriptor(diagnostic)) return VIBEQC_STATUS_ABI_MISMATCH;
+  const auto value = calculation->plan->correlation_diagnostic();
+  if (!value) return VIBEQC_STATUS_NOT_IMPLEMENTED;
+  *diagnostic = *value;
+  return VIBEQC_STATUS_SUCCESS;
 }
 
 }  // extern "C"

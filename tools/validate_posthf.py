@@ -60,6 +60,7 @@ def source_hash():
         *ROOT.glob("tools/vibeqc_posthf/*.py"),
         ROOT / "src/integrals/s_integrals.cpp",
         ROOT / "src/tensor/cuda_runtime.cuh",
+        ROOT / "src/tensor/metrics.hpp",
     ]
     return canonical_hash({str(p.relative_to(ROOT)): file_hash(p) for p in files})
 

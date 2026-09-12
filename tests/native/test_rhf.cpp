@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>
+#include <string>
 
 #include "vibeqc/vibeqc.h"
 
@@ -16,6 +17,53 @@ struct Evaluation {
 
 void require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
+}
+
+void verify_context_detail_storage() {
+  const vibeqc_context_descriptor context_descriptor{
+      sizeof(vibeqc_context_descriptor), VIBEQC_ABI_VERSION, 0, VIBEQC_BACKEND_CPU_REFERENCE};
+  vibeqc_context* first = nullptr;
+  vibeqc_context* second = nullptr;
+  require(vibeqc_context_create(&context_descriptor, &first) == VIBEQC_STATUS_SUCCESS,
+          "first detail context creation failed");
+  require(vibeqc_context_create(&context_descriptor, &second) == VIBEQC_STATUS_SUCCESS,
+          "second detail context creation failed");
+
+  const vibeqc_atom atom{1, 0.0, 0.0, 0.0};
+  vibeqc_primitive primitive{1.0, 1.0};
+  vibeqc_shell shell{0, 0, 0, 1};
+  vibeqc_system_descriptor descriptor{sizeof(vibeqc_system_descriptor),
+                                      VIBEQC_ABI_VERSION,
+                                      &atom,
+                                      1,
+                                      &shell,
+                                      1,
+                                      &primitive,
+                                      1,
+                                      0,
+                                      1};
+  vibeqc_system* system = nullptr;
+  primitive.exponent = -1.0;
+  require(vibeqc_system_create(first, &descriptor, &system) == VIBEQC_STATUS_INVALID_ARGUMENT,
+          "invalid primitive did not fail");
+  const char* first_detail = vibeqc_context_get_last_detail(first);
+  require(first_detail != nullptr &&
+              std::string(first_detail).find("positive finite") != std::string::npos,
+          "first context detail was not recorded");
+
+  primitive.exponent = 1.0;
+  shell.angular_momentum = 5;
+  require(vibeqc_system_create(second, &descriptor, &system) == VIBEQC_STATUS_NOT_IMPLEMENTED,
+          "unsupported angular momentum did not fail");
+  const char* second_detail = vibeqc_context_get_last_detail(second);
+  require(second_detail != nullptr &&
+              std::string(second_detail).find("supports s through g") != std::string::npos,
+          "second context detail was not recorded");
+  require(std::string(first_detail).find("positive finite") != std::string::npos,
+          "first context detail was overwritten by another context query");
+
+  vibeqc_context_destroy(first);
+  vibeqc_context_destroy(second);
 }
 
 // Exercise output selection on one retained C ABI calculation, including
@@ -290,6 +338,7 @@ int main() {
             "wB97M-V must remain explicitly unavailable");
 
     verify_precision_provenance_gate();
+    verify_context_detail_storage();
 
     vibeqc_method_capabilities_descriptor capabilities{
         sizeof(vibeqc_method_capabilities_descriptor), VIBEQC_ABI_VERSION, 0, 0, 0, 0, 0};

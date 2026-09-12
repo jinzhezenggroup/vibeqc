@@ -1,4 +1,7 @@
 # Keep reproducible data available while making implementation diffs reviewable.
+# Keep this near-limit CUDA translation unit within the existing 1 MiB file
+# gate on Windows as well as Linux; new reference helpers live separately.
+src/scf/cuda_rhf.cu text eol=lf
 tests/reference_data/validation/*.json linguist-generated=true
 benchmarks/results/cg01/*.json linguist-generated=true
 benchmarks/results/f-shell-135/*.json linguist-generated=true

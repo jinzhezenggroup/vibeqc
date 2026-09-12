@@ -15,7 +15,7 @@ namespace vibeqc::scf::cuda_execution {
  * resulting views. */
 bool pack_host_batch(const std::vector<core::System>& systems,
                      const std::vector<const std::vector<double>*>& initial_densities,
-                     HostBatch& host, bool unrestricted) {
+                     HostBatch& host, bool unrestricted, bool matrix_direct) {
   if (systems.empty() || systems.size() != initial_densities.size()) return false;
   if (std::any_of(systems.begin(), systems.end(),
                   [](const auto& s) { return !s.ecp_terms.empty(); }))
@@ -40,7 +40,7 @@ bool pack_host_batch(const std::vector<core::System>& systems,
   host.system_shell_pair_block_quartet_offsets.push_back(0);
   host.shell_pair_primitive_offsets.push_back(0);
   host.warm_density.resize(systems.size() * host.spin_count * matrix_size, 0.0);
-  if (host.direct_nbf != host.nbf && host.nbf > kPersistentEriAoLimit) {
+  if (!matrix_direct && host.direct_nbf != host.nbf && host.nbf > kPersistentEriAoLimit) {
     host.ao_to_direct_transform.resize(systems.size() * host.nbf * host.direct_nbf, 0.0);
   }
   for (std::size_t system_index = 0; system_index < systems.size(); ++system_index) {
@@ -182,6 +182,7 @@ bool pack_host_batch(const std::vector<core::System>& systems,
       return false;
     }
     for (const std::uint32_t bra_pair : psss_bra_pairs) {
+      if (matrix_direct) break;
       for (std::size_t ket = 0; ket < resident_ket_count; ket += kResidentPsssThreads) {
         const std::size_t chunk_count =
             std::min<std::size_t>(kResidentPsssThreads, resident_ket_count - ket);

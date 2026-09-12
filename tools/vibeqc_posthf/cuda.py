@@ -22,7 +22,11 @@ def compile_cuda(compiler, cache):
         compiler,
         cache,
         root / "src/posthf/cuda_transform.cu",
-        headers=(root / "src/tensor/cuda_runtime.cuh",),
+        headers=(
+            root / "src/tensor/cuda_runtime.cuh",
+            root / "src/tensor/metrics.hpp",
+            root / "src/runtime/allocation_measurement.hpp",
+        ),
         libraries=("cublas",),
     )
 

@@ -168,20 +168,20 @@
       "subsystem": "low_rank"
     },
     {
-      "bytes": 7792,
+      "bytes": 8075,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 172,
+        "runtime": 181,
         "scientific": 0
       },
       "path": "src/posthf/cuda_transform.cu",
-      "physical_lines": 180,
+      "physical_lines": 189,
       "reason": "Generic bounded multi-index basis transforms and library/arena ownership.",
       "regions": [],
       "role": "runtime",
-      "sha256": "8def0987cd6ce786a46d03424b189561c2e592a95cd0b6a4286208c0f5302049",
+      "sha256": "c5b20281ef510bd0ff5a7ca5107696c3c9a7e199d46d5661c84a2e956f8e7111",
       "subsystem": "runtime"
     },
     {
@@ -1695,20 +1695,37 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 1763,
+      "bytes": 5933,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 32,
+        "runtime": 135,
+        "scientific": 0
+      },
+      "path": "src/scf/cuda/reference_export.cuh",
+      "physical_lines": 146,
+      "reason": "Bounded CUDA-to-host physical-reference staging and numeric-capacity accounting; no integral or method equations.",
+      "regions": [],
+      "role": "runtime",
+      "sha256": "f1339462eb2199bef38483223f41e604a6b3675e51761dc1677a7207b30cf7ac",
+      "subsystem": "runtime"
+    },
+    {
+      "bytes": 1920,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 34,
         "scientific": 0
       },
       "path": "src/scf/cuda/resources.hpp",
-      "physical_lines": 52,
+      "physical_lines": 55,
       "reason": "Borrowed library interface or sole stream/graph/arena lifetime contract; host execution compiles in C++.",
       "regions": [],
       "role": "runtime",
-      "sha256": "1d7a4b74cc410afe7b99cf9090c2a13386010646215383a3e19e953458487de8",
+      "sha256": "9968a5815e0a86083e64fc224aa701f060d4ebea8c39d672ed1ac93a672e05e7",
       "subsystem": "runtime"
     },
     {
@@ -2006,22 +2023,22 @@
       "subsystem": "scf_tensor"
     },
     {
-      "bytes": 612476,
+      "bytes": 616309,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 4977,
+        "runtime": 5044,
         "scientific": 5374
       },
       "path": "src/scf/cuda_rhf.cu",
-      "physical_lines": 11406,
+      "physical_lines": 11479,
       "reason": "Remaining device recurrences, physical screening bounds and method contractions are conservatively scientific; explicit regions separate generic runtime.",
       "regions": [
         {
-          "code_lines": 115,
+          "code_lines": 120,
           "first_line": 1,
-          "last_line": 140,
+          "last_line": 145,
           "reason": "Includes, host policy imports and generic ERI tensor indexing; scalar/AD and geometry now have narrow shared owners.",
           "role": "runtime",
           "start": "#include <cublas_v2.h>",
@@ -2029,8 +2046,8 @@
         },
         {
           "code_lines": 9,
-          "first_line": 4055,
-          "last_line": 4074,
+          "first_line": 4060,
+          "last_line": 4079,
           "reason": "Generic atomic maximum implementation.",
           "role": "runtime",
           "start": "__device__ void atomic_max_double",
@@ -2038,8 +2055,8 @@
         },
         {
           "code_lines": 64,
-          "first_line": 4319,
-          "last_line": 4386,
+          "first_line": 4324,
+          "last_line": 4391,
           "reason": "Generic tuple permutations and duplicate suppression.",
           "role": "runtime",
           "start": "__device__ void eri_symmetry_permutation",
@@ -2047,8 +2064,8 @@
         },
         {
           "code_lines": 51,
-          "first_line": 4126,
-          "last_line": 4177,
+          "first_line": 4131,
+          "last_line": 4182,
           "reason": "Host sequencing of resident-bra grouping, scans and materialization; device kernels have separate owners.",
           "role": "runtime",
           "start": "cudaError_t prepare_ppps_resident_tasks(",
@@ -2056,8 +2073,8 @@
         },
         {
           "code_lines": 18,
-          "first_line": 4616,
-          "last_line": 4635,
+          "first_line": 4621,
+          "last_line": 4640,
           "reason": "Component-index mapping.",
           "role": "runtime",
           "start": "__device__ __forceinline__ unsigned order2_component_index",
@@ -2065,8 +2082,8 @@
         },
         {
           "code_lines": 104,
-          "first_line": 4764,
-          "last_line": 4880,
+          "first_line": 4769,
+          "last_line": 4885,
           "reason": "Queue/launch wrappers around separately owned scientific contractions.",
           "role": "runtime",
           "start": "__global__ void build_fock_direct_quartet_kernel",
@@ -2074,17 +2091,17 @@
         },
         {
           "code_lines": 164,
-          "first_line": 6366,
-          "last_line": 6565,
+          "first_line": 6371,
+          "last_line": 6570,
           "reason": "Persistent force task wrappers; primitive/equation contractions are separate above.",
           "role": "runtime",
           "start": "__global__ void two_electron_force_quartet_kernel",
           "stop": "cudaError_t prepare_generated_shell_tasks("
         },
         {
-          "code_lines": 4452,
-          "first_line": 6566,
-          "last_line": 11406,
+          "code_lines": 4514,
+          "first_line": 6571,
+          "last_line": 11479,
           "reason": "Host resource planning, library/state/graph execution and ABI dispatch; numerical device equations are classified above.",
           "role": "runtime",
           "start": "cudaError_t prepare_generated_shell_tasks(",
@@ -2092,7 +2109,7 @@
         }
       ],
       "role": "scientific",
-      "sha256": "c7ec96f47be97410da5da36449847abc556047011a8629e365974ab7e2415ccd",
+      "sha256": "2a2633fa15686e64b3f8ff22eb780db64dbe47102c9d3d2c9b7acb2fccbafade",
       "subsystem": "direct_integrals"
     },
     {
@@ -2130,20 +2147,20 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 8378,
+      "bytes": 8435,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 173,
+        "runtime": 166,
         "scientific": 0
       },
       "path": "src/tensor/cuda_runtime.cuh",
-      "physical_lines": 206,
+      "physical_lines": 199,
       "reason": "Shared arena, streams/events, cuBLAS workspace and error/metrics handling.",
       "regions": [],
       "role": "runtime",
-      "sha256": "c51d195f9046ef306dc25e8820b0a4a741ffcc2047846c2e2fd8147d0b16be2f",
+      "sha256": "ca2fee35b4fcb052f8f02ef12c915ecb9eaa4ab1791515a1f78d0ea1fdc70c91",
       "subsystem": "runtime"
     }
   ],
@@ -2281,7 +2298,7 @@
     "fallback": 0,
     "oracle": 0,
     "performance_exception": 156,
-    "runtime": 12545,
+    "runtime": 12751,
     "scientific": 9124
   },
   "migration_ledger": {
@@ -2453,7 +2470,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 6594,
+      "runtime": 6661,
       "scientific": 6247
     },
     "ecp": {
@@ -2488,7 +2505,7 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 3131,
+      "runtime": 3270,
       "scientific": 5
     },
     "scf_tensor": {

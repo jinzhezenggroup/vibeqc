@@ -49,12 +49,16 @@ def source_identity(source: Path) -> str:
         source / "tools/generate_weighted_eri_kernels.py",
         source / "tools/generate_one_electron_kernels.py",
         source / "tools/generate_grid_kernels.py",
+        source / "tools/generate_mp2_native.py",
     }
     for directory in ("src", "include"):
         paths.update(p for p in (source / directory).rglob("*") if p.is_file())
     paths.update((source / "python/vibeqc").rglob("*.py"))
     for pattern in ("*.py", "*.json"):
         paths.update((source / "python/vibeqc_compiler").rglob(pattern))
+    for directory in ("tools/vibeqc_tensor", "tools/vibeqc_mp2"):
+        paths.update((source / directory).rglob("*.py"))
+    paths.add(source / "tools/vibeqc_posthf/plan_spec.py")
     text = "".join(
         f"{p.relative_to(source).as_posix()}:{file_hash(p)}\n"
         for p in sorted(paths, key=lambda p: p.relative_to(source).as_posix())

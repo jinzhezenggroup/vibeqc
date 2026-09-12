@@ -51,10 +51,11 @@ struct HostBatch {
   std::vector<double> warm_density;
 };
 
-/** Pack homogeneous topology and optional spin-resolved warm densities in input order. */
+/** Pack topology and warm densities. Matrix-direct export omits quartet-only
+ * transforms and resident task tables; public AO expansion remains intact. */
 bool pack_host_batch(const std::vector<core::System>& systems,
                      const std::vector<const std::vector<double>*>& initial_densities,
-                     HostBatch& host, bool unrestricted = false);
+                     HostBatch& host, bool unrestricted = false, bool matrix_direct = false);
 
 /** Compare immutable topology; coordinates and warm state are checked separately by replay. */
 bool same_topology(const HostBatch& first, const HostBatch& second);

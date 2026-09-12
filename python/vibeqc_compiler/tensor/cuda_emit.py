@@ -33,11 +33,15 @@ def _flat(coordinates, shape):
     )
 
 
-def _read(operand, index):
-    return f"read_{operand}(p, {index}, error)"
+def _name(prefix, base):
+    return f"{prefix}{base}"
 
 
-def _value(plan, i):
+def _read(operand, index, prefix=""):
+    return f"{_name(prefix, f'read_{operand}')}(p, {index}, error)"
+
+
+def _value(plan, i, prefix=""):
     """Emit scalar evaluation with each original arithmetic error boundary."""
     step = plan.steps[i]
     node, a, args = step.node, step.node.attrs, step.inputs
@@ -47,13 +51,13 @@ def _value(plan, i):
         lines = ["double value = 0.0;"]
         for child, factor in zip(args, a["coefficients"], strict=True):
             lines.append(
-                f"value = __dadd_rn(value, __dmul_rn({fp64_coefficient(factor).hex()}, {_read(child, 'z')}));"
+                f"value = __dadd_rn(value, __dmul_rn({fp64_coefficient(factor).hex()}, {_read(child, 'z', prefix)}));"
             )
         return "\n".join(lines + [f"return finite(value, error, {i});"])
     if node.op == "multiply":
-        return f"return finite(__dmul_rn({_read(args[0], 'z')}, {_read(args[1], 'z')}), error, {i});"
+        return f"return finite(__dmul_rn({_read(args[0], 'z', prefix)}, {_read(args[1], 'z', prefix)}), error, {i});"
     if node.op == "divide":
-        return f"return quotient({_read(args[0], 'z')}, {_read(args[1], 'z')}, error, {i});"
+        return f"return quotient({_read(args[0], 'z', prefix)}, {_read(args[1], 'z', prefix)}, error, {i});"
     if node.op == "einsum":
         domains = {}
         for child, labels in zip(node.inputs, a["labels"], strict=True):
@@ -72,6 +76,7 @@ def _value(plan, i):
                     [mapping[label] for label in labels],
                     plan.steps[child].node.spec.shape,
                 ),
+                prefix,
             )
             for child, labels in zip(args, a["labels"], strict=True)
         ]
@@ -114,11 +119,11 @@ return finite(__dmul_rn(finite(value, error, {i}), {fp64_coefficient(a["coeffici
                 cursor += 1
         return f"""double value = 0.0;
 for (I r = 0; r < {_integer(prod(reduction_shape))}; ++r)
-    value = __dadd_rn(value, {_read(child, _flat(source, source_shape))});
+    value = __dadd_rn(value, {_read(child, _flat(source, source_shape), prefix)});
 return finite(value, error, {i});"""
     else:
         raise ValueError(f"unsupported CUDA primitive: {node.op}")
-    return f"return {_read(child, index)};"
+    return f"return {_read(child, index, prefix)};"
 
 
 def _group_map(g, labels):
@@ -139,25 +144,25 @@ def _group_map(g, labels):
     )
 
 
-def _packing_kernels(plan, i):
+def _packing_kernels(plan, i, prefix=""):
     step = plan.steps[i]
     g = gemm_contract(step.node)
     return f"""
-__global__ void pack_{i}(const unsigned char* p, double* a, double* b, int* error,
+__global__ void {_name(prefix, f"pack_{i}")}(const unsigned char* p, double* a, double* b, int* error,
                         I batch, I m0, I n0, I k0, I tm, I tn, I tk) {{
     for (I z = I(blockIdx.x) * blockDim.x + threadIdx.x; z < tm*tk + tk*tn;
          z += I(blockDim.x) * gridDim.x) {{
         if (z < tm*tk) {{
             I row = m0 + z/tk, reduction = k0 + z%tk;
-            a[z] = {_read(step.inputs[0], _group_map(g, g.a_labels))};
+            a[z] = {_read(step.inputs[0], _group_map(g, g.a_labels), prefix)};
         }} else {{
             I q = z - tm*tk;
             I column = n0 + q%tn, reduction = k0 + q/tn;
-            b[q] = {_read(step.inputs[1], _group_map(g, g.b_labels))};
+            b[q] = {_read(step.inputs[1], _group_map(g, g.b_labels), prefix)};
         }}
     }}
 }}
-__global__ void scatter_{i}(unsigned char* p, const double* c, int* error,
+__global__ void {_name(prefix, f"scatter_{i}")}(unsigned char* p, const double* c, int* error,
                            I batch, I m0, I n0, I tm, I tn) {{
     for (I z = I(blockIdx.x) * blockDim.x + threadIdx.x; z < tm*tn;
          z += I(blockDim.x) * gridDim.x) {{
@@ -169,14 +174,14 @@ __global__ void scatter_{i}(unsigned char* p, const double* c, int* error,
 """
 
 
-def _launch(plan, i):
+def _launch(plan, i, prefix=""):
     step, threads = plan.steps[i], plan.schedule.threads
     node = step.node
     if step.virtual or node.op in ("input", "constant") or not node.spec.size:
         return ""
     pointer = f"reinterpret_cast<double*>(p + {step.offset})"
     if step.gemm == "none":
-        return f"ctx.section(profile, metrics.kernel_ms, [&] {{ kernel_{i}<<<blocks({node.spec.size}LL, {threads}), {threads}, 0, ctx.stream>>>(p, ctx.error); cuda_check(cudaGetLastError()); }});"
+        return f"ctx.section(profile, metrics.kernel_ms, [&] {{ {prefix}kernel_{i}<<<blocks({node.spec.size}LL, {threads}), {threads}, 0, ctx.stream>>>(p, ctx.error); cuda_check(cudaGetLastError()); }});"
     g = gemm_contract(node)
     if not g.k:
         return f"ctx.section(profile, metrics.kernel_ms, [&] {{ cuda_check(cudaMemsetAsync({pointer}, 0, {node.spec.size * 8}ULL, ctx.stream)); }});"
@@ -214,22 +219,38 @@ for (I n0 = 0; n0 < {g.n}LL; n0 += {nt}LL) {{
     for (I k0 = 0; k0 < {g.k}LL; k0 += {kt}LL) {{
         I tk = std::min<I>({kt}, {g.k}LL-k0);
         ctx.section(profile, metrics.packing_ms, [&] {{
-            pack_{i}<<<blocks(tm*tk+tk*tn, {threads}), {threads}, 0, ctx.stream>>>(p, a, b, ctx.error, batch, m0, n0, k0, tm, tn, tk);
+            {_name(prefix, f"pack_{i}")}<<<blocks(tm*tk+tk*tn, {threads}), {threads}, 0, ctx.stream>>>(p, a, b, ctx.error, batch, m0, n0, k0, tm, tn, tk);
             cuda_check(cudaGetLastError());
         }});
         ctx.section(profile, metrics.library_ms, [&] {{ gemm(ctx, 'N', 'N', int(tm), int(tn), int(tk), a, b, c, 0, 0, 0, 1, k0 == 0 ? 0.0 : 1.0); }});
     }}
     ctx.section(profile, metrics.packing_ms, [&] {{
-        scatter_{i}<<<blocks(tm*tn, {threads}), {threads}, 0, ctx.stream>>>(p, c, ctx.error, batch, m0, n0, tm, tn);
+        {_name(prefix, f"scatter_{i}")}<<<blocks(tm*tn, {threads}), {threads}, 0, ctx.stream>>>(p, c, ctx.error, batch, m0, n0, tm, tn);
         cuda_check(cudaGetLastError());
     }});
 }}
 }}"""
 
 
-def emit_cuda(plan: TensorPlan) -> str:
-    """Return standalone C++17 CUDA source with a versioned, exception-safe ABI."""
+def emit_cuda(plan: TensorPlan, symbol_prefix: str = "") -> str:
+    """Return standalone C++17 CUDA source with an optional symbol prefix.
+
+    A prefix places the generated ABI in a unique namespace and prefixes all
+    helper and entry-point names. The default keeps the original standalone
+    ``tensor_*`` interface unchanged.
+    """
+    import re
+
+    if not isinstance(symbol_prefix, str) or (
+        symbol_prefix
+        and not re.fullmatch(r"[A-Za-z_]\w*", symbol_prefix, flags=re.ASCII)
+    ):
+        raise ValueError("symbol_prefix must be a valid C++ identifier")
+    prefix = symbol_prefix
+    namespace = f"namespace {_name(prefix, 'generated')} {{" if prefix else ""
     parts = ['#include "cuda_runtime.cuh"', "using namespace vibeqc_tensor;"]
+    if namespace:
+        parts.append(namespace)
     initialize = []
     tables = dict(plan.index_tables)
     for i, step in enumerate(plan.steps):
@@ -238,34 +259,34 @@ def emit_cuda(plan: TensorPlan) -> str:
             values = ", ".join(
                 fp64_coefficient(pair).hex() for pair in node.attrs["values"]
             )
-            parts.append(f"static const double constant_{i}[] = {{{values}}};")
+            parts.append(f"static const double {prefix}constant_{i}[] = {{{values}}};")
             initialize.append(
-                f"cuda_check(cudaMemcpyAsync(ctx->arena + {step.offset}, constant_{i}, {node.spec.size * 8}ULL, cudaMemcpyHostToDevice, ctx->stream));"
+                f"cuda_check(cudaMemcpyAsync(ctx->arena + {step.offset}, {prefix}constant_{i}, {node.spec.size * 8}ULL, cudaMemcpyHostToDevice, ctx->stream));"
             )
         if node.op == "gather" and node.attrs["positions"]:
             values = ", ".join(_integer(v) for v in node.attrs["positions"])
-            parts.append(f"static const I positions_{i}[] = {{{values}}};")
+            parts.append(f"static const I {prefix}positions_{i}[] = {{{values}}};")
             initialize.append(
-                f"cuda_check(cudaMemcpyAsync(ctx->arena + {tables[i]}, positions_{i}, {len(node.attrs['positions']) * 8}ULL, cudaMemcpyHostToDevice, ctx->stream));"
+                f"cuda_check(cudaMemcpyAsync(ctx->arena + {tables[i]}, {prefix}positions_{i}, {len(node.attrs['positions']) * 8}ULL, cudaMemcpyHostToDevice, ctx->stream));"
             )
         body = (
-            _value(plan, i)
+            _value(plan, i, prefix)
             if step.virtual
             else f"return reinterpret_cast<const double*>(p + {step.offset})[z];"
         )
         parts.append(
-            f"__device__ inline double read_{i}(const unsigned char* p, I z, int* error) {{ {body} }}"
+            f"__device__ inline double {prefix}read_{i}(const unsigned char* p, I z, int* error) {{ {body} }}"
         )
         if not step.virtual and node.op not in ("input", "constant"):
             if step.gemm == "none":
-                parts.append(f"""__device__ inline double evaluate_{i}(const unsigned char* p, I z, int* error) {{ {_value(plan, i)} }}
-__global__ void kernel_{i}(unsigned char* p, int* error) {{
+                parts.append(f"""__device__ inline double {prefix}evaluate_{i}(const unsigned char* p, I z, int* error) {{ {_value(plan, i, prefix)} }}
+__global__ void {prefix}kernel_{i}(unsigned char* p, int* error) {{
     for (I z = I(blockIdx.x) * blockDim.x + threadIdx.x; z < {node.spec.size}LL;
          z += I(blockDim.x) * gridDim.x)
-        reinterpret_cast<double*>(p + {step.offset})[z] = evaluate_{i}(p, z, error);
+        reinterpret_cast<double*>(p + {step.offset})[z] = {prefix}evaluate_{i}(p, z, error);
 }}""")
             elif step.gemm == "packed":
-                parts.append(_packing_kernels(plan, i))
+                parts.append(_packing_kernels(plan, i, prefix))
     copies_in = []
     for slot, i in enumerate(plan.inputs):
         step = plan.steps[i]
@@ -290,8 +311,8 @@ __global__ void kernel_{i}(unsigned char* p, int* error) {{
     )
     assert error_offset + ALIGNMENT == plan.allocation_bytes
     parts.append(f"""
-extern "C" const char* tensor_plan_identity() {{ return "{plan.identity}"; }}
-extern "C" int tensor_create(int device, void** result, char* error, size_t size) {{
+extern "C" const char* {_name(prefix, "tensor_plan_identity")}() {{ return "{plan.identity}"; }}
+extern "C" int {_name(prefix, "tensor_create")}(int device, void** result, char* error, size_t size) {{
     try {{
         if (!result) throw std::runtime_error("null plan output");
         *result = nullptr;
@@ -310,8 +331,8 @@ extern "C" int tensor_create(int device, void** result, char* error, size_t size
         error_text(error, size, e.what()); return 3;
     }} catch (const std::exception& e) {{ error_text(error, size, e.what()); return 1; }}
 }}
-extern "C" void tensor_destroy(void* pointer) {{ delete static_cast<Context*>(pointer); }}
-extern "C" int tensor_run(void* pointer, const double* const* inputs, double* const* outputs,
+extern "C" void {_name(prefix, "tensor_destroy")}(void* pointer) {{ delete static_cast<Context*>(pointer); }}
+extern "C" int {_name(prefix, "tensor_run")}(void* pointer, const double* const* inputs, double* const* outputs,
                           int profile, Metrics* result, char* error, size_t size) {{
     if (!pointer) {{ error_text(error, size, "null tensor plan"); return 1; }}
     auto& ctx = *static_cast<Context*>(pointer);
@@ -328,7 +349,7 @@ extern "C" int tensor_run(void* pointer, const double* const* inputs, double* co
         cuda_check(cudaEventRecord(ctx.begin, ctx.stream));
         cuda_check(cudaMemsetAsync(ctx.error, 0, sizeof(int), ctx.stream));
         ctx.section(profile, metrics.input_ms, [&] {{ {" ".join(copies_in)} }});
-        {" ".join(_launch(plan, i) for i in range(len(plan.steps)))}
+        {" ".join(_launch(plan, i, prefix) for i in range(len(plan.steps)))}
         int arithmetic_error = 0;
         ctx.section(profile, metrics.output_ms, [&] {{
             {" ".join(copies_out)}
@@ -350,7 +371,7 @@ extern "C" int tensor_run(void* pointer, const double* const* inputs, double* co
         error_text(error, size, e.what()); return 1;
     }}
 }}
-extern "C" int tensor_probe(int device, char* result, size_t size) {{
+extern "C" int {_name(prefix, "tensor_probe")}(int device, char* result, size_t size) {{
     try {{
         DeviceGuard guard(device);
         cudaDeviceProp p{{}};
@@ -370,4 +391,6 @@ extern "C" int tensor_probe(int device, char* result, size_t size) {{
     }} catch (const std::exception& e) {{ error_text(result, size, e.what()); return 1; }}
 }}
 """)
+    if namespace:
+        parts.append("}")
     return "\n\n".join(parts) + "\n"

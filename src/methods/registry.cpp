@@ -5,6 +5,7 @@
 
 #include "methods/hf_method.hpp"
 #include "methods/method.hpp"
+#include "methods/mp2_method.hpp"
 
 namespace vibeqc::methods {
 namespace {
@@ -26,7 +27,11 @@ struct MethodDefinition {
 
 constexpr vibeqc_property_flags kEnergyAndForces = VIBEQC_PROPERTY_ENERGY | VIBEQC_PROPERTY_FORCES;
 
-const std::array<MethodDefinition, 4> kMethods{{
+const std::array<MethodDefinition, 5> kMethods{{
+    {{VIBEQC_METHOD_MP2, VIBEQC_METHOD_FAMILY_PERTURBATION, VIBEQC_PROPERTY_ENERGY, true, false},
+     detail::validate_mp2_system,
+     detail::prepare_mp2_calculation,
+     nullptr},
     {{VIBEQC_METHOD_RHF, VIBEQC_METHOD_FAMILY_HARTREE_FOCK, kEnergyAndForces, true, true},
      detail::validate_hf_system,
      detail::prepare_hf_calculation,

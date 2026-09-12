@@ -149,9 +149,12 @@ add_library(vibeqc SHARED
   src/integrals/ecp.cpp
   src/api/c_api_ecp.cpp
   src/methods/hf_method.cpp
+  src/methods/mp2_method.cpp
   src/methods/registry.cpp
   src/molecule/basis.cpp
   src/posthf/bridge.cpp
+  src/posthf/mp2_energy.cpp
+  src/posthf/native_provider.cpp
   src/runtime/context.cpp
   src/scf/density_fitting.cpp
   src/scf/df_response_weights.cpp
@@ -178,10 +181,13 @@ add_library(vibeqc SHARED
 file(GLOB_RECURSE _vibeqc_identity_inputs CONFIGURE_DEPENDS
      RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
      "src/*" "include/*" "python/vibeqc_compiler/*.py"
-     "python/vibeqc_compiler/*.json" "python/vibeqc/*.py")
+     "python/vibeqc_compiler/*.json" "python/vibeqc/*.py"
+     "tools/vibeqc_tensor/*.py" "tools/vibeqc_mp2/*.py"
+     "tools/vibeqc_posthf/plan_spec.py")
 list(APPEND _vibeqc_identity_inputs "CMakeLists.txt" "tools/generate_shell_kernels.py"
      "tools/generate_df_kernels.py" "tools/generate_weighted_eri_kernels.py"
-     "tools/generate_one_electron_kernels.py" "tools/generate_grid_kernels.py")
+     "tools/generate_one_electron_kernels.py" "tools/generate_grid_kernels.py"
+     "tools/generate_mp2_native.py")
 list(SORT _vibeqc_identity_inputs)
 set(_vibeqc_identity_text "")
 foreach(_vibeqc_identity_path IN LISTS _vibeqc_identity_inputs)
@@ -210,6 +216,15 @@ target_compile_definitions(vibeqc PRIVATE VIBEQC_BUILDING_LIBRARY=1)
 target_compile_options(vibeqc PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Wpedantic>)
 
 if(VIBEQC_ENABLE_CUDA)
+  foreach(_arch IN LISTS CMAKE_CUDA_ARCHITECTURES)
+    if(_arch STREQUAL "native" OR _arch STREQUAL "all" OR _arch STREQUAL "all-major")
+      message(FATAL_ERROR
+        "VIBEQC MP2 AOT generation requires numeric CMAKE_CUDA_ARCHITECTURES; "
+        "special value '${_arch}' is unsupported. Configure with numeric architectures, "
+        "for example 75;90.")
+    endif()
+  endforeach()
+
   # DF values share the mathematical generator even in generic four-center
   # builds. Keep the emitted header out of version control and regenerate it
   # whenever one of its mathematical or lowering dependencies changes.
@@ -303,6 +318,34 @@ if(VIBEQC_ENABLE_CUDA)
             ${VIBEQC_DF_GENERATOR_INPUTS}
     VERBATIM)
   target_include_directories(vibeqc PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/dft")
+
+  # MP2 generated tile plans are compiled with unique symbols alongside the
+  # existing grid and DF generated translation units.
+  set(_mp2_generated_dir "${CMAKE_CURRENT_BINARY_DIR}/generated/mp2")
+  set(_mp2_generated_sources "${_mp2_generated_dir}/mp2_cuda_table.cu")
+  set(_mp2_archs "")
+  foreach(_arch IN LISTS CMAKE_CUDA_ARCHITECTURES)
+    string(REGEX REPLACE "-.*$" "" _numeric_arch "${_arch}")
+    list(APPEND _mp2_archs "${_numeric_arch}")
+  endforeach()
+  list(REMOVE_DUPLICATES _mp2_archs)
+  foreach(_arch IN LISTS _mp2_archs)
+    foreach(_tile 1 2 4 8)
+      list(APPEND _mp2_generated_sources "${_mp2_generated_dir}/mp2_sm${_arch}_t${_tile}_runtime.cu")
+    endforeach()
+  endforeach()
+  file(GLOB _mp2_generator_inputs CONFIGURE_DEPENDS
+       "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_tensor/*.py"
+       "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_mp2/*.py"
+       "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_posthf/*.py")
+  add_custom_command(OUTPUT ${_mp2_generated_sources}
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_mp2_native.py"
+            --cuda-dir "${_mp2_generated_dir}" --architectures "${_mp2_archs}"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_mp2_native.py" ${_mp2_generator_inputs}
+            ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+    VERBATIM)
+  target_sources(vibeqc PRIVATE ${_mp2_generated_sources} src/posthf/cuda_transform.cu)
+  target_include_directories(vibeqc PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/tensor")
   target_sources(vibeqc PRIVATE
     "${VIBEQC_GRID_SOURCE}"
     src/posthf/df_bridge.cu
@@ -639,6 +682,19 @@ if(VIBEQC_BUILD_TESTS)
   target_link_libraries(vibeqc_native_tests PRIVATE vibeqc)
   target_include_directories(vibeqc_native_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
   add_test(NAME vibeqc_native_tests COMMAND vibeqc_native_tests)
+
+  add_executable(vibeqc_mp2_contract_tests tests/native/test_mp2_contract.cpp)
+  target_link_libraries(vibeqc_mp2_contract_tests PRIVATE vibeqc)
+  target_include_directories(vibeqc_mp2_contract_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  add_test(NAME vibeqc_mp2_contract_tests COMMAND vibeqc_mp2_contract_tests)
+
+  if(VIBEQC_ENABLE_CUDA)
+    add_executable(vibeqc_mp2_cuda_status_tests tests/native/test_mp2_cuda_status.cu)
+    target_link_libraries(vibeqc_mp2_cuda_status_tests PRIVATE vibeqc CUDA::cudart CUDA::cublas)
+    target_include_directories(vibeqc_mp2_cuda_status_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    add_test(NAME vibeqc_mp2_cuda_status_tests COMMAND vibeqc_mp2_cuda_status_tests)
+    set_tests_properties(vibeqc_mp2_cuda_status_tests PROPERTIES SKIP_RETURN_CODE 77)
+  endif()
 
   add_executable(vibeqc_scf_proposal_tests tests/native/test_scf_proposals.cpp)
   target_link_libraries(vibeqc_scf_proposal_tests PRIVATE vibeqc)

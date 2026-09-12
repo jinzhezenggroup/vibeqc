@@ -593,6 +593,13 @@
       "regions": []
     },
     {
+      "path": "src/scf/cuda/reference_export.cuh",
+      "role": "runtime",
+      "subsystem": "runtime",
+      "reason": "Bounded CUDA-to-host physical-reference staging and numeric-capacity accounting; no integral or method equations.",
+      "regions": []
+    },
+    {
       "path": "src/scf/cuda/direct_bounded_pages.cu",
       "reason": "Retained physical density/Schwarz screening or conservative class tails, including queue consumers of those bounds; structural extraction does not retire these semantics.",
       "regions": [
