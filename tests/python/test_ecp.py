@@ -157,6 +157,13 @@ def test_ecp_cannot_be_labeled_as_an_all_electron_accuracy_model():
         Calculator(basis=basis).resolved_model(atoms)
 
 
+def test_ecp_does_not_enable_unvalidated_canonical_mp2():
+    """The native method validator must preserve MP2's all-electron domain."""
+    atoms, basis, _ = fixture()
+    with pytest.raises(NotImplementedError, match="canonical MP2 with ECP"):
+        Calculator(method="mp2", basis=basis).singlepoint(atoms)
+
+
 def test_parameters_invalidate_identity_and_malformed_channels_fail():
     atoms, basis, _ = fixture()
     potentials = json.loads(basis.by_element[11].ecp_data)

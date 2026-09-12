@@ -74,6 +74,9 @@ and makes no speedup claim.
 
 Direct RHF/UHF are the supported complete methods. ECP density fitting is
 explicitly rejected pending its own complete force/budget gates. Complete
+canonical MP2 with ECP is also rejected until its reference/provider gates are
+validated. The all-electron accuracy-model schema cannot represent an ECP
+Hamiltonian, so ECP `resolved_model()` requests fail explicitly. Complete
 DFT SCF/gradients remain dependent on #162/#163, so DFT/ECP completion is not
 claimed. No broad heavy-element validation follows from support for the
 parameter format.

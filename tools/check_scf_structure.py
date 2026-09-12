@@ -393,6 +393,8 @@ CUDA_ALLOWED["cuda_direct_kernel_interfaces"] = (
 # interfaces. Keep recurrence and kernel implementation includes out of C++.
 CUDA_MODULES["cuda_hf_driver"] = ("scf/cuda_rhf.cpp",)
 CUDA_ALLOWED["cuda_hf_driver"] = (
+    # Public ECP device consumer only; quadrature kernels remain in integrals.
+    "integrals/ecp_cuda.hpp",
     "molecule/basis.hpp",
     "runtime/resource_cuda.cuh",
     "runtime/resource_usage.hpp",
