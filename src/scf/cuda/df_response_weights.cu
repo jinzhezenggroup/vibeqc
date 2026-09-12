@@ -1,5 +1,6 @@
 #include <algorithm>
 
+#include "runtime/cuda_component_trace.hpp"
 #include "scf/cuda/df_response_weights.cuh"
 
 namespace vibeqc::scf {
@@ -154,7 +155,10 @@ cudaError_t contract_cuda_df_response_weights(
   auto* weights = raw + tile * matrix;
   auto* charges = weights + tile * matrix;
   auto* potentials = charges + terms.size() * a;
+  runtime::cuda_trace::TraceRegion metric_inverse("metric_inverse", stream);
   inverse_kernel<<<blocks(aa), threads, 0, stream>>>(a, metric.inverse_square_root, inverse);
+  metric_inverse.finish();
+  runtime::cuda_trace::TraceRegion coulomb("coulomb_response", stream);
   auto error = cudaMemsetAsync(bar_inverse, 0, aa * sizeof(double), stream);
   if (error != cudaSuccess) return error;
   for (std::size_t q = 0; q < a; ++q) {
@@ -168,25 +172,34 @@ cudaError_t contract_cuda_df_response_weights(
     if (terms[t].coulomb_coefficient != 0)
       coulomb_metric_kernel<<<blocks(aa), threads, 0, stream>>>(a, terms[t].coulomb_coefficient,
                                                                 charges + t * a, bar_inverse);
+  coulomb.finish();
   for (std::size_t begin = 0; begin < a; begin += tile) {
+    runtime::cuda_trace::trace_counter("response_auxiliary_blocks", 1);
     const auto count = std::min(tile, a - begin);
     error = cudaMemsetAsync(weights, 0, count * matrix * sizeof(double), stream);
     if (error != cudaSuccess) return error;
     for (std::size_t p = 0; p < count; ++p) read_values(begin + p, raw + p * matrix);
+    runtime::cuda_trace::TraceRegion coulomb_weights("coulomb_response_weights", stream);
     for (std::size_t t = 0; t < terms.size(); ++t)
       if (terms[t].coulomb_coefficient != 0)
         coulomb_weights_kernel<<<blocks(count * matrix), threads, 0, stream>>>(
             matrix, a, begin, count, terms[t].coulomb_coefficient, densities + t * matrix,
             potentials + t * a, weights);
+    coulomb_weights.finish();
     for (std::size_t q = 0; q < a; ++q) {
       read_values(q, values);
       for (std::size_t t = 0; t < terms.size(); ++t) {
         const double coefficient = terms[t].exchange_coefficient;
         if (coefficient == 0) continue;
+        runtime::cuda_trace::TraceRegion products("exchange_response_matrix_products", stream);
+        runtime::cuda_trace::trace_counter("response_ao_matrix_products", 2);
         right_density_kernel<<<blocks(matrix), threads, 0, stream>>>(
             n, values, densities + t * matrix, temporary);
         left_density_kernel<<<blocks(matrix), threads, 0, stream>>>(n, densities + t * matrix,
                                                                     temporary, response);
+        products.finish();
+        runtime::cuda_trace::TraceRegion contractions("exchange_response_weights_and_metric",
+                                                      stream);
         exchange_weights_kernel<<<blocks(count * matrix), threads, 0, stream>>>(
             matrix, a, begin, count, q, coefficient, inverse, response, weights);
         exchange_metric_kernel<<<blocks(count), threads, 0, stream>>>(
@@ -197,6 +210,7 @@ cudaError_t contract_cuda_df_response_weights(
     if (error != cudaSuccess) return error;
     consume(0, {begin, matrix, 1, a}, count * matrix, weights);
   }
+  runtime::cuda_trace::TraceRegion metric_response("metric_frechet_response", stream);
   metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 0, metric, bar_inverse,
                                                              metric_temp);
   metric_response_kernel<<<blocks(aa), threads, 0, stream>>>(a, 1, metric, metric_temp,
@@ -208,6 +222,7 @@ cudaError_t contract_cuda_df_response_weights(
   symmetrize_kernel<<<blocks(aa), threads, 0, stream>>>(a, bar_inverse);
   error = cudaGetLastError();
   if (error != cudaSuccess) return error;
+  metric_response.finish();
   consume(1, {}, aa, bar_inverse);
   return cudaSuccess;
 }

@@ -8,6 +8,7 @@
 
 #include "integrals/ecp_cuda.hpp"
 #include "molecule/basis.hpp"
+#include "runtime/cuda_component_trace.hpp"
 #include "runtime/resource_cuda.cuh"
 #include "scf/cuda/one_electron_export_kernels.hpp"
 #include "scf/cuda/one_electron_view.hpp"
@@ -297,7 +298,12 @@ vibeqc_status build_cuda_one_electron_integrals_batch_impl(
     }
   }
   if (cuda_error == cudaSuccess) {
+    runtime::cuda_trace::TraceOperation trace(
+        include_derivatives ? "one_electron_derivative_export" : "nuclear_derivative_export",
+        stream, {batch_size, nbf, 0, false, false});
     for (std::size_t coordinate = 0; coordinate < systems.front().atoms.size() * 3U; ++coordinate) {
+      runtime::cuda_trace::TraceRegion generation("one_electron_and_nuclear_derivative_generation",
+                                                  stream);
       if (include_derivatives)
         launch_build_cuda_one_electron_derivatives_kernel(
             blocks, threads, 0, stream, device_batch, device_pair_first, device_pair_second,
@@ -305,6 +311,13 @@ vibeqc_status build_cuda_one_electron_integrals_batch_impl(
       launch_build_cuda_nuclear_repulsion_kernel(
           true, static_cast<unsigned>((batch_size + threads - 1U) / threads), threads, 0, stream,
           device_batch, static_cast<std::int64_t>(coordinate), device_nuclear);
+      generation.finish();
+      runtime::cuda_trace::trace_counter("atom_coordinates", batch_size);
+      runtime::cuda_trace::trace_counter(
+          "device_to_host_bytes",
+          ((include_derivatives ? 2 * matrix_batch_elements : 0) + batch_size) * sizeof(double));
+      runtime::cuda_trace::TraceRegion transfer(
+          "one_electron_derivative_output_and_synchronization", stream);
       cuda_error = cudaGetLastError();
       if (cuda_error == cudaSuccess) cuda_error = cudaStreamSynchronize(stream);
       if (cuda_error != cudaSuccess) break;

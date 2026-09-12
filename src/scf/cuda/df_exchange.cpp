@@ -8,16 +8,22 @@
 #include <utility>
 #include <vector>
 
+#include "runtime/cuda_component_trace.hpp"
 #include "scf/cuda/df_jk_internal.hpp"
 #include "scf/cuda/df_jk_kernels.hpp"
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
 
 namespace vibeqc::scf::cuda_df {
+using runtime::cuda_trace::trace_call;
+using runtime::cuda_trace::TraceOperation;
 
 // Exchange contraction preserves row/auxiliary tiling and cuBLAS layout.
 vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan, const double* density,
                              double* exchange, std::string& detail, bool density_is_column_major) {
+  TraceOperation trace(
+      "ri_k", plan.stream,
+      {plan.batch_size, plan.nbf, plan.naux, plan.integral_source != nullptr, plan.streamed});
   const std::size_t output_elements = plan.batch_size * plan.matrix_elements;
   cudaError_t cuda_error =
       cudaMemsetAsync(exchange, 0, output_elements * sizeof(double), plan.stream);
@@ -72,13 +78,15 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan, const double* densi
               return cuda_failure(cuda_error, "transpose source-backed DF exchange row tile",
                                   detail);
             }
-            cublasStatus_t blas_status = cublasDgemmStridedBatched(
-                plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, static_cast<int>(plan.nbf),
-                static_cast<int>(row_count), static_cast<int>(plan.nbf), &one, density_column_major,
-                static_cast<int>(plan.nbf), 0, plan.exchange_intermediate,
-                static_cast<int>(plan.nbf), static_cast<long long>(pair_count), &zero,
-                plan.exchange_contributions, static_cast<int>(plan.nbf),
-                static_cast<long long>(pair_count), static_cast<int>(auxiliary_count));
+            cublasStatus_t blas_status = trace_call("ri_k_gemm", plan.stream, [&] {
+              return cublasDgemmStridedBatched(
+                  plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, static_cast<int>(plan.nbf),
+                  static_cast<int>(row_count), static_cast<int>(plan.nbf), &one,
+                  density_column_major, static_cast<int>(plan.nbf), 0, plan.exchange_intermediate,
+                  static_cast<int>(plan.nbf), static_cast<long long>(pair_count), &zero,
+                  plan.exchange_contributions, static_cast<int>(plan.nbf),
+                  static_cast<long long>(pair_count), static_cast<int>(auxiliary_count));
+            });
             if (blas_status != CUBLAS_STATUS_SUCCESS) {
               return blas_failure(blas_status, "source-backed DF exchange row GEMM", detail);
             }
@@ -102,14 +110,16 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan, const double* densi
                                     detail);
               }
               const std::size_t output_stride = row_count * column_count;
-              blas_status = cublasDgemmStridedBatched(
-                  plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, static_cast<int>(row_count),
-                  static_cast<int>(column_count), static_cast<int>(plan.nbf), &one,
-                  plan.exchange_contributions, static_cast<int>(plan.nbf),
-                  static_cast<long long>(pair_count), plan.exchange_intermediate,
-                  static_cast<int>(plan.nbf), static_cast<long long>(column_pair_count), &zero,
-                  plan.exchange_tile_output, static_cast<int>(row_count),
-                  static_cast<long long>(output_stride), static_cast<int>(auxiliary_count));
+              blas_status = trace_call("ri_k_gemm", plan.stream, [&] {
+                return cublasDgemmStridedBatched(
+                    plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, static_cast<int>(row_count),
+                    static_cast<int>(column_count), static_cast<int>(plan.nbf), &one,
+                    plan.exchange_contributions, static_cast<int>(plan.nbf),
+                    static_cast<long long>(pair_count), plan.exchange_intermediate,
+                    static_cast<int>(plan.nbf), static_cast<long long>(column_pair_count), &zero,
+                    plan.exchange_tile_output, static_cast<int>(row_count),
+                    static_cast<long long>(output_stride), static_cast<int>(auxiliary_count));
+              });
               if (blas_status != CUBLAS_STATUS_SUCCESS) {
                 return blas_failure(blas_status, "source-backed DF exchange column GEMM", detail);
               }
@@ -198,13 +208,15 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan, const double* densi
 
           // T_A = D^T * B_A^T, stored as nbf x row_count column-major.  The
           // transpose is B_A * D, which is the left factor of K_AB.
-          cublasStatus_t blas_status = cublasDgemmStridedBatched(
-              plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, static_cast<int>(plan.nbf),
-              static_cast<int>(row_count), static_cast<int>(plan.nbf), &one, density_column_major,
-              static_cast<int>(plan.nbf), 0, plan.auxiliary_tile_values, static_cast<int>(plan.nbf),
-              static_cast<long long>(row_stride), &zero, plan.exchange_contributions,
-              static_cast<int>(plan.nbf), static_cast<long long>(row_stride),
-              static_cast<int>(auxiliary_count));
+          cublasStatus_t blas_status = trace_call("ri_k_gemm", plan.stream, [&] {
+            return cublasDgemmStridedBatched(
+                plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, static_cast<int>(plan.nbf),
+                static_cast<int>(row_count), static_cast<int>(plan.nbf), &one, density_column_major,
+                static_cast<int>(plan.nbf), 0, plan.auxiliary_tile_values,
+                static_cast<int>(plan.nbf), static_cast<long long>(row_stride), &zero,
+                plan.exchange_contributions, static_cast<int>(plan.nbf),
+                static_cast<long long>(row_stride), static_cast<int>(auxiliary_count));
+          });
           if (blas_status != CUBLAS_STATUS_SUCCESS) {
             return blas_failure(blas_status, "streamed DF exchange row GEMM", detail);
           }
@@ -240,14 +252,16 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan, const double* densi
             // as a column-major [row_count x column_count] tile and the
             // reduction kernel transposes that view while scattering.
             const std::size_t output_stride = row_count * column_count;
-            blas_status = cublasDgemmStridedBatched(
-                plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, static_cast<int>(row_count),
-                static_cast<int>(column_count), static_cast<int>(plan.nbf), &one,
-                plan.exchange_contributions, static_cast<int>(plan.nbf),
-                static_cast<long long>(row_stride), plan.exchange_intermediate,
-                static_cast<int>(plan.nbf), static_cast<long long>(column_stride), &zero,
-                plan.exchange_tile_output, static_cast<int>(row_count),
-                static_cast<long long>(output_stride), static_cast<int>(auxiliary_count));
+            blas_status = trace_call("ri_k_gemm", plan.stream, [&] {
+              return cublasDgemmStridedBatched(
+                  plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, static_cast<int>(row_count),
+                  static_cast<int>(column_count), static_cast<int>(plan.nbf), &one,
+                  plan.exchange_contributions, static_cast<int>(plan.nbf),
+                  static_cast<long long>(row_stride), plan.exchange_intermediate,
+                  static_cast<int>(plan.nbf), static_cast<long long>(column_stride), &zero,
+                  plan.exchange_tile_output, static_cast<int>(row_count),
+                  static_cast<long long>(output_stride), static_cast<int>(auxiliary_count));
+            });
             if (blas_status != CUBLAS_STATUS_SUCCESS) {
               return blas_failure(blas_status, "streamed DF exchange column GEMM", detail);
             }
@@ -304,20 +318,24 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan, const double* densi
       }
 
       const int tile_count = static_cast<int>(auxiliary_count);
-      cublasStatus_t blas_status = cublasDgemmStridedBatched(
-          // The gathered AO-pair tile is B^T in cuBLAS layout.  Use D^T as
-          // the first factor; the reduction below maps the column-major
-          // result back to row-major public storage, yielding B D B^T.
-          plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, nbf, nbf, nbf, &one, density_column_major, nbf, 0,
-          plan.auxiliary_tile_values, nbf, matrix_stride, &zero, plan.exchange_intermediate, nbf,
-          matrix_stride, tile_count);
+      cublasStatus_t blas_status = trace_call("ri_k_gemm", plan.stream, [&] {
+        return cublasDgemmStridedBatched(
+            // The gathered AO-pair tile is B^T in cuBLAS layout.  Use D^T as
+            // the first factor; the reduction below maps the column-major
+            // result back to row-major public storage, yielding B D B^T.
+            plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, nbf, nbf, nbf, &one, density_column_major, nbf, 0,
+            plan.auxiliary_tile_values, nbf, matrix_stride, &zero, plan.exchange_intermediate, nbf,
+            matrix_stride, tile_count);
+      });
       if (blas_status != CUBLAS_STATUS_SUCCESS) {
         return blas_failure(blas_status, "DF exchange first GEMM", detail);
       }
-      blas_status = cublasDgemmStridedBatched(
-          plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, nbf, nbf, nbf, &one, plan.auxiliary_tile_values, nbf,
-          matrix_stride, plan.exchange_intermediate, nbf, matrix_stride, &zero,
-          plan.exchange_contributions, nbf, matrix_stride, tile_count);
+      blas_status = trace_call("ri_k_gemm", plan.stream, [&] {
+        return cublasDgemmStridedBatched(
+            plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, nbf, nbf, nbf, &one, plan.auxiliary_tile_values,
+            nbf, matrix_stride, plan.exchange_intermediate, nbf, matrix_stride, &zero,
+            plan.exchange_contributions, nbf, matrix_stride, tile_count);
+      });
       if (blas_status != CUBLAS_STATUS_SUCCESS) {
         return blas_failure(blas_status, "DF exchange second GEMM", detail);
       }

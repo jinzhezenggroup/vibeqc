@@ -4,6 +4,7 @@
 #include <stdexcept>
 
 #include "molecule/basis.hpp"
+#include "runtime/cuda_component_trace.hpp"
 #include "runtime/resource_cuda.cuh"
 #include "scf/cuda/df_derivatives.cuh"
 #include "scf/cuda/df_response_weights.cuh"
@@ -285,6 +286,11 @@ vibeqc_status execute_cuda_df_hf_gradient(
                 positions.begin() + 3 * atom);
     DeviceGuard device_guard;
     check(cudaSetDevice(device));
+    runtime::cuda_trace::TraceOperation trace("force_response",
+                                              reinterpret_cast<cudaStream_t>(stream_handle),
+                                              {1, n, a, source != nullptr, true, source_index});
+    runtime::cuda_trace::TraceRegion preparation("response_allocation_and_uploads",
+                                                 reinterpret_cast<cudaStream_t>(stream_handle));
     Arena arena(maximum_bytes);
     arena.stream = reinterpret_cast<cudaStream_t>(stream_handle);
     arena.owns_stream = false;
@@ -319,6 +325,11 @@ vibeqc_status execute_cuda_df_hf_gradient(
       arena.stats.device_response = true;
       arena.stats.auxiliary_weight_tile = tile;
       arena.stats.weight_tile_elements = tile * n * n;
+      runtime::cuda_trace::trace_counter("response_scratch_bytes", arena.stats.device_bytes);
+      runtime::cuda_trace::trace_counter("density_upload_bytes",
+                                         arena.stats.density_host_to_device_bytes);
+      preparation.finish();
+      runtime::cuda_trace::TraceRegion response_weights("response_weights", arena.stream);
       check(contract_cuda_df_response_weights(
           n, a, terms, densities, *device_metric, tile, workspace, arena.stream,
           [&](std::size_t p, double* values) {
@@ -331,6 +342,15 @@ vibeqc_status execute_cuda_df_hf_gradient(
           },
           [&](unsigned kind, runtime::StridedRange range, std::size_t count,
               const double* weights) {
+            runtime::cuda_trace::TraceRegion derivatives(
+                kind ? "metric_center_derivative_contraction"
+                     : "three_center_derivative_contraction",
+                arena.stream);
+            runtime::cuda_trace::trace_counter(
+                kind ? "metric_derivative_weights" : "three_center_derivative_weights", count);
+            runtime::cuda_trace::trace_counter(
+                kind ? "metric_derivative_weight_bytes" : "three_center_derivative_weight_bytes",
+                count * sizeof(double));
             check(launch_df_derivative_tile(o, x, r, kind, range, count, weights, schedule, output,
                                             arena.stream));
             ++arena.stats.tiles;
@@ -343,15 +363,22 @@ vibeqc_status execute_cuda_df_hf_gradient(
       if (!weight_tile) throw std::bad_alloc();
       auto* weights = static_cast<double*>(arena.allocate(weight_tile * sizeof(double)));
       arena.stats.weight_tile_elements = weight_tile;
+      preparation.finish();
+      runtime::cuda_trace::TraceRegion host_weights("host_response_weights", arena.stream);
       const auto weight_stats = contract_density_fitting_response_weights(
           n, a, metric, inverse, terms, relative_threshold, maximum_bytes - arena.stats.host_bytes,
           maximum_auxiliary_tile,
           [&](std::size_t p, std::span<double> values) {
             // Source-backed execution requires device_metric above. This
             // compatibility adapter can only read caller-owned host values.
+            runtime::cuda_trace::TraceRegion gather("host_raw_three_center_gather", arena.stream);
+            runtime::cuda_trace::trace_counter("raw_value_cache_hits", 1);
+            runtime::cuda_trace::trace_counter("raw_value_reuse_bytes", n * n * sizeof(double));
             for (std::size_t ij = 0; ij < n * n; ++ij) values[ij] = raw_a[ij * a + p];
           },
           [&](unsigned kind, runtime::StridedRange range, std::span<const double> host_weights) {
+            runtime::cuda_trace::TraceRegion weight_uploads(
+                "host_response_uploads_and_synchronization", arena.stream);
             bool drained = false;
             auto drain = [&] {
               if (!drained) (void)cudaStreamSynchronize(arena.stream);
@@ -364,6 +391,13 @@ vibeqc_status execute_cuda_df_hf_gradient(
               arena.stats.host_to_device_bytes += count * sizeof(double);
               arena.stats.response_host_to_device_bytes += count * sizeof(double);
               ++arena.stats.uploads;
+              runtime::cuda_trace::TraceRegion derivatives(
+                  kind ? "metric_center_derivative_contraction"
+                       : "three_center_derivative_contraction",
+                  arena.stream);
+              runtime::cuda_trace::trace_counter(
+                  kind ? "metric_derivative_weight_bytes" : "three_center_derivative_weight_bytes",
+                  count * sizeof(double));
               check(launch_df_derivative_tile(o, x, r, kind, range, count, weights, schedule,
                                               output, arena.stream, begin));
               ++arena.stats.tiles;
@@ -378,12 +412,19 @@ vibeqc_status execute_cuda_df_hf_gradient(
       arena.stats.value_slices = weight_stats.value_slices;
       arena.stats.auxiliary_weight_tile = weight_stats.auxiliary_tile;
     }
+    runtime::cuda_trace::TraceRegion output_transfer("response_output_and_synchronization",
+                                                     arena.stream);
     check(cudaMemcpyAsync(result.data(), output, result.size() * sizeof(double),
                           cudaMemcpyDeviceToHost, arena.stream));
     arena.stats.device_to_host_bytes += result.size() * sizeof(double);
     check(cudaStreamSynchronize(arena.stream));
     ++arena.stats.stream_synchronizations;
     arena.completed = true;
+    runtime::cuda_trace::trace_counter("host_to_device_bytes", arena.stats.host_to_device_bytes);
+    runtime::cuda_trace::trace_counter("device_to_host_bytes", arena.stats.device_to_host_bytes);
+    runtime::cuda_trace::trace_counter("stream_synchronizations",
+                                       arena.stats.stream_synchronizations);
+    runtime::cuda_trace::trace_counter("atom_coordinates", 3 * atoms);
     if (!std::all_of(result.begin(), result.end(), [](double x) { return std::isfinite(x); }))
       throw std::runtime_error("nonfinite generated DF-HF gradient");
     gradient.swap(result);

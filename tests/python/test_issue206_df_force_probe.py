@@ -3,7 +3,9 @@
 import copy
 import hashlib
 import json
+import os
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -118,3 +120,102 @@ def test_changed_binary_never_publishes_a_ledger(protocol, monkeypatch):
     with pytest.raises(RuntimeError, match="changed during"):
         probe.main()
     assert not output.exists()
+
+
+def test_unrequested_trace_cannot_contaminate_unprofiled_evidence(
+    protocol, monkeypatch
+):
+    monkeypatch.setenv("VIBEQC_DF_TRACE", "unexpected.jsonl")
+    with pytest.raises(SystemExit):
+        probe.main()
+
+
+def test_positive_budget_is_applied_to_both_samples_and_recorded(protocol, monkeypatch):
+    _, output, energy, force = protocol
+    monkeypatch.setattr(sys, "argv", [*sys.argv, "--memory-budget-bytes", "268435456"])
+    samples = iter([energy, force])
+
+    def sample(*args, memory_budget_bytes):
+        assert memory_budget_bytes == 268435456
+        return next(samples)
+
+    monkeypatch.setattr(probe, "_sample", sample)
+    probe.main()
+    assert (
+        json.loads(output.read_text())["execution"][
+            "density_fitting_memory_budget_bytes"
+        ]
+        == 268435456
+    )
+
+
+@pytest.mark.parametrize("omit_force", [False, True])
+@pytest.mark.parametrize(
+    "one_electron", ["one_electron_response", "one_electron_derivative_export"]
+)
+def test_trace_protocol_preserves_raw_evidence_and_requires_force_components(
+    protocol, monkeypatch, omit_force, one_electron
+):
+    library, output, energy, force = protocol
+    directory = output.parent / "traces"
+    monkeypatch.setattr(
+        sys, "argv", [*sys.argv, "--component-trace-dir", str(directory)]
+    )
+
+    def sample(case, properties, selected_library):
+        assert selected_library == library.resolve()
+        operations = ["ri_j", "ri_k"]
+        if "forces" in properties and not omit_force:
+            operations.extend(["force_response", one_electron])
+        rows = []
+        for index, operation in enumerate(operations):
+            rows.append(
+                {
+                    "schema": "vibeqc.df_trace",
+                    "version": 1,
+                    "id": index,
+                    "operation": operation,
+                    "execution": "stream",
+                    "valid": True,
+                    "cuda_error": 0,
+                    "nvtx": True,
+                    "systems": 1,
+                    "system_offset": 0,
+                    "nbf": 2,
+                    "naux": 2,
+                    "source_backed": True,
+                    "streamed": True,
+                    "final_synchronization_ms": 1,
+                    "host_completion_ms": 3,
+                    "profiler_event_count": 2,
+                    "dropped_regions": 0,
+                    "dropped_tiles": 0,
+                    "regions": [
+                        {"name": operation, "parent": -1, "host_ms": 2, "gpu_ms": 2}
+                    ],
+                    "counters": {},
+                    "tiles": [],
+                }
+            )
+        Path(os.environ["VIBEQC_DF_TRACE"]).write_text(
+            "".join(json.dumps(row) + "\n" for row in rows)
+        )
+        return dict(force if "forces" in properties else energy)
+
+    monkeypatch.setattr(probe, "_sample", sample)
+    if omit_force:
+        with pytest.raises(ValueError, match="missing executed"):
+            probe.main()
+        assert not output.exists()
+    else:
+        probe.main()
+        payload = json.loads(output.read_text())
+        assert payload["execution"]["profiled"] is True
+        raw = payload["records"][0]["energy_plus_force"]["components"]["raw_trace"]
+        assert (
+            raw["sha256"] == hashlib.sha256(Path(raw["path"]).read_bytes()).hexdigest()
+        )
+        assert "force_attribution" in payload["records"][0]
+        with pytest.raises(FileExistsError):
+            probe.main()
+    assert "VIBEQC_DF_TRACE" not in os.environ

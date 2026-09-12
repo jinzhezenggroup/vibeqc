@@ -2,6 +2,13 @@
   "classification_status": "Reviewed source regions; operator-specific scientific glue is counted conservatively with its owning function.",
   "files": [
     {
+      "path": "src/runtime/cuda_component_trace.hpp",
+      "reason": "Opt-in CUDA event/NVTX profiling and logical work accounting; no scientific equations or provider ownership.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
       "path": "src/cc/cuda_state.cuh",
       "reason": "Persistent tensor-state buffers and generic copy/validation; CC equations live in TensorIR.",
       "regions": [],

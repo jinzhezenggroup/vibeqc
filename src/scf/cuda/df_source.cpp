@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 #include "molecule/basis.hpp"
+#include "runtime/cuda_component_trace.hpp"
 #include "runtime/resource_usage.hpp"
 #include "scf/cuda/checked_layout.hpp"
 #include "scf/cuda/df_source_internal.hpp"
@@ -103,6 +104,13 @@ vibeqc_status generate_cuda_density_fitting_transformed_tile_impl(
   const std::int64_t system_derivative_coordinate =
       derivative_coordinate < 0 ? derivative_coordinate
                                 : derivative_coordinate + source->host_atom_offsets[system] * 3;
+  runtime::cuda_trace::trace_tile(system, pair_begin, pair_count, auxiliary_begin, auxiliary_count,
+                                  derivative_coordinate, apply_metric_transform);
+  runtime::cuda_trace::TraceRegion generation(
+      derivative_coordinate >= 0 ? "three_center_derivatives"
+      : apply_metric_transform   ? "transformed_three_center_generation"
+                                 : "raw_three_center_generation",
+      stream);
   if (derivative_coordinate < 0) {
     launch_build_cuda_df_transformed_tile_kernel(
         false, blocks, source_threads, 0, stream, source->batch, source->cartesian_nbf,
