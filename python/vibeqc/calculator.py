@@ -698,6 +698,14 @@ class Calculator:
         self._preflight_hf_basis(atoms)
         metadata = self.basis_metadata(atoms, charge=charge, multiplicity=multiplicity)
         orbital = metadata["orbital"]
+        from .ecp import resolve_ecp
+
+        if any(resolve_ecp(self._basis, atoms)[0]):
+            # ResolvedModel currently encodes an all-electron Hamiltonian.
+            # Do not label a core-replaced calculation as that different model.
+            raise NotImplementedError(
+                "ECP accuracy model resolution is not implemented"
+            )
         fitted = self._density_fitting_mode != _native.DENSITY_FITTING_NONE
         # HF's native default uses the orbital system as the auxiliary system.
         # An AUTO provider may choose a backend, but never changes this model.
@@ -842,6 +850,30 @@ class Calculator:
             else self._basis_representation,
         )
         system = ctypes.c_void_p()
+        from .ecp import resolve_ecp
+
+        cores, ecp_terms = resolve_ecp(selected_basis, atoms)
+        if ecp_terms:
+            if self._density_fitting_mode != _native.DENSITY_FITTING_NONE:
+                raise NotImplementedError(
+                    "ECP density-fitting execution is not yet validated"
+                )
+            core_array = (ctypes.c_int32 * len(cores))(*cores)
+            term_array = (_native.EcpTermDescriptor * len(ecp_terms))(
+                *(_native.EcpTermDescriptor(*t) for t in ecp_terms)
+            )
+            _native.check(
+                self._library,
+                self._library.vibeqc_system_create_ecp(
+                    context,
+                    ctypes.byref(descriptor),
+                    core_array,
+                    term_array,
+                    len(term_array),
+                    ctypes.byref(system),
+                ),
+            )
+            return system
         _native.check(
             self._library,
             self._library.vibeqc_system_create(

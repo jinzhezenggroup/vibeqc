@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 9812,
+  "all_handwritten_scientific_lines": 10136,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "files": [
     {
@@ -79,6 +79,23 @@
       "role": "runtime",
       "sha256": "2df50a599bd0cdc33ae2aca48d29b06364283253f55d5d8fc338d3e5c04bcd55",
       "subsystem": "xc"
+    },
+    {
+      "bytes": 14035,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 324
+      },
+      "path": "src/integrals/ecp_cuda.cu",
+      "physical_lines": 330,
+      "reason": "Semilocal quadrature, projector products and ECP center scatter; Gaussian value/derivative arithmetic is generated. Count glue conservatively as scientific.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "3167503f3b68a5956c8eab277a0d1e217cdad8f72a4a50ad5395af47f11a7f0c",
+      "subsystem": "ecp"
     },
     {
       "bytes": 3566,
@@ -2446,7 +2463,7 @@
       "subsystem": "one_electron_derivatives"
     },
     {
-      "bytes": 10970,
+      "bytes": 10971,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
@@ -2459,7 +2476,7 @@
       "reason": "Density/energy-weighted-density and gradient task bridge around generated derivatives.",
       "regions": [],
       "role": "scientific",
-      "sha256": "8cb46c1db6dafa0eeab516daef4b84ba29073ec61437d3f3ae744d566c12865d",
+      "sha256": "11c248401e8fe3948fecfc1bb754d992631b4728ce0d56c4cd748c5058bcc39c",
       "subsystem": "one_electron_derivatives"
     },
     {
@@ -3138,7 +3155,7 @@
     "oracle": 0,
     "performance_exception": 156,
     "runtime": 8615,
-    "scientific": 9656
+    "scientific": 9980
   },
   "migration_ledger": {
     "ao_grid": {
@@ -3196,6 +3213,18 @@
       "owner": "direct_integrals",
       "retirement_condition": "remove each old scientific class when numerical/resource/full endpoint gates pass and no independent role remains",
       "status": "partial"
+    },
+    "ecp": {
+      "current_default": "Scalar Gaussian residual ECP, local plus s/p/d projectors, s/p/d orbital basis; two-grid convergence-gated native HF.",
+      "evidence": [
+        "tests/python/test_ecp.py",
+        "tests/python/test_ecp_ir.py"
+      ],
+      "generated_capability": "Gaussian component values and analytic basis-center derivative DAGs; explicit external ECP center in IntegralIR.",
+      "missing_capability": "Complete DFT ECP awaits issues 162/163; spin-orbit, orbital f and higher projector families unavailable.",
+      "owner": "python/vibeqc_compiler/integral/ecp.py and src/integrals/ecp_cuda.cu",
+      "retirement_condition": "A future generated projector lowering must preserve independent raw local/nonlocal and all-center derivative gates.",
+      "status": "Initial native quadrature baseline; no broad heavy-element or performance claim."
     },
     "low_rank": {
       "current_default": "experimental native matrix-prefix projection and cuBLAS J/K; CPU source and pivot policy",
@@ -3300,6 +3329,13 @@
       "performance_exception": 0,
       "runtime": 1644,
       "scientific": 7090
+    },
+    "ecp": {
+      "fallback": 0,
+      "oracle": 0,
+      "performance_exception": 0,
+      "runtime": 0,
+      "scientific": 324
     },
     "low_rank": {
       "fallback": 0,

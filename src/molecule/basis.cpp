@@ -201,13 +201,17 @@ vibeqc_status validate_and_normalize(core::System& system, std::string& detail) 
         return VIBEQC_STATUS_INVALID_ARGUMENT;
       }
     }
-    nuclear_charge += atom.atomic_number;
+    if (atom.ecp_core < 0 || atom.ecp_core >= atom.atomic_number) {
+      detail = "ECP core count must leave a positive ionic charge";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+    nuclear_charge += atom.ionic_charge();
   }
   // Widen before subtraction: an INT32_MIN ionic charge must not wrap the
-  // all-electron population. ECP Hamiltonians cannot enter this ABI.
+  // active-electron population.
   const std::int64_t electrons = nuclear_charge - static_cast<std::int64_t>(system.charge);
   if (electrons > std::numeric_limits<int>::max() || electrons <= 0) {
-    detail = "all-electron population is outside the positive native integer range";
+    detail = "active-electron population is outside the positive native integer range";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   system.electron_count = static_cast<int>(electrons);

@@ -441,6 +441,9 @@ std::unique_ptr<PreparedCalculation> prepare_hf_calculation(
   }
   resolve_hf_options(options, capabilities.method, context);
   if (options.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE) {
+    if (!system.ecp_terms.empty())
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                        "ECP density-fitting execution is not yet validated");
     validate_density_fitting_auxiliary(system, auxiliary);
   }
   return std::make_unique<HfPreparedCalculation>(capabilities, context, system, options,
@@ -466,6 +469,11 @@ std::unique_ptr<PreparedBatch> prepare_hf_batch(const Capabilities& capabilities
                       "CUDA density-fitting mode requires a CUDA execution context");
   }
   resolve_hf_options(options, capabilities.method, context);
+  if (options.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE)
+    for (const auto& system : systems)
+      if (!system.ecp_terms.empty())
+        throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                          "ECP density-fitting execution is not yet validated");
   if (options.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE && auxiliary.has_value()) {
     if (auxiliary->atoms.size() != systems.front().atoms.size()) {
       throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,

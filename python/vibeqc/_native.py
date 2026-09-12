@@ -126,6 +126,16 @@ class ContextDescriptor(ctypes.Structure):
     ]
 
 
+class EcpTermDescriptor(ctypes.Structure):
+    _fields_ = [
+        ("atom_index", ctypes.c_uint32),
+        ("channel", ctypes.c_int32),
+        ("power", ctypes.c_uint32),
+        ("exponent", ctypes.c_double),
+        ("coefficient", ctypes.c_double),
+    ]
+
+
 class AtomDescriptor(ctypes.Structure):
     _fields_ = [
         ("atomic_number", ctypes.c_int32),
@@ -468,6 +478,25 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
         void_pp,
     ]
     library.vibeqc_system_create.restype = ctypes.c_int
+    library.vibeqc_system_create_ecp.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(SystemDescriptor),
+        ctypes.POINTER(ctypes.c_int32),
+        ctypes.POINTER(EcpTermDescriptor),
+        ctypes.c_size_t,
+        void_pp,
+    ]
+    library.vibeqc_system_create_ecp.restype = ctypes.c_int
+    library.vibeqc_system_ecp_integrals.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.c_uint32,
+        ctypes.c_int32,
+        ctypes.POINTER(ctypes.c_double),
+        ctypes.c_size_t,
+    ]
+    library.vibeqc_system_ecp_integrals.restype = ctypes.c_int
     library.vibeqc_system_destroy.argtypes = [ctypes.c_void_p]
     library.vibeqc_system_cross_overlap_cpu.argtypes = [
         ctypes.c_void_p,

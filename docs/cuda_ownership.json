@@ -1291,6 +1291,13 @@
       "subsystem": "runtime",
       "reason": "Shared host CUDA error and typed allocation-failure boundary, extracted unchanged so ordinary C++ reference export does not import device kernels.",
       "regions": []
+    },
+    {
+      "path": "src/integrals/ecp_cuda.cu",
+      "reason": "Semilocal quadrature, projector products and ECP center scatter; Gaussian value/derivative arithmetic is generated. Count glue conservatively as scientific.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "ecp"
     }
   ],
   "generated_families": [
@@ -1518,6 +1525,18 @@
       "owner": "xc",
       "retirement_condition": "duplicated CPU coefficient/response formulas retired after independent E/V and derivative gates; retain external/formula oracles; GPU promotion requires its own complete endpoint evidence",
       "status": "partial"
+    },
+    "ecp": {
+      "owner": "python/vibeqc_compiler/integral/ecp.py and src/integrals/ecp_cuda.cu",
+      "current_default": "Scalar Gaussian residual ECP, local plus s/p/d projectors, s/p/d orbital basis; two-grid convergence-gated native HF.",
+      "generated_capability": "Gaussian component values and analytic basis-center derivative DAGs; explicit external ECP center in IntegralIR.",
+      "missing_capability": "Complete DFT ECP awaits issues 162/163; spin-orbit, orbital f and higher projector families unavailable.",
+      "retirement_condition": "A future generated projector lowering must preserve independent raw local/nonlocal and all-center derivative gates.",
+      "evidence": [
+        "tests/python/test_ecp.py",
+        "tests/python/test_ecp_ir.py"
+      ],
+      "status": "Initial native quadrature baseline; no broad heavy-element or performance claim."
     }
   }
 }

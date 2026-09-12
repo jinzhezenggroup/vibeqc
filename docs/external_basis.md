@@ -97,7 +97,8 @@ An optional `electron_count` must agree with this population. Exact integer
 fields, native integer bounds and nonnegative integral spin occupations are
 checked. This inspection does not execute an ECP Hamiltonian. For example, the
 Au def2-TZVP fixture has Z=79 and 60 ECP core electrons, hence 19 active electrons
-at zero ionic charge. It is loadable but every calculation rejects its ECP.
+at zero ionic charge. Its orbital angular momenta exceed the supported ECP
+domain; inspect [scalar ECP execution](ecp.md) for the validated boundaries.
 Changing the ionic charge to imitate an ECP is not a supported conversion.
 
 ## Loadable data versus executable operations
@@ -112,7 +113,8 @@ operator and derivative order where applicable.
 | `overlap`, `kinetic`, `nuclear_attraction`, `eri` | Nuclear 0 or 1 | s through g | s through f |
 | `df_metric`, `df_three_center` | Nuclear 0 or 1 | s through g in both spaces | s through f in both spaces |
 | `ao` | Spatial 0 through 3 | s through f | s through f |
-| ECP, modified nuclear charge, other derivatives/operators/backends | — | Rejected | Rejected |
+| Scalar Gaussian ECP direct RHF/UHF | Nuclear 0 or 1 | s/p/d orbitals; see [ECP contract](ecp.md) | s/p/d orbitals; see [ECP contract](ecp.md) |
+| Modified nuclear charge, other derivatives/operators/backends | — | Rejected | Rejected |
 
 Public HF energy-plus-force endpoints preflight both values and first nuclear
 derivatives. `eligible` states that a generic mathematical route exists. Native
@@ -171,6 +173,7 @@ actual backend labels. CUDA runs require a finite Slurm GPU allocation. See
 
 Higher-l work (#170) must add each needed value/derivative/backend route and
 independent conventions tests before extending the corresponding capability
-entry. ECP work (#171) needs an explicit potential-bearing native Hamiltonian,
-consistent active-electron bookkeeping and full gradients. Neither can be
-enabled by editing a global maximum or by discarding unsupported metadata.
+entry. The [ECP baseline](ecp.md) provides an explicit potential-bearing native
+Hamiltonian, active-electron bookkeeping and direct HF gradients within its
+validated domain. Further families require independent raw and complete-method
+gates; changing a global maximum or discarding metadata does not enable them.

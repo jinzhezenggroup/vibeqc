@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "integrals/ecp.hpp"
 #include "molecule/basis.hpp"
 #include "posthf/raw_source.hpp"
 
@@ -326,7 +327,7 @@ Jet primitive_nuclear_attraction_cartesian(double alpha, const Vec3& a,
         }
       }
     }
-    result = result - static_cast<double>(system.atoms[atom].atomic_number) *
+    result = result - static_cast<double>(system.atoms[atom].ionic_charge()) *
                           (2.0 * std::numbers::pi / p) * value;
   }
   return result;
@@ -959,7 +960,7 @@ IntegralData build_integrals(const core::System& system, bool include_derivative
     for (std::size_t b = 0; b < a; ++b) {
       nuclear_repulsion =
           nuclear_repulsion +
-          static_cast<double>(system.atoms[a].atomic_number * system.atoms[b].atomic_number) /
+          static_cast<double>(system.atoms[a].ionic_charge() * system.atoms[b].ionic_charge()) /
               sqrt(distance_squared(atom_coordinates[a], atom_coordinates[b]));
     }
   }
@@ -969,6 +970,11 @@ IntegralData build_integrals(const core::System& system, bool include_derivative
   unpack_jets(eri, out.eri, out.eri_derivative, out.ncoord);
   out.nuclear_repulsion = nuclear_repulsion.value;
   out.nuclear_repulsion_derivative = std::move(nuclear_repulsion.derivative);
+  if (!system.ecp_terms.empty()) {
+    auto cartesian = system;
+    cartesian.basis_representation = VIBEQC_BASIS_CARTESIAN;
+    add_ecp(checked_ecp_integrals(cartesian, include_derivatives), out.hcore, out.hcore_derivative);
+  }
   if (system.basis_representation == VIBEQC_BASIS_SPHERICAL) {
     const std::vector<GlobalAoExpansion> target_aos = spherical_expansions(system);
     IntegralData spherical;
@@ -1014,6 +1020,7 @@ using namespace vibeqc::integrals;
 
 struct RawSource::Impl {
   core::System orbital, auxiliary;
+  std::vector<double> ecp_matrix;
   bool has_auxiliary = false;
   std::vector<AoView> aos, aux;
   std::vector<GlobalAoExpansion> public_aos, public_aux;
@@ -1091,6 +1098,8 @@ struct RawSource::Impl {
       }
     };
     expand(expand, 0, 1);
+    if (op == Operator::hcore && !ecp_matrix.empty())
+      result += ecp_matrix[indices[0] * public_aos.size() + indices[1]];
     return result;
   }
 };
@@ -1103,6 +1112,12 @@ RawSource::RawSource(core::System orbital, const core::System* auxiliary)
       throw std::invalid_argument("raw post-HF source supports through g");
   impl_->aos = expand_cartesian_aos(impl_->orbital);
   impl_->public_aos = public_ao_expansions(impl_->orbital);
+  if (!impl_->orbital.ecp_terms.empty()) {
+    const auto ecp = checked_ecp_integrals(impl_->orbital, false);
+    impl_->ecp_matrix = ecp.local;
+    for (std::size_t i = 0; i < impl_->ecp_matrix.size(); ++i)
+      impl_->ecp_matrix[i] += ecp.nonlocal[i];
+  }
   for (const auto& atom : impl_->orbital.atoms) {
     Vec3 position;
     for (unsigned axis = 0; axis < 3; ++axis) position[axis] = Jet(atom.position[axis], 0);
