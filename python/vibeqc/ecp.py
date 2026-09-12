@@ -31,6 +31,8 @@ def resolve_ecp(basis, atoms):
         if core >= atom.atomic_number:
             raise ValueError("ECP core count must leave a positive ionic charge")
         potentials = json.loads(element.ecp_data)
+        # Requires ecp_type == "scalar_ecp" and one angular channel per record,
+        # as well as valid radial arrays, before interpreting the local channel.
         validate_ecp_data(potentials)
         channels = [p["angular_momentum"][0] for p in potentials]
         if len(set(channels)) != len(channels):

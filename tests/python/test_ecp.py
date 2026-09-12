@@ -320,7 +320,10 @@ def test_isolated_valence_atom_and_wrong_core_count():
             for e in basis.elements
         ),
     )
-    with pytest.raises(RuntimeError, match="invalid argument"):
+    with pytest.raises(
+        RuntimeError,
+        match="VIBEQC error 1: RHF requires an even electron count",
+    ):
         Calculator(basis=bad).singlepoint(atoms)
 
 
