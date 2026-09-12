@@ -162,9 +162,14 @@ cudaError_t contract_cuda_df_response_weights(
   auto error = cudaMemsetAsync(bar_inverse, 0, aa * sizeof(double), stream);
   if (error != cudaSuccess) return error;
   for (std::size_t q = 0; q < a; ++q) {
-    read_values(q, values);
+    // The first response panel is already reserved in this workspace. Fill
+    // it while forming charges, then retain those exact raw values for both
+    // exchange weights and metric response. Discarded metric directions make
+    // reconstructing raw A from a retained transformed tensor unsafe here.
+    auto* charge_values = q < tile ? raw + q * matrix : values;
+    read_values(q, charge_values);
     charge_kernel<<<blocks(terms.size()), threads, 0, stream>>>(matrix, a, q, terms.size(),
-                                                                densities, values, charges);
+                                                                densities, charge_values, charges);
   }
   potential_kernel<<<blocks(terms.size() * a), threads, 0, stream>>>(a, terms.size(), inverse,
                                                                      charges, potentials);
@@ -178,7 +183,12 @@ cudaError_t contract_cuda_df_response_weights(
     const auto count = std::min(tile, a - begin);
     error = cudaMemsetAsync(weights, 0, count * matrix * sizeof(double), stream);
     if (error != cudaSuccess) return error;
-    for (std::size_t p = 0; p < count; ++p) read_values(begin + p, raw + p * matrix);
+    if (begin != 0) {
+      for (std::size_t p = 0; p < count; ++p) read_values(begin + p, raw + p * matrix);
+    } else {
+      runtime::cuda_trace::trace_counter("raw_value_cache_hits", count);
+      runtime::cuda_trace::trace_counter("raw_value_reuse_bytes", count * matrix * sizeof(double));
+    }
     runtime::cuda_trace::TraceRegion coulomb_weights("coulomb_response_weights", stream);
     for (std::size_t t = 0; t < terms.size(); ++t)
       if (terms[t].coulomb_coefficient != 0)
@@ -187,14 +197,23 @@ cudaError_t contract_cuda_df_response_weights(
             potentials + t * a, weights);
     coulomb_weights.finish();
     for (std::size_t q = 0; q < a; ++q) {
-      read_values(q, values);
+      const double* exchange_values = values;
+      if (q >= begin && q - begin < count) {
+        // A later raw panel overwrites this storage only after consume() has
+        // enqueued the preceding derivative contraction on the same stream.
+        exchange_values = raw + (q - begin) * matrix;
+        runtime::cuda_trace::trace_counter("raw_value_cache_hits", 1);
+        runtime::cuda_trace::trace_counter("raw_value_reuse_bytes", matrix * sizeof(double));
+      } else {
+        read_values(q, values);
+      }
       for (std::size_t t = 0; t < terms.size(); ++t) {
         const double coefficient = terms[t].exchange_coefficient;
         if (coefficient == 0) continue;
         runtime::cuda_trace::TraceRegion products("exchange_response_matrix_products", stream);
         runtime::cuda_trace::trace_counter("response_ao_matrix_products", 2);
         right_density_kernel<<<blocks(matrix), threads, 0, stream>>>(
-            n, values, densities + t * matrix, temporary);
+            n, exchange_values, densities + t * matrix, temporary);
         left_density_kernel<<<blocks(matrix), threads, 0, stream>>>(n, densities + t * matrix,
                                                                     temporary, response);
         products.finish();
