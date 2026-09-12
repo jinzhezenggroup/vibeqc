@@ -371,9 +371,14 @@ vibeqc_status execute_cuda_df_hf_gradient(
           [&](std::size_t p, std::span<double> values) {
             // Source-backed execution requires device_metric above. This
             // compatibility adapter can only read caller-owned host values.
+            runtime::cuda_trace::TraceRegion gather("host_raw_three_center_gather", arena.stream);
+            runtime::cuda_trace::trace_counter("raw_value_cache_hits", 1);
+            runtime::cuda_trace::trace_counter("raw_value_reuse_bytes", n * n * sizeof(double));
             for (std::size_t ij = 0; ij < n * n; ++ij) values[ij] = raw_a[ij * a + p];
           },
           [&](unsigned kind, runtime::StridedRange range, std::span<const double> host_weights) {
+            runtime::cuda_trace::TraceRegion weight_uploads(
+                "host_response_uploads_and_synchronization", arena.stream);
             bool drained = false;
             auto drain = [&] {
               if (!drained) (void)cudaStreamSynchronize(arena.stream);
@@ -386,6 +391,13 @@ vibeqc_status execute_cuda_df_hf_gradient(
               arena.stats.host_to_device_bytes += count * sizeof(double);
               arena.stats.response_host_to_device_bytes += count * sizeof(double);
               ++arena.stats.uploads;
+              runtime::cuda_trace::TraceRegion derivatives(
+                  kind ? "metric_center_derivative_contraction"
+                       : "three_center_derivative_contraction",
+                  arena.stream);
+              runtime::cuda_trace::trace_counter(
+                  kind ? "metric_derivative_weight_bytes" : "three_center_derivative_weight_bytes",
+                  count * sizeof(double));
               check(launch_df_derivative_tile(o, x, r, kind, range, count, weights, schedule,
                                               output, arena.stream, begin));
               ++arena.stats.tiles;

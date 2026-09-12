@@ -13,6 +13,14 @@ import math
 from collections import defaultdict
 from pathlib import Path
 
+ONE_ELECTRON_OPERATIONS = frozenset(
+    {"one_electron_response", "one_electron_derivative_export"}
+)
+FORCE_OPERATIONS = ONE_ELECTRON_OPERATIONS | {
+    "force_response",
+    "nuclear_derivative_export",
+}
+
 
 def _integer(value, name: str, minimum: int = 0) -> int:
     if type(value) is not int or value < minimum:
@@ -262,10 +270,10 @@ def force_attribution(energy: dict, force: dict) -> dict:
     roots = [
         g
         for g in force["components"]["groups"]
-        if g["execution"] == "stream"
-        and g["operation"] in ("force_response", "one_electron_response")
+        if g["execution"] == "stream" and g["operation"] in FORCE_OPERATIONS
     ]
-    if {g["operation"] for g in roots} != {"force_response", "one_electron_response"}:
+    operations = {g["operation"] for g in roots}
+    if "force_response" not in operations or not operations & ONE_ELECTRON_OPERATIONS:
         raise ValueError("missing force operations for attribution")
     increment = 1000 * (force["seconds"] - energy["seconds"])
     completed = sum(g["host_completion_ms"] for g in roots)

@@ -8,6 +8,7 @@
 
 #include "integrals/ecp_cuda.hpp"
 #include "molecule/basis.hpp"
+#include "runtime/cuda_component_trace.hpp"
 #include "runtime/resource_cuda.cuh"
 #include "scf/cuda/one_electron_export_kernels.hpp"
 #include "scf/cuda/one_electron_view.hpp"
@@ -218,32 +219,49 @@ vibeqc_status build_cuda_one_electron_integrals_impl(int device_id, const core::
     cuda_error = cudaMemcpy(&output.nuclear_repulsion, device_nuclear, sizeof(double),
                             cudaMemcpyDeviceToHost);
   }
-  for (std::size_t coordinate = 0; (include_derivatives || include_nuclear_derivatives) &&
-                                   cuda_error == cudaSuccess && coordinate < output.ncoord;
-       ++coordinate) {
-    if (include_derivatives)
-      launch_build_cuda_one_electron_derivatives_kernel(
-          pair_blocks, threads, 0, stream, device_batch, device_pair_first, device_pair_second,
-          pair_count, static_cast<std::int64_t>(coordinate), device_overlap, device_hcore);
-    if (include_nuclear_derivatives)
-      launch_build_cuda_nuclear_repulsion_kernel(true, 1, 1, 0, stream, device_batch,
-                                                 static_cast<std::int64_t>(coordinate),
-                                                 device_nuclear);
-    cuda_error = cudaGetLastError();
-    if (cuda_error == cudaSuccess) cuda_error = cudaStreamSynchronize(stream);
-    if (cuda_error == cudaSuccess && include_derivatives) {
-      cuda_error =
-          cudaMemcpy(output.overlap_derivative.data() + coordinate * matrix_elements,
-                     device_overlap, matrix_elements * sizeof(double), cudaMemcpyDeviceToHost);
-    }
-    if (cuda_error == cudaSuccess && include_derivatives) {
-      cuda_error =
-          cudaMemcpy(output.hcore_derivative.data() + coordinate * matrix_elements, device_hcore,
-                     matrix_elements * sizeof(double), cudaMemcpyDeviceToHost);
-    }
-    if (cuda_error == cudaSuccess && include_nuclear_derivatives) {
-      cuda_error = cudaMemcpy(output.nuclear_repulsion_derivative.data() + coordinate,
-                              device_nuclear, sizeof(double), cudaMemcpyDeviceToHost);
+  if (include_derivatives || include_nuclear_derivatives) {
+    // This explicit-tensor compatibility export precedes the HF force call.
+    // End tracing before the existing release() destroys its owned stream.
+    runtime::cuda_trace::TraceOperation trace(
+        include_derivatives ? "one_electron_derivative_export" : "nuclear_derivative_export",
+        stream, {1, host.nbf, 0, false, false});
+    for (std::size_t coordinate = 0; (include_derivatives || include_nuclear_derivatives) &&
+                                     cuda_error == cudaSuccess && coordinate < output.ncoord;
+         ++coordinate) {
+      runtime::cuda_trace::TraceRegion generation("one_electron_and_nuclear_derivative_generation",
+                                                  stream);
+      if (include_derivatives)
+        launch_build_cuda_one_electron_derivatives_kernel(
+            pair_blocks, threads, 0, stream, device_batch, device_pair_first, device_pair_second,
+            pair_count, static_cast<std::int64_t>(coordinate), device_overlap, device_hcore);
+      if (include_nuclear_derivatives)
+        launch_build_cuda_nuclear_repulsion_kernel(true, 1, 1, 0, stream, device_batch,
+                                                   static_cast<std::int64_t>(coordinate),
+                                                   device_nuclear);
+      generation.finish();
+      runtime::cuda_trace::trace_counter("atom_coordinates", 1);
+      runtime::cuda_trace::trace_counter("device_to_host_bytes",
+                                         ((include_derivatives ? 2 * matrix_elements : 0) +
+                                          (include_nuclear_derivatives ? 1 : 0)) *
+                                             sizeof(double));
+      runtime::cuda_trace::TraceRegion transfer(
+          "one_electron_derivative_output_and_synchronization", stream);
+      cuda_error = cudaGetLastError();
+      if (cuda_error == cudaSuccess) cuda_error = cudaStreamSynchronize(stream);
+      if (cuda_error == cudaSuccess && include_derivatives) {
+        cuda_error =
+            cudaMemcpy(output.overlap_derivative.data() + coordinate * matrix_elements,
+                       device_overlap, matrix_elements * sizeof(double), cudaMemcpyDeviceToHost);
+      }
+      if (cuda_error == cudaSuccess && include_derivatives) {
+        cuda_error =
+            cudaMemcpy(output.hcore_derivative.data() + coordinate * matrix_elements, device_hcore,
+                       matrix_elements * sizeof(double), cudaMemcpyDeviceToHost);
+      }
+      if (cuda_error == cudaSuccess && include_nuclear_derivatives) {
+        cuda_error = cudaMemcpy(output.nuclear_repulsion_derivative.data() + coordinate,
+                                device_nuclear, sizeof(double), cudaMemcpyDeviceToHost);
+      }
     }
   }
   if (cuda_error != cudaSuccess) {

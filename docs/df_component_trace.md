@@ -38,6 +38,13 @@ invalid instrumentation. Output paths should be outside the source tree (or
 ignored by Git) so writing evidence does not change the identified checkout.
 Trace files must be fresh; the probe never overwrites earlier captures.
 
+The default `--memory-budget-bytes 0` preserves the original probe's host
+resident compatibility route. A positive value, for example `268435456`,
+selects the existing bounded generated-source execution. Record and compare
+both routes explicitly: the original #206 probe does not exercise source-backed
+tile regeneration. Compatibility one-electron/nuclear derivative exports have
+their own roots, and host response weights remain labeled as host work.
+
 For executed graph-node attribution, wrap a separate probe with Nsight Systems:
 
 ```bash
@@ -65,7 +72,7 @@ binary identities. Nsight timing also has instrumentation overhead.
   added together. CUDA events include stream idle gaps between submissions.
 - Root exclusive time remains unclassified runtime work. The force attribution
   compares named host intervals and measured synchronization to the same
-  profiled pair's force increment. Nuclear assembly, host packing before the
+  profiled pair's force increment. Host nuclear assembly, packing before the
   operation, and work outside the roots remain explicit residuals. A ratio
   over one may reflect variation between the two SCF solves.
 - A tile key includes absolute source system, AO-pair and auxiliary ranges,

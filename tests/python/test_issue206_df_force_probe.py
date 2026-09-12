@@ -130,9 +130,31 @@ def test_unrequested_trace_cannot_contaminate_unprofiled_evidence(
         probe.main()
 
 
+def test_positive_budget_is_applied_to_both_samples_and_recorded(protocol, monkeypatch):
+    _, output, energy, force = protocol
+    monkeypatch.setattr(sys, "argv", [*sys.argv, "--memory-budget-bytes", "268435456"])
+    samples = iter([energy, force])
+
+    def sample(*args, memory_budget_bytes):
+        assert memory_budget_bytes == 268435456
+        return next(samples)
+
+    monkeypatch.setattr(probe, "_sample", sample)
+    probe.main()
+    assert (
+        json.loads(output.read_text())["execution"][
+            "density_fitting_memory_budget_bytes"
+        ]
+        == 268435456
+    )
+
+
 @pytest.mark.parametrize("omit_force", [False, True])
+@pytest.mark.parametrize(
+    "one_electron", ["one_electron_response", "one_electron_derivative_export"]
+)
 def test_trace_protocol_preserves_raw_evidence_and_requires_force_components(
-    protocol, monkeypatch, omit_force
+    protocol, monkeypatch, omit_force, one_electron
 ):
     library, output, energy, force = protocol
     directory = output.parent / "traces"
@@ -144,7 +166,7 @@ def test_trace_protocol_preserves_raw_evidence_and_requires_force_components(
         assert selected_library == library.resolve()
         operations = ["ri_j", "ri_k"]
         if "forces" in properties and not omit_force:
-            operations.extend(["force_response", "one_electron_response"])
+            operations.extend(["force_response", one_electron])
         rows = []
         for index, operation in enumerate(operations):
             rows.append(
