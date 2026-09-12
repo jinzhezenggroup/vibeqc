@@ -1,6 +1,6 @@
 """Compare dense/occupied RI-K on one immutable warm-density snapshot.
 
-Policy switches rebuild the device SCF state. Each switch is primed outside
+Policy switches rebuild the native value/SCF plan. Each switch is primed outside
 the timed sample; both the priming cost and the steady replay are retained.
 This keeps setup visible while measuring the execution policy on identical D.
 Run only inside a finite Slurm GPU allocation, without concurrent compilation.
@@ -57,6 +57,7 @@ def main() -> None:
         "library_sha256": hashlib.sha256(library.read_bytes()).hexdigest(),
         "warm_policy": "one prepared batch, frozen post-cold dense snapshot; prime after each policy switch",
         "trace_enabled": bool(os.environ.get("VIBEQC_DF_TRACE")),
+        "policy_plan_diagnostics": {},
         "samples": [],
         "passed": False,
     }
@@ -96,6 +97,12 @@ def main() -> None:
                 for policy in order:
                     os.environ["VIBEQC_DF_EXCHANGE"] = policy
                     prime = _vibeqc_sample(batch, cp, -1, forces)
+                    # Each policy owns a separately reserved native plan;
+                    # retain both ledgers after the untimed policy transition.
+                    payload["policy_plan_diagnostics"][policy] = [
+                        diagnostic.to_dict()
+                        for diagnostic in batch.last_density_fitting_metric_diagnostics()
+                    ]
                     sample = _vibeqc_sample(batch, cp, len(payload["samples"]), forces)
                     payload["samples"].append(
                         {"policy": policy, "repeat": repeat, "prime": prime, **sample}

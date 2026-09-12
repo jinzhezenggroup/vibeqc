@@ -6,7 +6,8 @@
 namespace vibeqc::scf::cuda_df {
 
 /** Explicit opt-in until fixed-K and complete endpoint evidence selects policy. */
-vibeqc_status occupied_scf_policy(bool& enabled, std::string& detail);
+vibeqc_status occupied_scf_policy(const CudaDensityFittingJkPlan& plan, bool& enabled,
+                                  std::string& detail);
 vibeqc_status allocate_scf_factors(CudaDensityFittingJkPlan& plan, PersistentScfState& state,
                                    const std::vector<std::int32_t>& alpha,
                                    const std::vector<std::int32_t>& beta, std::string& detail);

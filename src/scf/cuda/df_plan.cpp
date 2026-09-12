@@ -10,6 +10,7 @@
 
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_plan_setup.hpp"
+#include "scf/df_exchange_policy.hpp"
 
 namespace vibeqc::scf {
 using namespace cuda_df;
@@ -76,6 +77,10 @@ void destroy_cuda_density_fitting_jk_plan(CudaDensityFittingJkPlan* plan) noexce
 
 std::size_t cuda_density_fitting_jk_plan_batch_size(const CudaDensityFittingJkPlan* plan) noexcept {
   return plan == nullptr ? 0U : plan->batch_size;
+}
+
+bool cuda_density_fitting_scf_policy_matches(const CudaDensityFittingJkPlan* plan) noexcept {
+  return plan != nullptr && plan->occupied_scf_reserved == df_occupied_exchange_requested();
 }
 
 bool cuda_density_fitting_jk_plan_matches(const CudaDensityFittingJkPlan* plan, std::size_t item,

@@ -140,6 +140,12 @@ vibeqc_status generate_cuda_density_fitting_metric_derivative_tile(
 
 /** Return the fixed batch cardinality owned by a prepared plan. */
 std::size_t cuda_density_fitting_jk_plan_batch_size(const CudaDensityFittingJkPlan* plan) noexcept;
+
+/** Whether a cached plan reserved storage for the current SCF exchange policy.
+ * High-level callers rebuild on mismatch; low-level SCF calls cannot enable
+ * occupied factors on a plan created with only the dense reservation.
+ */
+bool cuda_density_fitting_scf_policy_matches(const CudaDensityFittingJkPlan* plan) noexcept;
 /** Verify a borrowed item's dimensions and the value-side metric cutoff before
  * binding an independent Fock/response view. */
 bool cuda_density_fitting_jk_plan_matches(const CudaDensityFittingJkPlan* plan, std::size_t item,

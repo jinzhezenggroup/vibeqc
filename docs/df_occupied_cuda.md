@@ -43,9 +43,19 @@ readback; a stale generation rejects the device result and preserves the
 caller's established numerical recovery. Force evaluation receives only the
 validated converged density and keeps its full metric/center/Pulay response.
 
-Native and common resource ledgers conservatively reserve two full AO
-matrices for spin factors plus generation flags, while actual allocation uses
-the bucket's occupied ranks. `ri_k_occupied` traces report factor bytes, rank,
+Native and common resource ledgers reserve two full AO matrices for spin
+factors plus generation flags only when occupied exchange is selected; actual
+allocation uses the bucket's occupied ranks. Dense mode retains its previous
+minimum-budget and residency boundaries. A native plan freezes this reservation
+at creation and rejects occupied SCF before allocation if it reserved only dense
+storage. Ordinary prepared batches rebuild the value/SCF plan on policy changes,
+retaining their geometry response cache. Batches with a global `ResourceBudget`
+freeze `VIBEQC_DF_EXCHANGE` in the resource identity: changing it after preparation
+requires preparing a new batch and is rejected before native execution. The
+fixed-density factor API needs no additional allocation and still borrows the
+existing tiles independently of the SCF reservation.
+
+`ri_k_occupied` traces report factor bytes, rank,
 projection/exchange products and panel hits. Captured records describe graph
 construction; `occupied_scf_provenance` separately reports executed iteration
 counts, dense seeding and final generation validation. Uninstrumented complete

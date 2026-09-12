@@ -8,14 +8,20 @@
 #include "scf/cuda/df_jk_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
 #include "scf/cuda/df_scf_kernels.hpp"
+#include "scf/df_exchange_policy.hpp"
 
 namespace vibeqc::scf::cuda_df {
 
-vibeqc_status occupied_scf_policy(bool& enabled, std::string& detail) {
+vibeqc_status occupied_scf_policy(const CudaDensityFittingJkPlan& plan, bool& enabled,
+                                  std::string& detail) {
   const char* value = std::getenv("VIBEQC_DF_EXCHANGE");
-  enabled = value && std::string(value) == "occupied";
+  enabled = df_occupied_exchange_requested();
   if (value && !enabled && std::string(value) != "dense") {
     detail = "VIBEQC_DF_EXCHANGE must be dense or occupied";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  if (enabled && !plan.occupied_scf_reserved) {
+    detail = "CUDA DF plan did not reserve occupied SCF storage; recreate the plan";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   return VIBEQC_STATUS_SUCCESS;
@@ -24,6 +30,10 @@ vibeqc_status occupied_scf_policy(bool& enabled, std::string& detail) {
 vibeqc_status allocate_scf_factors(CudaDensityFittingJkPlan& plan, PersistentScfState& state,
                                    const std::vector<std::int32_t>& alpha,
                                    const std::vector<std::int32_t>& beta, std::string& detail) {
+  if (!plan.occupied_scf_reserved) {
+    detail = "CUDA DF plan did not reserve occupied SCF storage; recreate the plan";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
   try {
     state.factor_alpha_ranks = alpha;
     state.factor_beta_ranks = beta;

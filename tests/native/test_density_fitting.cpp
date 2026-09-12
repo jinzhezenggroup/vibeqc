@@ -228,6 +228,8 @@ void check_occupied_cuda(vibeqc::scf::CudaDensityFittingJkPlan* plan, std::size_
   // downloaded without executing the captured occupied body once too often.
   const char* old_policy = std::getenv("VIBEQC_DF_EXCHANGE");
   const std::string saved_policy = old_policy ? old_policy : "";
+  (void)setenv("VIBEQC_DF_EXCHANGE", "occupied", 1);
+  const bool occupied_reserved = cuda_density_fitting_scf_policy_matches(plan);
   std::vector<double> hcore(batch * nbf * nbf, 0), orthogonalizer(hcore.size(), 0);
   for (std::size_t system = 0; system < batch; ++system)
     for (std::size_t i = 0; i < nbf; ++i) {
@@ -249,6 +251,14 @@ void check_occupied_cuda(vibeqc::scf::CudaDensityFittingJkPlan* plan, std::size_
               : run_cuda_density_fitting_rhf_device_scf(plan, hcore, orthogonalizer, density, alpha,
                                                         nuclear, 1, 1e-12, 1e-10, final, records,
                                                         detail);
+      if (std::string(policy) == "occupied" && !occupied_reserved) {
+        // The fixed-density factor API borrows existing tile scratch, but SCF
+        // owns extra factors. A dense-only plan must reject that allocation.
+        require(status == VIBEQC_STATUS_INVALID_ARGUMENT &&
+                    detail.find("did not reserve occupied SCF storage") != std::string::npos,
+                "dense-only plan admitted unreserved occupied SCF state");
+        continue;
+      }
       if (status != VIBEQC_STATUS_SUCCESS)
         throw std::runtime_error(std::string("one-step seed ") + policy +
                                  (uhf ? " UHF: " : " RHF: ") + detail);

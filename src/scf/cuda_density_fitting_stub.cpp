@@ -93,6 +93,9 @@ vibeqc_status generate_cuda_density_fitting_metric_derivative_tile(
 std::size_t cuda_density_fitting_jk_plan_batch_size(const CudaDensityFittingJkPlan*) noexcept {
   return 0U;
 }
+bool cuda_density_fitting_scf_policy_matches(const CudaDensityFittingJkPlan*) noexcept {
+  return false;
+}
 bool cuda_density_fitting_jk_plan_matches(const CudaDensityFittingJkPlan*, std::size_t, std::size_t,
                                           std::size_t, double) noexcept {
   return false;

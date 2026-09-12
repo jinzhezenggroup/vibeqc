@@ -143,6 +143,7 @@ CUDA_ALLOWED["cuda_df_runtime"] = tuple(
     "scf/cuda_df_gradient.hpp",
     "scf/cuda_density_fitting_integrals.hpp",
     "scf/density_fitting.hpp",
+    "scf/df_exchange_policy.hpp",
     "molecule/basis.hpp",
     "runtime/",
 )
