@@ -15,8 +15,8 @@
 struct vibeqc_context {
   mutable std::recursive_mutex mutex;
   vibeqc::core::ContextState state;
+  // Borrowed by the public error getter: mutate only when recording a failure.
   std::string last_detail;
-  mutable std::string last_detail_snapshot;
 };
 
 struct vibeqc_system {

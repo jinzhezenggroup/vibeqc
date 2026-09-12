@@ -38,17 +38,9 @@ void vibeqc_context_destroy(vibeqc_context* context) { delete context; }
 const char* vibeqc_context_get_last_detail(const vibeqc_context* context) {
   if (context == nullptr) return "invalid context";
   std::lock_guard<std::recursive_mutex> lock(context->mutex);
-  // Keep the returned pointer owned by the context rather than by the
-  // querying thread, so it remains valid after a worker thread exits.
-  try {
-    if (context->last_detail_snapshot != context->last_detail) {
-      context->last_detail_snapshot = context->last_detail;
-    }
-    return context->last_detail_snapshot.c_str();
-  } catch (...) {
-    // Preserve the C ABI's no-throw getter contract under allocation failure.
-    return context->last_detail.c_str();
-  }
+  // Failure storage belongs to the context and is only replaced on failure.
+  // Successful operations and queries must preserve every borrowed pointer.
+  return context->last_detail.c_str();
 }
 
 const char* vibeqc_context_last_error(const vibeqc_context* context) {
