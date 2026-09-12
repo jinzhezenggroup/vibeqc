@@ -47,7 +47,8 @@ class FleetPlan {
   [[nodiscard]] std::size_t size() const noexcept { return systems_.size(); }
 
   std::vector<FleetItemResult> execute(
-      const std::vector<std::optional<std::vector<double>>>& coordinates);
+      const std::vector<std::optional<std::vector<double>>>& coordinates,
+      bool compute_forces = true);
 
   void clear_warm_starts();
 

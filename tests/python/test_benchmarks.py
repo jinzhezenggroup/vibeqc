@@ -1068,6 +1068,57 @@ def test_accuracy_gate_prefers_iteration_matched_repeat_pairs():
     }
 
 
+def test_energy_only_pairs_reject_mismatched_properties_and_nonfinite_values():
+    comparison = _batch_comparison_module()
+    sample = {
+        "convergence": [{"iterations": 2}],
+        "energies_hartree": [-1.0],
+        "forces_hartree_per_bohr": None,
+    }
+    pairs = comparison.pair_repeat_accuracy([sample], [sample])
+    assert (
+        comparison.accuracy_gate_summary(pairs)["maximum_force_error_hartree_per_bohr"]
+        is None
+    )
+    with pytest.raises(ValueError, match="same requested properties"):
+        comparison.pair_repeat_accuracy(
+            [sample], [{**sample, "forces_hartree_per_bohr": [[[0, 0, 0]]]}]
+        )
+    with pytest.raises(ValueError, match="finite"):
+        comparison.pair_repeat_accuracy(
+            [sample], [{**sample, "energies_hartree": [float("nan")]}]
+        )
+
+
+def test_gpu_energy_sample_never_calls_gradient():
+    from types import SimpleNamespace
+
+    import numpy as np
+
+    comparison = _batch_comparison_module()
+
+    def forbidden():
+        pytest.fail("energy-only reference attempted force evaluation")
+
+    engine = SimpleNamespace(
+        kernel=lambda dm0: -1.0,
+        nuc_grad_method=forbidden,
+        converged=True,
+        cycles=2,
+    )
+    cupy = SimpleNamespace(
+        cuda=SimpleNamespace(
+            Stream=SimpleNamespace(null=SimpleNamespace(synchronize=lambda: None))
+        )
+    )
+    result = comparison._gpu_sample(
+        [engine], [np.eye(2)], cupy, 0, compute_forces=False
+    )
+    assert result["forces_hartree_per_bohr"] is None
+    assert result["component_seconds"]["force"] is None
+    assert result["energies_hartree"] == [-1.0]
+
+
 def test_results_summary_selects_latest_clean_five_repeat_artifacts(tmp_path):
     summary = _results_summary_module()
     readme = tmp_path / "README.md"

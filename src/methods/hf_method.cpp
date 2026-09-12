@@ -331,8 +331,9 @@ class HfPreparedBatch final : public PreparedBatch {
 
   [[nodiscard]] std::size_t size() const noexcept override { return plan_.size(); }
 
-  std::vector<BatchItemResult> execute(const Coordinates& coordinates) override {
-    std::vector<scf::FleetItemResult> native = plan_.execute(coordinates);
+  std::vector<BatchItemResult> execute(const Coordinates& coordinates,
+                                       bool compute_forces = true) override {
+    std::vector<scf::FleetItemResult> native = plan_.execute(coordinates, compute_forces);
     std::vector<BatchItemResult> results;
     results.reserve(native.size());
     for (scf::FleetItemResult& item : native) {

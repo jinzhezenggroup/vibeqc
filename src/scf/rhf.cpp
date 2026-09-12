@@ -1062,7 +1062,7 @@ core::System density_fitting_auxiliary_for_geometry(
 std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_batch(
     const std::vector<core::System>& systems, const std::optional<core::System>& auxiliary_template,
     double relative_threshold, std::size_t output_budget_bytes, int device_id,
-    std::vector<vibeqc_status>& statuses) {
+    std::vector<vibeqc_status>& statuses, bool include_derivatives) {
   const std::size_t count = systems.size();
   statuses.assign(count, VIBEQC_STATUS_INTERNAL_ERROR);
   std::vector<std::optional<DensityFittingScfData>> prepared(count);
@@ -1203,7 +1203,9 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
           batch_status == VIBEQC_STATUS_SUCCESS
               ? build_cuda_one_electron_integrals_batch(
                     device_id, orbital_chunk, one_electron_batch, detail,
-                    !cuda_policy::generated_one_electron_derivatives_requested())
+                    include_derivatives &&
+                        !cuda_policy::generated_one_electron_derivatives_requested(),
+                    include_derivatives)
               : batch_status;
       if (batch_status == VIBEQC_STATUS_SUCCESS &&
           one_electron_batch_status == VIBEQC_STATUS_SUCCESS &&
@@ -1266,7 +1268,9 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
                 retry_raw_status == VIBEQC_STATUS_SUCCESS
                     ? build_cuda_one_electron_integrals_batch(
                           device_id, single_orbital, single_one_electron, retry_detail,
-                          !cuda_policy::generated_one_electron_derivatives_requested())
+                          include_derivatives &&
+                              !cuda_policy::generated_one_electron_derivatives_requested(),
+                          include_derivatives)
                     : retry_raw_status;
             if (retry_raw_status == VIBEQC_STATUS_SUCCESS &&
                 retry_one_electron_status == VIBEQC_STATUS_SUCCESS &&
@@ -1315,7 +1319,8 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
           integrals::IntegralData cartesian_one_electron;
           const vibeqc_status one_electron_status = build_cuda_one_electron_integrals(
               device_id, systems[source], cartesian_one_electron, item_detail,
-              !cuda_policy::generated_one_electron_derivatives_requested());
+              include_derivatives && !cuda_policy::generated_one_electron_derivatives_requested(),
+              include_derivatives);
           if (one_electron_status != VIBEQC_STATUS_SUCCESS) {
             statuses[source] = one_electron_status;
             continue;
@@ -1341,7 +1346,7 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
     }
   }
   for (std::size_t source = 0; source < count; ++source) {
-    if (!prepared[source]) continue;
+    if (!prepared[source] || !include_derivatives) continue;
     try {
       bind_generated_one_electron(*prepared[source], systems[source], device_id,
                                   output_budget_bytes);
@@ -1647,7 +1652,8 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
   if (device_id >= 0 && !cached_data_complete) {
     batched_prepared = prepare_cuda_density_fitting_batch(
         systems, auxiliary_template, options.density_fitting_relative_threshold,
-        options.density_fitting_memory_budget_bytes, device_id, preparation_status);
+        options.density_fitting_memory_budget_bytes, device_id, preparation_status,
+        options.compute_forces);
   }
 
   std::size_t nbf = 0;
@@ -1668,7 +1674,8 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
         const core::System auxiliary =
             density_fitting_auxiliary_for_geometry(auxiliary_template, systems[source]);
         prepared = prepare_density_fitting_data(
-            systems[source], auxiliary, options.density_fitting_relative_threshold, device_id);
+            systems[source], auxiliary, options.density_fitting_relative_threshold, device_id,
+            options.density_fitting_memory_budget_bytes, options.compute_forces);
       }
       if (source_indices.empty()) {
         nbf = prepared.raw.nbf;
@@ -2016,7 +2023,8 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
   if (device_id >= 0 && !cached_data_complete) {
     batched_prepared = prepare_cuda_density_fitting_batch(
         systems, auxiliary_template, options.density_fitting_relative_threshold,
-        options.density_fitting_memory_budget_bytes, device_id, preparation_status);
+        options.density_fitting_memory_budget_bytes, device_id, preparation_status,
+        options.compute_forces);
   }
   std::size_t nbf = 0;
   std::size_t naux = 0;
@@ -2036,7 +2044,8 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
         const core::System auxiliary =
             density_fitting_auxiliary_for_geometry(auxiliary_template, systems[source]);
         prepared = prepare_density_fitting_data(
-            systems[source], auxiliary, options.density_fitting_relative_threshold, device_id);
+            systems[source], auxiliary, options.density_fitting_relative_threshold, device_id,
+            options.density_fitting_memory_budget_bytes, options.compute_forces);
       }
       if (source_indices.empty()) {
         nbf = prepared.raw.nbf;
