@@ -24,15 +24,13 @@ Dual operator+(Dual left, Dual right) {
 }
 Dual operator-(Dual left, Dual right) { return left + (-right); }
 Dual operator*(Dual left, Dual right) {
-  return {left.value * right.value,
-          left.rho * right.value + left.value * right.rho,
+  return {left.value * right.value, left.rho * right.value + left.value * right.rho,
           left.sigma * right.value + left.value * right.sigma};
 }
 Dual operator/(Dual left, Dual right) {
   const double inverse = 1.0 / right.value;
   const double scale = inverse * inverse;
-  return {left.value * inverse,
-          (left.rho * right.value - left.value * right.rho) * scale,
+  return {left.value * inverse, (left.rho * right.value - left.value * right.rho) * scale,
           (left.sigma * right.value - left.value * right.sigma) * scale};
 }
 
@@ -101,9 +99,8 @@ PbeValue pbe_unpolarized(double rho, double sigma, bool allow_tail) {
     return {};
   }
   const bool outside_density = rho < 1.0e-12 || rho > 1.0e12;
-  const double reduced_gradient =
-      outside_density ? std::numeric_limits<double>::infinity()
-                      : std::sqrt(sigma) / std::pow(rho, 4.0 / 3.0);
+  const double reduced_gradient = outside_density ? std::numeric_limits<double>::infinity()
+                                                  : std::sqrt(sigma) / std::pow(rho, 4.0 / 3.0);
   const bool outside_domain = outside_density || reduced_gradient > 1.0e6;
   if (outside_domain) {
     if (!allow_tail) {
@@ -119,8 +116,7 @@ PbeValue pbe_unpolarized(double rho, double sigma, bool allow_tail) {
   const Dual s{sigma, 0.0, 1.0};
   constexpr double pi = 3.141592653589793238462643383279502884;
   const double c = std::pow(3.0 / (4.0 * pi), 1.0 / 3.0);
-  const double cx = (3.0 / 8.0) * std::pow(3.0 / pi, 1.0 / 3.0) *
-                    std::pow(4.0, 2.0 / 3.0);
+  const double cx = (3.0 / 8.0) * std::pow(3.0 / pi, 1.0 / 3.0) * std::pow(4.0, 2.0 / 3.0);
   const double kappa = 0.8040;
   const double mu = 0.06672455060314922 * pi * pi / 3.0;
   const double x2s2 = 1.0 / (4.0 * std::pow(6.0 * pi * pi, 2.0 / 3.0));
@@ -137,22 +133,18 @@ PbeValue pbe_unpolarized(double rho, double sigma, bool allow_tail) {
   const double b2 = 3.5876;
   const double b3 = 1.6382;
   const double b4 = 0.49294;
-  const Dual aux = b1 * pow(rs, 0.5) + b2 * rs + b3 * pow(rs, 1.5) +
-                   b4 * pow(rs, 2.0);
-  const Dual eps_pw = -2.0 * a * (1.0 + alpha * rs) *
-                      log1p(1.0 / (2.0 * a * aux));
+  const Dual aux = b1 * pow(rs, 0.5) + b2 * rs + b3 * pow(rs, 1.5) + b4 * pow(rs, 2.0);
+  const Dual eps_pw = -2.0 * a * (1.0 + alpha * rs) * log1p(1.0 / (2.0 * a * aux));
 
   const double beta = 0.06672455060314922;
   const double gamma = (1.0 - std::log(2.0)) / (pi * pi);
-  const Dual t2 = (s * pow(r, -8.0 / 3.0)) /
-                  (16.0 * std::pow(2.0, 2.0 / 3.0) * rs);
+  const Dual t2 = (s * pow(r, -8.0 / 3.0)) / (16.0 * std::pow(2.0, 2.0 / 3.0) * rs);
   const Dual a_pbe = beta / (gamma * expm1(-eps_pw / gamma));
   const Dual f1 = t2 + a_pbe * t2 * t2;
   const Dual f2 = beta * f1 / (gamma * (1.0 + a_pbe * f1));
   const Dual correlation = r * (eps_pw + gamma * log1p(f2));
   const Dual total = exchange + correlation;
-  if (!std::isfinite(total.value) || !std::isfinite(total.rho) ||
-      !std::isfinite(total.sigma))
+  if (!std::isfinite(total.value) || !std::isfinite(total.rho) || !std::isfinite(total.sigma))
     throw std::runtime_error("nonfinite PBE tail-v1 value");
   return {total.value, total.rho, total.sigma};
 }
@@ -160,8 +152,7 @@ PbeValue pbe_unpolarized(double rho, double sigma, bool allow_tail) {
 }  // namespace
 
 XcIntegral integrate_lda_xc_pw_rks(const AoBasis& basis, const MolecularGrid& grid,
-                                  const std::vector<double>& density,
-                                  std::size_t tile_points) {
+                                   const std::vector<double>& density, std::size_t tile_points) {
   const std::size_t n = basis.nao;
   if (!tile_points) throw std::invalid_argument("XC tile size must be positive");
   if (grid.system().atoms.size() != basis.natom)
@@ -192,8 +183,7 @@ XcIntegral integrate_lda_xc_pw_rks(const AoBasis& basis, const MolecularGrid& gr
       const double* phi = ao.data() + point * n;
       double rho = 0.0;
       for (std::size_t mu = 0; mu < n; ++mu)
-        for (std::size_t nu = 0; nu < n; ++nu)
-          rho += phi[mu] * density[mu * n + nu] * phi[nu];
+        for (std::size_t nu = 0; nu < n; ++nu) rho += phi[mu] * density[mu * n + nu] * phi[nu];
       if (!std::isfinite(rho) || rho < 0.0)
         throw std::domain_error("LDA tail-v1 requires finite nonnegative density");
       if (rho == 0.0) continue;
@@ -299,8 +289,8 @@ XcIntegral integrate_pbe_rks_impl(const AoBasis& basis, const MolecularGrid& gri
           gradient[2] += (grad_z[mu] * phi[nu] + phi[mu] * grad_z[nu]) * d;
         }
       }
-      const double sigma = gradient[0] * gradient[0] + gradient[1] * gradient[1] +
-                           gradient[2] * gradient[2];
+      const double sigma =
+          gradient[0] * gradient[0] + gradient[1] * gradient[1] + gradient[2] * gradient[2];
       const auto xc = pbe_unpolarized(rho, sigma, allow_tail);
       const double weight = weights[begin + point];
       result.energy += weight * xc.energy_density;

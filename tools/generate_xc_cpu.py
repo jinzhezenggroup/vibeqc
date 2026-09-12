@@ -88,7 +88,8 @@ def main() -> None:
     args = parser.parse_args()
     write_if_changed(
         args.output,
-        emit_lda_xc_pw() + emit_lda_xc_pw_polarized()
+        emit_lda_xc_pw()
+        + emit_lda_xc_pw_polarized()
         + "}  // namespace vibeqc::dft::generated\n",
     )
 

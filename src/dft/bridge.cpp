@@ -27,8 +27,7 @@ using vibeqc::dft::AoBasis;
 
 extern "C" {
 VIBEQC_API int vibeqc_grid_basis_create_v1(const vibeqc_system* system, void** output,
-                                           std::size_t* dimensions, char* error,
-                                           std::size_t size) {
+                                           std::size_t* dimensions, char* error, std::size_t size) {
   return guarded(error, size, [&] {
     if (!output) throw std::invalid_argument("null AO basis output");
     *output = nullptr;
@@ -40,11 +39,9 @@ VIBEQC_API int vibeqc_grid_basis_create_v1(const vibeqc_system* system, void** o
     *output = basis.release();
   });
 }
-VIBEQC_API void vibeqc_grid_basis_destroy_v1(void* basis) {
-  delete static_cast<AoBasis*>(basis);
-}
-VIBEQC_API int vibeqc_grid_basis_pack_v1(const void* handle, double* output,
-                                         std::size_t elements, char* error, std::size_t size) {
+VIBEQC_API void vibeqc_grid_basis_destroy_v1(void* basis) { delete static_cast<AoBasis*>(basis); }
+VIBEQC_API int vibeqc_grid_basis_pack_v1(const void* handle, double* output, std::size_t elements,
+                                         char* error, std::size_t size) {
   return guarded(error, size, [&] {
     if (!handle || !output) throw std::invalid_argument("null AO packing input");
     const auto& basis = *static_cast<const AoBasis*>(handle);

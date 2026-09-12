@@ -14,7 +14,6 @@ from fractions import Fraction as F
 
 from vibeqc_compiler.integral.expr import Graph
 
-
 _PW_PARAMETERS = {
     False: {
         "a": ("0.031091", "0.015545", "0.016887"),
@@ -56,12 +55,7 @@ def lda_xc_pw_unpolarized_tail_expression():
     c = (3 / (4 * math.pi)) ** (1 / 3)
     sqrt_c = math.sqrt(c)
     d = alpha * c
-    q = (
-        b1 * sqrt_c * x.pow(3)
-        + b2 * c * x.pow(2)
-        + b3 * c**1.5 * x
-        + b4 * c**2
-    )
+    q = b1 * sqrt_c * x.pow(3) + b2 * c * x.pow(2) + b3 * c**1.5 * x + b4 * c**2
     u = x.pow(4) / (2 * a * q)
     log_term = graph.stable_unary("log1p", u)
     correlation = -2 * a * x.pow(4) * (x.pow(2) + d) * log_term
@@ -71,15 +65,21 @@ def lda_xc_pw_unpolarized_tail_expression():
     exchange = exchange_coefficient * x.pow(8)
 
     q_derivative = 3 * b1 * sqrt_c * x.pow(2) + 2 * b2 * c * x + b3 * c**1.5
-    correlation_derivative = -2 * a * (
-        (1 + 2 * d / (3 * x.pow(2))) * log_term
-        + (x + d / x)
-        / 6
-        * (u / (1 + u))
-        * (4 / x - q_derivative / q)
+    correlation_derivative = (
+        -2
+        * a
+        * (
+            (1 + 2 * d / (3 * x.pow(2))) * log_term
+            + (x + d / x) / 6 * (u / (1 + u)) * (4 / x - q_derivative / q)
+        )
     )
     exchange_derivative = F(4, 3) * exchange_coefficient * x.pow(2)
-    return graph, exchange + correlation, exchange_derivative + correlation_derivative, x
+    return (
+        graph,
+        exchange + correlation,
+        exchange_derivative + correlation_derivative,
+        x,
+    )
 
 
 def energy_expression(spec):

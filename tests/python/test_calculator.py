@@ -178,7 +178,6 @@ def test_lda_rks_public_contract_is_cpu_energy_only():
         calculator.estimate_resources([[("He", (0.0, 0.0, 0.0))]])
 
 
-
 def test_pbe_rks_public_contract_is_cpu_energy_only():
     calculator = Calculator(method="pbe-rks", basis="sto-3g", device="cpu")
     result = calculator.singlepoint([("He", (0.0, 0.0, 0.0))])

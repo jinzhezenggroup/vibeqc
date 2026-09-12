@@ -1,8 +1,8 @@
 #ifndef VIBEQC_DFT_XC_HPP
 #define VIBEQC_DFT_XC_HPP
 
-#include <cstddef>
 #include <array>
+#include <cstddef>
 #include <vector>
 
 #include "dft/ao_grid.hpp"
@@ -39,8 +39,7 @@ struct SpinXcIntegral {
 
 /** Integrate unpolarized PBE for an RHF total AO density. */
 XcIntegral integrate_pbe_rks(const AoBasis& basis, const MolecularGrid& grid,
-                             const std::vector<double>& density,
-                             std::size_t tile_points = 256);
+                             const std::vector<double>& density, std::size_t tile_points = 256);
 
 /** Integrate PBE with the explicit production tail-v2 policy. */
 XcIntegral integrate_pbe_rks_with_tail(const AoBasis& basis, const MolecularGrid& grid,
@@ -49,8 +48,8 @@ XcIntegral integrate_pbe_rks_with_tail(const AoBasis& basis, const MolecularGrid
 
 /** Integrate unpolarized LDA_XC_PW for an RHF total AO density. */
 XcIntegral integrate_lda_xc_pw_rks(const AoBasis& basis, const MolecularGrid& grid,
-                                  const std::vector<double>& density,
-                                  std::size_t tile_points = 256);
+                                   const std::vector<double>& density,
+                                   std::size_t tile_points = 256);
 
 /** Integrate spin-polarized LDA_XC_PW for separate alpha/beta AO densities.
  * This is a fixed-density CPU foundation for a future UKS SCF path; it does

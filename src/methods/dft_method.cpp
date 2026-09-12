@@ -35,10 +35,8 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor) {
   if (field_present(descriptor, offsetof(vibeqc_method_descriptor, density_fitting_mode),
                     sizeof(descriptor.density_fitting_mode)) &&
       descriptor.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE)
-    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                      "DFT RKS supports conventional Coulomb only");
-  if (field_present(descriptor,
-                    offsetof(vibeqc_method_descriptor, density_fitting_auxiliary_basis),
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "DFT RKS supports conventional Coulomb only");
+  if (field_present(descriptor, offsetof(vibeqc_method_descriptor, density_fitting_auxiliary_basis),
                     sizeof(descriptor.density_fitting_auxiliary_basis)) &&
       descriptor.density_fitting_auxiliary_basis != nullptr)
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
@@ -48,8 +46,8 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor) {
   fock.spin = scf::FockSpin::Restricted;
   fock.derivative_order = 0;
   fock.exchange.present = false;
-  options.resolved_fock_build = scf::resolve_fock_build(
-      fock, scf::FockBackend::Cpu, options.screening_tolerance);
+  options.resolved_fock_build =
+      scf::resolve_fock_build(fock, scf::FockBackend::Cpu, options.screening_tolerance);
   options.compute_forces = false;
   return options;
 }
@@ -84,9 +82,9 @@ class RksPreparedCalculation final : public PreparedCalculation {
   Result execute(bool compute_forces) override {
     const char* method_name = method_ == VIBEQC_METHOD_PBE_RKS ? "PBE" : "LDA";
     if (compute_forces) {
-      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                        std::string(method_name) +
-                            " RKS nuclear gradients are tracked separately in issue #163");
+      throw MethodError(
+          VIBEQC_STATUS_NOT_IMPLEMENTED,
+          std::string(method_name) + " RKS nuclear gradients are tracked separately in issue #163");
     }
     if (method_ == VIBEQC_METHOD_PBE_RKS)
       return adapt_result(scf::run_pbe_rks(fock_, basis_, grid_, options_));

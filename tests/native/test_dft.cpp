@@ -21,10 +21,12 @@ vibeqc::core::System h2() {
   vibeqc::core::System system;
   system.atoms = {{1, {0.0, 0.0, 0.0}}, {1, {0.1, 0.2, 1.4}}};
   system.shells = {
-      {0, 0, {{3.425250914, 0.1543289673}, {0.6239137298, 0.5353281423},
-              {0.168855404, 0.4446345422}}},
-      {1, 0, {{3.425250914, 0.1543289673}, {0.6239137298, 0.5353281423},
-              {0.168855404, 0.4446345422}}},
+      {0,
+       0,
+       {{3.425250914, 0.1543289673}, {0.6239137298, 0.5353281423}, {0.168855404, 0.4446345422}}},
+      {1,
+       0,
+       {{3.425250914, 0.1543289673}, {0.6239137298, 0.5353281423}, {0.168855404, 0.4446345422}}},
   };
   std::string detail;
   if (vibeqc::molecule::validate_and_normalize(system, detail) != VIBEQC_STATUS_SUCCESS)
@@ -75,8 +77,7 @@ int main() {
     require(vacuum.energy == 0.0 && vacuum.electrons == 0.0 &&
                 std::count(vacuum.potential.begin(), vacuum.potential.end(), 0.0) == 4,
             "LDA tail-v1 zero-density limit is wrong");
-    const std::vector<double> tiny{std::numeric_limits<double>::denorm_min(), 0.0, 0.0,
-                                   0.0};
+    const std::vector<double> tiny{std::numeric_limits<double>::denorm_min(), 0.0, 0.0, 0.0};
     const auto tail = vibeqc::dft::integrate_lda_xc_pw_rks(basis, grid, tiny);
     require(std::isfinite(tail.energy) &&
                 std::all_of(tail.potential.begin(), tail.potential.end(),
@@ -151,9 +152,8 @@ int main() {
             "native PBE energy differs from the independent fixture");
     require(std::abs(reference_pbe.electrons - 0.5309124083146364) < 2.0e-10,
             "native PBE electron integral differs from the independent fixture");
-    const std::array<double, 4> reference_potential{
-        -0.1903934858683413, -0.07901244667607567, -0.07901244667607567,
-        -0.15198583764323192};
+    const std::array<double, 4> reference_potential{-0.1903934858683413, -0.07901244667607567,
+                                                    -0.07901244667607567, -0.15198583764323192};
     for (std::size_t i = 0; i < reference_potential.size(); ++i)
       require(std::abs(reference_pbe.potential[i] - reference_potential[i]) < 2.0e-10,
               "native PBE potential differs from the independent fixture");

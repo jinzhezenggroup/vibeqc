@@ -96,7 +96,7 @@ int main() {
                 capabilities.available == 1 && capabilities.supports_batch == 0,
             "LDA RKS capabilities are incorrect");
     require(vibeqc_method_get_capabilities(VIBEQC_METHOD_PBE_RKS, &capabilities) ==
-                VIBEQC_STATUS_SUCCESS &&
+                    VIBEQC_STATUS_SUCCESS &&
                 capabilities.family == VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL &&
                 capabilities.supported_properties == VIBEQC_PROPERTY_ENERGY &&
                 capabilities.available == 1 && capabilities.supports_batch == 0,
@@ -114,16 +114,9 @@ int main() {
     require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
                 VIBEQC_STATUS_SUCCESS,
             "LDA RKS preparation failed");
-    vibeqc_result_descriptor result{sizeof(vibeqc_result_descriptor),
-                                    VIBEQC_ABI_VERSION,
-                                    0.0,
-                                    nullptr,
-                                    0,
-                                    0,
-                                    0.0,
-                                    0.0,
-                                    0,
-                                    VIBEQC_BACKEND_CPU_REFERENCE};
+    vibeqc_result_descriptor result{
+        sizeof(vibeqc_result_descriptor), VIBEQC_ABI_VERSION, 0.0, nullptr, 0, 0, 0.0, 0.0, 0,
+        VIBEQC_BACKEND_CPU_REFERENCE};
     require(vibeqc_calculation_execute(calculation, &result) == VIBEQC_STATUS_SUCCESS &&
                 result.converged == 1 && std::isfinite(result.energy) &&
                 result.executed_backend == VIBEQC_BACKEND_CPU_REFERENCE,
@@ -147,8 +140,8 @@ int main() {
     require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
                 VIBEQC_STATUS_SUCCESS,
             "PBE RKS preparation failed");
-    result = {sizeof(vibeqc_result_descriptor), VIBEQC_ABI_VERSION, 0.0, nullptr, 0, 0,
-              0.0, 0.0, 0, VIBEQC_BACKEND_CPU_REFERENCE};
+    result = {sizeof(vibeqc_result_descriptor), VIBEQC_ABI_VERSION, 0.0, nullptr, 0, 0, 0.0, 0.0, 0,
+              VIBEQC_BACKEND_CPU_REFERENCE};
     require(vibeqc_calculation_execute(calculation, &result) == VIBEQC_STATUS_SUCCESS &&
                 result.converged == 1 && std::isfinite(result.energy) &&
                 result.executed_backend == VIBEQC_BACKEND_CPU_REFERENCE,
@@ -182,7 +175,7 @@ int main() {
       method.method = reserved;
       calculation = nullptr;
       require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
-                  VIBEQC_STATUS_NOT_IMPLEMENTED &&
+                      VIBEQC_STATUS_NOT_IMPLEMENTED &&
                   calculation == nullptr,
               "reserved DFT method reached prepared execution");
     }
@@ -193,18 +186,10 @@ int main() {
     require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
                 VIBEQC_STATUS_SUCCESS,
             "one-iteration LDA RKS preparation failed");
-    vibeqc_result_descriptor unconverged{sizeof(vibeqc_result_descriptor),
-                                         VIBEQC_ABI_VERSION,
-                                         0.0,
-                                         nullptr,
-                                         0,
-                                         0,
-                                         0.0,
-                                         0.0,
-                                         0,
-                                         VIBEQC_BACKEND_CPU_REFERENCE};
-    require(vibeqc_calculation_execute(calculation, &unconverged) ==
-                    VIBEQC_STATUS_NOT_CONVERGED &&
+    vibeqc_result_descriptor unconverged{
+        sizeof(vibeqc_result_descriptor), VIBEQC_ABI_VERSION, 0.0, nullptr, 0, 0, 0.0, 0.0, 0,
+        VIBEQC_BACKEND_CPU_REFERENCE};
+    require(vibeqc_calculation_execute(calculation, &unconverged) == VIBEQC_STATUS_NOT_CONVERGED &&
                 unconverged.converged == 0 && unconverged.iterations == 1 &&
                 std::isfinite(unconverged.energy),
             "LDA RKS nonconvergence status or diagnostics are incorrect");
@@ -218,14 +203,14 @@ int main() {
             "LDA RKS accepted prepared batch execution");
 
 #if VIBEQC_HAS_CUDA
-    vibeqc_context_descriptor cuda_descriptor{sizeof(vibeqc_context_descriptor),
-                                              VIBEQC_ABI_VERSION, 0, VIBEQC_BACKEND_CUDA};
+    vibeqc_context_descriptor cuda_descriptor{sizeof(vibeqc_context_descriptor), VIBEQC_ABI_VERSION,
+                                              0, VIBEQC_BACKEND_CUDA};
     vibeqc_context* cuda_context = nullptr;
     if (vibeqc_context_create(&cuda_descriptor, &cuda_context) == VIBEQC_STATUS_SUCCESS) {
       vibeqc_system* cuda_system = Fixture::create_system(cuda_context);
       vibeqc_calculation* cuda_calculation = nullptr;
-      require(vibeqc_calculation_prepare(cuda_context, cuda_system, &method,
-                                         &cuda_calculation) == VIBEQC_STATUS_NOT_IMPLEMENTED,
+      require(vibeqc_calculation_prepare(cuda_context, cuda_system, &method, &cuda_calculation) ==
+                  VIBEQC_STATUS_NOT_IMPLEMENTED,
               "LDA RKS accepted the CUDA backend");
       vibeqc_system_destroy(cuda_system);
       vibeqc_context_destroy(cuda_context);

@@ -1,5 +1,3 @@
-#include "scf/mean_field.hpp"
-
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -13,6 +11,7 @@
 #include "scf/fock_build.hpp"
 #include "scf/fock_prepared.hpp"
 #include "scf/initial_guess/density.hpp"
+#include "scf/mean_field.hpp"
 #include "scf/reference/mean_field.hpp"
 #include "scf/solver/diis.hpp"
 #include "scf/solver/proposal_control.hpp"
@@ -51,12 +50,12 @@ using RksXcEvaluator = dft::XcIntegral (*)(const dft::AoBasis&, const dft::Molec
                                            const Matrix&);
 
 dft::XcIntegral evaluate_lda_xc_rks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
-                                     const Matrix& density) {
+                                    const Matrix& density) {
   return dft::integrate_lda_xc_pw_rks(basis, grid, density);
 }
 
 dft::XcIntegral evaluate_pbe_xc_rks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
-                                     const Matrix& density) {
+                                    const Matrix& density) {
   return dft::integrate_pbe_rks_with_tail(basis, grid, density);
 }
 
@@ -98,8 +97,8 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
   if (system.electron_count <= 0 || system.electron_count % 2 || system.multiplicity != 1)
     throw std::invalid_argument(std::string(method_name) +
                                 " RKS requires a closed-shell electron count");
-  if (basis.nao != ints.nbf || basis.natom != system.atoms.size() ||
-      grid.point_count() == 0 || grid.system().atoms.size() != system.atoms.size())
+  if (basis.nao != ints.nbf || basis.natom != system.atoms.size() || grid.point_count() == 0 ||
+      grid.system().atoms.size() != system.atoms.size())
     throw std::invalid_argument(std::string(method_name) +
                                 " RKS prepared grid/basis state is inconsistent");
 
@@ -111,8 +110,8 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
   Matrix density =
       prepare_initial_density(system, ints, orthogonalizer, occupied, initial_density, orbitals);
   if (options.strict_initial_density && initial_density) {
-    validate_seed(ints.overlap, *initial_density, n,
-                  {static_cast<unsigned>(system.electron_count)}, 2.0);
+    validate_seed(ints.overlap, *initial_density, n, {static_cast<unsigned>(system.electron_count)},
+                  2.0);
     density = *initial_density;
   }
   Diis diis(options.diis_history);
@@ -127,8 +126,8 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
     orbitals = generalized_eigen(effective_fock, orthogonalizer, n);
     Matrix next_density = density_from_orbitals(orbitals.vectors, n, occupied);
 
-    sample_rks_buffers(plan, diis, orthogonalizer, density, physical.fock, residual,
-                       effective_fock, orbitals.values, orbitals.vectors, next_density);
+    sample_rks_buffers(plan, diis, orthogonalizer, density, physical.fock, residual, effective_fock,
+                       orbitals.values, orbitals.vectors, next_density);
     result.iterations = iteration;
     result.energy = physical.energy;
     result.energy_change = std::isfinite(previous_energy)

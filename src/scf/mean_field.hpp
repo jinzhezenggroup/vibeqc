@@ -25,7 +25,7 @@ class PreparedFockPlan;
 namespace vibeqc::dft {
 class AoBasis;
 class MolecularGrid;
-}
+}  // namespace vibeqc::dft
 
 namespace vibeqc::scf {
 

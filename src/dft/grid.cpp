@@ -27,9 +27,8 @@ std::pair<std::vector<double>, std::vector<double>> gauss_legendre(std::size_t c
     for (unsigned iteration = 0; iteration < 100; ++iteration) {
       double previous = 1.0, current = root;
       for (std::size_t degree = 2; degree <= count; ++degree) {
-        const double next = ((2.0 * degree - 1.0) * root * current -
-                             (degree - 1.0) * previous) /
-                            degree;
+        const double next =
+            ((2.0 * degree - 1.0) * root * current - (degree - 1.0) * previous) / degree;
         previous = current;
         current = next;
       }
@@ -44,9 +43,8 @@ std::pair<std::vector<double>, std::vector<double>> gauss_legendre(std::size_t c
     }
     double previous = 1.0, current = root;
     for (std::size_t degree = 2; degree <= count; ++degree) {
-      const double next = ((2.0 * degree - 1.0) * root * current -
-                           (degree - 1.0) * previous) /
-                          degree;
+      const double next =
+          ((2.0 * degree - 1.0) * root * current - (degree - 1.0) * previous) / degree;
       previous = current;
       current = next;
     }
@@ -70,8 +68,8 @@ double owner_partition(const double* point, const core::System& system, std::siz
   std::vector<double> logs(atoms, 0.0);
   for (std::size_t a = 0; a < atoms; ++a) {
     for (std::size_t b = 0; b < a; ++b) {
-      const double separation = distance(system.atoms[a].position.data(),
-                                         system.atoms[b].position.data());
+      const double separation =
+          distance(system.atoms[a].position.data(), system.atoms[b].position.data());
       double mu = 0.0;
       if (separation > spec.coincident_tolerance) {
         mu = std::clamp((distance(point, system.atoms[a].position.data()) -
@@ -130,8 +128,7 @@ MolecularGrid::MolecularGrid(const core::System& system, GridSpec spec)
         for (std::size_t azimuth = 0; azimuth < spec_.angular_azimuth; ++azimuth) {
           const double phi = 2.0 * std::numbers::pi * azimuth / spec_.angular_azimuth;
           const double point[3]{center[0] + r * ring * std::cos(phi),
-                                center[1] + r * ring * std::sin(phi),
-                                center[2] + r * polar[z]};
+                                center[1] + r * ring * std::sin(phi), center[2] + r * polar[z]};
           points_.insert(points_.end(), point, point + 3);
           weights_.push_back(wr * polar_weights[z] * azimuth_weight *
                              owner_partition(point, system_, owner, spec_));

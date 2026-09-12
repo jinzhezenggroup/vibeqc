@@ -726,9 +726,7 @@ class Calculator:
             # cannot supply, including when AUTO would select a DF backend.
             raise NotImplementedError("RI/DF MP2 model resolution is not implemented")
         if self._method not in (*_HF_METHODS, _native.METHOD_MP2):
-            raise NotImplementedError(
-                "accuracy model is unavailable for this method"
-            )
+            raise NotImplementedError("accuracy model is unavailable for this method")
         atoms = tuple(Atom.from_value(atom) for atom in atoms)
         self._preflight_hf_basis(atoms)
         metadata = self.basis_metadata(atoms, charge=charge, multiplicity=multiplicity)
@@ -1094,7 +1092,9 @@ class Calculator:
             )
         unsupported_properties = requested_properties - supported_properties
         if unsupported_properties:
-            if self._method == _native.METHOD_MP2 and unsupported_properties == {"forces"}:
+            if self._method == _native.METHOD_MP2 and unsupported_properties == {
+                "forces"
+            }:
                 raise NotImplementedError("MP2 analytic forces are unavailable")
             names = ", ".join(sorted(unsupported_properties))
             raise ValueError(

@@ -21,11 +21,11 @@ from vibeqc_compiler.xc import (
 from vibeqc_compiler.xc.capabilities import query_capability
 from vibeqc_compiler.xc.cuda import plan_tiles
 from vibeqc_compiler.xc.cuda_emit import XCSchedule, emit_cuda
+from vibeqc_compiler.xc.expressions import lda_xc_pw_unpolarized_tail_expression
 from vibeqc_compiler.xc.fixtures import load_fixture
 from vibeqc_compiler.xc.potential import potential_coefficients
 from vibeqc_compiler.xc.reference import exchange_reference
 from vibeqc_compiler.xc.spec import CATALOG
-from vibeqc_compiler.xc.expressions import lda_xc_pw_unpolarized_tail_expression
 
 from tools.vibeqc_validation.schema import block_error
 
