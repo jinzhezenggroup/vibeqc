@@ -1,8 +1,7 @@
 # Bounded occupied-factor CUDA exchange (#284)
 
-The dense RI-K implementation remains available. `VIBEQC_DF_EXCHANGE=occupied`
-opts the device RHF/UHF SCF loop into the factor path; the initial default is
-`dense` until complete fixed-K and endpoint measurements select a policy.
+`VIBEQC_DF_EXCHANGE=occupied` opts the device RHF/UHF SCF loop into the factor
+path. The measured complete endpoints retain `dense` as the default.
 This changes execution of the existing DF exchange model, leaving J and the
 complete analytic derivative model in their existing consumers.
 
@@ -60,3 +59,26 @@ projection/exchange products and panel hits. Captured records describe graph
 construction; `occupied_scf_provenance` separately reports executed iteration
 counts, dense seeding and final generation validation. Uninstrumented complete
 endpoints remain the performance selection gate.
+
+## Measured selection policy
+
+The [retained RTX 5090 evidence](../benchmarks/results/issue284-occupied-exchange/README.md)
+compares fixed-density K calls, complete warm energy and energy-plus-force
+endpoints, and the #206 VibeQC/GPU4PySCF matrix. Resident fixed-K calls improve
+by 2.260x, 2.773x and 3.229x at 96, 192 and 384 AOs respectively, including
+factor/density upload and K readback. Generated full-panel and tight-row cases
+remain approximately neutral because source generation dominates; their dense
+and occupied traces produce identical quantities of transformed values.
+
+Complete SCF endpoints do not establish a benefit sufficient to change the
+default. Both policies replay the same frozen density, and policy-transition
+priming is recorded separately. CPU reference eigensolving dominates these
+endpoints. An initial dense regression caused by function alignment was
+corrected and checked against the pre-change library before final measurements.
+
+Use the fastest measured RI-K schedule for the corresponding provider, budget
+and factor-eligibility domain in #246 crossover studies. These timing results
+cover RHF spherical def2-SVP water clusters with Naux = NAO and occupied ranks
+20/40/80; UHF has separate correctness and lifecycle coverage. They do not
+establish TZ/QZ or larger-system COSX crossover behavior. Plan memory diagnostics
+record capacity accounting; they are not measured global GPU peaks.

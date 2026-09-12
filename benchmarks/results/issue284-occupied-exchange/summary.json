@@ -1,0 +1,2846 @@
+{
+  "archive": {
+    "bytes": 26011228,
+    "files": 359,
+    "original_bytes": 45506822,
+    "sha256": "e578bc6fa798189ef84b9286c427befefc5cebb1dde5fc44f58ca9c366a57f90"
+  },
+  "baseline_regression": {
+    "after_cpu_samples": 3351,
+    "after_eigen_samples": 3133,
+    "before_cpu_samples": 2598,
+    "before_eigen_samples": 2350,
+    "compiler": "GCC 11.4.0, Release -O3 -DNDEBUG",
+    "cpu": "AMD EPYC 7K62 (Zen 2)",
+    "instruction_count": 631,
+    "new_function_address": "0x1530f0",
+    "new_mod32": 16,
+    "normalization": "objdump -d --no-show-raw-insn --disassemble=_ZN6vibeqc3scf9reference15symmetric_eigenESt6vectorIdSaIdEEm; omit instruction addresses and relocated call/branch/RIP-relative targets",
+    "normalized_instructions_equal": true,
+    "old_function_address": "0x1505e0",
+    "old_mod32": 0,
+    "sampling_note": "py-spy native 99 Hz; seven completed energy invocations in each fresh process including cold; zero sampling errors; both py-spy processes report exit1 Nochildprocess after valid output. Profiling times are diagnostic only."
+  },
+  "baseline_restoration": {
+    "all_iteration_branches_match": true,
+    "corrected_over_original": 0.9983822033835847,
+    "iteration_branch": [
+      3
+    ],
+    "libraries": {
+      "after": {
+        "path": "/home/jzzeng/codes/vibeqc-task-20260912/df-occupied-corrected/df-occupied-integrated-runtime/libvibeqc.so",
+        "sha256": "4f1c18e5dbd8d620e16efb0e33f4a9097f716caed0b78378548570edc82ba1c7"
+      },
+      "before": {
+        "path": "/home/jzzeng/codes/vibeqc-task-20260912/df-final-integration-runtime/libvibeqc.so",
+        "sha256": "08404f960886da3842d24feff3a417ddb5065846d0ff72fda44ee4c922426605"
+      }
+    },
+    "maximum_energy_error_hartree": 9.322320693172514e-12,
+    "median_seconds": {
+      "after": 3.229306876542978,
+      "before": 3.2345397039316595
+    },
+    "samples_per_library": 10,
+    "schema": "vibeqc.df_dense_baseline_restoration.v1",
+    "slurm_job_id": "9373"
+  },
+  "fixed_k": [
+    {
+      "dense_over_occupied": 2.260384580720068,
+      "domain": "resident",
+      "label": "96ao-q0-r0",
+      "maximum_k_error": 3.552713678800501e-15,
+      "median_seconds": {
+        "dense": 0.000426356,
+        "occupied": 0.000188621
+      },
+      "setup": {
+        "naux": 96,
+        "nbf": 96,
+        "operation": "setup",
+        "rank": 20,
+        "seconds": 0.296679891,
+        "streamed": false,
+        "value_plan_peak_bytes": 33515540,
+        "value_plan_resident_bytes": 32031352
+      },
+      "transfer_bytes_per_call": {
+        "density_h2d": 73728,
+        "exchange_d2h": 73728,
+        "occupied_factor_h2d": 15360
+      },
+      "transfers_scope": "explicit API array sizes; source-provider transfers, if any, are additional"
+    },
+    {
+      "dense_over_occupied": 2.772830050346498,
+      "domain": "resident",
+      "label": "192ao-q0-r0",
+      "maximum_k_error": 7.105427357601002e-15,
+      "median_seconds": {
+        "dense": 0.003555087,
+        "occupied": 0.001282115
+      },
+      "setup": {
+        "naux": 192,
+        "nbf": 192,
+        "operation": "setup",
+        "rank": 40,
+        "seconds": 0.981764993,
+        "streamed": false,
+        "value_plan_peak_bytes": 241760732,
+        "value_plan_resident_bytes": 238580032
+      },
+      "transfer_bytes_per_call": {
+        "density_h2d": 294912,
+        "exchange_d2h": 294912,
+        "occupied_factor_h2d": 61440
+      },
+      "transfers_scope": "explicit API array sizes; source-provider transfers, if any, are additional"
+    },
+    {
+      "dense_over_occupied": 3.228929528192279,
+      "domain": "resident",
+      "label": "384ao-q0-r0",
+      "maximum_k_error": 1.2434497875801753e-14,
+      "median_seconds": {
+        "dense": 0.052842846,
+        "occupied": 0.016365438
+      },
+      "setup": {
+        "naux": 384,
+        "nbf": 384,
+        "operation": "setup",
+        "rank": 80,
+        "seconds": 8.318374861,
+        "streamed": false,
+        "value_plan_peak_bytes": 1865067884,
+        "value_plan_resident_bytes": 1856282320
+      },
+      "transfer_bytes_per_call": {
+        "density_h2d": 1179648,
+        "exchange_d2h": 1179648,
+        "occupied_factor_h2d": 245760
+      },
+      "transfers_scope": "explicit API array sizes; source-provider transfers, if any, are additional"
+    },
+    {
+      "dense_over_occupied": 1.0008358439905585,
+      "domain": "panels",
+      "label": "96ao-q24-r96",
+      "maximum_k_error": 1.7763568394002505e-15,
+      "median_seconds": {
+        "dense": 0.29995955,
+        "occupied": 0.29970904
+      },
+      "setup": {
+        "naux": 96,
+        "nbf": 96,
+        "operation": "setup",
+        "rank": 20,
+        "seconds": 0.206238077,
+        "streamed": true,
+        "value_plan_peak_bytes": 12281876,
+        "value_plan_resident_bytes": 10797688
+      },
+      "transfer_bytes_per_call": {
+        "density_h2d": 73728,
+        "exchange_d2h": 73728,
+        "occupied_factor_h2d": 15360
+      },
+      "transfers_scope": "explicit API array sizes; source-provider transfers, if any, are additional"
+    },
+    {
+      "dense_over_occupied": 1.0009594615084279,
+      "domain": "panels",
+      "label": "192ao-q48-r192",
+      "maximum_k_error": 7.105427357601002e-15,
+      "median_seconds": {
+        "dense": 2.877421652,
+        "occupied": 2.874663523
+      },
+      "setup": {
+        "naux": 192,
+        "nbf": 192,
+        "operation": "setup",
+        "rank": 40,
+        "seconds": 0.224421164,
+        "streamed": true,
+        "value_plan_peak_bytes": 71891420,
+        "value_plan_resident_bytes": 68710720
+      },
+      "transfer_bytes_per_call": {
+        "density_h2d": 294912,
+        "exchange_d2h": 294912,
+        "occupied_factor_h2d": 61440
+      },
+      "transfers_scope": "explicit API array sizes; source-provider transfers, if any, are additional"
+    },
+    {
+      "dense_over_occupied": 1.0018719603864406,
+      "domain": "tight",
+      "label": "96ao-q4-r16",
+      "maximum_k_error": 5.329070518200751e-15,
+      "median_seconds": {
+        "dense": 47.191274453,
+        "occupied": 47.103099317
+      },
+      "setup": {
+        "naux": 96,
+        "nbf": 96,
+        "operation": "setup",
+        "rank": 20,
+        "seconds": 0.215185287,
+        "streamed": true,
+        "value_plan_peak_bytes": 5400596,
+        "value_plan_resident_bytes": 3916408
+      },
+      "transfer_bytes_per_call": {
+        "density_h2d": 73728,
+        "exchange_d2h": 73728,
+        "occupied_factor_h2d": 15360
+      },
+      "transfers_scope": "explicit API array sizes; source-provider transfers, if any, are additional"
+    }
+  ],
+  "fixed_k_components": [
+    {
+      "auxiliary_batch_tile": 192,
+      "dense": {
+        "counters": {},
+        "execution": "stream",
+        "final_synchronization_ms": 3.439386,
+        "gpu_total_ms": 3.47225595,
+        "host_completion_ms": 3.492858,
+        "logical_tiles_recorded": 0,
+        "naux": 192,
+        "nbf": 192,
+        "operation": "ri_k",
+        "source_backed": true,
+        "streamed": false
+      },
+      "exchange_gemm_m_n_k": [
+        192,
+        192,
+        40
+      ],
+      "file": "192ao-q0-r0.trace.jsonl",
+      "occupied": {
+        "counters": {
+          "occupied_exchange_products": 192,
+          "occupied_factor_bytes": 61440,
+          "occupied_panel_cache_hits": 1,
+          "occupied_projection_products": 192,
+          "occupied_rank": 40
+        },
+        "execution": "stream",
+        "final_synchronization_ms": 1.134048,
+        "gpu_total_ms": 1.17427194,
+        "host_completion_ms": 1.181399,
+        "logical_tiles_recorded": 0,
+        "naux": 192,
+        "nbf": 192,
+        "operation": "ri_k_occupied",
+        "source_backed": true,
+        "streamed": false
+      },
+      "projection_gemm_m_n_k": [
+        40,
+        192,
+        192
+      ],
+      "shape_scope": "full tiles for these divisible fixtures; native tests also cover tails"
+    },
+    {
+      "auxiliary_batch_tile": 48,
+      "dense": {
+        "counters": {
+          "raw_tile_productions": 16,
+          "raw_value_bytes": 226492416,
+          "transformed_tile_cache_hits": 4,
+          "transformed_tile_productions": 4,
+          "transformed_value_bytes": 56623104
+        },
+        "execution": "stream",
+        "final_synchronization_ms": 2876.80188,
+        "gpu_total_ms": 2877.27026,
+        "host_completion_ms": 2877.30478,
+        "logical_tiles_recorded": 8,
+        "naux": 192,
+        "nbf": 192,
+        "operation": "ri_k",
+        "source_backed": true,
+        "streamed": true
+      },
+      "exchange_gemm_m_n_k": [
+        192,
+        192,
+        40
+      ],
+      "file": "192ao-q48-r192.trace.jsonl",
+      "occupied": {
+        "counters": {
+          "occupied_exchange_products": 192,
+          "occupied_factor_bytes": 61440,
+          "occupied_panel_cache_hits": 4,
+          "occupied_projection_products": 192,
+          "occupied_rank": 40,
+          "raw_tile_productions": 16,
+          "raw_value_bytes": 226492416,
+          "transformed_tile_productions": 4,
+          "transformed_value_bytes": 56623104
+        },
+        "execution": "stream",
+        "final_synchronization_ms": 2874.10639,
+        "gpu_total_ms": 2874.58643,
+        "host_completion_ms": 2874.60999,
+        "logical_tiles_recorded": 8,
+        "naux": 192,
+        "nbf": 192,
+        "operation": "ri_k_occupied",
+        "source_backed": true,
+        "streamed": true
+      },
+      "projection_gemm_m_n_k": [
+        40,
+        192,
+        192
+      ],
+      "shape_scope": "full tiles for these divisible fixtures; native tests also cover tails"
+    },
+    {
+      "auxiliary_batch_tile": 384,
+      "dense": {
+        "counters": {},
+        "execution": "stream",
+        "final_synchronization_ms": 52.41997,
+        "gpu_total_ms": 52.4169922,
+        "host_completion_ms": 52.475296,
+        "logical_tiles_recorded": 0,
+        "naux": 384,
+        "nbf": 384,
+        "operation": "ri_k",
+        "source_backed": true,
+        "streamed": false
+      },
+      "exchange_gemm_m_n_k": [
+        384,
+        384,
+        80
+      ],
+      "file": "384ao-q0-r0.trace.jsonl",
+      "occupied": {
+        "counters": {
+          "occupied_exchange_products": 384,
+          "occupied_factor_bytes": 245760,
+          "occupied_panel_cache_hits": 1,
+          "occupied_projection_products": 384,
+          "occupied_rank": 80
+        },
+        "execution": "stream",
+        "final_synchronization_ms": 15.921272,
+        "gpu_total_ms": 15.9544315,
+        "host_completion_ms": 15.970386,
+        "logical_tiles_recorded": 0,
+        "naux": 384,
+        "nbf": 384,
+        "operation": "ri_k_occupied",
+        "source_backed": true,
+        "streamed": false
+      },
+      "projection_gemm_m_n_k": [
+        80,
+        384,
+        384
+      ],
+      "shape_scope": "full tiles for these divisible fixtures; native tests also cover tails"
+    },
+    {
+      "auxiliary_batch_tile": 96,
+      "dense": {
+        "counters": {},
+        "execution": "stream",
+        "final_synchronization_ms": 0.359677,
+        "gpu_total_ms": 0.404511988,
+        "host_completion_ms": 0.411697,
+        "logical_tiles_recorded": 0,
+        "naux": 96,
+        "nbf": 96,
+        "operation": "ri_k",
+        "source_backed": true,
+        "streamed": false
+      },
+      "exchange_gemm_m_n_k": [
+        96,
+        96,
+        20
+      ],
+      "file": "96ao-q0-r0.trace.jsonl",
+      "occupied": {
+        "counters": {
+          "occupied_exchange_products": 96,
+          "occupied_factor_bytes": 15360,
+          "occupied_panel_cache_hits": 1,
+          "occupied_projection_products": 96,
+          "occupied_rank": 20
+        },
+        "execution": "stream",
+        "final_synchronization_ms": 0.11507,
+        "gpu_total_ms": 0.154752001,
+        "host_completion_ms": 0.161539,
+        "logical_tiles_recorded": 0,
+        "naux": 96,
+        "nbf": 96,
+        "operation": "ri_k_occupied",
+        "source_backed": true,
+        "streamed": false
+      },
+      "projection_gemm_m_n_k": [
+        20,
+        96,
+        96
+      ],
+      "shape_scope": "full tiles for these divisible fixtures; native tests also cover tails"
+    },
+    {
+      "auxiliary_batch_tile": 24,
+      "dense": {
+        "counters": {
+          "raw_tile_productions": 16,
+          "raw_value_bytes": 28311552,
+          "transformed_tile_cache_hits": 4,
+          "transformed_tile_productions": 4,
+          "transformed_value_bytes": 7077888
+        },
+        "execution": "stream",
+        "final_synchronization_ms": 299.87033,
+        "gpu_total_ms": 300.360504,
+        "host_completion_ms": 300.369685,
+        "logical_tiles_recorded": 8,
+        "naux": 96,
+        "nbf": 96,
+        "operation": "ri_k",
+        "source_backed": true,
+        "streamed": true
+      },
+      "exchange_gemm_m_n_k": [
+        96,
+        96,
+        20
+      ],
+      "file": "96ao-q24-r96.trace.jsonl",
+      "occupied": {
+        "counters": {
+          "occupied_exchange_products": 96,
+          "occupied_factor_bytes": 15360,
+          "occupied_panel_cache_hits": 4,
+          "occupied_projection_products": 96,
+          "occupied_rank": 20,
+          "raw_tile_productions": 16,
+          "raw_value_bytes": 28311552,
+          "transformed_tile_productions": 4,
+          "transformed_value_bytes": 7077888
+        },
+        "execution": "stream",
+        "final_synchronization_ms": 299.149603,
+        "gpu_total_ms": 299.63678,
+        "host_completion_ms": 299.645641,
+        "logical_tiles_recorded": 8,
+        "naux": 96,
+        "nbf": 96,
+        "operation": "ri_k_occupied",
+        "source_backed": true,
+        "streamed": true
+      },
+      "projection_gemm_m_n_k": [
+        20,
+        96,
+        96
+      ],
+      "shape_scope": "full tiles for these divisible fixtures; native tests also cover tails"
+    },
+    {
+      "auxiliary_batch_tile": 4,
+      "dense": {
+        "counters": {
+          "fused_metric_panel_productions": 864,
+          "transformed_tile_cache_hits": 144,
+          "transformed_tile_productions": 864,
+          "transformed_value_bytes": 42467328
+        },
+        "execution": "stream",
+        "final_synchronization_ms": 6520.38734,
+        "gpu_total_ms": 47152.0156,
+        "host_completion_ms": 47152.2935,
+        "logical_tiles_recorded": 144,
+        "naux": 96,
+        "nbf": 96,
+        "operation": "ri_k",
+        "source_backed": true,
+        "streamed": true
+      },
+      "exchange_gemm_m_n_k": [
+        16,
+        16,
+        20
+      ],
+      "file": "96ao-q4-r16.trace.jsonl",
+      "occupied": {
+        "counters": {
+          "fused_metric_panel_productions": 864,
+          "occupied_exchange_products": 3456,
+          "occupied_factor_bytes": 15360,
+          "occupied_panel_cache_hits": 144,
+          "occupied_projection_products": 3456,
+          "occupied_rank": 20,
+          "transformed_tile_productions": 864,
+          "transformed_value_bytes": 42467328
+        },
+        "execution": "stream",
+        "final_synchronization_ms": 5053.04637,
+        "gpu_total_ms": 47240.8359,
+        "host_completion_ms": 47241.1219,
+        "logical_tiles_recorded": 144,
+        "naux": 96,
+        "nbf": 96,
+        "operation": "ri_k_occupied",
+        "source_backed": true,
+        "streamed": true
+      },
+      "projection_gemm_m_n_k": [
+        20,
+        16,
+        96
+      ],
+      "shape_scope": "full tiles for these divisible fixtures; native tests also cover tails"
+    }
+  ],
+  "limitations": [
+    "Fixed-K timings include API validation, D/B upload and K readback; offline orbital construction is not part of a K call.",
+    "Plan setup is timed separately. Same-D endpoint comparisons retain policy-switch priming separately from steady warm samples.",
+    "Cross-engine warm densities and iteration branches can differ; no iteration-matched GPU4PySCF speed claim follows from the matrix.",
+    "Value-plan diagnostics and declared DF budgets are not measured global peaks or opaque CUDA-library retention.",
+    "Graph-capture trace records describe construction; only stream records have executed GPU component timing.",
+    "The original CPU input-construction log predates the text-only correction from atom symbols to integer Z. Input metadata/manifests contain hashes of the actual GPU inputs.",
+    "The superseded implementation had a reproducible 33% dense endpoint regression from a 16-byte link shift of the unchanged CPU reference eigensolver. Native sampling and normalized disassembly are retained; final measurements use the corrected aligned runtime.",
+    "Dense SCF retains its original memory thresholds; occupied reservations freeze at plan creation. ResourceBudget identities reject policy changes, while ordinary prepared batches rebuild their native value/SCF plan.",
+    "Initial two GPU Python failures occurred in dense baseline preflight at an infeasible 128-KiB full-plan budget; corrected 512-KiB tests and final integration pass."
+  ],
+  "matrix": [
+    {
+      "all_pairs_pass": true,
+      "file": "df-occupied-matrix-dense-energy/192ao-b1.json",
+      "gpu4pyscf_iterations": [
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ]
+      ],
+      "gpu4pyscf_seconds": 0.07739268080331385,
+      "maximum_errors": {
+        "energies_hartree": 9.549694368615746e-12
+      },
+      "vibeqc_iterations": [
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ]
+      ],
+      "vibeqc_seconds": 3.2296628141775727
+    },
+    {
+      "all_pairs_pass": true,
+      "file": "df-occupied-matrix-dense-energy/192ao-b4.json",
+      "gpu4pyscf_iterations": [
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "gpu4pyscf_seconds": 0.30786755098961294,
+      "maximum_errors": {
+        "energies_hartree": 2.808064891723916e-11
+      },
+      "vibeqc_iterations": [
+        [
+          3,
+          3,
+          2,
+          2
+        ],
+        [
+          3,
+          3,
+          2,
+          2
+        ],
+        [
+          3,
+          3,
+          2,
+          2
+        ],
+        [
+          3,
+          3,
+          2,
+          2
+        ],
+        [
+          3,
+          3,
+          2,
+          2
+        ]
+      ],
+      "vibeqc_seconds": 12.95054493099451
+    },
+    {
+      "all_pairs_pass": true,
+      "file": "df-occupied-matrix-dense-energy/96ao-b1.json",
+      "gpu4pyscf_iterations": [
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ]
+      ],
+      "gpu4pyscf_seconds": 0.06467973603866994,
+      "maximum_errors": {
+        "energies_hartree": 6.423306331271306e-12
+      },
+      "vibeqc_iterations": [
+        [
+          2
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ]
+      ],
+      "vibeqc_seconds": 0.23262333101592958
+    },
+    {
+      "all_pairs_pass": true,
+      "file": "df-occupied-matrix-dense-energy/96ao-b4.json",
+      "gpu4pyscf_iterations": [
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "gpu4pyscf_seconds": 0.2592937850859016,
+      "maximum_errors": {
+        "energies_hartree": 5.9117155615240335e-12
+      },
+      "vibeqc_iterations": [
+        [
+          2,
+          2,
+          2,
+          3
+        ],
+        [
+          2,
+          2,
+          2,
+          3
+        ],
+        [
+          2,
+          2,
+          2,
+          3
+        ],
+        [
+          2,
+          2,
+          2,
+          3
+        ],
+        [
+          2,
+          2,
+          2,
+          3
+        ]
+      ],
+      "vibeqc_seconds": 0.9096368469763547
+    },
+    {
+      "all_pairs_pass": true,
+      "file": "df-occupied-matrix-dense-force/192ao-b1.json",
+      "gpu4pyscf_iterations": [
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          2
+        ]
+      ],
+      "gpu4pyscf_seconds": 0.33075348008424044,
+      "maximum_errors": {
+        "energies_hartree": 9.094947017729282e-12,
+        "forces_hartree_per_bohr": 7.829102470491289e-11
+      },
+      "vibeqc_iterations": [
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ]
+      ],
+      "vibeqc_seconds": 6.3555326838977635
+    },
+    {
+      "all_pairs_pass": true,
+      "file": "df-occupied-matrix-dense-force/192ao-b4.json",
+      "gpu4pyscf_iterations": [
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "gpu4pyscf_seconds": 1.317311757011339,
+      "maximum_errors": {
+        "energies_hartree": 2.808064891723916e-11,
+        "forces_hartree_per_bohr": 7.179196473416916e-11
+      },
+      "vibeqc_iterations": [
+        [
+          3,
+          3,
+          2,
+          2
+        ],
+        [
+          3,
+          3,
+          2,
+          2
+        ],
+        [
+          3,
+          3,
+          2,
+          2
+        ],
+        [
+          3,
+          3,
+          2,
+          2
+        ],
+        [
+          3,
+          3,
+          2,
+          2
+        ]
+      ],
+      "vibeqc_seconds": 24.94831004808657
+    },
+    {
+      "all_pairs_pass": true,
+      "file": "df-occupied-matrix-dense-force/96ao-b1.json",
+      "gpu4pyscf_iterations": [
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ]
+      ],
+      "gpu4pyscf_seconds": 0.2438955979887396,
+      "maximum_errors": {
+        "energies_hartree": 6.536993168992922e-12,
+        "forces_hartree_per_bohr": 3.523993076515186e-11
+      },
+      "vibeqc_iterations": [
+        [
+          2
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ]
+      ],
+      "vibeqc_seconds": 0.7937721810303628
+    },
+    {
+      "all_pairs_pass": true,
+      "file": "df-occupied-matrix-dense-force/96ao-b4.json",
+      "gpu4pyscf_iterations": [
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "gpu4pyscf_seconds": 0.981183212948963,
+      "maximum_errors": {
+        "energies_hartree": 5.8548721426632255e-12,
+        "forces_hartree_per_bohr": 3.8036821956022315e-11
+      },
+      "vibeqc_iterations": [
+        [
+          2,
+          2,
+          2,
+          3
+        ],
+        [
+          2,
+          2,
+          2,
+          3
+        ],
+        [
+          2,
+          2,
+          2,
+          3
+        ],
+        [
+          2,
+          2,
+          2,
+          3
+        ],
+        [
+          2,
+          2,
+          2,
+          3
+        ]
+      ],
+      "vibeqc_seconds": 2.534918971126899
+    },
+    {
+      "all_pairs_pass": true,
+      "file": "df-occupied-matrix-occupied-energy/192ao-b1.json",
+      "gpu4pyscf_iterations": [
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ]
+      ],
+      "gpu4pyscf_seconds": 0.07700905296951532,
+      "maximum_errors": {
+        "energies_hartree": 1.1141310096718371e-11
+      },
+      "vibeqc_iterations": [
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ]
+      ],
+      "vibeqc_seconds": 3.226632463047281
+    },
+    {
+      "all_pairs_pass": true,
+      "file": "df-occupied-matrix-occupied-energy/192ao-b4.json",
+      "gpu4pyscf_iterations": [
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "gpu4pyscf_seconds": 0.3065876590553671,
+      "maximum_errors": {
+        "energies_hartree": 2.808064891723916e-11
+      },
+      "vibeqc_iterations": [
+        [
+          3,
+          3,
+          2,
+          2
+        ],
+        [
+          3,
+          3,
+          2,
+          2
+        ],
+        [
+          3,
+          3,
+          2,
+          2
+        ],
+        [
+          3,
+          3,
+          2,
+          2
+        ],
+        [
+          3,
+          3,
+          2,
+          2
+        ]
+      ],
+      "vibeqc_seconds": 12.965541496872902
+    },
+    {
+      "all_pairs_pass": true,
+      "file": "df-occupied-matrix-occupied-energy/96ao-b1.json",
+      "gpu4pyscf_iterations": [
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ]
+      ],
+      "gpu4pyscf_seconds": 0.06430551200173795,
+      "maximum_errors": {
+        "energies_hartree": 6.991740519879386e-12
+      },
+      "vibeqc_iterations": [
+        [
+          2
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ]
+      ],
+      "vibeqc_seconds": 0.23244161903858185
+    },
+    {
+      "all_pairs_pass": true,
+      "file": "df-occupied-matrix-occupied-energy/96ao-b4.json",
+      "gpu4pyscf_iterations": [
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "gpu4pyscf_seconds": 0.25739041110500693,
+      "maximum_errors": {
+        "energies_hartree": 5.115907697472721e-12
+      },
+      "vibeqc_iterations": [
+        [
+          2,
+          2,
+          2,
+          3
+        ],
+        [
+          2,
+          2,
+          2,
+          3
+        ],
+        [
+          2,
+          2,
+          2,
+          3
+        ],
+        [
+          2,
+          2,
+          2,
+          3
+        ],
+        [
+          2,
+          2,
+          2,
+          3
+        ]
+      ],
+      "vibeqc_seconds": 0.9084644140675664
+    },
+    {
+      "all_pairs_pass": true,
+      "file": "df-occupied-matrix-occupied-force/192ao-b1.json",
+      "gpu4pyscf_iterations": [
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ]
+      ],
+      "gpu4pyscf_seconds": 0.3324694719631225,
+      "maximum_errors": {
+        "energies_hartree": 1.1368683772161603e-11,
+        "forces_hartree_per_bohr": 8.77268240689899e-11
+      },
+      "vibeqc_iterations": [
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ],
+        [
+          3
+        ]
+      ],
+      "vibeqc_seconds": 6.358067414956167
+    },
+    {
+      "all_pairs_pass": true,
+      "file": "df-occupied-matrix-occupied-force/192ao-b4.json",
+      "gpu4pyscf_iterations": [
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "gpu4pyscf_seconds": 1.3217623981181532,
+      "maximum_errors": {
+        "energies_hartree": 2.7853275241795927e-11,
+        "forces_hartree_per_bohr": 9.000026418570783e-11
+      },
+      "vibeqc_iterations": [
+        [
+          3,
+          3,
+          2,
+          2
+        ],
+        [
+          3,
+          3,
+          2,
+          2
+        ],
+        [
+          3,
+          3,
+          2,
+          2
+        ],
+        [
+          3,
+          3,
+          2,
+          2
+        ],
+        [
+          3,
+          3,
+          2,
+          2
+        ]
+      ],
+      "vibeqc_seconds": 24.924745274009183
+    },
+    {
+      "all_pairs_pass": true,
+      "file": "df-occupied-matrix-occupied-force/96ao-b1.json",
+      "gpu4pyscf_iterations": [
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ]
+      ],
+      "gpu4pyscf_seconds": 0.2450232720002532,
+      "maximum_errors": {
+        "energies_hartree": 6.87805368215777e-12,
+        "forces_hartree_per_bohr": 3.4222765246672004e-11
+      },
+      "vibeqc_iterations": [
+        [
+          2
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ]
+      ],
+      "vibeqc_seconds": 0.7936356200370938
+    },
+    {
+      "all_pairs_pass": true,
+      "file": "df-occupied-matrix-occupied-force/96ao-b4.json",
+      "gpu4pyscf_iterations": [
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "gpu4pyscf_seconds": 0.9781205451581627,
+      "maximum_errors": {
+        "energies_hartree": 5.172751116333529e-12,
+        "forces_hartree_per_bohr": 3.480892310503414e-11
+      },
+      "vibeqc_iterations": [
+        [
+          2,
+          2,
+          2,
+          3
+        ],
+        [
+          2,
+          2,
+          2,
+          3
+        ],
+        [
+          2,
+          2,
+          2,
+          3
+        ],
+        [
+          2,
+          2,
+          2,
+          3
+        ],
+        [
+          2,
+          2,
+          2,
+          3
+        ]
+      ],
+      "vibeqc_seconds": 2.525518015027046
+    }
+  ],
+  "runtime": {
+    "base": "e8e45b6946214c806f7281dcd01e768f8a627a7b",
+    "head": "9cb50386a07d38bfee655775a8897ddcb862ac31",
+    "library_sha256": "4f1c18e5dbd8d620e16efb0e33f4a9097f716caed0b78378548570edc82ba1c7",
+    "note": "Complete Release CUDA build; policy-aware reservation and stable CPU eigensolver alignment pass CPU/GPU/memcheck and before/corrected dense ABBA gates. Commit changes no binary bytes.",
+    "patch_sha256": "7724b254dda399d068d2028783075b0b340f1f7ac115e2702f20794e8723da31",
+    "probe_sha256": "42ed8b9d18274b98bc400bf642020ffb13b1607191b5608dcbc8f8ffe3bc3d15",
+    "uncommitted_correction": false
+  },
+  "same_density_endpoints": [
+    {
+      "all_pairs_pass": true,
+      "ao_count": 192,
+      "batch": 1,
+      "dense_over_occupied": 1.0019956734630553,
+      "file": "192ao-b1-energy.json",
+      "iteration_branches_match": true,
+      "maximum_errors": {
+        "energies_hartree": 6.821210263296962e-13
+      },
+      "median_seconds": {
+        "dense": 3.2365689121652395,
+        "occupied": 3.2301226421259344
+      },
+      "policy_plan_memory": {
+        "dense": [
+          {
+            "absolute_threshold": 1.2895078155068907e-07,
+            "auxiliary_tile": 192,
+            "bucket_id": 0,
+            "condition_number": 13567.151376633754,
+            "device_resident_bytes": 238580032,
+            "effective_rank": 192,
+            "host_resident_bytes": 1081,
+            "peak_device_bytes": 241760732,
+            "peak_host_bytes": 10158610,
+            "solver_device_workspace_bytes": 2589336,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 0
+          }
+        ],
+        "occupied": [
+          {
+            "absolute_threshold": 1.2895078155068907e-07,
+            "auxiliary_tile": 192,
+            "bucket_id": 0,
+            "condition_number": 13567.151376633754,
+            "device_resident_bytes": 239169868,
+            "effective_rank": 192,
+            "host_resident_bytes": 1081,
+            "peak_device_bytes": 242350568,
+            "peak_host_bytes": 10158610,
+            "solver_device_workspace_bytes": 2589336,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 0
+          }
+        ]
+      },
+      "properties": [
+        "energy"
+      ],
+      "value_plan_memory": [
+        {
+          "absolute_threshold": 1.2895078155068907e-07,
+          "auxiliary_tile": 192,
+          "bucket_id": 0,
+          "condition_number": 13567.151376633754,
+          "device_resident_bytes": 238580032,
+          "effective_rank": 192,
+          "host_resident_bytes": 1081,
+          "peak_device_bytes": 241760732,
+          "peak_host_bytes": 10158610,
+          "solver_device_workspace_bytes": 2589336,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 0
+        }
+      ]
+    },
+    {
+      "all_pairs_pass": true,
+      "ao_count": 192,
+      "batch": 1,
+      "dense_over_occupied": 1.0014428434222924,
+      "file": "192ao-b1-force.json",
+      "iteration_branches_match": true,
+      "maximum_errors": {
+        "energies_hartree": 6.821210263296962e-13,
+        "forces_hartree_per_bohr": 3.183880990884763e-11
+      },
+      "median_seconds": {
+        "dense": 6.351015897002071,
+        "occupied": 6.3418655779678375
+      },
+      "policy_plan_memory": {
+        "dense": [
+          {
+            "absolute_threshold": 1.2895078155068907e-07,
+            "auxiliary_tile": 192,
+            "bucket_id": 0,
+            "condition_number": 13567.151376633754,
+            "device_resident_bytes": 238580032,
+            "effective_rank": 192,
+            "host_resident_bytes": 1081,
+            "peak_device_bytes": 241760732,
+            "peak_host_bytes": 10158610,
+            "solver_device_workspace_bytes": 2589336,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 0
+          }
+        ],
+        "occupied": [
+          {
+            "absolute_threshold": 1.2895078155068907e-07,
+            "auxiliary_tile": 192,
+            "bucket_id": 0,
+            "condition_number": 13567.151376633754,
+            "device_resident_bytes": 239169868,
+            "effective_rank": 192,
+            "host_resident_bytes": 1081,
+            "peak_device_bytes": 242350568,
+            "peak_host_bytes": 10158610,
+            "solver_device_workspace_bytes": 2589336,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 0
+          }
+        ]
+      },
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "value_plan_memory": [
+        {
+          "absolute_threshold": 1.2895078155068907e-07,
+          "auxiliary_tile": 192,
+          "bucket_id": 0,
+          "condition_number": 13567.151376633754,
+          "device_resident_bytes": 238580032,
+          "effective_rank": 192,
+          "host_resident_bytes": 1081,
+          "peak_device_bytes": 241760732,
+          "peak_host_bytes": 10158610,
+          "solver_device_workspace_bytes": 2589336,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 0
+        }
+      ]
+    },
+    {
+      "all_pairs_pass": true,
+      "ao_count": 192,
+      "batch": 4,
+      "dense_over_occupied": 1.001732908335254,
+      "file": "192ao-b4-energy.json",
+      "iteration_branches_match": true,
+      "maximum_errors": {
+        "energies_hartree": 1.8189894035458565e-12
+      },
+      "median_seconds": {
+        "dense": 12.984557338058949,
+        "occupied": 12.962095215218142
+      },
+      "policy_plan_memory": {
+        "dense": [
+          {
+            "absolute_threshold": 1.2922322989355592e-07,
+            "auxiliary_tile": 192,
+            "bucket_id": 0,
+            "condition_number": 13749.382149125255,
+            "device_resident_bytes": 436944088,
+            "effective_rank": 192,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 441898880,
+            "peak_host_bytes": 38785840,
+            "solver_device_workspace_bytes": 2589336,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 0
+          },
+          {
+            "absolute_threshold": 1.2904148255270197e-07,
+            "auxiliary_tile": 192,
+            "bucket_id": 0,
+            "condition_number": 13627.444590156401,
+            "device_resident_bytes": 436944088,
+            "effective_rank": 192,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 441898880,
+            "peak_host_bytes": 38785840,
+            "solver_device_workspace_bytes": 2589336,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 1
+          },
+          {
+            "absolute_threshold": 1.2886019546929272e-07,
+            "auxiliary_tile": 192,
+            "bucket_id": 0,
+            "condition_number": 13507.301786202672,
+            "device_resident_bytes": 436944088,
+            "effective_rank": 192,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 441898880,
+            "peak_host_bytes": 38785840,
+            "solver_device_workspace_bytes": 2589336,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 2
+          },
+          {
+            "absolute_threshold": 1.2867936749275122e-07,
+            "auxiliary_tile": 192,
+            "bucket_id": 0,
+            "condition_number": 13388.913771548034,
+            "device_resident_bytes": 436944088,
+            "effective_rank": 192,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 441898880,
+            "peak_host_bytes": 38785840,
+            "solver_device_workspace_bytes": 2589336,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 3
+          }
+        ],
+        "occupied": [
+          {
+            "absolute_threshold": 1.2922322989355592e-07,
+            "auxiliary_tile": 192,
+            "bucket_id": 0,
+            "condition_number": 13749.382149125255,
+            "device_resident_bytes": 439303432,
+            "effective_rank": 192,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 444258224,
+            "peak_host_bytes": 38785840,
+            "solver_device_workspace_bytes": 2589336,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 0
+          },
+          {
+            "absolute_threshold": 1.2904148255270197e-07,
+            "auxiliary_tile": 192,
+            "bucket_id": 0,
+            "condition_number": 13627.444590156401,
+            "device_resident_bytes": 439303432,
+            "effective_rank": 192,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 444258224,
+            "peak_host_bytes": 38785840,
+            "solver_device_workspace_bytes": 2589336,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 1
+          },
+          {
+            "absolute_threshold": 1.2886019546929272e-07,
+            "auxiliary_tile": 192,
+            "bucket_id": 0,
+            "condition_number": 13507.301786202672,
+            "device_resident_bytes": 439303432,
+            "effective_rank": 192,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 444258224,
+            "peak_host_bytes": 38785840,
+            "solver_device_workspace_bytes": 2589336,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 2
+          },
+          {
+            "absolute_threshold": 1.2867936749275122e-07,
+            "auxiliary_tile": 192,
+            "bucket_id": 0,
+            "condition_number": 13388.913771548034,
+            "device_resident_bytes": 439303432,
+            "effective_rank": 192,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 444258224,
+            "peak_host_bytes": 38785840,
+            "solver_device_workspace_bytes": 2589336,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 3
+          }
+        ]
+      },
+      "properties": [
+        "energy"
+      ],
+      "value_plan_memory": [
+        {
+          "absolute_threshold": 1.2922322989355592e-07,
+          "auxiliary_tile": 192,
+          "bucket_id": 0,
+          "condition_number": 13749.382149125255,
+          "device_resident_bytes": 436944088,
+          "effective_rank": 192,
+          "host_resident_bytes": 1108,
+          "peak_device_bytes": 441898880,
+          "peak_host_bytes": 38785840,
+          "solver_device_workspace_bytes": 2589336,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 0
+        },
+        {
+          "absolute_threshold": 1.2904148255270197e-07,
+          "auxiliary_tile": 192,
+          "bucket_id": 0,
+          "condition_number": 13627.444590156401,
+          "device_resident_bytes": 436944088,
+          "effective_rank": 192,
+          "host_resident_bytes": 1108,
+          "peak_device_bytes": 441898880,
+          "peak_host_bytes": 38785840,
+          "solver_device_workspace_bytes": 2589336,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 1
+        },
+        {
+          "absolute_threshold": 1.2886019546929272e-07,
+          "auxiliary_tile": 192,
+          "bucket_id": 0,
+          "condition_number": 13507.301786202672,
+          "device_resident_bytes": 436944088,
+          "effective_rank": 192,
+          "host_resident_bytes": 1108,
+          "peak_device_bytes": 441898880,
+          "peak_host_bytes": 38785840,
+          "solver_device_workspace_bytes": 2589336,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 2
+        },
+        {
+          "absolute_threshold": 1.2867936749275122e-07,
+          "auxiliary_tile": 192,
+          "bucket_id": 0,
+          "condition_number": 13388.913771548034,
+          "device_resident_bytes": 436944088,
+          "effective_rank": 192,
+          "host_resident_bytes": 1108,
+          "peak_device_bytes": 441898880,
+          "peak_host_bytes": 38785840,
+          "solver_device_workspace_bytes": 2589336,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 3
+        }
+      ]
+    },
+    {
+      "all_pairs_pass": true,
+      "ao_count": 192,
+      "batch": 4,
+      "dense_over_occupied": 1.0009512714240352,
+      "file": "192ao-b4-force.json",
+      "iteration_branches_match": true,
+      "maximum_errors": {
+        "energies_hartree": 1.8189894035458565e-12,
+        "forces_hartree_per_bohr": 5.61389719433425e-11
+      },
+      "median_seconds": {
+        "dense": 24.96175998216495,
+        "occupied": 24.93803714006208
+      },
+      "policy_plan_memory": {
+        "dense": [
+          {
+            "absolute_threshold": 1.2922322989355592e-07,
+            "auxiliary_tile": 192,
+            "bucket_id": 0,
+            "condition_number": 13749.382149125255,
+            "device_resident_bytes": 436944088,
+            "effective_rank": 192,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 441898880,
+            "peak_host_bytes": 38785840,
+            "solver_device_workspace_bytes": 2589336,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 0
+          },
+          {
+            "absolute_threshold": 1.2904148255270197e-07,
+            "auxiliary_tile": 192,
+            "bucket_id": 0,
+            "condition_number": 13627.444590156401,
+            "device_resident_bytes": 436944088,
+            "effective_rank": 192,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 441898880,
+            "peak_host_bytes": 38785840,
+            "solver_device_workspace_bytes": 2589336,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 1
+          },
+          {
+            "absolute_threshold": 1.2886019546929272e-07,
+            "auxiliary_tile": 192,
+            "bucket_id": 0,
+            "condition_number": 13507.301786202672,
+            "device_resident_bytes": 436944088,
+            "effective_rank": 192,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 441898880,
+            "peak_host_bytes": 38785840,
+            "solver_device_workspace_bytes": 2589336,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 2
+          },
+          {
+            "absolute_threshold": 1.2867936749275122e-07,
+            "auxiliary_tile": 192,
+            "bucket_id": 0,
+            "condition_number": 13388.913771548034,
+            "device_resident_bytes": 436944088,
+            "effective_rank": 192,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 441898880,
+            "peak_host_bytes": 38785840,
+            "solver_device_workspace_bytes": 2589336,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 3
+          }
+        ],
+        "occupied": [
+          {
+            "absolute_threshold": 1.2922322989355592e-07,
+            "auxiliary_tile": 192,
+            "bucket_id": 0,
+            "condition_number": 13749.382149125255,
+            "device_resident_bytes": 439303432,
+            "effective_rank": 192,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 444258224,
+            "peak_host_bytes": 38785840,
+            "solver_device_workspace_bytes": 2589336,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 0
+          },
+          {
+            "absolute_threshold": 1.2904148255270197e-07,
+            "auxiliary_tile": 192,
+            "bucket_id": 0,
+            "condition_number": 13627.444590156401,
+            "device_resident_bytes": 439303432,
+            "effective_rank": 192,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 444258224,
+            "peak_host_bytes": 38785840,
+            "solver_device_workspace_bytes": 2589336,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 1
+          },
+          {
+            "absolute_threshold": 1.2886019546929272e-07,
+            "auxiliary_tile": 192,
+            "bucket_id": 0,
+            "condition_number": 13507.301786202672,
+            "device_resident_bytes": 439303432,
+            "effective_rank": 192,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 444258224,
+            "peak_host_bytes": 38785840,
+            "solver_device_workspace_bytes": 2589336,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 2
+          },
+          {
+            "absolute_threshold": 1.2867936749275122e-07,
+            "auxiliary_tile": 192,
+            "bucket_id": 0,
+            "condition_number": 13388.913771548034,
+            "device_resident_bytes": 439303432,
+            "effective_rank": 192,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 444258224,
+            "peak_host_bytes": 38785840,
+            "solver_device_workspace_bytes": 2589336,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 3
+          }
+        ]
+      },
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "value_plan_memory": [
+        {
+          "absolute_threshold": 1.2922322989355592e-07,
+          "auxiliary_tile": 192,
+          "bucket_id": 0,
+          "condition_number": 13749.382149125255,
+          "device_resident_bytes": 436944088,
+          "effective_rank": 192,
+          "host_resident_bytes": 1108,
+          "peak_device_bytes": 441898880,
+          "peak_host_bytes": 38785840,
+          "solver_device_workspace_bytes": 2589336,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 0
+        },
+        {
+          "absolute_threshold": 1.2904148255270197e-07,
+          "auxiliary_tile": 192,
+          "bucket_id": 0,
+          "condition_number": 13627.444590156401,
+          "device_resident_bytes": 436944088,
+          "effective_rank": 192,
+          "host_resident_bytes": 1108,
+          "peak_device_bytes": 441898880,
+          "peak_host_bytes": 38785840,
+          "solver_device_workspace_bytes": 2589336,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 1
+        },
+        {
+          "absolute_threshold": 1.2886019546929272e-07,
+          "auxiliary_tile": 192,
+          "bucket_id": 0,
+          "condition_number": 13507.301786202672,
+          "device_resident_bytes": 436944088,
+          "effective_rank": 192,
+          "host_resident_bytes": 1108,
+          "peak_device_bytes": 441898880,
+          "peak_host_bytes": 38785840,
+          "solver_device_workspace_bytes": 2589336,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 2
+        },
+        {
+          "absolute_threshold": 1.2867936749275122e-07,
+          "auxiliary_tile": 192,
+          "bucket_id": 0,
+          "condition_number": 13388.913771548034,
+          "device_resident_bytes": 436944088,
+          "effective_rank": 192,
+          "host_resident_bytes": 1108,
+          "peak_device_bytes": 441898880,
+          "peak_host_bytes": 38785840,
+          "solver_device_workspace_bytes": 2589336,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 3
+        }
+      ]
+    },
+    {
+      "all_pairs_pass": true,
+      "ao_count": 384,
+      "batch": 1,
+      "dense_over_occupied": 1.0039075453080863,
+      "file": "384ao-b1-energy.json",
+      "iteration_branches_match": true,
+      "maximum_errors": {
+        "energies_hartree": 1.3642420526593924e-12
+      },
+      "median_seconds": {
+        "dense": 39.95697953412309,
+        "occupied": 39.80145355104469
+      },
+      "policy_plan_memory": {
+        "dense": [
+          {
+            "absolute_threshold": 1.6990971217214667e-07,
+            "auxiliary_tile": 384,
+            "bucket_id": 0,
+            "condition_number": 18132.170221837452,
+            "device_resident_bytes": 1856282320,
+            "effective_rank": 384,
+            "host_resident_bytes": 1081,
+            "peak_device_bytes": 1865067884,
+            "peak_host_bytes": 115968978,
+            "solver_device_workspace_bytes": 6423192,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 0
+          }
+        ],
+        "occupied": [
+          {
+            "absolute_threshold": 1.6990971217214667e-07,
+            "auxiliary_tile": 384,
+            "bucket_id": 0,
+            "condition_number": 18132.170221837452,
+            "device_resident_bytes": 1858641628,
+            "effective_rank": 384,
+            "host_resident_bytes": 1081,
+            "peak_device_bytes": 1867427192,
+            "peak_host_bytes": 115968978,
+            "solver_device_workspace_bytes": 6423192,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 0
+          }
+        ]
+      },
+      "properties": [
+        "energy"
+      ],
+      "value_plan_memory": [
+        {
+          "absolute_threshold": 1.6990971217214667e-07,
+          "auxiliary_tile": 384,
+          "bucket_id": 0,
+          "condition_number": 18132.170221837452,
+          "device_resident_bytes": 1856282320,
+          "effective_rank": 384,
+          "host_resident_bytes": 1081,
+          "peak_device_bytes": 1865067884,
+          "peak_host_bytes": 115968978,
+          "solver_device_workspace_bytes": 6423192,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 0
+        }
+      ]
+    },
+    {
+      "all_pairs_pass": true,
+      "ao_count": 384,
+      "batch": 1,
+      "dense_over_occupied": 1.0012333922580445,
+      "file": "384ao-b1-force.json",
+      "iteration_branches_match": true,
+      "maximum_errors": {
+        "energies_hartree": 1.3642420526593924e-12,
+        "forces_hartree_per_bohr": 8.274526918684855e-11
+      },
+      "median_seconds": {
+        "dense": 65.43324211006984,
+        "occupied": 65.35263667395338
+      },
+      "policy_plan_memory": {
+        "dense": [
+          {
+            "absolute_threshold": 1.6990971217214667e-07,
+            "auxiliary_tile": 384,
+            "bucket_id": 0,
+            "condition_number": 18132.170221837452,
+            "device_resident_bytes": 1856282320,
+            "effective_rank": 384,
+            "host_resident_bytes": 1081,
+            "peak_device_bytes": 1865067884,
+            "peak_host_bytes": 115968978,
+            "solver_device_workspace_bytes": 6423192,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 0
+          }
+        ],
+        "occupied": [
+          {
+            "absolute_threshold": 1.6990971217214667e-07,
+            "auxiliary_tile": 384,
+            "bucket_id": 0,
+            "condition_number": 18132.170221837452,
+            "device_resident_bytes": 1858641628,
+            "effective_rank": 384,
+            "host_resident_bytes": 1081,
+            "peak_device_bytes": 1867427192,
+            "peak_host_bytes": 115968978,
+            "solver_device_workspace_bytes": 6423192,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 0
+          }
+        ]
+      },
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "value_plan_memory": [
+        {
+          "absolute_threshold": 1.6990971217214667e-07,
+          "auxiliary_tile": 384,
+          "bucket_id": 0,
+          "condition_number": 18132.170221837452,
+          "device_resident_bytes": 1856282320,
+          "effective_rank": 384,
+          "host_resident_bytes": 1081,
+          "peak_device_bytes": 1865067884,
+          "peak_host_bytes": 115968978,
+          "solver_device_workspace_bytes": 6423192,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 0
+        }
+      ]
+    },
+    {
+      "all_pairs_pass": true,
+      "ao_count": 96,
+      "batch": 1,
+      "dense_over_occupied": 0.9997277588798509,
+      "file": "96ao-b1-energy.json",
+      "iteration_branches_match": true,
+      "maximum_errors": {
+        "energies_hartree": 2.2737367544323206e-13
+      },
+      "median_seconds": {
+        "dense": 0.23257306893356144,
+        "occupied": 0.2326364021282643
+      },
+      "policy_plan_memory": {
+        "dense": [
+          {
+            "absolute_threshold": 7.527269023992962e-08,
+            "auxiliary_tile": 96,
+            "bucket_id": 0,
+            "condition_number": 7451.239126399652,
+            "device_resident_bytes": 32031352,
+            "effective_rank": 96,
+            "host_resident_bytes": 1081,
+            "peak_device_bytes": 33515540,
+            "peak_host_bytes": 1381170,
+            "solver_device_workspace_bytes": 1335960,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 0
+          }
+        ],
+        "occupied": [
+          {
+            "absolute_threshold": 7.527269023992962e-08,
+            "auxiliary_tile": 96,
+            "bucket_id": 0,
+            "condition_number": 7451.239126399652,
+            "device_resident_bytes": 32178820,
+            "effective_rank": 96,
+            "host_resident_bytes": 1081,
+            "peak_device_bytes": 33663008,
+            "peak_host_bytes": 1381170,
+            "solver_device_workspace_bytes": 1335960,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 0
+          }
+        ]
+      },
+      "properties": [
+        "energy"
+      ],
+      "value_plan_memory": [
+        {
+          "absolute_threshold": 7.527269023992962e-08,
+          "auxiliary_tile": 96,
+          "bucket_id": 0,
+          "condition_number": 7451.239126399652,
+          "device_resident_bytes": 32031352,
+          "effective_rank": 96,
+          "host_resident_bytes": 1081,
+          "peak_device_bytes": 33515540,
+          "peak_host_bytes": 1381170,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 0
+        }
+      ]
+    },
+    {
+      "all_pairs_pass": true,
+      "ao_count": 96,
+      "batch": 1,
+      "dense_over_occupied": 0.9948091349463731,
+      "file": "96ao-b1-force.json",
+      "iteration_branches_match": true,
+      "maximum_errors": {
+        "energies_hartree": 2.2737367544323206e-13,
+        "forces_hartree_per_bohr": 1.2168765994857722e-11
+      },
+      "median_seconds": {
+        "dense": 0.7820259919390082,
+        "occupied": 0.7861065650358796
+      },
+      "policy_plan_memory": {
+        "dense": [
+          {
+            "absolute_threshold": 7.527269023992962e-08,
+            "auxiliary_tile": 96,
+            "bucket_id": 0,
+            "condition_number": 7451.239126399652,
+            "device_resident_bytes": 32031352,
+            "effective_rank": 96,
+            "host_resident_bytes": 1081,
+            "peak_device_bytes": 33515540,
+            "peak_host_bytes": 1381170,
+            "solver_device_workspace_bytes": 1335960,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 0
+          }
+        ],
+        "occupied": [
+          {
+            "absolute_threshold": 7.527269023992962e-08,
+            "auxiliary_tile": 96,
+            "bucket_id": 0,
+            "condition_number": 7451.239126399652,
+            "device_resident_bytes": 32178820,
+            "effective_rank": 96,
+            "host_resident_bytes": 1081,
+            "peak_device_bytes": 33663008,
+            "peak_host_bytes": 1381170,
+            "solver_device_workspace_bytes": 1335960,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 0
+          }
+        ]
+      },
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "value_plan_memory": [
+        {
+          "absolute_threshold": 7.527269023992962e-08,
+          "auxiliary_tile": 96,
+          "bucket_id": 0,
+          "condition_number": 7451.239126399652,
+          "device_resident_bytes": 32031352,
+          "effective_rank": 96,
+          "host_resident_bytes": 1081,
+          "peak_device_bytes": 33515540,
+          "peak_host_bytes": 1381170,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 0
+        }
+      ]
+    },
+    {
+      "all_pairs_pass": true,
+      "ao_count": 96,
+      "batch": 4,
+      "dense_over_occupied": 1.002077137977552,
+      "file": "96ao-b4-energy.json",
+      "iteration_branches_match": true,
+      "maximum_errors": {
+        "energies_hartree": 4.547473508864641e-13
+      },
+      "median_seconds": {
+        "dense": 0.9096870429348201,
+        "occupied": 0.9078014141414315
+      },
+      "policy_plan_memory": {
+        "dense": [
+          {
+            "absolute_threshold": 7.540076600202625e-08,
+            "auxiliary_tile": 96,
+            "bucket_id": 0,
+            "condition_number": 7542.035276549225,
+            "device_resident_bytes": 60416440,
+            "effective_rank": 96,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 62345312,
+            "peak_host_bytes": 5058480,
+            "solver_device_workspace_bytes": 1335960,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 0
+          },
+          {
+            "absolute_threshold": 7.531533839563701e-08,
+            "auxiliary_tile": 96,
+            "bucket_id": 0,
+            "condition_number": 7481.327522684928,
+            "device_resident_bytes": 60416440,
+            "effective_rank": 96,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 62345312,
+            "peak_host_bytes": 5058480,
+            "solver_device_workspace_bytes": 1335960,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 1
+          },
+          {
+            "absolute_threshold": 7.523008580365328e-08,
+            "auxiliary_tile": 96,
+            "bucket_id": 0,
+            "condition_number": 7421.326223585626,
+            "device_resident_bytes": 60416440,
+            "effective_rank": 96,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 62345312,
+            "peak_host_bytes": 5058480,
+            "solver_device_workspace_bytes": 1335960,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 2
+          },
+          {
+            "absolute_threshold": 7.514500795191915e-08,
+            "auxiliary_tile": 96,
+            "bucket_id": 0,
+            "condition_number": 7362.022491638592,
+            "device_resident_bytes": 60416440,
+            "effective_rank": 96,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 62345312,
+            "peak_host_bytes": 5058480,
+            "solver_device_workspace_bytes": 1335960,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 3
+          }
+        ],
+        "occupied": [
+          {
+            "absolute_threshold": 7.540076600202625e-08,
+            "auxiliary_tile": 96,
+            "bucket_id": 0,
+            "condition_number": 7542.035276549225,
+            "device_resident_bytes": 61006312,
+            "effective_rank": 96,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 62935184,
+            "peak_host_bytes": 5058480,
+            "solver_device_workspace_bytes": 1335960,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 0
+          },
+          {
+            "absolute_threshold": 7.531533839563701e-08,
+            "auxiliary_tile": 96,
+            "bucket_id": 0,
+            "condition_number": 7481.327522684928,
+            "device_resident_bytes": 61006312,
+            "effective_rank": 96,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 62935184,
+            "peak_host_bytes": 5058480,
+            "solver_device_workspace_bytes": 1335960,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 1
+          },
+          {
+            "absolute_threshold": 7.523008580365328e-08,
+            "auxiliary_tile": 96,
+            "bucket_id": 0,
+            "condition_number": 7421.326223585626,
+            "device_resident_bytes": 61006312,
+            "effective_rank": 96,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 62935184,
+            "peak_host_bytes": 5058480,
+            "solver_device_workspace_bytes": 1335960,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 2
+          },
+          {
+            "absolute_threshold": 7.514500795191915e-08,
+            "auxiliary_tile": 96,
+            "bucket_id": 0,
+            "condition_number": 7362.022491638592,
+            "device_resident_bytes": 61006312,
+            "effective_rank": 96,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 62935184,
+            "peak_host_bytes": 5058480,
+            "solver_device_workspace_bytes": 1335960,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 3
+          }
+        ]
+      },
+      "properties": [
+        "energy"
+      ],
+      "value_plan_memory": [
+        {
+          "absolute_threshold": 7.540076600202625e-08,
+          "auxiliary_tile": 96,
+          "bucket_id": 0,
+          "condition_number": 7542.035276549225,
+          "device_resident_bytes": 60416440,
+          "effective_rank": 96,
+          "host_resident_bytes": 1108,
+          "peak_device_bytes": 62345312,
+          "peak_host_bytes": 5058480,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 0
+        },
+        {
+          "absolute_threshold": 7.531533839563701e-08,
+          "auxiliary_tile": 96,
+          "bucket_id": 0,
+          "condition_number": 7481.327522684928,
+          "device_resident_bytes": 60416440,
+          "effective_rank": 96,
+          "host_resident_bytes": 1108,
+          "peak_device_bytes": 62345312,
+          "peak_host_bytes": 5058480,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 1
+        },
+        {
+          "absolute_threshold": 7.523008580365328e-08,
+          "auxiliary_tile": 96,
+          "bucket_id": 0,
+          "condition_number": 7421.326223585626,
+          "device_resident_bytes": 60416440,
+          "effective_rank": 96,
+          "host_resident_bytes": 1108,
+          "peak_device_bytes": 62345312,
+          "peak_host_bytes": 5058480,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 2
+        },
+        {
+          "absolute_threshold": 7.514500795191915e-08,
+          "auxiliary_tile": 96,
+          "bucket_id": 0,
+          "condition_number": 7362.022491638592,
+          "device_resident_bytes": 60416440,
+          "effective_rank": 96,
+          "host_resident_bytes": 1108,
+          "peak_device_bytes": 62345312,
+          "peak_host_bytes": 5058480,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 3
+        }
+      ]
+    },
+    {
+      "all_pairs_pass": true,
+      "ao_count": 96,
+      "batch": 4,
+      "dense_over_occupied": 1.0036586107063235,
+      "file": "96ao-b4-force.json",
+      "iteration_branches_match": true,
+      "maximum_errors": {
+        "energies_hartree": 4.547473508864641e-13,
+        "forces_hartree_per_bohr": 1.3520842431780089e-11
+      },
+      "median_seconds": {
+        "dense": 2.529137329896912,
+        "occupied": 2.5199179311748594
+      },
+      "policy_plan_memory": {
+        "dense": [
+          {
+            "absolute_threshold": 7.540076600202625e-08,
+            "auxiliary_tile": 96,
+            "bucket_id": 0,
+            "condition_number": 7542.035276549225,
+            "device_resident_bytes": 60416440,
+            "effective_rank": 96,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 62345312,
+            "peak_host_bytes": 5058480,
+            "solver_device_workspace_bytes": 1335960,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 0
+          },
+          {
+            "absolute_threshold": 7.531533839563701e-08,
+            "auxiliary_tile": 96,
+            "bucket_id": 0,
+            "condition_number": 7481.327522684928,
+            "device_resident_bytes": 60416440,
+            "effective_rank": 96,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 62345312,
+            "peak_host_bytes": 5058480,
+            "solver_device_workspace_bytes": 1335960,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 1
+          },
+          {
+            "absolute_threshold": 7.523008580365328e-08,
+            "auxiliary_tile": 96,
+            "bucket_id": 0,
+            "condition_number": 7421.326223585626,
+            "device_resident_bytes": 60416440,
+            "effective_rank": 96,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 62345312,
+            "peak_host_bytes": 5058480,
+            "solver_device_workspace_bytes": 1335960,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 2
+          },
+          {
+            "absolute_threshold": 7.514500795191915e-08,
+            "auxiliary_tile": 96,
+            "bucket_id": 0,
+            "condition_number": 7362.022491638592,
+            "device_resident_bytes": 60416440,
+            "effective_rank": 96,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 62345312,
+            "peak_host_bytes": 5058480,
+            "solver_device_workspace_bytes": 1335960,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 3
+          }
+        ],
+        "occupied": [
+          {
+            "absolute_threshold": 7.540076600202625e-08,
+            "auxiliary_tile": 96,
+            "bucket_id": 0,
+            "condition_number": 7542.035276549225,
+            "device_resident_bytes": 61006312,
+            "effective_rank": 96,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 62935184,
+            "peak_host_bytes": 5058480,
+            "solver_device_workspace_bytes": 1335960,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 0
+          },
+          {
+            "absolute_threshold": 7.531533839563701e-08,
+            "auxiliary_tile": 96,
+            "bucket_id": 0,
+            "condition_number": 7481.327522684928,
+            "device_resident_bytes": 61006312,
+            "effective_rank": 96,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 62935184,
+            "peak_host_bytes": 5058480,
+            "solver_device_workspace_bytes": 1335960,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 1
+          },
+          {
+            "absolute_threshold": 7.523008580365328e-08,
+            "auxiliary_tile": 96,
+            "bucket_id": 0,
+            "condition_number": 7421.326223585626,
+            "device_resident_bytes": 61006312,
+            "effective_rank": 96,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 62935184,
+            "peak_host_bytes": 5058480,
+            "solver_device_workspace_bytes": 1335960,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 2
+          },
+          {
+            "absolute_threshold": 7.514500795191915e-08,
+            "auxiliary_tile": 96,
+            "bucket_id": 0,
+            "condition_number": 7362.022491638592,
+            "device_resident_bytes": 61006312,
+            "effective_rank": 96,
+            "host_resident_bytes": 1108,
+            "peak_device_bytes": 62935184,
+            "peak_host_bytes": 5058480,
+            "solver_device_workspace_bytes": 1335960,
+            "solver_host_workspace_bytes": 0,
+            "streamed": false,
+            "system_index": 3
+          }
+        ]
+      },
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "value_plan_memory": [
+        {
+          "absolute_threshold": 7.540076600202625e-08,
+          "auxiliary_tile": 96,
+          "bucket_id": 0,
+          "condition_number": 7542.035276549225,
+          "device_resident_bytes": 60416440,
+          "effective_rank": 96,
+          "host_resident_bytes": 1108,
+          "peak_device_bytes": 62345312,
+          "peak_host_bytes": 5058480,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 0
+        },
+        {
+          "absolute_threshold": 7.531533839563701e-08,
+          "auxiliary_tile": 96,
+          "bucket_id": 0,
+          "condition_number": 7481.327522684928,
+          "device_resident_bytes": 60416440,
+          "effective_rank": 96,
+          "host_resident_bytes": 1108,
+          "peak_device_bytes": 62345312,
+          "peak_host_bytes": 5058480,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 1
+        },
+        {
+          "absolute_threshold": 7.523008580365328e-08,
+          "auxiliary_tile": 96,
+          "bucket_id": 0,
+          "condition_number": 7421.326223585626,
+          "device_resident_bytes": 60416440,
+          "effective_rank": 96,
+          "host_resident_bytes": 1108,
+          "peak_device_bytes": 62345312,
+          "peak_host_bytes": 5058480,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 2
+        },
+        {
+          "absolute_threshold": 7.514500795191915e-08,
+          "auxiliary_tile": 96,
+          "bucket_id": 0,
+          "condition_number": 7362.022491638592,
+          "device_resident_bytes": 60416440,
+          "effective_rank": 96,
+          "host_resident_bytes": 1108,
+          "peak_device_bytes": 62345312,
+          "peak_host_bytes": 5058480,
+          "solver_device_workspace_bytes": 1335960,
+          "solver_host_workspace_bytes": 0,
+          "streamed": false,
+          "system_index": 3
+        }
+      ]
+    }
+  ],
+  "scf_provenance": [
+    {
+      "capture_note": "graph capture describes construction, not executed GPU timing",
+      "capture_operation_count": 4,
+      "executed_generations": [
+        {
+          "dense_seed_iterations": 1,
+          "occupied_iterations": 2,
+          "occupied_state_bytes": 61448,
+          "validated_density_generations": 1
+        },
+        {
+          "dense_seed_iterations": 1,
+          "occupied_iterations": 2,
+          "occupied_state_bytes": 61448,
+          "validated_density_generations": 1
+        }
+      ],
+      "file": "192ao.trace.jsonl",
+      "stream_operation_count": 28
+    },
+    {
+      "capture_note": "graph capture describes construction, not executed GPU timing",
+      "capture_operation_count": 4,
+      "executed_generations": [
+        {
+          "dense_seed_iterations": 1,
+          "occupied_iterations": 3,
+          "occupied_state_bytes": 245768,
+          "validated_density_generations": 1
+        },
+        {
+          "dense_seed_iterations": 1,
+          "occupied_iterations": 3,
+          "occupied_state_bytes": 245768,
+          "validated_density_generations": 1
+        }
+      ],
+      "file": "384ao.trace.jsonl",
+      "stream_operation_count": 28
+    },
+    {
+      "capture_note": "graph capture describes construction, not executed GPU timing",
+      "capture_operation_count": 4,
+      "executed_generations": [
+        {
+          "dense_seed_iterations": 1,
+          "occupied_iterations": 1,
+          "occupied_state_bytes": 15368,
+          "validated_density_generations": 1
+        },
+        {
+          "dense_seed_iterations": 1,
+          "occupied_iterations": 1,
+          "occupied_state_bytes": 15368,
+          "validated_density_generations": 1
+        }
+      ],
+      "file": "96ao.trace.jsonl",
+      "stream_operation_count": 28
+    }
+  ],
+  "schema": "vibeqc.issue284.occupied_exchange.v1",
+  "superseded_runtime": {
+    "base": "e8e45b6946214c806f7281dcd01e768f8a627a7b",
+    "head": "28358c6e1d585072c0bf52d79ba2b6777a59340b",
+    "library_sha256": "1aa9154d54e263adf7071541dc2c0a20efb2cf941da0e4a2726c2c7fea1f1ec7",
+    "note": "Release CUDA build validated before additive final-evidence merge; exact reconstruction patch and CMake cache retained.",
+    "probe_sha256": "d3c96b4a4d6c98b5f06df0ef64b65ec9dfb738b552fc6e06813aca1244c63ce2"
+  },
+  "superseded_validation": {
+    "additional_occupied_output_cases": 6,
+    "cpu_native_suites": 18,
+    "cuda_native_suites": 4,
+    "gpu_python_cases": 72,
+    "hooks": "passed",
+    "host_python_cases": 140,
+    "memcheck_errors": 0,
+    "occupied_native_rerun": "passed",
+    "optional_gpu_skips": 6
+  },
+  "validation": {
+    "additional_occupied_output_cases_passed": 6,
+    "cpu_native_suites_passed": 18,
+    "cuda_native_skips": [
+      {
+        "reason": "VIBEQC_MP2_CUDA_TEST opt-in was not enabled; the existing test exits 77",
+        "suite": "vibeqc_mp2_cuda_status_tests"
+      }
+    ],
+    "cuda_native_suites_passed": 24,
+    "gpu_python_cases_passed": 83,
+    "hooks": "passed",
+    "host_optional_gpu_skips": 6,
+    "host_python_cases_passed": 144,
+    "logs": [
+      "df-occupied-budget-cpu-ctest.log",
+      "df-occupied-budget-host-tests.log",
+      "df-occupied-budget-gpu-tests.log",
+      "df-occupied-budget-hooks.log",
+      "df-occupied-budget-benchmark-hooks.log"
+    ],
+    "memcheck_errors": 0,
+    "new_coverage": "pre-occupied dense minimum/residency boundaries; occupied-only reservation; low-level unreserved SCF rejection; global ResourceBudget policy freezing; native plan rebuilding on ordinary RHF/UHF policy changes",
+    "occupied_native_df_rerun": "passed",
+    "slurm_job_id": 9373
+  }
+}

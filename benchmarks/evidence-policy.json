@@ -30,6 +30,11 @@
       "reason": "Exact compressed resident/streamed J/K and E2-gradient parity arrays, ABBA endpoints, component traces and full matrix; all members independently hash-verified and byte-restored.",
       "sha256": "94e8a23b5f7176151a26c3e1d2ee0bbbe1f6340e2632719843c5e45b7a1806ef"
     },
+    "benchmarks/results/issue284-occupied-exchange/raw-evidence.zip": {
+      "owner": "issue284-occupied-exchange",
+      "reason": "Exact fixed-D/K arrays, complete same-D and cross-engine matrices, executed factor provenance, source/library identities and retained failed experiments. Every member is hash-verified and byte-restored.",
+      "sha256": "e578bc6fa798189ef84b9286c427befefc5cebb1dde5fc44f58ca9c366a57f90"
+    },
     "benchmarks/results/local-spaces-182/states.npz": {
       "owner": "local-spaces-182",
       "reason": "Scientific solver-state/trajectory arrays retained to replay calibration, local-space recovery, or proposal decisions; these are measurement inputs, not temporary restart checkpoints.",
