@@ -51,4 +51,4 @@ python benchmarks/results/issue283-response-panels/audit.py
 
 The archive contains 133 files; every member was hash-checked, restored and
 byte-compared. `summary.json` records the compressed archive identity and
-limitations. Issues #282–#284 remain open for remaining integration work.
+limitations. Remaining integration work is tracked in #282, #283 and #284.
