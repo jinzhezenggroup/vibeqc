@@ -123,11 +123,16 @@ inline std::size_t ri_mp2_reference_capacity(const core::System& orbital,
   const auto na = molecule::ao_count(auxiliary);
   const auto metric = checked_mul(na, na);
   const auto three_center = checked_mul(checked_mul(n, n), na);
-  auto bytes = rhf_reference_capacity(orbital, diis_history, false);
-  bytes = checked_add(bytes, source_capacity(auxiliary));
-  bytes = checked_add(bytes, checked_mul(sizeof(double), metric));
-  bytes = checked_add(bytes, checked_mul(sizeof(double), checked_mul(2, three_center)));
-  return bytes;
+  auto retained = rhf_reference_capacity(orbital, diis_history, false);
+  retained = checked_add(retained, source_capacity(auxiliary));
+  retained = checked_add(retained, checked_mul(sizeof(double), metric));
+  retained = checked_add(retained, checked_mul(sizeof(double), checked_mul(2, three_center)));
+  // Before DIIS exists, CPU preparation can instead peak while Cartesian
+  // Jet/unpacked tensors, the metric eigensolver and the whitened tensor
+  // coexist. Reuse the stricter checked preparation/correlation bound so the
+  // reference admission and its public diagnostic cover both phases.
+  const auto occupied = static_cast<std::size_t>(orbital.electron_count / 2);
+  return std::max(retained, ri_mp2_capacity(orbital, auxiliary, occupied));
 }
 }  // namespace vibeqc::posthf
 #endif

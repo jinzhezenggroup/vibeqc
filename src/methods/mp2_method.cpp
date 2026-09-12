@@ -30,13 +30,15 @@ class Mp2Prepared final : public PreparedCalculation {
  public:
   Mp2Prepared(Capabilities caps, core::ContextState& context, core::System system,
               std::optional<core::System> auxiliary, scf::ScfOptions options, std::size_t budget,
-              double threshold, bool density_fitted, bool fitted_cuda)
+              std::size_t reference_capacity, double threshold, bool density_fitted,
+              bool fitted_cuda)
       : caps_(caps),
         context_(context),
         system_(std::move(system)),
         auxiliary_(std::move(auxiliary)),
         options_(options),
         budget_(budget),
+        reference_capacity_(reference_capacity),
         threshold_(threshold),
         density_fitted_(density_fitted),
         fitted_cuda_(fitted_cuda) {}
@@ -96,17 +98,17 @@ class Mp2Prepared final : public PreparedCalculation {
       result.convergence = {hf.iterations, hf.energy_change, ref.commutator_residual, true};
       const bool executed_cuda = execution_cuda;
       result.executed_backend = executed_cuda ? VIBEQC_BACKEND_CUDA : VIBEQC_BACKEND_CPU_REFERENCE;
-      last_ = vibeqc_correlation_diagnostic{
-          sizeof(vibeqc_correlation_diagnostic),
-          VIBEQC_ABI_VERSION,
-          ref.energy,
-          corr.opposite_spin,
-          corr.same_spin,
-          corr.minimum_denominator,
-          ref.commutator_residual,
-          std::max(ref.numeric_capacity_bytes, corr.numeric_capacity_bytes),
-          corr.tiles,
-          executed_cuda ? 1 : 0};
+      last_ =
+          vibeqc_correlation_diagnostic{sizeof(vibeqc_correlation_diagnostic),
+                                        VIBEQC_ABI_VERSION,
+                                        ref.energy,
+                                        corr.opposite_spin,
+                                        corr.same_spin,
+                                        corr.minimum_denominator,
+                                        ref.commutator_residual,
+                                        std::max(reference_capacity_, corr.numeric_capacity_bytes),
+                                        corr.tiles,
+                                        executed_cuda ? 1 : 0};
       last_->correlation_owned_device_bytes = corr.metrics.owned_device_bytes;
       last_->correlation_provider_retained_bytes = corr.metrics.provider_retained_bytes;
       last_->mo_transfer_bytes = corr.mo_transfer_bytes;
@@ -128,6 +130,7 @@ class Mp2Prepared final : public PreparedCalculation {
   std::optional<core::System> auxiliary_;
   scf::ScfOptions options_;
   std::size_t budget_;
+  std::size_t reference_capacity_;
   double threshold_;
   bool density_fitted_{};
   bool fitted_cuda_{};
@@ -260,29 +263,46 @@ std::unique_ptr<PreparedCalculation> prepare_mp2_calculation(const Capabilities&
               sizeof(d.density_fitting_memory_budget_bytes))
           ? d.density_fitting_memory_budget_bytes
           : 0;
-  options.density_fitting_memory_budget_bytes =
-      requested_density_fitting_budget == 0 ? budget
-                                            : std::min(requested_density_fitting_budget, budget);
   if (!(options.density_fitting_relative_threshold > 0.0) ||
       !(options.density_fitting_relative_threshold < 1.0) ||
       !std::isfinite(options.density_fitting_relative_threshold))
     throw std::invalid_argument("RI-MP2 metric threshold must lie in (0,1)");
   const bool cpu_conventional_reference =
       !density_fitted && context.requested_backend == VIBEQC_BACKEND_CPU_REFERENCE;
-  if (posthf::rhf_reference_capacity(system, options.diis_history, cpu_conventional_reference) >
-      budget)
+  const std::size_t standalone_reference_capacity =
+      posthf::rhf_reference_capacity(system, options.diis_history, cpu_conventional_reference);
+  if (standalone_reference_capacity > budget)
     throw MethodError(VIBEQC_STATUS_OUT_OF_MEMORY,
                       "MP2 bounded reference exceeds numeric memory budget");
+  if (fitted_cuda) {
+    if (standalone_reference_capacity == budget)
+      throw MethodError(VIBEQC_STATUS_OUT_OF_MEMORY,
+                        "RI-MP2 CUDA reference leaves no density-fitting plan budget");
+    const std::size_t remaining = budget - standalone_reference_capacity;
+    options.density_fitting_memory_budget_bytes =
+        requested_density_fitting_budget == 0
+            ? remaining
+            : std::min(requested_density_fitting_budget, remaining);
+  } else {
+    options.density_fitting_memory_budget_bytes =
+        requested_density_fitting_budget == 0 ? budget
+                                              : std::min(requested_density_fitting_budget, budget);
+  }
   if (density_fitted &&
       posthf::ri_mp2_capacity(system, *auxiliary,
                               static_cast<std::size_t>(system.electron_count / 2)) > budget)
     throw MethodError(VIBEQC_STATUS_OUT_OF_MEMORY,
                       "RI-MP2 reference and correlation exceed numeric memory budget");
-  if (density_fitted && !fitted_cuda &&
-      posthf::ri_mp2_reference_capacity(system, *auxiliary, options.diis_history) > budget)
+  const std::size_t reference_capacity =
+      density_fitted && !fitted_cuda
+          ? posthf::ri_mp2_reference_capacity(system, *auxiliary, options.diis_history)
+      : fitted_cuda ? posthf::checked_add(standalone_reference_capacity,
+                                          options.density_fitting_memory_budget_bytes)
+                    : standalone_reference_capacity;
+  if (reference_capacity > budget)
     throw MethodError(VIBEQC_STATUS_OUT_OF_MEMORY,
                       "RI-MP2 DF reference state exceeds numeric memory budget");
   return std::make_unique<Mp2Prepared>(caps, context, system, std::move(auxiliary), options, budget,
-                                       threshold, density_fitted, fitted_cuda);
+                                       reference_capacity, threshold, density_fitted, fitted_cuda);
 }
 }  // namespace vibeqc::methods::detail
