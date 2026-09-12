@@ -16,6 +16,7 @@ struct vibeqc_context {
   mutable std::recursive_mutex mutex;
   vibeqc::core::ContextState state;
   std::string last_detail;
+  mutable std::string last_detail_snapshot;
 };
 
 struct vibeqc_system {

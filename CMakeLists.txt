@@ -679,7 +679,7 @@ if(VIBEQC_BUILD_TESTS)
     add_test(NAME vibeqc_mp2_contract_tests COMMAND vibeqc_mp2_contract_tests)
   endif()
 
-  if(VIBEQC_ENABLE_CUDA)
+  if(VIBEQC_ENABLE_CUDA AND NOT WIN32)
     add_executable(vibeqc_mp2_cuda_status_tests tests/native/test_mp2_cuda_status.cu)
     target_link_libraries(vibeqc_mp2_cuda_status_tests PRIVATE vibeqc CUDA::cudart CUDA::cublas)
     target_include_directories(vibeqc_mp2_cuda_status_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)

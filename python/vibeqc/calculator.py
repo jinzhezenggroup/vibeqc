@@ -639,8 +639,6 @@ class Calculator:
                 "max_iterations": self._max_iterations,
                 "diis_history": self._diis_history,
                 "precision": self._precision_mode,
-                "correlation_memory_budget_bytes": self._correlation_memory_budget_bytes,
-                "mp2_denominator_threshold": self._mp2_denominator_threshold,
                 "target_accuracy": self._target_accuracy.to_dict()
                 if self._target_accuracy
                 else None,
@@ -692,10 +690,6 @@ class Calculator:
         actual auxiliary basis remain mathematical choices. This method only
         resolves compact basis metadata; it performs no integral/SCF work.
         """
-        if self._method == _native.METHOD_MP2:
-            raise NotImplementedError(
-                "MP2 accuracy model resolution is not implemented"
-            )
         atoms = tuple(Atom.from_value(atom) for atom in atoms)
         self._preflight_hf_basis(atoms)
         metadata = self.basis_metadata(atoms, charge=charge, multiplicity=multiplicity)

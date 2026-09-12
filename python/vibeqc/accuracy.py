@@ -48,7 +48,7 @@ class ResolvedModel:
     iteration/arithmetic settings belong to the numerical experiment instead.
     DF's effective rank is recorded in evidence because it can vary by geometry.
     DFT and correlated models require additional identities before this schema
-    can represent them and are rejected for now.
+    can represent them; energy-only canonical MP2 is represented explicitly.
     """
 
     method: str
@@ -70,8 +70,8 @@ class ResolvedModel:
             or self.schema_version != SCHEMA_VERSION
         ):
             raise ValueError("unsupported resolved-model schema")
-        if self.method not in ("rhf", "uhf"):
-            raise ValueError("accuracy models currently support RHF/UHF only")
+        if self.method not in ("rhf", "uhf", "mp2"):
+            raise ValueError("accuracy models currently support RHF/UHF and MP2")
         if self.hamiltonian != "all-electron-nonrelativistic-coulomb":
             raise ValueError("unsupported Hamiltonian/core treatment")
         if self.representation not in ("cartesian", "real_spherical"):
@@ -89,8 +89,8 @@ class ResolvedModel:
         unpaired = self.multiplicity - 1
         if unpaired > self.electron_count or (self.electron_count - unpaired) % 2:
             raise ValueError("inconsistent electron count and spin populations")
-        if self.method == "rhf" and self.multiplicity != 1:
-            raise ValueError("RHF requires a closed-shell singlet")
+        if self.method in ("rhf", "mp2") and self.multiplicity != 1:
+            raise ValueError("RHF and canonical MP2 require a closed-shell singlet")
         if self.approximation == "conventional":
             if (
                 self.auxiliary_basis_hash is not None

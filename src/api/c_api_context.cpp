@@ -1,6 +1,9 @@
 #include <cstddef>
 #include <memory>
+<<<<<<< HEAD
 #include <unordered_map>
+=======
+>>>>>>> ba156c7 (fix(mp2): address follow-up review findings)
 #include <utility>
 
 #include "api/error.hpp"
@@ -38,13 +41,18 @@ void vibeqc_context_destroy(vibeqc_context* context) { delete context; }
 
 const char* vibeqc_context_get_last_detail(const vibeqc_context* context) {
   if (context == nullptr) return "invalid context";
-  // Keep one stable snapshot per context on this thread. Querying another
-  // context must not invalidate a pointer previously returned for this one.
-  thread_local std::unordered_map<const vibeqc_context*, std::string> snapshots;
   std::lock_guard<std::recursive_mutex> lock(context->mutex);
-  auto& snapshot = snapshots[context];
-  if (snapshot != context->last_detail) snapshot = context->last_detail;
-  return snapshot.c_str();
+  // Keep the returned pointer owned by the context rather than by the
+  // querying thread, so it remains valid after a worker thread exits.
+  try {
+    if (context->last_detail_snapshot != context->last_detail) {
+      context->last_detail_snapshot = context->last_detail;
+    }
+    return context->last_detail_snapshot.c_str();
+  } catch (...) {
+    // Preserve the C ABI's no-throw getter contract under allocation failure.
+    return context->last_detail.c_str();
+  }
 }
 
 const char* vibeqc_context_last_error(const vibeqc_context* context) {
