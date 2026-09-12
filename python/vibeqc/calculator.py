@@ -698,6 +698,14 @@ class Calculator:
         self._preflight_hf_basis(atoms)
         metadata = self.basis_metadata(atoms, charge=charge, multiplicity=multiplicity)
         orbital = metadata["orbital"]
+        from .ecp import resolve_ecp
+
+        if any(resolve_ecp(self._basis, atoms)[0]):
+            # ResolvedModel currently encodes an all-electron Hamiltonian.
+            # Do not label a core-replaced calculation as that different model.
+            raise NotImplementedError(
+                "ECP accuracy model resolution is not implemented"
+            )
         fitted = self._density_fitting_mode != _native.DENSITY_FITTING_NONE
         # HF's native default uses the orbital system as the auxiliary system.
         # An AUTO provider may choose a backend, but never changes this model.

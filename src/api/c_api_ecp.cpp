@@ -21,6 +21,8 @@ vibeqc_status vibeqc_system_create_ecp(vibeqc_context* context,
   if (!descriptor->atoms || !descriptor->shells || descriptor->atom_count > 128 ||
       term_count > 4096)
     return VIBEQC_STATUS_INVALID_ARGUMENT;
+  // The nested system constructor and error detail share this context lock.
+  std::lock_guard<std::recursive_mutex> context_lock(context->mutex);
   try {
     std::int64_t removed = 0;
     std::vector<bool> local(descriptor->atom_count, false), present(descriptor->atom_count, false);
@@ -73,6 +75,7 @@ vibeqc_status vibeqc_system_ecp_integrals(vibeqc_context* context, const vibeqc_
                                           size_t output_count) {
   if (!context || !system || !output || (derivatives != 0 && derivatives != 1))
     return VIBEQC_STATUS_INVALID_ARGUMENT;
+  std::lock_guard<std::recursive_mutex> context_lock(context->mutex);
   try {
     const auto n = vibeqc::molecule::ao_count(system->data);
     const auto count = 2 * n * n * (1 + (derivatives ? 3 * system->data.atoms.size() : 0));

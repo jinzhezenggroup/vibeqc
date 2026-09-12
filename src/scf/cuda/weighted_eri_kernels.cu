@@ -1,8 +1,12 @@
-// Internal implementation fragment included inside cuda_rhf.cu's device
-// namespace, after its shared Hermite/Dual3 primitives. This keeps the external
-// weight semantics together while reusing the independently validated fallback.
-#ifndef VIBEQC_SCF_CUDA_WEIGHTED_ERI_CUH
-#define VIBEQC_SCF_CUDA_WEIGHTED_ERI_CUH
+#include <cmath>
+#include <weighted_eri.cuh>
+
+#include "scf/cuda/cartesian_angular.cuh"
+#include "scf/cuda/direct_native_cartesian.cuh"
+#include "scf/cuda/scalar_math.cuh"
+#include "scf/cuda/weighted_eri_kernels.hpp"
+
+namespace vibeqc::scf::cuda_execution {
 
 /** Independent unscreened primitive fallback, with no HF density contraction. */
 __device__ __noinline__ CudaWeightedEriResult
@@ -111,4 +115,20 @@ __global__ void weighted_eri_generated_psss_kernel(const CudaWeightedEriPrimitiv
   add_weighted_eri_result(output + record.output_tile, value, 1.0);
 }
 
-#endif
+void launch_weighted_eri_reference_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
+                                          cudaStream_t stream,
+                                          const CudaWeightedEriPrimitive* records,
+                                          std::size_t count, bool generated,
+                                          CudaWeightedEriResult* output) {
+  weighted_eri_reference_kernel<<<grid, block, shared_bytes, stream>>>(records, count, generated,
+                                                                       output);
+}
+
+void launch_weighted_eri_generated_psss_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
+                                               cudaStream_t stream,
+                                               const CudaWeightedEriPrimitive* records,
+                                               std::size_t count, CudaWeightedEriResult* output) {
+  weighted_eri_generated_psss_kernel<<<grid, block, shared_bytes, stream>>>(records, count, output);
+}
+
+}  // namespace vibeqc::scf::cuda_execution

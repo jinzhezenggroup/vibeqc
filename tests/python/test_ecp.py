@@ -150,6 +150,13 @@ def test_complete_hf_energy_force_and_core_bookkeeping(spin):
     assert sum(resolve_ecp(basis, tuple(Atom.from_value(a) for a in atoms))[0]) == 10
 
 
+def test_ecp_cannot_be_labeled_as_an_all_electron_accuracy_model():
+    """ECP execution is available, but the accuracy schema needs its own identity."""
+    atoms, basis, _ = fixture()
+    with pytest.raises(NotImplementedError, match="ECP accuracy model"):
+        Calculator(basis=basis).resolved_model(atoms)
+
+
 def test_parameters_invalidate_identity_and_malformed_channels_fail():
     atoms, basis, _ = fixture()
     potentials = json.loads(basis.by_element[11].ecp_data)

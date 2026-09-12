@@ -1,8 +1,12 @@
-// Internal consumer fragment of the retained contracted-ERI owner.
-// Integral recurrence definitions remain owned by cuda_rhf.cu; this file adds
-// only public-AO J/K and fixed-density derivative consumers. Host plan/API code
-// compiles separately in direct_jk.cpp.
-#pragma once
+#include <cmath>
+
+#include "scf/cuda/direct_jk_kernels.hpp"
+#include "scf/cuda/direct_native_contraction.cuh"
+
+namespace vibeqc::scf {
+namespace {
+using namespace cuda_execution;
+}
 
 namespace {
 
@@ -149,3 +153,5 @@ void launch_independent_jk_derivative_kernel(dim3 grid, dim3 block, std::size_t 
 }
 
 }  // namespace cuda_execution
+
+}  // namespace vibeqc::scf
