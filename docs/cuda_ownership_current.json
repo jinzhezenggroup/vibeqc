@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 10317,
+  "all_handwritten_scientific_lines": 10330,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "files": [
     {
@@ -596,20 +596,20 @@
       "subsystem": "scf_tensor"
     },
     {
-      "bytes": 11715,
+      "bytes": 12815,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
         "runtime": 0,
-        "scientific": 204
+        "scientific": 217
       },
       "path": "src/scf/cuda/df_response_weights.cu",
-      "physical_lines": 229,
+      "physical_lines": 248,
       "reason": "Native HF density response contractions and spectral Frechet map, moved to bounded device execution for #205. Conservatively scientific method arithmetic; primitive values and derivatives still use the #142/#143 generated interfaces.",
       "regions": [],
       "role": "scientific",
-      "sha256": "4cbf1297ebefa52aa944813889013f7f85309f3f591ecb7110b925e27ea236b0",
+      "sha256": "fa90a9e65fddf6763c1ca02bafc9b0ee02b00bd85b727bbd590e9c75e5915d03",
       "subsystem": "df_derivatives"
     },
     {
@@ -3172,7 +3172,7 @@
     "oracle": 0,
     "performance_exception": 156,
     "runtime": 8667,
-    "scientific": 10161
+    "scientific": 10174
   },
   "migration_ledger": {
     "ao_grid": {
@@ -3331,7 +3331,7 @@
       "oracle": 0,
       "performance_exception": 0,
       "runtime": 87,
-      "scientific": 762
+      "scientific": 775
     },
     "df_values": {
       "fallback": 0,
