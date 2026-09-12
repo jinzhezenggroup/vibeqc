@@ -524,8 +524,34 @@ class PreparedBatch:
         | None = None,
         *,
         strict: bool = False,
+        properties: Iterable[str] | None = None,
     ) -> BatchResult:
+        """Replay the fleet, optionally omitting analytic forces.
+
+        The default requests energy and forces. ``properties=("energy",)``
+        skips force evaluation and returns ``forces=None`` for each item.
+        Output selection does not change the prepared model or warm snapshot;
+        a later force replay rebuilds response caches when necessary. Resource
+        plans retain their conservative energy-plus-force capacity allowance.
+        """
         self._ensure_open()
+        if properties is None:
+            properties = ("energy", "forces")
+        if isinstance(properties, (str, bytes)):
+            raise TypeError("properties must be an iterable of property names")
+        try:
+            requested = frozenset(properties)
+        except TypeError as error:
+            raise TypeError(
+                "properties must contain hashable property names"
+            ) from error
+        if "energy" not in requested:
+            raise ValueError("properties must include 'energy'")
+        unknown = requested - {"energy", "forces"}
+        if unknown:
+            names = ", ".join(sorted(repr(name) for name in unknown))
+            raise ValueError(f"unsupported properties: {names}")
+        compute_forces = "forces" in requested
         if self._calculator._model_signature() != self._model_signature:
             raise RuntimeError(
                 "prepared basis/model identity changed; prepare a new batch before reusing densities or Fock/DIIS state"
@@ -567,7 +593,8 @@ class PreparedBatch:
             input_count = count
 
         force_storage = [
-            (ctypes.c_double * (3 * atom_count))() for atom_count in self._atom_counts
+            (ctypes.c_double * (3 * atom_count))() if compute_forces else None
+            for atom_count in self._atom_counts
         ]
         output_array = (_native.BatchItemResultDescriptor * count)(
             *(
@@ -577,7 +604,7 @@ class PreparedBatch:
                     _native.STATUS_INVALID_ARGUMENT,
                     0.0,
                     force_storage[index],
-                    len(force_storage[index]),
+                    len(force_storage[index]) if compute_forces else 0,
                     0,
                     0.0,
                     0.0,
@@ -644,7 +671,7 @@ class PreparedBatch:
             succeeded = output.status == _native.STATUS_SUCCESS
             forces = (
                 np.ctypeslib.as_array(force_storage[index]).copy().reshape(-1, 3)
-                if succeeded
+                if succeeded and compute_forces
                 else None
             )
             message = self._library.vibeqc_status_message(output.status).decode("utf-8")
