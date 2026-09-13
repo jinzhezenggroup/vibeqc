@@ -68,6 +68,7 @@
       "multiplicity": 2,
       "native": {
         "converged": true,
+        "density_change_rms": 2.7012891923534065e-11,
         "energy_change_hartree": 5.10702591327572e-15,
         "energy_hartree": -0.4458192655151163,
         "executed_backend": "cpu_reference",
@@ -126,6 +127,7 @@
       "multiplicity": 2,
       "native": {
         "converged": true,
+        "density_change_rms": 1.7769757889489087e-11,
         "energy_change_hartree": 1.212363542890671e-13,
         "energy_hartree": -0.49908288473813744,
         "executed_backend": "cpu_reference",
@@ -184,6 +186,7 @@
       "multiplicity": 2,
       "native": {
         "converged": true,
+        "density_change_rms": 3.152427400121712e-16,
         "energy_change_hartree": 5.551115123125783e-16,
         "energy_hartree": -0.5158472306782393,
         "executed_backend": "cpu_reference",
@@ -242,6 +245,7 @@
       "multiplicity": 2,
       "native": {
         "converged": true,
+        "density_change_rms": 0.0,
         "energy_change_hartree": 5.551115123125783e-16,
         "energy_hartree": -0.540874107007091,
         "executed_backend": "cpu_reference",
@@ -356,6 +360,7 @@
       "multiplicity": 2,
       "native": {
         "converged": true,
+        "density_change_rms": 7.718360664850165e-11,
         "energy_change_hartree": 9.947598300641403e-14,
         "energy_hartree": -74.06768139171675,
         "executed_backend": "cpu_reference",
@@ -464,6 +469,7 @@
       "multiplicity": 2,
       "native": {
         "converged": true,
+        "density_change_rms": 7.272000198281635e-11,
         "energy_change_hartree": 2.7000623958883807e-13,
         "energy_hartree": -74.56865898003991,
         "executed_backend": "cpu_reference",
@@ -479,9 +485,9 @@
   ],
   "schema": "vibeqc.uks-endpoint-validation",
   "source": {
-    "commit": "138b4dfd0ac1f957b93c9795d669f2f22cbf6f5a",
+    "commit": "a205196d99549e456f6991d54a70ed23630ee8cf",
     "status_porcelain": "",
-    "validator_sha256": "0c675aae2ff28ecd3c6e2d7adaad8ea91e1d66e2f71270afe33979ef995fb9e3"
+    "validator_sha256": "ab6ef01e05cf4d3a728c3558cb68c7742b7a7b4ef892dff1810652e07dcbeafd"
   },
   "version": 1
 }

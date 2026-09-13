@@ -23,7 +23,7 @@ convergence decision.
   fix this without changing the functional or its spin extension. Both zero
   and nonzero spin gradients, the smallest positive FP64 minority density,
   and the numerical branch connection are covered.
-- All 23 CPU native CTest cases passed, including the point-fixture case.
+- All 24 CPU native CTest cases passed, including the point-fixture case.
 - Finite large gradients exposed correlation overflow on `eefecc6`: the
   expanded fixture fails with `valid SCF domain input was rejected`. Separate
   total-gradient scaling and a directly evaluated reciprocal avoid both
@@ -36,12 +36,28 @@ convergence decision.
   after occupation stabilization. The corrected public LDA endpoint converges
   in 17 iterations. Both OH LDA/PBE tests rebuild the unshifted energy and
   residual and verify spin traces plus `DSD=D`; all original gates remain.
-- Related Python validation: **146 passed, 3 skipped, 25 deselected** using
+- Related Python validation: **151 passed, 3 skipped, 25 deselected** using
   `test_calculator.py`, `test_xc_integration.py`, `test_grid_cpu.py`, and
   `test_xc_expressions.py`, with `-k 'not cuda and not gpu'`.
 - All 97 point energy/derivative records passed after regenerating the
   independent Libxc 7 / 450-digit mpmath fixtures. Fixture SHA-256:
   `dadf48af21e8aa309312b7c7da7b388f878beff2973a33c7bdefa4cbaaf40000`.
+
+## Public SCF diagnostics
+
+The DFT adapter again publishes the density-update RMS in the existing
+ABI-0 `density_rms` field. An additive, versioned C diagnostic query and the
+optional Python `physical_residual_rms` field expose the physical commutator
+separately. The original result descriptor layout is unchanged. The endpoint
+validator records both quantities and gates only the named physical residual.
+
+The new native regression compares both public values against the internal
+solver on nonstationary one-iteration H3/H3+ LDA/PBE UKS/RKS, where the two
+measures differ by more than `1e-4`. It also checks pre-run unavailability,
+nonconverged-run availability, ABI rejection, NULL availability probes and
+stale-record invalidation after a failed backend execution. Python tests
+cover converged zero residuals, unsupported HF diagnostics and older native
+libraries without the new symbol.
 
 ## Matching-grid SCF endpoints
 
@@ -61,12 +77,12 @@ density, before any subsequent density proposal is accepted.
 
 All six native and independent endpoints pass the `1e-8 Eh` energy and
 `1e-9` physical-residual gates. The current clean-source run is bound to
-`138b4dfd0ac1f957b93c9795d669f2f22cbf6f5a`, with the complete raw numerical JSON
+`a205196d99549e456f6991d54a70ed23630ee8cf`, with the complete raw numerical JSON
 [versioned in the repository](../../../benchmarks/results/uks-pr305-20260914/endpoints.json)
 and SHA-256
-`920c95d39d5e92bade5f935b9f99b82b47d96a4697d119d834c872df5ab282d1`.
+`a611aea24ede52e5a681224eb697e188a5610f06307e1fa6dbf378bbb10f493c`.
 Validator SHA-256:
-`0c675aae2ff28ecd3c6e2d7adaad8ea91e1d66e2f71270afe33979ef995fb9e3`.
+`ab6ef01e05cf4d3a728c3558cb68c7742b7a7b4ef892dff1810652e07dcbeafd`.
 The [accepted record](../../../benchmarks/results/uks-pr305-20260914/README.md)
 retains all final gate values and provenance, including independent residuals
 for every case; it requires no workstation-local file or artifact service.
