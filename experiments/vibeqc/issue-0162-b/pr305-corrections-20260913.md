@@ -55,11 +55,15 @@ density, before any subsequent density proposal is accepted.
 
 All six native and independent endpoints pass the `1e-8 Eh` energy and
 `1e-9` physical-residual gates. The current clean-source run is bound to
-`cf256aecd528a7f434754f7996468827ce1144d2`, with the retained raw JSON at
-`/home/jzzeng/codes/vibeqc-pr305-final-endpoints-20260914.json` and SHA-256
+`cf256aecd528a7f434754f7996468827ce1144d2`, with the complete raw numerical JSON
+[versioned in the repository](../../../benchmarks/results/uks-pr305-20260914/endpoints.json)
+and SHA-256
 `9669839b95612dad3f45ea7cb30a04a32a753e7143e185a774fa6632783fee9f`.
 Validator SHA-256:
 `0c675aae2ff28ecd3c6e2d7adaad8ea91e1d66e2f71270afe33979ef995fb9e3`.
+The [accepted record](../../../benchmarks/results/uks-pr305-20260914/README.md)
+retains all final gate values and provenance, including independent residuals
+for every case; it requires no workstation-local file or artifact service.
 The earlier remote run at `d0b5862` remains documented in
 [`cpu-uks-endpoints-20260913.md`](cpu-uks-endpoints-20260913.md) as lineage;
 the newer run additionally validates the extreme-spin and OH corrections.
