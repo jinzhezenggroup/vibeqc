@@ -93,6 +93,9 @@ preserved; complex data are unsupported.
 Cross-spin sigma has no extra factor two. `orbital_features` independently sums
 supplied occupied/fractionally occupied orbitals without constructing D.
 Fixtures also check the Laplacian contraction using second AO derivatives.
+The [current-density source contract](density_sources.md) adds checked D/C
+provenance, ragged/empty spin channels, local AO restrictions and output pruning
+for CPU fixed-input consumers (#235 A).
 
 ## Prepared execution and budgets
 
