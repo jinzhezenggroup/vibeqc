@@ -43,8 +43,8 @@ CASES = (
 )
 
 METHODS = (
-    ("lda-uks", "LDA_XC_PW"),
-    ("pbe-uks", "PBE"),
+    ("lda-uks", "LDA_X,LDA_C_PW"),
+    ("pbe-uks", "GGA_X_PBE,GGA_C_PBE"),
 )
 
 
@@ -97,7 +97,7 @@ def independent_uks(inputs: dict, grid, xc_code: str) -> dict:
 
     if pyscf.__version__ != "2.14.0":
         raise RuntimeError("UKS endpoint validation requires PySCF 2.14.0")
-    libxc_version = dft.libxc.libxc_version()
+    libxc_version = dft.libxc.__version__
     if libxc_version != "7.0.0":
         raise RuntimeError("UKS endpoint validation requires Libxc 7.0.0")
 
