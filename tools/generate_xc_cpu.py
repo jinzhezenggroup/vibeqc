@@ -12,6 +12,7 @@ for _name, _path in (
     ("vibeqc_compiler.common", _compiler_root / "common"),
     ("vibeqc_compiler.integral", _compiler_root / "integral"),
     ("vibeqc_compiler.xc", _compiler_root / "xc"),
+    ("vibeqc_compiler.dft", _compiler_root / "dft"),
 ):
     _module = _compiler_types.ModuleType(_name)
     _module.__path__ = [str(_path)]
@@ -21,6 +22,7 @@ import argparse
 from pathlib import Path
 
 from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.dft.feature_policy import emit_feature_policy
 from vibeqc_compiler.integral.expr import AlgebraForm
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 from vibeqc_compiler.xc.expressions import (
@@ -138,6 +140,7 @@ def main() -> None:
         args.output,
         emit_lda_xc_pw()
         + emit_lda_xc_pw_polarized()
+        + emit_feature_policy()
         + "}  // namespace vibeqc::dft::generated\n",
     )
 

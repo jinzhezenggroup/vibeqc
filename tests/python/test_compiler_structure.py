@@ -40,6 +40,10 @@ def test_dependency_directions():
         ("ao_cuda", "expr", True),
         ("ao_cuda", "cuda", True),
         ("ao_cuda", "df_cuda", False),
+        ("feature_policy", "expr", True),
+        ("feature_policy", "cuda", True),
+        ("feature_policy", "scalar_c", True),
+        ("feature_policy", "df_cuda", False),
         ("spatial", "expr", False),
     ],
 )

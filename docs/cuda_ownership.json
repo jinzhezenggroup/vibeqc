@@ -1389,7 +1389,7 @@
         "generated/generated_grid_policy.cu"
       ],
       "owner": "python/vibeqc_compiler/dft/ao_cuda.py",
-      "scope": "Shared CMake/JIT through-f/order-three AO polynomials and requested spin-density bilinears/sigma, used by both D and bounded occupied-factor routes; generated policy included before the same dense/local native runtime."
+      "scope": "Shared CMake/JIT through-f/order-three AO polynomials and requested spin-density bilinears/sigma. dft/feature_policy.py also emits those bilinears for the native CPU RKS C consumer; CUDA dense/local traversal remains unchanged."
     },
     {
       "name": "df_policies",
@@ -1412,8 +1412,8 @@
         "benchmarks/results/spatial-tasks/cpu/summary.json",
         "benchmarks/results/spatial-tasks/cuda/summary.json"
       ],
-      "generated_capability": "Through-f/order-three AO axis derivatives and pruned spin ingredient bilinears/sigma, shared by D and bounded occupied-factor routes over dense/selected-column schedules; current-source spatial diagnostic/device tasks and fixed-mask prepared E/V reuse those routes with explicit native CPU XC/scatter",
-      "missing_capability": "Whole AO traversal remains counted as scientific glue; broader execution promotion remains evidence-based; native SCF producer integration, complete forces and automatic D/C selection remain #162/#163/#168",
+      "generated_capability": "Through-f/order-three AO axis derivatives and pruned spin ingredient bilinears/sigma, shared by D and bounded occupied-factor routes over dense/selected-column schedules; current-source spatial diagnostic/device tasks and fixed-mask prepared E/V reuse those routes with explicit native CPU XC/scatter; the same generated feature bilinears serve the native CPU RKS occupied-factor consumer with current producer identity and exact original-D fallback",
+      "missing_capability": "Whole AO traversal remains counted as scientific glue; native CPU D and XC expressions retain their existing owners. Broader execution promotion remains evidence-based; GPU SCF, complete forces and automatic D/C selection remain #162/#163/#168.",
       "owner": "ao_grid",
       "retirement_condition": "Do not duplicate the removed native axis and feature formulas; retain independent CPU/Libcint numerical fixtures and dense scheduling fallback",
       "status": "partial"

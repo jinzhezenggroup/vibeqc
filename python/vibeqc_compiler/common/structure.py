@@ -32,6 +32,11 @@ SCALAR_CLIENTS = {
         "vibeqc_compiler.integral.expr",
         "vibeqc_compiler.integral.cuda",
     },
+    "dft.feature_policy": {
+        "vibeqc_compiler.integral.expr",
+        "vibeqc_compiler.integral.cuda",
+        "vibeqc_compiler.integral.scalar_c",
+    },
 }
 
 

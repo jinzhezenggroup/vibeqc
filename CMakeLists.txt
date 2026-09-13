@@ -863,6 +863,7 @@ if(VIBEQC_BUILD_TESTS)
 
   add_executable(vibeqc_dft_tests
     tests/native/test_dft.cpp
+    src/scf/density_factor.cpp
     src/dft/ao_grid.cpp
     src/dft/grid.cpp
     src/dft/xc.cpp
@@ -877,6 +878,11 @@ if(VIBEQC_BUILD_TESTS)
   add_executable(vibeqc_dft_api_tests tests/native/test_dft_api.cpp)
   target_link_libraries(vibeqc_dft_api_tests PRIVATE vibeqc)
   add_test(NAME vibeqc_dft_api_tests COMMAND vibeqc_dft_api_tests)
+
+  add_executable(vibeqc_dft_density_source_tests tests/native/test_dft_density_source.cpp)
+  target_link_libraries(vibeqc_dft_density_source_tests PRIVATE vibeqc)
+  target_include_directories(vibeqc_dft_density_source_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  add_test(NAME vibeqc_dft_density_source_tests COMMAND vibeqc_dft_density_source_tests)
 
   add_executable(vibeqc_mixed_precision_tests
     tests/native/test_mixed_precision.cpp)

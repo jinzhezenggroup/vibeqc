@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -32,42 +34,57 @@ using reference::symmetric_orthogonalizer;
 using solver::Diis;
 using solver::validate_seed;
 
-template <class... Vectors>
-void sample_rks_buffers(const PreparedFockPlan& plan, const Diis& diis,
-                        const Vectors&... vectors) noexcept {
-  if (!runtime::cpu_resource_observation.active) return;
-  runtime::sample_cpu_capacity(runtime::add_capacity(
-      plan.cpu_observation_capacity(),
-      runtime::add_capacity(diis.numeric_capacity(), runtime::vector_capacities(vectors...))));
+// A run owns its immutable basis/grid binding and reference identity. IDs
+// never alias across prepared replays or concurrent callers; exhaustion fails
+// before wraparound rather than authorizing a previously exported factor.
+std::uint64_t next_rks_identity() {
+  static std::atomic<std::uint64_t> next{1};
+  auto value = next.load(std::memory_order_relaxed);
+  do {
+    if (value == std::numeric_limits<std::uint64_t>::max())
+      throw std::overflow_error("RKS density identity exhausted");
+  } while (!next.compare_exchange_weak(value, value + 1, std::memory_order_relaxed));
+  return value;
 }
 
 struct RksEvaluation {
   Matrix fock;
   double energy{};
+  dft::XcDensityDiagnostic density_diagnostic;
 };
 
 using RksXcEvaluator = dft::XcIntegral (*)(const dft::AoBasis&, const dft::MolecularGrid&,
-                                           const Matrix&);
+                                           const Matrix&, dft::XcDensitySource);
 
 dft::XcIntegral evaluate_lda_xc_rks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
-                                    const Matrix& density) {
-  return dft::integrate_lda_xc_pw_rks(basis, grid, density);
+                                    const Matrix& density, dft::XcDensitySource source) {
+  return dft::integrate_lda_xc_pw_rks(basis, grid, density, 256, source);
 }
 
 dft::XcIntegral evaluate_pbe_xc_rks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
-                                    const Matrix& density) {
-  return dft::integrate_pbe_rks_with_tail(basis, grid, density);
+                                    const Matrix& density, dft::XcDensitySource source) {
+  return dft::integrate_pbe_rks_with_tail(basis, grid, density, 256, source);
 }
 
 RksEvaluation evaluate_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                            const dft::MolecularGrid& grid, const Matrix& density,
-                           RksXcEvaluator evaluate_xc, const char* method_name) {
+                           RksXcEvaluator evaluate_xc, const char* method_name,
+                           dft::XcDensitySource source, std::size_t retained_capacity) {
   const auto& strategy = plan.strategy();
   const auto& ints = plan.one_electron();
   const auto jk = plan.build(density);
   RksEvaluation result;
   result.fock = assemble_fock(strategy, ints.hcore, jk).alpha;
-  const auto xc = evaluate_xc(basis, grid, density);
+  const auto xc = evaluate_xc(basis, grid, density, source);
+  result.density_diagnostic = xc.density_diagnostic;
+  // The AO tile and potential were live together with these J/Fock buffers
+  // inside evaluate_xc. Its peak excludes borrowed D/factor to avoid charging
+  // the caller's retained state twice.
+  runtime::sample_cpu_capacity(runtime::add_capacity(
+      retained_capacity,
+      runtime::add_capacity(xc.density_diagnostic.owned_numeric_bytes,
+                            runtime::vector_capacities(result.fock, jk.coulomb, jk.exchange_alpha,
+                                                       jk.exchange_beta))));
   if (xc.potential.size() != result.fock.size())
     throw std::runtime_error(std::string(method_name) +
                              " XC potential dimensions do not match the Fock matrix");
@@ -83,6 +100,9 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                   const dft::MolecularGrid& grid, const ScfOptions& options,
                   const std::vector<double>* initial_density, RksXcEvaluator evaluate_xc,
                   const char* method_name) {
+  if (options.xc_density_route != dft::XcDensityRoute::DensityMatrix &&
+      options.xc_density_route != dft::XcDensityRoute::OccupiedOrbitals)
+    throw std::invalid_argument("unsupported RKS XC density route");
   const auto& strategy = plan.strategy();
   validate_resolved_fock_build(strategy);
   const auto& system = plan.system();
@@ -117,17 +137,85 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
   Diis diis(options.diis_history);
   ScfResult result;
   result.initial_density_used = initial_density != nullptr;
+  auto& diagnostic = result.xc_density_diagnostic;
+  diagnostic.physical_residual = std::numeric_limits<double>::infinity();
+  std::shared_ptr<const OccupiedDensityFactor> factor;
+  DensityFactorIdentity identity{};
+  const bool use_orbitals = options.xc_density_route == dft::XcDensityRoute::OccupiedOrbitals;
+  if (use_orbitals) {
+    const auto owner = next_rks_identity();
+    identity = {owner, owner, 0, 0};
+  }
+  const auto retained_capacity = [&] {
+    return runtime::add_capacity(
+        runtime::add_capacity(plan.cpu_observation_capacity(), diis.numeric_capacity()),
+        runtime::add_capacity(factor ? factor->numeric_capacity_bytes() : 0,
+                              runtime::vector_capacities(
+                                  orthogonalizer, density, orbitals.values, orbitals.vectors,
+                                  basis.packed, grid.points(), grid.weights(), grid.owners())));
+  };
+  const auto make_current_factor = [&](std::size_t extra_live_bytes = 0) {
+    // Only an actual unmixed eigensolver state advances both generations.
+    // Release the previous snapshot before packing the new one. Current D
+    // remains owned for convergence tests and the Coulomb provider.
+    factor.reset();
+    ++identity.orbital_generation;
+    ++identity.density_generation;
+    Matrix packed(n * occupied), occupations(occupied, 2.0);
+    for (std::size_t mu = 0; mu < n; ++mu)
+      for (std::size_t o = 0; o < occupied; ++o)
+        packed[mu * occupied + o] = orbitals.vectors[mu * n + o];
+    factor = std::make_shared<const OccupiedDensityFactor>(identity, DensityFactorSpin::Restricted,
+                                                           n, packed, occupations);
+    const auto packing_bytes = runtime::vector_capacities(packed, occupations);
+    diagnostic.packed_coefficient_elements += packed.size();
+    diagnostic.factor_peak_bytes =
+        std::max(diagnostic.factor_peak_bytes,
+                 runtime::add_capacity(factor->numeric_capacity_bytes(), packing_bytes));
+    runtime::sample_cpu_capacity(runtime::add_capacity(
+        retained_capacity(), runtime::add_capacity(packing_bytes, extra_live_bytes)));
+  };
+  if (use_orbitals && !initial_density) make_current_factor();
+  const auto evaluate_current = [&](std::size_t extra_live_bytes = 0) {
+    auto physical = evaluate_rks(plan, basis, grid, density, evaluate_xc, method_name,
+                                 {options.xc_density_route, factor.get(), identity},
+                                 runtime::add_capacity(retained_capacity(), extra_live_bytes));
+    const auto& record = physical.density_diagnostic;
+    if (record.executed == dft::XcDensityRoute::OccupiedOrbitals)
+      ++diagnostic.orbital_calls;
+    else
+      ++diagnostic.density_calls;
+    if (record.fallback != dft::XcDensityFallback::None) ++diagnostic.fallback_calls;
+    diagnostic.xc_peak_bytes = std::max(diagnostic.xc_peak_bytes, record.owned_numeric_bytes);
+    return physical;
+  };
+  const auto next_density_from_orbitals = [&](std::size_t extra_live_bytes = 0) {
+    if (use_orbitals) make_current_factor(extra_live_bytes);
+    // Reuse the producer's exact witness rather than reconstructing D twice.
+    Matrix next = use_orbitals ? Matrix(factor->density().begin(), factor->density().end())
+                               : density_from_orbitals(orbitals.vectors, n, occupied);
+    runtime::sample_cpu_capacity(runtime::add_capacity(
+        retained_capacity(), runtime::add_capacity(runtime::vector_bytes(next), extra_live_bytes)));
+    return next;
+  };
+  const auto retain_factor = [&] {
+    result.xc_density_factor = factor;
+    diagnostic.final_identity = identity;
+  };
   double previous_energy = std::numeric_limits<double>::infinity();
   for (unsigned iteration = 1; iteration <= options.max_iterations; ++iteration) {
     ++result.fock_builds;
-    const auto physical = evaluate_rks(plan, basis, grid, density, evaluate_xc, method_name);
+    const auto physical = evaluate_current();
     const Matrix residual = commutator_residual(physical.fock, density, ints.overlap, n);
     const Matrix effective_fock = diis.update(physical.fock, residual);
     orbitals = generalized_eigen(effective_fock, orthogonalizer, n);
-    Matrix next_density = density_from_orbitals(orbitals.vectors, n, occupied);
+    const auto iteration_bytes =
+        runtime::vector_capacities(physical.fock, residual, effective_fock);
+    Matrix next_density = next_density_from_orbitals(iteration_bytes);
 
-    sample_rks_buffers(plan, diis, orthogonalizer, density, physical.fock, residual, effective_fock,
-                       orbitals.values, orbitals.vectors, next_density);
+    runtime::sample_cpu_capacity(runtime::add_capacity(
+        retained_capacity(),
+        runtime::add_capacity(iteration_bytes, runtime::vector_bytes(next_density))));
     result.iterations = iteration;
     result.energy = physical.energy;
     result.energy_change = std::isfinite(previous_energy)
@@ -145,15 +233,21 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
     density = std::move(next_density);
   }
   if (!result.converged) {
+    retain_factor();
     result.density = std::move(density);
     return result;
   }
 
   result.fock_builds += 2;
-  auto final = evaluate_rks(plan, basis, grid, density, evaluate_xc, method_name);
+  auto final = evaluate_current();
   orbitals = generalized_eigen(final.fock, orthogonalizer, n);
-  density = density_from_orbitals(orbitals.vectors, n, occupied);
-  final = evaluate_rks(plan, basis, grid, density, evaluate_xc, method_name);
+  density = next_density_from_orbitals(runtime::vector_bytes(final.fock));
+  final = evaluate_current(runtime::vector_bytes(final.fock));
+  const auto final_residual = commutator_residual(final.fock, density, ints.overlap, n);
+  diagnostic.physical_residual = residual_rms(final_residual);
+  runtime::sample_cpu_capacity(runtime::add_capacity(
+      retained_capacity(), runtime::vector_capacities(final.fock, final_residual)));
+  retain_factor();
   result.energy = final.energy;
   result.density = std::move(density);
   return result;

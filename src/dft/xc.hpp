@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "dft/ao_grid.hpp"
+#include "dft/density_source.hpp"
 #include "dft/grid.hpp"
 
 namespace vibeqc::dft {
@@ -28,6 +29,7 @@ struct XcIntegral {
   double electrons{};
   std::vector<double> potential;
   std::size_t points{};
+  XcDensityDiagnostic density_diagnostic;
 };
 
 struct SpinXcIntegral {
@@ -39,17 +41,18 @@ struct SpinXcIntegral {
 
 /** Integrate unpolarized PBE for an RHF total AO density. */
 XcIntegral integrate_pbe_rks(const AoBasis& basis, const MolecularGrid& grid,
-                             const std::vector<double>& density, std::size_t tile_points = 256);
+                             const std::vector<double>& density, std::size_t tile_points = 256,
+                             XcDensitySource source = {});
 
 /** Integrate PBE with the explicit production tail-v2 policy. */
 XcIntegral integrate_pbe_rks_with_tail(const AoBasis& basis, const MolecularGrid& grid,
                                        const std::vector<double>& density,
-                                       std::size_t tile_points = 256);
+                                       std::size_t tile_points = 256, XcDensitySource source = {});
 
 /** Integrate unpolarized LDA_XC_PW for an RHF total AO density. */
 XcIntegral integrate_lda_xc_pw_rks(const AoBasis& basis, const MolecularGrid& grid,
                                    const std::vector<double>& density,
-                                   std::size_t tile_points = 256);
+                                   std::size_t tile_points = 256, XcDensitySource source = {});
 
 /** Integrate spin-polarized LDA_XC_PW for separate alpha/beta AO densities.
  * This is a fixed-density CPU foundation for a future UKS SCF path; it does

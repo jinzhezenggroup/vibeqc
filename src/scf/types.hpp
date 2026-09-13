@@ -5,6 +5,7 @@
 #include <optional>
 #include <vector>
 
+#include "dft/density_source.hpp"
 #include "scf/fock_build.hpp"
 #include "vibeqc/vibeqc.h"
 
@@ -62,6 +63,8 @@ struct ScfOptions {
   /** False for an explicit energy-only endpoint. Backends must then omit
    * derivative evaluation and return an empty force vector. */
   bool compute_forces{true};
+  /** Internal native RKS candidate override; public/default execution stays D. */
+  dft::XcDensityRoute xc_density_route{dft::XcDensityRoute::DensityMatrix};
 };
 
 /** Internal mean-field result, including state retained for warm starts. */
@@ -97,6 +100,10 @@ struct ScfResult {
    */
   PrecisionProvenance precision{};
   std::shared_ptr<const PhysicalReference> reference;
+  /** Current immutable RKS factor when explicitly requested, including on a
+   * nonconverged return. Its witness matches the returned density exactly. */
+  std::shared_ptr<const OccupiedDensityFactor> xc_density_factor;
+  dft::RksDensityDiagnostic xc_density_diagnostic;
 };
 
 }  // namespace vibeqc::scf
