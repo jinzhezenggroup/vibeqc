@@ -142,7 +142,7 @@ class CudaGrid:
 
     @property
     def source_kind(self):
-        """Selected native route for the last successful source upload."""
+        """Selected route; reset to the empty D state when an upload fails."""
         return self._source_kind
 
     @property
@@ -402,6 +402,9 @@ class CudaGrid:
             counts = counts if use_orbitals else (0, 0)
             self._density_ready = False
             self._source_stamp = None
+            self._source_kind = "density_matrix"
+            self._fallback_reason = "missing_orbitals"
+            self._source_statistics = {}
             before = perf_counter()
             self._call(
                 "grid_cuda_source_v1",

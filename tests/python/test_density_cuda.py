@@ -299,6 +299,9 @@ def test_source_topology_and_failed_upload_cannot_publish_stale_features(
             with pytest.raises(RuntimeError, match="transport"):
                 cuda.set_source(source, stamp=source.stamp)
             assert cuda.source_stamp is None
+            assert cuda.source_kind == "density_matrix"
+            assert cuda.fallback_reason == "missing_orbitals"
+            assert cuda.source_statistics == {}
             with pytest.raises(ValueError, match="supplied density"):
                 cuda.evaluate(data["points"][:5], stamp=source.stamp)
             monkeypatch.setattr(cuda, "_call", native_call)

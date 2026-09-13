@@ -9,6 +9,7 @@ part of this endpoint, and this runner does not promote either algorithm.
 """
 
 import argparse
+import csv
 import ctypes
 import json
 import os
@@ -53,6 +54,41 @@ FUNCTIONALS = ("LDA_XC_PW", "PBE")
 def capture(argv):
     """Collect bounded provenance commands without shell interpolation."""
     return subprocess.check_output(argv, text=True, timeout=60, cwd=ROOT).strip()
+
+
+def probe_gpu(nvcc):
+    """Bind hardware evidence to CUDA ordinal zero within Slurm's visibility.
+
+    NVML/nvidia-smi ordinals need not match remapped CUDA ordinals. Resolve
+    the PCI bus ID through the selected CUDA runtime, then query that device
+    explicitly, so another installed RTX 5090 cannot validate the wrong GPU.
+    This probe must run inside the benchmark's checked Slurm allocation.
+    """
+    runtime = ctypes.CDLL(str(nvcc.parent.parent / "lib64/libcudart.so"))
+    pci_bus = runtime.cudaDeviceGetPCIBusId
+    pci_bus.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_int]
+    pci_bus.restype = ctypes.c_int
+    bus = ctypes.create_string_buffer(32)
+    status = pci_bus(bus, len(bus), 0)
+    if status or not bus.value:
+        raise RuntimeError(f"cannot identify the assigned CUDA device: {status}")
+    bus_id = bus.value.decode("ascii")
+    gpu = capture(
+        [
+            "nvidia-smi",
+            "--id=" + bus_id,
+            "--query-gpu=name,uuid,driver_version,memory.total",
+            "--format=csv,noheader",
+        ]
+    )
+    rows = list(csv.reader(gpu.splitlines(), skipinitialspace=True))
+    if (
+        len(rows) != 1
+        or len(rows[0]) != 4
+        or rows[0][0].strip() != "NVIDIA GeForce RTX 5090"
+    ):
+        raise RuntimeError("benchmark requires the assigned device to be an RTX 5090")
+    return {"gpu": gpu, "pci_bus_id": bus_id, "visible_device_ordinal": 0}
 
 
 def gate(actual, expected):
@@ -340,13 +376,7 @@ def main():
         backend_selected="cuda",
     )
     report["device"] = {
-        "gpu": capture(
-            [
-                "nvidia-smi",
-                "--query-gpu=name,uuid,driver_version,memory.total",
-                "--format=csv,noheader",
-            ]
-        ),
+        **probe_gpu(nvcc),
         "host": platform.platform(),
         "slurm_job_id": os.environ["SLURM_JOB_ID"],
         "slurm_job": capture(
@@ -354,7 +384,7 @@ def main():
         ),
         "cuda_visible_devices": os.environ["CUDA_VISIBLE_DEVICES"],
     }
-    report["hardware"] = outcome("pass", probe="scheduled RTX 5090 allocation")
+    report["hardware"] = outcome("pass", probe="validated assigned RTX 5090 allocation")
     report["toolchain"] = {
         "python": sys.version,
         "numpy": np.__version__,
