@@ -8,11 +8,21 @@
 
 namespace vibeqc::scf {
 
+namespace cuda_df {
+std::uint64_t next_factor_basis_identity() noexcept;
+}
+
 /** Private storage owner shared by DF setup, J/K and response adapters.
  * Public callers retain the existing opaque handle. The integral source and
  * forward eigensystem have exactly one owner; execution functions borrow them.
  */
 struct CudaDensityFittingJkPlan {
+  // Process-unique lifetime token binds orbital factors to this immutable
+  // geometry/basis/metric source; dimensions and recycled addresses cannot.
+  std::uint64_t factor_basis_identity{cuda_df::next_factor_basis_identity()};
+  // Frozen at creation: lazy SCF factors may only use a plan that reserved
+  // their capacity. High-level caches rebuild when the policy changes.
+  bool occupied_scf_reserved{};
   int device_id{-1};
   double metric_relative_threshold{};
   std::size_t batch_size{};

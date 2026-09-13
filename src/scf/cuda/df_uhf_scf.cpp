@@ -10,6 +10,7 @@
 
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
+#include "scf/cuda/df_scf_factor.hpp"
 #include "scf/cuda/df_scf_kernels.hpp"
 #include "scf/cuda/df_scf_library.hpp"
 
@@ -62,10 +63,16 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
   if (cuda_error != cudaSuccess) {
     return cuda_failure(cuda_error, "select CUDA DF device", detail);
   }
+  bool occupied_exchange = false;
+  const auto policy_status = occupied_scf_policy(*plan, occupied_exchange, detail);
+  if (policy_status != VIBEQC_STATUS_SUCCESS) return policy_status;
   PersistentScfState* state = static_cast<PersistentScfState*>(plan->persistent_scf_state);
-  const bool compatible = state != nullptr && state->unrestricted &&
-                          state->device_id == plan->device_id && state->batch_size == batch_size &&
-                          state->nbf == plan->nbf && state->expected == expected;
+  const bool compatible =
+      state != nullptr && state->unrestricted && state->device_id == plan->device_id &&
+      state->batch_size == batch_size && state->nbf == plan->nbf && state->expected == expected &&
+      state->occupied_exchange == occupied_exchange &&
+      (!occupied_exchange ||
+       (state->factor_alpha_ranks == alpha_occupied && state->factor_beta_ranks == beta_occupied));
   if (!compatible) {
     destroy_persistent_scf_state(plan->persistent_scf_state);
     state = new (std::nothrow) PersistentScfState{};
@@ -78,6 +85,7 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
     state->batch_size = batch_size;
     state->nbf = plan->nbf;
     state->expected = expected;
+    state->occupied_exchange = occupied_exchange;
     state->graph.device_id = plan->device_id;
     state->graph.stream = plan->stream;
     auto allocate = [&](void** pointer, std::size_t bytes,
@@ -178,6 +186,13 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
       delete state;
       return status;
     }
+    if (occupied_exchange) {
+      status = allocate_scf_factors(*plan, *state, alpha_occupied, beta_occupied, detail);
+      if (status != VIBEQC_STATUS_SUCCESS) {
+        delete state;
+        return status;
+      }
+    }
     plan->persistent_scf_state = state;
   }
   double* d_hcore = state->d_hcore;
@@ -258,10 +273,9 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
   state->energy_tolerance = energy_tolerance;
   state->density_tolerance = density_tolerance;
   DeviceIterationGraph& iteration_graph = state->graph;
-  const auto launch_iteration = [&]() -> vibeqc_status {
-    vibeqc_status iteration_status = execute_cuda_density_fitting_uhf_jk_device(
-        plan, d_alpha_density, d_beta_density, plan->coulomb, plan->alpha_exchange,
-        plan->beta_exchange, detail);
+  const auto launch_iteration = [&](bool factors_ready, bool tail) -> vibeqc_status {
+    vibeqc_status iteration_status = build_scf_occupied_jk(*plan, *state, d_alpha_density,
+                                                           d_beta_density, factors_ready, detail);
     if (iteration_status != VIBEQC_STATUS_SUCCESS) return iteration_status;
     launch_assemble_uhf_fock_kernel(blocks_for(expected), kThreads, 0, plan->stream, expected,
                                     d_hcore, plan->coulomb, plan->alpha_exchange,
@@ -292,6 +306,7 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
       launch_build_device_density_kernel(blocks_for(expected), kThreads, 0, plan->stream,
                                          batch_size, plan->nbf, d_alpha_occupied, d_temporary, 1.0,
                                          d_next_alpha);
+      if (occupied_exchange) store_scf_factor(*plan, *state, d_temporary, false);
     }
     if (iteration_status != VIBEQC_STATUS_SUCCESS) return iteration_status;
 
@@ -313,20 +328,30 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
       launch_build_device_density_kernel(blocks_for(expected), kThreads, 0, plan->stream,
                                          batch_size, plan->nbf, d_beta_occupied, d_temporary, 1.0,
                                          d_next_beta);
+      if (occupied_exchange) store_scf_factor(*plan, *state, d_temporary, true);
       launch_update_device_uhf_convergence_kernel(
           static_cast<unsigned>(batch_size), 32, 0, plan->stream, batch_size, plan->nbf,
           energy_tolerance, density_tolerance, d_energy, d_previous_energy, d_next_alpha,
           d_next_beta, d_alpha_density, d_beta_density, d_active, d_converged, d_iterations,
           d_energy_change, d_density_rms);
     }
-    launch_tail_cuda_density_fitting_scf_graph_kernel(1, 1, 0, plan->stream,
-                                                      static_cast<std::int32_t>(batch_size),
-                                                      max_iterations, d_active, d_iterations);
+    if (tail)
+      launch_tail_cuda_density_fitting_scf_graph_kernel(1, 1, 0, plan->stream,
+                                                        static_cast<std::int32_t>(batch_size),
+                                                        max_iterations, d_active, d_iterations);
     iteration_error = cudaPeekAtLastError();
     return iteration_error == cudaSuccess
                ? VIBEQC_STATUS_SUCCESS
                : cuda_failure(iteration_error, "advance CUDA DF device UHF SCF", detail);
   };
+  // Imported/warm D has no trustworthy C. Execute one dense iteration on
+  // every invocation, then capture/replay only the canonical factor loop.
+  // The seed has no tail launch and is downloaded once even at max_iterations=1.
+  if (occupied_exchange) {
+    status = reset_scf_factors(*plan, *state, detail);
+    if (status == VIBEQC_STATUS_SUCCESS) status = launch_iteration(false, false);
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
+  }
   bool graph_replay = state->graph_replay;
   if (!graph_replay && (!plan->streamed || plan->integral_source != nullptr)) {
     iteration_graph.reset();
@@ -335,7 +360,7 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
       cuda_error = cudaStreamBeginCapture(plan->stream, cudaStreamCaptureModeThreadLocal);
     }
     if (cuda_error == cudaSuccess) {
-      status = launch_iteration();
+      status = launch_iteration(occupied_exchange, true);
       // As in RHF, capture records but does not execute an SCF update.
       cudaGraph_t captured = nullptr;
       const cudaError_t end_error = cudaStreamEndCapture(plan->stream, &captured);
@@ -372,13 +397,16 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
     return true;
   };
   for (unsigned iteration = 0; iteration < max_iterations && !all_converged; ++iteration) {
-    if (graph_replay) {
+    if (occupied_exchange && iteration == 0) {
+      // The already-executed dense seed needs its convergence/limit readback.
+    } else if (graph_replay) {
       cuda_error = cudaGraphLaunch(iteration_graph.executable, plan->stream);
       if (cuda_error != cudaSuccess) {
         return cuda_failure(cuda_error, "replay CUDA DF UHF SCF Graph", detail);
       }
     } else {
-      status = launch_iteration();
+      // Host-driven fallback has no enclosing graph to tail-launch.
+      status = launch_iteration(occupied_exchange, false);
       if (status != VIBEQC_STATUS_SUCCESS) return status;
     }
     cuda_error = cudaMemcpyAsync(host_energy.data(), d_energy, batch_size * sizeof(double),
@@ -430,6 +458,10 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
   if (!finite_values(final_alpha_density) || !finite_values(final_beta_density)) {
     detail = "CUDA DF device UHF SCF produced non-finite density";
     return VIBEQC_STATUS_NUMERICAL_FAILURE;
+  }
+  if (occupied_exchange) {
+    status = verify_scf_factors(*plan, *state, host_iterations, detail);
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
   }
   for (std::size_t system = 0; system < batch_size; ++system) {
     auto& result = results[system];

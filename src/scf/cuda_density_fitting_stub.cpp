@@ -93,6 +93,9 @@ vibeqc_status generate_cuda_density_fitting_metric_derivative_tile(
 std::size_t cuda_density_fitting_jk_plan_batch_size(const CudaDensityFittingJkPlan*) noexcept {
   return 0U;
 }
+bool cuda_density_fitting_scf_policy_matches(const CudaDensityFittingJkPlan*) noexcept {
+  return false;
+}
 bool cuda_density_fitting_jk_plan_matches(const CudaDensityFittingJkPlan*, std::size_t, std::size_t,
                                           std::size_t, double) noexcept {
   return false;
@@ -186,5 +189,18 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
 }
 
 void destroy_cuda_density_fitting_jk_plan(CudaDensityFittingJkPlan*) noexcept {}
+
+DensityFactorIdentity cuda_density_fitting_factor_identity(const CudaDensityFittingJkPlan*,
+                                                           std::size_t, std::uint64_t,
+                                                           std::uint64_t) noexcept {
+  return {};
+}
+
+vibeqc_status execute_cuda_density_fitting_occupied_exchange(
+    CudaDensityFittingJkPlan*, const std::vector<double>&, DensityFactorSpin,
+    std::span<const CudaOccupiedDensityInput>, std::vector<double>&, std::vector<std::uint8_t>&,
+    std::string& detail) {
+  return unavailable(nullptr, detail);
+}
 
 }  // namespace vibeqc::scf

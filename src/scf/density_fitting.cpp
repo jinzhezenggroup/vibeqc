@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "molecule/basis.hpp"
+#include "scf/df_exchange_policy.hpp"
 
 namespace vibeqc::scf {
 namespace {
@@ -393,7 +394,7 @@ double exchange_quadratic_derivative(const integrals::DensityFittingIntegralData
 std::size_t workspace_bytes(std::size_t ao_pair_tile, std::size_t auxiliary_tile,
                             std::size_t batch_size, std::size_t nbf, std::size_t naux,
                             std::size_t metric_bytes, std::size_t fixed_device_bytes,
-                            bool generated_source) {
+                            bool generated_source, bool occupied_exchange) {
   // The CUDA plan keeps seven AO matrices and one auxiliary vector for the
   // complete batch.  Its streamed tile rounds the logical AO-pair budget up
   // to a whole row, so account for that physical capacity rather than the
@@ -422,16 +423,18 @@ std::size_t workspace_bytes(std::size_t ao_pair_tile, std::size_t auxiliary_tile
   // Generated response staging has its own budget in the finalizer; this
   // planner covers value/SCF storage and reserves no retired coordinate scratch.
   // One-electron/Pulay assembly and the lazy device SCF driver retain up to
-  // twenty AO matrices plus one graph reservation per active batch item,
-  // matching the native plan's conservative RHF/UHF lazy-state allowance.
-  // Include the small convergence/occupation vectors and metric status too;
-  // a positive budget cannot be spent entirely before SCF state is allocated.
-  const long double one_electron_doubles =
-      21.0L * static_cast<long double>(batch_size) * static_cast<long double>(nbf) * nbf;
+  // twenty AO matrices and one graph reservation per active batch item.
+  // Only occupied mode adds two factor matrices and their generation controls,
+  // preserving the dense planner's original minimum and residency thresholds.
+  // These match the native plan's conservative RHF/UHF lazy-state allowance. Include the small
+  // convergence/occupation vectors and metric status too; a positive budget cannot be spent
+  // entirely before SCF state is allocated.
+  const long double one_electron_doubles = (occupied_exchange ? 23.0L : 21.0L) * matrix_elements;
   const long double control_bytes =
       static_cast<long double>(batch_size) *
       (16 * sizeof(double) + 2 * sizeof(std::int32_t) + 2 * sizeof(std::uint8_t) +
-       sizeof(std::uint32_t) + sizeof(int));
+       sizeof(std::uint32_t) + sizeof(int) +
+       (occupied_exchange ? 2 * sizeof(std::uint32_t) + sizeof(int) : 0));
   const long double bytes =
       static_cast<long double>(fixed_device_bytes) + control_bytes +
       static_cast<long double>(metric_bytes) * batch_size +
@@ -862,6 +865,7 @@ DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch_size, std::s
                                                   std::size_t memory_budget_bytes,
                                                   std::size_t fixed_device_bytes,
                                                   bool generated_source) {
+  const bool occupied_exchange = df_occupied_exchange_requested();
   if (batch_size == 0 || nbf == 0 || naux == 0 || occupied == 0) {
     throw std::invalid_argument("DF planner dimensions must all be positive");
   }
@@ -892,7 +896,7 @@ DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch_size, std::s
   auto update_bytes = [&]() {
     plan.peak_workspace_bytes =
         workspace_bytes(plan.ao_pair_tile, plan.auxiliary_tile, batch_size, nbf, naux, metric_bytes,
-                        fixed_device_bytes, generated_source);
+                        fixed_device_bytes, generated_source, occupied_exchange);
   };
   // Full transformed storage is a latency policy only when its entire
   // contraction/setup/SCF allowance fits. Keep the deterministic zero-budget

@@ -111,6 +111,55 @@ def test_cuda_execution_rejects_changed_resource_schedule(monkeypatch, variable,
             batch.execute()
 
 
+@pytest.mark.parametrize(
+    "initial,changed", [("dense", "occupied"), ("occupied", "dense")]
+)
+def test_cuda_df_budget_freezes_exchange_policy(monkeypatch, initial, changed):
+    """A changed factor reservation must be rejected before native execution."""
+    monkeypatch.setenv("VIBEQC_DF_EXCHANGE", initial)
+    calculator = Calculator(
+        device="cuda", density_fitting="cuda", resource_budget=ResourceBudget()
+    )
+    with calculator.prepare_batch([H2]) as batch:
+        batch.execute(strict=True)
+        monkeypatch.setenv("VIBEQC_DF_EXCHANGE", changed)
+        with pytest.raises(ValueError, match="schedule changed"):
+            batch.execute(strict=True)
+        monkeypatch.setenv("VIBEQC_DF_EXCHANGE", initial)
+        batch.execute(strict=True)
+
+
+@pytest.mark.parametrize(
+    "mode,old_peak", [("resident", 805315268), ("recomputed", 805316952)]
+)
+def test_cuda_df_common_ledger_preserves_dense_capacity(monkeypatch, mode, old_peak):
+    """Exact H2 device boundaries verified against the pre-occupied inventory."""
+    from vibeqc.resources import ResourcePlan, plan_resources
+
+    calculator = Calculator(device="cuda", density_fitting="cuda")
+    monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "dense")
+    dense = calculator._resource_request([H2])
+    candidate = next(c for c in dense.candidates if c.mode == mode)
+    selected = ResourcePlan(
+        ResourceBudget(), (dense,), (("hf", candidate.name),), "feasible"
+    )
+    assert selected.peak_bytes["device"] == old_peak
+    # The source route needs a host cap to force its selection over resident.
+    budget = ResourceBudget(
+        host_bytes=selected.peak_bytes["host"], device_bytes=old_peak
+    )
+    assert plan_resources([dense], budget).status == "feasible"
+    monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "occupied")
+    occupied = calculator._resource_request([H2])
+    factor_candidate = next(c for c in occupied.candidates if c.mode == mode)
+    factored = ResourcePlan(
+        ResourceBudget(), (occupied,), (("hf", factor_candidate.name),), "feasible"
+    )
+    # Two full 2x2 factors plus the independently reserved cold-retry item.
+    assert factored.peak_bytes["device"] - old_peak == 2 * 2 * 2 * 8 * 2
+    assert plan_resources([occupied], budget).status == "infeasible"
+
+
 @pytest.mark.parametrize("fitted", [False, True])
 def test_native_ledger_rejects_unplanned_arena_and_releases_failed_state(fitted):
     """Fault the assigned capacity to exercise the native allocation boundary."""

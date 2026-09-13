@@ -21,13 +21,16 @@ using runtime::cuda_trace::TraceOperation;
 
 // Exchange contraction preserves row/auxiliary tiling and cuBLAS layout.
 vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan, const double* density,
-                             double* exchange, std::string& detail, bool density_is_column_major) {
-  TraceOperation trace(
-      "ri_k", plan.stream,
-      {plan.batch_size, plan.nbf, plan.naux, plan.integral_source != nullptr, plan.streamed});
-  const std::size_t output_elements = plan.batch_size * plan.matrix_elements;
-  cudaError_t cuda_error =
-      cudaMemsetAsync(exchange, 0, output_elements * sizeof(double), plan.stream);
+                             double* exchange, std::string& detail, bool density_is_column_major,
+                             std::size_t system_begin, std::size_t system_end) {
+  system_end = std::min(system_end, plan.batch_size);
+  if (system_begin >= system_end) return VIBEQC_STATUS_SUCCESS;
+  TraceOperation trace("ri_k", plan.stream,
+                       {system_end - system_begin, plan.nbf, plan.naux,
+                        plan.integral_source != nullptr, plan.streamed, system_begin});
+  const std::size_t output_elements = (system_end - system_begin) * plan.matrix_elements;
+  cudaError_t cuda_error = cudaMemsetAsync(exchange + system_begin * plan.matrix_elements, 0,
+                                           output_elements * sizeof(double), plan.stream);
   if (cuda_error != cudaSuccess) {
     return cuda_failure(cuda_error, "zero DF exchange output", detail);
   }
@@ -51,7 +54,7 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan, const double* densi
                      : plan.auxiliary_tile;
       const auto pair_capacity = row_tile * plan.nbf;
       const auto row_tiles = (plan.nbf + row_tile - 1) / row_tile;
-      for (std::size_t system = 0; system < plan.batch_size; ++system) {
+      for (std::size_t system = system_begin; system < system_end; ++system) {
         const double* system_density = density + system * plan.matrix_elements;
         const double* density_column_major = system_density;
         if (!density_is_column_major) {
@@ -165,7 +168,7 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan, const double* densi
     // device-resident SCF callers can opt out when their density is already
     // in cuBLAS layout.  This keeps rectangular row-block GEMMs independent
     // of density-symmetry assumptions.
-    for (std::size_t system = 0; system < plan.batch_size; ++system) {
+    for (std::size_t system = system_begin; system < system_end; ++system) {
       const double* system_density = density + system * plan.matrix_elements;
       const double* density_column_major = system_density;
       if (!density_is_column_major) {
@@ -305,7 +308,7 @@ vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan, const double* densi
 
   const int nbf = static_cast<int>(plan.nbf);
   const long long matrix_stride = static_cast<long long>(plan.matrix_elements);
-  for (std::size_t system = 0; system < plan.batch_size; ++system) {
+  for (std::size_t system = system_begin; system < system_end; ++system) {
     const double* system_density = density + system * plan.matrix_elements;
     double* transposed_density = plan.exchange_density_column_major + system * plan.matrix_elements;
     const double* density_column_major = system_density;

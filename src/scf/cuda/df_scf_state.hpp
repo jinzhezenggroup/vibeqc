@@ -67,6 +67,19 @@ struct PersistentScfState {
   double energy_tolerance{};
   double density_tolerance{};
 
+  // A solve always seeds from its arbitrary input D with dense K. Only the
+  // coefficients that constructed the next canonical density are retained.
+  // Inactive items keep both D and factors. Occupation changes rebuild this
+  // owner and its captured GEMM shapes; buffers never borrow d_temporary.
+  bool occupied_exchange{};
+  std::vector<std::int32_t> factor_alpha_ranks, factor_beta_ranks;
+  std::size_t alpha_factor_rank{}, beta_factor_rank{};
+  double* d_alpha_factor{};
+  double* d_beta_factor{};
+  std::uint32_t* d_alpha_factor_generation{};
+  std::uint32_t* d_beta_factor_generation{};
+  int* d_factor_error{};
+
   // Shared RHF state.
   double* d_hcore{};
   double* d_orthogonalizer{};

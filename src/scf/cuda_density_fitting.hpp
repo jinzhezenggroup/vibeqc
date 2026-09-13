@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "core/types.hpp"
+#include "scf/density_factor.hpp"
 #include "scf/fock_build.hpp"
 #include "vibeqc/vibeqc.h"
 
@@ -18,6 +19,30 @@ struct CudaDensityFittingIntegralSource;
 struct CudaDensityFittingMetricDiagnostic;
 struct DensityFittingDensityResponse;
 struct DfGradientResources;
+
+/** Bind a native orbital snapshot to this immutable physical plan and item.
+ * Recreating the plan changes its identity even if dimensions match. The SCF
+ * owner supplies nonzero orbital/density generations; zero or invalid item
+ * inputs produce an ineligible identity. This does not manufacture factors.
+ */
+DensityFactorIdentity cuda_density_fitting_factor_identity(
+    const CudaDensityFittingJkPlan* plan, std::size_t system, std::uint64_t orbital_generation,
+    std::uint64_t density_generation) noexcept;
+
+struct CudaOccupiedDensityInput {
+  const OccupiedDensityFactor* factor{};
+  DensityFactorIdentity expected{};
+};
+
+/** Fixed-density K with exact witness/provenance validation per spin and item.
+ * Empty/missing/stale inputs execute dense K. `selected` reports actual use;
+ * this internal entry point never changes J or invents orbitals from D.
+ * Factors borrow immutable host snapshots for the duration of this call.
+ */
+vibeqc_status execute_cuda_density_fitting_occupied_exchange(
+    CudaDensityFittingJkPlan* plan, const std::vector<double>& density, DensityFactorSpin spin,
+    std::span<const CudaOccupiedDensityInput> factors, std::vector<double>& exchange,
+    std::vector<std::uint8_t>& selected, std::string& detail);
 
 /** Integral-source placement, distinct from metric rank and J/K plan storage. */
 struct CudaDensityFittingSourceDiagnostic {
@@ -115,6 +140,12 @@ vibeqc_status generate_cuda_density_fitting_metric_derivative_tile(
 
 /** Return the fixed batch cardinality owned by a prepared plan. */
 std::size_t cuda_density_fitting_jk_plan_batch_size(const CudaDensityFittingJkPlan* plan) noexcept;
+
+/** Whether a cached plan reserved storage for the current SCF exchange policy.
+ * High-level callers rebuild on mismatch; low-level SCF calls cannot enable
+ * occupied factors on a plan created with only the dense reservation.
+ */
+bool cuda_density_fitting_scf_policy_matches(const CudaDensityFittingJkPlan* plan) noexcept;
 /** Verify a borrowed item's dimensions and the value-side metric cutoff before
  * binding an independent Fock/response view. */
 bool cuda_density_fitting_jk_plan_matches(const CudaDensityFittingJkPlan* plan, std::size_t item,
