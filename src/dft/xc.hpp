@@ -28,10 +28,13 @@ inline constexpr const char* kPbeTailPolicy = "pbe-tail-v1";
  * LDA_XC_PW positive-density expression outside that domain. The fallback has
  * zero sigma derivative and reaches the exact zero-density limit. */
 inline constexpr const char* kPbeProductionTailPolicy = "pbe-tail-v2-lda-fallback";
-/** Polarized counterpart: exact audited PBE in interior-v1 and the stable
- * polarized LDA_XC_PW
- * limit outside that finite domain. */
-inline constexpr const char* kPbeSpinProductionTailPolicy = "pbe-spin-tail-v2-lda-fallback";
+/** Polarized counterpart: exact audited PBE in interior-v1, an exact
+ * active-spin PBE
+ * value/derivative with a bounded inactive-spin LDA potential
+ * at complete polarization, and
+ * stable polarized LDA_XC_PW elsewhere. */
+inline constexpr const char* kPbeSpinProductionTailPolicy =
+    "pbe-spin-tail-v3-active-pbe-bounded-inactive";
 
 struct XcIntegral {
   double energy{};

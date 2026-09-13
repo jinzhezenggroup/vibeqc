@@ -163,12 +163,15 @@ spin interpolation through an algebraically factored `E=x^8 H(x,z)` form, so
 vacuum, complete spin polarization and the smallest positive FP64 densities
 retain finite energy and both spin derivatives without clipping. Polarized PBE
 uses the audited Libxc 7.0.0 generated expression for the interior feature
-domain and the versioned `pbe-spin-tail-v2-lda-fallback` policy outside it. The
-fallback is the stable polarized LDA value with zero sigma derivatives; it is
-an explicit production-tail contract rather than silent density or gradient
-clipping. Native finite-difference tests cover both spin potentials, equal-spin
-reduction to RKS, the complete-polarization limit and the Gram bound for
-`sigma_ab`.
+domain and the versioned `pbe-spin-tail-v3-active-pbe-bounded-inactive` policy.
+At complete polarization it retains the exact PBE energy and active-spin
+density/sigma derivatives while assigning the finite polarized-LDA derivative
+to the unoccupied spin channel; the latter is an explicit bounded boundary
+extension because the GGA inactive-spin derivative is singular. Other exterior
+points use the stable polarized LDA value with zero sigma derivatives. No path
+silently clips density or gradients. Native finite-difference tests cover both
+interior spin potentials, equal-spin reduction to RKS, the complete-polarized
+active-spin response and the Gram bound for `sigma_ab`.
 
 Current He/H2 endpoint numbers are also covered by an independent PySCF/Libxc
 SCF consumer using the identical materialized `GridSpec v1` points and weights.

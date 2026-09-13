@@ -148,6 +148,8 @@ struct PolarizedPbeValue {
   std::array<double, 5> feature_derivative{};
 };
 
+PolarizedPbeValue pbe_fully_polarized(double rho, double sigma, std::size_t active_spin);
+
 PolarizedPbeValue pbe_polarized_with_tail(double rho_a, double rho_b, double sigma_aa,
                                           double sigma_ab, double sigma_bb) {
   if (!std::isfinite(rho_a) || !std::isfinite(rho_b) || !std::isfinite(sigma_aa) ||
@@ -168,6 +170,21 @@ PolarizedPbeValue pbe_polarized_with_tail(double rho_a, double rho_b, double sig
     if (sigma_aa != 0.0 || sigma_ab != 0.0 || sigma_bb != 0.0)
       throw std::domain_error("PBE spin vacuum requires zero gradients");
     return {};
+  }
+  if ((rho_b == 0.0 && sigma_ab == 0.0 && sigma_bb == 0.0) ||
+      (rho_a == 0.0 && sigma_aa == 0.0 && sigma_ab == 0.0)) {
+    const std::size_t active_spin = rho_b == 0.0 ? 0 : 1;
+    const double active_density = active_spin == 0 ? rho_a : rho_b;
+    const double active_sigma = active_spin == 0 ? sigma_aa : sigma_bb;
+    const bool outside_density = active_density < 1.0e-12 || active_density > 1.0e12;
+    const double reduced_gradient =
+        outside_density ? std::numeric_limits<double>::infinity()
+                        : std::sqrt(active_sigma) / std::pow(active_density, 4.0 / 3.0);
+    if (!outside_density && std::isfinite(reduced_gradient) && reduced_gradient <= 1.0e6)
+      return pbe_fully_polarized(active_density, active_sigma, active_spin);
+    const auto lda = lda_xc_pw_polarized_with_tail(rho_a, rho_b);
+    return {lda.energy_density,
+            {lda.density_derivative[0], lda.density_derivative[1], 0.0, 0.0, 0.0}};
   }
 
   bool outside =
@@ -237,6 +254,52 @@ Dual pow(const Dual& input, double exponent) {
   const double value = std::pow(input.value, exponent);
   const double scale = exponent * std::pow(input.value, exponent - 1.0);
   return {value, scale * input.rho, scale * input.sigma};
+}
+
+PolarizedPbeValue pbe_fully_polarized(double rho, double sigma, std::size_t active_spin) {
+  if (rho <= 0.0 || sigma < 0.0 || active_spin > 1)
+    throw std::domain_error("PBE complete-polarization boundary requires one active spin");
+  const Dual r{rho, 1.0, 0.0};
+  const Dual s{sigma, 0.0, 1.0};
+  constexpr double pi = 3.141592653589793238462643383279502884;
+  const double c = std::pow(3.0 / (4.0 * pi), 1.0 / 3.0);
+  const double cx = (3.0 / 8.0) * std::pow(3.0 / pi, 1.0 / 3.0) * std::pow(4.0, 2.0 / 3.0);
+  const double kappa = 0.8040;
+  const double beta = 0.06672455060314922;
+  const double mu = beta * pi * pi / 3.0;
+  const double gamma = (1.0 - std::log(2.0)) / (pi * pi);
+  const double x2s2 = 1.0 / (4.0 * std::pow(6.0 * pi * pi, 2.0 / 3.0));
+
+  const Dual reduced_exchange = x2s2 * s * pow(r, -8.0 / 3.0);
+  const Dual enhancement = 1.0 + kappa * (1.0 - kappa / (kappa + mu * reduced_exchange));
+  const Dual exchange = -cx * pow(r, 4.0 / 3.0) * enhancement;
+
+  const Dual rs = c * pow(r, -1.0 / 3.0);
+  constexpr double a = 0.01554535;
+  constexpr double alpha = 0.20548;
+  constexpr double b1 = 14.1189;
+  constexpr double b2 = 6.1977;
+  constexpr double b3 = 3.3662;
+  constexpr double b4 = 0.62517;
+  const Dual auxiliary = b1 * pow(rs, 0.5) + b2 * rs + b3 * pow(rs, 1.5) + b4 * pow(rs, 2.0);
+  const Dual epsilon = -2.0 * a * (1.0 + alpha * rs) * log1p(1.0 / (2.0 * a * auxiliary));
+  const Dual t2 = s * pow(r, -8.0 / 3.0) / (16.0 * rs);
+  const Dual a_pbe = beta / (gamma * expm1(-2.0 * epsilon / gamma));
+  const Dual f1 = t2 + a_pbe * t2 * t2;
+  const Dual correlation =
+      r * (epsilon + 0.5 * gamma * log1p(beta * f1 / (gamma * (1.0 + a_pbe * f1))));
+  const Dual total = exchange + correlation;
+  if (!std::isfinite(total.value) || !std::isfinite(total.rho) || !std::isfinite(total.sigma))
+    throw std::runtime_error("nonfinite PBE complete-polarization boundary value");
+
+  const auto lda = active_spin == 0 ? lda_xc_pw_polarized_with_tail(rho, 0.0)
+                                    : lda_xc_pw_polarized_with_tail(0.0, rho);
+  PolarizedPbeValue result;
+  result.energy_density = total.value;
+  result.feature_derivative[active_spin] = total.rho;
+  result.feature_derivative[1 - active_spin] = lda.density_derivative[1 - active_spin];
+  result.feature_derivative[active_spin == 0 ? 2 : 4] = total.sigma;
+  return result;
 }
 
 std::size_t matrix_size(std::size_t n) {

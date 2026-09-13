@@ -218,6 +218,22 @@ int main() {
                               [](double value) { return std::isfinite(value); }),
               "polarized XC tail is nonfinite at complete spin polarization");
     }
+    for (double step : {1.0e-5, 3.0e-6}) {
+      auto plus = reference_density, minus = reference_density;
+      for (std::size_t i = 0; i < direction.size(); ++i) {
+        plus[i] += step * direction[i];
+        minus[i] -= step * direction[i];
+      }
+      const double finite_difference =
+          (vibeqc::dft::integrate_pbe_uks_with_tail(basis, default_grid, plus, zero, 113).energy -
+           vibeqc::dft::integrate_pbe_uks_with_tail(basis, default_grid, minus, zero, 113).energy) /
+          (2.0 * step);
+      double trace = 0.0;
+      for (std::size_t i = 0; i < direction.size(); ++i)
+        trace += fully_polarized_pbe.potential[0][i] * direction[i];
+      require(std::abs(finite_difference - trace) < 2.0e-6,
+              "fully polarized PBE active-spin potential violates delta E = Tr(Va delta Da)");
+    }
     for (double step : {1.0e-4, 3.0e-5}) {
       std::vector<double> plus = density, minus = density;
       for (std::size_t i = 0; i < density.size(); ++i) {
