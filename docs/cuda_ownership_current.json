@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 10330,
+  "all_handwritten_scientific_lines": 10365,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "files": [
     {
@@ -20,30 +20,30 @@
       "subsystem": "runtime"
     },
     {
-      "bytes": 20041,
+      "bytes": 28826,
       "code_lines": {
         "fallback": 0,
         "oracle": 0,
         "performance_exception": 0,
-        "runtime": 332,
-        "scientific": 54
+        "runtime": 447,
+        "scientific": 89
       },
       "path": "src/dft/cuda_grid.cu",
-      "physical_lines": 415,
+      "physical_lines": 578,
       "reason": "Native plan/arena ownership around the bounded AO/feature kernels.",
       "regions": [
         {
-          "code_lines": 54,
-          "first_line": 50,
-          "last_line": 105,
-          "reason": "Normalized primitive traversal and AO/feature layout adapters remain counted conservatively as scientific glue. Axis derivative polynomials and per-AO ingredient arithmetic are compiler-owned.",
+          "code_lines": 89,
+          "first_line": 54,
+          "last_line": 148,
+          "reason": "Normalized primitive traversal and D/C feature layout/reduction adapters remain counted conservatively as scientific glue. Axis derivative polynomials and the bilinear ingredient/sigma arithmetic shared by both routes are compiler-owned.",
           "role": "scientific",
           "start": "__global__ void ao_kernel",
           "stop": "// Gather every local matrix element"
         }
       ],
       "role": "runtime",
-      "sha256": "3c895ae608f93e41c76d7e3f8f0ce30cbeae1182459b474647a3a374b1c9c210",
+      "sha256": "c33943bbfef00fdceac88c5338ef2333c3d00fb8c5022638ea0d40904763f31f",
       "subsystem": "ao_grid"
     },
     {
@@ -3152,7 +3152,7 @@
         "generated/generated_grid_policy.cu"
       ],
       "owner": "python/vibeqc_compiler/dft/ao_cuda.py",
-      "scope": "Shared CMake/JIT through-f/order-three AO polynomials and spin-density ingredient arithmetic; generated policy included before the same dense/local native runtime."
+      "scope": "Shared CMake/JIT through-f/order-three AO polynomials and requested spin-density bilinears/sigma, used by both D and bounded occupied-factor routes; generated policy included before the same dense/local native runtime."
     },
     {
       "files": [],
@@ -3171,19 +3171,20 @@
     "fallback": 0,
     "oracle": 0,
     "performance_exception": 156,
-    "runtime": 8724,
-    "scientific": 10174
+    "runtime": 8839,
+    "scientific": 10209
   },
   "migration_ledger": {
     "ao_grid": {
       "current_default": "Dense bounded schedules; explicit local-dense candidate with shared compiler-owned AO/feature policy",
       "evidence": [
         "docs/dft_grid.md",
+        "docs/density_sources.md",
         "docs/spatial_tasks.md",
         "benchmarks/results/spatial-tasks/cpu/summary.json",
         "benchmarks/results/spatial-tasks/cuda/summary.json"
       ],
-      "generated_capability": "Through-f/order-three AO axis derivatives and spin ingredient arithmetic, shared by dense and selected-column schedules",
+      "generated_capability": "Through-f/order-three AO axis derivatives and pruned spin ingredient bilinears/sigma, shared by D and bounded occupied-factor routes over dense/selected-column schedules",
       "missing_capability": "Whole AO traversal remains counted as scientific glue; broader execution promotion remains evidence-based",
       "owner": "ao_grid",
       "retirement_condition": "Do not duplicate the removed native axis and feature formulas; retain independent CPU/Libcint numerical fixtures and dense scheduling fallback",
@@ -3323,8 +3324,8 @@
       "fallback": 0,
       "oracle": 0,
       "performance_exception": 0,
-      "runtime": 347,
-      "scientific": 54
+      "runtime": 462,
+      "scientific": 89
     },
     "df_derivatives": {
       "fallback": 0,
