@@ -108,11 +108,11 @@ def compile_cuda(compiler, cache):
 
 
 class CudaGrid:
-    """Own basis/D/tiles and execute AO jets, cuBLAS contractions and invariants.
+    """Own basis/D/B/tiles and execute AO jets, cuBLAS contractions and invariants.
 
     Grid generation and partition weights remain on the CPU. Points upload
     explicitly, features download explicitly, and AO jets download only when
-    requested for validation. No full molecular AO grid is retained. Calls on
+    requested by validation or a CPU consumer. No molecular AO grid is retained. Calls on
     one plan are serialized; different plans own independent arenas/streams.
     """
 

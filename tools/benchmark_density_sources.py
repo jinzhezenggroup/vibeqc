@@ -458,6 +458,7 @@ def main():
         "source": {"revision": report["revision"], "dirty": False},
         "reproduction": report["reproduction"],
         "files": [{"path": "evidence.json", "role": "evidence"}],
+        "archives": [],
         "decision": {
             "status": "accepted",
             "scope": "numerical",

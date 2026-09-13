@@ -18,8 +18,9 @@ from .grid import checked_int
 class TilePlan:
     """Capacity bound, including one detached output set and staging scratch.
 
-    All AOs are active in the unscreened route. Only the point dimension tiles;
-    even the smallest tile must fit resident D and basis metadata. Object
+    All AOs are active in the unscreened route. Points and optional orbital
+    columns tile; even the smallest tile must fit resident D, weighted factors
+    and basis metadata. Object
     headers, allocator rounding, CPU BLAS internals and CUDA context/modules/
     stacks are outside the numeric-buffer budget. Retained caller outputs and
     simultaneously prepared batch items need separately summed capacities.
