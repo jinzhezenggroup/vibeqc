@@ -93,6 +93,23 @@ int main() {
       require(error.status() == VIBEQC_STATUS_NOT_IMPLEMENTED,
               "C++ DF diagnostic getter returned the wrong status");
     }
+    const auto hf = vibeqc::Calculation(context, h2, method).execute();
+    require(!hf.physical_residual_rms && hf.density_rms == hf.reference_residual,
+            "C++ HF invented a physical residual or changed its legacy alias");
+    auto open_shell_descriptor = h2_descriptor;
+    open_shell_descriptor.charge = -1;
+    open_shell_descriptor.multiplicity = 2;
+    vibeqc::System open_shell(context, open_shell_descriptor);
+    for (const auto ks_method : {VIBEQC_METHOD_LDA_UKS, VIBEQC_METHOD_PBE_UKS}) {
+      method.method = ks_method;
+      const auto ks = vibeqc::Calculation(context, open_shell, method).execute();
+      require(ks.physical_residual_rms && std::isfinite(*ks.physical_residual_rms) &&
+                  *ks.physical_residual_rms < method.density_tolerance &&
+                  ks.density_rms < method.density_tolerance &&
+                  ks.density_rms == ks.reference_residual &&
+                  ks.density_rms != *ks.physical_residual_rms,
+              "C++ UKS conflated density update and physical residual");
+    }
     std::cout << "C++ ragged batch API: PASS\n";
     return EXIT_SUCCESS;
   } catch (const std::exception& error) {

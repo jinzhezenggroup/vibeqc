@@ -87,6 +87,10 @@ struct CalculationResult {
   double reference_residual{};
   vibeqc_backend executed_backend{};
   std::optional<vibeqc_correlation_diagnostic> correlation;
+  /** Density-update convergence measure; reference_residual retains its legacy alias. */
+  double density_rms{};
+  /** Separate physical commutator, absent when the method does not report it. */
+  std::optional<double> physical_residual_rms;
 };
 
 /** Native single-system plan; context must outlive it. Unsupported properties
@@ -130,7 +134,14 @@ class Calculation {
     result.energy = output.energy;
     result.iterations = output.iterations;
     result.reference_residual = output.density_rms;
+    result.density_rms = output.density_rms;
     result.executed_backend = output.executed_backend;
+    vibeqc_scf_diagnostic scf_diagnostic{sizeof(vibeqc_scf_diagnostic), VIBEQC_ABI_VERSION, 0, 0};
+    const auto scf_status = vibeqc_calculation_get_scf_diagnostic(handle_, &scf_diagnostic);
+    if (scf_status != VIBEQC_STATUS_NOT_IMPLEMENTED) {
+      check(scf_status);
+      result.physical_residual_rms = scf_diagnostic.physical_residual_rms;
+    }
     vibeqc_correlation_diagnostic diagnostic{};
     diagnostic.struct_size = sizeof(diagnostic);
     diagnostic.abi_version = VIBEQC_ABI_VERSION;

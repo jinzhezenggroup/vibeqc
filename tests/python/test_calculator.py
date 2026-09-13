@@ -210,6 +210,9 @@ def test_uks_public_contract_is_cpu_energy_only(method):
     assert result.converged
     assert result.forces is None
     assert result.executed_backend == "cpu_reference"
+    assert np.isfinite(result.density_rms)
+    assert np.isfinite(result.physical_residual_rms)
+    assert result.density_rms != result.physical_residual_rms
     with pytest.raises(ValueError, match="does not support properties.*forces"):
         calculator.singlepoint(
             atoms,
