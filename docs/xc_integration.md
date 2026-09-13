@@ -143,9 +143,12 @@ the joined alpha/beta physical commutator residual to one DIIS history without
 mixing the spin densities. Both paths use the energy equation above.
 Convergence requires energy change, density RMS and the physical commutator
 residual to pass the requested thresholds; a depleted iteration budget returns
-`VIBEQC_STATUS_NOT_CONVERGED` with diagnostics; the method-neutral ABI residual
-slot reports the physical commutator residual, while the solver retains density
-change separately. Prepared state owns one immutable system, basis, grid and
+`VIBEQC_STATUS_NOT_CONVERGED` with diagnostics. The existing ABI `density_rms`
+field retains the density-update measure. The additive
+`vibeqc_calculation_get_scf_diagnostic` query exposes both it and the physical
+commutator RMS, including after a nonconverged solve; Python and C++ name the
+separate physical value `physical_residual_rms`. Prepared state owns one
+immutable system, basis, grid and
 functional and currently retains no cross-execution DFT warm density, so it
 cannot silently reuse state after a geometry/model/spin change. The adapter
 rejects incompatible spin populations, forces, density fitting, auxiliary
