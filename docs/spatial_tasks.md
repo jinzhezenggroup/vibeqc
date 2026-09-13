@@ -104,3 +104,12 @@ The [accepted numerical evidence](../benchmarks/results/spatial-tasks/README.md)
 retains CPU/CUDA samples, resource observations, construction overhead and the
 historical dense comparison. It validates the explicit candidate without
 promoting it or claiming a complete GPU XC endpoint.
+
+The [current-density source adapter](density_sources.md#prepared-spatial-integration-235-c1--299)
+adds validated D/C replay to CUDA diagnostic tiles and borrowed device tasks.
+`PreparedXCContractions(..., spatial=cuda_spatial)` consumes those same fixed
+maps for energy/potential with GPU collocation and explicit native CPU XC and
+matrix scatter. It composes the existing spatial/CUDA capacities once with
+XC workspace and preserves the source stamp, full orbital columns and
+transactional replacement requirements. Native SCF and force integration remain
+separate milestones.

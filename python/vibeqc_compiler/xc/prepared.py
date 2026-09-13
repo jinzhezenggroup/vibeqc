@@ -42,7 +42,8 @@ class PreparedXCContractions:
     Output matrices retain functional-spin layout; the existing method adapter
     owns averaging for total-density input. Geometry returns independent point,
     AO-center and weight partials. A spatial adapter keeps its fixed mask and
-    must have a CPU jet domain covering this request.
+    must cover the requested jet domain. CUDA spatial collocation supports
+    fixed-density E/V with explicit per-tile transfers to native CPU XC.
     """
 
     def __init__(
@@ -69,10 +70,27 @@ class PreparedXCContractions:
         ) != (basis.atoms, basis.charge, basis.multiplicity):
             raise ValueError("stale molecular grid for XC contraction")
         checked_int(tile_points, "XC contraction tile points")
+        if spatial is not None:
+            if not isinstance(spatial, PreparedSpatialGrid):
+                raise TypeError("expected PreparedSpatialGrid")
+            spatial._check()
+            if density_grid is not None:
+                raise ValueError("spatial owns its collocation; omit density_grid")
+            if (
+                spatial.basis.identity != basis.identity
+                or spatial.source_grid.identity != grid.identity
+            ):
+                raise ValueError("stale spatial XC basis/quadrature")
+            if program.contract.ao_order > spatial.tile_plan.order:
+                raise ValueError(
+                    "spatial certificate does not cover the requested AO jet domain"
+                )
+            tile_points = spatial.tile_plan.tile_points
+            density_grid = spatial._cuda
         if density_grid is not None:
             if not isinstance(density_grid, CudaGrid):
                 raise TypeError("density_grid must be a CudaGrid owner")
-            if spatial is not None or density_grid.plan.active_ao_capacity is not None:
+            if spatial is None and density_grid.plan.active_ao_capacity is not None:
                 raise ValueError(
                     "CUDA XC density adapter currently requires dense AO tiles"
                 )
@@ -93,19 +111,6 @@ class PreparedXCContractions:
                     "CUDA density basis or requested ingredients do not match XC"
                 )
             tile_points = density_grid.plan.tile_points
-        if spatial is not None:
-            if not isinstance(spatial, PreparedSpatialGrid) or spatial.backend != "cpu":
-                raise TypeError("native CPU XC requires a CPU spatial adapter")
-            if (
-                spatial.basis.identity != basis.identity
-                or spatial.source_grid.identity != grid.identity
-            ):
-                raise ValueError("stale spatial XC basis/quadrature")
-            if program.contract.ao_order > spatial.tile_plan.order:
-                raise ValueError(
-                    "spatial certificate does not cover the requested AO jet domain"
-                )
-            tile_points = spatial.tile_plan.tile_points
         npoint = grid.npoint if isinstance(grid, MolecularGrid) else len(grid.points)
         grid_bytes = (
             grid.numeric_bytes
@@ -206,7 +211,8 @@ class PreparedXCContractions:
             ),
         )
         requests = () if spatial is None else spatial.resource_plan.requests
-        if density_grid is not None:
+        if density_grid is not None and spatial is None:
+            # The spatial plan already charges its complete CUDA owner.
             requests += density_grid.resource_plan.requests
         self.resource_plan = plan_resources(
             (*requests, request), self.budget
@@ -242,6 +248,8 @@ class PreparedXCContractions:
             raise ValueError("stale XC contraction or spatial mask identity")
         if self.spatial is not None:
             self.spatial._check()
+            if self.spatial._cuda is not self.density_grid:
+                raise ValueError("stale spatial CUDA owner; prepare a new XC consumer")
         if self._density_contract() != self._density_signature:
             raise ValueError("stale CUDA density collocation contract")
         if self.density_grid is not None:
@@ -250,17 +258,42 @@ class PreparedXCContractions:
     def _collocation(self, density):
         order = self.program.contract.ao_order
         if self.density_grid is not None:
-            for tile in _tiles(self.grid, self.tile_points):
+            if self.spatial is None:
+                tiles = (
+                    (
+                        np.arange(tile.begin, tile.begin + len(tile.weights)),
+                        None,
+                        tile.points,
+                        tile.weights,
+                    )
+                    for tile in _tiles(self.grid, self.tile_points)
+                )
+            else:
+                # Consume the same immutable task descriptors as diagnostic
+                # and device-task execution, retaining every local cross term.
+                tiles = (
+                    (
+                        ids,
+                        task.ao_ids,
+                        self.spatial.grid.points[ids],
+                        self.spatial.grid.weights[ids],
+                    )
+                    for task, ids in self.spatial._tiles()
+                )
+            for ids, active, points, weights in tiles:
                 # Transfers are explicit: AO/features run on GPU, generated
                 # XC point code and AO potential assembly remain on CPU.
                 values = self.density_grid.evaluate(
-                    tile.points, stamp=self._execution_stamp, download_jets=True
+                    points,
+                    ao_ids=active,
+                    stamp=self._execution_stamp,
+                    download_jets=True,
                 )
                 jets = values.pop("ao_jets")
                 yield (
-                    np.arange(tile.begin, tile.begin + len(tile.weights)),
-                    None,
-                    tile.weights,
+                    ids,
+                    active,
+                    weights,
                     jets,
                     values,
                 )
@@ -347,7 +380,10 @@ class PreparedXCContractions:
                 )
             if self.density_grid is not None:
                 before_metrics = self.density_grid.metrics()
-                self.density_grid.set_source(density, stamp=stamp, route=route)
+                if self.spatial is None:
+                    self.density_grid.set_source(density, stamp=stamp, route=route)
+                else:
+                    self.spatial._start_execution(density, stamp=stamp, route=route)
                 self._execution_stamp = stamp
             nspin = 2 if self.program.spec.spin == "polarized" else 1
             result = {"energy": 0.0, "electrons": np.zeros(2)}
@@ -514,6 +550,19 @@ class PreparedXCContractions:
                     },
                     planned_device_peak_bytes=self.resource_plan.peak_bytes["device"],
                 )
+                if self.spatial is not None:
+                    self.statistics["spatial"] = {
+                        "generation_id": self.spatial.tasks.generation_id,
+                        "mask_identity": self._mask,
+                        "tasks": len(self.spatial.tasks.tasks),
+                        "grid_points": self.npoint,
+                        "active_ao_counts": tuple(
+                            len(task.ao_ids) for task in self.spatial.tasks.tasks
+                        ),
+                        "orbital_tile": cuda.plan.orbital_tile,
+                        "ingredients": cuda.ingredients,
+                        "potential_scatter_backend": "native_cpu",
+                    }
             self.statistics["seconds"] = perf_counter() - started
             return result
 

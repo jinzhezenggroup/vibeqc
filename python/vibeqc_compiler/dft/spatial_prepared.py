@@ -28,7 +28,8 @@ from vibeqc_compiler.common.resources import (
 
 from .ao import NativeAO, jet_indices
 from .cuda import CudaGrid
-from .features import density_features, spin_densities
+from .density_source import DensitySource
+from .features import density_features, requested_ingredients, spin_densities
 from .grid import ExplicitGrid, MolecularGrid, checked_int
 from .plan import plan_tiles
 from .spatial import (
@@ -142,6 +143,10 @@ class PreparedSpatialGrid:
         resource_budget=None,
         artifact=None,
         device_id=0,
+        orbital_capacity=None,
+        orbital_tile=32,
+        ingredients=None,
+        basis_generation=0,
         _previous_plan=None,
     ):
         self._lock = threading.RLock()
@@ -155,6 +160,8 @@ class PreparedSpatialGrid:
         checked_int(device_id, "visible device ordinal", low=0)
         if backend not in ("cpu", "cuda"):
             raise ValueError("unsupported spatial backend")
+        self.ingredients = requested_ingredients(ingredients)
+        self.basis_generation = checked_int(basis_generation, "basis generation", low=0)
         policy = SpatialPolicy() if policy is None else policy
         if not isinstance(policy, SpatialPolicy):
             raise TypeError("expected SpatialPolicy")
@@ -194,6 +201,8 @@ class PreparedSpatialGrid:
             tile_points=tile_points,
             budget_bytes=MAX_BYTES,
             active_ao_capacity=max(1, active),
+            orbital_capacity=orbital_capacity,
+            orbital_tile=orbital_tile,
         )
         estimates = [
             # Basis/grid/maps already belong to metadata. The legacy tile
@@ -250,6 +259,22 @@ class PreparedSpatialGrid:
                 "ao": basis.nao,
                 "active": active,
                 "jets": len(policy.derivatives),
+                # Preserve the established full-feature D-only evidence
+                # identity; new source/output contracts extend that topology.
+                **(
+                    {
+                        "ingredients": self.ingredients,
+                        "orbitals": self.tile_plan.orbital_capacity,
+                        "orbital_tile": self.tile_plan.orbital_tile,
+                        "basis_generation": self.basis_generation,
+                    }
+                    if (
+                        self.tile_plan.orbital_capacity is not None
+                        or self.ingredients != requested_ingredients(None)
+                        or self.basis_generation != 0
+                    )
+                    else {}
+                ),
             },
             backend,
         )
@@ -267,6 +292,10 @@ class PreparedSpatialGrid:
             "resource_budget": self.budget,
             "artifact": artifact,
             "device_id": device_id,
+            "orbital_capacity": self.tile_plan.orbital_capacity,
+            "orbital_tile": orbital_tile,
+            "ingredients": self.ingredients,
+            "basis_generation": self.basis_generation,
         }
         try:
             if backend == "cuda":
@@ -282,6 +311,10 @@ class PreparedSpatialGrid:
                     active_ao_capacity=max(1, active),
                     budget_bytes=MAX_BYTES,
                     device_id=device_id,
+                    orbital_capacity=self.tile_plan.orbital_capacity,
+                    orbital_tile=orbital_tile,
+                    ingredients=self.ingredients,
+                    basis_generation=self.basis_generation,
                 )
         except Exception:
             self.close()
@@ -304,14 +337,51 @@ class PreparedSpatialGrid:
             for begin in range(0, len(task.point_ids), self.tile_plan.tile_points):
                 yield task, task.point_ids[begin : begin + self.tile_plan.tile_points]
 
+    @property
+    def source_statistics(self):
+        """Detached CUDA source/packing diagnostics; CPU executes the supplied D."""
+        return {} if self._cuda is None else self._cuda.source_statistics
+
+    def _start_execution(self, density, *, stamp=None, route="auto"):
+        """Upload once and invalidate older iterators, under the spatial lock.
+
+        A failed transport also invalidates previous iterators: the native owner
+        can no longer promise its previous source. Input validation failures do
+        not relabel old orbital state as the new density.
+        """
+        self._check()
+        if isinstance(density, DensitySource):
+            if self._cuda is None:
+                raise TypeError("prepared DensitySource execution requires CUDA")
+            d = density.density
+        else:
+            if stamp is not None or route != "auto":
+                raise ValueError("source stamp/route requires DensitySource")
+            d = spin_densities(density, self.basis.nao)
+        self._execution += 1
+        if self._cuda is not None:
+            if isinstance(density, DensitySource):
+                self._cuda.set_source(density, stamp=stamp, route=route)
+            else:
+                self._cuda.set_density(d)
+        return d, self._execution
+
     def iter_features(
-        self, density, *, include_jets=False, ingredients=None, order=None
+        self,
+        density,
+        *,
+        include_jets=False,
+        ingredients=None,
+        order=None,
+        stamp=None,
+        route="auto",
     ):
         """Yield detached tiles; a new execution invalidates old iterators.
 
         CPU consumers may request fewer ingredients/jets than the screening
-        certificate covers, preserving the same fixed mask while avoiding
-        unused reductions. The current CUDA diagnostic ABI remains full.
+        certificate covers. CUDA arithmetic follows the owner's prepared
+        ingredients/order; a consumer may publish a subset without changing
+        the fixed mask. DensitySource requires CUDA and its current stamp.
         """
         with self._lock:
             self._check()
@@ -319,17 +389,14 @@ class PreparedSpatialGrid:
                 raise ValueError("include_jets must be boolean")
             order = self.tile_plan.order if order is None else order
             checked_int(order, "consumer AO order", low=0, high=self.tile_plan.order)
-            if self._cuda and (
-                ingredients is not None or order != self.tile_plan.order
-            ):
-                raise ValueError(
-                    "pruned spatial ingredients currently require CPU execution"
-                )
-            d = spin_densities(density, self.basis.nao)
-            self._execution += 1
-            execution = self._execution
-            if self._cuda:
-                self._cuda.set_density(d)
+            ingredients = (
+                self.ingredients
+                if ingredients is None
+                else requested_ingredients(ingredients)
+            )
+            if self._cuda and not set(ingredients).issubset(self._cuda.ingredients):
+                raise ValueError("consumer ingredients exceed prepared CUDA outputs")
+            d, execution = self._start_execution(density, stamp=stamp, route=route)
         for task, ids in self._tiles():
             with self._lock:
                 self._check()
@@ -338,9 +405,15 @@ class PreparedSpatialGrid:
                 points = immutable(self.grid.points[ids])
                 if self._cuda:
                     values = self._cuda.evaluate(
-                        points, ao_ids=task.ao_ids, download_jets=include_jets
+                        points,
+                        ao_ids=task.ao_ids,
+                        download_jets=include_jets,
+                        stamp=stamp,
                     )
                     jets = values.pop("ao_jets", None)
+                    if jets is not None:
+                        jets = jets[: len(jet_indices(order))]
+                    values = {key: values[key] for key in ingredients}
                 else:
                     started = time.perf_counter()
                     jets = self.basis.evaluate(
@@ -368,24 +441,29 @@ class PreparedSpatialGrid:
             yield result
 
     @contextmanager
-    def device_tasks(self, density):
+    def device_tasks(self, density, *, stamp=None, route="auto"):
         """Lend a serial iterator of native task leases without feature/jet D2H.
 
         Each yielded tuple is (SpatialTask, point_ids, DeviceGridTask). Finish
         its consumer and scatter before requesting the next task. The outer
         context closes even a partially consumed iterator deterministically.
+        DensitySource uploads both current D and compatible factors once; the
+        borrowed ABI requires all four prepared feature outputs.
         """
         with self._lock:
             self._check()
             if self._cuda is None:
                 raise ValueError("device task consumption requires CUDA")
-            self._cuda.set_density(spin_densities(density, self.basis.nao))
-            self._execution += 1
+            if set(self._cuda.ingredients) != {"rho", "gradient", "sigma", "tau"}:
+                raise ValueError("device task ABI v1 requires the full feature layout")
+            self._start_execution(density, stamp=stamp, route=route)
             self._leased = True
 
             def iterator():
                 for task, ids in self._tiles():
-                    with self._cuda.task(self.grid.points[ids], task.ao_ids) as lease:
+                    with self._cuda.task(
+                        self.grid.points[ids], task.ao_ids, stamp=stamp
+                    ) as lease:
                         yield task, ids, lease
 
             result = iterator()

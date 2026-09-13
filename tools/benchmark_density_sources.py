@@ -1,4 +1,4 @@
-"""Measure #235 B GPU D/C parity and complete available fixed-density XC cost.
+"""Measure #235 GPU D/C parity and complete available fixed-density XC cost.
 
 Use a clean checkout, fresh cache/output and a finite Slurm GPU allocation.
 Saved independent fixtures are hash checked; PySCF is not imported. Test-only
@@ -17,7 +17,9 @@ import platform
 import shutil
 import subprocess
 import sys
+from contextlib import ExitStack, contextmanager
 from dataclasses import asdict
+from itertools import product
 from pathlib import Path
 from time import perf_counter
 
@@ -38,9 +40,12 @@ from vibeqc_compiler.common.resources import ResourceBudget
 from vibeqc_compiler.dft import DensitySource, NativeAO
 from vibeqc_compiler.dft.cuda import CudaGrid, compile_cuda
 from vibeqc_compiler.dft.fixtures import NAMES, basis_arguments, load_fixture
+from vibeqc_compiler.dft.spatial import SpatialPolicy
+from vibeqc_compiler.dft.spatial_prepared import PreparedSpatialGrid
 from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.xc import functional
+from vibeqc_compiler.xc.contractions import ContractionProgram
 from vibeqc_compiler.xc.integration_fixtures import CASES, load_integration_fixture
 from vibeqc_compiler.xc.native import NativeContractionProgram
 from vibeqc_compiler.xc.prepared import PreparedXCContractions
@@ -170,7 +175,71 @@ def feature_cases(artifact, errors):
     return rows
 
 
-def endpoint_cases(artifact, programs, samples, errors, timings):
+@contextmanager
+def endpoint_owner(basis, grid, artifact, native, ingredients, budget, mode):
+    """Compose either existing dense or fixed-mask spatial CUDA ownership."""
+    with ExitStack() as stack:
+        settings = {
+            "orbital_capacity": (basis.nao,) * 2,
+            "orbital_tile": 3,
+            "ingredients": ingredients,
+            "resource_budget": budget,
+            "tile_points": 7,
+        }
+        spatial = None
+        if mode == "dense":
+            cuda = stack.enter_context(
+                CudaGrid(basis, artifact, order=native.contract.ao_order, **settings)
+            )
+            options = {"density_grid": cuda}
+        else:
+            spatial = stack.enter_context(
+                PreparedSpatialGrid(
+                    basis,
+                    grid,
+                    backend="cuda",
+                    artifact=artifact,
+                    policy=SpatialPolicy(
+                        region_points=11,
+                        screening=mode,
+                        cutoff=0 if mode == "off" else 1e-4,
+                    ),
+                    **settings,
+                )
+            )
+            cuda, options = spatial._cuda, {"spatial": spatial}
+        endpoint = stack.enter_context(
+            PreparedXCContractions(
+                native, basis, grid, resource_budget=budget, **options
+            )
+        )
+        yield cuda, endpoint, spatial
+
+
+def masked_endpoint(basis, grid, source, spatial, spec, layout):
+    """Global-index Python oracle at exactly the prepared fixed AO mask.
+
+    This changes only omitted collocation columns, leaving global D and matrix
+    assembly independent of the candidate's local gather/scatter. Screening
+    error against the original unmasked fixture is reported separately.
+    """
+    oracle = ContractionProgram(spec)
+    energy = 0.0
+    potential = np.zeros((2 if spec.spin == "polarized" else 1, basis.nao, basis.nao))
+    for task, ids in spatial._tiles():
+        if not len(task.ao_ids):
+            continue
+        jets = basis.evaluate(grid.points[ids], oracle.contract.ao_order).copy()
+        omitted = np.ones(basis.nao, dtype=bool)
+        omitted[task.ao_ids] = False
+        jets[:, :, omitted] = 0
+        value = oracle.evaluate(jets, source.density, grid.weights[ids])
+        energy += value["energy"]
+        potential += value["potential"]
+    return energy, potential.mean(axis=0) if layout == "total" else potential
+
+
+def endpoint_cases(artifact, programs, samples, errors, timings, *, spatial=False):
     """Run five or more interleaved D/C pairs on each identical discrete model."""
     rows = []
     for case in CASES:
@@ -197,30 +266,56 @@ def endpoint_cases(artifact, programs, samples, errors, timings):
                         if name == "LDA_XC_PW"
                         else ("rho", "gradient", "sigma")
                     )
-                    for cap in BUDGETS:
+                    modes = ("off", "absolute_ao_jet") if spatial else ("dense",)
+                    for mode, cap in product(modes, BUDGETS):
                         label = f"{case}/{name}/{layout}/{spin}/{cap}"
+                        if spatial:
+                            label += "/" + mode
                         budget = ResourceBudget(host_bytes=32 << 20, device_bytes=cap)
                         started = perf_counter()
-                        with (
-                            CudaGrid(
-                                basis,
-                                artifact,
-                                order=native.contract.ao_order,
-                                tile_points=7,
-                                orbital_capacity=(basis.nao,) * 2,
-                                orbital_tile=3,
-                                ingredients=ingredients,
-                                resource_budget=budget,
-                            ) as cuda,
-                            PreparedXCContractions(
-                                native,
-                                basis,
-                                grid,
-                                density_grid=cuda,
-                                resource_budget=budget,
-                            ) as endpoint,
-                        ):
+                        with endpoint_owner(
+                            basis, grid, artifact, native, ingredients, budget, mode
+                        ) as (cuda, endpoint, spatial_owner):
                             construction_seconds = perf_counter() - started
+                            reference = (
+                                data[f"{name}_{layout}_energy"][0],
+                                data[f"{name}_{layout}_potential"],
+                            )
+                            mask_record = None
+                            if spatial_owner is not None:
+                                masked = masked_endpoint(
+                                    basis,
+                                    grid,
+                                    source,
+                                    spatial_owner,
+                                    native.spec,
+                                    layout,
+                                )
+                                if mode == "off":
+                                    for got, want in zip(
+                                        masked, reference, strict=True
+                                    ):
+                                        gate(got, want)
+                                mask_record = {
+                                    "identity": spatial_owner.tasks.identity,
+                                    "generation_id": spatial_owner.tasks.generation_id,
+                                    "policy": asdict(spatial_owner.tasks.policy),
+                                    "active_ao_counts": [
+                                        len(t.ao_ids) for t in spatial_owner.tasks.tasks
+                                    ],
+                                    "task_point_counts": [
+                                        len(t.point_ids)
+                                        for t in spatial_owner.tasks.tasks
+                                    ],
+                                    "screening_error_scope": "difference from saved unmasked fixture; not an arithmetic gate",
+                                    "screening_energy_difference": abs(
+                                        masked[0] - reference[0]
+                                    ),
+                                    "screening_potential_max_difference": float(
+                                        np.max(np.abs(masked[1] - reference[1]))
+                                    ),
+                                }
+                                reference = masked
                             # Warm both actual routes before alternating timed calls.
                             for route in ROUTES:
                                 endpoint.execute(
@@ -233,6 +328,11 @@ def endpoint_cases(artifact, programs, samples, errors, timings):
                                     "source": source.stamp.identity,
                                     "factor": source.factor_identity,
                                     "functional": native.contract.identity,
+                                    **(
+                                        {"spatial_mask": spatial_owner.tasks.identity}
+                                        if spatial_owner is not None
+                                        else {}
+                                    ),
                                 }
                             )
                             for repeat in range(samples):
@@ -253,13 +353,13 @@ def endpoint_cases(artifact, programs, samples, errors, timings):
                                         errors,
                                         label + "/" + route + "/energy",
                                         value["energy"],
-                                        data[f"{name}_{layout}_energy"][0],
+                                        reference[0],
                                     )
                                     record_worst(
                                         errors,
                                         label + "/" + route + "/potential",
                                         potential,
-                                        data[f"{name}_{layout}_potential"],
+                                        reference[1],
                                     )
                                     statistics = endpoint.statistics
                                     if statistics["source"]["source_kind"] != route:
@@ -321,6 +421,11 @@ def endpoint_cases(artifact, programs, samples, errors, timings):
                                     "tile_plan": asdict(cuda.plan),
                                     "resource_plan": endpoint.resource_plan.to_dict(),
                                     "native_metrics": checked_metrics(cuda),
+                                    **(
+                                        {"spatial": mask_record}
+                                        if mask_record is not None
+                                        else {}
+                                    ),
                                 }
                             )
                         print(label, flush=True)
@@ -333,6 +438,11 @@ def main():
     parser.add_argument("--cache", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--samples", type=int, default=5)
+    parser.add_argument(
+        "--spatial",
+        action="store_true",
+        help="measure prepared unscreened and screened local D/C XC",
+    )
     args = parser.parse_args()
     if (
         not os.environ.get("SLURM_JOB_ID")
@@ -357,7 +467,11 @@ def main():
         raise ValueError("native library/source identity mismatch; rebuild first")
     report = new_evidence(
         tier="endpoint",
-        subject="#235 B bounded GPU D/C density and CPU XC E/V",
+        subject=(
+            "#235 C1 prepared spatial D/C density and CPU XC E/V"
+            if args.spatial
+            else "#235 B bounded GPU D/C density and CPU XC E/V"
+        ),
         inputs_hash=canonical_hash(
             {
                 "features": NAMES,
@@ -365,6 +479,11 @@ def main():
                 "functionals": FUNCTIONALS,
                 "layouts": LAYOUTS,
                 "budgets": BUDGETS,
+                **(
+                    {"spatial_modes": ("off", "absolute_ao_jet")}
+                    if args.spatial
+                    else {}
+                ),
             }
         ),
     )
@@ -403,6 +522,15 @@ def main():
         "xc_backend": "native_cpu",
         "tile_points": 7,
         "orbital_tile": 3,
+        **(
+            {
+                "spatial_modes": ("off", "absolute_ao_jet"),
+                "region_points": 11,
+                "screened_cutoff": 1e-4,
+            }
+            if args.spatial
+            else {}
+        ),
         "scope": "fixed-density features and E/V; source validation/setup separately measured; no SCF, forces or performance promotion",
         "feature_error_scope": "worst scaled tile per feature and route",
         "endpoint_error_scope": "worst whole-block sample per energy/potential and route",
@@ -440,16 +568,28 @@ def main():
         report["stages"][stage] = outcome("pass")
     report["feature_cases"] = feature_cases(artifact, report["block_errors"])
     report["endpoint_cases"] = endpoint_cases(
-        artifact, programs, args.samples, report["block_errors"], report["timings"]
+        artifact,
+        programs,
+        args.samples,
+        report["block_errors"],
+        report["timings"],
+        spatial=args.spatial,
     )
+    endpoint_count = 96 if args.spatial else 48
     if (
-        len(report["endpoint_cases"]) != 48
-        or len(report["timings"]) != 96 * args.samples
-        or len(report["block_errors"]) != 252
+        len(report["endpoint_cases"]) != endpoint_count
+        or len(report["timings"]) != 2 * endpoint_count * args.samples
+        or len(report["block_errors"]) != 60 + 4 * endpoint_count
     ):
         raise AssertionError("incomplete acceptance inventory")
+    if args.spatial and not any(
+        0 < n < row["nao"]
+        for row in report["endpoint_cases"]
+        for n in row["spatial"]["active_ao_counts"]
+    ):
+        raise AssertionError("spatial acceptance requires nonempty strict local maps")
     report["stages"]["numerical"] = outcome("pass", independent_feature_fixtures=6)
-    report["stages"]["endpoint"] = outcome("pass", identical_grid_cases=48)
+    report["stages"]["endpoint"] = outcome("pass", identical_grid_cases=endpoint_count)
     report["stages"]["production"] = outcome(
         "not-run", "#235 C native SCF/forces and #168 selector remain separate"
     )
@@ -492,7 +632,7 @@ def main():
         "decision": {
             "status": "accepted",
             "scope": "numerical",
-            "reason": "six independent feature fixtures and 48 identical-grid E/V cases pass FP64 gates with bounded native ownership; diagnostic timings make no promotion claim",
+            "reason": f"six independent feature fixtures and {endpoint_count} identical-grid/mask E/V cases pass FP64 gates with bounded native ownership; diagnostic timings make no promotion claim",
         },
     }
     (args.output / "publication.json").write_text(

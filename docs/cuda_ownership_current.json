@@ -3184,8 +3184,8 @@
         "benchmarks/results/spatial-tasks/cpu/summary.json",
         "benchmarks/results/spatial-tasks/cuda/summary.json"
       ],
-      "generated_capability": "Through-f/order-three AO axis derivatives and pruned spin ingredient bilinears/sigma, shared by D and bounded occupied-factor routes over dense/selected-column schedules",
-      "missing_capability": "Whole AO traversal remains counted as scientific glue; broader execution promotion remains evidence-based",
+      "generated_capability": "Through-f/order-three AO axis derivatives and pruned spin ingredient bilinears/sigma, shared by D and bounded occupied-factor routes over dense/selected-column schedules; current-source spatial diagnostic/device tasks and fixed-mask prepared E/V reuse those routes with explicit native CPU XC/scatter",
+      "missing_capability": "Whole AO traversal remains counted as scientific glue; broader execution promotion remains evidence-based; native SCF producer integration, complete forces and automatic D/C selection remain #162/#163/#168",
       "owner": "ao_grid",
       "retirement_condition": "Do not duplicate the removed native axis and feature formulas; retain independent CPU/Libcint numerical fixtures and dense scheduling fallback",
       "status": "partial"

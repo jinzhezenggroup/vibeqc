@@ -1,4 +1,4 @@
-# Current-density D/C feature sources (#235 A/B)
+# Current-density D/C feature sources (#235)
 
 `vibeqc_compiler.dft.DensitySource` provides a fixed-input CPU contract for
 choosing between the original density matrix D and compatible occupied or
@@ -113,8 +113,9 @@ and restricted-spin convention remain authoritative there. This CPU external
 reference adds fractional-spin mathematical acceptance without changing native
 SCF semantics. A future #235 C adapter must reuse that producer provenance
 and map restricted occupations explicitly, then compose resources under #203.
-Native SCF/spatial-prepared integration, geometric derivatives and candidate
-selection under #168 remain slice C. Neither A nor B supplies a new molecular
+Native SCF integration, geometric derivatives and candidate
+selection under #168 remain slice C. Spatial/prepared integration is described
+below. Neither A nor B supplies a new molecular
 method, solver, force capability or speedup claim.
 
 ## Bounded native CUDA execution
@@ -224,4 +225,71 @@ zero/tiny occupations, invalid and stale factors, immutable state and replay.
 ```bash
 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
   .venv/bin/python -m pytest tests/python/test_density_source.py -q
+```
+
+## Prepared spatial integration (#235 C1 / #299)
+
+`PreparedSpatialGrid(..., backend="cuda", orbital_capacity=(na, nb),
+orbital_tile=..., ingredients=..., basis_generation=...)` prepares the same
+bounded D/C CUDA owner behind the existing spatial task API. Pass the current
+`DensitySource`, `stamp` and optional `route` to `iter_features` or
+`device_tasks`. Plain density arrays retain their original D-only behavior;
+the CPU spatial adapter continues to accept plain D. Source construction and
+external factor validation remain caller-owned setup costs.
+
+The spatial certificate still covers complete through-order AO jets with at
+least first derivatives. Prepared `ingredients` prune CUDA feature arithmetic;
+a diagnostic consumer may publish a subset of those ingredients or jets.
+That publication subset does not change the prepared arithmetic or AO mask.
+Device task ABI v1 still requires all four feature outputs. Every new execution
+uploads current state once, invalidates old diagnostic iterators, and starts
+a fresh global device potential for subsequent lease scatters. Transport
+failures invalidate old executions and clear source diagnostics.
+
+```python
+with PreparedSpatialGrid(
+    basis, grid, backend="cuda", artifact=artifact,
+    policy=policy, orbital_capacity=(na, nb), orbital_tile=3,
+    ingredients=("rho", "gradient", "sigma"), resource_budget=budget,
+) as spatial:
+    with PreparedXCContractions(
+        native_pbe, basis, grid, spatial=spatial, resource_budget=budget,
+    ) as endpoint:
+        result = endpoint.execute(source, stamp=current_stamp, route="orbitals")
+```
+
+This XC adapter borrows the spatial owner's CUDA buffers, recomputes each
+selected AO tile, downloads its jets/features, and assembles/scatters local
+potential blocks on the CPU using the same fixed mask. The observable remains
+fixed-density energy plus potential. CUDA response and geometry requests are
+rejected. Full native SCF, complete forces and automatic candidate selection
+remain #162/#163/#168 work.
+
+The composed budget charges spatial metadata, D/B, bounded AO/orbital panels,
+the cuBLAS allowance, CPU XC workspace and global potential output. The borrowed
+CUDA arena is charged once. Transactional reconfiguration must fit old and new
+owners simultaneously; failure preserves usable old state. A replacement
+invalidates existing CUDA XC consumers even when the mask is identical.
+Statistics retain the source decision, upload/packing and device phase times,
+whole-call/CPU cost, mask identity, per-task active AO counts and matrix products.
+They distinguish numeric capacity from measured whole-process peak memory.
+
+`tests/python/test_spatial_density_cuda.py` checks global-D zero-masked oracles,
+fractional/empty spins, orbital counts larger than local AO supports, both
+AO representations through f, lease/reset/replacement lifetime and three-step
+density directional derivatives. The benchmark's `--spatial` mode exercises
+96 E/V combinations: four saved fixtures, LDA/PBE, three spin/layout choices,
+two budgets and screening off/on. The screened Python oracle zeroes omitted
+global AO columns; its difference from the unscreened saved fixture is recorded
+separately from D/C arithmetic error. Five interleaved pairs per case include
+all packing, transfers and CPU assembly. These small inputs do not establish
+a performance winner or a complete molecular endpoint.
+
+```bash
+srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 --time=00:10:00 \
+  env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+  VIBEQC_NVCC=/group/software/cuda-12.9.1/bin/nvcc \
+  .venv/bin/python tools/benchmark_density_sources.py --spatial \
+  --library build/cpu/libvibeqc.so --cache .artifacts/spatial-density-bench-cache \
+  --output .artifacts/benchmarks/spatial-density-sources --samples 5
 ```
