@@ -7,6 +7,7 @@
 #include <sstream>
 #include <stdexcept>
 
+#include "dft/xc_point.hpp"
 #include "runtime/resource_usage.hpp"
 #include "xc_cpu_generated.hpp"
 
@@ -144,78 +145,6 @@ PolarizedLdaValue lda_xc_pw_polarized_with_tail(double rho_a, double rho_b) {
   return {energy_density, {alpha_derivative, beta_derivative}};
 }
 
-struct PolarizedPbeValue {
-  double energy_density{};
-  std::array<double, 5> feature_derivative{};
-};
-
-PolarizedPbeValue pbe_fully_polarized(double rho, double sigma, std::size_t active_spin);
-
-PolarizedPbeValue pbe_polarized_with_tail(double rho_a, double rho_b, double sigma_aa,
-                                          double sigma_ab, double sigma_bb) {
-  if (!std::isfinite(rho_a) || !std::isfinite(rho_b) || !std::isfinite(sigma_aa) ||
-      !std::isfinite(sigma_ab) || !std::isfinite(sigma_bb) || rho_a < 0.0 || rho_b < 0.0 ||
-      sigma_aa < 0.0 || sigma_bb < 0.0)
-    throw std::domain_error("PBE spin-tail-v2 requires finite physical spin features");
-  const double gram_bound = std::sqrt(sigma_aa) * std::sqrt(sigma_bb);
-  const double gram_tolerance =
-      16.0 * std::numeric_limits<double>::epsilon() * std::max(std::abs(sigma_ab), gram_bound);
-  if (std::abs(sigma_ab) > gram_bound + gram_tolerance) {
-    std::ostringstream detail;
-    detail << "PBE spin gradient invariants are not a physical Gram matrix: sigma_aa=" << sigma_aa
-           << ", sigma_ab=" << sigma_ab << ", sigma_bb=" << sigma_bb << ", bound=" << gram_bound;
-    throw std::domain_error(detail.str());
-  }
-  const double total = rho_a + rho_b;
-  if (total == 0.0) {
-    if (sigma_aa != 0.0 || sigma_ab != 0.0 || sigma_bb != 0.0)
-      throw std::domain_error("PBE spin vacuum requires zero gradients");
-    return {};
-  }
-  if ((rho_b == 0.0 && sigma_ab == 0.0 && sigma_bb == 0.0) ||
-      (rho_a == 0.0 && sigma_aa == 0.0 && sigma_ab == 0.0)) {
-    const std::size_t active_spin = rho_b == 0.0 ? 0 : 1;
-    const double active_density = active_spin == 0 ? rho_a : rho_b;
-    const double active_sigma = active_spin == 0 ? sigma_aa : sigma_bb;
-    const bool outside_density = active_density < 1.0e-12 || active_density > 1.0e12;
-    const double reduced_gradient =
-        outside_density ? std::numeric_limits<double>::infinity()
-                        : std::sqrt(active_sigma) / std::pow(active_density, 4.0 / 3.0);
-    if (!outside_density && std::isfinite(reduced_gradient) && reduced_gradient <= 1.0e6)
-      return pbe_fully_polarized(active_density, active_sigma, active_spin);
-    const auto lda = lda_xc_pw_polarized_with_tail(rho_a, rho_b);
-    return {lda.energy_density,
-            {lda.density_derivative[0], lda.density_derivative[1], 0.0, 0.0, 0.0}};
-  }
-
-  bool outside =
-      total < 1.0e-12 || total > 1.0e12 || rho_a / total < 1.0e-10 || rho_b / total < 1.0e-10;
-  for (const auto [rho, sigma] : {std::pair{rho_a, sigma_aa}, std::pair{rho_b, sigma_bb}}) {
-    if (rho == 0.0) {
-      outside = true;
-    } else if (!outside) {
-      const double reduced_gradient = std::sqrt(sigma) / std::pow(rho, 4.0 / 3.0);
-      outside = !std::isfinite(reduced_gradient) || reduced_gradient > 1.0e6;
-    }
-  }
-  if (outside) {
-    const auto lda = lda_xc_pw_polarized_with_tail(rho_a, rho_b);
-    return {lda.energy_density,
-            {lda.density_derivative[0], lda.density_derivative[1], 0.0, 0.0, 0.0}};
-  }
-
-  const auto xc = generated::pbe_polarized(rho_a, rho_b, sigma_aa, sigma_ab, sigma_bb);
-  PolarizedPbeValue result;
-  result.energy_density = xc.energy_density;
-  std::copy(std::begin(xc.feature_derivative), std::end(xc.feature_derivative),
-            result.feature_derivative.begin());
-  if (!std::isfinite(result.energy_density) ||
-      !std::all_of(result.feature_derivative.begin(), result.feature_derivative.end(),
-                   [](double value) { return std::isfinite(value); }))
-    throw std::runtime_error("nonfinite generated polarized PBE value");
-  return result;
-}
-
 Dual operator+(Dual left, Dual right) {
   return {left.value + right.value, left.rho + right.rho, left.sigma + right.sigma};
 }
@@ -255,52 +184,6 @@ Dual pow(const Dual& input, double exponent) {
   const double value = std::pow(input.value, exponent);
   const double scale = exponent * std::pow(input.value, exponent - 1.0);
   return {value, scale * input.rho, scale * input.sigma};
-}
-
-PolarizedPbeValue pbe_fully_polarized(double rho, double sigma, std::size_t active_spin) {
-  if (rho <= 0.0 || sigma < 0.0 || active_spin > 1)
-    throw std::domain_error("PBE complete-polarization boundary requires one active spin");
-  const Dual r{rho, 1.0, 0.0};
-  const Dual s{sigma, 0.0, 1.0};
-  constexpr double pi = 3.141592653589793238462643383279502884;
-  const double c = std::pow(3.0 / (4.0 * pi), 1.0 / 3.0);
-  const double cx = (3.0 / 8.0) * std::pow(3.0 / pi, 1.0 / 3.0) * std::pow(4.0, 2.0 / 3.0);
-  const double kappa = 0.8040;
-  const double beta = 0.06672455060314922;
-  const double mu = beta * pi * pi / 3.0;
-  const double gamma = (1.0 - std::log(2.0)) / (pi * pi);
-  const double x2s2 = 1.0 / (4.0 * std::pow(6.0 * pi * pi, 2.0 / 3.0));
-
-  const Dual reduced_exchange = x2s2 * s * pow(r, -8.0 / 3.0);
-  const Dual enhancement = 1.0 + kappa * (1.0 - kappa / (kappa + mu * reduced_exchange));
-  const Dual exchange = -cx * pow(r, 4.0 / 3.0) * enhancement;
-
-  const Dual rs = c * pow(r, -1.0 / 3.0);
-  constexpr double a = 0.01554535;
-  constexpr double alpha = 0.20548;
-  constexpr double b1 = 14.1189;
-  constexpr double b2 = 6.1977;
-  constexpr double b3 = 3.3662;
-  constexpr double b4 = 0.62517;
-  const Dual auxiliary = b1 * pow(rs, 0.5) + b2 * rs + b3 * pow(rs, 1.5) + b4 * pow(rs, 2.0);
-  const Dual epsilon = -2.0 * a * (1.0 + alpha * rs) * log1p(1.0 / (2.0 * a * auxiliary));
-  const Dual t2 = s * pow(r, -8.0 / 3.0) / (16.0 * rs);
-  const Dual a_pbe = beta / (gamma * expm1(-2.0 * epsilon / gamma));
-  const Dual f1 = t2 + a_pbe * t2 * t2;
-  const Dual correlation =
-      r * (epsilon + 0.5 * gamma * log1p(beta * f1 / (gamma * (1.0 + a_pbe * f1))));
-  const Dual total = exchange + correlation;
-  if (!std::isfinite(total.value) || !std::isfinite(total.rho) || !std::isfinite(total.sigma))
-    throw std::runtime_error("nonfinite PBE complete-polarization boundary value");
-
-  const auto lda = active_spin == 0 ? lda_xc_pw_polarized_with_tail(rho, 0.0)
-                                    : lda_xc_pw_polarized_with_tail(0.0, rho);
-  PolarizedPbeValue result;
-  result.energy_density = total.value;
-  result.feature_derivative[active_spin] = total.rho;
-  result.feature_derivative[1 - active_spin] = lda.density_derivative[1 - active_spin];
-  result.feature_derivative[active_spin == 0 ? 2 : 4] = total.sigma;
-  return result;
 }
 
 std::size_t matrix_size(std::size_t n) {
@@ -610,30 +493,23 @@ SpinXcIntegral integrate_pbe_uks_with_tail(const AoBasis& basis, const Molecular
           }
         }
       }
-      const double sigma_aa = gradient[0][0] * gradient[0][0] + gradient[0][1] * gradient[0][1] +
-                              gradient[0][2] * gradient[0][2];
-      const double sigma_ab = gradient[0][0] * gradient[1][0] + gradient[0][1] * gradient[1][1] +
-                              gradient[0][2] * gradient[1][2];
-      const double sigma_bb = gradient[1][0] * gradient[1][0] + gradient[1][1] * gradient[1][1] +
-                              gradient[1][2] * gradient[1][2];
-      const auto xc = pbe_polarized_with_tail(rho[0], rho[1], sigma_aa, sigma_ab, sigma_bb);
+      // Differentiate the same stable PBE expression in Cartesian gradients.
+      // This keeps energy and potential continuous at an empty spin and avoids
+      // forming a divergent v_sigma followed by multiplication by zero.
+      const double spin_gradient[2][3]{{gradient[0][0], gradient[0][1], gradient[0][2]},
+                                       {gradient[1][0], gradient[1][1], gradient[1][2]}};
+      const auto xc = point::evaluate(true, rho.data(), spin_gradient);
+      if (!xc.valid) throw std::domain_error("invalid or unrepresentable polarized PBE point");
       const double weight = weights[begin + point];
-      result.energy += weight * xc.energy_density;
+      result.energy += weight * xc.energy;
       result.electrons[0] += weight * rho[0];
       result.electrons[1] += weight * rho[1];
-      std::array<std::array<double, 3>, 2> spatial{};
-      for (std::size_t axis = 0; axis < 3; ++axis) {
-        spatial[0][axis] = 2.0 * xc.feature_derivative[2] * gradient[0][axis] +
-                           xc.feature_derivative[3] * gradient[1][axis];
-        spatial[1][axis] = 2.0 * xc.feature_derivative[4] * gradient[1][axis] +
-                           xc.feature_derivative[3] * gradient[0][axis];
-      }
       for (std::size_t spin = 0; spin < 2; ++spin) {
         for (std::size_t mu = 0; mu < n; ++mu) {
           for (std::size_t nu = 0; nu < n; ++nu) {
-            double value = xc.feature_derivative[spin] * phi[mu] * phi[nu];
+            double value = xc.rho[spin] * phi[mu] * phi[nu];
             for (std::size_t axis = 0; axis < 3; ++axis)
-              value += spatial[spin][axis] *
+              value += xc.gradient[spin][axis] *
                        (derivative[axis][mu] * phi[nu] + phi[mu] * derivative[axis][nu]);
             result.potential[spin][mu * n + nu] += weight * value;
           }

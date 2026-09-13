@@ -383,32 +383,19 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
     if (iteration > 1 && result.energy_change < options.energy_tolerance &&
         result.density_rms < options.density_tolerance &&
         result.physical_residual_rms < options.density_tolerance) {
-      alpha_density = std::move(next_alpha);
-      beta_density = std::move(next_beta);
+      // Return the density whose physical energy and residual passed all
+      // gates. An additional untested physical-Fock update can leave the
+      // stationary neighborhood after DIIS has suppressed an unstable mode.
       result.converged = true;
       break;
     }
+    // At the iteration limit, retain the evaluated state too: diagnostics
+    // must describe the returned density even when convergence failed.
+    if (iteration == options.max_iterations) break;
     previous_energy = physical.energy;
     alpha_density = std::move(next_alpha);
     beta_density = std::move(next_beta);
   }
-  if (!result.converged) {
-    result.density = concatenate(alpha_density, beta_density);
-    return result;
-  }
-
-  result.fock_builds += 2;
-  auto final =
-      evaluate_uks(plan, basis, grid, alpha_density, beta_density, evaluate_xc, method_name);
-  alpha_orbitals = generalized_eigen(final.alpha_fock, orthogonalizer, n);
-  beta_orbitals = generalized_eigen(final.beta_fock, orthogonalizer, n);
-  alpha_density = density_from_orbitals(alpha_orbitals.vectors, n, alpha_occupied, 1.0);
-  beta_density = density_from_orbitals(beta_orbitals.vectors, n, beta_occupied, 1.0);
-  final = evaluate_uks(plan, basis, grid, alpha_density, beta_density, evaluate_xc, method_name);
-  result.energy = final.energy;
-  result.physical_residual_rms = residual_rms(
-      concatenate(commutator_residual(final.alpha_fock, alpha_density, ints.overlap, n),
-                  commutator_residual(final.beta_fock, beta_density, ints.overlap, n)));
   result.density = concatenate(alpha_density, beta_density);
   return result;
 }

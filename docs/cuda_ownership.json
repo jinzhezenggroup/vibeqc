@@ -37,6 +37,13 @@
       "subsystem": "ao_grid"
     },
     {
+      "path": "src/dft/xc_point.hpp",
+      "reason": "Shared CPU/CUDA semilocal point algebra and forward first derivatives for the explicit scaled-density/spin-boundary domain. Counted as maintained scientific code; this is not a generated-code retirement claim.",
+      "regions": [],
+      "role": "scientific",
+      "subsystem": "xc"
+    },
+    {
       "path": "src/dft/xc_runtime.cuh",
       "reason": "Generic scalar XC plan allocation, transport, launch, metrics and failure ABI; functional/ingredient kernels are generated before inclusion.",
       "regions": [],

@@ -210,6 +210,22 @@ int main() {
         vibeqc::dft::integrate_lda_xc_pw_uks(basis, default_grid, reference_density, zero, 113);
     const auto fully_polarized_pbe =
         vibeqc::dft::integrate_pbe_uks_with_tail(basis, default_grid, reference_density, zero, 113);
+    // A vanishing minority density must approach the same functional as an
+    // exactly empty spin. The former PBE-to-LDA dispatch caused a finite jump
+    // here, despite both spin densities and gradients varying continuously.
+    const auto polarized_small =
+        vibeqc::dft::integrate_pbe_uks_with_tail(basis, grid, density, zero, 7);
+    for (double fraction : {1e-15, 1e-12, 0.999e-10, 1.001e-10}) {
+      auto minority = density;
+      for (double& value : minority) value *= fraction;
+      const auto nearby =
+          vibeqc::dft::integrate_pbe_uks_with_tail(basis, grid, density, minority, 7);
+      require(std::abs(nearby.energy - polarized_small.energy) < 1e-8,
+              "PBE energy jumps between empty and nearly empty spin densities");
+      for (std::size_t i = 0; i < density.size(); ++i)
+        require(std::abs(nearby.potential[0][i] - polarized_small.potential[0][i]) < 1e-8,
+                "PBE majority-spin potential jumps across the minority-spin boundary");
+    }
     for (const auto* integral : {&fully_polarized_lda, &fully_polarized_pbe}) {
       require(std::isfinite(integral->energy) &&
                   std::all_of(integral->potential[0].begin(), integral->potential[0].end(),

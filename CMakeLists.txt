@@ -875,6 +875,17 @@ if(VIBEQC_BUILD_TESTS)
     ${CMAKE_CURRENT_BINARY_DIR}/generated)
   add_test(NAME vibeqc_dft_tests COMMAND vibeqc_dft_tests)
 
+  add_executable(vibeqc_xc_point_tests tests/native/test_xc_point.cpp)
+  target_include_directories(vibeqc_xc_point_tests PRIVATE src)
+  target_compile_definitions(vibeqc_xc_point_tests PRIVATE
+    VIBEQC_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+  add_test(NAME vibeqc_xc_point_tests COMMAND vibeqc_xc_point_tests)
+
+  add_executable(vibeqc_uks_state_tests tests/native/test_uks_state.cpp)
+  target_include_directories(vibeqc_uks_state_tests PRIVATE src)
+  target_link_libraries(vibeqc_uks_state_tests PRIVATE vibeqc)
+  add_test(NAME vibeqc_uks_state_tests COMMAND vibeqc_uks_state_tests)
+
   add_executable(vibeqc_dft_api_tests tests/native/test_dft_api.cpp)
   target_link_libraries(vibeqc_dft_api_tests PRIVATE vibeqc)
   add_test(NAME vibeqc_dft_api_tests COMMAND vibeqc_dft_api_tests)

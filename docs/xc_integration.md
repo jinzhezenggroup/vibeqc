@@ -162,16 +162,19 @@ Polarized LDA uses `lda-spin-tail-v2-sixth-root`. It evaluates the same PW92
 spin interpolation through an algebraically factored `E=x^8 H(x,z)` form, so
 vacuum, complete spin polarization and the smallest positive FP64 densities
 retain finite energy and both spin derivatives without clipping. Polarized PBE
-uses the audited Libxc 7.0.0 generated expression for the interior feature
-domain and the versioned `pbe-spin-tail-v3-active-pbe-bounded-inactive` policy.
-At complete polarization it retains the exact PBE energy and active-spin
-density/sigma derivatives while assigning the finite polarized-LDA derivative
-to the unoccupied spin channel; the latter is an explicit bounded boundary
-extension because the GGA inactive-spin derivative is singular. Other exterior
-points use the stable polarized LDA value with zero sigma derivatives. No path
-silently clips density or gradients. Native finite-difference tests cover both
-interior spin potentials, equal-spin reduction to RKS, the complete-polarized
-active-spin response and the Gram bound for `sigma_ab`.
+uses `semilocal-scaled-v1/pbe-spin-c2-1e-18`: scaled-coordinate differentiation
+and stable PW/PBE algebra retain PBE throughout the positive-density domain.
+Only the singular `u^(2/3)` spin interpolation is extended below `u=1e-18`,
+with a polynomial matching the value and first two derivatives at the join.
+Energy and both spin potentials derive from the same expression, including
+the finite inactive-spin endpoint derivative; no LDA switch or rho/sigma
+clipping is applied. See [the point-domain contract](xc_scf_domain.md) for
+its equations and independent high precision derivative fixtures.
+
+UKS returns the current density whose energy, density-change proposal and
+physical residual passed the convergence gates. It performs no subsequent
+untested density update. An exhausted iteration budget also returns the
+last evaluated density, so its energy and residual remain reproducible.
 
 Current He/H2 endpoint numbers are also covered by an independent PySCF/Libxc
 SCF consumer using the identical materialized `GridSpec v1` points and weights.

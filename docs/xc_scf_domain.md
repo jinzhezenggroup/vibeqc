@@ -1,0 +1,132 @@
+# Semilocal SCF point domain and spin boundary
+
+The native SCF point evaluator uses the identity
+`semilocal-scaled-v1/pbe-spin-c2-1e-18`. Its compositions are exactly
+`LDA_X + LDA_C_PW` and `GGA_X_PBE + GGA_C_PBE`; PBE correlation uses modified
+PW constants. The source parameters and conventions follow the audited
+Libxc 7.0.0 sources in `external/libxc-7.0.0` and
+`python/vibeqc_compiler/xc/expressions.py`. There is no exact exchange or
+density fitting in these method compositions.
+
+The CPU UKS PBE integrator uses this point contract instead of its
+provisional PBE-to-LDA tail fallback. The LDA UKS sixth-root evaluator and
+both RKS integration paths keep their existing policies in this PR. The
+independent `interior-v1` Python reference consumer and its #214 fixtures
+also keep their original domains and identities. The historical name
+`integrate_pbe_uks_with_tail` does not authorize reusing results from an
+older spin-tail identity.
+
+## Density and variational convention
+
+UKS has independent symmetric real matrices `Da` and `Db`, with unit spin
+occupations. RKS stores `D=Da+Db` and has `Da=Db=D/2`. At fixed geometry:
+
+```
+E = Enuc + Tr((Da+Db) h) + 1/2 Tr((Da+Db) J[Da+Db]) + Exc
+Fa = h + J[Da+Db] + Vxc,a
+Fb = h + J[Da+Db] + Vxc,b
+dExc = sum_s Tr(Vxc,s^T dDs)
+```
+
+Every full matrix entry contributes to the trace. A symmetric off-diagonal
+perturbation changes two entries and therefore contributes twice. Applying
+the HF half-trace energy formula to these Fock matrices would double count
+XC incorrectly. Any later exact-exchange term must be declared in the common
+Fock strategy and carry its quadratic energy factor separately.
+
+The point evaluator returns `e`, `de/drho_s` and `de/dgrad(rho_s)`. The latter
+is exactly `2 e_sigma_ss grad(rho_s) + e_sigma_ab grad(rho_other)`, with the
+existing convention `sigma_ab=grad(rho_a).grad(rho_b)`. Assembling it against
+`grad(phi_mu) phi_nu + phi_mu grad(phi_nu)` is the same first-derivative AO
+contraction used by the independent XC integrator. Each quadrature weight
+is applied once. LDA requests only AO values; PBE requests values and three
+first spatial derivatives. Neither computes tau or higher jets.
+
+## Stable positive-density algebra
+
+The evaluator does not clip rho or sigma and has no positive density floor.
+It rejects negative/nonfinite densities, nonfinite gradients, a nonzero
+gradient in an exactly empty spin, and any unrepresentable output. Exact
+vacuum has zero energy and potential coefficients. Positive-density
+underflow of a final energy follows ordinary FP64 arithmetic; density
+derivatives are evaluated independently and are retained when representable.
+
+For each point, choose the fixed numerical scale `N=rho_a+rho_b` and
+differentiate in `a=rho_a/N`, `b=rho_b/N`, `g_s=grad(rho_s)/N`. `N` is held
+constant while taking derivatives. If `e=N f(a,b,g)`, the physical partials
+are simply partials of `f`; no derivative is lost by this change of
+coordinates. In particular, the tiny energy is never divided by N to
+recover a potential after it has underflowed.
+
+PW92 uses `x=rho^(1/6)` and its original polynomial rewritten as
+
+```
+q = b1 sqrt(c) x^3 + b2 c x^2 + b3 c^(3/2) x + b4 c^2
+u = x^4/(2 A q),   c = (3/(4 pi))^(1/3)
+epsilon_PW = -(x^2 + alpha c) x^2/q * log1p(u)/u
+```
+
+The analytic continuation of `log1p(u)/u` is evaluated with a polynomial
+through fifth order for `|u|<1e-4`, including its derivative. The first
+omitted value term is below `1.5e-25` at the switch. This rewrite avoids
+inverse-density powers, without replacing the physical tail expression.
+
+PBE exchange evaluates its enhancement as a bounded rational function in
+the scaled density and gradient. PBE correlation combines `epsilon_PW+H`
+*before* evaluation. With `G=gamma phi^3`, `u=A_PBE t^2` and `v=1/(1+u)`,
+
+```
+epsilon_c = G log1p(expm1(epsilon_PW/G) v^2/(1-v+v^2))
+```
+
+This is algebraically the original PBE expression. It avoids both `u^2`
+overflow and cancellation between PW and H. Differentiating that
+cancellation numerically would otherwise generate incorrect tail
+potentials even when the total energy appeared accurate.
+
+## Explicit PBE spin endpoint extension
+
+PBE's mathematical interpolation `u^(2/3)` in
+`phi=((2rho_a/rho)^(2/3)+(2rho_b/rho)^(2/3))/2` has a divergent first density
+derivative at exactly empty spin with nonzero total gradient. A finite
+minority-spin potential therefore needs an explicit extension. This version
+uses the following C2 prescription **only in phi**, with `delta=1e-18`:
+
+```
+p(u) = u^(2/3)                                      u >= delta
+p(u) = delta^(2/3) (14t - 7t^2 + 2t^3)/9, t=u/delta  0 <= u < delta
+```
+
+Value, first derivative and second derivative match at delta, and the exact
+empty-spin value is preserved. The finite endpoint derivative is part of
+the model identity; it is not the divergent derivative of unregularized
+PBE. Energy and potential use the same extension, preserving the discrete
+variational identity across its connection. LDA and PBE exchange retain
+their analytic zero-spin first derivatives. No later meta-GGA, response or
+force capability is inferred from this first-derivative implementation.
+
+Libxc has its own low-density and spin-boundary screening conventions.
+Therefore exact endpoint comparisons use the independently differentiated
+high precision formula with the declared extension. Ordinary positive-spin
+points use Libxc directly. Molecular comparisons record any remaining
+boundary-policy differences instead of silently modifying reference inputs.
+
+## Executable evidence
+
+`tests/data/xc/scf_domain.tsv` contains 72 energy/potential points: Libxc 7
+interior points and independent 450-digit mpmath evaluations of the original
+unscaled equations. `tools/generate_xc_scf_references.py` regenerates them.
+`vibeqc_xc_point_tests` checks each coefficient with a relative tolerance,
+including densities down to `1e-300`, empty spin channels and both sides of
+the C2 connection; a loose absolute energy-only gate cannot pass these tests.
+
+`vibeqc_dft_tests` retains the #214 identical-grid oracle, per-spin
+finite-difference checks, equal-spin reduction and active-spin response at
+complete polarization. It additionally checks energy and majority-spin
+potential continuity from an empty spin through both sides of the former
+`1e-10` minority-fraction dispatch. `vibeqc_uks_state_tests` rebuilds energy
+and the physical commutator from the returned density, for both a converged
+run and an exhausted iteration budget. A converged UKS run returns the
+state that passed all three gates, without subsequent untested density
+updates. Full prepared CUDA, resource and replay evidence remains part of
+the complete #162 milestone, independently of this CPU correction.
