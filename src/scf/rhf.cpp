@@ -1754,10 +1754,12 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
 
   CudaDensityFittingPlanPtr owned_plan(nullptr, &destroy_cuda_density_fitting_jk_plan);
   CudaDensityFittingJkPlan* plan = cached_plan == nullptr ? nullptr : *cached_plan;
-  if (plan != nullptr && cuda_density_fitting_jk_plan_batch_size(plan) != data.size()) {
+  if (plan != nullptr && (cuda_density_fitting_jk_plan_batch_size(plan) != data.size() ||
+                          !cuda_density_fitting_scf_policy_matches(plan))) {
     // Item-level preparation may shrink a runnable subset after a warm cache
     // was created. Never submit vectors with a different fixed batch stride to
-    // the old plan; discard it and rebuild for the surviving systems.
+    // the old plan; discard it and rebuild for the surviving systems. Exchange
+    // policy changes also require replanning its frozen factor reservation.
     destroy_cuda_density_fitting_jk_plan(plan);
     plan = nullptr;
     if (cached_plan != nullptr) *cached_plan = nullptr;
@@ -2137,7 +2139,9 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
 
   CudaDensityFittingPlanPtr owned_plan(nullptr, &destroy_cuda_density_fitting_jk_plan);
   CudaDensityFittingJkPlan* plan = cached_plan == nullptr ? nullptr : *cached_plan;
-  if (plan != nullptr && cuda_density_fitting_jk_plan_batch_size(plan) != data.size()) {
+  if (plan != nullptr && (cuda_density_fitting_jk_plan_batch_size(plan) != data.size() ||
+                          !cuda_density_fitting_scf_policy_matches(plan))) {
+    // Replan the batch stride and policy-specific lazy SCF reservation together.
     destroy_cuda_density_fitting_jk_plan(plan);
     plan = nullptr;
     if (cached_plan != nullptr) *cached_plan = nullptr;

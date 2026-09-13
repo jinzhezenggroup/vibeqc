@@ -15,6 +15,7 @@
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
 #include "scf/cuda/df_setup_internal.hpp"
+#include "scf/df_exchange_policy.hpp"
 
 namespace vibeqc::scf::cuda_df {
 namespace {
@@ -153,6 +154,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
     return fail_before_plan(VIBEQC_STATUS_OUT_OF_MEMORY);
   }
 
+  const bool occupied_scf_reserved = df_occupied_exchange_requested();
   cudaError_t cuda_error = cudaSetDevice(device_id);
   if (cuda_error != cudaSuccess) {
     return fail_before_plan(cuda_failure(cuda_error, "select CUDA DF device", detail));
@@ -160,6 +162,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
   auto* candidate = new (std::nothrow) CudaDensityFittingJkPlan{};
   if (candidate == nullptr) return fail_before_plan(VIBEQC_STATUS_OUT_OF_MEMORY);
   candidate->device_id = device_id;
+  candidate->occupied_scf_reserved = occupied_scf_reserved;
   candidate->metric_relative_threshold = relative_threshold;
   candidate->batch_size = batch_size;
   candidate->nbf = nbf;
@@ -504,9 +507,11 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
   // conservative upper bound here so diagnostics remain valid before and
   // after that allocation (RHF/UHF share this plan type).
   const long double persistent_scf_estimate =
-      20.0L * static_cast<long double>(matrix_bytes) +
-      static_cast<long double>(batch_size) * (16.0L * sizeof(double) + 2.0L * sizeof(std::int32_t) +
-                                              2.0L * sizeof(std::uint8_t) + sizeof(std::uint32_t)) +
+      (candidate->occupied_scf_reserved ? 22.0L : 20.0L) * static_cast<long double>(matrix_bytes) +
+      static_cast<long double>(batch_size) *
+          (16.0L * sizeof(double) + 2.0L * sizeof(std::int32_t) + 2.0L * sizeof(std::uint8_t) +
+           sizeof(std::uint32_t) +
+           (candidate->occupied_scf_reserved ? 2 * sizeof(std::uint32_t) + sizeof(int) : 0)) +
       solver_device_workspace_bytes + matrix_bytes;  // graph bookkeeping
   const std::size_t persistent_scf_bytes =
       persistent_scf_estimate >= static_cast<long double>(std::numeric_limits<std::size_t>::max())

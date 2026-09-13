@@ -7,6 +7,27 @@
 
 namespace vibeqc::scf::cuda_df {
 
+/** Preserve the exact C used for next D while the old active mask still holds.
+ * The factor generation advances with the subsequent density commit, including
+ * the converged iteration. Rank-zero channels still receive a generation tag.
+ */
+void launch_store_device_occupied_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
+                                         cudaStream_t stream, std::size_t nbf,
+                                         std::size_t maximum_rank, const std::int32_t* occupied,
+                                         const double* coefficients, const std::uint8_t* active,
+                                         const std::uint32_t* iterations, double* factors,
+                                         std::uint32_t* generations);
+
+/** A sticky validation failure rejects the device solve at its existing host
+ * readback boundary. No result built from stale factors can escape to SCF or
+ * force consumers; the caller's established numerical recovery remains valid.
+ */
+void launch_validate_device_occupied_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
+                                            cudaStream_t stream, std::size_t batch_size,
+                                            const std::uint32_t* iterations,
+                                            const std::uint32_t* alpha_generations,
+                                            const std::uint32_t* beta_generations, int* error);
+
 /** Forward the caller's exact launch configuration on its existing stream. */
 void launch_assemble_rhf_fock_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
                                      cudaStream_t stream, std::size_t elements, const double* hcore,

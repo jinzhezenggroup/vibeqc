@@ -6,6 +6,7 @@ capacity allowance and is also charged by the native allocation ledger.
 """
 
 import json
+import os
 from dataclasses import asdict
 
 from .resources import ResourceCandidate, ResourceEstimate, checked_bytes
@@ -26,6 +27,7 @@ def cuda_df_candidates(
     response derivatives still use bounded regeneration. The source candidate's
     ``recomputed`` mode describes that complete policy, not every forward tile.
     """
+    occupied_exchange = os.environ.get("VIBEQC_DF_EXCHANGE") == "occupied"
     buckets = {}
     for item in items:
         orbital, auxiliary = item["orbital"], item["auxiliary"]
@@ -218,7 +220,15 @@ def cuda_df_candidates(
             # the ledger. These explicit conservative allowances are shared
             # with neither caller inputs nor opaque provider allocations.
             solver = (64 << 20) + 16 * matrix + 128 * aux * aux
-            persistent_device = 32 * matrix + 16 * b * aux + solver + 1024 * b
+            # Dense keeps its original capacity. Occupied mode reserves both
+            # spin factors at full rank; actual factors use nbf*max_occupied.
+            # Generation controls fit in the existing 1024-byte item allowance.
+            persistent_device = (
+                (34 if occupied_exchange else 32) * matrix
+                + 16 * b * aux
+                + solver
+                + 1024 * b
+            )
             persistent_device += (
                 (
                     tensor + 3 * tile_bytes

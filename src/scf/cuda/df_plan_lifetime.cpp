@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -13,6 +14,17 @@
 #include "scf/cuda/df_scf_state.hpp"
 
 namespace vibeqc::scf::cuda_df {
+
+std::uint64_t next_factor_basis_identity() noexcept {
+  static std::atomic<std::uint64_t> next{1};
+  // A wrapped counter must never recycle an identity. Zero is ineligible;
+  // saturation conservatively disables the path for future plans.
+  auto value = next.load(std::memory_order_relaxed);
+  while (value != 0) {
+    if (next.compare_exchange_weak(value, value + 1, std::memory_order_relaxed)) return value;
+  }
+  return 0;
+}
 
 void release(CudaDensityFittingJkPlan& plan) noexcept {
   if (plan.device_id >= 0) (void)cudaSetDevice(plan.device_id);

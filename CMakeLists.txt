@@ -355,6 +355,8 @@ if(VIBEQC_ENABLE_CUDA)
     src/runtime/cuda_runtime.cu
     src/scf/cuda/df_coulomb.cpp
     src/scf/cuda/df_exchange.cpp
+    src/scf/cuda/df_occupied_exchange.cpp
+    src/scf/cuda/df_scf_factor.cpp
     src/runtime/cuda_component_trace.cpp
     src/scf/cuda/df_force_response.cpp
     src/scf/cuda/df_jk.cpp
@@ -806,6 +808,11 @@ if(VIBEQC_BUILD_TESTS)
   target_link_libraries(vibeqc_density_factor_tests PRIVATE vibeqc)
   target_include_directories(vibeqc_density_factor_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
   add_test(NAME vibeqc_density_factor_tests COMMAND vibeqc_density_factor_tests)
+  if(VIBEQC_ENABLE_CUDA)
+    add_executable(vibeqc_df_occupied_probe benchmarks/df_occupied_probe.cpp)
+    target_link_libraries(vibeqc_df_occupied_probe PRIVATE vibeqc)
+    target_include_directories(vibeqc_df_occupied_probe PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  endif()
 
   add_executable(vibeqc_cuda_eigensolver_policy_tests
     tests/native/test_cuda_eigensolver_policy.cpp)
