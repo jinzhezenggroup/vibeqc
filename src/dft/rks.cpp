@@ -367,11 +367,11 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
 
     runtime::sample_cpu_capacity(runtime::add_capacity(
         runtime::add_capacity(plan.cpu_observation_capacity(), diis.numeric_capacity()),
-        runtime::vector_capacities(
-            orthogonalizer, alpha_density, beta_density, physical.alpha_fock, physical.beta_fock,
-            alpha_residual, beta_residual, physical_fock, physical_residual, effective_joined,
-            alpha_orbitals.values, alpha_orbitals.vectors, beta_orbitals.values,
-            beta_orbitals.vectors, next_alpha, next_beta)));
+        runtime::vector_capacities(orthogonalizer, alpha_density, beta_density, physical.alpha_fock,
+                                   physical.beta_fock, alpha_residual, beta_residual, physical_fock,
+                                   physical_residual, effective_joined, alpha_orbitals.values,
+                                   alpha_orbitals.vectors, beta_orbitals.values,
+                                   beta_orbitals.vectors, next_alpha, next_beta)));
     result.iterations = iteration;
     result.energy = physical.energy;
     result.energy_change = std::isfinite(previous_energy)
