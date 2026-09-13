@@ -8,6 +8,7 @@ starts use the same quadrature/model and convergence controls for both routes.
 import argparse
 import csv
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -157,6 +158,13 @@ def run(args):
     ):
         raise ValueError("requires a clean checkout and at least five paired repeats")
     args.output.mkdir(parents=True, exist_ok=False)
+    # Capture the execution host with the run; publication must not fill in
+    # historical hardware provenance using a later publishing machine.
+    device = {
+        "host": platform.platform(),
+        "cpu": subprocess.check_output(["lscpu"], text=True, timeout=30),
+        "affinity": sorted(os.sched_getaffinity(0)),
+    }
     source = args.output / "bridge.cpp"
     source.write_text(bridge_source(load_workloads(args.workload_matrix)))
     library = args.library.resolve()
@@ -245,6 +253,7 @@ def run(args):
         bridge_binary_sha256=file_hash(output / "bridge.so"),
         samples_sha256=file_hash(output / "samples.csv"),
         backend_selected="cpu",
+        device=device,
     )
     report["toolchain"] = {
         "cxx": subprocess.check_output(
@@ -252,6 +261,7 @@ def run(args):
         ),
         "flags": ["-O3", "-std=c++20"],
         "python": sys.version,
+        "threads": {"OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1"},
     }
     report["settings"] = {
         "device": "cpu",
@@ -320,7 +330,15 @@ def run(args):
         "not-run",
         "raw complete energy-only measurements; no complete energy-plus-force selector promotion",
     )
-    report["reproduction"] = [sys.executable, *sys.argv]
+    report["reproduction"] = {
+        "command": [
+            "env",
+            "OMP_NUM_THREADS=1",
+            "OPENBLAS_NUM_THREADS=1",
+            sys.executable,
+            *sys.argv,
+        ]
+    }
     write_evidence(output / "verification.json", report)
 
 
