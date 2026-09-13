@@ -2,6 +2,13 @@
 
 Date: 2026-09-13
 
+The latest source is `f80bda94859d6f51ec7f4928fd17fd8dc2066d06`, which also
+fixes extreme-minority-spin exchange underflow. Its clean-source endpoint
+rerun passes all four gates and is recorded in
+[`pr305-corrections-20260913.md`](pr305-corrections-20260913.md), including the
+raw result path and checksum. The remote `d0b5862` run below is retained as
+the preceding correction's reproducible evidence.
+
 ## Purpose
 
 This records the independent endpoint gate for the CPU energy-only LDA/PBE UKS
@@ -9,7 +16,7 @@ slice. It is evidence for two small open-shell STO-3G systems on the exact
 native `GridSpec v1` quadrature, not acceptance of prepared CUDA, batching,
 gradients, density fitting, performance or quadrature convergence.
 
-## Source and environment
+## Previous source and environment
 
 - Branch: `codex/issue-0162-b`
 - Clean source commit: `d0b586231a83350ad1fffb0591acdc24860d0043`
