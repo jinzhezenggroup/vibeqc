@@ -1,5 +1,5 @@
 {
-  "all_handwritten_scientific_lines": 10365,
+  "all_handwritten_scientific_lines": 10587,
   "counting_scope": "nonblank noncomment physical lines in source CUDA translation units/headers; includes host launch code; explicit source regions own semantics",
   "files": [
     {
@@ -62,6 +62,23 @@
       "role": "runtime",
       "sha256": "6b2c2d0439697d50e13799f8e9145b2f47e2ffa6b47b6a31ba1490b9e68a80ba",
       "subsystem": "ao_grid"
+    },
+    {
+      "bytes": 12241,
+      "code_lines": {
+        "fallback": 0,
+        "oracle": 0,
+        "performance_exception": 0,
+        "runtime": 0,
+        "scientific": 222
+      },
+      "path": "src/dft/xc_point.hpp",
+      "physical_lines": 279,
+      "reason": "Shared CPU/CUDA semilocal point algebra and forward first derivatives for the explicit scaled-density/spin-boundary domain. Counted as maintained scientific code; this is not a generated-code retirement claim.",
+      "regions": [],
+      "role": "scientific",
+      "sha256": "025b3e7c5274a9b5cd0614572754bd846181cce37f27c53764c274887324ecdd",
+      "subsystem": "xc"
     },
     {
       "bytes": 4086,
@@ -3172,7 +3189,7 @@
     "oracle": 0,
     "performance_exception": 156,
     "runtime": 8839,
-    "scientific": 10209
+    "scientific": 10431
   },
   "migration_ledger": {
     "ao_grid": {
@@ -3395,7 +3412,7 @@
       "oracle": 0,
       "performance_exception": 0,
       "runtime": 89,
-      "scientific": 0
+      "scientific": 222
     }
   },
   "schema": "vibeqc.cuda-ownership-report.v1"
