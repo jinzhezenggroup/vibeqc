@@ -125,27 +125,50 @@ J/K scheduler is introduced. #203 must account for XC graph intermediates,
 matrix outputs, copies and allocator/BLAS overhead before a prepared method
 claims a composed memory bound.
 
-## Native LDA RKS vertical slice
+## Native CPU RKS/UKS vertical slices
 
-The public method registry now advertises `LDA_RKS` with energy as its only
-property. Its prepared CPU plan composes the existing conventional Coulomb
-provider with a native materialized atom-centered grid and generated FP64
-`LDA_XC_PW` evaluator. The default `GridSpec v1` is deterministic
+The public method registry advertises `LDA_RKS`, `PBE_RKS`, `LDA_UKS`, and
+`PBE_UKS` with energy as their only property. Their prepared CPU plans compose
+the existing conventional Coulomb provider with a native materialized
+atom-centered grid and generated FP64 XC evaluators. The default `GridSpec v1`
+is deterministic
 `48 radial x 16 polar x 32 azimuth` per atom, using a rational Legendre radial
 map, Legendre/trapezoid angular quadrature and equal-radius Becke partition.
 
-Native SCF uses closed-shell occupations, `F=h+J+V_xc`, and the energy equation
-above. Convergence requires energy change, density RMS and the physical
-commutator residual to pass the requested thresholds; a depleted iteration
-budget returns `VIBEQC_STATUS_NOT_CONVERGED` with diagnostics. The adapter
-rejects odd-electron or non-singlet systems, forces, density fitting, auxiliary
+RKS uses closed-shell occupations. UKS derives
+`N_alpha=(N+M-1)/2` and `N_beta=(N-M+1)/2` and rejects charge/multiplicity
+combinations that do not give integer, nonnegative populations. UKS builds
+`J[D_alpha+D_beta]`, applies separate `V_xc,alpha` and `V_xc,beta`, and feeds
+the joined alpha/beta physical commutator residual to one DIIS history without
+mixing the spin densities. Both paths use the energy equation above.
+Convergence requires energy change, density RMS and the physical commutator
+residual to pass the requested thresholds; a depleted iteration budget returns
+`VIBEQC_STATUS_NOT_CONVERGED` with diagnostics; the method-neutral ABI residual
+slot reports the physical commutator residual, while the solver retains density
+change separately. Prepared state owns one immutable system, basis, grid and
+functional and currently retains no cross-execution DFT warm density, so it
+cannot silently reuse state after a geometry/model/spin change. The adapter
+rejects incompatible spin populations, forces, density fitting, auxiliary
 bases, prepared batches and non-CPU contexts instead of falling back.
 
-The native `lda-tail-v1` contract evaluates the exact positive-density formula,
+The native unpolarized `lda-tail-v1` contract evaluates the exact
+positive-density formula,
 uses the analytic zero-density energy/potential limit, and rejects negative or
 nonfinite density. Its generated DAG uses the algebraically equivalent
 `sixth-root-v1` parameterization so the smallest positive FP64 densities remain
 finite without clipping or a density floor.
+
+Polarized LDA uses `lda-spin-tail-v2-sixth-root`. It evaluates the same PW92
+spin interpolation through an algebraically factored `E=x^8 H(x,z)` form, so
+vacuum, complete spin polarization and the smallest positive FP64 densities
+retain finite energy and both spin derivatives without clipping. Polarized PBE
+uses the audited Libxc 7.0.0 generated expression for the interior feature
+domain and the versioned `pbe-spin-tail-v2-lda-fallback` policy outside it. The
+fallback is the stable polarized LDA value with zero sigma derivatives; it is
+an explicit production-tail contract rather than silent density or gradient
+clipping. Native finite-difference tests cover both spin potentials, equal-spin
+reduction to RKS, the complete-polarization limit and the Gram bound for
+`sigma_ab`.
 
 Current He/H2 endpoint numbers are also covered by an independent PySCF/Libxc
 SCF consumer using the identical materialized `GridSpec v1` points and weights.
@@ -165,10 +188,11 @@ stable positive-density `LDA_XC_PW` expression with zero sigma derivative in
 the low-density/high-gradient tail. Native tests cover both contracts and the
 tail-v2 finite-difference variational response.
 
-The public `PBE_RKS` slice now reuses the existing CPU RKS SCF/J/DIIS path with
-tail-v2, but remains provisional until an independent PySCF/Libxc matched-grid
-endpoint is recorded. It is energy-only, closed-shell, conventional-J, CPU-only,
-and has no prepared batch, forces, density fitting, UKS or CUDA support.
+The public PBE slices reuse the same CPU SCF/J/DIIS path with their respective
+tail-v2 policies. RKS has an independent matched-grid H2 endpoint. UKS remains
+provisional until the Slice B matched-grid PySCF/Libxc endpoints are recorded.
+All four methods are energy-only, conventional-J and CPU-only; they do not
+claim prepared batch, forces, density fitting or CUDA execution.
 
 ## Fixed-density domain and remaining dependencies
 
@@ -180,7 +204,8 @@ clips density or skips zero-weight points. An empty explicit grid returns the
 zero integral, not a converged quadrature. The small reference grids are fixed
 controlled inputs, so agreement does not establish quadrature convergence.
 
-Remaining #162 work includes LDA/PBE UKS, state invalidation and prepared CUDA.
+Remaining #162 work after the CPU UKS implementation includes its independent
+matched-grid endpoint evidence and prepared CUDA execution/batching.
 The independent closed-shell PBE H2 endpoint is recorded in
 `experiments/vibeqc/issue-162-a/pbe-rks-endpoint-20260912.md`; this does not
 establish broader PBE coverage. #203 owns composed resource planning, and #163

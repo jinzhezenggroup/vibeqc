@@ -160,6 +160,13 @@ def test_method_capabilities_report_families_and_properties():
     assert not pbe.supports_batch
     assert pbe.supported_properties == frozenset(("energy",))
 
+    for name in ("lda-uks", "pbe-uks"):
+        uks = method_capabilities(name)
+        assert uks.family == "density_functional"
+        assert uks.available
+        assert not uks.supports_batch
+        assert uks.supported_properties == frozenset(("energy",))
+
 
 def test_lda_rks_public_contract_is_cpu_energy_only():
     calculator = Calculator(method="lda-rks", basis="sto-3g", device="cpu")
@@ -191,6 +198,39 @@ def test_pbe_rks_public_contract_is_cpu_energy_only():
         )
     with pytest.raises(NotImplementedError, match="prepared batches"):
         calculator.prepare_batch([["He", (0.0, 0.0, 0.0)]])
+
+
+@pytest.mark.parametrize("method", ("lda-uks", "pbe-uks"))
+def test_uks_public_contract_is_cpu_energy_only(method):
+    atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
+    calculator = Calculator(method=method, basis="sto-3g", device="cpu")
+    result = calculator.singlepoint(atoms, charge=-1, multiplicity=2)
+
+    assert result.converged
+    assert result.forces is None
+    assert result.executed_backend == "cpu_reference"
+    with pytest.raises(ValueError, match="does not support properties.*forces"):
+        calculator.singlepoint(
+            atoms,
+            charge=-1,
+            multiplicity=2,
+            properties=("energy", "forces"),
+        )
+    with pytest.raises(NotImplementedError, match="prepared batches"):
+        calculator.prepare_batch([atoms], charges=[-1], multiplicities=[2])
+
+
+@pytest.mark.parametrize("method", ("lda-uks", "pbe-uks"))
+@pytest.mark.parametrize(
+    ("charge", "multiplicity"),
+    ((0, 2), (0, 4)),
+    ids=("parity", "spin-excess"),
+)
+def test_uks_rejects_invalid_spin_occupations(method, charge, multiplicity):
+    atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
+    calculator = Calculator(method=method, basis="sto-3g", device="cpu")
+    with pytest.raises(RuntimeError, match="integer nonnegative spin occupations"):
+        calculator.singlepoint(atoms, charge=charge, multiplicity=multiplicity)
 
 
 @pytest.mark.parametrize(

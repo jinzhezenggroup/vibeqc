@@ -14,6 +14,14 @@
 namespace vibeqc::methods::detail {
 namespace {
 
+bool is_uks(vibeqc_method method) noexcept {
+  return method == VIBEQC_METHOD_LDA_UKS || method == VIBEQC_METHOD_PBE_UKS;
+}
+
+bool is_supported_dft(vibeqc_method method) noexcept {
+  return method == VIBEQC_METHOD_LDA_RKS || method == VIBEQC_METHOD_PBE_RKS || is_uks(method);
+}
+
 bool field_present(const vibeqc_method_descriptor& descriptor, std::size_t offset,
                    std::size_t width) noexcept {
   return descriptor.struct_size >= offset && descriptor.struct_size - offset >= width;
@@ -40,13 +48,13 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor) {
       throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unknown density-fitting execution mode");
     if (mode != VIBEQC_DENSITY_FITTING_NONE)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                        "DFT RKS supports conventional Coulomb only");
+                        "DFT energy methods support conventional Coulomb only");
   }
   if (field_present(descriptor, offsetof(vibeqc_method_descriptor, density_fitting_auxiliary_basis),
                     sizeof(descriptor.density_fitting_auxiliary_basis)) &&
       descriptor.density_fitting_auxiliary_basis != nullptr)
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
-                      "DFT RKS does not accept an unused auxiliary basis");
+                      "DFT energy methods do not accept an unused auxiliary basis");
   if (field_present(descriptor, offsetof(vibeqc_method_descriptor, precision_mode),
                     sizeof(descriptor.precision_mode))) {
     if (descriptor.precision_mode != VIBEQC_PRECISION_FP64 &&
@@ -54,11 +62,11 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor) {
       throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unknown floating-point precision mode");
     if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                        "DFT RKS supports explicit FP64 precision only");
+                        "DFT energy methods support explicit FP64 precision only");
   }
 
   scf::FockBuildSpec fock;
-  fock.spin = scf::FockSpin::Restricted;
+  fock.spin = is_uks(descriptor.method) ? scf::FockSpin::Unrestricted : scf::FockSpin::Restricted;
   fock.derivative_order = 0;
   fock.exchange.present = false;
   options.resolved_fock_build =
@@ -72,16 +80,16 @@ Result adapt_result(scf::ScfResult native) {
   result.energy = native.energy;
   result.convergence.iterations = native.iterations;
   result.convergence.energy_change = native.energy_change;
-  result.convergence.residual_rms = native.density_rms;
+  result.convergence.residual_rms = native.physical_residual_rms;
   result.convergence.converged = native.converged;
   result.executed_backend = VIBEQC_BACKEND_CPU_REFERENCE;
   result.fock_builds = native.fock_builds;
   return result;
 }
 
-class RksPreparedCalculation final : public PreparedCalculation {
+class DftPreparedCalculation final : public PreparedCalculation {
  public:
-  RksPreparedCalculation(Capabilities capabilities, core::System system, vibeqc_method method,
+  DftPreparedCalculation(Capabilities capabilities, core::System system, vibeqc_method method,
                          scf::ScfOptions options)
       : capabilities_(capabilities),
         system_(std::move(system)),
@@ -95,14 +103,20 @@ class RksPreparedCalculation final : public PreparedCalculation {
   const Capabilities& capabilities() const noexcept override { return capabilities_; }
 
   Result execute(bool compute_forces) override {
-    const char* method_name = method_ == VIBEQC_METHOD_PBE_RKS ? "PBE" : "LDA";
+    const bool pbe = method_ == VIBEQC_METHOD_PBE_RKS || method_ == VIBEQC_METHOD_PBE_UKS;
+    const bool uks = is_uks(method_);
+    const char* method_name = pbe ? "PBE" : "LDA";
     if (compute_forces) {
-      throw MethodError(
-          VIBEQC_STATUS_NOT_IMPLEMENTED,
-          std::string(method_name) + " RKS nuclear gradients are tracked separately in issue #163");
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                        std::string(method_name) + (uks ? " UKS" : " RKS") +
+                            " nuclear gradients are tracked separately in issue #163");
     }
     if (method_ == VIBEQC_METHOD_PBE_RKS)
       return adapt_result(scf::run_pbe_rks(fock_, basis_, grid_, options_));
+    if (method_ == VIBEQC_METHOD_LDA_UKS)
+      return adapt_result(scf::run_lda_uks(fock_, basis_, grid_, options_));
+    if (method_ == VIBEQC_METHOD_PBE_UKS)
+      return adapt_result(scf::run_pbe_uks(fock_, basis_, grid_, options_));
     return adapt_result(scf::run_lda_rks(fock_, basis_, grid_, options_));
   }
 
@@ -120,14 +134,26 @@ class RksPreparedCalculation final : public PreparedCalculation {
 
 vibeqc_status validate_dft_system(vibeqc_method method, const core::System& system,
                                   std::string& detail) {
-  if (method != VIBEQC_METHOD_LDA_RKS && method != VIBEQC_METHOD_PBE_RKS) {
+  if (!is_supported_dft(method)) {
     detail = "requested DFT method is reserved but not implemented";
     return VIBEQC_STATUS_NOT_IMPLEMENTED;
   }
-  if (system.electron_count > 0 && system.electron_count % 2 == 0 && system.multiplicity == 1)
+  const char* functional =
+      method == VIBEQC_METHOD_PBE_RKS || method == VIBEQC_METHOD_PBE_UKS ? "PBE" : "LDA";
+  if (!is_uks(method)) {
+    if (system.electron_count > 0 && system.electron_count % 2 == 0 && system.multiplicity == 1)
+      return VIBEQC_STATUS_SUCCESS;
+    detail = std::string(functional) +
+             " RKS requires a positive even electron count and spin multiplicity 1";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  const int spin_excess = static_cast<int>(system.multiplicity) - 1;
+  if (system.electron_count > 0 && spin_excess >= 0 && spin_excess <= system.electron_count &&
+      (system.electron_count - spin_excess) % 2 == 0)
     return VIBEQC_STATUS_SUCCESS;
-  detail = std::string(method == VIBEQC_METHOD_PBE_RKS ? "PBE" : "LDA") +
-           " RKS requires a positive even electron count and spin multiplicity 1";
+  detail = std::string(functional) +
+           " UKS requires electron count and multiplicity to define integer nonnegative spin "
+           "occupations";
   return VIBEQC_STATUS_INVALID_ARGUMENT;
 }
 
@@ -135,12 +161,11 @@ std::unique_ptr<PreparedCalculation> prepare_dft_calculation(
     const Capabilities& capabilities, core::ContextState& context, const core::System& system,
     const vibeqc_method_descriptor& descriptor) {
   if (context.requested_backend != VIBEQC_BACKEND_CPU_REFERENCE)
-    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                      "DFT RKS is available on the CPU backend only");
-  if (descriptor.method != VIBEQC_METHOD_LDA_RKS && descriptor.method != VIBEQC_METHOD_PBE_RKS)
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "DFT is available on the CPU backend only");
+  if (!is_supported_dft(descriptor.method))
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                       "requested DFT method is reserved but not implemented");
-  return std::make_unique<RksPreparedCalculation>(capabilities, system, descriptor.method,
+  return std::make_unique<DftPreparedCalculation>(capabilities, system, descriptor.method,
                                                   dft_options(descriptor));
 }
 

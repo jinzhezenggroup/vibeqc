@@ -86,6 +86,10 @@ struct ScfResult {
   unsigned iterations{};
   double energy_change{};
   double density_rms{};
+  /** RMS of the physical commutator/orbital-gradient residual at the retained
+   * density. Zero
+   * means the backend does not report it separately. */
+  double physical_residual_rms{};
   bool converged{};
   bool initial_density_used{};
   /** CPU physical operator evaluations, counting a joint UHF J/K as one build. */

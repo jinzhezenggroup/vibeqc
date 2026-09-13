@@ -105,8 +105,9 @@ int main() {
     for (vibeqc_method method : {VIBEQC_METHOD_LDA_UKS, VIBEQC_METHOD_PBE_UKS}) {
       require(vibeqc_method_get_capabilities(method, &capabilities) == VIBEQC_STATUS_SUCCESS &&
                   capabilities.family == VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL &&
-                  capabilities.available == 0,
-              "reserved DFT method capabilities are incorrect");
+                  capabilities.supported_properties == VIBEQC_PROPERTY_ENERGY &&
+                  capabilities.available == 1 && capabilities.supports_batch == 0,
+              "UKS capabilities are incorrect");
     }
 
     Fixture fixture;
@@ -199,15 +200,46 @@ int main() {
               "LDA RKS spin rejection omitted its closed-shell boundary");
     }
 
-    for (vibeqc_method reserved : {VIBEQC_METHOD_LDA_UKS, VIBEQC_METHOD_PBE_UKS}) {
-      method = lda_method();
-      method.method = reserved;
-      calculation = nullptr;
-      require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
-                      VIBEQC_STATUS_NOT_IMPLEMENTED &&
-                  calculation == nullptr,
-              "reserved DFT method reached prepared execution");
+    Fixture open_shell(VIBEQC_BACKEND_CPU_REFERENCE, -1, 2);
+    method = lda_method();
+    method.method = VIBEQC_METHOD_LDA_UKS;
+    calculation = nullptr;
+    require(vibeqc_calculation_prepare(open_shell.context, open_shell.system, &method,
+                                       &calculation) == VIBEQC_STATUS_SUCCESS &&
+                calculation != nullptr,
+            "LDA UKS preparation rejected a valid doublet");
+    result = {sizeof(vibeqc_result_descriptor), VIBEQC_ABI_VERSION, 0.0, nullptr, 0, 0, 0.0, 0.0, 0,
+              VIBEQC_BACKEND_CPU_REFERENCE};
+    const vibeqc_status uks_status = vibeqc_calculation_execute(calculation, &result);
+    if (uks_status != VIBEQC_STATUS_SUCCESS) {
+      const char* uks_detail = vibeqc_context_get_last_detail(open_shell.context);
+      throw std::runtime_error(std::string("LDA UKS execution failed: ") +
+                               (uks_detail == nullptr ? "no detail" : uks_detail));
     }
+    require(result.converged == 1 && std::isfinite(result.energy) &&
+                std::isfinite(result.density_rms) && result.density_rms < 1.0e-8 &&
+                result.executed_backend == VIBEQC_BACKEND_CPU_REFERENCE,
+            "LDA UKS energy-only result is invalid");
+    vibeqc_calculation_destroy(calculation);
+
+    method.method = VIBEQC_METHOD_PBE_UKS;
+    calculation = nullptr;
+    require(vibeqc_calculation_prepare(open_shell.context, open_shell.system, &method,
+                                       &calculation) == VIBEQC_STATUS_SUCCESS &&
+                calculation != nullptr,
+            "PBE UKS preparation rejected a valid doublet");
+    result = {sizeof(vibeqc_result_descriptor), VIBEQC_ABI_VERSION, 0.0, nullptr, 0, 0, 0.0, 0.0, 0,
+              VIBEQC_BACKEND_CPU_REFERENCE};
+    const vibeqc_status pbe_uks_status = vibeqc_calculation_execute(calculation, &result);
+    if (pbe_uks_status != VIBEQC_STATUS_SUCCESS) {
+      const char* pbe_uks_detail = vibeqc_context_get_last_detail(open_shell.context);
+      throw std::runtime_error(std::string("PBE UKS execution failed: ") +
+                               (pbe_uks_detail == nullptr ? "no detail" : pbe_uks_detail));
+    }
+    require(result.converged == 1 && std::isfinite(result.energy) &&
+                std::isfinite(result.density_rms) && result.density_rms < 1.0e-8,
+            "PBE UKS energy-only result is invalid");
+    vibeqc_calculation_destroy(calculation);
 
     method = lda_method();
     method.max_iterations = 1;

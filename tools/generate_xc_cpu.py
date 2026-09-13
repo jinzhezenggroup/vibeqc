@@ -130,6 +130,33 @@ def emit_lda_xc_pw_polarized() -> str:
     return "\n".join(lines)
 
 
+def emit_pbe_polarized() -> str:
+    spec = functional("PBE", spin="polarized")
+    outputs = ((), *((i,) for i in range(5)))
+    graph, roots, expression_hash = build_roots(spec, outputs)
+    emitter = ScalarCEmitter(graph, {name: name for name in spec.features})
+    emitter.emit(roots)
+    references = [emitter.reference(root) for root in roots]
+    lines = [
+        "struct PbePolarizedValue {",
+        "  double energy_density;",
+        "  double feature_derivative[5];",
+        "};",
+        f'inline constexpr const char* kPbePolarizedExpressionIdentity = "{expression_hash}";',
+        "inline PbePolarizedValue pbe_polarized(double rho_a, double rho_b,",
+        "                                        double sigma_aa, double sigma_ab,",
+        "                                        double sigma_bb) {",
+        "  const double tau_a = 0.0;",
+        "  const double tau_b = 0.0;",
+    ]
+    lines.extend(emitter.lines)
+    lines.append(
+        "  return {" + references[0] + ", {" + ", ".join(references[1:]) + "}};"
+    )
+    lines.extend(["}", ""])
+    return "\n".join(lines)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
@@ -138,6 +165,7 @@ def main() -> None:
         args.output,
         emit_lda_xc_pw()
         + emit_lda_xc_pw_polarized()
+        + emit_pbe_polarized()
         + "}  // namespace vibeqc::dft::generated\n",
     )
 

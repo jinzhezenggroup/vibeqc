@@ -287,7 +287,7 @@ class Calculator:
     """Prepare and execute a native single-system electronic-structure calculation.
 
     Coordinates are in Bohr. The current implementation accepts RHF, UHF, or
-    CPU energy-only LDA RKS and
+    CPU energy-only LDA/PBE RKS/UKS and
     a bundled STO-3G/def2-SVP/def2-TZVP basis for H-Ar, local canonical JSON,
     immutable `BasisSet` records, or explicit `Shell` objects. Element symbols
     cover H-Og; execution depends on every actual shell and Hamiltonian. Both the CPU reference and CUDA backend support Cartesian
@@ -479,18 +479,20 @@ class Calculator:
         if self._capabilities.family == "density_functional":
             if self._precision_mode != _native.PRECISION_FP64:
                 raise NotImplementedError(
-                    "the first DFT RKS slice supports explicit FP64 precision only"
+                    "the current DFT energy slice supports explicit FP64 precision only"
                 )
             if device != "cpu":
                 raise NotImplementedError(
-                    "the first LDA RKS slice is available on the CPU backend only"
+                    "the current DFT energy slice is available on the CPU backend only"
                 )
             if density_fitting_mode != _native.DENSITY_FITTING_NONE:
                 raise NotImplementedError(
-                    "the first LDA RKS slice supports conventional Coulomb only"
+                    "the current DFT energy slice supports conventional Coulomb only"
                 )
             if auxiliary_basis is not None:
-                raise ValueError("LDA RKS does not accept an unused auxiliary basis")
+                raise ValueError(
+                    "DFT energy methods do not accept an unused auxiliary basis"
+                )
             if target_accuracy is not None:
                 raise NotImplementedError(
                     "DFT accuracy-model identities are not implemented yet"
