@@ -58,3 +58,72 @@ It also binds the exporter and existing Cartesian/spherical basis adapter.
 Only the 192-AO octamer archive exceeds the repository's review-size threshold;
 its exact-hash retention exception covers the unique scientific reference
 arrays. Full molecular grid-by-AO or grid-by-orbital tensors are not retained.
+
+## Retained results
+
+The [GPU publication](gpu/publication.json) measures clean source
+`9968ce24bab98fd62bf068c0640600192e3bdd75` under Slurm job 9412 on RTX 5090.
+The [native publication](native/publication.json) measures clean source
+`55ac2dc01181dfed83ca5aae5516cb50dd20f593` on AMD EPYC 7K62 with one
+OpenMP/OpenBLAS thread. The latter revision only adds runtime CPU provenance;
+scientific source/library identities match across both runs. All measurements
+use five interleaved repeats per route, with setup outside the repeated endpoint.
+
+| Evidence | Cases | Timing rows | Passing block gates |
+| --- | ---: | ---: | ---: |
+| GPU features + native XC E/V, batch 1 | 36 | 360 | Combined below |
+| Four independent states, serial shared-owner replay | 12 | 120 | Combined below |
+| Combined GPU record, including six independent feature fixtures | 48 | 480 | 392 |
+| Complete native energy-only RKS, cold/common warm | 8 | 80 | 240 |
+
+GPU maximum energy/potential-entry errors are `3.55e-14` / `5.33e-15`.
+Native maximum energy/density-entry differences are `4.13e-13` / `3.90e-9`,
+and the maximum final physical residual is `1.16e-9`. The native gates are
+respectively `1e-9`, `1e-8`, and `1e-8`. Every C warm start records one original-D
+fallback for the external starting density; subsequent factors describe the
+current state. Cold C starts and D runs record no fallback.
+
+Maximum composed GPU-workload capacities are 76,482,128 host bytes and
+110,540,544 device bytes. Native observed numeric capacity reaches 28,331,424
+host bytes. These include the documented numeric buffers and provider allowances;
+they are not measured whole-process RSS or allocator peaks. Per-case plans,
+source packing/upload costs, active AO distributions and screening differences
+remain in the full record.
+
+The table shows illustrative median milliseconds at the 128 MiB device budget.
+All cases and five-sample spreads are in [gpu/summary.json](gpu/summary.json) and
+[native/summary.json](native/summary.json); raw samples are retained with them.
+A larger D/C ratio means a shorter C time in this particular measurement.
+
+| Endpoint | D ms | C ms | D/C |
+| --- | ---: | ---: | ---: |
+| GPU/native XC water SVP PBE, dense | 17.409 | 19.298 | 0.902 |
+| GPU/native XC CO2 TZVP PBE, dense | 24.288 | 28.205 | 0.861 |
+| GPU/native XC water octamer PBE, dense | 306.090 | 513.832 | 0.596 |
+| GPU/native XC water octamer PBE, local | 285.485 | 437.462 | 0.653 |
+| Four serial water tetramer PBE states | 369.165 | 514.788 | 0.717 |
+| Native RKS water TZVP PBE, cold | 1252.747 | 1019.645 | 1.229 |
+| Native RKS water TZVP PBE, warm | 361.794 | 311.534 | 1.161 |
+
+The bounded GPU C implementation loses on these total XC measurements even
+though its feature-count estimate is lower. Native CPU C improves these
+energy-only examples. Different backends/grids/scopes cannot be combined into
+a universal winner, and neither publication passes a performance-promotion gate.
+No complete-force, GPU SCF or native UKS endpoint is claimed. #163 retains
+complete-force integration; #168 retains profile selection and promotion.
+
+Reconstruct either summary without running hardware:
+
+```bash
+.venv/bin/python tools/summarize_density_candidates.py \
+  benchmarks/results/density-candidates/gpu/evidence.json \
+  --output .artifacts/gpu-summary.json
+.venv/bin/python tools/summarize_density_candidates.py \
+  benchmarks/results/density-candidates/native/verification.json \
+  --output .artifacts/native-summary.json
+```
+
+Both publication manifests are produced by the existing `tools/evidence.py`
+publisher and validated in the retained-evidence regression. The GPU envelope
+also has an exact-content size exception because all timing rows, numerical
+gates and resource/source identities are needed to audit the result.
