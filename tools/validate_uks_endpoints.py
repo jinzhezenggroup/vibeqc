@@ -181,7 +181,8 @@ def native_uks(case: dict, method: str) -> dict:
         "converged": bool(result.converged),
         "iterations": int(result.iterations),
         "energy_change_hartree": float(result.energy_change),
-        "physical_residual_rms": float(result.density_rms),
+        "density_change_rms": float(result.density_rms),
+        "physical_residual_rms": float(result.physical_residual_rms),
         "executed_backend": result.executed_backend,
     }
 

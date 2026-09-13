@@ -31,7 +31,7 @@ struct Capabilities {
 struct Convergence {
   unsigned iterations{};
   double energy_change{};
-  double residual_rms{};
+  double residual_rms{};  // Historical internal name for the legacy density-update RMS.
   bool converged{};
 };
 
@@ -45,6 +45,9 @@ struct Result {
   std::size_t fock_builds{};
   /** How the requested precision policy resolved in the executed backend. */
   scf::PrecisionProvenance precision{};
+  /** Optional physical commutator at the returned density; zero is a valid
+   * measured value, while absence means the method does not report it. */
+  std::optional<double> physical_residual_rms;
 };
 
 struct BatchItemResult {

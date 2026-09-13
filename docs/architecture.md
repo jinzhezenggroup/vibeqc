@@ -39,7 +39,12 @@ Unimplemented DFT and coupled-cluster identifiers remain discoverable with zero
 executable properties. LDA/PBE RKS and UKS advertise energy only and no
 prepared batch.
 Result publication is method-neutral internally; the
-ABI-0 `density_rms` field currently carries the adapter's residual diagnostic.
+ABI-0 `density_rms` field retains the density-update convergence measure.
+The additive `vibeqc_calculation_get_scf_diagnostic` query publishes separate
+density-update and physical commutator RMS values after completed LDA/PBE
+RKS/UKS solves, including nonconverged runs. Its versioned descriptor leaves
+existing result layouts unchanged. Unsupported methods and failed backend
+executions report the diagnostic as unavailable.
 Force buffers may be omitted for energy-only execution. The output selection
 is propagated through the prepared method plan, so HF backends skip derivative
 evaluation instead of merely discarding an already computed force array. The

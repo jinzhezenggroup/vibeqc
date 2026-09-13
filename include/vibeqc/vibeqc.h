@@ -474,10 +474,21 @@ typedef struct vibeqc_result_descriptor {
   uint32_t force_count;
   uint32_t iterations;
   double energy_change;
+  /** RMS density update used by the SCF convergence test. */
   double density_rms;
   int32_t converged;
   vibeqc_backend executed_backend;
 } vibeqc_result_descriptor;
+
+/** Separate SCF measures, queried without extending existing result layouts. */
+typedef struct vibeqc_scf_diagnostic {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  double density_rms;
+  /** RMS of physical F D S - S D F evaluated for the reported energy.
+   * UKS combines the alpha/beta matrix entries in one RMS. */
+  double physical_residual_rms;
+} vibeqc_scf_diagnostic;
 
 /** Optional per-system coordinates for a prepared ragged batch execution. */
 typedef struct vibeqc_batch_input_descriptor {
@@ -671,6 +682,16 @@ VIBEQC_API void vibeqc_calculation_destroy(vibeqc_calculation* calculation);
  */
 VIBEQC_API vibeqc_status vibeqc_calculation_execute(vibeqc_calculation* calculation,
                                                     vibeqc_result_descriptor* result);
+
+/** Read separate density-update and physical SCF residual measures.
+ * Available after a completed supported solve, including NOT_CONVERGED.
+ * Returns NOT_IMPLEMENTED before execution, after a backend execution failure, or
+ * when the method does not report a physical residual. Such returns leave
+ * out untouched. A NULL out is an availability query; otherwise the caller
+ * supplies struct_size and abi_version. Currently populated by LDA/PBE KS.
+ */
+VIBEQC_API vibeqc_status vibeqc_calculation_get_scf_diagnostic(
+    const vibeqc_calculation* calculation, vibeqc_scf_diagnostic* out);
 
 /**
  * Read the precision policy that resolved for a prepared run. Both the

@@ -80,7 +80,8 @@ Result adapt_result(scf::ScfResult native) {
   result.energy = native.energy;
   result.convergence.iterations = native.iterations;
   result.convergence.energy_change = native.energy_change;
-  result.convergence.residual_rms = native.physical_residual_rms;
+  result.convergence.residual_rms = native.density_rms;
+  result.physical_residual_rms = native.physical_residual_rms;
   result.convergence.converged = native.converged;
   result.executed_backend = VIBEQC_BACKEND_CPU_REFERENCE;
   result.fock_builds = native.fock_builds;

@@ -55,6 +55,7 @@ vibeqc_status vibeqc_calculation_execute(vibeqc_calculation* calculation,
   // fallback execution can never expose the previous successful mixed run.
   calculation->precision = {};
   calculation->precision_available = false;
+  calculation->scf_diagnostic.reset();
   try {
     // NULL/zero is an execution request, not merely a copy-out choice: the
     // backend must not launch or assemble analytic-force work in this mode.
@@ -62,6 +63,11 @@ vibeqc_status vibeqc_calculation_execute(vibeqc_calculation* calculation,
     // A normal return (converged or not) is a completed run: record what ran.
     calculation->precision = native.precision;
     calculation->precision_available = true;
+    if (native.physical_residual_rms) {
+      calculation->scf_diagnostic =
+          vibeqc_scf_diagnostic{sizeof(vibeqc_scf_diagnostic), VIBEQC_ABI_VERSION,
+                                native.convergence.residual_rms, *native.physical_residual_rms};
+    }
     output->energy = native.energy;
     output->iterations = native.convergence.iterations;
     output->energy_change = native.convergence.energy_change;
@@ -82,6 +88,16 @@ vibeqc_status vibeqc_calculation_execute(vibeqc_calculation* calculation,
     calculation->plan->invalidate_result();
     return vibeqc::api::map_exception(&calculation->context->last_detail);
   }
+}
+
+vibeqc_status vibeqc_calculation_get_scf_diagnostic(const vibeqc_calculation* calculation,
+                                                    vibeqc_scf_diagnostic* out) {
+  if (!calculation) return VIBEQC_STATUS_INVALID_ARGUMENT;
+  if (out && !vibeqc::api::valid_descriptor(out)) return VIBEQC_STATUS_ABI_MISMATCH;
+  std::lock_guard<std::recursive_mutex> lock(calculation->context->mutex);
+  if (!calculation->scf_diagnostic) return VIBEQC_STATUS_NOT_IMPLEMENTED;
+  if (out) *out = *calculation->scf_diagnostic;
+  return VIBEQC_STATUS_SUCCESS;
 }
 
 vibeqc_status vibeqc_calculation_get_precision_provenance(const vibeqc_calculation* calculation,

@@ -248,6 +248,17 @@ class ResultDescriptor(ctypes.Structure):
     ]
 
 
+class ScfDiagnostic(ctypes.Structure):
+    """Additive query record; existing ResultDescriptor keeps its ABI layout."""
+
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("density_rms", ctypes.c_double),
+        ("physical_residual_rms", ctypes.c_double),
+    ]
+
+
 class PrecisionProvenance(ctypes.Structure):
     _fields_ = [
         ("struct_size", ctypes.c_uint32),
@@ -538,6 +549,10 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
         ctypes.POINTER(ResultDescriptor),
     ]
     library.vibeqc_calculation_execute.restype = ctypes.c_int
+    scf_diagnostic = getattr(library, "vibeqc_calculation_get_scf_diagnostic", None)
+    if scf_diagnostic is not None:
+        scf_diagnostic.argtypes = [ctypes.c_void_p, ctypes.POINTER(ScfDiagnostic)]
+        scf_diagnostic.restype = ctypes.c_int
     library.vibeqc_batch_prepare.argtypes = [
         ctypes.c_void_p,
         ctypes.POINTER(ctypes.c_void_p),

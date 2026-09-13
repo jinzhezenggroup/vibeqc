@@ -105,6 +105,13 @@ class CorrelationResult:
 
 @dataclass(frozen=True)
 class Result:
+    """Calculation outputs with distinct SCF update and stationarity measures.
+
+    ``density_rms`` retains the density-update convergence measure.
+    ``physical_residual_rms`` is optional: unsupported methods or older native
+    libraries report None, rather than reusing the density-update value.
+    """
+
     energy: float
     forces: np.ndarray | None
     converged: bool
@@ -117,6 +124,7 @@ class Result:
     resource_diagnostics: dict | None = None
     precision: dict | None = None
     correlation: CorrelationResult | None = None
+    physical_residual_rms: float | None = None
 
 
 @dataclass(frozen=True)
@@ -1238,6 +1246,18 @@ class Calculator:
                 values["mo_host_staging"] = bool(values["mo_host_staging"])
                 values["equation_hash"] = values["equation_hash"].decode("ascii")
                 correlation = CorrelationResult(**values)
+            physical_residual_rms = None
+            scf_getter = getattr(
+                self._library, "vibeqc_calculation_get_scf_diagnostic", None
+            )
+            if scf_getter is not None:
+                scf_diag = _native.ScfDiagnostic(
+                    ctypes.sizeof(_native.ScfDiagnostic), _native.ABI_VERSION
+                )
+                scf_status = scf_getter(calculation, ctypes.byref(scf_diag))
+                if scf_status != _native.STATUS_NOT_IMPLEMENTED:
+                    _native.check(self._library, scf_status, context=context)
+                    physical_residual_rms = scf_diag.physical_residual_rms
             backend = (
                 "cuda"
                 if result_descriptor.executed_backend == _native.BACKEND_CUDA
@@ -1263,6 +1283,7 @@ class Calculator:
                     bool(result_descriptor.converged),
                 ),
                 correlation=correlation,
+                physical_residual_rms=physical_residual_rms,
             )
         finally:
             if calculation.value:

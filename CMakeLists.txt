@@ -890,6 +890,11 @@ if(VIBEQC_BUILD_TESTS)
   target_link_libraries(vibeqc_dft_api_tests PRIVATE vibeqc)
   add_test(NAME vibeqc_dft_api_tests COMMAND vibeqc_dft_api_tests)
 
+  add_executable(vibeqc_scf_diagnostic_tests tests/native/test_scf_diagnostic.cpp)
+  target_include_directories(vibeqc_scf_diagnostic_tests PRIVATE src)
+  target_link_libraries(vibeqc_scf_diagnostic_tests PRIVATE vibeqc)
+  add_test(NAME vibeqc_scf_diagnostic_tests COMMAND vibeqc_scf_diagnostic_tests)
+
   add_executable(vibeqc_dft_density_source_tests tests/native/test_dft_density_source.cpp)
   target_link_libraries(vibeqc_dft_density_source_tests PRIVATE vibeqc)
   target_include_directories(vibeqc_dft_density_source_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)

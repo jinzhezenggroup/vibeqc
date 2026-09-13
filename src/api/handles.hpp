@@ -30,6 +30,8 @@ struct vibeqc_calculation {
   vibeqc::scf::PrecisionProvenance precision{};
   /** True only after a run completes and populates \p precision. */
   bool precision_available{false};
+  /** Completed-run SCF measures; cleared before a new backend execution. */
+  std::optional<vibeqc_scf_diagnostic> scf_diagnostic;
 };
 
 struct vibeqc_batch {
