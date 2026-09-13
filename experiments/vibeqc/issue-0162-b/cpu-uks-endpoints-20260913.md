@@ -12,7 +12,7 @@ gradients, density fitting, performance or quadrature convergence.
 ## Source and environment
 
 - Branch: `codex/issue-0162-b`
-- Clean source commit: `c02ac225ab0161810c1836c9a0257c10885f4e02`
+- Clean source commit: `d0b586231a83350ad1fffb0591acdc24860d0043`
 - Validator: `tools/validate_uks_endpoints.py`
 - Validator SHA-256: `b0152b23c128a86515c85b1b22414183851ed4ecf9e267ba412a3445491648d6`
 - Remote provider: qz CPU Notebook `general`, `CPU资源空间`
@@ -33,24 +33,29 @@ weights.
 
 | Case | Method | N alpha/beta | Native energy (Eh) | PySCF energy (Eh) | Absolute error (Eh) | Native residual | PySCF residual | Result |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| H2- doublet | LDA UKS | 2 / 1 | -0.44581926551511586 | -0.44581926551501294 | 1.029e-13 | 4.459e-13 | 1.074e-16 | pass |
-| H2- doublet | PBE UKS | 2 / 1 | -0.49908288473811100 | -0.49908288473800233 | 1.087e-13 | 1.630e-13 | 1.383e-16 | pass |
-| H2+ fully polarized | LDA UKS | 1 / 0 | -0.51584723067823890 | -0.51584723067821550 | 2.343e-14 | 9.615e-17 | 6.799e-17 | pass |
-| H2+ fully polarized | PBE UKS | 1 / 0 | -0.54087410700709100 | -0.54087410594905530 | 1.058e-09 | 8.777e-17 | 6.799e-17 | pass |
+| H2- doublet | LDA UKS | 2 / 1 | -0.44581926551511630 | -0.44581926551501294 | 1.034e-13 | 1.334e-11 | 1.074e-16 | pass |
+| H2- doublet | PBE UKS | 2 / 1 | -0.49908288473813744 | -0.49908288473800233 | 1.351e-13 | 8.776e-12 | 1.383e-16 | pass |
+| H2+ fully polarized | LDA UKS | 1 / 0 | -0.51584723067823930 | -0.51584723067821550 | 2.387e-14 | 2.776e-16 | 6.799e-17 | pass |
+| H2+ fully polarized | PBE UKS | 1 / 0 | -0.54087410700709120 | -0.54087410594905530 | 1.058e-09 | 0.000e+00 | 6.799e-17 | pass |
 
-The complete-polarization PBE case initially failed by `2.503e-2 Eh` because
-the production tail replaced PBE with LDA whenever one spin density was zero.
-The accepted commit keeps exact active-spin PBE energy and derivatives at this
-boundary and uses the documented bounded inactive-spin potential. The final
-error passes the fixed gate but is the largest result and must not be reported
-as machine-precision agreement.
+The current implementation uses the documented
+`semilocal-scaled-v1/pbe-spin-c2-1e-18` extension so the PBE energy and
+potential remain continuous at an empty spin. It also returns the density that
+was actually evaluated by the energy, residual and convergence gates. The
+fully polarized PBE error passes the fixed gate but is the largest result and
+must not be reported as machine-precision agreement.
 
 ## Evidence identity and recovery
 
 - Persistent raw result:
-  `/inspire/qb-ilm/project/chemicalreaction/czxs25220150/experiments/vibeqc/issue-0162-b/20260913T1312Z-cpu-uks/uks-endpoints.json`
+  `/inspire/qb-ilm/project/chemicalreaction/czxs25220150/experiments/vibeqc/issue-0162-b/20260913T1544Z-pr305-current-head/uks-endpoints.json`
 - Raw result SHA-256:
-  `ec68ea059414dea836ede98fbcfa4b57af1983435f4ddf2e4510e1a06946313a`
+  `a9a38e9527ddaee26b4ddda75a30484ad3d9fe53e802224e4350905be1067441`
+
+The earlier `c02ac225` record and its
+`20260913T1312Z-cpu-uks/uks-endpoints.json` raw result are retained only as
+superseded lineage. They do not support acceptance of the current PBE spin
+extension or returned-state semantics.
 
 Reproduce in a clean Linux checkout with the pinned dependencies and built CPU
 library:

@@ -36,18 +36,23 @@ density, before any subsequent density proposal is accepted.
 | Case | Method | Absolute energy error (Eh) | Native physical residual RMS |
 | --- | --- | ---: | ---: |
 | H2- doublet | LDA UKS | 1.034e-13 | 1.334e-11 |
-| H2- doublet | PBE UKS | 1.344e-13 | 8.776e-12 |
-| H2+ fully polarized | LDA UKS | 2.409e-14 | 2.776e-16 |
+| H2- doublet | PBE UKS | 1.351e-13 | 8.776e-12 |
+| H2+ fully polarized | LDA UKS | 2.387e-14 | 2.776e-16 |
 | H2+ fully polarized | PBE UKS | 1.058e-9 | 0.000e+0 |
 
 All four native and independent endpoints pass the `1e-8 Eh` energy and
-`1e-9` physical-residual gates. The raw local record
-`build/pr305-uks-endpoints.json` has SHA-256
-`733dfaddd6e454f2df928ca68e5fe35e4a6962fe3faecfdfd34ec7f3843cdf06`.
-The high precision point oracle explicitly differentiates the documented
-spin extension; Libxc uses its own empty-spin screening convention.
+`1e-9` physical-residual gates. The current clean-source run is recorded in
+[`cpu-uks-endpoints-20260913.md`](cpu-uks-endpoints-20260913.md); its durable
+raw JSON has SHA-256
+`a9a38e9527ddaee26b4ddda75a30484ad3d9fe53e802224e4350905be1067441`.
+The previous `build/pr305-uks-endpoints.json` was a local correction probe and
+is not the acceptance artifact. The high precision point oracle explicitly
+differentiates the documented spin extension; Libxc uses its own empty-spin
+screening convention.
 
-Validation ran with GCC 11.4, Release CPU build, Python 3.13.9, NumPy 2.5.3,
-PySCF 2.14.0 and mpmath 1.4.1. These corrections add no CUDA execution,
-gradient, density-fitting, batch, grid-convergence or performance claim.
-Issue #162's remaining prepared CUDA and batch scope remains open.
+The current matched-grid acceptance run used a GCC 11.4 Release CPU build,
+Python 3.11.16, NumPy 2.2.6, PySCF 2.14.0 and Libxc 7.0.0. The point-fixture
+regeneration used Python 3.13.9, NumPy 2.5.3 and mpmath 1.4.1. These
+corrections add no CUDA execution, gradient, density-fitting, batch,
+grid-convergence or performance claim. Issue #162's remaining prepared CUDA
+and batch scope remains open.
