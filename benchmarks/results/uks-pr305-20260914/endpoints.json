@@ -126,11 +126,11 @@
       "multiplicity": 2,
       "native": {
         "converged": true,
-        "energy_change_hartree": 1.2301271112846734e-13,
+        "energy_change_hartree": 1.212363542890671e-13,
         "energy_hartree": -0.49908288473813744,
         "executed_backend": "cpu_reference",
         "iterations": 12,
-        "physical_residual_rms": 8.775528914813349e-12
+        "physical_residual_rms": 8.775424831408907e-12
       },
       "passed": true,
       "spin_occupations": [
@@ -246,7 +246,7 @@
         "energy_hartree": -0.540874107007091,
         "executed_backend": "cpu_reference",
         "iterations": 2,
-        "physical_residual_rms": 5.551115123125783e-17
+        "physical_residual_rms": 9.614813431917819e-17
       },
       "passed": true,
       "spin_occupations": [
@@ -369,7 +369,7 @@
       ]
     },
     {
-      "absolute_energy_error_hartree": 2.7000623958883807e-13,
+      "absolute_energy_error_hartree": 3.268496584496461e-13,
       "case": "oh_doublet",
       "charge": 0,
       "grid": {
@@ -464,11 +464,11 @@
       "multiplicity": 2,
       "native": {
         "converged": true,
-        "energy_change_hartree": 2.1316282072803006e-13,
-        "energy_hartree": -74.56865898003986,
+        "energy_change_hartree": 2.7000623958883807e-13,
+        "energy_hartree": -74.56865898003991,
         "executed_backend": "cpu_reference",
         "iterations": 20,
-        "physical_residual_rms": 3.133538463297887e-11
+        "physical_residual_rms": 3.133512686464228e-11
       },
       "passed": true,
       "spin_occupations": [
@@ -479,7 +479,7 @@
   ],
   "schema": "vibeqc.uks-endpoint-validation",
   "source": {
-    "commit": "cf256aecd528a7f434754f7996468827ce1144d2",
+    "commit": "138b4dfd0ac1f957b93c9795d669f2f22cbf6f5a",
     "status_porcelain": "",
     "validator_sha256": "0c675aae2ff28ecd3c6e2d7adaad8ea91e1d66e2f71270afe33979ef995fb9e3"
   },

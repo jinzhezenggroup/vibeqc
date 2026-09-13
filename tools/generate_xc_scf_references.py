@@ -171,6 +171,44 @@ def main():
     for factor in (0.999, 1.001):
         inputs = np.array([0.5, 0.3, 0.1, 0, 0, factor * 0.3 ** (4 / 3), 0, 0])
         rows.append((1, 1, *inputs, *boundary_reference(True, inputs)))
+    # Finite input gradients can overflow division by a tiny density, their
+    # squares, or their sum. Opposite huge spin gradients must still cancel.
+    # Tiny gradients also retain first derivatives when their square is zero.
+    for values in (
+        [1e-300, 5e-301, 1e-3, 0, 0, 0, 0, 0],
+        [1e-100, 5e-101, 1e100, 0, 0, 0, 0, 0],
+        [0.5, 0.3, 1e308, 0, 0, 1e308, 0, 0],
+        [0.5, 0.3, 1e308, 0, 0, -1e308, 0, 0],
+        [0.5, 0.3, 1e308, 0.2, 0, -1e308, 0, 0],
+        [0.5, 0.3, 1e-180, 0, 0, 0, 0, 0],
+        [1e100, 5e99, 0, 0, 0, 0, 0, 0],
+        [1e100, 5e99, 1e99, 0, 0, 0, 0, 0],
+    ):
+        inputs = np.array(values)
+        rows.append((1, 1, *inputs, *boundary_reference(True, inputs)))
+    # Locate A*t2=1 from the independent original equations, then sample
+    # both sides of the native correlation's equivalent numerical forms.
+    a, b = mp.mpf("0.5"), mp.mpf("0.3")
+    n = a + b
+    cx = mp.mpf(3) / 8 * (3 / mp.pi) ** (mp.mpf(1) / 3) * 4 ** (mp.mpf(2) / 3)
+    eps = (
+        energy(True, [a, b, *([mp.mpf(0)] * 6)])
+        + cx * (a ** (mp.mpf(4) / 3) + b ** (mp.mpf(4) / 3))
+    ) / n
+    phi = ((2 * a / n) ** (mp.mpf(2) / 3) + (2 * b / n) ** (mp.mpf(2) / 3)) / 2
+    gamma = (1 - mp.log(2)) / mp.pi**2
+    aa = mp.mpf("0.06672455060314922") / (gamma * mp.expm1(-eps / (gamma * phi**3)))
+    connection = mp.sqrt(
+        16
+        * 2 ** (mp.mpf(2) / 3)
+        * (3 / (4 * mp.pi)) ** (mp.mpf(1) / 3)
+        * n ** (mp.mpf(7) / 3)
+        * phi**2
+        / aa
+    )
+    for factor in (0.999, 1.001):
+        inputs = np.array([0.5, 0.3, factor * float(connection), 0, 0, 0, 0, 0])
+        rows.append((1, 1, *inputs, *boundary_reference(True, inputs)))
     path = Path(__file__).resolve().parents[1] / "tests/data/xc/scf_domain.tsv"
     np.savetxt(
         path,
