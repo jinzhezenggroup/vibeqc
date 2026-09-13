@@ -245,6 +245,7 @@ class ResultDescriptor(ctypes.Structure):
         ("density_rms", ctypes.c_double),
         ("converged", ctypes.c_int32),
         ("executed_backend", ctypes.c_int),
+        ("residual_rms", ctypes.c_double),
     ]
 
 
@@ -287,6 +288,7 @@ class BatchItemResultDescriptor(ctypes.Structure):
         ("bucket_id", ctypes.c_uint32),
         ("warm_start_used", ctypes.c_int32),
         ("warm_start_fallback", ctypes.c_int32),
+        ("residual_rms", ctypes.c_double),
     ]
 
 

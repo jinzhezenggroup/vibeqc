@@ -218,6 +218,8 @@ int main() {
     }
     require(result.converged == 1 && std::isfinite(result.energy) &&
                 std::isfinite(result.density_rms) && result.density_rms < 1.0e-8 &&
+                std::isfinite(result.residual_rms) && result.residual_rms < 1.0e-8 &&
+                result.density_rms != result.residual_rms &&
                 result.executed_backend == VIBEQC_BACKEND_CPU_REFERENCE,
             "LDA UKS energy-only result is invalid");
     vibeqc_calculation_destroy(calculation);
@@ -237,7 +239,9 @@ int main() {
                                (pbe_uks_detail == nullptr ? "no detail" : pbe_uks_detail));
     }
     require(result.converged == 1 && std::isfinite(result.energy) &&
-                std::isfinite(result.density_rms) && result.density_rms < 1.0e-8,
+                std::isfinite(result.density_rms) && result.density_rms < 1.0e-8 &&
+                std::isfinite(result.residual_rms) && result.residual_rms < 1.0e-8 &&
+                result.density_rms != result.residual_rms,
             "PBE UKS energy-only result is invalid");
     vibeqc_calculation_destroy(calculation);
 

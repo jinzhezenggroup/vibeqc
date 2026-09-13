@@ -84,6 +84,8 @@ struct CalculationResult {
   double energy{};
   std::optional<std::vector<double>> forces;
   std::uint32_t iterations{};
+  double density_rms{};
+  double residual_rms{};
   double reference_residual{};
   vibeqc_backend executed_backend{};
   std::optional<vibeqc_correlation_diagnostic> correlation;
@@ -123,13 +125,16 @@ class Calculation {
         0,
         0,
         0,
-        VIBEQC_BACKEND_CPU_REFERENCE};
+        VIBEQC_BACKEND_CPU_REFERENCE,
+        0};
     const auto status = vibeqc_calculation_execute(handle_, &output);
     if (status != VIBEQC_STATUS_SUCCESS)
       throw Error(status, vibeqc_context_get_last_detail(context_));
     result.energy = output.energy;
     result.iterations = output.iterations;
-    result.reference_residual = output.density_rms;
+    result.density_rms = output.density_rms;
+    result.residual_rms = output.residual_rms;
+    result.reference_residual = output.residual_rms;
     result.executed_backend = output.executed_backend;
     vibeqc_correlation_diagnostic diagnostic{};
     diagnostic.struct_size = sizeof(diagnostic);
@@ -154,6 +159,7 @@ struct BatchItemResult {
   std::uint32_t iterations{};
   double energy_change{};
   double density_rms{};
+  double residual_rms{};
   bool converged{};
   vibeqc_backend executed_backend{VIBEQC_BACKEND_CPU_REFERENCE};
   std::uint32_t bucket_id{};
@@ -237,7 +243,8 @@ class Batch {
                    VIBEQC_BACKEND_CPU_REFERENCE,
                    0,
                    0,
-                   0};
+                   0,
+                   0.0};
     }
     check(vibeqc_batch_execute(handle_, inputs.empty() ? nullptr : inputs.data(),
                                static_cast<std::uint32_t>(inputs.size()), native.data(),
@@ -248,6 +255,7 @@ class Batch {
       results[i].iterations = native[i].iterations;
       results[i].energy_change = native[i].energy_change;
       results[i].density_rms = native[i].density_rms;
+      results[i].residual_rms = native[i].residual_rms;
       results[i].converged = native[i].converged != 0;
       results[i].executed_backend = native[i].executed_backend;
       results[i].bucket_id = native[i].bucket_id;

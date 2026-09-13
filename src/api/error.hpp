@@ -25,6 +25,26 @@ inline bool valid_method_descriptor(const vibeqc_method_descriptor* descriptor) 
          descriptor->abi_version == VIBEQC_ABI_VERSION;
 }
 
+/** Result diagnostics were appended to ABI-0 outputs. Accept the original
+ * prefix and only write
+ * appended fields when the caller supplied them. */
+inline bool valid_result_descriptor(const vibeqc_result_descriptor* descriptor) {
+  return descriptor != nullptr &&
+         descriptor->struct_size >= offsetof(vibeqc_result_descriptor, residual_rms) &&
+         descriptor->abi_version == VIBEQC_ABI_VERSION;
+}
+
+inline bool valid_batch_result_descriptor(const vibeqc_batch_item_result_descriptor* descriptor) {
+  return descriptor != nullptr &&
+         descriptor->struct_size >= offsetof(vibeqc_batch_item_result_descriptor, residual_rms) &&
+         descriptor->abi_version == VIBEQC_ABI_VERSION;
+}
+
+template <typename T>
+bool has_output_bytes(const T* descriptor, std::size_t offset, std::size_t size) {
+  return descriptor != nullptr && descriptor->struct_size >= offset + size;
+}
+
 /** Map the active C++ exception to the stable public status vocabulary. */
 vibeqc_status map_exception(std::string* detail = nullptr) noexcept;
 

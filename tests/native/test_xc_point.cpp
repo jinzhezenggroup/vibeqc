@@ -63,6 +63,18 @@ int main() {
       if (VIBEQC_TEST_POINT_EVALUATE(pbe, rho, gradient).valid)
         throw std::runtime_error("infinite density was accepted");
     }
+    {
+      const double rho[2]{1.0e-300, 2.0e-300};
+      const double gradient[2][3]{{1.0e300, -5.0e299, 2.5e299}, {-2.0e299, 1.0e299, -5.0e298}};
+      const auto result = VIBEQC_TEST_POINT_EVALUATE(true, rho, gradient);
+      if (!result.valid || !std::isfinite(result.energy) || !std::isfinite(result.rho[0]) ||
+          !std::isfinite(result.rho[1]))
+        throw std::runtime_error("finite large-gradient PBE point was rejected");
+      for (const auto& spin : result.gradient)
+        for (double value : spin)
+          if (!std::isfinite(value))
+            throw std::runtime_error("large-gradient PBE response is nonfinite");
+    }
     std::cout << count << " independent LDA/PBE SCF-domain E/V points passed\n";
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';

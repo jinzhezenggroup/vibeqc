@@ -18,6 +18,8 @@ from .calculator import Atom, Calculator
 
 @dataclass(frozen=True)
 class BatchItemResult:
+    """Per-system result with distinct density-change and physical residual RMS."""
+
     index: int
     status: int
     status_message: str
@@ -27,6 +29,7 @@ class BatchItemResult:
     iterations: int
     energy_change: float
     density_rms: float
+    residual_rms: float
     executed_backend: str
     bucket_id: int
     warm_start_used: bool
@@ -613,6 +616,7 @@ class PreparedBatch:
                     0,
                     0,
                     0,
+                    0.0,
                 )
                 for index in range(count)
             )
@@ -706,6 +710,7 @@ class PreparedBatch:
                     iterations=output.iterations,
                     energy_change=output.energy_change,
                     density_rms=output.density_rms,
+                    residual_rms=output.residual_rms,
                     executed_backend={
                         _native.BACKEND_CPU_REFERENCE: "cpu_reference",
                         _native.BACKEND_CUDA: "cuda",

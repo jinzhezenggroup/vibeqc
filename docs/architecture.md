@@ -38,8 +38,10 @@ The registry reports method family, executable properties, and batch support.
 Unimplemented DFT and coupled-cluster identifiers remain discoverable with zero
 executable properties. LDA/PBE RKS and UKS advertise energy only and no
 prepared batch.
-Result publication is method-neutral internally; the
-ABI-0 `density_rms` field currently carries the adapter's residual diagnostic.
+Result publication is method-neutral internally. ABI-0 reports the retained
+density-change diagnostic as `density_rms` and the physical
+commutator/orbital-gradient diagnostic separately as `residual_rms`; legacy HF
+backends report the same value for both.
 Force buffers may be omitted for energy-only execution. The output selection
 is propagated through the prepared method plan, so HF backends skip derivative
 evaluation instead of merely discarding an already computed force array. The

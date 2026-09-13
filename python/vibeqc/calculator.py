@@ -105,12 +105,15 @@ class CorrelationResult:
 
 @dataclass(frozen=True)
 class Result:
+    """Calculation result with distinct density-change and physical residual RMS."""
+
     energy: float
     forces: np.ndarray | None
     converged: bool
     iterations: int
     energy_change: float
     density_rms: float
+    residual_rms: float
     executed_backend: str
     basis_metadata: dict = field(default_factory=dict)
     accuracy: AccuracyAssessment | None = None
@@ -1180,6 +1183,7 @@ class Calculator:
                 0.0,
                 0,
                 _native.BACKEND_CPU_REFERENCE,
+                0.0,
             )
             resource_diagnostics = None
             if resource_plan is None:
@@ -1250,6 +1254,7 @@ class Calculator:
                 iterations=result_descriptor.iterations,
                 energy_change=result_descriptor.energy_change,
                 density_rms=result_descriptor.density_rms,
+                residual_rms=result_descriptor.residual_rms,
                 executed_backend=backend,
                 resource_diagnostics=resource_diagnostics,
                 precision=self._precision_provenance(calculation),

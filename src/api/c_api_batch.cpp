@@ -379,7 +379,7 @@ vibeqc_status vibeqc_batch_execute(vibeqc_batch* batch, const vibeqc_batch_input
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   for (std::uint32_t i = 0; i < result_count; ++i) {
-    if (!vibeqc::api::valid_descriptor(&results[i])) {
+    if (!vibeqc::api::valid_batch_result_descriptor(&results[i])) {
       return VIBEQC_STATUS_ABI_MISMATCH;
     }
   }
@@ -441,7 +441,11 @@ vibeqc_status vibeqc_batch_execute(vibeqc_batch* batch, const vibeqc_batch_input
       output.energy = item.calculation.energy;
       output.iterations = item.calculation.convergence.iterations;
       output.energy_change = item.calculation.convergence.energy_change;
-      output.density_rms = item.calculation.convergence.residual_rms;
+      output.density_rms = item.calculation.density_rms;
+      if (vibeqc::api::has_output_bytes(&output,
+                                        offsetof(vibeqc_batch_item_result_descriptor, residual_rms),
+                                        sizeof(output.residual_rms)))
+        output.residual_rms = item.calculation.convergence.residual_rms;
       output.converged = item.calculation.convergence.converged ? 1 : 0;
       output.executed_backend = item.calculation.executed_backend;
       output.bucket_id = static_cast<std::uint32_t>(item.bucket_id);

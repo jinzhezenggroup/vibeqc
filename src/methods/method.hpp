@@ -40,6 +40,8 @@ struct Result {
   double energy{};
   std::vector<double> forces;
   Convergence convergence;
+  /** RMS change between the retained density and the preceding proposal. */
+  double density_rms{};
   vibeqc_backend executed_backend{VIBEQC_BACKEND_CPU_REFERENCE};
   /** Existing CPU physical Fock evaluation counter; zero means unavailable. */
   std::size_t fock_builds{};

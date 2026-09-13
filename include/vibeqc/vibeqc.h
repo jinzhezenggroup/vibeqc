@@ -474,9 +474,12 @@ typedef struct vibeqc_result_descriptor {
   uint32_t force_count;
   uint32_t iterations;
   double energy_change;
+  /** RMS change between the retained density and the preceding proposal. */
   double density_rms;
   int32_t converged;
   vibeqc_backend executed_backend;
+  /** Physical commutator/orbital-gradient RMS; equals density_rms for legacy HF. */
+  double residual_rms;
 } vibeqc_result_descriptor;
 
 /** Optional per-system coordinates for a prepared ragged batch execution. */
@@ -498,12 +501,15 @@ typedef struct vibeqc_batch_item_result_descriptor {
   uint32_t force_count;
   uint32_t iterations;
   double energy_change;
+  /** RMS change between the retained density and the preceding proposal. */
   double density_rms;
   int32_t converged;
   vibeqc_backend executed_backend;
   uint32_t bucket_id;
   int32_t warm_start_used;
   int32_t warm_start_fallback;
+  /** Physical commutator/orbital-gradient RMS; equals density_rms for legacy HF. */
+  double residual_rms;
 } vibeqc_batch_item_result_descriptor;
 
 /** Return the ABI version implemented by the loaded shared library. */

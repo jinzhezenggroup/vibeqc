@@ -39,7 +39,7 @@ vibeqc_status vibeqc_calculation_execute(vibeqc_calculation* calculation,
   if (calculation == nullptr || output == nullptr) {
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
-  if (!vibeqc::api::valid_descriptor(output)) {
+  if (!vibeqc::api::valid_result_descriptor(output)) {
     return VIBEQC_STATUS_ABI_MISMATCH;
   }
   const bool omit_forces = output->forces == nullptr && output->force_count == 0;
@@ -65,7 +65,10 @@ vibeqc_status vibeqc_calculation_execute(vibeqc_calculation* calculation,
     output->energy = native.energy;
     output->iterations = native.convergence.iterations;
     output->energy_change = native.convergence.energy_change;
-    output->density_rms = native.convergence.residual_rms;
+    output->density_rms = native.density_rms;
+    if (vibeqc::api::has_output_bytes(output, offsetof(vibeqc_result_descriptor, residual_rms),
+                                      sizeof(output->residual_rms)))
+      output->residual_rms = native.convergence.residual_rms;
     output->converged = native.convergence.converged ? 1 : 0;
     output->executed_backend = native.executed_backend;
     if (!native.convergence.converged) {

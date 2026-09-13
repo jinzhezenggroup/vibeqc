@@ -44,6 +44,11 @@ struct Jet {
     out.d[index] = 1.0;
     return out;
   }
+  VIBEQC_XC_HD static Jet variable(double value, unsigned index, double derivative) {
+    Jet out(value);
+    out.d[index] = derivative;
+    return out;
+  }
 };
 VIBEQC_XC_HD inline Jet operator+(const Jet& a, const Jet& b) {
   Jet out(a.v + b.v);
@@ -169,7 +174,8 @@ VIBEQC_XC_HD inline Exchange exchange(bool pbe, double rho, const double gradien
 }
 
 VIBEQC_XC_HD inline Jet correlation_per_scale(bool pbe, const Jet& a, const Jet& b,
-                                              const Jet g[2][3], double scale) {
+                                              const Jet g[2][3], double scale,
+                                              double gradient_scale) {
   constexpr double pi = 3.141592653589793238462643383279502884;
   constexpr double beta = 0.06672455060314922;
   const double gamma = (1.0 - ::log(2.0)) / (pi * pi);
@@ -195,10 +201,25 @@ VIBEQC_XC_HD inline Jet correlation_per_scale(bool pbe, const Jet& a, const Jet&
       const Jet total = g[0][k] + g[1][k];
       g2 = g2 + total * total;
     }
-    const Jet t2 = g2 / (16.0 * ::pow(2.0, 2.0 / 3.0) * 0.6203504908994001 * scale13 *
-                         power(n, 7.0 / 3.0) * phi * phi);
     const Jet aa = beta / (gamma * expm1(-eps / (gamma * phi3)));
-    const Jet v = 1.0 / (1.0 + aa * t2);
+    Jet v;
+    if (gradient_scale == scale) {
+      const Jet t2 = g2 / (16.0 * ::pow(2.0, 2.0 / 3.0) * 0.6203504908994001 * scale13 *
+                           power(n, 7.0 / 3.0) * phi * phi);
+      v = 1.0 / (1.0 + aa * t2);
+    } else if (g2.v == 0.0) {
+      // Exact cancellation of the two spin gradients has zero first response.
+      v = 1.0;
+    } else {
+      // g is normalized by the largest physical gradient component. Form the
+      // reciprocal reduced-gradient square so neither gradient/scale nor t2
+      // can overflow for finite inputs. This is algebraically
+      // 1/(1+A*t2) = t2_inv/(t2_inv+A).
+      const double ratio = scale / gradient_scale;
+      const Jet t2_inv = 16.0 * ::pow(2.0, 2.0 / 3.0) * 0.6203504908994001 * scale13 *
+                         power(n, 7.0 / 3.0) * phi * phi * (ratio * ratio) / g2;
+      v = t2_inv / (t2_inv + aa);
+    }
     // Combine eps_PW+H analytically, before floating-point evaluation:
     // G log1p(-(1-exp(eps_PW/G))/(1+u+u^2)), G=gamma*phi^3,
     // u=A*t2. v=1/(1+u) avoids u^2 overflow. This is essential for the
@@ -226,11 +247,17 @@ VIBEQC_XC_HD inline Value evaluate(bool pbe, const double rho[2], const double g
   if (!detail::finite(scale)) out.valid = false;
   if (!out.valid || scale == 0.0) return out;
   using detail::Jet;
+  double gradient_scale = scale;
+  for (unsigned s = 0; s < 2; ++s)
+    for (unsigned k = 0; k < 3; ++k)
+      gradient_scale = ::fmax(gradient_scale, ::fabs(gradient[s][k]));
   const Jet a = Jet::variable(rho[0] / scale, 0), b = Jet::variable(rho[1] / scale, 1);
   Jet g[2][3];
   for (unsigned s = 0; s < 2; ++s)
-    for (unsigned k = 0; k < 3; ++k) g[s][k] = Jet::variable(gradient[s][k] / scale, 2 + 3 * s + k);
-  const Jet energy = detail::correlation_per_scale(pbe, a, b, g, scale);
+    for (unsigned k = 0; k < 3; ++k)
+      g[s][k] =
+          Jet::variable(gradient[s][k] / gradient_scale, 2 + 3 * s + k, scale / gradient_scale);
+  const Jet energy = detail::correlation_per_scale(pbe, a, b, g, scale, gradient_scale);
   out.energy = scale * energy.v;
   out.valid = detail::finite(out.energy);
   for (unsigned s = 0; s < 2; ++s) {

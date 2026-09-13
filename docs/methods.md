@@ -61,8 +61,9 @@ The native LDA and PBE RKS/UKS paths compose versioned atom-centered grids,
 generated XC, the common Coulomb provider and host SCF. Their small matched-grid
 endpoints pass the independent PySCF/Libxc gates recorded under the issue-162-a
 and issue-0162-b validation records. These records cover only CPU energy-only
-closed-shell H2/He and open-shell H2-/H2+ slices; broader DFT still requires
-representative systems, prepared CUDA, resource planning and gradients.
+closed-shell H2/He and open-shell H2-/H2+ plus OH-doublet LDA/PBE slices;
+broader DFT still requires representative systems, prepared CUDA, resource
+planning and gradients.
 AO-to-MO transforms and correlated tensor contractions open the post-HF
 families.
 The RI-MP2 endpoint uses an RHF reference built with the same thresholded
