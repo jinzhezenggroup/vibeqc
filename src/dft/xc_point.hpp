@@ -168,8 +168,8 @@ VIBEQC_XC_HD inline Exchange exchange(bool pbe, double rho, const double gradien
   return out;
 }
 
-VIBEQC_XC_HD inline Jet correlation_per_scale(bool pbe, const Jet& a, const Jet& b,
-                                              const Jet g[2][3], double scale) {
+VIBEQC_XC_HD inline Jet correlation_per_scale(bool pbe, const Jet& a, const Jet& b, const Jet g[3],
+                                              double scale, double gradient_ratio) {
   constexpr double pi = 3.141592653589793238462643383279502884;
   constexpr double beta = 0.06672455060314922;
   const double gamma = (1.0 - ::log(2.0)) / (pi * pi);
@@ -191,21 +191,34 @@ VIBEQC_XC_HD inline Jet correlation_per_scale(bool pbe, const Jet& a, const Jet&
     const Jet phi = (spin_two_thirds(up) + spin_two_thirds(down)) / 2.0;
     const Jet phi3 = phi * phi * phi;
     Jet g2;
+    bool zero_gradient = true;
     for (unsigned k = 0; k < 3; ++k) {
-      const Jet total = g[0][k] + g[1][k];
-      g2 = g2 + total * total;
+      zero_gradient = zero_gradient && g[k].v == 0.0;
+      g2 = g2 + g[k] * g[k];
     }
-    const Jet t2 = g2 / (16.0 * ::pow(2.0, 2.0 / 3.0) * 0.6203504908994001 * scale13 *
-                         power(n, 7.0 / 3.0) * phi * phi);
-    const Jet aa = beta / (gamma * expm1(-eps / (gamma * phi3)));
-    const Jet v = 1.0 / (1.0 + aa * t2);
-    // Combine eps_PW+H analytically, before floating-point evaluation:
-    // G log1p(-(1-exp(eps_PW/G))/(1+u+u^2)), G=gamma*phi^3,
-    // u=A*t2. v=1/(1+u) avoids u^2 overflow. This is essential for the
-    // potential: differentiating cancellation between eps_PW and H creates
-    // spurious tail gradient coefficients many orders above the true result.
-    const Jet q = -expm1(eps / (gamma * phi3));
-    eps = gamma * phi3 * log1p(-q * v * v / (1.0 - v + v * v));
+    // At exact cancellation correlation is PW. Check the components, not
+    // g2.v: its square may underflow while a gradient derivative is nonzero.
+    if (!zero_gradient) {
+      // t2=g2/d. Form v=d/(d+A*g2) directly so neither a huge gradient/rho
+      // ratio nor t2 or A*t2 is ever materialized. Multiplication order also
+      // preserves d when gradient_ratio^2 alone would underflow.
+      const Jet d = 16.0 * ::pow(2.0, 2.0 / 3.0) * 0.6203504908994001 * (gradient_ratio * scale13) *
+                    gradient_ratio * power(n, 7.0 / 3.0) * phi * phi;
+      const Jet aa = beta / (gamma * expm1(-eps / (gamma * phi3)));
+      const Jet denominator = d + aa * g2;
+      const Jet v = d / denominator;
+      const Jet shape = 1.0 - v + v * v;
+      if (v.v >= 0.5) {
+        // For A*t2<=1, PW+H has no severe cancellation. This form also
+        // retains PW at high density when 1-exp(eps/G) rounds to one.
+        eps = eps + gamma * phi3 * log1p((beta / gamma) * g2 / (denominator * shape));
+      } else {
+        // Combine PW+H before evaluation in the large-gradient tail. The
+        // equivalent bounded logarithm preserves tiny first derivatives.
+        const Jet q = -expm1(eps / (gamma * phi3));
+        eps = gamma * phi3 * log1p(-q * v * v / shape);
+      }
+    }
   }
   return n * eps;
 }
@@ -227,10 +240,25 @@ VIBEQC_XC_HD inline Value evaluate(bool pbe, const double rho[2], const double g
   if (!out.valid || scale == 0.0) return out;
   using detail::Jet;
   const Jet a = Jet::variable(rho[0] / scale, 0), b = Jet::variable(rho[1] / scale, 1);
-  Jet g[2][3];
-  for (unsigned s = 0; s < 2; ++s)
-    for (unsigned k = 0; k < 3; ++k) g[s][k] = Jet::variable(gradient[s][k] / scale, 2 + 3 * s + k);
-  const Jet energy = detail::correlation_per_scale(pbe, a, b, g, scale);
+  // Correlation depends only on the total gradient. Sum before normalizing
+  // to retain cancellation between large opposite spin gradients. If a sum
+  // exceeds FP64, normalize its finite summands instead. Both numerical
+  // scales are held fixed during differentiation; they do not clip inputs.
+  double total[3], gradient_scale = scale;
+  for (unsigned k = 0; k < 3; ++k) {
+    total[k] = gradient[0][k] + gradient[1][k];
+    gradient_scale = detail::finite(total[k]) ? ::fmax(gradient_scale, ::fabs(total[k])) : DBL_MAX;
+  }
+  const double gradient_ratio = scale / gradient_scale;
+  Jet g[3];
+  for (unsigned k = 0; k < 3; ++k) {
+    const double value = detail::finite(total[k])
+                             ? total[k] / gradient_scale
+                             : gradient[0][k] / gradient_scale + gradient[1][k] / gradient_scale;
+    g[k] = Jet::variable(value, 2 + k);
+    g[k].d[5 + k] = 1.0;  // Each independent spin contributes to the sum.
+  }
+  const Jet energy = detail::correlation_per_scale(pbe, a, b, g, scale, gradient_ratio);
   out.energy = scale * energy.v;
   out.valid = detail::finite(out.energy);
   for (unsigned s = 0; s < 2; ++s) {
@@ -239,7 +267,7 @@ VIBEQC_XC_HD inline Value evaluate(bool pbe, const double rho[2], const double g
     out.rho[s] = energy.d[s] + x.rho;
     out.valid = out.valid && detail::finite(out.rho[s]);
     for (unsigned k = 0; k < 3; ++k) {
-      out.gradient[s][k] = energy.d[2 + 3 * s + k] + x.gradient[k];
+      out.gradient[s][k] = gradient_ratio * energy.d[2 + 3 * s + k] + x.gradient[k];
       out.valid = out.valid && detail::finite(out.gradient[s][k]);
     }
   }

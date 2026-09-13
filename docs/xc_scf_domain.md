@@ -51,12 +51,15 @@ vacuum has zero energy and potential coefficients. Positive-density
 underflow of a final energy follows ordinary FP64 arithmetic; density
 derivatives are evaluated independently and are retained when representable.
 
-For correlation, choose the fixed numerical scale `N=rho_a+rho_b` and
-differentiate in `a=rho_a/N`, `b=rho_b/N`, `g_s=grad(rho_s)/N`. `N` is held
-constant while taking derivatives. If `e=N f(a,b,g)`, the physical partials
-are simply partials of `f`; no derivative is lost by this change of
-coordinates. In particular, the tiny energy is never divided by N to
-recover a potential after it has underflowed.
+For correlation, choose the fixed numerical density scale `N=rho_a+rho_b`
+and differentiate in `a=rho_a/N`, `b=rho_b/N`. A separate fixed scale `M>=N`
+keeps the normalized total-gradient components
+`h=(grad(rho_a)+grad(rho_b))/M` bounded. Sum finite components before
+normalizing to retain cancellation; if the sum exceeds FP64, normalize the
+finite summands instead. If `e=N f(a,b,h)`, physical density derivatives
+are partials of `f`, and each spin's gradient derivative is `N/M` times the
+corresponding `h` partial. Both scales are held constant when differentiating.
+The tiny energy is never divided by N to recover a potential after underflow.
 
 PW92 uses `x=rho^(1/6)` and its original polynomial rewritten as
 
@@ -80,7 +83,7 @@ spin. The density derivative uses `cbrt(rho_s)` independently of any
 underflow in the exchange energy. This introduces no density floor or new
 boundary prescription.
 
-PBE correlation combines `epsilon_PW+H`
+In the large-gradient tail, PBE correlation combines `epsilon_PW+H`
 *before* evaluation. With `G=gamma phi^3`, `u=A_PBE t^2` and `v=1/(1+u)`,
 
 ```
@@ -91,6 +94,15 @@ This is algebraically the original PBE expression. It avoids both `u^2`
 overflow and cancellation between PW and H. Differentiating that
 cancellation numerically would otherwise generate incorrect tail
 potentials even when the total energy appeared accurate.
+
+Write `t^2=|h|^2/d`, where `d` contains `(N/M)^2 N^(1/3)` and the usual
+density/spin constants. Evaluate `v=d/(d+A_PBE |h|^2)` directly: neither
+`grad(rho)/N`, `t^2` nor `A_PBE t^2` can overflow as an intermediate. For
+`v>=1/2`, the equivalent original `epsilon_PW+H` expression has no severe
+cancellation and avoids losing PW when `1-exp(epsilon_PW/G)` rounds to one.
+The two forms and all first derivatives join continuously. Exactly zero
+total gradient returns PW; nonzero components whose squared norm underflows
+still retain their first gradient derivatives.
 
 ## Explicit PBE spin endpoint extension
 
@@ -121,14 +133,16 @@ boundary-policy differences instead of silently modifying reference inputs.
 
 ## Executable evidence
 
-`tests/data/xc/scf_domain.tsv` contains 87 energy/potential points: Libxc 7
+`tests/data/xc/scf_domain.tsv` contains 97 energy/potential points: Libxc 7
 interior points and independent 450-digit mpmath evaluations of the original
 unscaled equations. `tools/generate_xc_scf_references.py` regenerates them.
 `vibeqc_xc_point_tests` checks each coefficient with a relative tolerance,
 including total densities down to `1e-300`, minority densities down to the
 smallest positive FP64 value, empty spin channels, and both sides of the
-C2 connection and exchange numerical branch; a loose absolute energy-only
-gate cannot pass these tests.
+C2 connection and exchange/correlation numerical branches. It also covers
+finite gradients up to `1e308`, cancellation of huge opposite spin gradients,
+and underflowing gradient squares; a loose absolute energy-only gate cannot
+pass these tests.
 
 `vibeqc_dft_tests` retains the #214 identical-grid oracle, per-spin
 finite-difference checks, equal-spin reduction and active-spin response at
