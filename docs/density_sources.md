@@ -355,3 +355,48 @@ snapshots. The water endpoint has five occupied orbitals and requires multiple
 SCF iterations. An exploratory stretched H4/core-guess run did not converge
 with the existing default D solver; it is not accepted endpoint evidence.
 This slice makes no performance or complete-force claim.
+
+## Executable registrations for #168 (#303)
+
+The existing `vibeqc.autotune.dft_density_candidates(prepared, source,
+stamp=source.stamp)` entry returns explicit D and C candidates bound to the
+same current density, functional/output contract, grid, AO mask and resource
+plan. Registration does not search schedules or install a profile. The HF
+profile schema and complete energy-plus-force promotion gate are unchanged.
+
+```python
+from vibeqc.autotune import dft_density_candidates
+
+d, c = dft_density_candidates(prepared_xc, current, stamp=current.stamp)
+value, execution = d.execute(stamp=current.stamp)
+if c.available:
+    candidate_value, candidate_execution = c.execute(stamp=current.stamp)
+```
+
+Every replay requires the current consumer stamp. Prepared execution retains
+its existing lock order and stale geometry/mask/capacity checks; returned
+statistics are detached while holding the XC owner's lock. Source uploads or
+GPU failures propagate and cannot be recorded as successful fallback timings.
+The descriptor includes actual route, point count, active-AO distribution,
+all supplied orbital columns, requested ingredients/output, AO order, point
+and orbital tiles, resource identity/capacity and packing/transfer statistics.
+The `g*m*m` and `g*m*nocc` quantities are explanatory feature-cost inputs only;
+AO potential construction and total XC cost remain explicit.
+
+A missing, stale, invalid or over-capacity factor leaves the registered D
+candidate usable. C is marked unavailable for the current CPU prepared
+consumer, response densities, and geometric/response derivative requests.
+Its D sibling executes the existing analytic derivative consumer on the
+original D. Those geometric results are fixed-D AO-center/point/weight
+partials, not complete stationary nuclear forces. Complete moving-grid DFT
+forces remain #163; the registration makes no unvalidated C derivative claim.
+The internal native CPU RKS candidates described above use the same loop and
+are measured separately from the GPU-feature/fixed-density XC registration.
+
+The larger reference matrix and reproduction commands are in
+[the candidate evidence directory](../benchmarks/results/density-candidates/README.md).
+It retains actual independent RKS/UKS orbital states, compact larger bases,
+extended water-like systems, explicit diffuse shells, and both single-system
+latency and serial four-state throughput. All fixed-grid E/V measurements
+include GPU features, transfers, native CPU XC and potential assembly. No
+universal D/C winner or complete energy-plus-force promotion is inferred.

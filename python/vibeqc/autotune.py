@@ -40,6 +40,18 @@ from .profiles import (
 )
 
 
+def dft_density_candidates(prepared, source, *, stamp):
+    """Expose executable D/C registrations to the existing tuning workflow.
+
+    These fixed-input candidates retain the ordinary #138 evidence records
+    and #203 resource plans. They do not enter the HF profile bundle or bypass
+    endpoint_gate; #168 owns complete DFT energy/force selection and promotion.
+    """
+    from vibeqc_compiler.xc.candidates import density_candidates
+
+    return density_candidates(prepared, source, stamp=stamp)
+
+
 def source_identity(source: Path) -> str:
     """Mirror the CMake compatibility inventory before spending a tuning budget."""
     paths = {

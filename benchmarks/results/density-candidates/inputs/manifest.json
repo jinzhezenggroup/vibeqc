@@ -1,0 +1,37 @@
+[
+  {
+    "name": "water_svp",
+    "identity": "77f351158e5fbf02a5b587d8490b6a2418199871ee59a8a3e3bca3e1115efd17",
+    "archive_sha256": "73c4b66afab72859a91997259952dbc99795c148fabe2868008c0242bc014a73"
+  },
+  {
+    "name": "water_tzvp",
+    "identity": "d49039dc40101364fb49fa90883102e6c4f579f3fcf5c5721d5037351fa4b74c",
+    "archive_sha256": "ab9acbda4ea2a153f59f7da75863640529de36c4948b952862dddec596d6eab7"
+  },
+  {
+    "name": "co2_tzvp",
+    "identity": "c8b381ece3b6dd9db7d6d48d468ebf1b2504c72ba00f69132390e368331edabd",
+    "archive_sha256": "8ea913c0e662945a1229972783c0ab1423cd441bf01429d61343435b41665c6f"
+  },
+  {
+    "name": "water4_svp",
+    "identity": "bb082b2c451123bfe24ada7b23a63568a8ea3cacb0cad5743c39d12a3f7079c9",
+    "archive_sha256": "72a9be35a2b0edca1d772a797b0ca2ee86e1e329c2c3adeae4ce1865b6977d1d"
+  },
+  {
+    "name": "water8_svp",
+    "identity": "5c35179fe3362f1116a6bbeba9df59513ef7c5dcced7c91b422ce98e018f3f6e",
+    "archive_sha256": "6bbba06f3cde3f2ec68517c7fda3e55dec29290b27cf64ee968be7699227fea0"
+  },
+  {
+    "name": "oh_diffuse",
+    "identity": "c36a8f19a416b68ebd08609f5640d74c932e3b4fc0a46b0ec592a67543949eb3",
+    "archive_sha256": "8c8f4962f0c64e1b888ade10cb3a49f3de08a31b0b6c7f1575bf92cd11daa27e"
+  },
+  {
+    "name": "oh_minus_diffuse",
+    "identity": "0b27804b5bd32fa0794fc920b74bb5c0d96f5da48df6a4dfd4ce97631fc7beaf",
+    "archive_sha256": "f88a1a1ac878c1a31e12b78a6627ef90dde41c77fdf81098851d89af4f20573b"
+  }
+]
