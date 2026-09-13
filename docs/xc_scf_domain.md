@@ -51,7 +51,7 @@ vacuum has zero energy and potential coefficients. Positive-density
 underflow of a final energy follows ordinary FP64 arithmetic; density
 derivatives are evaluated independently and are retained when representable.
 
-For each point, choose the fixed numerical scale `N=rho_a+rho_b` and
+For correlation, choose the fixed numerical scale `N=rho_a+rho_b` and
 differentiate in `a=rho_a/N`, `b=rho_b/N`, `g_s=grad(rho_s)/N`. `N` is held
 constant while taking derivatives. If `e=N f(a,b,g)`, the physical partials
 are simply partials of `f`; no derivative is lost by this change of
@@ -71,8 +71,16 @@ through fifth order for `|u|<1e-4`, including its derivative. The first
 omitted value term is below `1.5e-25` at the switch. This rewrite avoids
 inverse-density powers, without replacing the physical tail expression.
 
-PBE exchange evaluates its enhancement as a bounded rational function in
-the scaled density and gradient. PBE correlation combines `epsilon_PW+H`
+Spin exchange evaluates its enhancement and analytic first derivatives using
+`u=|grad(rho_s)|/rho_s^(4/3)` when `u<=1`, and its reciprocal when `u>1`.
+The two bounded rational forms are algebraically identical. Computing the
+reciprocal as `(rho_s/max_abs_grad)*(cbrt(rho_s)/scaled_grad_norm)` avoids
+squaring quantities that both underflow for an extremely small minority
+spin. The density derivative uses `cbrt(rho_s)` independently of any
+underflow in the exchange energy. This introduces no density floor or new
+boundary prescription.
+
+PBE correlation combines `epsilon_PW+H`
 *before* evaluation. With `G=gamma phi^3`, `u=A_PBE t^2` and `v=1/(1+u)`,
 
 ```
@@ -113,12 +121,14 @@ boundary-policy differences instead of silently modifying reference inputs.
 
 ## Executable evidence
 
-`tests/data/xc/scf_domain.tsv` contains 72 energy/potential points: Libxc 7
+`tests/data/xc/scf_domain.tsv` contains 87 energy/potential points: Libxc 7
 interior points and independent 450-digit mpmath evaluations of the original
 unscaled equations. `tools/generate_xc_scf_references.py` regenerates them.
 `vibeqc_xc_point_tests` checks each coefficient with a relative tolerance,
-including densities down to `1e-300`, empty spin channels and both sides of
-the C2 connection; a loose absolute energy-only gate cannot pass these tests.
+including total densities down to `1e-300`, minority densities down to the
+smallest positive FP64 value, empty spin channels, and both sides of the
+C2 connection and exchange numerical branch; a loose absolute energy-only
+gate cannot pass these tests.
 
 `vibeqc_dft_tests` retains the #214 identical-grid oracle, per-spin
 finite-difference checks, equal-spin reduction and active-spin response at

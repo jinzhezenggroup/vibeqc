@@ -45,7 +45,7 @@ int main() {
       }
       ++count;
     }
-    if (count != 72) throw std::runtime_error("incomplete SCF domain fixture");
+    if (count != 87) throw std::runtime_error("incomplete SCF domain fixture");
     for (bool pbe : {false, true}) {
       double rho[2]{}, gradient[2][3]{};
       const auto vacuum = VIBEQC_TEST_POINT_EVALUATE(pbe, rho, gradient);

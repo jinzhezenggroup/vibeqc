@@ -152,6 +152,25 @@ def main():
             if not pbe:
                 inputs[2:] = 0
             rows.append((int(pbe), 1, *inputs, *boundary_reference(pbe, inputs)))
+    # Unbalanced spins can underflow exchange intermediates even when total
+    # density is ordinary. Include zero/finite majority gradients so correlation
+    # cannot conceal an incorrect tiny-spin exchange gradient coefficient.
+    for minority in (1e-100, 1e-200, 1e-300):
+        for majority_gradient, minority_gradient in (
+            (0.0, 0.0),
+            (0.0, 0.2 * minority),
+            (0.2, 0.0),
+            (0.2, 0.2 * minority),
+        ):
+            inputs = np.array(
+                [0.5, minority, majority_gradient, 0, 0, minority_gradient, 0, 0]
+            )
+            rows.append((1, 1, *inputs, *boundary_reference(True, inputs)))
+    inputs = np.array([0.5, np.nextafter(0.0, 1.0), 0.2, 0, 0, 0, 0, 0])
+    rows.append((1, 1, *inputs, *boundary_reference(True, inputs)))
+    for factor in (0.999, 1.001):
+        inputs = np.array([0.5, 0.3, 0.1, 0, 0, factor * 0.3 ** (4 / 3), 0, 0])
+        rows.append((1, 1, *inputs, *boundary_reference(True, inputs)))
     path = Path(__file__).resolve().parents[1] / "tests/data/xc/scf_domain.tsv"
     np.savetxt(
         path,

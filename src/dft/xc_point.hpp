@@ -113,13 +113,66 @@ VIBEQC_XC_HD inline Jet pw_channel(const Jet& x, double a, double alpha, double 
   return -(x2 + alpha * c) * x2 / q * log1p_over_x(u);
 }
 
-VIBEQC_XC_HD inline Jet energy_per_scale(bool pbe, const Jet& a, const Jet& b, const Jet g[2][3],
-                                         double scale) {
+/** Spin exchange and physical first derivatives. Choose the reduced gradient
+ * or its reciprocal before squaring, so a tiny minority spin never forms
+ * 0/0 from rho^(8/3) and |grad rho|^2. The two branches are algebraically
+ * identical; no density floor or model extension is introduced here. */
+struct Exchange {
+  double energy{}, rho{}, gradient[3]{};
+};
+VIBEQC_XC_HD inline Exchange exchange(bool pbe, double rho, const double gradient[3]) {
+  Exchange out;
+  if (rho == 0.0) return out;
+  constexpr double pi = 3.141592653589793238462643383279502884;
+  constexpr double beta = 0.06672455060314922, kappa = 0.804;
+  const double cx = 0.375 * ::pow(3.0 / pi, 1.0 / 3.0) * ::pow(4.0, 2.0 / 3.0);
+  const double mu = beta * pi * pi / (12.0 * ::pow(6.0 * pi * pi, 2.0 / 3.0));
+  const double rho13 = ::cbrt(rho), rho43 = rho * rho13;
+  const double largest =
+      ::fmax(::fabs(gradient[0]), ::fmax(::fabs(gradient[1]), ::fabs(gradient[2])));
+  double enhancement = 1.0, radial_response = 0.0;
+  if (pbe && largest != 0.0) {
+    double direction[3], norm2 = 0.0;
+    for (unsigned k = 0; k < 3; ++k) {
+      direction[k] = gradient[k] / largest;
+      norm2 += direction[k] * direction[k];
+    }
+    const double norm = ::sqrt(norm2);
+    if (largest <= rho43 / norm) {
+      double u[3], u2 = 0.0;
+      for (unsigned k = 0; k < 3; ++k) {
+        u[k] = gradient[k] / rho43;
+        u2 += u[k] * u[k];
+      }
+      const double denominator = kappa + mu * u2;
+      const double response = mu * kappa * kappa / (denominator * denominator);
+      enhancement += kappa * mu * u2 / denominator;
+      radial_response = response * u2;
+      for (unsigned k = 0; k < 3; ++k) out.gradient[k] = -2.0 * cx * response * u[k];
+    } else {
+      // rho43 may itself underflow. Factoring rho/range first retains the
+      // reciprocal reduced gradient and representable potential coefficients.
+      const double t = (rho / largest) * (rho13 / norm), t2 = t * t;
+      const double denominator = kappa * t2 + mu;
+      const double response = mu * kappa * kappa / (denominator * denominator);
+      enhancement += kappa - kappa * kappa * t2 / denominator;
+      radial_response = response * t2;
+      for (unsigned k = 0; k < 3; ++k)
+        out.gradient[k] = -2.0 * cx * response * t2 * t * (direction[k] / norm);
+    }
+  }
+  out.energy = -cx * rho43 * enhancement;
+  // dF/drho contributes -(8/3) times the reduced-gradient response. Evaluate
+  // the density derivative independently of energy underflow in rho43.
+  out.rho = -cx * (4.0 / 3.0) * rho13 * (enhancement - 2.0 * radial_response);
+  return out;
+}
+
+VIBEQC_XC_HD inline Jet correlation_per_scale(bool pbe, const Jet& a, const Jet& b,
+                                              const Jet g[2][3], double scale) {
   constexpr double pi = 3.141592653589793238462643383279502884;
   constexpr double beta = 0.06672455060314922;
-  constexpr double kappa = 0.804;
   const double gamma = (1.0 - ::log(2.0)) / (pi * pi);
-  const double cx = 0.375 * ::pow(3.0 / pi, 1.0 / 3.0) * ::pow(4.0, 2.0 / 3.0);
   const double scale13 = ::cbrt(scale);
   const Jet n = a + b;
   const Jet x = ::pow(scale, 1.0 / 6.0) * power(n, 1.0 / 6.0);
@@ -134,23 +187,6 @@ VIBEQC_XC_HD inline Jet energy_per_scale(bool pbe, const Jet& a, const Jet& b, c
       pw_channel(x, pbe ? 0.0168869 : 0.016887, 0.11125, 10.357, 3.6231, 0.88026, 0.49671);
   const double fzz = pbe ? 1.709920934161365617563962776245 : 1.709921;
   Jet eps = e0 + power(z, 4.0) * fz * (e1 - e0 + em / fzz) - fz * em / fzz;
-  Jet exchange;
-  const Jet spin[2]{a, b};
-  for (unsigned s = 0; s < 2; ++s) {
-    // Empty spin exchange has zero energy and zero first derivative. Its
-    // physical gradient is checked to be zero by the point entry below.
-    if (spin[s].v == 0.0) continue;
-    Jet enhancement(1.0);
-    if (pbe) {
-      Jet g2;
-      for (unsigned k = 0; k < 3; ++k) g2 = g2 + g[s][k] * g[s][k];
-      const Jet denominator = scale13 * scale13 * power(spin[s], 8.0 / 3.0);
-      const double mu_x2s2 = beta * pi * pi / (12.0 * ::pow(6.0 * pi * pi, 2.0 / 3.0));
-      enhancement =
-          1.0 + kappa - kappa * kappa * denominator / (kappa * denominator + mu_x2s2 * g2);
-    }
-    exchange = exchange - cx * scale13 * power(spin[s], 4.0 / 3.0) * enhancement;
-  }
   if (pbe) {
     const Jet phi = (spin_two_thirds(up) + spin_two_thirds(down)) / 2.0;
     const Jet phi3 = phi * phi * phi;
@@ -171,7 +207,7 @@ VIBEQC_XC_HD inline Jet energy_per_scale(bool pbe, const Jet& a, const Jet& b, c
     const Jet q = -expm1(eps / (gamma * phi3));
     eps = gamma * phi3 * log1p(-q * v * v / (1.0 - v + v * v));
   }
-  return exchange + n * eps;
+  return n * eps;
 }
 }  // namespace detail
 
@@ -194,17 +230,20 @@ VIBEQC_XC_HD inline Value evaluate(bool pbe, const double rho[2], const double g
   Jet g[2][3];
   for (unsigned s = 0; s < 2; ++s)
     for (unsigned k = 0; k < 3; ++k) g[s][k] = Jet::variable(gradient[s][k] / scale, 2 + 3 * s + k);
-  const Jet energy = detail::energy_per_scale(pbe, a, b, g, scale);
+  const Jet energy = detail::correlation_per_scale(pbe, a, b, g, scale);
   out.energy = scale * energy.v;
   out.valid = detail::finite(out.energy);
   for (unsigned s = 0; s < 2; ++s) {
-    out.rho[s] = energy.d[s];
+    const auto x = detail::exchange(pbe, rho[s], gradient[s]);
+    out.energy += x.energy;
+    out.rho[s] = energy.d[s] + x.rho;
     out.valid = out.valid && detail::finite(out.rho[s]);
     for (unsigned k = 0; k < 3; ++k) {
-      out.gradient[s][k] = energy.d[2 + 3 * s + k];
+      out.gradient[s][k] = energy.d[2 + 3 * s + k] + x.gradient[k];
       out.valid = out.valid && detail::finite(out.gradient[s][k]);
     }
   }
+  out.valid = out.valid && detail::finite(out.energy);
   return out;
 }
 }  // namespace vibeqc::dft::point
