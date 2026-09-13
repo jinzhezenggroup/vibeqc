@@ -2,12 +2,14 @@
 
 # Reuse the established native program fixture.
 # ruff: noqa: F811
+from copy import deepcopy
 from pathlib import Path
 
 import numpy as np
 import pytest
 from test_xc_contractions_native import native_factory  # noqa: F401
 from vibeqc.autotune import dft_density_candidates
+from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.dft import NativeAO
 from vibeqc_compiler.dft.fixtures import basis_arguments
 from vibeqc_compiler.xc.prepared import PreparedXCContractions
@@ -65,6 +67,36 @@ def test_independent_current_state_and_all_sampled_features(workloads, name):
                 atol=1e-11,
                 rtol=1e-10,
             )
+
+
+def test_producer_runtime_is_not_an_executable_workload_identity(
+    workloads, native_factory
+):
+    meta, data, grid = workloads["water_svp"]
+    changed = deepcopy(meta)
+    changed["reference"]["seconds"] += 100
+    # A reference snapshot audits every provenance byte. Mathematical inputs
+    # and actual candidate signatures intentionally have a separate identity.
+    assert canonical_hash(changed) != canonical_hash(meta)
+    assert (
+        changed["inputs_hash"] == meta["inputs_hash"] == canonical_hash(meta["inputs"])
+    )
+    with (
+        NativeAO(**basis_arguments(meta)) as basis,
+        PreparedXCContractions(
+            native_factory("LDA_XC_PW", "potential"), basis, grid
+        ) as endpoint,
+    ):
+        sources = [original_source(basis, item, data) for item in (meta, changed)]
+        registrations = [
+            dft_density_candidates(endpoint, s, stamp=s.stamp) for s in sources
+        ]
+        assert [c.workload.identity for c in registrations[0]] == [
+            c.workload.identity for c in registrations[1]
+        ]
+        assert [c.identity for c in registrations[0]] == [
+            c.identity for c in registrations[1]
+        ]
 
 
 @pytest.mark.parametrize("name", ["water_svp", "oh_diffuse"])

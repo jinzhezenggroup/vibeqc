@@ -21,6 +21,54 @@ from vibeqc_compiler.dft import DensitySource, ExplicitGrid, NativeAO
 from vibeqc_compiler.dft.fixtures import basis_arguments
 
 
+def validate_matrix_errors(errors):
+    """Require every declared numerical gate, including equal-count key swaps.
+
+    This is the fixed acceptance matrix, independent of which keys a measured
+    loop happened to emit. Repeated samples deliberately reduce into one worst
+    block record, so checking only that the surviving records pass is unsafe.
+    """
+    from tools.benchmark_density_sources import BUDGETS, FUNCTIONALS, NAMES, ROUTES
+    from tools.generate_density_workload_references import workloads
+
+    expected = {
+        f"features/{name}/{route}/{feature}"
+        for name in NAMES
+        for route in ROUTES
+        for feature in ("ao_jets", "rho", "gradient", "sigma", "tau")
+    }
+    for name, *_ in workloads():
+        modes = (
+            ("dense", "absolute_ao_jet")
+            if name in ("water4_svp", "water8_svp")
+            else ("dense",)
+        )
+        for functional in FUNCTIONALS:
+            for cap in BUDGETS:
+                for mode in modes:
+                    label = f"{name}/{functional}/{mode}/{cap}"
+                    for route in ROUTES:
+                        expected.update(
+                            f"{label}/{route}/{key}" for key in ("energy", "potential")
+                        )
+                        if mode == "dense":
+                            features = (
+                                ("ao", "rho", "gradient")
+                                if functional == "PBE"
+                                else ("ao", "rho")
+                            )
+                            expected.update(
+                                f"{label}/{route}/{key}" for key in features
+                            )
+                            if name in ("water_svp", "water4_svp", "oh_diffuse"):
+                                expected.update(
+                                    f"{label}/batch4/{route}/{key}"
+                                    for key in ("energy", "potential")
+                                )
+    if set(errors) != expected:
+        raise AssertionError("incomplete registered workload/error inventory")
+
+
 def load_workloads(directory):
     """Validate exporter, input and every numeric block before measurement."""
     directory = Path(directory)

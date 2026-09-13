@@ -55,6 +55,11 @@ OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python \
 
 The fixture manifest validates each archive, input contract and numeric block.
 It also binds the exporter and existing Cartesian/spherical basis adapter.
+`inputs_hash` identifies mathematical inputs; a fixture's `identity` is the
+content hash of its complete reference snapshot, including producer provenance
+and runtime. Executable candidate/workload identities use the actual source,
+grid and prepared contract, and do not include producer runtime. Re-exporting
+references can change the snapshot identity without changing those inputs.
 Only the 192-AO octamer archive exceeds the repository's review-size threshold;
 its exact-hash retention exception covers the unique scientific reference
 arrays. Full molecular grid-by-AO or grid-by-orbital tensors are not retained.

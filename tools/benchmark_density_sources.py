@@ -620,7 +620,7 @@ def main():
         report["stages"][stage] = outcome("pass")
     report["feature_cases"] = feature_cases(artifact, report["block_errors"])
     if args.workload_matrix:
-        from tools.density_workload_matrix import measure_matrix
+        from tools.density_workload_matrix import measure_matrix, validate_matrix_errors
 
         report["endpoint_cases"], report["batch_cases"] = measure_matrix(
             args.workload_matrix,
@@ -633,6 +633,7 @@ def main():
         endpoint_count = 36
         if len(report["timings"]) != 2 * (endpoint_count + 12) * args.samples:
             raise AssertionError("incomplete registered workload timing inventory")
+        validate_matrix_errors(report["block_errors"])
     else:
         report["endpoint_cases"] = endpoint_cases(
             artifact,

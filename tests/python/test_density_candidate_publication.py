@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from tools.density_workload_matrix import validate_matrix_errors
 from tools.summarize_density_candidates import summarize
 from tools.vibeqc_validation.publication import validate_publication
 
@@ -47,6 +48,7 @@ def test_retained_summary_reconstructs_and_has_complete_matrix(publication):
                 else diagnostic["orbital_calls"] == 0
             )
     else:
+        validate_matrix_errors(report["block_errors"])
         assert len(report["endpoint_cases"]) == 36
         assert len(report["batch_cases"]) == 12
         assert len(report["timings"]) == 480
@@ -84,3 +86,15 @@ def test_summary_rejects_incomparable_or_incomplete_pairs(publication, fault):
         report["timings"][0]["seconds"] = 0
     with pytest.raises(ValueError):
         summarize(report)
+
+
+@pytest.mark.parametrize("rename", [False, True])
+def test_matrix_gate_inventory_rejects_missing_or_reused_keys(rename):
+    report = json.loads((ROOT / "gpu/evidence.json").read_text())
+    key = next(iter(report["block_errors"]))
+    record = report["block_errors"].pop(key)
+    if rename:
+        report["block_errors"][key + "_wrong"] = record
+        assert len(report["block_errors"]) == 392  # A count-only gate would pass.
+    with pytest.raises(AssertionError, match="workload/error inventory"):
+        validate_matrix_errors(report["block_errors"])
